@@ -1781,6 +1781,21 @@
       "decline_question": "Rifiutare l'accesso a «{name}»?"
     }
   },
+  "search": {
+    "title": "Ricerca",
+    "placeholder": "Cerca transazioni, conti, categorie…",
+    "groups": {
+      "accounts": "Conti",
+      "categories": "Categorie",
+      "payees": "Beneficiari",
+      "tags": "Tag",
+      "labels": "Tag per i report",
+      "transactions": "Transazioni"
+    },
+    "show_all": "Mostra tutti ({count})",
+    "back": "Indietro",
+    "nothing_found": "Nessun risultato"
+  },
   "subscription": {
     "banner": {
       "trial": "Il tuo abbonamento scade tra {count} giorno | Il tuo abbonamento scade tra {count} giorni",

@@ -1781,6 +1781,21 @@
       "decline_question": "Decline access to \"{name}\"?"
     }
   },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search transactions, accounts, categories…",
+    "groups": {
+      "accounts": "Accounts",
+      "categories": "Categories",
+      "payees": "Payees",
+      "tags": "Tags",
+      "labels": "Labels",
+      "transactions": "Transactions"
+    },
+    "show_all": "Show all ({count})",
+    "back": "Back",
+    "nothing_found": "Nothing found"
+  },
   "subscription": {
     "banner": {
       "trial": "Your subscription ends in {count} day | Your subscription ends in {count} days",

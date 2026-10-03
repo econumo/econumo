@@ -1781,6 +1781,21 @@
       "decline_question": "Zugriff auf „{name}“ ablehnen?"
     }
   },
+  "search": {
+    "title": "Suche",
+    "placeholder": "Transaktionen, Konten, Kategorien suchen…",
+    "groups": {
+      "accounts": "Konten",
+      "categories": "Kategorien",
+      "payees": "Zahlungsempfänger",
+      "tags": "Tags",
+      "labels": "Auswertungs-Tags",
+      "transactions": "Transaktionen"
+    },
+    "show_all": "Alle anzeigen ({count})",
+    "back": "Zurück",
+    "nothing_found": "Nichts gefunden"
+  },
   "subscription": {
     "banner": {
       "trial": "Ihr Abonnement endet in {count} Tag | Ihr Abonnement endet in {count} Tagen",

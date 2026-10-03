@@ -1781,6 +1781,21 @@
       "decline_question": "Refuser l’accès à « {name} » ?"
     }
   },
+  "search": {
+    "title": "Recherche",
+    "placeholder": "Rechercher des transactions, comptes, catégories…",
+    "groups": {
+      "accounts": "Comptes",
+      "categories": "Catégories",
+      "payees": "Bénéficiaires",
+      "tags": "Tags",
+      "labels": "Tags de rapport",
+      "transactions": "Transactions"
+    },
+    "show_all": "Tout afficher ({count})",
+    "back": "Retour",
+    "nothing_found": "Aucun résultat"
+  },
   "subscription": {
     "banner": {
       "trial": "Votre abonnement se termine dans {count} jour | Votre abonnement se termine dans {count} jours",

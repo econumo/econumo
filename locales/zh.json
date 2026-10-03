@@ -1781,6 +1781,21 @@
       "decline_question": "拒绝“{name}”的访问权限吗？"
     }
   },
+  "search": {
+    "title": "搜索",
+    "placeholder": "搜索交易、账户、分类…",
+    "groups": {
+      "accounts": "账户",
+      "categories": "分类",
+      "payees": "收款人",
+      "tags": "标签",
+      "labels": "统计标签",
+      "transactions": "交易"
+    },
+    "show_all": "显示全部 ({count})",
+    "back": "返回",
+    "nothing_found": "未找到任何内容"
+  },
   "subscription": {
     "banner": {
       "trial": "您的订阅将在 {count} 天后到期",

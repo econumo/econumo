@@ -1781,6 +1781,21 @@
       "decline_question": "Отклонить доступ к «{name}»?"
     }
   },
+  "search": {
+    "title": "Поиск",
+    "placeholder": "Поиск транзакций, счетов, категорий…",
+    "groups": {
+      "accounts": "Счета",
+      "categories": "Категории",
+      "payees": "Получатели",
+      "tags": "Теги",
+      "labels": "Теги для отчётов",
+      "transactions": "Транзакции"
+    },
+    "show_all": "Показать все ({count})",
+    "back": "Назад",
+    "nothing_found": "Ничего не найдено"
+  },
   "subscription": {
     "banner": {
       "trial": "Подписка закончится через {count} день | Подписка закончится через {count} дня | Подписка закончится через {count} дней",

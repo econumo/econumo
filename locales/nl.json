@@ -1781,6 +1781,21 @@
       "decline_question": "Toegang tot “{name}” weigeren?"
     }
   },
+  "search": {
+    "title": "Zoeken",
+    "placeholder": "Zoek transacties, rekeningen, categorieën…",
+    "groups": {
+      "accounts": "Rekeningen",
+      "categories": "Categorieën",
+      "payees": "Begunstigden",
+      "tags": "Tags",
+      "labels": "Rapportagetags",
+      "transactions": "Transacties"
+    },
+    "show_all": "Alles tonen ({count})",
+    "back": "Terug",
+    "nothing_found": "Niets gevonden"
+  },
   "subscription": {
     "banner": {
       "trial": "Uw abonnement eindigt over {count} dag | Uw abonnement eindigt over {count} dagen",

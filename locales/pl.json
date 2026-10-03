@@ -1781,6 +1781,21 @@
       "decline_question": "Odrzucić dostęp do „{name}”?"
     }
   },
+  "search": {
+    "title": "Wyszukiwanie",
+    "placeholder": "Szukaj transakcji, kont, kategorii…",
+    "groups": {
+      "accounts": "Konta",
+      "categories": "Kategorie",
+      "payees": "Odbiorcy",
+      "tags": "Tagi",
+      "labels": "Tagi raportowe",
+      "transactions": "Transakcje"
+    },
+    "show_all": "Pokaż wszystkie ({count})",
+    "back": "Wstecz",
+    "nothing_found": "Nic nie znaleziono"
+  },
   "subscription": {
     "banner": {
       "trial": "Twoja subskrypcja kończy się za {count} dzień | Twoja subskrypcja kończy się za {count} dni | Twoja subskrypcja kończy się za {count} dni",
