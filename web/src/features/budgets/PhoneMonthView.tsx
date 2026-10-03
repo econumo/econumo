@@ -252,8 +252,9 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           second={spentText}
           secondClass={overspent ? 'text-expense' : ''}
           // a row with nothing to measure against, or a month that has not happened
-          // yet, still draws the empty track, as a budgeted row with nothing spent does
-          progress={isUncategorized ? null : future ? 0 : (rowProgress(figures) ?? 0)}
+          // yet, still draws the empty track, as a budgeted row with nothing spent does;
+          // an overspent row fills it, even when there was no budget to fill toward
+          progress={isUncategorized ? null : future ? 0 : overspent ? 1 : (rowProgress(figures) ?? 0)}
           barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           commented={commented(element.id)}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: carryText ? `${carryText} ${budgetText}` : budgetText, spent: spentText })}
