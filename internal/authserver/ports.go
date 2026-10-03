@@ -20,5 +20,4 @@ type Limiter interface{ Allow(scope, key string) error }
 
 const (
 	RateScopeRegister = "oauth-register"
-	RateScopeToken    = "oauth-token"
 )

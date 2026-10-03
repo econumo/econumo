@@ -19,8 +19,12 @@ func TestConnectedApps(t *testing.T) {
 	if err := s.RevokeConnectedApp(ctx, stranger, vo.MustParseId(list[0].ID)); !hasCode(err, errs.CodeAuthServerGrantNotFound) {
 		t.Fatal("foreign grant must be not found")
 	}
+	creds.locked = nil
 	if err := s.RevokeConnectedApp(ctx, user, vo.MustParseId(list[0].ID)); err != nil {
 		t.Fatal(err)
+	}
+	if len(creds.locked) != 1 || !creds.locked[0].Equal(user) {
+		t.Fatalf("revoke must take the user row lock first: %v", creds.locked)
 	}
 	if len(creds.revoked) != 1 {
 		t.Fatal("revoke must drop the grant's access tokens")

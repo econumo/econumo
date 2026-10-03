@@ -23,9 +23,13 @@ type fakeCreds struct {
 	issued    int
 	failFence bool
 	revoked   []vo.Id
+	locked    []vo.Id
 }
 
-func (f *fakeCreds) LockForOAuth(context.Context, vo.Id) (int64, error)          { return f.gen, nil }
+func (f *fakeCreds) LockForOAuth(_ context.Context, u vo.Id) (int64, error) {
+	f.locked = append(f.locked, u)
+	return f.gen, nil
+}
 func (f *fakeCreds) CredentialsGeneration(context.Context, vo.Id) (int64, error) { return f.gen, nil }
 func (f *fakeCreds) IssueOAuthAccessToken(_ context.Context, _, _ vo.Id, _ string, g int64, _ time.Duration) (string, bool, error) {
 	if f.failFence || g != f.gen {

@@ -18,11 +18,6 @@ func (s *Service) Token(ctx context.Context, req model.TokenRequest) (model.Toke
 	if !s.Enabled() {
 		return model.TokenResponse{}, &OAuthError{404, "invalid_request", "not available"}
 	}
-	if s.limiter != nil {
-		if err := s.limiter.Allow(RateScopeToken, ""); err != nil {
-			return model.TokenResponse{}, &OAuthError{429, "temporarily_unavailable", "too many requests"}
-		}
-	}
 	switch req.GrantType {
 	case "authorization_code":
 		return s.exchange(ctx, req)
@@ -35,7 +30,7 @@ func (s *Service) Token(ctx context.Context, req model.TokenRequest) (model.Toke
 // A confidential client must present its secret (constant-time compare of
 // hashes); a public client has none to present.
 func (s *Service) authenticateClient(ctx context.Context, clientID, secret string) (*model.OAuthClient, error) {
-	bad := &OAuthError{401, "invalid_client", "client authentication failed"}
+	bad := errBadClient
 	id, err := vo.ParseId(clientID)
 	if err != nil {
 		return nil, bad
@@ -53,7 +48,24 @@ func (s *Service) authenticateClient(ctx context.Context, clientID, secret strin
 	return c, nil
 }
 
+var errBadClient = &OAuthError{401, "invalid_client", "client authentication failed"}
+
+func missingParam(name string) *OAuthError {
+	return &OAuthError{400, "invalid_request", name + " is required"}
+}
+
 func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.TokenResponse, error) {
+	if req.ClientID == "" {
+		return model.TokenResponse{}, errBadClient
+	}
+	switch {
+	case req.Code == "":
+		return model.TokenResponse{}, missingParam("code")
+	case req.RedirectURI == "":
+		return model.TokenResponse{}, missingParam("redirect_uri")
+	case req.CodeVerifier == "":
+		return model.TokenResponse{}, missingParam("code_verifier")
+	}
 	c, err := s.authenticateClient(ctx, req.ClientID, req.ClientSecret)
 	if err != nil {
 		return model.TokenResponse{}, err
@@ -124,12 +136,21 @@ func (s *Service) housekeeping(ctx context.Context, now time.Time) {
 }
 
 func (s *Service) refresh(ctx context.Context, req model.TokenRequest) (model.TokenResponse, error) {
+	if req.ClientID == "" {
+		return model.TokenResponse{}, errBadClient
+	}
+	if req.RefreshToken == "" {
+		return model.TokenResponse{}, missingParam("refresh_token")
+	}
 	c, err := s.authenticateClient(ctx, req.ClientID, req.ClientSecret)
 	if err != nil {
 		return model.TokenResponse{}, err
 	}
-	if !s.resourceOK(req.Resource) || (req.Scope != "" && req.Scope != Scope) {
-		return model.TokenResponse{}, errInvalidGrant
+	if !s.resourceOK(req.Resource) {
+		return model.TokenResponse{}, &OAuthError{400, "invalid_target", "unknown resource"}
+	}
+	if req.Scope != "" && req.Scope != Scope {
+		return model.TokenResponse{}, &OAuthError{400, "invalid_scope", "the only scope is mcp"}
 	}
 	now := s.clock.Now()
 	hash := hashSecret(req.RefreshToken)
@@ -201,7 +222,7 @@ func (s *Service) handleRotatedRefresh(ctx context.Context, hash string, clientI
 		slog.WarnContext(ctx, "oauth-refresh-reuse", "grant_id", g.ID.String(), "revoked", false)
 		return errInvalidGrant
 	}
-	if err := s.revokeGrant(ctx, g.ID, now); err != nil {
+	if err := s.revokeGrant(ctx, g.UserID, g.ID, now); err != nil {
 		return err
 	}
 	slog.WarnContext(ctx, "oauth-refresh-reuse", "grant_id", g.ID.String(), "revoked", true)
