@@ -12,19 +12,17 @@ const stop = (e: SyntheticEvent) => e.stopPropagation()
 
 export function AccountActionsMenu({
   account,
-  onDone,
   open,
   onOpenChange,
 }: {
   account: AccountDto
-  onDone?: () => void
   /** a host row that opens the menu on its own click controls it */
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
-  const actions = useAccountActions(onDone)
+  const actions = useAccountActions()
   const isOwner = account.owner.id === user?.id
   return (
     <>

@@ -23,7 +23,7 @@ export interface AccountActions {
   dialogs: ReactNode
 }
 
-export function useAccountActions(onDone?: () => void): AccountActions {
+export function useAccountActions(): AccountActions {
   const { t } = useTranslation()
   const { data: accounts = [] } = useAccounts()
   const { data: user } = useUserData()
@@ -55,10 +55,7 @@ export function useAccountActions(onDone?: () => void): AccountActions {
             setLevelTarget({ accountId: accessAccountId, entry })
           }
         }}
-        onClose={() => {
-          setAccessAccountId(null)
-          onDone?.()
-        }}
+        onClose={() => setAccessAccountId(null)}
       />
 
       <AccessLevelDialog
@@ -87,7 +84,6 @@ export function useAccountActions(onDone?: () => void): AccountActions {
         onConfirm={() => {
           if (deleteTarget) {
             deleteAccount.mutate(deleteTarget.id, { onSettled: () => setDeleteTarget(null) })
-            onDone?.()
           }
         }}
         question={t('settings.accounts.delete_account_modal.question', { account: deleteTarget?.name ?? '' })}
@@ -102,7 +98,6 @@ export function useAccountActions(onDone?: () => void): AccountActions {
         onConfirm={() => {
           if (declineTarget) {
             declineAccountAccess.mutate(declineTarget.id, { onSettled: () => setDeclineTarget(null) })
-            onDone?.()
           }
         }}
         title={t('settings.accounts.decline_access_modal.title')}
@@ -115,10 +110,7 @@ export function useAccountActions(onDone?: () => void): AccountActions {
   )
 
   return {
-    edit: (account) => {
-      openAccountModal({ account })
-      onDone?.()
-    },
+    edit: (account) => openAccountModal({ account }),
     access: (account) => {
       // grant state changes on the partner's device (accept/decline) — refresh before showing it
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })

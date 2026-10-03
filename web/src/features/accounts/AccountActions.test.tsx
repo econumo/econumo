@@ -17,14 +17,14 @@ const sharedWithMe = {
   sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'user', isAccepted: 1 }],
 } as unknown as AccountDto
 
-function renderMenu(account: AccountDto, onDone?: () => void) {
+function renderMenu(account: AccountDto) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         {/* the menu sits inside a selectable row in the search dialog */}
         <div data-testid="row" onClick={rowClick} onPointerDown={rowPointerDown}>
-          <AccountActionsMenu account={account} onDone={onDone} />
+          <AccountActionsMenu account={account} />
         </div>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -53,9 +53,8 @@ it('owned account: Edit, Access control and Delete; delete confirms then posts',
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
-  const onDone = vi.fn()
   const user = userEvent.setup()
-  renderMenu(owned, onDone)
+  renderMenu(owned)
   await user.click(screen.getByRole('button', { name: 'account actions Cash' }))
   expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
   // pointerdown must reach ancestors: an enclosing dialog's outside-click tracking relies on it
@@ -67,7 +66,6 @@ it('owned account: Edit, Access control and Delete; delete confirms then posts',
   expect(await screen.findByText('Are you sure you want to delete the account “Cash”?')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Delete' }))
   await waitFor(() => expect(deleted).toEqual({ id: 'a1' }))
-  expect(onDone).toHaveBeenCalled()
   // neither the trigger, the menu nor the dialog may select the surrounding row
   expect(rowClick).not.toHaveBeenCalled()
 })
@@ -94,13 +92,11 @@ it('shared-with-me account as a plain user: Edit and Decline, no Access control'
 })
 
 it('Edit opens the account modal for that account', async () => {
-  const onDone = vi.fn()
   const user = userEvent.setup()
-  renderMenu(owned, onDone)
+  renderMenu(owned)
   await user.click(screen.getByRole('button', { name: 'account actions Cash' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
   expect(useUiStore.getState().accountModal?.account?.id).toBe(owned.id)
-  expect(onDone).toHaveBeenCalled()
   expect(rowClick).not.toHaveBeenCalled()
 })
 
