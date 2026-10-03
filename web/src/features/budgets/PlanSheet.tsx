@@ -2408,10 +2408,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           }
         }}
         onShowTransactions={
-          sheetCellTarget &&
-          sheetCellTarget.el.id !== UNCATEGORIZED_ID &&
-          !isIncomeType(sheetCellTarget.el.type) &&
-          sheetCellTarget.el.type !== BudgetElementType.SAVINGS
+          sheetCellTarget && sheetCellTarget.el.id !== UNCATEGORIZED_ID
             ? () => {
                 openTransactions(sheetCellTarget.el, sheetCellTarget.month)
                 setSheetCellTarget(null)

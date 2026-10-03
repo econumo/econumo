@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { moneyFormat } from '@/lib/money'
 import { dayKey, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
 import type { BudgetDto, BudgetTransactionDto } from '@/api/dto/budget'
@@ -51,6 +52,21 @@ interface BudgetTransactionsDialogProps {
   /** the month to list (Y-m-d, first of month). Defaults to the budget page's
    *  selected period; the plan sheet passes the clicked column's month. */
   periodStart?: string
+}
+
+function transactionsKind(type: BudgetTransactionsTarget['type']): string {
+  switch (type) {
+    case 'transfers':
+    case 'label':
+      return type
+    case BudgetElementType.SAVINGS:
+      return 'savings'
+    case BudgetElementType.INCOME_CATEGORY:
+    case BudgetElementType.INCOME_ENVELOPE:
+      return 'income'
+    default:
+      return 'expense'
+  }
 }
 
 export function BudgetTransactionsDialog({ budget, element, onClose, periodStart }: BudgetTransactionsDialogProps) {
@@ -106,9 +122,21 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
         // transfers composes with nothing on the backend; like 'label' it can
         // never coincide with another branch here
         ...(element.type === 'transfers' ? { transfers: true } : {}),
+        // a savings row's id is its account id; composes with nothing
+        ...(element.type === BudgetElementType.SAVINGS ? { accountId: element.id } : {}),
+        ...(element.type === BudgetElementType.INCOME_CATEGORY ? { income: true, categoryId: element.id } : {}),
+        ...(element.type === BudgetElementType.INCOME_ENVELOPE ? { income: true, envelopeId: element.id } : {}),
       }
     : null
   const { data: transactions, isLoading } = useBudgetTransactions(params)
+
+  const openedKind = element ? transactionsKind(element.type) : null
+  const openedId = element?.id
+  useEffect(() => {
+    if (openedKind) {
+      trackEvent(METRICS.BUDGET_TRANSACTIONS_OPEN, { kind: openedKind })
+    }
+  }, [openedKind, openedId])
 
   if (!element) {
     return null
@@ -135,7 +163,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
     return {
       id: wireTx.id,
       author: wireTx.author,
-      type: wireTx.direction ? 'transfer' : 'expense',
+      type: wireTx.type ?? (wireTx.direction ? 'transfer' : 'expense'),
       accountId: '',
       accountRecipientId: null,
       amount: wireTx.amount,
@@ -231,7 +259,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
                         ) : null}
                       </span>
                       <span className="tabular-nums text-muted-foreground">
-                        {/* every list is spend (negative) except a boundary transfer INTO the budget */}
+                        {/* spend is negative; money arriving (direction 'in') is positive */}
                         {moneyFormat(tx.direction === 'in' ? tx.amount : -tx.amount, currency, {
                           useNativePrecision: false,
                           maxPrecision: currency?.fractionDigits ?? 2,
