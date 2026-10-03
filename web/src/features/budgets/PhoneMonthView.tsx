@@ -358,21 +358,16 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const labelRow = (label: LabelSpendDto) => {
     const spent = future ? EMPTY : fmt(label.spent)
     return (
-      <div key={label.id} data-testid={`phone-label-${label.id}`} className={`${GRID} rounded-md`}>
-        <span className={`${NAME_CELL} ${cellPad(false)}`}>
-          <EntityIcon name={label.icon} className="text-lg text-muted-foreground" />
-          <span className="truncate text-[15px]">{label.name}</span>
-        </span>
-        <button
-          type="button"
-          aria-label={t('budgets.page.phone.child_aria', { name: label.name, spent })}
-          className="col-span-2 grid min-h-11 grid-cols-subgrid items-center rounded-md py-2 pr-2 active:bg-accent/50"
-          onClick={() => onShowTransactions({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null })}
-        >
-          <span className="text-right text-[15px] text-muted-foreground">{EMPTY}</span>
-          <span className="text-right text-[15px] tabular-nums">{spent}</span>
-        </button>
-      </div>
+      <PhoneRow
+        key={label.id}
+        testId={`phone-label-${label.id}`}
+        icon={label.icon}
+        name={label.name}
+        first={EMPTY}
+        second={spent}
+        ariaLabel={t('budgets.page.phone.child_aria', { name: label.name, spent })}
+        onOpen={() => onOpenSheet({ kind: 'label', label })}
+      />
     )
   }
 
@@ -439,6 +434,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         ? folderCard('__no_folder__', hasFolders ? t('budgets.page.plan.menu.no_folder') : null, buckets.withoutFolder)
         : null}
       {buckets.uncategorized.elements.length > 0 ? folderCard('__uncategorized__', null, buckets.uncategorized) : null}
+      {buckets.archive.elements.length > 0 ? folderCard('__archive__', t('budgets.page.budget.structure.in_archive'), buckets.archive) : null}
       {labels.length > 0 ? (
         <Card testId="phone-labels">
           <button
@@ -453,7 +449,6 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           {labelsOpen ? labels.map(labelRow) : null}
         </Card>
       ) : null}
-      {buckets.archive.elements.length > 0 ? folderCard('__archive__', t('budgets.page.budget.structure.in_archive'), buckets.archive) : null}
 
 
       <section

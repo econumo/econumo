@@ -1,6 +1,6 @@
 import { isIncomeType, isPlannedType } from '@/api/dto/budget'
 import type { BudgetElementType } from '@/api/dto/budget'
-import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, PlanElementDto } from '@/api/dto/budget'
+import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, LabelSpendDto, PlanElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { isZero } from '@/lib/decimal'
@@ -82,6 +82,7 @@ export type SheetTarget =
   | { kind: 'expense'; element: BudgetElementDto }
   | { kind: 'savings'; row: BudgetSavingsElementDto }
   | { kind: 'plan'; cell: PlanCellFigures }
+  | { kind: 'label'; label: LabelSpendDto }
 
 export interface SheetCell {
   id: Id
@@ -98,6 +99,9 @@ export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell {
       return { id: target.row.id, name: target.row.name, currencyId: target.row.currencyId, amount: target.row.budgeted }
     case 'plan':
       return { id: target.cell.element.id, name: target.cell.element.name, currencyId: target.cell.element.currencyId, amount: target.cell.planned }
+    case 'label':
+      // a reporting tag has no amount to set; its spend is already in the budget currency
+      return { id: target.label.id, name: target.label.name, currencyId: baseCurrencyId, amount: '0' }
   }
 }
 
@@ -109,6 +113,8 @@ export function sheetSetsPlan(target: SheetTarget): boolean {
       return true
     case 'plan':
       return isPlannedType(target.cell.element.type)
+    case 'label':
+      return false
   }
 }
 
@@ -124,7 +130,21 @@ export interface SheetElement {
   children: { id: Id }[]
 }
 
-export function sheetElement(target: SheetTarget): SheetElement {
+export function sheetIcon(target: SheetTarget): string {
+  switch (target.kind) {
+    case 'expense':
+      return target.element.icon
+    case 'savings':
+      return target.row.icon
+    case 'plan':
+      return target.cell.element.icon
+    case 'label':
+      return target.label.icon
+  }
+}
+
+/** a reporting tag is not a budget element: it edits through its own dialog */
+export function sheetElement(target: Exclude<SheetTarget, { kind: 'label' }>): SheetElement {
   switch (target.kind) {
     case 'expense':
       return target.element

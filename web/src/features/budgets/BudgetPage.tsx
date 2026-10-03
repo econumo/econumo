@@ -83,7 +83,7 @@ import { CommentMarker } from './CommentThread'
 import { CommentsPanel } from './CommentsPanel'
 import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
-import { planMonthFigures, sheetCell, sheetElement, sheetSetsPlan, type SheetElement, type SheetTarget } from './phoneMonth'
+import { planMonthFigures, sheetCell, sheetElement, sheetSetsPlan, type SheetTarget } from './phoneMonth'
 import { PhoneMonthView } from './PhoneMonthView'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import type { EnvelopeDialogTarget } from './EnvelopeDialog'
@@ -563,6 +563,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         const el = target.cell.element
         return el.id === UNCATEGORIZED_ID ? null : { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId }
       }
+      case 'label':
+        return { id: target.label.id, type: 'label', name: target.label.name, icon: target.label.icon, currencyId: null }
     }
   }
   const sheetTransactions = sheetTarget ? sheetTransactionsTargetOf(sheetTarget) : null
@@ -578,16 +580,30 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       case 'plan':
         // an income row exists only while its plan window is loaded
         return target.cell.element.isArchived === 0 && target.cell.element.id !== UNCATEGORIZED_ID && planMonth !== null
+      case 'label':
+        return false
     }
   }
   const sheetCellTarget = (target: SheetTarget): CellTarget => {
     const cell = sheetCell(target, budget.meta.currencyId)
     return { id: cell.id, name: cell.name, budgeted: cell.amount }
   }
-  const sheetEdit = sheetTarget ? elementEditAccess(sheetElement(sheetTarget), user?.id, editDetails, accounts) : null
+  const sheetEditAccess = (target: SheetTarget): boolean | null => {
+    if (target.kind === 'label') {
+      // update-label answers anyone but the tag's owner with NotFound
+      return !!user && target.label.ownerUserId === user.id
+    }
+    return elementEditAccess(sheetElement(target), user?.id, editDetails, accounts)
+  }
+  const sheetEdit = sheetTarget ? sheetEditAccess(sheetTarget) : null
   // the sheet's pencil: the element's own edit dialog replaces the sheet
-  const editFromSheet = (el: SheetElement) => {
+  const editFromSheet = (target: SheetTarget) => {
     setSheetTarget(null)
+    if (target.kind === 'label') {
+      setTagTarget({ id: target.label.id, name: target.label.name, kind: 'label', icon: target.label.icon })
+      return
+    }
+    const el = sheetElement(target)
     if (isEnvelopeType(el.type)) {
       setEnvelopeDialog({ open: true, envelope: el, folderId: null, side: isIncomeType(el.type) ? 'income' : 'expense' })
     } else if (el.type === BudgetElementType.SAVINGS) {
@@ -1112,7 +1128,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               }
             : undefined
         }
-        onEdit={sheetTarget && sheetEdit !== null ? () => editFromSheet(sheetElement(sheetTarget)) : undefined}
+        onEdit={sheetTarget && sheetEdit !== null ? () => editFromSheet(sheetTarget) : undefined}
         canEdit={sheetEdit === true}
       />
 
