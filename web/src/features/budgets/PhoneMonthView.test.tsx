@@ -152,13 +152,16 @@ it('a row with no budget draws the empty gray track', () => {
   expect(bar.firstElementChild).toHaveStyle({ width: '0%' })
 })
 
-it('a future month shows a dash for Spent, no bar, and no colour', () => {
+it('a future month shows a dash for Spent, the empty gray track, and no colour', () => {
   renderView({ selectedDate: '2099-01-01' }, (b) => {
     const food = b.structure.elements.find((el) => el.id === 'cat-food')!
     Object.assign(food, { budgeted: '100', spent: '150', budgetSpent: '150', available: '-120' })
   })
   const row = screen.getByTestId('phone-row-cat-food')
-  expect(within(row).queryByTestId('phone-progress')).toBeNull()
+  const bar = within(row).getByTestId('phone-progress').firstElementChild
+  expect(bar).toHaveStyle({ width: '0%' })
+  expect(bar?.className).toContain('bg-muted-foreground/40')
+  expect(within(row).getByText('—').className).not.toContain('text-expense')
   expect(screen.getByRole('button', { name: 'Food, budget 30.00 + 100.00, spent —' })).toBeInTheDocument()
 })
 
@@ -216,14 +219,17 @@ it('a savings withdrawal draws the empty track', async () => {
   expect(bar?.className).toContain('bg-muted-foreground/40')
 })
 
-it('a future month draws no bar on income and savings rows', async () => {
+it('a future month draws the empty gray track on income and savings rows, even for a met plan', async () => {
   renderView({ selectedDate: '2099-01-01' }, (b) => {
-    b.structure.savings = [rainyDay]
+    b.structure.savings = [{ ...rainyDay, spent: '100' }]
   })
   await userEvent.click(screen.getByTestId('phone-income-summary'))
   await userEvent.click(screen.getByTestId('phone-savings-summary'))
-  expect(within(screen.getByTestId('phone-income-row-ie1')).queryByTestId('phone-progress')).toBeNull()
-  expect(within(screen.getByTestId('phone-savings-row-acc-s1')).queryByTestId('phone-progress')).toBeNull()
+  for (const testId of ['phone-income-row-ie1', 'phone-savings-row-acc-s1']) {
+    const bar = within(screen.getByTestId(testId)).getByTestId('phone-progress').firstElementChild
+    expect(bar).toHaveStyle({ width: '0%' })
+    expect(bar?.className).toContain('bg-muted-foreground/40')
+  }
 })
 
 it('marks a commented row with a non-interactive indicator', () => {

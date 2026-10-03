@@ -251,9 +251,9 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           first={budgetText}
           second={spentText}
           secondClass={overspent ? 'text-expense' : ''}
-          // a row with nothing to measure against still draws the empty track, as a
-          // budgeted row with nothing spent does
-          progress={isUncategorized || future ? null : (rowProgress(figures) ?? 0)}
+          // a row with nothing to measure against, or a month that has not happened
+          // yet, still draws the empty track, as a budgeted row with nothing spent does
+          progress={isUncategorized ? null : future ? 0 : (rowProgress(figures) ?? 0)}
           barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           commented={commented(element.id)}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: carryText ? `${carryText} ${budgetText}` : budgetText, spent: spentText })}
@@ -309,8 +309,8 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   // income and savings fill toward their plan and turn green once it is met: unlike
   // spending, reaching the figure is the goal, so only the bar is coloured
   const planBar = (planned: string, actual: string) => ({
-    progress: future ? null : (rowProgress({ budgeted: planned, spent: actual }) ?? 0),
-    barClass: cmp(planned, '0') > 0 && cmp(actual, planned) >= 0 ? 'bg-income' : 'bg-muted-foreground/40',
+    progress: future ? 0 : (rowProgress({ budgeted: planned, spent: actual }) ?? 0),
+    barClass: !future && cmp(planned, '0') > 0 && cmp(actual, planned) >= 0 ? 'bg-income' : 'bg-muted-foreground/40',
   })
 
   const incomeRow = (row: PlanCellFigures) => {
