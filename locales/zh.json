@@ -1482,6 +1482,12 @@
         "confirm": "合并",
         "warning": "“{name}”的所有交易将被移动，并删除“{name}”。",
         "envelope_info": "如果两者位于不同的信封中，请先更新预算，以免丢失已计划的金额，因为合并时限额会相加。"
+      },
+      "archive": {
+        "action": "归档"
+      },
+      "unarchive": {
+        "action": "取消归档"
       }
     },
     "categories": {
@@ -1778,6 +1784,22 @@
       "general_folder_hint": "General（将自动创建）",
       "decline_question": "拒绝“{name}”的访问权限吗？"
     }
+  },
+  "search": {
+    "title": "搜索",
+    "placeholder": "搜索交易、账户、分类…",
+    "groups": {
+      "accounts": "账户",
+      "categories": "分类",
+      "payees": "收款人",
+      "tags": "标签",
+      "labels": "统计标签",
+      "transactions": "交易"
+    },
+    "show_all": "显示全部 ({count})",
+    "hidden_folder": "隐藏的文件夹",
+    "back": "返回",
+    "nothing_found": "未找到任何内容"
   },
   "subscription": {
     "banner": {

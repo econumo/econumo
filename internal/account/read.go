@@ -63,6 +63,21 @@ func (s *Service) AccountCurrency(ctx context.Context, accountID vo.Id) (vo.Id, 
 	return acct.CurrencyID, nil
 }
 
+// AvailableAccountIDs returns the ids of every account the user can access
+// (own + shared, non-deleted), hidden folders included: hiding a folder only
+// keeps its accounts out of the app-wide lists, it does not revoke access.
+func (s *Service) AvailableAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
+	accts, err := s.accounts.ListAvailable(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]vo.Id, 0, len(accts))
+	for _, a := range accts {
+		out = append(out, a.ID)
+	}
+	return out, nil
+}
+
 // VisibleAccountIDs returns the ids of the user's available (non-deleted)
 // accounts that are NOT in a hidden folder — the set whose transactions the user
 // may list.

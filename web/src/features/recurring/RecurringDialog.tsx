@@ -72,6 +72,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
   const accountToOption = (a: (typeof accounts)[number]) => ({
     value: a.id,
     label: `${a.name} (${moneyFormat(a.balance, a.currency)})`,
+    searchText: a.name,
     icon: a.icon,
   })
 

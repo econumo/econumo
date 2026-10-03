@@ -1482,6 +1482,12 @@
         "confirm": "Merge",
         "warning": "All transactions from “{name}” will be moved, and “{name}” will be deleted.",
         "envelope_info": "If the two sit in different envelopes, update your budget first so you don’t lose your planned amounts — limits are added together when merging."
+      },
+      "archive": {
+        "action": "Archive"
+      },
+      "unarchive": {
+        "action": "Unarchive"
       }
     },
     "categories": {
@@ -1778,6 +1784,22 @@
       "general_folder_hint": "General (will be created)",
       "decline_question": "Decline access to \"{name}\"?"
     }
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search transactions, accounts, categories…",
+    "groups": {
+      "accounts": "Accounts",
+      "categories": "Categories",
+      "payees": "Payees",
+      "tags": "Tags",
+      "labels": "Labels",
+      "transactions": "Transactions"
+    },
+    "show_all": "Show all ({count})",
+    "hidden_folder": "Hidden folder",
+    "back": "Back",
+    "nothing_found": "Nothing found"
   },
   "subscription": {
     "banner": {
