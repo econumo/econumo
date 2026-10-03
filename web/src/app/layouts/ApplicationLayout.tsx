@@ -115,7 +115,7 @@ export function ApplicationLayout() {
     syncFailing ? 'bg-amber-500/15 text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-foreground'
   }`
   // the full footer's tap area is already fixed at size-11, so no -m/p offset is needed
-  const syncClassFull = `grid size-11 place-items-center rounded-full ${
+  const syncClassFull = `grid ${isCompact ? 'size-11' : 'size-9'} place-items-center rounded-full ${
     syncFailing ? 'bg-amber-500/15 text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-foreground'
   }`
   const { collapsed, toggleCollapsed } = useSidebarStore()
@@ -254,10 +254,10 @@ export function ApplicationLayout() {
                 </button>
               </footer>
             ) : (
-              <footer className={`flex items-center justify-between border-t ${isCompact ? 'px-3' : 'px-2'} pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]`}>
+              <footer className={`flex items-center justify-between border-t ${isCompact ? 'px-3' : 'px-2'} pt-1 pb-[max(env(safe-area-inset-bottom),0.25rem)]`}>
                 <Link
                   to={RouterPage.SETTINGS}
-                  className="flex h-11 items-center gap-1.5 rounded-lg px-3 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className={`flex items-center gap-1.5 rounded-lg px-3 text-muted-foreground hover:bg-accent hover:text-foreground ${isCompact ? 'h-11' : 'h-9 text-sm'}`}
                 >
                   <Settings className="size-5" />
                   {t('settings.page.menu_item')}
@@ -270,7 +270,7 @@ export function ApplicationLayout() {
                   className={syncClassFull}
                   onClick={() => void queryClient.invalidateQueries()}
                 >
-                  <RefreshCw className={`size-6 ${isFetching ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
                 </button>
               </footer>
             )}
