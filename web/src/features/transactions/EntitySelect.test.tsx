@@ -161,3 +161,22 @@ it('still offers create when the typed name only fuzzy-matches', async () => {
   expect(await screen.findByRole('option', { name: 'Food' })).toBeInTheDocument()
   expect(screen.getByRole('option', { name: /Fod/ })).toBeInTheDocument()
 })
+
+it('trailing spaces do not make an existing name look new', async () => {
+  const user = userEvent.setup()
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} onCreate={() => {}} />)
+  await user.click(combobox())
+  await user.keyboard('rent ')
+  expect(await screen.findByRole('option', { name: 'Rent' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: /Add/ })).not.toBeInTheDocument()
+})
+
+it('creates with the typed name trimmed', async () => {
+  const user = userEvent.setup()
+  const onCreate = vi.fn()
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} onCreate={onCreate} />)
+  await user.click(combobox())
+  await user.keyboard(' Tea ')
+  await user.click(await screen.findByRole('option', { name: /Add.*Tea/ }))
+  expect(onCreate).toHaveBeenCalledWith('Tea')
+})

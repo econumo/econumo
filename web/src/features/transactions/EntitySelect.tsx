@@ -60,14 +60,16 @@ export function EntitySelect({
 
   const selected = options.find((o) => o.value === value) ?? null
   const filtered = rankByName(options, (o) => o.label, search)
-  const exactMatch = options.some((o) => o.label.toLowerCase() === search.toLowerCase())
-  const canCreate = !!onCreate && search !== '' && !exactMatch && (createValidator ? createValidator(search) : true)
+  // the created name is trimmed, so it is also what must be new and valid
+  const name = search.trim()
+  const exactMatch = options.some((o) => o.label.toLowerCase() === name.toLowerCase())
+  const canCreate = !!onCreate && name !== '' && !exactMatch && (createValidator ? createValidator(name) : true)
 
   const rows: Row[] = [
     // hidden while filtering so autoHighlight lands on a real match, not the clear row
     ...(clearable && value && !search ? [{ value: '__clear__', label: '—', clear: true }] : []),
     ...filtered,
-    ...(canCreate ? [{ value: '__create__', label: search, create: true }] : []),
+    ...(canCreate ? [{ value: '__create__', label: name, create: true }] : []),
   ]
 
   return (
