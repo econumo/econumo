@@ -17,6 +17,7 @@ import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
 import { budgetTotals, carryOver, displayAvailable, elementDisplayName } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
+import { MonthSectionHeader } from './MonthFlows'
 
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
@@ -513,6 +514,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   const actionsColumn = !!extras.renderActions
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
   const labels = budget.structure.labels ?? []
+  const folded = useBudgetPeriodStore((s) => !!s.planFolds.expense)
 
   const realFolders = buckets.withFolder
   const sections: { key: string; name: string; bucket: FolderBucket; folderIndex: number | null }[] = [
@@ -524,16 +526,20 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
 
   return (
     <div className="flex flex-col gap-3" data-testid="budget-table">
-      <div className="flex items-center gap-1.5 px-3 text-[11px] uppercase tracking-wide text-muted-foreground sm:gap-2 sm:px-4" data-testid="column-headers">
-        <span className="min-w-0 flex-1" />
-        <span className="hidden w-24 text-right sm:block">{t('budgets.page.budget.structure.tab.budgeted')}</span>
-        <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.spent')}</span>
-        <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.available')}</span>
-        <span className="hidden w-6 sm:block" />
-        {actionsColumn ? <ActionsSpacer /> : null}
-      </div>
+      <MonthSectionHeader
+        foldKey="expense"
+        testId="column-headers"
+        label={t('budgets.page.plan.section.expenses')}
+        headings={[t('budgets.page.budget.structure.tab.budgeted'), t('budgets.page.budget.structure.tab.spent'), t('budgets.page.budget.structure.tab.available')]}
+        sums={[
+          moneyFormat(totals.budgeted, budgetCurrency, cellOpts(budgetCurrency)),
+          moneyFormat(totals.spent, budgetCurrency, cellOpts(budgetCurrency)),
+          moneyFormat(totals.available, budgetCurrency, cellOpts(budgetCurrency)),
+        ]}
+        actionsColumn={actionsColumn}
+      />
 
-      {sections.flatMap((section) => {
+      {folded ? null : sections.flatMap((section) => {
         // archive and uncategorized are read-only: no drag handle, no folder
         // actions, never a drop container
         const isReadOnlySection = section.key === '__archive__' || section.key === '__uncategorized__'
@@ -635,7 +641,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
       {/* an ephemeral folder, last: none of the edit-mode props (folder
           actions, drag handles, section/row wrappers) reach it, so it can
           never be renamed, moved, deleted, or become a drop target */}
-      {labels.length > 0 ? <ReportingTagsFolder labels={labels} currency={budgetCurrency} onLabelClick={extras.onSpentClick} /> : null}
+      {!folded && labels.length > 0 ? <ReportingTagsFolder labels={labels} currency={budgetCurrency} onLabelClick={extras.onSpentClick} /> : null}
 
       {hideTotals ? null : <BudgetTotals budget={budget} totals={totals} actionsColumn={actionsColumn} />}
     </div>

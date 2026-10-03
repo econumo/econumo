@@ -1060,7 +1060,6 @@ function PlanBalanceRow({
       className="sticky bottom-0 z-10 border-t bg-background"
       data-testid="plan-balance-row"
     >
-      <PlanBalanceLine label={t('budgets.page.plan.totals.balance')} testIdPrefix="plan-balance" values={balance} {...shared} />
       {savingsBalance ? (
         <PlanBalanceLine
           label={t('budgets.page.plan.totals.savings_balance')}
@@ -1069,13 +1068,14 @@ function PlanBalanceRow({
           {...shared}
         />
       ) : null}
+      <PlanBalanceLine label={t('budgets.page.plan.totals.balance')} testIdPrefix="plan-balance" values={balance} {...shared} />
     </div>
   )
 }
 
 
-// Same flattening the renderer walks (folders -> loose, income then neutral folders
-// then expense, then archived), so Up/Down can never reach a row that isn't on
+// Same flattening the renderer walks (folders -> loose, income then savings then
+// neutral folders then expense, then archived), so Up/Down can never reach a row that isn't on
 // screen. A folder contributes its header (a selectable row of its own, so it can be
 // folded/unfolded by keyboard) followed by its visible members. Only root element
 // rows — the ones a limit can be set on — are in the order: an expanded envelope's
@@ -1105,6 +1105,9 @@ function buildFlatRows(
       pushRow(rows.income.uncategorized)
     }
   }
+  if (!folded('savings')) {
+    savingsRows.forEach(pushRow)
+  }
   rows.neutral.forEach(pushFolder)
   const expenseFolded = folded('expense')
   if (!expenseFolded) {
@@ -1113,9 +1116,6 @@ function buildFlatRows(
     if (rows.expense.uncategorized) {
       pushRow(rows.expense.uncategorized)
     }
-  }
-  if (!folded('savings')) {
-    savingsRows.forEach(pushRow)
   }
   if (rows.archived.length > 0 && !folded('archived')) {
     rows.archived.forEach(pushRow)
@@ -2219,6 +2219,38 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           ) : null}
         </section>
 
+        {hasSavings ? (
+          // Its own drag context: a savings row reorders among savings rows only and
+          // can never reach a folder, which the server refuses for it anyway.
+          <section role="rowgroup" data-testid="plan-section-savings" className="plan-band-savings mt-6 flex flex-col px-1 py-1">
+            <SectionHeader
+              label={t('budgets.page.plan.section.savings')}
+              foldKey="savings"
+              folded={savingsFolded}
+              onToggleFold={togglePlanFold}
+              hiddenCount={0}
+              onShow={() => {}}
+            />
+            {!savingsFolded ? (
+              <>
+                <PlanBand
+                  editMode={editMode}
+                  sensors={sensors}
+                  folderIds={[]}
+                  onDragStart={handleBandDragStart}
+                  onDragEnd={handleSavingsDragEnd}
+                  onDragCancel={() => setDraggingFolder(false)}
+                >
+                  <PlanRowList rows={savingsLive} ctx={ctx} />
+                </PlanBand>
+                {savingsDeleted.map((r) => (
+                  <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
+                ))}
+              </>
+            ) : null}
+          </section>
+        ) : null}
+
         {shownRows.neutral.length > 0 ? (
           // Member-less folders belong to neither side yet, so they sit between the
           // bands rather than defaulting into one. Their own drag context keeps folder
@@ -2308,38 +2340,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             </PlanBand>
           ) : null}
         </section>
-
-        {hasSavings ? (
-          // Its own drag context: a savings row reorders among savings rows only and
-          // can never reach a folder, which the server refuses for it anyway.
-          <section role="rowgroup" data-testid="plan-section-savings" className="plan-band-savings mt-6 flex flex-col px-1 py-1">
-            <SectionHeader
-              label={t('budgets.page.plan.section.savings')}
-              foldKey="savings"
-              folded={savingsFolded}
-              onToggleFold={togglePlanFold}
-              hiddenCount={0}
-              onShow={() => {}}
-            />
-            {!savingsFolded ? (
-              <>
-                <PlanBand
-                  editMode={editMode}
-                  sensors={sensors}
-                  folderIds={[]}
-                  onDragStart={handleBandDragStart}
-                  onDragEnd={handleSavingsDragEnd}
-                  onDragCancel={() => setDraggingFolder(false)}
-                >
-                  <PlanRowList rows={savingsLive} ctx={ctx} />
-                </PlanBand>
-                {savingsDeleted.map((r) => (
-                  <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
-                ))}
-              </>
-            ) : null}
-          </section>
-        ) : null}
 
         {shownRows.archived.length > 0 ? (
           <section role="rowgroup" data-testid="plan-section-archived" className="plan-band-archived flex flex-col gap-1 px-1 py-1">

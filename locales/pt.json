@@ -1344,8 +1344,8 @@
       },
       "plan": {
         "toggle": {
-          "budget": "Orçamento",
-          "plan": "Plano"
+          "month": "Mês",
+          "months": "Meses"
         },
         "section": {
           "income": "Receitas",

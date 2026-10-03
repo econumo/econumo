@@ -70,11 +70,11 @@ function handlers({ budget = fixtureWireBudget, plan = planHandler(), accounts =
   return { setLimitBody: () => setLimitBody }
 }
 
-function renderPage(path: '/budget' | '/plan' = '/budget') {
+function renderPage(path: '/budget' | '/budget/months' = '/budget') {
   const router = createMemoryRouter(
     [
       { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
-      { path: '/plan', element: <BudgetPage key="plan" mode="plan" /> },
+      { path: '/budget/months', element: <BudgetPage key="plan" mode="plan" /> },
     ],
     { initialEntries: [path] },
   )
@@ -94,16 +94,16 @@ beforeEach(() => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planHideEmpty: false })
 })
 
-it('renders the single month view on /budget and on /plan alike', async () => {
+it('renders the single month view on /budget and on /budget/months alike', async () => {
   handlers()
   renderPage('/budget')
   expect(await screen.findByTestId('phone-month-view')).toBeInTheDocument()
   expect(screen.queryByTestId('budget-table')).toBeNull()
 })
 
-it('/plan on a phone is the same month view, not the plan grid', async () => {
+it('/budget/months on a phone is the same month view, not the plan grid', async () => {
   handlers()
-  renderPage('/plan')
+  renderPage('/budget/months')
   expect(await screen.findByTestId('phone-month-view')).toBeInTheDocument()
   expect(screen.queryByTestId('plan-sheet')).toBeNull()
 })
@@ -119,10 +119,10 @@ it('has no Budget/Plan switch in the settings menu, and the title is not all cap
   expect(screen.queryByRole('menuitemradio')).toBeNull()
 })
 
-it('/plan on a phone has no Hide empty rows toggle', async () => {
+it('/budget/months on a phone has no Hide empty rows toggle', async () => {
   handlers()
   const user = userEvent.setup()
-  renderPage('/plan')
+  renderPage('/budget/months')
   await screen.findByTestId('phone-month-view')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   expect(await screen.findByRole('menuitem', { name: 'Edit structure' })).toBeInTheDocument()

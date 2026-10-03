@@ -71,11 +71,11 @@ function mockCompactViewport() {
   }))
 }
 
-function renderPage(initialPath: '/plan' | '/budget' = '/plan') {
+function renderPage(initialPath: '/budget/months' | '/budget' = '/budget/months') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
     [
-      { path: '/plan', element: <BudgetPage key="plan" mode="plan" /> },
+      { path: '/budget/months', element: <BudgetPage key="plan" mode="plan" /> },
       { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
     ],
     { initialEntries: [initialPath] },
@@ -124,7 +124,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-it('/plan renders the sheet: months, income on top, cells', async () => {
+it('/budget/months renders the sheet: months, income on top, cells', async () => {
   usePlanHandlers()
   renderPage()
   await screen.findByText(/jul/i)

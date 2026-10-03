@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Navigate } from 'react-router'
 import { TrackPageViews } from './TrackPageViews'
 import { RequireAuth } from './RequireAuth'
 import { LoginLayout } from './layouts/LoginLayout'
@@ -60,7 +60,8 @@ export function createRouter() {
                 { path: '/', element: <HomePage /> },
                 { path: '/account/:id', element: <AccountPage /> },
                 { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
-                { path: '/plan', element: <BudgetPage key="plan" mode="plan" /> },
+                { path: '/budget/months', element: <BudgetPage key="plan" mode="plan" /> },
+                { path: '/plan', element: <Navigate to="/budget/months" replace /> },
                 { path: '/onboarding', element: <OnboardingPage /> },
                 { path: '/settings', element: <SettingsPage /> },
                 { path: '/settings/profile', element: <ProfilePage /> },

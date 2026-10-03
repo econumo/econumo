@@ -20,8 +20,9 @@ vi.mock('@/lib/metrics', async (importOriginal) => {
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
 // Same dnd-kit stand-in as PlanSheet.test.tsx: every band's onDragEnd is captured and
-// fired directly. The savings band renders after the expense band, so while savings
-// rows exist its handler is the LAST captured entry.
+// fired directly. Each render mounts the income, savings and expense bands in that
+// order (the fixture has no neutral folders), so the savings handler is the
+// second-to-last captured entry.
 let capturedDragEnds: ((event: { active: { id: string }; over: { id: string } | null }) => void)[] = []
 vi.mock('@dnd-kit/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dnd-kit/core')>()
@@ -47,7 +48,7 @@ function mockViewport() {
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  const router = createMemoryRouter([{ path: '/plan', element: <BudgetPage key="plan" mode="plan" /> }], { initialEntries: ['/plan'] })
+  const router = createMemoryRouter([{ path: '/budget/months', element: <BudgetPage key="plan" mode="plan" /> }], { initialEntries: ['/budget/months'] })
   return render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -148,14 +149,16 @@ it('savingsAsPlanElement adapts a savings row to the element row shape', () => {
   expect(el.cells).toBe(savingsS1.cells)
 })
 
-it('renders the Savings section after Expenses and before Archived, rows in position order', async () => {
+it('renders the Savings section after Income and before Expenses (the phone order), rows in position order', async () => {
   useHandlers()
   renderPage()
   const section = await screen.findByTestId('plan-section-savings')
+  const income = screen.getByTestId('plan-section-income')
   const expense = screen.getByTestId('plan-section-expense')
   const archived = screen.getByTestId('plan-section-archived')
-  expect(expense.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(section.compareDocumentPosition(archived) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(income.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(section.compareDocumentPosition(expense) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(expense.compareDocumentPosition(archived) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(within(section).getByRole('button', { name: 'Savings' })).toBeInTheDocument()
   // live rows by position, then the deleted account's row — which stays in this
   // section rather than moving to the Archived band
@@ -173,7 +176,7 @@ it('folding the Savings header hides its rows and persists the fold', async () =
   expect(useBudgetPeriodStore.getState().planFolds.savings).toBe(true)
 })
 
-it('ArrowDown walks from the last expense row into the savings rows, then on into Archived', async () => {
+it('ArrowDown walks from the last income row into the savings rows, then on into the expenses', async () => {
   useHandlers()
   const user = userEvent.setup()
   renderPage()
@@ -181,23 +184,24 @@ it('ArrowDown walks from the last expense row into the savings rows, then on int
   const grid = screen.getByTestId('plan-sheet')
   const cellOf = (rowId: string, col: number) =>
     (document.querySelector(`[data-row-id="${rowId}"]`) as HTMLElement).querySelector(`[data-col="${col}"][role="gridcell"]`) as HTMLElement
+  const expenseFolder = () => document.querySelector('[data-testid="plan-folder-bf1"] [role="gridcell"]') as HTMLElement
 
-  // the expense band's last row is its uncategorized line (July carries spend)
-  await user.click(cellOf('uncategorized:1', 0))
+  // the income band's last row is its uncategorized line (June carries income)
+  await user.click(cellOf('uncategorized:3', 0))
   grid.focus()
   await user.keyboard('{ArrowDown}')
   expect(cellOf('acc-s1:5', 0)).toHaveAttribute('aria-selected', 'true')
   await user.keyboard('{ArrowDown}{ArrowDown}')
   expect(cellOf('acc-s3:5', 0)).toHaveAttribute('aria-selected', 'true')
   await user.keyboard('{ArrowDown}')
-  expect(cellOf('arch-1:1', 0)).toHaveAttribute('aria-selected', 'true')
+  expect(expenseFolder()).toHaveAttribute('aria-selected', 'true')
 
   // folded, the savings rows drop out of the keyboard order too
   useBudgetPeriodStore.setState({ planFolds: { savings: true } })
-  await user.click(cellOf('uncategorized:1', 0))
+  await user.click(cellOf('uncategorized:3', 0))
   grid.focus()
   await user.keyboard('{ArrowDown}')
-  expect(cellOf('arch-1:1', 0)).toHaveAttribute('aria-selected', 'true')
+  expect(expenseFolder()).toHaveAttribute('aria-selected', 'true')
 })
 
 it('editing a savings planned cell sends set-limit with the account id and patches structure.savings optimistically', async () => {
@@ -302,7 +306,7 @@ it('edit mode: savings rows reorder within their own band only, with folderId nu
   expect(within(section).queryByTestId('plan-loose-drop')).not.toBeInTheDocument()
   expect(section.querySelector('[data-testid^="plan-folder-"]')).toBeNull()
 
-  const savingsDragEnd = capturedDragEnds[capturedDragEnds.length - 1]
+  const savingsDragEnd = capturedDragEnds[capturedDragEnds.length - 2]
   // a folder target is not expressible from this band: nothing is sent
   savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'pfolder:bf1' } })
   savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'bfolder:null' } })

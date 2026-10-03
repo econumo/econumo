@@ -85,6 +85,9 @@ import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
 import { planMonthFigures, sheetCell, sheetElement, sheetSetsPlan, type SheetTarget } from './phoneMonth'
 import { PhoneMonthView } from './PhoneMonthView'
+import { MonthFlows, MonthTotalsLines } from './MonthFlows'
+import type { FlowTarget } from './MonthFlows'
+import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import type { EnvelopeDialogTarget } from './EnvelopeDialog'
 import { elementEditAccess, isEnvelopeType } from './elementEdit'
@@ -142,12 +145,12 @@ type CellTarget = Pick<BudgetElementDto, 'id' | 'name' | 'budgeted'>
 export type BudgetMode = 'budget' | 'plan'
 const BUDGET_MODES: readonly BudgetMode[] = ['budget', 'plan']
 const BUDGET_MODE_LABEL: Record<BudgetMode, string> = {
-  budget: 'budgets.page.plan.toggle.budget',
-  plan: 'budgets.page.plan.toggle.plan',
+  budget: 'budgets.page.plan.toggle.month',
+  plan: 'budgets.page.plan.toggle.months',
 }
 const BUDGET_MODE_ROUTE: Record<BudgetMode, string> = {
   budget: RouterPage.BUDGET,
-  plan: RouterPage.PLAN,
+  plan: RouterPage.BUDGET_MONTHS,
 }
 
 // The section is a sortable item itself (folder reorder); the grip lives in
@@ -258,17 +261,18 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const moveElement = useMoveElement()
   const changeCurrency = useChangeElementCurrency()
   const createBudget = useCreateBudget()
-  // the phone view's income, Balance and Total savings: the Plan view's own figures
-  // for the selected month; null until that month's window has really loaded.
+  // the month view's income, Balance and Total savings (phone and desktop alike): the
+  // Months grid's own figures for the selected month; null until that month's window
+  // has really loaded.
   // The window starts no later than the current month: the server books only
   // what precedes the window, so a future month's Balance needs every unmet plan
   // from the current month on inside it.
-  const phonePlanFirst = selectedDate < currentMonth() ? selectedDate : currentMonth()
-  const phonePlan = useBudgetPlan(phoneView ? budgetId : null, phonePlanFirst, monthDiff(phonePlanFirst, selectedDate) + 1)
-  const planSetLimit = usePlanSetLimit(phonePlan.planKey)
+  const monthPlanFirst = selectedDate < currentMonth() ? selectedDate : currentMonth()
+  const monthPlan = useBudgetPlan(mode === 'budget' || phoneView ? budgetId : null, monthPlanFirst, monthDiff(monthPlanFirst, selectedDate) + 1)
+  const planSetLimit = usePlanSetLimit(monthPlan.planKey)
   const planMonth = useMemo(
-    () => (phonePlan.data && !phonePlan.isPlaceholderData ? planMonthFigures(phonePlan.data, currencies, selectedDate) : null),
-    [phonePlan.data, phonePlan.isPlaceholderData, currencies, selectedDate],
+    () => (monthPlan.data && !monthPlan.isPlaceholderData ? planMonthFigures(monthPlan.data, currencies, selectedDate) : null),
+    [monthPlan.data, monthPlan.isPlaceholderData, currencies, selectedDate],
   )
 
   useEffect(() => {
@@ -358,8 +362,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies), i18n.language)
   }, [budget, serverBuckets, dragArrangement, currencies, i18n.language])
 
-  // the Budget view tables the expenses only: savings live in the Plan view (and the
-  // phone's month view), so the Total row counts no savings either
+  // the Total row sums the expenses only, as on the phone: income and savings have
+  // their own sections and totals lines
   const totals = useMemo(() => (buckets ? budgetTotals(buckets) : null), [buckets])
 
   // An archived budget is read-only regardless of role: archived wins over
@@ -632,6 +636,59 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     </CellShell>
   )
 
+  const commitPlanned = (target: FlowTarget, amount: string | null) => {
+    const elementId = sheetCell(target, budget.meta.currencyId).id
+    // an income plan lives only in the plan window, so it patches that cache
+    if (target.kind === 'plan' && planMonth) {
+      planSetLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount, monthIndex: planMonth.index })
+      return
+    }
+    setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })
+  }
+  const renderFlowPlanned = (target: FlowTarget, text: string) => {
+    const cell = sheetCell(target, budget.meta.currencyId)
+    const name = elementDisplayName(cell.id, cell.name, t)
+    if (editMode) {
+      return text
+    }
+    if (isCompact) {
+      return (
+        <button type="button" className="w-full text-right underline-offset-2 hover:underline" aria-label={`details ${name}`} onClick={() => setSheetTarget(target)}>
+          {text}
+        </button>
+      )
+    }
+    const thread = sheetCellTarget(target)
+    const cellComments = commentsByCell.get(commentCellKey(cell.id, selectedDate)) ?? []
+    return (
+      <CellShell comments={cellComments} previewDisabled={commentsTarget !== null} onOpenComments={(anchor) => openComments(thread, anchor)}>
+        <span {...{ [COMMENT_ANCHOR_ATTR]: '' }} className="group/cell relative block">
+          {sheetCanSetAmount(target) ? (
+            <LimitEditor
+              id={cell.id}
+              name={name}
+              value={cell.amount}
+              currency={currencies.find((c) => c.id === cell.currencyId)}
+              onCommit={(amount) => commitPlanned(target, amount)}
+            />
+          ) : (
+            <button
+              type="button"
+              className="w-full text-right underline-offset-2 hover:underline"
+              aria-label={`comments ${name}`}
+              onClick={(e) => openComments(thread, commentAnchorOf(e.currentTarget))}
+            >
+              {text}
+            </button>
+          )}
+          {cellComments.length > 0 || canAddComment ? (
+            <CommentMarker count={cellComments.length} placement="outset" onOpen={(anchor) => openComments(thread, anchor)} />
+          ) : null}
+        </span>
+      </CellShell>
+    )
+  }
+
   // In edit mode the plus sits in the currency-symbol slot (w-6) so the stat
   // columns line up with the element rows; folder ordering moved to dragging.
   const folderActions = (bucket: FolderBucket, _index: number, _total: number) => {
@@ -853,6 +910,17 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           ) : (
             <>
               <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+                <div className="mb-3 flex flex-col gap-3">
+                  <MonthFlows
+                    budget={budget}
+                    currencies={currencies}
+                    planMonth={planMonth}
+                    future={selectedDate > currentMonth()}
+                    actionsColumn={editMode}
+                    renderPlanned={renderFlowPlanned}
+                    onShowTransactions={editMode ? undefined : setTransactionsTarget}
+                  />
+                </div>
                 <DndContext
                   sensors={sensors}
                   collisionDetection={preferRowCollisions}
@@ -928,6 +996,16 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                 </DndContext>
                 <div className="mt-3 flex flex-col gap-3">
                   {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} /> : null}
+                  {totals ? (
+                    <MonthTotalsLines
+                      budget={budget}
+                      currencies={currencies}
+                      planMonth={planMonth}
+                      expensesSpent={totals.spent}
+                      future={selectedDate > currentMonth()}
+                      actionsColumn={editMode}
+                    />
+                  ) : null}
                 </div>
               </div>
             </>

@@ -1344,8 +1344,8 @@
       },
       "plan": {
         "toggle": {
-          "budget": "预算",
-          "plan": "计划"
+          "month": "单月",
+          "months": "多月"
         },
         "section": {
           "income": "收入",

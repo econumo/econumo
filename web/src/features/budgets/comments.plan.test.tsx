@@ -37,11 +37,11 @@ function mockTabletViewport() {
   }))
 }
 
-function renderPage(initialPath: '/plan' | '/budget' = '/plan') {
+function renderPage(initialPath: '/budget/months' | '/budget' = '/budget/months') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
     [
-      { path: '/plan', element: <BudgetPage key="plan" mode="plan" /> },
+      { path: '/budget/months', element: <BudgetPage key="plan" mode="plan" /> },
       { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
     ],
     { initialEntries: [initialPath] },
@@ -101,7 +101,7 @@ it('opens the thread from the marker as a popover, and keeps the amount editor c
   usePlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   const cell = await screen.findByTestId('plan-cell-pe1:1')
   expect(within(cell).getByTestId('comment-marker')).toHaveAccessibleName('1 comment')
@@ -126,7 +126,7 @@ it('shows the truncated notice when get-comment-list reports its cap was hit', a
   )
   mockViewport()
   const user = userEvent.setup()
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   const cell = await screen.findByTestId('plan-cell-pe1:1')
   await user.click(within(cell).getByTestId('comment-marker'))
@@ -136,7 +136,7 @@ it('shows the truncated notice when get-comment-list reports its cap was hit', a
 it('shows no marker on a cell without comments', async () => {
   usePlanHandlers()
   mockViewport()
-  renderPage('/plan')
+  renderPage('/budget/months')
   const cell = await screen.findByTestId('plan-cell-pe1:2')
   expect(within(cell).queryByTestId('comment-marker')).toBeNull()
 })
@@ -145,7 +145,7 @@ it('never marks the uncategorized row', async () => {
   // the fixture's uncategorized row carries no element id a comment could name
   usePlanHandlers()
   mockViewport()
-  renderPage('/plan')
+  renderPage('/budget/months')
   const cell = await screen.findByTestId('plan-cell-uncategorized:1')
   expect(within(cell).queryByTestId('comment-marker')).toBeNull()
 })
@@ -154,7 +154,7 @@ it('opens the thread with Shift+Enter and leaves Enter editing the amount', asyn
   usePlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   const cell = await screen.findByTestId('plan-cell-pe1:1')
   await user.click(cell)
@@ -172,7 +172,7 @@ it('does not steal focus from a later mouse-opened dialog after a keyboard-opene
   usePlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   const cell = await screen.findByTestId('plan-cell-pe1:1')
   await user.click(cell)
@@ -199,7 +199,7 @@ it('opens the thread with Shift+F2', async () => {
   usePlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   const cell = await screen.findByTestId('plan-cell-pe1:1')
   await user.click(cell)
@@ -211,7 +211,7 @@ it('opens the thread with Shift+F2', async () => {
 it('leaves a right-click on a plan cell to the browser: no app menu', async () => {
   usePlanHandlers()
   mockViewport()
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   const cell = await screen.findByTestId('plan-cell-pe1:1')
   // fireEvent returns false when a handler called preventDefault
@@ -224,7 +224,7 @@ it('offers a hover-only "Add comment" corner on a plan cell without comments, op
   usePlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   expect(within(await screen.findByTestId('plan-cell-pe1:1')).queryByTestId('comment-marker-add')).toBeNull()
   const cell = screen.getByTestId('plan-cell-pe1:0')
@@ -242,7 +242,7 @@ it('offers a hover-only "Add comment" corner on a plan cell without comments, op
 it('offers no add-comment corner on the uncategorized row', async () => {
   usePlanHandlers()
   mockViewport()
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   const cell = await screen.findByTestId('plan-cell-uncategorized:1')
   expect(within(cell).queryByTestId('comment-marker-add')).toBeNull()
@@ -252,7 +252,7 @@ it('offers no add-comment corner in edit-structure mode', async () => {
   usePlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   expect(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Configure' }))
@@ -274,7 +274,7 @@ it('offers no add-comment corner on a month after the budget ends (its thread is
     http.get('*/api/v1/budget/get-comment-list', () => HttpResponse.json({ success: true, message: '', data: { items: [], truncated: false } })),
   )
   mockViewport()
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   // column 0 = July, inside the range; column 2 = September, after the end month
   expect(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add')).toBeInTheDocument()
@@ -285,7 +285,7 @@ it('a tablet tap on a plan cell opens the item sheet for that month', async () =
   usePlanHandlers()
   mockTabletViewport()
   const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   await user.click(await screen.findByTestId('plan-cell-pe1:1'))
   const sheet = await screen.findByTestId('element-sheet')
@@ -298,7 +298,7 @@ it('a tablet Enter on a selected plan cell opens the item sheet, not the amount 
   usePlanHandlers()
   mockTabletViewport()
   const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   // the tap selects the cell and opens the sheet; close it and reuse that
   // selection to drive the grid's own Enter handling
@@ -317,7 +317,7 @@ it('a tablet sheet’s Set budget opens the amount dialog with no comments in it
   usePlanHandlers()
   mockTabletViewport()
   const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   await user.click(await screen.findByTestId('plan-cell-pe1:1'))
   await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Set budget' }))
@@ -330,7 +330,7 @@ it('a tablet sheet’s Edit opens the envelope dialog in place of the sheet', as
   usePlanHandlers()
   mockTabletViewport()
   const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   await user.click(await screen.findByTestId('plan-cell-pe1:1'))
   await user.click(within(await screen.findByRole('dialog', { name: /^Living · / })).getByRole('button', { name: 'Edit' }))
@@ -342,7 +342,7 @@ it('a tablet sheet’s Comments opens the thread', async () => {
   usePlanHandlers()
   mockTabletViewport()
   const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   await user.click(await screen.findByTestId('plan-cell-pe1:1'))
   await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Comments (1)' }))
@@ -354,7 +354,7 @@ it('a tablet marker tap opens only the thread, not the sheet', async () => {
   usePlanHandlers()
   mockTabletViewport()
   const user = userEvent.setup()
-  renderPage('/plan')
+  renderPage('/budget/months')
 
   await user.click(within(await screen.findByTestId('plan-cell-pe1:1')).getByTestId('comment-marker'))
   expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
