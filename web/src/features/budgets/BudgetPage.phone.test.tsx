@@ -108,12 +108,13 @@ it('/budget/months on a phone is the same month view, not the plan grid', async 
   expect(screen.queryByTestId('plan-sheet')).toBeNull()
 })
 
-it('has no Budget/Plan switch in the settings menu, and the title is not all caps', async () => {
+it('has no Month/Months switch anywhere, and the title is not all caps', async () => {
   handlers()
   const user = userEvent.setup()
   renderPage()
   const title = await screen.findByRole('heading', { name: 'Main budget' })
   expect(title.className).not.toContain('uppercase')
+  expect(screen.queryByRole('tablist', { name: 'budget mode' })).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   expect(await screen.findByRole('menuitem', { name: 'Edit structure' })).toBeInTheDocument()
   expect(screen.queryByRole('menuitemradio')).toBeNull()

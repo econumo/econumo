@@ -337,7 +337,10 @@ it('the header tabs navigate between /budget and /budget/months and reflect the 
   )
   const user = userEvent.setup()
   const { router } = renderPage()
-  await screen.findByRole('tablist', { name: 'period' })
+  const strip = await screen.findByRole('tablist', { name: 'period' })
+  // the views lead the month row, not the header
+  expect(strip.parentElement).toContainElement(screen.getByRole('tablist', { name: 'budget mode' }))
+  expect(screen.getByRole('heading', { name: 'Main budget' }).closest('header')).not.toContainElement(screen.getByRole('tablist', { name: 'budget mode' }))
   const modeTabs = within(screen.getByRole('tablist', { name: 'budget mode' }))
   expect(modeTabs.getByRole('tab', { name: 'Month' })).toHaveAttribute('aria-selected', 'true')
 
@@ -351,7 +354,7 @@ it('the header tabs navigate between /budget and /budget/months and reflect the 
   expect(router.state.location.pathname).toBe('/budget')
 })
 
-it('tablet viewport: the mode switch sits in the settings menu and navigates between the routes', async () => {
+it('tablet viewport: the views lead the month row, as on desktop, and nothing is left in the settings menu', async () => {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
@@ -363,17 +366,14 @@ it('tablet viewport: the mode switch sits in the settings menu and navigates bet
   const user = userEvent.setup()
   const { router } = renderPage()
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
-  expect(screen.queryByRole('tablist', { name: 'budget mode' })).not.toBeInTheDocument()
-
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('menuitemradio', { name: 'Month' })).toHaveAttribute('aria-checked', 'true')
-  await user.click(screen.getByRole('menuitemradio', { name: 'Months' }))
+  expect(screen.queryByRole('menuitemradio')).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+
+  await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Months' }))
   await screen.findByTestId('plan-sheet')
   expect(router.state.location.pathname).toBe('/budget/months')
-
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('menuitemradio', { name: 'Months' })).toHaveAttribute('aria-checked', 'true')
-  await user.click(screen.getByRole('menuitemradio', { name: 'Month' }))
+  await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Month' }))
   await screen.findByRole('tablist', { name: 'period' })
   expect(router.state.location.pathname).toBe('/budget')
 })

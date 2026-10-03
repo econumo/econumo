@@ -694,8 +694,11 @@ and on tablet/phone only with a hardware keyboard.
       phone: right above the Total card), and still shows when neither of those
       has anything to show.
 - [ ] Routes: `/budget` opens the Month view and `/budget/months` the Months
-      grid; the header switch reads "Month" / "Months" (on a tablet, in the
-      Configure menu) and swaps between them.
+      grid. "Month" / "Months" (desktop and tablet) are plain words at the
+      start of the month row, the current one underlined: left of the month
+      strip in the Month view, left of the ‹ › arrows in the Months grid. They
+      swap between the two; the page header and the Configure menu carry no
+      view switch.
       Opening the old `/plan` address (bookmark, history) lands on
       `/budget/months`, and Back does not return to `/plan`.
 - [ ] Month view (desktop and tablet) uses the phone's order: Income

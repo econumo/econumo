@@ -19,8 +19,6 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -85,6 +83,8 @@ import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
 import { planMonthFigures, sheetCell, sheetElement, sheetSetsPlan, type SheetTarget } from './phoneMonth'
 import { PhoneMonthView } from './PhoneMonthView'
+import { ViewSwitch } from './ViewSwitch'
+import type { BudgetMode } from './ViewSwitch'
 import { MonthFlows, MonthTotalsLines } from './MonthFlows'
 import type { FlowTarget } from './MonthFlows'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
@@ -142,12 +142,6 @@ const preferRowCollisions: CollisionDetection = (args) => {
 
 type CellTarget = Pick<BudgetElementDto, 'id' | 'name' | 'budgeted'>
 
-export type BudgetMode = 'budget' | 'plan'
-const BUDGET_MODES: readonly BudgetMode[] = ['budget', 'plan']
-const BUDGET_MODE_LABEL: Record<BudgetMode, string> = {
-  budget: 'budgets.page.plan.toggle.month',
-  plan: 'budgets.page.plan.toggle.months',
-}
 const BUDGET_MODE_ROUTE: Record<BudgetMode, string> = {
   budget: RouterPage.BUDGET,
   plan: RouterPage.BUDGET_MONTHS,
@@ -286,6 +280,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       navigate(BUDGET_MODE_ROUTE[m])
     }
   }
+  // phones have one view for both routes, so no switch
+  const viewSwitch = isPhone ? null : <ViewSwitch mode={mode} onSwitch={switchBudgetMode} />
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
@@ -789,24 +785,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         >
           {budget.meta.name}
         </h1>
-        {isCompact ? null : (
-          // single-pane headers have no room for the tablist: tablets keep the
-          // mode switch in the settings menu, phones have one view for both routes
-          <div role="tablist" aria-label="budget mode" className="flex w-fit shrink-0 rounded-md border p-0.5">
-            {BUDGET_MODES.map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="tab"
-                aria-selected={mode === m}
-                className={`rounded px-3 py-1 text-sm uppercase tracking-wide ${mode === m ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
-                onClick={() => switchBudgetMode(m)}
-              >
-                {t(BUDGET_MODE_LABEL[m])}
-              </button>
-            ))}
-          </div>
-        )}
         <span className="flex-1" />
         {editMode ? (
           <Button type="button" size="sm" onClick={() => setEditMode(false)}>
@@ -828,18 +806,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {isCompact && !isPhone ? (
-                <>
-                  <DropdownMenuRadioGroup value={mode} onValueChange={(m) => switchBudgetMode(m as BudgetMode)}>
-                    {BUDGET_MODES.map((m) => (
-                      <DropdownMenuRadioItem key={m} value={m}>
-                        {t(BUDGET_MODE_LABEL[m])}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                  <DropdownMenuSeparator />
-                </>
-              ) : null}
               <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
                 {t('budgets.page.budget.settings.menu.edit')}
               </DropdownMenuItem>
@@ -886,11 +852,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           )}
         </>
       ) : mode === 'plan' ? (
-        <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} />
+        <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} viewSwitch={viewSwitch} />
       ) : (
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
-          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} />
+          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} leading={viewSwitch} />
 
           {editMode ? (
             <div>

@@ -118,6 +118,8 @@ export interface PlanSheetProps {
   currencies: CurrencyDto[]
   userId: Id | undefined
   editMode: boolean
+  /** the Month / Months switch, at the start of the month header row */
+  viewSwitch?: ReactNode
 }
 
 const rowKey = (r: PlanRow): string => `${r.element.id}:${r.element.type}`
@@ -1166,7 +1168,7 @@ function PlanBand({
   )
 }
 
-export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetProps) {
+export function PlanSheet({ budget, currencies, userId, editMode, viewSwitch }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
@@ -2120,6 +2122,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       <div role="rowgroup">
         <div role="row" className="grid items-center bg-background" style={{ gridTemplateColumns: gridCols }}>
           <div className="flex items-center gap-1 px-2">
+            {viewSwitch}
             <Button
               type="button"
               variant="ghost"
