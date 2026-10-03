@@ -1353,7 +1353,7 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
 
 - [ ] Navigation: `/` shows the sidebar-as-home; entering any page shows a
       back-button header; back always returns to the logical origin.
-- [ ] Sidebar top row 📱: the logo + version label link Home; no avatar or
+- [ ] Sidebar top row 📱: the colour logo (yellow mark, same as the login screen) + version label link Home; no avatar or
       user name appears anywhere in the sidebar. The Search button opens
       global search (its tooltip shows the Ctrl/⌘+K shortcut) and Inbox opens
       the Inbox. The sidebar footer has a Settings button (at least 44px
