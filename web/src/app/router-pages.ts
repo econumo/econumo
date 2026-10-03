@@ -7,7 +7,7 @@ export const RouterPage = {
   HOME: '/',
   ACCOUNT: (id: string) => `/account/${id}`,
   BUDGET: '/budget',
-  BUDGET_PLAN: '/budget/plan',
+  PLAN: '/plan',
   ONBOARDING: '/onboarding',
   SETTINGS: '/settings',
   SETTINGS_PROFILE: '/settings/profile',

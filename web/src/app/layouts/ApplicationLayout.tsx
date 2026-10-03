@@ -40,6 +40,7 @@ import { useCategories, usePayees, useTags } from '@/features/classifications/qu
 import { useCurrencies, useCurrencyRates } from '@/features/currencies/queries'
 import { useUserData, isOnboardingCompleted } from '@/features/user/queries'
 import { useBudgets } from '@/features/budgets/queries'
+import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
 import { recordPathname } from '@/lib/navigation'
 
 function useIsFullyLoaded() {
@@ -90,6 +91,8 @@ export function ApplicationLayout() {
   const { data: user } = useUserData()
   const update = useAvailableUpdate()
   useSearchHotkey()
+  // the main menu returns to the budget view last opened on this device
+  const budgetLink = useBudgetPeriodStore((s) => s.lastMode) === 'plan' ? RouterPage.PLAN : RouterPage.BUDGET
 
   // The blocking loader belongs to the FIRST boot only; once data has been on
   // screen, refetches and cache churn must never re-cover the app (Vue parity).
@@ -188,7 +191,7 @@ export function ApplicationLayout() {
                       </button>
                     ) : null}
                     <Link
-                      to={RouterPage.BUDGET}
+                      to={budgetLink}
                       title={t('common.nav.budget')}
                       className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
                     >
@@ -213,7 +216,7 @@ export function ApplicationLayout() {
                         <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">{pendingCount}</span>
                       </button>
                     ) : null}
-                    <Link to={RouterPage.BUDGET} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
+                    <Link to={budgetLink} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
                       {t('common.nav.budget')}
                     </Link>
                   </div>

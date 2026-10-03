@@ -69,6 +69,7 @@ import {
   commentCellKey,
 } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
+import type { BudgetMode } from './budgetStore'
 import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
 import { currentMonth, monthDiff } from './planMath'
@@ -84,7 +85,6 @@ import { ElementSheet } from './ElementSheet'
 import { planMonthFigures, sheetCell, sheetElement, sheetSetsPlan, type SheetTarget } from './phoneMonth'
 import { PhoneMonthView } from './PhoneMonthView'
 import { ViewSwitch } from './ViewSwitch'
-import type { BudgetMode } from './ViewSwitch'
 import { MonthFlows, MonthTotalsLines } from './MonthFlows'
 import type { FlowTarget } from './MonthFlows'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
@@ -144,7 +144,7 @@ type CellTarget = Pick<BudgetElementDto, 'id' | 'name' | 'budgeted'>
 
 const BUDGET_MODE_ROUTE: Record<BudgetMode, string> = {
   budget: RouterPage.BUDGET,
-  plan: RouterPage.BUDGET_PLAN,
+  plan: RouterPage.PLAN,
 }
 
 // The section is a sortable item itself (folder reorder); the grip lives in
@@ -269,11 +269,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     [monthPlan.data, monthPlan.isPlaceholderData, currencies, selectedDate],
   )
 
+  const setLastMode = useBudgetPeriodStore((s) => s.setLastMode)
   useEffect(() => {
+    setLastMode(mode)
     if (mode === 'plan') {
       trackEvent(METRICS.BUDGET_PLAN_OPEN)
     }
-  }, [mode])
+  }, [mode, setLastMode])
   // the two views are separate routes; the keyed remount ends edit structure
   const switchBudgetMode = (m: BudgetMode) => {
     if (m !== mode) {

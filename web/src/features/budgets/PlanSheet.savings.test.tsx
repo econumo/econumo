@@ -48,7 +48,7 @@ function mockViewport() {
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  const router = createMemoryRouter([{ path: '/budget/plan', element: <BudgetPage key="plan" mode="plan" /> }], { initialEntries: ['/budget/plan'] })
+  const router = createMemoryRouter([{ path: '/plan', element: <BudgetPage key="plan" mode="plan" /> }], { initialEntries: ['/plan'] })
   return render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />

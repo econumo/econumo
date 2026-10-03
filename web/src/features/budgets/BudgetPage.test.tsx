@@ -27,12 +27,12 @@ function mockViewport() {
   }))
 }
 
-function renderPage(initialPath: '/budget' | '/budget/plan' = '/budget') {
+function renderPage(initialPath: '/budget' | '/plan' = '/budget') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
     [
       { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
-      { path: '/budget/plan', element: <BudgetPage key="plan" mode="plan" /> },
+      { path: '/plan', element: <BudgetPage key="plan" mode="plan" /> },
       { path: '/', element: <BudgetPage key="budget" mode="budget" /> },
       { path: '/settings/budgets', element: <div>BUDGETS LIST</div> },
     ],
@@ -306,7 +306,7 @@ it('a server error settles into a retryable error state instead of an endless lo
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
 })
 
-it('offers hide-empty in the settings menu only on /budget/plan', async () => {
+it('offers hide-empty in the settings menu only on /plan', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
@@ -320,7 +320,7 @@ it('offers hide-empty in the settings menu only on /budget/plan', async () => {
   expect(screen.queryByRole('menuitemcheckbox', { name: 'Hide empty rows' })).not.toBeInTheDocument()
   await user.keyboard('{Escape}')
 
-  await act(() => router.navigate('/budget/plan'))
+  await act(() => router.navigate('/plan'))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   const item = await screen.findByRole('menuitemcheckbox', { name: 'Hide empty rows' })
@@ -329,7 +329,7 @@ it('offers hide-empty in the settings menu only on /budget/plan', async () => {
   expect(useBudgetPeriodStore.getState().planHideEmpty).toBe(true)
 })
 
-it('the header tabs navigate between /budget and /budget/plan and reflect the route', async () => {
+it('the header tabs navigate between /budget and /plan and reflect the route', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
@@ -346,7 +346,7 @@ it('the header tabs navigate between /budget and /budget/plan and reflect the ro
 
   await user.click(modeTabs.getByRole('tab', { name: 'Plan' }))
   await screen.findByTestId('plan-sheet')
-  expect(router.state.location.pathname).toBe('/budget/plan')
+  expect(router.state.location.pathname).toBe('/plan')
   expect(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Plan' })).toHaveAttribute('aria-selected', 'true')
 
   await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Budget' }))
@@ -372,20 +372,20 @@ it('tablet viewport: the views lead the month row, as on desktop, and nothing is
 
   await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Plan' }))
   await screen.findByTestId('plan-sheet')
-  expect(router.state.location.pathname).toBe('/budget/plan')
+  expect(router.state.location.pathname).toBe('/plan')
   await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Budget' }))
   await screen.findByRole('tablist', { name: 'period' })
   expect(router.state.location.pathname).toBe('/budget')
 })
 
-it('the route hop remounts the page: edit structure started on /budget/plan is off again on /budget', async () => {
+it('the route hop remounts the page: edit structure started on /plan is off again on /budget', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
     planHandler(),
   )
   const user = userEvent.setup()
-  const { router } = renderPage('/budget/plan')
+  const { router } = renderPage('/plan')
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -396,7 +396,21 @@ it('the route hop remounts the page: edit structure started on /budget/plan is o
   expect(screen.queryByRole('button', { name: 'Done editing' })).not.toBeInTheDocument()
 })
 
-it('rendering /budget/plan fires BUDGET_PLAN_OPEN once; /budget does not', async () => {
+it('opening a view remembers it for the main menu link', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+  )
+  const { router } = renderPage('/plan')
+  await screen.findByTestId('plan-sheet')
+  expect(useBudgetPeriodStore.getState().lastMode).toBe('plan')
+  await act(() => router.navigate('/budget'))
+  await screen.findByRole('tablist', { name: 'period' })
+  expect(useBudgetPeriodStore.getState().lastMode).toBe('budget')
+})
+
+it('rendering /plan fires BUDGET_PLAN_OPEN once; /budget does not', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
@@ -406,7 +420,7 @@ it('rendering /budget/plan fires BUDGET_PLAN_OPEN once; /budget does not', async
   await screen.findByRole('tablist', { name: 'period' })
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.BUDGET_PLAN_OPEN)
 
-  await act(() => router.navigate('/budget/plan'))
+  await act(() => router.navigate('/plan'))
   await screen.findByTestId('plan-sheet')
   expect(vi.mocked(trackEvent).mock.calls.filter(([k]) => k === METRICS.BUDGET_PLAN_OPEN)).toHaveLength(1)
 })

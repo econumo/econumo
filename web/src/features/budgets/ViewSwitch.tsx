@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next'
-
-export type BudgetMode = 'budget' | 'plan'
+import type { BudgetMode } from './budgetStore'
 
 const VIEWS: { mode: BudgetMode; labelKey: string }[] = [
   { mode: 'budget', labelKey: 'budgets.page.plan.toggle.budget' },

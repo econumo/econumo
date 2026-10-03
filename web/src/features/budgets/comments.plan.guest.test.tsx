@@ -45,11 +45,11 @@ function mockViewport() {
   }))
 }
 
-function renderPage(initialPath: '/budget/plan' | '/budget' = '/budget/plan') {
+function renderPage(initialPath: '/plan' | '/budget' = '/plan') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
     [
-      { path: '/budget/plan', element: <BudgetPage key="plan" mode="plan" /> },
+      { path: '/plan', element: <BudgetPage key="plan" mode="plan" /> },
       { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
     ],
     { initialEntries: [initialPath] },
@@ -98,7 +98,7 @@ it('lets a guest start a thread on a cell with no existing comments, on desktop'
   useGuestPlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/budget/plan')
+  renderPage('/plan')
 
   // column 0 = July, inside the fetched window (idx >= 0), so the cell would
   // be editable for a real member — the guest role is what makes it read-only
@@ -116,7 +116,7 @@ it('a guest’s tablet tap opens the sheet without Set budget, and Add comment s
     matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/budget/plan')
+  renderPage('/plan')
 
   await user.click(await screen.findByTestId('plan-cell-pe1:0'))
   const sheet = await screen.findByTestId('element-sheet')
@@ -129,7 +129,7 @@ it("lets a guest add a comment from a plan cell's corner", async () => {
   useGuestPlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/budget/plan')
+  renderPage('/plan')
 
   await user.click(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add'))
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()

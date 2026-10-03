@@ -693,14 +693,14 @@ and on tablet/phone only with a hardware keyboard.
       below Uncategorized and Archived (desktop: right above the Total row;
       phone: right above the Total card), and still shows when neither of those
       has anything to show.
-- [ ] Routes: `/budget` opens the Budget view and `/budget/plan` the Plan
-      grid. "Budget" / "Plan" (desktop and tablet) are plain words at the
-      start of the month row, the current one underlined: left of the month
-      strip in the Budget view, left of the ‹ › arrows in the Plan grid. They
-      swap between the two; the page header and the Configure menu carry no
-      view switch.
-      Opening the old `/plan` address (bookmark, history) lands on
-      `/budget/plan`, and Back does not return to `/plan`.
+- [ ] "Budget" / "Plan" (desktop and tablet) are plain words at the start
+      of the month row, the current one underlined: left of the month strip
+      on /budget, left of the ‹ › arrows in the Plan grid on /plan. They swap
+      between the two; the page header and the Configure menu carry no view
+      switch.
+- [ ] 📱 The main menu's "Budget & Plan" link opens the view last opened on
+      this device (/budget or /plan), also after a reload, with the month
+      (Budget) and the month window (Plan) last shown there.
 - [ ] Budget view (desktop and tablet) uses the phone's order: Income
       (Planned · Received), Savings (Planned · Saved · Balance, only with
       savings accounts), Expenses (Budget · Spent · Available: folders, No
@@ -734,7 +734,7 @@ and on tablet/phone only with a hardware keyboard.
       where the strip scrolls by touch): they PAN the strip only — the
       selected month and the table below never change; panning to either
       edge keeps extending the window (past months included).
-- [ ] 📱 The budget header shows no currency chips on /budget or /budget/plan, and
+- [ ] 📱 The budget header shows no currency chips on /budget or /plan, and
       no "Spending progress" widget appears anywhere on the page.
 - [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
       per-element menu (change currency, move to folder, edit envelope, delete
@@ -1007,7 +1007,7 @@ and on tablet/phone only with a hardware keyboard.
 ### Phone month view 📱
 
 - [ ] 📱 On a phone (< 640 px, the iOS home-screen PWA included) `/budget` and
-      `/budget/plan` show the same single month view: header with the budget name in
+      `/plan` show the same single month view: header with the budget name in
       normal case, the month strip, and no Budget/Plan switch in the settings
       menu. At the top, one card under a "USD · Planned · Actual" heading
       (the budget's currency code at the left) holds an
@@ -1116,7 +1116,7 @@ and on tablet/phone only with a hardware keyboard.
       is greyed out for a reporting tag that belongs to another user. A rename
       shows on the row at once.
 - [ ] 📱 "Edit structure" on a phone shows the route's structure editor — the
-      budget table on /budget, the plan grid in edit mode on /budget/plan (drag to
+      budget table on /budget, the plan grid in edit mode on /plan (drag to
       reorder, folder menus); "Done" returns to the month view.
 
 ## 10. Budget lifecycle & list

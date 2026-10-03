@@ -6,6 +6,8 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 /** the reporting-tags folder exists only in rendering: no folder row stands behind
  *  it, so its fold state is keyed by a reserved literal no element id (a UUID) can
  *  collide with; the table and the phone view share it */
+export type BudgetMode = 'budget' | 'plan'
+
 export const REPORTING_TAGS_FOLD_ID = '__reporting_tags__'
 
 function firstOfCurrentMonth(): string {
@@ -23,6 +25,9 @@ export function normalizePeriod(date: string): string {
 }
 
 interface BudgetPeriodState {
+  /** the view last opened, so the main menu's link returns to it */
+  lastMode: BudgetMode
+  setLastMode: (mode: BudgetMode) => void
   selectedDate: string
   setPeriod: (date: string) => void
   /** element rows default folded; presence = unfolded (Vue semantics) */
@@ -43,6 +48,8 @@ interface BudgetPeriodState {
 export const useBudgetPeriodStore = create<BudgetPeriodState>()(
   persist(
     (set, get) => ({
+      lastMode: 'budget',
+      setLastMode: (mode) => set({ lastMode: mode }),
       selectedDate: firstOfCurrentMonth(),
       setPeriod: (date) => {
         trackEvent(METRICS.BUDGET_CHANGE_DATE)
