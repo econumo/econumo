@@ -96,13 +96,17 @@ used / never existed. Expired rows are purged opportunistically on exchange.
 | `id` TEXT PK | UUIDv7 |
 | `user_id`, `client_id` | FKs, `ON DELETE CASCADE` |
 | `refresh_token_hash` TEXT UNIQUE | current refresh token |
-| `prev_refresh_token_hash` TEXT NULL | the one it replaced (reuse detection) |
+| `prev_refresh_token_hash` TEXT NULL | the one it replaced (grace rule) |
 | `rotated_at` DATETIME NULL | when `prev_` was replaced |
 | `created_at`, `last_used_at` DATETIME | |
 | `expires_at` DATETIME | `last_used_at + 90d`, slides on refresh |
 | `revoked_at` DATETIME NULL | |
 
-Index on `prev_refresh_token_hash` and `user_id`. Dead grants (revoked/expired
+**`oauth_refresh_tokens_spent`** — `token_hash` TEXT PK, `grant_id` FK
+`ON DELETE CASCADE` (indexed), `spent_at` DATETIME. One row per rotation; rows
+live as long as the grant, so the dead-grant purge removes them by cascade.
+
+Index on `user_id`. Dead grants (revoked/expired
 > 30 days), dead `oauth` access tokens (same rule, one set-based DELETE) and
 expired codes are purged best-effort after each successful code exchange.
 
@@ -220,12 +224,16 @@ canonical if present) and `scope` (ignored; the grant stays `mcp`):
    must still be unrevoked and still carry that hash): rotate (`prev_` ← current,
    new current, `rotated_at` = now), slide `expires_at`, insert the access token
    fenced by the generation read under the lock. Respond as above.
-2. Not found by current hash but found by `prev_refresh_token_hash`:
-   - within 60 s of `rotated_at` → `invalid_grant`, grant untouched (concurrent
-     refresh from two processes sharing credentials, or a retried request whose
-     response was lost);
-   - otherwise → treat as theft: revoke the grant and its access tokens, log
-     it, `invalid_grant`.
+2. Not found by current hash but found in `oauth_refresh_tokens_spent` (every
+   hash a grant rotated away, written in the rotation transaction):
+   - it is the grant's `prev_refresh_token_hash` (rotated away most recently)
+     and within 60 s of `rotated_at` → `invalid_grant`, grant untouched
+     (concurrent refresh from two processes sharing credentials, or a retried
+     request whose response was lost);
+   - otherwise (any older spent token, or the latest one after the grace) →
+     treat as theft: revoke the grant and its access tokens, log it,
+     `invalid_grant`. A thief can rotate several times before the legitimate
+     client retries, so keeping only the latest hash would miss the replay.
 3. Otherwise → `invalid_grant`.
 
 ### Authentication on `/mcp` and REST

@@ -48,8 +48,20 @@ CREATE TABLE oauth_grants
     , FOREIGN KEY (client_id) REFERENCES oauth_clients (id) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX UNIQ_oauth_grants_refresh ON oauth_grants (refresh_token_hash);
-CREATE INDEX IDX_oauth_grants_prev_refresh ON oauth_grants (prev_refresh_token_hash);
 CREATE INDEX IDX_oauth_grants_user_id ON oauth_grants (user_id);
+
+-- Every refresh-token hash a grant has rotated away, kept for as long as the
+-- grant row lives. Replaying any of them, however many rotations ago, is
+-- detected as theft; oauth_grants alone remembers only the latest one.
+CREATE TABLE oauth_refresh_tokens_spent
+(
+    token_hash   TEXT NOT NULL
+    , grant_id   UUID NOT NULL
+    , spent_at   TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
+    , PRIMARY KEY (token_hash)
+    , FOREIGN KEY (grant_id) REFERENCES oauth_grants (id) ON DELETE CASCADE
+);
+CREATE INDEX IDX_oauth_refresh_spent_grant_id ON oauth_refresh_tokens_spent (grant_id);
 
 ALTER TABLE access_tokens ADD COLUMN grant_id UUID DEFAULT NULL;
 CREATE INDEX IDX_access_tokens_grant_id ON access_tokens (grant_id);

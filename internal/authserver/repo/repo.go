@@ -29,6 +29,7 @@ type (
 	revokeUserGrantsParams = sqlitegen.RevokeUserOAuthGrantsParams
 	revokeOtherGrantsParam = sqlitegen.RevokeOtherOAuthGrantsParams
 	deleteDeadParams       = sqlitegen.DeleteDeadOAuthGrantsParams
+	insertSpentParams      = sqlitegen.InsertOAuthSpentRefreshHashParams
 )
 
 type querier interface {
@@ -44,7 +45,8 @@ type querier interface {
 	InsertOAuthGrant(ctx context.Context, db backend.DBTX, p insertGrantParams) error
 	GetOAuthGrant(ctx context.Context, db backend.DBTX, id string) (grantRow, error)
 	GetOAuthGrantByRefreshHash(ctx context.Context, db backend.DBTX, hash string) (grantRow, error)
-	GetOAuthGrantByPrevRefreshHash(ctx context.Context, db backend.DBTX, hash *string) (grantRow, error)
+	GetOAuthGrantBySpentRefreshHash(ctx context.Context, db backend.DBTX, hash string) (grantRow, error)
+	InsertOAuthSpentRefreshHash(ctx context.Context, db backend.DBTX, p insertSpentParams) error
 	RotateOAuthGrant(ctx context.Context, db backend.DBTX, p rotateGrantParams) (int64, error)
 	RevokeOAuthGrant(ctx context.Context, db backend.DBTX, p revokeGrantParams) (int64, error)
 	RevokeUserOAuthGrants(ctx context.Context, db backend.DBTX, p revokeUserGrantsParams) (int64, error)
@@ -163,9 +165,13 @@ func (r *Repo) GetGrantByRefreshHash(ctx context.Context, hash string) (*model.O
 	return hydrateGrantResult(row, err)
 }
 
-func (r *Repo) GetGrantByPrevRefreshHash(ctx context.Context, hash string) (*model.OAuthGrant, error) {
-	row, err := r.q.GetOAuthGrantByPrevRefreshHash(ctx, r.db(ctx), &hash)
+func (r *Repo) GetGrantBySpentRefreshHash(ctx context.Context, hash string) (*model.OAuthGrant, error) {
+	row, err := r.q.GetOAuthGrantBySpentRefreshHash(ctx, r.db(ctx), hash)
 	return hydrateGrantResult(row, err)
+}
+
+func (r *Repo) InsertSpentRefreshHash(ctx context.Context, grantID vo.Id, hash string, now time.Time) error {
+	return r.q.InsertOAuthSpentRefreshHash(ctx, r.db(ctx), insertSpentParams{TokenHash: hash, GrantID: grantID.String(), SpentAt: now})
 }
 
 func (r *Repo) RotateGrant(ctx context.Context, id vo.Id, oldHash, newHash string, now, expiresAt time.Time) (int64, error) {

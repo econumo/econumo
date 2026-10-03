@@ -52,8 +52,12 @@ func (sqliteQuerier) GetOAuthGrantByRefreshHash(ctx context.Context, db backend.
 	return sqlitegen.New(db).GetOAuthGrantByRefreshHash(ctx, hash)
 }
 
-func (sqliteQuerier) GetOAuthGrantByPrevRefreshHash(ctx context.Context, db backend.DBTX, hash *string) (grantRow, error) {
-	return sqlitegen.New(db).GetOAuthGrantByPrevRefreshHash(ctx, hash)
+func (sqliteQuerier) GetOAuthGrantBySpentRefreshHash(ctx context.Context, db backend.DBTX, hash string) (grantRow, error) {
+	return sqlitegen.New(db).GetOAuthGrantBySpentRefreshHash(ctx, hash)
+}
+
+func (sqliteQuerier) InsertOAuthSpentRefreshHash(ctx context.Context, db backend.DBTX, p insertSpentParams) error {
+	return sqlitegen.New(db).InsertOAuthSpentRefreshHash(ctx, p)
 }
 
 func (sqliteQuerier) RotateOAuthGrant(ctx context.Context, db backend.DBTX, p rotateGrantParams) (int64, error) {

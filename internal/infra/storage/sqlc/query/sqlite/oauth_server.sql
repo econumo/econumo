@@ -38,9 +38,15 @@ FROM oauth_grants WHERE id = ?;
 SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
 FROM oauth_grants WHERE refresh_token_hash = ?;
 
--- name: GetOAuthGrantByPrevRefreshHash :one
-SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
-FROM oauth_grants WHERE prev_refresh_token_hash = ?;
+-- name: GetOAuthGrantBySpentRefreshHash :one
+SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at, g.created_at, g.last_used_at, g.expires_at, g.revoked_at
+FROM oauth_refresh_tokens_spent s
+JOIN oauth_grants g ON g.id = s.grant_id
+WHERE s.token_hash = ?;
+
+-- name: InsertOAuthSpentRefreshHash :exec
+INSERT INTO oauth_refresh_tokens_spent (token_hash, grant_id, spent_at)
+VALUES (?, ?, ?);
 
 -- name: RotateOAuthGrant :execrows
 -- Conditional on the hash being rotated away, so of two concurrent refreshes

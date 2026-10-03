@@ -364,6 +364,12 @@ type OauthHandoff struct {
 	CredentialsGeneration int64
 }
 
+type OauthRefreshTokensSpent struct {
+	TokenHash string
+	GrantID   string
+	SpentAt   time.Time
+}
+
 type OauthState struct {
 	StateHash    string
 	Provider     string

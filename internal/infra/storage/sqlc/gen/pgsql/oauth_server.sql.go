@@ -94,13 +94,13 @@ func (q *Queries) GetOAuthGrant(ctx context.Context, id string) (OauthGrant, err
 	return i, err
 }
 
-const getOAuthGrantByPrevRefreshHash = `-- name: GetOAuthGrantByPrevRefreshHash :one
+const getOAuthGrantByRefreshHash = `-- name: GetOAuthGrantByRefreshHash :one
 SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
-FROM oauth_grants WHERE prev_refresh_token_hash = $1
+FROM oauth_grants WHERE refresh_token_hash = $1
 `
 
-func (q *Queries) GetOAuthGrantByPrevRefreshHash(ctx context.Context, prevRefreshTokenHash *string) (OauthGrant, error) {
-	row := q.db.QueryRowContext(ctx, getOAuthGrantByPrevRefreshHash, prevRefreshTokenHash)
+func (q *Queries) GetOAuthGrantByRefreshHash(ctx context.Context, refreshTokenHash string) (OauthGrant, error) {
+	row := q.db.QueryRowContext(ctx, getOAuthGrantByRefreshHash, refreshTokenHash)
 	var i OauthGrant
 	err := row.Scan(
 		&i.ID,
@@ -117,13 +117,15 @@ func (q *Queries) GetOAuthGrantByPrevRefreshHash(ctx context.Context, prevRefres
 	return i, err
 }
 
-const getOAuthGrantByRefreshHash = `-- name: GetOAuthGrantByRefreshHash :one
-SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
-FROM oauth_grants WHERE refresh_token_hash = $1
+const getOAuthGrantBySpentRefreshHash = `-- name: GetOAuthGrantBySpentRefreshHash :one
+SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at, g.created_at, g.last_used_at, g.expires_at, g.revoked_at
+FROM oauth_refresh_tokens_spent s
+JOIN oauth_grants g ON g.id = s.grant_id
+WHERE s.token_hash = $1
 `
 
-func (q *Queries) GetOAuthGrantByRefreshHash(ctx context.Context, refreshTokenHash string) (OauthGrant, error) {
-	row := q.db.QueryRowContext(ctx, getOAuthGrantByRefreshHash, refreshTokenHash)
+func (q *Queries) GetOAuthGrantBySpentRefreshHash(ctx context.Context, tokenHash string) (OauthGrant, error) {
+	row := q.db.QueryRowContext(ctx, getOAuthGrantBySpentRefreshHash, tokenHash)
 	var i OauthGrant
 	err := row.Scan(
 		&i.ID,
@@ -231,6 +233,22 @@ func (q *Queries) InsertOAuthGrant(ctx context.Context, arg InsertOAuthGrantPara
 		arg.ExpiresAt,
 		arg.RevokedAt,
 	)
+	return err
+}
+
+const insertOAuthSpentRefreshHash = `-- name: InsertOAuthSpentRefreshHash :exec
+INSERT INTO oauth_refresh_tokens_spent (token_hash, grant_id, spent_at)
+VALUES ($1, $2, $3)
+`
+
+type InsertOAuthSpentRefreshHashParams struct {
+	TokenHash string
+	GrantID   string
+	SpentAt   time.Time
+}
+
+func (q *Queries) InsertOAuthSpentRefreshHash(ctx context.Context, arg InsertOAuthSpentRefreshHashParams) error {
+	_, err := q.db.ExecContext(ctx, insertOAuthSpentRefreshHash, arg.TokenHash, arg.GrantID, arg.SpentAt)
 	return err
 }
 

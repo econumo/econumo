@@ -321,9 +321,11 @@ sends no `WWW-Authenticate`.
 - Access tokens are `access_tokens` rows of kind `oauth` / scope `mcp` (`eco_oat_…`, fixed
   1 h, linked to their grant by `grant_id`), admitted only on `/mcp` — anywhere else they
   get the frozen 401. Refresh tokens rotate on every use; a grant idles out 90 days after
-  its last refresh. Replaying a rotated refresh token within 60 s is refused with
-  `invalid_grant` and leaves the grant alone (two processes sharing credentials); a replay
-  after that is treated as theft and revokes the grant and its tokens. A successful code
+  its last refresh. Every rotated-away hash is kept in
+  `oauth_refresh_tokens_spent` for as long as the grant row lives. Replaying the token rotated
+  away most recently, within 60 s, is refused with `invalid_grant` and leaves the grant alone
+  (two processes sharing credentials); a replay of any older spent token at any age, or of the
+  latest one after 60 s, is treated as theft and revokes the grant and its tokens. A successful code
   exchange revokes the user's other grants for the same client (re-authorizing replaces the
   connection), then purges, best-effort, expired codes and grants and `oauth` access tokens
   revoked/expired more than 30 days ago.

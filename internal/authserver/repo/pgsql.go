@@ -56,9 +56,13 @@ func (pgsqlQuerier) GetOAuthGrantByRefreshHash(ctx context.Context, db backend.D
 	return grantRow(row), err
 }
 
-func (pgsqlQuerier) GetOAuthGrantByPrevRefreshHash(ctx context.Context, db backend.DBTX, hash *string) (grantRow, error) {
-	row, err := pgsqlgen.New(db).GetOAuthGrantByPrevRefreshHash(ctx, hash)
+func (pgsqlQuerier) GetOAuthGrantBySpentRefreshHash(ctx context.Context, db backend.DBTX, hash string) (grantRow, error) {
+	row, err := pgsqlgen.New(db).GetOAuthGrantBySpentRefreshHash(ctx, hash)
 	return grantRow(row), err
+}
+
+func (pgsqlQuerier) InsertOAuthSpentRefreshHash(ctx context.Context, db backend.DBTX, p insertSpentParams) error {
+	return pgsqlgen.New(db).InsertOAuthSpentRefreshHash(ctx, pgsqlgen.InsertOAuthSpentRefreshHashParams(p))
 }
 
 func (pgsqlQuerier) RotateOAuthGrant(ctx context.Context, db backend.DBTX, p rotateGrantParams) (int64, error) {

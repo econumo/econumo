@@ -22,7 +22,10 @@ type Repository interface {
 	InsertGrant(ctx context.Context, g *model.OAuthGrant) error
 	GetGrant(ctx context.Context, id vo.Id) (*model.OAuthGrant, error)
 	GetGrantByRefreshHash(ctx context.Context, hash string) (*model.OAuthGrant, error)
-	GetGrantByPrevRefreshHash(ctx context.Context, hash string) (*model.OAuthGrant, error)
+	// GetGrantBySpentRefreshHash finds the grant that rotated the token away,
+	// however many rotations ago (errs.NotFound when never spent).
+	GetGrantBySpentRefreshHash(ctx context.Context, hash string) (*model.OAuthGrant, error)
+	InsertSpentRefreshHash(ctx context.Context, grantID vo.Id, hash string, now time.Time) error
 	RotateGrant(ctx context.Context, id vo.Id, oldHash, newHash string, now, expiresAt time.Time) (int64, error)
 	RevokeGrant(ctx context.Context, id vo.Id, now time.Time) (int64, error)
 	RevokeUserGrants(ctx context.Context, userID vo.Id, now time.Time) (int64, error)

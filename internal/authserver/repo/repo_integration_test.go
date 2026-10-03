@@ -62,9 +62,21 @@ func TestRepo_ClientCodeGrantLifecycle(t *testing.T) {
 	if n, _ := r.RotateGrant(ctx, g.ID, "r1", "r3", now, now.Add(time.Hour)); n != 0 {
 		t.Fatal("stale rotate must match nothing")
 	}
-	byPrev, err := r.GetGrantByPrevRefreshHash(ctx, "r1")
-	if err != nil || byPrev.ID != g.ID || byPrev.RotatedAt == nil {
-		t.Fatalf("by prev = %+v %v", byPrev, err)
+	if _, err := r.GetGrantBySpentRefreshHash(ctx, "r1"); !errors.As(err, new(*errs.NotFoundError)) {
+		t.Fatalf("an unrecorded hash is not spent: %v", err)
+	}
+	if err := r.InsertSpentRefreshHash(ctx, g.ID, "r1", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.InsertSpentRefreshHash(ctx, g.ID, "r0", now.Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	bySpent, err := r.GetGrantBySpentRefreshHash(ctx, "r1")
+	if err != nil || bySpent.ID != g.ID || bySpent.RotatedAt == nil || bySpent.PrevRefreshTokenHash == nil || *bySpent.PrevRefreshTokenHash != "r1" {
+		t.Fatalf("by spent = %+v %v", bySpent, err)
+	}
+	if old, err := r.GetGrantBySpentRefreshHash(ctx, "r0"); err != nil || old.ID != g.ID {
+		t.Fatalf("older spent hash = %+v %v", old, err)
 	}
 	byCur, err := r.GetGrantByRefreshHash(ctx, "r2")
 	if err != nil || byCur.ID != g.ID {
@@ -92,6 +104,9 @@ func TestRepo_ClientCodeGrantLifecycle(t *testing.T) {
 	}
 	if n, err := r.DeleteDeadGrants(ctx, now.Add(time.Hour)); err != nil || n != 1 {
 		t.Fatalf("delete dead = %d %v", n, err)
+	}
+	if _, err := r.GetGrantBySpentRefreshHash(ctx, "r1"); !errors.As(err, new(*errs.NotFoundError)) {
+		t.Fatalf("spent hashes must go with their grant: %v", err)
 	}
 
 	stale := &model.OAuthClient{ID: vo.NewId(), Name: "x", RedirectURIs: []string{"https://a.test/cb"}, CreatedAt: now.Add(-48 * time.Hour)}

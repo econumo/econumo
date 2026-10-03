@@ -135,6 +135,68 @@ func TestRefresh_RotationGraceAndTheft(t *testing.T) {
 	}
 }
 
+func TestRefresh_ReplayOfOlderTokenRevokesAtAnyAge(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		after time.Duration
+	}{{"inside grace", 10 * time.Second}, {"after grace", RefreshGrace + time.Second}} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, creds, clock, user := newTestService(t)
+			cid, code := approve(t, s, user)
+			r0, _ := exchange(s, cid, code)
+			refresh := func(rt string) (model.TokenResponse, error) {
+				return s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: rt})
+			}
+			r1, err := refresh(r0.RefreshToken)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r2, err := refresh(r1.RefreshToken)
+			if err != nil {
+				t.Fatal(err)
+			}
+			list, _ := s.ListConnectedApps(ctx, user)
+			clock.Advance(tc.after)
+			creds.locked = nil
+			_, err = refresh(r0.RefreshToken)
+			wantOAuth(t, err, "invalid_grant")
+			if l, _ := s.ListConnectedApps(ctx, user); len(l) != 0 {
+				t.Fatal("replay of a token two rotations old must revoke the grant")
+			}
+			if len(creds.revoked) != 1 || creds.revoked[0].String() != list[0].ID {
+				t.Fatalf("revoked tokens of %v", creds.revoked)
+			}
+			if len(creds.locked) != 1 || !creds.locked[0].Equal(user) {
+				t.Fatalf("revoke must take the user row lock first: %v", creds.locked)
+			}
+			_, err = refresh(r2.RefreshToken)
+			wantOAuth(t, err, "invalid_grant")
+		})
+	}
+}
+
+func TestRefresh_GraceOnlyForTheLatestRotatedToken(t *testing.T) {
+	s, creds, clock, user := newTestService(t)
+	cid, code := approve(t, s, user)
+	r0, _ := exchange(s, cid, code)
+	refresh := func(rt string) (model.TokenResponse, error) {
+		return s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: rt})
+	}
+	r1, err := refresh(r0.RefreshToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clock.Advance(10 * time.Second)
+	_, err = refresh(r0.RefreshToken)
+	wantOAuth(t, err, "invalid_grant")
+	if len(creds.revoked) != 0 {
+		t.Fatal("a grace-window replay of the latest rotated token must not revoke")
+	}
+	if _, err := refresh(r1.RefreshToken); err != nil {
+		t.Fatalf("grant must survive a grace-window replay: %v", err)
+	}
+}
+
 func TestRefresh_ExpiryAndClientBinding(t *testing.T) {
 	s, _, clock, user := newTestService(t)
 	cid, code := approve(t, s, user)

@@ -261,8 +261,8 @@ type Querier interface {
 	GetLatestRateDate(ctx context.Context) (time.Time, error)
 	GetOAuthClient(ctx context.Context, id string) (OauthClient, error)
 	GetOAuthGrant(ctx context.Context, id string) (OauthGrant, error)
-	GetOAuthGrantByPrevRefreshHash(ctx context.Context, prevRefreshTokenHash *string) (OauthGrant, error)
 	GetOAuthGrantByRefreshHash(ctx context.Context, refreshTokenHash string) (OauthGrant, error)
+	GetOAuthGrantBySpentRefreshHash(ctx context.Context, tokenHash string) (OauthGrant, error)
 	GetOAuthHandoff(ctx context.Context, codeHash string) (OauthHandoff, error)
 	GetOAuthState(ctx context.Context, stateHash string) (OauthState, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
@@ -392,6 +392,7 @@ type Querier interface {
 	InsertOAuthCode(ctx context.Context, arg InsertOAuthCodeParams) error
 	InsertOAuthGrant(ctx context.Context, arg InsertOAuthGrantParams) error
 	InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error
+	InsertOAuthSpentRefreshHash(ctx context.Context, arg InsertOAuthSpentRefreshHashParams) error
 	InsertOAuthState(ctx context.Context, arg InsertOAuthStateParams) error
 	// Idempotency queries over operation_requests_ids, shared by every module whose
 	// create endpoint takes a client-supplied operation id (category, tag, ...). The

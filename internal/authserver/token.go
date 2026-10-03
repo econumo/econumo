@@ -194,6 +194,9 @@ func (s *Service) refresh(ctx context.Context, req model.TokenRequest) (model.To
 		if n == 0 {
 			return errInvalidGrant
 		}
+		if err := s.repo.InsertSpentRefreshHash(ctx, g.ID, hash, now); err != nil {
+			return err
+		}
 		access, ok, err := s.creds.IssueOAuthAccessToken(ctx, g.UserID, g.ID, c.Name, gen, AccessTokenTTL)
 		if err != nil {
 			return err
@@ -213,12 +216,15 @@ func (s *Service) refresh(ctx context.Context, req model.TokenRequest) (model.To
 	return resp, nil
 }
 
-// A refresh token already rotated away: inside the grace window it is a
-// concurrent refresh (two processes sharing stored credentials) or a retry
-// whose response was lost, so it is only refused; after it, the token is
-// circulating somewhere it should not, so the whole grant goes.
+// A refresh token already rotated away, found in the spent table however many
+// rotations ago. Only the token rotated away MOST RECENTLY, and only inside
+// the grace window, is a concurrent refresh (two processes sharing stored
+// credentials) or a retry whose response was lost, so it is only refused.
+// Any other spent token, at any age, is circulating somewhere it should not
+// (a thief can rotate more than once before the legitimate client retries),
+// so the whole grant goes.
 func (s *Service) handleRotatedRefresh(ctx context.Context, hash string, clientID vo.Id, now time.Time) error {
-	g, err := s.repo.GetGrantByPrevRefreshHash(ctx, hash)
+	g, err := s.repo.GetGrantBySpentRefreshHash(ctx, hash)
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			return errInvalidGrant
@@ -228,7 +234,8 @@ func (s *Service) handleRotatedRefresh(ctx context.Context, hash string, clientI
 	if !g.ClientID.Equal(clientID) || g.RevokedAt != nil {
 		return errInvalidGrant
 	}
-	if g.RotatedAt != nil && now.Sub(*g.RotatedAt) <= RefreshGrace {
+	latest := g.PrevRefreshTokenHash != nil && *g.PrevRefreshTokenHash == hash
+	if latest && g.RotatedAt != nil && now.Sub(*g.RotatedAt) <= RefreshGrace {
 		slog.WarnContext(ctx, "oauth-refresh-reuse", "grant_id", g.ID.String(), "revoked", false)
 		return errInvalidGrant
 	}
