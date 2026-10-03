@@ -1807,6 +1807,24 @@
       "readonly": "只读访问权限——已禁用修改"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "将应用连接到 Econumo",
+      "wantsAccess": "请求访问您的 Econumo 账户。",
+      "redirect": "允许后，您将被转到 {host}。",
+      "loopback": "允许后，您将返回此电脑上的应用。",
+      "fullAccess": "它将能够读取并更改您所有的 Econumo 数据。",
+      "signedInAs": "当前登录账户：{email}",
+      "switchAccount": "不是您？切换账户",
+      "allow": "允许",
+      "deny": "拒绝",
+      "invalidTitle": "该应用发送了无效的请求",
+      "invalidBody": "Econumo 无法连接该应用。请返回应用后重试。",
+      "returnToHost": "返回 {host}",
+      "returnToApp": "返回应用",
+      "readonly": "您的账户为只读，因此无法连接应用。"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "此值不能为空。",

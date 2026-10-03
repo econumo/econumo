@@ -243,6 +243,21 @@ navigation (single-pane vs sidebar).
       different origin: the password form is shown again (the provider buttons
       are not), since the serving instance's setting says nothing about that
       backend.
+- [ ] 📱 Connecting an app over MCP (consent page at `/oauth/authorize?...`):
+      signed in, the page shows the app's name, the host it will send you back
+      to (or "an app on this computer" for a loopback client), the full-access
+      warning and "Signed in as <email>"; "Allow" sends the browser to the
+      app's callback, "Deny" sends it back with an access-denied result.
+- [ ] Opening the consent link while signed out lands on Sign in first (also
+      after Google/Apple/SSO sign-in and the email-verification step), then
+      returns to the same consent page; the remembered link is dropped after 10
+      minutes, after Allow/Deny, and an ordinary page is never remembered.
+- [ ] A consent link for an unknown app or a redirect the app never registered
+      shows the server's error and no buttons; one with only a malformed
+      parameter shows "This app sent an invalid request" and does NOT leave the
+      page until you press "Return to <host>" / "Return to the app".
+- [ ] Read-only account: "Allow" shows that the account is read-only and
+      "Return to the app" sends the app back with an access-denied result.
 
 ## 3. Onboarding (fresh user)
 

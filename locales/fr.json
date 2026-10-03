@@ -1807,6 +1807,24 @@
       "readonly": "Accès en lecture seule — les modifications sont désactivées"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "Connecter une application à Econumo",
+      "wantsAccess": "souhaite accéder à votre compte Econumo.",
+      "redirect": "Après votre autorisation, vous serez redirigé vers {host}.",
+      "loopback": "Après votre autorisation, vous reviendrez à une application sur cet ordinateur.",
+      "fullAccess": "Elle pourra lire et modifier toutes vos données Econumo.",
+      "signedInAs": "Connecté en tant que {email}",
+      "switchAccount": "Ce n'est pas vous ? Changer de compte",
+      "allow": "Autoriser",
+      "deny": "Refuser",
+      "invalidTitle": "Cette application a envoyé une demande non valide",
+      "invalidBody": "Econumo ne peut pas la connecter. Retournez dans l'application et réessayez.",
+      "returnToHost": "Retourner vers {host}",
+      "returnToApp": "Retourner à l'application",
+      "readonly": "Votre compte est en lecture seule : il n'est pas possible de connecter des applications."
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Cette valeur ne doit pas être vide.",

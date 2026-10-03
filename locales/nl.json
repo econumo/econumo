@@ -1807,6 +1807,24 @@
       "readonly": "Alleen-lezen toegang — wijzigen is uitgeschakeld"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "Een app met Econumo verbinden",
+      "wantsAccess": "wil toegang tot je Econumo-account.",
+      "redirect": "Nadat je toestemming geeft, word je doorgestuurd naar {host}.",
+      "loopback": "Nadat je toestemming geeft, keer je terug naar een app op deze computer.",
+      "fullAccess": "De app kan al je Econumo-gegevens lezen en wijzigen.",
+      "signedInAs": "Ingelogd als {email}",
+      "switchAccount": "Ben jij het niet? Van account wisselen",
+      "allow": "Toestaan",
+      "deny": "Weigeren",
+      "invalidTitle": "Deze app heeft een ongeldig verzoek gestuurd",
+      "invalidBody": "Econumo kan de app niet verbinden. Ga terug naar de app en probeer het opnieuw.",
+      "returnToHost": "Terug naar {host}",
+      "returnToApp": "Terug naar de app",
+      "readonly": "Je account is alleen-lezen, dus er kunnen geen apps worden verbonden."
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Deze waarde mag niet leeg zijn.",

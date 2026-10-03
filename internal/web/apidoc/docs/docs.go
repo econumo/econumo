@@ -1298,12 +1298,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
-                    "402": {
-                        "description": "Payment Required",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {

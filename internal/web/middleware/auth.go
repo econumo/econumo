@@ -70,7 +70,9 @@ var ctxKeyTokenID ctxKeyTokenIDType
 // the email-change flow:
 // linking/unlinking a sign-in method is an account-security operation.
 // authserver/revoke-connected-app joins too: revoking a connected app removes
-// access, like revoking a token.
+// access, like revoking a token. authserver/decline-authorization joins as
+// well: declining writes nothing, and a restricted user must be able to send
+// the app back with a refusal.
 //
 // Exported so a guard test (internal/test/apiparity) can assert every path
 // here is still a real registered route, catching a route rename that would
@@ -84,20 +86,21 @@ var ctxKeyTokenID ctxKeyTokenIDType
 // allowlisting /mcp to restore reads would open every write tool at once.
 // Per-tool enforcement is what this would need first.
 var ReadonlyAllowedPaths = map[string]bool{
-	"/api/v1/user/logout-user":                true,
-	"/api/v1/user/revoke-session":             true,
-	"/api/v1/user/revoke-other-sessions":      true,
-	"/api/v1/user/revoke-personal-token":      true,
-	"/api/v1/user/update-password":            true,
-	"/api/v1/user/create-billing-link":        true,
-	"/api/v1/user/request-email-change":       true,
-	"/api/v1/user/confirm-email-change":       true,
-	"/api/v1/user/resend-email-change-code":   true,
-	"/api/v1/user/update-analytics":           true,
-	"/api/v1/oauth/start-link":                true,
-	"/api/v1/oauth/complete-link":             true,
-	"/api/v1/oauth/unlink-identity":           true,
-	"/api/v1/authserver/revoke-connected-app": true,
+	"/api/v1/user/logout-user":                 true,
+	"/api/v1/user/revoke-session":              true,
+	"/api/v1/user/revoke-other-sessions":       true,
+	"/api/v1/user/revoke-personal-token":       true,
+	"/api/v1/user/update-password":             true,
+	"/api/v1/user/create-billing-link":         true,
+	"/api/v1/user/request-email-change":        true,
+	"/api/v1/user/confirm-email-change":        true,
+	"/api/v1/user/resend-email-change-code":    true,
+	"/api/v1/user/update-analytics":            true,
+	"/api/v1/oauth/start-link":                 true,
+	"/api/v1/oauth/complete-link":              true,
+	"/api/v1/oauth/unlink-identity":            true,
+	"/api/v1/authserver/revoke-connected-app":  true,
+	"/api/v1/authserver/decline-authorization": true,
 }
 
 // AuthWith builds the authentication middleware with optional configuration.

@@ -1807,6 +1807,24 @@
       "readonly": "Read-only access — changes are disabled"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "Connect an app to Econumo",
+      "wantsAccess": "wants to access your Econumo account.",
+      "redirect": "After you allow, you'll be sent to {host}.",
+      "loopback": "After you allow, you'll return to an app on this computer.",
+      "fullAccess": "It will be able to read and change all of your Econumo data.",
+      "signedInAs": "Signed in as {email}",
+      "switchAccount": "Not you? Switch account",
+      "allow": "Allow",
+      "deny": "Deny",
+      "invalidTitle": "This app sent an invalid request",
+      "invalidBody": "Econumo can't connect it. Go back to the app and try again.",
+      "returnToHost": "Return to {host}",
+      "returnToApp": "Return to the app",
+      "readonly": "Your account is read-only, so apps can't be connected."
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "This value should not be blank.",

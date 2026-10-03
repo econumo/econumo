@@ -13,6 +13,7 @@ import * as config from '@/lib/config'
 import { isNativeApp } from '@/lib/platform'
 import { useServerConfigFor } from '@/lib/appConfig'
 import { isForbidden, retryAfterSeconds } from '@/lib/apiError'
+import { takePostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl } from '@/lib/validation'
 import { CustomServerSection } from './CustomServerSection'
@@ -81,7 +82,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (getToken()) {
-      window.location.assign('/')
+      window.location.assign(takePostLoginRedirect())
     }
   }, [])
 
@@ -92,7 +93,7 @@ export function LoginPage() {
         setFailOpen(true)
         return
       }
-      window.location.assign('/')
+      window.location.assign(takePostLoginRedirect())
     } catch (err) {
       // 403 = correct credentials, unverified email: the server just sent (or
       // reused) a code — collect it instead of showing the generic failure.

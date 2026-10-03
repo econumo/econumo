@@ -1807,6 +1807,24 @@
       "readonly": "Acceso de solo lectura: los cambios están desactivados"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "Conectar una aplicación a Econumo",
+      "wantsAccess": "quiere acceder a tu cuenta de Econumo.",
+      "redirect": "Después de permitirlo, serás enviado a {host}.",
+      "loopback": "Después de permitirlo, volverás a una aplicación en este ordenador.",
+      "fullAccess": "Podrá leer y modificar todos tus datos de Econumo.",
+      "signedInAs": "Sesión iniciada como {email}",
+      "switchAccount": "¿No eres tú? Cambiar de cuenta",
+      "allow": "Permitir",
+      "deny": "Denegar",
+      "invalidTitle": "Esta aplicación envió una solicitud no válida",
+      "invalidBody": "Econumo no puede conectarla. Vuelve a la aplicación e inténtalo de nuevo.",
+      "returnToHost": "Volver a {host}",
+      "returnToApp": "Volver a la aplicación",
+      "readonly": "Tu cuenta es de solo lectura, por lo que no se pueden conectar aplicaciones."
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Este valor no debe estar vacío.",

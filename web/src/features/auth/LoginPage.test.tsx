@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { useServerConfig } from '@/lib/appConfig'
+import { rememberPostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { LoginPage } from './LoginPage'
 
 function renderLogin(path = '/login') {
@@ -334,4 +335,25 @@ describe('in the native app', () => {
     expect(await screen.findByRole('button', { name: 'Continue with Authentik' })).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByLabelText('Password')).not.toBeInTheDocument())
   })
+})
+
+it('returns to the remembered consent page after signing in', async () => {
+  const assign = vi.fn()
+  Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+  sessionStorage.clear()
+  rememberPostLoginRedirect('/oauth/authorize?client_id=a&state=b')
+  server.use(
+    http.post('*/api/v1/user/login-user', () =>
+      HttpResponse.json({
+        user: { id: 'u1', name: 'Ada', email: 'a@b', avatar: '', options: [], currency: 'USD', reportPeriod: 'month' },
+        token: 'jwt',
+      }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderLogin()
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  await user.type(screen.getByLabelText('Password'), 'secret12')
+  await user.click(screen.getByRole('button', { name: /sign in/i }))
+  await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/oauth/authorize?client_id=a&state=b'))
 })

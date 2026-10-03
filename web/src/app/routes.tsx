@@ -35,6 +35,7 @@ import { ImportRunPage } from '@/features/imports/ImportRunPage'
 import { ImportRulesPage } from '@/features/imports/ImportRulesPage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { BudgetPage } from '@/features/budgets/BudgetPage'
+import { ConsentPage } from '@/features/authserver/ConsentPage'
 
 export function createRouter() {
   return createBrowserRouter([
@@ -54,6 +55,7 @@ export function createRouter() {
         {
           element: <RequireAuth />,
           children: [
+            { path: '/oauth/authorize', element: <ConsentPage /> },
             {
               element: <ApplicationLayout />,
               children: [

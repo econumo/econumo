@@ -25,6 +25,9 @@
 == decline-authorization POST /api/v1/authserver/decline-authorization [owner] -> 200
 {"success":true,"message":"","data":{"redirectUrl":"https://claude.ai/api/mcp/auth_callback?error=access_denied&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
 
+== decline-authorization-readonly POST /api/v1/authserver/decline-authorization [readonly] -> 200
+{"success":true,"message":"","data":{"redirectUrl":"https://claude.ai/api/mcp/auth_callback?error=access_denied&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
+
 == err:decline-authorization-redirect-mismatch POST /api/v1/authserver/decline-authorization [owner] -> 400
 {"success":false,"message":"This sign-in link is not valid for this app. Start the connection again from the app.","code":400,"errors":{}}
 

@@ -1807,6 +1807,24 @@
       "readonly": "Dostęp tylko do odczytu — zmiany są wyłączone"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "Połącz aplikację z Econumo",
+      "wantsAccess": "chce uzyskać dostęp do Twojego konta Econumo.",
+      "redirect": "Po wyrażeniu zgody zostaniesz przekierowany do {host}.",
+      "loopback": "Po wyrażeniu zgody wrócisz do aplikacji na tym komputerze.",
+      "fullAccess": "Będzie mogła odczytywać i zmieniać wszystkie Twoje dane w Econumo.",
+      "signedInAs": "Zalogowano jako {email}",
+      "switchAccount": "To nie Ty? Zmień konto",
+      "allow": "Zezwól",
+      "deny": "Odrzuć",
+      "invalidTitle": "Ta aplikacja wysłała nieprawidłowe żądanie",
+      "invalidBody": "Econumo nie może jej połączyć. Wróć do aplikacji i spróbuj ponownie.",
+      "returnToHost": "Wróć do {host}",
+      "returnToApp": "Wróć do aplikacji",
+      "readonly": "Twoje konto jest tylko do odczytu, więc nie można łączyć aplikacji."
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Ta wartość nie powinna być pusta.",

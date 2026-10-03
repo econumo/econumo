@@ -11,6 +11,7 @@ import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { isNativeApp } from '@/lib/platform'
 import { useServerConfigFor } from '@/lib/appConfig'
+import { takePostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl, isValidName, isValidPassword } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
@@ -75,7 +76,7 @@ export function RegistrationPage() {
 
   useEffect(() => {
     if (getToken()) {
-      window.location.assign('/')
+      window.location.assign(takePostLoginRedirect())
       return
     }
     // the Sign-up tab is already disabled, but the URL still resolves —

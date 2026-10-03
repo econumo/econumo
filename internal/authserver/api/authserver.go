@@ -84,7 +84,6 @@ func (h *Handlers) ApproveAuthorization(w http.ResponseWriter, r *http.Request) 
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.AuthorizationDecisionResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
-// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/authserver/decline-authorization [post]

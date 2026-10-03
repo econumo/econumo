@@ -1807,6 +1807,24 @@
       "readonly": "Nur-Lese-Zugriff — Änderungen sind deaktiviert"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "App mit Econumo verbinden",
+      "wantsAccess": "möchte auf dein Econumo-Konto zugreifen.",
+      "redirect": "Nach deiner Zustimmung wirst du zu {host} weitergeleitet.",
+      "loopback": "Nach deiner Zustimmung kehrst du zu einer App auf diesem Computer zurück.",
+      "fullAccess": "Sie kann alle deine Econumo-Daten lesen und ändern.",
+      "signedInAs": "Angemeldet als {email}",
+      "switchAccount": "Nicht du? Konto wechseln",
+      "allow": "Erlauben",
+      "deny": "Ablehnen",
+      "invalidTitle": "Diese App hat eine ungültige Anfrage gesendet",
+      "invalidBody": "Econumo kann sie nicht verbinden. Kehre zur App zurück und versuche es erneut.",
+      "returnToHost": "Zurück zu {host}",
+      "returnToApp": "Zurück zur App",
+      "readonly": "Dein Konto ist schreibgeschützt, daher können keine Apps verbunden werden."
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Dieser Wert darf nicht leer sein.",

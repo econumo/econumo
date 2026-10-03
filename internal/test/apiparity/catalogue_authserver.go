@@ -29,6 +29,7 @@ func init() {
 			{Label: "err:approve-authorization-unknown-client", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "owner", Body: authBody("00000000-0000-0000-0000-00000000dead", callback)},
 			{Label: "err:approve-authorization-readonly", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "readonly", Body: authBody(OAuthClientID, callback)},
 			{Label: "decline-authorization", Method: "POST", Path: "/api/v1/authserver/decline-authorization", Auth: "owner", Body: authBody(OAuthClientID, callback)},
+			{Label: "decline-authorization-readonly", Method: "POST", Path: "/api/v1/authserver/decline-authorization", Auth: "readonly", Body: authBody(OAuthClientID, callback)},
 			{Label: "err:decline-authorization-redirect-mismatch", Method: "POST", Path: "/api/v1/authserver/decline-authorization", Auth: "owner", Body: authBody(OAuthClientID, "https://evil.example.test/cb")},
 		}
 	}})
