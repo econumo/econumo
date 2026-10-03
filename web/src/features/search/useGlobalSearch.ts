@@ -98,8 +98,13 @@ export function useGlobalSearch(query: string, scope: SearchScope): GlobalSearch
   const { data: user } = useUserData()
   const lookups = useTransactionLookups()
 
+  // fields are built once per list, not per keystroke: amounts go through moneyFormat
   const enriched = useMemo(
-    () => (transactions ?? []).map((tx) => enrichTransaction(tx, lookups)),
+    () =>
+      (transactions ?? []).map((raw) => {
+        const tx = enrichTransaction(raw, lookups)
+        return { tx, fields: transactionFields(tx) }
+      }),
     [transactions, lookups],
   )
 
@@ -107,8 +112,8 @@ export function useGlobalSearch(query: string, scope: SearchScope): GlobalSearch
     const groups = scope.kind === 'all'
     const me = user?.id
     const matched = enriched
-      .filter((tx) => inScope(tx, scope) && matchesTerms(transactionFields(tx), query))
-      .map((tx, index) => ({ tx, index }))
+      .filter(({ tx, fields }) => inScope(tx, scope) && matchesTerms(fields, query))
+      .map(({ tx }, index) => ({ tx, index }))
       .sort((a, b) => (a.tx.date < b.tx.date ? 1 : a.tx.date > b.tx.date ? -1 : a.index - b.index))
       .map(({ tx }) => ({ tx, groupDay: dayKey(tx.date) }))
     return {
