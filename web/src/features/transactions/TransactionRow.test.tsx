@@ -166,6 +166,23 @@ describe('global mode (no page account)', () => {
     expect(screen.getByText(/^100(\.00)?/)).toBeInTheDocument()
   })
 
+  it('a transfer out of a hidden account shows the amount received, in the recipient currency', () => {
+    const euro = { ...card, currency: { id: 'eur', code: 'EUR', symbol: '€', fractionDigits: 2 } } as unknown as AccountDto
+    const transfer = {
+      ...baseTx,
+      type: 'transfer',
+      account: undefined,
+      accountRecipientId: 'a2',
+      accountRecipient: euro,
+      amount: '100',
+      amountRecipient: '92.5',
+      categoryId: null,
+      category: undefined,
+    } as unknown as ViewTransaction
+    render(<TransactionRow transaction={transfer} />)
+    expect(screen.getByText(/^92\.50$/).textContent).toBe('92.50€')
+  })
+
   it('falls back to the Transfer type label when a transfer has no description', () => {
     const transfer = {
       ...baseTx,

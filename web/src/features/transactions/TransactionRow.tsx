@@ -16,7 +16,10 @@ export function displayAmount(tx: ViewTransaction, pageAccountId?: Id): string {
   if (tx.type === 'transfer') {
     // global mode: a transfer is not income or expense of any one account
     if (!pageAccountId) {
-      return moneyFormat(tx.amount, tx.account?.currency, opts)
+      // a hidden source account leaves only the received side to show
+      return tx.account
+        ? moneyFormat(tx.amount, tx.account.currency, opts)
+        : moneyFormat(tx.amountRecipient ?? tx.amount, tx.accountRecipient?.currency, opts)
     }
     if (tx.accountId === pageAccountId) {
       return '-' + moneyFormat(tx.amount, tx.account?.currency, opts)
@@ -59,7 +62,7 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote
       : transactionTitleInfo(tx, pageAccount?.id ?? tx.accountId, t)
   const income = isIncomeForAccount(tx, pageAccount?.id ?? tx.accountId)
   const neutral = global && tx.type === 'transfer'
-  const amountAccount = pageAccount ?? tx.account
+  const amountAccount = pageAccount ?? tx.account ?? tx.accountRecipient
   const showAuthor = global ? Boolean(tx.account?.sharedAccess.length) : (pageAccount?.sharedAccess.length ?? 0) > 0
   const hiddenName = t('accounts.account.name_hidden')
   const icon = tx.type === 'transfer' ? 'sync_alt' : tx.category?.icon || 'question_mark'
