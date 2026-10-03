@@ -29,6 +29,18 @@ it('a bare K or another chord does nothing', () => {
   expect(useUiStore.getState().searchOpen).toBe(false)
 })
 
+it('works on a Cyrillic layout, where the K key types л', () => {
+  renderHook(() => useSearchHotkey())
+  fireEvent.keyDown(window, { key: 'л', code: 'KeyK', ctrlKey: true })
+  expect(useUiStore.getState().searchOpen).toBe(true)
+})
+
+it('a Latin layout that puts another letter on the K key (Dvorak) keeps that chord', () => {
+  renderHook(() => useSearchHotkey())
+  expect(fireEvent.keyDown(window, { key: 't', code: 'KeyK', ctrlKey: true })).toBe(true)
+  expect(useUiStore.getState().searchOpen).toBe(false)
+})
+
 it('is ignored while another dialog is open', () => {
   renderHook(() => useSearchHotkey())
   const d = document.createElement('div')
