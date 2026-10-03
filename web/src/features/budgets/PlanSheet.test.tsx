@@ -2070,16 +2070,38 @@ it("desktop: an actual opens that month's transactions, the Uncategorized row in
   expect(seen[0].searchParams.get('uncategorized')).toBe('1')
 })
 
-it('desktop: an income actual is not a transactions link', async () => {
+it('desktop: an income actual opens its income transactions', async () => {
+  usePlanHandlers()
+  const seen: URL[] = []
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      seen.push(new URL(request.url))
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  renderPage()
+  await screen.findByText(/may/i)
+  const user = userEvent.setup()
+  // cat-freelance (INCOME_CATEGORY) May actual 300
+  const cell = screen.getAllByTestId('plan-cell-cat-freelance:0')[0]
+  await user.click(within(cell).getByRole('button', { name: /^transactions Freelance/ }))
+  await waitFor(() => expect(seen).toHaveLength(1))
+  expect(seen[0].searchParams.get('income')).toBe('1')
+  expect(seen[0].searchParams.get('categoryId')).toBe('cat-freelance')
+  expect(seen[0].searchParams.get('periodStart')).toBe('2026-05-01')
+})
+
+it('desktop: the income Uncategorized actual is not a link (the server cannot list it)', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
   renderPage()
   await screen.findByText(/may/i)
-  // cat-freelance (INCOME_CATEGORY) May actual 300 — the backend has no
-  // filter shape for an income element, so this must stay plain text
-  const cell = screen.getAllByTestId('plan-cell-cat-freelance:0')[0]
-  expect(within(cell).getByTestId('cell-actual')).toHaveTextContent('300.00')
-  expect(within(cell).queryByRole('button', { name: /^transactions /i })).not.toBeInTheDocument()
+  // income Uncategorized June actual 50
+  const uncatRow = document.querySelector('[data-row-id="uncategorized:3"]') as HTMLElement
+  const juneCell = within(uncatRow).getAllByTestId('plan-cell-uncategorized:1')[0]
+  expect(within(juneCell).getByTestId('cell-actual')).toHaveTextContent('50.00')
+  expect(within(juneCell).queryByRole('button', { name: /^transactions /i })).not.toBeInTheDocument()
 })
 
 it('desktop: a zero actual is not a link, and a future month renders no actual at all', async () => {

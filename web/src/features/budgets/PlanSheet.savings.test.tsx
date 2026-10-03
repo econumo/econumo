@@ -452,17 +452,6 @@ it('each savings cell shows the balance at the end of its month; from the curren
   expect(document.querySelectorAll('[data-testid="cell-closing"]')).toHaveLength(3)
 })
 
-it('a savings cell with a non-zero actual is plain text, never a transactions link', async () => {
-  useHandlers()
-  renderPage()
-  await screen.findByTestId('plan-section-savings')
-  // Rainy day, June: actual 100 — the desktop actual links cover expense rows only;
-  // a savings row's transactions are reached through the item sheet
-  const cell = screen.getByTestId('plan-cell-acc-s1:0')
-  expect(within(cell).getByTestId('cell-actual')).toHaveTextContent('100.00')
-  expect(within(cell).queryByRole('button', { name: /^transactions /i })).not.toBeInTheDocument()
-})
-
 function captureTxListParams() {
   let params: URLSearchParams | undefined
   const handler = http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
@@ -501,4 +490,17 @@ it('a tablet income cell’s sheet → Transactions lists the category’s incom
   await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Transactions' }))
   await waitFor(() => expect(tx.params()?.get('income')).toBe('1'))
   expect(tx.params()?.get('categoryId')).toBe('cat-freelance')
+})
+
+it('desktop: a savings actual opens the account\'s transactions for that month', async () => {
+  const tx = captureTxListParams()
+  useHandlers(savingsPlan, [tx.handler])
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage()
+  await screen.findByTestId('plan-section-savings')
+  // Rainy day, June: actual 100
+  const cell = screen.getByTestId('plan-cell-acc-s1:0')
+  await user.click(within(cell).getByRole('button', { name: /^transactions / }))
+  await waitFor(() => expect(tx.params()?.get('accountId')).toBe('acc-s1'))
+  expect(tx.params()?.get('periodStart')).toBe('2026-06-01')
 })

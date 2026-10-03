@@ -684,8 +684,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       actual is red only when it is over the plan; nothing turns green. The
       current month's column has a light tint.
 - [ ] Plan grid (desktop): clicking a month's actual opens that month's
-      transactions for the row, the expense Uncategorized row included; a zero
-      actual, a future month, and an income or savings row are not links. 📱
+      transactions for the row — expense rows (the expense Uncategorized row
+      included), income rows (the income received) and savings rows (the
+      account's transactions); a zero actual, a future month and the income
+      Uncategorized row are not links. 📱
       On a tablet a tap on the expense Uncategorized cell with spending opens
       its transactions (other cells open the item sheet).
 - [ ] 📱 **Budget settings — Accounts and Savings accounts pickers**: the

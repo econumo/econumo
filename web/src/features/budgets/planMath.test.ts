@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto, PlanSavingsElementDto } from '@/api/dto/budget'
-import { BudgetElementType } from '@/api/dto/budget'
+import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { add, sub } from '@/lib/decimal'
 import { fixtureWirePlan } from '@/test/fixtures'
@@ -16,6 +16,7 @@ import {
   fillTargetCol,
   folderSides,
   formatPlanMonth,
+  hasTransactionList,
   isOverspent,
   makePlanExchange,
   monthDate,
@@ -1114,4 +1115,17 @@ it('planMonthExchange converts at the given month\'s rates', () => {
   // the fixture's EUR rate moves from 0.90 (May) to 0.93 (Aug): the two months must differ
   expect(may('cur-eur', 'cur-usd', '100')).not.toBe(aug('cur-eur', 'cur-usd', '100'))
   expect(may('cur-usd', 'cur-usd', '100')).toBe('100')
+})
+
+describe('hasTransactionList', () => {
+  const { CATEGORY, INCOME_CATEGORY, INCOME_ENVELOPE, SAVINGS, ENVELOPE } = BudgetElementType
+  it('lists every row but income Uncategorized', () => {
+    expect(hasTransactionList({ id: 'cat-food', type: CATEGORY })).toBe(true)
+    expect(hasTransactionList({ id: 'env-1', type: ENVELOPE })).toBe(true)
+    expect(hasTransactionList({ id: 'cat-salary', type: INCOME_CATEGORY })).toBe(true)
+    expect(hasTransactionList({ id: 'ie1', type: INCOME_ENVELOPE })).toBe(true)
+    expect(hasTransactionList({ id: 'acc-s1', type: SAVINGS })).toBe(true)
+    expect(hasTransactionList({ id: UNCATEGORIZED_ID, type: CATEGORY })).toBe(true)
+    expect(hasTransactionList({ id: UNCATEGORIZED_ID, type: INCOME_CATEGORY })).toBe(false)
+  })
 })

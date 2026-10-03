@@ -161,6 +161,11 @@ export function isOverspent(type: BudgetElementType, cell: PlanCellDto | undefin
   return cmp(cell.actual, cell.planned === '' ? '0' : cell.planned) > 0
 }
 
+/** the budget transaction list can show every row but income Uncategorized, which
+ *  the server has no filter for (its uncategorized bucket is expense-only) */
+export const hasTransactionList = (el: { id: string; type: BudgetElementType }): boolean =>
+  !(el.id === UNCATEGORIZED_ID && isIncomeType(el.type))
+
 export const PLAN_CURRENT_MONTH_TINT = 'bg-muted/50'
 
 type Side = 'income' | 'expense'

@@ -254,7 +254,7 @@ Per Part 1: indicator only; item sheet → `CommentsSheet`.
 - Actual coloured red only when over plan; the green under-plan colouring is
   removed.
 - Current month column gets a light background tint.
-- Show transactions: on desktop a non-zero actual in a past or current month is a link to that month's transactions (not for income or savings rows); on a tablet a tap on the expense Uncategorized cell opens its transactions, since that row has no item sheet. *(stage 3)*
+- Show transactions: on desktop a non-zero actual in a past or current month is a link to that month's transactions, on every row the transaction list can show: expense, income and savings rows, but not the income Uncategorized row (the server has no filter for it); on a tablet a tap on the expense Uncategorized cell opens its transactions, since that row has no item sheet. *(stage 3)*
 - Currency per the currency display rule. Transfers total row and the income
   "Uncategorized" row appear only when non-zero in the visible months (Transfers: when money crossed the boundary in either direction, even if it nets to zero).
 
