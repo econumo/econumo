@@ -22,6 +22,7 @@ type AccessToken struct {
 	RevokedAt  *time.Time
 	Provider   *string
 	IDToken    *string
+	GrantID    *string
 }
 
 type Account struct {
@@ -314,6 +315,40 @@ type MessengerMessage struct {
 	DeliveredAt *time.Time
 }
 
+type OauthAuthorizationCode struct {
+	CodeHash              string
+	ClientID              string
+	UserID                string
+	RedirectUri           string
+	CodeChallenge         string
+	Resource              string
+	CredentialsGeneration int64
+	CreatedAt             time.Time
+	ExpiresAt             time.Time
+}
+
+type OauthClient struct {
+	ID           string
+	Name         string
+	RedirectUris string
+	SecretHash   *string
+	CreatedAt    time.Time
+	LastUsedAt   *time.Time
+}
+
+type OauthGrant struct {
+	ID                   string
+	UserID               string
+	ClientID             string
+	RefreshTokenHash     string
+	PrevRefreshTokenHash *string
+	RotatedAt            *time.Time
+	CreatedAt            time.Time
+	LastUsedAt           time.Time
+	ExpiresAt            time.Time
+	RevokedAt            *time.Time
+}
+
 type OauthHandoff struct {
 	CodeHash              string
 	Kind                  string
@@ -327,6 +362,12 @@ type OauthHandoff struct {
 	CreatedAt             time.Time
 	ExpiresAt             time.Time
 	CredentialsGeneration int64
+}
+
+type OauthRefreshTokensSpent struct {
+	TokenHash string
+	GrantID   string
+	SpentAt   time.Time
 }
 
 type OauthState struct {

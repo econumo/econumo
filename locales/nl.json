@@ -1829,6 +1829,39 @@
       "readonly": "Alleen-lezen toegang — wijzigen is uitgeschakeld"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "Een app met Econumo verbinden",
+      "wantsAccess": "wil toegang tot je Econumo-account.",
+      "redirect": "Nadat je toestemming geeft, word je doorgestuurd naar {host}.",
+      "loopback": "Nadat je toestemming geeft, keer je terug naar een app op deze computer.",
+      "fullAccess": "De app kan al je Econumo-gegevens lezen en wijzigen.",
+      "signedInAs": "Ingelogd als {email}",
+      "switchAccount": "Ben jij het niet? Van account wisselen",
+      "allow": "Toestaan",
+      "deny": "Weigeren",
+      "invalidTitle": "Deze app heeft een ongeldig verzoek gestuurd",
+      "invalidBody": "Econumo kan de app niet verbinden. Ga terug naar de app en probeer het opnieuw.",
+      "returnToHost": "Terug naar {host}",
+      "returnToApp": "Terug naar de app",
+      "readonly": "Je account is alleen-lezen, dus er kunnen geen apps worden verbonden."
+    },
+    "apps": {
+      "title": "Gekoppelde apps",
+      "description": "Apps zoals Claude of Codex waaraan je toegang tot je Econumo-gegevens hebt gegeven. Als je een app intrekt, wordt die meteen afgemeld.",
+      "empty": "Er zijn nog geen apps gekoppeld.",
+      "howTo": "Voeg in Claude of Codex een aangepaste connector of MCP-server toe met dit adres en log in wanneer erom wordt gevraagd.",
+      "copy": "Kopiëren",
+      "copied": "Gekopieerd",
+      "revoke": "Intrekken",
+      "revokeConfirm": "{name} verliest de toegang tot je Econumo-gegevens.",
+      "connected": "Gekoppeld op {date}",
+      "lastUsed": "Laatst gebruikt {when}",
+      "loopback": "Draait op deze computer",
+      "returnsTo": "Stuurt je terug naar {host}",
+      "menuItem": "Gekoppelde apps"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Deze waarde mag niet leeg zijn.",
@@ -1922,6 +1955,12 @@
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
       "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met tags is leeg."
+    },
+    "authserver": {
+      "disabled": "Apps koppelen is niet beschikbaar op deze server.",
+      "client_not_found": "De registratie van deze app is verlopen of onbekend. Verwijder Econumo uit de app en voeg het opnieuw toe.",
+      "redirect_uri_mismatch": "Deze inloglink is niet geldig voor deze app. Start de koppeling opnieuw vanuit de app.",
+      "grant_not_found": "Gekoppelde app niet gevonden."
     },
     "oauth": {
       "provider_not_configured": "De aanmeldprovider is niet geconfigureerd",

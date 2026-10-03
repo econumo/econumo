@@ -20,6 +20,10 @@ import (
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appadmin "github.com/econumo/econumo/internal/admin"
 	handleradmin "github.com/econumo/econumo/internal/admin/api"
+	appauthserver "github.com/econumo/econumo/internal/authserver"
+	handlerauthserver "github.com/econumo/econumo/internal/authserver/api"
+	"github.com/econumo/econumo/internal/authserver/oauthhttp"
+	authserverrepo "github.com/econumo/econumo/internal/authserver/repo"
 	appbudget "github.com/econumo/econumo/internal/budget"
 	handlerbudget "github.com/econumo/econumo/internal/budget/api"
 	budgetmcp "github.com/econumo/econumo/internal/budget/mcp"
@@ -205,6 +209,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			// No per-key cap: the caller of start-login/start-link is anonymous
 			// until the provider answers. The global per-minute cap applies.
 			appoauth.RateScopeOAuthStart: 0,
+			// No per-key cap: dynamic client registration is anonymous. Only
+			// the global per-minute cap applies.
+			appauthserver.RateScopeRegister: 0,
 		},
 		Window: cfg.RateLimitWindow,
 		Global: cfg.RateLimitGlobal,
@@ -240,6 +247,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	userSvc.SetIdentityEmailLister(NewIdentityEmailLister(oauthSvc))
 	oauthSvc.SetNotifier(NewOAuthNotifier(userSvc, identityMailer, oauthSvc))
 	oauthHandlers := handleroauth.NewHandlers(oauthSvc)
+
+	authSrv := appauthserver.NewService(authserverrepo.NewRepo(cfg.DatabaseDriver, txm), userSvc, txm, clk, authLimiter, cfg.AppURL)
+	userSvc.SetMCPGrantRevoker(authSrv)
 
 	// Shared-account access resolver (account owner + connected-user grant role),
 	// used by the category/tag create-for-account paths.
@@ -423,6 +433,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	registerAPI := router.Compose(
 		handleruser.RegisterAPI(userHandlers, authn),
 		handleroauth.RegisterAPI(oauthHandlers, authn),
+		handlerauthserver.RegisterAPI(handlerauthserver.NewHandlers(authSrv), authn),
 		handlercategory.RegisterAPI(categoryHandlers, authn),
 		handlertag.RegisterAPI(tagHandlers, authn),
 		handlerlabel.RegisterAPI(labelHandlers, authn),
@@ -463,7 +474,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		labelmcp.Register(labelReadSvc, labelSvc),
 	)
 	mcpHandler := middleware.Chain(
-		middleware.Auth(authn),
+		middleware.AuthWith(authn, middleware.AuthOptions{Challenge: oauthhttp.Challenge(authSrv)}),
 		timezoneFallback(userSvc),
 	)(webmcp.NewHandler(mcpRegister))
 
@@ -485,6 +496,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		RegisterAPI:        registerAPI,
 		SupportedLanguages: i18n.Supported,
 		MCP:                mcpHandler,
+		OAuthServer:        oauthhttp.Handler(authSrv),
 		SPA:                spaFS,
 		SPAVersion:         version.Version,
 		SPAVersionLabel:    cfg.Version,

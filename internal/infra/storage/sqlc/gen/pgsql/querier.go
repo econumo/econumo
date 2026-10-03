@@ -15,6 +15,9 @@ type Querier interface {
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
+	// Single use: the DELETE is the read, so two concurrent exchanges of one code
+	// cannot both get a row.
+	ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
 	// See the sqlite sibling: the confirm path consumes its own evidence row.
 	ConsumeUserEmailChangeRequest(ctx context.Context, arg ConsumeUserEmailChangeRequestParams) (int64, error)
 	// See the sqlite sibling: the confirmation's evidence and its consumption are
@@ -48,6 +51,10 @@ type Querier interface {
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
+	// The OAuth server's housekeeping purge: oauth tokens live an hour, so they
+	// pile up far faster than sessions and are swept set-based, not per user.
+	DeleteDeadOAuthAccessTokens(ctx context.Context, arg DeleteDeadOAuthAccessTokensParams) (int64, error)
+	DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuthGrantsParams) (int64, error)
 	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
@@ -182,6 +189,10 @@ type Querier interface {
 	// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
 	// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
 	GetLatestRateDate(ctx context.Context) (time.Time, error)
+	GetOAuthClient(ctx context.Context, id string) (OauthClient, error)
+	GetOAuthGrant(ctx context.Context, id string) (OauthGrant, error)
+	GetOAuthGrantByRefreshHash(ctx context.Context, refreshTokenHash string) (OauthGrant, error)
+	GetOAuthGrantBySpentRefreshHash(ctx context.Context, tokenHash string) (OauthGrant, error)
 	GetOAuthHandoff(ctx context.Context, codeHash string) (OauthHandoff, error)
 	GetOAuthState(ctx context.Context, stateHash string) (OauthState, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
@@ -266,7 +277,14 @@ type Querier interface {
 	// ledger. Liveness/tombstone logic lives in Go (model.ImportTransactionLink).
 	InsertImportSource(ctx context.Context, arg InsertImportSourceParams) error
 	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
+	// See the sqlite sibling.
+	InsertOAuthAccessTokenIfGeneration(ctx context.Context, arg InsertOAuthAccessTokenIfGenerationParams) (int64, error)
+	// OAuth authorization server (MCP clients): clients, codes, grants.
+	InsertOAuthClient(ctx context.Context, arg InsertOAuthClientParams) error
+	InsertOAuthCode(ctx context.Context, arg InsertOAuthCodeParams) error
+	InsertOAuthGrant(ctx context.Context, arg InsertOAuthGrantParams) error
 	InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error
+	InsertOAuthSpentRefreshHash(ctx context.Context, arg InsertOAuthSpentRefreshHashParams) error
 	InsertOAuthState(ctx context.Context, arg InsertOAuthStateParams) error
 	// Idempotency queries over operation_requests_ids (PostgreSQL variant: $N
 	// placeholders). Shared by every module whose create endpoint takes a
@@ -361,6 +379,7 @@ type Querier interface {
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]ListTransactionsByAccountRow, error)
+	ListUnrevokedOAuthGrants(ctx context.Context, userID string) ([]ListUnrevokedOAuthGrantsRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	// Ordered by id so the backfill is deterministic across engines and reruns.
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
@@ -381,9 +400,12 @@ type Querier interface {
 	// row belonging to this user. The adapter maps no-rows to success: a missing
 	// user must keep succeeding silently.
 	LockUserRow(ctx context.Context, id string) (string, error)
+	MarkOAuthClientUsed(ctx context.Context, arg MarkOAuthClientUsedParams) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
+	PurgeExpiredOAuthCodes(ctx context.Context, expiresAt time.Time) error
+	PurgeUnusedOAuthClients(ctx context.Context, createdAt time.Time) (int64, error)
 	// The operation_requests_ids idempotency queries moved to operations.sql (shared
 	// across modules that take a client-supplied operation id).
 	ReassignCategoryRecurring(ctx context.Context, arg ReassignCategoryRecurringParams) error
@@ -403,8 +425,18 @@ type Querier interface {
 	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
+	RevokeAccessTokensByGrant(ctx context.Context, arg RevokeAccessTokensByGrantParams) error
+	RevokeOAuthGrant(ctx context.Context, arg RevokeOAuthGrantParams) (int64, error)
+	// Re-authorizing a client replaces the user's earlier connection to it: every
+	// other unrevoked grant for the same (user, client) goes, returning the ids so
+	// their access tokens can be revoked too.
+	RevokeOtherOAuthGrants(ctx context.Context, arg RevokeOtherOAuthGrantsParams) ([]string, error)
 	// See the sqlite sibling.
 	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
+	RevokeUserOAuthGrants(ctx context.Context, arg RevokeUserOAuthGrantsParams) (int64, error)
+	// Conditional on the hash being rotated away, so of two concurrent refreshes
+	// presenting the same token exactly one rotates.
+	RotateOAuthGrant(ctx context.Context, arg RotateOAuthGrantParams) (int64, error)
 	// Whether the budget's savings element for this account carries a limit or a
 	// comment: dropping the element (flag off or member removed) deletes both.
 	SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (bool, error)

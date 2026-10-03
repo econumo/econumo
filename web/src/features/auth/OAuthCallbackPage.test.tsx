@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
+import { rememberPostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { OAuthCallbackPage } from './OAuthCallbackPage'
 
 function renderAt(entry: string) {
@@ -12,6 +13,7 @@ function renderAt(entry: string) {
       { path: '/oauth/callback', element: <OAuthCallbackPage /> },
       { path: '/', element: <div data-testid="home" /> },
       { path: '/login', element: <div data-testid="login" /> },
+      { path: '/oauth/authorize', element: <div data-testid="consent" /> },
     ],
     { initialEntries: [entry] },
   )
@@ -68,4 +70,13 @@ it('lands on /login when this browser holds no flow secret', async () => {
   const router = renderAt('/oauth/callback#handoff=abc')
   await waitFor(() => expect(router.state.location.search).toBe('?oauthError=invalid_state'))
   expect(called).toBe(false)
+})
+
+it('returns to the remembered consent page after a provider sign-in', async () => {
+  rememberPostLoginRedirect('/oauth/authorize?client_id=a&state=b')
+  server.use(http.post('*/api/v1/oauth/exchange-handoff', () =>
+    HttpResponse.json({ token: 'eco_ses_ok', user: { id: 'u1', options: [], accessLevel: 'full', accessUntil: '', hasPassword: false } })))
+  const router = renderAt('/oauth/callback#handoff=abc')
+  await waitFor(() => expect(router.state.location.pathname).toBe('/oauth/authorize'))
+  expect(router.state.location.search).toBe('?client_id=a&state=b')
 })

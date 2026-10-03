@@ -1829,6 +1829,39 @@
       "readonly": "Acesso só de leitura — as alterações estão desativadas"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "Conectar um app ao Econumo",
+      "wantsAccess": "quer acessar a sua conta do Econumo.",
+      "redirect": "Depois de permitir, você será enviado para {host}.",
+      "loopback": "Depois de permitir, você voltará para um app neste computador.",
+      "fullAccess": "Ele poderá ler e alterar todos os seus dados do Econumo.",
+      "signedInAs": "Conectado como {email}",
+      "switchAccount": "Não é você? Trocar de conta",
+      "allow": "Permitir",
+      "deny": "Negar",
+      "invalidTitle": "Este app enviou uma solicitação inválida",
+      "invalidBody": "O Econumo não consegue conectá-lo. Volte ao app e tente novamente.",
+      "returnToHost": "Voltar para {host}",
+      "returnToApp": "Voltar ao app",
+      "readonly": "Sua conta é somente leitura, então não é possível conectar apps."
+    },
+    "apps": {
+      "title": "Aplicativos conectados",
+      "description": "Aplicativos como Claude ou Codex aos quais você permitiu usar seus dados do Econumo. Revogar um aplicativo encerra a sessão dele imediatamente.",
+      "empty": "Nenhum aplicativo conectado ainda.",
+      "howTo": "No Claude ou no Codex, adicione um conector personalizado ou servidor MCP com este endereço e entre quando for solicitado.",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "revoke": "Revogar",
+      "revokeConfirm": "{name} perderá o acesso aos seus dados do Econumo.",
+      "connected": "Conectado em {date}",
+      "lastUsed": "Último uso {when}",
+      "loopback": "Executa neste computador",
+      "returnsTo": "Leva você de volta para {host}",
+      "menuItem": "Aplicativos conectados"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Este valor não deve estar vazio.",
@@ -1922,6 +1955,12 @@
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",
       "cannot_be_merged": "As etiquetas selecionadas não podem ser mescladas.",
       "list_empty": "A lista de etiquetas está vazia."
+    },
+    "authserver": {
+      "disabled": "A conexão de aplicações não está disponível neste servidor.",
+      "client_not_found": "O registo desta aplicação expirou ou é desconhecido. Remova o Econumo da aplicação e adicione-o novamente.",
+      "redirect_uri_mismatch": "Esta ligação de início de sessão não é válida para esta aplicação. Inicie a ligação novamente a partir da aplicação.",
+      "grant_not_found": "Aplicação ligada não encontrada."
     },
     "oauth": {
       "provider_not_configured": "O provedor de início de sessão não está configurado",

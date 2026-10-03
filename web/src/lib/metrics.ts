@@ -41,6 +41,8 @@ export const METRICS = {
   SESSION_REVOKE_OTHERS: 'appSessionRevokeOthers',
   PERSONAL_TOKEN_CREATE: 'appPersonalTokenCreate',
   PERSONAL_TOKEN_REVOKE: 'appPersonalTokenRevoke',
+  CONNECTED_APP_APPROVE: 'appConnectedAppApprove',
+  CONNECTED_APP_REVOKE: 'appConnectedAppRevoke',
   ACCOUNT_CREATE: 'appAccountCreate',
   ACCOUNT_UPDATE: 'appAccountUpdate',
   ACCOUNT_DELETE: 'appAccountDelete',

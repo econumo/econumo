@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router'
 import { CoinLoader } from '@/components/CoinLoader'
 import { RouterPage } from '@/app/router-pages'
+import { takePostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { takeOAuthFlow, useExchangeHandoff } from './oauthQueries'
 
 // The handoff rides in the fragment so it never reaches server logs; it is
@@ -32,7 +33,7 @@ export function OAuthCallbackPage() {
     }
     exchange
       .mutateAsync({ code, flow })
-      .then(() => navigate(RouterPage.HOME, { replace: true }))
+      .then(() => navigate(takePostLoginRedirect(), { replace: true }))
       .catch((err: unknown) => {
         // 401 is the handoff itself (expired, replayed, or a foreign flow);
         // anything else went wrong on the way, which reads differently.

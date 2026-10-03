@@ -1829,6 +1829,39 @@
       "readonly": "Dostęp tylko do odczytu — zmiany są wyłączone"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "Połącz aplikację z Econumo",
+      "wantsAccess": "chce uzyskać dostęp do Twojego konta Econumo.",
+      "redirect": "Po wyrażeniu zgody zostaniesz przekierowany do {host}.",
+      "loopback": "Po wyrażeniu zgody wrócisz do aplikacji na tym komputerze.",
+      "fullAccess": "Będzie mogła odczytywać i zmieniać wszystkie Twoje dane w Econumo.",
+      "signedInAs": "Zalogowano jako {email}",
+      "switchAccount": "To nie Ty? Zmień konto",
+      "allow": "Zezwól",
+      "deny": "Odrzuć",
+      "invalidTitle": "Ta aplikacja wysłała nieprawidłowe żądanie",
+      "invalidBody": "Econumo nie może jej połączyć. Wróć do aplikacji i spróbuj ponownie.",
+      "returnToHost": "Wróć do {host}",
+      "returnToApp": "Wróć do aplikacji",
+      "readonly": "Twoje konto jest tylko do odczytu, więc nie można łączyć aplikacji."
+    },
+    "apps": {
+      "title": "Połączone aplikacje",
+      "description": "Aplikacje takie jak Claude lub Codex, którym udzielono dostępu do Twoich danych w Econumo. Cofnięcie dostępu aplikacji natychmiast ją wylogowuje.",
+      "empty": "Nie połączono jeszcze żadnych aplikacji.",
+      "howTo": "W Claude lub Codex dodaj własny konektor lub serwer MCP z tym adresem i zaloguj się, gdy zostaniesz o to poproszony.",
+      "copy": "Kopiuj",
+      "copied": "Skopiowano",
+      "revoke": "Cofnij dostęp",
+      "revokeConfirm": "{name} straci dostęp do Twoich danych w Econumo.",
+      "connected": "Połączono {date}",
+      "lastUsed": "Ostatnio używana {when}",
+      "loopback": "Działa na tym komputerze",
+      "returnsTo": "Odsyła Cię do {host}",
+      "menuItem": "Połączone aplikacje"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Ta wartość nie powinna być pusta.",
@@ -1922,6 +1955,12 @@
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
       "cannot_be_merged": "Nie można scalić wybranych tagów.",
       "list_empty": "Lista tagów jest pusta."
+    },
+    "authserver": {
+      "disabled": "Łączenie aplikacji nie jest dostępne na tym serwerze.",
+      "client_not_found": "Rejestracja tej aplikacji wygasła lub jest nieznana. Usuń Econumo z aplikacji i dodaj je ponownie.",
+      "redirect_uri_mismatch": "Ten link logowania jest nieprawidłowy dla tej aplikacji. Rozpocznij połączenie ponownie z poziomu aplikacji.",
+      "grant_not_found": "Nie znaleziono połączonej aplikacji."
     },
     "oauth": {
       "provider_not_configured": "Dostawca logowania nie jest skonfigurowany",

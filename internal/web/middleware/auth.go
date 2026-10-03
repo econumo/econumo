@@ -24,6 +24,15 @@ type TokenAuthenticator interface {
 // IngestPathPrefix is the only route family an ingest-scoped token may reach.
 const IngestPathPrefix = "/api/v1/import/ingest-"
 
+// MCPPath is the only path an mcp-scoped token may reach.
+const MCPPath = "/mcp"
+
+// AuthOptions configures optional behavior for the auth middleware.
+type AuthOptions struct {
+	// Challenge, when non-empty, is sent as WWW-Authenticate on every 401.
+	Challenge string
+}
+
 // StoredLanguageResolver is an optional capability of the wired
 // TokenAuthenticator: it resolves the authenticated user's persisted UI
 // language ("" = none) for requests that carried no supported Accept-Language
@@ -60,6 +69,10 @@ var ctxKeyTokenID ctxKeyTokenIDType
 // oauth/complete-link and oauth/unlink-identity join for the same reason as
 // the email-change flow:
 // linking/unlinking a sign-in method is an account-security operation.
+// authserver/revoke-connected-app joins too: revoking a connected app removes
+// access, like revoking a token. authserver/decline-authorization joins as
+// well: declining writes nothing, and a restricted user must be able to send
+// the app back with a refusal.
 //
 // Exported so a guard test (internal/test/apiparity) can assert every path
 // here is still a real registered route, catching a route rename that would
@@ -73,37 +86,47 @@ var ctxKeyTokenID ctxKeyTokenIDType
 // allowlisting /mcp to restore reads would open every write tool at once.
 // Per-tool enforcement is what this would need first.
 var ReadonlyAllowedPaths = map[string]bool{
-	"/api/v1/user/logout-user":              true,
-	"/api/v1/user/revoke-session":           true,
-	"/api/v1/user/revoke-other-sessions":    true,
-	"/api/v1/user/revoke-personal-token":    true,
-	"/api/v1/user/update-password":          true,
-	"/api/v1/user/create-billing-link":      true,
-	"/api/v1/user/request-email-change":     true,
-	"/api/v1/user/confirm-email-change":     true,
-	"/api/v1/user/resend-email-change-code": true,
-	"/api/v1/user/update-analytics":         true,
-	"/api/v1/oauth/start-link":              true,
-	"/api/v1/oauth/complete-link":           true,
-	"/api/v1/oauth/unlink-identity":         true,
+	"/api/v1/user/logout-user":                 true,
+	"/api/v1/user/revoke-session":              true,
+	"/api/v1/user/revoke-other-sessions":       true,
+	"/api/v1/user/revoke-personal-token":       true,
+	"/api/v1/user/update-password":             true,
+	"/api/v1/user/create-billing-link":         true,
+	"/api/v1/user/request-email-change":        true,
+	"/api/v1/user/confirm-email-change":        true,
+	"/api/v1/user/resend-email-change-code":    true,
+	"/api/v1/user/update-analytics":            true,
+	"/api/v1/oauth/start-link":                 true,
+	"/api/v1/oauth/complete-link":              true,
+	"/api/v1/oauth/unlink-identity":            true,
+	"/api/v1/authserver/revoke-connected-app":  true,
+	"/api/v1/authserver/decline-authorization": true,
 }
 
-// Auth builds the authentication middleware. It reads the
-// "Authorization: Bearer <token>" header, authenticates the opaque token via
-// authn, and on success stores the user id and the token row id in the request
-// context (retrievable with UserIDFromCtx / TokenIDFromCtx). A missing header,
-// malformed header, or failed authentication produces the frozen 401 envelope
-// (via httpx.WriteError on an *errs.UnauthorizedError) and the downstream
-// handler is not called.
+// AuthWith builds the authentication middleware with optional configuration.
+// It reads the "Authorization: Bearer <token>" header, authenticates the opaque
+// token via authn, and on success stores the user id and the token row id in
+// the request context (retrievable with UserIDFromCtx / TokenIDFromCtx). A
+// missing header, malformed header, or failed authentication produces the frozen
+// 401 envelope (via httpx.WriteError on an *errs.UnauthorizedError) and the
+// downstream handler is not called.
 //
 // The 401 path does not expose internals — a non-Unauthorized authenticator
-// error (e.g. the DB being down) is mapped to the generic 401.
-func Auth(authn TokenAuthenticator) Middleware {
+// error (e.g. the DB being down) is mapped to the generic 401. Every 401
+// response includes the Challenge header when opts.Challenge is non-empty.
+func AuthWith(authn TokenAuthenticator, opts AuthOptions) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			deny := func(err error) {
+				if opts.Challenge != "" {
+					w.Header().Set("WWW-Authenticate", opts.Challenge)
+				}
+				httpx.WriteError(r.Context(), w, err)
+			}
+
 			token, ok := bearerToken(r)
 			if !ok {
-				httpx.WriteError(r.Context(), w, errs.NewUnauthorized("Access token not found"))
+				deny(errs.NewUnauthorized("Access token not found"))
 				return
 			}
 			p, err := authn.Authenticate(r.Context(), token)
@@ -112,21 +135,22 @@ func Auth(authn TokenAuthenticator) Middleware {
 				if !errors.As(err, &ue) {
 					err = errs.NewUnauthorized("Invalid access token")
 				}
-				httpx.WriteError(r.Context(), w, err)
+				deny(err)
 				return
 			}
-			// Allowlist, not a denylist: only the two known scopes are admitted
-			// (full anywhere; ingest only under IngestPathPrefix), so an empty
-			// or unknown stored scope is rejected everywhere — the repo read
-			// path does not validate the column, so this gate is the only
-			// place that does. The 401 text is identical to a bad token on
-			// purpose: an ingest credential must not reveal that it is valid
-			// elsewhere.
+			// Allowlist, not a denylist: three known scopes (full anywhere; ingest
+			// only under IngestPathPrefix; mcp only on /mcp — those tokens are
+			// issued for the /mcp resource), so an empty or unknown stored scope is
+			// rejected everywhere — the repo read path does not validate the column,
+			// so this gate is the only place that does. The 401 text is identical to
+			// a bad token on purpose: an ingest or mcp credential must not reveal
+			// that it is valid elsewhere.
 			switch {
 			case p.Scope == model.TokenScopeFull:
 			case p.Scope == model.TokenScopeIngest && strings.HasPrefix(r.URL.Path, IngestPathPrefix):
+			case p.Scope == model.TokenScopeMCP && r.URL.Path == MCPPath:
 			default:
-				httpx.WriteError(r.Context(), w, errs.NewUnauthorized("Invalid access token"))
+				deny(errs.NewUnauthorized("Invalid access token"))
 				return
 			}
 			userID, tokenID, level := p.UserID, p.TokenID, p.Level
@@ -157,6 +181,12 @@ func Auth(authn TokenAuthenticator) Middleware {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// Auth builds the authentication middleware. It delegates to AuthWith with no
+// additional options.
+func Auth(authn TokenAuthenticator) Middleware {
+	return AuthWith(authn, AuthOptions{})
 }
 
 // bearerToken extracts the token from an "Authorization: Bearer <token>"

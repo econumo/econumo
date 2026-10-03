@@ -432,3 +432,60 @@ func TestRuntimeConfigOverrides_VersionLabelIsIndependentOfVersion(t *testing.T)
 		}
 	}
 }
+
+func TestOAuthServer_MountedBesideSPA(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html><title>spa</title>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	oauth := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Reached", r.URL.Path)
+		w.WriteHeader(http.StatusTeapot)
+	})
+	srv := httptest.NewServer(router.New(router.Deps{
+		Cfg:         config.Config{CORSAllowedOrigins: []string{"https://other.test"}},
+		SPA:         os.DirFS(dir),
+		OAuthServer: oauth,
+	}))
+	t.Cleanup(srv.Close)
+
+	for _, p := range []string{
+		"/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp",
+		"/.well-known/oauth-authorization-server", "/oauth/register", "/oauth/token",
+	} {
+		resp := get(t, srv, http.MethodPost, p)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusTeapot || resp.Header.Get("X-Reached") != p {
+			t.Errorf("%s: status=%d reached=%q", p, resp.StatusCode, resp.Header.Get("X-Reached"))
+		}
+	}
+
+	// The consent page is an SPA route, not part of the mounted handler.
+	resp := get(t, srv, http.MethodGet, "/oauth/authorize?x=1")
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), "<title>spa</title>") {
+		t.Fatalf("authorize: status=%d body=%s", resp.StatusCode, body)
+	}
+
+	// The global CORS middleware is not in this chain: the handler owns its headers.
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/oauth/token", nil)
+	req.Header.Set("Origin", "https://other.test")
+	r2, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r2.Body.Close()
+	if r2.Header.Get("Access-Control-Allow-Origin") != "" {
+		t.Fatal("global CORS must not wrap the OAuth handler")
+	}
+}
+
+func TestOAuthServer_UnmountedWhenNil(t *testing.T) {
+	srv := newServer(t, nil)
+	resp := get(t, srv, http.MethodGet, "/.well-known/oauth-authorization-server")
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status=%d want 404", resp.StatusCode)
+	}
+}

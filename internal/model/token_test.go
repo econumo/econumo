@@ -98,3 +98,9 @@ func TestAccessToken_IsDead(t *testing.T) {
 		t.Error("revoked past retention must be dead")
 	}
 }
+
+func TestParseTokenScope_RejectsMCP(t *testing.T) {
+	if _, err := ParseTokenScope("mcp"); err == nil {
+		t.Fatal("mcp scope must not be user-selectable")
+	}
+}

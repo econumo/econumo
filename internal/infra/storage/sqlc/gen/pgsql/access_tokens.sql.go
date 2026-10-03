@@ -38,6 +38,28 @@ func (q *Queries) DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAcce
 	return result.RowsAffected()
 }
 
+const deleteDeadOAuthAccessTokens = `-- name: DeleteDeadOAuthAccessTokens :execrows
+DELETE FROM access_tokens
+WHERE kind = 'oauth'
+  AND ((revoked_at IS NOT NULL AND revoked_at < $1)
+    OR (expires_at IS NOT NULL AND expires_at < $2))
+`
+
+type DeleteDeadOAuthAccessTokensParams struct {
+	RevokedAt *time.Time
+	ExpiresAt *time.Time
+}
+
+// The OAuth server's housekeeping purge: oauth tokens live an hour, so they
+// pile up far faster than sessions and are swept set-based, not per user.
+func (q *Queries) DeleteDeadOAuthAccessTokens(ctx context.Context, arg DeleteDeadOAuthAccessTokensParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteDeadOAuthAccessTokens, arg.RevokedAt, arg.ExpiresAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getAccessTokenByHash = `-- name: GetAccessTokenByHash :one
 SELECT t.id, t.user_id, t.kind, t.token_hash, t.scope, t.name, t.user_agent,
        t.created_at, t.last_used_at, t.expires_at, t.revoked_at,
@@ -87,7 +109,7 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (G
 }
 
 const getAccessTokenByID = `-- name: GetAccessTokenByID :one
-SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id
 FROM access_tokens
 WHERE id = $1
 `
@@ -106,6 +128,7 @@ type GetAccessTokenByIDRow struct {
 	RevokedAt  *time.Time
 	Provider   *string
 	IDToken    *string
+	GrantID    *string
 }
 
 func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (GetAccessTokenByIDRow, error) {
@@ -125,6 +148,7 @@ func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (GetAccessT
 		&i.RevokedAt,
 		&i.Provider,
 		&i.IDToken,
+		&i.GrantID,
 	)
 	return i, err
 }
@@ -230,8 +254,51 @@ func (q *Queries) InsertAccessTokenIfPresenterLive(ctx context.Context, arg Inse
 	return result.RowsAffected()
 }
 
+const insertOAuthAccessTokenIfGeneration = `-- name: InsertOAuthAccessTokenIfGeneration :execrows
+INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id)
+SELECT $1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, NULL, NULL, NULL, $10
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = $11 AND u.credentials_generation = $12)
+`
+
+type InsertOAuthAccessTokenIfGenerationParams struct {
+	ID                    string
+	UserID                string
+	Kind                  string
+	TokenHash             string
+	Scope                 string
+	Name                  *string
+	CreatedAt             time.Time
+	LastUsedAt            time.Time
+	ExpiresAt             *time.Time
+	GrantID               *string
+	ID_2                  string
+	CredentialsGeneration int64
+}
+
+// See the sqlite sibling.
+func (q *Queries) InsertOAuthAccessTokenIfGeneration(ctx context.Context, arg InsertOAuthAccessTokenIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertOAuthAccessTokenIfGeneration,
+		arg.ID,
+		arg.UserID,
+		arg.Kind,
+		arg.TokenHash,
+		arg.Scope,
+		arg.Name,
+		arg.CreatedAt,
+		arg.LastUsedAt,
+		arg.ExpiresAt,
+		arg.GrantID,
+		arg.ID_2,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listAccessTokensByUser = `-- name: ListAccessTokensByUser :many
-SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id
 FROM access_tokens
 WHERE user_id = $1 AND kind = $2
 ORDER BY created_at, id
@@ -256,6 +323,7 @@ type ListAccessTokensByUserRow struct {
 	RevokedAt  *time.Time
 	Provider   *string
 	IDToken    *string
+	GrantID    *string
 }
 
 func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]ListAccessTokensByUserRow, error) {
@@ -281,6 +349,7 @@ func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessToke
 			&i.RevokedAt,
 			&i.Provider,
 			&i.IDToken,
+			&i.GrantID,
 		); err != nil {
 			return nil, err
 		}
@@ -306,6 +375,20 @@ type RevokeAccessTokenParams struct {
 
 func (q *Queries) RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error {
 	_, err := q.db.ExecContext(ctx, revokeAccessToken, arg.RevokedAt, arg.ID)
+	return err
+}
+
+const revokeAccessTokensByGrant = `-- name: RevokeAccessTokensByGrant :exec
+UPDATE access_tokens SET revoked_at = $1 WHERE grant_id = $2 AND revoked_at IS NULL
+`
+
+type RevokeAccessTokensByGrantParams struct {
+	RevokedAt *time.Time
+	GrantID   *string
+}
+
+func (q *Queries) RevokeAccessTokensByGrant(ctx context.Context, arg RevokeAccessTokensByGrantParams) error {
+	_, err := q.db.ExecContext(ctx, revokeAccessTokensByGrant, arg.RevokedAt, arg.GrantID)
 	return err
 }
 

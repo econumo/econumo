@@ -17,6 +17,11 @@
 //	                            wrapped in the global chain plus the caller-
 //	                            supplied auth/timezone-fallback handler; nil
 //	                            Deps.MCP leaves it unmounted
+//	/oauth/{register,token}, /.well-known/oauth-*
+//	                  (*)    -> OAuth authorization server for MCP clients
+//	                            (Deps.OAuthServer; it answers 404 itself while
+//	                            ECONUMO_URL is unset); /oauth/authorize is an
+//	                            SPA route
 //	/                 (*)    -> SPA file server with index.html fallback
 //
 // The auth middleware itself is built in the user module and is applied by
@@ -85,6 +90,11 @@ type Deps struct {
 	// MCP is the fully-wrapped MCP endpoint handler (auth + timezone fallback
 	// applied by the composition root). Nil = endpoint not mounted.
 	MCP http.Handler
+
+	// OAuthServer serves the public OAuth discovery, registration and token
+	// routes (its own handler sets CORS, so the global CORS middleware is not
+	// applied). Nil = not mounted.
+	OAuthServer http.Handler
 
 	// SPA is the filesystem the SPA catch-all serves. In production it is the
 	// SPA embedded in the binary (web.DistFS); it is a seam for tests to inject
@@ -175,6 +185,22 @@ func New(deps Deps) http.Handler {
 	// same global chain.
 	if deps.MCP != nil {
 		root.Handle("/mcp", global(deps.MCP))
+	}
+
+	// OAuth authorization server. The patterns are listed here rather than
+	// delegated to a prefix so /oauth/authorize stays with the SPA catch-all
+	// (the consent page) and the rest of /.well-known/ keeps its 404.
+	if deps.OAuthServer != nil {
+		oauth := middleware.Chain(middleware.RequestID, middleware.AccessLog, middleware.Recover)(deps.OAuthServer)
+		for _, p := range []string{
+			"/.well-known/oauth-protected-resource",
+			"/.well-known/oauth-protected-resource/mcp",
+			"/.well-known/oauth-authorization-server",
+			"/oauth/register",
+			"/oauth/token",
+		} {
+			root.Handle(p, oauth)
+		}
 	}
 
 	// SPA catch-all. Not wrapped in the API global chain (static assets do not

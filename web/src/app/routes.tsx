@@ -35,6 +35,8 @@ import { ImportRunPage } from '@/features/imports/ImportRunPage'
 import { ImportRulesPage } from '@/features/imports/ImportRulesPage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { BudgetPage } from '@/features/budgets/BudgetPage'
+import { ConnectedAppsPage } from '@/features/authserver/ConnectedAppsPage'
+import { ConsentPage } from '@/features/authserver/ConsentPage'
 
 export function createRouter() {
   return createBrowserRouter([
@@ -54,6 +56,7 @@ export function createRouter() {
         {
           element: <RequireAuth />,
           children: [
+            { path: '/oauth/authorize', element: <ConsentPage /> },
             {
               element: <ApplicationLayout />,
               children: [
@@ -68,6 +71,7 @@ export function createRouter() {
                 { path: '/settings/profile/change-email', element: <ChangeEmailPage /> },
                 { path: '/settings/profile/sessions', element: <SessionsPage /> },
                 { path: '/settings/profile/tokens', element: <PersonalTokensPage /> },
+                { path: '/settings/profile/connected-apps', element: <ConnectedAppsPage /> },
                 { path: '/settings/profile/linked-accounts', element: <LinkedAccountsPage /> },
                 { path: '/settings/accounts', element: <AccountsSettingsPage /> },
                 { path: '/settings/categories', element: <CategoriesPage /> },

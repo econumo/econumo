@@ -1829,6 +1829,39 @@
       "readonly": "Read-only access — changes are disabled"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "Connect an app to Econumo",
+      "wantsAccess": "wants to access your Econumo account.",
+      "redirect": "After you allow, you'll be sent to {host}.",
+      "loopback": "After you allow, you'll return to an app on this computer.",
+      "fullAccess": "It will be able to read and change all of your Econumo data.",
+      "signedInAs": "Signed in as {email}",
+      "switchAccount": "Not you? Switch account",
+      "allow": "Allow",
+      "deny": "Deny",
+      "invalidTitle": "This app sent an invalid request",
+      "invalidBody": "Econumo can't connect it. Go back to the app and try again.",
+      "returnToHost": "Return to {host}",
+      "returnToApp": "Return to the app",
+      "readonly": "Your account is read-only, so apps can't be connected."
+    },
+    "apps": {
+      "title": "Connected apps",
+      "description": "Apps like Claude or Codex that you allowed to use your Econumo data. Revoking an app signs it out right away.",
+      "empty": "No apps are connected yet.",
+      "howTo": "In Claude or Codex, add a custom connector / MCP server with this address and sign in when asked.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "revoke": "Revoke",
+      "revokeConfirm": "{name} will lose access to your Econumo data.",
+      "connected": "Connected {date}",
+      "lastUsed": "Last used {when}",
+      "loopback": "Runs on this computer",
+      "returnsTo": "Sends you back to {host}",
+      "menuItem": "Connected apps"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "This value should not be blank.",
@@ -1922,6 +1955,12 @@
       "name_length": "Tag name must be {min}-{max} characters",
       "cannot_be_merged": "The selected tags cannot be merged",
       "list_empty": "Tags list is empty"
+    },
+    "authserver": {
+      "disabled": "Connecting apps is not available on this server.",
+      "client_not_found": "This app's registration has expired or is unknown. Remove Econumo from the app and add it again.",
+      "redirect_uri_mismatch": "This sign-in link is not valid for this app. Start the connection again from the app.",
+      "grant_not_found": "Connected app not found."
     },
     "oauth": {
       "provider_not_configured": "Sign-in provider is not configured",

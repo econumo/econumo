@@ -7,24 +7,29 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// Access-token kinds: a login session (sliding expiry) or a personal access
-// token (fixed or no expiry, created explicitly by the user for integrations).
+// Access-token kinds: a login session (sliding expiry), a personal access
+// token (fixed or no expiry, created explicitly by the user for integrations),
+// or an OAuth access token issued to an MCP client (short-lived, tied to a grant).
 const (
 	TokenKindSession  = "session"
 	TokenKindPersonal = "personal"
+	TokenKindOAuth    = "oauth"
 )
 
 // TokenScope narrows what a bearer token may call. Sessions and ordinary PATs
 // are full; an ingest PAT exists so a phone Shortcut can hold a credential that
-// can push transactions and do nothing else.
+// can push transactions and do nothing else. An mcp token is issued by the
+// OAuth server for the /mcp resource only.
 type TokenScope string
 
 const (
 	TokenScopeFull   TokenScope = "full"
 	TokenScopeIngest TokenScope = "ingest"
+	TokenScopeMCP    TokenScope = "mcp"
 )
 
-// ParseTokenScope fails closed: anything but the two known values is an error.
+// ParseTokenScope fails closed: anything but the two user-selectable values is
+// an error, so the mcp scope can never be minted through a user-supplied field.
 func ParseTokenScope(s string) (TokenScope, error) {
 	switch TokenScope(s) {
 	case TokenScopeFull, TokenScopeIngest:
@@ -63,6 +68,9 @@ type AccessToken struct {
 	// logout can send id_token_hint. Both nil for PATs.
 	Provider *string
 	IDToken  *string
+	// GrantID links an oauth token to the grant it was issued under, so revoking
+	// the grant revokes its access tokens.
+	GrantID *vo.Id
 }
 
 func (t *AccessToken) IsLive(now time.Time) bool {
