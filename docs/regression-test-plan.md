@@ -608,6 +608,42 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Creating from within the transaction dialog (create-on-type) lands the
       item in the settings list too.
 
+## 7a. Global search
+
+Hotkey-only entry (no on-screen button yet), so no 📱 markers: run on desktop,
+and on tablet/phone only with a hardware keyboard.
+
+- [ ] `Ctrl+K` (Windows/Linux) / `⌘K` (macOS) opens search from any page; the
+      input is focused and empty on every open. While another dialog (e.g. Add
+      transaction) is open the shortcut does nothing; pressed while search is
+      open it stays in search and does not trigger the browser's own shortcut.
+- [ ] Layout: on desktop the palette is a wide centered dialog (~670px); on a
+      phone-width viewport it is a full-screen sheet with a close X.
+- [ ] Empty query lists recent transactions across all accounts, newest first,
+      grouped by day, each row naming its account; transfers read
+      "From → To" with no +/− sign.
+- [ ] Typing filters accounts, your own categories, payees, tags, labels and
+      transactions; a skipped letter still matches ("grcries" finds
+      "Groceries"); amounts match exactly only (no partial-number matches).
+- [ ] Accounts in a hidden folder and shared accounts appear; selecting one
+      opens the account page and closes search; `⋯` shows Edit / Access (admin
+      only) / Delete (owner) or Decline (shared account).
+- [ ] Deleting or declining an account from its result `⋯` keeps search open
+      and the row disappears from the list.
+- [ ] Connected users' classifications never appear; archived ones appear
+      after the active ones, dimmed with the archived badge, and `⋯` offers
+      Unarchive.
+- [ ] Selecting a category/payee/tag/label shows only its transactions; typing
+      narrows within it; Back (button, or Backspace on an empty input) returns
+      to the results with the previous query restored; deleting or merging it
+      from the header `⋯` returns to the results.
+- [ ] A result group with more than 5 matches shows "Show all (N)", which
+      expands the whole group.
+- [ ] Selecting a transaction opens its preview; Edit opens the form (search
+      closes); Delete removes it and the list updates.
+- [ ] Keyboard: ↑/↓ move the highlight, Enter opens the highlighted row, Esc
+      closes search.
+
 ## 8. Currencies
 
 - [ ] "My currencies" vs "Global currencies" tabs; enable/disable one currency;
