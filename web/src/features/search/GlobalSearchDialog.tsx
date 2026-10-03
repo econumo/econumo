@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
+import { Button } from '@/components/ui/button'
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
@@ -65,9 +66,10 @@ function firstTransactions(entries: DailyListEntry[], count: number): DailyListE
 
 // Lives inside the dialog content, which unmounts on close: every open starts
 // from a fresh query/scope, and nothing is computed while the search is closed.
-function SearchPanel({ onPreview }: { onPreview: (tx: ViewTransaction) => void }) {
+function SearchPanel({ onPreview, dismissible }: { onPreview: (tx: ViewTransaction) => void; dismissible: boolean }) {
   const { t, i18n } = useTranslation()
   const close = useUiStore((s) => s.closeSearch)
+  const isPhone = useIsPhone()
   const navigate = useNavigate()
   const { data: user } = useUserData()
   const { data: transactions } = useTransactions()
@@ -132,14 +134,15 @@ function SearchPanel({ onPreview }: { onPreview: (tx: ViewTransaction) => void }
     result.accounts.length === 0 &&
     CLASSIFICATION_GROUPS.every(({ key }) => result[key].length === 0)
 
-  // phones: the panel fills the full-screen sheet (the list takes the rest) and
-  // its first row keeps clear of the corner close button
+  // phones: the panel fills the full-screen sheet, with the list scrolling
+  // between the fixed input and the Close bar
   return (
     <div className="flex flex-col max-sm:h-full max-sm:pt-[env(safe-area-inset-top)]">
       {/* outside Command: cmdk claims Enter on its root, which would hijack the Back button */}
-      {drilled && scope.kind !== 'all' ? <DrillHeader type={scope.kind} item={drilled} onBack={goBack} className="max-sm:pr-8" /> : null}
+      {drilled && scope.kind !== 'all' ? <DrillHeader type={scope.kind} item={drilled} onBack={goBack} className="max-sm:px-2" /> : null}
       <Command shouldFilter={false} loop className="min-h-0 bg-transparent p-0 max-sm:flex-1">
-        <div className={drilled ? undefined : 'max-sm:pr-8'}>
+        {/* the shared InputGroup box is h-11 up to the tablet breakpoint (max-md); phones alone get a taller h-12 */}
+        <div className="max-sm:[&_[data-slot=input-group]]:h-12!">
           <CommandInput
             ref={inputRef}
             autoFocus
@@ -152,7 +155,7 @@ function SearchPanel({ onPreview }: { onPreview: (tx: ViewTransaction) => void }
                 goBack()
               }
             }}
-            placeholder={t('search.placeholder')}
+            placeholder={isPhone ? t('search.title') : t('search.placeholder')}
           />
         </div>
         <CommandList className="mt-2 max-h-none max-sm:min-h-0 max-sm:flex-1 sm:max-h-[70vh]">
@@ -198,7 +201,7 @@ function SearchPanel({ onPreview }: { onPreview: (tx: ViewTransaction) => void }
             <CommandGroup heading={query.trim() && scope.kind === 'all' ? t('search.groups.transactions') : undefined}>
               {firstTransactions(result.transactions, count).map((entry) =>
                 entry.kind === 'separator' ? (
-                  <div key={`sep-${entry.day}`} className="px-2 pb-1 pt-3 text-xs font-medium uppercase text-muted-foreground">
+                  <div key={`sep-${entry.day}`} className="px-2 pb-1 pt-3 text-xs font-medium uppercase text-muted-foreground max-sm:px-3">
                     {separatorText(entry, t, i18n.language)}
                   </div>
                 ) : (
@@ -219,6 +222,15 @@ function SearchPanel({ onPreview }: { onPreview: (tx: ViewTransaction) => void }
           {nothing ? <div className="py-6 text-center text-sm text-muted-foreground">{t('search.nothing_found')}</div> : null}
         </CommandList>
       </Command>
+      {/* ResponsiveDialog's footer prop would force this button to its shared h-11; this bar
+          needs its own h-12, so it renders here instead, bled to the sheet edges */}
+      {isPhone && dismissible ? (
+        <div className="-mx-4 border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+          <Button type="button" variant="secondary" className="h-12 w-full" onClick={close}>
+            {t('common.button.close.label')}
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -230,9 +242,10 @@ export function GlobalSearchDialog() {
   const openTransactionModal = useUiStore((s) => s.openTransactionModal)
   const { data: user } = useUserData()
   const deleteTransaction = useDeleteTransaction()
-  const isPhone = useIsPhone()
   const [preview, setPreview] = useState<ViewTransaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
+  // interactions inside the stacked preview/confirm must not dismiss the search
+  const dismissible = !preview && !deleteTarget
 
   const canChange = (tx: ViewTransaction) => canTouchTransaction(tx, !!tx.account && canWriteToAccount(tx.account, user?.id))
 
@@ -245,12 +258,9 @@ export function GlobalSearchDialog() {
         hideHeader
         fullScreen
         size="wide"
-        // the full-screen phone sheet has no Escape key or overlay to leave by
-        showClose={isPhone}
-        // interactions inside the stacked preview/confirm must not dismiss the search
-        dismissible={!preview && !deleteTarget}
+        dismissible={dismissible}
       >
-        <SearchPanel onPreview={setPreview} />
+        <SearchPanel onPreview={setPreview} dismissible={dismissible} />
       </ResponsiveDialog>
 
       {preview ? (

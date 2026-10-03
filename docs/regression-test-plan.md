@@ -648,7 +648,7 @@ and on tablet/phone only with a hardware keyboard.
       open it stays in search and does not trigger the browser's own shortcut.
       Works with a Cyrillic keyboard layout active.
 - [ ] Layout: on desktop the palette is a wide centered dialog (~670px); on a
-      phone-width viewport it is a full-screen sheet with a close X.
+      phone-width viewport it is a full-screen sheet.
 - [ ] Empty query lists recent transactions across all accounts, newest first,
       grouped by day; each row names its account with the account icon on the
       right, under the amount; transfers read "From → To" (both icons) with no
@@ -691,6 +691,9 @@ and on tablet/phone only with a hardware keyboard.
       closes); Delete removes it and the list updates.
 - [ ] Keyboard: ↑/↓ move the highlight, Enter opens the highlighted row, Esc
       closes search.
+- [ ] 📱 On a phone the search field reads "Search", there is no corner ✕, and
+      a full-width Close button at the bottom closes the search; the list
+      scrolls between the field and the Close button.
 
 ## 8. Currencies
 
