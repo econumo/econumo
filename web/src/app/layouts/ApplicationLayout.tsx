@@ -138,7 +138,7 @@ export function ApplicationLayout() {
           aria-label={appName}
           className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg p-1 hover:bg-accent"
         >
-          <img src={grayLogo} width={125} height={20} alt="" />
+          <img src={grayLogo} width={163} height={26} alt="" />
           <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
         </Link>
         <button
