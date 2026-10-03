@@ -95,8 +95,32 @@ it('draws the progress bar and colours Spent by row state', () => {
     Object.assign(food, { budgeted: '100', spent: '150', budgetSpent: '150', available: '-120' })
   })
   const row = screen.getByTestId('phone-row-cat-food')
-  expect(within(row).getByTestId('phone-progress').firstElementChild).toHaveStyle({ width: '100%' })
+  const bar = within(row).getByTestId('phone-progress').firstElementChild
+  expect(bar).toHaveStyle({ width: '100%' })
+  expect(bar?.className).toContain('bg-expense')
   expect(within(row).getByText('150.00').className).toContain('text-expense')
+})
+
+it('spending with no budget fills the bar in red', () => {
+  renderView({}, (b) => {
+    const food = b.structure.elements.find((el) => el.id === 'cat-food')!
+    Object.assign(food, { budgeted: '0', spent: '40', budgetSpent: '40', available: '-40' })
+  })
+  const row = screen.getByTestId('phone-row-cat-food')
+  const bar = within(row).getByTestId('phone-progress').firstElementChild
+  expect(bar).toHaveStyle({ width: '100%' })
+  expect(bar?.className).toContain('bg-expense')
+  expect(within(row).getByText('40.00').className).toContain('text-expense')
+})
+
+it('spending with no budget on top of a debt from earlier months fills the bar in red', () => {
+  renderView({}, (b) => {
+    const food = b.structure.elements.find((el) => el.id === 'cat-food')!
+    Object.assign(food, { budgeted: '0', spent: '40', budgetSpent: '40', available: '-70' })
+  })
+  const bar = within(screen.getByTestId('phone-row-cat-food')).getByTestId('phone-progress').firstElementChild
+  expect(bar).toHaveStyle({ width: '100%' })
+  expect(bar?.className).toContain('bg-expense')
 })
 
 it('an overspend that earlier months still cover stays gray', () => {
