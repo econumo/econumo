@@ -101,33 +101,33 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"categoryId": ""})
 		}
-		rows, err = s.read.BudgetTransactionsByLabelAndCategory(ctx, labelID, categoryID, f.includedAccountIDs, periodStart, periodEnd)
+		rows, err = s.read.BudgetTransactionsByLabelAndCategory(ctx, labelID, categoryID, f.everydayAccountIDs, periodStart, periodEnd)
 	case lbl != "" && req.Uncategorized:
 		labelID, perr := vo.ParseId(lbl)
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
 		}
-		rows, err = s.read.BudgetTransactionsByLabelUncategorized(ctx, labelID, f.includedAccountIDs, periodStart, periodEnd)
+		rows, err = s.read.BudgetTransactionsByLabelUncategorized(ctx, labelID, f.everydayAccountIDs, periodStart, periodEnd)
 	case lbl != "":
 		labelID, perr := vo.ParseId(lbl)
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
 		}
-		rows, err = s.read.BudgetTransactionsByLabel(ctx, labelID, f.includedAccountIDs, periodStart, periodEnd)
+		rows, err = s.read.BudgetTransactionsByLabel(ctx, labelID, f.everydayAccountIDs, periodStart, periodEnd)
 	case req.Uncategorized && tag == "" && env == "":
-		rows, err = s.read.BudgetTransactionsUncategorized(ctx, f.includedAccountIDs, periodStart, periodEnd)
+		rows, err = s.read.BudgetTransactionsUncategorized(ctx, f.everydayAccountIDs, periodStart, periodEnd)
 	case req.Uncategorized && tag != "" && env == "":
 		tagID, perr := vo.ParseId(tag)
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"tagId": ""})
 		}
-		rows, err = s.read.BudgetTransactionsByTag(ctx, tagID, nil, true, f.includedAccountIDs, periodStart, periodEnd)
+		rows, err = s.read.BudgetTransactionsByTag(ctx, tagID, nil, true, f.everydayAccountIDs, periodStart, periodEnd)
 	case cat != "" && tag == "" && env == "":
 		catID, perr := vo.ParseId(cat)
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"categoryId": ""})
 		}
-		rows, err = s.read.BudgetTransactionsByCategories(ctx, []vo.Id{catID}, f.includedAccountIDs, periodStart, periodEnd)
+		rows, err = s.read.BudgetTransactionsByCategories(ctx, []vo.Id{catID}, f.everydayAccountIDs, periodStart, periodEnd)
 	case tag != "" && env == "":
 		tagID, perr := vo.ParseId(tag)
 		if perr != nil {
@@ -141,7 +141,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 			}
 			catFilter = &c
 		}
-		rows, err = s.read.BudgetTransactionsByTag(ctx, tagID, catFilter, false, f.includedAccountIDs, periodStart, periodEnd)
+		rows, err = s.read.BudgetTransactionsByTag(ctx, tagID, catFilter, false, f.everydayAccountIDs, periodStart, periodEnd)
 	case env != "" && tag == "" && cat == "" && !req.Uncategorized:
 		envID, perr := vo.ParseId(env)
 		if perr != nil {
@@ -151,7 +151,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		if cerr != nil {
 			return nil, cerr
 		}
-		rows, err = s.read.BudgetTransactionsByCategories(ctx, catIDs, f.includedAccountIDs, periodStart, periodEnd)
+		rows, err = s.read.BudgetTransactionsByCategories(ctx, catIDs, f.everydayAccountIDs, periodStart, periodEnd)
 	default:
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}

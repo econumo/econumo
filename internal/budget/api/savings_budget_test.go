@@ -132,6 +132,45 @@ func TestGetBudgetSavings_MonthlyRows(t *testing.T) {
 	}
 }
 
+// Saved is the account's whole net change in the month, not only what moved in
+// from the everyday accounts: interest, fees, transfers with accounts outside
+// the budget and moves between savings accounts all count.
+func TestGetBudgetSavings_CountsAllActivity(t *testing.T) {
+	h, tok, _ := newSavingsBudget(t)
+	const outsideID = "aaaa3333-0000-0000-0000-0000000000c1"
+	h.f.Account(fixture.Account{ID: outsideID, UserID: seedUserID, CurrencyID: usdID, Name: "Outside"})
+	at := func(day int) time.Time { return time.Date(2026, 8, day, 12, 0, 0, 0, time.UTC) }
+	for _, tx := range []fixture.Transaction{
+		{AccountID: savingsUSDID, Type: 1, Amount: "12", SpentAt: at(10)},
+		{AccountID: savingsUSDID, Type: 0, Amount: "2", SpentAt: at(11)},
+		{AccountID: outsideID, AccountRecipientID: savingsUSDID, Type: 2, Amount: "70", AmountRecipient: "70", SpentAt: at(12)},
+		{AccountID: savingsUSDID, AccountRecipientID: savingsEURID, Type: 2, Amount: "55", AmountRecipient: "50", SpentAt: at(13)},
+	} {
+		tx.UserID = seedUserID
+		h.f.Transaction(tx)
+	}
+
+	by := savingsByID(mustSavingsRows(t, h, tok, "2026-08-15"))
+	// S1: 500 - 200 + 12 - 2 + 70 - 55; S2: 100 + 50.
+	if s1 := by[savingsUSDID]; s1.Spent != "325" || s1.Available != "75" {
+		t.Errorf("S1 spent/available = %s/%s, want 325/75", s1.Spent, s1.Available)
+	}
+	if s2 := by[savingsEURID]; s2.Spent != "150" {
+		t.Errorf("S2 spent = %s, want 150", s2.Spent)
+	}
+
+	plan, _ := h.savingsPlan(t, tok, budgetID1, savingsPlanWindow)
+	p := planSavingsByID(plan.Item.Structure.Savings)
+	assertPlanCells(t, "S1", p[savingsUSDID].Cells, []planSavingsCellView{{"0", ""}, {"325", "400"}, {"0", ""}})
+	assertPlanCells(t, "S2", p[savingsEURID].Cells, []planSavingsCellView{{"0", ""}, {"150", "50"}, {"0", ""}})
+}
+
+func mustSavingsRows(t *testing.T, h *harness, tok, date string) []savingsElementView {
+	t.Helper()
+	view, _ := h.savingsBudget(t, tok, date)
+	return view.Item.Structure.Savings
+}
+
 func TestGetBudgetSavings_ConvertsToElementCurrency(t *testing.T) {
 	h, tok, _ := newSavingsBudget(t)
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/change-element-currency", tok, map[string]any{
@@ -355,9 +394,9 @@ func TestGetBudgetSavings_ClosingBalance(t *testing.T) {
 		s1S, s2S string
 	}{
 		{"2026-07-15", "1000", "0", "0", "0"},
-		// August's S1->S2 move is not saved: spent stays the everyday transfers only.
-		{"2026-08-15", "1345", "150", "300", "100"},
-		{"2026-09-15", "1415", "150", "0", "0"},
+		// August's S1->S2 move counts on both rows: S1 saved 300 - 55, S2 100 + 50.
+		{"2026-08-15", "1400", "150", "245", "150"},
+		{"2026-09-15", "1470", "150", "0", "0"},
 	} {
 		got := h.savingsClosings(t, tok, tc.date)
 		if !decEq(got[savingsUSDID][0], tc.s1) || !decEq(got[savingsEURID][0], tc.s2) {

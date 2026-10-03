@@ -252,9 +252,9 @@ export interface PlanOpeningBalanceDto {
 }
 
 /** one (month, account currency) net change of the savings accounts: every
- *  transaction on them, interest included, so it exceeds the savings rows,
- *  which count only what moved in from everyday accounts. Only pairs with
- *  activity are listed; amounts are unconverted. */
+ *  transaction on them, interest included — the savings rows' actuals, grouped
+ *  by account currency. Only pairs with activity are listed; amounts are
+ *  unconverted. */
 export interface PlanSavingsFlowDto {
   /** date-only Y-m-d, first of the month */
   month: string
@@ -279,4 +279,8 @@ export interface BudgetPlanDto {
   /** optional for the same reason as structure.savings */
   savingsOpeningBalances?: PlanOpeningBalanceDto[]
   savingsFlows?: PlanSavingsFlowDto[]
+  /** income minus expenses booked on the savings accounts, same shape as
+   *  savingsFlows. The category rows count the everyday accounts only, so the
+   *  combined balance adds this back. Optional for the same reason. */
+  savingsIncomeExpense?: PlanSavingsFlowDto[]
 }

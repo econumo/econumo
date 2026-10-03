@@ -30,7 +30,7 @@ func TestSavingsFlag_PerBudget(t *testing.T) {
 		"accountIds": []string{accountID, savingsUSDID, savingsEURID},
 	})
 	flagSavings(t, h.tdb, savingsFlagBudgetB, savingsUSDID, true) // S2 stays everyday in B
-	// S2 -> S1: savings-to-savings in A (not counted), everyday-to-savings in B.
+	// S2 -> S1: savings-to-savings in A (moves both rows), everyday-to-savings in B.
 	h.f.Transaction(fixture.Transaction{UserID: seedUserID, Type: 2, AccountID: savingsEURID, AccountRecipientID: savingsUSDID,
 		Amount: "20", AmountRecipient: "22", SpentAt: time.Date(2026, 8, 9, 12, 0, 0, 0, time.UTC)})
 
@@ -38,8 +38,8 @@ func TestSavingsFlag_PerBudget(t *testing.T) {
 	if len(a) != 2 {
 		t.Fatalf("A savings = %+v, want S1 and S2", a)
 	}
-	if a[savingsUSDID].Spent != "300" {
-		t.Errorf("A S1 spent = %s, want 300 (the S2 transfer is savings-to-savings)", a[savingsUSDID].Spent)
+	if a[savingsUSDID].Spent != "322" || a[savingsEURID].Spent != "80" {
+		t.Errorf("A spent = S1 %s, S2 %s; want 322, 80 (100 - 20)", a[savingsUSDID].Spent, a[savingsEURID].Spent)
 	}
 
 	bRows := h.savingsBudgetOf(t, tok, savingsFlagBudgetB, "2026-08-15").Item.Structure.Savings

@@ -1,11 +1,10 @@
 package repo_test
 
-// Integration tests for SavingsByMonth and AccountsNetByMonth. Regression-locks
-// the direction accounting (everyday->savings counts amount_recipient,
-// savings->everyday subtracts amount), the savings<->savings and non-member
-// exclusions, cross-currency amounts staying in the savings account's own
-// currency, the month-boundary datetime binding, and the empty-id-set
-// short-circuits.
+// Integration tests for AccountsNetByMonth. Regression-locks the sign rules
+// (incoming transfers count amount_recipient, outgoing subtract amount, income
+// adds, expense subtracts, every counterparty), cross-currency amounts staying
+// in each account's own currency, the month-boundary datetime binding, and the
+// empty-id-set short-circuit.
 
 import (
 	"context"
@@ -16,7 +15,7 @@ import (
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
-func TestSavingsByMonth(t *testing.T) {
+func TestAccountsNetByMonth(t *testing.T) {
 	read, db := newReadRepo(t)
 	ctx := context.Background()
 	f := fixture.New(t, db)
@@ -40,34 +39,31 @@ func TestSavingsByMonth(t *testing.T) {
 	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000003", UserID: userA, AccountID: e1, AccountRecipientID: s2, Type: 2, Amount: "110.00", AmountRecipient: "100.00", SpentAt: "2026-03-31 23:59:59"})
 	// S1 April: +200 (month boundary — first instant of April must be INCLUDED)
 	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000004", UserID: userA, AccountID: e1, AccountRecipientID: s1, Type: 2, Amount: "200.00", AmountRecipient: "200.00", SpentAt: "2026-04-01 00:00:00"})
-	// savings <-> savings: ignored by SavingsByMonth
+	// savings <-> savings
 	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000005", UserID: userA, AccountID: s1, AccountRecipientID: s2, Type: 2, Amount: "50.00", AmountRecipient: "45.00", SpentAt: "2026-03-15 00:00:00"})
-	// non-member -> savings: ignored by SavingsByMonth
+	// non-member -> savings
 	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000006", UserID: userA, AccountID: x, AccountRecipientID: s1, Type: 2, Amount: "70.00", AmountRecipient: "70.00", SpentAt: "2026-03-16 00:00:00"})
-	// income/expense on S1: ignored by SavingsByMonth
+	// income/expense on S1
 	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000007", UserID: userA, AccountID: s1, Type: 1, Amount: "3.00", SpentAt: "2026-03-17 00:00:00"})
 	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000008", UserID: userA, AccountID: s1, Type: 0, Amount: "1.00", SpentAt: "2026-03-18 00:00:00"})
 
 	mar := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	may := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 
-	savingsIDs := []vo.Id{vo.MustParseId(s1), vo.MustParseId(s2)}
-	everydayIDs := []vo.Id{vo.MustParseId(e1), vo.MustParseId(e2)}
-
-	rows, err := read.SavingsByMonth(ctx, savingsIDs, everydayIDs, mar, may)
+	rows, err := read.AccountsNetByMonth(ctx, []vo.Id{vo.MustParseId(s1), vo.MustParseId(s2)}, mar, may)
 	if err != nil {
-		t.Fatalf("SavingsByMonth: %v", err)
-	}
-	if len(rows) != 3 {
-		t.Fatalf("want 3 rows, got %d: %+v", len(rows), rows)
+		t.Fatalf("AccountsNetByMonth: %v", err)
 	}
 	type want struct {
 		accountID, month, amount string
 	}
 	wants := []want{
-		{s1, "2026-03-01", "380"},
-		{s2, "2026-03-01", "100"},
+		{s1, "2026-03-01", "402"}, // +500 -120 -50 +70 +3 -1
+		{s2, "2026-03-01", "145"}, // +100 +45, amount_recipient in EUR
 		{s1, "2026-04-01", "200"},
+	}
+	if len(rows) != len(wants) {
+		t.Fatalf("want %d rows, got %d: %+v", len(wants), len(rows), rows)
 	}
 	for i, w := range wants {
 		r := rows[i]
@@ -78,35 +74,42 @@ func TestSavingsByMonth(t *testing.T) {
 			t.Errorf("row %d amount = %s, want %s", i, got, w.amount)
 		}
 	}
+}
 
-	// AccountsNetByMonth on S1: +500 -120 -50 +70 +3 -1 = 402 (March), 200 (April).
-	netRows, err := read.AccountsNetByMonth(ctx, []vo.Id{vo.MustParseId(s1)}, mar, may)
+func TestAccountsIncomeExpenseByMonth(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	s1 := "aaaa2222-0000-0000-0000-00000000005a"
+	f.Account(fixture.Account{ID: s1, UserID: userA, CurrencyID: usdID, Name: "S1"})
+	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000011", UserID: userA, AccountID: s1, Type: 1, Amount: "12.00", SpentAt: "2026-03-01 00:00:00"})
+	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000012", UserID: userA, AccountID: s1, Type: 0, Amount: "5.00", SpentAt: "2026-03-31 23:59:59"})
+	// transfers either way: not counted
+	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000013", UserID: userA, AccountID: acctA, AccountRecipientID: s1, Type: 2, Amount: "500.00", AmountRecipient: "500.00", SpentAt: "2026-03-10 00:00:00"})
+	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000014", UserID: userA, AccountID: s1, AccountRecipientID: acctA, Type: 2, Amount: "20.00", AmountRecipient: "20.00", SpentAt: "2026-03-11 00:00:00"})
+	// outside [from, to)
+	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000015", UserID: userA, AccountID: s1, Type: 1, Amount: "7.00", SpentAt: "2026-04-01 00:00:00"})
+
+	mar := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	apr := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	rows, err := read.AccountsIncomeExpenseByMonth(ctx, []vo.Id{vo.MustParseId(s1)}, mar, apr)
 	if err != nil {
-		t.Fatalf("AccountsNetByMonth: %v", err)
+		t.Fatalf("AccountsIncomeExpenseByMonth: %v", err)
 	}
-	if len(netRows) != 2 {
-		t.Fatalf("want 2 net rows, got %d: %+v", len(netRows), netRows)
+	if len(rows) != 1 || rows[0].AccountID != s1 || rows[0].Month != "2026-03-01" || vo.NewDecimal(rows[0].Amount).String() != vo.NewDecimal("7").String() {
+		t.Fatalf("rows = %+v, want one March row of 7 (12 - 5)", rows)
 	}
-	if netRows[0].AccountID != s1 || netRows[0].Month != "2026-03-01" || vo.NewDecimal(netRows[0].Amount).String() != vo.NewDecimal("402").String() {
-		t.Errorf("March net row = %+v, want account=%s month=2026-03-01 amount=402", netRows[0], s1)
-	}
-	if netRows[1].AccountID != s1 || netRows[1].Month != "2026-04-01" || vo.NewDecimal(netRows[1].Amount).String() != vo.NewDecimal("200").String() {
-		t.Errorf("April net row = %+v, want account=%s month=2026-04-01 amount=200", netRows[1], s1)
+	if rows, err := read.AccountsIncomeExpenseByMonth(ctx, nil, mar, apr); err != nil || rows != nil {
+		t.Errorf("empty accountIDs should be nil,nil; got %v, %v", rows, err)
 	}
 }
 
-func TestSavingsByMonth_EmptyIDSets(t *testing.T) {
+func TestAccountsNetByMonth_EmptyIDSet(t *testing.T) {
 	read, _ := newReadRepo(t)
 	ctx := context.Background()
 	mar := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	may := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 
-	if rows, err := read.SavingsByMonth(ctx, nil, []vo.Id{vo.MustParseId(acctA)}, mar, may); err != nil || rows != nil {
-		t.Errorf("SavingsByMonth empty savingsIDs should be nil,nil; got %v, %v", rows, err)
-	}
-	if rows, err := read.SavingsByMonth(ctx, []vo.Id{vo.MustParseId(acctA)}, nil, mar, may); err != nil || rows != nil {
-		t.Errorf("SavingsByMonth empty everydayIDs should be nil,nil; got %v, %v", rows, err)
-	}
 	if rows, err := read.AccountsNetByMonth(ctx, nil, mar, may); err != nil || rows != nil {
 		t.Errorf("AccountsNetByMonth empty accountIDs should be nil,nil; got %v, %v", rows, err)
 	}

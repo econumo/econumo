@@ -755,8 +755,16 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       switch to the Plan view in the same tab: the Total savings updates
       without a manual reload.
 - [ ] 📱 "Total savings" is a plain label with no info icon. Record
-      interest on a savings account: the Total savings rises by it while the
-      Savings line does not — intended, not a bug.
+      interest (income) on a savings account: its Saved / Actual and the
+      Savings line rise by it, as does the Total savings; the everyday
+      Balance does not move. A fee (expense) on it lowers them the same way,
+      and a transfer into it from an account that is not in the budget counts
+      as saved too.
+- [ ] 📱 Income and expenses booked on a savings account stay out of the
+      category rows: interest in an income category and a fee in an expense
+      category leave both categories' amounts (monthly Budget view and Plan
+      view) and their "Show transactions" lists unchanged; the same
+      transactions on an everyday account do show there.
 - [ ] 📱 A savings cell carries comment threads like any other cell: the
       corner marker shows on a commented cell, and Shift+Enter (desktop) or a
       tap on the marker opens its thread.
@@ -770,8 +778,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       that account's item sheet on a phone for the same month. Expense and
       income cells carry no such line.
 - [ ] 📱 Save into a TFSA all year, then transfer the lot to an RRSP (both
-      savings accounts in the budget): neither row's Saved / Actual moves, the
-      Total savings is unchanged, and from that month on the TFSA row's
+      savings accounts in the budget): that month the TFSA row's Saved / Actual
+      drops by the amount and the RRSP row's rises by it, the Savings line and
+      the Total savings are unchanged, and from that month on the TFSA row's
       balance is that much lower and the RRSP row's that much higher.
 - [ ] **Budget view (desktop and tablet) shows no savings**: with a savings
       account in the budget, no Savings block appears and the Total row counts
