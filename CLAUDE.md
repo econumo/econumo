@@ -168,7 +168,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   │   ports.go ..............   consumer-side interfaces for capabilities OTHER features provide
 │   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
 │   │   ├── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
-│   │   └── mcp/ ...................  MCP edge (all nine features have one): tool registration, mirroring
+│   │   └── mcp/ ...................  MCP edge (ten features have one): tool registration, mirroring
 │   │                                 api/ (see MCP endpoint below; prompts live in internal/web/mcp)
 │   ├── infra/ .................... engine-agnostic infrastructure shared by every feature:
 │   │   ├── storage/sqlc/ ......... sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
@@ -300,7 +300,7 @@ sends no `WWW-Authenticate`.
   `client_secret_post`/`client_secret_basic`). Redirect URIs must be https (ASCII host
   only) or http on a loopback host (`127.0.0.1`, `[::1]`, `localhost`; the port is
   ignored when matching), at most 2048 bytes; clients never approved are purged
-  after 24 h. Registration is behind the global per-endpoint rate cap; the token
+  on the next registration once 24 h old. Registration is behind the global per-endpoint rate cap; the token
   endpoint has no limiter of its own.
 - Consent lives at the SPA route `/oauth/authorize`. The session is a localStorage
   bearer token, so the browser cannot carry it to a Go-rendered page: the SPA calls

@@ -55,12 +55,13 @@ page says so. The app never sees your password, and its token works only on
 `/mcp`, not on the rest of the API.
 
 The access token lasts one hour and the app renews it silently with a
-rotating refresh token. A connection that is not used for 90 days expires and
-the app asks you to sign in again.
+rotating refresh token. A connection expires 90 days after its last refresh (clients
+refresh at least hourly while in use), and the app then asks you to sign in
+again.
 
 ## Revoking an app
 
-Settings, Profile, Connected apps lists every app you approved with when it
+Settings → Profile → Connected apps lists every app you approved with when it
 was connected and last used. Revoke signs it out immediately; its next tool
 call is rejected and it has to be approved again.
 
@@ -71,8 +72,8 @@ account. Changing your password from Settings keeps them connected.
 ## Alternative: a personal access token
 
 Clients that do not support the browser sign-in can send a personal access
-token instead. Create one in Settings, Profile, Personal tokens (scope
-"full") and configure the client to send
+token instead. Create one in Settings → Profile → API tokens (a token
+created there has full access) and configure the client to send
 `Authorization: Bearer eco_pat_...` to `<your Econumo URL>/mcp`. This works
 with or without `ECONUMO_URL`.
 
