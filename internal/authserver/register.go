@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/econumo/econumo/internal/model"
@@ -17,6 +18,7 @@ const (
 	defaultClientName = "MCP client"
 	maxClientName     = 100
 	maxRedirectURIs   = 10
+	maxRedirectURILen = 2048
 )
 
 func (s *Service) Register(ctx context.Context, req model.ClientRegistrationRequest) (model.ClientRegistrationResult, error) {
@@ -32,7 +34,7 @@ func (s *Service) Register(ctx context.Context, req model.ClientRegistrationRequ
 		}
 	}
 
-	name := strings.TrimSpace(req.ClientName)
+	name := strings.TrimSpace(strings.Map(dropInvisible, req.ClientName))
 	if name == "" {
 		name = defaultClientName
 	}
@@ -43,6 +45,9 @@ func (s *Service) Register(ctx context.Context, req model.ClientRegistrationRequ
 		return model.ClientRegistrationResult{}, &OAuthError{Status: 400, Code: "invalid_redirect_uri", Description: "between 1 and 10 redirect_uris are required"}
 	}
 	for _, u := range req.RedirectURIs {
+		if len(u) > maxRedirectURILen {
+			return model.ClientRegistrationResult{}, &OAuthError{Status: 400, Code: "invalid_redirect_uri", Description: "redirect URI is too long"}
+		}
 		if err := ValidateRedirectURI(u); err != nil {
 			return model.ClientRegistrationResult{}, &OAuthError{Status: 400, Code: "invalid_redirect_uri", Description: err.Error()}
 		}
@@ -104,6 +109,15 @@ func (s *Service) Register(ctx context.Context, req model.ClientRegistrationRequ
 	}
 	reqctx.AddLogAttr(ctx, "client_id", res.ClientID)
 	return res, nil
+}
+
+// Control and format runes (newlines, bidi overrides) would let a client name
+// spoof or reflow the consent page.
+func dropInvisible(r rune) rune {
+	if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
+		return -1
+	}
+	return r
 }
 
 func invalidMetadata(desc string) *OAuthError {

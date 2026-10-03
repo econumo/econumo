@@ -8,6 +8,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 type stubLimiter struct{ err error }
@@ -74,7 +75,27 @@ func TestRegisterPurgesUnusedClients(t *testing.T) {
 	if _, err := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"https://a.test/cb"}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.DescribeAuthorization(ctx, vo0(), authReq(old.ClientID)); !hasCode(err, errs.CodeAuthServerClientNotFound) {
+	if _, err := s.DescribeAuthorization(ctx, vo.NewId(), authReq(old.ClientID)); !hasCode(err, errs.CodeAuthServerClientNotFound) {
 		t.Fatalf("unused client must be purged: %v", err)
+	}
+}
+
+func TestRegisterSanitizesAndCaps(t *testing.T) {
+	s, _, _, _ := newTestService(t)
+	res, err := s.Register(ctx, model.ClientRegistrationRequest{ClientName: "Cla\u202eude\n", RedirectURIs: []string{"https://a.test/cb"}})
+	if err != nil || res.ClientName != "Claude" {
+		t.Fatalf("name must lose control and bidi runes: %q %v", res.ClientName, err)
+	}
+	only, err := s.Register(ctx, model.ClientRegistrationRequest{ClientName: "\u202e\n", RedirectURIs: []string{"https://a.test/cb"}})
+	if err != nil || only.ClientName != "MCP client" {
+		t.Fatalf("name that is only invisible runes falls back to the default: %q %v", only.ClientName, err)
+	}
+	var oe *OAuthError
+	long := "https://a.test/" + strings.Repeat("x", 2048)
+	if _, err := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{long}}); !errors.As(err, &oe) || oe.Code != "invalid_redirect_uri" {
+		t.Fatalf("long redirect URI: %v", err)
+	}
+	if _, err := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"https://cl\u0430ude.ai/cb"}}); !errors.As(err, &oe) || oe.Code != "invalid_redirect_uri" {
+		t.Fatalf("homograph redirect URI: %v", err)
 	}
 }

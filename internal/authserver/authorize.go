@@ -14,6 +14,8 @@ import (
 // redirectErr marks a bad request whose redirect target is verified, so the
 // error goes back to the client; any other validation error must be shown to
 // the user and never redirected.
+const maxState = 1024
+
 type redirectErr struct{ code, desc string }
 
 func clientNotFound() error {
@@ -41,14 +43,30 @@ func (s *Service) validate(ctx context.Context, req model.AuthorizationRequest) 
 	switch {
 	case req.ResponseType != "code":
 		return c, &redirectErr{"unsupported_response_type", "response_type must be code"}, nil
-	case req.CodeChallenge == "" || req.CodeChallengeMethod != "S256":
+	case req.CodeChallengeMethod != "S256" || !validChallenge(req.CodeChallenge):
 		return c, &redirectErr{"invalid_request", "PKCE with S256 is required"}, nil
+	case len(req.State) > maxState:
+		return c, &redirectErr{"invalid_request", "state is too long"}, nil
 	case req.Scope != "" && req.Scope != Scope:
 		return c, &redirectErr{"invalid_scope", "the only scope is mcp"}, nil
 	case !s.resourceOK(req.Resource):
 		return c, &redirectErr{"invalid_target", "unknown resource"}, nil
 	}
 	return c, nil, nil
+}
+
+// An S256 challenge is the unpadded base64url of a SHA-256 digest: 43 characters.
+func validChallenge(c string) bool {
+	if len(c) != 43 {
+		return false
+	}
+	for i := 0; i < len(c); i++ {
+		b := c[i]
+		if !(b >= 'A' && b <= 'Z' || b >= 'a' && b <= 'z' || b >= '0' && b <= '9' || b == '-' || b == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Service) resourceOK(r string) bool {
@@ -85,11 +103,12 @@ func (s *Service) DescribeAuthorization(ctx context.Context, userID vo.Id, req m
 	if err != nil {
 		return model.AuthorizationRequestResult{}, err
 	}
-	if re != nil {
-		return model.AuthorizationRequestResult{ErrorRedirectURL: s.errorRedirect(req, re.code, re.desc)}, nil
-	}
 	host, loopback := RedirectHost(req.RedirectURI)
-	return model.AuthorizationRequestResult{ClientName: c.Name, RedirectHost: host, IsLoopback: loopback}, nil
+	res := model.AuthorizationRequestResult{ClientName: c.Name, RedirectHost: host, IsLoopback: loopback}
+	if re != nil {
+		res.ErrorRedirectURL = s.errorRedirect(req, re.code, re.desc)
+	}
+	return res, nil
 }
 
 func (s *Service) ApproveAuthorization(ctx context.Context, userID vo.Id, req model.AuthorizationRequest) (model.AuthorizationDecisionResult, error) {

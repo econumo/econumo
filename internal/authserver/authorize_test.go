@@ -10,11 +10,18 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-func vo0() vo.Id { return vo.NewId() }
+func register(t *testing.T, s *Service, name string, uris ...string) model.ClientRegistrationResult {
+	t.Helper()
+	c, err := s.Register(ctx, model.ClientRegistrationRequest{ClientName: name, RedirectURIs: uris})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
 
 func TestDescribeAuthorization(t *testing.T) {
 	s, _, _, user := newTestService(t)
-	c, _ := s.Register(ctx, model.ClientRegistrationRequest{ClientName: "Claude", RedirectURIs: []string{"https://claude.ai/api/mcp/auth_callback"}})
+	c := register(t, s, "Claude", "https://claude.ai/api/mcp/auth_callback")
 	res, err := s.DescribeAuthorization(ctx, user, authReq(c.ClientID))
 	if err != nil || res.ClientName != "Claude" || res.RedirectHost != "claude.ai" || res.ErrorRedirectURL != "" {
 		t.Fatalf("%+v %v", res, err)
@@ -63,7 +70,7 @@ func TestDescribeAuthorization(t *testing.T) {
 
 func TestLoopbackRedirectRules(t *testing.T) {
 	s, _, _, user := newTestService(t)
-	c, _ := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"http://localhost:4000/callback"}})
+	c := register(t, s, "", "http://localhost:4000/callback")
 	q := authReq(c.ClientID)
 	q.RedirectURI = "http://localhost:5555/callback"
 	res, err := s.DescribeAuthorization(ctx, user, q)
@@ -79,7 +86,7 @@ func TestLoopbackRedirectRules(t *testing.T) {
 func TestApproveAndDecline(t *testing.T) {
 	s, creds, _, user := newTestService(t)
 	creds.gen = 7
-	c, _ := s.Register(ctx, model.ClientRegistrationRequest{ClientName: "Claude", RedirectURIs: []string{"https://claude.ai/api/mcp/auth_callback"}})
+	c := register(t, s, "Claude", "https://claude.ai/api/mcp/auth_callback")
 	res, err := s.ApproveAuthorization(ctx, user, authReq(c.ClientID))
 	if err != nil {
 		t.Fatal(err)
@@ -121,7 +128,7 @@ func TestApproveAndDecline(t *testing.T) {
 
 func TestRedirectKeepsExistingQuery(t *testing.T) {
 	s, _, _, user := newTestService(t)
-	c, _ := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"https://a.test/cb?app=1"}})
+	c := register(t, s, "", "https://a.test/cb?app=1")
 	q := authReq(c.ClientID)
 	q.RedirectURI = "https://a.test/cb?app=1"
 	res, err := s.ApproveAuthorization(ctx, user, q)
@@ -142,5 +149,49 @@ func TestConnectedAppRevokeValidate(t *testing.T) {
 	}
 	if err := (model.RevokeConnectedAppRequest{ID: vo.NewId().String()}).Validate(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestErrorRedirectCarriesHostLabel(t *testing.T) {
+	s, _, _, user := newTestService(t)
+	c := register(t, s, "Claude", "https://claude.ai/api/mcp/auth_callback")
+	q := authReq(c.ClientID)
+	q.Scope = "admin"
+	res, err := s.DescribeAuthorization(ctx, user, q)
+	if err != nil || res.ErrorRedirectURL == "" || res.ClientName != "Claude" || res.RedirectHost != "claude.ai" || res.IsLoopback {
+		t.Fatalf("%+v %v", res, err)
+	}
+	lb := register(t, s, "Codex", "http://127.0.0.1:1/cb")
+	q = authReq(lb.ClientID)
+	q.RedirectURI = "http://127.0.0.1:9/cb"
+	q.ResponseType = "token"
+	res, err = s.DescribeAuthorization(ctx, user, q)
+	if err != nil || res.ErrorRedirectURL == "" || !res.IsLoopback || res.RedirectHost != "127.0.0.1" {
+		t.Fatalf("%+v %v", res, err)
+	}
+}
+
+func TestChallengeAndStateShape(t *testing.T) {
+	s, _, _, user := newTestService(t)
+	c := register(t, s, "Claude", "https://claude.ai/api/mcp/auth_callback")
+	for name, mut := range map[string]func(*model.AuthorizationRequest){
+		"empty challenge":    func(q *model.AuthorizationRequest) { q.CodeChallenge = "" },
+		"short challenge":    func(q *model.AuthorizationRequest) { q.CodeChallenge = "abc" },
+		"long challenge":     func(q *model.AuthorizationRequest) { q.CodeChallenge += "A" },
+		"padded challenge":   func(q *model.AuthorizationRequest) { q.CodeChallenge = q.CodeChallenge[:42] + "=" },
+		"non-base64url char": func(q *model.AuthorizationRequest) { q.CodeChallenge = q.CodeChallenge[:42] + "+" },
+		"oversized state":    func(q *model.AuthorizationRequest) { q.State = strings.Repeat("s", 1025) },
+	} {
+		q := authReq(c.ClientID)
+		mut(&q)
+		res, err := s.DescribeAuthorization(ctx, user, q)
+		if err != nil || !strings.Contains(res.ErrorRedirectURL, "error=invalid_request") {
+			t.Errorf("%s: %+v %v", name, res, err)
+		}
+	}
+	q := authReq(c.ClientID)
+	q.State = strings.Repeat("s", 1024)
+	if res, err := s.DescribeAuthorization(ctx, user, q); err != nil || res.ErrorRedirectURL != "" {
+		t.Errorf("state at the cap must pass: %+v %v", res, err)
 	}
 }
