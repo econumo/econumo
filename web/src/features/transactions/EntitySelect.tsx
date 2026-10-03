@@ -11,6 +11,8 @@ export interface EntityOption {
   label: string
   icon?: string
   disabled?: boolean
+  /** what typing matches against when the label carries decoration (e.g. an account's balance) */
+  searchText?: string
 }
 
 interface Row extends EntityOption {
@@ -59,7 +61,7 @@ export function EntitySelect({
     (rootRef.current?.closest('[data-slot="drawer-content"], [data-slot="dialog-content"]') as HTMLElement | null) ?? undefined
 
   const selected = options.find((o) => o.value === value) ?? null
-  const filtered = rankByName(options, (o) => o.label, search)
+  const filtered = rankByName(options, (o) => o.searchText ?? o.label, search)
   // the created name is trimmed, so it is also what must be new and valid
   const name = search.trim()
   const exactMatch = options.some((o) => o.label.toLowerCase() === name.toLowerCase())

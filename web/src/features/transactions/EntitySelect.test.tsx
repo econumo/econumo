@@ -180,3 +180,26 @@ it('creates with the typed name trimmed', async () => {
   await user.click(await screen.findByRole('option', { name: /Add.*Tea/ }))
   expect(onCreate).toHaveBeenCalledWith('Tea')
 })
+
+it('matches on searchText when given, not on the displayed label', async () => {
+  const user = userEvent.setup()
+  const accounts = [
+    { value: 'a1', label: 'Savings ($1,000.00)', searchText: 'Savings' },
+    { value: 'a2', label: 'Cash ($10.00)', searchText: 'Cash' },
+    { value: 'a3', label: 'Cashback card ($5.00)', searchText: 'Cashback card' },
+  ]
+  render(<EntitySelect aria-label="Account" value={null} onChange={() => {}} options={accounts} />)
+  const input = screen.getByRole('combobox', { name: 'Account' })
+
+  await user.click(input)
+  await user.keyboard('csh')
+  expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['Cash ($10.00)', 'Cashback card ($5.00)'])
+
+  await user.clear(input)
+  await user.keyboard('1')
+  expect(screen.queryAllByRole('option')).toHaveLength(0)
+
+  await user.clear(input)
+  await user.keyboard('cash')
+  expect((await screen.findAllByRole('option'))[0]).toHaveTextContent('Cash ($10.00)')
+})

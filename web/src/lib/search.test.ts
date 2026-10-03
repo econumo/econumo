@@ -32,6 +32,21 @@ describe('rankByName', () => {
   })
 })
 
+describe('rankByName with several names per item', () => {
+  const currencies = [
+    { name: 'Euro', code: 'EUR', symbol: '€' },
+    { name: 'US Dollar', code: 'USD', symbol: '$' },
+    { name: 'Australian Dollar', code: 'AUD', symbol: 'A$' },
+  ]
+  const names = (c: (typeof currencies)[number]) => [c.name, c.code, c.symbol]
+  it('ranks by the best-matching name', () => {
+    // "Australian Dollar" holds u..s..d too, so it trails as a loose match
+    expect(rankByName(currencies, names, 'usd').map((c) => c.code)).toEqual(['USD', 'AUD'])
+    expect(rankByName(currencies, names, 'dolar').map((c) => c.code)).toEqual(['USD', 'AUD'])
+    expect(rankByName(currencies, names, '$').map((c) => c.code)).toEqual(['USD', 'AUD'])
+  })
+})
+
 describe('matchesTerms', () => {
   const fields = { text: ['Morning latte at Starbucks', 'Visa Gold', 'Coffee'], exact: ['12.50', '2026-10-01 08:00:00', '-'] }
   it('requires every term (AND)', () => {

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
-import { fuzzyMatch } from '@/lib/fuzzy'
+import { rankByName } from '@/lib/search'
 import { useCurrencies } from '@/features/currencies/queries'
 import { selectableCurrencies } from '@/features/currencies/selectable'
 import type { Id } from '@/api/types'
@@ -29,9 +29,7 @@ export function CurrencyPickerDialog({ open, title, value, onClose, onPick }: Cu
     }
   }, [open])
 
-  const options = selectableCurrencies(currencies, value ?? undefined).filter(
-    (c) => !search || fuzzyMatch(c.name, search) || fuzzyMatch(c.symbol, search) || fuzzyMatch(c.code, search),
-  )
+  const options = rankByName(selectableCurrencies(currencies, value ?? undefined), (c) => [c.name, c.code, c.symbol], search)
 
   return (
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={title}>

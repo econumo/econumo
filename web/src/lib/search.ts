@@ -20,12 +20,23 @@ export function matchRank(text: string, query: string): number | null {
   return fuzzyMatch(s, q) ? 3 : null
 }
 
-export function rankByName<T>(items: T[], getName: (item: T) => string, query: string): T[] {
+function bestRank(names: string | string[], query: string): number | null {
+  let best: number | null = null
+  for (const name of typeof names === 'string' ? [names] : names) {
+    const rank = matchRank(name, query)
+    if (rank !== null && (best === null || rank < best)) {
+      best = rank
+    }
+  }
+  return best
+}
+
+export function rankByName<T>(items: T[], getName: (item: T) => string | string[], query: string): T[] {
   if (query.trim() === '') {
     return items
   }
   return items
-    .map((item, index) => ({ item, index, rank: matchRank(getName(item), query) }))
+    .map((item, index) => ({ item, index, rank: bestRank(getName(item), query) }))
     .filter((entry): entry is { item: T; index: number; rank: number } => entry.rank !== null)
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .map((entry) => entry.item)

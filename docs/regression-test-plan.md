@@ -301,6 +301,12 @@ navigation (single-pane vs sidebar).
       ("grcries" → Groceries); a prefix match is listed before a match later
       in the name; typing a new name that only resembles an existing one still
       offers "Add «name»".
+- [ ] 📱 Account / From / To pickers (transaction and recurring dialogs) find
+      an account by name with a skipped letter ("eurstsh" → Euro Stash), and
+      typing digits of a balance (e.g. "2000") matches no account. The same
+      skip-tolerant, closest-first search works in the currency picker (by
+      name, code or symbol), the envelope category picker, the budget accounts
+      field and the Merge dialog.
 - [ ] Cross-currency transfer (USD account → EUR account) asks for both
       amounts; both accounts' balances update by their respective amounts.
 - [ ] Same-currency transfer: single amount; swap from/to button works.
