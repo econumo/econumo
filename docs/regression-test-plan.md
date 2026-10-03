@@ -1023,9 +1023,10 @@ and on tablet/phone only with a hardware keyboard.
       thin bar under the row. Spent and the bar turn red only when the month
       spent more than its budget and money left from earlier months does not
       cover it; otherwise they stay gray. The bar measures spending against
-      the budget plus what earlier months left. A row with a 0.00 budget (and
-      nothing left from earlier months) still shows the empty light-gray track,
-      like a row with nothing spent. A future month shows `—` for
+      the budget plus what earlier months left; a red row always shows a full
+      red bar, including spending on a 0.00 budget with nothing left from
+      earlier months. A row with a 0.00 budget and nothing spent still shows
+      the empty light-gray track. A future month shows `—` for
       Spent, the empty track, and no colour.
 - [ ] 📱 Income and savings rows (unfolded) show the same thin bar,
       measuring Actual against Planned. It stays gray until the plan is met
