@@ -134,7 +134,11 @@ it('unlocked device: Sync now posts the decrypted access URL and shows the run s
   ] } })))
   const user = userEvent.setup()
   expect(await screen.findByText('Last synced 2026-09-05 08:00:00')).toBeInTheDocument()
-  await user.click(await screen.findByRole('button', { name: 'Sync now' }))
+  const syncButton = await screen.findByRole('button', { name: 'Sync now' })
+  // the button stays disabled until the stored credential is decrypted, which
+  // finishes after first paint; a click before that is a no-op
+  await waitFor(() => expect(syncButton).toBeEnabled())
+  await user.click(syncButton)
   await waitFor(() => expect(syncBody).toEqual({ sourceId: 's2', accessUrl: ACCESS_URL, startDate: '2026-09-02' }))
   expect(await screen.findByText('Completed with errors')).toBeInTheDocument()
   expect(screen.getByText(/ACT-SAV: unsupported currency/)).toBeInTheDocument()
