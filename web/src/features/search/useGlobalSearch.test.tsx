@@ -159,3 +159,36 @@ it('orders transactions newest first and groups by day', async () => {
     'sep:2026-06-15', 't-bank',
   ])
 })
+
+describe('amounts', () => {
+  // server-shaped amounts: no trailing zeros, no separators
+  const amounts = [
+    tx({ id: 't-small', accountId: 'a1', amount: '12.5', date: '2026-07-05 10:00:00' }),
+    tx({ id: 't-big', accountId: 'a1', amount: '1250', date: '2026-07-04 10:00:00' }),
+    tx({ id: 't-move', type: 'transfer', accountId: 'a1', accountRecipientId: 'a2', amount: '7', amountRecipient: '7', date: '2026-07-03 10:00:00' }),
+    tx({ id: 't-in', type: 'income', accountId: 'a1', amount: '8', date: '2026-07-02 10:00:00' }),
+  ]
+
+  beforeEach(() => {
+    server.use(...coreHandlers({ transactions: amounts, accounts: [...fixtureAccounts] }))
+  })
+
+  it.each([
+    { query: '12.5', expected: ['t-small'] },
+    { query: '12.50', expected: ['t-small'] },
+    { query: '1,250.00', expected: ['t-big'] },
+    { query: '1250.00', expected: ['t-big'] },
+    // no skipped digits: 1250 is not 12.50
+    { query: '1250', expected: ['t-big'] },
+  ])('"$query" finds the amount as typed or as displayed', async ({ query, expected }) => {
+    const { result } = renderHook(() => useGlobalSearch(query, ALL), { wrapper })
+    await waitFor(() => expect(result.current.transactionCount).toBeGreaterThan(0))
+    expect(txIds(result)).toEqual(expected)
+  })
+
+  it('a transfer carries no sign: "+" finds income only', async () => {
+    const { result } = renderHook(() => useGlobalSearch('+', ALL), { wrapper })
+    await waitFor(() => expect(result.current.transactionCount).toBeGreaterThan(0))
+    expect(txIds(result)).toEqual(['t-in'])
+  })
+})

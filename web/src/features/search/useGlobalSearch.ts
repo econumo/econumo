@@ -6,6 +6,7 @@ import type { PayeeDto } from '@/api/dto/payee'
 import type { TagDto } from '@/api/dto/tag'
 import type { Id } from '@/api/types'
 import { dayKey } from '@/lib/datetime'
+import { moneyFormat, type CurrencyLike } from '@/lib/money'
 import { matchesTerms, rankByName, type ClassificationType, type TermFields } from '@/lib/search'
 import { useTransactions } from '@/features/transactions/queries'
 import {
@@ -29,6 +30,16 @@ export interface GlobalSearchResult {
   transactionCount: number
 }
 
+// the wire value ("1250") plus the row's display ("1,250.00") with and without
+// separators, so whatever the user reads off a row finds it
+function amountForms(amount: string | null | undefined, currency: CurrencyLike | undefined): string[] {
+  if (amount === null || amount === undefined || amount === '') {
+    return []
+  }
+  const shown = moneyFormat(amount, currency, { showCurrency: false, useNativePrecision: false })
+  return [amount, shown, shown.replaceAll(',', '')]
+}
+
 export function transactionFields(tx: ViewTransaction): TermFields {
   return {
     text: [
@@ -42,7 +53,13 @@ export function transactionFields(tx: ViewTransaction): TermFields {
       `@${tx.author?.name ?? ''}`,
       tx.type,
     ],
-    exact: [tx.amount, tx.amountRecipient ?? '', tx.date, tx.type === 'expense' ? '-' : '+'],
+    exact: [
+      ...amountForms(tx.amount, tx.account?.currency),
+      ...amountForms(tx.amountRecipient, tx.accountRecipient?.currency),
+      tx.date,
+      // transfers are listed unsigned
+      tx.type === 'expense' ? '-' : tx.type === 'income' ? '+' : '',
+    ],
   }
 }
 
