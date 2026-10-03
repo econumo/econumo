@@ -148,15 +148,11 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote
           </span>
         ) : null}
       </span>
-      {/* global rows name the account here; capped so a long name truncates
-          instead of squeezing the title column */}
-      <span data-testid={`amount-col-${tx.id}`} className={`flex shrink-0 flex-col items-end ${global ? 'max-w-[45%] gap-0.5' : ''}`}>
-        <span className={`text-sm leading-6 tabular-nums ${neutral ? 'text-muted-foreground' : income ? 'text-income' : 'text-expense'}`}>
-          {displayAmount(tx, pageAccount?.id)}
-          <span className="ml-1 text-muted-foreground">{amountAccount?.currency.symbol}</span>
-        </span>
+      {/* global rows name the account here, on the title's line above the
+          amount; capped so a long name truncates instead of squeezing the title */}
+      <span data-testid={`amount-col-${tx.id}`} className={`flex shrink-0 flex-col items-end ${global ? 'max-w-[45%]' : ''}`}>
         {global ? (
-          <span data-testid={`tx-account-${tx.id}`} className="flex max-w-full items-center gap-1 text-[13px] text-muted-foreground">
+          <span data-testid={`tx-account-${tx.id}`} className="flex h-6 max-w-full items-center gap-1 text-[13px] text-muted-foreground">
             <AccountName account={tx.account} fallback={hiddenName} />
             {tx.type === 'transfer' ? (
               <>
@@ -166,6 +162,10 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote
             ) : null}
           </span>
         ) : null}
+        <span className={`text-sm leading-6 tabular-nums ${neutral ? 'text-muted-foreground' : income ? 'text-income' : 'text-expense'}`}>
+          {displayAmount(tx, pageAccount?.id)}
+          <span className="ml-1 text-muted-foreground">{amountAccount?.currency.symbol}</span>
+        </span>
         {amountNote ? <span className="text-xs text-muted-foreground">{amountNote}</span> : null}
       </span>
     </div>
