@@ -178,6 +178,21 @@ it('folders show their Budget and Spent sums; the unfoldered bucket reads "No fo
   expect(screen.getByTestId('phone-folder-__no_folder__')).toHaveTextContent('No folder')
 })
 
+// jsdom has no layout, so pin the geometry that keeps the columns aligned: a row's
+// figures subgrid insets only its last track, so the other lines must keep their
+// tracks flush right and pad just the last cell, or their Budget column shifts left
+it('headings, section summaries and folder headers pad only their last cell, like the rows', () => {
+  renderView()
+  const lines = [
+    screen.getByTestId('phone-heading-expenses'),
+    screen.getByTestId('phone-folder-bf1').firstElementChild as HTMLElement,
+  ]
+  for (const line of lines) {
+    expect(line.className).not.toMatch(/(^|\s)(px|pr)-\d/)
+    expect((line.lastElementChild as HTMLElement).className).toContain('pr-2')
+  }
+})
+
 it('the name of an expandable row folds it; only the figures open the sheet', async () => {
   const props = renderView()
   const living = screen.getByTestId('phone-row-env-1')
