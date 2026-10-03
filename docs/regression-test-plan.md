@@ -628,7 +628,7 @@ and on tablet/phone only with a hardware keyboard.
       phone-width viewport it is a full-screen sheet with a close X.
 - [ ] Empty query lists recent transactions across all accounts, newest first,
       grouped by day; each row names its account with the account icon on the
-      right, on the title's line above the amount; transfers read "From → To" (both icons) with no
+      right, under the amount; transfers read "From → To" (both icons) with no
       +/− sign; a long account name truncates without squeezing the title.
 - [ ] With at least one connection, every transaction row shows its author's
       avatar on the row icon (even on accounts that are not shared); with no

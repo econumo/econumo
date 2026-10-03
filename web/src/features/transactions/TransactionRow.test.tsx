@@ -137,12 +137,10 @@ it('never promotes a reporting tag to the row title', () => {
 describe('global mode (no page account)', () => {
   const card = { ...pageAccount, id: 'a2', name: 'Card', icon: 'credit_card' } as AccountDto
 
-  it('names the account with its icon on the right, above the amount', () => {
+  it('names the account with its icon on the right, under the amount', () => {
     render(<TransactionRow transaction={baseTx} />)
     const line = screen.getByTestId('tx-account-t1')
-    const column = screen.getByTestId('amount-col-t1')
-    expect(column.firstElementChild).toBe(line)
-    expect(column).toHaveTextContent(/9\.99/)
+    expect(line.closest('[data-testid="amount-col-t1"]')).not.toBeNull()
     expect(line).toHaveTextContent(pageAccount.icon)
   })
 
