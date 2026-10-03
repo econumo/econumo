@@ -102,13 +102,13 @@ used / never existed. Expired rows are purged opportunistically on exchange.
 | `expires_at` DATETIME | `last_used_at + 90d`, slides on refresh |
 | `revoked_at` DATETIME NULL | |
 
+`oauth_grants` is indexed on `user_id`. Dead grants (revoked or expired more
+than 30 days ago), dead `oauth` access tokens (same rule, one set-based DELETE)
+and expired codes are purged best-effort after each successful code exchange.
+
 **`oauth_refresh_tokens_spent`** — `token_hash` TEXT PK, `grant_id` FK
 `ON DELETE CASCADE` (indexed), `spent_at` DATETIME. One row per rotation; rows
 live as long as the grant, so the dead-grant purge removes them by cascade.
-
-Index on `user_id`. Dead grants (revoked/expired
-> 30 days), dead `oauth` access tokens (same rule, one set-based DELETE) and
-expired codes are purged best-effort after each successful code exchange.
 
 **`access_tokens`** — new `kind = 'oauth'` (`model.TokenKindOAuth`), scope `mcp`, raw prefix
 `eco_oat_`, `expires_at = created_at + 1h` fixed (never slides — `Touch` keeps
