@@ -132,11 +132,11 @@ export function ApplicationLayout() {
         <img src="/icons/apple-touch-icon-120x120.png" width={32} height={32} alt="" className="rounded-lg" />
       </Link>
     ) : (
-      <div className={`flex items-center gap-1 px-3 py-3 ${isCompact ? '' : 'mt-3'}`} data-testid="sidebar-top-row">
+      <div className={`flex items-center gap-1 py-3 ${isCompact ? 'px-4' : 'mt-3 px-3'}`} data-testid="sidebar-top-row">
         <Link
           to={RouterPage.HOME}
           aria-label={appName}
-          className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg p-1 hover:bg-accent"
+          className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 py-1 hover:bg-accent"
         >
           <img src={grayLogo} width={163} height={26} alt="" />
           <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
@@ -253,7 +253,7 @@ export function ApplicationLayout() {
                 </button>
               </footer>
             ) : (
-              <footer className="flex items-center justify-between border-t px-2 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+              <footer className={`flex items-center justify-between border-t ${isCompact ? 'px-3' : 'px-2'} pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]`}>
                 <Link
                   to={RouterPage.SETTINGS}
                   className="flex h-11 items-center gap-1.5 rounded-lg px-3 text-muted-foreground hover:bg-accent hover:text-foreground"
