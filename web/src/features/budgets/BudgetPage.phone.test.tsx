@@ -5,7 +5,8 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import type { HttpHandler } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { useUiStore } from '@/app/uiStore'
 import { queryKeys } from '@/app/queryKeys'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -52,10 +53,10 @@ function phone() {
   }))
 }
 
-function handlers({ budget = fixtureWireBudget, plan = planHandler() }: { budget?: unknown; plan?: HttpHandler } = {}) {
+function handlers({ budget = fixtureWireBudget, plan = planHandler(), accounts = fixtureAccounts }: { budget?: unknown; plan?: HttpHandler; accounts?: unknown[] } = {}) {
   let setLimitBody: unknown
   server.use(
-    ...coreHandlers({ user: userWithBudget }),
+    ...coreHandlers({ user: userWithBudget, accounts }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
     plan,
     http.get('*/api/v1/budget/get-comment-list', () =>
@@ -348,4 +349,42 @@ it('a month three past the current one still carries the unmet plans of the mont
   } finally {
     vi.useRealTimers()
   }
+})
+
+it('the sheet’s Edit opens the category’s own dialog in place of the sheet', async () => {
+  handlers()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: /^Food, budget 200.00/ }))
+  await user.click(within(await screen.findByRole('dialog', { name: /^Food · / })).getByRole('button', { name: 'Edit' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Edit category' })
+  expect(within(dialog).getByDisplayValue('Food')).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+})
+
+it('a guest’s envelope sheet shows Edit inactive', async () => {
+  handlers({ budget: guestBudget })
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: /^Living, budget/ }))
+  expect(within(await screen.findByRole('dialog', { name: /^Living · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
+})
+
+it('a savings row’s Edit opens the account dialog, and is inactive once the account is gone', async () => {
+  useUiStore.setState({ accountModal: null })
+  const account = { ...fixtureAccounts[2], id: 'acc-s1', name: 'Rainy day' }
+  handlers({ budget: savingsBudget, accounts: [...fixtureAccounts, account] })
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  const { queryClient } = renderPage()
+  await user.click(await screen.findByTestId('phone-savings-summary'))
+  await user.click(await screen.findByRole('button', { name: /^Rainy day, planned/ }))
+  const edit = within(await screen.findByRole('dialog', { name: /^Rainy day · / })).getByRole('button', { name: 'Edit' })
+  await waitFor(() => expect(edit).toBeEnabled())
+  await user.click(edit)
+  expect(useUiStore.getState().accountModal?.account?.id).toBe('acc-s1')
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+
+  queryClient.setQueryData(queryKeys.accounts, fixtureAccounts)
+  await user.click(screen.getByRole('button', { name: /^Rainy day, planned/ }))
+  expect(within(await screen.findByRole('dialog', { name: /^Rainy day · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
 })

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { fixtureWireBudget } from '@/test/fixtures'
@@ -194,4 +194,33 @@ it('a savings plan cell shows its closing balance too', () => {
 it('renders nothing without a target', () => {
   renderSheet({ target: null })
   expect(screen.queryByTestId('element-sheet')).toBeNull()
+})
+
+it('shows the item icon beside the title', () => {
+  renderSheet()
+  const dialog = screen.getByRole('dialog', { name: `Food · ${july}` })
+  expect(within(dialog).getByText('restaurant')).toHaveAttribute('aria-hidden', 'true')
+})
+
+it('offers an active Edit button when the item can be edited', async () => {
+  const onEdit = vi.fn()
+  renderSheet({ onEdit, canEdit: true })
+  await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+  expect(onEdit).toHaveBeenCalled()
+})
+
+it('keeps the Edit button visible but inactive without the right to edit', () => {
+  renderSheet({ onEdit: vi.fn(), canEdit: false })
+  expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled()
+})
+
+it('has no Edit button when there is nothing to edit', () => {
+  renderSheet()
+  expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+})
+
+it('puts the primary action on the right of Transactions', () => {
+  renderSheet()
+  const buttons = screen.getAllByRole('button').map((b) => b.textContent)
+  expect(buttons.indexOf('Transactions')).toBeLessThan(buttons.indexOf('Set budget'))
 })

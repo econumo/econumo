@@ -972,6 +972,16 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       balance; each label fits on one line) and offers "Set plan", which opens
       the amount dialog titled "Set plan" with a "Plan" field (an income
       row's dialog too; an expense row's keeps "Set budget" / "Budget").
+- [ ] 📱 Every item sheet (phone month view and tablet Plan view) shows the
+      item's icon before its title and a pencil at the header's end (beside
+      the corner X on a tablet). The pencil opens the item's own edit dialog in
+      place of the sheet: an envelope's, a category's, a tag's, or the account
+      dialog for a savings row. It is greyed out and does nothing when you may
+      not edit the item: an envelope in a budget where you are a guest (or an
+      archived budget), a category or tag that belongs to another user, a
+      savings account you neither own nor administer, or one that was
+      deleted. The Uncategorized row's sheet has no pencil. Renaming an item
+      from there updates its row at once.
 - [ ] 📱 A savings row's sheet → "Transactions" lists every transaction on that
       account in the month — transfers in and out, interest, fees — money in
       positive, money out negative, in the account's currency; their signed sum
