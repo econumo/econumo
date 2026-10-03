@@ -82,14 +82,19 @@ function SearchPanel({ onPreview }: { onPreview: (tx: ViewTransaction) => void }
   const drillList: ClassificationItem[] | undefined = scope.kind === 'all' ? undefined : lookups[GROUP_OF[scope.kind]]
   const drilled = scope.kind === 'all' ? undefined : drillList?.find((i) => i.id === scope.id)
 
+  // "Show all" belongs to the result set it was clicked on
+  const changeQuery = (next: string) => {
+    setQuery(next)
+    setExpanded({})
+  }
   const drillInto = (type: ClassificationType, id: string) => {
     setPrevQuery(query)
     setScope({ kind: type, id })
-    setQuery('')
+    changeQuery('')
   }
   const goBack = () => {
     setScope(ALL)
-    setQuery(prevQuery)
+    changeQuery(prevQuery)
   }
   // the drilled item was deleted or merged away: adjusting state during render
   // (not in an effect) so a header for a vanished item never paints
@@ -115,9 +120,10 @@ function SearchPanel({ onPreview }: { onPreview: (tx: ViewTransaction) => void }
 
   // classification groups stay empty until the user data resolves (own-only filter)
   const loaded = user !== undefined && transactions !== undefined
+  // the unfiltered recent feed is the one view where an empty list says nothing
   const nothing =
     loaded &&
-    query.trim() !== '' &&
+    (query.trim() !== '' || scope.kind !== 'all') &&
     result.transactionCount === 0 &&
     result.accounts.length === 0 &&
     CLASSIFICATION_GROUPS.every(({ key }) => result[key].length === 0)
@@ -134,9 +140,10 @@ function SearchPanel({ onPreview }: { onPreview: (tx: ViewTransaction) => void }
             ref={inputRef}
             autoFocus
             value={query}
-            onValueChange={setQuery}
+            onValueChange={changeQuery}
             onKeyDown={(e) => {
-              if (e.key === 'Backspace' && query === '' && scope.kind !== 'all') {
+              // a held Backspace clearing the query must not also leave the drill-down
+              if (e.key === 'Backspace' && !e.repeat && query === '' && scope.kind !== 'all') {
                 e.preventDefault()
                 goBack()
               }

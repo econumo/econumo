@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
@@ -104,6 +104,10 @@ it('a group with 7 matches shows 5 rows and a Show all row that lifts the cap', 
   await user.click(screen.getByText('Show all (7)'))
   expect(categoryRows()).toHaveLength(7)
   expect(screen.queryByText('Show all (7)')).not.toBeInTheDocument()
+  // a new query starts capped again
+  await user.type(input(), '{Backspace}')
+  await waitFor(() => expect(categoryRows()).toHaveLength(5))
+  expect(screen.getByText('Show all (7)')).toBeInTheDocument()
 })
 
 it('archived classifications are dimmed and badged', async () => {
@@ -290,6 +294,26 @@ describe('drill-down', () => {
     await user.keyboard('{Backspace}')
     expect(header()).not.toBeInTheDocument()
     expect(input()).toHaveValue('foo')
+  })
+
+  it('a held Backspace stops at the empty input instead of leaving the drill-down', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await drillIntoFood(user)
+    fireEvent.keyDown(input(), { key: 'Backspace', repeat: true })
+    expect(header()).toBeInTheDocument()
+    expect(input()).toHaveValue('')
+  })
+
+  it('an item without transactions says Nothing found', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await screen.findByTestId('tx-t1')
+    await user.type(input(), 'vacation')
+    await user.click(await screen.findByTestId('search-tag-tag1'))
+    await waitFor(() => expect(header()).toHaveTextContent('vacation'))
+    expect(await screen.findByText('Nothing found')).toBeInTheDocument()
+    expect(txRows()).toHaveLength(0)
   })
 
   it('a label drill-down shows only transactions carrying that label', async () => {
