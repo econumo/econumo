@@ -29,12 +29,14 @@ interface ResponsiveDialogProps {
   fullScreen?: boolean
   /** action row rendered outside the scroll area — pinned to the sheet bottom on mobile */
   footer?: ReactNode
+  /** desktop width: `wide` suits list-heavy dialogs (the global search palette) */
+  size?: 'default' | 'wide'
   /** runs as the dialog hands focus back on close; preventDefault() keeps focus
    *  where an action started from the dialog put it */
   onCloseAutoFocus?: (e: Event) => void
 }
 
-export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus }: ResponsiveDialogProps) {
+export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus, size = 'default' }: ResponsiveDialogProps) {
   // full-screen / bottom-sheet layouts kick in only below sm (640px); at 640px
   // and up dialogs stay centred like on desktop
   const isMobile = useIsPhone()
@@ -130,6 +132,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         ref={contentRef}
+        className={size === 'wide' ? 'sm:max-w-2xl' : undefined}
         onInteractOutside={onInteractOutside}
         onEscapeKeyDown={onEscapeKeyDown}
         onCloseAutoFocus={onCloseAutoFocus}

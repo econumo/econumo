@@ -8,8 +8,13 @@ export function useSearchHotkey() {
         return
       }
       const { searchOpen, openSearch } = useUiStore.getState()
+      if (searchOpen) {
+        // still ours: left alone the browser would move focus to its own search bar
+        e.preventDefault()
+        return
+      }
       // never stack over a form or another dialog
-      if (searchOpen || document.querySelector('[role="dialog"]')) {
+      if (document.querySelector('[role="dialog"]')) {
         return
       }
       e.preventDefault()

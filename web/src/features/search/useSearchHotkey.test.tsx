@@ -53,3 +53,16 @@ it('stops listening on unmount', () => {
   fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
   expect(useUiStore.getState().searchOpen).toBe(false)
 })
+
+it('while the search is open, Ctrl+K is still swallowed so the browser keeps its hands off', () => {
+  renderHook(() => useSearchHotkey())
+  act(() => useUiStore.setState({ searchOpen: true }))
+  const d = document.createElement('div')
+  d.setAttribute('role', 'dialog')
+  document.body.append(d)
+  expect(fireEvent.keyDown(window, { key: 'k', ctrlKey: true })).toBe(false)
+  act(() => useUiStore.setState({ searchOpen: false }))
+  // another dialog (not the search) leaves the chord to the browser
+  expect(fireEvent.keyDown(window, { key: 'k', ctrlKey: true })).toBe(true)
+  d.remove()
+})
