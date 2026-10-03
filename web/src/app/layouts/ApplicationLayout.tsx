@@ -1,7 +1,7 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw, Rocket, Settings, Wallet } from 'lucide-react'
+import { RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file is over vite's 4KB auto-inline cutoff,
 // so without it the footer logo ships as a separate asset and can 404 where
@@ -18,7 +18,7 @@ import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
-import { useSidebarStore } from '@/app/uiStore'
+import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { InboxButton } from '@/features/inbox/InboxButton'
@@ -30,7 +30,7 @@ import { TransactionDialog } from '@/features/transactions/TransactionDialog'
 import { RulePromptDialog } from '@/features/imports/RulePromptDialog'
 import { RecurringDialog } from '@/features/recurring/RecurringDialog'
 import { GlobalSearchDialog } from '@/features/search/GlobalSearchDialog'
-import { useSearchHotkey } from '@/features/search/useSearchHotkey'
+import { searchShortcutLabel, useSearchHotkey } from '@/features/search/useSearchHotkey'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
@@ -86,6 +86,9 @@ export function ApplicationLayout() {
   const isFullyLoaded = useIsFullyLoaded()
   const { data: user } = useUserData()
   const update = useAvailableUpdate()
+  const openSearch = useUiStore((s) => s.openSearch)
+  const searchLabel = t('search.open')
+  const searchTooltip = t('search.open_tooltip', { shortcut: searchShortcutLabel() })
   useSearchHotkey()
 
   // The blocking loader belongs to the FIRST boot only; once data has been on
@@ -125,21 +128,21 @@ export function ApplicationLayout() {
         <UserAvatar avatar={user.avatar} size="md" className="rounded-xl" />
       </Link>
     ) : (
-      <div className={`flex items-center gap-1 px-3 py-3 ${isCompact ? '' : 'mt-3'}`}>
+      <div className={`flex items-center gap-1 px-3 py-3 ${isCompact ? '' : 'mt-3'}`} data-testid="identity-row">
         <Link to={RouterPage.SETTINGS_PROFILE} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 hover:bg-accent">
           <UserAvatar avatar={user.avatar} size="md" className="rounded-xl" />
           <span className="truncate text-lg leading-5">{user.name}</span>
         </Link>
-        <InboxButton variant="row" />
-        <Link
-          to={RouterPage.SETTINGS}
-          aria-label={t('settings.page.menu_item')}
-          title={t('settings.page.menu_item')}
-          className="relative grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+        <button
+          type="button"
+          aria-label={searchLabel}
+          title={searchTooltip}
+          onClick={openSearch}
+          className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
         >
-          <Settings className="size-5" />
-          {update ? <span className="absolute top-1 right-1 size-2 rounded-full bg-primary" data-testid="update-dot" /> : null}
-        </Link>
+          <Search className="size-5" />
+        </button>
+        <InboxButton variant="row" />
       </div>
     )
   ) : null
@@ -171,6 +174,15 @@ export function ApplicationLayout() {
                 {user && isCompact ? userBlock : null}
                 {rail ? (
                   <div className="flex flex-col items-center gap-1 py-1">
+                    <button
+                      type="button"
+                      aria-label={searchLabel}
+                      title={searchTooltip}
+                      onClick={openSearch}
+                      className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
+                    >
+                      <Search className="size-5" />
+                    </button>
                     <InboxButton variant="rail" />
                     {!isOnboardingCompleted(user) ? (
                       <Link
@@ -234,9 +246,15 @@ export function ApplicationLayout() {
               </footer>
             ) : (
               <footer className="flex items-center justify-between border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-                <div className="flex items-center gap-0.5">
-                  <img src={grayLogo} width={125} height={20} alt="" />
-                  <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-0.5">
+                    <img src={grayLogo} width={125} height={20} alt="" />
+                    <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
+                  </div>
+                  <Link to={RouterPage.SETTINGS} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                    {t('settings.page.menu_item')}
+                    {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
+                  </Link>
                 </div>
                 <button
                   type="button"

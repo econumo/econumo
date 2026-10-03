@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
@@ -9,7 +9,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
 import { QUERY_CACHE_KEY, refreshRestoredQueries } from '@/lib/queryPersist'
 import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
-import { useSidebarStore } from '@/app/uiStore'
+import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { ApplicationLayout } from './ApplicationLayout'
 
 const mockUpdate = vi.hoisted(() => ({ value: null as AvailableUpdate | null }))
@@ -71,9 +71,11 @@ beforeEach(() => {
   window.econumoConfig = {}
   server.use(...coreHandlers())
   mockUpdate.value = null
-  // the sidebar-collapsed flag lives in a module-level zustand store, so it
-  // survives across tests in this file independent of localStorage.clear()
+  // the sidebar-collapsed flag and the search dialog live in module-level
+  // zustand stores, so they survive across tests in this file independent of
+  // localStorage.clear()
   useSidebarStore.setState({ collapsed: false })
+  useUiStore.setState({ searchOpen: false })
 })
 
 it('sizes the shell with dvh, never svh', async () => {
@@ -125,6 +127,10 @@ it('shows the Inbox link in the full sidebar, and between the avatar and Budget 
   expect(avatarIndex).toBeGreaterThanOrEqual(0)
   expect(inboxIndex).toBeGreaterThan(avatarIndex)
   expect(budgetIndex).toBeGreaterThan(inboxIndex)
+
+  const search = screen.getByRole('button', { name: 'Search' })
+  const inbox = screen.getByRole('link', { name: 'Inbox' })
+  expect(search.compareDocumentPosition(inbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
 it('puts Inbox above the onboarding link in the icon rail when onboarding is incomplete', async () => {
@@ -146,6 +152,34 @@ it('puts Inbox above the onboarding link in the icon rail when onboarding is inc
   expect(inboxIndex).toBeGreaterThan(avatarIndex)
   expect(onboardingIndex).toBeGreaterThan(inboxIndex)
   expect(budgetIndex).toBeGreaterThan(onboardingIndex)
+
+  const search = screen.getByRole('button', { name: 'Search' })
+  const inbox = screen.getByRole('link', { name: 'Inbox' })
+  const onboarding = screen.getByRole('link', { name: 'Getting started' })
+  expect(search.compareDocumentPosition(inbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(inbox.compareDocumentPosition(onboarding) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+it('the identity row shows avatar+name, a Search button and Inbox, and no Settings gear', async () => {
+  mockViewport(false)
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  const identityRow = screen.getByTestId('identity-row')
+  const avatarLink = within(identityRow).getByRole('link', { name: 'Ada' })
+  expect(avatarLink).toHaveAttribute('href', '/settings/profile')
+  expect(within(identityRow).getByRole('button', { name: 'Search' })).toBeInTheDocument()
+  expect(within(identityRow).getByRole('link', { name: 'Inbox' })).toBeInTheDocument()
+  expect(within(identityRow).queryByRole('link', { name: /settings/i })).not.toBeInTheDocument()
+  expect(within(identityRow).queryByRole('button', { name: /settings/i })).not.toBeInTheDocument()
+})
+
+it('clicking the identity-row Search button opens global search', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Search' }))
+  await waitFor(() => expect(useUiStore.getState().searchOpen).toBe(true))
 })
 
 it('a reload with a persisted cache skips the boot loader and refreshes in the background', async () => {
@@ -270,7 +304,7 @@ it('compact viewport hides the sidebar on content routes', async () => {
   expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument()
 })
 
-it('shows an update dot on the identity-row Settings gear when an update is available', async () => {
+it('shows an update dot on the full-footer Settings link when an update is available', async () => {
   mockViewport(false)
   mockUpdate.value = { version: 'v9.9.9', url: 'https://econumo.com/releases/v9.9.9/' }
   renderShell('/')
@@ -279,7 +313,7 @@ it('shows an update dot on the identity-row Settings gear when an update is avai
   expect(settingsLink.querySelector('[data-testid="update-dot"]')).toBeInTheDocument()
 })
 
-it('shows no update dot on the identity-row Settings gear when no update is available', async () => {
+it('shows no update dot on the full-footer Settings link when no update is available', async () => {
   mockViewport(false)
   renderShell('/')
   expect(await screen.findByText('Cash')).toBeInTheDocument()

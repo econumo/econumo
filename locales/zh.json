@@ -888,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "个人资料",
-          "header": "个人资料",
+          "header": "个人设置",
           "groups": {
             "personal_details": "个人信息",
             "preferences": "偏好设置",
@@ -1804,7 +1804,9 @@
     "show_all": "显示全部 ({count})",
     "hidden_folder": "隐藏的文件夹",
     "back": "返回",
-    "nothing_found": "未找到任何内容"
+    "nothing_found": "未找到任何内容",
+    "open": "搜索",
+    "open_tooltip": "搜索 ({shortcut})"
   },
   "subscription": {
     "banner": {

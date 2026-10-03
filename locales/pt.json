@@ -888,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "Perfil",
-          "header": "Perfil",
+          "header": "Definições pessoais",
           "groups": {
             "personal_details": "Dados pessoais",
             "preferences": "Preferências",
@@ -1804,7 +1804,9 @@
     "show_all": "Mostrar todos ({count})",
     "hidden_folder": "Pasta oculta",
     "back": "Voltar",
-    "nothing_found": "Nada encontrado"
+    "nothing_found": "Nada encontrado",
+    "open": "Pesquisa",
+    "open_tooltip": "Pesquisa ({shortcut})"
   },
   "subscription": {
     "banner": {

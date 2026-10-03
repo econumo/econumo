@@ -410,10 +410,11 @@ navigation (single-pane vs sidebar).
       line keeps the original "… USD" amount. An ignored card offers
       "Map instead"; "Unmap" (confirmation) returns the card to unmapped and
       new taps queue again.
-- [ ] Inbox button 📱: the sidebar identity row shows avatar + name (no email), an
-      Inbox button and the Settings gear; the Inbox button is visible with nothing
-      pending (no badge) and shows the pending count (99+ above 99); in the
-      collapsed desktop rail it sits between the avatar and Budget.
+- [ ] Inbox button 📱: the sidebar identity row shows avatar + name (no email,
+      linking to Personal settings), a Search button and an Inbox button; the
+      Inbox button is visible with nothing pending (no badge) and shows the
+      pending count (99+ above 99); in the collapsed desktop rail the order is
+      Search, Inbox, onboarding (when incomplete), Budget.
 - [ ] Inbox count 📱: the badge equals pending invites + sources whose last sync
       failed/partially failed + failed imports + queued imports; skipped rows are
       not counted.
@@ -1346,9 +1347,12 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
 
 - [ ] Navigation: `/` shows the sidebar-as-home; entering any page shows a
       back-button header; back always returns to the logical origin.
-- [ ] Identity row 📱: tapping the avatar or name opens Profile; the gear opens
-      Settings and carries the update dot when an update is available; the
-      sidebar footer no longer has a Settings link.
+- [ ] Identity row 📱: tapping the avatar or name opens Personal settings; the
+      Search button opens global search (its tooltip shows the Ctrl/⌘+K
+      shortcut) and Inbox opens the Inbox; the sidebar footer has a Settings
+      link that carries the update dot when an update is available. On the
+      Settings page, the header card leads to Personal settings (name, email,
+      the "Personal settings" hint) and has a separate Log out button.
 - [ ] Every dialog used in the suites above renders as a bottom-sheet drawer
       (short content: previews, action lists, confirms) or a full-screen sheet
       (long forms, e.g. Add transaction) on mobile (<640px), and a centered
