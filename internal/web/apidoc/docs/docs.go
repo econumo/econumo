@@ -14738,6 +14738,18 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "lastRunAt": {
+                    "type": "string"
+                },
+                "lastRunError": {
+                    "type": "string"
+                },
+                "lastRunErrorAccountId": {
+                    "type": "string"
+                },
+                "lastRunStatus": {
+                    "type": "string"
+                },
                 "lastSyncedAt": {
                     "type": "string"
                 },

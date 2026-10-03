@@ -18,13 +18,11 @@ export function AppleWalletPage() {
         <AppleWalletSetup key={wallet?.id ?? 'none'} source={wallet} />
         {wallet ? <ImportCards source={wallet} /> : null}
         {wallet ? (
-          // the banner (queued-only) is the only other door to /imports/queue, so a
-          // queue holding just skipped/needs-attention rows would otherwise be unreachable
           <Link
-            to={RouterPage.IMPORT_QUEUE}
+            to={RouterPage.INBOX}
             className="flex w-full items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover"
           >
-            <span>{t('imports.queue.header')}</span>
+            <span>{t('inbox.title')}</span>
             <ChevronRight className="size-4 text-muted-foreground" />
           </Link>
         ) : null}

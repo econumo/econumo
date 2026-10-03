@@ -16,8 +16,7 @@
       "onboarding": "Per iniziare",
       "create_account": "Aggiungi conto",
       "collapse_menu": "Comprimi il menu",
-      "expand_menu": "Espandi il menu",
-      "sharing_requests": "Richieste di condivisione"
+      "expand_menu": "Espandi il menu"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,33 @@
     "make_recurring": "Rendi ricorrente",
     "not_posted": "Non registrata"
   },
+  "inbox": {
+    "title": "Posta in arrivo",
+    "open": "Posta in arrivo, {count} in attesa",
+    "empty": "Tutto aggiornato",
+    "sections": {
+      "sharing": "Condivisioni",
+      "sync": "Problemi di sincronizzazione",
+      "failed": "Importazioni non riuscite",
+      "to_review": "Da rivedere",
+      "skipped": "Saltati ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} ti ha invitato",
+      "account": "Conto",
+      "budget": "Budget",
+      "choose_folder": "Scegli una cartella per questo conto",
+      "general_folder_hint": "General (verrà creata)",
+      "decline_question": "Rifiutare l'accesso a «{name}»?"
+    },
+    "sync": {
+      "failed": "Sincronizzazione di {source} non riuscita",
+      "partial": "{source} sincronizzato con errori",
+      "when": "Ultimo tentativo {date}"
+    }
+  },
   "imports": {
     "badge": "Importata",
-    "banner": {
-      "text": "{count} transazione importata in attesa di revisione | {count} transazioni importate in attesa di revisione",
-      "cta": "Rivedi"
-    },
     "data_page": {
       "menu_item": "Importa ed esporta",
       "header": "Importa ed esporta",
@@ -650,12 +670,7 @@
       }
     },
     "queue": {
-      "header": "Coda di importazione",
-      "empty": "Niente da rivedere.",
       "card_amount": "Importo della carta: {amount} {currency}",
-      "queued": "In attesa di revisione",
-      "skipped": "Saltate",
-      "failed": "Richiedono attenzione",
       "reason": {
         "unmapped": "Carta non associata",
         "account_deleted": "Conto eliminato",
@@ -873,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "Profilo",
-          "header": "Profilo",
+          "header": "Impostazioni personali",
           "groups": {
             "personal_details": "Dati personali",
             "preferences": "Preferenze",
@@ -1773,16 +1788,6 @@
           "required_field": "Campo obbligatorio"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Richieste di condivisione",
-      "empty": "Nessuna richiesta in attesa",
-      "invited_you": "{name} ti ha invitato",
-      "account": "Conto",
-      "budget": "Budget",
-      "choose_folder": "Scegli una cartella per questo conto",
-      "general_folder_hint": "General (verrà creata)",
-      "decline_question": "Rifiutare l'accesso a «{name}»?"
     }
   },
   "search": {
@@ -1799,7 +1804,9 @@
     "show_all": "Mostra tutti ({count})",
     "hidden_folder": "Cartella nascosta",
     "back": "Indietro",
-    "nothing_found": "Nessun risultato"
+    "nothing_found": "Nessun risultato",
+    "open": "Ricerca",
+    "open_tooltip": "Ricerca ({shortcut})"
   },
   "subscription": {
     "banner": {

@@ -29,7 +29,7 @@ import { RecurringSettingsPage } from '@/features/recurring/RecurringSettingsPag
 import { ImportsDataPage } from '@/features/imports/ImportsDataPage'
 import { AppleWalletPage } from '@/features/imports/AppleWalletPage'
 import { SimpleFINPage } from '@/features/imports/SimpleFINPage'
-import { ImportQueuePage } from '@/features/imports/ImportQueuePage'
+import { InboxPage } from '@/features/inbox/InboxPage'
 import { ImportRunListPage } from '@/features/imports/ImportRunListPage'
 import { ImportRunPage } from '@/features/imports/ImportRunPage'
 import { ImportRulesPage } from '@/features/imports/ImportRulesPage'
@@ -81,7 +81,7 @@ export function createRouter() {
                 { path: '/settings/apple-wallet', element: <AppleWalletPage /> },
                 { path: '/settings/simplefin', element: <SimpleFINPage /> },
                 { path: '/settings/import-rules', element: <ImportRulesPage /> },
-                { path: '/imports/queue', element: <ImportQueuePage /> },
+                { path: '/inbox', element: <InboxPage /> },
                 { path: '/imports/runs', element: <ImportRunListPage /> },
                 { path: '/imports/runs/:id', element: <ImportRunPage /> },
               ],

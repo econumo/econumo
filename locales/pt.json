@@ -16,8 +16,7 @@
       "onboarding": "Primeiros passos",
       "create_account": "Adicionar conta",
       "collapse_menu": "Recolher menu",
-      "expand_menu": "Expandir menu",
-      "sharing_requests": "Pedidos de partilha"
+      "expand_menu": "Expandir menu"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,33 @@
     "make_recurring": "Tornar recorrente",
     "not_posted": "Não lançada"
   },
+  "inbox": {
+    "title": "Caixa de entrada",
+    "open": "Caixa de entrada: {count} por rever",
+    "empty": "Tudo em dia",
+    "sections": {
+      "sharing": "Partilhas",
+      "sync": "Problemas de sincronização",
+      "failed": "Importações falhadas",
+      "to_review": "Para rever",
+      "skipped": "Ignorados ({count})"
+    },
+    "sharing": {
+      "invited_you": "Convite de {name}",
+      "account": "Conta",
+      "budget": "Orçamento",
+      "choose_folder": "Escolha uma pasta para esta conta",
+      "general_folder_hint": "General (será criada)",
+      "decline_question": "Recusar o acesso a “{name}”?"
+    },
+    "sync": {
+      "failed": "Falha ao sincronizar {source}",
+      "partial": "{source} sincronizado com erros",
+      "when": "Última tentativa {date}"
+    }
+  },
   "imports": {
     "badge": "Importada",
-    "banner": {
-      "text": "{count} transação importada aguarda revisão | {count} transações importadas aguardam revisão",
-      "cta": "Rever"
-    },
     "data_page": {
       "menu_item": "Importar e exportar",
       "header": "Importar e exportar",
@@ -650,12 +670,7 @@
       }
     },
     "queue": {
-      "header": "Fila de importação",
-      "empty": "Nada para rever.",
       "card_amount": "Valor do cartão: {amount} {currency}",
-      "queued": "A aguardar revisão",
-      "skipped": "Ignoradas",
-      "failed": "Precisam de atenção",
       "reason": {
         "unmapped": "Cartão sem associação",
         "account_deleted": "Conta eliminada",
@@ -873,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "Perfil",
-          "header": "Perfil",
+          "header": "Definições pessoais",
           "groups": {
             "personal_details": "Dados pessoais",
             "preferences": "Preferências",
@@ -1773,16 +1788,6 @@
           "required_field": "Campo obrigatório"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Pedidos de partilha",
-      "empty": "Sem pedidos pendentes",
-      "invited_you": "Convite de {name}",
-      "account": "Conta",
-      "budget": "Orçamento",
-      "choose_folder": "Escolha uma pasta para esta conta",
-      "general_folder_hint": "General (será criada)",
-      "decline_question": "Recusar o acesso a “{name}”?"
     }
   },
   "search": {
@@ -1799,7 +1804,9 @@
     "show_all": "Mostrar todos ({count})",
     "hidden_folder": "Pasta oculta",
     "back": "Voltar",
-    "nothing_found": "Nada encontrado"
+    "nothing_found": "Nada encontrado",
+    "open": "Pesquisa",
+    "open_tooltip": "Pesquisa ({shortcut})"
   },
   "subscription": {
     "banner": {

@@ -16,8 +16,7 @@
       "onboarding": "Начало работы",
       "create_account": "Добавить счёт",
       "collapse_menu": "Свернуть меню",
-      "expand_menu": "Развернуть меню",
-      "sharing_requests": "Входящие запросы"
+      "expand_menu": "Развернуть меню"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,33 @@
     "make_recurring": "Сделать регулярной",
     "not_posted": "Не проведена"
   },
+  "inbox": {
+    "title": "Входящие",
+    "open": "Входящие, {count} в ожидании",
+    "empty": "Всё просмотрено",
+    "sections": {
+      "sharing": "Общий доступ",
+      "sync": "Проблемы синхронизации",
+      "failed": "Неудачные импорты",
+      "to_review": "На проверку",
+      "skipped": "Пропущено ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} приглашает вас",
+      "account": "Счёт",
+      "budget": "Бюджет",
+      "choose_folder": "Выберите папку для этого счёта",
+      "general_folder_hint": "General (будет создана)",
+      "decline_question": "Отклонить доступ к «{name}»?"
+    },
+    "sync": {
+      "failed": "Синхронизация {source} не удалась",
+      "partial": "{source} синхронизирован с ошибками",
+      "when": "Последняя попытка {date}"
+    }
+  },
   "imports": {
     "badge": "Импортирована",
-    "banner": {
-      "text": "{count} импортированная транзакция ждёт проверки | {count} импортированные транзакции ждут проверки | {count} импортированных транзакций ждут проверки",
-      "cta": "Проверить"
-    },
     "data_page": {
       "menu_item": "Импорт и экспорт",
       "header": "Импорт и экспорт",
@@ -650,12 +670,7 @@
       }
     },
     "queue": {
-      "header": "Очередь импорта",
-      "empty": "Нечего проверять.",
       "card_amount": "Сумма по карте: {amount} {currency}",
-      "queued": "Ждут проверки",
-      "skipped": "Пропущенные",
-      "failed": "Требуют внимания",
       "reason": {
         "unmapped": "Карта не привязана",
         "account_deleted": "Счёт удалён",
@@ -873,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "Профиль",
-          "header": "Профиль",
+          "header": "Личные настройки",
           "groups": {
             "personal_details": "Личные данные",
             "preferences": "Предпочтения",
@@ -1773,16 +1788,6 @@
           "required_field": "Обязательное поле"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Входящие запросы",
-      "empty": "Нет ожидающих запросов",
-      "invited_you": "{name} приглашает вас",
-      "account": "Счёт",
-      "budget": "Бюджет",
-      "choose_folder": "Выберите папку для этого счёта",
-      "general_folder_hint": "General (будет создана)",
-      "decline_question": "Отклонить доступ к «{name}»?"
     }
   },
   "search": {
@@ -1799,7 +1804,9 @@
     "show_all": "Показать все ({count})",
     "hidden_folder": "Скрытая папка",
     "back": "Назад",
-    "nothing_found": "Ничего не найдено"
+    "nothing_found": "Ничего не найдено",
+    "open": "Поиск",
+    "open_tooltip": "Поиск ({shortcut})"
   },
   "subscription": {
     "banner": {

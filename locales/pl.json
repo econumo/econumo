@@ -16,8 +16,7 @@
       "onboarding": "Pierwsze kroki",
       "create_account": "Dodaj konto",
       "collapse_menu": "Zwiń menu",
-      "expand_menu": "Rozwiń menu",
-      "sharing_requests": "Zaproszenia"
+      "expand_menu": "Rozwiń menu"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,33 @@
     "make_recurring": "Ustaw jako cykliczną",
     "not_posted": "Niezaksięgowana"
   },
+  "inbox": {
+    "title": "Skrzynka odbiorcza",
+    "open": "Skrzynka: do przejrzenia {count}",
+    "empty": "Wszystko na bieżąco",
+    "sections": {
+      "sharing": "Udostępnianie",
+      "sync": "Problemy z synchronizacją",
+      "failed": "Nieudane importy",
+      "to_review": "Do przejrzenia",
+      "skipped": "Pominięte ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} zaprasza Cię",
+      "account": "Konto",
+      "budget": "Budżet",
+      "choose_folder": "Wybierz folder dla tego konta",
+      "general_folder_hint": "General (zostanie utworzony)",
+      "decline_question": "Odrzucić dostęp do „{name}”?"
+    },
+    "sync": {
+      "failed": "Synchronizacja {source} nie powiodła się",
+      "partial": "{source} zsynchronizowano z błędami",
+      "when": "Ostatnia próba {date}"
+    }
+  },
   "imports": {
     "badge": "Zaimportowana",
-    "banner": {
-      "text": "{count} zaimportowana transakcja czeka na sprawdzenie | {count} zaimportowane transakcje czekają na sprawdzenie | {count} zaimportowanych transakcji czeka na sprawdzenie",
-      "cta": "Sprawdź"
-    },
     "data_page": {
       "menu_item": "Import i eksport",
       "header": "Import i eksport",
@@ -650,12 +670,7 @@
       }
     },
     "queue": {
-      "header": "Kolejka importu",
-      "empty": "Nic do sprawdzenia.",
       "card_amount": "Kwota z karty: {amount} {currency}",
-      "queued": "Czeka na sprawdzenie",
-      "skipped": "Pominięte",
-      "failed": "Wymagają uwagi",
       "reason": {
         "unmapped": "Karta nieprzypisana",
         "account_deleted": "Konto usunięte",
@@ -873,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "Profil",
-          "header": "Profil",
+          "header": "Ustawienia osobiste",
           "groups": {
             "personal_details": "Dane osobowe",
             "preferences": "Preferencje",
@@ -1773,16 +1788,6 @@
           "required_field": "Pole wymagane"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Zaproszenia",
-      "empty": "Brak oczekujących zaproszeń",
-      "invited_you": "{name} zaprasza Cię",
-      "account": "Konto",
-      "budget": "Budżet",
-      "choose_folder": "Wybierz folder dla tego konta",
-      "general_folder_hint": "General (zostanie utworzony)",
-      "decline_question": "Odrzucić dostęp do „{name}”?"
     }
   },
   "search": {
@@ -1799,7 +1804,9 @@
     "show_all": "Pokaż wszystkie ({count})",
     "hidden_folder": "Ukryty folder",
     "back": "Wstecz",
-    "nothing_found": "Nic nie znaleziono"
+    "nothing_found": "Nic nie znaleziono",
+    "open": "Wyszukiwanie",
+    "open_tooltip": "Wyszukiwanie ({shortcut})"
   },
   "subscription": {
     "banner": {

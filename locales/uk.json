@@ -16,8 +16,7 @@
       "onboarding": "Початок роботи",
       "create_account": "Додати рахунок",
       "collapse_menu": "Згорнути меню",
-      "expand_menu": "Розгорнути меню",
-      "sharing_requests": "Вхідні запити"
+      "expand_menu": "Розгорнути меню"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,33 @@
     "make_recurring": "Зробити регулярною",
     "not_posted": "Не проведена"
   },
+  "inbox": {
+    "title": "Вхідні",
+    "open": "Вхідні, {count} в очікуванні",
+    "empty": "Усе переглянуто",
+    "sections": {
+      "sharing": "Спільний доступ",
+      "sync": "Проблеми синхронізації",
+      "failed": "Невдалі імпорти",
+      "to_review": "На перевірку",
+      "skipped": "Пропущено ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} запрошує вас",
+      "account": "Рахунок",
+      "budget": "Бюджет",
+      "choose_folder": "Виберіть папку для цього рахунку",
+      "general_folder_hint": "General (буде створена)",
+      "decline_question": "Відхилити доступ до «{name}»?"
+    },
+    "sync": {
+      "failed": "Синхронізація {source} не вдалася",
+      "partial": "{source} синхронізовано з помилками",
+      "when": "Остання спроба {date}"
+    }
+  },
   "imports": {
     "badge": "Імпортована",
-    "banner": {
-      "text": "{count} імпортована транзакція чекає на перевірку | {count} імпортовані транзакції чекають на перевірку | {count} імпортованих транзакцій чекають на перевірку",
-      "cta": "Перевірити"
-    },
     "data_page": {
       "menu_item": "Імпорт та експорт",
       "header": "Імпорт та експорт",
@@ -650,12 +670,7 @@
       }
     },
     "queue": {
-      "header": "Черга імпорту",
-      "empty": "Нічого перевіряти.",
       "card_amount": "Сума за карткою: {amount} {currency}",
-      "queued": "Чекають на перевірку",
-      "skipped": "Пропущені",
-      "failed": "Потребують уваги",
       "reason": {
         "unmapped": "Картка не прив'язана",
         "account_deleted": "Рахунок видалено",
@@ -873,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "Профіль",
-          "header": "Профіль",
+          "header": "Особисті налаштування",
           "groups": {
             "personal_details": "Особисті дані",
             "preferences": "Уподобання",
@@ -1773,16 +1788,6 @@
           "required_field": "Обов’язкове поле"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Вхідні запити",
-      "empty": "Немає запитів, що очікують",
-      "invited_you": "{name} запрошує вас",
-      "account": "Рахунок",
-      "budget": "Бюджет",
-      "choose_folder": "Виберіть папку для цього рахунку",
-      "general_folder_hint": "General (буде створена)",
-      "decline_question": "Відхилити доступ до «{name}»?"
     }
   },
   "search": {
@@ -1799,7 +1804,9 @@
     "show_all": "Показати всі ({count})",
     "hidden_folder": "Прихована папка",
     "back": "Назад",
-    "nothing_found": "Нічого не знайдено"
+    "nothing_found": "Нічого не знайдено",
+    "open": "Пошук",
+    "open_tooltip": "Пошук ({shortcut})"
   },
   "subscription": {
     "banner": {
