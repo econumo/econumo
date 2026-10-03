@@ -44,15 +44,20 @@ func (s stubAccountGrants) HasWriteGrant(ctx context.Context, accountID, userID 
 	return s.ok, s.err
 }
 
-// stubVisibleAccounts is a minimal VisibleAccounts whose VisibleAccountIDs
-// result is controlled per test.
+// stubVisibleAccounts is a minimal VisibleAccounts: ids is the visible set,
+// available the full accessible set (hidden folders included).
 type stubVisibleAccounts struct {
-	ids []vo.Id
-	err error
+	ids       []vo.Id
+	available []vo.Id
+	err       error
 }
 
 func (s stubVisibleAccounts) VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
 	return s.ids, s.err
+}
+
+func (s stubVisibleAccounts) AvailableAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
+	return s.available, s.err
 }
 
 var errSentinel = errors.New("boom")
@@ -117,7 +122,7 @@ func TestCheckWriteAccess_WriteGrantAllowed(t *testing.T) {
 	}
 }
 
-func TestCheckViewAccess_VisibleAccountIDsError_PropagatesError(t *testing.T) {
+func TestCheckViewAccess_AvailableAccountIDsError_PropagatesError(t *testing.T) {
 	s := &Service{visible: stubVisibleAccounts{err: errSentinel}}
 	err := s.checkViewAccess(context.Background(), vo.NewId(), vo.NewId())
 	if !errors.Is(err, errSentinel) {
@@ -125,8 +130,8 @@ func TestCheckViewAccess_VisibleAccountIDsError_PropagatesError(t *testing.T) {
 	}
 }
 
-func TestCheckViewAccess_NotVisible_ReturnsAccessDenied(t *testing.T) {
-	s := &Service{visible: stubVisibleAccounts{ids: []vo.Id{vo.NewId()}}}
+func TestCheckViewAccess_NotAvailable_ReturnsAccessDenied(t *testing.T) {
+	s := &Service{visible: stubVisibleAccounts{available: []vo.Id{vo.NewId()}}}
 	err := s.checkViewAccess(context.Background(), vo.NewId(), vo.NewId())
 	ad, ok := errs.AsAccessDenied(err)
 	if !ok {
@@ -137,10 +142,10 @@ func TestCheckViewAccess_NotVisible_ReturnsAccessDenied(t *testing.T) {
 	}
 }
 
-func TestCheckViewAccess_Visible_Allowed(t *testing.T) {
+func TestCheckViewAccess_HiddenButAvailable_Allowed(t *testing.T) {
 	accountID := vo.NewId()
-	s := &Service{visible: stubVisibleAccounts{ids: []vo.Id{vo.NewId(), accountID}}}
+	s := &Service{visible: stubVisibleAccounts{ids: []vo.Id{vo.NewId()}, available: []vo.Id{vo.NewId(), accountID}}}
 	if err := s.checkViewAccess(context.Background(), vo.NewId(), accountID); err != nil {
-		t.Fatalf("want nil when account is visible, got %v", err)
+		t.Fatalf("want nil when account is available (even if hidden), got %v", err)
 	}
 }
