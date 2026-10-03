@@ -51,6 +51,9 @@ type Querier interface {
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
+	// The OAuth server's housekeeping purge: oauth tokens live an hour, so they
+	// pile up far faster than sessions and are swept set-based, not per user.
+	DeleteDeadOAuthAccessTokens(ctx context.Context, arg DeleteDeadOAuthAccessTokensParams) (int64, error)
 	DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuthGrantsParams) (int64, error)
 	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
@@ -423,6 +426,10 @@ type Querier interface {
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
 	RevokeAccessTokensByGrant(ctx context.Context, arg RevokeAccessTokensByGrantParams) error
 	RevokeOAuthGrant(ctx context.Context, arg RevokeOAuthGrantParams) (int64, error)
+	// Re-authorizing a client replaces the user's earlier connection to it: every
+	// other unrevoked grant for the same (user, client) goes, returning the ids so
+	// their access tokens can be revoked too.
+	RevokeOtherOAuthGrants(ctx context.Context, arg RevokeOtherOAuthGrantsParams) ([]string, error)
 	// See the sqlite sibling.
 	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
 	RevokeUserOAuthGrants(ctx context.Context, arg RevokeUserOAuthGrantsParams) (int64, error)

@@ -18,9 +18,10 @@
 //	                            supplied auth/timezone-fallback handler; nil
 //	                            Deps.MCP leaves it unmounted
 //	/oauth/{register,token}, /.well-known/oauth-*
-//	                  (*)    -> OAuth authorization server for MCP clients, only
-//	                            when Deps.OAuthServer is set; /oauth/authorize is
-//	                            an SPA route
+//	                  (*)    -> OAuth authorization server for MCP clients
+//	                            (Deps.OAuthServer; it answers 404 itself while
+//	                            ECONUMO_URL is unset); /oauth/authorize is an
+//	                            SPA route
 //	/                 (*)    -> SPA file server with index.html fallback
 //
 // The auth middleware itself is built in the user module and is applied by

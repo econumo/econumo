@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -25,14 +26,18 @@ func (s *Service) LockForOAuth(ctx context.Context, userID vo.Id) (int64, error)
 	return u.CredentialsGeneration, nil
 }
 
-// CredentialsGeneration reads the generation without a lock: the evidence a
-// grant captures at approval time and presents again when it mints.
-func (s *Service) CredentialsGeneration(ctx context.Context, userID vo.Id) (int64, error) {
-	u, err := s.repo.GetByID(ctx, userID)
+// IsTokenLive reports whether the user's access token is still unrevoked and
+// unexpired. Called under LockForOAuth, it tells an approval whether a
+// reclaim revoked the presenting session after the auth middleware accepted it.
+func (s *Service) IsTokenLive(ctx context.Context, userID, tokenID vo.Id) (bool, error) {
+	t, err := s.tokens.GetByID(ctx, tokenID)
 	if err != nil {
-		return 0, err
+		if _, ok := errs.AsNotFound(err); ok {
+			return false, nil
+		}
+		return false, err
 	}
-	return u.CredentialsGeneration, nil
+	return t.UserID.Equal(userID) && t.IsLive(s.clock.Now()), nil
 }
 
 // IssueOAuthAccessToken mints an eco_oat_ token for the grant. The expiry is
@@ -62,4 +67,11 @@ func (s *Service) IssueOAuthAccessToken(ctx context.Context, userID, grantID vo.
 // RevokeOAuthGrantTokens revokes every live access token minted for the grant.
 func (s *Service) RevokeOAuthGrantTokens(ctx context.Context, grantID vo.Id) error {
 	return s.tokens.RevokeByGrant(ctx, grantID, s.clock.Now())
+}
+
+// PurgeDeadOAuthTokens deletes oauth access tokens revoked or expired before
+// cutoff. They expire within the hour, so the login-path purge, which walks
+// rows one by one, is not where they go.
+func (s *Service) PurgeDeadOAuthTokens(ctx context.Context, cutoff time.Time) (int64, error) {
+	return s.tokens.DeleteDeadOAuth(ctx, cutoff)
 }

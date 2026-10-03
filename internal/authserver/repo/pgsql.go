@@ -73,6 +73,10 @@ func (pgsqlQuerier) RevokeUserOAuthGrants(ctx context.Context, db backend.DBTX, 
 	return pgsqlgen.New(db).RevokeUserOAuthGrants(ctx, pgsqlgen.RevokeUserOAuthGrantsParams(p))
 }
 
+func (pgsqlQuerier) RevokeOtherOAuthGrants(ctx context.Context, db backend.DBTX, p revokeOtherGrantsParam) ([]string, error) {
+	return pgsqlgen.New(db).RevokeOtherOAuthGrants(ctx, pgsqlgen.RevokeOtherOAuthGrantsParams(p))
+}
+
 func (pgsqlQuerier) ListUnrevokedOAuthGrants(ctx context.Context, db backend.DBTX, userID string) ([]listGrantRow, error) {
 	rows, err := pgsqlgen.New(db).ListUnrevokedOAuthGrants(ctx, userID)
 	if err != nil {

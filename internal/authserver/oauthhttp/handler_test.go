@@ -31,8 +31,11 @@ var ctx = context.Background()
 
 type fakeCreds struct{ issued int }
 
-func (f *fakeCreds) LockForOAuth(context.Context, vo.Id) (int64, error)          { return 0, nil }
-func (f *fakeCreds) CredentialsGeneration(context.Context, vo.Id) (int64, error) { return 0, nil }
+func (f *fakeCreds) LockForOAuth(context.Context, vo.Id) (int64, error)      { return 0, nil }
+func (f *fakeCreds) IsTokenLive(context.Context, vo.Id, vo.Id) (bool, error) { return true, nil }
+func (f *fakeCreds) PurgeDeadOAuthTokens(context.Context, time.Time) (int64, error) {
+	return 0, nil
+}
 func (f *fakeCreds) IssueOAuthAccessToken(context.Context, vo.Id, vo.Id, string, int64, time.Duration) (string, bool, error) {
 	f.issued++
 	return fmt.Sprintf("eco_oat_%d", f.issued), true, nil
@@ -64,7 +67,7 @@ func do(h http.Handler, method, path, contentType string, body io.Reader) *httpt
 
 func approveCode(t *testing.T, svc *authserver.Service, user vo.Id, clientID string) string {
 	t.Helper()
-	res, err := svc.ApproveAuthorization(ctx, user, model.AuthorizationRequest{
+	res, err := svc.ApproveAuthorization(ctx, user, vo.NewId(), model.AuthorizationRequest{
 		ClientID: clientID, RedirectURI: callback, ResponseType: "code",
 		CodeChallenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", CodeChallengeMethod: "S256",
 		Resource: testURL + "/mcp",
@@ -98,7 +101,7 @@ func TestMetadata(t *testing.T) {
 				t.Fatalf("%s: %v", p, m)
 			}
 		}
-		want := `Bearer resource_metadata="` + testURL + `/.well-known/oauth-protected-resource/mcp"`
+		want := `Bearer resource_metadata="` + testURL + `/.well-known/oauth-protected-resource/mcp", scope="mcp"`
 		if c := oauthhttp.Challenge(svc); c != want {
 			t.Fatal(c)
 		}

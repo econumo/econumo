@@ -11,12 +11,16 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// redirectErr marks a bad request whose redirect target is verified, so the
-// error goes back to the client; any other validation error must be shown to
-// the user and never redirected.
 const maxState = 1024
 
-type redirectErr struct{ code, desc string }
+// redirectErr marks a bad request whose redirect target is verified, so the
+// error goes back to the client; any other validation error must be shown to
+// the user and never redirected. dropState keeps a rejected state value out of
+// the redirect.
+type redirectErr struct {
+	code, desc string
+	dropState  bool
+}
 
 func clientNotFound() error {
 	return &errs.ValidationError{Msg: "This app is not registered. Start the connection again from the app.", MsgCode: errs.CodeAuthServerClientNotFound}
@@ -42,15 +46,13 @@ func (s *Service) validate(ctx context.Context, req model.AuthorizationRequest) 
 	}
 	switch {
 	case req.ResponseType != "code":
-		return c, &redirectErr{"unsupported_response_type", "response_type must be code"}, nil
+		return c, &redirectErr{code: "unsupported_response_type", desc: "response_type must be code"}, nil
 	case req.CodeChallengeMethod != "S256" || !validChallenge(req.CodeChallenge):
-		return c, &redirectErr{"invalid_request", "PKCE with S256 is required"}, nil
+		return c, &redirectErr{code: "invalid_request", desc: "PKCE with S256 is required"}, nil
 	case len(req.State) > maxState:
-		return c, &redirectErr{"invalid_request", "state is too long"}, nil
-	case req.Scope != "" && req.Scope != Scope:
-		return c, &redirectErr{"invalid_scope", "the only scope is mcp"}, nil
+		return c, &redirectErr{code: "invalid_request", desc: "state is too long", dropState: true}, nil
 	case !s.resourceOK(req.Resource):
-		return c, &redirectErr{"invalid_target", "unknown resource"}, nil
+		return c, &redirectErr{code: "invalid_target", desc: "unknown resource"}, nil
 	}
 	return c, nil, nil
 }
@@ -87,12 +89,12 @@ func (s *Service) redirectWith(base string, params url.Values) string {
 	return u.String()
 }
 
-func (s *Service) errorRedirect(req model.AuthorizationRequest, code, desc string) string {
-	p := url.Values{"error": {code}}
-	if desc != "" {
-		p.Set("error_description", desc)
+func (s *Service) errorRedirect(req model.AuthorizationRequest, re redirectErr) string {
+	p := url.Values{"error": {re.code}}
+	if re.desc != "" {
+		p.Set("error_description", re.desc)
 	}
-	if req.State != "" {
+	if req.State != "" && !re.dropState {
 		p.Set("state", req.State)
 	}
 	return s.redirectWith(req.RedirectURI, p)
@@ -106,34 +108,44 @@ func (s *Service) DescribeAuthorization(ctx context.Context, userID vo.Id, req m
 	host, loopback := RedirectHost(req.RedirectURI)
 	res := model.AuthorizationRequestResult{ClientName: c.Name, RedirectHost: host, IsLoopback: loopback}
 	if re != nil {
-		res.ErrorRedirectURL = s.errorRedirect(req, re.code, re.desc)
+		res.ErrorRedirectURL = s.errorRedirect(req, *re)
 	}
 	return res, nil
 }
 
-func (s *Service) ApproveAuthorization(ctx context.Context, userID vo.Id, req model.AuthorizationRequest) (model.AuthorizationDecisionResult, error) {
+// The generation is read under the user row lock, together with a check that
+// the presenting session is still live: a reclaim that committed after the
+// auth middleware accepted the session has revoked it, so no code is issued.
+func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.Id, req model.AuthorizationRequest) (model.AuthorizationDecisionResult, error) {
 	c, re, err := s.validate(ctx, req)
 	if err != nil {
 		return model.AuthorizationDecisionResult{}, err
 	}
 	if re != nil {
-		return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, re.code, re.desc)}, nil
-	}
-	gen, err := s.creds.CredentialsGeneration(ctx, userID)
-	if err != nil {
-		return model.AuthorizationDecisionResult{}, err
+		return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, *re)}, nil
 	}
 	raw, hash, err := newSecret()
 	if err != nil {
 		return model.AuthorizationDecisionResult{}, err
 	}
 	now := s.clock.Now().UTC()
-	code := &model.OAuthAuthorizationCode{
-		CodeHash: hash, ClientID: c.ID, UserID: userID,
-		RedirectURI: req.RedirectURI, CodeChallenge: req.CodeChallenge, Resource: s.ResourceURL(),
-		CredentialsGeneration: gen, CreatedAt: now, ExpiresAt: now.Add(CodeTTL),
-	}
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
+		gen, err := s.creds.LockForOAuth(ctx, userID)
+		if err != nil {
+			return err
+		}
+		live, err := s.creds.IsTokenLive(ctx, userID, tokenID)
+		if err != nil {
+			return err
+		}
+		if !live {
+			return errs.NewUnauthorized("Invalid access token")
+		}
+		code := &model.OAuthAuthorizationCode{
+			CodeHash: hash, ClientID: c.ID, UserID: userID,
+			RedirectURI: req.RedirectURI, CodeChallenge: req.CodeChallenge, Resource: s.ResourceURL(),
+			CredentialsGeneration: gen, CreatedAt: now, ExpiresAt: now.Add(CodeTTL),
+		}
 		if err := s.repo.InsertCode(ctx, code); err != nil {
 			return err
 		}
@@ -156,7 +168,7 @@ func (s *Service) DeclineAuthorization(ctx context.Context, userID vo.Id, req mo
 		return model.AuthorizationDecisionResult{}, err
 	}
 	if re != nil {
-		return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, re.code, re.desc)}, nil
+		return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, *re)}, nil
 	}
-	return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, "access_denied", "")}, nil
+	return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, redirectErr{code: "access_denied"})}, nil
 }

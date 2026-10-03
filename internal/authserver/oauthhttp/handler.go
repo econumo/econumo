@@ -29,7 +29,7 @@ func Challenge(svc *authserver.Service) string {
 	if !svc.Enabled() {
 		return ""
 	}
-	return `Bearer resource_metadata="` + svc.Issuer() + ProtectedResourceMCPPath + `"`
+	return `Bearer resource_metadata="` + svc.Issuer() + ProtectedResourceMCPPath + `", scope="` + authserver.Scope + `"`
 }
 
 func Handler(svc *authserver.Service) http.Handler {

@@ -61,3 +61,11 @@ WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = $11 AND u.credentials_generatio
 
 -- name: RevokeAccessTokensByGrant :exec
 UPDATE access_tokens SET revoked_at = $1 WHERE grant_id = $2 AND revoked_at IS NULL;
+
+-- name: DeleteDeadOAuthAccessTokens :execrows
+-- The OAuth server's housekeeping purge: oauth tokens live an hour, so they
+-- pile up far faster than sessions and are swept set-based, not per user.
+DELETE FROM access_tokens
+WHERE kind = 'oauth'
+  AND ((revoked_at IS NOT NULL AND revoked_at < $1)
+    OR (expires_at IS NOT NULL AND expires_at < $2));

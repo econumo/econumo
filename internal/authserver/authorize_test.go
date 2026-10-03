@@ -44,10 +44,13 @@ func TestDescribeAuthorization(t *testing.T) {
 	if res, _ := s.DescribeAuthorization(ctx, user, q); !strings.Contains(res.ErrorRedirectURL, "error=invalid_request") {
 		t.Errorf("plain pkce: %+v", res)
 	}
-	q = authReq(c.ClientID)
-	q.Scope = "admin"
-	if res, _ := s.DescribeAuthorization(ctx, user, q); !strings.Contains(res.ErrorRedirectURL, "error=invalid_scope") {
-		t.Errorf("scope: %+v", res)
+	// Any requested scope is tolerated; the grant is always mcp.
+	for _, sc := range []string{"admin", "mcp", "openid profile", "mcp:tools"} {
+		q = authReq(c.ClientID)
+		q.Scope = sc
+		if res, err := s.DescribeAuthorization(ctx, user, q); err != nil || res.ErrorRedirectURL != "" {
+			t.Errorf("scope %q: %+v %v", sc, res, err)
+		}
 	}
 	q = authReq(c.ClientID)
 	q.ResponseType = "token"
@@ -87,7 +90,7 @@ func TestApproveAndDecline(t *testing.T) {
 	s, creds, _, user := newTestService(t)
 	creds.gen = 7
 	c := register(t, s, "Claude", "https://claude.ai/api/mcp/auth_callback")
-	res, err := s.ApproveAuthorization(ctx, user, authReq(c.ClientID))
+	res, err := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +115,7 @@ func TestApproveAndDecline(t *testing.T) {
 
 	bad := authReq(c.ClientID)
 	bad.CodeChallengeMethod = "plain"
-	r, err := s.ApproveAuthorization(ctx, user, bad)
+	r, err := s.ApproveAuthorization(ctx, user, session, bad)
 	if err != nil || !strings.Contains(r.RedirectURL, "error=invalid_request") || strings.Contains(r.RedirectURL, "code=") {
 		t.Fatalf("invalid request must redirect with an error, not a code: %+v %v", r, err)
 	}
@@ -121,8 +124,28 @@ func TestApproveAndDecline(t *testing.T) {
 	}
 
 	off := NewService(s.repo, creds, s.tx, s.clock, nil, "")
-	if _, err := off.ApproveAuthorization(ctx, user, authReq(c.ClientID)); !hasCode(err, errs.CodeAuthServerDisabled) {
+	if _, err := off.ApproveAuthorization(ctx, user, session, authReq(c.ClientID)); !hasCode(err, errs.CodeAuthServerDisabled) {
 		t.Fatal(err)
+	}
+}
+
+// A reclaim that commits after the auth middleware accepted the session has
+// revoked it; the approval re-checks it under the user row lock and issues no
+// code.
+func TestApprove_RevokedPresenterGetsNoCode(t *testing.T) {
+	s, creds, _, user := newTestService(t)
+	c := register(t, s, "Claude", "https://claude.ai/api/mcp/auth_callback")
+	creds.deadTokens = map[vo.Id]bool{session: true}
+	res, err := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
+	if _, ok := errs.AsUnauthorized(err); !ok || res.RedirectURL != "" {
+		t.Fatalf("want unauthorized and no redirect, got %+v %v", res, err)
+	}
+	if len(creds.locked) != 1 || !creds.locked[0].Equal(user) {
+		t.Fatalf("the presenter check must run under the user lock: %v", creds.locked)
+	}
+	got, err := s.repo.GetClient(ctx, vo.MustParseId(c.ClientID))
+	if err != nil || got.LastUsedAt != nil {
+		t.Fatalf("a refused approval must write nothing: %+v %v", got, err)
 	}
 }
 
@@ -131,7 +154,7 @@ func TestRedirectKeepsExistingQuery(t *testing.T) {
 	c := register(t, s, "", "https://a.test/cb?app=1")
 	q := authReq(c.ClientID)
 	q.RedirectURI = "https://a.test/cb?app=1"
-	res, err := s.ApproveAuthorization(ctx, user, q)
+	res, err := s.ApproveAuthorization(ctx, user, session, q)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +179,7 @@ func TestErrorRedirectCarriesHostLabel(t *testing.T) {
 	s, _, _, user := newTestService(t)
 	c := register(t, s, "Claude", "https://claude.ai/api/mcp/auth_callback")
 	q := authReq(c.ClientID)
-	q.Scope = "admin"
+	q.Resource = "https://other.test/mcp"
 	res, err := s.DescribeAuthorization(ctx, user, q)
 	if err != nil || res.ErrorRedirectURL == "" || res.ClientName != "Claude" || res.RedirectHost != "claude.ai" || res.IsLoopback {
 		t.Fatalf("%+v %v", res, err)
@@ -190,6 +213,11 @@ func TestChallengeAndStateShape(t *testing.T) {
 		}
 	}
 	q := authReq(c.ClientID)
+	q.State = strings.Repeat("s", 1025)
+	if res, _ := s.DescribeAuthorization(ctx, user, q); strings.Contains(res.ErrorRedirectURL, "state=") {
+		t.Errorf("a rejected state must not be echoed: %s", res.ErrorRedirectURL)
+	}
+	q = authReq(c.ClientID)
 	q.State = strings.Repeat("s", 1024)
 	if res, err := s.DescribeAuthorization(ctx, user, q); err != nil || res.ErrorRedirectURL != "" {
 		t.Errorf("state at the cap must pass: %+v %v", res, err)

@@ -38,6 +38,28 @@ func (q *Queries) DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAcce
 	return result.RowsAffected()
 }
 
+const deleteDeadOAuthAccessTokens = `-- name: DeleteDeadOAuthAccessTokens :execrows
+DELETE FROM access_tokens
+WHERE kind = 'oauth'
+  AND ((revoked_at IS NOT NULL AND revoked_at < $1)
+    OR (expires_at IS NOT NULL AND expires_at < $2))
+`
+
+type DeleteDeadOAuthAccessTokensParams struct {
+	RevokedAt *time.Time
+	ExpiresAt *time.Time
+}
+
+// The OAuth server's housekeeping purge: oauth tokens live an hour, so they
+// pile up far faster than sessions and are swept set-based, not per user.
+func (q *Queries) DeleteDeadOAuthAccessTokens(ctx context.Context, arg DeleteDeadOAuthAccessTokensParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteDeadOAuthAccessTokens, arg.RevokedAt, arg.ExpiresAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getAccessTokenByHash = `-- name: GetAccessTokenByHash :one
 SELECT t.id, t.user_id, t.kind, t.token_hash, t.scope, t.name, t.user_agent,
        t.created_at, t.last_used_at, t.expires_at, t.revoked_at,

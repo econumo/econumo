@@ -119,3 +119,52 @@ func TestRepo_ClientCodeGrantLifecycle(t *testing.T) {
 		t.Fatal("expired code must have been purged")
 	}
 }
+
+func TestRepo_RevokeOtherGrants(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+	r := authrepo.NewRepo(db.Engine, db.TX)
+	f := fixture.New(t, db)
+	f.User(fixture.User{ID: userA, Name: "u"})
+	userID := vo.MustParseId(userA)
+	otherUser := vo.MustParseId(f.User(fixture.User{}))
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+
+	newClient := func() vo.Id {
+		c := &model.OAuthClient{ID: vo.NewId(), Name: "c", RedirectURIs: []string{"https://a.test/cb"}, CreatedAt: now}
+		if err := r.InsertClient(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+		return c.ID
+	}
+	newGrant := func(user, client vo.Id) vo.Id {
+		g := &model.OAuthGrant{ID: vo.NewId(), UserID: user, ClientID: client, RefreshTokenHash: vo.NewId().String(),
+			CreatedAt: now, LastUsedAt: now, ExpiresAt: now.Add(time.Hour)}
+		if err := r.InsertGrant(ctx, g); err != nil {
+			t.Fatal(err)
+		}
+		return g.ID
+	}
+	client, otherClient := newClient(), newClient()
+	old1, old2 := newGrant(userID, client), newGrant(userID, client)
+	keep := newGrant(userID, client)
+	sibling := newGrant(userID, otherClient)
+	foreign := newGrant(otherUser, client)
+
+	ids, err := r.RevokeOtherGrants(ctx, userID, client, keep, now)
+	if err != nil || len(ids) != 2 {
+		t.Fatalf("revoked = %v %v", ids, err)
+	}
+	got := map[vo.Id]bool{ids[0]: true, ids[1]: true}
+	if !got[old1] || !got[old2] {
+		t.Fatalf("revoked the wrong grants: %v", ids)
+	}
+	for _, id := range []vo.Id{keep, sibling, foreign} {
+		if g, _ := r.GetGrant(ctx, id); g.RevokedAt != nil {
+			t.Fatalf("grant %s must stay live", id)
+		}
+	}
+	if ids, err := r.RevokeOtherGrants(ctx, userID, client, keep, now); err != nil || len(ids) != 0 {
+		t.Fatalf("already revoked grants must not be returned again: %v %v", ids, err)
+	}
+}

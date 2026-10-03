@@ -27,6 +27,7 @@ type (
 	rotateGrantParams      = sqlitegen.RotateOAuthGrantParams
 	revokeGrantParams      = sqlitegen.RevokeOAuthGrantParams
 	revokeUserGrantsParams = sqlitegen.RevokeUserOAuthGrantsParams
+	revokeOtherGrantsParam = sqlitegen.RevokeOtherOAuthGrantsParams
 	deleteDeadParams       = sqlitegen.DeleteDeadOAuthGrantsParams
 )
 
@@ -47,6 +48,7 @@ type querier interface {
 	RotateOAuthGrant(ctx context.Context, db backend.DBTX, p rotateGrantParams) (int64, error)
 	RevokeOAuthGrant(ctx context.Context, db backend.DBTX, p revokeGrantParams) (int64, error)
 	RevokeUserOAuthGrants(ctx context.Context, db backend.DBTX, p revokeUserGrantsParams) (int64, error)
+	RevokeOtherOAuthGrants(ctx context.Context, db backend.DBTX, p revokeOtherGrantsParam) ([]string, error)
 	ListUnrevokedOAuthGrants(ctx context.Context, db backend.DBTX, userID string) ([]listGrantRow, error)
 	DeleteDeadOAuthGrants(ctx context.Context, db backend.DBTX, p deleteDeadParams) (int64, error)
 }
@@ -179,6 +181,24 @@ func (r *Repo) RevokeGrant(ctx context.Context, id vo.Id, now time.Time) (int64,
 
 func (r *Repo) RevokeUserGrants(ctx context.Context, userID vo.Id, now time.Time) (int64, error) {
 	return r.q.RevokeUserOAuthGrants(ctx, r.db(ctx), revokeUserGrantsParams{RevokedAt: &now, UserID: userID.String()})
+}
+
+func (r *Repo) RevokeOtherGrants(ctx context.Context, userID, clientID, keepID vo.Id, now time.Time) ([]vo.Id, error) {
+	rows, err := r.q.RevokeOtherOAuthGrants(ctx, r.db(ctx), revokeOtherGrantsParam{
+		RevokedAt: &now, UserID: userID.String(), ClientID: clientID.String(), ID: keepID.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]vo.Id, 0, len(rows))
+	for _, raw := range rows {
+		id, err := vo.ParseId(raw)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func (r *Repo) ListUnrevokedGrants(ctx context.Context, userID vo.Id) ([]model.ConnectedGrant, error) {

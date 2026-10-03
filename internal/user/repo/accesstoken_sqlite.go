@@ -43,6 +43,10 @@ func (accessTokenSqliteQuerier) DeleteDeadAccessTokens(ctx context.Context, db b
 	return sqlitegen.New(db).DeleteDeadAccessTokens(ctx, p)
 }
 
+func (accessTokenSqliteQuerier) DeleteDeadOAuthAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadOAuthTokParams) (int64, error) {
+	return sqlitegen.New(db).DeleteDeadOAuthAccessTokens(ctx, p)
+}
+
 func (accessTokenSqliteQuerier) InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error) {
 	return sqlitegen.New(db).InsertAccessTokenIfGeneration(ctx, p)
 }

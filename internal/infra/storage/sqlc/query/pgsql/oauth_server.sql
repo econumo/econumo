@@ -68,3 +68,11 @@ DELETE FROM oauth_grants
 WHERE (revoked_at IS NOT NULL AND revoked_at < $1)
    OR expires_at < $2;
 
+
+-- name: RevokeOtherOAuthGrants :many
+-- Re-authorizing a client replaces the user's earlier connection to it: every
+-- other unrevoked grant for the same (user, client) goes, returning the ids so
+-- their access tokens can be revoked too.
+UPDATE oauth_grants SET revoked_at = $1
+WHERE user_id = $2 AND client_id = $3 AND id <> $4 AND revoked_at IS NULL
+RETURNING id;

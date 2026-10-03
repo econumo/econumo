@@ -58,7 +58,7 @@ func TestMCPOAuth_Enabled(t *testing.T) {
 
 	resp := oauthDo(t, h, "POST", "/mcp", initBody)
 	body, _ := io.ReadAll(resp.Body)
-	want := `Bearer resource_metadata="https://econumo.example.test/.well-known/oauth-protected-resource/mcp"`
+	want := `Bearer resource_metadata="https://econumo.example.test/.well-known/oauth-protected-resource/mcp", scope="mcp"`
 	if resp.StatusCode != 401 || resp.Header.Get("WWW-Authenticate") != want || !strings.Contains(string(body), `"Access token not found"`) {
 		t.Fatalf("mcp 401: %d %q %s", resp.StatusCode, resp.Header.Get("WWW-Authenticate"), body)
 	}

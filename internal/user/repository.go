@@ -179,6 +179,9 @@ type AccessTokens interface {
 	// revocation happened before cutoff, returning the number deleted. Backed
 	// by the revoked_at/expires_at indexes so it stays cheap on large tables.
 	DeleteDead(ctx context.Context, cutoff time.Time) (int64, error)
+
+	// DeleteDeadOAuth is DeleteDead restricted to oauth tokens.
+	DeleteDeadOAuth(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
 // PasswordRequests persists password-reset codes (users_password_requests) for

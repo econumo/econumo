@@ -109,6 +109,16 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 		if !ok {
 			return errInvalidGrant
 		}
+		// Re-authorizing a client replaces the user's earlier connection to it.
+		replaced, err := s.repo.RevokeOtherGrants(ctx, code.UserID, c.ID, g.ID, now)
+		if err != nil {
+			return err
+		}
+		for _, id := range replaced {
+			if err := s.creds.RevokeOAuthGrantTokens(ctx, id); err != nil {
+				return err
+			}
+		}
 		resp = tokenResponse(access, rawRefresh)
 		reqctx.AddLogAttr(ctx, "grant_id", g.ID.String())
 		reqctx.AddLogAttr(ctx, "user_id", code.UserID.String())
@@ -133,6 +143,9 @@ func (s *Service) housekeeping(ctx context.Context, now time.Time) {
 	if _, err := s.repo.DeleteDeadGrants(ctx, now.Add(-DeadRetention)); err != nil {
 		slog.WarnContext(ctx, "oauth grant purge failed", "err", err)
 	}
+	if _, err := s.creds.PurgeDeadOAuthTokens(ctx, now.Add(-DeadRetention)); err != nil {
+		slog.WarnContext(ctx, "oauth access token purge failed", "err", err)
+	}
 }
 
 func (s *Service) refresh(ctx context.Context, req model.TokenRequest) (model.TokenResponse, error) {
@@ -148,9 +161,6 @@ func (s *Service) refresh(ctx context.Context, req model.TokenRequest) (model.To
 	}
 	if !s.resourceOK(req.Resource) {
 		return model.TokenResponse{}, &OAuthError{400, "invalid_target", "unknown resource"}
-	}
-	if req.Scope != "" && req.Scope != Scope {
-		return model.TokenResponse{}, &OAuthError{400, "invalid_scope", "the only scope is mcp"}
 	}
 	now := s.clock.Now()
 	hash := hashSecret(req.RefreshToken)

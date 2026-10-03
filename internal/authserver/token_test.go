@@ -19,7 +19,7 @@ func approve(t *testing.T, s *Service, user vo.Id) (clientID, code string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := s.ApproveAuthorization(ctx, user, authReq(c.ClientID))
+	res, err := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestRefresh_ExpiryAndClientBinding(t *testing.T) {
 func TestToken_ClientAuth(t *testing.T) {
 	s, _, _, user := newTestService(t)
 	c, _ := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"https://claude.ai/api/mcp/auth_callback"}, TokenEndpointAuthMethod: "client_secret_post"})
-	res, _ := s.ApproveAuthorization(ctx, user, authReq(c.ClientID))
+	res, _ := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
 	u, _ := url.Parse(res.RedirectURL)
 	req := model.TokenRequest{GrantType: "authorization_code", ClientID: c.ClientID, Code: u.Query().Get("code"),
 		RedirectURI: "https://claude.ai/api/mcp/auth_callback", CodeVerifier: verifier, ClientSecret: "nope"}
@@ -171,7 +171,7 @@ func TestToken_ConfidentialClientSucceeds(t *testing.T) {
 	if err != nil || c.ClientSecret == "" {
 		t.Fatalf("%+v %v", c, err)
 	}
-	res, _ := s.ApproveAuthorization(ctx, user, authReq(c.ClientID))
+	res, _ := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
 	u, _ := url.Parse(res.RedirectURL)
 	tr, err := s.Token(ctx, model.TokenRequest{GrantType: "authorization_code", ClientID: c.ClientID, ClientSecret: c.ClientSecret,
 		Code: u.Query().Get("code"), RedirectURI: "https://claude.ai/api/mcp/auth_callback", CodeVerifier: verifier})
@@ -220,11 +220,69 @@ func TestRefresh_ResourceAndScope(t *testing.T) {
 	tr, _ := exchange(s, cid, code)
 	_, err := s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: tr.RefreshToken, Resource: "https://other.test/mcp"})
 	wantOAuth(t, err, "invalid_target")
-	_, err = s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: tr.RefreshToken, Scope: "admin"})
-	wantOAuth(t, err, "invalid_scope")
-	// The refusals above leave the token usable, and a canonical resource/scope passes.
-	if _, err := s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: tr.RefreshToken, Resource: testURL + "/mcp/", Scope: "mcp"}); err != nil {
+	// The refusal above leaves the token usable; any requested scope is
+	// tolerated and the grant stays mcp.
+	tr, err = s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: tr.RefreshToken, Resource: testURL + "/mcp/", Scope: "admin"})
+	if err != nil || tr.Scope != "mcp" {
+		t.Fatalf("%+v %v", tr, err)
+	}
+	if _, err := s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: tr.RefreshToken, Scope: "mcp"}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestExchange_ReplacesEarlierGrantForSameClient(t *testing.T) {
+	s, creds, _, user := newTestService(t)
+	cid, code := approve(t, s, user)
+	first, err := exchange(s, cid, code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, otherCode := approve(t, s, user)
+	if _, err := exchange(s, other, otherCode); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := s.repo.ListUnrevokedGrants(ctx, user)
+	if len(before) != 2 {
+		t.Fatalf("two clients, two grants: %d", len(before))
+	}
+	firstGrant := before[0].Grant.ID
+	if !before[0].Grant.ClientID.Equal(vo.MustParseId(cid)) {
+		firstGrant = before[1].Grant.ID
+	}
+
+	res, err := s.ApproveAuthorization(ctx, user, session, authReq(cid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, _ := url.Parse(res.RedirectURL)
+	if _, err := exchange(s, cid, u.Query().Get("code")); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := s.repo.ListUnrevokedGrants(ctx, user)
+	if len(after) != 2 {
+		t.Fatalf("re-authorizing must replace, not add: %d grants", len(after))
+	}
+	for _, g := range after {
+		if g.Grant.ID.Equal(firstGrant) {
+			t.Fatal("the earlier grant for the same client must be revoked")
+		}
+	}
+	if len(creds.revoked) != 1 || !creds.revoked[0].Equal(firstGrant) {
+		t.Fatalf("the replaced grant's access tokens must be revoked: %v", creds.revoked)
+	}
+	_, err = s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: first.RefreshToken})
+	wantOAuth(t, err, "invalid_grant")
+}
+
+func TestExchange_HousekeepingPurgesDeadOAuthTokens(t *testing.T) {
+	s, creds, clock, user := newTestService(t)
+	cid, code := approve(t, s, user)
+	if _, err := exchange(s, cid, code); err != nil {
+		t.Fatal(err)
+	}
+	if len(creds.purged) != 1 || !creds.purged[0].Equal(clock.Now().Add(-DeadRetention)) {
+		t.Fatalf("purge cutoff = %v", creds.purged)
 	}
 }
 

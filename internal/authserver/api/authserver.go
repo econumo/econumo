@@ -69,7 +69,8 @@ func (h *Handlers) GetAuthorizationRequest(w http.ResponseWriter, r *http.Reques
 // @Router      /api/v1/authserver/approve-authorization [post]
 func (h *Handlers) ApproveAuthorization(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.AuthorizationRequest) (model.AuthorizationDecisionResult, error) {
-		return h.svc.ApproveAuthorization(ctx, userID, req)
+		tokenID, _ := middleware.TokenIDFromCtx(ctx)
+		return h.svc.ApproveAuthorization(ctx, userID, tokenID, req)
 	})
 }
 
@@ -125,10 +126,6 @@ func (h *Handlers) GetConnectedAppList(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/v1/authserver/revoke-connected-app [post]
 func (h *Handlers) RevokeConnectedApp(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.RevokeConnectedAppRequest) (model.RevokeConnectedAppResult, error) {
-		id, err := vo.ParseId(req.ID)
-		if err != nil {
-			return model.RevokeConnectedAppResult{}, err
-		}
-		return model.RevokeConnectedAppResult{}, h.svc.RevokeConnectedApp(ctx, userID, id)
+		return model.RevokeConnectedAppResult{}, h.svc.RevokeConnectedApp(ctx, userID, vo.MustParseId(req.ID))
 	})
 }

@@ -68,6 +68,10 @@ func (sqliteQuerier) RevokeUserOAuthGrants(ctx context.Context, db backend.DBTX,
 	return sqlitegen.New(db).RevokeUserOAuthGrants(ctx, p)
 }
 
+func (sqliteQuerier) RevokeOtherOAuthGrants(ctx context.Context, db backend.DBTX, p revokeOtherGrantsParam) ([]string, error) {
+	return sqlitegen.New(db).RevokeOtherOAuthGrants(ctx, p)
+}
+
 func (sqliteQuerier) ListUnrevokedOAuthGrants(ctx context.Context, db backend.DBTX, userID string) ([]listGrantRow, error) {
 	return sqlitegen.New(db).ListUnrevokedOAuthGrants(ctx, userID)
 }

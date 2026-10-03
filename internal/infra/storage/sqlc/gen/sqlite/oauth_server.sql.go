@@ -346,6 +346,50 @@ func (q *Queries) RevokeOAuthGrant(ctx context.Context, arg RevokeOAuthGrantPara
 	return result.RowsAffected()
 }
 
+const revokeOtherOAuthGrants = `-- name: RevokeOtherOAuthGrants :many
+UPDATE oauth_grants SET revoked_at = ?
+WHERE user_id = ? AND client_id = ? AND id <> ? AND revoked_at IS NULL
+RETURNING id
+`
+
+type RevokeOtherOAuthGrantsParams struct {
+	RevokedAt *time.Time
+	UserID    string
+	ClientID  string
+	ID        string
+}
+
+// Re-authorizing a client replaces the user's earlier connection to it: every
+// other unrevoked grant for the same (user, client) goes, returning the ids so
+// their access tokens can be revoked too.
+func (q *Queries) RevokeOtherOAuthGrants(ctx context.Context, arg RevokeOtherOAuthGrantsParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, revokeOtherOAuthGrants,
+		arg.RevokedAt,
+		arg.UserID,
+		arg.ClientID,
+		arg.ID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const revokeUserOAuthGrants = `-- name: RevokeUserOAuthGrants :execrows
 UPDATE oauth_grants SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL
 `

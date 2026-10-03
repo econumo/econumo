@@ -26,6 +26,9 @@ type Repository interface {
 	RotateGrant(ctx context.Context, id vo.Id, oldHash, newHash string, now, expiresAt time.Time) (int64, error)
 	RevokeGrant(ctx context.Context, id vo.Id, now time.Time) (int64, error)
 	RevokeUserGrants(ctx context.Context, userID vo.Id, now time.Time) (int64, error)
+	// RevokeOtherGrants revokes the user's unrevoked grants for the client
+	// except keepID, returning the ids it revoked.
+	RevokeOtherGrants(ctx context.Context, userID, clientID, keepID vo.Id, now time.Time) ([]vo.Id, error)
 	ListUnrevokedGrants(ctx context.Context, userID vo.Id) ([]model.ConnectedGrant, error)
 	DeleteDeadGrants(ctx context.Context, cutoff time.Time) (int64, error)
 }

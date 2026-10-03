@@ -24,7 +24,7 @@ func (f *fakeGrantRevoker) RevokeAllForUser(_ context.Context, id vo.Id) (int64,
 func issueOAuth(t *testing.T, svc *appuser.Service, uid, grantID vo.Id) string {
 	t.Helper()
 	ctx := context.Background()
-	gen, err := svc.CredentialsGeneration(ctx, uid)
+	gen, err := svc.LockForOAuth(ctx, uid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestIssueOAuthAccessToken_AuthenticatesWithMCPScope(t *testing.T) {
 func TestIssueOAuthAccessToken_FencedByGeneration(t *testing.T) {
 	svc, _, _, uid := newAuthEnv(t)
 	ctx := context.Background()
-	gen, err := svc.CredentialsGeneration(ctx, uid)
+	gen, err := svc.LockForOAuth(ctx, uid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestIssueOAuthAccessToken_FencedByGeneration(t *testing.T) {
 func TestLockForOAuth_ReturnsGenerationAndNotFound(t *testing.T) {
 	svc, _, _, uid := newAuthEnv(t)
 	ctx := context.Background()
-	want, err := svc.CredentialsGeneration(ctx, uid)
+	want, err := svc.LockForOAuth(ctx, uid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,5 +164,67 @@ func TestUpdatePassword_KeepsOAuthCredentials(t *testing.T) {
 	}
 	if len(rev.users) != 0 {
 		t.Fatal("update-password must keep grants")
+	}
+}
+
+func TestIsTokenLive(t *testing.T) {
+	svc, tokens, clk, uid := newAuthEnv(t)
+	ctx := context.Background()
+	exp := authT0.Add(time.Hour)
+	live := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_live-check", &exp)
+	revoked := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_revoked-check", &exp)
+	if err := tokens.Revoke(ctx, revoked, authT0); err != nil {
+		t.Fatal(err)
+	}
+	other, err := svc.AdminCreateUser(ctx, "Other", "other-live@econumo.test", "secretpass")
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign := seedToken(t, tokens, other, model.TokenKindSession, "eco_ses_foreign-check", &exp)
+
+	for name, tc := range map[string]struct {
+		id   vo.Id
+		want bool
+	}{
+		"live": {live, true}, "revoked": {revoked, false}, "foreign": {foreign, false}, "unknown": {vo.NewId(), false},
+	} {
+		got, err := svc.IsTokenLive(ctx, uid, tc.id)
+		if err != nil || got != tc.want {
+			t.Errorf("%s: %v %v, want %v", name, got, err, tc.want)
+		}
+	}
+	clk.now = exp.Add(time.Second)
+	if got, err := svc.IsTokenLive(ctx, uid, live); err != nil || got {
+		t.Fatalf("expired: %v %v", got, err)
+	}
+}
+
+func TestPurgeDeadOAuthTokens(t *testing.T) {
+	svc, tokens, clk, uid := newAuthEnv(t)
+	ctx := context.Background()
+	oldSessionExp := authT0.Add(-40 * 24 * time.Hour)
+	oldSession := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_old-dead", &oldSessionExp)
+	issueOAuth(t, svc, uid, vo.NewId()) // expires authT0+1h
+	revokedGrant := vo.NewId()
+	issueOAuth(t, svc, uid, revokedGrant)
+	if err := svc.RevokeOAuthGrantTokens(ctx, revokedGrant); err != nil {
+		t.Fatal(err)
+	}
+	clk.now = authT0.Add(40 * 24 * time.Hour)
+	fresh := issueOAuth(t, svc, uid, vo.NewId())
+
+	n, err := svc.PurgeDeadOAuthTokens(ctx, clk.now.Add(-30*24*time.Hour))
+	if err != nil || n != 2 {
+		t.Fatalf("purged %d %v, want the expired and the revoked oauth token", n, err)
+	}
+	rows, _ := tokens.ListByUser(ctx, uid, model.TokenKindOAuth)
+	if len(rows) != 1 {
+		t.Fatalf("oauth rows left = %d, want 1", len(rows))
+	}
+	if _, err := svc.Authenticate(ctx, fresh); err != nil {
+		t.Fatalf("a live oauth token must survive: %v", err)
+	}
+	if _, err := tokens.GetByID(ctx, oldSession); err != nil {
+		t.Fatalf("sessions are not the oauth purge's to delete: %v", err)
 	}
 }

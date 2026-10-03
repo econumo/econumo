@@ -26,6 +26,7 @@ type (
 	revokeUserAccessTokensParams     = sqlitegen.RevokeUserAccessTokensParams
 	listAccessTokensParams           = sqlitegen.ListAccessTokensByUserParams
 	deleteDeadAccessTokParams        = sqlitegen.DeleteDeadAccessTokensParams
+	deleteDeadOAuthTokParams         = sqlitegen.DeleteDeadOAuthAccessTokensParams
 	insertTokenIfGenParams           = sqlitegen.InsertAccessTokenIfGenerationParams
 	insertTokenIfPresenterLiveParams = sqlitegen.InsertAccessTokenIfPresenterLiveParams
 	insertOAuthTokenIfGenParams      = sqlitegen.InsertOAuthAccessTokenIfGenerationParams
@@ -45,6 +46,7 @@ type accessTokenQuerier interface {
 	ListAccessTokensByUser(ctx context.Context, db backend.DBTX, p listAccessTokensParams) ([]accessTokenRow, error)
 	DeleteAccessToken(ctx context.Context, db backend.DBTX, id string) error
 	DeleteDeadAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadAccessTokParams) (int64, error)
+	DeleteDeadOAuthAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadOAuthTokParams) (int64, error)
 }
 
 type AccessTokenRepo struct {
@@ -205,6 +207,10 @@ func (r *AccessTokenRepo) Delete(ctx context.Context, id vo.Id) error {
 
 func (r *AccessTokenRepo) DeleteDead(ctx context.Context, cutoff time.Time) (int64, error) {
 	return r.q.DeleteDeadAccessTokens(ctx, r.db(ctx), deleteDeadAccessTokParams{RevokedAt: &cutoff, ExpiresAt: &cutoff})
+}
+
+func (r *AccessTokenRepo) DeleteDeadOAuth(ctx context.Context, cutoff time.Time) (int64, error) {
+	return r.q.DeleteDeadOAuthAccessTokens(ctx, r.db(ctx), deleteDeadOAuthTokParams{RevokedAt: &cutoff, ExpiresAt: &cutoff})
 }
 
 func accessTokenFromRow(row accessTokenRow) (*model.AccessToken, error) {

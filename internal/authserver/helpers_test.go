@@ -19,18 +19,26 @@ const testURL = "https://econumo.example.test"
 var ctx = context.Background()
 
 type fakeCreds struct {
-	gen       int64
-	issued    int
-	failFence bool
-	revoked   []vo.Id
-	locked    []vo.Id
+	gen        int64
+	issued     int
+	failFence  bool
+	revoked    []vo.Id
+	locked     []vo.Id
+	deadTokens map[vo.Id]bool
+	purged     []time.Time
 }
 
 func (f *fakeCreds) LockForOAuth(_ context.Context, u vo.Id) (int64, error) {
 	f.locked = append(f.locked, u)
 	return f.gen, nil
 }
-func (f *fakeCreds) CredentialsGeneration(context.Context, vo.Id) (int64, error) { return f.gen, nil }
+func (f *fakeCreds) IsTokenLive(_ context.Context, _, tokenID vo.Id) (bool, error) {
+	return !f.deadTokens[tokenID], nil
+}
+func (f *fakeCreds) PurgeDeadOAuthTokens(_ context.Context, cutoff time.Time) (int64, error) {
+	f.purged = append(f.purged, cutoff)
+	return 0, nil
+}
 func (f *fakeCreds) IssueOAuthAccessToken(_ context.Context, _, _ vo.Id, _ string, g int64, _ time.Duration) (string, bool, error) {
 	if f.failFence || g != f.gen {
 		return "", false, nil
@@ -57,6 +65,9 @@ func newTestService(t *testing.T) (*Service, *fakeCreds, *fixedClock, vo.Id) {
 	s := NewService(authrepo.NewRepo(db.Engine, db.TX), creds, db.TX, clock, nil, testURL)
 	return s, creds, clock, userID
 }
+
+// session is the presenting token id every approval in these tests carries.
+var session = vo.NewId()
 
 func authReq(clientID string) model.AuthorizationRequest {
 	return model.AuthorizationRequest{
