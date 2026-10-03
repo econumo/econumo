@@ -4,12 +4,11 @@ import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-q
 import { RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file is over vite's 4KB auto-inline cutoff,
-// so without it the footer logo ships as a separate asset and can 404 where
-// the header logo (under the cutoff, auto-inlined) still shows.
+// so without it the sidebar logo ships as a separate asset and can 404 where
+// the login logo (under the cutoff, auto-inlined) still shows.
 import grayLogo from '@/assets/econumo-gray.svg?inline'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
-import { UserAvatar } from '@/components/UserAvatar'
 import { UpdateNotice } from '@/components/UpdateNotice'
 import { ServerVersionNotice } from '@/components/ServerVersionNotice'
 import { econumoPackage } from '@/lib/package'
@@ -115,23 +114,32 @@ export function ApplicationLayout() {
   const syncClass = `-m-1.5 rounded-full p-1.5 ${
     syncFailing ? 'bg-amber-500/15 text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-foreground'
   }`
+  // the full footer's tap area is already fixed at size-11, so no -m/p offset is needed
+  const syncClassFull = `grid size-11 place-items-center rounded-full ${
+    syncFailing ? 'bg-amber-500/15 text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-foreground'
+  }`
   const { collapsed, toggleCollapsed } = useSidebarStore()
   // compact unmounts the whole sidebar on navigation — going back must land
   // on the same spot in the account list
   const sidebarScrollRef = useScrollMemory('sidebar-accounts')
   // Icon-rail mode is desktop-only; compact keeps the full-width home sidebar.
   const rail = collapsed && !isCompact
+  const appName = t('common.econumo.label')
 
-  const userBlock = user ? (
+  const topRow = user ? (
     rail ? (
-      <Link to={RouterPage.SETTINGS_PROFILE} className="mt-3 flex justify-center px-2 py-3" title={user.name}>
-        <UserAvatar avatar={user.avatar} size="md" className="rounded-xl" />
+      <Link to={RouterPage.HOME} className="mt-3 flex justify-center px-2 py-3" aria-label={appName}>
+        <img src="/icons/apple-touch-icon-120x120.png" width={32} height={32} alt="" className="rounded-lg" />
       </Link>
     ) : (
-      <div className={`flex items-center gap-1 px-3 py-3 ${isCompact ? '' : 'mt-3'}`} data-testid="identity-row">
-        <Link to={RouterPage.SETTINGS_PROFILE} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 hover:bg-accent">
-          <UserAvatar avatar={user.avatar} size="md" className="rounded-xl" />
-          <span className="truncate text-lg leading-5">{user.name}</span>
+      <div className={`flex items-center gap-1 px-3 py-3 ${isCompact ? '' : 'mt-3'}`} data-testid="sidebar-top-row">
+        <Link
+          to={RouterPage.HOME}
+          aria-label={appName}
+          className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg p-1 hover:bg-accent"
+        >
+          <img src={grayLogo} width={125} height={20} alt="" />
+          <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
         </Link>
         <button
           type="button"
@@ -165,13 +173,13 @@ export function ApplicationLayout() {
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
           <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">
-            {/* On desktop the user block stays pinned above the scrolling tree;
+            {/* On desktop the top row stays pinned above the scrolling tree;
                 on compact it scrolls away with the account list (Vue parity). */}
-            {user && !isCompact ? userBlock : null}
+            {user && !isCompact ? topRow : null}
 
             {isFullyLoaded || hasLoadedOnce.current ? (
               <div ref={sidebarScrollRef} className="flex-1 overflow-y-auto scrollbar-none">
-                {user && isCompact ? userBlock : null}
+                {user && isCompact ? topRow : null}
                 {rail ? (
                   <div className="flex flex-col items-center gap-1 py-1">
                     <button
@@ -245,22 +253,20 @@ export function ApplicationLayout() {
                 </button>
               </footer>
             ) : (
-              <footer className="flex items-center justify-between border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-0.5">
-                    <img src={grayLogo} width={125} height={20} alt="" />
-                    <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
-                  </div>
-                  <Link to={RouterPage.SETTINGS} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-                    {t('settings.page.menu_item')}
-                    {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
-                  </Link>
-                </div>
+              <footer className="flex items-center justify-between border-t px-2 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+                <Link
+                  to={RouterPage.SETTINGS}
+                  className="flex h-11 items-center gap-1.5 rounded-lg px-3 text-muted-foreground hover:bg-accent hover:text-foreground"
+                >
+                  <Settings className="size-5" />
+                  {t('settings.page.menu_item')}
+                  {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
+                </Link>
                 <button
                   type="button"
                   aria-label="sync"
                   title={syncTitle}
-                  className={syncClass}
+                  className={syncClassFull}
                   onClick={() => void queryClient.invalidateQueries()}
                 >
                   <RefreshCw className={`size-6 ${isFetching ? 'animate-spin' : ''}`} />

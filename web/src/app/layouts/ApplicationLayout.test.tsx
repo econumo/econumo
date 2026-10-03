@@ -8,6 +8,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
 import { QUERY_CACHE_KEY, refreshRestoredQueries } from '@/lib/queryPersist'
+import { econumoPackage } from '@/lib/package'
 import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { ApplicationLayout } from './ApplicationLayout'
@@ -104,14 +105,14 @@ it('shows the loading gate, then the sidebar tree with folder totals', async () 
   expect(screen.getByText('2,100.00 $')).toBeInTheDocument()
   // single-currency folder total (and the matching account row): native
   expect(screen.getAllByText('100.50 $').length).toBeGreaterThanOrEqual(2)
-  // user block + nav
-  expect(screen.getByText('Ada')).toBeInTheDocument()
+  // top row + nav
+  expect(screen.queryByText('Ada')).not.toBeInTheDocument()
   expect(screen.queryByText(fixtureUser.email)).not.toBeInTheDocument()
   expect(screen.getByText('Budget & Plan')).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
 })
 
-it('shows the Inbox link in the full sidebar, and between the avatar and Budget links in the icon rail', async () => {
+it('shows the Inbox link in the full sidebar, and between the Home mark and Budget links in the icon rail', async () => {
   mockViewport(false)
   const user = userEvent.setup()
   renderShell('/account/a1')
@@ -121,11 +122,11 @@ it('shows the Inbox link in the full sidebar, and between the avatar and Budget 
   await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
   expect(screen.queryByText('Cash')).not.toBeInTheDocument()
   const railLinks = screen.getAllByRole('link')
-  const avatarIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/settings/profile')
+  const homeIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/')
   const inboxIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/inbox')
   const budgetIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/budget')
-  expect(avatarIndex).toBeGreaterThanOrEqual(0)
-  expect(inboxIndex).toBeGreaterThan(avatarIndex)
+  expect(homeIndex).toBeGreaterThanOrEqual(0)
+  expect(inboxIndex).toBeGreaterThan(homeIndex)
   expect(budgetIndex).toBeGreaterThan(inboxIndex)
 
   const search = screen.getByRole('button', { name: 'Search' })
@@ -143,13 +144,13 @@ it('puts Inbox above the onboarding link in the icon rail when onboarding is inc
   await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
   expect(screen.queryByText('Cash')).not.toBeInTheDocument()
   const railLinks = screen.getAllByRole('link')
-  const avatarIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/settings/profile')
+  const homeIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/')
   const inboxIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/inbox')
   const onboardingIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/onboarding')
   const budgetIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/budget')
-  expect(avatarIndex).toBeGreaterThanOrEqual(0)
+  expect(homeIndex).toBeGreaterThanOrEqual(0)
   expect(onboardingIndex).toBeGreaterThanOrEqual(0)
-  expect(inboxIndex).toBeGreaterThan(avatarIndex)
+  expect(inboxIndex).toBeGreaterThan(homeIndex)
   expect(onboardingIndex).toBeGreaterThan(inboxIndex)
   expect(budgetIndex).toBeGreaterThan(onboardingIndex)
 
@@ -160,20 +161,23 @@ it('puts Inbox above the onboarding link in the icon rail when onboarding is inc
   expect(inbox.compareDocumentPosition(onboarding) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
-it('the identity row shows avatar+name, a Search button and Inbox, and no Settings gear', async () => {
+it('the top row shows a Home link with the logo and version, a Search button and Inbox, and no user name/profile link', async () => {
   mockViewport(false)
   renderShell('/')
   expect(await screen.findByText('Cash')).toBeInTheDocument()
-  const identityRow = screen.getByTestId('identity-row')
-  const avatarLink = within(identityRow).getByRole('link', { name: 'Ada' })
-  expect(avatarLink).toHaveAttribute('href', '/settings/profile')
-  expect(within(identityRow).getByRole('button', { name: 'Search' })).toBeInTheDocument()
-  expect(within(identityRow).getByRole('link', { name: 'Inbox' })).toBeInTheDocument()
-  expect(within(identityRow).queryByRole('link', { name: /settings/i })).not.toBeInTheDocument()
-  expect(within(identityRow).queryByRole('button', { name: /settings/i })).not.toBeInTheDocument()
+  const topRow = screen.getByTestId('sidebar-top-row')
+  const homeLink = within(topRow).getByRole('link', { name: 'Econumo' })
+  expect(homeLink).toHaveAttribute('href', '/')
+  expect(within(homeLink).getByText(econumoPackage().label)).toBeInTheDocument()
+  expect(within(topRow).getByRole('button', { name: 'Search' })).toBeInTheDocument()
+  expect(within(topRow).getByRole('link', { name: 'Inbox' })).toBeInTheDocument()
+  const profileLinks = screen.queryAllByRole('link').filter((link) => link.getAttribute('href') === '/settings/profile')
+  expect(profileLinks).toHaveLength(0)
+  expect(screen.queryByText('Ada')).not.toBeInTheDocument()
+  expect(screen.queryByText(fixtureUser.email)).not.toBeInTheDocument()
 })
 
-it('clicking the identity-row Search button opens global search', async () => {
+it('clicking the top row Search button opens global search', async () => {
   mockViewport(false)
   const user = userEvent.setup()
   renderShell('/')
@@ -277,17 +281,16 @@ it('desktop divider click collapses the sidebar to an icon rail and back', async
   expect(await screen.findByText('Cash')).toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
-  // account names and the user name are gone, only icons remain
+  // account names are gone, only icons remain
   expect(screen.queryByText('Cash')).not.toBeInTheDocument()
-  expect(screen.queryByText('Ada')).not.toBeInTheDocument()
   expect(screen.queryByText('Budget & Plan')).not.toBeInTheDocument()
-  // the account is still reachable as an icon button, avatar still shown
+  // the account is still reachable as an icon button, the Home mark still shown
   expect(screen.getByRole('button', { name: 'Cash' })).toBeInTheDocument()
-  expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', fixtureUser.avatar)
+  expect(screen.getByRole('link', { name: 'Econumo' })).toHaveAttribute('href', '/')
 
   await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
   expect(await screen.findByText('Cash')).toBeInTheDocument()
-  expect(screen.getByText('Ada')).toBeInTheDocument()
+  expect(screen.getByText('Budget & Plan')).toBeInTheDocument()
 })
 
 it('compact viewport shows only the sidebar at / and only the workspace elsewhere', async () => {

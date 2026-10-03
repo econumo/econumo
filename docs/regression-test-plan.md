@@ -410,11 +410,13 @@ navigation (single-pane vs sidebar).
       line keeps the original "… USD" amount. An ignored card offers
       "Map instead"; "Unmap" (confirmation) returns the card to unmapped and
       new taps queue again.
-- [ ] Inbox button 📱: the sidebar identity row shows avatar + name (no email,
-      linking to Personal settings), a Search button and an Inbox button; the
-      Inbox button is visible with nothing pending (no badge) and shows the
-      pending count (99+ above 99); in the collapsed desktop rail the order is
-      Search, Inbox, onboarding (when incomplete), Budget.
+- [ ] Inbox button 📱: the sidebar top row shows the logo + version label
+      (linking Home) on the left and a Search button and an Inbox button on
+      the right — no avatar or user name in the sidebar; the Inbox button is
+      visible with nothing pending (no badge) and shows the pending count
+      (99+ above 99); in the collapsed desktop rail the order is the Econumo
+      mark (linking Home), Search, Inbox, onboarding (when incomplete),
+      Budget.
 - [ ] Inbox count 📱: the badge equals pending invites + sources whose last sync
       failed/partially failed + failed imports + queued imports; skipped rows are
       not counted.
@@ -1329,7 +1331,7 @@ User C sees none of it.
       `--build-arg ECONUMO_VERSION=v0.0.1`; the runtime variable no longer
       moves this, it only relabels the UI).
 - [ ] Version label: with `ECONUMO_VERSION=demo-42` set at RUNTIME, the
-      sidebar footer and the settings version row both read `demo-42`, while
+      sidebar header and the settings version row both read `demo-42`, while
       the update notice above still compares the real binary version (so a
       current build shows no update prompt).
 - [ ] Readonly/trial gating (cloud only, `ECONUMO_TRIAL` set): expired user
@@ -1347,12 +1349,14 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
 
 - [ ] Navigation: `/` shows the sidebar-as-home; entering any page shows a
       back-button header; back always returns to the logical origin.
-- [ ] Identity row 📱: tapping the avatar or name opens Personal settings; the
-      Search button opens global search (its tooltip shows the Ctrl/⌘+K
-      shortcut) and Inbox opens the Inbox; the sidebar footer has a Settings
-      link that carries the update dot when an update is available. On the
-      Settings page, the header card leads to Personal settings (name, email,
-      the "Personal settings" hint) and has a separate Log out button.
+- [ ] Sidebar top row 📱: the logo + version label link Home; no avatar or
+      user name appears anywhere in the sidebar. The Search button opens
+      global search (its tooltip shows the Ctrl/⌘+K shortcut) and Inbox opens
+      the Inbox. The sidebar footer has a Settings button (at least 44px
+      tall) that carries the update dot when an update is available, and a
+      Sync button with at least a 44x44 tap area. On the Settings page, the
+      header card leads to Personal settings (name, email, the "Personal
+      settings" hint) and has a separate Log out button.
 - [ ] Every dialog used in the suites above renders as a bottom-sheet drawer
       (short content: previews, action lists, confirms) or a full-screen sheet
       (long forms, e.g. Add transaction) on mobile (<640px), and a centered
