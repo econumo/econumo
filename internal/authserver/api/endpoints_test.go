@@ -170,7 +170,7 @@ func TestConsentEndpoints(t *testing.T) {
 
 	body["clientId"] = vo.NewId().String()
 	status, env = h.do(t, "POST", "/api/v1/authserver/approve-authorization", h.user, body)
-	if status != 400 || !strings.Contains(string(env.raw), "This app is not registered") {
+	if status != 400 || !strings.Contains(string(env.raw), "registration has expired or is unknown") {
 		t.Fatalf("unknown client: %d %s", status, env.raw)
 	}
 }

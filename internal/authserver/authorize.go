@@ -23,7 +23,7 @@ type redirectErr struct {
 }
 
 func clientNotFound() error {
-	return &errs.ValidationError{Msg: "This app is not registered. Start the connection again from the app.", MsgCode: errs.CodeAuthServerClientNotFound}
+	return &errs.ValidationError{Msg: "This app's registration has expired or is unknown. Remove Econumo from the app and add it again.", MsgCode: errs.CodeAuthServerClientNotFound}
 }
 
 func (s *Service) validate(ctx context.Context, req model.AuthorizationRequest) (*model.OAuthClient, *redirectErr, error) {

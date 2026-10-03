@@ -71,7 +71,18 @@ func TestRegisterPurgesUnusedClients(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock.Advance(UnusedClientTTL + time.Minute)
+	// A client that registers and only reaches the consent page days later
+	// (a laptop asleep over a weekend) must still be known.
+	clock.Advance(7 * 24 * time.Hour)
+	if _, err := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"https://a.test/cb"}}); err != nil {
+		t.Fatal(err)
+	}
+	q := authReq(old.ClientID)
+	q.RedirectURI = "https://a.test/cb"
+	if _, err := s.DescribeAuthorization(ctx, vo.NewId(), q); err != nil {
+		t.Fatalf("a week-old unused client must survive the purge: %v", err)
+	}
+	clock.Advance(UnusedClientTTL)
 	if _, err := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"https://a.test/cb"}}); err != nil {
 		t.Fatal(err)
 	}

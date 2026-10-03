@@ -1936,7 +1936,7 @@
     },
     "authserver": {
       "disabled": "Łączenie aplikacji nie jest dostępne na tym serwerze.",
-      "client_not_found": "Ta aplikacja nie jest zarejestrowana. Rozpocznij połączenie ponownie z poziomu aplikacji.",
+      "client_not_found": "Rejestracja tej aplikacji wygasła lub jest nieznana. Usuń Econumo z aplikacji i dodaj je ponownie.",
       "redirect_uri_mismatch": "Ten link logowania jest nieprawidłowy dla tej aplikacji. Rozpocznij połączenie ponownie z poziomu aplikacji.",
       "grant_not_found": "Nie znaleziono połączonej aplikacji."
     },

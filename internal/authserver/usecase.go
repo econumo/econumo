@@ -13,7 +13,7 @@ const (
 	AccessTokenTTL  = time.Hour
 	GrantIdleTTL    = 90 * 24 * time.Hour
 	RefreshGrace    = 60 * time.Second
-	UnusedClientTTL = 24 * time.Hour
+	UnusedClientTTL = 30 * 24 * time.Hour
 	DeadRetention   = 30 * 24 * time.Hour
 )
 

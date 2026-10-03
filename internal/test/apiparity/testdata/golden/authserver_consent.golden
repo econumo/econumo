@@ -5,7 +5,7 @@
 {"success":true,"message":"","data":{"clientName":"Claude","redirectHost":"claude.ai","isLoopback":false,"errorRedirectUrl":"https://claude.ai/api/mcp/auth_callback?error=invalid_request&error_description=PKCE+with+S256+is+required&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
 
 == err:get-authorization-request-unknown-client GET /api/v1/authserver/get-authorization-request?clientId=00000000-0000-0000-0000-00000000dead&redirectUri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&responseType=code&codeChallenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&codeChallengeMethod=S256&state=s1 [owner] -> 400
-{"success":false,"message":"This app is not registered. Start the connection again from the app.","code":400,"errors":{}}
+{"success":false,"message":"This app's registration has expired or is unknown. Remove Econumo from the app and add it again.","code":400,"errors":{}}
 
 == err:get-authorization-request-redirect-mismatch GET /api/v1/authserver/get-authorization-request?clientId=e1000000-0000-0000-0000-000000000001&redirectUri=https%3A%2F%2Fevil.example.test%2Fcb&responseType=code&codeChallenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&codeChallengeMethod=S256&state=s1 [owner] -> 400
 {"success":false,"message":"This sign-in link is not valid for this app. Start the connection again from the app.","code":400,"errors":{}}
@@ -17,7 +17,7 @@
 {"success":true,"message":"","data":{"redirectUrl":"https://claude.ai/api/mcp/auth_callback?code=<random>&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
 
 == err:approve-authorization-unknown-client POST /api/v1/authserver/approve-authorization [owner] -> 400
-{"success":false,"message":"This app is not registered. Start the connection again from the app.","code":400,"errors":{}}
+{"success":false,"message":"This app's registration has expired or is unknown. Remove Econumo from the app and add it again.","code":400,"errors":{}}
 
 == err:approve-authorization-readonly POST /api/v1/authserver/approve-authorization [readonly] -> 402
 {"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}

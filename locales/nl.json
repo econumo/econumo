@@ -1936,7 +1936,7 @@
     },
     "authserver": {
       "disabled": "Apps koppelen is niet beschikbaar op deze server.",
-      "client_not_found": "Deze app is niet geregistreerd. Start de koppeling opnieuw vanuit de app.",
+      "client_not_found": "De registratie van deze app is verlopen of onbekend. Verwijder Econumo uit de app en voeg het opnieuw toe.",
       "redirect_uri_mismatch": "Deze inloglink is niet geldig voor deze app. Start de koppeling opnieuw vanuit de app.",
       "grant_not_found": "Gekoppelde app niet gevonden."
     },

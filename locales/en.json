@@ -1936,7 +1936,7 @@
     },
     "authserver": {
       "disabled": "Connecting apps is not available on this server.",
-      "client_not_found": "This app is not registered. Start the connection again from the app.",
+      "client_not_found": "This app's registration has expired or is unknown. Remove Econumo from the app and add it again.",
       "redirect_uri_mismatch": "This sign-in link is not valid for this app. Start the connection again from the app.",
       "grant_not_found": "Connected app not found."
     },

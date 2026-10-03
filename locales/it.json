@@ -1936,7 +1936,7 @@
     },
     "authserver": {
       "disabled": "Il collegamento di app non è disponibile su questo server.",
-      "client_not_found": "Questa app non è registrata. Avvia di nuovo la connessione dall'app.",
+      "client_not_found": "La registrazione di questa app è scaduta o non è riconosciuta. Rimuovi Econumo dall'app e aggiungilo di nuovo.",
       "redirect_uri_mismatch": "Questo link di accesso non è valido per questa app. Avvia di nuovo la connessione dall'app.",
       "grant_not_found": "App collegata non trovata."
     },

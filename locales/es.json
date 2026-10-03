@@ -1936,7 +1936,7 @@
     },
     "authserver": {
       "disabled": "La conexión de aplicaciones no está disponible en este servidor.",
-      "client_not_found": "Esta aplicación no está registrada. Inicia la conexión de nuevo desde la aplicación.",
+      "client_not_found": "El registro de esta aplicación ha caducado o es desconocido. Quita Econumo de la aplicación y vuelve a añadirlo.",
       "redirect_uri_mismatch": "Este enlace de inicio de sesión no es válido para esta aplicación. Inicia la conexión de nuevo desde la aplicación.",
       "grant_not_found": "Aplicación conectada no encontrada."
     },
