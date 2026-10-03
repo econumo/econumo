@@ -5,7 +5,8 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import type { HttpHandler } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { useUiStore } from '@/app/uiStore'
 import { queryKeys } from '@/app/queryKeys'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -52,10 +53,10 @@ function phone() {
   }))
 }
 
-function handlers({ budget = fixtureWireBudget, plan = planHandler() }: { budget?: unknown; plan?: HttpHandler } = {}) {
+function handlers({ budget = fixtureWireBudget, plan = planHandler(), accounts = fixtureAccounts }: { budget?: unknown; plan?: HttpHandler; accounts?: unknown[] } = {}) {
   let setLimitBody: unknown
   server.use(
-    ...coreHandlers({ user: userWithBudget }),
+    ...coreHandlers({ user: userWithBudget, accounts }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
     plan,
     http.get('*/api/v1/budget/get-comment-list', () =>
@@ -222,7 +223,7 @@ it('an income row’s Set plan writes that month’s plan', async () => {
   await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Set plan' }))
   expect(await screen.findByRole('dialog', { name: /Set plan/ })).toBeInTheDocument()
   expect(screen.queryByTestId('element-sheet')).toBeNull()
-  const input = screen.getByLabelText('Budget')
+  const input = screen.getByLabelText('Plan')
   await user.clear(input)
   await user.type(input, '650')
   await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -249,13 +250,14 @@ it('a savings row’s sheet sets its plan and reaches its comment thread', async
   // the savings section starts folded
   await user.click(await screen.findByTestId('phone-savings-summary'))
   await user.click(await screen.findByRole('button', { name: /^Rainy day, planned 100.00/ }))
-  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Set budget' }))
-  const input = await screen.findByLabelText('Budget')
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Set plan' }))
+  expect(await screen.findByRole('dialog', { name: 'Set plan' })).toBeInTheDocument()
+  const input = await screen.findByLabelText('Plan')
   await user.clear(input)
   await user.type(input, '150')
   await user.click(screen.getByRole('button', { name: 'Save' }))
   await waitFor(() => expect(api.setLimitBody()).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-07-01', amount: '150' }))
-  await waitFor(() => expect(screen.queryByLabelText('Budget')).toBeNull())
+  await waitFor(() => expect(screen.queryByLabelText('Plan')).toBeNull())
 
   await user.click(screen.getByRole('button', { name: /^Rainy day, planned/ }))
   await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Comments (1)' }))
@@ -347,4 +349,85 @@ it('a month three past the current one still carries the unmet plans of the mont
   } finally {
     vi.useRealTimers()
   }
+})
+
+it('the sheet’s Edit opens the category’s own dialog in place of the sheet', async () => {
+  handlers()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: /^Food, budget 200.00/ }))
+  await user.click(within(await screen.findByRole('dialog', { name: /^Food · / })).getByRole('button', { name: 'Edit' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Edit category' })
+  expect(within(dialog).getByDisplayValue('Food')).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+})
+
+it('a guest’s envelope sheet shows Edit inactive', async () => {
+  handlers({ budget: guestBudget })
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: /^Living, budget/ }))
+  expect(within(await screen.findByRole('dialog', { name: /^Living · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
+})
+
+it('a savings row’s Edit opens the account dialog, and is inactive once the account is gone', async () => {
+  useUiStore.setState({ accountModal: null })
+  const account = { ...fixtureAccounts[2], id: 'acc-s1', name: 'Rainy day' }
+  handlers({ budget: savingsBudget, accounts: [...fixtureAccounts, account] })
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  const { queryClient } = renderPage()
+  await user.click(await screen.findByTestId('phone-savings-summary'))
+  await user.click(await screen.findByRole('button', { name: /^Rainy day, planned/ }))
+  const edit = within(await screen.findByRole('dialog', { name: /^Rainy day · / })).getByRole('button', { name: 'Edit' })
+  await waitFor(() => expect(edit).toBeEnabled())
+  await user.click(edit)
+  expect(useUiStore.getState().accountModal?.account?.id).toBe('acc-s1')
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+
+  queryClient.setQueryData(queryKeys.accounts, fixtureAccounts)
+  await user.click(screen.getByRole('button', { name: /^Rainy day, planned/ }))
+  expect(within(await screen.findByRole('dialog', { name: /^Rainy day · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
+})
+
+const labelBudget = {
+  ...fixtureWireBudget,
+  structure: {
+    ...fixtureWireBudget.structure,
+    labels: [{ id: 'label-kid-a', name: 'kid-A', icon: 'label', isArchived: 0, spent: '50', ownerUserId: 'u1', children: [] }],
+  },
+}
+
+it('a reporting tag’s sheet → Transactions lists that tag’s spending that month', async () => {
+  handlers({ budget: labelBudget })
+  const params = captureTxListParams()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Reporting tags' }))
+  await user.click(await screen.findByRole('button', { name: /^kid-A, spent/ }))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Transactions' }))
+  expect(await screen.findByRole('dialog', { name: /kid-A/ })).toBeInTheDocument()
+  await waitFor(() => expect(params()?.get('labelId')).toBe('label-kid-a'))
+  expect(params()?.get('periodStart')).toBe('2026-07-01')
+})
+
+it('a reporting tag’s Edit opens its tag dialog in place of the sheet', async () => {
+  handlers({ budget: labelBudget })
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Reporting tags' }))
+  await user.click(await screen.findByRole('button', { name: /^kid-A, spent/ }))
+  await user.click(within(await screen.findByRole('dialog', { name: /^kid-A · / })).getByRole('button', { name: 'Edit' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Edit tag' })
+  expect(within(dialog).getByDisplayValue('kid-A')).toBeInTheDocument()
+  expect(within(dialog).getByTestId('kind-locked-note')).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+})
+
+it('someone else’s reporting tag shows Edit inactive', async () => {
+  handlers({ budget: { ...labelBudget, structure: { ...labelBudget.structure, labels: [{ ...labelBudget.structure.labels[0], ownerUserId: 'u9' }] } } })
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Reporting tags' }))
+  await user.click(await screen.findByRole('button', { name: /^kid-A, spent/ }))
+  expect(within(await screen.findByRole('dialog', { name: /^kid-A · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
 })

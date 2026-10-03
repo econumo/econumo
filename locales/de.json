@@ -1262,6 +1262,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "Plan"
+        },
         "limit": {
           "label": "Budget",
           "validation": {
@@ -1429,6 +1432,7 @@
         "covered": "Um {over} überzogen — gedeckt durch {carry}, die noch aus früheren Monaten übrig sind",
         "transactions": "Transaktionen",
         "set_plan": "Plan festlegen",
+        "balance": "Saldo",
         "converted": "≈ {amount} {currency}"
       },
       "settings": {

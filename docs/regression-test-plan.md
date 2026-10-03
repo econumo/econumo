@@ -689,6 +689,10 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] Budget table: budgeted / spent / available columns; expanding an element
       shows details; totals row; uncategorized and labels sections appear with
       info notes when relevant.
+- [ ] 📱 Section order: the Reporting tags folder is the last expense section,
+      below Uncategorized and Archived (desktop: right above the Savings block;
+      phone: right above the Total card), and still shows when neither of those
+      has anything to show.
 - [ ] Element visibility rule: a category/tag/envelope with **either** spending
       or a limit (incl. carried over) is visible; with neither it is not.
 - [ ] Set a limit via the inline editor on a budgeted amount (desktop) or the
@@ -927,7 +931,8 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
       the cell is selected and the item sheet opens for that element and
       month — Budget/Spent (Planned/Received for income, Planned/Saved/Balance
-      for savings), the two latest comments, "Set budget" ("Set plan" for income),
+      for savings), the two latest comments, "Set budget" ("Set plan" for income
+      and savings, whose amount dialog is titled "Set plan" with a "Plan" field),
       "Comments", and "Transactions" (every row but Uncategorized; the list is
       that column's month). The sheet's month and
       any foreign-currency rate are the tapped column's. The corner marker still
@@ -995,7 +1000,13 @@ and on tablet/phone only with a hardware keyboard.
       the budget plus what earlier months left. A row with a 0.00 budget (and
       nothing left from earlier months) still shows the empty light-gray track,
       like a row with nothing spent. A future month shows `—` for
-      Spent, with no bar and no colour.
+      Spent, the empty track, and no colour.
+- [ ] 📱 Income and savings rows (unfolded) show the same thin bar,
+      measuring Actual against Planned. It stays gray until the plan is met
+      and turns green once received/saved reaches the planned amount; the
+      figures themselves never change colour. A row with no plan, or a
+      savings withdrawal, shows the empty track; so does every row in a future
+      month, even one whose plan is already met.
 - [ ] 📱 What earlier months left shows read-only right before the budget, so
       the two read as one figure, e.g. "530.00 + 700.00" — on phone rows and in the Budget table (desktop and
       tablet, with a "Left from earlier months" tooltip); only the budget is
@@ -1011,6 +1022,10 @@ and on tablet/phone only with a hardware keyboard.
       August's Available).
 - [ ] 📱 A category/envelope in another currency carries a small code tag
       (`Travel EUR`) and its amounts are in that currency.
+- [ ] 📱 Month view: the right edges of the Budget/Planned and Spent/Actual
+      figures line up down the whole screen — the section column labels, the
+      Income and Savings lines, every folder header's totals and every row
+      (a carry-over lead-in grows leftwards without moving them).
 - [ ] 📱 Income is one collapsed header like a folder's: "Income", the
       planned total under Budget and the received total under Spent (— in a
       future month); tapping it unfolds
@@ -1032,7 +1047,20 @@ and on tablet/phone only with a hardware keyboard.
       replace the sheet (never stacked); closing them returns to the list.
       Saving a budget updates the row at once and survives a reload.
 - [ ] 📱 An income row's sheet offers "Set plan" (Planned / Received); a
-      savings row's sheet shows Planned, Saved and Balance at month end.
+      savings row's sheet shows Planned, Saved and Balance (the month-end
+      balance; each label fits on one line) and offers "Set plan", which opens
+      the amount dialog titled "Set plan" with a "Plan" field (an income
+      row's dialog too; an expense row's keeps "Set budget" / "Budget").
+- [ ] 📱 Every item sheet (phone month view and tablet Plan view) shows the
+      item's icon before its title and a pencil at the header's end (beside
+      the corner X on a tablet). The pencil opens the item's own edit dialog in
+      place of the sheet: an envelope's, a category's, a tag's, or the account
+      dialog for a savings row. It is greyed out and does nothing when you may
+      not edit the item: an envelope in a budget where you are a guest (or an
+      archived budget), a category or tag that belongs to another user, a
+      savings account you neither own nor administer, or one that was
+      deleted. The Uncategorized row's sheet has no pencil. Renaming an item
+      from there updates its row at once.
 - [ ] 📱 A savings row's sheet → "Transactions" lists every transaction on that
       account in the month — transfers in and out, interest, fees — money in
       positive, money out negative, in the account's currency; their signed sum
@@ -1056,8 +1084,13 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 Tapping an item's name never opens a sheet: on an envelope/tag with
       children it folds/unfolds them (chevron in place of the icon), on any
       other row — expense, income, savings, a child, a reporting tag — it does
-      nothing. Tapping a child's or a reporting tag's Spent opens its
-      transactions directly.
+      nothing. Tapping a child's Spent opens its transactions directly.
+- [ ] 📱 Tapping a reporting tag's Spent opens its sheet ("kid-A · July"):
+      Spent only, no comments, no "Set budget", and "Transactions", which
+      lists that tag's transactions for the month. The pencil opens the
+      reporting tag's own edit dialog (kind locked) in place of the sheet; it
+      is greyed out for a reporting tag that belongs to another user. A rename
+      shows on the row at once.
 - [ ] 📱 "Edit structure" on a phone shows the route's structure editor — the
       budget table on /budget, the plan grid in edit mode on /plan (drag to
       reorder, folder menus); "Done" returns to the month view.

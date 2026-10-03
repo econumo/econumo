@@ -22,6 +22,10 @@ const EMPTY = '—'
 // name | Budget | Spent: the heading row, folder headers and rows share one grid; the
 // Budget column grows to the left for a carry-over lead-in while its right edge stays put
 const GRID = 'grid grid-cols-[minmax(0,1fr)_minmax(5.5rem,auto)_5.5rem] items-center gap-x-2'
+// A row's figures sit in a subgrid whose right padding only insets the LAST track, so
+// every other line keeps its tracks flush right too and pads just its last cell — a
+// container padding would pull the Budget column left of the rows' figures
+const LAST_CELL = 'pr-2'
 
 
 export interface PhoneMonthViewProps {
@@ -138,10 +142,11 @@ function Card({ testId, header, children }: { testId: string; header?: ReactNode
 // currency code used to, and each section names its own two figures
 function SectionHeading({ testId, name, first, second, className = '' }: { testId: string; name: string; first: string; second: string; className?: string }) {
   return (
-    <div className={`${GRID} px-3 text-[11px] uppercase tracking-wide text-muted-foreground ${className}`} data-testid={testId}>
+    // outside the cards: pr-[5px] is a card's border + padding, so the tracks end where the rows' do
+    <div className={`${GRID} pr-[5px] pl-3 text-[11px] uppercase tracking-wide text-muted-foreground ${className}`} data-testid={testId}>
       <span className="truncate">{name}</span>
       <span className="text-right">{first}</span>
-      <span className="text-right">{second}</span>
+      <span className={`text-right ${LAST_CELL}`}>{second}</span>
     </div>
   )
 }
@@ -174,7 +179,7 @@ function SectionSummary({
       data-testid={testId}
       aria-expanded={open}
       onClick={onToggle}
-      className={`${GRID} min-h-11 w-full rounded-md px-2 py-1.5 text-left text-xs font-medium text-muted-foreground active:bg-accent/50`}
+      className={`${GRID} min-h-11 w-full rounded-md py-1.5 pl-2 text-left text-xs font-medium text-muted-foreground active:bg-accent/50`}
     >
       <span className="flex min-w-0 items-center gap-1">
         <Chevron className="size-4 shrink-0" />
@@ -183,7 +188,7 @@ function SectionSummary({
       <span data-testid={firstTestId} className="text-right tabular-nums">
         {first}
       </span>
-      <span data-testid={secondTestId} className="text-right tabular-nums">
+      <span data-testid={secondTestId} className={`text-right tabular-nums ${LAST_CELL}`}>
         {second}
       </span>
     </button>
@@ -192,10 +197,10 @@ function SectionSummary({
 
 function CardHeader({ name, first, second }: { name: string; first?: string; second?: string }) {
   return (
-    <div className={`${GRID} px-2 pt-1.5 pb-0.5 text-xs font-medium text-muted-foreground`}>
+    <div className={`${GRID} pt-1.5 pb-0.5 pl-2 text-xs font-medium text-muted-foreground`}>
       <span className="truncate">{name}</span>
       <span className="text-right tabular-nums">{first}</span>
-      <span className="text-right tabular-nums">{second}</span>
+      <span className={`text-right tabular-nums ${LAST_CELL}`}>{second}</span>
     </div>
   )
 }
@@ -246,9 +251,9 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           first={budgetText}
           second={spentText}
           secondClass={overspent ? 'text-expense' : ''}
-          // a row with nothing to measure against still draws the empty track, as a
-          // budgeted row with nothing spent does
-          progress={isUncategorized || future ? null : (rowProgress(figures) ?? 0)}
+          // a row with nothing to measure against, or a month that has not happened
+          // yet, still draws the empty track, as a budgeted row with nothing spent does
+          progress={isUncategorized ? null : future ? 0 : (rowProgress(figures) ?? 0)}
           barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           commented={commented(element.id)}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: carryText ? `${carryText} ${budgetText}` : budgetText, spent: spentText })}
@@ -301,6 +306,13 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     </Card>
   )
 
+  // income and savings fill toward their plan and turn green once it is met: unlike
+  // spending, reaching the figure is the goal, so only the bar is coloured
+  const planBar = (planned: string, actual: string) => ({
+    progress: future ? 0 : (rowProgress({ budgeted: planned, spent: actual }) ?? 0),
+    barClass: !future && cmp(planned, '0') > 0 && cmp(actual, planned) >= 0 ? 'bg-income' : 'bg-muted-foreground/40',
+  })
+
   const incomeRow = (row: PlanCellFigures) => {
     const el = row.element
     const name = elementDisplayName(el.id, el.name, t)
@@ -315,6 +327,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         tag={tagOf(el.currencyId)}
         first={planned}
         second={received}
+        {...planBar(row.planned, row.actual)}
         commented={commented(el.id)}
         ariaLabel={t('budgets.page.phone.income_row_aria', { name, planned, received })}
         onOpen={() => onOpenSheet({ kind: 'plan', cell: row })}
@@ -334,6 +347,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         tag={tagOf(row.currencyId)}
         first={planned}
         second={saved}
+        {...planBar(row.budgeted, row.spent)}
         commented={commented(row.id)}
         ariaLabel={t('budgets.page.phone.savings_row_aria', { name: row.name, planned, saved })}
         onOpen={() => onOpenSheet({ kind: 'savings', row })}
@@ -344,21 +358,16 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const labelRow = (label: LabelSpendDto) => {
     const spent = future ? EMPTY : fmt(label.spent)
     return (
-      <div key={label.id} data-testid={`phone-label-${label.id}`} className={`${GRID} rounded-md`}>
-        <span className={`${NAME_CELL} ${cellPad(false)}`}>
-          <EntityIcon name={label.icon} className="text-lg text-muted-foreground" />
-          <span className="truncate text-[15px]">{label.name}</span>
-        </span>
-        <button
-          type="button"
-          aria-label={t('budgets.page.phone.child_aria', { name: label.name, spent })}
-          className="col-span-2 grid min-h-11 grid-cols-subgrid items-center rounded-md py-2 pr-2 active:bg-accent/50"
-          onClick={() => onShowTransactions({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null })}
-        >
-          <span className="text-right text-[15px] text-muted-foreground">{EMPTY}</span>
-          <span className="text-right text-[15px] tabular-nums">{spent}</span>
-        </button>
-      </div>
+      <PhoneRow
+        key={label.id}
+        testId={`phone-label-${label.id}`}
+        icon={label.icon}
+        name={label.name}
+        first={EMPTY}
+        second={spent}
+        ariaLabel={t('budgets.page.phone.child_aria', { name: label.name, spent })}
+        onOpen={() => onOpenSheet({ kind: 'label', label })}
+      />
     )
   }
 
@@ -425,6 +434,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         ? folderCard('__no_folder__', hasFolders ? t('budgets.page.plan.menu.no_folder') : null, buckets.withoutFolder)
         : null}
       {buckets.uncategorized.elements.length > 0 ? folderCard('__uncategorized__', null, buckets.uncategorized) : null}
+      {buckets.archive.elements.length > 0 ? folderCard('__archive__', t('budgets.page.budget.structure.in_archive'), buckets.archive) : null}
       {labels.length > 0 ? (
         <Card testId="phone-labels">
           <button
@@ -439,7 +449,6 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           {labelsOpen ? labels.map(labelRow) : null}
         </Card>
       ) : null}
-      {buckets.archive.elements.length > 0 ? folderCard('__archive__', t('budgets.page.budget.structure.in_archive'), buckets.archive) : null}
 
 
       <section

@@ -326,6 +326,18 @@ it('a tablet sheet’s Set budget opens the amount dialog with no comments in it
   expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
 })
 
+it('a tablet sheet’s Edit opens the envelope dialog in place of the sheet', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/plan')
+
+  await user.click(await screen.findByTestId('plan-cell-pe1:1'))
+  await user.click(within(await screen.findByRole('dialog', { name: /^Living · / })).getByRole('button', { name: 'Edit' }))
+  expect(await screen.findByRole('dialog', { name: 'Edit envelope' })).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+})
+
 it('a tablet sheet’s Comments opens the thread', async () => {
   usePlanHandlers()
   mockTabletViewport()

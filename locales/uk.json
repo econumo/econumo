@@ -1262,6 +1262,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "План"
+        },
         "limit": {
           "label": "Бюджет",
           "validation": {
@@ -1429,6 +1432,7 @@
         "covered": "Перевищення на {over} — покрито за рахунок {carry}, що залишилися з попередніх місяців",
         "transactions": "Транзакції",
         "set_plan": "Задати план",
+        "balance": "Баланс",
         "converted": "≈ {amount} {currency}"
       },
       "settings": {
