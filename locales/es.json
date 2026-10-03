@@ -1478,6 +1478,12 @@
         "confirm": "Combinar",
         "warning": "Todas las transacciones de «{name}» se moverán y «{name}» se eliminará.",
         "envelope_info": "Si ambos están en sobres distintos, actualiza primero tu presupuesto para no perder tus importes planificados, ya que al combinar los límites se suman."
+      },
+      "archive": {
+        "action": "Archivar"
+      },
+      "unarchive": {
+        "action": "Desarchivar"
       }
     },
     "categories": {

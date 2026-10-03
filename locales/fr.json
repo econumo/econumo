@@ -1478,6 +1478,12 @@
         "confirm": "Fusionner",
         "warning": "Toutes les transactions de « {name} » seront déplacées, et « {name} » sera supprimé.",
         "envelope_info": "Si les deux se trouvent dans des enveloppes différentes, mettez d’abord à jour votre budget pour ne pas perdre vos montants planifiés, car les limites sont additionnées lors de la fusion."
+      },
+      "archive": {
+        "action": "Archiver"
+      },
+      "unarchive": {
+        "action": "Désarchiver"
       }
     },
     "categories": {

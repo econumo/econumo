@@ -1478,6 +1478,12 @@
         "confirm": "Zusammenführen",
         "warning": "Alle Transaktionen von „{name}“ werden verschoben, und „{name}“ wird gelöscht.",
         "envelope_info": "Wenn beide in verschiedenen Umschlägen liegen, aktualisiere zuerst dein Budget, damit deine geplanten Beträge nicht verloren gehen — beim Zusammenführen werden die Limits addiert."
+      },
+      "archive": {
+        "action": "Archivieren"
+      },
+      "unarchive": {
+        "action": "Aus Archiv holen"
       }
     },
     "categories": {

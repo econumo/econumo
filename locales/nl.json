@@ -1478,6 +1478,12 @@
         "confirm": "Samenvoegen",
         "warning": "Alle transacties van ‘{name}’ worden verplaatst en ‘{name}’ wordt verwijderd.",
         "envelope_info": "Staan beide in verschillende enveloppen, werk dan eerst je budget bij zodat je geplande bedragen niet verloren gaan — bij het samenvoegen worden de limieten opgeteld."
+      },
+      "archive": {
+        "action": "Archiveren"
+      },
+      "unarchive": {
+        "action": "Uit archief halen"
       }
     },
     "categories": {

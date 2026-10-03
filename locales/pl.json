@@ -1478,6 +1478,12 @@
         "confirm": "Scal",
         "warning": "Wszystkie transakcje „{name}” zostaną przeniesione, a „{name}” zostanie usunięty.",
         "envelope_info": "Jeśli oba znajdują się w różnych kopertach, najpierw zaktualizuj budżet, aby nie stracić zaplanowanych kwot, ponieważ przy scalaniu limity są sumowane."
+      },
+      "archive": {
+        "action": "Archiwizuj"
+      },
+      "unarchive": {
+        "action": "Przywróć z archiwum"
       }
     },
     "categories": {

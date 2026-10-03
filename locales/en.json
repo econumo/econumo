@@ -1478,6 +1478,12 @@
         "confirm": "Merge",
         "warning": "All transactions from “{name}” will be moved, and “{name}” will be deleted.",
         "envelope_info": "If the two sit in different envelopes, update your budget first so you don’t lose your planned amounts — limits are added together when merging."
+      },
+      "archive": {
+        "action": "Archive"
+      },
+      "unarchive": {
+        "action": "Unarchive"
       }
     },
     "categories": {

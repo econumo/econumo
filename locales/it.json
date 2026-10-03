@@ -1478,6 +1478,12 @@
         "confirm": "Unisci",
         "warning": "Tutte le transazioni di «{name}» verranno spostate e «{name}» verrà eliminato.",
         "envelope_info": "Se i due si trovano in buste diverse, aggiorna prima il budget per non perdere gli importi pianificati, perché unendoli i limiti vengono sommati."
+      },
+      "archive": {
+        "action": "Archivia"
+      },
+      "unarchive": {
+        "action": "Ripristina"
       }
     },
     "categories": {
