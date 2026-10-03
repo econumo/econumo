@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Combobox as ComboboxPrimitive } from '@base-ui/react'
 import { Combobox, ComboboxContent, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
 import { EntityIcon } from '@/components/EntityIcon'
+import { rankByName } from '@/lib/search'
 
 export interface EntityOption {
   value: string
@@ -58,7 +59,7 @@ export function EntitySelect({
     (rootRef.current?.closest('[data-slot="drawer-content"], [data-slot="dialog-content"]') as HTMLElement | null) ?? undefined
 
   const selected = options.find((o) => o.value === value) ?? null
-  const filtered = options.filter((o) => !search || o.label.toLowerCase().includes(search.toLowerCase()))
+  const filtered = rankByName(options, (o) => o.label, search)
   const exactMatch = options.some((o) => o.label.toLowerCase() === search.toLowerCase())
   const canCreate = !!onCreate && search !== '' && !exactMatch && (createValidator ? createValidator(search) : true)
 

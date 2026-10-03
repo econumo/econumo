@@ -297,6 +297,10 @@ navigation (single-pane vs sidebar).
       global add button: date picker, amount (formula), category & payee
       selects with **create-on-type** inline creation, tags & labels chips,
       description.
+- [ ] 📱 Category / payee / tag pickers find an item when a letter is skipped
+      ("grcries" → Groceries); a prefix match is listed before a mid-word
+      match; typing a new name that only resembles an existing one still
+      offers "Add «name»".
 - [ ] Cross-currency transfer (USD account → EUR account) asks for both
       amounts; both accounts' balances update by their respective amounts.
 - [ ] Same-currency transfer: single amount; swap from/to button works.
