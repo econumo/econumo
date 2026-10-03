@@ -1901,6 +1901,12 @@
       "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met tags is leeg."
     },
+    "authserver": {
+      "disabled": "Apps koppelen is niet beschikbaar op deze server.",
+      "client_not_found": "Deze app is niet geregistreerd. Start de koppeling opnieuw vanuit de app.",
+      "redirect_uri_mismatch": "Deze inloglink is niet geldig voor deze app. Start de koppeling opnieuw vanuit de app.",
+      "grant_not_found": "Gekoppelde app niet gevonden."
+    },
     "oauth": {
       "provider_not_configured": "De aanmeldprovider is niet geconfigureerd",
       "handoff_invalid": "De aanmeldlink is ongeldig of verlopen",

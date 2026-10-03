@@ -1901,6 +1901,12 @@
       "cannot_be_merged": "无法合并所选标签。",
       "list_empty": "标签列表为空。"
     },
+    "authserver": {
+      "disabled": "此服务器不支持连接应用。",
+      "client_not_found": "此应用尚未注册。请从应用中重新开始连接。",
+      "redirect_uri_mismatch": "此登录链接对该应用无效。请从应用中重新开始连接。",
+      "grant_not_found": "未找到已连接的应用。"
+    },
     "oauth": {
       "provider_not_configured": "登录提供方未配置",
       "handoff_invalid": "登录链接无效或已过期",

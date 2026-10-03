@@ -1901,6 +1901,12 @@
       "cannot_be_merged": "Les tags sélectionnés ne peuvent pas être fusionnés.",
       "list_empty": "La liste des tags est vide."
     },
+    "authserver": {
+      "disabled": "La connexion d'applications n'est pas disponible sur ce serveur.",
+      "client_not_found": "Cette application n'est pas enregistrée. Relancez la connexion depuis l'application.",
+      "redirect_uri_mismatch": "Ce lien de connexion n'est pas valide pour cette application. Relancez la connexion depuis l'application.",
+      "grant_not_found": "Application connectée introuvable."
+    },
     "oauth": {
       "provider_not_configured": "Le fournisseur de connexion n'est pas configuré",
       "handoff_invalid": "Le lien de connexion n'est pas valide ou a expiré",

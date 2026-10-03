@@ -1901,6 +1901,12 @@
       "cannot_be_merged": "Nie można scalić wybranych tagów.",
       "list_empty": "Lista tagów jest pusta."
     },
+    "authserver": {
+      "disabled": "Łączenie aplikacji nie jest dostępne na tym serwerze.",
+      "client_not_found": "Ta aplikacja nie jest zarejestrowana. Rozpocznij połączenie ponownie z poziomu aplikacji.",
+      "redirect_uri_mismatch": "Ten link logowania jest nieprawidłowy dla tej aplikacji. Rozpocznij połączenie ponownie z poziomu aplikacji.",
+      "grant_not_found": "Nie znaleziono połączonej aplikacji."
+    },
     "oauth": {
       "provider_not_configured": "Dostawca logowania nie jest skonfigurowany",
       "handoff_invalid": "Link logowania jest nieprawidłowy lub wygasł",

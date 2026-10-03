@@ -1901,6 +1901,12 @@
       "cannot_be_merged": "As etiquetas selecionadas não podem ser mescladas.",
       "list_empty": "A lista de etiquetas está vazia."
     },
+    "authserver": {
+      "disabled": "A conexão de aplicações não está disponível neste servidor.",
+      "client_not_found": "Esta aplicação não está registada. Inicie a ligação novamente a partir da aplicação.",
+      "redirect_uri_mismatch": "Esta ligação de início de sessão não é válida para esta aplicação. Inicie a ligação novamente a partir da aplicação.",
+      "grant_not_found": "Aplicação ligada não encontrada."
+    },
     "oauth": {
       "provider_not_configured": "O provedor de início de sessão não está configurado",
       "handoff_invalid": "O link de início de sessão é inválido ou expirou",

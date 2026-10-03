@@ -1901,6 +1901,12 @@
       "cannot_be_merged": "Die ausgewählten Tags können nicht zusammengeführt werden.",
       "list_empty": "Die Tag-Liste ist leer"
     },
+    "authserver": {
+      "disabled": "Das Verbinden von Apps ist auf diesem Server nicht verfügbar.",
+      "client_not_found": "Diese App ist nicht registriert. Starte die Verbindung erneut in der App.",
+      "redirect_uri_mismatch": "Dieser Anmeldelink ist für diese App nicht gültig. Starte die Verbindung erneut in der App.",
+      "grant_not_found": "Verbundene App nicht gefunden."
+    },
     "oauth": {
       "provider_not_configured": "Der Anbieter für die Anmeldung ist nicht konfiguriert",
       "handoff_invalid": "Der Anmeldelink ist ungültig oder abgelaufen",

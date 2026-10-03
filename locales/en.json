@@ -1901,6 +1901,12 @@
       "cannot_be_merged": "The selected tags cannot be merged",
       "list_empty": "Tags list is empty"
     },
+    "authserver": {
+      "disabled": "Connecting apps is not available on this server.",
+      "client_not_found": "This app is not registered. Start the connection again from the app.",
+      "redirect_uri_mismatch": "This sign-in link is not valid for this app. Start the connection again from the app.",
+      "grant_not_found": "Connected app not found."
+    },
     "oauth": {
       "provider_not_configured": "Sign-in provider is not configured",
       "handoff_invalid": "Sign-in link is invalid or has expired",

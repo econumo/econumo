@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/authserver"
 	authrepo "github.com/econumo/econumo/internal/authserver/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -13,6 +14,9 @@ import (
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
+
+// Asserted here, not in repo.go: the authserver package tests import repo.
+var _ authserver.Repository = (*authrepo.Repo)(nil)
 
 const userA = "11111111-1111-1111-1111-111111111111"
 

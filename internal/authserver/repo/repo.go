@@ -8,7 +8,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/econumo/econumo/internal/authserver"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/model"
@@ -56,8 +55,6 @@ type Repo struct {
 	tx *backend.TxManager
 	q  querier
 }
-
-var _ authserver.Repository = (*Repo)(nil)
 
 func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
