@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useSearchParams } from 'react-router'
@@ -32,6 +32,60 @@ function Shell({ children }: { children: ReactNode }) {
       </div>
       <div className="flex w-full max-w-md flex-col gap-5 rounded-xl border bg-background p-6 shadow-sm">{children}</div>
     </div>
+  )
+}
+
+const ARM_DELAY_MS = 500
+
+// Double-clickjacking guard: a page that opens this one under the user's
+// cursor can make the second click of a double-click land on Allow. The
+// button arms only after the user demonstrably interacts with this page (a
+// pointer that actually moves, or a key) or after it has been visible and
+// focused for ARM_DELAY_MS; losing focus or visibility restarts the wait.
+function useInteractionArmed() {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (armed) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const arm = () => setArmed(true)
+    const check = () => {
+      const ready = document.visibilityState === 'visible' && document.hasFocus()
+      if (ready && timer === undefined) {
+        timer = setTimeout(arm, ARM_DELAY_MS)
+      } else if (!ready && timer !== undefined) {
+        clearTimeout(timer)
+        timer = undefined
+      }
+    }
+    // Browsers dispatch motionless pointer events when content appears under a
+    // resting cursor; only real movement counts.
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.movementX !== 0 || e.movementY !== 0) arm()
+    }
+    check()
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    window.addEventListener('blur', check)
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('keydown', arm)
+    return () => {
+      if (timer !== undefined) clearTimeout(timer)
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('focus', check)
+      window.removeEventListener('blur', check)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('keydown', arm)
+    }
+  }, [armed])
+  return armed
+}
+
+function AllowButton({ disabled, onClick, children }: { disabled: boolean; onClick: () => void; children: ReactNode }) {
+  const armed = useInteractionArmed()
+  return (
+    <Button disabled={disabled || !armed} onClick={onClick}>
+      {children}
+    </Button>
   )
 }
 
@@ -138,9 +192,9 @@ export function ConsentPage() {
         <Button variant="outline" disabled={busy} onClick={() => decline.mutate(req)}>
           {t('authserver.consent.deny')}
         </Button>
-        <Button disabled={busy} onClick={() => approve.mutate(req)}>
+        <AllowButton disabled={busy} onClick={() => approve.mutate(req)}>
           {t('authserver.consent.allow')}
-        </Button>
+        </AllowButton>
       </div>
       {user && (
         <p className="text-xs text-muted-foreground">

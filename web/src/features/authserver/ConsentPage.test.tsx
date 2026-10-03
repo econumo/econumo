@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
@@ -51,6 +51,22 @@ function renderPage(search = SEARCH) {
   return router
 }
 
+function pointerMove(dx: number) {
+  const e = new Event('pointermove')
+  Object.assign(e, { movementX: dx, movementY: 0 })
+  act(() => {
+    window.dispatchEvent(e)
+  })
+}
+
+// Allow is armed by a real interaction with the page; tests move the pointer.
+async function clickAllow() {
+  const allow = await screen.findByRole('button', { name: /allow/i })
+  pointerMove(4)
+  await waitFor(() => expect(allow).toBeEnabled())
+  await userEvent.click(allow)
+}
+
 let assign: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
@@ -81,7 +97,7 @@ it('shows the client and where it will send the user, then approves', async () =
   expect(await screen.findByText('Claude')).toBeInTheDocument()
   expect(screen.getByText(/claude\.ai/)).toBeInTheDocument()
   expect(await screen.findByText(/ada@example\.test/)).toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: /allow/i }))
+  await clickAllow()
   await waitFor(() => expect(assign).toHaveBeenCalledWith(CALLBACK))
   expect(approveAuthorization).toHaveBeenCalledWith(
     expect.objectContaining({ clientId: 'abc', state: 's', redirectUri: 'https://claude.ai/api/mcp/auth_callback', codeChallengeMethod: 'S256' }),
@@ -161,7 +177,7 @@ it('never navigates to a non-http(s) redirect', async () => {
   vi.mocked(getAuthorizationRequest).mockResolvedValue(claude)
   vi.mocked(approveAuthorization).mockResolvedValue({ redirectUrl: 'javascript:alert(1)' })
   renderPage()
-  await userEvent.click(await screen.findByRole('button', { name: /allow/i }))
+  await clickAllow()
   expect(await screen.findByText(/sent an invalid request/i)).toBeInTheDocument()
   expect(assign).not.toHaveBeenCalled()
   expect(trackEvent).not.toHaveBeenCalled()
@@ -180,7 +196,7 @@ it('a read-only user is told why and can send the app back with a refusal', asyn
   vi.mocked(approveAuthorization).mockRejectedValue(httpError(402, 'Read-only access. Write operations are disabled.'))
   vi.mocked(declineAuthorization).mockResolvedValue({ redirectUrl: 'https://claude.ai/api/mcp/auth_callback?error=access_denied&state=s' })
   renderPage()
-  await userEvent.click(await screen.findByRole('button', { name: /allow/i }))
+  await clickAllow()
   expect(await screen.findByText(/read-only/i)).toBeInTheDocument()
   expect(assign).not.toHaveBeenCalled()
   expect(trackEvent).not.toHaveBeenCalled()
@@ -193,7 +209,7 @@ it('shows another failure inline and keeps the buttons usable', async () => {
   vi.mocked(getAuthorizationRequest).mockResolvedValue(claude)
   vi.mocked(approveAuthorization).mockRejectedValue(httpError(500, 'Something broke'))
   renderPage()
-  await userEvent.click(await screen.findByRole('button', { name: /allow/i }))
+  await clickAllow()
   expect(await screen.findByText('Something broke')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /allow/i })).toBeEnabled()
 })
@@ -204,4 +220,86 @@ it('remembers its URL for after login and links to switch account', async () => 
   await screen.findByText('Claude')
   expect(takePostLoginRedirect()).toBe(`/oauth/authorize${SEARCH}`)
   expect(screen.getByRole('link', { name: /switch account/i })).toHaveAttribute('href', '/logout')
+})
+
+describe('double-clickjacking guard', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  async function renderConsent() {
+    vi.mocked(getAuthorizationRequest).mockResolvedValue(claude)
+    renderPage()
+    await screen.findByText('Claude')
+  }
+
+  it('keeps Allow disabled until the page has been visible and focused for a moment', async () => {
+    const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    await renderConsent()
+    vi.useFakeTimers()
+    const allow = screen.getByRole('button', { name: /allow/i })
+    expect(allow).toBeDisabled()
+    expect(screen.getByRole('button', { name: /deny/i })).toBeEnabled()
+
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(allow).toBeDisabled() // never focused: the clock does not run
+
+    focused.mockReturnValue(true)
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+    })
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(allow).toBeDisabled()
+    focused.mockReturnValue(false)
+    act(() => {
+      window.dispatchEvent(new Event('blur'))
+    })
+    focused.mockReturnValue(true)
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+    })
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(allow).toBeDisabled() // losing focus restarted the wait
+    act(() => {
+      vi.advanceTimersByTime(250)
+    })
+    expect(allow).toBeEnabled()
+  })
+
+  it('arms on a keypress or a moving pointer, not a motionless one', async () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    await renderConsent()
+    const allow = screen.getByRole('button', { name: /allow/i })
+    pointerMove(0)
+    expect(allow).toBeDisabled()
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }))
+    })
+    expect(allow).toBeEnabled()
+  })
+
+  it('arms on pointer movement', async () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    await renderConsent()
+    const allow = screen.getByRole('button', { name: /allow/i })
+    expect(allow).toBeDisabled()
+    pointerMove(-3)
+    expect(allow).toBeEnabled()
+  })
+
+  it('leaves Deny usable before the guard arms', async () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    vi.mocked(declineAuthorization).mockResolvedValue({ redirectUrl: 'https://claude.ai/api/mcp/auth_callback?error=access_denied&state=s' })
+    await renderConsent()
+    expect(screen.getByRole('button', { name: /allow/i })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: /deny/i }))
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('https://claude.ai/api/mcp/auth_callback?error=access_denied&state=s'))
+  })
 })
