@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
-import { fuzzyMatch } from '@/lib/fuzzy'
+import { rankByName } from '@/lib/search'
 import type { AccountDto } from '@/api/dto/account'
 import type { Id } from '@/api/types'
 import { useFolders } from '@/features/accounts/queries'
@@ -89,7 +89,6 @@ function AccountChecklistDialog({
     }
   }, [open])
   const total = groups.reduce((n, g) => n + g.accounts.length, 0)
-  const matches = (a: AccountDto) => !search || fuzzyMatch(a.name, search)
   return (
     <ResponsiveDialog
       open={open}
@@ -111,7 +110,7 @@ function AccountChecklistDialog({
         <CommandList className="mt-2 max-h-96 max-md:max-h-none">
           <CommandEmpty>{t('common.list.list_empty')}</CommandEmpty>
           {groups.map((group) => {
-            const shown = group.accounts.filter(matches)
+            const shown = rankByName(group.accounts, (a) => a.name, search)
             if (shown.length === 0) {
               return null
             }

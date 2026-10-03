@@ -1481,6 +1481,12 @@
         "confirm": "Unisci",
         "warning": "Tutte le transazioni di «{name}» verranno spostate e «{name}» verrà eliminato.",
         "envelope_info": "Se i due si trovano in buste diverse, aggiorna prima il budget per non perdere gli importi pianificati, perché unendoli i limiti vengono sommati."
+      },
+      "archive": {
+        "action": "Archivia"
+      },
+      "unarchive": {
+        "action": "Ripristina"
       }
     },
     "categories": {
@@ -1777,6 +1783,22 @@
       "general_folder_hint": "General (verrà creata)",
       "decline_question": "Rifiutare l'accesso a «{name}»?"
     }
+  },
+  "search": {
+    "title": "Ricerca",
+    "placeholder": "Cerca transazioni, conti, categorie…",
+    "groups": {
+      "accounts": "Conti",
+      "categories": "Categorie",
+      "payees": "Beneficiari",
+      "tags": "Tag",
+      "labels": "Tag per i report",
+      "transactions": "Transazioni"
+    },
+    "show_all": "Mostra tutti ({count})",
+    "hidden_folder": "Cartella nascosta",
+    "back": "Indietro",
+    "nothing_found": "Nessun risultato"
   },
   "subscription": {
     "banner": {

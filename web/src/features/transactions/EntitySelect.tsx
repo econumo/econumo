@@ -4,12 +4,15 @@ import { useTranslation } from 'react-i18next'
 import { Combobox as ComboboxPrimitive } from '@base-ui/react'
 import { Combobox, ComboboxContent, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
 import { EntityIcon } from '@/components/EntityIcon'
+import { rankByName } from '@/lib/search'
 
 export interface EntityOption {
   value: string
   label: string
   icon?: string
   disabled?: boolean
+  /** what typing matches against when the label carries decoration (e.g. an account's balance) */
+  searchText?: string
 }
 
 interface Row extends EntityOption {
@@ -58,15 +61,17 @@ export function EntitySelect({
     (rootRef.current?.closest('[data-slot="drawer-content"], [data-slot="dialog-content"]') as HTMLElement | null) ?? undefined
 
   const selected = options.find((o) => o.value === value) ?? null
-  const filtered = options.filter((o) => !search || o.label.toLowerCase().includes(search.toLowerCase()))
-  const exactMatch = options.some((o) => o.label.toLowerCase() === search.toLowerCase())
-  const canCreate = !!onCreate && search !== '' && !exactMatch && (createValidator ? createValidator(search) : true)
+  const filtered = rankByName(options, (o) => o.searchText ?? o.label, search)
+  // the created name is trimmed, so it is also what must be new and valid
+  const name = search.trim()
+  const exactMatch = options.some((o) => o.label.toLowerCase() === name.toLowerCase())
+  const canCreate = !!onCreate && name !== '' && !exactMatch && (createValidator ? createValidator(name) : true)
 
   const rows: Row[] = [
     // hidden while filtering so autoHighlight lands on a real match, not the clear row
     ...(clearable && value && !search ? [{ value: '__clear__', label: '—', clear: true }] : []),
     ...filtered,
-    ...(canCreate ? [{ value: '__create__', label: search, create: true }] : []),
+    ...(canCreate ? [{ value: '__create__', label: name, create: true }] : []),
   ]
 
   return (

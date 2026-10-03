@@ -1481,6 +1481,12 @@
         "confirm": "Scal",
         "warning": "Wszystkie transakcje „{name}” zostaną przeniesione, a „{name}” zostanie usunięty.",
         "envelope_info": "Jeśli oba znajdują się w różnych kopertach, najpierw zaktualizuj budżet, aby nie stracić zaplanowanych kwot, ponieważ przy scalaniu limity są sumowane."
+      },
+      "archive": {
+        "action": "Archiwizuj"
+      },
+      "unarchive": {
+        "action": "Przywróć z archiwum"
       }
     },
     "categories": {
@@ -1777,6 +1783,22 @@
       "general_folder_hint": "General (zostanie utworzony)",
       "decline_question": "Odrzucić dostęp do „{name}”?"
     }
+  },
+  "search": {
+    "title": "Wyszukiwanie",
+    "placeholder": "Szukaj transakcji, kont, kategorii…",
+    "groups": {
+      "accounts": "Konta",
+      "categories": "Kategorie",
+      "payees": "Odbiorcy",
+      "tags": "Tagi",
+      "labels": "Tagi raportowe",
+      "transactions": "Transakcje"
+    },
+    "show_all": "Pokaż wszystkie ({count})",
+    "hidden_folder": "Ukryty folder",
+    "back": "Wstecz",
+    "nothing_found": "Nic nie znaleziono"
   },
   "subscription": {
     "banner": {

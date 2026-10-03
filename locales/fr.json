@@ -1481,6 +1481,12 @@
         "confirm": "Fusionner",
         "warning": "Toutes les transactions de « {name} » seront déplacées, et « {name} » sera supprimé.",
         "envelope_info": "Si les deux se trouvent dans des enveloppes différentes, mettez d’abord à jour votre budget pour ne pas perdre vos montants planifiés, car les limites sont additionnées lors de la fusion."
+      },
+      "archive": {
+        "action": "Archiver"
+      },
+      "unarchive": {
+        "action": "Désarchiver"
       }
     },
     "categories": {
@@ -1777,6 +1783,22 @@
       "general_folder_hint": "General (sera créé)",
       "decline_question": "Refuser l’accès à « {name} » ?"
     }
+  },
+  "search": {
+    "title": "Recherche",
+    "placeholder": "Rechercher des transactions, comptes, catégories…",
+    "groups": {
+      "accounts": "Comptes",
+      "categories": "Catégories",
+      "payees": "Bénéficiaires",
+      "tags": "Tags",
+      "labels": "Tags de rapport",
+      "transactions": "Transactions"
+    },
+    "show_all": "Tout afficher ({count})",
+    "hidden_folder": "Dossier masqué",
+    "back": "Retour",
+    "nothing_found": "Aucun résultat"
   },
   "subscription": {
     "banner": {

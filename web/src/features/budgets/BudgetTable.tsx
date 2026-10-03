@@ -582,6 +582,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   const actionsColumn = !!extras.renderActions
   const future = isFuturePeriod(budget.filters.periodStart)
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
+  const labels = budget.structure.labels ?? []
 
   const realFolders = buckets.withFolder
   const sections: { key: string; name: string; bucket: FolderBucket; folderIndex: number | null }[] = [
@@ -612,32 +613,10 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         const isReadOnlySection = section.key === '__archive__' || section.key === '__uncategorized__'
         // Uncategorized is a single fixed row, not a group: it renders flat,
         // with no header, so the label appears once instead of naming both a
-        // section and the lone row inside it. The reporting-tags folder sits
-        // right after it -- before Archive -- so it never reads as a breakdown
-        // of the Total row further down. Handled ahead of the generic
-        // empty-section skip below: the folder must still appear here even in
-        // the (common) case where Uncategorized itself has nothing to show for
-        // the period.
+        // section and the lone row inside it
         if (section.key === '__uncategorized__') {
-          const labels = budget.structure.labels ?? []
-          // an ephemeral folder: none of the edit-mode props (folder actions,
-          // drag handles, section/row wrappers) reach it, so it can never be
-          // renamed, moved, deleted, or become a drop target
-          const labelsNode =
-            labels.length > 0
-              ? [
-                  <ReportingTagsFolder
-                    key="__labels__"
-                    labels={labels}
-                    currency={budgetCurrency}
-                    onLabelClick={extras.onSpentClick}
-                    future={future}
-                    actionsColumn={actionsColumn}
-                  />,
-                ]
-              : []
           if (section.bucket.elements.length === 0) {
-            return labelsNode
+            return []
           }
           return [
             <section key={section.key} className="rounded-md border p-1.5 sm:p-2" data-testid={`budget-folder-${section.name}`}>
@@ -655,7 +634,6 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                 />
               ))}
             </section>,
-            ...labelsNode,
           ]
         }
         if (section.bucket.elements.length === 0 && section.folderIndex === null) {
@@ -728,6 +706,11 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
           ),
         ]
       })}
+
+      {/* an ephemeral folder, last: none of the edit-mode props (folder
+          actions, drag handles, section/row wrappers) reach it, so it can
+          never be renamed, moved, deleted, or become a drop target */}
+      {labels.length > 0 ? <ReportingTagsFolder labels={labels} currency={budgetCurrency} onLabelClick={extras.onSpentClick} future={future} actionsColumn={actionsColumn} /> : null}
 
       {hideTotals ? null : <BudgetTotals budget={budget} totals={totals} actionsColumn={actionsColumn} />}
     </div>

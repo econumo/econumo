@@ -514,25 +514,28 @@ it('omits the labels block entirely when there are no labels', async () => {
   expect(screen.queryByTestId('budget-labels-heading')).not.toBeInTheDocument()
 })
 
-it('the labels block sits directly after Uncategorized and before Archive, never after Total', async () => {
+it('the labels block sits after Uncategorized and Archive, last before Total', async () => {
   renderTable((budget) => {
     pushUncategorized(budget)
-    // a nonzero archived element, so Archive is visible and could otherwise sit
-    // between Uncategorized and the labels block
+    // a nonzero archived element, so Archive is visible
     budget.structure.elements.push({ ...budget.structure.elements[2], id: 'tag-carry', name: 'aaa-carry', available: '7' })
     withLabels(budget)
   })
   const uncategorized = await screen.findByTestId('budget-folder-Uncategorized')
-  const labels = await screen.findByTestId('budget-labels-section')
   const archive = await screen.findByTestId('budget-folder-Archived')
+  const labels = await screen.findByTestId('budget-labels-section')
   const totals = screen.getByTestId('budget-totals')
   const isBefore = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
-  // Total must read as its own row, not a sum of the overlapping label amounts
-  // right above it -- so the labels block cannot be the section immediately
-  // preceding Total.
-  expect(isBefore(uncategorized, labels)).toBe(true)
-  expect(isBefore(labels, archive)).toBe(true)
-  expect(isBefore(archive, totals)).toBe(true)
+  expect(isBefore(uncategorized, archive)).toBe(true)
+  expect(isBefore(archive, labels)).toBe(true)
+  expect(isBefore(labels, totals)).toBe(true)
+})
+
+it('the labels block still shows when Uncategorized and Archive are both empty', async () => {
+  renderTable(withLabels)
+  expect(screen.queryByTestId('budget-folder-Uncategorized')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('budget-folder-Archived')).not.toBeInTheDocument()
+  expect(await screen.findByTestId('budget-labels-section')).toBeInTheDocument()
 })
 
 it('clicking a label spend reports it as a transactions target with the label discriminant', async () => {

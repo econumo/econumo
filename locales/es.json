@@ -1481,6 +1481,12 @@
         "confirm": "Combinar",
         "warning": "Todas las transacciones de «{name}» se moverán y «{name}» se eliminará.",
         "envelope_info": "Si ambos están en sobres distintos, actualiza primero tu presupuesto para no perder tus importes planificados, ya que al combinar los límites se suman."
+      },
+      "archive": {
+        "action": "Archivar"
+      },
+      "unarchive": {
+        "action": "Desarchivar"
       }
     },
     "categories": {
@@ -1777,6 +1783,22 @@
       "general_folder_hint": "General (se creará)",
       "decline_question": "¿Rechazar el acceso a «{name}»?"
     }
+  },
+  "search": {
+    "title": "Búsqueda",
+    "placeholder": "Buscar transacciones, cuentas, categorías…",
+    "groups": {
+      "accounts": "Cuentas",
+      "categories": "Categorías",
+      "payees": "Beneficiarios",
+      "tags": "Etiquetas",
+      "labels": "Etiquetas de informes",
+      "transactions": "Transacciones"
+    },
+    "show_all": "Mostrar todos ({count})",
+    "hidden_folder": "Carpeta oculta",
+    "back": "Atrás",
+    "nothing_found": "No se encontró nada"
   },
   "subscription": {
     "banner": {

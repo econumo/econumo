@@ -242,6 +242,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const accountToOption = (a: (typeof accounts)[number]) => ({
     value: a.id,
     label: `${a.name} (${moneyFormat(a.balance, a.currency)})`,
+    searchText: a.name,
     icon: a.icon,
     disabled: !canWriteToAccount(a, user?.id),
   })

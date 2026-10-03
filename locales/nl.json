@@ -1481,6 +1481,12 @@
         "confirm": "Samenvoegen",
         "warning": "Alle transacties van ‘{name}’ worden verplaatst en ‘{name}’ wordt verwijderd.",
         "envelope_info": "Staan beide in verschillende enveloppen, werk dan eerst je budget bij zodat je geplande bedragen niet verloren gaan — bij het samenvoegen worden de limieten opgeteld."
+      },
+      "archive": {
+        "action": "Archiveren"
+      },
+      "unarchive": {
+        "action": "Uit archief halen"
       }
     },
     "categories": {
@@ -1777,6 +1783,22 @@
       "general_folder_hint": "General (wordt aangemaakt)",
       "decline_question": "Toegang tot “{name}” weigeren?"
     }
+  },
+  "search": {
+    "title": "Zoeken",
+    "placeholder": "Zoek transacties, rekeningen, categorieën…",
+    "groups": {
+      "accounts": "Rekeningen",
+      "categories": "Categorieën",
+      "payees": "Begunstigden",
+      "tags": "Tags",
+      "labels": "Rapportagetags",
+      "transactions": "Transacties"
+    },
+    "show_all": "Alles tonen ({count})",
+    "hidden_folder": "Verborgen map",
+    "back": "Terug",
+    "nothing_found": "Niets gevonden"
   },
   "subscription": {
     "banner": {
