@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
+import { Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { EntityIcon } from '@/components/EntityIcon'
 import { moneyFormat } from '@/lib/money'
 import { cmp, sub } from '@/lib/decimal'
 import type { BudgetCommentDto } from '@/api/dto/budget'
@@ -10,7 +12,7 @@ import type { Id } from '@/api/types'
 import { carryOver, displayAvailable, elementDisplayName, rowState } from './budgetMath'
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
-import { sheetCell } from './phoneMonth'
+import { sheetCell, sheetElement, sheetSetsPlan } from './phoneMonth'
 import { currentMonth, formatPlanMonth } from './planMath'
 
 const EMPTY = '—'
@@ -31,6 +33,10 @@ export interface ElementSheetProps {
   onOpenComments: () => void
   /** absent: no transaction list for this target */
   onShowTransactions?: () => void
+  /** absent: nothing to edit (Uncategorized) */
+  onEdit?: () => void
+  /** false keeps the edit button visible but inactive */
+  canEdit?: boolean
 }
 
 interface Figure {
@@ -53,6 +59,8 @@ export function ElementSheet({
   onSetAmount,
   onOpenComments,
   onShowTransactions,
+  onEdit,
+  canEdit = false,
 }: ElementSheetProps) {
   const { t, i18n } = useTranslation()
   if (!target) {
@@ -78,13 +86,12 @@ export function ElementSheet({
     planned: t('budgets.page.savings.planned'),
     received: t('budgets.page.sheet.received'),
     saved: t('budgets.page.savings.saved'),
-    balance: t('budgets.page.phone.balance'),
+    balance: t('budgets.page.sheet.balance'),
   }
 
   const figures: Figure[] = []
   let stateSentence: string | null = null
   let actualInBase: string
-  let income = false
   if (target.kind === 'expense') {
     const el = target.element
     const available = displayAvailable(el)
@@ -105,12 +112,11 @@ export function ElementSheet({
     const done = target.kind === 'savings' ? target.row.spent : target.cell.actual
     const closing = target.kind === 'savings' ? target.row.closingBalance : target.cell.closingBalance
     const type = target.kind === 'savings' ? BudgetElementType.SAVINGS : target.cell.element.type
-    income = isIncomeType(type)
     if (type === BudgetElementType.SAVINGS) {
       figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
       figures.push({ key: 'saved', label: label.saved, value: actual(done) })
       figures.push({ key: 'balance', label: label.balance, value: closing !== undefined ? fmt(closing) : EMPTY })
-    } else if (income) {
+    } else if (isIncomeType(type)) {
       figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
       figures.push({ key: 'received', label: label.received, value: actual(done) })
     } else {
@@ -126,7 +132,19 @@ export function ElementSheet({
   const rate = foreign ? exchange(baseCurrencyId, cell.currencyId, '1') : null
 
   return (
-    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={`${name} · ${monthLabel}`}>
+    <ResponsiveDialog
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={`${name} · ${monthLabel}`}
+      titleIcon={<EntityIcon name={sheetElement(target).icon} className="text-xl leading-none text-muted-foreground" />}
+      headerAction={
+        onEdit ? (
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={t('common.button.edit.label')} disabled={!canEdit} onClick={onEdit}>
+            <Pencil className="size-4" />
+          </Button>
+        ) : undefined
+      }
+    >
       <div className="flex flex-col gap-4" data-testid="element-sheet">
         <div className={`grid gap-2 ${figures.length === 1 ? 'grid-cols-1' : figures.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
           {figures.map((f) => (
@@ -183,14 +201,15 @@ export function ElementSheet({
         ) : null}
         {canSetAmount || onShowTransactions ? (
           <div className="flex gap-3 [&>button]:h-11 [&>button]:flex-1">
-            {canSetAmount ? (
-              <Button type="button" onClick={onSetAmount}>
-                {income ? t('budgets.page.sheet.set_plan') : t('budgets.modal.set_limit_form.header')}
-              </Button>
-            ) : null}
+            {/* the primary action on the right, as in every other dialog's action row */}
             {onShowTransactions ? (
               <Button type="button" variant="secondary" onClick={onShowTransactions}>
                 {t('budgets.page.sheet.transactions')}
+              </Button>
+            ) : null}
+            {canSetAmount ? (
+              <Button type="button" onClick={onSetAmount}>
+                {sheetSetsPlan(target) ? t('budgets.page.sheet.set_plan') : t('budgets.modal.set_limit_form.header')}
               </Button>
             ) : null}
           </div>

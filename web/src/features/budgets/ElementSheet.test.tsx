@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { fixtureWireBudget } from '@/test/fixtures'
@@ -179,7 +179,8 @@ it('a savings row (monthly or plan cell) shows Planned, Saved and the month-end 
   renderSheet({ target: { kind: 'savings', row: saving }, onShowTransactions: undefined })
   expect(screen.getByTestId('sheet-figure-planned')).toHaveTextContent('100.00')
   expect(screen.getByTestId('sheet-figure-saved')).toHaveTextContent('40.00')
-  expect(screen.getByTestId('sheet-figure-balance')).toHaveTextContent('Balance at month end1,040.00')
+  expect(screen.getByTestId('sheet-figure-balance')).toHaveTextContent('Balance1,040.00')
+  expect(screen.getByRole('button', { name: 'Set plan' })).toBeInTheDocument()
 })
 
 it('a savings plan cell shows its closing balance too', () => {
@@ -187,9 +188,39 @@ it('a savings plan cell shows its closing balance too', () => {
   renderSheet({ target: { kind: 'plan', cell: { element: s, planned: '100', actual: '40', closingBalance: '1040' } }, onShowTransactions: undefined })
   expect(screen.getByTestId('sheet-figure-saved')).toHaveTextContent('40.00')
   expect(screen.getByTestId('sheet-figure-balance')).toHaveTextContent('1,040.00')
+  expect(screen.getByRole('button', { name: 'Set plan' })).toBeInTheDocument()
 })
 
 it('renders nothing without a target', () => {
   renderSheet({ target: null })
   expect(screen.queryByTestId('element-sheet')).toBeNull()
+})
+
+it('shows the item icon beside the title', () => {
+  renderSheet()
+  const dialog = screen.getByRole('dialog', { name: `Food · ${july}` })
+  expect(within(dialog).getByText('restaurant')).toHaveAttribute('aria-hidden', 'true')
+})
+
+it('offers an active Edit button when the item can be edited', async () => {
+  const onEdit = vi.fn()
+  renderSheet({ onEdit, canEdit: true })
+  await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+  expect(onEdit).toHaveBeenCalled()
+})
+
+it('keeps the Edit button visible but inactive without the right to edit', () => {
+  renderSheet({ onEdit: vi.fn(), canEdit: false })
+  expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled()
+})
+
+it('has no Edit button when there is nothing to edit', () => {
+  renderSheet()
+  expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+})
+
+it('puts the primary action on the right of Transactions', () => {
+  renderSheet()
+  const buttons = screen.getAllByRole('button').map((b) => b.textContent)
+  expect(buttons.indexOf('Transactions')).toBeLessThan(buttons.indexOf('Set budget'))
 })

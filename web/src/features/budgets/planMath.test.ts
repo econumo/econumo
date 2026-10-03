@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto, PlanSavingsElementDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
-import { sub } from '@/lib/decimal'
+import { add, sub } from '@/lib/decimal'
 import { fixtureWirePlan } from '@/test/fixtures'
 import {
   PLAN_ACTIONS_COL_PX,
@@ -744,6 +744,30 @@ describe('savings + net + balance split', () => {
     const withoutSavings = mkPlan({ ...plan, structure: { ...plan.structure, savings: [] } })
     const totalsWithoutSavings = planTotals(withoutSavings, ex, now)
     expect(totals.map((t) => t.effectiveNet)).toEqual(totalsWithoutSavings.map((t) => t.effectiveNet))
+  })
+
+  it('savingsIncomeExpense (income/expense booked on savings accounts, kept out of the category rows) is added back to netActual and effectiveNet', () => {
+    const plan = buildPlan()
+    const ex = makePlanExchange(plan, [usd, eur])
+    const base = planTotals(plan, ex, now)
+    const withInterest = mkPlan({
+      ...plan,
+      savingsIncomeExpense: [
+        { month: '2026-06-01', currencyId: 'cur-usd', amount: '12' },
+        { month: '2026-07-01', currencyId: 'cur-eur', amount: '-10' },
+      ],
+    })
+    const totals = planTotals(withInterest, ex, now)
+
+    expect(totals[0].netActual).toBe('-248') // -260 + 12
+    expect(totals[1].netActual).toBe('-360') // -355 - 10/2
+    expect(totals[2].netActual).toBe('-200')
+    expect(totals[0].effectiveNet).toBe(add(base[0].effectiveNet, '12'))
+    expect(totals[1].effectiveNet).toBe(sub(base[1].effectiveNet, '5'))
+    expect(totals[2].effectiveNet).toBe(base[2].effectiveNet)
+    // income/expense rows themselves are untouched
+    expect(totals.map((t) => t.incomeActual)).toEqual(base.map((t) => t.incomeActual))
+    expect(totals.map((t) => t.expenseActual)).toEqual(base.map((t) => t.expenseActual))
   })
 
   it('savingsBalanceRow: opening + flows(past), + flows + (effectiveSavings - savingsActual)(current and future)', () => {

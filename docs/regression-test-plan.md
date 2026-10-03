@@ -785,8 +785,16 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       switch to the Plan view in the same tab: the Total savings updates
       without a manual reload.
 - [ ] 📱 "Total savings" is a plain label with no info icon. Record
-      interest on a savings account: the Total savings rises by it while the
-      Savings line does not — intended, not a bug.
+      interest (income) on a savings account: its Saved / Actual and the
+      Savings line rise by it, as does the Total savings; the everyday
+      Balance does not move. A fee (expense) on it lowers them the same way,
+      and a transfer into it from an account that is not in the budget counts
+      as saved too.
+- [ ] 📱 Income and expenses booked on a savings account stay out of the
+      category rows: interest in an income category and a fee in an expense
+      category leave both categories' amounts (monthly Budget view and Plan
+      view) and their "Show transactions" lists unchanged; the same
+      transactions on an everyday account do show there.
 - [ ] 📱 A savings cell carries comment threads like any other cell: the
       corner marker shows on a commented cell, and Shift+Enter (desktop) or a
       tap on the marker opens its thread.
@@ -800,8 +808,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       that account's item sheet on a phone for the same month. Expense and
       income cells carry no such line.
 - [ ] 📱 Save into a TFSA all year, then transfer the lot to an RRSP (both
-      savings accounts in the budget): neither row's Saved / Actual moves, the
-      Total savings is unchanged, and from that month on the TFSA row's
+      savings accounts in the budget): that month the TFSA row's Saved / Actual
+      drops by the amount and the RRSP row's rises by it, the Savings line and
+      the Total savings are unchanged, and from that month on the TFSA row's
       balance is that much lower and the RRSP row's that much higher.
 - [ ] **Budget view (desktop and tablet) shows no savings**: with a savings
       account in the budget, no Savings block appears and the Total row counts
@@ -877,14 +886,16 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       opens ("Food · July": Budget, Spent, Available, the two latest comments,
       "Comments (N)" / "Add comment", "Set budget", "Transactions"). "Set
       budget" replaces the sheet with the amount dialog (no comments in it);
-      "Comments" replaces it with the thread. A savings row's sheet has no
+      "Comments" replaces it with the thread. A savings row's sheet also has
       "Transactions". A guest's sheet has no "Set budget". Available is not a button; tapping Spent still lists
       the transactions; the corner marker still opens the thread beside the cell.
 - [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
       the cell is selected and the item sheet opens for that element and
       month — Budget/Spent (Planned/Received for income, Planned/Saved/Balance
-      for savings), the two latest comments, "Set budget" ("Set plan" for income),
-      "Comments", and "Transactions" for expense rows. The sheet's month and
+      for savings), the two latest comments, "Set budget" ("Set plan" for income
+      and savings, whose amount dialog is titled "Set plan" with a "Plan" field),
+      "Comments", and "Transactions" (every row but Uncategorized; the list is
+      that column's month). The sheet's month and
       any foreign-currency rate are the tapped column's. The corner marker still
       opens only the thread.
 - [ ] 📱 Tablet: holding a finger on a cell opens nothing extra (no actions
@@ -950,7 +961,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       the budget plus what earlier months left. A row with a 0.00 budget (and
       nothing left from earlier months) still shows the empty light-gray track,
       like a row with nothing spent. A future month shows `—` for
-      Spent, with no bar and no colour.
+      Spent, the empty track, and no colour.
+- [ ] 📱 Income and savings rows (unfolded) show the same thin bar,
+      measuring Actual against Planned. It stays gray until the plan is met
+      and turns green once received/saved reaches the planned amount; the
+      figures themselves never change colour. A row with no plan, or a
+      savings withdrawal, shows the empty track; so does every row in a future
+      month, even one whose plan is already met.
 - [ ] 📱 What earlier months left shows read-only right before the budget, so
       the two read as one figure, e.g. "530.00 + 700.00" — on phone rows and in the Budget table (desktop and
       tablet, with a "Left from earlier months" tooltip); only the budget is
@@ -966,6 +983,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       August's Available).
 - [ ] 📱 A category/envelope in another currency carries a small code tag
       (`Travel EUR`) and its amounts are in that currency.
+- [ ] 📱 Month view: the right edges of the Budget/Planned and Spent/Actual
+      figures line up down the whole screen — the section column labels, the
+      Income and Savings lines, every folder header's totals and every row
+      (a carry-over lead-in grows leftwards without moving them).
 - [ ] 📱 Income is one collapsed header like a folder's: "Income", the
       planned total under Budget and the received total under Spent (— in a
       future month); tapping it unfolds
@@ -987,7 +1008,27 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       replace the sheet (never stacked); closing them returns to the list.
       Saving a budget updates the row at once and survives a reload.
 - [ ] 📱 An income row's sheet offers "Set plan" (Planned / Received); a
-      savings row's sheet shows Planned, Saved and Balance at month end.
+      savings row's sheet shows Planned, Saved and Balance (the month-end
+      balance; each label fits on one line) and offers "Set plan", which opens
+      the amount dialog titled "Set plan" with a "Plan" field (an income
+      row's dialog too; an expense row's keeps "Set budget" / "Budget").
+- [ ] 📱 Every item sheet (phone month view and tablet Plan view) shows the
+      item's icon before its title and a pencil at the header's end (beside
+      the corner X on a tablet). The pencil opens the item's own edit dialog in
+      place of the sheet: an envelope's, a category's, a tag's, or the account
+      dialog for a savings row. It is greyed out and does nothing when you may
+      not edit the item: an envelope in a budget where you are a guest (or an
+      archived budget), a category or tag that belongs to another user, a
+      savings account you neither own nor administer, or one that was
+      deleted. The Uncategorized row's sheet has no pencil. Renaming an item
+      from there updates its row at once.
+- [ ] 📱 A savings row's sheet → "Transactions" lists every transaction on that
+      account in the month — transfers in and out, interest, fees — money in
+      positive, money out negative, in the account's currency; their signed sum
+      equals Saved. An income row's sheet → "Transactions" lists that
+      category's (or income envelope's) income on the everyday accounts, all
+      positive, summing to Received; income booked on a savings account is not
+      in it. The income Uncategorized row has no "Transactions".
 - [ ] 📱 A guest, an archived budget, a month outside the
       budget's range, an archived element and the Uncategorized row get no
       "Set budget" in the sheet; Uncategorized has no comments link, and an

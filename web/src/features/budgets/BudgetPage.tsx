@@ -34,7 +34,8 @@ import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type { BudgetElementDto } from '@/api/dto/budget'
-import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
 import { RouterPage } from '@/app/router-pages'
 import { useUiStore } from '@/app/uiStore'
@@ -42,7 +43,10 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userOption } from '@/features/user/queries'
 import { UserOptions } from '@/api/dto/user'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCategories } from '@/features/classifications/queries'
+import { useCategories, useUpdateCategory } from '@/features/classifications/queries'
+import { CategoryDialog } from '@/features/classifications/CategoryDialog'
+import { TagDialog } from '@/features/classifications/TagDialog'
+import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import {
   useBudget,
@@ -79,9 +83,11 @@ import { CommentMarker } from './CommentThread'
 import { CommentsPanel } from './CommentsPanel'
 import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
-import { planMonthFigures, sheetCell, type SheetTarget } from './phoneMonth'
+import { planMonthFigures, sheetCell, sheetElement, sheetSetsPlan, type SheetElement, type SheetTarget } from './phoneMonth'
 import { PhoneMonthView } from './PhoneMonthView'
 import { EnvelopeDialog } from './EnvelopeDialog'
+import type { EnvelopeDialogTarget } from './EnvelopeDialog'
+import { elementEditAccess, isEnvelopeType } from './elementEdit'
 import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
@@ -243,6 +249,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const setLimit = useSetLimit()
   const createEnvelope = useCreateEnvelope()
   const updateEnvelope = useUpdateEnvelope()
+  const updateCategory = useUpdateCategory()
   const deleteEnvelope = useDeleteEnvelope()
   const createFolder = useCreateBudgetFolder()
   const updateFolder = useUpdateBudgetFolder()
@@ -279,12 +286,14 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
   const [renameFolder, setRenameFolder] = useState<{ id: Id; name: string } | null>(null)
-  const [envelopeDialog, setEnvelopeDialog] = useState<{ open: boolean; envelope: BudgetElementDto | null; folderId: Id | null }>({ open: false, envelope: null, folderId: null })
+  const [envelopeDialog, setEnvelopeDialog] = useState<{ open: boolean; envelope: EnvelopeDialogTarget | null; folderId: Id | null; side?: 'expense' | 'income' }>({ open: false, envelope: null, folderId: null })
+  const [categoryTarget, setCategoryTarget] = useState<Pick<CategoryDto, 'id' | 'name' | 'type' | 'icon'> | null>(null)
+  const [tagTarget, setTagTarget] = useState<TagDialogItem | null>(null)
   const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<BudgetElementDto | null>(null)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: Id; name: string } | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<BudgetElementDto | null>(null)
   const [moveFolderTarget, setMoveFolderTarget] = useState<BudgetElementDto | null>(null)
-  const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean }) | null>(null)
+  const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean; setsPlan?: boolean }) | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
   const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null)
 
@@ -542,6 +551,21 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     icon: element.icon,
     currencyId: element.currencyId,
   })
+  // the income Uncategorized row has no list: it gathers income booked in expense
+  // categories too, which no selector can name
+  const sheetTransactionsTargetOf = (target: SheetTarget): BudgetTransactionsTarget | null => {
+    switch (target.kind) {
+      case 'expense':
+        return transactionsTargetOf(target.element)
+      case 'savings':
+        return { id: target.row.id, type: BudgetElementType.SAVINGS, name: target.row.name, icon: target.row.icon, currencyId: target.row.currencyId }
+      case 'plan': {
+        const el = target.cell.element
+        return el.id === UNCATEGORIZED_ID ? null : { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId }
+      }
+    }
+  }
+  const sheetTransactions = sheetTarget ? sheetTransactionsTargetOf(sheetTarget) : null
   const sheetCanSetAmount = (target: SheetTarget): boolean => {
     if (!limitsEditable) {
       return false
@@ -560,7 +584,23 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     const cell = sheetCell(target, budget.meta.currencyId)
     return { id: cell.id, name: cell.name, budgeted: cell.amount }
   }
-  const expenseSheetTarget = sheetTarget?.kind === 'expense' ? sheetTarget : null
+  const sheetEdit = sheetTarget ? elementEditAccess(sheetElement(sheetTarget), user?.id, editDetails, accounts) : null
+  // the sheet's pencil: the element's own edit dialog replaces the sheet
+  const editFromSheet = (el: SheetElement) => {
+    setSheetTarget(null)
+    if (isEnvelopeType(el.type)) {
+      setEnvelopeDialog({ open: true, envelope: el, folderId: null, side: isIncomeType(el.type) ? 'income' : 'expense' })
+    } else if (el.type === BudgetElementType.SAVINGS) {
+      const account = accounts.find((a) => a.id === el.id)
+      if (account) {
+        openAccountModal({ account })
+      }
+    } else if (el.type === BudgetElementType.TAG) {
+      setTagTarget({ id: el.id, name: el.name, kind: 'tag', icon: el.icon })
+    } else {
+      setCategoryTarget({ id: el.id, name: el.name, icon: el.icon, type: isIncomeType(el.type) ? 'income' : 'expense' })
+    }
+  }
   // phones get no hover corner; edit mode owns the pointer for dragging
   const cellActionsDisabled = isPhone || editMode
   // the hover-only corner that starts a thread on a cell with none yet
@@ -908,7 +948,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         open={envelopeDialog.open}
         envelope={envelopeDialog.envelope}
         budgetCurrencyId={budget.meta.currencyId}
-        side="expense"
+        side={envelopeDialog.side ?? 'expense'}
         onClose={() => setEnvelopeDialog({ open: false, envelope: null, folderId: null })}
         onSubmit={(form) => {
           const close = () => setEnvelopeDialog({ open: false, envelope: null, folderId: null })
@@ -925,6 +965,19 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           }
         }}
       />
+
+      <CategoryDialog
+        open={categoryTarget !== null}
+        category={categoryTarget}
+        onClose={() => setCategoryTarget(null)}
+        onSubmit={(form) => {
+          if (categoryTarget) {
+            updateCategory.mutate({ id: categoryTarget.id, name: form.name, icon: form.icon }, { onSuccess: () => setCategoryTarget(null) })
+          }
+        }}
+      />
+
+      <TagDialog open={tagTarget !== null} item={tagTarget} onClose={() => setTagTarget(null)} />
 
       <ConfirmDialog
         open={deleteEnvelopeTarget !== null}
@@ -1014,7 +1067,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
 
       <SetLimitDialog
         target={limitTarget ? { id: limitTarget.id, name: elementDisplayName(limitTarget.id, limitTarget.name, t), value: limitTarget.budgeted } : null}
-        title={limitTarget?.viaPlan ? t('budgets.page.sheet.set_plan') : undefined}
+        plan={limitTarget?.setsPlan}
         onClose={() => setLimitTarget(null)}
         onCommit={(elementId, amount) => {
           // an income plan lives only in the plan window, so it patches that cache;
@@ -1039,7 +1092,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         onClose={() => setSheetTarget(null)}
         onSetAmount={() => {
           if (sheetTarget) {
-            setLimitTarget({ ...sheetCellTarget(sheetTarget), viaPlan: sheetTarget.kind === 'plan' })
+            setLimitTarget({ ...sheetCellTarget(sheetTarget), viaPlan: sheetTarget.kind === 'plan', setsPlan: sheetSetsPlan(sheetTarget) })
             setSheetTarget(null)
           }
         }}
@@ -1050,13 +1103,15 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           }
         }}
         onShowTransactions={
-          expenseSheetTarget
+          sheetTransactions
             ? () => {
-                setTransactionsTarget(transactionsTargetOf(expenseSheetTarget.element))
+                setTransactionsTarget(sheetTransactions)
                 setSheetTarget(null)
               }
             : undefined
         }
+        onEdit={sheetTarget && sheetEdit !== null ? () => editFromSheet(sheetElement(sheetTarget)) : undefined}
+        canEdit={sheetEdit === true}
       />
 
       <CommentsPanel

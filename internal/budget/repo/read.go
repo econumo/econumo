@@ -818,65 +818,6 @@ func (r *ReadRepo) transfersByMonthSQL(out bool, accountIDs []vo.Id, from, to ti
 	return sql, args
 }
 
-// SavingsByMonth implements ReadModel: one grouped query per direction, merged
-// per (account, month) as in - out.
-func (r *ReadRepo) SavingsByMonth(ctx context.Context, savingsIDs, everydayIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
-	if len(savingsIDs) == 0 || len(everydayIDs) == 0 {
-		return nil, nil
-	}
-	merged := map[string]vo.DecimalNumber{}
-	keys := map[string]model.SavingsMonthRow{}
-	for _, out := range []bool{false, true} {
-		sql, args := r.savingsByMonthSQL(out, savingsIDs, everydayIDs, from, to)
-		rows, err := r.monthAccountAmounts(ctx, sql, args)
-		if err != nil {
-			return nil, err
-		}
-		for _, row := range rows {
-			k := row.Month + "|" + row.AccountID
-			acc, ok := merged[k]
-			if !ok {
-				acc = vo.NewDecimal("0")
-			}
-			amt := vo.NewDecimal(row.Amount)
-			if out {
-				acc = acc.Sub(amt)
-			} else {
-				acc = acc.Add(amt)
-			}
-			merged[k] = acc
-			keys[k] = model.SavingsMonthRow{AccountID: row.AccountID, Month: row.Month}
-		}
-	}
-	return sortedSavingsRows(merged, keys), nil
-}
-
-// savingsByMonthSQL: out=false sums amount_recipient of everyday -> savings
-// transfers (grouped by the recipient); out=true sums amount of savings ->
-// everyday transfers (grouped by the source).
-func (r *ReadRepo) savingsByMonthSQL(out bool, savingsIDs, everydayIDs []vo.Id, from, to time.Time) (string, []any) {
-	amountCol, savingsCol, everydayCol := "t.amount_recipient", "t.account_recipient_id", "t.account_id"
-	if out {
-		amountCol, savingsCol, everydayCol = "t.amount", "t.account_id", "t.account_recipient_id"
-	}
-	s, e := idArgs(savingsIDs), idArgs(everydayIDs)
-	args := append(append([]any{}, s...), e...)
-	dStart, dEnd := "?", "?"
-	if r.driver == "postgresql" {
-		dStart = "$" + itoa(1+len(s)+len(e))
-		dEnd = "$" + itoa(2+len(s)+len(e))
-		args = append(args, from, to)
-	} else {
-		// See sqliteDatetime.
-		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
-	}
-	month := r.planMonthExpr("t.spent_at")
-	sql := "SELECT " + month + " as month, " + savingsCol + " as account_id, SUM(" + amountCol + ") as amount FROM transactions t WHERE t.type = 2 AND " +
-		savingsCol + " IN (" + r.ph(1, len(s)) + ") AND " + everydayCol + " IN (" + r.ph(1+len(s), len(e)) + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
-		" GROUP BY month, " + savingsCol
-	return sql, args
-}
-
 // AccountsNetByMonth implements ReadModel. The sign rules are balanceSQL's,
 // bucketed by month.
 func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
@@ -904,6 +845,39 @@ func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, f
 		" UNION ALL " +
 		"SELECT " + month + " as month, t.account_recipient_id as account_id, t.amount_recipient as amount FROM transactions t WHERE t.type = 2 AND t.account_recipient_id IN (" + r.ph(n+3, n) + ") AND t.spent_at >= " + d3 + " AND t.spent_at < " + d4 +
 		") x GROUP BY month, account_id"
+	rows, err := r.monthAccountAmounts(ctx, sql, args)
+	if err != nil {
+		return nil, err
+	}
+	merged := map[string]vo.DecimalNumber{}
+	keys := map[string]model.SavingsMonthRow{}
+	for _, row := range rows {
+		k := row.Month + "|" + row.AccountID
+		merged[k] = vo.NewDecimal(row.Amount)
+		keys[k] = model.SavingsMonthRow{AccountID: row.AccountID, Month: row.Month}
+	}
+	return sortedSavingsRows(merged, keys), nil
+}
+
+// AccountsIncomeExpenseByMonth implements ReadModel: AccountsNetByMonth
+// without the transfers.
+func (r *ReadRepo) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	ids := idArgs(accountIDs)
+	n := len(ids)
+	args := append([]any{}, ids...)
+	dStart, dEnd := "?", "?"
+	if r.driver == "postgresql" {
+		dStart, dEnd = "$"+itoa(n+1), "$"+itoa(n+2)
+		args = append(args, from, to)
+	} else {
+		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
+	}
+	month := r.planMonthExpr("t.spent_at")
+	sql := "SELECT " + month + " as month, t.account_id as account_id, SUM(CASE WHEN t.type = 1 THEN t.amount ELSE 0 - t.amount END) as amount FROM transactions t WHERE t.type IN (0, 1) AND t.account_id IN (" + r.ph(1, n) + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
+		" GROUP BY month, t.account_id"
 	rows, err := r.monthAccountAmounts(ctx, sql, args)
 	if err != nil {
 		return nil, err
@@ -1366,6 +1340,92 @@ func (r *ReadRepo) BudgetTransactionsTransfers(ctx context.Context, accountIDs [
 		var row model.BudgetTransactionRow
 		var currencyID, desc *string
 		if err := rows.Scan(&row.ID, &row.UserID, &currencyID, &row.Amount, &desc, &row.SpentAt, &row.CategoryID, &row.PayeeID, &row.TagID, &row.Direction); err != nil {
+			return nil, err
+		}
+		if currencyID != nil {
+			row.CurrencyID = *currencyID
+		}
+		if desc != nil {
+			row.Description = *desc
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+// BudgetTransactionsIncome implements ReadModel.
+func (r *ReadRepo) BudgetTransactionsIncome(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	if len(categoryIDs) == 0 || len(accountIDs) == 0 {
+		return nil, nil
+	}
+	accArgs := idArgs(accountIDs)
+	catArgs := idArgs(categoryIDs)
+	args := append(append([]any{}, accArgs...), catArgs...)
+	accIn, catIn := r.ph(1, len(accArgs)), r.ph(1, len(catArgs))
+	dStart, dEnd := "?", "?"
+	if r.driver == "postgresql" {
+		catIn = r.ph(1+len(accArgs), len(catArgs))
+		dStart, dEnd = "$"+itoa(1+len(accArgs)+len(catArgs)), "$"+itoa(2+len(accArgs)+len(catArgs))
+		args = append(args, start, end)
+	} else {
+		// See sqliteDatetime.
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
+	}
+	sql := "SELECT " + budgetTxCols + ", 'in' as direction, 'income' as type FROM transactions t JOIN accounts a ON a.id = t.account_id" +
+		" WHERE t.type = 1 AND t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
+		" ORDER BY t.spent_at DESC, t.id"
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDirectedTxRows(rows)
+}
+
+// BudgetTransactionsOnAccount implements ReadModel: the account's own rows
+// (income in, expense and outgoing transfer out, at amount) plus the transfers
+// it received (in, at amount_recipient).
+func (r *ReadRepo) BudgetTransactionsOnAccount(ctx context.Context, accountID vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	cols := "t.id as id, t.user_id, a.currency_id, %s as amount, t.description, t.spent_at as spent_at, t.category_id, t.payee_id, t.tag_id, %s as direction, %s as type"
+	own := fmt.Sprintf(cols, "t.amount", "CASE WHEN t.type = 1 THEN 'in' ELSE 'out' END", "CASE t.type WHEN 0 THEN 'expense' WHEN 1 THEN 'income' ELSE 'transfer' END")
+	received := fmt.Sprintf(cols, "t.amount_recipient", "'in'", "'transfer'")
+	var p [6]string
+	var args []any
+	if r.driver == "postgresql" {
+		for i := range p {
+			p[i] = "$" + itoa(i+1)
+		}
+		args = []any{accountID.String(), start, end, accountID.String(), start, end}
+	} else {
+		for i := range p {
+			p[i] = "?"
+		}
+		// See sqliteDatetime.
+		ds, de := sqliteDatetime(start), sqliteDatetime(end)
+		args = []any{accountID.String(), ds, de, accountID.String(), ds, de}
+	}
+	sql := "SELECT " + own + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id = " + p[0] + " AND t.spent_at >= " + p[1] + " AND t.spent_at < " + p[2] +
+		" UNION ALL SELECT " + received + " FROM transactions t JOIN accounts a ON a.id = t.account_recipient_id WHERE t.type = 2 AND t.account_recipient_id = " + p[3] + " AND t.spent_at >= " + p[4] + " AND t.spent_at < " + p[5] +
+		" ORDER BY spent_at DESC, id"
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDirectedTxRows(rows)
+}
+
+// scanDirectedTxRows scans budgetTxCols followed by direction and type.
+func scanDirectedTxRows(rows interface {
+	Next() bool
+	Scan(...any) error
+	Err() error
+}) ([]model.BudgetTransactionRow, error) {
+	var out []model.BudgetTransactionRow
+	for rows.Next() {
+		var row model.BudgetTransactionRow
+		var currencyID, desc *string
+		if err := rows.Scan(&row.ID, &row.UserID, &currencyID, &row.Amount, &desc, &row.SpentAt, &row.CategoryID, &row.PayeeID, &row.TagID, &row.Direction, &row.Type); err != nil {
 			return nil, err
 		}
 		if currencyID != nil {

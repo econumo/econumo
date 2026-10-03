@@ -394,8 +394,9 @@ type PlanMonthRatesResult struct {
 }
 
 // PlanSavingsElementResult is one savings account's plan row. Cells align with
-// BudgetPlanResult.Months; Actual is money moved in from the everyday accounts,
-// in CurrencyId (the element currency); Planned is "" with no limit.
+// BudgetPlanResult.Months; Actual is the account's net change that month (every
+// transaction on it, interest and transfers with any account included), in
+// CurrencyId (the element currency); Planned is "" with no limit.
 type PlanSavingsElementResult struct {
 	Id          string                  `json:"id"`
 	Type        int                     `json:"type"`
@@ -418,8 +419,8 @@ type PlanSavingsCellResult struct {
 
 // PlanSavingsFlowResult is one (month, account currency) net change of the
 // savings accounts: every transaction on them, interest and boundary transfers
-// included, so it deliberately exceeds the Savings row, which counts only what
-// was moved in from the everyday accounts.
+// included — the same figure as the Savings rows' actuals, unconverted and
+// grouped by account currency.
 type PlanSavingsFlowResult struct {
 	Month      string `json:"month"`
 	CurrencyId string `json:"currencyId"`
@@ -437,6 +438,9 @@ type PlanStructureResult struct {
 // BudgetPlanResult is the full get-budget-plan shape. SavingsOpeningBalances
 // is OpeningBalances over the savings accounts only, per savings-account
 // currency; SavingsFlows lists only (month, currency) pairs with activity.
+// SavingsIncomeExpense is the income minus the expenses booked on the savings
+// accounts, same shape as SavingsFlows: the category rows count the everyday
+// accounts only, so the combined balance needs it added back.
 type BudgetPlanResult struct {
 	Meta                   MetaResult                 `json:"meta"`
 	Months                 []string                   `json:"months"`
@@ -445,6 +449,7 @@ type BudgetPlanResult struct {
 	CurrencyRates          []PlanMonthRatesResult     `json:"currencyRates"`
 	Transfers              []PlanMonthTransfersResult `json:"transfers"`
 	SavingsFlows           []PlanSavingsFlowResult    `json:"savingsFlows"`
+	SavingsIncomeExpense   []PlanSavingsFlowResult    `json:"savingsIncomeExpense"`
 	Structure              PlanStructureResult        `json:"structure"`
 }
 
@@ -750,6 +755,13 @@ type BudgetTransactionListRequest struct {
 	// side included, the other not) — the plan sheet's Transfers drill-down.
 	// Mutually exclusive with every other selector.
 	Transfers bool `json:"transfers,omitempty"`
+	// Income turns categoryId/envelopeId into an income row's drill-down.
+	// Requires exactly one of them; composes with nothing else.
+	Income bool `json:"income,omitempty"`
+	// AccountId selects every transaction on one account of the budget —
+	// currently only its savings accounts are accepted — a savings row's
+	// drill-down. Composes with nothing.
+	AccountId *string `json:"accountId"`
 }
 
 // TxCategoryResult / TxPayeeResult / TxTagResult are the optional embeds.
@@ -782,11 +794,14 @@ type BudgetTransactionResult struct {
 	// transaction feature's own wire.
 	LabelIds []string `json:"labelIds"`
 	SpentAt  string   `json:"spentAt"`
-	// Direction is present only on rows of the transfers selector: "out" when
-	// the included account is the source, "in" when it is the recipient —
-	// Amount/CurrencyId are that side's. Omitted on every other list so their
-	// bytes are unchanged.
+	// Direction is present only on rows of the transfers, income and
+	// accountId selectors: "out" when the money left the included (or
+	// savings) account, "in" when it arrived — Amount/CurrencyId are that
+	// side's. Omitted on every other list so their bytes are unchanged.
 	Direction string `json:"direction,omitempty"`
+	// Type ("expense", "income" or "transfer") is present only on rows of the
+	// income and accountId selectors.
+	Type string `json:"type,omitempty"`
 }
 
 // GetBudgetTransactionListResult is {items: [...]}.

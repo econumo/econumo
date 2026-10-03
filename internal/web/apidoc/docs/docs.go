@@ -2536,6 +2536,18 @@ const docTemplate = `{
                         "description": "Transfers across the budget boundary (mutually exclusive with every other selector)",
                         "name": "transfers",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Income of categoryId or envelopeId (exactly one; composes with nothing else)",
+                        "name": "income",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Every transaction on this account; currently only the budget's savings accounts are accepted (composes with nothing)",
+                        "name": "accountId",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -12685,6 +12697,12 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.PlanSavingsFlowResult"
                     }
                 },
+                "savingsIncomeExpense": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
+                    }
+                },
                 "savingsOpeningBalances": {
                     "type": "array",
                     "items": {
@@ -12747,7 +12765,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "direction": {
-                    "description": "Direction is present only on rows of the transfers selector: \"out\" when\nthe included account is the source, \"in\" when it is the recipient —\nAmount/CurrencyId are that side's. Omitted on every other list so their\nbytes are unchanged.",
+                    "description": "Direction is present only on rows of the transfers, income and\naccountId selectors: \"out\" when the money left the included (or\nsavings) account, \"in\" when it arrived — Amount/CurrencyId are that\nside's. Omitted on every other list so their bytes are unchanged.",
                     "type": "string"
                 },
                 "id": {
@@ -12768,6 +12786,10 @@ const docTemplate = `{
                 },
                 "tag": {
                     "$ref": "#/definitions/model.TxTagResult"
+                },
+                "type": {
+                    "description": "Type (\"expense\", \"income\" or \"transfer\") is present only on rows of the\nincome and accountId selectors.",
+                    "type": "string"
                 }
             }
         },

@@ -28,6 +28,9 @@ export type BudgetElementType = (typeof BudgetElementType)[keyof typeof BudgetEl
 export const isIncomeType = (t: BudgetElementType): boolean =>
   t === BudgetElementType.INCOME_CATEGORY || t === BudgetElementType.INCOME_ENVELOPE
 
+/** income and savings amounts are plans to meet, not spending limits */
+export const isPlannedType = (t: BudgetElementType): boolean => isIncomeType(t) || t === BudgetElementType.SAVINGS
+
 /** the presentation-only element the backend emits for spending with no category */
 export const UNCATEGORIZED_ID = 'uncategorized'
 
@@ -114,9 +117,12 @@ export interface BudgetTransactionDto {
   labelIds?: Id[]
   /** full datetime Y-m-d H:i:s */
   spentAt: string
-  /** only on rows of the transfers selector: which side of the boundary the
-   *  included account is on; amount/currencyId are that side's */
+  /** only on rows of the transfers, income and savings selectors: whether the
+   *  money arrived at or left the included (or savings) account;
+   *  amount/currencyId are that side's */
   direction?: 'in' | 'out'
+  /** only on rows of the income and savings selectors */
+  type?: 'expense' | 'income' | 'transfer'
 }
 
 export interface BudgetCommentDto {
@@ -252,9 +258,9 @@ export interface PlanOpeningBalanceDto {
 }
 
 /** one (month, account currency) net change of the savings accounts: every
- *  transaction on them, interest included, so it exceeds the savings rows,
- *  which count only what moved in from everyday accounts. Only pairs with
- *  activity are listed; amounts are unconverted. */
+ *  transaction on them, interest included — the savings rows' actuals, grouped
+ *  by account currency. Only pairs with activity are listed; amounts are
+ *  unconverted. */
 export interface PlanSavingsFlowDto {
   /** date-only Y-m-d, first of the month */
   month: string
@@ -279,4 +285,8 @@ export interface BudgetPlanDto {
   /** optional for the same reason as structure.savings */
   savingsOpeningBalances?: PlanOpeningBalanceDto[]
   savingsFlows?: PlanSavingsFlowDto[]
+  /** income minus expenses booked on the savings accounts, same shape as
+   *  savingsFlows. The category rows count the everyday accounts only, so the
+   *  combined balance adds this back. Optional for the same reason. */
+  savingsIncomeExpense?: PlanSavingsFlowDto[]
 }

@@ -66,7 +66,11 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
-	savingsFlows, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, from, windowEnd)
+	savingsFlows, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, from, windowEnd, s.read.AccountsNetByMonth)
+	if err != nil {
+		return model.BudgetPlanResult{}, err
+	}
+	savingsIncomeExpense, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, from, windowEnd, s.read.AccountsIncomeExpenseByMonth)
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
@@ -79,6 +83,7 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 		CurrencyRates:          rates,
 		Transfers:              transfers,
 		SavingsFlows:           savingsFlows,
+		SavingsIncomeExpense:   savingsIncomeExpense,
 		Structure:              structure,
 	}, nil
 }
@@ -228,7 +233,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 		expenseCategoryIDs = append(expenseCategoryIDs, id)
 	}
-	spendRows, err := s.read.SpendingByMonth(ctx, expenseCategoryIDs, f.includedAccountIDs, monthsList[0], windowEnd)
+	spendRows, err := s.read.SpendingByMonth(ctx, expenseCategoryIDs, f.everydayAccountIDs, monthsList[0], windowEnd)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
@@ -236,7 +241,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
-	incomeRows, err := s.read.IncomeByMonth(ctx, f.includedAccountIDs, monthsList[0], windowEnd)
+	incomeRows, err := s.read.IncomeByMonth(ctx, f.everydayAccountIDs, monthsList[0], windowEnd)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
