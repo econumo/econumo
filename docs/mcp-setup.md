@@ -63,7 +63,8 @@ again.
 
 Settings → Profile → Connected apps lists every app you approved with when it
 was connected and last used. Revoke signs it out immediately; its next tool
-call is rejected and it has to be approved again.
+call is rejected and it has to be approved again. Approving the same app again
+replaces its earlier connection instead of adding a second one.
 
 Resetting your password through the emailed link (or an operator changing it
 with `user:change-password`) disconnects every app, as does deactivating the
@@ -87,3 +88,11 @@ with or without `ECONUMO_URL`.
   are passed through to Econumo, not only `/api`.
 - "This app sent an invalid request" on the approval page: go back to the app
   and start the connection again.
+- "This app's registration has expired or is unknown" on the approval page: the
+  app is holding a client registration Econumo no longer has (a registration
+  that is never approved is deleted after 30 days, or the app was registered
+  against another Econumo instance). Make the app register again:
+  - Claude Code: run `/mcp`, pick `econumo` and choose Clear authentication,
+    then Authenticate; or `claude mcp remove econumo` and add it again.
+  - Claude: remove the Econumo connector and add it again.
+  - Codex: `codex mcp logout econumo`, then `codex mcp login econumo`.

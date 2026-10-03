@@ -72,7 +72,7 @@ New migration (sqlite + pgsql; `.sql` files ASCII-only).
 | `redirect_uris` TEXT NOT NULL | JSON array, 1–10 entries |
 | `secret_hash` TEXT NULL | sha256 hex of the issued secret; NULL for public clients |
 | `created_at` DATETIME NOT NULL | |
-| `last_used_at` DATETIME NULL | set at first approval; NULL rows older than 24h are purged (opportunistically on each registration) |
+| `last_used_at` DATETIME NULL | set at first approval; NULL rows older than 30 days are purged (opportunistically on each registration) |
 
 **`oauth_authorization_codes`**
 
@@ -103,8 +103,8 @@ used / never existed. Expired rows are purged opportunistically on exchange.
 | `revoked_at` DATETIME NULL | |
 
 Index on `prev_refresh_token_hash` and `user_id`. Dead grants (revoked/expired
-> 30 days) and expired codes are purged best-effort after each successful code
-exchange.
+> 30 days), dead `oauth` access tokens (same rule, one set-based DELETE) and
+expired codes are purged best-effort after each successful code exchange.
 
 **`access_tokens`** — new `kind = 'oauth'` (`model.TokenKindOAuth`), scope `mcp`, raw prefix
 `eco_oat_`, `expires_at = created_at + 1h` fixed (never slides — `Touch` keeps
@@ -128,7 +128,7 @@ in one statement.
   `token_endpoint_auth_methods_supported: ["none","client_secret_post","client_secret_basic"]`,
   `scopes_supported: ["mcp"]`.
 - Unauthenticated / invalid-token `401` on `/mcp` adds
-  `WWW-Authenticate: Bearer resource_metadata="<URL>/.well-known/oauth-protected-resource/mcp"`.
+  `WWW-Authenticate: Bearer resource_metadata="<URL>/.well-known/oauth-protected-resource/mcp", scope="mcp"`.
   The body stays the existing frozen envelope. REST `401`s are unchanged.
 
 `<URL>` is `ECONUMO_URL` with any trailing slash removed.
@@ -164,11 +164,13 @@ global security headers already send `X-Frame-Options: DENY` /
    (exact, except loopback URIs match ignoring the port, RFC 8252 §7.3);
    `response_type=code`; `code_challenge` present with
    `code_challenge_method=S256`; `resource` absent or equal to `<URL>/mcp`
-   (trailing slash tolerated); `scope` absent or `mcp`.
+   (trailing slash tolerated). Any requested `scope` is accepted and `mcp` is
+   granted (clients invent scope names; refusing them only breaks the flow).
    - Unknown client or unmatched redirect URI → coded error; the SPA shows an
      error page and **never redirects**.
    - Any other failure → the response carries an error `redirectUrl`
-     (`error=invalid_request|invalid_scope|invalid_target`, `state` echoed);
+     (`error=invalid_request|unsupported_response_type|invalid_target`, `state`
+     echoed unless the state itself was rejected as too long);
      the SPA navigates there.
    - Success → `{clientName, redirectHost, isLoopback}`.
 3. Consent page shows the client name, where the user will be sent (redirect
@@ -176,8 +178,11 @@ global security headers already send `X-Frame-Options: DENY` /
    since DCR lets anyone pick any name), a "full access to your Econumo data"
    statement, the signed-in email with "Not you? Switch account", Allow / Deny.
 4. Allow → `POST /api/v1/authserver/approve-authorization` (same parameters)
-   re-validates everything, sets the client's `last_used_at`, stores a code with
-   the user's current credentials generation, returns
+   re-validates everything, then in one transaction takes the user row lock,
+   checks the presenting session is still unrevoked (a reclaim committing after
+   the auth middleware accepted it must not let the approval through: refused
+   with the frozen 401), stores a code with the generation read under the lock
+   and sets the client's `last_used_at`; returns
    `{redirectUrl}` = `redirect_uri?code=…&state=…&iss=<URL>`.
    Deny → `POST /api/v1/authserver/decline-authorization` returns the
    `error=access_denied` redirect. The SPA navigates to `redirectUrl`.
@@ -202,11 +207,13 @@ optional `resource`:
 3. In one transaction under the user row lock: create the grant (new refresh
    token), insert the access token via `InsertAccessTokenIfGeneration` with the
    code's captured generation. Zero rows (a reclaim landed after approval) →
-   roll back, `invalid_grant`.
+   roll back, `invalid_grant`. Every other unrevoked grant the user holds for
+   the same client is revoked with its access tokens, so re-authorizing an app
+   replaces its connection instead of adding one.
 4. Respond `{access_token, token_type: "Bearer", expires_in: 3600, refresh_token, scope: "mcp"}`.
 
-**`grant_type=refresh_token`** — `refresh_token`, optional `resource`/`scope`
-(must be canonical / `mcp` if present):
+**`grant_type=refresh_token`** — `refresh_token`, optional `resource` (must be
+canonical if present) and `scope` (ignored; the grant stays `mcp`):
 
 1. Look up by `refresh_token_hash`. Found, live, client matches → in one
    transaction under the user row lock (re-read the grant under the lock; it

@@ -295,12 +295,12 @@ but with `ECONUMO_URL` unset all five public routes answer a JSON 404 and `/mcp`
 sends no `WWW-Authenticate`.
 - Discovery: `/.well-known/oauth-protected-resource[/mcp]` and
   `/.well-known/oauth-authorization-server`; an unauthenticated `/mcp` 401 adds
-  `WWW-Authenticate: Bearer resource_metadata=…` (body unchanged, REST 401s untouched).
+  `WWW-Authenticate: Bearer resource_metadata=…, scope="mcp"` (body unchanged, REST 401s untouched).
 - `POST /oauth/register`: open dynamic client registration (public clients, or
   `client_secret_post`/`client_secret_basic`). Redirect URIs must be https (ASCII host
   only) or http on a loopback host (`127.0.0.1`, `[::1]`, `localhost`; the port is
   ignored when matching), at most 2048 bytes; clients never approved are purged
-  on the next registration once 24 h old. Registration is behind the global per-endpoint rate cap; the token
+  on the next registration once 30 days old. Registration is behind the global per-endpoint rate cap; the token
   endpoint has no limiter of its own.
 - Consent lives at the SPA route `/oauth/authorize`. The session is a localStorage
   bearer token, so the browser cannot carry it to a Go-rendered page: the SPA calls
@@ -309,7 +309,12 @@ sends no `WWW-Authenticate`.
   client or unmatched redirect URI is an error page that never redirects; any other
   request fault yields an error `redirectUrl`, but the page shows a "Return to {host}"
   button instead of navigating on its own. `code_challenge` must be a 43-char base64url
-  S256 challenge, `state` at most 1024 bytes.
+  S256 challenge, `state` at most 1024 bytes. Any requested `scope` is accepted (on
+  authorize and refresh) and `mcp` is always granted. Approve takes the user row lock and
+  re-checks that the presenting session is unrevoked before storing the code with the
+  generation read under that lock, so a reclaim racing the approval leaves no code behind.
+  The Allow button stays disabled until a real pointer/key event or ~500 ms of the page
+  being visible and focused (double-clickjacking guard).
 - `POST /oauth/token`: PKCE S256 only; `resource`, when sent, must be
   `<ECONUMO_URL>/mcp` (trailing slash tolerated), else `invalid_target`. Errors are RFC 6749
   JSON, not the envelope, with `Cache-Control: no-store`.
@@ -318,7 +323,10 @@ sends no `WWW-Authenticate`.
   get the frozen 401. Refresh tokens rotate on every use; a grant idles out 90 days after
   its last refresh. Replaying a rotated refresh token within 60 s is refused with
   `invalid_grant` and leaves the grant alone (two processes sharing credentials); a replay
-  after that is treated as theft and revokes the grant and its tokens.
+  after that is treated as theft and revokes the grant and its tokens. A successful code
+  exchange revokes the user's other grants for the same client (re-authorizing replaces the
+  connection), then purges, best-effort, expired codes and grants and `oauth` access tokens
+  revoked/expired more than 30 days ago.
 - Revocation: `revoke-connected-app` takes the user row lock first. The reclaim
   (`reset-password`, CLI `user:change-password`) and `user:deactivate` revoke every grant and
   every `oauth` token in their own transaction (through the user feature's
@@ -998,7 +1006,9 @@ In the distroless image these run via the binary directly, e.g.
   concurrent resend has just emailed.
 - Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
   `token:purge [days]` does the same globally in one indexed DELETE (the
-  revoked_at/expires_at indexes exist for it).
+  revoked_at/expires_at indexes exist for it). The login purge covers sessions and
+  PATs only: `oauth` tokens (1 h lifetime, so far more of them) are purged by the MCP
+  OAuth server's housekeeping after each code exchange, in one set-based DELETE.
 - Sessions/PAT management endpoints: `get-session-list`, `revoke-session`,
   `revoke-other-sessions`, `get-personal-token-list`, `create-personal-token`,
   `revoke-personal-token` (all under `/api/v1/user/`).

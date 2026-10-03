@@ -1224,7 +1224,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       `<URL>/.well-known/oauth-protected-resource/mcp` return JSON naming `<URL>`
       (no double slash when `ECONUMO_URL` is set with a trailing slash); an
       unauthenticated `POST <URL>/mcp` answers 401 with a `WWW-Authenticate`
-      header pointing at the protected-resource document. With `ECONUMO_URL`
+      header pointing at the protected-resource document and carrying
+      `scope="mcp"`. With `ECONUMO_URL`
       unset, the well-known, `/oauth/register` and `/oauth/token` routes answer a
       JSON 404 and `/mcp` sends no `WWW-Authenticate`.
 - [ ] 📱 Signed in, the consent page (`/oauth/authorize?...`) is headed "Connect
@@ -1232,7 +1233,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       your Econumo account.", "After you allow, you'll be sent to <host>." for a
       web client, "It will be able to read and change all of your Econumo data.",
       "Signed in as <email>" with "Not you? Switch account", and the Allow and
-      Deny buttons.
+      Deny buttons. Allow stays disabled for about half a second after the page
+      appears (or until you move the mouse or press a key); Deny works at once.
+      A double-click that lands on the page as it opens does not approve.
 - [ ] 📱 A client that registered a loopback redirect (Claude Code, Codex) shows
       "After you allow, you'll return to an app on this computer." instead of a
       host.
@@ -1249,9 +1252,14 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       returns to the same consent page; the remembered link is dropped after 10
       minutes, after Allow/Deny, and an ordinary page is never remembered.
 - [ ] A consent link for an unknown client or a redirect URI the client never
-      registered shows the server's error and no buttons, and does not redirect.
+      registered shows the server's error and no buttons, and does not redirect;
+      for an unknown client the error reads "This app's registration has expired
+      or is unknown. Remove Econumo from the app and add it again." A client that
+      registered up to 30 days ago and was never approved is still known.
+      An unusual `scope` value (for example `scope=openid`) does not fail: the
+      app is connected with full MCP access as usual.
       One with only a malformed parameter (missing PKCE challenge, wrong
-      `resource`, bad `scope`) shows "This app sent an invalid request" and does
+      `resource`) shows "This app sent an invalid request" and does
       NOT leave the page until you press "Return to <host>" (or "Return to the
       app" for a loopback client).
 - [ ] Read-only account: pressing Allow shows "Your account is read-only, so apps
@@ -1260,6 +1268,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 Settings > Profile > Connected apps lists each approved app with its
       name, "Sends you back to <host>" (or "Runs on this computer" for a
       loopback client), "Connected <date>" and "Last used <when>".
+- [ ] Connecting the same app again (for example Claude Code: `/mcp` > Clear
+      authentication, then Authenticate) leaves ONE entry for it under Connected
+      apps, not two, and the old connection's tokens stop working.
 - [ ] Revoke on a connected app asks for confirmation ("<app> will lose access
       to your Econumo data."); confirming removes it from the list and the
       client's next tool call is rejected with 401 and it prompts to sign in
