@@ -101,7 +101,9 @@ it('exportTransactionList sends the comma-joined accountId param and resolves a 
   )
   const blob = await transactionApi.exportTransactionList(['a1', 'a2'])
   expect(url!.searchParams.get('accountId')).toBe('a1,a2')
-  expect(blob).toBeInstanceOf(Blob)
+  // by tag, not instanceof: on older Node the response's Blob is Node's own,
+  // a different class from jsdom's global one
+  expect(Object.prototype.toString.call(blob)).toBe('[object Blob]')
   expect(await blob.text()).toBe('transaction_id,account_name\n')
 })
 
