@@ -1793,6 +1793,7 @@
       "transactions": "Transazioni"
     },
     "show_all": "Mostra tutti ({count})",
+    "hidden_folder": "Cartella nascosta",
     "back": "Indietro",
     "nothing_found": "Nessun risultato"
   },

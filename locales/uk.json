@@ -1793,6 +1793,7 @@
       "transactions": "Транзакції"
     },
     "show_all": "Показати всі ({count})",
+    "hidden_folder": "Прихована папка",
     "back": "Назад",
     "nothing_found": "Нічого не знайдено"
   },

@@ -10,6 +10,7 @@ import { RouterPage } from '@/app/router-pages'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { ClassificationType } from '@/lib/search'
 import { useFolders } from '@/features/accounts/queries'
+import { useConnections } from '@/features/connections/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
 import { useDeleteTransaction, useTransactions } from '@/features/transactions/queries'
@@ -71,6 +72,9 @@ function SearchPanel({ onPreview }: { onPreview: (tx: ViewTransaction) => void }
   const { data: user } = useUserData()
   const { data: transactions } = useTransactions()
   const { data: folders } = useFolders()
+  const { data: connections } = useConnections()
+  // with any connection, a cross-account list needs to say who spent
+  const showAuthor = (connections?.length ?? 0) > 0
   const lookups = useTransactionLookups()
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -159,6 +163,7 @@ function SearchPanel({ onPreview }: { onPreview: (tx: ViewTransaction) => void }
                   key={account.id}
                   account={account}
                   folderName={folders?.find((f) => f.id === account.folderId)?.name}
+                  folderHidden={folders?.find((f) => f.id === account.folderId)?.isVisible === 0}
                   onSelect={() => {
                     select('account')
                     close()
@@ -200,6 +205,7 @@ function SearchPanel({ onPreview }: { onPreview: (tx: ViewTransaction) => void }
                   <TransactionResult
                     key={entry.transaction.id}
                     transaction={entry.transaction}
+                    showAuthor={showAuthor}
                     onSelect={() => {
                       select('transaction')
                       onPreview(entry.transaction)

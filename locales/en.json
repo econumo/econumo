@@ -1793,6 +1793,7 @@
       "transactions": "Transactions"
     },
     "show_all": "Show all ({count})",
+    "hidden_folder": "Hidden folder",
     "back": "Back",
     "nothing_found": "Nothing found"
   },

@@ -1793,6 +1793,7 @@
       "transactions": "交易"
     },
     "show_all": "显示全部 ({count})",
+    "hidden_folder": "隐藏的文件夹",
     "back": "返回",
     "nothing_found": "未找到任何内容"
   },

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureCategories, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureCategories, fixtureConnections, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { GlobalSearchDialog } from './GlobalSearchDialog'
@@ -430,4 +430,33 @@ describe('layout', () => {
     expect(document.querySelector('[data-slot="dialog-content"]')?.className).toContain('sm:max-w-2xl')
     expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
   })
+})
+
+it('shows who spent on every transaction once the user has a connection', async () => {
+  server.use(...coreHandlers({ connections: fixtureConnections }))
+  renderDialog()
+  await screen.findByTestId('tx-t1')
+  await waitFor(() => expect(within(screen.getByTestId('tx-t1')).getByTitle(fixtureOwner.name)).toBeInTheDocument())
+})
+
+it('shows no author avatars without connections', async () => {
+  server.use(...coreHandlers({ connections: [] }))
+  renderDialog()
+  await screen.findByTestId('tx-t1')
+  expect(within(screen.getByTestId('tx-t1')).queryByTitle(fixtureOwner.name)).not.toBeInTheDocument()
+})
+
+it('marks an account found in a hidden folder', async () => {
+  server.use(...coreHandlers())
+  const user = userEvent.setup()
+  renderDialog()
+  await screen.findByTestId('tx-t1')
+  await user.type(input(), 'mattress')
+  const hidden = await screen.findByTestId('search-account-a-hidden')
+  expect(within(hidden).getByLabelText('Hidden folder')).toBeInTheDocument()
+
+  await user.clear(input())
+  await user.type(input(), 'cash')
+  const visible = await screen.findByTestId('search-account-a1')
+  expect(within(visible).queryByLabelText('Hidden folder')).not.toBeInTheDocument()
 })

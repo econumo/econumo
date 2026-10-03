@@ -45,12 +45,23 @@ interface TransactionRowProps {
   titleNote?: string
   /** small muted line under the amount (the recurring list's next payment) */
   amountNote?: React.ReactNode
+  /** overrides the default author-avatar rule (shown only on shared accounts) */
+  showAuthor?: boolean
+}
+
+function AccountName({ account, fallback }: { account?: AccountDto; fallback: string }) {
+  return (
+    <span className="flex min-w-0 items-center gap-1" title={account?.name ?? fallback}>
+      <EntityIcon name={account?.icon || 'account_balance_wallet'} className="shrink-0 text-sm" />
+      <span className="truncate">{account?.name ?? fallback}</span>
+    </span>
+  )
 }
 
 // Presentational only: the row wrapper on the page owns the click (menu on
 // desktop, preview sheet on mobile) so hover/active feedback covers the whole
 // row including the kebab.
-export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote, amountNote }: TransactionRowProps) {
+export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote, amountNote, showAuthor: showAuthorProp }: TransactionRowProps) {
   const { t } = useTranslation()
   const global = !pageAccount
   const title: TitleInfo =
@@ -63,7 +74,7 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote
   const income = isIncomeForAccount(tx, pageAccount?.id ?? tx.accountId)
   const neutral = global && tx.type === 'transfer'
   const amountAccount = pageAccount ?? tx.account ?? tx.accountRecipient
-  const showAuthor = global ? Boolean(tx.account?.sharedAccess.length) : (pageAccount?.sharedAccess.length ?? 0) > 0
+  const showAuthor = showAuthorProp ?? (global ? Boolean(tx.account?.sharedAccess.length) : (pageAccount?.sharedAccess.length ?? 0) > 0)
   const hiddenName = t('accounts.account.name_hidden')
   const icon = tx.type === 'transfer' ? 'sync_alt' : tx.category?.icon || 'question_mark'
   // The glyph marks "this is on a schedule" either way: an unposted preview
@@ -110,13 +121,6 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote
           ) : null}
           {titleNote ? <span className="ml-1.5 shrink-0 text-[13px] text-muted-foreground">{titleNote}</span> : null}
         </span>
-        {global ? (
-          <span data-testid={`tx-account-${tx.id}`} className="truncate text-[13px] text-muted-foreground">
-            {tx.type === 'transfer'
-              ? `${tx.account?.name ?? hiddenName} → ${tx.accountRecipient?.name ?? hiddenName}`
-              : (tx.account?.name ?? hiddenName)}
-          </span>
-        ) : null}
         {title.source !== 'description' && tx.description ? (
           <span className="break-words text-sm text-muted-foreground">{tx.description}</span>
         ) : null}
@@ -144,11 +148,24 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote
           </span>
         ) : null}
       </span>
-      <span className="flex shrink-0 flex-col items-end">
+      {/* global rows name the account here; capped so a long name truncates
+          instead of squeezing the title column */}
+      <span data-testid={`amount-col-${tx.id}`} className={`flex shrink-0 flex-col items-end ${global ? 'max-w-[45%] gap-0.5' : ''}`}>
         <span className={`text-sm leading-6 tabular-nums ${neutral ? 'text-muted-foreground' : income ? 'text-income' : 'text-expense'}`}>
           {displayAmount(tx, pageAccount?.id)}
           <span className="ml-1 text-muted-foreground">{amountAccount?.currency.symbol}</span>
         </span>
+        {global ? (
+          <span data-testid={`tx-account-${tx.id}`} className="flex max-w-full items-center gap-1 text-[13px] text-muted-foreground">
+            <AccountName account={tx.account} fallback={hiddenName} />
+            {tx.type === 'transfer' ? (
+              <>
+                <span className="shrink-0">→</span>
+                <AccountName account={tx.accountRecipient} fallback={hiddenName} />
+              </>
+            ) : null}
+          </span>
+        ) : null}
         {amountNote ? <span className="text-xs text-muted-foreground">{amountNote}</span> : null}
       </span>
     </div>

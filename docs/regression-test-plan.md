@@ -627,16 +627,25 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] Layout: on desktop the palette is a wide centered dialog (~670px); on a
       phone-width viewport it is a full-screen sheet with a close X.
 - [ ] Empty query lists recent transactions across all accounts, newest first,
-      grouped by day, each row naming its account; transfers read
-      "From → To" with no +/− sign.
+      grouped by day; each row names its account with the account icon on the
+      right, under the amount; transfers read "From → To" (both icons) with no
+      +/− sign; a long account name truncates without squeezing the title.
+- [ ] With at least one connection, every transaction row shows its author's
+      avatar on the row icon (even on accounts that are not shared); with no
+      connections there are no avatars. The account page keeps its own rule
+      (avatars only on shared accounts).
 - [ ] Typing filters accounts, your own categories, payees, tags, labels and
       transactions; a skipped letter still matches ("grcries" finds
       "Groceries"); amounts match the digits as typed or as displayed
       ("12.50" and "1,250.00" find those rows; "1250" does not find 12.50 —
       no skipped digits).
-- [ ] Accounts in a hidden folder and shared accounts appear; selecting one
-      opens the account page and closes search; `⋯` shows Edit / Access (admin
-      only) / Delete (owner) or Decline (shared account).
+- [ ] Accounts in a hidden folder and shared accounts appear; a hidden-folder
+      account shows an eye-off icon after its folder name ("Hidden folder" on
+      hover); selecting one opens the account page and closes search; `⋯` shows
+      Edit / Access (admin only) / Delete (owner) or Decline (shared account).
+- [ ] Opening a hidden-folder account from search shows its transactions (they
+      load on opening; their transactions are not part of search results), and
+      adding, editing or deleting one there updates the list.
 - [ ] Deleting or declining an account from its result `⋯` keeps search open
       and the row disappears from the list.
 - [ ] Access control from an account result `⋯` opens the sharing dialog over the

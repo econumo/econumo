@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import type { AccountDto } from '@/api/dto/account'
 import { fixtureOwner } from '@/test/fixtures'
 import { TransactionRow } from './TransactionRow'
@@ -135,7 +135,22 @@ it('never promotes a reporting tag to the row title', () => {
 })
 
 describe('global mode (no page account)', () => {
-  const card = { ...pageAccount, id: 'a2', name: 'Card' } as AccountDto
+  const card = { ...pageAccount, id: 'a2', name: 'Card', icon: 'credit_card' } as AccountDto
+
+  it('names the account with its icon on the right, under the amount', () => {
+    render(<TransactionRow transaction={baseTx} />)
+    const line = screen.getByTestId('tx-account-t1')
+    expect(line.closest('[data-testid="amount-col-t1"]')).not.toBeNull()
+    expect(line).toHaveTextContent(pageAccount.icon)
+  })
+
+  it('shows the author avatar only when asked, regardless of sharing', () => {
+    render(<TransactionRow transaction={baseTx} showAuthor />)
+    expect(screen.getByTitle(fixtureOwner.name)).toBeInTheDocument()
+    cleanup()
+    render(<TransactionRow transaction={baseTx} showAuthor={false} />)
+    expect(screen.queryByTitle(fixtureOwner.name)).not.toBeInTheDocument()
+  })
 
   it('shows the account name line and signs expense/income', () => {
     render(<TransactionRow transaction={baseTx} />)
@@ -160,7 +175,10 @@ describe('global mode (no page account)', () => {
       description: 'move money',
     } as unknown as ViewTransaction
     render(<TransactionRow transaction={transfer} />)
-    expect(screen.getByTestId('tx-account-t1')).toHaveTextContent('Cash → Card')
+    const line = screen.getByTestId('tx-account-t1')
+    expect(within(line).getByText('Cash')).toBeInTheDocument()
+    expect(within(line).getByText('Card')).toBeInTheDocument()
+    expect(line).toHaveTextContent('→')
     expect(screen.getByText('move money')).toBeInTheDocument()
     expect(screen.queryByText(/Transfer to/)).not.toBeInTheDocument()
     expect(screen.getByText(/^100(\.00)?/)).toBeInTheDocument()

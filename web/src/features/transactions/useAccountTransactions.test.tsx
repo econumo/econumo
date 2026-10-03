@@ -1,6 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
+import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureLabels, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
 import { useAccountTransactions, transactionTitleInfo } from './useAccountTransactions'
@@ -232,4 +233,36 @@ it('resolves labelIds to the owner\'s label rows, skipping ids that no longer ex
   // the unresolvable id is dropped rather than rendered as a blank badge
   expect(labels?.map((l) => l.name)).toEqual(['health'])
   expect(labels?.[0].icon).toBe('sell')
+})
+
+// The app-wide list leaves out accounts in hidden folders, so a hidden account
+// reached through global search must load its own list.
+it('a hidden-folder account loads its transactions on its own', async () => {
+  const requested: (string | null)[] = []
+  const hiddenTx = { id: 'tx-hidden', author: fixtureOwner, type: 'income', accountId: 'a-hidden', accountRecipientId: null, amount: '12.4', amountRecipient: '12.4', categoryId: null, description: 'Dividend payout', payeeId: null, tagId: null, date: '2026-07-01 10:00:00' }
+  server.use(
+    http.get('*/api/v1/transaction/get-transaction-list', ({ request }) => {
+      const accountId = new URL(request.url).searchParams.get('accountId')
+      requested.push(accountId)
+      return HttpResponse.json({ success: true, message: '', data: { items: accountId === 'a-hidden' ? [hiddenTx] : fixtureTransactions } })
+    }),
+    ...coreHandlers(),
+  )
+  const { result } = renderHook(() => useAccountTransactions('a-hidden', ''), { wrapper })
+  await waitFor(() => expect(result.current.some((e) => e.kind === 'transaction' && e.transaction.id === 'tx-hidden')).toBe(true))
+  expect(requested).toContain('a-hidden')
+})
+
+it('a visible account does not fetch its own list', async () => {
+  const requested: (string | null)[] = []
+  server.use(
+    http.get('*/api/v1/transaction/get-transaction-list', ({ request }) => {
+      requested.push(new URL(request.url).searchParams.get('accountId'))
+      return HttpResponse.json({ success: true, message: '', data: { items: fixtureTransactions } })
+    }),
+    ...coreHandlers(),
+  )
+  const { result } = renderHook(() => useAccountTransactions('a1', ''), { wrapper })
+  await waitFor(() => expect(result.current.length).toBeGreaterThan(0))
+  expect(requested.every((id) => id === null)).toBe(true)
 })

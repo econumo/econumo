@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, EyeOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { CommandItem } from '@/components/ui/command'
@@ -41,7 +41,8 @@ function classificationIcon(type: ClassificationType, item: ClassificationItem):
   }
 }
 
-export function AccountResult({ account, folderName, onSelect }: { account: AccountDto; folderName?: string; onSelect: () => void }) {
+export function AccountResult({ account, folderName, folderHidden, onSelect }: { account: AccountDto; folderName?: string; folderHidden?: boolean; onSelect: () => void }) {
+  const { t } = useTranslation()
   return (
     <CommandItem value={`account:${account.id}`} onSelect={onSelect} data-testid={`search-account-${account.id}`} className={NO_CHECK}>
       <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-econumo-card">
@@ -49,9 +50,16 @@ export function AccountResult({ account, folderName, onSelect }: { account: Acco
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate">{account.name}</span>
-        <span className="truncate text-xs text-muted-foreground">
-          {moneyFormat(account.balance, account.currency)}
-          {folderName ? ` · ${folderName}` : ''}
+        <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+          <span className="truncate">
+            {moneyFormat(account.balance, account.currency)}
+            {folderName ? ` · ${folderName}` : ''}
+          </span>
+          {folderHidden ? (
+            <span title={t('search.hidden_folder')} className="flex shrink-0 items-center">
+              <EyeOff className="size-3" aria-label={t('search.hidden_folder')} />
+            </span>
+          ) : null}
         </span>
       </span>
       {account.sharedAccess.length > 0 ? (
@@ -95,11 +103,11 @@ export function ClassificationResult({ type, item, onSelect }: { type: Classific
   )
 }
 
-export function TransactionResult({ transaction, onSelect }: { transaction: ViewTransaction; onSelect: () => void }) {
+export function TransactionResult({ transaction, showAuthor, onSelect }: { transaction: ViewTransaction; showAuthor: boolean; onSelect: () => void }) {
   return (
     <CommandItem value={`tx:${transaction.id}`} onSelect={onSelect} className={`${NO_CHECK} items-stretch p-0 max-md:p-0`}>
       <div className="min-w-0 flex-1">
-        <TransactionRow transaction={transaction} />
+        <TransactionRow transaction={transaction} showAuthor={showAuthor} />
       </div>
     </CommandItem>
   )
