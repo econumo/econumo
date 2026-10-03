@@ -513,6 +513,49 @@ func TestLanguageMiddleware(t *testing.T) {
 	}
 }
 
+// principalStub is a test stub for TokenAuthenticator that returns a fixed
+// principal (or an error if UserID is zero).
+type principalStub struct {
+	p model.Principal
+}
+
+func (s principalStub) Authenticate(context.Context, string) (model.Principal, error) {
+	if s.p.UserID.IsZero() {
+		return model.Principal{}, errs.NewUnauthorized("Invalid access token")
+	}
+	return s.p, nil
+}
+
+func TestAuth_MCPScopeOnlyOnMCPPath(t *testing.T) {
+	stub := principalStub{p: model.Principal{UserID: vo.MustParseId("11111111-1111-1111-1111-111111111111"), TokenID: vo.MustParseId("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), Level: model.AccessLevelFull, Scope: model.TokenScopeMCP}}
+	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	for path, want := range map[string]int{"/mcp": 204, "/api/v1/user/get-user-data": 401, "/mcp/x": 401} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Header.Set("Authorization", "Bearer eco_oat_x")
+		rec := httptest.NewRecorder()
+		Auth(stub)(ok).ServeHTTP(rec, req)
+		if rec.Code != want {
+			t.Errorf("%s = %d, want %d", path, rec.Code, want)
+		}
+	}
+}
+
+func TestAuthWith_ChallengeOn401(t *testing.T) {
+	const ch = `Bearer resource_metadata="https://x.test/.well-known/oauth-protected-resource/mcp"`
+	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+	rec := httptest.NewRecorder()
+	AuthWith(principalStub{}, AuthOptions{Challenge: ch})(http.NotFoundHandler()).ServeHTTP(rec, req)
+	if rec.Code != 401 || rec.Header().Get("WWW-Authenticate") != ch {
+		t.Fatalf("got %d %q", rec.Code, rec.Header().Get("WWW-Authenticate"))
+	}
+	// plain Auth never sends it
+	rec = httptest.NewRecorder()
+	Auth(principalStub{})(http.NotFoundHandler()).ServeHTTP(rec, req)
+	if rec.Header().Get("WWW-Authenticate") != "" {
+		t.Fatal("REST must not send a challenge")
+	}
+}
+
 func TestLanguageMiddleware_LogsUnsupportedPreference(t *testing.T) {
 	cases := []struct{ header, want string }{
 		{"", ""},
