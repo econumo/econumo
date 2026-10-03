@@ -856,14 +856,15 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       opens ("Food · July": Budget, Spent, Available, the two latest comments,
       "Comments (N)" / "Add comment", "Set budget", "Transactions"). "Set
       budget" replaces the sheet with the amount dialog (no comments in it);
-      "Comments" replaces it with the thread. A savings row's sheet has no
+      "Comments" replaces it with the thread. A savings row's sheet also has
       "Transactions". A guest's sheet has no "Set budget". The Available pill is not a button; tapping Spent still lists
       the transactions; the corner marker still opens the thread beside the cell.
 - [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
       the cell is selected and the item sheet opens for that element and
       month — Budget/Spent (Planned/Received for income, Planned/Saved/Balance
       for savings), the two latest comments, "Set budget" ("Set plan" for income),
-      "Comments", and "Transactions" for expense rows. The sheet's month and
+      "Comments", and "Transactions" (every row but Uncategorized; the list is
+      that column's month). The sheet's month and
       any foreign-currency rate are the tapped column's. The corner marker still
       opens only the thread.
 - [ ] 📱 Tablet: holding a finger on a cell opens nothing extra (no actions
@@ -967,6 +968,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       Saving a budget updates the row at once and survives a reload.
 - [ ] 📱 An income row's sheet offers "Set plan" (Planned / Received); a
       savings row's sheet shows Planned, Saved and Balance at month end.
+- [ ] 📱 A savings row's sheet → "Transactions" lists every transaction on that
+      account in the month — transfers in and out, interest, fees — money in
+      positive, money out negative, in the account's currency; their signed sum
+      equals Saved. An income row's sheet → "Transactions" lists that
+      category's (or income envelope's) income on the everyday accounts, all
+      positive, summing to Received; income booked on a savings account is not
+      in it. The income Uncategorized row has no "Transactions".
 - [ ] 📱 A guest, an archived budget, a month outside the
       budget's range, an archived element and the Uncategorized row get no
       "Set budget" in the sheet; Uncategorized has no comments link, and an

@@ -114,9 +114,12 @@ export interface BudgetTransactionDto {
   labelIds?: Id[]
   /** full datetime Y-m-d H:i:s */
   spentAt: string
-  /** only on rows of the transfers selector: which side of the boundary the
-   *  included account is on; amount/currencyId are that side's */
+  /** only on rows of the transfers, income and savings selectors: whether the
+   *  money arrived at or left the included (or savings) account;
+   *  amount/currencyId are that side's */
   direction?: 'in' | 'out'
+  /** only on rows of the income and savings selectors */
+  type?: 'expense' | 'income' | 'transfer'
 }
 
 export interface BudgetCommentDto {

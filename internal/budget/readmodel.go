@@ -78,6 +78,16 @@ type ReadModel interface {
 	// are the included side's; Direction says which side that is. Backs the
 	// plan sheet's Transfers drill-down (the counterpart of TransfersByMonth).
 	BudgetTransactionsTransfers(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsIncome returns income transactions (type=1) in
+	// [start, end) on the given accounts in the given categories, tagged or
+	// not, newest first, Direction "in". Backs an income row's drill-down (the
+	// counterpart of IncomeByMonth).
+	BudgetTransactionsIncome(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsOnAccount returns every transaction in [start, end)
+	// that moved the account's balance, newest first: Amount/CurrencyID are
+	// the account's side, Direction "in" or "out" of it, Type the kind.
+	// Backs a savings row's drill-down (the counterpart of AccountsNetByMonth).
+	BudgetTransactionsOnAccount(ctx context.Context, accountID vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
 	// BudgetTransactionsByLabel returns expense transactions (type=0) in
 	// [start, end) on the given accounts carrying labelID, newest first. The
 	// link is many-to-many (transactions_labels), unlike the single tag_id

@@ -26,7 +26,7 @@ type filters struct {
 	includedAccountIDs []vo.Id
 	currencyIDs        []vo.Id
 	categories         map[string]model.CategoryMeta // expense-only, keyed by id
-	incomeCategories   map[string]model.CategoryMeta // income-only; read by the plan builder ONLY
+	incomeCategories   map[string]model.CategoryMeta // income-only; read by the plan builder and the income drill-down ONLY
 	tags               map[string]model.TagMeta
 	labels             map[string]model.LabelMeta
 	// savingsAccounts are the members flagged savings in this budget, in

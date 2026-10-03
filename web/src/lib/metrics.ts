@@ -100,6 +100,7 @@ export const METRICS = {
   BUDGET_PLAN_FILL_RIGHT: 'appBudgetPlanFillRight',
   BUDGET_PLAN_PASTE_CELL: 'appBudgetPlanPasteCell',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
+  BUDGET_TRANSACTIONS_OPEN: 'appBudgetTransactionsOpen',
   BUDGET_UPDATE_COMMENT: 'appBudgetUpdateComment',
   BUDGET_DELETE_COMMENT: 'appBudgetDeleteComment',
   TAG_CREATE: 'appTagCreate',

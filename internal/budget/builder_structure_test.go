@@ -62,6 +62,14 @@ func (s *spendingStub) AccountsNetByMonth(context.Context, []vo.Id, time.Time, t
 	return nil, nil
 }
 
+func (s *spendingStub) BudgetTransactionsIncome(context.Context, []vo.Id, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
+	return nil, nil
+}
+
+func (s *spendingStub) BudgetTransactionsOnAccount(context.Context, vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
+	return nil, nil
+}
+
 func (s *spendingStub) AccountsIncomeExpenseByMonth(context.Context, []vo.Id, time.Time, time.Time) ([]model.SavingsMonthRow, error) {
 	return nil, nil
 }

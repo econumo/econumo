@@ -542,6 +542,21 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     icon: element.icon,
     currencyId: element.currencyId,
   })
+  // the income Uncategorized row has no list: it gathers income booked in expense
+  // categories too, which no selector can name
+  const sheetTransactionsTargetOf = (target: SheetTarget): BudgetTransactionsTarget | null => {
+    switch (target.kind) {
+      case 'expense':
+        return transactionsTargetOf(target.element)
+      case 'savings':
+        return { id: target.row.id, type: BudgetElementType.SAVINGS, name: target.row.name, icon: target.row.icon, currencyId: target.row.currencyId }
+      case 'plan': {
+        const el = target.cell.element
+        return el.id === UNCATEGORIZED_ID ? null : { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId }
+      }
+    }
+  }
+  const sheetTransactions = sheetTarget ? sheetTransactionsTargetOf(sheetTarget) : null
   const sheetCanSetAmount = (target: SheetTarget): boolean => {
     if (!limitsEditable) {
       return false
@@ -560,7 +575,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     const cell = sheetCell(target, budget.meta.currencyId)
     return { id: cell.id, name: cell.name, budgeted: cell.amount }
   }
-  const expenseSheetTarget = sheetTarget?.kind === 'expense' ? sheetTarget : null
   // phones get no hover corner; edit mode owns the pointer for dragging
   const cellActionsDisabled = isPhone || editMode
   // the hover-only corner that starts a thread on a cell with none yet
@@ -1052,9 +1066,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           }
         }}
         onShowTransactions={
-          expenseSheetTarget
+          sheetTransactions
             ? () => {
-                setTransactionsTarget(transactionsTargetOf(expenseSheetTarget.element))
+                setTransactionsTarget(sheetTransactions)
                 setSheetTarget(null)
               }
             : undefined

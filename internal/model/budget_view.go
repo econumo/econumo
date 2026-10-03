@@ -109,10 +109,14 @@ type BudgetTransactionRow struct {
 	CategoryID  *string
 	PayeeID     *string
 	TagID       *string
-	// Direction is set only on rows from BudgetTransactionsTransfers: "out"
-	// when the included account is the source, "in" when it is the recipient.
-	// Amount/CurrencyID are then the included side's figures.
+	// Direction is set on rows from BudgetTransactionsTransfers ("out" when
+	// the included account is the source, "in" when it is the recipient;
+	// Amount/CurrencyID are then the included side's figures), and on rows from
+	// BudgetTransactionsIncome and BudgetTransactionsOnAccount.
 	Direction string
+	// Type ("expense", "income" or "transfer") is set only on rows from
+	// BudgetTransactionsIncome and BudgetTransactionsOnAccount.
+	Type string
 }
 
 // LabelSpendingRow is one (label, category, currency) spending total in a
