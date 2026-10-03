@@ -16,8 +16,7 @@
       "onboarding": "快速入门",
       "create_account": "添加账户",
       "collapse_menu": "收起菜单",
-      "expand_menu": "展开菜单",
-      "sharing_requests": "共享请求"
+      "expand_menu": "展开菜单"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,33 @@
     "make_recurring": "设为定期交易",
     "not_posted": "未入账"
   },
+  "inbox": {
+    "title": "收件箱",
+    "open": "收件箱，{count} 项待处理",
+    "empty": "全部处理完毕",
+    "sections": {
+      "sharing": "共享",
+      "sync": "同步问题",
+      "failed": "导入失败",
+      "to_review": "待审核",
+      "skipped": "已跳过（{count}）"
+    },
+    "sharing": {
+      "invited_you": "{name} 邀请了您",
+      "account": "账户",
+      "budget": "预算",
+      "choose_folder": "为此账户选择文件夹",
+      "general_folder_hint": "General（将自动创建）",
+      "decline_question": "拒绝“{name}”的访问权限吗？"
+    },
+    "sync": {
+      "failed": "{source} 同步失败",
+      "partial": "{source} 同步完成但有错误",
+      "when": "上次尝试时间：{date}"
+    }
+  },
   "imports": {
     "badge": "已导入",
-    "banner": {
-      "text": "{count} 笔导入的交易等待审核 | {count} 笔导入的交易等待审核",
-      "cta": "审核"
-    },
     "data_page": {
       "menu_item": "导入与导出",
       "header": "导入与导出",
@@ -650,12 +670,7 @@
       }
     },
     "queue": {
-      "header": "导入队列",
-      "empty": "没有需要审核的内容。",
       "card_amount": "卡片金额：{amount} {currency}",
-      "queued": "等待审核",
-      "skipped": "已跳过",
-      "failed": "需要处理",
       "reason": {
         "unmapped": "卡片未映射",
         "account_deleted": "账户已删除",
@@ -873,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "个人资料",
-          "header": "个人资料",
+          "header": "个人设置",
           "groups": {
             "personal_details": "个人信息",
             "preferences": "偏好设置",
@@ -1773,16 +1788,6 @@
           "required_field": "必填项"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "共享请求",
-      "empty": "没有待处理的请求",
-      "invited_you": "{name} 邀请了您",
-      "account": "账户",
-      "budget": "预算",
-      "choose_folder": "为此账户选择文件夹",
-      "general_folder_hint": "General（将自动创建）",
-      "decline_question": "拒绝“{name}”的访问权限吗？"
     }
   },
   "search": {
@@ -1799,7 +1804,9 @@
     "show_all": "显示全部 ({count})",
     "hidden_folder": "隐藏的文件夹",
     "back": "返回",
-    "nothing_found": "未找到任何内容"
+    "nothing_found": "未找到任何内容",
+    "open": "搜索",
+    "open_tooltip": "搜索 ({shortcut})"
   },
   "subscription": {
     "banner": {

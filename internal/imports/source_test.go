@@ -3,8 +3,10 @@ package imports_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -66,5 +68,55 @@ func TestDeleteSource(t *testing.T) {
 	}
 	if _, err := h.repo.GetSource(context.Background(), vo.MustParseId(source)); err == nil {
 		t.Error("source row must be gone (cascade removes events/links)")
+	}
+}
+
+func TestGetSourceList_CarriesLatestRun(t *testing.T) {
+	h := setup(t)
+	ctx := context.Background()
+	res, err := h.svc.GetSourceList(ctx, vo.MustParseId(userA))
+	if err != nil || len(res.Items) != 1 {
+		t.Fatalf("list = %+v, %v", res, err)
+	}
+	if it := res.Items[0]; it.LastRunStatus != "" || it.LastRunAt != "" || it.LastRunError != "" || it.LastRunErrorAccountId != "" {
+		t.Fatalf("a source that never ran must carry empty lastRun*: %+v", it)
+	}
+
+	started := now.Add(-2 * time.Hour)
+	finished := started.Add(time.Minute)
+	h.f.ImportRun(fixture.ImportRun{UserID: userA, SourceID: source, Provider: model.ImportProviderAppleWallet,
+		Status: model.ImportRunStatusFailed, Errors: `[{"externalAccountId":"","message":"bridge down"},{"externalAccountId":"x","message":"second"}]`,
+		StartedAt: started, FinishedAt: &finished})
+	res, _ = h.svc.GetSourceList(ctx, vo.MustParseId(userA))
+	if it := res.Items[0]; it.LastRunStatus != "failed" || it.LastRunAt != finished.UTC().Format(datetime.Layout) || it.LastRunError != "bridge down" || it.LastRunErrorAccountId != "" {
+		t.Fatalf("failed run not surfaced: %+v", it)
+	}
+
+	// A newer, still-older-than-"running" per-account failure names the account.
+	partialStarted := started.Add(30 * time.Minute)
+	partialFinished := partialStarted.Add(time.Minute)
+	h.f.ImportRun(fixture.ImportRun{UserID: userA, SourceID: source, Provider: model.ImportProviderAppleWallet,
+		Status: model.ImportRunStatusPartial, Errors: `[{"externalAccountId":"acct-9","message":"Import failed for this account"}]`,
+		StartedAt: partialStarted, FinishedAt: &partialFinished})
+	res, _ = h.svc.GetSourceList(ctx, vo.MustParseId(userA))
+	if it := res.Items[0]; it.LastRunStatus != "partial" || it.LastRunError != "Import failed for this account" || it.LastRunErrorAccountId != "acct-9" {
+		t.Fatalf("per-account failure not surfaced: %+v", it)
+	}
+
+	// A newer run still in flight wins over the older failures; no finish time yet -> started_at.
+	running := now.Add(-time.Minute)
+	h.f.ImportRun(fixture.ImportRun{UserID: userA, SourceID: source, Provider: model.ImportProviderAppleWallet,
+		Status: model.ImportRunStatusRunning, StartedAt: running})
+	res, _ = h.svc.GetSourceList(ctx, vo.MustParseId(userA))
+	if it := res.Items[0]; it.LastRunStatus != "running" || it.LastRunAt != running.UTC().Format(datetime.Layout) || it.LastRunError != "" || it.LastRunErrorAccountId != "" {
+		t.Fatalf("latest run must win: %+v", it)
+	}
+
+	// Another user's runs never leak into this user's list.
+	other, _ := h.svc.GetSourceList(ctx, vo.MustParseId(userB))
+	for _, it := range other.Items {
+		if it.LastRunStatus != "" {
+			t.Fatalf("userB sees a run: %+v", it)
+		}
 	}
 }

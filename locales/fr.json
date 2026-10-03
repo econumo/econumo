@@ -16,8 +16,7 @@
       "onboarding": "Premiers pas",
       "create_account": "Ajouter un compte",
       "collapse_menu": "Réduire le menu",
-      "expand_menu": "Déployer le menu",
-      "sharing_requests": "Demandes de partage reçues"
+      "expand_menu": "Déployer le menu"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,33 @@
     "make_recurring": "Rendre récurrente",
     "not_posted": "Non validée"
   },
+  "inbox": {
+    "title": "Boîte de réception",
+    "open": "Boîte de réception, {count} en attente",
+    "empty": "Tout est à jour",
+    "sections": {
+      "sharing": "Partages",
+      "sync": "Problèmes de synchronisation",
+      "failed": "Importations échouées",
+      "to_review": "À vérifier",
+      "skipped": "Ignorés ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} vous invite",
+      "account": "Compte",
+      "budget": "Budget",
+      "choose_folder": "Choisissez un dossier pour ce compte",
+      "general_folder_hint": "General (sera créé)",
+      "decline_question": "Refuser l’accès à « {name} » ?"
+    },
+    "sync": {
+      "failed": "Échec de la synchronisation de {source}",
+      "partial": "{source} synchronisé avec des erreurs",
+      "when": "Dernière tentative {date}"
+    }
+  },
   "imports": {
     "badge": "Importée",
-    "banner": {
-      "text": "{count} transaction importée attend une vérification | {count} transactions importées attendent une vérification",
-      "cta": "Vérifier"
-    },
     "data_page": {
       "menu_item": "Import et export",
       "header": "Import et export",
@@ -650,12 +670,7 @@
       }
     },
     "queue": {
-      "header": "File d'importation",
-      "empty": "Rien à vérifier.",
       "card_amount": "Montant de la carte : {amount} {currency}",
-      "queued": "En attente de vérification",
-      "skipped": "Ignorées",
-      "failed": "Nécessitent votre attention",
       "reason": {
         "unmapped": "Carte non associée",
         "account_deleted": "Compte supprimé",
@@ -873,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "Profil",
-          "header": "Profil",
+          "header": "Paramètres personnels",
           "groups": {
             "personal_details": "Informations personnelles",
             "preferences": "Préférences",
@@ -1773,16 +1788,6 @@
           "required_field": "Champ obligatoire"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Demandes de partage reçues",
-      "empty": "Aucune demande en attente",
-      "invited_you": "{name} vous invite",
-      "account": "Compte",
-      "budget": "Budget",
-      "choose_folder": "Choisissez un dossier pour ce compte",
-      "general_folder_hint": "General (sera créé)",
-      "decline_question": "Refuser l’accès à « {name} » ?"
     }
   },
   "search": {
@@ -1799,7 +1804,9 @@
     "show_all": "Tout afficher ({count})",
     "hidden_folder": "Dossier masqué",
     "back": "Retour",
-    "nothing_found": "Aucun résultat"
+    "nothing_found": "Aucun résultat",
+    "open": "Recherche",
+    "open_tooltip": "Recherche ({shortcut})"
   },
   "subscription": {
     "banner": {

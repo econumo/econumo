@@ -28,7 +28,7 @@ vi.mock('@/lib/metrics', async (importOriginal) => {
 const trackEventMock = vi.mocked(trackEvent)
 
 const card = { externalAccountId: 'wallet', externalName: 'Apple Card', externalCurrency: 'USD', state: 'unmapped' as const, accountId: '', queuedCount: 1, tapCount: 1, lastSeenAt: '2026-08-20 17:42:03' }
-const wireSource: ImportSourceDto = { id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', lastSyncedAt: '', credentialCiphertext: '', cards: [card] }
+const wireSource: ImportSourceDto = { id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', lastSyncedAt: '', lastRunStatus: '', lastRunAt: '', lastRunError: '', lastRunErrorAccountId: '', credentialCiphertext: '', cards: [card] }
 const queued = { linkId: 'l1', sourceId: 's1', externalAccountId: 'wallet', accountId: '', payee: 'Blue Bottle', amount: '4.75', currency: 'USD', type: 'expense' as const, postedAt: '2026-08-20 17:42:03', reason: 'unmapped' as const }
 const wireQueue: ImportQueueDto = { queued: [queued], skipped: [], failed: [] }
 
@@ -121,6 +121,19 @@ it('useSyncImportSource refreshes ledger caches only when the run wrote somethin
   expect(body).toEqual({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' })
   expect(queryClient.getQueryState(queryKeys.transactions)?.isInvalidated).toBe(true)
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SYNC, { trigger: 'manual', imported: 2, matched: 1 })
+})
+
+it('useSyncImportSource invalidates the source list on a failed sync (a failed run still recorded on the source)', async () => {
+  server.use(http.post('*/api/v1/import/sync-source', () =>
+    HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 500 })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.importSources, [wireSource])
+  const { result } = renderHook(() => useSyncImportSource(), { wrapper })
+  await act(() =>
+    result.current.mutateAsync({ sourceId: 's1', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' }).catch(() => {}),
+  )
+  await waitFor(() => expect(result.current.isError).toBe(true))
+  expect(queryClient.getQueryState(queryKeys.importSources)?.isInvalidated).toBe(true)
 })
 
 it('getImportCredentialKey maps the empty no-key-yet payload to null', async () => {

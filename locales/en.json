@@ -16,8 +16,7 @@
       "onboarding": "Getting started",
       "create_account": "Add account",
       "collapse_menu": "Collapse menu",
-      "expand_menu": "Expand menu",
-      "sharing_requests": "Sharing requests"
+      "expand_menu": "Expand menu"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,33 @@
     "make_recurring": "Make recurring",
     "not_posted": "Not posted"
   },
+  "inbox": {
+    "title": "Inbox",
+    "open": "Inbox, {count} waiting",
+    "empty": "All caught up",
+    "sections": {
+      "sharing": "Sharing",
+      "sync": "Sync problems",
+      "failed": "Failed imports",
+      "to_review": "To review",
+      "skipped": "Skipped ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} invited you",
+      "account": "Account",
+      "budget": "Budget",
+      "choose_folder": "Choose a folder for this account",
+      "general_folder_hint": "General (will be created)",
+      "decline_question": "Decline access to \"{name}\"?"
+    },
+    "sync": {
+      "failed": "{source} sync failed",
+      "partial": "{source} synced with errors",
+      "when": "Last attempt {date}"
+    }
+  },
   "imports": {
     "badge": "Imported",
-    "banner": {
-      "text": "{count} imported transaction is waiting for review | {count} imported transactions are waiting for review",
-      "cta": "Review"
-    },
     "data_page": {
       "menu_item": "Import & export",
       "header": "Import & export",
@@ -650,12 +670,7 @@
       }
     },
     "queue": {
-      "header": "Import queue",
-      "empty": "Nothing to review.",
       "card_amount": "Card amount: {amount} {currency}",
-      "queued": "Waiting for review",
-      "skipped": "Skipped",
-      "failed": "Needs attention",
       "reason": {
         "unmapped": "Card not mapped",
         "account_deleted": "Account deleted",
@@ -873,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "Profile",
-          "header": "Profile",
+          "header": "Personal settings",
           "groups": {
             "personal_details": "Personal details",
             "preferences": "Preferences",
@@ -1773,16 +1788,6 @@
           "required_field": "Required field"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Sharing requests",
-      "empty": "No pending requests",
-      "invited_you": "{name} invited you",
-      "account": "Account",
-      "budget": "Budget",
-      "choose_folder": "Choose a folder for this account",
-      "general_folder_hint": "General (will be created)",
-      "decline_question": "Decline access to \"{name}\"?"
     }
   },
   "search": {
@@ -1799,7 +1804,9 @@
     "show_all": "Show all ({count})",
     "hidden_folder": "Hidden folder",
     "back": "Back",
-    "nothing_found": "Nothing found"
+    "nothing_found": "Nothing found",
+    "open": "Search",
+    "open_tooltip": "Search ({shortcut})"
   },
   "subscription": {
     "banner": {

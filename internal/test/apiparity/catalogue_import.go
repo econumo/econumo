@@ -183,6 +183,8 @@ func init() {
 				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubAccessURL, "startDate": day(1), "endDate": start}},
 			{Label: "err:sync-source-down", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubDownURL, "startDate": start, "endDate": end}},
+			// The failed run surfaces on the source list (Inbox "Sync problems").
+			{Label: "get-source-list-after-failed-sync", Method: "GET", Path: "/api/v1/import/get-source-list", Auth: "owner"},
 			{Label: "err:sync-source-foreign", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "guest",
 				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubAccessURL, "startDate": start, "endDate": end}},
 			{Label: "err:readonly-sync-source", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "readonly",
