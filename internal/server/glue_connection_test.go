@@ -65,6 +65,7 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 			server.NewBudgetPayeeMetadataLookup(payeerepo.NewRepo("sqlite", db.TX)),
 		),
 		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", db.TX)),
+		operationrepo.NewGuard("sqlite", db.TX),
 		db.TX, clock.New(),
 	)
 	revoker := server.NewConnectionBudgetRevoker(budgets, budgetSvc)

@@ -1,9 +1,10 @@
-import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import { getVersionLabel, backendHost, getWebsiteUrl } from '@/lib/config'
 import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
@@ -13,10 +14,6 @@ import { RouterPage } from '@/app/router-pages'
 import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { useUserData, useAccessState } from '@/features/user/queries'
 import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
-import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
-import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
-import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
-import type { AggregatedImportResult } from '@/features/transactions/importCsv'
 import { SEMVER } from '@/lib/version'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
@@ -72,13 +69,11 @@ export function SettingsPage() {
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const { data: user } = useUserData()
-  const [exportOpen, setExportOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
-  const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
   const version = getVersionLabel()
   const update = useAvailableUpdate()
   const access = useAccessState()
   const portal = useOpenBillingPortal()
+  const [logoutOpen, setLogoutOpen] = useState(false)
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -96,16 +91,23 @@ export function SettingsPage() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex max-w-md flex-col gap-2">
           {user ? (
-            <Link
-              to={RouterPage.SETTINGS_PROFILE}
-              className="flex items-center gap-3 rounded-lg bg-econumo-card px-4 py-3 hover:bg-econumo-hover"
-            >
-              <UserAvatar avatar={user.avatar} size="md" />
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate text-sm font-medium">{user.name}</span>
-                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-              </span>
-            </Link>
+            <div className="flex flex-col gap-2">
+              <Link
+                to={RouterPage.SETTINGS_PROFILE}
+                className="flex items-center gap-3 rounded-lg bg-econumo-card px-4 py-3 hover:bg-econumo-hover"
+              >
+                <UserAvatar avatar={user.avatar} size="card" />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm font-medium">{user.name}</span>
+                  <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                  <span className="truncate text-xs font-medium text-primary">{t('user.page.settings.profile.header')}</span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </Link>
+              <Button type="button" variant="ghost" size="sm" className="self-end" onClick={() => setLogoutOpen(true)}>
+                {t('settings.page.logout')}
+              </Button>
+            </div>
           ) : null}
 
           {update ? (
@@ -156,8 +158,10 @@ export function SettingsPage() {
           </MenuGroup>
 
           <MenuGroup label={t('settings.page.groups.data')}>
-            <MenuRow label={t('settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
-            <MenuRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
+            <MenuRow label={t('imports.data_page.menu_item')} to={RouterPage.SETTINGS_DATA} />
+            <MenuRow label={t('imports.apple_wallet.menu_item')} to={RouterPage.SETTINGS_APPLE_WALLET} />
+            <MenuRow label={t('imports.simplefin.menu_item')} to={RouterPage.SETTINGS_SIMPLEFIN} />
+            <MenuRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} />
           </MenuGroup>
 
         </div>
@@ -187,10 +191,15 @@ export function SettingsPage() {
         </a>
       </footer>
 
-
-      <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />
-      <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
-      <ImportResultDialog open={importResult !== null} result={importResult} onClose={() => setImportResult(null)} />
+      <ConfirmDialog
+        open={logoutOpen}
+        onClose={() => setLogoutOpen(false)}
+        onConfirm={() => navigate(RouterPage.LOGOUT)}
+        title={t('auth.sign_out.title')}
+        question={t('auth.sign_out.question')}
+        confirmLabel={t('auth.sign_out.action.logout')}
+        cancelLabel={t('auth.sign_out.action.cancel')}
+      />
     </div>
   )
 }

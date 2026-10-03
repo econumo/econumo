@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PromptDialog } from '@/components/PromptDialog'
-import { isNotEmpty, isValidPayeeName } from '@/lib/validation'
 import type { PayeeDto } from '@/api/dto/payee'
 import { useUserData } from '@/features/user/queries'
 import { ClassificationList } from './ClassificationList'
 import { MergeDialog } from './MergeDialog'
+import { validatePayeeName } from './payeeName'
 import { usePayees, useCreatePayee, useUpdatePayee, useArchivePayee, useUnarchivePayee, useDeletePayee, useMovePayee,
   useSortPayees, useMergePayee } from './queries'
 
@@ -25,16 +25,6 @@ export function PayeesPage() {
   const [dialog, setDialog] = useState<{ open: boolean; payee: PayeeDto | null }>({ open: false, payee: null })
   const [mergeSource, setMergeSource] = useState<PayeeDto | null>(null)
   const own = payees.filter((p) => !user || p.ownerUserId === user.id)
-
-  const validate = (value: string): string | null => {
-    if (!isNotEmpty(value)) {
-      return t('classifications.payees.forms.payee.name.validation.required_field')
-    }
-    if (!isValidPayeeName(value)) {
-      return t('classifications.payees.forms.payee.name.validation.invalid_name')
-    }
-    return null
-  }
 
   return (
     <>
@@ -85,7 +75,7 @@ export function PayeesPage() {
         title={dialog.payee ? t('classifications.payees.modals.edit.header') : t('classifications.payees.modals.create.header')}
         inputLabel={t('classifications.payees.forms.payee.name.label')}
         initialValue={dialog.payee?.name ?? ''}
-        validate={validate}
+        validate={validatePayeeName(t)}
         submitLabel={dialog.payee ? t('common.button.update.label') : t('common.button.create.label')}
         cancelLabel={t('common.button.cancel.label')}
       />

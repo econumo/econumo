@@ -88,9 +88,17 @@ type setLimitResult struct {
 	Amount    string `json:"amount"`
 }
 
-type budgetAccountInput struct {
-	BudgetID  string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
-	AccountID string `json:"account_id" jsonschema:"account id (UUID) owned by you, from list_accounts"`
+type addBudgetAccountInput struct {
+	BudgetID              string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+	AccountID             string `json:"account_id" jsonschema:"account id (UUID) owned by you, from list_accounts"`
+	IsSavings             *bool  `json:"is_savings,omitempty" jsonschema:"true makes the account a savings row in this budget, false an everyday account; omit to keep an existing member's setting (a new member is everyday)"`
+	ConfirmSavingsRemoval bool   `json:"confirm_savings_removal,omitempty" jsonschema:"set true to turn savings off even though the account's savings row has planned amounts or comments in this budget, which are deleted"`
+}
+
+type removeBudgetAccountInput struct {
+	BudgetID              string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+	AccountID             string `json:"account_id" jsonschema:"account id (UUID) owned by you, from list_accounts"`
+	ConfirmSavingsRemoval bool   `json:"confirm_savings_removal,omitempty" jsonschema:"set true to remove a savings account whose savings row has planned amounts or comments in this budget, which are deleted"`
 }
 
 type budgetAccountResult struct {
@@ -338,7 +346,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_limit",
-			Description: "Set or clear an envelope/category/tag's limit for one month. Use get_budget for element_id."},
+			Description: "Set or clear an envelope/category/tag's limit for one month. Use get_budget for element_id. Savings rows (structure.savings) take limits too: element_id is the savings account id."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in setLimitInput) (*sdk.CallToolResult, setLimitResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_limit")
 				userID, err := webmcp.UserID(ctx)
@@ -360,8 +368,107 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, setLimitResult{BudgetID: in.BudgetID, ElementID: in.ElementID, Month: in.Month, Amount: in.Amount}, nil
 			})
 
+		type listCommentsInput struct {
+			BudgetID string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+			Month    string `json:"month,omitempty" jsonschema:"YYYY-MM; defaults to the current month"`
+			Months   int    `json:"months,omitempty" jsonschema:"window length in months, 1-24 (default 1)"`
+		}
+
+		sdk.AddTool(s, &sdk.Tool{Name: "list_budget_comments",
+			Description: "Comment threads on a budget's cells for a month window. Each comment names its element (the id get_budget returns) and its month."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in listCommentsInput) (*sdk.CallToolResult, model.GetCommentListResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "list_budget_comments")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.GetCommentListResult{}, err
+				}
+				from := ""
+				if in.Month != "" {
+					if _, perr := time.Parse("2006-01", in.Month); perr != nil {
+						return nil, model.GetCommentListResult{}, errs.NewValidation("month must be YYYY-MM")
+					}
+					from = in.Month + "-01"
+				}
+				months := ""
+				if in.Months != 0 {
+					months = strconv.Itoa(in.Months)
+				}
+				res, err := svc.GetCommentList(ctx, userID, model.GetCommentListRequest{BudgetId: in.BudgetID, From: from, Months: months})
+				if err != nil {
+					return nil, model.GetCommentListResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		type createCommentInput struct {
+			BudgetID  string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+			ElementID string `json:"element_id" jsonschema:"envelope, category or tag id (UUID), from get_budget"`
+			Month     string `json:"month" jsonschema:"YYYY-MM; must be inside the budget's months"`
+			Comment   string `json:"comment" jsonschema:"plain text, 1-500 characters"`
+		}
+
+		sdk.AddTool(s, &sdk.Tool{Name: "create_budget_comment",
+			Description: "Post a comment on one budget cell (element + month). Every participant may post, read-only guests included."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in createCommentInput) (*sdk.CallToolResult, model.CreateCommentResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "create_budget_comment")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.CreateCommentResult{}, err
+				}
+				if _, perr := time.Parse("2006-01", in.Month); perr != nil {
+					return nil, model.CreateCommentResult{}, errs.NewValidation("month must be YYYY-MM")
+				}
+				res, err := svc.CreateComment(ctx, userID, model.CreateCommentRequest{
+					Id:       vo.NewId().String(), // comment id, minted server-side for MCP
+					BudgetId: in.BudgetID, ElementId: in.ElementID, Period: in.Month + "-01", Comment: in.Comment,
+				})
+				if err != nil {
+					return nil, model.CreateCommentResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		type updateCommentInput struct {
+			CommentID string `json:"comment_id" jsonschema:"comment id (UUID), from list_budget_comments"`
+			Comment   string `json:"comment" jsonschema:"plain text, 1-500 characters"`
+		}
+
+		sdk.AddTool(s, &sdk.Tool{Name: "update_budget_comment",
+			Description: "Edit a comment you wrote. Only the author may edit."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in updateCommentInput) (*sdk.CallToolResult, model.UpdateCommentResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "update_budget_comment")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.UpdateCommentResult{}, err
+				}
+				res, err := svc.UpdateComment(ctx, userID, model.UpdateCommentRequest{Id: in.CommentID, Comment: in.Comment})
+				if err != nil {
+					return nil, model.UpdateCommentResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		type deleteCommentInput struct {
+			CommentID string `json:"comment_id" jsonschema:"comment id (UUID), from list_budget_comments"`
+		}
+
+		sdk.AddTool(s, &sdk.Tool{Name: "delete_budget_comment",
+			Description: "Delete a comment. The author may delete their own; the budget owner or an admin may delete any."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in deleteCommentInput) (*sdk.CallToolResult, model.DeleteCommentResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "delete_budget_comment")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.DeleteCommentResult{}, err
+				}
+				res, err := svc.DeleteComment(ctx, userID, model.DeleteCommentRequest{Id: in.CommentID})
+				if err != nil {
+					return nil, model.DeleteCommentResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
 		sdk.AddTool(s, &sdk.Tool{Name: "move_element",
-			Description: "Move one budget element (an envelope, tag or standalone category) into a folder and/or reorder it. Use get_budget for element_id, folder_id and after_element_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first."},
+			Description: "Move one budget element (an envelope, tag or standalone category) into a folder and/or reorder it. Use get_budget for element_id, folder_id and after_element_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first. A savings row (id = savings account id) reorders only among savings rows and cannot be put into a folder."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in moveElementInput) (*sdk.CallToolResult, moveElementResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "move_element")
 				userID, err := webmcp.UserID(ctx)
@@ -431,28 +538,32 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "add_budget_account",
-			Description: "Add one of your accounts to a budget so its transactions and balance count. Use list_accounts for account_id."},
-			func(ctx context.Context, req *sdk.CallToolRequest, in budgetAccountInput) (*sdk.CallToolResult, budgetAccountResult, error) {
+			Description: "Add one of your accounts to a budget so its transactions and balance count, or change whether an existing member is a savings account in this budget. Use list_accounts for account_id. A savings account gets its own savings row in the budget, where you plan how much goes into it each month; every budget participant sees that row, with the account's name and amounts. Turning savings off deletes the row's planned amounts and comments, so it is refused unless confirm_savings_removal is true."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in addBudgetAccountInput) (*sdk.CallToolResult, budgetAccountResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "add_budget_account")
 				userID, err := webmcp.UserID(ctx)
 				if err != nil {
 					return nil, budgetAccountResult{}, err
 				}
-				if _, err := svc.AddAccount(ctx, userID, model.AddAccountRequest{BudgetId: in.BudgetID, AccountId: in.AccountID}); err != nil {
+				if _, err := svc.AddAccount(ctx, userID, model.AddAccountRequest{
+					BudgetId: in.BudgetID, AccountId: in.AccountID, IsSavings: in.IsSavings, ConfirmSavingsRemoval: in.ConfirmSavingsRemoval,
+				}); err != nil {
 					return nil, budgetAccountResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, budgetAccountResult{BudgetID: in.BudgetID, AccountID: in.AccountID, Member: true}, nil
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "remove_budget_account",
-			Description: "Remove one of your accounts from a budget. Only possible while the account has no transactions in past months of the budget."},
-			func(ctx context.Context, req *sdk.CallToolRequest, in budgetAccountInput) (*sdk.CallToolResult, budgetAccountResult, error) {
+			Description: "Remove one of your accounts from a budget. Only possible while the account has no transactions in past months of the budget. Removing a savings account deletes its savings row (visible to every budget participant), and when that row has planned amounts or comments the removal is refused unless confirm_savings_removal is true."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in removeBudgetAccountInput) (*sdk.CallToolResult, budgetAccountResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "remove_budget_account")
 				userID, err := webmcp.UserID(ctx)
 				if err != nil {
 					return nil, budgetAccountResult{}, err
 				}
-				if _, err := svc.RemoveAccount(ctx, userID, model.RemoveAccountRequest{BudgetId: in.BudgetID, AccountId: in.AccountID}); err != nil {
+				if _, err := svc.RemoveAccount(ctx, userID, model.RemoveAccountRequest{
+					BudgetId: in.BudgetID, AccountId: in.AccountID, ConfirmSavingsRemoval: in.ConfirmSavingsRemoval,
+				}); err != nil {
 					return nil, budgetAccountResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, budgetAccountResult{BudgetID: in.BudgetID, AccountID: in.AccountID, Member: false}, nil

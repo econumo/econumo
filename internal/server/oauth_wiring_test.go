@@ -187,7 +187,7 @@ func TestRecovery_ReclaimsAnAccountFromASquatter(t *testing.T) {
 	if squatterSession == "" {
 		t.Fatalf("login: %s", loginBody)
 	}
-	_, patBody := post("/api/v1/user/create-personal-token", squatterSession, `{"name":"squatter-ci"}`)
+	_, patBody := post("/api/v1/user/create-personal-token", squatterSession, `{"name":"squatter-ci","scope":"full"}`)
 	squatterPAT := tokenOf(patBody)
 	if squatterPAT == "" {
 		t.Fatalf("create-personal-token: %s", patBody)
@@ -337,7 +337,7 @@ func TestLogin_SessionInsertIsFencedByTheGenerationReadWithTheHash(t *testing.T)
 
 	exp := time.Now().Add(time.Hour)
 	n, err := tokens.InsertIfGeneration(ctx, &model.AccessToken{ID: vo.NewId(), UserID: uid, Kind: model.TokenKindSession,
-		TokenHash: "h", CreatedAt: time.Now(), LastUsedAt: time.Now(), ExpiresAt: &exp}, loaded.CredentialsGeneration)
+		TokenHash: "h", Scope: model.TokenScopeFull, CreatedAt: time.Now(), LastUsedAt: time.Now(), ExpiresAt: &exp}, loaded.CredentialsGeneration)
 	if err != nil {
 		t.Fatalf("InsertIfGeneration: %v", err)
 	}

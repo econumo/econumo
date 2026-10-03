@@ -63,6 +63,7 @@ func (l *BudgetAccountLookup) AccountsByIDs(ctx context.Context, ids []vo.Id) ([
 		}
 		out = append(out, model.AccountView{
 			ID: a.ID.String(), CurrencyID: a.CurrencyID.String(), OwnerID: a.UserID.String(), IsDeleted: a.IsDeleted,
+			Name: a.Name, Icon: a.Icon,
 		})
 	}
 	return out, nil

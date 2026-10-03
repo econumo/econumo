@@ -1,5 +1,12 @@
-import type { BudgetElementType, BudgetFolderDto, BudgetPlanDto, PlanCellDto, PlanElementDto } from '@/api/dto/budget'
-import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type {
+  BudgetFolderDto,
+  BudgetPlanDto,
+  PlanCellDto,
+  PlanElementDto,
+  PlanSavingsElementDto,
+  PlanSavingsFlowDto,
+} from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { compareNames } from '@/lib/collate'
@@ -103,6 +110,37 @@ export interface PlanRows {
   archived: PlanRow[]
 }
 
+// A savings row is never in a folder and has no breakdown, so presenting it as an
+// element lets the grid's row, cell editor, fill, keyboard navigation and comment
+// marker serve it unchanged.
+export function savingsAsPlanElement(s: PlanSavingsElementDto): PlanElementDto {
+  return { ...s, folderId: null, children: [] }
+}
+
+/** A savings row's closing balances as the plan shows them. The server sends what
+ *  is booked; from the current month on, each month's plan not yet met by its actual
+ *  is still expected to arrive, so it closes that month and every later one higher.
+ *  That is the per-row gap the Savings balance row adds, so the rows and that row
+ *  agree. A deleted account plans nothing, and a server that sends no balances is
+ *  left alone. */
+export function projectSavingsClosings(s: PlanSavingsElementDto, months: string[], now?: Date): PlanSavingsElementDto {
+  if (s.isArchived !== 0 || s.cells.some((c) => c.closingBalance === undefined)) {
+    return s
+  }
+  const cur = currentMonth(now)
+  let expected = '0'
+  const cells = s.cells.map((cell, i) => {
+    if ((months[i] ?? '') >= cur) {
+      const planned = cell.planned === '' ? '0' : cell.planned
+      if (cmp(planned, cell.actual) > 0) {
+        expected = add(expected, sub(planned, cell.actual))
+      }
+    }
+    return { ...cell, closingBalance: add(cell.closingBalance ?? '0', expected) }
+  })
+  return { ...s, cells }
+}
+
 const isRowHidden = (el: PlanElementDto): boolean => el.cells.every((c) => isZero(c.actual) && c.planned === '')
 
 // Shared by the folder section renderer and the keyboard grid's flat row list, so
@@ -125,9 +163,10 @@ export function isOverspent(type: BudgetElementType, cell: PlanCellDto | undefin
 
 /** the underspend highlight: a PAST month whose plan the actual stayed under — the
  *  current and future months are still open, so being under plan there means nothing
- *  yet. Never true without a plan (unset = 0), and never on the income side. */
+ *  yet. Never true without a plan (unset = 0), and never on the income side. Never on
+ *  a savings row either: saving less than planned is no win. */
 export function isUnderspent(type: BudgetElementType, cell: PlanCellDto | undefined, month: string, cur: string): boolean {
-  if (!cell || isIncomeType(type) || month >= cur) {
+  if (!cell || isIncomeType(type) || type === BudgetElementType.SAVINGS || month >= cur) {
     return false
   }
   return cmp(cell.planned === '' ? '0' : cell.planned, cell.actual) > 0
@@ -234,6 +273,12 @@ export interface PlanMonthTotals {
   transfersOut: string
   /** in − out: the Transfers line, and a term of Net / Balance */
   transfersNet: string
+  /** Σ savings actual, budget currency */
+  savingsActual: string
+  /** Σ non-archived savings planned, budget currency */
+  savingsPlanned: string
+  /** per-row max(actual, planned) summed; past months = actual; archived rows = actual */
+  effectiveSavings: string
 }
 
 export type MonthExchange = (fromCurrencyId: string, amount: string, monthIndex: number) => string
@@ -246,11 +291,21 @@ export function makePlanExchange(plan: BudgetPlanDto, currencies: CurrencyDto[])
   }
 }
 
+export function planMonthExchange(plan: BudgetPlanDto, currencies: CurrencyDto[], monthIndex: number): (from: Id, to: Id, amount: string) => string {
+  const rates = (plan.currencyRates[monthIndex]?.rates ?? []).map((r) => ({ ...r, updatedAt: r.periodStart }))
+  return (from, to, amount) => exchange(from, to, amount, rates, currencies)
+}
+
 export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): PlanMonthTotals[] {
   const cur = currentMonth(now)
   const rows = plan.structure.elements
   const transfersByMonth = new Map((plan.transfers ?? []).map((t) => [t.period, t.items]))
   return plan.months.map((month, i) => {
+    // income/expense booked on savings accounts: no category row counts it, but
+    // the combined balance moved by it
+    const savingsIncomeExpense = (plan.savingsIncomeExpense ?? [])
+      .filter((f) => f.month === month)
+      .reduce((acc, f) => add(acc, ex(f.currencyId, f.amount, i)), '0')
     let transfersIn = '0'
     let transfersOut = '0'
     for (const tr of transfersByMonth.get(month) ?? []) {
@@ -288,24 +343,47 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
         if (el.id === UNCATEGORIZED_ID) uncatExpense = add(uncatExpense, actual)
       }
     }
+    let savingsActual = '0'
+    let savingsPlanned = '0'
+    let effSavings = '0'
+    for (const el of plan.structure.savings ?? []) {
+      const cell = el.cells[i]
+      if (!cell) {
+        continue
+      }
+      const actual = ex(el.currencyId, cell.actual, i)
+      const planned = ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i)
+      const isPast = month < cur
+      const effective = isPast ? actual : cmp(actual, planned) >= 0 ? actual : planned
+      savingsActual = add(savingsActual, actual)
+      if (el.isArchived === 0) savingsPlanned = add(savingsPlanned, planned)
+      effSavings = add(effSavings, el.isArchived === 0 ? effective : actual)
+    }
     // Net carries the boundary transfers so the Balance row (which chains on
     // effectiveNet) reflects money that really left or entered the budget's
     // accounts — and Balance[m] − Balance[m−1] stays exactly the Net line.
-    // Planned figures never include them: a transfer has no plan.
+    // Planned figures never include them: a transfer has no plan. Savings
+    // actual/planned are subtracted from Net (money set aside is no longer
+    // available in the everyday split), but NOT from effectiveNet: that line
+    // is the COMBINED balance's per-month contribution, and an everyday->
+    // savings transfer moves nothing between accounts still inside the total.
     return {
       incomeActual,
       incomePlanned,
       expenseActual,
       expensePlanned,
-      netActual: add(sub(incomeActual, expenseActual), transfersNet),
-      netPlanned: sub(incomePlanned, expensePlanned),
+      netActual: sub(add(add(sub(incomeActual, expenseActual), transfersNet), savingsIncomeExpense), savingsActual),
+      netPlanned: sub(sub(incomePlanned, expensePlanned), savingsPlanned),
       effectiveIncome: effIncome,
       effectiveExpense: effExpense,
-      effectiveNet: add(sub(effIncome, effExpense), transfersNet),
+      effectiveNet: add(add(sub(effIncome, effExpense), transfersNet), savingsIncomeExpense),
       uncategorizedActual: sub(uncatExpense, uncatIncome),
       transfersIn,
       transfersOut,
       transfersNet,
+      savingsActual,
+      savingsPlanned,
+      effectiveSavings: effSavings,
     }
   })
 }
@@ -317,4 +395,56 @@ export function balanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: M
     running = add(running, t.effectiveNet)
     return running
   })
+}
+
+/** The savings side of the balance split: opening balance plus, per month, what
+ *  actually happened (savingsFlows) in the past; in the current and future months
+ *  the flows booked so far plus each row's own gap to plan,
+ *  Σ(max(actual, planned) − actual). Future months take the flows too: a future-dated
+ *  savings→outside transfer leaves the combined balance through the boundary
+ *  transfers, so it must leave the Savings balance as well, or the everyday Balance
+ *  would drop for money no everyday account sent. An everyday→savings transfer is
+ *  in both the flows and the row's actual, so it still counts once. The gap is per
+ *  row so an over-saved row cannot cover another row's shortfall — the balance must
+ *  move by exactly what the Savings line shows. */
+export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: MonthExchange, now?: Date): string[] {
+  const cur = currentMonth(now)
+  const flowsByMonth = new Map<string, PlanSavingsFlowDto[]>()
+  for (const f of plan.savingsFlows ?? []) {
+    const arr = flowsByMonth.get(f.month) ?? []
+    arr.push(f)
+    flowsByMonth.set(f.month, arr)
+  }
+  let running = (plan.savingsOpeningBalances ?? []).reduce((acc, b) => add(acc, ex(b.currencyId, b.amount, 0)), '0')
+  return plan.months.map((month, i) => {
+    const flows = (flowsByMonth.get(month) ?? []).reduce((acc, f) => add(acc, ex(f.currencyId, f.amount, i)), '0')
+    const t = totals[i]
+    running = add(running, flows)
+    if (month >= cur) {
+      running = add(running, sub(t.effectiveSavings, t.savingsActual))
+    }
+    return running
+  })
+}
+
+/** The everyday side of the balance split: the combined balance minus the savings side. */
+export function everydayBalanceRow(combined: string[], savings: string[]): string[] {
+  return combined.map((c, i) => sub(c, savings[i] ?? '0'))
+}
+
+/** Whether the plan carries ANY savings money, independent of whether a savings row is
+ *  currently on screen: a DELETED savings account (still a flagged member, but with no
+ *  plan and no activity in the fetched window) drops its row from `structure.savings`,
+ *  yet its pre-window balance still arrives in `savingsOpeningBalances` and must not be counted as everyday
+ *  money. The balance split therefore keys off this — a row, or a non-zero opening
+ *  balance, or a non-zero flow — while the Savings section and its totals line stay tied
+ *  to rows alone (there is nothing to list or total without one). */
+export function planHasSavingsData(plan: BudgetPlanDto): boolean {
+  if ((plan.structure.savings ?? []).length > 0) {
+    return true
+  }
+  if ((plan.savingsOpeningBalances ?? []).some((b) => !isZero(b.amount))) {
+    return true
+  }
+  return (plan.savingsFlows ?? []).some((f) => !isZero(f.amount))
 }

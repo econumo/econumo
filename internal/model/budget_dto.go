@@ -36,6 +36,7 @@ type MetaResult struct {
 type BudgetAccountFilter struct {
 	Id        string `json:"id"`
 	Removable bool   `json:"removable"`
+	IsSavings bool   `json:"isSavings"`
 }
 
 // FiltersResult is the budget's period + the requester's member accounts.
@@ -120,11 +121,36 @@ type LabelSpendResult struct {
 	Children    []ChildElementResult `json:"children"`
 }
 
-// StructureResult is the budget's folders + ordered elements + labels.
+// SavingsElementResult is one savings account's row in get-budget's
+// structure.savings. Kept out of elements so older clients do not sum it into
+// expenses. Amounts are in CurrencyId (the element currency); there is no
+// carry-over: Available = Budgeted - Spent for this month only.
+// ClosingBalance is the account's balance at the end of the month: what is
+// booked for a month before the caller's current one; from the current month
+// on, the booked balance plus each month's plan not yet met by its saved
+// amount, from the current month through this one.
+type SavingsElementResult struct {
+	Id             string `json:"id"`
+	Type           int    `json:"type"`
+	Name           string `json:"name"`
+	Icon           string `json:"icon"`
+	CurrencyId     string `json:"currencyId"`
+	OwnerUserId    string `json:"ownerUserId"`
+	IsArchived     int    `json:"isArchived"`
+	Position       int    `json:"position"`
+	Budgeted       string `json:"budgeted"`
+	Spent          string `json:"spent"`
+	Available      string `json:"available"`
+	ClosingBalance string `json:"closingBalance"`
+}
+
+// StructureResult is the budget's folders + ordered elements + labels +
+// savings rows.
 type StructureResult struct {
-	Folders  []BudgetFolderResult  `json:"folders"`
-	Elements []ParentElementResult `json:"elements"`
-	Labels   []LabelSpendResult    `json:"labels"`
+	Folders  []BudgetFolderResult   `json:"folders"`
+	Elements []ParentElementResult  `json:"elements"`
+	Labels   []LabelSpendResult     `json:"labels"`
+	Savings  []SavingsElementResult `json:"savings"`
 }
 
 // BudgetResult is the full get-budget shape.
@@ -146,6 +172,9 @@ type CreateBudgetRequest struct {
 	// non-deleted account is required — enforced as a coded error in the use
 	// case, not here, so the wire carries the catalogue code.
 	AccountIds []string `json:"accountIds"`
+	// SavingsAccountIds flags members as savings in this budget; each must be one
+	// of AccountIds.
+	SavingsAccountIds []string `json:"savingsAccountIds"`
 }
 
 // Validate enforces id + name NotBlank.
@@ -169,6 +198,12 @@ type UpdateBudgetRequest struct {
 	// EndDate is nil when the client omits the field (end month untouched);
 	// "" clears it, "2006-01-02" sets it (snapped to first-of-month).
 	EndDate *string `json:"endDate"`
+	// SavingsAccountIds is nil when omitted (flags untouched); a present list is
+	// the caller's own savings members after AccountIds applies.
+	SavingsAccountIds []string `json:"savingsAccountIds"`
+	// ConfirmSavingsRemoval allows a write that drops a savings row carrying
+	// planned amounts or comments.
+	ConfirmSavingsRemoval bool `json:"confirmSavingsRemoval"`
 }
 
 // Validate enforces id, name, currencyId NotBlank.
@@ -358,21 +393,64 @@ type PlanMonthRatesResult struct {
 	Rates  []AverageCurrencyRateResult `json:"rates"`
 }
 
-// PlanStructureResult is all folders (income-, expense-sided and neutral) +
-// all plan rows.
-type PlanStructureResult struct {
-	Folders  []BudgetFolderResult `json:"folders"`
-	Elements []PlanElementResult  `json:"elements"`
+// PlanSavingsElementResult is one savings account's plan row. Cells align with
+// BudgetPlanResult.Months; Actual is the account's net change that month (every
+// transaction on it, interest and transfers with any account included), in
+// CurrencyId (the element currency); Planned is "" with no limit.
+type PlanSavingsElementResult struct {
+	Id          string                  `json:"id"`
+	Type        int                     `json:"type"`
+	Name        string                  `json:"name"`
+	Icon        string                  `json:"icon"`
+	CurrencyId  string                  `json:"currencyId"`
+	OwnerUserId string                  `json:"ownerUserId"`
+	IsArchived  int                     `json:"isArchived"`
+	Position    int                     `json:"position"`
+	Cells       []PlanSavingsCellResult `json:"cells"`
 }
 
-// BudgetPlanResult is the full get-budget-plan shape.
+// PlanSavingsCellResult is a savings row's month: ClosingBalance is the
+// account's booked balance at the end of that month, in the element currency.
+type PlanSavingsCellResult struct {
+	Actual         string `json:"actual"`
+	Planned        string `json:"planned"`
+	ClosingBalance string `json:"closingBalance"`
+}
+
+// PlanSavingsFlowResult is one (month, account currency) net change of the
+// savings accounts: every transaction on them, interest and boundary transfers
+// included — the same figure as the Savings rows' actuals, unconverted and
+// grouped by account currency.
+type PlanSavingsFlowResult struct {
+	Month      string `json:"month"`
+	CurrencyId string `json:"currencyId"`
+	Amount     string `json:"amount"`
+}
+
+// PlanStructureResult is all folders (income-, expense-sided and neutral) +
+// all plan rows; savings rows are listed apart from the elements.
+type PlanStructureResult struct {
+	Folders  []BudgetFolderResult       `json:"folders"`
+	Elements []PlanElementResult        `json:"elements"`
+	Savings  []PlanSavingsElementResult `json:"savings"`
+}
+
+// BudgetPlanResult is the full get-budget-plan shape. SavingsOpeningBalances
+// is OpeningBalances over the savings accounts only, per savings-account
+// currency; SavingsFlows lists only (month, currency) pairs with activity.
+// SavingsIncomeExpense is the income minus the expenses booked on the savings
+// accounts, same shape as SavingsFlows: the category rows count the everyday
+// accounts only, so the combined balance needs it added back.
 type BudgetPlanResult struct {
-	Meta            MetaResult                 `json:"meta"`
-	Months          []string                   `json:"months"`
-	OpeningBalances []OpeningBalanceResult     `json:"openingBalances"`
-	CurrencyRates   []PlanMonthRatesResult     `json:"currencyRates"`
-	Transfers       []PlanMonthTransfersResult `json:"transfers"`
-	Structure       PlanStructureResult        `json:"structure"`
+	Meta                   MetaResult                 `json:"meta"`
+	Months                 []string                   `json:"months"`
+	OpeningBalances        []OpeningBalanceResult     `json:"openingBalances"`
+	SavingsOpeningBalances []OpeningBalanceResult     `json:"savingsOpeningBalances"`
+	CurrencyRates          []PlanMonthRatesResult     `json:"currencyRates"`
+	Transfers              []PlanMonthTransfersResult `json:"transfers"`
+	SavingsFlows           []PlanSavingsFlowResult    `json:"savingsFlows"`
+	SavingsIncomeExpense   []PlanSavingsFlowResult    `json:"savingsIncomeExpense"`
+	Structure              PlanStructureResult        `json:"structure"`
 }
 
 // GetBudgetPlanResult is {item: BudgetPlanResult}.
@@ -571,6 +649,10 @@ type RevokeAccessResult struct{}
 type AddAccountRequest struct {
 	BudgetId  string `json:"id"`
 	AccountId string `json:"accountId"`
+	// IsSavings nil leaves an existing member's flag alone and adds a new
+	// member as everyday.
+	IsSavings             *bool `json:"isSavings"`
+	ConfirmSavingsRemoval bool  `json:"confirmSavingsRemoval"`
 }
 
 func (r AddAccountRequest) Validate() error {
@@ -585,8 +667,9 @@ type AddAccountResult struct {
 // RemoveAccountRequest drops an account from the budget. The budget id arrives
 // under "id" (see AddAccountRequest).
 type RemoveAccountRequest struct {
-	BudgetId  string `json:"id"`
-	AccountId string `json:"accountId"`
+	BudgetId              string `json:"id"`
+	AccountId             string `json:"accountId"`
+	ConfirmSavingsRemoval bool   `json:"confirmSavingsRemoval"`
 }
 
 func (r RemoveAccountRequest) Validate() error {
@@ -672,6 +755,13 @@ type BudgetTransactionListRequest struct {
 	// side included, the other not) — the plan sheet's Transfers drill-down.
 	// Mutually exclusive with every other selector.
 	Transfers bool `json:"transfers,omitempty"`
+	// Income turns categoryId/envelopeId into an income row's drill-down.
+	// Requires exactly one of them; composes with nothing else.
+	Income bool `json:"income,omitempty"`
+	// AccountId selects every transaction on one account of the budget —
+	// currently only its savings accounts are accepted — a savings row's
+	// drill-down. Composes with nothing.
+	AccountId *string `json:"accountId"`
 }
 
 // TxCategoryResult / TxPayeeResult / TxTagResult are the optional embeds.
@@ -704,17 +794,99 @@ type BudgetTransactionResult struct {
 	// transaction feature's own wire.
 	LabelIds []string `json:"labelIds"`
 	SpentAt  string   `json:"spentAt"`
-	// Direction is present only on rows of the transfers selector: "out" when
-	// the included account is the source, "in" when it is the recipient —
-	// Amount/CurrencyId are that side's. Omitted on every other list so their
-	// bytes are unchanged.
+	// Direction is present only on rows of the transfers, income and
+	// accountId selectors: "out" when the money left the included (or
+	// savings) account, "in" when it arrived — Amount/CurrencyId are that
+	// side's. Omitted on every other list so their bytes are unchanged.
 	Direction string `json:"direction,omitempty"`
+	// Type ("expense", "income" or "transfer") is present only on rows of the
+	// income and accountId selectors.
+	Type string `json:"type,omitempty"`
 }
 
 // GetBudgetTransactionListResult is {items: [...]}.
 type GetBudgetTransactionListResult struct {
 	Items []BudgetTransactionResult `json:"items"`
 }
+
+// GetCommentListRequest selects a budget and a month window for the comment
+// read. From and Months arrive as raw query strings; the service parses them.
+type GetCommentListRequest struct {
+	BudgetId string `json:"budgetId"`
+	From     string `json:"from"`
+	Months   string `json:"months"`
+}
+
+func (r GetCommentListRequest) Validate() error {
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId})
+}
+
+// CommentResult is one comment on the wire. ElementId is the element's EXTERNAL
+// id (the identifier set-limit takes); Period is Y-m-d; the timestamps use the
+// frozen datetime layout.
+type CommentResult struct {
+	Id        string     `json:"id"`
+	ElementId string     `json:"elementId"`
+	Period    string     `json:"period"`
+	Comment   string     `json:"comment"`
+	Author    UserResult `json:"author"`
+	CreatedAt string     `json:"createdAt"`
+	UpdatedAt string     `json:"updatedAt"`
+}
+
+// GetCommentListResult is {items: [...], truncated: bool}. Truncated is true
+// only when the server-side cap dropped the window's oldest comments, so the SPA
+// can say so instead of silently showing a partial thread.
+type GetCommentListResult struct {
+	Items     []CommentResult `json:"items"`
+	Truncated bool            `json:"truncated"`
+}
+
+// CreateCommentRequest posts a comment. Id is the comment's id AND the
+// idempotency key: a retried post with the same id returns the stored comment.
+type CreateCommentRequest struct {
+	Id        string `json:"id"`
+	BudgetId  string `json:"budgetId"`
+	ElementId string `json:"elementId"`
+	Period    string `json:"period"`
+	Comment   string `json:"comment"`
+}
+
+func (r CreateCommentRequest) Validate() error {
+	return ValidateBlank(map[string]string{
+		"id": r.Id, "budgetId": r.BudgetId, "elementId": r.ElementId,
+		"period": r.Period, "comment": r.Comment,
+	})
+}
+
+type UpdateCommentRequest struct {
+	Id      string `json:"id"`
+	Comment string `json:"comment"`
+}
+
+func (r UpdateCommentRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id, "comment": r.Comment})
+}
+
+type DeleteCommentRequest struct {
+	Id string `json:"id"`
+}
+
+func (r DeleteCommentRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id})
+}
+
+// CreateCommentResult and UpdateCommentResult are {item: CommentResult}.
+type CreateCommentResult struct {
+	Item CommentResult `json:"item"`
+}
+
+type UpdateCommentResult struct {
+	Item CommentResult `json:"item"`
+}
+
+// DeleteCommentResult is empty.
+type DeleteCommentResult struct{}
 
 // ValidateBlank returns a ValidationError listing every blank field with the
 // frozen "This value should not be blank." message.

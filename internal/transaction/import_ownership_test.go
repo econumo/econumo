@@ -126,6 +126,9 @@ func (r *stubImportRepo) ReplaceLabels(ctx context.Context, transactionID vo.Id,
 func (r *stubImportRepo) LabelsByTransactionIDs(ctx context.Context, ids []vo.Id) (map[string][]string, error) {
 	return nil, nil
 }
+func (r *stubImportRepo) ImportedTransactionIDs(ctx context.Context, ids []vo.Id) (map[string]bool, error) {
+	return nil, nil
+}
 
 type passthroughTx struct{}
 

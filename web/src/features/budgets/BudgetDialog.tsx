@@ -12,12 +12,12 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { useFormErrors } from '@/hooks/useFormErrors'
-import { BudgetAccountsField } from './BudgetAccountsField'
+import { BudgetAccountsField, BudgetSavingsField } from './BudgetAccountsField'
 
 interface BudgetDialogProps {
   open: boolean
   onClose: () => void
-  onSubmit: (form: { name: string; currencyId: Id; accountIds: Id[] }) => void
+  onSubmit: (form: { name: string; currencyId: Id; accountIds: Id[]; savingsAccountIds: Id[] }) => void
 }
 
 export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
@@ -30,6 +30,7 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [selected, setSelected] = useState<Set<Id>>(new Set())
+  const [savings, setSavings] = useState<Set<Id>>(new Set())
   const { errors, setErrors, clear: clearError, reset: resetErrors } = useFormErrors<{ name?: string; currency?: string; accounts?: string }>()
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
       setName('')
       setCurrencyId(userCurrencyId(user))
       setSelected(new Set())
+      setSavings(new Set())
       resetErrors()
     }
   }, [open, user])
@@ -48,6 +50,21 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
     setSelected((prev) => {
       const next = new Set(prev)
       if (included) {
+        next.add(id)
+      } else {
+        next.delete(id)
+      }
+      return next
+    })
+    if (!included) {
+      toggleSavings(id, false)
+    }
+  }
+
+  const toggleSavings = (id: Id, on: boolean) => {
+    setSavings((prev) => {
+      const next = new Set(prev)
+      if (on) {
         next.add(id)
       } else {
         next.delete(id)
@@ -73,7 +90,7 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
     if (Object.keys(next).length > 0 || !currencyId) {
       return
     }
-    onSubmit({ name, currencyId, accountIds: [...selected] })
+    onSubmit({ name, currencyId, accountIds: [...selected], savingsAccountIds: [...savings].filter((id) => selected.has(id)) })
   }
 
   return (
@@ -134,6 +151,7 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
           <>
             <BudgetAccountsField accounts={ownAccounts} selected={selected} locked={new Set()} onToggle={toggleAccount} />
             {errors.accounts ? <p className="text-sm text-destructive">{errors.accounts}</p> : null}
+            <BudgetSavingsField accounts={ownAccounts} selected={selected} savings={savings} onToggle={toggleSavings} />
           </>
         ) : null}
       </form>

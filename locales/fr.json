@@ -16,8 +16,7 @@
       "onboarding": "Premiers pas",
       "create_account": "Ajouter un compte",
       "collapse_menu": "Réduire le menu",
-      "expand_menu": "Déployer le menu",
-      "sharing_requests": "Demandes de partage reçues"
+      "expand_menu": "Déployer le menu"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,6 +468,292 @@
     "make_recurring": "Rendre récurrente",
     "not_posted": "Non validée"
   },
+  "inbox": {
+    "title": "Boîte de réception",
+    "open": "Boîte de réception, {count} en attente",
+    "empty": "Tout est à jour",
+    "sections": {
+      "sharing": "Partages",
+      "sync": "Problèmes de synchronisation",
+      "failed": "Importations échouées",
+      "to_review": "À vérifier",
+      "skipped": "Ignorés ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} vous invite",
+      "account": "Compte",
+      "budget": "Budget",
+      "choose_folder": "Choisissez un dossier pour ce compte",
+      "general_folder_hint": "General (sera créé)",
+      "decline_question": "Refuser l’accès à « {name} » ?"
+    },
+    "sync": {
+      "failed": "Échec de la synchronisation de {source}",
+      "partial": "{source} synchronisé avec des erreurs",
+      "when": "Dernière tentative {date}"
+    }
+  },
+  "imports": {
+    "badge": "Importée",
+    "data_page": {
+      "menu_item": "Import et export",
+      "header": "Import et export",
+      "sync_all": "Synchroniser les connexions bancaires",
+      "history": "Historique des imports",
+      "sync_all_done": "{imported} importées, {matched} rapprochées, {failed} échouées"
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
+      "intro": "Enregistrez automatiquement vos paiements Apple Pay avec un raccourci iPhone. Chaque paiement est envoyé à Econumo ; vous associez chaque carte à un compte une seule fois.",
+      "connect": "Configurer Apple Wallet",
+      "connected": "Connecté",
+      "disconnect": "Déconnecter",
+      "disconnect_modal": {
+        "title": "Déconnecter Apple Wallet ?",
+        "question": "Les associations de cartes et la file de vérification de cette connexion seront supprimées. Les transactions déjà importées sont conservées."
+      },
+      "steps": {
+        "hint_desktop": "Ouvrez cette page sur votre iPhone pour y effectuer les étapes. Sur cet appareil, vous pouvez télécharger les raccourcis et cocher les étapes à la main.",
+        "install_wallet": {
+          "title": "Installer econumo-wallet-v1",
+          "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci »."
+        },
+        "install_setup": {
+          "title": "Installer econumo-setup-v1",
+          "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci »."
+        },
+        "configure": {
+          "title": "Configurer les raccourcis",
+          "text": "Crée un jeton d’accès pour le raccourci et le transmet à econumo-setup-v1 avec l’adresse du serveur.",
+          "button": "Configurer sur cet iPhone",
+          "manual": "Configurer manuellement"
+        },
+        "test": {
+          "title": "Exécuter econumo-wallet-v1 une fois",
+          "text": "Lancez-le à la main et touchez « Toujours autoriser » à chaque demande : cela accorde les autorisations dont l’automatisation aura besoin. Rien n’est créé ; Econumo note seulement que le raccourci l’a atteint.",
+          "button": "Exécuter econumo-wallet-v1",
+          "check": "Vérifier",
+          "none": "Rien reçu pour l’instant. Lancez le raccourci, acceptez les demandes et vérifiez à nouveau."
+        },
+        "automate": {
+          "title": "Créer l’automatisation",
+          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer (le plus sûr est de tout sélectionner) → Exécuter après confirmation → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Effectuer le premier paiement avec l’iPhone déverrouillé",
+          "text": "Payez une fois avec Apple Pay, iPhone déverrouillé. Touchez « Exécuter » quand l’automatisation le demande, puis « Toujours autoriser » quand Raccourcis demande l’accès à Wallet.",
+          "check": "Vérifier",
+          "none": "Aucun paiement reçu pour l’instant. Payez une fois avec l’iPhone déverrouillé et vérifiez à nouveau."
+        },
+        "immediate": {
+          "title": "Passer l’automatisation en « Exécuter immédiatement »",
+          "text": "Dans l’app Raccourcis, ouvrez l’automatisation et remplacez « Exécuter après confirmation » par « Exécuter immédiatement ». Les paiements sont ensuite importés sans demande, même depuis l’écran verrouillé."
+        },
+        "complete": "Configuration terminée",
+        "show": "Afficher les étapes",
+        "hide": "Masquer les étapes"
+      },
+      "same_named_cards": "Les cartes portant le même nom dans Wallet arrivent ici comme une seule carte.",
+      "cards": {
+        "header": "Cartes",
+        "empty": "Pas encore de carte — le premier paiement Apple Pay en ajoutera une.",
+        "state": {
+          "mapped": "Associée",
+          "ignored": "Ignorée",
+          "unmapped": "Non associée · {count} en attente"
+        },
+        "taps": "{count} paiement | {count} paiements",
+        "last_seen": "Vue pour la dernière fois {date}",
+        "map": "Associer à un compte",
+        "map_instead": "Associer plutôt",
+        "ignore": "Ignorer",
+        "unlink": "Dissocier",
+        "unlink_modal": {
+          "title": "Dissocier {card} ?",
+          "question": "Les nouveaux paiements de cette carte attendront une vérification jusqu'à ce que vous l'associiez à nouveau."
+        },
+        "map_modal": {
+          "header": "Associer {card}",
+          "account": "Compte",
+          "submit": "Associer"
+        },
+        "mapped_toast": "{imported} importées, {matched} rapprochées, {skipped} ignorées"
+      }
+    },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Connectez une banque via SimpleFIN Bridge. Vos identifiants de connexion sont chiffrés sur cet appareil avec une phrase secrète que vous seul connaissez ; le serveur les stocke chiffrés et ne les voit que le temps d'une synchronisation.",
+      "forget_device": "Oublier cet appareil",
+      "connect": {
+        "intro": "Collez le jeton de configuration de votre compte SimpleFIN Bridge et choisissez une phrase secrète. La phrase secrète n'est jamais envoyée au serveur — si vous l'oubliez, vous devrez vous reconnecter avec un nouveau jeton de configuration.",
+        "reconnect_intro": "Collez un nouveau jeton de configuration de SimpleFIN Bridge. La connexion précédente sera remplacée ; vos associations de comptes sont conservées.",
+        "token_label": "Jeton de configuration",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → Nouvelle connexion → copiez le jeton de configuration. Un jeton ne peut être utilisé qu'une fois.",
+        "forgot_passphrase": "J'ai oublié ma phrase secrète — en définir une nouvelle",
+        "passphrase_new": "Phrase secrète",
+        "passphrase_existing": "Votre phrase secrète",
+        "passphrase_confirm": "Répétez la phrase secrète",
+        "passphrase_help": "Au moins 8 caractères. Non récupérable : personne, pas même nous, ne peut la restaurer.",
+        "submit": "Connecter",
+        "submit_reconnect": "Se reconnecter",
+        "errors": {
+          "token_required": "Collez d'abord le jeton de configuration.",
+          "passphrase_short": "La phrase secrète doit comporter au moins 8 caractères.",
+          "passphrase_mismatch": "Les phrases secrètes ne correspondent pas."
+        }
+      },
+      "unlock": {
+        "intro": "Saisissez votre phrase secrète pour utiliser SimpleFIN sur cet appareil.",
+        "passphrase": "Phrase secrète",
+        "submit": "Déverrouiller",
+        "reconnect": "Se reconnecter",
+        "wrong_passphrase": "Phrase secrète incorrecte.",
+        "forgot_help": "Oubliée ? Reconnectez-vous avec un nouveau jeton de configuration et une nouvelle phrase secrète.",
+        "stale_intro": "Votre phrase secrète a été modifiée sur un autre appareil. Saisissez la nouvelle phrase secrète pour continuer à utiliser SimpleFIN ici."
+      },
+      "accounts": {
+        "header": "Comptes",
+        "empty": "Aucun compte signalé par la passerelle pour le moment.",
+        "state": {
+          "mapped": "Associé",
+          "ignored": "Ignoré",
+          "unmapped": "Non associé · {count} en attente"
+        },
+        "taps": "{count} transaction | {count} transactions",
+        "last_seen": "Vu pour la dernière fois {date}",
+        "map": "Associer à un compte",
+        "map_instead": "Associer plutôt",
+        "ignore": "Ignorer",
+        "unlink": "Dissocier",
+        "unlink_modal": {
+          "title": "Dissocier {card} ?",
+          "question": "Les nouvelles transactions de ce compte attendront une vérification jusqu'à ce que vous l'associiez à nouveau."
+        },
+        "map_modal": {
+          "header": "Associer {card}",
+          "account": "Compte",
+          "submit": "Associer"
+        },
+        "mapped_toast": "{imported} importées, {matched} rapprochées, {skipped} ignorées"
+      },
+      "sync": {
+        "button": "Synchroniser maintenant",
+        "running": "Synchronisation…",
+        "from": "Depuis",
+        "last_synced": "Dernière synchronisation {date}",
+        "never": "Jamais synchronisé",
+        "done_toast": "{imported} importées, {matched} rapprochées"
+      }
+    },
+    "runs": {
+      "header": "Historique des imports",
+      "detail_header": "Import",
+      "history_link": "Historique des imports",
+      "empty": "Aucun import pour l'instant.",
+      "rows_header": "Transactions",
+      "rows_empty": "Cet import n'a touché aucune transaction.",
+      "status": {
+        "running": "En cours",
+        "completed": "Terminé",
+        "partial": "Terminé avec des erreurs",
+        "failed": "Échoué"
+      },
+      "counts": "{imported} importées · {matched} rapprochées · {updated} montants mis à jour · {queued} en attente · {skipped} ignorées · {failed} échouées",
+      "row_status": {
+        "imported": "Importée",
+        "deleted": "Supprimée depuis",
+        "queued": "En attente de vérification",
+        "skipped": "Ignorée"
+      }
+    },
+    "queue": {
+      "card_amount": "Montant de la carte : {amount} {currency}",
+      "reason": {
+        "unmapped": "Carte non associée",
+        "account_deleted": "Compte supprimé",
+        "no_rate": "Aucun taux de change pour {currency}"
+      },
+      "import": "Importer",
+      "skip": "Ignorer",
+      "unskip": "Restaurer",
+      "retry": "Réessayer",
+      "discard": "Abandonner",
+      "received": "Reçu {date}",
+      "retry_result": {
+        "created": "Importée",
+        "queued": "En file pour vérification",
+        "skipped": "Ignorée",
+        "duplicate": "Déjà importée",
+        "failed": "Échoue toujours"
+      }
+    },
+    "provenance": {
+      "header": "Importée depuis"
+    },
+    "rules": {
+      "field": { "external_payee": "Bénéficiaire", "description": "Description" },
+      "type": { "contains": "contient", "prefix": "commence par", "exact": "est exactement" },
+      "action": { "classify": "Classer", "skip": "Ignorer" },
+      "prompt": {
+        "title": "Créer une règle d'import",
+        "changed_category": "Vous avez défini la catégorie sur {name}. Créer une règle pour les imports similaires ?",
+        "changed_payee": "Vous avez défini le bénéficiaire sur {name}. Créer une règle pour les imports similaires ?",
+        "changed_tag": "Vous avez défini le tag sur {name}. Créer une règle pour les imports similaires ?",
+        "changed_labels": "Vous avez ajouté les tags {names}. Créer une règle pour les imports similaires ?",
+        "existing_rule": "Cette transaction a été classée par la règle « {rule} ».",
+        "match_count": "Correspond à {count} transactions de cet import",
+        "not_now": "Pas maintenant",
+        "create_rule": "Créer la règle",
+        "update_rule": "Mettre à jour la règle",
+        "apply_question": "Appliquer cette règle aux {count} transactions correspondantes de cet import ?",
+        "skipped_edited": "{count} ignorées (vous les avez modifiées)",
+        "include_edited": "Mettre aussi à jour les {count} transactions que vous avez modifiées",
+        "skip_apply": "Ignorer",
+        "apply": "Appliquer",
+        "applied_toast": "{count} transactions mises à jour",
+        "source_question": "Appliquer aussi à tous les imports de {source} ? {count} transactions correspondent.",
+        "apply_source": "Appliquer à tous les imports",
+        "done": "Terminé"
+      },
+      "editor": {
+        "field": "Champ de correspondance",
+        "type": "Type de correspondance",
+        "title_create": "Nouvelle règle d'import",
+        "title_edit": "Modifier la règle d'import",
+        "action": "Action",
+        "value": "Valeur à faire correspondre",
+        "case_sensitive": "Sensible à la casse",
+        "category": "Catégorie",
+        "payee": "Bénéficiaire",
+        "tag": "Tag budgétaire",
+        "labels": "Tags de rapport",
+        "match_count": "Correspond à {count} transactions importées"
+      },
+      "page": {
+        "menu_item": "Règles d'import",
+        "title": "Règles d'import",
+        "intro": "Les règles classent ou ignorent automatiquement les transactions importées. Elles s'exécutent de haut en bas ; faites-les glisser pour changer l'ordre.",
+        "add": "Ajouter une règle",
+        "empty": "Pas encore de règle. Corrigez une transaction importée et Econumo proposera d'en créer une.",
+        "reorder": "Réorganiser",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "delete_title": "Supprimer cette règle ?",
+        "delete_confirm": "Supprimer la règle",
+        "skip_hint": "Les transactions correspondantes ne sont pas importées"
+      },
+      "suggest": {
+        "button": "Suggérer des règles",
+        "running": "Réflexion…",
+        "heading": "Règles suggérées",
+        "accept": "Accepter",
+        "discard": "Rejeter"
+      }
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Choisissez votre avatar",
@@ -603,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "Profil",
-          "header": "Profil",
+          "header": "Paramètres personnels",
           "groups": {
             "personal_details": "Informations personnelles",
             "preferences": "Préférences",
@@ -862,7 +1147,20 @@
         "accounts": "Comptes",
         "accounts_included": "{count} sur {total} inclus",
         "accounts_hidden": "Dans des dossiers masqués",
-        "accounts_locked_hint": "Les comptes ayant des transactions dans des mois passés ne peuvent pas être retirés"
+        "accounts_locked_hint": "Les comptes ayant des transactions dans des mois passés ne peuvent pas être retirés",
+        "savings": {
+          "label": "Comptes d'épargne",
+          "description": "L'argent versé sur ces comptes compte comme épargné, pas comme dépensé.",
+          "empty": "Incluez un compte ci-dessus pour le marquer comme compte d'épargne.",
+          "none": "Aucun",
+          "toggle": "{name} est un compte d'épargne",
+          "note": "Les comptes d'épargne sont affichés par nom, avec leurs montants épargnés et leurs soldes, à toutes les personnes ayant accès à ce budget.",
+          "confirm": {
+            "title": "Supprimer l'épargne prévue ?",
+            "question": "Les montants prévus et les commentaires des comptes d'épargne désactivés ou retirés seront supprimés de ce budget. Les montants épargnés et les transactions ne sont pas affectés.",
+            "action": "Supprimer les plans"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Nouveau budget"
@@ -905,7 +1203,6 @@
         "description": "Vous devez accepter l’invitation avant d’accéder à ce budget."
       },
       "expense_widget": {
-        "header": "Suivi des dépenses",
         "conversion_rate": "Taux moyen pour {period} : 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
@@ -980,6 +1277,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "Plan"
+        },
         "limit": {
           "label": "Budget",
           "validation": {
@@ -1020,6 +1320,7 @@
         "structure": {
           "no_folder": "Dossier par défaut",
           "in_archive": "Archivés",
+          "carry_over_hint": "Restant des mois précédents",
           "tab": {
             "budgeted": "Budget",
             "spent": "Dépensé",
@@ -1064,6 +1365,7 @@
         "section": {
           "income": "Revenus",
           "expenses": "Dépenses",
+          "savings": "Épargne",
           "archived": "Archivés"
         },
         "nav": {
@@ -1087,7 +1389,9 @@
           "transfers_tooltip": "Entrées {in} · Sorties {out}",
           "show_transactions": "Afficher les transactions",
           "net": "Net",
-          "balance": "Solde"
+          "balance": "Solde",
+          "savings": "Épargne",
+          "savings_balance": "Épargne totale"
         },
         "density": {
           "hide_empty": "Masquer les lignes vides",
@@ -1102,7 +1406,49 @@
           "no_access_envelope": "Vous ne pouvez pas modifier cette enveloppe — votre rôle dans ce budget est en lecture seule.",
           "no_access_category": "Vous ne pouvez pas modifier cette catégorie — elle appartient à un autre utilisateur.",
           "no_access_tag": "Vous ne pouvez pas modifier ce tag — il appartient à un autre utilisateur."
+        },
+        "comments": {
+          "title": "Commentaires",
+          "disclosure": "Commentaires ({count})",
+          "comment_label": "Commentaire",
+          "marker_aria": "{count} commentaire | {count} commentaires",
+          "composer_placeholder": "Ajouter une note pour ce mois",
+          "post": "Publier",
+          "edit": "Modifier",
+          "delete": "Supprimer",
+          "cancel": "Annuler",
+          "delete_confirm": "Supprimer ce commentaire ?",
+          "edited": "(modifié)",
+          "counter": "{count}/500",
+          "read_only": "Les commentaires ici peuvent être lus, mais pas modifiés.",
+          "empty": "Aucun commentaire pour le moment.",
+          "truncated": "Affichage des 2000 commentaires les plus récents.",
+          "add": "Ajouter un commentaire",
+          "more": "+{count} de plus"
         }
+      },
+      "savings": {
+        "title": "Épargne",
+        "planned": "Prévu",
+        "saved": "Épargné",
+        "balance_hint": "Solde en fin de mois. Pour le mois en cours et les suivants, il inclut l'épargne prévue encore à venir."
+      },
+      "phone": {
+        "row_aria": "{name}, budget {budget}, dépensé {spent}",
+        "child_aria": "{name}, dépensé {spent}",
+        "income_row_aria": "{name}, prévu {planned}, reçu {received}",
+        "savings_row_aria": "{name}, prévu {planned}, épargné {saved}",
+        "available": "{amount} disponible",
+        "actual": "Réel",
+        "balance": "Solde en fin de mois"
+      },
+      "sheet": {
+        "received": "Reçu",
+        "covered": "Dépassé de {over} — couvert par {carry} restant des mois précédents",
+        "transactions": "Transactions",
+        "set_plan": "Définir le plan",
+        "balance": "Solde",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Budgets et plans",
@@ -1151,6 +1497,12 @@
         "confirm": "Fusionner",
         "warning": "Toutes les transactions de « {name} » seront déplacées, et « {name} » sera supprimé.",
         "envelope_info": "Si les deux se trouvent dans des enveloppes différentes, mettez d’abord à jour votre budget pour ne pas perdre vos montants planifiés, car les limites sont additionnées lors de la fusion."
+      },
+      "archive": {
+        "action": "Archiver"
+      },
+      "unarchive": {
+        "action": "Désarchiver"
       }
     },
     "categories": {
@@ -1436,17 +1788,25 @@
           "required_field": "Champ obligatoire"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Demandes de partage reçues",
-      "empty": "Aucune demande en attente",
-      "invited_you": "{name} vous invite",
-      "account": "Compte",
-      "budget": "Budget",
-      "choose_folder": "Choisissez un dossier pour ce compte",
-      "general_folder_hint": "General (sera créé)",
-      "decline_question": "Refuser l’accès à « {name} » ?"
     }
+  },
+  "search": {
+    "title": "Recherche",
+    "placeholder": "Rechercher des transactions, comptes, catégories…",
+    "groups": {
+      "accounts": "Comptes",
+      "categories": "Catégories",
+      "payees": "Bénéficiaires",
+      "tags": "Tags",
+      "labels": "Tags de rapport",
+      "transactions": "Transactions"
+    },
+    "show_all": "Tout afficher ({count})",
+    "hidden_folder": "Dossier masqué",
+    "back": "Retour",
+    "nothing_found": "Aucun résultat",
+    "open": "Recherche",
+    "open_tooltip": "Recherche ({shortcut})"
   },
   "subscription": {
     "banner": {
@@ -1513,10 +1873,15 @@
       "transaction_filter_required": "La validation a échoué.",
       "envelope_side_mixed": "Une enveloppe ne peut pas contenir à la fois des catégories de revenus et de dépenses.",
       "folder_side_mixed": "Un dossier ne peut pas contenir à la fois des revenus et des dépenses.",
+      "savings_folder_not_allowed": "L'épargne ne peut pas être placée dans un dossier.",
       "account_not_removable": "Ce compte a des transactions dans des mois passés et ne peut plus être retiré du budget",
+      "savings_account_not_member": "Les comptes d'épargne doivent être vos propres comptes dans ce budget",
+      "savings_removal_unconfirmed": "Cela supprime les montants prévus et les commentaires des comptes d'épargne que vous avez désactivés ou retirés de ce budget ; confirmez pour continuer",
       "accounts_required": "Sélectionnez au moins un compte",
       "archived": "Ce budget est archivé",
-      "end_before_start": "Le mois de fin est antérieur au début du budget"
+      "end_before_start": "Le mois de fin est antérieur au début du budget",
+      "comment_not_found": "Commentaire introuvable",
+      "comment_forbidden": "Vous ne pouvez pas modifier ce commentaire"
     },
     "category": {
       "name_length": "Le nom de la catégorie doit contenir de {min} à {max} caractères.",
@@ -1543,6 +1908,22 @@
       "in_use": "La devise est utilisée et ne peut pas être supprimée.",
       "base_immutable": "La devise de base ne peut pas être modifiée.",
       "cannot_be_hidden": "Cette devise ne peut pas être masquée."
+    },
+    "import": {
+      "source_not_found": "Apple Wallet n'est pas connecté. Connectez-le d'abord dans Paramètres → Apple Wallet.",
+      "provider_unsupported": "Ce fournisseur d'import n'est pas pris en charge.",
+      "account_link_exists": "Cette carte est déjà liée.",
+      "currency_mismatch": "La devise de la carte ne correspond pas à celle du compte.",
+      "link_not_queued": "Cet événement n'est pas en attente de vérification.",
+      "link_not_skipped": "Cet événement n'est pas ignoré.",
+      "event_not_failed": "Cet événement n'a pas échoué.",
+      "setup_token_rejected": "SimpleFIN a rejeté ce jeton de configuration. Il a peut-être déjà été utilisé — générez-en un nouveau dans votre passerelle SimpleFIN.",
+      "provider_unavailable": "Impossible de joindre la passerelle bancaire. Réessayez dans quelques minutes.",
+      "sync_range_invalid": "La plage de dates n'est pas valide : le début ne doit pas être postérieur à la fin, et la plage ne doit pas dépasser 400 jours.",
+      "access_url_invalid": "L'identifiant bancaire enregistré n'est pas une URL d'accès valide. Reconnectez SimpleFIN avec un nouveau jeton de configuration.",
+      "rule_skip_not_applicable": "Une règle d'exclusion ne peut pas être appliquée à des transactions existantes",
+      "ai_disabled": "Les suggestions IA ne sont pas activées sur ce serveur",
+      "ai_unavailable": "Le service d'IA n'est pas disponible. Réessayez plus tard."
     },
     "label": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",

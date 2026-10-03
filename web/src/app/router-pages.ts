@@ -24,4 +24,11 @@ export const RouterPage = {
   SETTINGS_CONNECTIONS: '/settings/connections',
   SETTINGS_BUDGETS: '/settings/budgets',
   SETTINGS_RECURRING: '/settings/recurring',
+  SETTINGS_DATA: '/settings/data',
+  SETTINGS_APPLE_WALLET: '/settings/apple-wallet',
+  SETTINGS_SIMPLEFIN: '/settings/simplefin',
+  SETTINGS_IMPORT_RULES: '/settings/import-rules',
+  INBOX: '/inbox',
+  IMPORT_RUNS: '/imports/runs',
+  IMPORT_RUN: '/imports/runs/:id',
 } as const

@@ -1,0 +1,317 @@
+import { useEffect, useRef, useState } from 'react'
+import { Pencil, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { UserAvatar } from '@/components/UserAvatar'
+import type { BudgetCommentDto } from '@/api/dto/budget'
+import type { Id } from '@/api/types'
+import { v7 as uuidv7 } from 'uuid'
+import { pluralPick } from '@/lib/plural'
+import { commentAnchorOf } from './cellDom'
+import { useCreateComment, useDeleteComment, useUpdateComment } from './queries'
+
+export interface CommentThreadProps {
+  budgetId: Id
+  elementId: Id
+  /** first of the month, Y-m-d */
+  period: string
+  comments: BudgetCommentDto[]
+  currentUserId: Id | undefined
+  /** owner/admin may delete anyone's comment */
+  canModerate: boolean
+  /** archived budget or a month outside the budget's range: read the thread, write nothing */
+  readOnly: boolean
+  /** the fetch behind `comments` hit the 2000-item server cap and dropped the oldest */
+  truncated: boolean
+  /** 'sheet' pins the composer to the bottom of the scrolling sheet body so the
+   *  on-screen keyboard never pushes the thread out of view */
+  layout?: 'popover' | 'sheet'
+}
+
+const MAX_COMMENT_RUNES = 500
+
+function runeLength(value: string): number {
+  return [...value].length
+}
+
+// Comment timestamps are the server's frozen "Y-m-d H:i:s" UTC contract, not a
+// user-entered local date — parsing as local time (lib/datetime's parseDateTime)
+// would skew the displayed time by the viewer's offset.
+function parseServerDateTime(s: string): Date {
+  const [datePart, timePart = '00:00:00'] = s.split(' ')
+  const [y, m, d] = datePart.split('-').map(Number)
+  const [hh, mm, ss] = timePart.split(':').map(Number)
+  return new Date(Date.UTC(y, m - 1, d, hh, mm, ss))
+}
+
+// "Sep 29, 6:42 PM": no seconds, and the year only when it is not the current one
+export function formatCommentTime(createdAt: string, lang: string, now: Date = new Date()): string {
+  const date = parseServerDateTime(createdAt)
+  return date.toLocaleString(lang, {
+    year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+// createdAt is the server's fixed-width "Y-m-d H:i:s" wire format: plain
+// ordinal comparison, not locale-aware collation, is what sorts it correctly.
+export function sortByCreatedAt(comments: BudgetCommentDto[]): BudgetCommentDto[] {
+  return [...comments].sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0))
+}
+
+// The corner triangle on a commented amount cell. The triangle is drawn on an inner
+// span so the button keeps a 24px hit area without taking layout space or changing
+// column width; the cell must be `relative`. `outset` is for cells whose number is
+// flush with the cell's right edge (the monthly table and the savings block): the
+// mark then sits in the gap after the number instead of on top of its last digit.
+//
+// With no comments it is the add-comment corner: a faint triangle shown only while a
+// mouse hovers the enclosing `group/cell`. It is hidden with `visibility`, not
+// opacity, so it cannot be tapped or tabbed to while unseen; Tailwind's hover
+// variants apply only under `(hover: hover)`, so touch screens never show it.
+export function CommentMarker({
+  count,
+  onOpen,
+  placement = 'inset',
+}: {
+  count: number
+  onOpen: (anchor: HTMLElement) => void
+  placement?: 'inset' | 'outset'
+}) {
+  const { t, i18n } = useTranslation()
+  const add = count === 0
+  const label = add ? t('budgets.page.plan.comments.add') : pluralPick(t('budgets.page.plan.comments.marker_aria'), count, i18n.language)
+  return (
+    <button
+      type="button"
+      data-testid={add ? 'comment-marker-add' : 'comment-marker'}
+      aria-label={label}
+      title={add ? label : undefined}
+      className={`absolute z-10 flex size-6 items-start justify-end ${placement === 'outset' ? '-right-3 -top-1' : 'right-0 top-0'}${add ? ' group/add invisible group-hover/cell:visible' : ''}`}
+      onClick={(e) => {
+        e.stopPropagation()
+        onOpen(commentAnchorOf(e.currentTarget))
+      }}
+    >
+      <span
+        className={`h-0 w-0 border-l-[10px] border-t-[10px] border-l-transparent ${add ? 'border-t-muted-foreground/40 group-hover/add:border-t-muted-foreground' : 'border-t-primary'}`}
+      />
+    </button>
+  )
+}
+
+export function CommentThread({ budgetId, elementId, period, comments, currentUserId, canModerate, readOnly, truncated, layout = 'popover' }: CommentThreadProps) {
+  const { t, i18n } = useTranslation()
+  const createComment = useCreateComment(budgetId)
+  const updateComment = useUpdateComment(budgetId)
+  const deleteComment = useDeleteComment(budgetId)
+
+  const [draft, setDraft] = useState('')
+  const [editingId, setEditingId] = useState<Id | null>(null)
+  const [editDraft, setEditDraft] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Id | null>(null)
+  // One id per draft text: a retry after a failure the client could not tell
+  // from a lost response resends the same id, so the server's idempotency
+  // guard answers it instead of storing a second copy.
+  const pendingPost = useRef<{ text: string; id: Id } | null>(null)
+  // isPending lands a render later; two clicks in one task would both pass it
+  const posting = useRef(false)
+
+  // A budget can turn archived, or a fetched range can shrink, while this
+  // popover/dialog stays mounted with an edit box or a delete confirm already
+  // open from before the transition — drop both so a stale write affordance
+  // never survives becoming read-only.
+  useEffect(() => {
+    if (readOnly) {
+      setEditingId(null)
+      setDeleteTarget(null)
+    }
+  }, [readOnly])
+
+  const sorted = sortByCreatedAt(comments)
+
+  function post() {
+    const value = draft.trim()
+    if (posting.current || !value || runeLength(value) > MAX_COMMENT_RUNES) {
+      return
+    }
+    if (pendingPost.current?.text !== value) {
+      pendingPost.current = { text: value, id: uuidv7() }
+    }
+    posting.current = true
+    createComment.mutate(
+      { id: pendingPost.current.id, elementId, period, comment: value },
+      {
+        onSuccess: () => {
+          pendingPost.current = null
+          // the composer stays editable in flight: keep a note typed meanwhile
+          setDraft((current) => (current.trim() === value ? '' : current))
+        },
+        onSettled: () => {
+          posting.current = false
+        },
+      },
+    )
+  }
+
+  function startEdit(c: BudgetCommentDto) {
+    setEditingId(c.id)
+    setEditDraft(c.comment)
+  }
+
+  function saveEdit(id: Id) {
+    const value = editDraft.trim()
+    if (!value || runeLength(value) > MAX_COMMENT_RUNES) {
+      return
+    }
+    updateComment.mutate({ id, comment: value }, { onSuccess: () => setEditingId(null) })
+  }
+
+  const draftRunes = runeLength(draft)
+  const editRunes = runeLength(editDraft)
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <p className="text-sm font-medium">{t('budgets.page.plan.comments.title')}</p>
+      {truncated ? <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.truncated')}</p> : null}
+      <ul
+        className={`flex flex-col gap-3 ${layout === 'popover' ? 'max-h-64 overflow-y-auto' : ''}`}
+        aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), sorted.length, i18n.language)}
+      >
+        {sorted.length === 0 ? (
+          <li className="text-sm text-muted-foreground">{t('budgets.page.plan.comments.empty')}</li>
+        ) : (
+          sorted.map((c) => {
+            const isAuthor = currentUserId !== undefined && c.author.id === currentUserId
+            const isEditing = !readOnly && editingId === c.id
+            return (
+              <li key={c.id} className="group/comment flex items-start gap-2">
+                <UserAvatar avatar={c.author.avatar} size="xs" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <div className="flex flex-wrap items-baseline gap-1.5">
+                    <span className="truncate text-sm font-medium">{c.author.name}</span>
+                    <span className="text-xs text-muted-foreground">{formatCommentTime(c.createdAt, i18n.language)}</span>
+                    {c.updatedAt !== c.createdAt ? (
+                      <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.edited')}</span>
+                    ) : null}
+                    {!readOnly && !isEditing && (isAuthor || canModerate) ? (
+                      // revealed on hover or keyboard focus where there is a mouse; always shown on touch
+                      // screens, which have no hover to reveal them with
+                      <span className="ml-auto flex gap-0.5 self-center transition-opacity [@media(hover:hover)]:opacity-0 group-hover/comment:opacity-100 group-has-[:focus-visible]/comment:opacity-100">
+                        {isAuthor ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={t('budgets.page.plan.comments.edit')}
+                            title={t('budgets.page.plan.comments.edit')}
+                            onClick={() => startEdit(c)}
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={t('budgets.page.plan.comments.delete')}
+                          title={t('budgets.page.plan.comments.delete')}
+                          onClick={() => setDeleteTarget(c.id)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </span>
+                    ) : null}
+                  </div>
+                  {isEditing ? (
+                    <div className="flex flex-col gap-1.5">
+                      <CardField label={t('budgets.page.plan.comments.comment_label')} htmlFor={`ct-edit-${c.id}`}>
+                        <Textarea
+                          id={`ct-edit-${c.id}`}
+                          className={`${cardFieldControlClass} resize-none`}
+                          value={editDraft}
+                          onChange={(e) => setEditDraft(e.target.value)}
+                          autoFocus
+                        />
+                      </CardField>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.counter', { count: editRunes })}</span>
+                        <div className="flex gap-2">
+                          <Button type="button" variant="secondary" size="sm" onClick={() => setEditingId(null)}>
+                            {t('budgets.page.plan.comments.cancel')}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!editDraft.trim() || editRunes > MAX_COMMENT_RUNES}
+                            onClick={() => saveEdit(c.id)}
+                          >
+                            {t('common.button.save.label')}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap text-sm">{c.comment}</p>
+                  )}
+                </div>
+              </li>
+            )
+          })
+        )}
+      </ul>
+      {readOnly ? (
+        <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.read_only')}</p>
+      ) : (
+        <div className={`flex flex-col gap-1.5 ${layout === 'sheet' ? 'sticky bottom-0 bg-background pt-2' : ''}`} data-testid="comment-composer">
+          <CardField label={t('budgets.page.plan.comments.comment_label')} htmlFor="ct-composer">
+            <Textarea
+              id="ct-composer"
+              className={`${cardFieldControlClass} resize-none`}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={t('budgets.page.plan.comments.composer_placeholder')}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault()
+                  post()
+                }
+              }}
+            />
+          </CardField>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.counter', { count: draftRunes })}</span>
+            <Button
+              type="button"
+              size="sm"
+              disabled={createComment.isPending || !draft.trim() || draftRunes > MAX_COMMENT_RUNES}
+              onClick={post}
+            >
+              {t('budgets.page.plan.comments.post')}
+            </Button>
+          </div>
+        </div>
+      )}
+      <ConfirmDialog
+        open={!readOnly && deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteComment.mutate({ id: deleteTarget }, { onSettled: () => setDeleteTarget(null) })
+          }
+        }}
+        question={t('budgets.page.plan.comments.delete_confirm')}
+        confirmLabel={t('budgets.page.plan.comments.delete')}
+        cancelLabel={t('budgets.page.plan.comments.cancel')}
+        destructive
+      />
+    </div>
+  )
+}

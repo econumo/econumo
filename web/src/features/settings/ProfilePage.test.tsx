@@ -60,6 +60,12 @@ beforeEach(() => {
   resetNavTracking()
 })
 
+it('titles the page "Personal settings"', async () => {
+  renderPage()
+  expect(await screen.findByText('Personal settings')).toBeInTheDocument()
+  expect(screen.queryByText('Profile')).not.toBeInTheDocument()
+})
+
 it('mobile back returns to the settings hub when the user came from it', async () => {
   mockViewport(true)
   const user = userEvent.setup()

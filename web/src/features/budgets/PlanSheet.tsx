@@ -23,8 +23,17 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
-import type { BudgetDto, BudgetFolderDto, BudgetMetaDto, BudgetPlanDto, PlanCellDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
-import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type {
+  BudgetCommentDto,
+  BudgetDto,
+  BudgetFolderDto,
+  BudgetMetaDto,
+  BudgetPlanDto,
+  PlanCellDto,
+  PlanChildDto,
+  PlanElementDto,
+} from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -33,14 +42,20 @@ import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { useUpdateCategory } from '@/features/classifications/queries'
+import { useAccounts } from '@/features/accounts/queries'
+import { useUiStore } from '@/app/uiStore'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import {
+  canConfigureBudget,
   canDeleteEnvelope,
   canEditBudget,
   canUpdateLimits,
+  commentCellKey,
+  planFetchWindow,
+  useBudgetComments,
   useBudgetPlan,
   useChangeElementCurrency,
   useCreateBudgetFolder,
@@ -55,6 +70,13 @@ import {
 } from './queries'
 import { arrangementItem, moveElementInArrangement, placeElements } from './elementMove'
 import type { ElementContainer } from './elementMove'
+import { CommentsPanel } from './CommentsPanel'
+import { CommentMarker } from './CommentThread'
+import { CellShell } from './CellShell'
+import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
+import { ElementSheet } from './ElementSheet'
+import { planCellFigures } from './phoneMonth'
+import { elementEditAccess, isEnvelopeType } from './elementEdit'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { LimitEditor } from './LimitEditor'
 import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
@@ -71,15 +93,21 @@ import {
   bucketPlanRows,
   clampFirstMonth,
   currentMonth,
+  everydayBalanceRow,
   fillTargetCol,
   folderSides,
   isOverspent,
   isUnderspent,
   makePlanExchange,
   monthDate,
+  planHasSavingsData,
+  projectSavingsClosings,
   planInitialFirstMonth,
+  planMonthExchange,
   planTotals,
   planVisibleCount,
+  savingsAsPlanElement,
+  savingsBalanceRow,
   visibleSectionRows,
 } from './planMath'
 import type { FolderSide, MonthExchange, PlanFolderSection, PlanMonthTotals, PlanRow, PlanRows } from './planMath'
@@ -184,6 +212,21 @@ function isEditableCell(el: PlanElementDto, month: string, monthIndex: number, m
   return el.id !== UNCATEGORIZED_ID && el.isArchived === 0 && monthIndex >= 0 && canUpdateLimits(meta, userId, month)
 }
 
+// A comment thread's read/write gate is independent of the role-based `isEditableCell`
+// above: a guest may still post, but nobody may write once the budget is archived or
+// the month falls outside its start/end range — the thread stays readable either way.
+// Exported: the monthly view (BudgetPage) shares this exact rule rather than
+// reimplementing it, so both views agree on when a thread is read-only.
+export function commentsReadOnly(meta: BudgetMetaDto, month: string): boolean {
+  if (meta.isArchived === 1) {
+    return true
+  }
+  if (month < `${meta.startedAt.slice(0, 7)}-01`) {
+    return true
+  }
+  return !!meta.endedAt && month > `${meta.endedAt.slice(0, 7)}-01`
+}
+
 interface GridCtx {
   visibleMonths: string[]
   monthIndex: (m: string) => number
@@ -195,7 +238,18 @@ interface GridCtx {
   isCompact: boolean
   monthLabel: (m: string) => string
   commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
-  openDialog: (target: PlanLimitTarget) => void
+  /** touch viewports: a cell tap opens the item sheet */
+  openSheet: (target: PlanLimitTarget) => void
+  commentsByCell: Map<string, BudgetCommentDto[]>
+  /** the fetch backing `commentsByCell` hit the 2000-item server cap and dropped the oldest */
+  commentsTruncated: boolean
+  /** `fromGrid` marks a keyboard-originated open (Shift+Enter / Shift+F2) so the
+   *  grid reclaims focus when the thread closes; `anchor` is the cell to pin the
+   *  popover to: undefined = look it up from the grid; null = no anchor, open as a
+   *  sheet/dialog */
+  openComments: (target: PlanLimitTarget, opts?: { fromGrid?: boolean; anchor?: HTMLElement | null }) => void
+  /** a thread is open: hover previews stay shut */
+  commentsOpen: boolean
   canEdit: boolean
   selection: PlanSelection | null
   select: (rowKey: string, col: number, e?: { target: EventTarget | null }) => void
@@ -220,8 +274,6 @@ interface GridCtx {
 // (internal/budget/builder_structure_build.go), so the plan sheet is the only surface
 // where an income envelope is reachable — Edit/Delete must live here or an existing
 // one could never be renamed, archived, re-scoped, or removed through any UI.
-const isEnvelopeType = (type: BudgetElementType): boolean =>
-  type === BudgetElementType.ENVELOPE || type === BudgetElementType.INCOME_ENVELOPE
 
 function RowMenu({ el, ctx }: { el: PlanElementDto; ctx: GridCtx }) {
   const { t } = useTranslation()
@@ -236,9 +288,13 @@ function RowMenu({ el, ctx }: { el: PlanElementDto; ctx: GridCtx }) {
         <DropdownMenuItem onSelect={() => ctx.onChangeCurrency(el)}>
           {t('budgets.page.budget.structure.element.action.change_currency')}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => ctx.onMoveToFolder(el)}>
-          {t('budgets.page.plan.menu.move_to_folder')}
-        </DropdownMenuItem>
+        {/* a savings row lives in its own section and never in a folder (the
+            server refuses one with budget.savings_folder_not_allowed) */}
+        {el.type !== BudgetElementType.SAVINGS ? (
+          <DropdownMenuItem onSelect={() => ctx.onMoveToFolder(el)}>
+            {t('budgets.page.plan.menu.move_to_folder')}
+          </DropdownMenuItem>
+        ) : null}
         {isEnvelopeType(el.type) ? (
           <>
             <DropdownMenuItem onSelect={() => ctx.onEditEnvelope(el)}>{t('common.button.edit.label')}</DropdownMenuItem>
@@ -512,9 +568,12 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
           // it would drop the pointerup that commits the fill.
           const showFillHandle =
             (selected || hoverCol === i || fillSource) && editable && !!cell && !ctx.isCompact && ctx.visibleMonths.length > 1
-          return (
+          const cellComments = ctx.commentsByCell.get(commentCellKey(el.id, m)) ?? []
+          const commentCount = cellComments.length
+          const target = { el, month: m, monthIndex: idx }
+          const cellNode = (
             <div
-              key={m}
+              {...{ [COMMENT_ANCHOR_ATTR]: '' }}
               role="gridcell"
               id={cellDomId(rk, i)}
               aria-selected={selected}
@@ -522,8 +581,14 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               data-month={m}
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
-              className={`relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
-              onClick={(e) => ctx.select(rk, i, e)}
+              className={`group/cell relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
+              onClick={(e) => {
+                ctx.select(rk, i, e)
+                // touch: the whole cell opens the item sheet; the marker stops its own click
+                if (ctx.isCompact && !ctx.editMode && !isUncategorized && idx >= 0) {
+                  ctx.openSheet(target)
+                }
+              }}
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
@@ -534,7 +599,9 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                 {actualText}
               </span>
               <span data-testid="cell-planned" className="text-sm">
-                {editable && !ctx.isCompact ? (
+                {ctx.isCompact ? (
+                  editable ? moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false }) : plannedText
+                ) : editable ? (
                   <LimitEditor
                     id={`${el.id}-${m}`}
                     name={displayName}
@@ -542,19 +609,35 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                     currency={currency}
                     onCommit={(amount) => ctx.commit(el.id, m, idx, amount)}
                   />
-                ) : editable ? (
+                ) : !isUncategorized ? (
+                  // a non-editable cell (guest role, archived element, month outside the budget) still opens its thread, so a guest can start one
                   <button
                     type="button"
                     className="w-full text-right underline-offset-2 hover:underline"
-                    aria-label={`limit ${displayName}`}
-                    onClick={() => ctx.openDialog({ el, month: m, monthIndex: idx })}
+                    aria-label={`comments ${displayName}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      ctx.openComments(target, { anchor: commentAnchorOf(e.currentTarget) })
+                    }}
                   >
-                    {moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false })}
+                    {plannedText}
                   </button>
                 ) : (
                   plannedText
                 )}
               </span>
+              {el.type === BudgetElementType.SAVINGS && cell?.closingBalance !== undefined ? (
+                <span
+                  data-testid="cell-closing"
+                  className="text-[10px] tabular-nums text-muted-foreground"
+                  title={t('budgets.page.savings.balance_hint')}
+                >
+                  {moneyFormat(cell.closingBalance, currency, { showCurrency: false, useNativePrecision: false })}
+                </span>
+              ) : null}
+              {(commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
+                <CommentMarker count={commentCount} onOpen={(anchor) => ctx.openComments(target, { anchor })} />
+              ) : null}
               {showFillHandle ? (
                 <span
                   data-testid="fill-handle"
@@ -569,6 +652,17 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                 />
               ) : null}
             </div>
+          )
+          return (
+            <CellShell
+              key={m}
+              comments={isUncategorized ? [] : cellComments}
+              previewDisabled={ctx.commentsOpen || ctx.editMode}
+              shortcutDisabled={ctx.editMode}
+              onOpenComments={isUncategorized ? undefined : (anchor) => ctx.openComments(target, { anchor })}
+            >
+              {cellNode}
+            </CellShell>
           )
         })}
         {/* trailing track: currency, then the actions menu in edit mode — the budget
@@ -801,7 +895,7 @@ function FolderRows({
 type TotalsLink = 'transfers'
 
 interface TotalsRowSpec {
-  key: 'income' | 'expenses' | 'transfers'
+  key: 'income' | 'expenses' | 'transfers' | 'savings'
   labelKey: string
   value: (t: PlanMonthTotals) => string
   link?: TotalsLink
@@ -819,12 +913,17 @@ const TOTALS_ROWS: TotalsRowSpec[] = [
   { key: 'transfers', labelKey: 'budgets.page.plan.totals.transfers', value: (t) => t.transfersNet, link: 'transfers', signed: true },
 ]
 
+// only listed while the budget has savings rows, so a budget without them keeps
+// today's totals block exactly
+const SAVINGS_TOTALS_ROW: TotalsRowSpec = { key: 'savings', labelKey: 'budgets.page.plan.totals.savings', value: (t) => t.effectiveSavings }
+
 function PlanTotals({
   visibleMonths,
   monthIndex,
   gridCols,
   totals,
   currency,
+  showSavings,
   onLinkClick,
 }: {
   visibleMonths: string[]
@@ -832,13 +931,15 @@ function PlanTotals({
   gridCols: string
   totals: PlanMonthTotals[]
   currency: CurrencyDto | undefined
+  showSavings: boolean
   onLinkClick: (link: TotalsLink, month: string) => void
 }) {
   const { t } = useTranslation()
   const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
+  const specs = showSavings ? [...TOTALS_ROWS, SAVINGS_TOTALS_ROW] : TOTALS_ROWS
   return (
     <div role="rowgroup" className="mt-2 flex flex-col border-t" data-testid="plan-totals">
-      {TOTALS_ROWS.map((spec) => (
+      {specs.map((spec) => (
         <Fragment key={spec.key}>
           <div role="row" className="grid items-center gap-1 px-2 py-1" style={{ gridTemplateColumns: gridCols }}>
             <span className="truncate text-xs font-medium text-muted-foreground">{t(spec.labelKey)}</span>
@@ -889,11 +990,57 @@ function PlanTotals({
   )
 }
 
+function PlanBalanceLine({
+  label,
+  testIdPrefix,
+  values,
+  visibleMonths,
+  monthIndex,
+  gridCols,
+  currency,
+  cur,
+}: {
+  label: string
+  testIdPrefix: string
+  values: string[]
+  visibleMonths: string[]
+  monthIndex: (m: string) => number
+  gridCols: string
+  currency: CurrencyDto | undefined
+  cur: string
+}) {
+  return (
+    <div role="row" className="grid items-center gap-1 px-2 py-1.5" style={{ gridTemplateColumns: gridCols }}>
+      <span className="truncate text-xs font-semibold">{label}</span>
+      {visibleMonths.map((m, i) => {
+        const idx = monthIndex(m)
+        const value = idx >= 0 ? values[idx] : undefined
+        const negative = value !== undefined && cmp(value, '0') < 0
+        return (
+          <div
+            key={m}
+            data-col={i}
+            data-testid={`${testIdPrefix}-${i}`}
+            className={`px-2 py-1 text-right text-sm ${m === cur ? 'font-semibold' : ''} ${negative ? 'text-destructive' : ''}`}
+          >
+            {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
+          </div>
+        )
+      })}
+      <span />
+    </div>
+  )
+}
+
+// With savings rows the combined balance splits in two: Balance becomes the
+// everyday part and Savings balance the rest, so the pair always sums to the
+// single Balance a budget without savings shows.
 function PlanBalanceRow({
   visibleMonths,
   monthIndex,
   gridCols,
   balance,
+  savingsBalance,
   currency,
   cur,
 }: {
@@ -901,35 +1048,27 @@ function PlanBalanceRow({
   monthIndex: (m: string) => number
   gridCols: string
   balance: string[]
+  savingsBalance: string[] | null
   currency: CurrencyDto | undefined
   cur: string
 }) {
   const { t } = useTranslation()
+  const shared = { visibleMonths, monthIndex, gridCols, currency, cur }
   return (
     <div
       role="rowgroup"
       className="sticky bottom-0 z-10 border-t bg-background"
       data-testid="plan-balance-row"
     >
-      <div role="row" className="grid items-center gap-1 px-2 py-1.5" style={{ gridTemplateColumns: gridCols }}>
-        <span className="truncate text-xs font-semibold">{t('budgets.page.plan.totals.balance')}</span>
-        {visibleMonths.map((m, i) => {
-          const idx = monthIndex(m)
-          const value = idx >= 0 ? balance[idx] : undefined
-          const negative = value !== undefined && cmp(value, '0') < 0
-          return (
-            <div
-              key={m}
-              data-col={i}
-              data-testid={`plan-balance-${i}`}
-              className={`px-2 py-1 text-right text-sm ${m === cur ? 'font-semibold' : ''} ${negative ? 'text-destructive' : ''}`}
-            >
-              {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
-            </div>
-          )
-        })}
-        <span />
-      </div>
+      <PlanBalanceLine label={t('budgets.page.plan.totals.balance')} testIdPrefix="plan-balance" values={balance} {...shared} />
+      {savingsBalance ? (
+        <PlanBalanceLine
+          label={t('budgets.page.plan.totals.savings_balance')}
+          testIdPrefix="plan-savings-balance"
+          values={savingsBalance}
+          {...shared}
+        />
+      ) : null}
     </div>
   )
 }
@@ -943,7 +1082,13 @@ function PlanBalanceRow({
 // children are read-only breakdown lines and are stepped over.
 type FlatRow = { kind: 'element'; rowKey: string; el: PlanElementDto } | { kind: 'folder'; rowKey: string; folderId: Id }
 
-function buildFlatRows(rows: PlanRows, hideEmpty: boolean, revealedSections: Set<string>, folded: (key: string) => boolean): FlatRow[] {
+function buildFlatRows(
+  rows: PlanRows,
+  savingsRows: PlanRow[],
+  hideEmpty: boolean,
+  revealedSections: Set<string>,
+  folded: (key: string) => boolean,
+): FlatRow[] {
   const flatRows: FlatRow[] = []
   const pushRow = (r: PlanRow) => {
     flatRows.push({ kind: 'element', rowKey: rowKey(r), el: r.element })
@@ -968,6 +1113,9 @@ function buildFlatRows(rows: PlanRows, hideEmpty: boolean, revealedSections: Set
     if (rows.expense.uncategorized) {
       pushRow(rows.expense.uncategorized)
     }
+  }
+  if (!folded('savings')) {
+    savingsRows.forEach(pushRow)
   }
   if (rows.archived.length > 0 && !folded('archived')) {
     rows.archived.forEach(pushRow)
@@ -1022,6 +1170,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
+  const [sheetCellTarget, setSheetCellTarget] = useState<PlanLimitTarget | null>(null)
+  const openSheet = useCallback((target: PlanLimitTarget) => setSheetCellTarget(target), [])
   const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
   const [draggingFolder, setDraggingFolder] = useState(false)
   const [moveFolderTarget, setMoveFolderTarget] = useState<PlanElementDto | null>(null)
@@ -1033,6 +1183,9 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const [tagTarget, setTagTarget] = useState<TagDialogItem | null>(null)
   const [renameFolderTarget, setRenameFolderTarget] = useState<BudgetFolderDto | null>(null)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<BudgetFolderDto | null>(null)
+  // the open comment thread: anchored to its cell on desktop/tablet, a sheet on a phone
+  const [commentsDialogTarget, setCommentsDialogTarget] = useState<(PlanLimitTarget & { anchor: HTMLElement | null }) | null>(null)
+  const commentsOpen = commentsDialogTarget !== null
   // A modal opened from the keyboard (Enter on the name cell) has no trigger for
   // Radix to hand focus back to, so on close focus would fall to <body> and the
   // arrow keys go dead. Remember that the grid opened it and reclaim focus once it
@@ -1090,7 +1243,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     observerRef.current = ro
   }, [])
   useEffect(() => () => observerRef.current?.disconnect(), [])
-  const editorOpen = envelopeTarget !== null || categoryTarget !== null || tagTarget !== null
+  const editorOpen = envelopeTarget !== null || categoryTarget !== null || tagTarget !== null || commentsDialogTarget !== null
   useEffect(() => {
     if (!editorOpen && editorFromGrid.current) {
       editorFromGrid.current = false
@@ -1138,9 +1291,11 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt, budget.meta.endedAt)
   const atStart = firstMonth <= startedAt.slice(0, 7) + '-01'
 
-  const { data: plan, isPending, isError, refetch, planKey } = useBudgetPlan(budget.meta.id, firstMonth, visible)
+  const { data: plan, isPending, isError, refetch, planKey, fetchFrom } = useBudgetPlan(budget.meta.id, firstMonth, visible)
   const setLimit = usePlanSetLimit(planKey)
   const fillCells = useFillPlannedCells(planKey)
+  // the plan's OWN window, so both caches cover exactly the same months
+  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(budget.meta.id, fetchFrom, planFetchWindow(firstMonth, visible).months)
 
   // The optimistic drop order is released only when genuinely fresh plan data arrives:
   // a refetch yields a new object, so keying on identity hands over in one frame with
@@ -1179,6 +1334,32 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
 
   const visibleMonths = useMemo(() => Array.from({ length: visible }, (_, i) => addMonths(firstMonth, i)), [visible, firstMonth])
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
+  // The uncategorized row's synthetic id names no real element the server would
+  // accept, so it gets no comment entry point at all — guarded here too since the
+  // keyboard (Shift+Enter / Shift+F2) reaches this without the marker's gate.
+  const openComments = useCallback(
+    (target: PlanLimitTarget, opts: { fromGrid?: boolean; anchor?: HTMLElement | null } = {}) => {
+      if (target.el.id === UNCATEGORIZED_ID) {
+        return
+      }
+      const col = visibleMonths.indexOf(target.month)
+      const anchor =
+        opts.anchor !== undefined ? opts.anchor : col >= 0 ? document.getElementById(cellDomId(`${target.el.id}:${target.el.type}`, col)) : null
+      if (opts.fromGrid) {
+        editorFromGrid.current = true
+      }
+      setCommentsDialogTarget({ ...target, anchor })
+    },
+    [visibleMonths],
+  )
+  const openTransactions = useCallback(
+    (el: PlanElementDto, month: string) =>
+      setTransactionsTarget({
+        target: { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId },
+        month,
+      }),
+    [t],
+  )
   const cur = currentMonth()
   // same wording as the budget view's period strip
   const monthLabel = useMemo(() => {
@@ -1192,6 +1373,25 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const tailPx = PLAN_CURRENCY_COL_PX + (editMode ? PLAN_ACTIONS_COL_PX : 0)
   const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr)) ${tailPx}px`
   const canEdit = canEditBudget(budget.meta, userId)
+  const { data: accounts = [] } = useAccounts()
+  const openAccountModal = useUiStore((s) => s.openAccountModal)
+  const sheetEdit = sheetCellTarget ? elementEditAccess(sheetCellTarget.el, userId, canEdit && budget.meta.isArchived === 0, accounts) : null
+  // the sheet's pencil: the element's own edit dialog replaces the sheet
+  const editFromSheet = (el: PlanElementDto) => {
+    setSheetCellTarget(null)
+    if (isEnvelopeType(el.type)) {
+      setEnvelopeTarget(el)
+    } else if (el.type === BudgetElementType.SAVINGS) {
+      const account = accounts.find((a) => a.id === el.id)
+      if (account) {
+        openAccountModal({ account })
+      }
+    } else if (el.type === BudgetElementType.TAG) {
+      setTagTarget({ id: el.id, name: el.name, kind: 'tag', icon: el.icon })
+    } else {
+      setCategoryTarget({ id: el.id, name: el.name, icon: el.icon, type: isIncomeType(el.type) ? 'income' : 'expense' })
+    }
+  }
   const canDeleteEnvelopes = canDeleteEnvelope(budget.meta, userId)
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
@@ -1267,6 +1467,24 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     return bucketPlanRows({ ...plan, structure }, false)
   }, [plan, dragArrangement])
 
+  // Live savings rows by position, then any deleted account's rows: those stay in
+  // this section as read-only history rather than joining the Archived band. A
+  // dropped reorder is held through the same dragArrangement the other bands use —
+  // a savings band arrangement names account ids only, so it never re-places an
+  // element, and vice versa.
+  const savingsRows = useMemo((): PlanRow[] => {
+    if (!plan) {
+      return []
+    }
+    const all = (plan.structure.savings ?? []).map((row) => savingsAsPlanElement(projectSavingsClosings(row, plan.months)))
+    const placed = dragArrangement ? placeElements(all, dragArrangement) : all
+    const byPosition = (a: PlanElementDto, b: PlanElementDto) => a.position - b.position
+    return [
+      ...placed.filter((el) => el.isArchived === 0).sort(byPosition),
+      ...placed.filter((el) => el.isArchived !== 0).sort(byPosition),
+    ].map((element) => ({ element, hidden: false }))
+  }, [plan, dragArrangement])
+
   // Rows that earn their place per VISIBLE window, not per fetched cells (the fetch
   // carries buffer months either side): an uncategorized row is dropped when every
   // visible column's actual is zero, and an archived row when no visible column has
@@ -1302,9 +1520,23 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const ex: MonthExchange | null = useMemo(() => (plan ? makePlanExchange(plan, currencies) : null), [plan, currencies])
   const totals = useMemo(() => (plan && ex ? planTotals(plan, ex) : []), [plan, ex])
   const balance = useMemo(() => (plan && ex ? balanceRow(plan, totals, ex) : []), [plan, ex, totals])
+  // The Savings section and its totals line are tied to ROWS: there is nothing to list
+  // or total without one. The balance split is tied to DATA instead (planHasSavingsData):
+  // a deleted savings account (still a flagged member) can leave a pre-window opening
+  // balance or flow with no row to show for it, and that money is still not everyday money.
+  const hasSavings = savingsRows.length > 0
+  const hasSavingsData = plan ? planHasSavingsData(plan) : false
+  const savingsBalance = useMemo(
+    () => (plan && ex && hasSavingsData ? savingsBalanceRow(plan, totals, ex) : null),
+    [plan, ex, totals, hasSavingsData],
+  )
+  const everydayBalance = useMemo(
+    () => (savingsBalance ? everydayBalanceRow(balance, savingsBalance) : balance),
+    [balance, savingsBalance],
+  )
   const flatRows = useMemo(
-    () => (shownRows ? buildFlatRows(shownRows, hideEmpty, revealedSections, folded) : []),
-    [shownRows, hideEmpty, revealedSections, folded],
+    () => (shownRows ? buildFlatRows(shownRows, savingsRows, hideEmpty, revealedSections, folded) : []),
+    [shownRows, savingsRows, hideEmpty, revealedSections, folded],
   )
   const folderSideMap = useMemo(() => (plan ? folderSides(plan) : new Map<Id, FolderSide>()), [plan])
 
@@ -1323,7 +1555,11 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       isCompact,
       monthLabel,
       commit,
-      openDialog: setPlanLimitTarget,
+      openSheet,
+      commentsByCell,
+      commentsTruncated,
+      openComments,
+      commentsOpen,
       canEdit,
       selection,
       select,
@@ -1356,6 +1592,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     isCompact,
     monthLabel,
     commit,
+    commentsByCell,
+    commentsTruncated,
+    openComments,
+    commentsOpen,
     canEdit,
     selection,
     select,
@@ -1403,6 +1643,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const expenseRevealed = revealedSections.has('expense')
   const expenseLoose = visibleSectionRows(shownRows.expense.loose, expenseFolded, hideEmpty, expenseRevealed)
   const expenseHiddenCount = expenseFolded ? 0 : sectionHiddenCount(shownRows.expense.loose, expenseRevealed)
+
+  const savingsFolded = folded('savings')
+  const savingsLive = savingsRows.filter(isDraggableRow)
+  const savingsDeleted = savingsRows.filter((r) => !isDraggableRow(r))
 
   // The band's element buckets as the arrangement elementMove.ts operates on:
   // one container per folder plus the loose rows. Uncategorized and archived
@@ -1463,7 +1707,25 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
 
     // a row dropped on a folder header lands in that folder, appended
     const target = overId.startsWith('pfolder:') ? `bfolder:${overId.slice('pfolder:'.length)}` : overId
-    const base = bandArrangement(side)
+    commitElementMove(bandArrangement(side), activeId, target)
+  }
+
+  // The savings band is one folder-less list: the only valid target is another
+  // live savings row, so the move always carries folderId null.
+  function handleSavingsDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) {
+      return
+    }
+    const ids = savingsLive.map((r) => r.element.id)
+    const overId = String(over.id)
+    if (!ids.includes(overId)) {
+      return
+    }
+    commitElementMove([{ folderId: null, ids }], String(active.id), overId)
+  }
+
+  function commitElementMove(base: ElementContainer[], activeId: string, target: string) {
     const moved = moveElementInArrangement(base, activeId, target)
     const item = arrangementItem(moved, activeId)
     const before = arrangementItem(base, activeId)
@@ -1494,7 +1756,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   // but the owner with NotFound, so a shared row must not offer the dialog at all.
   function openElementEditor(entry: Extract<FlatRow, { kind: 'element' }>) {
     const target = entry.el
-    if (target.id === UNCATEGORIZED_ID) {
+    // a savings row is an account, edited from the accounts screen, not here
+    if (target.id === UNCATEGORIZED_ID || target.type === BudgetElementType.SAVINGS) {
       return
     }
     // no right to edit: say why instead of silently ignoring the keystroke; a fixed
@@ -1537,11 +1800,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       return
     }
     const idx = monthIndex(month)
-    if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
+    if (isCompact) {
+      // touch: Enter opens the same item sheet a tap would — any non-uncategorized
+      // cell outside edit-structure mode, editable or not.
+      if (!editMode && entry.el.id !== UNCATEGORIZED_ID && idx >= 0) {
+        openSheet({ el: entry.el, month, monthIndex: idx })
+      }
       return
     }
-    if (isCompact) {
-      setPlanLimitTarget({ el: entry.el, month, monthIndex: idx })
+    if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
       return
     }
     const trigger = containerRef.current?.querySelector<HTMLButtonElement>(
@@ -1566,6 +1833,11 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       return null
     }
     return { entry, col: selection.col, month, idx: monthIndex(month) }
+  }
+
+  // Shift+Enter / Shift+F2: the keyboard route into the same thread the marker opens.
+  function openCommentsFromGrid(cell: NonNullable<ReturnType<typeof selectedMonthCell>>) {
+    openComments({ el: cell.entry.el, month: cell.month, monthIndex: cell.idx }, { fromGrid: true })
   }
 
   // Cmd/Ctrl+C on the focused grid: the browser fires `copy` on the grid even with no
@@ -1705,6 +1977,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       }
       return
     }
+    // Excel's "edit comment" shortcut, alongside the older Shift+Enter
+    if (e.shiftKey && e.key === 'F2') {
+      e.preventDefault()
+      const cell = selectedMonthCell()
+      if (cell) {
+        openCommentsFromGrid(cell)
+      }
+      return
+    }
     const idx = flatRows.findIndex((r) => r.rowKey === selection.rowKey)
     const entry = flatRows[idx]
     // Left/Right on a highlighted folder header fold/unfold it and never move the
@@ -1803,6 +2084,13 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         break
       case 'Enter':
         e.preventDefault()
+        if (e.shiftKey) {
+          const cell = selectedMonthCell()
+          if (cell) {
+            openCommentsFromGrid(cell)
+          }
+          return
+        }
         handleEnter(entry, selection.col)
         break
       case ' ':
@@ -2021,6 +2309,38 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           ) : null}
         </section>
 
+        {hasSavings ? (
+          // Its own drag context: a savings row reorders among savings rows only and
+          // can never reach a folder, which the server refuses for it anyway.
+          <section role="rowgroup" data-testid="plan-section-savings" className="plan-band-savings mt-6 flex flex-col px-1 py-1">
+            <SectionHeader
+              label={t('budgets.page.plan.section.savings')}
+              foldKey="savings"
+              folded={savingsFolded}
+              onToggleFold={togglePlanFold}
+              hiddenCount={0}
+              onShow={() => {}}
+            />
+            {!savingsFolded ? (
+              <>
+                <PlanBand
+                  editMode={editMode}
+                  sensors={sensors}
+                  folderIds={[]}
+                  onDragStart={handleBandDragStart}
+                  onDragEnd={handleSavingsDragEnd}
+                  onDragCancel={() => setDraggingFolder(false)}
+                >
+                  <PlanRowList rows={savingsLive} ctx={ctx} />
+                </PlanBand>
+                {savingsDeleted.map((r) => (
+                  <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
+                ))}
+              </>
+            ) : null}
+          </section>
+        ) : null}
+
         {shownRows.archived.length > 0 ? (
           <section role="rowgroup" data-testid="plan-section-archived" className="plan-band-archived flex flex-col gap-1 px-1 py-1">
             <SectionHeader
@@ -2043,6 +2363,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           gridCols={gridCols}
           totals={totals}
           currency={planCurrency}
+          showSavings={hasSavings}
           onLinkClick={openTotalsTransactions}
         />
 
@@ -2050,7 +2371,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           visibleMonths={visibleMonths}
           monthIndex={monthIndex}
           gridCols={gridCols}
-          balance={balance}
+          balance={everydayBalance}
+          savingsBalance={savingsBalance}
           currency={planCurrency}
           cur={cur}
         />
@@ -2080,6 +2402,56 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
+        plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) : false}
+      />
+
+      <ElementSheet
+        target={sheetCellTarget ? { kind: 'plan', cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null}
+        month={sheetCellTarget?.month ?? ''}
+        baseCurrencyId={budget.meta.currencyId}
+        currencies={currencies}
+        exchange={plan && sheetCellTarget ? planMonthExchange(plan, currencies, sheetCellTarget.monthIndex) : (_from, _to, amount) => amount}
+        comments={sheetCellTarget ? commentsByCell.get(commentCellKey(sheetCellTarget.el.id, sheetCellTarget.month)) ?? [] : []}
+        commentsReadOnly={sheetCellTarget ? commentsReadOnly(budget.meta, sheetCellTarget.month) : true}
+        canSetAmount={sheetCellTarget ? isEditableCell(sheetCellTarget.el, sheetCellTarget.month, sheetCellTarget.monthIndex, budget.meta, userId) : false}
+        onClose={() => setSheetCellTarget(null)}
+        onSetAmount={() => {
+          if (sheetCellTarget) {
+            setPlanLimitTarget(sheetCellTarget)
+            setSheetCellTarget(null)
+          }
+        }}
+        onOpenComments={() => {
+          if (sheetCellTarget) {
+            openComments(sheetCellTarget, { anchor: null })
+            setSheetCellTarget(null)
+          }
+        }}
+        onShowTransactions={
+          sheetCellTarget && sheetCellTarget.el.id !== UNCATEGORIZED_ID
+            ? () => {
+                openTransactions(sheetCellTarget.el, sheetCellTarget.month)
+                setSheetCellTarget(null)
+              }
+            : undefined
+        }
+        onEdit={sheetCellTarget && sheetEdit !== null ? () => editFromSheet(sheetCellTarget.el) : undefined}
+        canEdit={sheetEdit === true}
+      />
+
+      <CommentsPanel
+        open={commentsDialogTarget !== null}
+        onClose={() => setCommentsDialogTarget(null)}
+        title={commentsDialogTarget ? elementDisplayName(commentsDialogTarget.el.id, commentsDialogTarget.el.name, t) : ''}
+        anchor={commentsDialogTarget?.anchor ?? null}
+        budgetId={budget.meta.id}
+        elementId={commentsDialogTarget?.el.id ?? ''}
+        period={commentsDialogTarget?.month ?? ''}
+        comments={commentsDialogTarget ? commentsByCell.get(commentCellKey(commentsDialogTarget.el.id, commentsDialogTarget.month)) ?? [] : []}
+        currentUserId={userId}
+        canModerate={canConfigureBudget(budget.meta, userId)}
+        readOnly={commentsDialogTarget ? commentsReadOnly(budget.meta, commentsDialogTarget.month) : true}
+        truncated={commentsTruncated}
       />
 
       <MoveToFolderDialog

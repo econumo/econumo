@@ -42,6 +42,7 @@ type querier interface {
 	ListBudgetElementsByExternal(ctx context.Context, db backend.DBTX, externalID string) ([]elementRow, error)
 	GetBudgetElement(ctx context.Context, db backend.DBTX, id string) (elementRow, error)
 	GetBudgetElementByExternal(ctx context.Context, db backend.DBTX, budgetID, externalID string) (elementRow, error)
+	GetBudgetElementByExternalForWrite(ctx context.Context, db backend.DBTX, budgetID, externalID string) (elementRow, error)
 	UpsertBudgetElement(ctx context.Context, db backend.DBTX, p upElementP) error
 	RepointBudgetElement(ctx context.Context, db backend.DBTX, id, externalID string, updatedAt time.Time) error
 	DeleteBudgetElement(ctx context.Context, db backend.DBTX, id string) error
@@ -56,8 +57,20 @@ type querier interface {
 
 	ListBudgetAccounts(ctx context.Context, db backend.DBTX, budgetID string) ([]sqlitegen.ListBudgetAccountsRow, error)
 	AddBudgetAccount(ctx context.Context, db backend.DBTX, p sqlitegen.AddBudgetAccountParams) error
+	SetBudgetAccountSavings(ctx context.Context, db backend.DBTX, budgetID, accountID string, isSavings bool) error
+	LockSavingsElement(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
+	SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error)
 	RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error
+
+	ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time, limit int) ([]commentJoined, error)
+	GetBudgetComment(ctx context.Context, db backend.DBTX, id string) (commentJoined, error)
+	ListBudgetCommentsFrom(ctx context.Context, db backend.DBTX, budgetID string, from time.Time) ([]commentRow, error)
+	InsertBudgetComment(ctx context.Context, db backend.DBTX, p inCommentP) error
+	UpdateBudgetCommentText(ctx context.Context, db backend.DBTX, id, text string, updatedAt time.Time) error
+	DeleteBudgetComment(ctx context.Context, db backend.DBTX, id string) error
+	RepointBudgetComments(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string) error
+	DeleteBudgetCommentsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error
 }
 
 type sqliteQuerier struct{}
@@ -139,6 +152,9 @@ func (sqliteQuerier) GetBudgetElement(ctx context.Context, db backend.DBTX, id s
 func (sqliteQuerier) GetBudgetElementByExternal(ctx context.Context, db backend.DBTX, budgetID, externalID string) (elementRow, error) {
 	return sqlitegen.New(db).GetBudgetElementByExternal(ctx, sqlitegen.GetBudgetElementByExternalParams{BudgetID: budgetID, ExternalID: externalID})
 }
+func (sqliteQuerier) GetBudgetElementByExternalForWrite(ctx context.Context, db backend.DBTX, budgetID, externalID string) (elementRow, error) {
+	return sqlitegen.New(db).GetBudgetElementByExternalForWrite(ctx, sqlitegen.GetBudgetElementByExternalForWriteParams{BudgetID: budgetID, ExternalID: externalID})
+}
 func (sqliteQuerier) UpsertBudgetElement(ctx context.Context, db backend.DBTX, p upElementP) error {
 	return sqlitegen.New(db).UpsertBudgetElement(ctx, p)
 }
@@ -188,11 +204,67 @@ func (sqliteQuerier) ListBudgetAccounts(ctx context.Context, db backend.DBTX, bu
 func (sqliteQuerier) AddBudgetAccount(ctx context.Context, db backend.DBTX, p sqlitegen.AddBudgetAccountParams) error {
 	return sqlitegen.New(db).AddBudgetAccount(ctx, p)
 }
+func (sqliteQuerier) SetBudgetAccountSavings(ctx context.Context, db backend.DBTX, budgetID, accountID string, isSavings bool) error {
+	return sqlitegen.New(db).SetBudgetAccountSavings(ctx, sqlitegen.SetBudgetAccountSavingsParams{IsSavings: isSavings, BudgetID: budgetID, AccountID: accountID})
+}
+func (sqliteQuerier) LockSavingsElement(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
+	_, err := sqlitegen.New(db).LockSavingsElement(ctx, sqlitegen.LockSavingsElementParams{BudgetID: budgetID, ExternalID: accountID})
+	return err
+}
+func (sqliteQuerier) SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error) {
+	n, err := sqlitegen.New(db).SavingsElementHasData(ctx, sqlitegen.SavingsElementHasDataParams{BudgetID: budgetID, ExternalID: accountID})
+	return n != 0, err
+}
 func (sqliteQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
 	return sqlitegen.New(db).RemoveBudgetAccount(ctx, sqlitegen.RemoveBudgetAccountParams{BudgetID: budgetID, AccountID: accountID})
 }
 func (sqliteQuerier) RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error {
 	return sqlitegen.New(db).RemoveBudgetAccountsOwnedBy(ctx, sqlitegen.RemoveBudgetAccountsOwnedByParams{BudgetID: budgetID, UserID: userID})
+}
+
+func (sqliteQuerier) ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time, limit int) ([]commentJoined, error) {
+	// datetime(c.period) >= datetime(?) AND datetime(c.period) < datetime(?): bind
+	// both bounds as 'Y-m-d H:i:s' strings, the same belt-and-braces as the limit
+	// queries (limitPeriodArg).
+	return sqlitegen.New(db).ListBudgetCommentsForWindow(ctx, sqlitegen.ListBudgetCommentsForWindowParams{
+		BudgetID: budgetID, Datetime: limitPeriodArg(from), Datetime_2: limitPeriodArg(to), Limit: int64(limit),
+	})
+}
+func (sqliteQuerier) GetBudgetComment(ctx context.Context, db backend.DBTX, id string) (commentJoined, error) {
+	v, err := sqlitegen.New(db).GetBudgetComment(ctx, id)
+	if err != nil {
+		return commentJoined{}, err
+	}
+	return commentJoined{
+		ID: v.ID, ElementID: v.ElementID, Period: v.Period, UserID: v.UserID, Comment: v.Comment,
+		CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt, BudgetID: v.BudgetID, ExternalID: v.ExternalID,
+		AuthorName: v.AuthorName, AuthorAvatar: v.AuthorAvatar,
+	}, nil
+}
+func (sqliteQuerier) ListBudgetCommentsFrom(ctx context.Context, db backend.DBTX, budgetID string, from time.Time) ([]commentRow, error) {
+	return sqlitegen.New(db).ListBudgetCommentsFrom(ctx, sqlitegen.ListBudgetCommentsFromParams{BudgetID: budgetID, Datetime: limitPeriodArg(from)})
+}
+func (sqliteQuerier) InsertBudgetComment(ctx context.Context, db backend.DBTX, p inCommentP) error {
+	// Store `period` as 'Y-m-d H:i:s' text via raw exec, the same
+	// belt-and-braces as UpsertBudgetLimit: done via raw exec because the
+	// generated param type is time.Time.
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO budgets_elements_comments (id, element_id, period, user_id, comment, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		p.ID, p.ElementID, p.Period.Format(datetime.Layout), p.UserID, p.Comment, p.CreatedAt, p.UpdatedAt)
+	return err
+}
+func (sqliteQuerier) UpdateBudgetCommentText(ctx context.Context, db backend.DBTX, id, text string, updatedAt time.Time) error {
+	return sqlitegen.New(db).UpdateBudgetCommentText(ctx, sqlitegen.UpdateBudgetCommentTextParams{Comment: text, UpdatedAt: updatedAt, ID: id})
+}
+func (sqliteQuerier) DeleteBudgetComment(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).DeleteBudgetComment(ctx, id)
+}
+func (sqliteQuerier) RepointBudgetComments(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string) error {
+	return sqlitegen.New(db).RepointBudgetComments(ctx, sqlitegen.RepointBudgetCommentsParams{ElementID: dstElementID, ElementID_2: srcElementID})
+}
+func (sqliteQuerier) DeleteBudgetCommentsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error {
+	return sqlitegen.New(db).DeleteBudgetCommentsByBudget(ctx, budgetID)
 }
 
 // pgsqlQuerier is the whole-struct shim (field-by-field for the limit row/params).
@@ -337,6 +409,10 @@ func (pgsqlQuerier) GetBudgetElementByExternal(ctx context.Context, db backend.D
 	v, err := pgsqlgen.New(db).GetBudgetElementByExternal(ctx, pgsqlgen.GetBudgetElementByExternalParams{BudgetID: budgetID, ExternalID: externalID})
 	return elementRow(v), err
 }
+func (pgsqlQuerier) GetBudgetElementByExternalForWrite(ctx context.Context, db backend.DBTX, budgetID, externalID string) (elementRow, error) {
+	v, err := pgsqlgen.New(db).GetBudgetElementByExternalForWrite(ctx, pgsqlgen.GetBudgetElementByExternalForWriteParams{BudgetID: budgetID, ExternalID: externalID})
+	return elementRow(v), err
+}
 func (pgsqlQuerier) UpsertBudgetElement(ctx context.Context, db backend.DBTX, p upElementP) error {
 	return pgsqlgen.New(db).UpsertBudgetElement(ctx, pgsqlgen.UpsertBudgetElementParams(p))
 }
@@ -390,16 +466,83 @@ func (pgsqlQuerier) ListBudgetAccounts(ctx context.Context, db backend.DBTX, bud
 	}
 	out := make([]sqlitegen.ListBudgetAccountsRow, len(rows))
 	for i, v := range rows {
-		out[i] = sqlitegen.ListBudgetAccountsRow{AccountID: v.AccountID, CreatedAt: v.CreatedAt}
+		out[i] = sqlitegen.ListBudgetAccountsRow{AccountID: v.AccountID, IsSavings: v.IsSavings, CreatedAt: v.CreatedAt}
 	}
 	return out, nil
 }
 func (pgsqlQuerier) AddBudgetAccount(ctx context.Context, db backend.DBTX, p sqlitegen.AddBudgetAccountParams) error {
-	return pgsqlgen.New(db).AddBudgetAccount(ctx, pgsqlgen.AddBudgetAccountParams{BudgetID: p.BudgetID, AccountID: p.AccountID, CreatedAt: p.CreatedAt})
+	return pgsqlgen.New(db).AddBudgetAccount(ctx, pgsqlgen.AddBudgetAccountParams{BudgetID: p.BudgetID, AccountID: p.AccountID, IsSavings: p.IsSavings, CreatedAt: p.CreatedAt})
+}
+func (pgsqlQuerier) SetBudgetAccountSavings(ctx context.Context, db backend.DBTX, budgetID, accountID string, isSavings bool) error {
+	return pgsqlgen.New(db).SetBudgetAccountSavings(ctx, pgsqlgen.SetBudgetAccountSavingsParams{IsSavings: isSavings, BudgetID: budgetID, AccountID: accountID})
+}
+func (pgsqlQuerier) LockSavingsElement(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
+	_, err := pgsqlgen.New(db).LockSavingsElement(ctx, pgsqlgen.LockSavingsElementParams{BudgetID: budgetID, ExternalID: accountID})
+	return err
+}
+func (pgsqlQuerier) SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error) {
+	return pgsqlgen.New(db).SavingsElementHasData(ctx, pgsqlgen.SavingsElementHasDataParams{BudgetID: budgetID, ExternalID: accountID})
 }
 func (pgsqlQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
 	return pgsqlgen.New(db).RemoveBudgetAccount(ctx, pgsqlgen.RemoveBudgetAccountParams{BudgetID: budgetID, AccountID: accountID})
 }
 func (pgsqlQuerier) RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error {
 	return pgsqlgen.New(db).RemoveBudgetAccountsOwnedBy(ctx, pgsqlgen.RemoveBudgetAccountsOwnedByParams{BudgetID: budgetID, UserID: userID})
+}
+
+func (pgsqlQuerier) ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time, limit int) ([]commentJoined, error) {
+	rows, err := pgsqlgen.New(db).ListBudgetCommentsForWindow(ctx, pgsqlgen.ListBudgetCommentsForWindowParams{
+		BudgetID: budgetID, Period: from, Period_2: to, Limit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]commentJoined, len(rows))
+	for i, v := range rows {
+		out[i] = commentJoined{
+			ID: v.ID, ElementID: v.ElementID, Period: v.Period, UserID: v.UserID, Comment: v.Comment,
+			CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt, BudgetID: v.BudgetID, ExternalID: v.ExternalID,
+			AuthorName: v.AuthorName, AuthorAvatar: v.AuthorAvatar,
+		}
+	}
+	return out, nil
+}
+func (pgsqlQuerier) GetBudgetComment(ctx context.Context, db backend.DBTX, id string) (commentJoined, error) {
+	v, err := pgsqlgen.New(db).GetBudgetComment(ctx, id)
+	if err != nil {
+		return commentJoined{}, err
+	}
+	return commentJoined{
+		ID: v.ID, ElementID: v.ElementID, Period: v.Period, UserID: v.UserID, Comment: v.Comment,
+		CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt, BudgetID: v.BudgetID, ExternalID: v.ExternalID,
+		AuthorName: v.AuthorName, AuthorAvatar: v.AuthorAvatar,
+	}, nil
+}
+func (pgsqlQuerier) ListBudgetCommentsFrom(ctx context.Context, db backend.DBTX, budgetID string, from time.Time) ([]commentRow, error) {
+	rows, err := pgsqlgen.New(db).ListBudgetCommentsFrom(ctx, pgsqlgen.ListBudgetCommentsFromParams{BudgetID: budgetID, Period: from})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]commentRow, len(rows))
+	for i, v := range rows {
+		out[i] = commentRow{ID: v.ID, ElementID: v.ElementID, Period: v.Period, UserID: v.UserID, Comment: v.Comment, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt}
+	}
+	return out, nil
+}
+func (pgsqlQuerier) InsertBudgetComment(ctx context.Context, db backend.DBTX, p inCommentP) error {
+	return pgsqlgen.New(db).InsertBudgetComment(ctx, pgsqlgen.InsertBudgetCommentParams{
+		ID: p.ID, ElementID: p.ElementID, Period: p.Period, UserID: p.UserID, Comment: p.Comment, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+	})
+}
+func (pgsqlQuerier) UpdateBudgetCommentText(ctx context.Context, db backend.DBTX, id, text string, updatedAt time.Time) error {
+	return pgsqlgen.New(db).UpdateBudgetCommentText(ctx, pgsqlgen.UpdateBudgetCommentTextParams{Comment: text, UpdatedAt: updatedAt, ID: id})
+}
+func (pgsqlQuerier) DeleteBudgetComment(ctx context.Context, db backend.DBTX, id string) error {
+	return pgsqlgen.New(db).DeleteBudgetComment(ctx, id)
+}
+func (pgsqlQuerier) RepointBudgetComments(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string) error {
+	return pgsqlgen.New(db).RepointBudgetComments(ctx, pgsqlgen.RepointBudgetCommentsParams{ElementID: dstElementID, ElementID_2: srcElementID})
+}
+func (pgsqlQuerier) DeleteBudgetCommentsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error {
+	return pgsqlgen.New(db).DeleteBudgetCommentsByBudget(ctx, budgetID)
 }

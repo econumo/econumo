@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -63,9 +64,12 @@ func NewAccessTokenRepo(driver string, tx *backend.TxManager) *AccessTokenRepo {
 func (r *AccessTokenRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 func (r *AccessTokenRepo) InsertIfGeneration(ctx context.Context, t *model.AccessToken, generation int64) (int64, error) {
+	if _, err := model.ParseTokenScope(string(t.Scope)); err != nil {
+		return 0, fmt.Errorf("access token %s: %w", t.ID, err)
+	}
 	return r.q.InsertAccessTokenIfGeneration(ctx, r.db(ctx), insertTokenIfGenParams{
 		ID: t.ID.String(), UserID: t.UserID.String(), Kind: t.Kind, TokenHash: t.TokenHash,
-		Name: t.Name, UserAgent: t.UserAgent,
+		Scope: string(t.Scope), Name: t.Name, UserAgent: t.UserAgent,
 		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
 		Provider: t.Provider, IDToken: t.IDToken,
 		ID_2: t.UserID.String(), CredentialsGeneration: generation,
@@ -73,11 +77,14 @@ func (r *AccessTokenRepo) InsertIfGeneration(ctx context.Context, t *model.Acces
 }
 
 func (r *AccessTokenRepo) InsertIfPresenterLive(ctx context.Context, t *model.AccessToken, presentingTokenID vo.Id) (int64, error) {
+	if _, err := model.ParseTokenScope(string(t.Scope)); err != nil {
+		return 0, fmt.Errorf("access token %s: %w", t.ID, err)
+	}
 	// ID_2 is the presenting token's id (the guard condition); UserID_2 is the
 	// owner the new row is inserted for — t.UserID, not the presenter's user.
 	return r.q.InsertAccessTokenIfPresenterLive(ctx, r.db(ctx), insertTokenIfPresenterLiveParams{
 		ID: t.ID.String(), UserID: t.UserID.String(), Kind: t.Kind, TokenHash: t.TokenHash,
-		Name: t.Name, UserAgent: t.UserAgent,
+		Scope: string(t.Scope), Name: t.Name, UserAgent: t.UserAgent,
 		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
 		Provider: t.Provider, IDToken: t.IDToken,
 		ID_2: presentingTokenID.String(), UserID_2: t.UserID.String(),
@@ -110,7 +117,7 @@ func (r *AccessTokenRepo) GetByHash(ctx context.Context, hash string) (*model.Ac
 func tokenRowFromHashRow(row accessTokenWithAccessRow) accessTokenRow {
 	return accessTokenRow{
 		ID: row.ID, UserID: row.UserID, Kind: row.Kind, TokenHash: row.TokenHash,
-		Name: row.Name, UserAgent: row.UserAgent,
+		Scope: row.Scope, Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
 	}
@@ -188,7 +195,7 @@ func accessTokenFromRow(row accessTokenRow) (*model.AccessToken, error) {
 	}
 	return &model.AccessToken{
 		ID: id, UserID: uid, Kind: row.Kind, TokenHash: row.TokenHash,
-		Name: row.Name, UserAgent: row.UserAgent,
+		Scope: model.TokenScope(row.Scope), Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
 		Provider: row.Provider, IDToken: row.IDToken,

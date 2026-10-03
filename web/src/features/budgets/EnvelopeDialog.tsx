@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
-import { fuzzyMatch } from '@/lib/fuzzy'
+import { rankByName } from '@/lib/search'
 import { EntityIcon } from '@/components/EntityIcon'
 import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
@@ -73,7 +73,7 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, side, onClose
   // a single dialog never mixes sides: the category picker offers only the
   // side it was opened for (non-archived, matching type)
   const options = categories.filter((c) => c.isArchived === 0 && c.type === side)
-  const shownOptions = options.filter((c) => !categorySearch || fuzzyMatch(c.name, categorySearch))
+  const shownOptions = rankByName(options, (c) => c.name, categorySearch)
 
   const submit = () => {
     if (!isNotEmpty(name)) {

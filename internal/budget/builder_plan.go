@@ -62,13 +62,29 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 		return model.BudgetPlanResult{}, err
 	}
 
+	savingsOpening, err := s.buildSavingsOpeningBalances(ctx, b.budget.CurrencyID, f, from)
+	if err != nil {
+		return model.BudgetPlanResult{}, err
+	}
+	savingsFlows, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, from, windowEnd, s.read.AccountsNetByMonth)
+	if err != nil {
+		return model.BudgetPlanResult{}, err
+	}
+	savingsIncomeExpense, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, from, windowEnd, s.read.AccountsIncomeExpenseByMonth)
+	if err != nil {
+		return model.BudgetPlanResult{}, err
+	}
+
 	return model.BudgetPlanResult{
-		Meta:            meta,
-		Months:          monthStrs,
-		OpeningBalances: opening,
-		CurrencyRates:   rates,
-		Transfers:       transfers,
-		Structure:       structure,
+		Meta:                   meta,
+		Months:                 monthStrs,
+		OpeningBalances:        opening,
+		SavingsOpeningBalances: savingsOpening,
+		CurrencyRates:          rates,
+		Transfers:              transfers,
+		SavingsFlows:           savingsFlows,
+		SavingsIncomeExpense:   savingsIncomeExpense,
+		Structure:              structure,
 	}, nil
 }
 
@@ -179,6 +195,19 @@ func planChildKey(monthIdx int, index, subIndex string) string {
 	return fmt.Sprintf("plan%d_%s_%s", monthIdx, index, subIndex)
 }
 
+// convertedGetter closes over a BulkConvert result, returning zero for a key
+// that never accumulated an item (no actual that period) instead of the zero
+// vo.DecimalNumber's own not-found behavior.
+func convertedGetter(converted map[string]vo.DecimalNumber) func(string) vo.DecimalNumber {
+	zero := vo.NewDecimal("0")
+	return func(key string) vo.DecimalNumber {
+		if v, ok := converted[key]; ok {
+			return v
+		}
+		return zero
+	}
+}
+
 // buildPlanStructure emits all folders plus every plan row.
 func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f filters, monthsList []time.Time) (model.PlanStructureResult, error) {
 	nMonths := len(monthsList)
@@ -204,7 +233,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 		expenseCategoryIDs = append(expenseCategoryIDs, id)
 	}
-	spendRows, err := s.read.SpendingByMonth(ctx, expenseCategoryIDs, f.includedAccountIDs, monthsList[0], windowEnd)
+	spendRows, err := s.read.SpendingByMonth(ctx, expenseCategoryIDs, f.everydayAccountIDs, monthsList[0], windowEnd)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
@@ -212,7 +241,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
-	incomeRows, err := s.read.IncomeByMonth(ctx, f.includedAccountIDs, monthsList[0], windowEnd)
+	incomeRows, err := s.read.IncomeByMonth(ctx, f.everydayAccountIDs, monthsList[0], windowEnd)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
@@ -473,6 +502,11 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 	}
 
+	savingsRows, savingsHasActual, err := s.addPlanSavings(ctx, f, options, monthsList, monthIdx, toConvert)
+	if err != nil {
+		return model.PlanStructureResult{}, err
+	}
+
 	// BulkConvert's top-level (periodStart, periodEnd) doubles as month 0's rate
 	// range (its "currentKey" is monthKey(periodStart), so any item dated in
 	// that same month reuses this range instead of getting its own entry — see
@@ -488,7 +522,8 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	}
 
 	result := s.emitPlanElements(elements, converted, nMonths)
-	return model.PlanStructureResult{Folders: folders, Elements: result}, nil
+	savings := emitPlanSavings(savingsRows, plannedFor, savingsHasActual, convertedGetter(converted), nMonths)
+	return model.PlanStructureResult{Folders: folders, Elements: result, Savings: savings}, nil
 }
 
 // emitPlanElements prunes, renders and positions the accumulated rows.
@@ -499,13 +534,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 // Uncategorized rows, which render only with actuals. Archived anything needs
 // window activity.
 func (s *Service) emitPlanElements(elements []*planElement, converted map[string]vo.DecimalNumber, nMonths int) []model.PlanElementResult {
-	zero := vo.NewDecimal("0")
-	get := func(key string) vo.DecimalNumber {
-		if v, ok := converted[key]; ok {
-			return v
-		}
-		return zero
-	}
+	get := convertedGetter(converted)
 	hasPlanned := func(el *planElement) bool {
 		for _, p := range el.planned {
 			if p != "" {

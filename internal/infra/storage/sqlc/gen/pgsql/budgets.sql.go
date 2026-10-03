@@ -11,18 +11,24 @@ import (
 )
 
 const addBudgetAccount = `-- name: AddBudgetAccount :exec
-INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES ($1, $2, $3)
+INSERT INTO budgets_accounts (budget_id, account_id, is_savings, created_at) VALUES ($1, $2, $3, $4)
 ON CONFLICT (budget_id, account_id) DO NOTHING
 `
 
 type AddBudgetAccountParams struct {
 	BudgetID  string
 	AccountID string
+	IsSavings bool
 	CreatedAt time.Time
 }
 
 func (q *Queries) AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error {
-	_, err := q.db.ExecContext(ctx, addBudgetAccount, arg.BudgetID, arg.AccountID, arg.CreatedAt)
+	_, err := q.db.ExecContext(ctx, addBudgetAccount,
+		arg.BudgetID,
+		arg.AccountID,
+		arg.IsSavings,
+		arg.CreatedAt,
+	)
 	return err
 }
 
@@ -61,6 +67,25 @@ type DeleteBudgetAccessParams struct {
 
 func (q *Queries) DeleteBudgetAccess(ctx context.Context, arg DeleteBudgetAccessParams) error {
 	_, err := q.db.ExecContext(ctx, deleteBudgetAccess, arg.BudgetID, arg.UserID)
+	return err
+}
+
+const deleteBudgetComment = `-- name: DeleteBudgetComment :exec
+DELETE FROM budgets_elements_comments WHERE id = $1
+`
+
+func (q *Queries) DeleteBudgetComment(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteBudgetComment, id)
+	return err
+}
+
+const deleteBudgetCommentsByBudget = `-- name: DeleteBudgetCommentsByBudget :exec
+DELETE FROM budgets_elements_comments
+WHERE element_id IN (SELECT e.id FROM budgets_elements e WHERE e.budget_id = $1)
+`
+
+func (q *Queries) DeleteBudgetCommentsByBudget(ctx context.Context, budgetID string) error {
+	_, err := q.db.ExecContext(ctx, deleteBudgetCommentsByBudget, budgetID)
 	return err
 }
 
@@ -159,6 +184,48 @@ func (q *Queries) GetBudgetByID(ctx context.Context, id string) (Budget, error) 
 	return i, err
 }
 
+const getBudgetComment = `-- name: GetBudgetComment :one
+SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updated_at,
+       e.budget_id, e.external_id, u.name AS author_name, u.avatar AS author_avatar
+FROM budgets_elements_comments c
+JOIN budgets_elements e ON e.id = c.element_id
+JOIN users u ON u.id = c.user_id
+WHERE c.id = $1
+`
+
+type GetBudgetCommentRow struct {
+	ID           string
+	ElementID    string
+	Period       time.Time
+	UserID       string
+	Comment      string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	BudgetID     string
+	ExternalID   string
+	AuthorName   string
+	AuthorAvatar string
+}
+
+func (q *Queries) GetBudgetComment(ctx context.Context, id string) (GetBudgetCommentRow, error) {
+	row := q.db.QueryRowContext(ctx, getBudgetComment, id)
+	var i GetBudgetCommentRow
+	err := row.Scan(
+		&i.ID,
+		&i.ElementID,
+		&i.Period,
+		&i.UserID,
+		&i.Comment,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.BudgetID,
+		&i.ExternalID,
+		&i.AuthorName,
+		&i.AuthorAvatar,
+	)
+	return i, err
+}
+
 const getBudgetElement = `-- name: GetBudgetElement :one
 SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
 FROM budgets_elements WHERE id = $1
@@ -193,6 +260,39 @@ type GetBudgetElementByExternalParams struct {
 
 func (q *Queries) GetBudgetElementByExternal(ctx context.Context, arg GetBudgetElementByExternalParams) (BudgetsElement, error) {
 	row := q.db.QueryRowContext(ctx, getBudgetElementByExternal, arg.BudgetID, arg.ExternalID)
+	var i BudgetsElement
+	err := row.Scan(
+		&i.ID,
+		&i.BudgetID,
+		&i.CurrencyID,
+		&i.FolderID,
+		&i.ExternalID,
+		&i.Type,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SortKey,
+	)
+	return i, err
+}
+
+const getBudgetElementByExternalForWrite = `-- name: GetBudgetElementByExternalForWrite :one
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
+FROM budgets_elements WHERE budget_id = $1 AND external_id = $2
+FOR KEY SHARE
+`
+
+type GetBudgetElementByExternalForWriteParams struct {
+	BudgetID   string
+	ExternalID string
+}
+
+// The row a limit or comment is about to be written under, share-locked so a
+// savings removal (LockSavingsElement) cannot delete it until this write
+// commits. KEY SHARE, not SHARE: change-element-currency upserts the same row
+// later in its transaction, and a SHARE lock held by two such requests would
+// deadlock on that upgrade.
+func (q *Queries) GetBudgetElementByExternalForWrite(ctx context.Context, arg GetBudgetElementByExternalForWriteParams) (BudgetsElement, error) {
+	row := q.db.QueryRowContext(ctx, getBudgetElementByExternalForWrite, arg.BudgetID, arg.ExternalID)
 	var i BudgetsElement
 	err := row.Scan(
 		&i.ID,
@@ -280,6 +380,34 @@ func (q *Queries) GetBudgetLimit(ctx context.Context, arg GetBudgetLimitParams) 
 	return i, err
 }
 
+const insertBudgetComment = `-- name: InsertBudgetComment :exec
+INSERT INTO budgets_elements_comments (id, element_id, period, user_id, comment, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+`
+
+type InsertBudgetCommentParams struct {
+	ID        string
+	ElementID string
+	Period    time.Time
+	UserID    string
+	Comment   string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) InsertBudgetComment(ctx context.Context, arg InsertBudgetCommentParams) error {
+	_, err := q.db.ExecContext(ctx, insertBudgetComment,
+		arg.ID,
+		arg.ElementID,
+		arg.Period,
+		arg.UserID,
+		arg.Comment,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
 const listBudgetAccess = `-- name: ListBudgetAccess :many
 SELECT budget_id, user_id, role, is_accepted, created_at, updated_at
 FROM budgets_access WHERE budget_id = $1
@@ -316,11 +444,12 @@ func (q *Queries) ListBudgetAccess(ctx context.Context, budgetID string) ([]Budg
 }
 
 const listBudgetAccounts = `-- name: ListBudgetAccounts :many
-SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = $1 ORDER BY created_at, account_id
+SELECT account_id, is_savings, created_at FROM budgets_accounts WHERE budget_id = $1 ORDER BY created_at, account_id
 `
 
 type ListBudgetAccountsRow struct {
 	AccountID string
+	IsSavings bool
 	CreatedAt time.Time
 }
 
@@ -333,7 +462,128 @@ func (q *Queries) ListBudgetAccounts(ctx context.Context, budgetID string) ([]Li
 	items := []ListBudgetAccountsRow{}
 	for rows.Next() {
 		var i ListBudgetAccountsRow
-		if err := rows.Scan(&i.AccountID, &i.CreatedAt); err != nil {
+		if err := rows.Scan(&i.AccountID, &i.IsSavings, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBudgetCommentsForWindow = `-- name: ListBudgetCommentsForWindow :many
+SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updated_at,
+       e.budget_id, e.external_id, u.name AS author_name, u.avatar AS author_avatar
+FROM budgets_elements_comments c
+JOIN budgets_elements e ON e.id = c.element_id
+JOIN users u ON u.id = c.user_id
+WHERE c.id IN (
+  SELECT c2.id FROM budgets_elements_comments c2
+  JOIN budgets_elements e2 ON e2.id = c2.element_id
+  WHERE e2.budget_id = $1 AND c2.period >= $2 AND c2.period < $3
+  ORDER BY c2.created_at DESC, c2.id DESC
+  LIMIT $4
+)
+ORDER BY c.period, e.external_id, c.created_at, c.id
+`
+
+type ListBudgetCommentsForWindowParams struct {
+	BudgetID string
+	Period   time.Time
+	Period_2 time.Time
+	Limit    int32
+}
+
+type ListBudgetCommentsForWindowRow struct {
+	ID           string
+	ElementID    string
+	Period       time.Time
+	UserID       string
+	Comment      string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	BudgetID     string
+	ExternalID   string
+	AuthorName   string
+	AuthorAvatar string
+}
+
+func (q *Queries) ListBudgetCommentsForWindow(ctx context.Context, arg ListBudgetCommentsForWindowParams) ([]ListBudgetCommentsForWindowRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetCommentsForWindow,
+		arg.BudgetID,
+		arg.Period,
+		arg.Period_2,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBudgetCommentsForWindowRow{}
+	for rows.Next() {
+		var i ListBudgetCommentsForWindowRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ElementID,
+			&i.Period,
+			&i.UserID,
+			&i.Comment,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.BudgetID,
+			&i.ExternalID,
+			&i.AuthorName,
+			&i.AuthorAvatar,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBudgetCommentsFrom = `-- name: ListBudgetCommentsFrom :many
+SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updated_at
+FROM budgets_elements_comments c
+JOIN budgets_elements e ON e.id = c.element_id
+WHERE e.budget_id = $1 AND c.period >= $2
+ORDER BY c.period, c.created_at, c.id
+`
+
+type ListBudgetCommentsFromParams struct {
+	BudgetID string
+	Period   time.Time
+}
+
+func (q *Queries) ListBudgetCommentsFrom(ctx context.Context, arg ListBudgetCommentsFromParams) ([]BudgetsElementsComment, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetCommentsFrom, arg.BudgetID, arg.Period)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BudgetsElementsComment{}
+	for rows.Next() {
+		var i BudgetsElementsComment
+		if err := rows.Scan(
+			&i.ID,
+			&i.ElementID,
+			&i.Period,
+			&i.UserID,
+			&i.Comment,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -714,6 +964,44 @@ func (q *Queries) ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID 
 	return items, nil
 }
 
+const lockSavingsElement = `-- name: LockSavingsElement :many
+SELECT id FROM budgets_elements
+WHERE budget_id = $1 AND external_id = $2 AND type = 5
+FOR UPDATE
+`
+
+type LockSavingsElementParams struct {
+	BudgetID   string
+	ExternalID string
+}
+
+// Locks the savings element a removal is about to drop, before its guard
+// reads the element's data: a limit or comment writer that share-locked the
+// row first has committed by the time the guard's EXISTS runs, and one that
+// comes later waits and then finds the row gone.
+func (q *Queries) LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, lockSavingsElement, arg.BudgetID, arg.ExternalID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeBudgetAccount = `-- name: RemoveBudgetAccount :exec
 DELETE FROM budgets_accounts WHERE budget_id = $1 AND account_id = $2
 `
@@ -757,6 +1045,20 @@ func (q *Queries) RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelope
 	return err
 }
 
+const repointBudgetComments = `-- name: RepointBudgetComments :exec
+UPDATE budgets_elements_comments SET element_id = $1 WHERE element_id = $2
+`
+
+type RepointBudgetCommentsParams struct {
+	ElementID   string
+	ElementID_2 string
+}
+
+func (q *Queries) RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error {
+	_, err := q.db.ExecContext(ctx, repointBudgetComments, arg.ElementID, arg.ElementID_2)
+	return err
+}
+
 const repointBudgetElement = `-- name: RepointBudgetElement :exec
 UPDATE budgets_elements SET external_id = $1, updated_at = $2 WHERE id = $3
 `
@@ -769,6 +1071,58 @@ type RepointBudgetElementParams struct {
 
 func (q *Queries) RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error {
 	_, err := q.db.ExecContext(ctx, repointBudgetElement, arg.ExternalID, arg.UpdatedAt, arg.ID)
+	return err
+}
+
+const savingsElementHasData = `-- name: SavingsElementHasData :one
+SELECT EXISTS(
+  SELECT 1 FROM budgets_elements e
+  WHERE e.budget_id = $1 AND e.external_id = $2 AND e.type = 5
+    AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
+      OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)))
+`
+
+type SavingsElementHasDataParams struct {
+	BudgetID   string
+	ExternalID string
+}
+
+// Whether the budget's savings element for this account carries a limit or a
+// comment: dropping the element (flag off or member removed) deletes both.
+func (q *Queries) SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, savingsElementHasData, arg.BudgetID, arg.ExternalID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const setBudgetAccountSavings = `-- name: SetBudgetAccountSavings :exec
+UPDATE budgets_accounts SET is_savings = $1 WHERE budget_id = $2 AND account_id = $3
+`
+
+type SetBudgetAccountSavingsParams struct {
+	IsSavings bool
+	BudgetID  string
+	AccountID string
+}
+
+func (q *Queries) SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error {
+	_, err := q.db.ExecContext(ctx, setBudgetAccountSavings, arg.IsSavings, arg.BudgetID, arg.AccountID)
+	return err
+}
+
+const updateBudgetCommentText = `-- name: UpdateBudgetCommentText :exec
+UPDATE budgets_elements_comments SET comment = $1, updated_at = $2 WHERE id = $3
+`
+
+type UpdateBudgetCommentTextParams struct {
+	Comment   string
+	UpdatedAt time.Time
+	ID        string
+}
+
+func (q *Queries) UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error {
+	_, err := q.db.ExecContext(ctx, updateBudgetCommentText, arg.Comment, arg.UpdatedAt, arg.ID)
 	return err
 }
 

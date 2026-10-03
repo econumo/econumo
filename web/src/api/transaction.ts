@@ -6,8 +6,10 @@ interface Envelope<T> {
   data: T
 }
 
-export async function getTransactionList(): Promise<TransactionDto[]> {
-  const response = await api.get<Envelope<{ items: TransactionDto[] }>>(apiUrl('/api/v1/transaction/get-transaction-list'))
+export async function getTransactionList(accountId?: Id): Promise<TransactionDto[]> {
+  const response = await api.get<Envelope<{ items: TransactionDto[] }>>(apiUrl('/api/v1/transaction/get-transaction-list'), {
+    params: accountId ? { accountId } : undefined,
+  })
   return response.data.data.items
 }
 

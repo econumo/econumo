@@ -27,6 +27,7 @@ import type { ViewTransaction } from '@/features/transactions/useAccountTransact
 import type { DailyListEntry } from '@/features/transactions/useAccountTransactions'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
+import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
 import { canWriteToAccount } from '@/features/connections/shared'
 
 // Accounts hold thousands of transactions; mounting them all at once makes
@@ -185,18 +186,7 @@ export function AccountPage() {
   // gate the UI.
   const canChangeTransaction = canWriteToAccount(account, user?.id)
 
-  const canTouchRow = (tx: ViewTransaction): boolean => {
-    if (!canChangeTransaction) {
-      return false
-    }
-    if (tx.type === 'transfer') {
-      // a leg on an account the caller can't see stays untouchable; a row
-      // with NO recipient at all (stored before the server required one,
-      // #261) is broken rather than hidden and must stay deletable
-      return !!tx.account && (tx.accountRecipientId === null || !!tx.accountRecipient)
-    }
-    return true
-  }
+  const canTouchRow = (tx: ViewTransaction): boolean => canTouchTransaction(tx, canChangeTransaction)
 
   const editTransaction = (tx: ViewTransaction) => {
     setPreview(null)

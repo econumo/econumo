@@ -37,7 +37,7 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 	ua := "TestAgent/1.0"
 	tok := &model.AccessToken{
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindSession,
-		TokenHash: "hash-1", UserAgent: &ua,
+		TokenHash: "hash-1", Scope: model.TokenScopeFull, UserAgent: &ua,
 		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 	}
 	if n, err := repo.InsertIfGeneration(ctx, tok, 0); err != nil || n != 1 {
@@ -87,7 +87,8 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 	name := "ci token"
 	pat := &model.AccessToken{
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindPersonal,
-		TokenHash: "hash-2", Name: &name, CreatedAt: now.Add(time.Second), LastUsedAt: now.Add(time.Second),
+		TokenHash: "hash-2", Scope: model.TokenScopeIngest, Name: &name,
+		CreatedAt: now.Add(time.Second), LastUsedAt: now.Add(time.Second),
 	}
 	if n, err := repo.InsertIfGeneration(ctx, pat, 0); err != nil || n != 1 {
 		t.Fatalf("Insert pat: %d %v", n, err)
@@ -99,6 +100,12 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 	pats, err := repo.ListByUser(ctx, vo.MustParseId(userA), model.TokenKindPersonal)
 	if err != nil || len(pats) != 1 || pats[0].Name == nil || *pats[0].Name != name || pats[0].ExpiresAt != nil {
 		t.Fatalf("ListByUser(personal) mismatch: %+v, %v", pats, err)
+	}
+	if pats[0].Scope != model.TokenScopeIngest {
+		t.Errorf("pat scope = %q, want ingest", pats[0].Scope)
+	}
+	if got.Scope != model.TokenScopeFull {
+		t.Errorf("session scope = %q, want full", got.Scope)
 	}
 
 	// GetByID round-trips; a random id is NotFound.
@@ -115,7 +122,7 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 	// Duplicate hash violates the unique index.
 	dup := &model.AccessToken{
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindSession,
-		TokenHash: "hash-2", CreatedAt: now, LastUsedAt: now,
+		TokenHash: "hash-2", Scope: model.TokenScopeFull, CreatedAt: now, LastUsedAt: now,
 	}
 	if _, err := repo.InsertIfGeneration(ctx, dup, 0); err == nil {
 		t.Error("duplicate token_hash insert must fail")
@@ -146,7 +153,8 @@ func TestAccessTokenRepo_DeleteDead(t *testing.T) {
 	insert := func(hash string, exp, revoked *time.Time) *model.AccessToken {
 		tok := &model.AccessToken{
 			ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindSession,
-			TokenHash: hash, CreatedAt: now, LastUsedAt: now, ExpiresAt: exp, RevokedAt: revoked,
+			TokenHash: hash, Scope: model.TokenScopeFull,
+			CreatedAt: now, LastUsedAt: now, ExpiresAt: exp, RevokedAt: revoked,
 		}
 		if n, err := repo.InsertIfGeneration(ctx, tok, 0); err != nil || n != 1 {
 			t.Fatalf("Insert %s: %d %v", hash, n, err)
@@ -186,6 +194,20 @@ func TestAccessTokenRepo_DeleteDead(t *testing.T) {
 	}
 }
 
+func TestAccessTokenRepo_InsertRejectsEmptyScope(t *testing.T) {
+	db := dbtest.New(t)
+	seedTokenUser(t, db, userA)
+	repo := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	tok := &model.AccessToken{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindSession,
+		TokenHash: "hash-noscope", CreatedAt: now, LastUsedAt: now,
+	}
+	if _, err := repo.InsertIfGeneration(context.Background(), tok, 0); err == nil {
+		t.Fatal("Insert without scope must fail")
+	}
+}
+
 func TestAccessTokenRepo_ProviderAndIDTokenRoundTrip(t *testing.T) {
 	db := dbtest.New(t)
 	userID := fixture.New(t, db).User(fixture.User{})
@@ -195,7 +217,7 @@ func TestAccessTokenRepo_ProviderAndIDTokenRoundTrip(t *testing.T) {
 	exp := now.Add(time.Hour)
 	tok := &model.AccessToken{
 		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession,
-		TokenHash: "h-provider", CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
+		TokenHash: "h-provider", Scope: model.TokenScopeFull, CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 		Provider: &provider, IDToken: &idTok,
 	}
 	if n, err := repo.InsertIfGeneration(context.Background(), tok, 0); err != nil || n != 1 {
@@ -226,7 +248,7 @@ func TestGetByHash_DoesNotCarryTheIDToken(t *testing.T) {
 	idToken, provider := "eyJ.stub.token", "oidc"
 	exp := time.Now().Add(time.Hour)
 	tok := &model.AccessToken{
-		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession, TokenHash: "h-hot-path",
+		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession, TokenHash: "h-hot-path", Scope: model.TokenScopeFull,
 		CreatedAt: time.Now(), LastUsedAt: time.Now(), ExpiresAt: &exp, Provider: &provider, IDToken: &idToken,
 	}
 	if n, err := r.InsertIfGeneration(ctx, tok, 0); err != nil || n != 1 {
@@ -261,7 +283,7 @@ func TestTouch_DoesNotResurrectARevokedToken(t *testing.T) {
 	now := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
 	exp := now.Add(time.Hour)
 	tok := &model.AccessToken{
-		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession, TokenHash: "h-touch",
+		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession, TokenHash: "h-touch", Scope: model.TokenScopeFull,
 		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 	}
 	if n, err := r.InsertIfGeneration(ctx, tok, 0); err != nil || n != 1 {
@@ -308,7 +330,7 @@ func TestRevokeAll_SweepsOneKindAndSkipsTheException(t *testing.T) {
 
 	insert := func(hash, kind string) *model.AccessToken {
 		tok := &model.AccessToken{
-			ID: vo.NewId(), UserID: uid, Kind: kind, TokenHash: hash,
+			ID: vo.NewId(), UserID: uid, Kind: kind, TokenHash: hash, Scope: model.TokenScopeFull,
 			CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 		}
 		if n, err := r.InsertIfGeneration(ctx, tok, 0); err != nil || n != 1 {

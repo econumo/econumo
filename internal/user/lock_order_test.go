@@ -289,7 +289,7 @@ func TestEveryExistingUserWriteTakesTheRowLockFirst(t *testing.T) {
 		exp := time.Now().Add(24 * time.Hour)
 		presenting := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_lock-order", &exp)
 		log.reset()
-		if _, err := svc.CreatePersonalToken(context.Background(), uid, presenting, model.CreatePersonalTokenRequest{Name: "ci"}); err != nil {
+		if _, err := svc.CreatePersonalToken(context.Background(), uid, presenting, model.CreatePersonalTokenRequest{Name: "ci", Scope: string(model.TokenScopeFull)}); err != nil {
 			t.Fatalf("CreatePersonalToken: %v", err)
 		}
 		assertLockedFirst(t, log.calls, "InsertIfPresenterLive")

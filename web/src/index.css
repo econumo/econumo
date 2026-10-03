@@ -306,6 +306,7 @@
 .plan-band-income > [data-row-id]:last-child,
 .plan-band-expense > [data-row-id]:last-child,
 .plan-band-archived > [data-row-id]:last-child,
+.plan-band-savings > [data-row-id]:last-child,
 [data-testid^='plan-folder-'] [data-row-id]:last-child {
   border-bottom: 0;
 }

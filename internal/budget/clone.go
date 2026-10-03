@@ -85,7 +85,7 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 			}
 		}
 		for _, m := range src.accounts {
-			if serr := s.budgets.AddAccount(txCtx, newID, m.AccountID, now); serr != nil {
+			if serr := s.budgets.AddAccount(txCtx, newID, m.AccountID, m.IsSavings, now); serr != nil {
 				return serr
 			}
 		}
@@ -154,6 +154,23 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 				nl := model.NewBudgetElementLimit(s.limits.NextIdentity(), mapped, l.Amount, l.Period, now)
 				if serr := s.limits.SaveLimit(txCtx, nl); serr != nil {
 					return serr
+				}
+			}
+			comments, cerr := s.comments.ListCommentsFrom(txCtx, sourceID, startDate)
+			if cerr != nil {
+				return cerr
+			}
+			for _, c := range comments {
+				mapped, ok := elementMap[c.ElementID]
+				if !ok {
+					continue
+				}
+				// Author and timestamps are the record; only the ids are new.
+				copied := *c
+				copied.ID = s.comments.NextIdentity()
+				copied.ElementID = mapped
+				if ierr := s.comments.InsertComment(txCtx, &copied); ierr != nil {
+					return ierr
 				}
 			}
 		}

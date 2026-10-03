@@ -39,7 +39,7 @@ func (q *Queries) DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAcce
 }
 
 const getAccessTokenByHash = `-- name: GetAccessTokenByHash :one
-SELECT t.id, t.user_id, t.kind, t.token_hash, t.name, t.user_agent,
+SELECT t.id, t.user_id, t.kind, t.token_hash, t.scope, t.name, t.user_agent,
        t.created_at, t.last_used_at, t.expires_at, t.revoked_at,
        u.access_level, u.access_until
 FROM access_tokens t
@@ -52,6 +52,7 @@ type GetAccessTokenByHashRow struct {
 	UserID      string
 	Kind        string
 	TokenHash   string
+	Scope       string
 	Name        *string
 	UserAgent   *string
 	CreatedAt   time.Time
@@ -76,6 +77,7 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (G
 		&i.UserID,
 		&i.Kind,
 		&i.TokenHash,
+		&i.Scope,
 		&i.Name,
 		&i.UserAgent,
 		&i.CreatedAt,
@@ -89,7 +91,7 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (G
 }
 
 const getAccessTokenByID = `-- name: GetAccessTokenByID :one
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
 FROM access_tokens
 WHERE id = ?
 `
@@ -102,6 +104,7 @@ func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (AccessToke
 		&i.UserID,
 		&i.Kind,
 		&i.TokenHash,
+		&i.Scope,
 		&i.Name,
 		&i.UserAgent,
 		&i.CreatedAt,
@@ -116,8 +119,8 @@ func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (AccessToke
 
 const insertAccessTokenIfGeneration = `-- name: InsertAccessTokenIfGeneration :execrows
 
-INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
-SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?)
 `
 
@@ -126,6 +129,7 @@ type InsertAccessTokenIfGenerationParams struct {
 	UserID                string
 	Kind                  string
 	TokenHash             string
+	Scope                 string
 	Name                  *string
 	UserAgent             *string
 	CreatedAt             time.Time
@@ -151,6 +155,7 @@ func (q *Queries) InsertAccessTokenIfGeneration(ctx context.Context, arg InsertA
 		arg.UserID,
 		arg.Kind,
 		arg.TokenHash,
+		arg.Scope,
 		arg.Name,
 		arg.UserAgent,
 		arg.CreatedAt,
@@ -169,8 +174,8 @@ func (q *Queries) InsertAccessTokenIfGeneration(ctx context.Context, arg InsertA
 }
 
 const insertAccessTokenIfPresenterLive = `-- name: InsertAccessTokenIfPresenterLive :execrows
-INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
-SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 WHERE EXISTS (SELECT 1 FROM access_tokens p WHERE p.id = ? AND p.user_id = ? AND p.revoked_at IS NULL)
 `
 
@@ -179,6 +184,7 @@ type InsertAccessTokenIfPresenterLiveParams struct {
 	UserID     string
 	Kind       string
 	TokenHash  string
+	Scope      string
 	Name       *string
 	UserAgent  *string
 	CreatedAt  time.Time
@@ -202,6 +208,7 @@ func (q *Queries) InsertAccessTokenIfPresenterLive(ctx context.Context, arg Inse
 		arg.UserID,
 		arg.Kind,
 		arg.TokenHash,
+		arg.Scope,
 		arg.Name,
 		arg.UserAgent,
 		arg.CreatedAt,
@@ -220,7 +227,7 @@ func (q *Queries) InsertAccessTokenIfPresenterLive(ctx context.Context, arg Inse
 }
 
 const listAccessTokensByUser = `-- name: ListAccessTokensByUser :many
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
 FROM access_tokens
 WHERE user_id = ? AND kind = ?
 ORDER BY created_at, id
@@ -245,6 +252,7 @@ func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessToke
 			&i.UserID,
 			&i.Kind,
 			&i.TokenHash,
+			&i.Scope,
 			&i.Name,
 			&i.UserAgent,
 			&i.CreatedAt,

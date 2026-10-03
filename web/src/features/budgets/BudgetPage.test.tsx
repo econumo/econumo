@@ -66,10 +66,8 @@ it('renders the full budget page: strip, chips, table, totals', async () => {
   expect(screen.getAllByRole('tab')).toHaveLength(49)
   expect(await screen.findByTestId('budget-folder-Essentials')).toBeInTheDocument()
   expect(screen.getByTestId('budget-totals')).toBeInTheDocument()
-  // currency chips from balances
-  expect(screen.getByRole('button', { name: 'currency USD' })).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'currency EUR' })).toBeInTheDocument()
-  // widget hidden until a chip is selected
+  // the header carries no currency chips and there is no spending widget
+  expect(screen.queryByRole('button', { name: /^currency / })).not.toBeInTheDocument()
   expect(screen.queryByTestId('expense-widget')).not.toBeInTheDocument()
 })
 
@@ -97,19 +95,6 @@ it('the cold-load spinner grows a logout escape after three seconds when the bac
   } finally {
     vi.useRealTimers()
   }
-})
-
-it('toggling a currency chip mounts the expense widget', async () => {
-  server.use(
-    ...coreHandlers({ user: userWithBudget }),
-    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-  )
-  const user = userEvent.setup()
-  renderPage()
-  await user.click(await screen.findByRole('button', { name: 'currency USD' }))
-  expect(await screen.findByTestId('expense-widget')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'currency USD' }))
-  expect(screen.queryByTestId('expense-widget')).not.toBeInTheDocument()
 })
 
 it('configure menu enters edit mode; folder create posts with a v7 id', async () => {
@@ -344,32 +329,6 @@ it('offers hide-empty in the settings menu only on /plan', async () => {
   expect(useBudgetPeriodStore.getState().planHideEmpty).toBe(true)
 })
 
-it('shows the currency pills on both routes; on /plan a pill toggles the period widget above the sheet', async () => {
-  server.use(
-    ...coreHandlers({ user: userWithBudget }),
-    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-    planHandler(),
-  )
-  const user = userEvent.setup()
-  const { router } = renderPage()
-  await screen.findByRole('tablist', { name: 'period' })
-  expect(screen.getAllByRole('button', { name: /^currency /i }).length).toBeGreaterThan(0)
-
-  await act(() => router.navigate('/plan'))
-  await screen.findByTestId('plan-sheet')
-  expect(screen.getAllByRole('button', { name: /^currency /i }).length).toBeGreaterThan(0)
-  expect(screen.queryByTestId('expense-widget')).not.toBeInTheDocument()
-
-  await user.click(screen.getByRole('button', { name: 'currency USD' }))
-  const widget = await screen.findByTestId('expense-widget')
-  // the page's selected period (the store's 2026-07-01), not a plan column
-  expect(widget).toHaveTextContent('Jul 2026')
-  expect(screen.getByTestId('plan-sheet')).toBeInTheDocument()
-
-  await user.click(screen.getByRole('button', { name: 'currency USD' }))
-  expect(screen.queryByTestId('expense-widget')).not.toBeInTheDocument()
-})
-
 it('the header tabs navigate between /budget and /plan and reflect the route', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
@@ -392,9 +351,9 @@ it('the header tabs navigate between /budget and /plan and reflect the route', a
   expect(router.state.location.pathname).toBe('/budget')
 })
 
-it('compact viewport: the mode switch sits in the settings menu and navigates between the routes', async () => {
+it('tablet viewport: the mode switch sits in the settings menu and navigates between the routes', async () => {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   server.use(
     ...coreHandlers({ user: userWithBudget }),
@@ -411,8 +370,6 @@ it('compact viewport: the mode switch sits in the settings menu and navigates be
   await user.click(screen.getByRole('menuitemradio', { name: 'Plan' }))
   await screen.findByTestId('plan-sheet')
   expect(router.state.location.pathname).toBe('/plan')
-  // the currency pills stay in the header on /plan too
-  expect(screen.getAllByRole('button', { name: /^currency /i }).length).toBeGreaterThan(0)
 
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   expect(await screen.findByRole('menuitemradio', { name: 'Plan' })).toHaveAttribute('aria-checked', 'true')
@@ -497,3 +454,25 @@ it('a live budget shows no archived banner', async () => {
   expect(await screen.findByRole('button', { name: 'Configure' })).toBeInTheDocument()
   expect(screen.queryByText('This budget is archived and read-only')).not.toBeInTheDocument()
 })
+
+it('the Budget view shows no savings: no block, and Total counts the expenses only', async () => {
+  const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
+  budget.structure.savings = [
+    { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
+      budgeted: '100', spent: '120', available: '-20', closingBalance: '2500' },
+  ]
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+  )
+  renderPage()
+  const totals = await screen.findByTestId('budget-totals')
+  expect(screen.queryByTestId('budget-savings-block')).toBeNull()
+  expect(screen.queryByText('Rainy day')).toBeNull()
+  // the table alone: 300.00 budgeted, 45.50 spent, 554.50 available (BudgetTable.test)
+  await waitFor(() => expect(totals).toHaveTextContent('554.50'))
+  expect(totals).toHaveTextContent('45.50')
+  expect(totals).not.toHaveTextContent('400.00')
+  expect(totals).not.toHaveTextContent('165.50')
+})
+

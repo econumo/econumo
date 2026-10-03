@@ -89,6 +89,14 @@ type MonthlyLimitRow struct {
 	Amount     string
 }
 
+// SavingsMonthRow is one account's amount in one month ("YYYY-MM-01"), in the
+// account's own currency.
+type SavingsMonthRow struct {
+	AccountID string
+	Month     string
+	Amount    string
+}
+
 // BudgetTransactionRow is one transaction in the budget transaction list, with
 // the account's currency joined and the optional category/payee/tag ids.
 type BudgetTransactionRow struct {
@@ -101,10 +109,14 @@ type BudgetTransactionRow struct {
 	CategoryID  *string
 	PayeeID     *string
 	TagID       *string
-	// Direction is set only on rows from BudgetTransactionsTransfers: "out"
-	// when the included account is the source, "in" when it is the recipient.
-	// Amount/CurrencyID are then the included side's figures.
+	// Direction is set on rows from BudgetTransactionsTransfers ("out" when
+	// the included account is the source, "in" when it is the recipient;
+	// Amount/CurrencyID are then the included side's figures), and on rows from
+	// BudgetTransactionsIncome and BudgetTransactionsOnAccount.
 	Direction string
+	// Type ("expense", "income" or "transfer") is set only on rows from
+	// BudgetTransactionsIncome and BudgetTransactionsOnAccount.
+	Type string
 }
 
 // LabelSpendingRow is one (label, category, currency) spending total in a
@@ -132,14 +144,17 @@ type LabelMeta struct {
 	IsArchived bool
 }
 
-// AccountView is an account as the budget filters builder needs it: id +
-// currency + owner. IsDeleted is carried through so a soft-deleted member
-// account still counts (see AccountLookup.AccountsByIDs).
+// AccountView is a member account as the budget needs it: the filters
+// builder reads id + currency + owner, the savings rows read name + icon.
+// IsDeleted is carried through so a soft-deleted member account still counts
+// (see AccountLookup.AccountsByIDs).
 type AccountView struct {
 	ID         string
 	CurrencyID string
 	OwnerID    string
 	IsDeleted  bool
+	Name       string
+	Icon       string
 }
 
 // CategoryMeta is a category's display metadata for the budget structure.

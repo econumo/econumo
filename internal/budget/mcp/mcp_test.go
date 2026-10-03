@@ -16,6 +16,7 @@ import (
 	domcurrency "github.com/econumo/econumo/internal/currency"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
@@ -51,6 +52,7 @@ func newBudgetService(t *testing.T, db *dbtest.DB) *appbudget.Service {
 			server.NewBudgetPayeeMetadataLookup(payeeRepo),
 		),
 		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(db.Engine, txm)),
+		operationrepo.NewGuard(db.Engine, txm),
 		txm, clk,
 	)
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// UpdateBudget updates a budget's name/currency/member-accounts and returns its
-// meta. Requires read access; a name change additionally requires update access.
+// UpdateBudget updates a budget's name/currency/member accounts/savings flags
+// and returns its meta. Requires update access.
 func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.UpdateBudgetRequest) (*model.UpdateBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -69,80 +69,25 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 				}
 			}
 		}
+		// Everything is checked before the first write, so a refusal leaves the
+		// name and the membership as they were. The membership is re-read here so
+		// the guard judges the members as they are now, not as they were loaded.
+		members, merr := s.budgets.MemberAccounts(txCtx, budgetID)
+		if merr != nil {
+			return merr
+		}
+		b.accounts = members
+		change, perr := s.planOwnMembership(txCtx, userID, b, req.AccountIds, req.SavingsAccountIds, now)
+		if perr != nil {
+			return perr
+		}
+		if gerr := s.guardSavingsRemoval(txCtx, change, req.ConfirmSavingsRemoval); gerr != nil {
+			return gerr
+		}
 		if serr := s.budgets.Save(txCtx, b.budget); serr != nil {
 			return serr
 		}
-		// accountIds absent → membership untouched (older clients, MCP). Present →
-		// replace-set over the caller's OWN accounts: add missing, remove absent
-		// ones — but a member with closed-month history is permanent, so naming
-		// a set that drops one fails the whole update.
-		if req.AccountIds != nil {
-			want := map[string]bool{}
-			for _, raw := range req.AccountIds {
-				aid, perr := vo.ParseId(raw)
-				if perr != nil {
-					return model.ValidateBlank(map[string]string{"accountIds": ""})
-				}
-				owned, oerr := s.ownsAccount(txCtx, userID, aid)
-				if oerr != nil {
-					return oerr
-				}
-				if !owned {
-					continue
-				}
-				want[aid.String()] = true
-			}
-			var ownMembers []vo.Id
-			for _, m := range b.accounts {
-				owned, oerr := s.ownsAccount(txCtx, userID, m.AccountID)
-				if oerr != nil {
-					return oerr
-				}
-				if owned {
-					ownMembers = append(ownMembers, m.AccountID)
-				}
-			}
-			removable, rerr := s.removableAccounts(txCtx, b, ownMembers, now)
-			if rerr != nil {
-				return rerr
-			}
-			for _, m := range ownMembers {
-				if want[m.String()] {
-					continue
-				}
-				if !removable[m.String()] {
-					return accountNotRemovable()
-				}
-				if serr := s.budgets.RemoveAccount(txCtx, budgetID, m); serr != nil {
-					return serr
-				}
-			}
-			for idStr := range want {
-				aid, perr := vo.ParseId(idStr)
-				if perr != nil {
-					return perr
-				}
-				// Naming an existing member again is a no-op. Deleted members stay
-				// listed in the filters block (they keep counting), so a client
-				// round-tripping that list back names them — rejecting the id would
-				// wedge every later update, since the removal rule keeps such a
-				// member forever. Only a NEW member has to be a live account.
-				if b.hasAccount(aid) {
-					continue
-				}
-				views, verr := s.accounts.AccountsByIDs(txCtx, []vo.Id{aid})
-				if verr != nil {
-					return verr
-				}
-				if views[0].IsDeleted {
-					return model.ValidateBlank(map[string]string{"accountIds": ""})
-				}
-				if serr := s.budgets.AddAccount(txCtx, budgetID, aid, now); serr != nil {
-					return serr
-				}
-			}
-		}
-		return nil
+		return s.applyMemberChange(txCtx, change, now)
 	})
 	if err != nil {
 		return nil, err
@@ -192,7 +137,7 @@ func (s *Service) DeleteBudget(ctx context.Context, userID vo.Id, req model.Dele
 	return &model.DeleteBudgetResult{}, nil
 }
 
-// ResetBudget clears all element limits and resets the start month (owner|admin).
+// ResetBudget clears all element limits and comments and resets the start month (owner|admin).
 func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req model.ResetBudgetRequest) (*model.ResetBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -216,6 +161,11 @@ func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req model.Reset
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if serr := s.limits.DeleteLimitsByBudget(txCtx, budgetID); serr != nil {
 			return serr
+		}
+		// Reset re-anchors the start month, so comments below the new start
+		// would be rows no view renders and the list endpoint still returns.
+		if cerr := s.comments.DeleteCommentsByBudget(txCtx, budgetID); cerr != nil {
+			return cerr
 		}
 		b.budget.StartFrom(startedAt, now)
 		return s.budgets.Save(txCtx, b.budget)

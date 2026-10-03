@@ -22,7 +22,17 @@ type BudgetStore interface {
 	Delete(ctx context.Context, id vo.Id) error
 
 	MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.BudgetAccount, error)
-	AddAccount(ctx context.Context, budgetID, accountID vo.Id, now time.Time) error
+	// AddAccount leaves an existing member (its created_at and flag) untouched.
+	AddAccount(ctx context.Context, budgetID, accountID vo.Id, isSavings bool, now time.Time) error
+	SetAccountSavings(ctx context.Context, budgetID, accountID vo.Id, isSavings bool) error
+	// LockSavingsElement takes the write lock on the account's savings element
+	// (none: a no-op) for the rest of the transaction. The removal guard holds
+	// it before reading the element's data, so a concurrent limit or comment is
+	// either committed and seen, or kept waiting until the element is gone.
+	LockSavingsElement(ctx context.Context, budgetID, accountID vo.Id) error
+	// SavingsElementHasData reports whether the budget's savings element for
+	// the account holds a limit or a comment, which dropping the element loses.
+	SavingsElementHasData(ctx context.Context, budgetID, accountID vo.Id) (bool, error)
 	RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error
 	// RemoveAccountsOwnedBy drops every membership row for accounts owned by
 	// ownerID — a departing participant takes their accounts with them.
@@ -83,6 +93,10 @@ type ElementStore interface {
 	GetElement(ctx context.Context, id vo.Id) (*model.BudgetElement, error)
 	// GetElementByExternal finds an element by its (budget, externalId) pair.
 	GetElementByExternal(ctx context.Context, budgetID, externalID vo.Id) (*model.BudgetElement, error)
+	// GetElementByExternalForWrite is GetElementByExternal plus a share lock on
+	// the row, held to the end of the transaction, for a write that hangs data
+	// on the element: a savings removal cannot delete it underneath the write.
+	GetElementByExternalForWrite(ctx context.Context, budgetID, externalID vo.Id) (*model.BudgetElement, error)
 	// ListElementsByExternal returns this external id's element in EVERY budget,
 	// which is the scope a classification merge has to cover.
 	ListElementsByExternal(ctx context.Context, externalID vo.Id) ([]*model.BudgetElement, error)
@@ -113,10 +127,31 @@ type LimitStore interface {
 	DeleteLimitsByBudget(ctx context.Context, budgetID vo.Id) error
 }
 
+// CommentStore is a budget cell's comment-thread persistence surface. Consumed
+// by the comment use cases (comments.go), ResetBudget's clear-all (crud.go),
+// CloneBudget (clone.go) and MergeService (merge.go). Insert and Update are
+// separate statements on purpose: an upsert would let a create with a colliding
+// client id overwrite another author's text.
+type CommentStore interface {
+	NextIdentity() vo.Id
+
+	ListCommentsForWindow(ctx context.Context, budgetID vo.Id, from, to time.Time, limit int) ([]model.BudgetCommentRow, error)
+	GetCommentRow(ctx context.Context, id vo.Id) (*model.BudgetCommentRow, error)
+	InsertComment(ctx context.Context, c *model.BudgetElementComment) error
+	UpdateCommentText(ctx context.Context, c *model.BudgetElementComment) error
+	DeleteComment(ctx context.Context, id vo.Id) error
+	// ListCommentsFrom returns the comments at or after a month (clone).
+	ListCommentsFrom(ctx context.Context, budgetID vo.Id, from time.Time) ([]*model.BudgetElementComment, error)
+	// RepointComments moves every comment from one element to another (merge).
+	RepointComments(ctx context.Context, srcElementID, dstElementID vo.Id) error
+	// DeleteCommentsByBudget removes every comment of every element of a budget (reset).
+	DeleteCommentsByBudget(ctx context.Context, budgetID vo.Id) error
+}
+
 // Repository is the budget aggregate's full persistence port — the composite
-// of BudgetStore, AccessStore, FolderStore, EnvelopeStore, ElementStore and
-// LimitStore. It exists for wiring (one constructor param in server.go);
-// consumers depend on the narrowest role they actually use.
+// of BudgetStore, AccessStore, FolderStore, EnvelopeStore, ElementStore,
+// LimitStore and CommentStore. It exists for wiring (one constructor param in
+// server.go); consumers depend on the narrowest role they actually use.
 type Repository interface {
 	BudgetStore
 	AccessStore
@@ -124,4 +159,5 @@ type Repository interface {
 	EnvelopeStore
 	ElementStore
 	LimitStore
+	CommentStore
 }

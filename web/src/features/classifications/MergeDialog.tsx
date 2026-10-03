@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { EntityIcon } from '@/components/EntityIcon'
 import { InfoBox } from '@/components/InfoBox'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
-import { fuzzyMatch } from '@/lib/fuzzy'
+import { rankByName } from '@/lib/search'
 import type { ClassificationItem } from './ClassificationList'
 
 interface MergeDialogProps<T extends ClassificationItem> {
@@ -51,8 +51,7 @@ export function MergeDialog<T extends ClassificationItem>({
   }, [open, source?.id])
 
   const eligible = candidates.filter((item) => item.id !== source?.id)
-  const trimmed = query.trim()
-  const visible = trimmed ? eligible.filter((item) => fuzzyMatch(item.name, trimmed)) : eligible
+  const visible = rankByName(eligible, (item) => item.name, query)
 
   return (
     <ResponsiveDialog

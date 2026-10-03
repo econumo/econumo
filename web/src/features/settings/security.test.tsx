@@ -23,6 +23,7 @@ const session = {
 const pat = {
   id: '01890000-0000-7000-8000-0000000000p1',
   name: 'CI export',
+  scope: 'full' as const,
   createdAt: '2026-07-01 10:00:00',
   lastUsedAt: '2026-07-10 09:00:00',
   expiresAt: null,
@@ -121,7 +122,7 @@ it('useCreatePersonalToken sends name + expiresAt ("" for never) and returns the
   const { result } = renderHook(() => useCreatePersonalToken(), { wrapper })
   result.current.mutate({ name: 'CI export', expiresAt: null })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
-  expect(body).toEqual({ name: 'CI export', expiresAt: '' })
+  expect(body).toEqual({ name: 'CI export', scope: 'full', expiresAt: '' })
   expect(result.current.data?.token).toBe('eco_pat_secret-value')
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ['personalTokens'] })
 })
@@ -142,7 +143,7 @@ it('useCreatePersonalToken passes an explicit expiry through', async () => {
   const { result } = renderHook(() => useCreatePersonalToken(), { wrapper })
   result.current.mutate({ name: 'Short lived', expiresAt: '2030-01-01 00:00:00' })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
-  expect(body).toEqual({ name: 'Short lived', expiresAt: '2030-01-01 00:00:00' })
+  expect(body).toEqual({ name: 'Short lived', scope: 'full', expiresAt: '2030-01-01 00:00:00' })
 })
 
 it('useRevokePersonalToken posts the id and invalidates the token list', async () => {

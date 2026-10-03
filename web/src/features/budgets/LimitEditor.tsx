@@ -46,7 +46,12 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit 
       }}
     >
       <PopoverTrigger asChild>
-        <button type="button" className="w-full text-right underline-offset-2 hover:underline" aria-label={`limit ${name}`}>
+        <button
+          type="button"
+          data-limit-trigger=""
+          className="w-full text-right underline-offset-2 hover:underline"
+          aria-label={`limit ${name}`}
+        >
           {moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}
         </button>
       </PopoverTrigger>

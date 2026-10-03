@@ -12,10 +12,12 @@ interface SetLimitDialogProps {
   target: { id: string; name: string; value: string } | null
   onClose: () => void
   onCommit: (elementId: string, amount: string | null) => void
+  /** an income or savings amount: a plan to meet, not a spending limit */
+  plan?: boolean
 }
 
-// Mobile tap/long-press path (Vue's BudgetSetLimitModal), same unified amount rule.
-export function SetLimitDialog({ target, onClose, onCommit }: SetLimitDialogProps) {
+// Compact viewports' amount dialog (Vue's BudgetSetLimitModal), same unified amount rule.
+export function SetLimitDialog({ target, onClose, onCommit, plan = false }: SetLimitDialogProps) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +48,7 @@ export function SetLimitDialog({ target, onClose, onCommit }: SetLimitDialogProp
   }
 
   return (
-    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.modal.set_limit_form.header')} description={target.name}>
+    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={plan ? t('budgets.page.sheet.set_plan') : t('budgets.modal.set_limit_form.header')} description={target.name}>
       <form
         className="flex flex-col gap-4"
         noValidate
@@ -56,7 +58,7 @@ export function SetLimitDialog({ target, onClose, onCommit }: SetLimitDialogProp
         }}
       >
         {/* the transaction dialog's amount card: label inside, borderless oversized input */}
-        <CardField label={t('budgets.form.budget_limit.limit.label')} htmlFor="set-limit-amount" error={error}>
+        <CardField label={plan ? t('budgets.form.budget_limit.plan.label') : t('budgets.form.budget_limit.limit.label')} htmlFor="set-limit-amount" error={error}>
           <div className={amountCardInputClass}>
             <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
           </div>

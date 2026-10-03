@@ -51,7 +51,7 @@ func TestTimezoneTrackingAuthenticator(t *testing.T) {
 	}
 
 	ctx := reqctx.WithLocation(context.Background(), time.UTC)
-	if _, _, _, err := authn.Authenticate(ctx, userID); err != nil {
+	if _, err := authn.Authenticate(ctx, userID); err != nil {
 		t.Fatal(err)
 	}
 	if tz, _ := userSvc.GetTimezone(context.Background(), uid); tz != "" {
@@ -59,14 +59,14 @@ func TestTimezoneTrackingAuthenticator(t *testing.T) {
 	}
 
 	ctx = reqctx.WithExplicitLocation(context.Background(), loc)
-	if _, _, _, err := authn.Authenticate(ctx, userID); err != nil {
+	if _, err := authn.Authenticate(ctx, userID); err != nil {
 		t.Fatal(err)
 	}
 	if tz, _ := userSvc.GetTimezone(context.Background(), uid); tz != "Europe/Amsterdam" {
 		t.Fatalf("timezone = %q, want Europe/Amsterdam", tz)
 	}
 
-	if _, _, _, err := authn.Authenticate(ctx, "not-a-user-id"); err == nil {
+	if _, err := authn.Authenticate(ctx, "not-a-user-id"); err == nil {
 		t.Fatal("want auth error")
 	}
 }

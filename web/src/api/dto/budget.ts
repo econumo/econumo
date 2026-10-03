@@ -22,11 +22,14 @@ export interface BudgetMetaDto {
   access: BudgetAccessDto[]
 }
 
-export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2, INCOME_CATEGORY: 3, INCOME_ENVELOPE: 4 } as const
+export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2, INCOME_CATEGORY: 3, INCOME_ENVELOPE: 4, SAVINGS: 5 } as const
 export type BudgetElementType = (typeof BudgetElementType)[keyof typeof BudgetElementType]
 
 export const isIncomeType = (t: BudgetElementType): boolean =>
   t === BudgetElementType.INCOME_CATEGORY || t === BudgetElementType.INCOME_ENVELOPE
+
+/** income and savings amounts are plans to meet, not spending limits */
+export const isPlannedType = (t: BudgetElementType): boolean => isIncomeType(t) || t === BudgetElementType.SAVINGS
 
 /** the presentation-only element the backend emits for spending with no category */
 export const UNCATEGORIZED_ID = 'uncategorized'
@@ -114,27 +117,79 @@ export interface BudgetTransactionDto {
   labelIds?: Id[]
   /** full datetime Y-m-d H:i:s */
   spentAt: string
-  /** only on rows of the transfers selector: which side of the boundary the
-   *  included account is on; amount/currencyId are that side's */
+  /** only on rows of the transfers, income and savings selectors: whether the
+   *  money arrived at or left the included (or savings) account;
+   *  amount/currencyId are that side's */
   direction?: 'in' | 'out'
+  /** only on rows of the income and savings selectors */
+  type?: 'expense' | 'income' | 'transfer'
+}
+
+export interface BudgetCommentDto {
+  id: Id
+  elementId: Id
+  /** first of the month, Y-m-d */
+  period: string
+  comment: string
+  author: UserDto
+  /** frozen "Y-m-d H:i:s", server time */
+  createdAt: string
+  updatedAt: string
+}
+
+/** a savings account's monthly row; id is the account id */
+export interface BudgetSavingsElementDto {
+  id: Id
+  type: BudgetElementType
+  name: string
+  icon: string
+  currencyId: Id
+  ownerUserId: Id
+  isArchived: 0 | 1
+  position: number
+  /** decimal strings (wire format, kept verbatim) */
+  budgeted: string
+  spent: string
+  available: string
+  /** the account's balance at the end of the month: booked for a past month;
+   *  from the current month on, booked plus every month's plan not yet met from
+   *  the current month through this one. Absent from older servers. */
+  closingBalance?: string
+}
+
+/** one of the requester's own member accounts */
+export interface BudgetAccountFilterDto {
+  id: Id
+  removable: boolean
+  /** optional: servers older than the savings release omit it */
+  isSavings?: boolean
 }
 
 export interface BudgetDto {
   meta: BudgetMetaDto
   /** accounts is optional on the wire: servers older than the budget-membership
    *  release — still accepted by the app's compat floor — omit it. */
-  filters: { periodStart: string; periodEnd: string; accounts?: { id: Id; removable: boolean }[] }
+  filters: { periodStart: string; periodEnd: string; accounts?: BudgetAccountFilterDto[] }
   balances: BudgetBalanceDto[]
   currencyRates: BudgetRateDto[]
   /** labels is optional on the wire: servers older than the labels release —
    *  still accepted by the app's compat floor — omit it. */
-  structure: { folders: BudgetFolderDto[]; elements: BudgetElementDto[]; labels?: LabelSpendDto[] }
+  structure: {
+    folders: BudgetFolderDto[]
+    elements: BudgetElementDto[]
+    labels?: LabelSpendDto[]
+    /** optional: cached data from a server older than the savings release lacks it */
+    savings?: BudgetSavingsElementDto[]
+  }
 }
 
 /** per-month cell on a plan-view parent row. planned '' = no limit set that month. */
 export interface PlanCellDto {
   actual: string
   planned: string
+  /** savings rows only: the account's booked balance at the end of the month;
+   *  absent from older servers */
+  closingBalance?: string
 }
 
 /** per-month cell on a plan-view child row: children never carry their own limit. */
@@ -184,13 +239,54 @@ export interface PlanMonthTransfersDto {
   items: PlanTransferDto[]
 }
 
+/** a savings account's plan-view row; id is the account id */
+export interface PlanSavingsElementDto {
+  id: Id
+  type: BudgetElementType
+  name: string
+  icon: string
+  currencyId: Id
+  ownerUserId: Id
+  isArchived: 0 | 1
+  position: number
+  cells: PlanCellDto[]
+}
+
+export interface PlanOpeningBalanceDto {
+  currencyId: Id
+  amount: string
+}
+
+/** one (month, account currency) net change of the savings accounts: every
+ *  transaction on them, interest included — the savings rows' actuals, grouped
+ *  by account currency. Only pairs with activity are listed; amounts are
+ *  unconverted. */
+export interface PlanSavingsFlowDto {
+  /** date-only Y-m-d, first of the month */
+  month: string
+  currencyId: Id
+  amount: string
+}
+
 export interface BudgetPlanDto {
   meta: BudgetMetaDto
   /** date-only Y-m-d, first of each month in the fetched window */
   months: string[]
-  openingBalances: { currencyId: Id; amount: string }[]
+  openingBalances: PlanOpeningBalanceDto[]
   currencyRates: PlanMonthRatesDto[]
   /** one entry per months[i] */
   transfers: PlanMonthTransfersDto[]
-  structure: { folders: BudgetFolderDto[]; elements: PlanElementDto[] }
+  structure: {
+    folders: BudgetFolderDto[]
+    elements: PlanElementDto[]
+    /** optional: cached data from a server older than the savings release lacks it */
+    savings?: PlanSavingsElementDto[]
+  }
+  /** optional for the same reason as structure.savings */
+  savingsOpeningBalances?: PlanOpeningBalanceDto[]
+  savingsFlows?: PlanSavingsFlowDto[]
+  /** income minus expenses booked on the savings accounts, same shape as
+   *  savingsFlows. The category rows count the everyday accounts only, so the
+   *  combined balance adds this back. Optional for the same reason. */
+  savingsIncomeExpense?: PlanSavingsFlowDto[]
 }

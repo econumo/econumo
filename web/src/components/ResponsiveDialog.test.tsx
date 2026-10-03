@@ -65,3 +65,15 @@ it('bottom-reaching content clears the home indicator: body inset without a foot
   expect(baseElement.textContent).toContain('ok')
   expect(screen.getByRole('button', { name: 'ok' }).parentElement?.className).toContain('safe-area-inset-bottom')
 })
+
+it('size="wide" widens the desktop dialog instead of the default narrow width', () => {
+  mockMatchMedia(false)
+  const { baseElement } = render(
+    <ResponsiveDialog open size="wide" onOpenChange={() => {}} title="My title">
+      <p>body text</p>
+    </ResponsiveDialog>,
+  )
+  const content = baseElement.querySelector('[data-slot="dialog-content"]')
+  expect(content?.className).toContain('sm:max-w-2xl')
+  expect(content?.className).not.toContain('sm:max-w-sm')
+})

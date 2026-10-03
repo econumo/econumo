@@ -269,12 +269,12 @@ type stubAuthn struct {
 	err     error
 }
 
-func (s stubAuthn) Authenticate(_ context.Context, token string) (vo.Id, vo.Id, model.AccessLevel, error) {
+func (s stubAuthn) Authenticate(_ context.Context, token string) (model.Principal, error) {
 	level := s.level
 	if level == "" {
 		level = model.AccessLevelFull
 	}
-	return s.userID, s.tokenID, level, s.err
+	return model.Principal{UserID: s.userID, TokenID: s.tokenID, Level: level, Scope: model.TokenScopeFull}, s.err
 }
 
 var (

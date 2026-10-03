@@ -38,6 +38,8 @@ type Querier interface {
 	DeleteAccountOptionForUser(ctx context.Context, arg DeleteAccountOptionForUserParams) error
 	DeleteBudget(ctx context.Context, id string) error
 	DeleteBudgetAccess(ctx context.Context, arg DeleteBudgetAccessParams) error
+	DeleteBudgetComment(ctx context.Context, id string) error
+	DeleteBudgetCommentsByBudget(ctx context.Context, budgetID string) error
 	DeleteBudgetElement(ctx context.Context, id string) error
 	DeleteBudgetEnvelope(ctx context.Context, id string) error
 	DeleteBudgetFolder(ctx context.Context, id string) error
@@ -51,6 +53,13 @@ type Querier interface {
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
 	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
+	DeleteImportAccountLink(ctx context.Context, id string) error
+	DeleteImportCredentialKey(ctx context.Context, userID string) error
+	DeleteImportEvent(ctx context.Context, id string) error
+	DeleteImportLinkAppliedLabels(ctx context.Context, linkID string) error
+	DeleteImportRule(ctx context.Context, id string) error
+	DeleteImportRuleLabels(ctx context.Context, ruleID string) error
+	DeleteImportSource(ctx context.Context, id string) error
 	DeleteLabel(ctx context.Context, id string) error
 	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
 	DeleteOAuthHandoffsByUser(ctx context.Context, userID string) (int64, error)
@@ -58,6 +67,7 @@ type Querier interface {
 	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
 	DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error)
 	DeletePayee(ctx context.Context, id string) error
+	DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, arg DeleteQueuedImportTransactionLinksByExternalAccountParams) error
 	// Link rows between a recurring template and its reporting labels. See the
 	// sqlite variant for documentation.
 	DeleteRecurringLabels(ctx context.Context, recurringTransactionID string) error
@@ -78,7 +88,7 @@ type Querier interface {
 	// Joins users for access_level/access_until; see the sqlite sibling for why
 	// provider/id_token are deliberately omitted here.
 	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
-	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
+	GetAccessTokenByID(ctx context.Context, id string) (GetAccessTokenByIDRow, error)
 	// Connection module queries (PostgreSQL). accounts_access holds per-account
 	// grants to connected users; users_connections is the symmetric user link.
 	// Roles are admin=0, user=1, guest=2.
@@ -96,8 +106,15 @@ type Querier interface {
 	GetBudgetAccess(ctx context.Context, arg GetBudgetAccessParams) (BudgetsAccess, error)
 	// Budget module queries (PostgreSQL). See the sqlite variant for documentation.
 	GetBudgetByID(ctx context.Context, id string) (Budget, error)
+	GetBudgetComment(ctx context.Context, id string) (GetBudgetCommentRow, error)
 	GetBudgetElement(ctx context.Context, id string) (BudgetsElement, error)
 	GetBudgetElementByExternal(ctx context.Context, arg GetBudgetElementByExternalParams) (BudgetsElement, error)
+	// The row a limit or comment is about to be written under, share-locked so a
+	// savings removal (LockSavingsElement) cannot delete it until this write
+	// commits. KEY SHARE, not SHARE: change-element-currency upserts the same row
+	// later in its transaction, and a SHARE lock held by two such requests would
+	// deadlock on that upgrade.
+	GetBudgetElementByExternalForWrite(ctx context.Context, arg GetBudgetElementByExternalForWriteParams) (BudgetsElement, error)
 	GetBudgetEnvelope(ctx context.Context, id string) (BudgetsEnvelope, error)
 	GetBudgetFolder(ctx context.Context, id string) (BudgetsFolder, error)
 	GetBudgetLimit(ctx context.Context, arg GetBudgetLimitParams) (GetBudgetLimitRow, error)
@@ -134,6 +151,18 @@ type Querier interface {
 	// OAuth feature queries: identities, in-flight states, one-shot handoffs.
 	GetIdentityByProviderSubject(ctx context.Context, arg GetIdentityByProviderSubjectParams) (UsersIdentity, error)
 	GetIdentityByUserProvider(ctx context.Context, arg GetIdentityByUserProviderParams) (UsersIdentity, error)
+	GetImportAccountLinkByID(ctx context.Context, id string) (ImportAccountLink, error)
+	GetImportCredentialKey(ctx context.Context, userID string) (ImportCredentialKey, error)
+	GetImportEventByID(ctx context.Context, id string) (ImportEvent, error)
+	GetImportRuleByID(ctx context.Context, id string) (ImportRule, error)
+	GetImportRunByID(ctx context.Context, id string) (GetImportRunByIDRow, error)
+	GetImportSourceByID(ctx context.Context, id string) (ImportSource, error)
+	GetImportSourceByUserProvider(ctx context.Context, arg GetImportSourceByUserProviderParams) (ImportSource, error)
+	// Card identity is case-insensitive (Apple Wallet may report the same card
+	// with different casing between taps), so the account-id half of the key
+	// folds case; external_transaction_id stays exact.
+	GetImportTransactionLinkByExternalKey(ctx context.Context, arg GetImportTransactionLinkByExternalKeyParams) (ImportTransactionLink, error)
+	GetImportTransactionLinkByID(ctx context.Context, id string) (ImportTransactionLink, error)
 	// Write-side queries for the label module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation. Unlike tags, a label's icon IS
 	// persisted from the start.
@@ -215,6 +244,7 @@ type Querier interface {
 	InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error)
 	// See the sqlite sibling.
 	InsertAccessTokenIfPresenterLive(ctx context.Context, arg InsertAccessTokenIfPresenterLiveParams) (int64, error)
+	InsertBudgetComment(ctx context.Context, arg InsertBudgetCommentParams) error
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (PostgreSQL: $N placeholders). See the
 	// sqlite variant for documentation.
@@ -224,6 +254,18 @@ type Querier interface {
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
 	// See the sqlite sibling.
 	InsertIdentityIfGeneration(ctx context.Context, arg InsertIdentityIfGenerationParams) (int64, error)
+	InsertImportAccountLink(ctx context.Context, arg InsertImportAccountLinkParams) error
+	// The (source_id, payload_hash) unique index makes a re-fired push a no-op;
+	// the caller reads the row count to learn whether this payload was new.
+	InsertImportEvent(ctx context.Context, arg InsertImportEventParams) (int64, error)
+	InsertImportLinkAppliedLabel(ctx context.Context, arg InsertImportLinkAppliedLabelParams) error
+	InsertImportRule(ctx context.Context, arg InsertImportRuleParams) error
+	InsertImportRuleLabel(ctx context.Context, arg InsertImportRuleLabelParams) error
+	InsertImportRun(ctx context.Context, arg InsertImportRunParams) error
+	// Transaction import: sources, the push-event inbox, runs, and the link
+	// ledger. Liveness/tombstone logic lives in Go (model.ImportTransactionLink).
+	InsertImportSource(ctx context.Context, arg InsertImportSourceParams) error
+	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
 	InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error
 	InsertOAuthState(ctx context.Context, arg InsertOAuthStateParams) error
 	// Idempotency queries over operation_requests_ids (PostgreSQL variant: $N
@@ -243,7 +285,7 @@ type Querier interface {
 	// "make recurring from this transaction" link. UpsertTransaction deliberately
 	// never updates the column, so the link needs its own statement.
 	LinkTransactionToRecurring(ctx context.Context, arg LinkTransactionToRecurringParams) error
-	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error)
+	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]ListAccessTokensByUserRow, error)
 	// All grants ON one account (for the account's sharedAccess[] embed).
 	ListAccountAccessByAccount(ctx context.Context, accountID string) ([]AccountsAccess, error)
 	// Balances for every AVAILABLE account (own + shared via accounts_access), to
@@ -258,6 +300,8 @@ type Querier interface {
 	ListAvailableAccounts(ctx context.Context, userID string) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetAccounts(ctx context.Context, budgetID string) ([]ListBudgetAccountsRow, error)
+	ListBudgetCommentsForWindow(ctx context.Context, arg ListBudgetCommentsForWindowParams) ([]ListBudgetCommentsForWindowRow, error)
+	ListBudgetCommentsFrom(ctx context.Context, arg ListBudgetCommentsFromParams) ([]BudgetsElementsComment, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
 	ListBudgetElementsByExternal(ctx context.Context, externalID string) ([]BudgetsElement, error)
 	ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]BudgetsEnvelope, error)
@@ -290,6 +334,19 @@ type Querier interface {
 	ListFolderMembershipsByUser(ctx context.Context, userID string) ([]AccountsFolder, error)
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	ListIdentitiesByUser(ctx context.Context, userID string) ([]UsersIdentity, error)
+	ListImportAccountLinksBySource(ctx context.Context, sourceID string) ([]ImportAccountLink, error)
+	ListImportEventsBySourceStatus(ctx context.Context, arg ListImportEventsBySourceStatusParams) ([]ImportEvent, error)
+	ListImportLinkAppliedLabels(ctx context.Context, linkID string) ([]ImportLinkAppliedLabel, error)
+	ListImportRuleLabels(ctx context.Context, ruleID string) ([]ImportRuleLabel, error)
+	ListImportRuleLabelsByUser(ctx context.Context, userID string) ([]ImportRuleLabel, error)
+	ListImportRulesByUser(ctx context.Context, userID string) ([]ImportRule, error)
+	ListImportRunsBySource(ctx context.Context, arg ListImportRunsBySourceParams) ([]ListImportRunsBySourceRow, error)
+	ListImportRunsByUser(ctx context.Context, arg ListImportRunsByUserParams) ([]ListImportRunsByUserRow, error)
+	ListImportSourcesByUser(ctx context.Context, userID string) ([]ImportSource, error)
+	ListImportTransactionLinksByRun(ctx context.Context, runID *string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksBySource(ctx context.Context, sourceID string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksByTransaction(ctx context.Context, transactionID *string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksByUser(ctx context.Context, userID string) ([]ImportTransactionLink, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's labels ordered by sort key; used by move-label (load, place the
@@ -309,6 +366,11 @@ type Querier interface {
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// Locks the savings element a removal is about to drop, before its guard
+	// reads the element's data: a limit or comment writer that share-locked the
+	// row first has committed by the time the guard's EXISTS runs, and one that
+	// comes later waits and then finds the row gone.
+	LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error)
 	// The row lock behind every existing-row write and credential mint (see
 	// user.Repository.LockRow). FOR NO KEY UPDATE is the same lock mode the old
 	// no-op UPDATE took (it touched no key column), without writing a tuple
@@ -338,18 +400,31 @@ type Querier interface {
 	RemoveBudgetAccount(ctx context.Context, arg RemoveBudgetAccountParams) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
 	// See the sqlite sibling.
 	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
+	// Whether the budget's savings element for this account carries a limit or a
+	// comment: dropping the element (flag off or member removed) deletes both.
+	SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (bool, error)
+	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.
 	SoftDeleteCurrency(ctx context.Context, id string) error
 	// See the sqlite sibling.
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
+	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
+	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error
+	// Note: sets run_id too so a processed event records the run that consumed it.
+	UpdateImportEventStatus(ctx context.Context, arg UpdateImportEventStatusParams) error
+	UpdateImportRule(ctx context.Context, arg UpdateImportRuleParams) error
+	UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error
+	UpdateImportSource(ctx context.Context, arg UpdateImportSourceParams) error
+	UpdateImportTransactionLink(ctx context.Context, arg UpdateImportTransactionLinkParams) error
 	// See the sqlite sibling: the confirm-email-change path writes only the email
 	// columns, under the generation read after the row lock.
 	UpdateUserEmailIfGeneration(ctx context.Context, arg UpdateUserEmailIfGenerationParams) (int64, error)
@@ -380,6 +455,7 @@ type Querier interface {
 	// index. Mirrors CurrencyRatesUpdateService (get-or-create then updateRate).
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
+	UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error

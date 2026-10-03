@@ -32,6 +32,10 @@ type (
 	upEnvelopeP = sqlitegen.UpsertBudgetEnvelopeParams
 	upElementP  = sqlitegen.UpsertBudgetElementParams
 	upLimitP    = sqlitegen.UpsertBudgetLimitParams
+
+	commentRow    = sqlitegen.BudgetsElementsComment
+	commentJoined = sqlitegen.ListBudgetCommentsForWindowRow
+	inCommentP    = sqlitegen.InsertBudgetCommentParams
 )
 
 type Repo struct {
@@ -104,13 +108,27 @@ func (r *Repo) MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.Budg
 		if perr != nil {
 			return nil, perr
 		}
-		out = append(out, model.BudgetAccount{AccountID: id, CreatedAt: row.CreatedAt})
+		out = append(out, model.BudgetAccount{AccountID: id, IsSavings: row.IsSavings, CreatedAt: row.CreatedAt})
 	}
 	return out, nil
 }
 
-func (r *Repo) AddAccount(ctx context.Context, budgetID, accountID vo.Id, now time.Time) error {
-	return r.q.AddBudgetAccount(ctx, r.db(ctx), sqlitegen.AddBudgetAccountParams{BudgetID: budgetID.String(), AccountID: accountID.String(), CreatedAt: now})
+func (r *Repo) AddAccount(ctx context.Context, budgetID, accountID vo.Id, isSavings bool, now time.Time) error {
+	return r.q.AddBudgetAccount(ctx, r.db(ctx), sqlitegen.AddBudgetAccountParams{
+		BudgetID: budgetID.String(), AccountID: accountID.String(), IsSavings: isSavings, CreatedAt: now,
+	})
+}
+
+func (r *Repo) SetAccountSavings(ctx context.Context, budgetID, accountID vo.Id, isSavings bool) error {
+	return r.q.SetBudgetAccountSavings(ctx, r.db(ctx), budgetID.String(), accountID.String(), isSavings)
+}
+
+func (r *Repo) LockSavingsElement(ctx context.Context, budgetID, accountID vo.Id) error {
+	return r.q.LockSavingsElement(ctx, r.db(ctx), budgetID.String(), accountID.String())
+}
+
+func (r *Repo) SavingsElementHasData(ctx context.Context, budgetID, accountID vo.Id) (bool, error) {
+	return r.q.SavingsElementHasData(ctx, r.db(ctx), budgetID.String(), accountID.String())
 }
 
 func (r *Repo) RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error {
@@ -273,6 +291,14 @@ func (r *Repo) GetElementByExternal(ctx context.Context, budgetID, externalID vo
 	return hydrateElement(row)
 }
 
+func (r *Repo) GetElementByExternalForWrite(ctx context.Context, budgetID, externalID vo.Id) (*model.BudgetElement, error) {
+	row, err := r.q.GetBudgetElementByExternalForWrite(ctx, r.db(ctx), budgetID.String(), externalID.String())
+	if err != nil {
+		return nil, mapNotFound(err, "BudgetElement not found")
+	}
+	return hydrateElement(row)
+}
+
 func (r *Repo) SaveElement(ctx context.Context, e *model.BudgetElement) error {
 	return r.q.UpsertBudgetElement(ctx, r.db(ctx), upElementP{
 		ID: e.ID.String(), BudgetID: e.BudgetID.String(), CurrencyID: idPtr(e.CurrencyID),
@@ -366,6 +392,70 @@ func (r *Repo) DeleteLimitsByBudget(ctx context.Context, budgetID vo.Id) error {
 	return r.q.DeleteBudgetLimitsByBudget(ctx, r.db(ctx), budgetID.String())
 }
 
+func (r *Repo) ListCommentsForWindow(ctx context.Context, budgetID vo.Id, from, to time.Time, limit int) ([]model.BudgetCommentRow, error) {
+	rows, err := r.q.ListBudgetCommentsForWindow(ctx, r.db(ctx), budgetID.String(), from, to, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.BudgetCommentRow, 0, len(rows))
+	for _, row := range rows {
+		hydrated, herr := hydrateCommentRow(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out = append(out, *hydrated)
+	}
+	return out, nil
+}
+
+func (r *Repo) GetCommentRow(ctx context.Context, id vo.Id) (*model.BudgetCommentRow, error) {
+	row, err := r.q.GetBudgetComment(ctx, r.db(ctx), id.String())
+	if err != nil {
+		return nil, mapNotFound(err, "BudgetElementComment not found")
+	}
+	return hydrateCommentRow(row)
+}
+
+func (r *Repo) InsertComment(ctx context.Context, c *model.BudgetElementComment) error {
+	return r.q.InsertBudgetComment(ctx, r.db(ctx), inCommentP{
+		ID: c.ID.String(), ElementID: c.ElementID.String(), Period: c.Period, UserID: c.UserID.String(),
+		Comment: c.Comment, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
+	})
+}
+
+func (r *Repo) UpdateCommentText(ctx context.Context, c *model.BudgetElementComment) error {
+	return r.q.UpdateBudgetCommentText(ctx, r.db(ctx), c.ID.String(), c.Comment, c.UpdatedAt)
+}
+
+func (r *Repo) DeleteComment(ctx context.Context, id vo.Id) error {
+	return r.q.DeleteBudgetComment(ctx, r.db(ctx), id.String())
+}
+
+// ListCommentsFrom returns the comments at or after a month (clone).
+func (r *Repo) ListCommentsFrom(ctx context.Context, budgetID vo.Id, from time.Time) ([]*model.BudgetElementComment, error) {
+	rows, err := r.q.ListBudgetCommentsFrom(ctx, r.db(ctx), budgetID.String(), from)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.BudgetElementComment, 0, len(rows))
+	for _, row := range rows {
+		c, herr := hydrateComment(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out = append(out, c)
+	}
+	return out, nil
+}
+
+func (r *Repo) RepointComments(ctx context.Context, srcElementID, dstElementID vo.Id) error {
+	return r.q.RepointBudgetComments(ctx, r.db(ctx), dstElementID.String(), srcElementID.String())
+}
+
+func (r *Repo) DeleteCommentsByBudget(ctx context.Context, budgetID vo.Id) error {
+	return r.q.DeleteBudgetCommentsByBudget(ctx, r.db(ctx), budgetID.String())
+}
+
 func hydrateBudget(row budgetRow) (*model.Budget, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
@@ -454,6 +544,47 @@ func hydrateLimit(row limitRow) (*model.BudgetElementLimit, error) {
 		return nil, err
 	}
 	return &model.BudgetElementLimit{ID: id, ElementID: elementID, Amount: vo.NewDecimal(row.Amount), Period: row.Period, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+}
+
+func hydrateComment(row commentRow) (*model.BudgetElementComment, error) {
+	id, err := vo.ParseId(row.ID)
+	if err != nil {
+		return nil, err
+	}
+	elementID, err := vo.ParseId(row.ElementID)
+	if err != nil {
+		return nil, err
+	}
+	userID, err := vo.ParseId(row.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.BudgetElementComment{
+		ID: id, ElementID: elementID, Period: row.Period, UserID: userID, Comment: row.Comment,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}, nil
+}
+
+func hydrateCommentRow(row commentJoined) (*model.BudgetCommentRow, error) {
+	c, err := hydrateComment(commentRow{
+		ID: row.ID, ElementID: row.ElementID, Period: row.Period, UserID: row.UserID, Comment: row.Comment,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	budgetID, err := vo.ParseId(row.BudgetID)
+	if err != nil {
+		return nil, err
+	}
+	externalID, err := vo.ParseId(row.ExternalID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.BudgetCommentRow{
+		Comment: *c, BudgetID: budgetID, ExternalID: externalID,
+		AuthorName: row.AuthorName, AuthorAvatar: row.AuthorAvatar,
+	}, nil
 }
 
 func mapNotFound(err error, msg string) error {

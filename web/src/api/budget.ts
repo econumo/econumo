@@ -1,6 +1,14 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto, BudgetPlanDto, BudgetTransactionDto } from './dto/budget'
+import type {
+  BudgetCommentDto,
+  BudgetDto,
+  BudgetElementDto,
+  BudgetFolderDto,
+  BudgetMetaDto,
+  BudgetPlanDto,
+  BudgetTransactionDto,
+} from './dto/budget'
 
 interface Envelope<T> {
   data: T
@@ -13,6 +21,8 @@ export interface CreateBudgetForm {
   startDate: string | null
   currencyId: Id
   accountIds: Id[]
+  /** must be a subset of accountIds */
+  savingsAccountIds?: Id[]
 }
 
 export interface UpdateBudgetForm {
@@ -23,6 +33,10 @@ export interface UpdateBudgetForm {
   accountIds?: Id[]
   /** absent = end month untouched; '' clears it; 'Y-m-d' sets it */
   endDate?: string
+  /** absent = flags untouched; present = replace-set over the caller's own members */
+  savingsAccountIds?: Id[]
+  /** required when the write drops a savings member that has plans or comments */
+  confirmSavingsRemoval?: boolean
 }
 
 export interface CloneBudgetForm {
@@ -159,6 +173,11 @@ export interface BudgetTransactionsParams {
   labelId?: Id
   /** transfers across the budget boundary; exclusive with every other selector */
   transfers?: boolean
+  /** turns categoryId or envelopeId (exactly one) into an income row's list */
+  income?: boolean
+  /** every transaction on this account (the server accepts only the budget's
+   *  savings accounts for now); exclusive with every other selector */
+  accountId?: Id
 }
 
 export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionDto[]> {
@@ -169,6 +188,8 @@ export async function getBudgetTransactions(params: BudgetTransactionsParams): P
   if (params.uncategorized) query.set('uncategorized', '1')
   if (params.labelId) query.set('labelId', params.labelId)
   if (params.transfers) query.set('transfers', '1')
+  if (params.income) query.set('income', '1')
+  if (params.accountId) query.set('accountId', params.accountId)
   const response = await api.get<Envelope<{ items: BudgetTransactionDto[] }>>(
     apiUrl(`/api/v1/budget/get-transaction-list?${query.toString()}`),
   )
@@ -203,4 +224,41 @@ export async function addAccount(budgetId: Id, accountId: Id): Promise<BudgetMet
 export async function removeAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
   const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/remove-account'), { id: budgetId, accountId })
   return response.data.data.item
+}
+
+export interface CommentWindow {
+  budgetId: Id
+  /** first of the month, Y-m-d */
+  from: string
+  months: number
+}
+
+export interface CreateCommentForm {
+  id: Id
+  budgetId: Id
+  elementId: Id
+  period: string
+  comment: string
+}
+
+export async function getCommentList(params: CommentWindow): Promise<{ items: BudgetCommentDto[]; truncated: boolean }> {
+  const query = new URLSearchParams({ budgetId: params.budgetId, from: params.from, months: String(params.months) })
+  const response = await api.get<Envelope<{ items: BudgetCommentDto[]; truncated: boolean }>>(
+    apiUrl(`/api/v1/budget/get-comment-list?${query.toString()}`),
+  )
+  return response.data.data
+}
+
+export async function createComment(form: CreateCommentForm): Promise<BudgetCommentDto> {
+  const response = await api.post<Envelope<{ item: BudgetCommentDto }>>(apiUrl('/api/v1/budget/create-comment'), form)
+  return response.data.data.item
+}
+
+export async function updateComment(form: { id: Id; comment: string }): Promise<BudgetCommentDto> {
+  const response = await api.post<Envelope<{ item: BudgetCommentDto }>>(apiUrl('/api/v1/budget/update-comment'), form)
+  return response.data.data.item
+}
+
+export async function deleteComment(form: { id: Id }): Promise<void> {
+  await api.post(apiUrl('/api/v1/budget/delete-comment'), form)
 }
