@@ -1262,6 +1262,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "Plano"
+        },
         "limit": {
           "label": "Orçamento",
           "validation": {
@@ -1429,6 +1432,7 @@
         "covered": "Ultrapassado em {over} — coberto por {carry} restantes de meses anteriores",
         "transactions": "Transações",
         "set_plan": "Definir plano",
+        "balance": "Saldo",
         "converted": "≈ {amount} {currency}"
       },
       "settings": {
