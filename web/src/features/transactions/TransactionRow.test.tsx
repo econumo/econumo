@@ -133,3 +133,55 @@ it('never promotes a reporting tag to the row title', () => {
   expect(row).toHaveTextContent('Uncategorized')
   expect(row.textContent?.match(/Kitty/g) ?? []).toHaveLength(1)
 })
+
+describe('global mode (no page account)', () => {
+  const card = { ...pageAccount, id: 'a2', name: 'Card' } as AccountDto
+
+  it('shows the account name line and signs expense/income', () => {
+    render(<TransactionRow transaction={baseTx} />)
+    expect(screen.getByTestId('tx-account-t1')).toHaveTextContent('Cash')
+    expect(screen.getByText(/^-9\.99/)).toBeInTheDocument()
+
+    cleanup()
+    render(<TransactionRow transaction={{ ...baseTx, type: 'income' } as ViewTransaction} />)
+    expect(screen.getByText(/^\+9\.99/)).toBeInTheDocument()
+  })
+
+  it('shows From → To for a transfer, its description as title, and no sign', () => {
+    const transfer = {
+      ...baseTx,
+      type: 'transfer',
+      accountRecipientId: 'a2',
+      accountRecipient: card,
+      amount: '100',
+      amountRecipient: '100',
+      categoryId: null,
+      category: undefined,
+      description: 'move money',
+    } as unknown as ViewTransaction
+    render(<TransactionRow transaction={transfer} />)
+    expect(screen.getByTestId('tx-account-t1')).toHaveTextContent('Cash → Card')
+    expect(screen.getByText('move money')).toBeInTheDocument()
+    expect(screen.queryByText(/Transfer to/)).not.toBeInTheDocument()
+    expect(screen.getByText(/^100(\.00)?/)).toBeInTheDocument()
+  })
+
+  it('falls back to the Transfer type label when a transfer has no description', () => {
+    const transfer = {
+      ...baseTx,
+      type: 'transfer',
+      accountRecipientId: 'a2',
+      accountRecipient: card,
+      categoryId: null,
+      category: undefined,
+      description: '',
+    } as unknown as ViewTransaction
+    render(<TransactionRow transaction={transfer} />)
+    expect(screen.getByTitle('Transfer')).toBeInTheDocument()
+  })
+
+  it('shows no account line on the account page', () => {
+    renderRow()
+    expect(screen.queryByTestId('tx-account-t1')).toBeNull()
+  })
+})
