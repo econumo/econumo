@@ -1344,7 +1344,7 @@
       },
       "plan": {
         "toggle": {
-          "month": "Miesiąc",
+          "budget": "Budżet",
           "plan": "Plan"
         },
         "section": {

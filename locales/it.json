@@ -1344,7 +1344,7 @@
       },
       "plan": {
         "toggle": {
-          "month": "Mese",
+          "budget": "Budget",
           "plan": "Piano"
         },
         "section": {

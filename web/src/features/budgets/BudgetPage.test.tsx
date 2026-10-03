@@ -342,14 +342,14 @@ it('the header tabs navigate between /budget and /budget/plan and reflect the ro
   expect(strip.parentElement).toContainElement(screen.getByRole('tablist', { name: 'budget mode' }))
   expect(screen.getByRole('heading', { name: 'Main budget' }).closest('header')).not.toContainElement(screen.getByRole('tablist', { name: 'budget mode' }))
   const modeTabs = within(screen.getByRole('tablist', { name: 'budget mode' }))
-  expect(modeTabs.getByRole('tab', { name: 'Month' })).toHaveAttribute('aria-selected', 'true')
+  expect(modeTabs.getByRole('tab', { name: 'Budget' })).toHaveAttribute('aria-selected', 'true')
 
   await user.click(modeTabs.getByRole('tab', { name: 'Plan' }))
   await screen.findByTestId('plan-sheet')
   expect(router.state.location.pathname).toBe('/budget/plan')
   expect(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Plan' })).toHaveAttribute('aria-selected', 'true')
 
-  await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Month' }))
+  await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Budget' }))
   await screen.findByRole('tablist', { name: 'period' })
   expect(router.state.location.pathname).toBe('/budget')
 })
@@ -373,7 +373,7 @@ it('tablet viewport: the views lead the month row, as on desktop, and nothing is
   await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Plan' }))
   await screen.findByTestId('plan-sheet')
   expect(router.state.location.pathname).toBe('/budget/plan')
-  await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Month' }))
+  await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Budget' }))
   await screen.findByRole('tablist', { name: 'period' })
   expect(router.state.location.pathname).toBe('/budget')
 })
@@ -464,7 +464,7 @@ const budgetWithSavings = () => {
   return budget
 }
 
-it('the Month view follows the phone order: Income, Savings, Expenses, then the totals lines', async () => {
+it('the Budget view follows the phone order: Income, Savings, Expenses, then the totals lines', async () => {
   const budget = budgetWithSavings()
   server.use(
     ...coreHandlers({ user: userWithBudget }),
@@ -497,7 +497,7 @@ it('the Month view follows the phone order: Income, Savings, Expenses, then the 
   expect(screen.getByTestId('month-total-balance')).toBeInTheDocument()
 })
 
-it('a Month view section header folds its section, shows its sums, and shares the fold with the Plan view', async () => {
+it('a Budget view section header folds its section, shows its sums, and shares the fold with the Plan view', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budgetWithSavings() } })),

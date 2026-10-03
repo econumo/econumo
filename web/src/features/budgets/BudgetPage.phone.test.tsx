@@ -108,7 +108,7 @@ it('/budget/plan on a phone is the same month view, not the plan grid', async ()
   expect(screen.queryByTestId('plan-sheet')).toBeNull()
 })
 
-it('has no Month/Plan switch anywhere, and the title is not all caps', async () => {
+it('has no Budget/Plan switch anywhere, and the title is not all caps', async () => {
   handlers()
   const user = userEvent.setup()
   renderPage()

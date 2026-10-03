@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next'
 export type BudgetMode = 'budget' | 'plan'
 
 const VIEWS: { mode: BudgetMode; labelKey: string }[] = [
-  { mode: 'budget', labelKey: 'budgets.page.plan.toggle.month' },
+  { mode: 'budget', labelKey: 'budgets.page.plan.toggle.budget' },
   { mode: 'plan', labelKey: 'budgets.page.plan.toggle.plan' },
 ]
 
-/** Month / Plan as plain words at the start of the month navigation row: the views
+/** Budget / Plan as plain words at the start of the month navigation row: the views
  *  decide how many months show, so they sit with the months they control. */
 export function ViewSwitch({ mode, onSwitch }: { mode: BudgetMode; onSwitch: (mode: BudgetMode) => void }) {
   const { t } = useTranslation()
