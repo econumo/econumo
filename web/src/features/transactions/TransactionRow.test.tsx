@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import type { AccountDto } from '@/api/dto/account'
 import { fixtureOwner } from '@/test/fixtures'
 import { TransactionRow } from './TransactionRow'
@@ -132,4 +132,91 @@ it('never promotes a reporting tag to the row title', () => {
   } as Partial<ViewTransaction>)
   expect(row).toHaveTextContent('Uncategorized')
   expect(row.textContent?.match(/Kitty/g) ?? []).toHaveLength(1)
+})
+
+describe('global mode (no page account)', () => {
+  const card = { ...pageAccount, id: 'a2', name: 'Card', icon: 'credit_card' } as AccountDto
+
+  it('names the account with its icon on the right, under the amount', () => {
+    render(<TransactionRow transaction={baseTx} />)
+    const line = screen.getByTestId('tx-account-t1')
+    expect(line.closest('[data-testid="amount-col-t1"]')).not.toBeNull()
+    expect(line).toHaveTextContent(pageAccount.icon)
+  })
+
+  it('shows the author avatar only when asked, regardless of sharing', () => {
+    render(<TransactionRow transaction={baseTx} showAuthor />)
+    expect(screen.getByTitle(fixtureOwner.name)).toBeInTheDocument()
+    cleanup()
+    render(<TransactionRow transaction={baseTx} showAuthor={false} />)
+    expect(screen.queryByTitle(fixtureOwner.name)).not.toBeInTheDocument()
+  })
+
+  it('shows the account name line and signs expense/income', () => {
+    render(<TransactionRow transaction={baseTx} />)
+    expect(screen.getByTestId('tx-account-t1')).toHaveTextContent('Cash')
+    expect(screen.getByText(/^-9\.99/)).toBeInTheDocument()
+
+    cleanup()
+    render(<TransactionRow transaction={{ ...baseTx, type: 'income' } as ViewTransaction} />)
+    expect(screen.getByText(/^\+9\.99/)).toBeInTheDocument()
+  })
+
+  it('shows From → To for a transfer, its description as title, and no sign', () => {
+    const transfer = {
+      ...baseTx,
+      type: 'transfer',
+      accountRecipientId: 'a2',
+      accountRecipient: card,
+      amount: '100',
+      amountRecipient: '100',
+      categoryId: null,
+      category: undefined,
+      description: 'move money',
+    } as unknown as ViewTransaction
+    render(<TransactionRow transaction={transfer} />)
+    const line = screen.getByTestId('tx-account-t1')
+    expect(within(line).getByText('Cash')).toBeInTheDocument()
+    expect(within(line).getByText('Card')).toBeInTheDocument()
+    expect(line).toHaveTextContent('→')
+    expect(screen.getByText('move money')).toBeInTheDocument()
+    expect(screen.queryByText(/Transfer to/)).not.toBeInTheDocument()
+    expect(screen.getByText(/^100(\.00)?/)).toBeInTheDocument()
+  })
+
+  it('a transfer out of a hidden account shows the amount received, in the recipient currency', () => {
+    const euro = { ...card, currency: { id: 'eur', code: 'EUR', symbol: '€', fractionDigits: 2 } } as unknown as AccountDto
+    const transfer = {
+      ...baseTx,
+      type: 'transfer',
+      account: undefined,
+      accountRecipientId: 'a2',
+      accountRecipient: euro,
+      amount: '100',
+      amountRecipient: '92.5',
+      categoryId: null,
+      category: undefined,
+    } as unknown as ViewTransaction
+    render(<TransactionRow transaction={transfer} />)
+    expect(screen.getByText(/^92\.50$/).textContent).toBe('92.50€')
+  })
+
+  it('falls back to the Transfer type label when a transfer has no description', () => {
+    const transfer = {
+      ...baseTx,
+      type: 'transfer',
+      accountRecipientId: 'a2',
+      accountRecipient: card,
+      categoryId: null,
+      category: undefined,
+      description: '',
+    } as unknown as ViewTransaction
+    render(<TransactionRow transaction={transfer} />)
+    expect(screen.getByTitle('Transfer')).toBeInTheDocument()
+  })
+
+  it('shows no account line on the account page', () => {
+    renderRow()
+    expect(screen.queryByTestId('tx-account-t1')).toBeNull()
+  })
 })

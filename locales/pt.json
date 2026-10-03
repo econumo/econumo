@@ -1203,9 +1203,7 @@
         "description": "Precisa de aceitar o convite antes de aceder a este orçamento."
       },
       "expense_widget": {
-        "header": "Progresso das despesas",
-        "conversion_rate": "Taxa média de {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Poupado {saved} de {planned} planeados"
+        "conversion_rate": "Taxa média de {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Duplicar orçamento",
@@ -1279,6 +1277,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "Plano"
+        },
         "limit": {
           "label": "Orçamento",
           "validation": {
@@ -1319,6 +1320,7 @@
         "structure": {
           "no_folder": "Pasta predefinida",
           "in_archive": "Em arquivo",
+          "carry_over_hint": "Restante de meses anteriores",
           "tab": {
             "budgeted": "Orçamento",
             "spent": "Gasto",
@@ -1420,15 +1422,33 @@
           "counter": "{count}/500",
           "read_only": "Os comentários aqui podem ser lidos, mas não alterados.",
           "empty": "Ainda não há comentários.",
-          "truncated": "A mostrar os 2000 comentários mais recentes."
+          "truncated": "A mostrar os 2000 comentários mais recentes.",
+          "add": "Adicionar comentário",
+          "more": "+{count} mais"
         }
       },
       "savings": {
         "title": "Poupança",
         "planned": "Planeado",
         "saved": "Poupado",
-        "balance": "Saldo",
         "balance_hint": "Saldo no fim do mês. No mês atual e nos seguintes inclui a poupança planeada que ainda falta."
+      },
+      "phone": {
+        "row_aria": "{name}, orçamento {budget}, gasto {spent}",
+        "child_aria": "{name}, gasto {spent}",
+        "income_row_aria": "{name}, planeado {planned}, recebido {received}",
+        "savings_row_aria": "{name}, planeado {planned}, poupado {saved}",
+        "available": "{amount} disponível",
+        "actual": "Real",
+        "balance": "Saldo no fim do mês"
+      },
+      "sheet": {
+        "received": "Recebido",
+        "covered": "Ultrapassado em {over} — coberto por {carry} restantes de meses anteriores",
+        "transactions": "Transações",
+        "set_plan": "Definir plano",
+        "balance": "Saldo",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Orçamentos e planos",
@@ -1477,6 +1497,12 @@
         "confirm": "Mesclar",
         "warning": "Todas as transações de “{name}” serão movidas e “{name}” será excluído.",
         "envelope_info": "Se os dois estiverem em envelopes diferentes, atualize primeiro o seu orçamento para não perder os valores planejados, pois ao mesclar os limites são somados."
+      },
+      "archive": {
+        "action": "Arquivar"
+      },
+      "unarchive": {
+        "action": "Desarquivar"
       }
     },
     "categories": {
@@ -1763,6 +1789,22 @@
         }
       }
     }
+  },
+  "search": {
+    "title": "Pesquisa",
+    "placeholder": "Pesquisar transações, contas, categorias…",
+    "groups": {
+      "accounts": "Contas",
+      "categories": "Categorias",
+      "payees": "Beneficiários",
+      "tags": "Etiquetas",
+      "labels": "Etiquetas de relatório",
+      "transactions": "Transações"
+    },
+    "show_all": "Mostrar todos ({count})",
+    "hidden_folder": "Pasta oculta",
+    "back": "Voltar",
+    "nothing_found": "Nada encontrado"
   },
   "subscription": {
     "banner": {

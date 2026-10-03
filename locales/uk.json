@@ -1203,9 +1203,7 @@
         "description": "Щоб отримати доступ до цього бюджету, спочатку прийміть запрошення."
       },
       "expense_widget": {
-        "header": "Витрати",
-        "conversion_rate": "Середній курс за {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Відкладено {saved} з {planned} запланованих"
+        "conversion_rate": "Середній курс за {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Дублювати бюджет",
@@ -1279,6 +1277,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "План"
+        },
         "limit": {
           "label": "Бюджет",
           "validation": {
@@ -1319,6 +1320,7 @@
         "structure": {
           "no_folder": "Папка за замовчуванням",
           "in_archive": "В архіві",
+          "carry_over_hint": "Залишилося з попередніх місяців",
           "tab": {
             "budgeted": "Бюджет",
             "spent": "Витрачено",
@@ -1420,15 +1422,33 @@
           "counter": "{count}/500",
           "read_only": "Коментарі тут можна читати, але не можна змінювати.",
           "empty": "Поки що немає коментарів.",
-          "truncated": "Показано останні 2000 коментарів."
+          "truncated": "Показано останні 2000 коментарів.",
+          "add": "Додати коментар",
+          "more": "ще {count}"
         }
       },
       "savings": {
         "title": "Заощадження",
         "planned": "Заплановано",
         "saved": "Відкладено",
-        "balance": "Баланс",
         "balance_hint": "Баланс на кінець місяця. Для поточного й наступних місяців включає заплановані заощадження, які ще не відкладено."
+      },
+      "phone": {
+        "row_aria": "{name}, бюджет {budget}, витрачено {spent}",
+        "child_aria": "{name}, витрачено {spent}",
+        "income_row_aria": "{name}, заплановано {planned}, отримано {received}",
+        "savings_row_aria": "{name}, заплановано {planned}, відкладено {saved}",
+        "available": "доступно {amount}",
+        "actual": "Факт",
+        "balance": "Баланс на кінець місяця"
+      },
+      "sheet": {
+        "received": "Отримано",
+        "covered": "Перевищення на {over} — покрито за рахунок {carry}, що залишилися з попередніх місяців",
+        "transactions": "Транзакції",
+        "set_plan": "Задати план",
+        "balance": "Баланс",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Бюджети й плани",
@@ -1477,6 +1497,12 @@
         "confirm": "Об’єднати",
         "warning": "Усі транзакції «{name}» будуть переміщені, а «{name}» буде видалено.",
         "envelope_info": "Якщо елементи в різних конвертах, спершу оновіть бюджет, щоб не втратити заплановані суми, адже під час обʼєднання ліміти додаються."
+      },
+      "archive": {
+        "action": "В архів"
+      },
+      "unarchive": {
+        "action": "З архіву"
       }
     },
     "categories": {
@@ -1763,6 +1789,22 @@
         }
       }
     }
+  },
+  "search": {
+    "title": "Пошук",
+    "placeholder": "Пошук транзакцій, рахунків, категорій…",
+    "groups": {
+      "accounts": "Рахунки",
+      "categories": "Категорії",
+      "payees": "Отримувачі",
+      "tags": "Теги",
+      "labels": "Теги для звітів",
+      "transactions": "Транзакції"
+    },
+    "show_all": "Показати всі ({count})",
+    "hidden_folder": "Прихована папка",
+    "back": "Назад",
+    "nothing_found": "Нічого не знайдено"
   },
   "subscription": {
     "banner": {

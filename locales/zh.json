@@ -1203,9 +1203,7 @@
         "description": "访问此预算前，请先接受邀请。"
       },
       "expense_widget": {
-        "header": "支出进度",
-        "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "已储蓄 {saved}，计划 {planned}"
+        "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "复制预算",
@@ -1279,6 +1277,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "计划"
+        },
         "limit": {
           "label": "预算额度",
           "validation": {
@@ -1319,6 +1320,7 @@
         "structure": {
           "no_folder": "默认文件夹",
           "in_archive": "已归档",
+          "carry_over_hint": "以前月份结转",
           "tab": {
             "budgeted": "预算",
             "spent": "已支出",
@@ -1420,15 +1422,33 @@
           "counter": "{count}/500",
           "read_only": "此处的评论可以查看，但无法更改。",
           "empty": "暂无评论。",
-          "truncated": "仅显示最新的 2000 条评论。"
+          "truncated": "仅显示最新的 2000 条评论。",
+          "add": "添加评论",
+          "more": "还有 {count} 条"
         }
       },
       "savings": {
         "title": "储蓄",
         "planned": "计划",
         "saved": "已储蓄",
-        "balance": "余额",
         "balance_hint": "月末余额。当前及之后的月份包含尚未存入的计划储蓄。"
+      },
+      "phone": {
+        "row_aria": "{name}，预算 {budget}，已支出 {spent}",
+        "child_aria": "{name}，已支出 {spent}",
+        "income_row_aria": "{name}，计划 {planned}，已收款 {received}",
+        "savings_row_aria": "{name}，计划 {planned}，已储蓄 {saved}",
+        "available": "可用 {amount}",
+        "actual": "实际",
+        "balance": "月末余额"
+      },
+      "sheet": {
+        "received": "已收款",
+        "covered": "超支 {over} — 由以前月份结转的 {carry} 覆盖",
+        "transactions": "交易",
+        "set_plan": "设置计划",
+        "balance": "余额",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "预算与计划",
@@ -1477,6 +1497,12 @@
         "confirm": "合并",
         "warning": "“{name}”的所有交易将被移动，并删除“{name}”。",
         "envelope_info": "如果两者位于不同的信封中，请先更新预算，以免丢失已计划的金额，因为合并时限额会相加。"
+      },
+      "archive": {
+        "action": "归档"
+      },
+      "unarchive": {
+        "action": "取消归档"
       }
     },
     "categories": {
@@ -1763,6 +1789,22 @@
         }
       }
     }
+  },
+  "search": {
+    "title": "搜索",
+    "placeholder": "搜索交易、账户、分类…",
+    "groups": {
+      "accounts": "账户",
+      "categories": "分类",
+      "payees": "收款人",
+      "tags": "标签",
+      "labels": "统计标签",
+      "transactions": "交易"
+    },
+    "show_all": "显示全部 ({count})",
+    "hidden_folder": "隐藏的文件夹",
+    "back": "返回",
+    "nothing_found": "未找到任何内容"
   },
   "subscription": {
     "banner": {

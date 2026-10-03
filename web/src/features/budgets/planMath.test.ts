@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto, PlanSavingsElementDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
-import { sub } from '@/lib/decimal'
+import { add, sub } from '@/lib/decimal'
+import { fixtureWirePlan } from '@/test/fixtures'
 import {
   PLAN_ACTIONS_COL_PX,
   PLAN_CURRENCY_COL_PX,
@@ -23,6 +24,7 @@ import {
   monthDiff,
   planHasSavingsData,
   planInitialFirstMonth,
+  planMonthExchange,
   planTotals,
   planVisibleCount,
   projectSavingsClosings,
@@ -746,6 +748,30 @@ describe('savings + net + balance split', () => {
     expect(totals.map((t) => t.effectiveNet)).toEqual(totalsWithoutSavings.map((t) => t.effectiveNet))
   })
 
+  it('savingsIncomeExpense (income/expense booked on savings accounts, kept out of the category rows) is added back to netActual and effectiveNet', () => {
+    const plan = buildPlan()
+    const ex = makePlanExchange(plan, [usd, eur])
+    const base = planTotals(plan, ex, now)
+    const withInterest = mkPlan({
+      ...plan,
+      savingsIncomeExpense: [
+        { month: '2026-06-01', currencyId: 'cur-usd', amount: '12' },
+        { month: '2026-07-01', currencyId: 'cur-eur', amount: '-10' },
+      ],
+    })
+    const totals = planTotals(withInterest, ex, now)
+
+    expect(totals[0].netActual).toBe('-248') // -260 + 12
+    expect(totals[1].netActual).toBe('-360') // -355 - 10/2
+    expect(totals[2].netActual).toBe('-200')
+    expect(totals[0].effectiveNet).toBe(add(base[0].effectiveNet, '12'))
+    expect(totals[1].effectiveNet).toBe(sub(base[1].effectiveNet, '5'))
+    expect(totals[2].effectiveNet).toBe(base[2].effectiveNet)
+    // income/expense rows themselves are untouched
+    expect(totals.map((t) => t.incomeActual)).toEqual(base.map((t) => t.incomeActual))
+    expect(totals.map((t) => t.expenseActual)).toEqual(base.map((t) => t.expenseActual))
+  })
+
   it('savingsBalanceRow: opening + flows(past), + flows + (effectiveSavings - savingsActual)(current and future)', () => {
     const plan = buildPlan()
     const ex = makePlanExchange(plan, [usd, eur])
@@ -1108,4 +1134,15 @@ describe('projectSavingsClosings', () => {
     const legacy = mkSavingsEl({ id: 'old', name: 'Old', cells: months.map(() => ({ actual: '0', planned: '100' })) })
     expect(projectSavingsClosings(legacy, months, now)).toEqual(legacy)
   })
+})
+
+it('planMonthExchange converts at the given month\'s rates', () => {
+  const plan = JSON.parse(JSON.stringify(fixtureWirePlan)) as BudgetPlanDto
+  const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
+  const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
+  const may = planMonthExchange(plan, [usd, eur], 0)
+  const aug = planMonthExchange(plan, [usd, eur], 3)
+  // the fixture's EUR rate moves from 0.90 (May) to 0.93 (Aug): the two months must differ
+  expect(may('cur-eur', 'cur-usd', '100')).not.toBe(aug('cur-eur', 'cur-usd', '100'))
+  expect(may('cur-usd', 'cur-usd', '100')).toBe('100')
 })

@@ -120,9 +120,6 @@ func TestGetBudgetPlanSavings_ConvertsToElementCurrency(t *testing.T) {
 	// months, two distinct rates, two distinct expected results close that gap.
 	const septEURRate = "0.87"
 	h.f.Rate(fixture.Rate{CurrencyID: eur, BaseCurrencyID: usdID, Rate: septEURRate, PublishedAt: "2026-09-05"})
-	// structure.savings' "actual" comes from SavingsByMonth, which counts only
-	// type=2 everyday<->savings transfers (not a bare income row on the savings
-	// account) — see savingsByMonthSQL in internal/budget/repo/read.go.
 	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: accountID, AccountRecipientID: savingsEURID,
 		Type: 2, Amount: "66", AmountRecipient: "60", SpentAt: time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)})
 
@@ -183,10 +180,10 @@ func TestGetBudgetPlanSavings_Flows(t *testing.T) {
 			t.Errorf("flow %d = %+v, want %+v", i, got[i], w)
 		}
 	}
-	// The Savings row counts only what was moved in; the interest is a flow only.
+	// The Savings row is the account's whole net change, so it matches its flow.
 	s1 := planSavingsByID(view.Item.Structure.Savings)[savingsUSDID]
-	if len(s1.Cells) != 3 || !decEq(s1.Cells[1].Actual, "300") {
-		t.Errorf("S1 cells = %+v, want August actual 300 (interest excluded)", s1.Cells)
+	if len(s1.Cells) != 3 || !decEq(s1.Cells[1].Actual, "303") {
+		t.Errorf("S1 cells = %+v, want August actual 303 (interest included)", s1.Cells)
 	}
 }
 

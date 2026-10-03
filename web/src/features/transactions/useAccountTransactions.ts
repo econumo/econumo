@@ -9,10 +9,10 @@ import type { TransactionDto } from '@/api/dto/transaction'
 import type { UserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { dayKey, formatDate, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
-import { useAccounts } from '@/features/accounts/queries'
+import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { useRecurring } from '@/features/recurring/queries'
-import { useTransactions } from './queries'
+import { useAccountTransactionList, useTransactions } from './queries'
 
 export interface ViewTransaction extends Omit<TransactionDto, 'author'> {
   author?: UserDto
@@ -72,14 +72,64 @@ function resolveLabels(ids: Id[] | undefined | null, labels: LabelDto[] | undefi
   return labels.filter((l) => ids.includes(l.id))
 }
 
-export function useAccountTransactions(accountId: Id | undefined, search: string): DailyListEntry[] {
-  const { data: transactions } = useTransactions()
+export interface TransactionLookups {
+  accounts?: AccountDto[]
+  categories?: CategoryDto[]
+  payees?: PayeeDto[]
+  tags?: TagDto[]
+  labels?: LabelDto[]
+}
+
+export function useTransactionLookups(): TransactionLookups {
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
   const { data: labels } = useLabels()
+  return useMemo(() => ({ accounts, categories, payees, tags, labels }), [accounts, categories, payees, tags, labels])
+}
+
+export function enrichTransaction(tx: TransactionDto, l: TransactionLookups): ViewTransaction {
+  return {
+    ...tx,
+    account: l.accounts?.find((a) => a.id === tx.accountId),
+    accountRecipient: tx.accountRecipientId ? l.accounts?.find((a) => a.id === tx.accountRecipientId) : undefined,
+    category: tx.categoryId ? l.categories?.find((c) => c.id === tx.categoryId) : undefined,
+    payee: tx.payeeId ? l.payees?.find((p) => p.id === tx.payeeId) : undefined,
+    tag: tx.tagId ? l.tags?.find((tg) => tg.id === tx.tagId) : undefined,
+    labels: resolveLabels(tx.labelIds, l.labels),
+    isInFuture: isFuture(tx.date),
+  }
+}
+
+/** `placed` must already be ordered by group; one separator is emitted per group */
+export function groupByDay(placed: { tx: ViewTransaction; groupDay: string }[]): DailyListEntry[] {
+  const entries: DailyListEntry[] = []
+  let currentDay: string | null = null
+  for (const { tx, groupDay } of placed) {
+    if (groupDay !== currentDay) {
+      currentDay = groupDay
+      entries.push({
+        kind: 'separator',
+        day: groupDay,
+        label: isToday(groupDay) ? 'today' : isYesterday(groupDay) ? 'yesterday' : 'date',
+      })
+    }
+    entries.push({ kind: 'transaction', transaction: tx })
+  }
+  return entries
+}
+
+export function useAccountTransactions(accountId: Id | undefined, search: string): DailyListEntry[] {
+  const { data: allTransactions } = useTransactions()
+  const lookups = useTransactionLookups()
+  const { accounts, categories, payees, tags, labels } = lookups
   const { data: recurring } = useRecurring()
+  const { data: folders } = useFolders()
+  const folderId = accounts?.find((a) => a.id === accountId)?.folderId
+  const inHiddenFolder = !!folderId && folders?.find((f) => f.id === folderId)?.isVisible === 0
+  const { data: ownList } = useAccountTransactionList(accountId, inHiddenFolder)
+  const transactions = inHiddenFolder ? ownList : allTransactions
 
   return useMemo(() => {
     if (!transactions || !accountId) {
@@ -87,16 +137,7 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
     }
     const enriched: ViewTransaction[] = transactions
       .filter((tx) => tx.accountId === accountId || tx.accountRecipientId === accountId)
-      .map((tx) => ({
-        ...tx,
-        account: accounts?.find((a) => a.id === tx.accountId),
-        accountRecipient: tx.accountRecipientId ? accounts?.find((a) => a.id === tx.accountRecipientId) : undefined,
-        category: tx.categoryId ? categories?.find((c) => c.id === tx.categoryId) : undefined,
-        payee: tx.payeeId ? payees?.find((p) => p.id === tx.payeeId) : undefined,
-        tag: tx.tagId ? tags?.find((tg) => tg.id === tx.tagId) : undefined,
-        labels: resolveLabels(tx.labelIds, labels),
-        isInFuture: isFuture(tx.date),
-      }))
+      .map((tx) => enrichTransaction(tx, lookups))
 
     // one virtual row per template due on THIS account — transfers surface
     // only on the source account, matching the real transaction row it will
@@ -155,22 +196,8 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
       return terms.every((term) => hay.includes(term))
     })
 
-    // already ordered by group above; emit one separator per group
-    const entries: DailyListEntry[] = []
-    let currentDay: string | null = null
-    for (const { tx, groupDay } of filtered) {
-      if (groupDay !== currentDay) {
-        currentDay = groupDay
-        entries.push({
-          kind: 'separator',
-          day: groupDay,
-          label: isToday(groupDay) ? 'today' : isYesterday(groupDay) ? 'yesterday' : 'date',
-        })
-      }
-      entries.push({ kind: 'transaction', transaction: tx })
-    }
-    return entries
-  }, [transactions, accounts, categories, payees, tags, labels, recurring, accountId, search])
+    return groupByDay(filtered)
+  }, [transactions, lookups, accounts, categories, payees, tags, labels, recurring, accountId, search])
 }
 
 export interface TitleInfo {

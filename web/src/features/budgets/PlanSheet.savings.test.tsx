@@ -451,3 +451,43 @@ it('each savings cell shows the balance at the end of its month; from the curren
   // expense rows carry no balance line
   expect(document.querySelectorAll('[data-testid="cell-closing"]')).toHaveLength(3)
 })
+
+function captureTxListParams() {
+  let params: URLSearchParams | undefined
+  const handler = http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+    params = new URL(request.url).searchParams
+    return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+  })
+  return { handler, params: () => params }
+}
+
+function mockTabletViewport() {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+}
+
+it('a tablet savings cell’s sheet → Transactions lists the account’s transactions for that month', async () => {
+  const tx = captureTxListParams()
+  useHandlers(savingsPlan, [tx.handler])
+  mockTabletViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage()
+  await user.click(await screen.findByTestId('plan-cell-acc-s1:2'))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Transactions' }))
+  await waitFor(() => expect(tx.params()?.get('accountId')).toBe('acc-s1'))
+  // the tapped column's month, not the page's selected month (2026-07-01)
+  expect(tx.params()?.get('periodStart')).toBe('2026-08-01')
+})
+
+it('a tablet income cell’s sheet → Transactions lists the category’s income for that month', async () => {
+  const tx = captureTxListParams()
+  useHandlers(savingsPlan, [tx.handler])
+  mockTabletViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage()
+  await user.click(await screen.findByTestId('plan-cell-cat-freelance:1'))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Transactions' }))
+  await waitFor(() => expect(tx.params()?.get('income')).toBe('1'))
+  expect(tx.params()?.get('categoryId')).toBe('cat-freelance')
+})

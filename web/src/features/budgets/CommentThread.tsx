@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -9,6 +10,7 @@ import type { BudgetCommentDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { v7 as uuidv7 } from 'uuid'
 import { pluralPick } from '@/lib/plural'
+import { commentAnchorOf } from './cellDom'
 import { useCreateComment, useDeleteComment, useUpdateComment } from './queries'
 
 export interface CommentThreadProps {
@@ -24,6 +26,9 @@ export interface CommentThreadProps {
   readOnly: boolean
   /** the fetch behind `comments` hit the 2000-item server cap and dropped the oldest */
   truncated: boolean
+  /** 'sheet' pins the composer to the bottom of the scrolling sheet body so the
+   *  on-screen keyboard never pushes the thread out of view */
+  layout?: 'popover' | 'sheet'
 }
 
 const MAX_COMMENT_RUNES = 500
@@ -42,29 +47,66 @@ function parseServerDateTime(s: string): Date {
   return new Date(Date.UTC(y, m - 1, d, hh, mm, ss))
 }
 
-// The corner triangle on a commented amount cell. The visible triangle is drawn on
-// an inner span so the button carries a real hit area (a touch tap on the 6x6px
-// border-only box used to land on the cell behind it) without taking any layout
-// space or changing column width; the cell must be `relative`.
-export function CommentMarker({ count, onOpen }: { count: number; onOpen: () => void }) {
+// "Sep 29, 6:42 PM": no seconds, and the year only when it is not the current one
+export function formatCommentTime(createdAt: string, lang: string, now: Date = new Date()): string {
+  const date = parseServerDateTime(createdAt)
+  return date.toLocaleString(lang, {
+    year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+// createdAt is the server's fixed-width "Y-m-d H:i:s" wire format: plain
+// ordinal comparison, not locale-aware collation, is what sorts it correctly.
+export function sortByCreatedAt(comments: BudgetCommentDto[]): BudgetCommentDto[] {
+  return [...comments].sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0))
+}
+
+// The corner triangle on a commented amount cell. The triangle is drawn on an inner
+// span so the button keeps a 24px hit area without taking layout space or changing
+// column width; the cell must be `relative`. `outset` is for cells whose number is
+// flush with the cell's right edge (the monthly table and the savings block): the
+// mark then sits in the gap after the number instead of on top of its last digit.
+//
+// With no comments it is the add-comment corner: a faint triangle shown only while a
+// mouse hovers the enclosing `group/cell`. It is hidden with `visibility`, not
+// opacity, so it cannot be tapped or tabbed to while unseen; Tailwind's hover
+// variants apply only under `(hover: hover)`, so touch screens never show it.
+export function CommentMarker({
+  count,
+  onOpen,
+  placement = 'inset',
+}: {
+  count: number
+  onOpen: (anchor: HTMLElement) => void
+  placement?: 'inset' | 'outset'
+}) {
   const { t, i18n } = useTranslation()
+  const add = count === 0
+  const label = add ? t('budgets.page.plan.comments.add') : pluralPick(t('budgets.page.plan.comments.marker_aria'), count, i18n.language)
   return (
     <button
       type="button"
-      data-testid="comment-marker"
-      aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), count, i18n.language)}
-      className="absolute right-0 top-0 flex h-4 w-4 items-start justify-end"
+      data-testid={add ? 'comment-marker-add' : 'comment-marker'}
+      aria-label={label}
+      title={add ? label : undefined}
+      className={`absolute z-10 flex size-6 items-start justify-end ${placement === 'outset' ? '-right-3 -top-1' : 'right-0 top-0'}${add ? ' group/add invisible group-hover/cell:visible' : ''}`}
       onClick={(e) => {
         e.stopPropagation()
-        onOpen()
+        onOpen(commentAnchorOf(e.currentTarget))
       }}
     >
-      <span className="h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-primary" />
+      <span
+        className={`h-0 w-0 border-l-[10px] border-t-[10px] border-l-transparent ${add ? 'border-t-muted-foreground/40 group-hover/add:border-t-muted-foreground' : 'border-t-primary'}`}
+      />
     </button>
   )
 }
 
-export function CommentThread({ budgetId, elementId, period, comments, currentUserId, canModerate, readOnly, truncated }: CommentThreadProps) {
+export function CommentThread({ budgetId, elementId, period, comments, currentUserId, canModerate, readOnly, truncated, layout = 'popover' }: CommentThreadProps) {
   const { t, i18n } = useTranslation()
   const createComment = useCreateComment(budgetId)
   const updateComment = useUpdateComment(budgetId)
@@ -92,9 +134,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
     }
   }, [readOnly])
 
-  // createdAt is the server's fixed-width "Y-m-d H:i:s" wire format: plain
-  // ordinal comparison, not locale-aware collation, is what sorts it correctly.
-  const sorted = [...comments].sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0))
+  const sorted = sortByCreatedAt(comments)
 
   function post() {
     const value = draft.trim()
@@ -141,7 +181,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
       <p className="text-sm font-medium">{t('budgets.page.plan.comments.title')}</p>
       {truncated ? <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.truncated')}</p> : null}
       <ul
-        className="flex max-h-64 flex-col gap-3 overflow-y-auto"
+        className={`flex flex-col gap-3 ${layout === 'popover' ? 'max-h-64 overflow-y-auto' : ''}`}
         aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), sorted.length, i18n.language)}
       >
         {sorted.length === 0 ? (
@@ -151,14 +191,43 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
             const isAuthor = currentUserId !== undefined && c.author.id === currentUserId
             const isEditing = !readOnly && editingId === c.id
             return (
-              <li key={c.id} className="flex items-start gap-2">
+              <li key={c.id} className="group/comment flex items-start gap-2">
                 <UserAvatar avatar={c.author.avatar} size="xs" />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex flex-wrap items-baseline gap-1.5">
                     <span className="truncate text-sm font-medium">{c.author.name}</span>
-                    <span className="text-xs text-muted-foreground">{parseServerDateTime(c.createdAt).toLocaleString(i18n.language)}</span>
+                    <span className="text-xs text-muted-foreground">{formatCommentTime(c.createdAt, i18n.language)}</span>
                     {c.updatedAt !== c.createdAt ? (
                       <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.edited')}</span>
+                    ) : null}
+                    {!readOnly && !isEditing && (isAuthor || canModerate) ? (
+                      // revealed on hover or keyboard focus where there is a mouse; always shown on touch
+                      // screens, which have no hover to reveal them with
+                      <span className="ml-auto flex gap-0.5 self-center transition-opacity [@media(hover:hover)]:opacity-0 group-hover/comment:opacity-100 group-has-[:focus-visible]/comment:opacity-100">
+                        {isAuthor ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={t('budgets.page.plan.comments.edit')}
+                            title={t('budgets.page.plan.comments.edit')}
+                            onClick={() => startEdit(c)}
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={t('budgets.page.plan.comments.delete')}
+                          title={t('budgets.page.plan.comments.delete')}
+                          onClick={() => setDeleteTarget(c.id)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </span>
                     ) : null}
                   </div>
                   {isEditing ? (
@@ -192,24 +261,6 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
                   ) : (
                     <p className="whitespace-pre-wrap text-sm">{c.comment}</p>
                   )}
-                  {!readOnly && !isEditing && (isAuthor || canModerate) ? (
-                    <div className="flex gap-3">
-                      {isAuthor ? (
-                        <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => startEdit(c)}>
-                          {t('budgets.page.plan.comments.edit')}
-                        </Button>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 text-xs text-destructive"
-                        onClick={() => setDeleteTarget(c.id)}
-                      >
-                        {t('budgets.page.plan.comments.delete')}
-                      </Button>
-                    </div>
-                  ) : null}
                 </div>
               </li>
             )
@@ -219,7 +270,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
       {readOnly ? (
         <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.read_only')}</p>
       ) : (
-        <div className="flex flex-col gap-1.5">
+        <div className={`flex flex-col gap-1.5 ${layout === 'sheet' ? 'sticky bottom-0 bg-background pt-2' : ''}`} data-testid="comment-composer">
           <CardField label={t('budgets.page.plan.comments.comment_label')} htmlFor="ct-composer">
             <Textarea
               id="ct-composer"

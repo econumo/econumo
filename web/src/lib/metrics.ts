@@ -100,6 +100,7 @@ export const METRICS = {
   BUDGET_PLAN_FILL_RIGHT: 'appBudgetPlanFillRight',
   BUDGET_PLAN_PASTE_CELL: 'appBudgetPlanPasteCell',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
+  BUDGET_TRANSACTIONS_OPEN: 'appBudgetTransactionsOpen',
   BUDGET_UPDATE_COMMENT: 'appBudgetUpdateComment',
   BUDGET_DELETE_COMMENT: 'appBudgetDeleteComment',
   TAG_CREATE: 'appTagCreate',
@@ -142,6 +143,8 @@ export const METRICS = {
   IMPORT_RULE_APPLY: 'appImportRuleApply',
   IMPORT_RULES_SUGGEST: 'appImportRulesSuggest',
   INBOX_OPEN: 'appInboxOpen',
+  GLOBAL_SEARCH_OPEN: 'appGlobalSearchOpen',
+  GLOBAL_SEARCH_SELECT: 'appGlobalSearchSelect',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

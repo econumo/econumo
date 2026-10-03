@@ -1203,9 +1203,7 @@
         "description": "You need to accept the invitation before accessing this budget."
       },
       "expense_widget": {
-        "header": "Spending progress",
-        "conversion_rate": "Average rate for {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Saved {saved} of {planned} planned"
+        "conversion_rate": "Average rate for {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Duplicate budget",
@@ -1279,6 +1277,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "Plan"
+        },
         "limit": {
           "label": "Budget",
           "validation": {
@@ -1319,6 +1320,7 @@
         "structure": {
           "no_folder": "Default folder",
           "in_archive": "Archived",
+          "carry_over_hint": "Left from earlier months",
           "tab": {
             "budgeted": "Budget",
             "spent": "Spent",
@@ -1420,15 +1422,33 @@
           "counter": "{count}/500",
           "read_only": "Comments here can be read but not changed.",
           "empty": "No comments yet.",
-          "truncated": "Showing the latest 2000 comments."
+          "truncated": "Showing the latest 2000 comments.",
+          "add": "Add comment",
+          "more": "+{count} more"
         }
       },
       "savings": {
         "title": "Savings",
         "planned": "Planned",
         "saved": "Saved",
-        "balance": "Balance",
         "balance_hint": "Balance at the end of the month. For the current and later months it includes the planned savings still to come."
+      },
+      "phone": {
+        "row_aria": "{name}, budget {budget}, spent {spent}",
+        "child_aria": "{name}, spent {spent}",
+        "income_row_aria": "{name}, planned {planned}, received {received}",
+        "savings_row_aria": "{name}, planned {planned}, saved {saved}",
+        "available": "{amount} available",
+        "actual": "Actual",
+        "balance": "Balance at month end"
+      },
+      "sheet": {
+        "received": "Received",
+        "covered": "Over by {over} — covered by {carry} left from earlier months",
+        "transactions": "Transactions",
+        "set_plan": "Set plan",
+        "balance": "Balance",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Budgets & Plans",
@@ -1477,6 +1497,12 @@
         "confirm": "Merge",
         "warning": "All transactions from “{name}” will be moved, and “{name}” will be deleted.",
         "envelope_info": "If the two sit in different envelopes, update your budget first so you don’t lose your planned amounts — limits are added together when merging."
+      },
+      "archive": {
+        "action": "Archive"
+      },
+      "unarchive": {
+        "action": "Unarchive"
       }
     },
     "categories": {
@@ -1763,6 +1789,22 @@
         }
       }
     }
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search transactions, accounts, categories…",
+    "groups": {
+      "accounts": "Accounts",
+      "categories": "Categories",
+      "payees": "Payees",
+      "tags": "Tags",
+      "labels": "Labels",
+      "transactions": "Transactions"
+    },
+    "show_all": "Show all ({count})",
+    "hidden_folder": "Hidden folder",
+    "back": "Back",
+    "nothing_found": "Nothing found"
   },
   "subscription": {
     "banner": {

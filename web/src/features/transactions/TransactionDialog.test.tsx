@@ -804,3 +804,22 @@ it('refuses to submit a transfer without a recipient account', async () => {
   // the dialog stays open for the user to pick the account
   expect(screen.getByRole('heading', { name: 'Add transaction' })).toBeInTheDocument()
 })
+
+it('account pickers match the account name with skipped letters, never its balance', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  const picker = await screen.findByRole('combobox', { name: 'account' })
+
+  await user.click(picker)
+  await user.clear(picker)
+  await user.keyboard('eurstsh')
+  const options = await screen.findAllByRole('option')
+  expect(options).toHaveLength(1)
+  expect(options[0]).toHaveTextContent('Euro Stash')
+
+  // "2000" is Bank's balance, not part of any name
+  await user.clear(picker)
+  await user.keyboard('2000')
+  expect(screen.queryAllByRole('option')).toHaveLength(0)
+})

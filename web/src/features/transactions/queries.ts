@@ -4,13 +4,28 @@ import type { TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
+const byDateDesc = (items: TransactionDto[]) => [...items].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+
 export function useTransactions() {
   return useQuery({
     queryKey: queryKeys.transactions,
-    queryFn: transactionApi.getTransactionList,
+    queryFn: () => transactionApi.getTransactionList(),
     staleTime: TEN_MINUTES,
     // the multi-account backend query has no ORDER BY; date desc is applied here
-    select: (items) => [...items].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
+    select: byDateDesc,
+  })
+}
+
+// The app-wide list leaves out accounts in hidden folders. Such an account is
+// still reachable (global search), so its page loads its own list while open
+// and drops it on leave instead of growing the shared cache.
+export function useAccountTransactionList(accountId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.accountTransactions(accountId ?? ''),
+    queryFn: () => transactionApi.getTransactionList(accountId),
+    enabled: enabled && !!accountId,
+    gcTime: 0,
+    select: byDateDesc,
   })
 }
 
@@ -28,6 +43,7 @@ export function useApplyTransactionItem() {
       }
       return items.filter((t) => t.id !== result.item.id)
     })
+    void queryClient.invalidateQueries({ queryKey: ['accountTransactions'] })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })

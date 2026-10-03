@@ -33,7 +33,7 @@ import type {
   PlanChildDto,
   PlanElementDto,
 } from '@/api/dto/budget'
-import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -42,6 +42,8 @@ import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { useUpdateCategory } from '@/features/classifications/queries'
+import { useAccounts } from '@/features/accounts/queries'
+import { useUiStore } from '@/app/uiStore'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
@@ -68,8 +70,13 @@ import {
 } from './queries'
 import { arrangementItem, moveElementInArrangement, placeElements } from './elementMove'
 import type { ElementContainer } from './elementMove'
-import { CommentsDialog } from './CommentsDialog'
-import { CommentMarker, CommentThread } from './CommentThread'
+import { CommentsPanel } from './CommentsPanel'
+import { CommentMarker } from './CommentThread'
+import { CellShell } from './CellShell'
+import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
+import { ElementSheet } from './ElementSheet'
+import { planCellFigures } from './phoneMonth'
+import { elementEditAccess, isEnvelopeType } from './elementEdit'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { LimitEditor } from './LimitEditor'
 import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
@@ -96,6 +103,7 @@ import {
   planHasSavingsData,
   projectSavingsClosings,
   planInitialFirstMonth,
+  planMonthExchange,
   planTotals,
   planVisibleCount,
   savingsAsPlanElement,
@@ -230,22 +238,18 @@ interface GridCtx {
   isCompact: boolean
   monthLabel: (m: string) => string
   commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
-  openDialog: (target: PlanLimitTarget) => void
+  /** touch viewports: a cell tap opens the item sheet */
+  openSheet: (target: PlanLimitTarget) => void
   commentsByCell: Map<string, BudgetCommentDto[]>
   /** the fetch backing `commentsByCell` hit the 2000-item server cap and dropped the oldest */
   commentsTruncated: boolean
-  /** `fromGrid` marks a keyboard-originated open (Shift+Enter): only the branch that
-   *  actually sets one of the four `editorOpen` states (the standalone dialog) should
-   *  arm `editorFromGrid` — the popover branch below must not, or the flag is left
-   *  stuck true (that branch never flips `editorOpen`) and steals focus back from
-   *  whatever unrelated, mouse-opened dialog closes next. */
-  openComments: (target: PlanLimitTarget, fromGrid?: boolean) => void
-  /** the cell key (commentCellKey) whose LimitEditor footer should be/become expanded —
-   *  reactive state, not a ref, so a footer that is ALREADY mounted (its popover already
-   *  open) picks up the change and expands in place, rather than needing to be
-   *  re-clicked (which would toggle the popover shut and drop an in-progress edit). */
-  commentsAutoExpandKey: string | null
-  consumeCommentsAutoExpand: (key: string) => void
+  /** `fromGrid` marks a keyboard-originated open (Shift+Enter / Shift+F2) so the
+   *  grid reclaims focus when the thread closes; `anchor` is the cell to pin the
+   *  popover to: undefined = look it up from the grid; null = no anchor, open as a
+   *  sheet/dialog */
+  openComments: (target: PlanLimitTarget, opts?: { fromGrid?: boolean; anchor?: HTMLElement | null }) => void
+  /** a thread is open: hover previews stay shut */
+  commentsOpen: boolean
   canEdit: boolean
   selection: PlanSelection | null
   select: (rowKey: string, col: number, e?: { target: EventTarget | null }) => void
@@ -270,8 +274,6 @@ interface GridCtx {
 // (internal/budget/builder_structure_build.go), so the plan sheet is the only surface
 // where an income envelope is reachable — Edit/Delete must live here or an existing
 // one could never be renamed, archived, re-scoped, or removed through any UI.
-const isEnvelopeType = (type: BudgetElementType): boolean =>
-  type === BudgetElementType.ENVELOPE || type === BudgetElementType.INCOME_ENVELOPE
 
 function RowMenu({ el, ctx }: { el: PlanElementDto; ctx: GridCtx }) {
   const { t } = useTranslation()
@@ -487,52 +489,6 @@ const ChildRow = memo(function ChildRow({
   )
 })
 
-// The amount popover's own comments entry point: a disclosure so the popover
-// stays compact for the common case (adjusting the limit, not reading notes).
-// Syncing off `ctx.commentsAutoExpandKey` via an effect (not a mount-only lazy
-// init) matters when this footer is ALREADY mounted (its popover already open)
-// and the marker/Shift+Enter fires again for the SAME cell: openComments must not
-// re-click an open trigger (that would toggle the popover shut and drop an
-// in-progress edit), so it only sets the key — this effect is what turns that
-// into a visible, expanded thread without any DOM click.
-function CommentsFooter({ ctx, el, month, comments }: { ctx: GridCtx; el: PlanElementDto; month: string; comments: BudgetCommentDto[] }) {
-  const { t } = useTranslation()
-  const key = commentCellKey(el.id, month)
-  const [expanded, setExpanded] = useState(false)
-  useEffect(() => {
-    if (ctx.commentsAutoExpandKey === key) {
-      setExpanded(true)
-      ctx.consumeCommentsAutoExpand(key)
-    }
-  }, [ctx, key])
-  return (
-    <div className="mt-2 border-t pt-2">
-      <button
-        type="button"
-        className="text-xs font-medium text-muted-foreground hover:underline"
-        aria-expanded={expanded}
-        onClick={() => setExpanded((e) => !e)}
-      >
-        {t('budgets.page.plan.comments.disclosure', { count: comments.length })}
-      </button>
-      {expanded ? (
-        <div className="mt-2">
-          <CommentThread
-            budgetId={ctx.meta.id}
-            elementId={el.id}
-            period={month}
-            comments={comments}
-            currentUserId={ctx.userId}
-            canModerate={canConfigureBudget(ctx.meta, ctx.userId)}
-            readOnly={commentsReadOnly(ctx.meta, month)}
-            truncated={ctx.commentsTruncated}
-          />
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
   const { t } = useTranslation()
   const el = row.element
@@ -614,9 +570,10 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
             (selected || hoverCol === i || fillSource) && editable && !!cell && !ctx.isCompact && ctx.visibleMonths.length > 1
           const cellComments = ctx.commentsByCell.get(commentCellKey(el.id, m)) ?? []
           const commentCount = cellComments.length
-          return (
+          const target = { el, month: m, monthIndex: idx }
+          const cellNode = (
             <div
-              key={m}
+              {...{ [COMMENT_ANCHOR_ATTR]: '' }}
               role="gridcell"
               id={cellDomId(rk, i)}
               aria-selected={selected}
@@ -624,8 +581,14 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               data-month={m}
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
-              className={`relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
-              onClick={(e) => ctx.select(rk, i, e)}
+              className={`group/cell relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
+              onClick={(e) => {
+                ctx.select(rk, i, e)
+                // touch: the whole cell opens the item sheet; the marker stops its own click
+                if (ctx.isCompact && !ctx.editMode && !isUncategorized && idx >= 0) {
+                  ctx.openSheet(target)
+                }
+              }}
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
@@ -636,38 +599,25 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                 {actualText}
               </span>
               <span data-testid="cell-planned" className="text-sm">
-                {editable && !ctx.isCompact ? (
+                {ctx.isCompact ? (
+                  editable ? moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false }) : plannedText
+                ) : editable ? (
                   <LimitEditor
                     id={`${el.id}-${m}`}
                     name={displayName}
                     value={plannedValue}
                     currency={currency}
                     onCommit={(amount) => ctx.commit(el.id, m, idx, amount)}
-                    footer={<CommentsFooter ctx={ctx} el={el} month={m} comments={cellComments} />}
                   />
-                ) : editable ? (
-                  <button
-                    type="button"
-                    className="w-full text-right underline-offset-2 hover:underline"
-                    aria-label={`limit ${displayName}`}
-                    onClick={() => ctx.openDialog({ el, month: m, monthIndex: idx })}
-                  >
-                    {moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false })}
-                  </button>
                 ) : !isUncategorized ? (
-                  // non-editable (guest role, an archived element, a month outside the
-                  // budget's range) still needs an entry point to the thread — otherwise
-                  // a guest can never START one, only reopen a cell someone else already
-                  // commented on (the marker below). `openComments` already routes a
-                  // non-editable target straight to the standalone dialog on every
-                  // viewport, so this is the one path for both desktop and compact.
+                  // a non-editable cell (guest role, archived element, month outside the budget) still opens its thread, so a guest can start one
                   <button
                     type="button"
                     className="w-full text-right underline-offset-2 hover:underline"
                     aria-label={`comments ${displayName}`}
                     onClick={(e) => {
                       e.stopPropagation()
-                      ctx.openComments({ el, month: m, monthIndex: idx })
+                      ctx.openComments(target, { anchor: commentAnchorOf(e.currentTarget) })
                     }}
                   >
                     {plannedText}
@@ -685,8 +635,8 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                   {moneyFormat(cell.closingBalance, currency, { showCurrency: false, useNativePrecision: false })}
                 </span>
               ) : null}
-              {commentCount > 0 && !isUncategorized ? (
-                <CommentMarker count={commentCount} onOpen={() => ctx.openComments({ el, month: m, monthIndex: idx })} />
+              {(commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
+                <CommentMarker count={commentCount} onOpen={(anchor) => ctx.openComments(target, { anchor })} />
               ) : null}
               {showFillHandle ? (
                 <span
@@ -702,6 +652,17 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                 />
               ) : null}
             </div>
+          )
+          return (
+            <CellShell
+              key={m}
+              comments={isUncategorized ? [] : cellComments}
+              previewDisabled={ctx.commentsOpen || ctx.editMode}
+              shortcutDisabled={ctx.editMode}
+              onOpenComments={isUncategorized ? undefined : (anchor) => ctx.openComments(target, { anchor })}
+            >
+              {cellNode}
+            </CellShell>
           )
         })}
         {/* trailing track: currency, then the actions menu in edit mode — the budget
@@ -1209,6 +1170,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
+  const [sheetCellTarget, setSheetCellTarget] = useState<PlanLimitTarget | null>(null)
+  const openSheet = useCallback((target: PlanLimitTarget) => setSheetCellTarget(target), [])
   const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
   const [draggingFolder, setDraggingFolder] = useState(false)
   const [moveFolderTarget, setMoveFolderTarget] = useState<PlanElementDto | null>(null)
@@ -1220,16 +1183,9 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const [tagTarget, setTagTarget] = useState<TagDialogItem | null>(null)
   const [renameFolderTarget, setRenameFolderTarget] = useState<BudgetFolderDto | null>(null)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<BudgetFolderDto | null>(null)
-  // the standalone thread dialog: compact viewports, and any non-editable cell
-  // (a guest, or a role without limit rights) that has no LimitEditor popover to
-  // hang the inline disclosure off of
-  const [commentsDialogTarget, setCommentsDialogTarget] = useState<PlanLimitTarget | null>(null)
-  const [commentsAutoExpandKey, setCommentsAutoExpandKey] = useState<string | null>(null)
-  // guards against a stale `key` clearing a DIFFERENT cell's key that armed after it
-  const consumeCommentsAutoExpand = useCallback(
-    (key: string) => setCommentsAutoExpandKey((cur) => (cur === key ? null : cur)),
-    [],
-  )
+  // the open comment thread: anchored to its cell on desktop/tablet, a sheet on a phone
+  const [commentsDialogTarget, setCommentsDialogTarget] = useState<(PlanLimitTarget & { anchor: HTMLElement | null }) | null>(null)
+  const commentsOpen = commentsDialogTarget !== null
   // A modal opened from the keyboard (Enter on the name cell) has no trigger for
   // Radix to hand focus back to, so on close focus would fall to <body> and the
   // arrow keys go dead. Remember that the grid opened it and reclaim focus once it
@@ -1379,50 +1335,30 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const visibleMonths = useMemo(() => Array.from({ length: visible }, (_, i) => addMonths(firstMonth, i)), [visible, firstMonth])
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
   // The uncategorized row's synthetic id names no real element the server would
-  // accept, so it gets no comment entry point at all — guarded here too since
-  // Shift+Enter reaches this through the keyboard, bypassing the marker's own
-  // visual gate (isUncategorized in ElementRow).
-  //
-  // Desktop + editable: expand the amount popover's own footer in place (there is a
-  // LimitEditor to hang it on). `fromGrid` is set ONLY for the dialog branch below —
-  // that's the one that actually changes an `editorOpen` state, so it's the one whose
-  // close must reclaim grid focus; this branch must never set it (see the comment on
-  // GridCtx.openComments for why that would leave the flag stuck true).
-  // Everything else (compact, or no edit rights on this cell/month) has no popover to
-  // embed into, so it gets the standalone dialog instead.
+  // accept, so it gets no comment entry point at all — guarded here too since the
+  // keyboard (Shift+Enter / Shift+F2) reaches this without the marker's gate.
   const openComments = useCallback(
-    (target: PlanLimitTarget, fromGrid = false) => {
+    (target: PlanLimitTarget, opts: { fromGrid?: boolean; anchor?: HTMLElement | null } = {}) => {
       if (target.el.id === UNCATEGORIZED_ID) {
         return
       }
-      if (isCompact || !isEditableCell(target.el, target.month, target.monthIndex, budget.meta, userId)) {
-        if (fromGrid) {
-          editorFromGrid.current = true
-        }
-        setCommentsDialogTarget(target)
-        return
-      }
       const col = visibleMonths.indexOf(target.month)
-      const trigger = containerRef.current?.querySelector<HTMLButtonElement>(
-        `[data-testid="plan-cell-${target.el.id}:${col}"] [aria-label^="limit "]`,
-      )
-      if (!trigger) {
-        return
+      const anchor =
+        opts.anchor !== undefined ? opts.anchor : col >= 0 ? document.getElementById(cellDomId(`${target.el.id}:${target.el.type}`, col)) : null
+      if (opts.fromGrid) {
+        editorFromGrid.current = true
       }
-      // Arm the auto-expand key only once we know we can actually reach the cell — an
-      // unresolved trigger must leave no lingering signal for some later, unrelated
-      // open of the same cell to pick up.
-      setCommentsAutoExpandKey(commentCellKey(target.el.id, target.month))
-      trigger.focus()
-      // Radix marks its own open state via data-state; re-clicking an ALREADY-open
-      // trigger would toggle the popover shut and drop whatever amount the user was
-      // mid-typing — the CommentsFooter effect above (keyed on commentsAutoExpandKey)
-      // is what expands an already-mounted footer, so nothing more to do here.
-      if (trigger.getAttribute('data-state') !== 'open') {
-        trigger.click()
-      }
+      setCommentsDialogTarget({ ...target, anchor })
     },
-    [isCompact, budget.meta, userId, visibleMonths],
+    [visibleMonths],
+  )
+  const openTransactions = useCallback(
+    (el: PlanElementDto, month: string) =>
+      setTransactionsTarget({
+        target: { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId },
+        month,
+      }),
+    [t],
   )
   const cur = currentMonth()
   // same wording as the budget view's period strip
@@ -1437,6 +1373,25 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const tailPx = PLAN_CURRENCY_COL_PX + (editMode ? PLAN_ACTIONS_COL_PX : 0)
   const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr)) ${tailPx}px`
   const canEdit = canEditBudget(budget.meta, userId)
+  const { data: accounts = [] } = useAccounts()
+  const openAccountModal = useUiStore((s) => s.openAccountModal)
+  const sheetEdit = sheetCellTarget ? elementEditAccess(sheetCellTarget.el, userId, canEdit && budget.meta.isArchived === 0, accounts) : null
+  // the sheet's pencil: the element's own edit dialog replaces the sheet
+  const editFromSheet = (el: PlanElementDto) => {
+    setSheetCellTarget(null)
+    if (isEnvelopeType(el.type)) {
+      setEnvelopeTarget(el)
+    } else if (el.type === BudgetElementType.SAVINGS) {
+      const account = accounts.find((a) => a.id === el.id)
+      if (account) {
+        openAccountModal({ account })
+      }
+    } else if (el.type === BudgetElementType.TAG) {
+      setTagTarget({ id: el.id, name: el.name, kind: 'tag', icon: el.icon })
+    } else {
+      setCategoryTarget({ id: el.id, name: el.name, icon: el.icon, type: isIncomeType(el.type) ? 'income' : 'expense' })
+    }
+  }
   const canDeleteEnvelopes = canDeleteEnvelope(budget.meta, userId)
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
@@ -1600,12 +1555,11 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       isCompact,
       monthLabel,
       commit,
-      openDialog: setPlanLimitTarget,
+      openSheet,
       commentsByCell,
       commentsTruncated,
       openComments,
-      commentsAutoExpandKey,
-      consumeCommentsAutoExpand,
+      commentsOpen,
       canEdit,
       selection,
       select,
@@ -1641,8 +1595,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     commentsByCell,
     commentsTruncated,
     openComments,
-    commentsAutoExpandKey,
-    consumeCommentsAutoExpand,
+    commentsOpen,
     canEdit,
     selection,
     select,
@@ -1847,11 +1800,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       return
     }
     const idx = monthIndex(month)
-    if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
+    if (isCompact) {
+      // touch: Enter opens the same item sheet a tap would — any non-uncategorized
+      // cell outside edit-structure mode, editable or not.
+      if (!editMode && entry.el.id !== UNCATEGORIZED_ID && idx >= 0) {
+        openSheet({ el: entry.el, month, monthIndex: idx })
+      }
       return
     }
-    if (isCompact) {
-      setPlanLimitTarget({ el: entry.el, month, monthIndex: idx })
+    if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
       return
     }
     const trigger = containerRef.current?.querySelector<HTMLButtonElement>(
@@ -1878,14 +1835,9 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     return { entry, col: selection.col, month, idx: monthIndex(month) }
   }
 
-  // Shift+Enter's keyboard route into the same thread the marker opens. `fromGrid`
-  // (not a blanket editorFromGrid.current = true here) lets openComments decide: only
-  // its standalone-dialog branch has no trigger of its own for Radix to hand focus
-  // back to, so only that branch's close should reclaim grid focus — same as
-  // openElementEditor, and same reasoning as handleEnter's desktop popover branch,
-  // which never sets this ref either (Radix already returns focus to the trigger).
+  // Shift+Enter / Shift+F2: the keyboard route into the same thread the marker opens.
   function openCommentsFromGrid(cell: NonNullable<ReturnType<typeof selectedMonthCell>>) {
-    openComments({ el: cell.entry.el, month: cell.month, monthIndex: cell.idx }, true)
+    openComments({ el: cell.entry.el, month: cell.month, monthIndex: cell.idx }, { fromGrid: true })
   }
 
   // Cmd/Ctrl+C on the focused grid: the browser fires `copy` on the grid even with no
@@ -2022,6 +1974,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       e.preventDefault()
       if (e.key === 'ArrowRight') {
         startKeyboardFill()
+      }
+      return
+    }
+    // Excel's "edit comment" shortcut, alongside the older Shift+Enter
+    if (e.shiftKey && e.key === 'F2') {
+      e.preventDefault()
+      const cell = selectedMonthCell()
+      if (cell) {
+        openCommentsFromGrid(cell)
       }
       return
     }
@@ -2441,26 +2402,48 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
-        comments={
-          planLimitTarget ? (
-            <CommentThread
-              budgetId={budget.meta.id}
-              elementId={planLimitTarget.el.id}
-              period={planLimitTarget.month}
-              comments={commentsByCell.get(commentCellKey(planLimitTarget.el.id, planLimitTarget.month)) ?? []}
-              currentUserId={userId}
-              canModerate={canConfigureBudget(budget.meta, userId)}
-              readOnly={commentsReadOnly(budget.meta, planLimitTarget.month)}
-              truncated={commentsTruncated}
-            />
-          ) : undefined
-        }
+        plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) : false}
       />
 
-      <CommentsDialog
+      <ElementSheet
+        target={sheetCellTarget ? { kind: 'plan', cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null}
+        month={sheetCellTarget?.month ?? ''}
+        baseCurrencyId={budget.meta.currencyId}
+        currencies={currencies}
+        exchange={plan && sheetCellTarget ? planMonthExchange(plan, currencies, sheetCellTarget.monthIndex) : (_from, _to, amount) => amount}
+        comments={sheetCellTarget ? commentsByCell.get(commentCellKey(sheetCellTarget.el.id, sheetCellTarget.month)) ?? [] : []}
+        commentsReadOnly={sheetCellTarget ? commentsReadOnly(budget.meta, sheetCellTarget.month) : true}
+        canSetAmount={sheetCellTarget ? isEditableCell(sheetCellTarget.el, sheetCellTarget.month, sheetCellTarget.monthIndex, budget.meta, userId) : false}
+        onClose={() => setSheetCellTarget(null)}
+        onSetAmount={() => {
+          if (sheetCellTarget) {
+            setPlanLimitTarget(sheetCellTarget)
+            setSheetCellTarget(null)
+          }
+        }}
+        onOpenComments={() => {
+          if (sheetCellTarget) {
+            openComments(sheetCellTarget, { anchor: null })
+            setSheetCellTarget(null)
+          }
+        }}
+        onShowTransactions={
+          sheetCellTarget && sheetCellTarget.el.id !== UNCATEGORIZED_ID
+            ? () => {
+                openTransactions(sheetCellTarget.el, sheetCellTarget.month)
+                setSheetCellTarget(null)
+              }
+            : undefined
+        }
+        onEdit={sheetCellTarget && sheetEdit !== null ? () => editFromSheet(sheetCellTarget.el) : undefined}
+        canEdit={sheetEdit === true}
+      />
+
+      <CommentsPanel
         open={commentsDialogTarget !== null}
         onClose={() => setCommentsDialogTarget(null)}
         title={commentsDialogTarget ? elementDisplayName(commentsDialogTarget.el.id, commentsDialogTarget.el.name, t) : ''}
+        anchor={commentsDialogTarget?.anchor ?? null}
         budgetId={budget.meta.id}
         elementId={commentsDialogTarget?.el.id ?? ''}
         period={commentsDialogTarget?.month ?? ''}

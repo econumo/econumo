@@ -46,11 +46,14 @@ type AccountZeroer interface {
 	ZeroDeleted(ctx context.Context, accountID vo.Id, spentAt time.Time, description string) error
 }
 
-// VisibleAccounts supplies the set of account ids whose transactions a user may
-// list (own + shared, minus deleted + hidden-folder). The account module
-// provides this.
+// VisibleAccounts supplies the account ids a user may read. VisibleAccountIDs
+// (own + shared, minus deleted + hidden-folder) backs the app-wide list;
+// AvailableAccountIDs (hidden folders included) backs a single account's list,
+// since a hidden folder is a display preference, not an access boundary. The
+// account module provides both.
 type VisibleAccounts interface {
 	VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
+	AvailableAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
 // AccountGrants reports whether a connected (non-owner) user holds an

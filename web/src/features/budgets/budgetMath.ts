@@ -1,14 +1,16 @@
-import type { BudgetBalanceDto, BudgetDto, BudgetElementDto, BudgetFolderDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetElementDto, BudgetFolderDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { compareNames } from '@/lib/collate'
-import { abs, add, cmp, div } from '@/lib/decimal'
+import { add, cmp, div, isZero } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
 
 export interface BucketStats {
   budgeted: string
   spent: string
   available: string
+  /** what earlier months left (see carryOver), budget currency */
+  carry: string
 }
 
 export interface FolderBucket {
@@ -40,13 +42,15 @@ export function bucketStats(elements: BudgetElementDto[], budget: BudgetDto, exc
   let budgeted = '0'
   let spent = '0'
   let available = '0'
+  let carry = '0'
   for (const el of elements) {
     const from = el.currencyId ?? base
     budgeted = add(budgeted, exchangeFn(from, base, el.budgeted))
     spent = add(spent, el.budgetSpent)
     available = add(available, exchangeFn(from, base, add(el.available, el.budgeted)))
+    carry = add(carry, exchangeFn(from, base, carryOver(el)))
   }
-  return { budgeted, spent, available }
+  return { budgeted, spent, available, carry }
 }
 
 export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang = 'en'): BudgetBuckets {
@@ -95,12 +99,17 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang =
 export function budgetTotals(buckets: BudgetBuckets): BucketStats {
   const all = [...buckets.withFolder.map((b) => b.stats), buckets.withoutFolder.stats, buckets.archive.stats]
   const totals = all.reduce(
-    (acc, s) => ({ budgeted: add(acc.budgeted, s.budgeted), spent: add(acc.spent, s.spent), available: add(acc.available, s.available) }),
-    { budgeted: '0', spent: '0', available: '0' },
+    (acc, s) => ({
+      budgeted: add(acc.budgeted, s.budgeted),
+      spent: add(acc.spent, s.spent),
+      available: add(acc.available, s.available),
+      carry: add(acc.carry, s.carry),
+    }),
+    { budgeted: '0', spent: '0', available: '0', carry: '0' },
   )
   // Categoryless spending is real money out, so it still counts toward the
   // spent total — but it can never be budgeted, so it adds nothing to the
-  // budgeted/available totals.
+  // budgeted/available/carry totals.
   return { ...totals, spent: add(totals.spent, buckets.uncategorized.stats.spent) }
 }
 
@@ -110,40 +119,15 @@ export function budgetTotals(buckets: BudgetBuckets): BucketStats {
 export function totalsWithSavings(totals: BucketStats, budget: BudgetDto, exchangeFn: ExchangeFn): BucketStats {
   const base = budget.meta.currencyId
   return (budget.structure.savings ?? []).reduce(
+    // a savings row carries nothing over (its available is planned − saved)
     (acc, row) => ({
+      ...acc,
       budgeted: add(acc.budgeted, exchangeFn(row.currencyId, base, row.budgeted)),
       spent: add(acc.spent, exchangeFn(row.currencyId, base, row.spent)),
       available: add(acc.available, exchangeFn(row.currencyId, base, row.available)),
     }),
     totals,
   )
-}
-
-export interface SavingsTotals {
-  /** what the month saves: actual for a past month; from the current month on,
-   *  each live row's larger of planned and saved (the Plan view's Savings line) */
-  savings: string
-  /** end-of-month balance; null when the server sends no balance */
-  balance: string | null
-}
-
-/** The phone Total card's savings lines, in the budget currency (the phone rows
- *  leave the Balance column out). null when the budget has no savings rows.
- *  `projected`: the month is the caller's current one or later. */
-export function savingsTotals(budget: BudgetDto, exchangeFn: ExchangeFn, projected: boolean): SavingsTotals | null {
-  const rows = budget.structure.savings ?? []
-  if (rows.length === 0) {
-    return null
-  }
-  const base = budget.meta.currencyId
-  const savings = rows.reduce((acc, row) => {
-    const amount = projected && row.isArchived === 0 && cmp(row.budgeted, row.spent) > 0 ? row.budgeted : row.spent
-    return add(acc, exchangeFn(row.currencyId, base, amount))
-  }, '0')
-  const balance = rows.some((row) => row.closingBalance === undefined)
-    ? null
-    : rows.reduce((acc, row) => add(acc, exchangeFn(row.currencyId, base, row.closingBalance ?? '0')), '0')
-  return { savings, balance }
 }
 
 export const displayAvailable = (el: { available: string; budgeted: string }): string => add(el.available, el.budgeted)
@@ -203,31 +187,37 @@ export function periodRange(
   return items
 }
 
-export interface WidgetMath {
-  spent: string
-  total: string
-  /** ratio for the progress bar; float precision is fine for a CSS width */
-  progress: number
-  overspent: boolean
+export type RowState = 'none' | 'ok' | 'covered' | 'over'
+
+/** The one colour rule for an expense row. `available` is the displayed Available
+ *  (`displayAvailable`); a future month has no spending yet, so it has no state. */
+export function rowState(row: { budgeted: string; spent: string; available: string }, future = false): RowState {
+  if (future || (isZero(row.budgeted) && isZero(row.spent))) {
+    return 'none'
+  }
+  if (cmp(row.available, '0') < 0) {
+    return 'over'
+  }
+  return cmp(row.spent, row.budgeted) > 0 ? 'covered' : 'ok'
 }
 
-// nulls count as zero; negative exchange/holdings fold into spent, positive into total.
-export function widgetMath(balance: BudgetBalanceDto | undefined): WidgetMath {
-  const n = (v: string | null | undefined) => v ?? '0'
-  const expenses = n(balance?.expenses)
-  const exchanges = n(balance?.exchanges)
-  const holdings = n(balance?.holdings)
-  const startBalance = n(balance?.startBalance)
-  const income = n(balance?.income)
-
-  let spent = abs(expenses)
-  if (cmp(exchanges, '0') < 0) spent = add(spent, abs(exchanges))
-  if (cmp(holdings, '0') < 0) spent = add(spent, abs(holdings))
-
-  let total = abs(add(startBalance, income))
-  if (cmp(exchanges, '0') > 0) total = add(total, exchanges)
-  if (cmp(holdings, '0') > 0) total = add(total, holdings)
-
-  const progress = cmp(total, '0') <= 0 ? 0 : Math.max(0, Math.min(Number(div(spent, total)), 1))
-  return { spent, total, progress, overspent: cmp(spent, total) > 0 }
+/** Spending against what this month can draw on: its budget plus what earlier
+ *  months left (an earlier overspend does not shrink the bar's scale). */
+export function rowProgress(row: { budgeted: string; spent: string; carry?: string }, future = false): number | null {
+  const carry = row.carry !== undefined && cmp(row.carry, '0') > 0 ? row.carry : '0'
+  const pool = add(row.budgeted, carry)
+  if (future || cmp(pool, '0') <= 0) {
+    return null
+  }
+  return Math.max(0, Math.min(Number(div(row.spent, pool)), 1))
 }
+
+/** The row turns red only when this month spent more than its budget and what
+ *  earlier months left does not cover it. `available` is the displayed Available. */
+export function overBudget(row: { budgeted: string; spent: string; available: string }, future = false): boolean {
+  return !future && cmp(row.spent, row.budgeted) > 0 && cmp(row.available, '0') < 0
+}
+
+// the wire `available` already nets this month's spending against what earlier
+// months left, so adding the spending back leaves the carry-over alone
+export const carryOver = (el: { available: string; spent: string }): string => add(el.available, el.spent)

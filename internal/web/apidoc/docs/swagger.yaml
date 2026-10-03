@@ -275,6 +275,10 @@ definitions:
         items:
           $ref: '#/definitions/model.PlanSavingsFlowResult'
         type: array
+      savingsIncomeExpense:
+        items:
+          $ref: '#/definitions/model.PlanSavingsFlowResult'
+        type: array
       savingsOpeningBalances:
         items:
           $ref: '#/definitions/model.OpeningBalanceResult'
@@ -317,10 +321,10 @@ definitions:
         type: string
       direction:
         description: |-
-          Direction is present only on rows of the transfers selector: "out" when
-          the included account is the source, "in" when it is the recipient —
-          Amount/CurrencyId are that side's. Omitted on every other list so their
-          bytes are unchanged.
+          Direction is present only on rows of the transfers, income and
+          accountId selectors: "out" when the money left the included (or
+          savings) account, "in" when it arrived — Amount/CurrencyId are that
+          side's. Omitted on every other list so their bytes are unchanged.
         type: string
       id:
         type: string
@@ -338,6 +342,11 @@ definitions:
         type: string
       tag:
         $ref: '#/definitions/model.TxTagResult'
+      type:
+        description: |-
+          Type ("expense", "income" or "transfer") is present only on rows of the
+          income and accountId selectors.
+        type: string
     type: object
   model.CategoryResult:
     properties:
@@ -4678,6 +4687,16 @@ paths:
         in: query
         name: transfers
         type: boolean
+      - description: Income of categoryId or envelopeId (exactly one; composes with
+          nothing else)
+        in: query
+        name: income
+        type: boolean
+      - description: Every transaction on this account; currently only the budget's
+          savings accounts are accepted (composes with nothing)
+        in: query
+        name: accountId
+        type: string
       produces:
       - application/json
       responses:

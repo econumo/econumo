@@ -1203,9 +1203,7 @@
         "description": "Aby uzyskać dostęp do tego budżetu, najpierw przyjmij zaproszenie."
       },
       "expense_widget": {
-        "header": "Postęp wydatków",
-        "conversion_rate": "Średni kurs za {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Zaoszczędzono {saved} z {planned} zaplanowanych"
+        "conversion_rate": "Średni kurs za {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Duplikuj budżet",
@@ -1279,6 +1277,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "Plan"
+        },
         "limit": {
           "label": "Budżet",
           "validation": {
@@ -1319,6 +1320,7 @@
         "structure": {
           "no_folder": "Folder domyślny",
           "in_archive": "W archiwum",
+          "carry_over_hint": "Pozostało z wcześniejszych miesięcy",
           "tab": {
             "budgeted": "Budżet",
             "spent": "Wydano",
@@ -1420,15 +1422,33 @@
           "counter": "{count}/500",
           "read_only": "Komentarze tutaj można odczytywać, ale nie można ich zmieniać.",
           "empty": "Brak komentarzy.",
-          "truncated": "Wyświetlono 2000 najnowszych komentarzy."
+          "truncated": "Wyświetlono 2000 najnowszych komentarzy.",
+          "add": "Dodaj komentarz",
+          "more": "+{count} więcej"
         }
       },
       "savings": {
         "title": "Oszczędności",
         "planned": "Zaplanowano",
         "saved": "Zaoszczędzono",
-        "balance": "Saldo",
         "balance_hint": "Saldo na koniec miesiąca. W bieżącym i kolejnych miesiącach uwzględnia zaplanowane oszczędności, które jeszcze nie wpłynęły."
+      },
+      "phone": {
+        "row_aria": "{name}, budżet {budget}, wydano {spent}",
+        "child_aria": "{name}, wydano {spent}",
+        "income_row_aria": "{name}, zaplanowano {planned}, odebrano {received}",
+        "savings_row_aria": "{name}, zaplanowano {planned}, zaoszczędzono {saved}",
+        "available": "{amount} dostępne",
+        "actual": "Faktycznie",
+        "balance": "Saldo na koniec miesiąca"
+      },
+      "sheet": {
+        "received": "Odebrano",
+        "covered": "Przekroczono o {over} — pokryte z {carry} pozostałych z wcześniejszych miesięcy",
+        "transactions": "Transakcje",
+        "set_plan": "Ustaw plan",
+        "balance": "Saldo",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Budżety i plany",
@@ -1477,6 +1497,12 @@
         "confirm": "Scal",
         "warning": "Wszystkie transakcje „{name}” zostaną przeniesione, a „{name}” zostanie usunięty.",
         "envelope_info": "Jeśli oba znajdują się w różnych kopertach, najpierw zaktualizuj budżet, aby nie stracić zaplanowanych kwot, ponieważ przy scalaniu limity są sumowane."
+      },
+      "archive": {
+        "action": "Archiwizuj"
+      },
+      "unarchive": {
+        "action": "Przywróć z archiwum"
       }
     },
     "categories": {
@@ -1763,6 +1789,22 @@
         }
       }
     }
+  },
+  "search": {
+    "title": "Wyszukiwanie",
+    "placeholder": "Szukaj transakcji, kont, kategorii…",
+    "groups": {
+      "accounts": "Konta",
+      "categories": "Kategorie",
+      "payees": "Odbiorcy",
+      "tags": "Tagi",
+      "labels": "Tagi raportowe",
+      "transactions": "Transakcje"
+    },
+    "show_all": "Pokaż wszystkie ({count})",
+    "hidden_folder": "Ukryty folder",
+    "back": "Wstecz",
+    "nothing_found": "Nic nie znaleziono"
   },
   "subscription": {
     "banner": {

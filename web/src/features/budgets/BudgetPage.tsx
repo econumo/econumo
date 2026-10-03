@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { CollisionDetection, DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -29,12 +29,13 @@ import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useIsPhone } from '@/hooks/useIsPhone'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
-import { useLongPress } from '@/hooks/useLongPress'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
-import type { BudgetCommentDto, BudgetDto, BudgetElementDto } from '@/api/dto/budget'
-import { BudgetElementType } from '@/api/dto/budget'
+import type { BudgetElementDto } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
 import { RouterPage } from '@/app/router-pages'
 import { useUiStore } from '@/app/uiStore'
@@ -42,12 +43,17 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userOption } from '@/features/user/queries'
 import { UserOptions } from '@/api/dto/user'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCategories } from '@/features/classifications/queries'
+import { useCategories, useUpdateCategory } from '@/features/classifications/queries'
+import { CategoryDialog } from '@/features/classifications/CategoryDialog'
+import { TagDialog } from '@/features/classifications/TagDialog'
+import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import {
   useBudget,
   useBudgets,
   useBudgetComments,
+  useBudgetPlan,
+  usePlanSetLimit,
   useSetLimit,
   useCreateEnvelope,
   useUpdateEnvelope,
@@ -65,19 +71,23 @@ import {
   commentCellKey,
 } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
-import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange, savingsTotals, totalsWithSavings } from './budgetMath'
+import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
-import { currentMonth } from './planMath'
+import { currentMonth, monthDiff } from './planMath'
 import { BudgetTable, BudgetTotals } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
 import { PlanSheet, commentsReadOnly } from './PlanSheet'
-import { ExpenseWidget } from './ExpenseWidget'
-import { SavingsBlock } from './SavingsBlock'
 import { LimitEditor } from './LimitEditor'
 import { SetLimitDialog } from './SetLimitDialog'
-import { CommentMarker, CommentThread } from './CommentThread'
-import { CommentsDialog } from './CommentsDialog'
+import { CommentMarker } from './CommentThread'
+import { CommentsPanel } from './CommentsPanel'
+import { CellShell } from './CellShell'
+import { ElementSheet } from './ElementSheet'
+import { planMonthFigures, sheetCell, sheetElement, sheetSetsPlan, type SheetTarget } from './phoneMonth'
+import { PhoneMonthView } from './PhoneMonthView'
 import { EnvelopeDialog } from './EnvelopeDialog'
+import type { EnvelopeDialogTarget } from './EnvelopeDialog'
+import { elementEditAccess, isEnvelopeType } from './elementEdit'
 import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
@@ -199,64 +209,11 @@ function SortableSection({
 }
 
 
-function ElementLongPress({ element, onLongPress, children }: { element: BudgetElementDto; onLongPress: (el: BudgetElementDto) => void; children: ReactNode }) {
-  const handlers = useLongPress(() => onLongPress(element))
-  return <div {...handlers}>{children}</div>
-}
-
-// The desktop LimitEditor popover's own comments entry point, mirroring PlanSheet's
-// disclosure (same collapsed-by-default footer): the monthly view has no keyboard
-// grid to sync an auto-expand key against, so unlike PlanSheet's version this one
-// only tracks its own toggle state.
-function CommentsFooter({
-  budget,
-  element,
-  period,
-  comments,
-  userId,
-  truncated,
-}: {
-  budget: BudgetDto
-  element: { id: Id }
-  period: string
-  comments: BudgetCommentDto[]
-  userId: Id | undefined
-  truncated: boolean
-}) {
-  const { t } = useTranslation()
-  const [expanded, setExpanded] = useState(false)
-  return (
-    <div className="mt-2 border-t pt-2">
-      <button
-        type="button"
-        className="text-xs font-medium text-muted-foreground hover:underline"
-        aria-expanded={expanded}
-        onClick={() => setExpanded((e) => !e)}
-      >
-        {t('budgets.page.plan.comments.disclosure', { count: comments.length })}
-      </button>
-      {expanded ? (
-        <div className="mt-2">
-          <CommentThread
-            budgetId={budget.meta.id}
-            elementId={element.id}
-            period={period}
-            comments={comments}
-            currentUserId={userId}
-            canModerate={canConfigureBudget(budget.meta, userId)}
-            readOnly={commentsReadOnly(budget.meta, period)}
-            truncated={truncated}
-          />
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
+  const isPhone = useIsPhone()
   const { data: user } = useUserData()
   // isPending covers the whole cold boot (incl. the disabled phase while the
   // user record loads); month switches show the previous period as placeholder
@@ -271,24 +228,28 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const planHideEmpty = useBudgetPeriodStore((s) => s.planHideEmpty)
   const togglePlanHideEmpty = useBudgetPeriodStore((s) => s.togglePlanHideEmpty)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
-  // the monthly view's own one-month window; PlanSheet fetches its own — passing
-  // null on that route skips the fetch instead of duplicating it. Keyed off the
-  // user's stored default budget id, not `budget.meta.id`: waiting on the budget
-  // fetch to resolve first would chain the comments fetch behind it instead of
-  // firing both together.
+  const [editMode, setEditMode] = useState(false)
+  const phoneView = isPhone && !editMode
+  // the monthly view's own one-month window (also the phone view's, on both
+  // routes); PlanSheet fetches its own — passing null on that route skips the
+  // fetch instead of duplicating it. Keyed off the user's stored default budget
+  // id, not `budget.meta.id`: waiting on the budget fetch to resolve first would
+  // chain the comments fetch behind it instead of firing both together.
   // Latent coupling: every comment writer and CommentThread key off `budget.meta.id`
   // (and budgetCommentsFilter matches the query cache on that same id), not this
   // option-derived value. The two cannot diverge today only because useBudget() reads
   // this identical option internally — if it ever gains a non-option budget source,
   // this derivation must follow, or the markers below silently stop tracking writes.
   const budgetId = userOption(user, UserOptions.BUDGET)
-  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(mode === 'budget' ? budgetId : null, selectedDate, 1)
+  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(mode === 'budget' || phoneView ? budgetId : null, selectedDate, 1)
   // an element or a savings row: both dialogs need only the cell's id and name
-  const [commentsTarget, setCommentsTarget] = useState<CellTarget | null>(null)
+  const [commentsTarget, setCommentsTarget] = useState<{ el: CellTarget; anchor: HTMLElement | null } | null>(null)
+  const openComments = (el: CellTarget, anchor: HTMLElement | null = null) => setCommentsTarget({ el, anchor })
 
   const setLimit = useSetLimit()
   const createEnvelope = useCreateEnvelope()
   const updateEnvelope = useUpdateEnvelope()
+  const updateCategory = useUpdateCategory()
   const deleteEnvelope = useDeleteEnvelope()
   const createFolder = useCreateBudgetFolder()
   const updateFolder = useUpdateBudgetFolder()
@@ -297,8 +258,19 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const moveElement = useMoveElement()
   const changeCurrency = useChangeElementCurrency()
   const createBudget = useCreateBudget()
+  // the phone view's income, Balance and Total savings: the Plan view's own figures
+  // for the selected month; null until that month's window has really loaded.
+  // The window starts no later than the current month: the server books only
+  // what precedes the window, so a future month's Balance needs every unmet plan
+  // from the current month on inside it.
+  const phonePlanFirst = selectedDate < currentMonth() ? selectedDate : currentMonth()
+  const phonePlan = useBudgetPlan(phoneView ? budgetId : null, phonePlanFirst, monthDiff(phonePlanFirst, selectedDate) + 1)
+  const planSetLimit = usePlanSetLimit(phonePlan.planKey)
+  const planMonth = useMemo(
+    () => (phonePlan.data && !phonePlan.isPlaceholderData ? planMonthFigures(phonePlan.data, currencies, selectedDate) : null),
+    [phonePlan.data, phonePlan.isPlaceholderData, currencies, selectedDate],
+  )
 
-  const [editMode, setEditMode] = useState(false)
   useEffect(() => {
     if (mode === 'plan') {
       trackEvent(METRICS.BUDGET_PLAN_OPEN)
@@ -310,18 +282,20 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       navigate(BUDGET_MODE_ROUTE[m])
     }
   }
-  const [selectedCurrencyId, setSelectedCurrencyId] = useState<Id | null>(null)
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
   const [renameFolder, setRenameFolder] = useState<{ id: Id; name: string } | null>(null)
-  const [envelopeDialog, setEnvelopeDialog] = useState<{ open: boolean; envelope: BudgetElementDto | null; folderId: Id | null }>({ open: false, envelope: null, folderId: null })
+  const [envelopeDialog, setEnvelopeDialog] = useState<{ open: boolean; envelope: EnvelopeDialogTarget | null; folderId: Id | null; side?: 'expense' | 'income' }>({ open: false, envelope: null, folderId: null })
+  const [categoryTarget, setCategoryTarget] = useState<Pick<CategoryDto, 'id' | 'name' | 'type' | 'icon'> | null>(null)
+  const [tagTarget, setTagTarget] = useState<TagDialogItem | null>(null)
   const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<BudgetElementDto | null>(null)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: Id; name: string } | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<BudgetElementDto | null>(null)
   const [moveFolderTarget, setMoveFolderTarget] = useState<BudgetElementDto | null>(null)
-  const [limitTarget, setLimitTarget] = useState<CellTarget | null>(null)
+  const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean; setsPlan?: boolean }) | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
+  const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null)
 
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
@@ -384,14 +358,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies), i18n.language)
   }, [budget, serverBuckets, dragArrangement, currencies, i18n.language])
 
-  const phoneSavings = useMemo(
-    () => (budget ? savingsTotals(budget, makeBudgetExchange(budget, currencies), selectedDate >= currentMonth()) : null),
-    [budget, currencies, selectedDate],
-  )
-  const totals = useMemo(
-    () => (budget && buckets ? totalsWithSavings(budgetTotals(buckets), budget, makeBudgetExchange(budget, currencies)) : null),
-    [budget, buckets, currencies],
-  )
+  // the Budget view tables the expenses only: savings live in the Plan view (and the
+  // phone's month view), so the Total row counts no savings either
+  const totals = useMemo(() => (buckets ? budgetTotals(buckets) : null), [buckets])
 
   // An archived budget is read-only regardless of role: archived wins over
   // whatever the caller's grant would otherwise allow (the server enforces the
@@ -489,8 +458,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     ) : null
   }
 
-  const budgetCurrencyIds = budget.balances.map((b) => b.currencyId)
-
   const handleDragStart = (event: { active: { id: string | number } }) => {
     const activeId = String(event.active.id)
     if (budget.structure.folders.some((f) => f.id === activeId)) {
@@ -573,19 +540,97 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             value={cell.budgeted}
             currency={currencies.find((c) => c.id === (cell.currencyId ?? budget.meta.currencyId))}
             onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: cell.id, period: selectedDate, amount })}
-            footer={
-              <CommentsFooter
-                budget={budget}
-                element={cell}
-                period={selectedDate}
-                comments={commentsByCell.get(commentCellKey(cell.id, selectedDate)) ?? []}
-                userId={user?.id}
-                truncated={commentsTruncated}
-              />
-            }
           />
         )
       : undefined
+
+  const transactionsTargetOf = (element: BudgetElementDto): BudgetTransactionsTarget => ({
+    id: element.id,
+    type: element.type,
+    name: elementDisplayName(element.id, element.name, t),
+    icon: element.icon,
+    currencyId: element.currencyId,
+  })
+  // the income Uncategorized row has no list: it gathers income booked in expense
+  // categories too, which no selector can name
+  const sheetTransactionsTargetOf = (target: SheetTarget): BudgetTransactionsTarget | null => {
+    switch (target.kind) {
+      case 'expense':
+        return transactionsTargetOf(target.element)
+      case 'savings':
+        return { id: target.row.id, type: BudgetElementType.SAVINGS, name: target.row.name, icon: target.row.icon, currencyId: target.row.currencyId }
+      case 'plan': {
+        const el = target.cell.element
+        return el.id === UNCATEGORIZED_ID ? null : { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId }
+      }
+      case 'label':
+        return { id: target.label.id, type: 'label', name: target.label.name, icon: target.label.icon, currencyId: null }
+    }
+  }
+  const sheetTransactions = sheetTarget ? sheetTransactionsTargetOf(sheetTarget) : null
+  const sheetCanSetAmount = (target: SheetTarget): boolean => {
+    if (!limitsEditable) {
+      return false
+    }
+    switch (target.kind) {
+      case 'expense':
+        return target.element.isArchived === 0 && target.element.id !== UNCATEGORIZED_ID
+      case 'savings':
+        return target.row.isArchived === 0
+      case 'plan':
+        // an income row exists only while its plan window is loaded
+        return target.cell.element.isArchived === 0 && target.cell.element.id !== UNCATEGORIZED_ID && planMonth !== null
+      case 'label':
+        return false
+    }
+  }
+  const sheetCellTarget = (target: SheetTarget): CellTarget => {
+    const cell = sheetCell(target, budget.meta.currencyId)
+    return { id: cell.id, name: cell.name, budgeted: cell.amount }
+  }
+  const sheetEditAccess = (target: SheetTarget): boolean | null => {
+    if (target.kind === 'label') {
+      // update-label answers anyone but the tag's owner with NotFound
+      return !!user && target.label.ownerUserId === user.id
+    }
+    return elementEditAccess(sheetElement(target), user?.id, editDetails, accounts)
+  }
+  const sheetEdit = sheetTarget ? sheetEditAccess(sheetTarget) : null
+  // the sheet's pencil: the element's own edit dialog replaces the sheet
+  const editFromSheet = (target: SheetTarget) => {
+    setSheetTarget(null)
+    if (target.kind === 'label') {
+      setTagTarget({ id: target.label.id, name: target.label.name, kind: 'label', icon: target.label.icon })
+      return
+    }
+    const el = sheetElement(target)
+    if (isEnvelopeType(el.type)) {
+      setEnvelopeDialog({ open: true, envelope: el, folderId: null, side: isIncomeType(el.type) ? 'income' : 'expense' })
+    } else if (el.type === BudgetElementType.SAVINGS) {
+      const account = accounts.find((a) => a.id === el.id)
+      if (account) {
+        openAccountModal({ account })
+      }
+    } else if (el.type === BudgetElementType.TAG) {
+      setTagTarget({ id: el.id, name: el.name, kind: 'tag', icon: el.icon })
+    } else {
+      setCategoryTarget({ id: el.id, name: el.name, icon: el.icon, type: isIncomeType(el.type) ? 'income' : 'expense' })
+    }
+  }
+  // phones get no hover corner; edit mode owns the pointer for dragging
+  const cellActionsDisabled = isPhone || editMode
+  // the hover-only corner that starts a thread on a cell with none yet
+  const canAddComment = !cellActionsDisabled && !commentsReadOnly(budget.meta, selectedDate)
+  const wrapBudgetCell = (element: BudgetElementDto, cell: ReactElement) => (
+    <CellShell
+      comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
+      previewDisabled={commentsTarget !== null || editMode}
+      shortcutDisabled={editMode}
+      onOpenComments={(anchor) => openComments(element, anchor)}
+    >
+      {cell}
+    </CellShell>
+  )
 
   // In edit mode the plus sits in the currency-symbol slot (w-6) so the stat
   // columns line up with the element rows; folder ordering moved to dragging.
@@ -681,12 +726,15 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             <ChevronLeft className="size-5" />
           </Button>
         ) : null}
-        <h1 className="min-w-0 shrink truncate text-[22px] uppercase tracking-wide" title={budget.meta.name}>
+        <h1
+          className={isPhone ? 'min-w-0 shrink truncate text-lg font-medium' : 'min-w-0 shrink truncate text-[22px] uppercase tracking-wide'}
+          title={budget.meta.name}
+        >
           {budget.meta.name}
         </h1>
         {isCompact ? null : (
-          // single-pane headers have no room for the tablist — the mode
-          // switch lives in the settings menu there instead
+          // single-pane headers have no room for the tablist: tablets keep the
+          // mode switch in the settings menu, phones have one view for both routes
           <div role="tablist" aria-label="budget mode" className="flex w-fit shrink-0 rounded-md border p-0.5">
             {BUDGET_MODES.map((m) => (
               <button
@@ -702,26 +750,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             ))}
           </div>
         )}
-        {/* both views: the pills toggle the period widget above the table / the sheet */}
-        <span className="flex shrink-0 items-center gap-1">
-          {budgetCurrencyIds.map((currencyId) => {
-            const currency = currencies.find((c) => c.id === currencyId)
-            const active = selectedCurrencyId === currencyId
-            return (
-              <button
-                key={currencyId}
-                type="button"
-                aria-label={`currency ${currency?.code ?? currencyId}`}
-                aria-pressed={active}
-                title={currency?.name}
-                className={`flex size-7 items-center justify-center rounded-full border text-xs ${active ? 'border-econumo-magenta bg-econumo-magenta text-white' : 'text-muted-foreground hover:bg-accent'}`}
-                onClick={() => setSelectedCurrencyId(active ? null : currencyId)}
-              >
-                {currency?.symbol ?? '?'}
-              </button>
-            )
-          })}
-        </span>
         <span className="flex-1" />
         {editMode ? (
           <Button type="button" size="sm" onClick={() => setEditMode(false)}>
@@ -743,7 +771,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {isCompact ? (
+              {isCompact && !isPhone ? (
                 <>
                   <DropdownMenuRadioGroup value={mode} onValueChange={(m) => switchBudgetMode(m as BudgetMode)}>
                     {BUDGET_MODES.map((m) => (
@@ -761,7 +789,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               <DropdownMenuItem disabled={!configure} onSelect={() => setEditMode(true)}>
                 {t('budgets.page.budget.settings.menu.edit_structure')}
               </DropdownMenuItem>
-              {mode === 'plan' ? (
+              {mode === 'plan' && !phoneView ? (
                 <>
                   <DropdownMenuCheckboxItem checked={planHideEmpty} onCheckedChange={() => togglePlanHideEmpty()}>
                     {t('budgets.page.plan.density.hide_empty')}
@@ -777,12 +805,31 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         )}
       </header>
 
-      {mode === 'plan' ? (
+      {phoneView ? (
         <>
-          {/* the same period widget as the budget view, for the page's selected period */}
-          {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
-          <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} />
+          {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
+          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} />
+          {isPlaceholderData || periodSwitching ? (
+            <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
+              <CoinLoader label={t('common.app.modal.loading.data_loading')} />
+            </div>
+          ) : (
+            <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+              <PhoneMonthView
+                budget={budget}
+                buckets={buckets}
+                currencies={currencies}
+                selectedDate={selectedDate}
+                planMonth={planMonth}
+                commentsByCell={commentsByCell}
+                onOpenSheet={setSheetTarget}
+                onShowTransactions={setTransactionsTarget}
+              />
+            </div>
+          )}
         </>
+      ) : mode === 'plan' ? (
+        <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} />
       ) : (
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
@@ -805,8 +852,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             </div>
           ) : (
             <>
-              {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
-
               <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
                 <DndContext
                   sensors={sensors}
@@ -840,30 +885,16 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     renderFolderActions={editMode ? folderActions : undefined}
                     renderActions={editMode ? elementActions : undefined}
                     renderBudgetCell={inlineLimitEditor}
-                    // a fallback behind renderBudgetCell, so passed even when limits are
-                    // editable: the Archive section keeps only this one of the two
-                    renderBudgetCellComments={
-                      !editMode && !isCompact
-                        ? (element) => (
-                            <CommentThread
-                              budgetId={budget.meta.id}
-                              elementId={element.id}
-                              period={selectedDate}
-                              comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
-                              currentUserId={user?.id}
-                              canModerate={canConfigureBudget(budget.meta, user?.id)}
-                              readOnly={commentsReadOnly(budget.meta, selectedDate)}
-                              truncated={commentsTruncated}
-                            />
-                          )
-                        : undefined
-                    }
+                    // touch viewports reach set budget, comments and transactions through the item sheet
+                    onBudgetCellDetails={isCompact && !editMode ? (element) => setSheetTarget({ kind: 'expense', element }) : undefined}
+                    onBudgetCellComments={!editMode && !isCompact ? (element, anchor) => openComments(element, anchor) : undefined}
+                    wrapBudgetCell={wrapBudgetCell}
                     renderBudgetCellMarker={(element) => {
                       const cellComments = commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []
-                      if (cellComments.length === 0) {
+                      if (cellComments.length === 0 && (!canAddComment || element.id === UNCATEGORIZED_ID)) {
                         return null
                       }
-                      return <CommentMarker count={cellComments.length} onOpen={() => setCommentsTarget(element)} />
+                      return <CommentMarker count={cellComments.length} placement="outset" onOpen={(anchor) => openComments(element, anchor)} />
                     }}
                     renderRowWrapper={
                       editMode
@@ -872,17 +903,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                               {row}
                             </DraggableElement>
                           )
-                        : isCompact
-                          // a non-editable cell (guest role, readonly access, archived
-                          // budget, out-of-range month) still gets the long-press — it
-                          // opens the comments dialog instead of the limit editor, so a
-                          // guest on a real phone has a way to reach the thread at all
-                          ? (element, _bucket, row) => (
-                              <ElementLongPress key={element.id} element={element} onLongPress={limitsEditable ? setLimitTarget : setCommentsTarget}>
-                                {row}
-                              </ElementLongPress>
-                            )
-                          : undefined
+                        : undefined
                     }
                     sectionWrapper={
                       editMode
@@ -902,28 +923,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                         : undefined
                     }
                     onSpentClick={editMode ? undefined : setTransactionsTarget}
-                    onAvailableClick={isCompact && limitsEditable && !editMode ? setLimitTarget : undefined}
-                    // a fallback behind onAvailableClick, so passed even when limits are
-                    // editable: the Archive section keeps only this one of the two
-                    onAvailableCommentsClick={isCompact && !editMode ? setCommentsTarget : undefined}
                   />
                   </SortableContext>
                 </DndContext>
                 <div className="mt-3 flex flex-col gap-3">
-                  {/* its own DndContext: a savings row reorders within the block only */}
-                  <SavingsBlock
-                    budget={budget}
-                    currencies={currencies}
-                    selectedDate={selectedDate}
-                    canEdit={limitsEditable && !editMode}
-                    editMode={editMode}
-                    commentsByCell={commentsByCell}
-                    onEditPlanned={setLimitTarget}
-                    onOpenComments={setCommentsTarget}
-                    renderPlannedEditor={inlineLimitEditor}
-                    onMove={(id, afterId) => moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } })}
-                  />
-                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} savings={phoneSavings} /> : null}
+                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} /> : null}
                 </div>
               </div>
             </>
@@ -962,7 +966,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         open={envelopeDialog.open}
         envelope={envelopeDialog.envelope}
         budgetCurrencyId={budget.meta.currencyId}
-        side="expense"
+        side={envelopeDialog.side ?? 'expense'}
         onClose={() => setEnvelopeDialog({ open: false, envelope: null, folderId: null })}
         onSubmit={(form) => {
           const close = () => setEnvelopeDialog({ open: false, envelope: null, folderId: null })
@@ -979,6 +983,19 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           }
         }}
       />
+
+      <CategoryDialog
+        open={categoryTarget !== null}
+        category={categoryTarget}
+        onClose={() => setCategoryTarget(null)}
+        onSubmit={(form) => {
+          if (categoryTarget) {
+            updateCategory.mutate({ id: categoryTarget.id, name: form.name, icon: form.icon }, { onSuccess: () => setCategoryTarget(null) })
+          }
+        }}
+      />
+
+      <TagDialog open={tagTarget !== null} item={tagTarget} onClose={() => setTagTarget(null)} />
 
       <ConfirmDialog
         open={deleteEnvelopeTarget !== null}
@@ -1067,33 +1084,63 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       ) : null}
 
       <SetLimitDialog
-        target={limitTarget ? { id: limitTarget.id, name: limitTarget.name, value: limitTarget.budgeted } : null}
+        target={limitTarget ? { id: limitTarget.id, name: elementDisplayName(limitTarget.id, limitTarget.name, t), value: limitTarget.budgeted } : null}
+        plan={limitTarget?.setsPlan}
         onClose={() => setLimitTarget(null)}
-        onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })}
-        comments={
-          limitTarget ? (
-            <CommentThread
-              budgetId={budget.meta.id}
-              elementId={limitTarget.id}
-              period={selectedDate}
-              comments={commentsByCell.get(commentCellKey(limitTarget.id, selectedDate)) ?? []}
-              currentUserId={user?.id}
-              canModerate={canConfigureBudget(budget.meta, user?.id)}
-              readOnly={commentsReadOnly(budget.meta, selectedDate)}
-              truncated={commentsTruncated}
-            />
-          ) : undefined
-        }
+        onCommit={(elementId, amount) => {
+          // an income plan lives only in the plan window, so it patches that cache;
+          // the plain write (which also refreshes the plan) covers a window gone meanwhile
+          if (limitTarget?.viaPlan && planMonth) {
+            planSetLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount, monthIndex: planMonth.index })
+            return
+          }
+          setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })
+        }}
       />
 
-      <CommentsDialog
+      <ElementSheet
+        target={sheetTarget}
+        month={selectedDate}
+        baseCurrencyId={budget.meta.currencyId}
+        currencies={currencies}
+        exchange={makeBudgetExchange(budget, currencies)}
+        comments={sheetTarget ? commentsByCell.get(commentCellKey(sheetCell(sheetTarget, budget.meta.currencyId).id, selectedDate)) ?? [] : []}
+        commentsReadOnly={commentsReadOnly(budget.meta, selectedDate)}
+        canSetAmount={sheetTarget ? sheetCanSetAmount(sheetTarget) : false}
+        onClose={() => setSheetTarget(null)}
+        onSetAmount={() => {
+          if (sheetTarget) {
+            setLimitTarget({ ...sheetCellTarget(sheetTarget), viaPlan: sheetTarget.kind === 'plan', setsPlan: sheetSetsPlan(sheetTarget) })
+            setSheetTarget(null)
+          }
+        }}
+        onOpenComments={() => {
+          if (sheetTarget) {
+            openComments(sheetCellTarget(sheetTarget))
+            setSheetTarget(null)
+          }
+        }}
+        onShowTransactions={
+          sheetTransactions
+            ? () => {
+                setTransactionsTarget(sheetTransactions)
+                setSheetTarget(null)
+              }
+            : undefined
+        }
+        onEdit={sheetTarget && sheetEdit !== null ? () => editFromSheet(sheetTarget) : undefined}
+        canEdit={sheetEdit === true}
+      />
+
+      <CommentsPanel
         open={commentsTarget !== null}
         onClose={() => setCommentsTarget(null)}
-        title={commentsTarget ? elementDisplayName(commentsTarget.id, commentsTarget.name, t) : ''}
+        title={commentsTarget ? elementDisplayName(commentsTarget.el.id, commentsTarget.el.name, t) : ''}
+        anchor={commentsTarget?.anchor ?? null}
         budgetId={budget.meta.id}
-        elementId={commentsTarget?.id ?? ''}
+        elementId={commentsTarget?.el.id ?? ''}
         period={selectedDate}
-        comments={commentsTarget ? commentsByCell.get(commentCellKey(commentsTarget.id, selectedDate)) ?? [] : []}
+        comments={commentsTarget ? commentsByCell.get(commentCellKey(commentsTarget.el.id, selectedDate)) ?? [] : []}
         currentUserId={user?.id}
         canModerate={canConfigureBudget(budget.meta, user?.id)}
         readOnly={commentsTarget ? commentsReadOnly(budget.meta, selectedDate) : true}

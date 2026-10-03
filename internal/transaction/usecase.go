@@ -317,7 +317,7 @@ func ownsEntity(ctx context.Context, ownerID, id vo.Id, list func(context.Contex
 // OR any shared access, else AccessDenied (HTTP 403). The visible-account set
 // already computes own + shared, so membership in it is exactly the access test.
 func (s *Service) checkViewAccess(ctx context.Context, userID, accountID vo.Id) error {
-	ids, err := s.visible.VisibleAccountIDs(ctx, userID)
+	ids, err := s.visible.AvailableAccountIDs(ctx, userID)
 	if err != nil {
 		return err
 	}

@@ -29,6 +29,8 @@ import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
 import { TransactionDialog } from '@/features/transactions/TransactionDialog'
 import { RulePromptDialog } from '@/features/imports/RulePromptDialog'
 import { RecurringDialog } from '@/features/recurring/RecurringDialog'
+import { GlobalSearchDialog } from '@/features/search/GlobalSearchDialog'
+import { useSearchHotkey } from '@/features/search/useSearchHotkey'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
@@ -84,6 +86,7 @@ export function ApplicationLayout() {
   const isFullyLoaded = useIsFullyLoaded()
   const { data: user } = useUserData()
   const update = useAvailableUpdate()
+  useSearchHotkey()
 
   // The blocking loader belongs to the FIRST boot only; once data has been on
   // screen, refetches and cache churn must never re-cover the app (Vue parity).
@@ -269,6 +272,7 @@ export function ApplicationLayout() {
 
       <AccountDialog />
       <TransactionDialog />
+      <GlobalSearchDialog />
       <RulePromptDialog />
       <RecurringDialog />
       <SwitchAccountPrompt />

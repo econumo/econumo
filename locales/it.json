@@ -1203,9 +1203,7 @@
         "description": "Devi accettare l'invito prima di poter accedere a questo budget."
       },
       "expense_widget": {
-        "header": "Andamento delle spese",
-        "conversion_rate": "Tasso medio per {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Risparmiati {saved} su {planned} previsti"
+        "conversion_rate": "Tasso medio per {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Duplica budget",
@@ -1279,6 +1277,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "Piano"
+        },
         "limit": {
           "label": "Budget",
           "validation": {
@@ -1319,6 +1320,7 @@
         "structure": {
           "no_folder": "Cartella predefinita",
           "in_archive": "In archivio",
+          "carry_over_hint": "Rimasto dai mesi precedenti",
           "tab": {
             "budgeted": "Budget",
             "spent": "Speso",
@@ -1420,15 +1422,33 @@
           "counter": "{count}/500",
           "read_only": "I commenti qui possono essere letti, ma non modificati.",
           "empty": "Nessun commento ancora.",
-          "truncated": "Vengono mostrati i 2000 commenti più recenti."
+          "truncated": "Vengono mostrati i 2000 commenti più recenti.",
+          "add": "Aggiungi commento",
+          "more": "+{count} altri"
         }
       },
       "savings": {
         "title": "Risparmi",
         "planned": "Previsto",
         "saved": "Risparmiato",
-        "balance": "Saldo",
         "balance_hint": "Saldo a fine mese. Per il mese corrente e i successivi include i risparmi previsti ancora da versare."
+      },
+      "phone": {
+        "row_aria": "{name}, budget {budget}, speso {spent}",
+        "child_aria": "{name}, speso {spent}",
+        "income_row_aria": "{name}, previsto {planned}, ricevuto {received}",
+        "savings_row_aria": "{name}, previsto {planned}, risparmiato {saved}",
+        "available": "{amount} disponibile",
+        "actual": "Effettivo",
+        "balance": "Saldo a fine mese"
+      },
+      "sheet": {
+        "received": "Ricevuto",
+        "covered": "Superato di {over} — coperto da {carry} rimasti dai mesi precedenti",
+        "transactions": "Transazioni",
+        "set_plan": "Imposta il piano",
+        "balance": "Saldo",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Budget e piani",
@@ -1477,6 +1497,12 @@
         "confirm": "Unisci",
         "warning": "Tutte le transazioni di «{name}» verranno spostate e «{name}» verrà eliminato.",
         "envelope_info": "Se i due si trovano in buste diverse, aggiorna prima il budget per non perdere gli importi pianificati, perché unendoli i limiti vengono sommati."
+      },
+      "archive": {
+        "action": "Archivia"
+      },
+      "unarchive": {
+        "action": "Ripristina"
       }
     },
     "categories": {
@@ -1763,6 +1789,22 @@
         }
       }
     }
+  },
+  "search": {
+    "title": "Ricerca",
+    "placeholder": "Cerca transazioni, conti, categorie…",
+    "groups": {
+      "accounts": "Conti",
+      "categories": "Categorie",
+      "payees": "Beneficiari",
+      "tags": "Tag",
+      "labels": "Tag per i report",
+      "transactions": "Transazioni"
+    },
+    "show_all": "Mostra tutti ({count})",
+    "hidden_folder": "Cartella nascosta",
+    "back": "Indietro",
+    "nothing_found": "Nessun risultato"
   },
   "subscription": {
     "banner": {

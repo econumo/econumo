@@ -16,6 +16,10 @@ interface ResponsiveDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   title: string
+  /** shown before the title, e.g. the entity's icon */
+  titleIcon?: ReactNode
+  /** a compact icon button at the header's end (beside the desktop corner X) */
+  headerAction?: ReactNode
   description?: string
   children: ReactNode
   dismissible?: boolean
@@ -29,16 +33,32 @@ interface ResponsiveDialogProps {
   fullScreen?: boolean
   /** action row rendered outside the scroll area — pinned to the sheet bottom on mobile */
   footer?: ReactNode
+  /** desktop width: `wide` suits list-heavy dialogs (the global search palette) */
+  size?: 'default' | 'wide'
+  /** runs as the dialog hands focus back on close; preventDefault() keeps focus
+   *  where an action started from the dialog put it */
+  onCloseAutoFocus?: (e: Event) => void
 }
 
-export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer }: ResponsiveDialogProps) {
+export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerAction, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus, size = 'default' }: ResponsiveDialogProps) {
   // full-screen / bottom-sheet layouts kick in only below sm (640px); at 640px
   // and up dialogs stay centred like on desktop
   const isMobile = useIsPhone()
   const titleClass = caps ? 'uppercase tracking-wide' : undefined
   const showCloseButton = dismissible && (!hideHeader || showClose)
   // keep the (possibly long, title-less-confirm) heading clear of the corner X
-  const headerClass = hideHeader ? 'sr-only' : showCloseButton ? 'pr-8' : undefined
+  const headerClass = hideHeader ? 'sr-only' : headerAction ? (showCloseButton ? 'pr-16' : 'pr-8') : showCloseButton ? 'pr-8' : undefined
+  const titleContent = titleIcon ? (
+    <>
+      {titleIcon}
+      <span className="min-w-0">{title}</span>
+    </>
+  ) : (
+    title
+  )
+  const titleRowClass = titleIcon ? 'flex items-center gap-1.5' : ''
+  // sits left of the corner X (size icon-sm, at right-2) or takes its place
+  const cornerActionClass = showCloseButton ? 'right-10' : 'right-2'
   const contentRef = useRef<HTMLDivElement>(null)
   // edge-to-edge viewport: content that reaches the screen bottom must clear
   // the home indicator itself; a pinned footer carries its own inset instead
@@ -88,13 +108,15 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
           className="top-0 left-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
           onInteractOutside={onInteractOutside}
           onEscapeKeyDown={onEscapeKeyDown}
+          onCloseAutoFocus={onCloseAutoFocus}
           showCloseButton={showCloseButton}
         >
           {/* the full-viewport page sits under the status bar — keep the header (and the corner X above) clear of it */}
           <DialogHeader className={`${headerClass ?? ''} px-4 pt-[max(env(safe-area-inset-top),1rem)]`}>
-            <DialogTitle className={titleClass}>{title}</DialogTitle>
+            <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
             {description ? <DialogDescription>{description}</DialogDescription> : null}
           </DialogHeader>
+          {headerAction && !hideHeader ? <div className={`absolute top-[max(env(safe-area-inset-top),0.5rem)] ${cornerActionClass}`}>{headerAction}</div> : null}
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
           <div className={bodyClass}>{children}</div>
           {footer ? (
@@ -107,11 +129,13 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange} dismissible={dismissible}>
-        <DrawerContent ref={contentRef} onInteractOutside={onInteractOutside} onEscapeKeyDown={onEscapeKeyDown}>
+        <DrawerContent ref={contentRef} onInteractOutside={onInteractOutside} onEscapeKeyDown={onEscapeKeyDown} onCloseAutoFocus={onCloseAutoFocus}>
           {/* the drawer has no corner X, so it never needs the pr-8 clearance */}
-          <DrawerHeader className={hideHeader ? 'sr-only' : undefined}>
-            <DrawerTitle className={titleClass}>{title}</DrawerTitle>
+          {/* a header action is pinned to the end; the matching start inset keeps the title centred */}
+          <DrawerHeader className={hideHeader ? 'sr-only' : headerAction ? 'relative px-12' : undefined}>
+            <DrawerTitle className={`${titleClass ?? ''} ${titleIcon ? `${titleRowClass} justify-center` : ''}`}>{titleContent}</DrawerTitle>
             {description ? <DrawerDescription>{description}</DrawerDescription> : null}
+            {headerAction && !hideHeader ? <div className="absolute top-1/2 right-3 -translate-y-1/2">{headerAction}</div> : null}
           </DrawerHeader>
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
           <div className={bodyClass}>{children}</div>
@@ -126,15 +150,18 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         ref={contentRef}
+        className={size === 'wide' ? 'sm:max-w-2xl' : undefined}
         onInteractOutside={onInteractOutside}
         onEscapeKeyDown={onEscapeKeyDown}
+        onCloseAutoFocus={onCloseAutoFocus}
         // a floating X with no header row to anchor it looks stray — unless asked for
         showCloseButton={showCloseButton}
       >
         <DialogHeader className={headerClass}>
-          <DialogTitle className={titleClass}>{title}</DialogTitle>
+          <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
+        {headerAction && !hideHeader ? <div className={`absolute top-2 ${cornerActionClass}`}>{headerAction}</div> : null}
         {children}
         {footer}
       </DialogContent>

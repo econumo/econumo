@@ -92,12 +92,14 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       queryClient.setQueryData<EntityDto[]>(key, (prev) => (prev ?? []).map((i) => (i.id === id ? { ...i, ...patch } : i)))
       if (touchesBudget) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+        void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
       }
     },
     setArchived: (id: Id, isArchived: 0 | 1) => {
       queryClient.setQueryData<EntityDto[]>(key, (prev) => (prev ?? []).map((i) => (i.id === id ? { ...i, isArchived } : i)))
       if (touchesBudget) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+        void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
       }
     },
     remove: (id: Id, txField: 'categoryId' | 'payeeId' | 'tagId') => {

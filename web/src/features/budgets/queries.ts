@@ -169,24 +169,22 @@ export function useSetLimit() {
           },
         }
       })
-      const isSavings = !!previous?.structure.savings?.some((row) => row.id === form.elementId)
-      return { previous, key, isSavings }
+      return { previous, key }
     },
     onError: (_err, _form, context) => {
       if (context) {
         queryClient.setQueryData(context.key, context.previous)
       }
     },
-    onSuccess: (_data, form, context) => {
+    onSuccess: (_data, form) => {
       trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
       // budget-mode edits patch only the budget-page cache above; the plan cache
       // (a different window/query key) must be invalidated too or the plan sheet
       // keeps showing the pre-edit limit until something else happens to refetch it
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
-      // a savings plan also moves the projected closing balance of every later month
-      if (context?.isSavings) {
-        void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
-      }
+      // every later month moves too: a budget carries over (what a month shows as
+      // left from earlier months), and a savings plan moves later closing balances
+      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
     },
   })
 }
@@ -258,9 +256,11 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
     onSuccess: (_res, form) => {
       trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
       // the budget-page cache is now stale: that month's figures, and for a savings
-      // row the projected closing balance of every later month; the plan resyncs too
+      // row the projected closing balance of every later month. Every cached plan
+      // window of the budget resyncs too, not just this one: later months' balances
+      // are cumulative, and each phone month switch caches a window of its own
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
-      void queryClient.invalidateQueries({ queryKey: planKey })
+      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, form.budgetId] })
     },
   })
 }
@@ -287,12 +287,12 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
     // No partial rollback: any failure means some months may have landed, so both a
     // success and a failure need the same resync — the budget-page caches (every
     // month: a savings plan moves the projected balance of the months after it too)
-    // plus the plan cache — from the server rather than trusting the
+    // plus every cached plan window of the budget — from the server rather than trusting the
     // optimistic patch. Invalidating here (not split across onSuccess/onError) also
     // means it happens exactly once regardless of outcome.
     onSettled: (_res, _err, form) => {
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
-      void queryClient.invalidateQueries({ queryKey: planKey })
+      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, form.budgetId] })
     },
   })
 }

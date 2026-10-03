@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
@@ -42,12 +42,6 @@ const guestWireBudget = {
 function mockViewport() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-  }))
-}
-
-function mockCompactViewport() {
-  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
 }
 
@@ -116,13 +110,27 @@ it('lets a guest start a thread on a cell with no existing comments, on desktop'
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
 })
 
-it('lets a guest start a thread on a cell with no existing comments, on compact viewports', async () => {
+it('a guest’s tablet tap opens the sheet without Set budget, and Add comment starts a thread', async () => {
   useGuestPlanHandlers()
-  mockCompactViewport()
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/plan')
+
+  await user.click(await screen.findByTestId('plan-cell-pe1:0'))
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).queryByRole('button', { name: 'Set budget' })).toBeNull()
+  await user.click(within(sheet).getByRole('button', { name: 'Add comment' }))
+  expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
+})
+
+it("lets a guest add a comment from a plan cell's corner", async () => {
+  useGuestPlanHandlers()
+  mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   renderPage('/plan')
 
-  const cell = await screen.findByTestId('plan-cell-pe1:0')
-  await user.click(within(cell).getByLabelText(/^comments /))
+  await user.click(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add'))
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
 })

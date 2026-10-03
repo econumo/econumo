@@ -1203,9 +1203,7 @@
         "description": "Чтобы получить доступ к этому бюджету, сначала примите приглашение."
       },
       "expense_widget": {
-        "header": "Расходы",
-        "conversion_rate": "Средний курс за {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Отложено {saved} из {planned} запланированных"
+        "conversion_rate": "Средний курс за {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Дублировать бюджет",
@@ -1279,6 +1277,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "План"
+        },
         "limit": {
           "label": "Бюджет",
           "validation": {
@@ -1319,6 +1320,7 @@
         "structure": {
           "no_folder": "Папка по умолчанию",
           "in_archive": "В архиве",
+          "carry_over_hint": "Осталось с прошлых месяцев",
           "tab": {
             "budgeted": "Бюджет",
             "spent": "Потрачено",
@@ -1420,15 +1422,33 @@
           "counter": "{count}/500",
           "read_only": "Комментарии здесь можно читать, но нельзя изменять.",
           "empty": "Пока нет комментариев.",
-          "truncated": "Показаны последние 2000 комментариев."
+          "truncated": "Показаны последние 2000 комментариев.",
+          "add": "Добавить комментарий",
+          "more": "ещё {count}"
         }
       },
       "savings": {
         "title": "Сбережения",
         "planned": "Запланировано",
         "saved": "Отложено",
-        "balance": "Баланс",
         "balance_hint": "Баланс на конец месяца. Для текущего и следующих месяцев включает запланированные сбережения, которые ещё не отложены."
+      },
+      "phone": {
+        "row_aria": "{name}, бюджет {budget}, потрачено {spent}",
+        "child_aria": "{name}, потрачено {spent}",
+        "income_row_aria": "{name}, запланировано {planned}, получено {received}",
+        "savings_row_aria": "{name}, запланировано {planned}, отложено {saved}",
+        "available": "доступно {amount}",
+        "actual": "Факт",
+        "balance": "Баланс на конец месяца"
+      },
+      "sheet": {
+        "received": "Получено",
+        "covered": "Превышение на {over} — покрыто за счёт {carry}, оставшихся с прошлых месяцев",
+        "transactions": "Транзакции",
+        "set_plan": "Задать план",
+        "balance": "Баланс",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Бюджеты и планы",
@@ -1477,6 +1497,12 @@
         "confirm": "Объединить",
         "warning": "Все транзакции «{name}» будут перемещены, а «{name}» будет удалён.",
         "envelope_info": "Если элементы находятся в разных конвертах сперва обновите бюджет, чтобы не потерять ваши запланированные суммы, так как при объединении лимиты суммируются."
+      },
+      "archive": {
+        "action": "В архив"
+      },
+      "unarchive": {
+        "action": "Из архива"
       }
     },
     "categories": {
@@ -1763,6 +1789,22 @@
         }
       }
     }
+  },
+  "search": {
+    "title": "Поиск",
+    "placeholder": "Поиск транзакций, счетов, категорий…",
+    "groups": {
+      "accounts": "Счета",
+      "categories": "Категории",
+      "payees": "Получатели",
+      "tags": "Теги",
+      "labels": "Теги для отчётов",
+      "transactions": "Транзакции"
+    },
+    "show_all": "Показать все ({count})",
+    "hidden_folder": "Скрытая папка",
+    "back": "Назад",
+    "nothing_found": "Ничего не найдено"
   },
   "subscription": {
     "banner": {

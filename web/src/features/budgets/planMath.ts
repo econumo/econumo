@@ -291,11 +291,21 @@ export function makePlanExchange(plan: BudgetPlanDto, currencies: CurrencyDto[])
   }
 }
 
+export function planMonthExchange(plan: BudgetPlanDto, currencies: CurrencyDto[], monthIndex: number): (from: Id, to: Id, amount: string) => string {
+  const rates = (plan.currencyRates[monthIndex]?.rates ?? []).map((r) => ({ ...r, updatedAt: r.periodStart }))
+  return (from, to, amount) => exchange(from, to, amount, rates, currencies)
+}
+
 export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): PlanMonthTotals[] {
   const cur = currentMonth(now)
   const rows = plan.structure.elements
   const transfersByMonth = new Map((plan.transfers ?? []).map((t) => [t.period, t.items]))
   return plan.months.map((month, i) => {
+    // income/expense booked on savings accounts: no category row counts it, but
+    // the combined balance moved by it
+    const savingsIncomeExpense = (plan.savingsIncomeExpense ?? [])
+      .filter((f) => f.month === month)
+      .reduce((acc, f) => add(acc, ex(f.currencyId, f.amount, i)), '0')
     let transfersIn = '0'
     let transfersOut = '0'
     for (const tr of transfersByMonth.get(month) ?? []) {
@@ -362,11 +372,11 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
       incomePlanned,
       expenseActual,
       expensePlanned,
-      netActual: sub(add(sub(incomeActual, expenseActual), transfersNet), savingsActual),
+      netActual: sub(add(add(sub(incomeActual, expenseActual), transfersNet), savingsIncomeExpense), savingsActual),
       netPlanned: sub(sub(incomePlanned, expensePlanned), savingsPlanned),
       effectiveIncome: effIncome,
       effectiveExpense: effExpense,
-      effectiveNet: add(sub(effIncome, effExpense), transfersNet),
+      effectiveNet: add(add(sub(effIncome, effExpense), transfersNet), savingsIncomeExpense),
       uncategorizedActual: sub(uncatExpense, uncatIncome),
       transfersIn,
       transfersOut,

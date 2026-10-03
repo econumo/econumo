@@ -1203,9 +1203,7 @@
         "description": "Vous devez accepter l’invitation avant d’accéder à ce budget."
       },
       "expense_widget": {
-        "header": "Suivi des dépenses",
-        "conversion_rate": "Taux moyen pour {period} : 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Épargné {saved} sur {planned} prévus"
+        "conversion_rate": "Taux moyen pour {period} : 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Dupliquer le budget",
@@ -1279,6 +1277,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "Plan"
+        },
         "limit": {
           "label": "Budget",
           "validation": {
@@ -1319,6 +1320,7 @@
         "structure": {
           "no_folder": "Dossier par défaut",
           "in_archive": "Archivés",
+          "carry_over_hint": "Restant des mois précédents",
           "tab": {
             "budgeted": "Budget",
             "spent": "Dépensé",
@@ -1420,15 +1422,33 @@
           "counter": "{count}/500",
           "read_only": "Les commentaires ici peuvent être lus, mais pas modifiés.",
           "empty": "Aucun commentaire pour le moment.",
-          "truncated": "Affichage des 2000 commentaires les plus récents."
+          "truncated": "Affichage des 2000 commentaires les plus récents.",
+          "add": "Ajouter un commentaire",
+          "more": "+{count} de plus"
         }
       },
       "savings": {
         "title": "Épargne",
         "planned": "Prévu",
         "saved": "Épargné",
-        "balance": "Solde",
         "balance_hint": "Solde en fin de mois. Pour le mois en cours et les suivants, il inclut l'épargne prévue encore à venir."
+      },
+      "phone": {
+        "row_aria": "{name}, budget {budget}, dépensé {spent}",
+        "child_aria": "{name}, dépensé {spent}",
+        "income_row_aria": "{name}, prévu {planned}, reçu {received}",
+        "savings_row_aria": "{name}, prévu {planned}, épargné {saved}",
+        "available": "{amount} disponible",
+        "actual": "Réel",
+        "balance": "Solde en fin de mois"
+      },
+      "sheet": {
+        "received": "Reçu",
+        "covered": "Dépassé de {over} — couvert par {carry} restant des mois précédents",
+        "transactions": "Transactions",
+        "set_plan": "Définir le plan",
+        "balance": "Solde",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Budgets et plans",
@@ -1477,6 +1497,12 @@
         "confirm": "Fusionner",
         "warning": "Toutes les transactions de « {name} » seront déplacées, et « {name} » sera supprimé.",
         "envelope_info": "Si les deux se trouvent dans des enveloppes différentes, mettez d’abord à jour votre budget pour ne pas perdre vos montants planifiés, car les limites sont additionnées lors de la fusion."
+      },
+      "archive": {
+        "action": "Archiver"
+      },
+      "unarchive": {
+        "action": "Désarchiver"
       }
     },
     "categories": {
@@ -1763,6 +1789,22 @@
         }
       }
     }
+  },
+  "search": {
+    "title": "Recherche",
+    "placeholder": "Rechercher des transactions, comptes, catégories…",
+    "groups": {
+      "accounts": "Comptes",
+      "categories": "Catégories",
+      "payees": "Bénéficiaires",
+      "tags": "Tags",
+      "labels": "Tags de rapport",
+      "transactions": "Transactions"
+    },
+    "show_all": "Tout afficher ({count})",
+    "hidden_folder": "Dossier masqué",
+    "back": "Retour",
+    "nothing_found": "Aucun résultat"
   },
   "subscription": {
     "banner": {
