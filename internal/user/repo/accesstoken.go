@@ -193,11 +193,19 @@ func accessTokenFromRow(row accessTokenRow) (*model.AccessToken, error) {
 	if err != nil {
 		return nil, err
 	}
+	var grantID *vo.Id
+	if row.GrantID != nil {
+		g, gerr := vo.ParseId(*row.GrantID)
+		if gerr != nil {
+			return nil, gerr
+		}
+		grantID = &g
+	}
 	return &model.AccessToken{
 		ID: id, UserID: uid, Kind: row.Kind, TokenHash: row.TokenHash,
 		Scope: model.TokenScope(row.Scope), Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
-		Provider: row.Provider, IDToken: row.IDToken,
+		Provider: row.Provider, IDToken: row.IDToken, GrantID: grantID,
 	}, nil
 }

@@ -36,7 +36,7 @@ JOIN users u ON u.id = t.user_id
 WHERE t.token_hash = ?;
 
 -- name: GetAccessTokenByID :one
-SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id
 FROM access_tokens
 WHERE id = ?;
 
@@ -56,7 +56,7 @@ UPDATE access_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL;
 UPDATE access_tokens SET revoked_at = ? WHERE user_id = ? AND kind = ? AND revoked_at IS NULL AND id <> ?;
 
 -- name: ListAccessTokensByUser :many
-SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id
 FROM access_tokens
 WHERE user_id = ? AND kind = ?
 ORDER BY created_at, id;

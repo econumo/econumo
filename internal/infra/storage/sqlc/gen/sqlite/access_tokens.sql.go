@@ -91,7 +91,7 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (G
 }
 
 const getAccessTokenByID = `-- name: GetAccessTokenByID :one
-SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id
 FROM access_tokens
 WHERE id = ?
 `
@@ -113,6 +113,7 @@ func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (AccessToke
 		&i.RevokedAt,
 		&i.Provider,
 		&i.IDToken,
+		&i.GrantID,
 	)
 	return i, err
 }
@@ -227,7 +228,7 @@ func (q *Queries) InsertAccessTokenIfPresenterLive(ctx context.Context, arg Inse
 }
 
 const listAccessTokensByUser = `-- name: ListAccessTokensByUser :many
-SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id
 FROM access_tokens
 WHERE user_id = ? AND kind = ?
 ORDER BY created_at, id
@@ -261,6 +262,7 @@ func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessToke
 			&i.RevokedAt,
 			&i.Provider,
 			&i.IDToken,
+			&i.GrantID,
 		); err != nil {
 			return nil, err
 		}
