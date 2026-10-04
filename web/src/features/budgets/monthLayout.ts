@@ -11,10 +11,18 @@ export const NAME_COL = 'flex min-w-0 flex-1 items-center gap-2'
 export const FIRST_COL = 'hidden min-w-24 shrink-0 items-baseline justify-end gap-1.5 text-right tabular-nums sm:flex'
 export const SECOND_COL = 'flex w-20 shrink-0 justify-end text-right tabular-nums sm:w-24'
 export const THIRD_COL = 'flex w-20 shrink-0 justify-end text-right tabular-nums sm:w-28'
-/** folder lines sit one step in from their section heading, rows one more */
+/** folder lines sit one step in from their section heading */
 export const FOLDER_INDENT = 'pl-6'
-export const ROW_INDENT = 'pl-6'
-export const CHILD_INDENT = 'pl-14 sm:pl-16'
+
+/** Rows in a folder sit one more step in, so a row's chevron lines up under its
+ *  folder's name, not under the folder's own chevron. Rows with no folder line
+ *  above them (no folders at all, Uncategorized, savings) sit at the folder
+ *  line's step instead. An envelope's categories go one step past their row. */
+export type RowLevel = 'in-folder' | 'top'
+export const RowLevelContext = createContext<RowLevel>('in-folder')
+export const useRowLevel = () => useContext(RowLevelContext)
+export const ROW_INDENT: Record<RowLevel, string> = { 'in-folder': 'pl-12', top: 'pl-6' }
+export const CHILD_INDENT: Record<RowLevel, string> = { 'in-folder': 'pl-20 sm:pl-22', top: 'pl-14 sm:pl-16' }
 // em dash: a column that carries no value at all, as opposed to a zero
 export const EMPTY_CELL = '—'
 

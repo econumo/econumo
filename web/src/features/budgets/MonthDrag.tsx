@@ -6,19 +6,30 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 import { EntityIcon } from '@/components/EntityIcon'
 import type { SortableHandleProps } from '@/components/SortableList'
-import { lineControlClass, useLineControls } from './monthLayout'
+import { lineControlClass, useLineControls, useRowLevel } from './monthLayout'
+import type { RowLevel } from './monthLayout'
 import { ENVELOPE_DROP, ENVELOPE_HEAD_DROP, noShift } from './elementMove'
 
 /** The insertion line. Its indent tells the level: from where rows start for a
  *  place in a folder, from where an envelope's categories start for a drop into
  *  that envelope. */
+// where a line, and a grip, start for each row level: under the row's chevron, or
+// under an envelope's categories (see ROW_INDENT / CHILD_INDENT)
+const LINE_START: Record<RowLevel, Record<'row' | 'child', string>> = {
+  'in-folder': { row: 'left-12', child: 'left-20 sm:left-22' },
+  top: { row: 'left-6', child: 'left-14 sm:left-16' },
+}
+const ROW_GRIP: Record<RowLevel, string> = { 'in-folder': 'left-6', top: 'left-0.5' }
+const CHILD_GRIP: Record<RowLevel, string> = { 'in-folder': 'left-14', top: 'left-8' }
+
 export function DropLine({ level, edge }: { level: 'row' | 'child'; edge: 'before' | 'after' }) {
+  const rowLevel = useRowLevel()
   return (
     <span
       aria-hidden="true"
       data-testid={`drop-line-${level}`}
       // a ring dot marks where the line starts, so its level reads at a glance
-      className={`pointer-events-none absolute right-2 z-20 h-0.5 rounded-full bg-ring before:absolute before:-top-[3px] before:-left-2 before:size-2 before:rounded-full before:border-2 before:border-ring before:bg-background ${level === 'child' ? 'left-14 sm:left-16' : 'left-8'} ${edge === 'before' ? '-top-px' : '-bottom-px'}`}
+      className={`pointer-events-none absolute right-2 z-20 h-0.5 rounded-full bg-ring before:absolute before:-top-[3px] before:-left-2 before:size-2 before:rounded-full before:border-2 before:border-ring before:bg-background ${LINE_START[rowLevel][level]} ${edge === 'before' ? '-top-px' : '-bottom-px'}`}
     />
   )
 }
@@ -43,6 +54,7 @@ export function DragGhost({ icon, name }: { icon: string; name: string }) {
 export function DragRow({ id, indicator, children }: { id: string; indicator?: 'before' | 'after'; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const controls = useLineControls()
+  const level = useRowLevel()
   return (
     <div
       ref={setNodeRef}
@@ -53,7 +65,7 @@ export function DragRow({ id, indicator, children }: { id: string; indicator?: '
       <button
         type="button"
         aria-label={`move ${id}`}
-        className={`absolute top-3 left-0.5 z-10 cursor-grab touch-none text-muted-foreground ${isDragging ? '' : lineControlClass(controls, 'drag')}`}
+        className={`absolute top-3 ${ROW_GRIP[level]} z-10 cursor-grab touch-none text-muted-foreground ${isDragging ? '' : lineControlClass(controls, 'drag')}`}
         {...attributes}
         {...listeners}
       >
@@ -139,12 +151,13 @@ export function DragFolder({
 export function DragChild({ id, children }: { id: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id })
   const controls = useLineControls()
+  const level = useRowLevel()
   return (
     <div ref={setNodeRef} data-drag-child="" className={`group/child relative ${isDragging ? 'opacity-40' : ''}`}>
       <button
         type="button"
         aria-label={`move ${id}`}
-        className={`absolute top-2 left-8 z-10 cursor-grab touch-none text-muted-foreground ${isDragging ? '' : lineControlClass(controls, 'child')}`}
+        className={`absolute top-2 ${CHILD_GRIP[level]} z-10 cursor-grab touch-none text-muted-foreground ${isDragging ? '' : lineControlClass(controls, 'child')}`}
         {...attributes}
         {...listeners}
       >

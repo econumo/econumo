@@ -19,7 +19,7 @@ import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
-import { CHILD_INDENT, FIRST_COL, FOLD_LINE, foldOnLineClick, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
+import { CHILD_INDENT, FIRST_COL, FOLD_LINE, foldOnLineClick, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
 
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
@@ -144,6 +144,7 @@ function ElementRow({
   future?: boolean
 }) {
   const { t } = useTranslation()
+  const level = useRowLevel()
   const unfolded = useBudgetPeriodStore((s) => !!s.unfoldedElements[element.id]) && !hideChildren
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
 
@@ -237,7 +238,7 @@ function ElementRow({
   const childList = (
     <div className="pb-1" data-testid={`children-${element.id}`}>
       {element.children.length === 0 ? (
-        <p className={`${CHILD_INDENT} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
+        <p className={`${CHILD_INDENT[level]} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
       ) : null}
       {element.children.map((child) => {
         const owner = accessById.size > 1 && child.ownerUserId ? accessById.get(child.ownerUserId) : undefined
@@ -245,7 +246,7 @@ function ElementRow({
         const line = (
           <div
             key={child.id}
-            className={`group ${LINE} ${CHILD_INDENT} min-h-8 rounded-md py-1 text-sm text-muted-foreground hover:bg-accent/50`}
+            className={`group ${LINE} ${CHILD_INDENT[level]} min-h-8 rounded-md py-1 text-sm text-muted-foreground hover:bg-accent/50`}
             data-testid={`child-${child.id}`}
           >
             <span className={NAME_COL}>
@@ -274,7 +275,7 @@ function ElementRow({
 
   const row = (
     <div className="flex flex-col" data-testid={`element-${element.id}`}>
-      <div className={`${LINE} ${ROW_INDENT} relative min-h-10 rounded-md py-1.5 hover:bg-accent/50`}>
+      <div className={`${LINE} ${ROW_INDENT[level]} relative min-h-10 rounded-md py-1.5 hover:bg-accent/50`}>
         {expandable ? (
           <button
             type="button"
@@ -324,6 +325,7 @@ function LabelRow({
   menu?: MenuAction[]
 }) {
   const { t } = useTranslation()
+  const level = useRowLevel()
   const unfolded = useBudgetPeriodStore((s) => !!s.unfoldedElements[label.id])
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
 
@@ -361,7 +363,7 @@ function LabelRow({
 
   return (
     <li className="flex flex-col" data-testid={`budget-label-${label.id}`}>
-      <div className={`${LINE} ${ROW_INDENT} relative min-h-10 rounded-md py-1.5 hover:bg-accent/50`}>
+      <div className={`${LINE} ${ROW_INDENT[level]} relative min-h-10 rounded-md py-1.5 hover:bg-accent/50`}>
         {expandable ? (
           <button
             type="button"
@@ -393,7 +395,7 @@ function LabelRow({
             return (
               <li
                 key={child.id}
-                className={`${LINE} ${CHILD_INDENT} min-h-8 rounded-md py-1 text-sm text-muted-foreground hover:bg-accent/50`}
+                className={`${LINE} ${CHILD_INDENT[level]} min-h-8 rounded-md py-1 text-sm text-muted-foreground hover:bg-accent/50`}
                 data-testid={`label-child-${child.id}`}
               >
                 <span className={NAME_COL}>
@@ -578,7 +580,9 @@ export function BudgetTable({
               }
               return [
                 <section key={section.key} data-testid={`budget-folder-${section.name}`}>
-                  {rowsOf(section.bucket, { onSpentClick: extras.onSpentClick, rowMenu: extras.rowMenu })}
+                  <RowLevelContext.Provider value="top">
+                    {rowsOf(section.bucket, { onSpentClick: extras.onSpentClick, rowMenu: extras.rowMenu })}
+                  </RowLevelContext.Provider>
                 </section>,
               ]
             }
@@ -624,9 +628,12 @@ export function BudgetTable({
                   />
                 ) : null}
                 {hideContents || sectionFolded ? null : section.bucket.elements.length === 0 ? (
-                  <p className={`${ROW_INDENT} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_folder.note')}</p>
-                ) : (
+                  <p className={`${ROW_INDENT['in-folder']} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_folder.note')}</p>
+                ) : named ? (
                   rowsOf(section.bucket, rowExtras)
+                ) : (
+                  // no folder line above: the rows sit at its step
+                  <RowLevelContext.Provider value="top">{rowsOf(section.bucket, rowExtras)}</RowLevelContext.Provider>
                 )}
               </section>
             )

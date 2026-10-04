@@ -805,6 +805,13 @@ and on tablet/phone only with a hardware keyboard.
       click anywhere on such a line folds it, its sums included; in Edit
       structure the grip and the folder's "⋮" menu (and the menu's
       items) keep their own action and do not fold.
+- [ ] Budget view nesting (desktop and tablet): a row inside a folder sits one
+      step in from the folder line, its chevron under the folder's name (an
+      envelope or tag in "No folder" reads as inside it, not beside it); an
+      envelope's categories sit one step further in. Rows with no folder line
+      above them (Uncategorized, every row when there are no folders, savings)
+      sit at the folder line's step. Drag grips and insertion lines follow the
+      same steps.
 - [ ] Budget view folders fold (desktop and tablet): a folder's line, "No
       folder" and "Archived" hide their rows on a click and keep the line with
       its sums; income folders inside Income fold the same way. Folds survive

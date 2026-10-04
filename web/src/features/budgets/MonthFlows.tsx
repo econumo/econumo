@@ -19,8 +19,8 @@ import { elementDisplayName, makeBudgetExchange, totalsWithSavings } from './bud
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu } from './monthLines'
-import type { MenuAction } from './monthLayout'
-import { CHILD_INDENT, FIRST_COL, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
+import type { MenuAction, RowLevel } from './monthLayout'
+import { CHILD_INDENT, FIRST_COL, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
 import { leftToReceive } from './phoneMonth'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 import { arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, moveElementInArrangement, placeFromEnvelope, preferRowCollisions } from './elementMove'
@@ -64,6 +64,7 @@ function FlowRow({
   menu?: MenuAction[]
 }) {
   const { t } = useTranslation()
+  const level = useRowLevel()
   const Chevron = toggle?.open ? ChevronDown : ChevronRight
   const label = (
     <>
@@ -76,7 +77,7 @@ function FlowRow({
     </>
   )
   return (
-    <div className={`${LINE} ${ROW_INDENT} min-h-10 rounded-md py-1.5 hover:bg-accent/50`} data-testid={testId}>
+    <div className={`${LINE} ${ROW_INDENT[level]} min-h-10 rounded-md py-1.5 hover:bg-accent/50`} data-testid={testId}>
       {toggle ? (
         <button
           type="button"
@@ -204,7 +205,7 @@ export function MonthFlows({
     )
   }
 
-  const incomeRow = (row: PlanCellFigures, draggable = false) => {
+  const incomeRow = (row: PlanCellFigures, draggable: boolean, level: RowLevel) => {
     const el = row.element
     const name = elementDisplayName(el.id, el.name, t)
     // income Uncategorized gathers income booked in expense categories too: no list names it
@@ -218,14 +219,14 @@ export function MonthFlows({
     const childList = (
       <div className="pb-1" data-testid={`month-income-children-${el.id}`}>
         {children.length === 0 ? (
-          <p className={`${CHILD_INDENT} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
+          <p className={`${CHILD_INDENT[level]} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
         ) : null}
         {children.map((child) => {
           const childName = elementDisplayName(child.id, child.name, t)
           const childLine = (
             <div
               key={child.id}
-              className={`${LINE} ${CHILD_INDENT} min-h-8 rounded-md py-1 text-sm text-muted-foreground hover:bg-accent/50`}
+              className={`${LINE} ${CHILD_INDENT[level]} min-h-8 rounded-md py-1 text-sm text-muted-foreground hover:bg-accent/50`}
               data-testid={`month-income-child-${child.id}`}
             >
               <span className={NAME_COL}>
@@ -311,6 +312,7 @@ export function MonthFlows({
   }
   const incomeGroup = (g: IncomeGroup, groups: IncomeGroup[]) => {
     const name = groupName(g, groups)
+    const level: RowLevel = name === null ? 'top' : 'in-folder'
     // the phone's keys: a folder's own id, and income's own No folder and Archived
     const foldKey = g.kind === 'folder' ? g.id : `__income${g.id}`
     const folded = name !== null && !!planFolds[foldKey]
@@ -335,9 +337,10 @@ export function MonthFlows({
           />
         ) : null}
         {folded || incomeFolderDragging ? null : g.rows.length === 0 ? (
-          <p className={`${ROW_INDENT} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_folder.note')}</p>
+          <p className={`${ROW_INDENT['in-folder']} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_folder.note')}</p>
         ) : (
-          g.rows.map((row) => incomeRow(row, draggable))
+          // with no folder line above, the rows sit at its step
+          <RowLevelContext.Provider value={level}>{g.rows.map((row) => incomeRow(row, draggable, level))}</RowLevelContext.Provider>
         )}
       </div>
     )
@@ -591,6 +594,8 @@ export function MonthFlows({
             actionsColumn={actionsColumn}
             menu={savingsSectionMenu}
           />
+          {/* savings has no folders: its rows sit at a folder line's step */}
+          <RowLevelContext.Provider value="top">
           {savingsFolded ? null : drag ? (
             <DndContext
               sensors={sensors}
@@ -611,6 +616,7 @@ export function MonthFlows({
           ) : (
             savingsRows.map(savingsRow)
           )}
+          </RowLevelContext.Provider>
         </section>
       ) : null}
     </>
