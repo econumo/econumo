@@ -26,6 +26,26 @@ it('reads the income rows and totals of the selected month', () => {
   expect(cmp(f.income.received, '400')).toBe(0)
 })
 
+// Freelance moved into an income folder, the way the Plan grid would show it
+function planWithIncomeFolder(): BudgetPlanDto {
+  const plan = usdPlan()
+  plan.structure.folders = [...plan.structure.folders, { id: 'bf-inc', name: 'Side gigs', position: 1 }]
+  plan.structure.elements = plan.structure.elements.map((el) => (el.id === 'cat-freelance' ? { ...el, folderId: 'bf-inc' } : el))
+  return plan
+}
+
+it('groups the income rows as the Plan grid does: folders with their sums, then the folder-less rows', () => {
+  const f = planMonthFigures(planWithIncomeFolder(), [usd, eur], '2026-07-01', past)!
+  expect(f.income.folders.map((g) => [g.id, g.name, g.rows.map((r) => r.element.id)])).toEqual([['bf-inc', 'Side gigs', ['cat-freelance']]])
+  expect(cmp(f.income.folders[0].planned, '500')).toBe(0)
+  expect(cmp(f.income.folders[0].received, '400')).toBe(0)
+  expect(f.income.loose.map((r) => r.element.id)).toEqual(['ie1'])
+  expect(f.income.uncategorized).toBeNull()
+  // the flat list keeps the same rows, folders first
+  expect(f.income.rows.map((r) => r.element.id)).toEqual(['cat-freelance', 'ie1'])
+  expect(planMonthFigures(planWithIncomeFolder(), [usd, eur], '2026-06-01', past)!.income.uncategorized?.element.id).toBe('uncategorized')
+})
+
 it('lists the income Uncategorized row only in a month it received something', () => {
   expect(planMonthFigures(usdPlan(), [usd, eur], '2026-06-01', past)!.income.rows.map((r) => r.element.id)).toContain('uncategorized')
   expect(planMonthFigures(usdPlan(), [usd, eur], '2026-07-01', past)!.income.rows.map((r) => r.element.id)).not.toContain('uncategorized')

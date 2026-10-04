@@ -16,7 +16,15 @@ const salaries = { id: 'ie1', type: 4, name: 'Salaries', icon: 'payments', curre
 const planMonth: PlanMonthFigures = {
   month: '2026-07-01',
   index: 2,
-  income: { rows: [{ element: salaries, planned: '2000', actual: '400' }], planned: '2000', received: '400' },
+  income: {
+    rows: [{ element: salaries, planned: '2000', actual: '400' }],
+    folders: [],
+    loose: [{ element: salaries, planned: '2000', actual: '400' }],
+    uncategorized: null,
+    archived: [],
+    planned: '2000',
+    received: '400',
+  },
   balance: '4545',
   savingsBalance: null,
   transfersNet: '0',
@@ -200,7 +208,7 @@ it('an income row fills its bar toward the plan and stays gray until the plan is
 })
 
 it('an income row that received its plan turns its bar green', async () => {
-  const met = { ...planMonth, income: { rows: [{ element: salaries, planned: '2000', actual: '2500' }], planned: '2000', received: '2500' } }
+  const met = { ...planMonth, income: { ...planMonth.income, rows: [{ element: salaries, planned: '2000', actual: '2500' }], planned: '2000', received: '2500' } }
   renderView({ planMonth: met })
   await userEvent.click(screen.getByTestId('phone-income-summary'))
   const row = screen.getByTestId('phone-income-row-ie1')
@@ -212,7 +220,7 @@ it('an income row that received its plan turns its bar green', async () => {
 })
 
 it('an income row with no plan draws the empty gray track', async () => {
-  const unplanned = { ...planMonth, income: { rows: [{ element: salaries, planned: '0', actual: '300' }], planned: '0', received: '300' } }
+  const unplanned = { ...planMonth, income: { ...planMonth.income, rows: [{ element: salaries, planned: '0', actual: '300' }], planned: '0', received: '300' } }
   renderView({ planMonth: unplanned })
   await userEvent.click(screen.getByTestId('phone-income-summary'))
   const bar = within(screen.getByTestId('phone-income-row-ie1')).getByTestId('phone-progress')

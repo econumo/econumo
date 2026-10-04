@@ -737,6 +737,14 @@ and on tablet/phone only with a hardware keyboard.
       columns, and the fold carries over to the same section of the Plan
       grid (and back) and survives a reload. A future month shows "—" for
       received, saved and the Income / Expenses / Savings lines.
+- [ ] Budget view, Income: grouped as in the Plan grid — each income
+      folder in its own box with its Planned / Received sums (in the budget
+      currency), then the folder-less rows (under "Default folder" when
+      folders exist), the income Uncategorized row on its own (only in a
+      month it received something), and an Archived box for archived income
+      with money this month. An income envelope unfolds to its categories,
+      each with its received amount (opens its transactions); the unfold
+      carries over to the Plan grid.
 - [ ] Budget view: the income and savings Planned amounts edit inline on a
       desktop (popover) and open the item sheet on a tablet; Received and
       Saved open the transactions dialog (except income Uncategorized);

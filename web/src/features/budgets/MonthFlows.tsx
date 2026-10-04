@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
-import { isZero } from '@/lib/decimal'
+import { add, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
 import type { BudgetDto, BudgetSavingsElementDto } from '@/api/dto/budget'
@@ -89,6 +89,7 @@ function FlowRow({
   third,
   currency,
   actionsColumn,
+  toggle,
 }: {
   testId: string
   icon: string
@@ -99,16 +100,35 @@ function FlowRow({
   third: ReactNode
   currency: CurrencyDto | undefined
   actionsColumn: boolean
+  /** an envelope's name folds and unfolds its categories */
+  toggle?: { open: boolean; onToggle: () => void }
 }) {
+  const { t } = useTranslation()
+  const Chevron = toggle?.open ? ChevronDown : ChevronRight
+  const label = (
+    <>
+      {toggle ? <Chevron className="hidden size-3.5 shrink-0 text-muted-foreground sm:block" /> : <span className="hidden w-3.5 shrink-0 sm:block" />}
+      <EntityIcon name={icon} className="text-lg text-muted-foreground" />
+      <span className={`min-w-0 truncate text-[15px] ${muted ? 'text-muted-foreground' : ''}`} title={name}>
+        {name}
+      </span>
+    </>
+  )
   return (
     <div className="flex items-center gap-1.5 rounded-md px-1.5 py-2.5 hover:bg-accent/50 sm:gap-2 sm:px-2" data-testid={testId}>
-      <span className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="hidden w-3.5 shrink-0 sm:block" />
-        <EntityIcon name={icon} className="text-lg text-muted-foreground" />
-        <span className={`min-w-0 truncate text-[15px] ${muted ? 'text-muted-foreground' : ''}`} title={name}>
-          {name}
-        </span>
-      </span>
+      {toggle ? (
+        <button
+          type="button"
+          aria-expanded={toggle.open}
+          title={t(toggle.open ? 'common.button.collapse.label' : 'common.button.expand.label')}
+          onClick={toggle.onToggle}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          {label}
+        </button>
+      ) : (
+        <span className="flex min-w-0 flex-1 items-center gap-2">{label}</span>
+      )}
       <span className={`${PLANNED_COL} text-[15px] tabular-nums`} data-testid="flow-planned">
         {planned}
       </span>
@@ -146,6 +166,9 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
     const c = currencyOf(currencyId)
     return moneyFormat(amount, c, cellOpts(c))
   }
+  const exchangeFn = makeBudgetExchange(budget, currencies)
+  const unfolded = useBudgetPeriodStore((s) => s.unfoldedElements)
+  const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
   const incomeFolded = useSectionFolded('income')
   const savingsFolded = useSectionFolded('savings')
 
@@ -175,21 +198,94 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
     const name = elementDisplayName(el.id, el.name, t)
     // income Uncategorized gathers income booked in expense categories too: no list names it
     const listTarget = el.id === UNCATEGORIZED_ID ? null : { id: el.id, type: el.type, name, icon: el.icon, currencyId: el.currencyId }
+    const expandable = el.children.length > 0
+    const open = expandable && !!unfolded[el.id]
     return (
-      <FlowRow
-        key={`${el.id}:${el.type}`}
-        testId={`month-income-row-${el.id}`}
-        icon={el.icon}
-        name={name}
-        muted={el.isArchived === 1}
-        planned={el.id === UNCATEGORIZED_ID ? EMPTY_CELL : renderPlanned({ kind: 'plan', cell: row }, fmt(row.planned, el.currencyId))}
-        actual={actualCell(listTarget, row.actual, el.currencyId)}
-        third={null}
-        currency={currencyOf(el.currencyId)}
-        actionsColumn={actionsColumn}
-      />
+      <div key={`${el.id}:${el.type}`}>
+        <FlowRow
+          testId={`month-income-row-${el.id}`}
+          icon={el.icon}
+          name={name}
+          muted={el.isArchived === 1}
+          planned={el.id === UNCATEGORIZED_ID ? EMPTY_CELL : renderPlanned({ kind: 'plan', cell: row }, fmt(row.planned, el.currencyId))}
+          actual={actualCell(listTarget, row.actual, el.currencyId)}
+          third={null}
+          currency={currencyOf(el.currencyId)}
+          actionsColumn={actionsColumn}
+          toggle={expandable ? { open, onToggle: () => toggleElement(el.id) } : undefined}
+        />
+        {open ? (
+          <ul className="pb-1">
+            {el.children.map((child) => {
+              const childName = elementDisplayName(child.id, child.name, t)
+              return (
+                <li
+                  key={child.id}
+                  className="flex items-center gap-1.5 rounded-md py-1.5 pr-1.5 pl-8 text-sm text-muted-foreground hover:bg-accent/50 sm:gap-2 sm:pr-2 sm:pl-12"
+                  data-testid={`month-income-child-${child.id}`}
+                >
+                  <EntityIcon name={child.icon} className="text-lg" />
+                  <span className="min-w-0 flex-1 truncate" title={childName}>
+                    {childName}
+                  </span>
+                  <span className={PLANNED_COL} />
+                  <span className={`${ACTUAL_COL} flex justify-center tabular-nums`}>
+                    {actualCell(
+                      { id: child.id, type: child.type, name: childName, icon: child.icon, currencyId: el.currencyId, parent: { id: el.id, type: el.type } },
+                      child.cells[planMonth?.index ?? 0]?.actual ?? '0',
+                      el.currencyId,
+                    )}
+                  </span>
+                  <span className={THIRD_COL} />
+                  <span className={SYMBOL_COL} />
+                  {actionsColumn ? <span className="w-8 shrink-0" /> : null}
+                </li>
+              )
+            })}
+          </ul>
+        ) : null}
+      </div>
     )
   }
+
+  // the expense table's grouping: folders, then the folder-less rows (named only when
+  // there are folders), Uncategorized on its own, then archived rows with money this month
+  const incomeBox = (key: string, header: { name: string; planned: string; received: string } | null, rows: PlanCellFigures[]) =>
+    rows.length === 0 ? null : (
+      <div key={key} className="rounded-md border p-1.5 sm:p-2" data-testid={`month-income-folder-${key}`}>
+        {header ? (
+          <header className="flex items-center gap-1.5 px-1.5 pb-1 sm:gap-2 sm:px-2">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium" title={header.name}>
+              {header.name}
+            </span>
+            <span className={`${PLANNED_COL} text-xs text-muted-foreground tabular-nums`}>{fmt(header.planned)}</span>
+            <span className={`${ACTUAL_COL} text-xs text-muted-foreground tabular-nums`}>{future ? EMPTY_CELL : fmt(header.received)}</span>
+            <span className={THIRD_COL} />
+            <span className={SYMBOL_COL} />
+            {actionsColumn ? <span className="w-8 shrink-0" /> : null}
+          </header>
+        ) : null}
+        {rows.map(incomeRow)}
+      </div>
+    )
+  const sumOf = (rows: PlanCellFigures[], pick: (c: PlanCellFigures) => string) =>
+    rows.reduce((sum, c) => add(sum, exchangeFn(c.element.currencyId, base, pick(c))), '0')
+  const incomeBoxes = (income: PlanMonthFigures['income']) => [
+    ...income.folders.map((f) => incomeBox(f.id, { name: f.name, planned: f.planned, received: f.received }, f.rows)),
+    incomeBox(
+      '__no_folder__',
+      income.folders.length > 0
+        ? { name: t('budgets.page.budget.structure.no_folder'), planned: sumOf(income.loose, (c) => c.planned), received: sumOf(income.loose, (c) => c.actual) }
+        : null,
+      income.loose,
+    ),
+    incomeBox('__uncategorized__', null, income.uncategorized ? [income.uncategorized] : []),
+    incomeBox(
+      '__archive__',
+      { name: t('budgets.page.budget.structure.in_archive'), planned: sumOf(income.archived, (c) => c.planned), received: sumOf(income.archived, (c) => c.actual) },
+      income.archived,
+    ),
+  ]
 
   const savingsRow = (row: BudgetSavingsElementDto) => (
     <FlowRow
@@ -207,7 +303,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
   )
 
   const savingsRows = [...(budget.structure.savings ?? [])].sort((a, b) => a.isArchived - b.isArchived || a.position - b.position)
-  const savingsSum = totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, makeBudgetExchange(budget, currencies))
+  const savingsSum = totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, exchangeFn)
 
   return (
     <>
@@ -221,9 +317,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             sums={[fmt(planMonth.income.planned), future ? EMPTY_CELL : fmt(planMonth.income.received), '']}
             actionsColumn={actionsColumn}
           />
-          {incomeFolded || planMonth.income.rows.length === 0 ? null : (
-            <div className="rounded-md border p-1.5 sm:p-2">{planMonth.income.rows.map(incomeRow)}</div>
-          )}
+          {incomeFolded ? null : incomeBoxes(planMonth.income)}
         </section>
       ) : null}
       {savingsRows.length > 0 ? (

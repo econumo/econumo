@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { act } from 'react'
-import { coreHandlers, fixtureBudgets, fixtureUser, fixtureWireBudget, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { HomePage } from '@/features/home/HomePage'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -509,6 +509,34 @@ it('the Budget view follows the phone order: Income, Savings, Expenses, then the
   expect(screen.getByTestId('month-total-savings')).toHaveTextContent('120.00')
   expect(screen.queryByTestId('month-total-transfers')).toBeNull()
   expect(screen.getByTestId('month-total-balance')).toBeInTheDocument()
+})
+
+it('the Budget view groups income like the Plan grid: folders with sums, the default folder, envelopes unfold to categories', async () => {
+  const plan = JSON.parse(JSON.stringify(fixtureWirePlan))
+  plan.structure.folders = [...plan.structure.folders, { id: 'bf-inc', name: 'Side gigs', position: 1 }]
+  plan.structure.elements = plan.structure.elements.map((el: { id: string }) => (el.id === 'cat-freelance' ? { ...el, folderId: 'bf-inc' } : el))
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(plan),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  const folder = await screen.findByTestId('month-income-folder-bf-inc')
+  expect(within(folder).getByText('Side gigs')).toBeInTheDocument()
+  // July: Freelance planned 500, received 400 — the folder line sums its rows
+  expect(within(folder).getByRole('banner')).toHaveTextContent('500.00')
+  expect(within(folder).getByRole('banner')).toHaveTextContent('400.00')
+  expect(within(folder).getByTestId('month-income-row-cat-freelance')).toBeInTheDocument()
+  const loose = screen.getByTestId('month-income-folder-__no_folder__')
+  expect(within(loose).getByText('Default folder')).toBeInTheDocument()
+  expect(within(loose).getByTestId('month-income-row-ie1')).toBeInTheDocument()
+  expect(folder.compareDocumentPosition(loose) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+  // the Salaries envelope unfolds to its Salary category
+  expect(screen.queryByTestId('month-income-child-cat-salary')).toBeNull()
+  await user.click(within(loose).getByRole('button', { name: 'Salaries' }))
+  expect(await screen.findByTestId('month-income-child-cat-salary')).toBeInTheDocument()
 })
 
 it('a Budget view section header folds its section, shows its sums, and shares the fold with the Plan view', async () => {
