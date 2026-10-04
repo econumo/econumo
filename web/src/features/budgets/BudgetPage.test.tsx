@@ -97,7 +97,7 @@ it('the cold-load spinner grows a logout escape after three seconds when the bac
   }
 })
 
-it('configure menu enters edit mode; folder create posts with a v7 id', async () => {
+it('Create folder from the Expenses line posts with a v7 id', async () => {
   let body: Record<string, unknown> | undefined
   server.use(
     ...coreHandlers({ user: userWithBudget }),
@@ -109,11 +109,8 @@ it('configure menu enters edit mode; folder create posts with a v7 id', async ()
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
-  expect(screen.getByRole('button', { name: /Done editing/ })).toBeInTheDocument()
-
-  await user.click(screen.getByRole('button', { name: 'Create folder' }))
+  await user.click(within(await screen.findByTestId('column-headers')).getByRole('button', { name: 'menu Expenses' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Create folder' }))
   await user.type(await screen.findByLabelText('Folder name'), 'Fun')
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(body).toBeDefined())
@@ -142,7 +139,8 @@ it('guest role: the Budget details menu item is disabled', async () => {
   renderPage()
   await user.click(await screen.findByRole('button', { name: 'Configure' }))
   expect(await screen.findByRole('menuitem', { name: 'Budget details' })).toHaveAttribute('aria-disabled', 'true')
-  expect(screen.getByRole('menuitem', { name: 'Edit structure' })).toHaveAttribute('aria-disabled', 'true')
+  // the Budget view edits on hover: no Edit structure mode to offer
+  expect(screen.queryByRole('menuitem', { name: 'Edit structure' })).toBeNull()
 })
 
 it('owner role: the Budget details menu item opens the edit dialog', async () => {
@@ -178,9 +176,7 @@ it('deleting an empty folder asks for confirmation before posting', async () => 
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
-  await user.click(await screen.findByRole('button', { name: 'budget folder actions Fun' }))
+  await user.click(within(await screen.findByTestId('budget-folder-Fun')).getByRole('button', { name: 'menu Fun' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Delete folder' }))
   // nothing posted until the confirmation is accepted
   expect(body).toBeUndefined()
@@ -433,11 +429,9 @@ it('offers change currency on every element, and move to folder', async () => {
   const user = userEvent.setup()
   renderPage()
   await screen.findByRole('tablist', { name: 'period' })
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
 
   // an ENVELOPE previously had no Change currency item — only Edit/Delete
-  await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
+  await user.click(within(await screen.findByTestId('element-env-1')).getByRole('button', { name: 'menu Living' }))
   expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
   expect(screen.getByRole('menuitem', { name: 'Move to folder…' })).toBeInTheDocument()
   expect(screen.getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
@@ -454,9 +448,14 @@ it('an archived budget shows the banner and blocks structure editing', async () 
 
   expect(await screen.findByText('This budget is archived and read-only')).toBeInTheDocument()
 
-  // the configure menu's editing entries are disabled — archived wins over role
-  await user.click(await screen.findByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('menuitem', { name: 'Edit structure' })).toHaveAttribute('aria-disabled', 'true')
+  // archived wins over role: no structure actions, no grips, no Create folder
+  const living = await screen.findByTestId('element-env-1')
+  await user.click(within(living).getByRole('button', { name: 'menu Living' }))
+  const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
+  expect(items).not.toContain('Change currency')
+  expect(items).not.toContain('Move to folder…')
+  expect(screen.queryByRole('button', { name: /^move / })).toBeNull()
+  expect(within(screen.getByTestId('column-headers')).queryByRole('button', { name: 'menu Expenses' })).toBeNull()
 })
 
 it('a live budget shows no archived banner', async () => {

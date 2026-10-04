@@ -827,11 +827,23 @@ and on tablet/phone only with a hardware keyboard.
       edge keeps extending the window (past months included).
 - [ ] 📱 The budget header shows no currency chips on /budget or /plan, and
       no "Spending progress" widget appears anywhere on the page.
-- [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
-      per-element menu (change currency, move to folder, edit envelope, delete
-      envelope), delete folder; leaving the mode persists the layout.
-- [ ] Envelopes: create via the "+" button on a folder header in Edit
-      structure mode (name, currency, categories multi-select);
+- [ ] **Edit structure** mode on a phone (and in the Plan grid): create
+      folder, drag elements between folders, per-element menu (change
+      currency, move to folder, edit envelope, delete envelope), delete
+      folder; leaving the mode persists the layout. The desktop/tablet Budget
+      view has no such mode: Configure offers no "Edit structure" there.
+- [ ] Budget view drag and drop (desktop and tablet, for anyone who may
+      configure the budget): hovering a row shows a grip in its left indent
+      (always visible on a touch screen); dragging moves the row within its
+      folder or into another folder of the same section (an expense row
+      never into Income, an income row never into Expenses); a folder line's
+      grip reorders folders within the section; savings rows reorder among
+      themselves only, a deleted account's row has no grip; income
+      Uncategorized and archived rows have none. The dropped order shows at
+      once and survives a reload. Guests and archived budgets show no grips.
+- [ ] Envelopes: create via New envelope in a folder's or section's ⋮ menu on
+      the Budget view, or the "+" on a folder header in Edit structure mode
+      (name, currency, categories multi-select);
       transactions of member categories aggregate under the envelope; edit
       membership; delete envelope returns categories to top level.
 - [ ] Tag on a transaction: spending counts toward the **tag** element, not the

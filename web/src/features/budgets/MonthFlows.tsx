@@ -1,4 +1,10 @@
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { DndContext, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { snapRowToPointer } from '@/lib/dnd'
+import { afterIdFromDrop } from '@/lib/ordering'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -17,6 +23,9 @@ import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FIRST_COL, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
 import { leftToReceive } from './phoneMonth'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
+import { arrangementItem, moveElementInArrangement, preferRowCollisions } from './elementMove'
+import type { ElementContainer, ElementMoveItem } from './elementMove'
+import { DragFolder, DragRow, FolderGrip } from './MonthDrag'
 
 export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' }>
 
@@ -113,6 +122,12 @@ interface MonthFlowsProps {
   savingsSectionMenu?: MenuAction[]
   /** income folders created here that have no member yet (the server cannot tell their side) */
   draftIncomeFolders?: { id: Id; name: string }[]
+  /** drag and drop on hover, for anyone who may configure the budget */
+  drag?: {
+    onMoveIncome: (item: ElementMoveItem) => void
+    onMoveIncomeFolder: (folderId: Id, afterId: Id | null) => void
+    onMoveSavings: (id: Id, afterId: Id | null) => void
+  }
 }
 
 /** Income and Savings for one month, above the expenses table, in the table's columns:
@@ -131,6 +146,7 @@ export function MonthFlows({
   incomeSectionMenu,
   savingsSectionMenu,
   draftIncomeFolders = [],
+  drag,
 }: MonthFlowsProps) {
   const { t } = useTranslation()
   const base = budget.meta.currencyId
@@ -147,6 +163,17 @@ export function MonthFlows({
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
   const incomeFolded = !!planFolds.income
   const savingsFolded = !!planFolds.savings
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  // a dropped order holds until the refetched figures replace it, so nothing snaps back
+  const [incomePreview, setIncomePreview] = useState<{ containers: ElementContainer[]; folderIds: string[] } | null>(null)
+  const [savingsPreview, setSavingsPreview] = useState<string[] | null>(null)
+  const [incomeFolderDragging, setIncomeFolderDragging] = useState(false)
+  useEffect(() => {
+    setIncomePreview(null)
+  }, [planMonth])
+  useEffect(() => {
+    setSavingsPreview(null)
+  }, [budget])
 
   const actualCell = (target: BudgetTransactionsTarget | null, amount: string, currencyId: Id | null) => {
     if (future) {
@@ -169,14 +196,14 @@ export function MonthFlows({
     )
   }
 
-  const incomeRow = (row: PlanCellFigures) => {
+  const incomeRow = (row: PlanCellFigures, draggable = false) => {
     const el = row.element
     const name = elementDisplayName(el.id, el.name, t)
     // income Uncategorized gathers income booked in expense categories too: no list names it
     const listTarget = el.id === UNCATEGORIZED_ID ? null : { id: el.id, type: el.type, name, icon: el.icon, currencyId: el.currencyId }
     const expandable = el.children.length > 0
     const open = expandable && !!unfolded[el.id]
-    return (
+    const line = (
       <div key={`${el.id}:${el.type}`}>
         <FlowRow
           testId={`month-income-row-${el.id}`}
@@ -231,6 +258,13 @@ export function MonthFlows({
         ) : null}
       </div>
     )
+    return draggable ? (
+      <DragRow key={`${el.id}:${el.type}`} id={el.id} hoverOnly>
+        {line}
+      </DragRow>
+    ) : (
+      line
+    )
   }
 
   // the expense table's labels: the folder-less rows are named only when there are
@@ -252,10 +286,14 @@ export function MonthFlows({
     // the phone's keys: a folder's own id, and income's own No folder and Archived
     const foldKey = g.kind === 'folder' ? g.id : `__income${g.id}`
     const folded = name !== null && !!planFolds[foldKey]
-    return (
+    // folders and the folder-less rows take part in drag and drop; Uncategorized and
+    // archived rows stay where they are
+    const draggable = !!drag && (g.kind === 'folder' || g.kind === 'loose')
+    const section = (
       <div key={g.id} className="pt-1" data-testid={`month-income-folder-${g.id}`}>
         {name !== null ? (
           <FolderLine
+            handle={draggable && g.kind === 'folder' ? <FolderGrip name={name} /> : undefined}
             name={name}
             folded={folded}
             onToggle={() => togglePlanFold(foldKey)}
@@ -264,12 +302,26 @@ export function MonthFlows({
             actionsColumn={actionsColumn}
           />
         ) : null}
-        {folded ? null : g.rows.length === 0 ? (
+        {folded || incomeFolderDragging ? null : g.rows.length === 0 ? (
           <p className={`${ROW_INDENT} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_folder.note')}</p>
         ) : (
-          g.rows.map(incomeRow)
+          g.rows.map((row) => incomeRow(row, draggable))
         )}
       </div>
+    )
+    return draggable ? (
+      <DragFolder
+        key={g.id}
+        sortableId={g.kind === 'folder' ? g.id : null}
+        dropId={`bfolder:${g.kind === 'folder' ? g.id : 'null'}`}
+        rowIds={g.rows.map((r) => r.element.id)}
+        folderDragging={incomeFolderDragging}
+        hoverOnly
+      >
+        {section}
+      </DragFolder>
+    ) : (
+      section
     )
   }
 
@@ -299,7 +351,89 @@ export function MonthFlows({
     return [...groups.filter((g) => g.kind === 'folder'), ...drafts, ...groups.filter((g) => g.kind !== 'folder')]
   })()
 
+  // the income groups as a drop arrangement: each folder, then the folder-less rows
+  const arrangementOf = (groups: IncomeGroup[]): ElementContainer[] => [
+    ...groups.filter((g) => g.kind === 'folder').map((g) => ({ folderId: g.id as Id | null, ids: g.rows.map((r) => r.element.id) })),
+    { folderId: null, ids: groups.find((g) => g.kind === 'loose')?.rows.map((r) => r.element.id) ?? [] },
+  ]
+  const shownIncomeGroups: IncomeGroup[] = (() => {
+    if (!incomePreview) {
+      return incomeGroups
+    }
+    const rowById = new Map(incomeGroups.flatMap((g) => g.rows).map((r) => [r.element.id, r]))
+    const rowsOf = (folderId: Id | null) =>
+      (incomePreview.containers.find((c) => c.folderId === folderId)?.ids ?? []).flatMap((id) => {
+        const row = rowById.get(id)
+        return row ? [row] : []
+      })
+    const folders = incomePreview.folderIds.flatMap((id) => {
+      const g = incomeGroups.find((x) => x.kind === 'folder' && x.id === id)
+      return g ? [{ ...g, rows: rowsOf(g.id) }] : []
+    })
+    const loose = incomeGroups.find((g) => g.kind === 'loose') ?? { kind: 'loose' as const, id: '__no_folder__', name: null, rows: [], planned: '0', received: '0', toReceive: '0' }
+    const looseRows = rowsOf(null)
+    const rest = incomeGroups.filter((g) => g.kind !== 'folder' && g.kind !== 'loose')
+    return [...folders, ...(looseRows.length > 0 ? [{ ...loose, rows: looseRows }] : []), ...rest]
+  })()
+  const incomeFolderIds = shownIncomeGroups.filter((g) => g.kind === 'folder').map((g) => g.id)
+
+  const onIncomeDragStart = ({ active }: DragStartEvent) => {
+    if (incomeFolderIds.includes(String(active.id))) {
+      setIncomeFolderDragging(true)
+    }
+  }
+  const onIncomeDragEnd = ({ active, over }: DragEndEvent) => {
+    setIncomeFolderDragging(false)
+    if (!drag || !over || active.id === over.id) {
+      return
+    }
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    const base = arrangementOf(shownIncomeGroups)
+    if (incomeFolderIds.includes(activeId)) {
+      const from = incomeFolderIds.indexOf(activeId)
+      const to = incomeFolderIds.indexOf(overId.replace(/^bfolder:/, ''))
+      if (to === -1 || from === to) {
+        return
+      }
+      const reordered = arrayMove(incomeFolderIds, from, to)
+      setIncomePreview({ containers: base, folderIds: reordered })
+      drag.onMoveIncomeFolder(activeId, afterIdFromDrop(reordered, activeId))
+      return
+    }
+    const moved = moveElementInArrangement(base, activeId, overId)
+    const item = arrangementItem(moved, activeId)
+    const before = arrangementItem(base, activeId)
+    if (moved === base || !item || (before && before.folderId === item.folderId && before.position === item.position)) {
+      return
+    }
+    setIncomePreview({ containers: moved, folderIds: incomeFolderIds })
+    drag.onMoveIncome(item)
+  }
+
   const savingsRows = [...(budget.structure.savings ?? [])].sort((a, b) => a.isArchived - b.isArchived || a.position - b.position)
+  // live savings rows reorder among themselves only
+  const liveSavings = (() => {
+    const live = savingsRows.filter((r) => r.isArchived === 0)
+    if (!savingsPreview) {
+      return live
+    }
+    return savingsPreview.flatMap((id) => {
+      const row = live.find((r) => r.id === id)
+      return row ? [row] : []
+    })
+  })()
+  const onSavingsDragEnd = ({ active, over }: DragEndEvent) => {
+    const ids = liveSavings.map((r) => r.id)
+    const activeId = String(active.id)
+    const overId = over ? String(over.id) : null
+    if (!drag || !overId || overId === activeId || !ids.includes(overId) || !ids.includes(activeId)) {
+      return
+    }
+    const reordered = arrayMove(ids, ids.indexOf(activeId), ids.indexOf(overId))
+    setSavingsPreview(reordered)
+    drag.onMoveSavings(activeId, afterIdFromDrop(reordered, activeId))
+  }
   const savingsSum = totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, exchangeFn)
 
   return (
@@ -323,7 +457,23 @@ export function MonthFlows({
             actionsColumn={actionsColumn}
             menu={incomeSectionMenu}
           />
-          {incomeFolded ? null : incomeGroups.map((g) => incomeGroup(g, incomeGroups))}
+          {incomeFolded ? null : drag ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={preferRowCollisions}
+              measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+              modifiers={[snapRowToPointer]}
+              onDragStart={onIncomeDragStart}
+              onDragEnd={onIncomeDragEnd}
+              onDragCancel={() => setIncomeFolderDragging(false)}
+            >
+              <SortableContext items={incomeFolderIds} strategy={verticalListSortingStrategy}>
+                {shownIncomeGroups.map((g) => incomeGroup(g, shownIncomeGroups))}
+              </SortableContext>
+            </DndContext>
+          ) : (
+            incomeGroups.map((g) => incomeGroup(g, incomeGroups))
+          )}
         </section>
       ) : null}
       {savingsRows.length > 0 ? (
@@ -341,7 +491,26 @@ export function MonthFlows({
             actionsColumn={actionsColumn}
             menu={savingsSectionMenu}
           />
-          {savingsFolded ? null : savingsRows.map(savingsRow)}
+          {savingsFolded ? null : drag ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={preferRowCollisions}
+              modifiers={[snapRowToPointer]}
+              onDragEnd={onSavingsDragEnd}
+            >
+              <SortableContext items={liveSavings.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+                {liveSavings.map((row) => (
+                  <DragRow key={row.id} id={row.id} hoverOnly>
+                    {savingsRow(row)}
+                  </DragRow>
+                ))}
+              </SortableContext>
+              {/* a deleted account's row is read-only history: no grip */}
+              {savingsRows.filter((r) => r.isArchived === 1).map(savingsRow)}
+            </DndContext>
+          ) : (
+            savingsRows.map(savingsRow)
+          )}
         </section>
       ) : null}
     </>

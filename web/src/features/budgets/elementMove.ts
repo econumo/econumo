@@ -1,3 +1,5 @@
+import { pointerWithin, rectIntersection } from '@dnd-kit/core'
+import type { CollisionDetection } from '@dnd-kit/core'
 import type { BudgetBuckets } from './budgetMath'
 import type { BudgetDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
@@ -128,4 +130,15 @@ export function applyArrangement(budget: BudgetDto, arrangement: ElementContaine
     ...budget,
     structure: { ...budget.structure, elements: placeElements(budget.structure.elements, arrangement) },
   }
+}
+
+// Rows are nested inside their section droppable, and the dragged row itself
+// travels under the pointer (its own rect always wins a pointer test) — so:
+// ignore the active row, prefer whatever OTHER row the pointer is inside, and
+// fall back to sections (empty folders, gaps between rows).
+export const preferRowCollisions: CollisionDetection = (args) => {
+  const collisions = pointerWithin(args)
+  const candidates = (collisions.length > 0 ? collisions : rectIntersection(args)).filter((c) => c.id !== args.active.id)
+  const row = candidates.find((c) => !String(c.id).startsWith('bfolder:'))
+  return row ? [row] : candidates
 }

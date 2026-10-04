@@ -1,13 +1,11 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactElement, ReactNode } from 'react'
-import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
-import type { CollisionDetection, DragEndEvent, DragOverEvent } from '@dnd-kit/core'
-import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactElement } from 'react'
+import { DndContext, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { snapRowToPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
-import type { SortableHandleProps } from '@/components/SortableList'
-import { Check, ChevronLeft, FolderPlus, GripVertical, MoreVertical, Plus, Settings2 } from 'lucide-react'
+import { Check, ChevronLeft, FolderPlus, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
@@ -98,48 +96,10 @@ import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { BudgetDialog } from './BudgetDialog'
 import { useCreateBudget } from './queries'
 import type { ElementContainer } from './elementMove'
-import { applyArrangement, arrangementFromBuckets, arrangementItem, moveElementInArrangement } from './elementMove'
+import { applyArrangement, arrangementFromBuckets, arrangementItem, moveElementInArrangement, preferRowCollisions } from './elementMove'
+import { DragFolder, DragRow, FolderGrip } from './MonthDrag'
 import { CoinLoader } from '@/components/CoinLoader'
 import { METRICS, trackEvent } from '@/lib/metrics'
-
-function DraggableElement({ id, children }: { id: string; children: ReactNode }) {
-  // sortable row (accounts-settings pattern): the whole row moves with the
-  // drag transform, the grip is just the activation handle
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? 'opacity-60' : undefined}
-    >
-      {/* items-start + fixed grip offset: an unfolded element grows downwards,
-          the grip must stay centered on the ROOT row, not the whole block */}
-      <div className="flex items-start gap-1">
-        <button
-          type="button"
-          aria-label={`move ${id}`}
-          className="mt-3 cursor-grab touch-none text-muted-foreground"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="size-4" />
-        </button>
-        <div className="min-w-0 flex-1">{children}</div>
-      </div>
-    </div>
-  )
-}
-
-// Rows are nested inside their section droppable, and the dragged row itself
-// travels under the pointer (its own rect always wins a pointer test) — so:
-// ignore the active row, prefer whatever OTHER row the pointer is inside, and
-// fall back to sections (empty folders, gaps between rows).
-const preferRowCollisions: CollisionDetection = (args) => {
-  const collisions = pointerWithin(args)
-  const candidates = (collisions.length > 0 ? collisions : rectIntersection(args)).filter((c) => c.id !== args.active.id)
-  const row = candidates.find((c) => !String(c.id).startsWith('bfolder:'))
-  return row ? [row] : candidates
-}
 
 type CellTarget = Pick<BudgetElementDto, 'id' | 'name' | 'budgeted'>
 
@@ -147,65 +107,6 @@ const BUDGET_MODE_ROUTE: Record<BudgetMode, string> = {
   budget: RouterPage.BUDGET,
   plan: RouterPage.PLAN,
 }
-
-// The section is a sortable item itself (folder reorder); the grip lives in
-// the header rendered by BudgetTable, so the handle props travel via context.
-const FolderHandleContext = createContext<SortableHandleProps | null>(null)
-
-function FolderGrip({ name }: { name: string }) {
-  const handle = useContext(FolderHandleContext)
-  if (!handle) {
-    return null
-  }
-  return (
-    <button
-      type="button"
-      aria-label={`move folder ${name}`}
-      // cancel the header's inner padding so folder grips line up with row grips
-      className="-ml-1.5 cursor-grab touch-none text-muted-foreground sm:-ml-2"
-      {...handle.attributes}
-      {...(handle.listeners ?? {})}
-    >
-      <GripVertical className="size-4" />
-    </button>
-  )
-}
-
-function SortableSection({
-  bucket,
-  id,
-  highlighted,
-  folderDragging,
-  children,
-}: {
-  bucket: FolderBucket
-  id: string
-  highlighted: boolean
-  /** a folder drag is in flight: element drop zones pause */
-  folderDragging: boolean
-  children: ReactNode
-}) {
-  // real folders are sortable; the default bucket only receives elements
-  const sortable = useSortable({ id: bucket.folder?.id ?? '__no_folder__', disabled: !bucket.folder })
-  const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id, disabled: folderDragging })
-  return (
-    <div
-      ref={(el) => {
-        sortable.setNodeRef(el)
-        setDroppableRef(el)
-      }}
-      style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
-      className={`${isOver || highlighted ? 'rounded-md ring-2 ring-ring' : ''} ${sortable.isDragging ? 'opacity-60' : ''}`}
-    >
-      <FolderHandleContext.Provider value={bucket.folder ? { attributes: sortable.attributes, listeners: sortable.listeners } : null}>
-        <SortableContext items={bucket.elements.map((el) => el.id)} strategy={verticalListSortingStrategy}>
-          {children}
-        </SortableContext>
-      </FolderHandleContext.Provider>
-    </div>
-  )
-}
-
 
 export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const { t, i18n } = useTranslation()
@@ -627,6 +528,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // The ⋮ menus on the desktop/tablet month view: every line offers what it can do,
   // with no mode to switch on; Edit structure keeps its own menus while it is on.
   const hoverMenus = !isPhone && !editMode
+  // dragging needs no mode either: grips show on hover for anyone who may configure
+  const dragEnabled = editMode || (hoverMenus && configure)
   const editAction = (target: SheetTarget): MenuAction[] => {
     const access = sheetEditAccess(target)
     return access === null ? [] : [{ label: t('common.button.edit.label'), disabled: !access, onSelect: () => editFromSheet(target) }]
@@ -912,9 +815,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
                 {t('budgets.page.budget.settings.menu.edit')}
               </DropdownMenuItem>
-              <DropdownMenuItem disabled={!configure} onSelect={() => setEditMode(true)}>
-                {t('budgets.page.budget.settings.menu.edit_structure')}
-              </DropdownMenuItem>
+              {/* the Budget view edits on hover; phones and the Plan grid keep the mode */}
+              {mode === 'plan' || isPhone ? (
+                <DropdownMenuItem disabled={!configure} onSelect={() => setEditMode(true)}>
+                  {t('budgets.page.budget.settings.menu.edit_structure')}
+                </DropdownMenuItem>
+              ) : null}
               {mode === 'plan' && !phoneView ? (
                 <>
                   <DropdownMenuCheckboxItem checked={planHideEmpty} onCheckedChange={() => togglePlanHideEmpty()}>
@@ -994,6 +900,16 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     incomeSectionMenu={hoverMenus ? sectionMenu('income') : undefined}
                     savingsSectionMenu={hoverMenus ? savingsSectionMenu : undefined}
                     draftIncomeFolders={pendingIncomeFolders}
+                    drag={
+                      dragEnabled
+                        ? {
+                            onMoveIncome: (item) => moveElement.mutate({ budgetId: budget.meta.id, item }),
+                            onMoveIncomeFolder: (id, afterId) => orderFolders.mutate({ budgetId: budget.meta.id, id, afterId }),
+                            onMoveSavings: (id, afterId) =>
+                              moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } }),
+                          }
+                        : undefined
+                    }
                   />
                 </div>
                 <DndContext
@@ -1024,7 +940,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     hideTotals
                     hideChildren={dragInProgress}
                     hideContents={draggingFolderId !== null}
-                    renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
+                    renderFolderHandle={dragEnabled ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
                     // only in edit mode
                     renderFolderActions={editMode ? folderActions : undefined}
                     renderActions={editMode ? elementActions : undefined}
@@ -1041,27 +957,29 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                       return <CommentMarker count={cellComments.length} placement="outset" onOpen={(anchor) => openComments(element, anchor)} />
                     }}
                     renderRowWrapper={
-                      editMode
+                      dragEnabled
                         ? (element, _bucket, row) => (
-                            <DraggableElement key={element.id} id={element.id}>
+                            <DragRow key={element.id} id={element.id} hoverOnly={!editMode}>
                               {row}
-                            </DraggableElement>
+                            </DragRow>
                           )
                         : undefined
                     }
                     sectionWrapper={
-                      editMode
+                      dragEnabled
                         ? (bucket, _key, node) => {
                             const folderKey = bucket.folder ? String(bucket.folder.id) : 'null'
                             return (
-                              <SortableSection
-                                bucket={bucket}
-                                id={`bfolder:${folderKey}`}
+                              <DragFolder
+                                sortableId={bucket.folder?.id ?? null}
+                                dropId={`bfolder:${folderKey}`}
+                                rowIds={bucket.elements.map((el) => el.id)}
                                 highlighted={dropFolderKey === folderKey}
                                 folderDragging={draggingFolderId !== null}
+                                hoverOnly={!editMode}
                               >
                                 {node}
-                              </SortableSection>
+                              </DragFolder>
                             )
                           }
                         : undefined

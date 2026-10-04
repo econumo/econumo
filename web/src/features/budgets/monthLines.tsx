@@ -141,7 +141,7 @@ export function FolderLine({
   const { t } = useTranslation()
   const Chevron = folded ? ChevronRight : ChevronDown
   return (
-    <header className={`${LINE} ${FOLD_LINE} ${FOLDER_INDENT} min-h-9 text-sm text-muted-foreground`} onClick={foldOnLineClick(onToggle)}>
+    <header className={`${LINE} ${FOLD_LINE} ${FOLDER_INDENT} relative min-h-9 text-sm text-muted-foreground`} onClick={foldOnLineClick(onToggle)}>
       {handle}
       <button
         type="button"
