@@ -18,16 +18,23 @@ const planMonth: PlanMonthFigures = {
   index: 2,
   income: {
     rows: [{ element: salaries, planned: '2000', actual: '400' }],
-    folders: [],
-    loose: [{ element: salaries, planned: '2000', actual: '400' }],
-    uncategorized: null,
-    archived: [],
+    groups: [{ kind: 'loose', id: '__no_folder__', name: null, rows: [{ element: salaries, planned: '2000', actual: '400' }], planned: '2000', received: '400' }],
     planned: '2000',
     received: '400',
   },
   balance: '4545',
   savingsBalance: null,
   transfersNet: '0',
+}
+
+// one folder-less income row, as both the flat list and its group
+function incomeOf(row: { element: PlanElementDto; planned: string; actual: string }): PlanMonthFigures['income'] {
+  return {
+    rows: [row],
+    groups: [{ kind: 'loose', id: '__no_folder__', name: null, rows: [row], planned: row.planned, received: row.actual }],
+    planned: row.planned,
+    received: row.actual,
+  }
 }
 
 function renderView(overrides: Partial<PhoneMonthViewProps> = {}, mutate?: (b: BudgetDto) => void) {
@@ -72,6 +79,46 @@ it('heads income and savings with one Planned · Actual row and the expenses wit
 it('the income line names itself inside the shared card', () => {
   renderView()
   expect(within(screen.getByTestId('phone-flows')).getByTestId('phone-income-summary')).toHaveTextContent(/^Income/)
+})
+
+it('unfolded, Income is grouped like the Plan grid: a folder line with its sums, then No folder', async () => {
+  const salariesEnvelope = {
+    ...salaries,
+    type: 4,
+    children: [{ id: 'cat-salary', type: 3, name: 'Salary', icon: 'payments', isArchived: 0, ownerUserId: 'u1', cells: [{ actual: '0' }, { actual: '0' }, { actual: '350' }] }],
+  } as PlanElementDto
+  const freelance = { ...salaries, id: 'cat-freelance', type: 3, name: 'Freelance', children: [] } as PlanElementDto
+  const grouped: PlanMonthFigures = {
+    ...planMonth,
+    income: {
+      rows: [],
+      groups: [
+        { kind: 'folder', id: 'bf-inc', name: 'Work', rows: [{ element: salariesEnvelope, planned: '2000', actual: '350' }], planned: '2000', received: '350' },
+        { kind: 'loose', id: '__no_folder__', name: null, rows: [{ element: freelance, planned: '500', actual: '50' }], planned: '500', received: '50' },
+      ],
+      planned: '2500',
+      received: '400',
+    },
+  }
+  renderView({ planMonth: grouped })
+  await userEvent.click(screen.getByTestId('phone-income-summary'))
+  const work = screen.getByTestId('phone-income-group-bf-inc')
+  expect(work).toHaveTextContent(/^Work2,000\.00350\.00/)
+  expect(within(work).getByTestId('phone-income-row-ie1')).toBeInTheDocument()
+  const loose = screen.getByTestId('phone-income-group-__no_folder__')
+  expect(loose).toHaveTextContent(/^No folder500\.0050\.00/)
+  expect(within(loose).getByTestId('phone-income-row-cat-freelance')).toBeInTheDocument()
+
+  // the envelope's name unfolds its categories, each with its own received amount
+  expect(screen.queryByTestId('phone-child-cat-salary')).toBeNull()
+  await userEvent.click(within(work).getByRole('button', { name: /Salaries/, expanded: false }))
+  expect(screen.getByTestId('phone-child-cat-salary')).toHaveTextContent('350.00')
+})
+
+it('without income folders the rows stay a plain list, no "No folder" line', async () => {
+  renderView()
+  await userEvent.click(screen.getByTestId('phone-income-summary'))
+  expect(screen.getByTestId('phone-income-group-__no_folder__')).not.toHaveTextContent('No folder')
 })
 
 it('drops the income/savings card while the plan is not loaded and there are no savings rows', () => {
@@ -208,7 +255,7 @@ it('an income row fills its bar toward the plan and stays gray until the plan is
 })
 
 it('an income row that received its plan turns its bar green', async () => {
-  const met = { ...planMonth, income: { ...planMonth.income, rows: [{ element: salaries, planned: '2000', actual: '2500' }], planned: '2000', received: '2500' } }
+  const met = { ...planMonth, income: incomeOf({ element: salaries, planned: '2000', actual: '2500' }) }
   renderView({ planMonth: met })
   await userEvent.click(screen.getByTestId('phone-income-summary'))
   const row = screen.getByTestId('phone-income-row-ie1')
@@ -220,7 +267,7 @@ it('an income row that received its plan turns its bar green', async () => {
 })
 
 it('an income row with no plan draws the empty gray track', async () => {
-  const unplanned = { ...planMonth, income: { ...planMonth.income, rows: [{ element: salaries, planned: '0', actual: '300' }], planned: '0', received: '300' } }
+  const unplanned = { ...planMonth, income: incomeOf({ element: salaries, planned: '0', actual: '300' }) }
   renderView({ planMonth: unplanned })
   await userEvent.click(screen.getByTestId('phone-income-summary'))
   const bar = within(screen.getByTestId('phone-income-row-ie1')).getByTestId('phone-progress')

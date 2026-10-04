@@ -6,13 +6,14 @@ import { moneyFormat } from '@/lib/money'
 import { cmp, isZero } from '@/lib/decimal'
 import type { BudgetCommentDto, BudgetDto, BudgetElementDto, BudgetSavingsElementDto, LabelSpendDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type { BudgetElementType } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import type { BudgetBuckets, FolderBucket } from './budgetMath'
 import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, overBudget, rowProgress, totalsWithSavings } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
-import type { PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
+import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 import { currentMonth } from './planMath'
 import { commentCellKey } from './queries'
 
@@ -229,6 +230,43 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const future = selectedDate > currentMonth()
   const commented = (id: Id) => (commentsByCell.get(commentCellKey(id, selectedDate))?.length ?? 0) > 0
 
+  // an envelope's category: its own amount, which opens that category's share of the
+  // envelope's transactions
+  const childLine = (
+    child: { id: Id; type: BudgetElementType; name: string; icon: string },
+    amount: string,
+    parent: { id: Id; type: BudgetElementType; currencyId: Id | null },
+  ) => {
+    const childName = elementDisplayName(child.id, child.name, t)
+    const childAmount = future ? EMPTY : fmt(amount, parent.currencyId)
+    return (
+      <div key={child.id} data-testid={`phone-child-${child.id}`} className={`${GRID} rounded-md text-sm text-muted-foreground`}>
+        <span className="flex min-h-10 min-w-0 items-center gap-2 py-1.5 pl-9">
+          <EntityIcon name={child.icon} className="text-lg" />
+          <span className="truncate">{childName}</span>
+        </span>
+        <button
+          type="button"
+          aria-label={t('budgets.page.phone.child_aria', { name: childName, spent: childAmount })}
+          className="col-span-2 grid min-h-10 grid-cols-subgrid items-center rounded-md py-1.5 pr-2 active:bg-accent/50"
+          onClick={() =>
+            onShowTransactions({
+              id: child.id,
+              type: child.type,
+              name: childName,
+              icon: child.icon,
+              currencyId: parent.currencyId,
+              parent: { id: parent.id, type: parent.type },
+            })
+          }
+        >
+          <span />
+          <span className="text-right tabular-nums">{childAmount}</span>
+        </button>
+      </div>
+    )
+  }
+
   const expenseRow = (element: BudgetElementDto) => {
     const name = elementDisplayName(element.id, element.name, t)
     const isUncategorized = element.id === UNCATEGORIZED_ID
@@ -261,38 +299,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           onOpen={() => onOpenSheet({ kind: 'expense', element })}
           toggle={expandable ? { open, onToggle: () => toggleElement(element.id) } : undefined}
         />
-        {expandable && open
-          ? element.children.map((child) => {
-              const childName = elementDisplayName(child.id, child.name, t)
-              const childSpent = future ? EMPTY : fmt(child.spent, element.currencyId)
-              return (
-                <div key={child.id} data-testid={`phone-child-${child.id}`} className={`${GRID} rounded-md text-sm text-muted-foreground`}>
-                  <span className="flex min-h-10 min-w-0 items-center gap-2 py-1.5 pl-9">
-                    <EntityIcon name={child.icon} className="text-lg" />
-                    <span className="truncate">{childName}</span>
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={t('budgets.page.phone.child_aria', { name: childName, spent: childSpent })}
-                    className="col-span-2 grid min-h-10 grid-cols-subgrid items-center rounded-md py-1.5 pr-2 active:bg-accent/50"
-                    onClick={() =>
-                      onShowTransactions({
-                        id: child.id,
-                        type: child.type,
-                        name: childName,
-                        icon: child.icon,
-                        currencyId: element.currencyId,
-                        parent: { id: element.id, type: element.type },
-                      })
-                    }
-                  >
-                    <span />
-                    <span className="text-right tabular-nums">{childSpent}</span>
-                  </button>
-                </div>
-              )
-            })
-          : null}
+        {expandable && open ? element.children.map((child) => childLine(child, child.spent, element)) : null}
       </div>
     )
   }
@@ -319,20 +326,49 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     const name = elementDisplayName(el.id, el.name, t)
     const planned = fmt(row.planned, el.currencyId)
     const received = future ? EMPTY : fmt(row.actual, el.currencyId)
+    const expandable = el.children.length > 0
+    const open = expandable && !!unfolded[el.id]
     return (
-      <PhoneRow
-        key={`${el.id}:${el.type}`}
-        testId={`phone-income-row-${el.id}`}
-        icon={el.icon}
-        name={name}
-        tag={tagOf(el.currencyId)}
-        first={planned}
-        second={received}
-        {...planBar(row.planned, row.actual)}
-        commented={commented(el.id)}
-        ariaLabel={t('budgets.page.phone.income_row_aria', { name, planned, received })}
-        onOpen={() => onOpenSheet({ kind: 'plan', cell: row })}
-      />
+      <div key={`${el.id}:${el.type}`}>
+        <PhoneRow
+          testId={`phone-income-row-${el.id}`}
+          icon={el.icon}
+          name={name}
+          tag={tagOf(el.currencyId)}
+          first={planned}
+          second={received}
+          {...planBar(row.planned, row.actual)}
+          commented={commented(el.id)}
+          ariaLabel={t('budgets.page.phone.income_row_aria', { name, planned, received })}
+          onOpen={() => onOpenSheet({ kind: 'plan', cell: row })}
+          toggle={expandable ? { open, onToggle: () => toggleElement(el.id) } : undefined}
+        />
+        {open && planMonth ? el.children.map((child) => childLine(child, child.cells[planMonth.index]?.actual ?? '0', el)) : null}
+      </div>
+    )
+  }
+
+  // the expense cards' labels: the folder-less rows are named only when there are
+  // folders, Uncategorized stands alone, archived rows sit under Archived
+  const incomeGroupName = (g: IncomeGroup, groups: IncomeGroup[]): string | null => {
+    switch (g.kind) {
+      case 'folder':
+        return g.name
+      case 'loose':
+        return groups.some((o) => o.kind === 'folder') ? t('budgets.page.plan.menu.no_folder') : null
+      case 'uncategorized':
+        return null
+      case 'archived':
+        return t('budgets.page.budget.structure.in_archive')
+    }
+  }
+  const incomeGroup = (g: IncomeGroup, groups: IncomeGroup[]) => {
+    const groupName = incomeGroupName(g, groups)
+    return (
+      <div key={g.id} data-testid={`phone-income-group-${g.id}`}>
+        {groupName !== null ? <CardHeader name={groupName} first={fmt(g.planned)} second={future ? EMPTY : fmt(g.received)} /> : null}
+        {g.rows.map(incomeRow)}
+      </div>
     )
   }
 
@@ -404,7 +440,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
                   firstTestId="phone-income-planned"
                   secondTestId="phone-income-received"
                 />
-                {incomeOpen ? planMonth.income.rows.map(incomeRow) : null}
+                {incomeOpen ? planMonth.income.groups.map((g) => incomeGroup(g, planMonth.income.groups)) : null}
               </>
             ) : null}
             {savingsSum ? (

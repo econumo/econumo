@@ -1051,6 +1051,14 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 The Income and Savings lines start folded; tapping one unfolds its
       rows inside the same card, and the fold state survives a month switch
       and a reload.
+- [ ] 📱 Income unfolded is grouped as in the Plan grid: each income folder
+      opens with a line naming it and its Planned / Received sums, followed
+      by its rows; then the folder-less rows (under "No folder" when income
+      folders exist, with no line otherwise), the income Uncategorized row
+      (only in a month it received something), and "Archived" for archived
+      income with money this month. Tapping an income envelope's name unfolds
+      its categories, each with its received amount, which opens that
+      category's transactions.
 - [ ] 📱 Each expense row shows Budget and Spent with no currency symbol and a
       thin bar under the row. Spent and the bar turn red only when the month
       spent more than its budget and money left from earlier months does not

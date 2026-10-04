@@ -36,14 +36,18 @@ function planWithIncomeFolder(): BudgetPlanDto {
 
 it('groups the income rows as the Plan grid does: folders with their sums, then the folder-less rows', () => {
   const f = planMonthFigures(planWithIncomeFolder(), [usd, eur], '2026-07-01', past)!
-  expect(f.income.folders.map((g) => [g.id, g.name, g.rows.map((r) => r.element.id)])).toEqual([['bf-inc', 'Side gigs', ['cat-freelance']]])
-  expect(cmp(f.income.folders[0].planned, '500')).toBe(0)
-  expect(cmp(f.income.folders[0].received, '400')).toBe(0)
-  expect(f.income.loose.map((r) => r.element.id)).toEqual(['ie1'])
-  expect(f.income.uncategorized).toBeNull()
+  expect(f.income.groups.map((g) => [g.kind, g.id, g.name, g.rows.map((r) => r.element.id)])).toEqual([
+    ['folder', 'bf-inc', 'Side gigs', ['cat-freelance']],
+    ['loose', '__no_folder__', null, ['ie1']],
+  ])
+  expect(cmp(f.income.groups[0].planned, '500')).toBe(0)
+  expect(cmp(f.income.groups[0].received, '400')).toBe(0)
+  expect(cmp(f.income.groups[1].planned, '2000')).toBe(0)
   // the flat list keeps the same rows, folders first
   expect(f.income.rows.map((r) => r.element.id)).toEqual(['cat-freelance', 'ie1'])
-  expect(planMonthFigures(planWithIncomeFolder(), [usd, eur], '2026-06-01', past)!.income.uncategorized?.element.id).toBe('uncategorized')
+  // June received income in no category: Uncategorized gets a group of its own
+  const june = planMonthFigures(planWithIncomeFolder(), [usd, eur], '2026-06-01', past)!
+  expect(june.income.groups.map((g) => g.kind)).toEqual(['folder', 'loose', 'uncategorized'])
 })
 
 it('lists the income Uncategorized row only in a month it received something', () => {

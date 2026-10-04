@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
-import { add, isZero } from '@/lib/decimal'
+import { isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
 import type { BudgetDto, BudgetSavingsElementDto } from '@/api/dto/budget'
@@ -12,7 +12,7 @@ import type { Id } from '@/api/types'
 import { elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
-import type { PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
+import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 
 const EMPTY_CELL = '—'
 // the budget table's columns: name | Budget w-24 | Spent w-20/24 | Available w-20/24 | symbol w-6
@@ -248,44 +248,40 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
     )
   }
 
-  // the expense table's grouping: folders, then the folder-less rows (named only when
-  // there are folders), Uncategorized on its own, then archived rows with money this month
-  const incomeBox = (key: string, header: { name: string; planned: string; received: string } | null, rows: PlanCellFigures[]) =>
-    rows.length === 0 ? null : (
-      <div key={key} className="rounded-md border p-1.5 sm:p-2" data-testid={`month-income-folder-${key}`}>
-        {header ? (
+  // the expense table's labels: the folder-less rows are named only when there are
+  // folders, Uncategorized stands alone, archived rows sit under Archived
+  const groupName = (g: IncomeGroup, groups: IncomeGroup[]): string | null => {
+    switch (g.kind) {
+      case 'folder':
+        return g.name
+      case 'loose':
+        return groups.some((o) => o.kind === 'folder') ? t('budgets.page.budget.structure.no_folder') : null
+      case 'uncategorized':
+        return null
+      case 'archived':
+        return t('budgets.page.budget.structure.in_archive')
+    }
+  }
+  const incomeBox = (g: IncomeGroup, groups: IncomeGroup[]) => {
+    const name = groupName(g, groups)
+    return (
+      <div key={g.id} className="rounded-md border p-1.5 sm:p-2" data-testid={`month-income-folder-${g.id}`}>
+        {name !== null ? (
           <header className="flex items-center gap-1.5 px-1.5 pb-1 sm:gap-2 sm:px-2">
-            <span className="min-w-0 flex-1 truncate text-sm font-medium" title={header.name}>
-              {header.name}
+            <span className="min-w-0 flex-1 truncate text-sm font-medium" title={name}>
+              {name}
             </span>
-            <span className={`${PLANNED_COL} text-xs text-muted-foreground tabular-nums`}>{fmt(header.planned)}</span>
-            <span className={`${ACTUAL_COL} text-xs text-muted-foreground tabular-nums`}>{future ? EMPTY_CELL : fmt(header.received)}</span>
+            <span className={`${PLANNED_COL} text-xs text-muted-foreground tabular-nums`}>{fmt(g.planned)}</span>
+            <span className={`${ACTUAL_COL} text-xs text-muted-foreground tabular-nums`}>{future ? EMPTY_CELL : fmt(g.received)}</span>
             <span className={THIRD_COL} />
             <span className={SYMBOL_COL}>{currencyOf(null)?.symbol}</span>
             {actionsColumn ? <span className="w-8 shrink-0" /> : null}
           </header>
         ) : null}
-        {rows.map(incomeRow)}
+        {g.rows.map(incomeRow)}
       </div>
     )
-  const sumOf = (rows: PlanCellFigures[], pick: (c: PlanCellFigures) => string) =>
-    rows.reduce((sum, c) => add(sum, exchangeFn(c.element.currencyId, base, pick(c))), '0')
-  const incomeBoxes = (income: PlanMonthFigures['income']) => [
-    ...income.folders.map((f) => incomeBox(f.id, { name: f.name, planned: f.planned, received: f.received }, f.rows)),
-    incomeBox(
-      '__no_folder__',
-      income.folders.length > 0
-        ? { name: t('budgets.page.budget.structure.no_folder'), planned: sumOf(income.loose, (c) => c.planned), received: sumOf(income.loose, (c) => c.actual) }
-        : null,
-      income.loose,
-    ),
-    incomeBox('__uncategorized__', null, income.uncategorized ? [income.uncategorized] : []),
-    incomeBox(
-      '__archive__',
-      { name: t('budgets.page.budget.structure.in_archive'), planned: sumOf(income.archived, (c) => c.planned), received: sumOf(income.archived, (c) => c.actual) },
-      income.archived,
-    ),
-  ]
+  }
 
   const savingsRow = (row: BudgetSavingsElementDto) => (
     <FlowRow
@@ -317,7 +313,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             sums={[fmt(planMonth.income.planned), future ? EMPTY_CELL : fmt(planMonth.income.received), '']}
             actionsColumn={actionsColumn}
           />
-          {incomeFolded ? null : incomeBoxes(planMonth.income)}
+          {incomeFolded ? null : planMonth.income.groups.map((g) => incomeBox(g, planMonth.income.groups))}
         </section>
       ) : null}
       {savingsRows.length > 0 ? (
