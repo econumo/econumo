@@ -3,10 +3,10 @@ import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-// ?inline forces a data URI: the file is over vite's 4KB auto-inline cutoff,
-// so without it the sidebar logo ships as a separate asset and can 404 where
-// the login logo (under the cutoff, auto-inlined) still shows.
-import grayLogo from '@/assets/econumo-gray.svg?inline'
+// ?inline forces a data URI: the file sits right at vite's 4KB auto-inline
+// cutoff, and a separately shipped sidebar logo can 404 where an inlined one
+// still shows.
+import logo from '@/assets/econumo.svg?inline'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UpdateNotice } from '@/components/UpdateNotice'
@@ -141,8 +141,7 @@ export function ApplicationLayout() {
           aria-label={appName}
           className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 py-1 hover:bg-accent"
         >
-          {/* the artwork carries ~2.5px of blank space before the "e" */}
-          <img src={grayLogo} width={163} height={26} alt="" className="-ml-0.5" />
+          <img src={logo} width={165} height={17} alt="" />
           <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
         </Link>
         <button
