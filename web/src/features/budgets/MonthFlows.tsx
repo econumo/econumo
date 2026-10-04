@@ -261,7 +261,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             <span className={`${PLANNED_COL} text-xs text-muted-foreground tabular-nums`}>{fmt(header.planned)}</span>
             <span className={`${ACTUAL_COL} text-xs text-muted-foreground tabular-nums`}>{future ? EMPTY_CELL : fmt(header.received)}</span>
             <span className={THIRD_COL} />
-            <span className={SYMBOL_COL} />
+            <span className={SYMBOL_COL}>{currencyOf(null)?.symbol}</span>
             {actionsColumn ? <span className="w-8 shrink-0" /> : null}
           </header>
         ) : null}
