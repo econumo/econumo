@@ -13129,7 +13129,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "side": {
-                    "description": "Side is optional: \"expense\" (default when absent) or \"income\".",
+                    "description": "Side is \"expense\" or \"income\".",
                     "type": "string"
                 }
             }

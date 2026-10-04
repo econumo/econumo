@@ -454,14 +454,16 @@ func TestBudget_ArchiveUnarchive_Idempotent(t *testing.T) {
 }
 
 func TestFolderSide(t *testing.T) {
-	for in, want := range map[string]FolderSide{"": FolderSideExpense, "expense": FolderSideExpense, "income": FolderSideIncome} {
+	for in, want := range map[string]FolderSide{"expense": FolderSideExpense, "income": FolderSideIncome} {
 		got, err := FolderSideFromAlias(in)
 		if err != nil || got != want {
 			t.Errorf("FolderSideFromAlias(%q) = %q, %v; want %q", in, got, err, want)
 		}
 	}
-	if _, err := FolderSideFromAlias("savings"); err == nil {
-		t.Error("an unknown side must be rejected")
+	for _, bad := range []string{"", "savings"} {
+		if _, err := FolderSideFromAlias(bad); err == nil {
+			t.Errorf("side %q must be rejected", bad)
+		}
 	}
 	if ElementIncomeEnvelope.Side() != FolderSideIncome || ElementIncomeCategory.Side() != FolderSideIncome ||
 		ElementCategory.Side() != FolderSideExpense || ElementTag.Side() != FolderSideExpense {

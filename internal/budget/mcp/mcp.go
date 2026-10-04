@@ -47,7 +47,7 @@ type budgetIDInput struct {
 type createFolderInput struct {
 	BudgetID string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
 	Name     string `json:"name" jsonschema:"folder name"`
-	Side     string `json:"side,omitempty" jsonschema:"expense (default) or income: the plan area the folder belongs to"`
+	Side     string `json:"side" jsonschema:"expense or income: the area the folder belongs to"`
 }
 
 type updateFolderInput struct {

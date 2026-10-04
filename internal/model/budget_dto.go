@@ -465,12 +465,12 @@ type CreateBudgetFolderRequest struct {
 	BudgetId string `json:"budgetId"`
 	Id       string `json:"id"`
 	Name     string `json:"name"`
-	// Side is optional: "expense" (default when absent) or "income".
+	// Side is "expense" or "income".
 	Side string `json:"side"`
 }
 
 func (r CreateBudgetFolderRequest) Validate() error {
-	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name, "side": r.Side})
 }
 
 // CreateBudgetFolderResult is {item: BudgetFolderResult}.

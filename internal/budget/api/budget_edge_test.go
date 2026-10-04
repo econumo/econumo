@@ -368,7 +368,7 @@ func TestCreateFolder_AtFront(t *testing.T) {
 	seedBudget(t, h, tok)
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
-		"budgetId": budgetID1, "id": bFolderID1, "name": "Bills",
+		"budgetId": budgetID1, "id": bFolderID1, "name": "Bills", "side": "expense",
 	})
 	if status != http.StatusOK {
 		t.Fatalf("create-folder=%d body=%s", status, env.raw)
@@ -398,7 +398,7 @@ func TestUpdateFolder_Renames(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
-	if st, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": bFolderID1, "name": "Bills"}); st != 200 {
+	if st, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": bFolderID1, "name": "Bills", "side": "expense"}); st != 200 {
 		t.Fatalf("create-folder precondition=%d", st)
 	}
 	status, env := h.do(t, http.MethodPost, "/api/v1/budget/update-folder", tok, map[string]any{
@@ -418,7 +418,7 @@ func TestDeleteFolder_Removes(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
-	if st, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": bFolderID1, "name": "Bills"}); st != 200 {
+	if st, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": bFolderID1, "name": "Bills", "side": "expense"}); st != 200 {
 		t.Fatalf("create-folder precondition=%d", st)
 	}
 	status, env := h.do(t, http.MethodPost, "/api/v1/budget/delete-folder", tok, map[string]any{
@@ -440,7 +440,7 @@ func TestMoveFolder_ReordersAndWritesOneRow(t *testing.T) {
 	seedBudget(t, h, tok)
 	// Budget folders PREPEND on create, so Bravo starts ahead of Alpha.
 	for _, f := range []struct{ id, name string }{{bFolderID1, "Alpha"}, {bFolderID2, "Bravo"}} {
-		if st, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": f.id, "name": f.name}); st != 200 {
+		if st, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": f.id, "name": f.name, "side": "expense"}); st != 200 {
 			t.Fatalf("create-folder %s=%d", f.name, st)
 		}
 	}
@@ -473,7 +473,7 @@ func TestMoveFolder_NonMember_403(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
-	if st, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": bFolderID1, "name": "Alpha"}); st != 200 {
+	if st, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": bFolderID1, "name": "Alpha", "side": "expense"}); st != 200 {
 		t.Fatal("create-folder")
 	}
 	other := h.seedSecondUser(t)
@@ -509,7 +509,7 @@ func TestCreateFolder_NonMember_403(t *testing.T) {
 	seedBudget(t, h, tok)
 	other := h.seedSecondUser(t)
 	status, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", other, map[string]any{
-		"budgetId": budgetID1, "id": bFolderID1, "name": "Hijack",
+		"budgetId": budgetID1, "id": bFolderID1, "name": "Hijack", "side": "expense",
 	})
 	if status != http.StatusForbidden {
 		t.Fatalf("create-folder non-member=%d want 403", status)
@@ -521,7 +521,7 @@ func TestCreateFolder_Blank_400(t *testing.T) {
 	tok := h.token(t)
 	seedBudget(t, h, tok)
 	status, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
-		"budgetId": budgetID1, "id": "", "name": "Bills",
+		"budgetId": budgetID1, "id": "", "name": "Bills", "side": "expense",
 	})
 	if status != http.StatusBadRequest {
 		t.Fatalf("create-folder blank id=%d want 400", status)

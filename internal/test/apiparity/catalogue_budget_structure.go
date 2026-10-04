@@ -14,7 +14,7 @@ func init() {
 		)
 		return []Call{
 			{Label: "create-folder", Method: "POST", Path: "/api/v1/budget/create-folder", Auth: "owner",
-				Body: map[string]any{"budgetId": Budget, "id": newFolder, "name": "Bills"}},
+				Body: map[string]any{"budgetId": Budget, "id": newFolder, "name": "Bills", "side": "expense"}},
 			{Label: "update-folder", Method: "POST", Path: "/api/v1/budget/update-folder", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "id": newFolder, "name": "Bills 2"}},
 			{Label: "move-folder", Method: "POST", Path: "/api/v1/budget/move-folder", Auth: "owner",

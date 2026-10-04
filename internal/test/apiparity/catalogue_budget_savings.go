@@ -73,7 +73,7 @@ func init() {
 			{Label: "get-budget-plan", Method: "GET",
 				Path: "/api/v1/budget/get-budget-plan?id=" + savingsBudget + "&from=2024-04-01&months=3", Auth: "owner"},
 			{Label: "create-folder", Method: "POST", Path: "/api/v1/budget/create-folder", Auth: "owner",
-				Body: map[string]any{"budgetId": savingsBudget, "id": savingsFolderID, "name": "Vault"}},
+				Body: map[string]any{"budgetId": savingsBudget, "id": savingsFolderID, "name": "Vault", "side": "expense"}},
 			// Both savings rows exist (synced by flag-savings), so this hits the
 			// savings-specific 400 rather than a silent no-op reorder.
 			{Label: "err:move-savings-into-folder", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",

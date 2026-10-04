@@ -25,6 +25,9 @@
 == create-income-folder POST /api/v1/budget/create-folder [owner] -> 200
 {"success":true,"message":"","data":{"item":{"id":"bf000000-0000-0000-0000-0000000000ef","name":"Earnings","position":0,"side":"income"}}}
 
+== err:folder-side-missing POST /api/v1/budget/create-folder [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"side":["This value should not be blank."]}}
+
 == err:invalid-folder-side POST /api/v1/budget/create-folder [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"side":["The value you selected is not a valid choice."]}}
 

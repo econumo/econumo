@@ -22,6 +22,9 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req model.Crea
 	if err := model.ValidateName("Folder", req.Name); err != nil {
 		return nil, err
 	}
+	if err := model.ValidateBlank(map[string]string{"side": req.Side}); err != nil {
+		return nil, err
+	}
 	side, err := model.FolderSideFromAlias(req.Side)
 	if err != nil {
 		return nil, err

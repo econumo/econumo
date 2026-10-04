@@ -21,7 +21,7 @@ func init() {
 				Body: map[string]any{"id": incomeBudget, "name": "Income Plan", "currencyId": USD, "startDate": "2024-04-01", "accountIds": []string{OwnerAccount}}},
 			{Label: "get-budget-baseline", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + incomeBudget + "&date=2024-04-15", Auth: "owner"},
 			{Label: "create-folder", Method: "POST", Path: "/api/v1/budget/create-folder", Auth: "owner",
-				Body: map[string]any{"budgetId": incomeBudget, "id": expenseFolder, "name": "Living"}},
+				Body: map[string]any{"budgetId": incomeBudget, "id": expenseFolder, "name": "Living", "side": "expense"}},
 			// CatFood makes the folder expense-sided.
 			{Label: "seed-expense-folder", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
 				Body: map[string]any{"budgetId": incomeBudget, "id": CatFood, "folderId": expenseFolder, "afterId": nil}},
@@ -43,6 +43,8 @@ func init() {
 			// A folder's side is stored, so an empty income folder stays one.
 			{Label: "create-income-folder", Method: "POST", Path: "/api/v1/budget/create-folder", Auth: "owner",
 				Body: map[string]any{"budgetId": incomeBudget, "id": incomeFolder, "name": "Earnings", "side": "income"}},
+			{Label: "err:folder-side-missing", Method: "POST", Path: "/api/v1/budget/create-folder", Auth: "owner",
+				Body: map[string]any{"budgetId": incomeBudget, "id": "bf000000-0000-0000-0000-0000000000f0", "name": "Nowhere"}},
 			{Label: "err:invalid-folder-side", Method: "POST", Path: "/api/v1/budget/create-folder", Auth: "owner",
 				Body: map[string]any{"budgetId": incomeBudget, "id": "bf000000-0000-0000-0000-0000000000f0", "name": "Nowhere", "side": "savings"}},
 			// Frozen-contract proof: none of the income structure or its limit is

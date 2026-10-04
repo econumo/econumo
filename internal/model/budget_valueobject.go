@@ -103,11 +103,10 @@ const (
 	FolderSideIncome  FolderSide = "income"
 )
 
-// FolderSideFromAlias parses a create-folder side. Absent ("") means expense,
-// keeping the wire contract for existing clients.
+// FolderSideFromAlias parses a create-folder side; there is no default.
 func FolderSideFromAlias(side string) (FolderSide, error) {
 	switch side {
-	case "", string(FolderSideExpense):
+	case string(FolderSideExpense):
 		return FolderSideExpense, nil
 	case string(FolderSideIncome):
 		return FolderSideIncome, nil

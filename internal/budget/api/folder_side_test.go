@@ -44,8 +44,6 @@ func TestCreateFolder_Side(t *testing.T) {
 		side any
 		want string
 	}{
-		{"bfff4444-0000-7000-8000-000000000011", nil, "expense"},
-		{"bfff4444-0000-7000-8000-000000000012", "", "expense"},
 		{"bfff4444-0000-7000-8000-000000000013", "expense", "expense"},
 		{"bfff4444-0000-7000-8000-000000000014", "income", "income"},
 	}
@@ -64,12 +62,21 @@ func TestCreateFolder_Side(t *testing.T) {
 	}
 
 	const badID = "bfff4444-0000-7000-8000-000000000015"
-	st, env := createFolder(t, h, tok, budgetID1, badID, "savings")
-	if st != http.StatusBadRequest {
-		t.Fatalf("create-folder side=savings = %d, want 400; body=%s", st, env.raw)
-	}
-	if msgs := env.errorsMap()["side"]; len(msgs) == 0 || msgs[0] != "The value you selected is not a valid choice." {
-		t.Errorf("want the invalid-choice error on side; body=%s", env.raw)
+	for _, bad := range []struct {
+		side any
+		msg  string
+	}{
+		{nil, "This value should not be blank."},
+		{"", "This value should not be blank."},
+		{"savings", "The value you selected is not a valid choice."},
+	} {
+		st, env := createFolder(t, h, tok, budgetID1, badID, bad.side)
+		if st != http.StatusBadRequest {
+			t.Fatalf("create-folder side=%v = %d, want 400; body=%s", bad.side, st, env.raw)
+		}
+		if msgs := env.errorsMap()["side"]; len(msgs) == 0 || msgs[0] != bad.msg {
+			t.Errorf("create-folder side=%v: want %q on side; body=%s", bad.side, bad.msg, env.raw)
+		}
 	}
 	var n int
 	if err := h.db.QueryRow(`SELECT COUNT(*) FROM budgets_folders WHERE id = ?`, badID).Scan(&n); err != nil || n != 0 {
@@ -84,7 +91,7 @@ func TestGetBudget_EmptyFolderVisibilityFollowsStoredSide(t *testing.T) {
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
 		map[string]any{"budgetId": budgetID1, "id": sideFolderA, "name": "Earnings", "side": "income"})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
-		map[string]any{"budgetId": budgetID1, "id": sideFolderB, "name": "Bills"})
+		map[string]any{"budgetId": budgetID1, "id": sideFolderB, "name": "Bills", "side": "expense"})
 
 	env := h.mustDo(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
 	res := mustUnmarshal[model.GetBudgetResult](t, env.Data)
@@ -103,7 +110,7 @@ func TestMoveElement_EmptyFolderAdoptsSide(t *testing.T) {
 	h.f.Category(fixture.Category{ID: sideExpenseCatID, UserID: seedUserID, Name: "Rent Side", Type: 0, Icon: "home"})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "Folder Side Budget"))
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
-		map[string]any{"budgetId": budgetID1, "id": sideFolderA, "name": "Starts Expense"})
+		map[string]any{"budgetId": budgetID1, "id": sideFolderA, "name": "Starts Expense", "side": "expense"})
 
 	// The first income element into an empty expense folder is accepted and
 	// turns the folder into an income folder.
@@ -157,7 +164,7 @@ func TestCreateEnvelope_FolderSideAndOwnership(t *testing.T) {
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
 		map[string]any{"budgetId": budgetID1, "id": sideFolderA, "name": "Was Income", "side": "income"})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
-		map[string]any{"budgetId": otherBudgetID, "id": sideFolderB, "name": "Foreign"})
+		map[string]any{"budgetId": otherBudgetID, "id": sideFolderB, "name": "Foreign", "side": "expense"})
 
 	// Another budget's folder is refused, and nothing is written.
 	const foreignEnvID = "beee4444-0000-7000-8000-000000000001"
@@ -192,7 +199,7 @@ func TestCloneBudget_CopiesFolderSide(t *testing.T) {
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
 		map[string]any{"budgetId": cloneSrcID, "id": sideFolderA, "name": "Earnings", "side": "income"})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
-		map[string]any{"budgetId": cloneSrcID, "id": sideFolderB, "name": "Bills"})
+		map[string]any{"budgetId": cloneSrcID, "id": sideFolderB, "name": "Bills", "side": "expense"})
 
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/clone-budget", tok,
 		map[string]any{"id": cloneSrcID, "newId": cloneDstID, "name": "Copy", "withLimits": false})

@@ -204,7 +204,7 @@ func TestBudgetTools_BuildFlow(t *testing.T) {
 
 	createFolderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name:      "create_folder",
-		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills"},
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills", "side": "expense"},
 	})
 	if err != nil {
 		t.Fatalf("create_folder: transport error: %v", err)
@@ -221,7 +221,22 @@ func TestBudgetTools_BuildFlow(t *testing.T) {
 		t.Fatalf("create_folder: empty folder id: %#v", folderItem)
 	}
 	if folderItem["side"] != "expense" {
-		t.Fatalf("create_folder: default side = %#v, want expense", folderItem["side"])
+		t.Fatalf("create_folder: side = %#v, want expense", folderItem["side"])
+	}
+
+	noSideRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Sideless"},
+	})
+	if err == nil && !noSideRes.IsError {
+		t.Fatalf("create_folder without side must fail: %#v", noSideRes)
+	}
+	emptySideRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Sideless", "side": ""},
+	})
+	if err != nil || !emptySideRes.IsError {
+		t.Fatalf("create_folder side=\"\" must be a tool error: %v %#v", err, emptySideRes)
 	}
 
 	incomeFolderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
@@ -451,7 +466,7 @@ func TestMoveElementTool(t *testing.T) {
 
 	folderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name:      "create_folder",
-		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills"},
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills", "side": "expense"},
 	})
 	if err != nil || folderRes.IsError {
 		t.Fatalf("create_folder: %v %#v", err, folderRes)
@@ -521,7 +536,7 @@ func TestMoveElementTool_AbsentElementID_DoesNotClaimSuccess(t *testing.T) {
 
 	folderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name:      "create_folder",
-		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills"},
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills", "side": "expense"},
 	})
 	if err != nil || folderRes.IsError {
 		t.Fatalf("create_folder: %v %#v", err, folderRes)

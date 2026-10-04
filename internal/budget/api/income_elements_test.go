@@ -197,7 +197,7 @@ func TestMoveElement_CrossSideRejected(t *testing.T) {
 
 	const folderID = "bfff2222-0000-7000-8000-0000000000aa"
 	h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
-		"budgetId": budgetID1, "id": folderID, "name": "Mixed?",
+		"budgetId": budgetID1, "id": folderID, "name": "Mixed?", "side": "expense",
 	})
 
 	// Neutral folder accepts an income element.
@@ -295,7 +295,7 @@ func TestCreateEnvelope_IncomeSide(t *testing.T) {
 	// envelope inside it.
 	const folderID = "bfff2222-0000-7000-8000-0000000000ab"
 	h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
-		"budgetId": budgetID1, "id": folderID, "name": "Income",
+		"budgetId": budgetID1, "id": folderID, "name": "Income", "side": "income",
 	})
 	h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
 		"budgetId": budgetID1, "id": incomeCatID, "folderId": folderID, "afterId": nil,
@@ -350,7 +350,7 @@ func TestGetBudget_ExcludesIncomeEnvelopesAndFolders(t *testing.T) {
 
 	const folderID = "bfff2222-0000-7000-8000-0000000000ac"
 	h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
-		"budgetId": budgetID1, "id": folderID, "name": "Income Folder",
+		"budgetId": budgetID1, "id": folderID, "name": "Income Folder", "side": "expense",
 	})
 	// Neutral folder: visible.
 	st, b := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)

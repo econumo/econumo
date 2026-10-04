@@ -36,7 +36,7 @@ func TestCloneBudget_FullCopyEquivalence(t *testing.T) {
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
 		map[string]any{"id": cloneSrcID, "name": "Src", "currencyId": usdID, "startDate": "2026-01-01", "accountIds": []string{accountID}})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
-		map[string]any{"budgetId": cloneSrcID, "id": cloneFolderID, "name": "Folder"})
+		map[string]any{"budgetId": cloneSrcID, "id": cloneFolderID, "name": "Folder", "side": "expense"})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-envelope", tok,
 		map[string]any{"budgetId": cloneSrcID, "id": cloneEnvelopeID, "name": "Envelope", "icon": "i", "currencyId": usdID, "categories": []string{catID}})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/set-limit", tok,
