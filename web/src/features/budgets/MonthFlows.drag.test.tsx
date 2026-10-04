@@ -42,7 +42,7 @@ function plan(): BudgetPlanDto {
   return p
 }
 
-function renderFlows() {
+function renderFlows(adjust?: (p: BudgetPlanDto) => void) {
   const budget = coerceBudgetFixture(fixtureWireBudget)
   budget.structure.savings = [
     { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0, budgeted: '100', spent: '20', available: '80' },
@@ -53,7 +53,16 @@ function renderFlows() {
     <MonthFlows
       budget={budget}
       currencies={[usd, eur]}
-      planMonth={planMonthFigures(plan(), [usd, eur], '2026-07-01', new Date(2026, 11, 1))}
+      planMonth={planMonthFigures(
+        (() => {
+          const p = plan()
+          adjust?.(p)
+          return p
+        })(),
+        [usd, eur],
+        '2026-07-01',
+        new Date(2026, 11, 1),
+      )}
       future={false}
       actionsColumn={false}
       renderPlanned={(_t, text) => text}
@@ -152,4 +161,17 @@ it('dragging shows one insertion line: row-level after the row it lands behind, 
   expect(screen.getAllByTestId('drop-line-row')).toHaveLength(1)
   act(() => income().onDragOver!({ active: { id: 'ie1' }, over: { id: 'ie1' } } as never))
   expect(screen.queryByTestId('drop-line-row')).toBeNull()
+})
+
+it('with every income row in a folder, an empty No folder shows while dragging, and a category from an envelope drops there', () => {
+  useBudgetPeriodStore.setState({ unfoldedElements: { ie1: true }, planFolds: {} })
+  const drag = renderFlows((p) => {
+    p.structure.elements = p.structure.elements.map((el) => (el.id === 'ie1' ? { ...el, folderId: 'bf-inc' } : el))
+  })
+  expect(screen.queryByTestId('month-income-folder-__no_folder__')).toBeNull()
+  const income = () => captured[captured.length - 2]
+  act(() => income().onDragStart!({ active: { id: 'cat-salary' } } as never))
+  expect(screen.getByTestId('month-income-folder-__no_folder__')).toHaveTextContent('No folder')
+  act(() => income().onDragEnd({ active: { id: 'cat-salary' }, over: { id: 'bfolder:null' } } as never))
+  expect(drag.onMoveIncome).toHaveBeenCalledWith({ id: 'cat-salary', folderId: null, position: 0, afterId: null }, expect.any(Function))
 })

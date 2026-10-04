@@ -3,7 +3,7 @@ import type { ReactElement } from 'react'
 import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { snapRowToPointer } from '@/lib/dnd'
+import { besidePointer, centerRowOnPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
 import { Check, ChevronLeft, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
@@ -857,7 +857,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   // rows collapse on drag start, so drop-zone rects must re-measure
                   // mid-drag and the grabbed node re-anchors to the pointer
                   measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-                  modifiers={[snapRowToPointer]}
+                  modifiers={[centerRowOnPointer]}
                   onDragStart={handleDragStart}
                   onDragOver={handleDragOver}
                   onDragEnd={handleDragEnd}
@@ -878,6 +878,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     future={selectedDate > currentMonth()}
                     hideTotals
                     collapsedElementId={dragActiveId}
+                    showEmptyNoFolder={dragActiveId !== null}
                     hideContents={draggingFolderId !== null}
                     renderFolderHandle={dragEnabled ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
                     // only in edit mode
@@ -944,7 +945,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   />
                   </SortableContext>
                   {/* no drop animation: the moved row shows in its new place instead */}
-                  <DragOverlay dropAnimation={null}>{draggedItem ? <DragGhost icon={draggedItem.icon} name={draggedItem.name} /> : null}</DragOverlay>
+                  <DragOverlay dropAnimation={null} modifiers={[besidePointer]}>{draggedItem ? <DragGhost icon={draggedItem.icon} name={draggedItem.name} /> : null}</DragOverlay>
                 </DndContext>
                 <div className="mt-1 mb-4 flex flex-col">
                   {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={false} future={selectedDate > currentMonth()} /> : null}

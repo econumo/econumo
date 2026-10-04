@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
@@ -19,6 +19,7 @@ const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionD
 
 type TableExtras = ElementRowExtras & {
   collapsedElementId?: string | null
+  showEmptyNoFolder?: boolean
   sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
   renderFolderActions?: (bucket: FolderBucket, index: number, total: number) => ReactNode
 }
@@ -181,6 +182,18 @@ it('an unfolded envelope keeps its categories open while another row is dragged,
   const drop = await screen.findByTestId('drop-env-1')
   expect(within(drop).getByTestId('child-cat-rent')).toBeInTheDocument()
   expect(wrapChild).toHaveBeenCalledWith(expect.objectContaining({ id: 'cat-rent' }), expect.objectContaining({ id: 'env-1' }), expect.anything())
+})
+
+it('an empty No folder shows only while a drag is in progress, as a drop target', async () => {
+  const intoFolder = (budget: BudgetDto) => {
+    budget.structure.elements = budget.structure.elements.map((el) => (el.isArchived === 0 ? { ...el, folderId: 'bf1' } : el))
+  }
+  renderTable(intoFolder)
+  await screen.findByTestId('budget-folder-Essentials')
+  expect(screen.queryByTestId('budget-folder-No folder')).toBeNull()
+  cleanup()
+  renderTable(intoFolder, { showEmptyNoFolder: true })
+  expect(await screen.findByTestId('budget-folder-No folder')).toHaveTextContent('This folder is empty')
 })
 
 it('an empty envelope still unfolds, to a note that says how to fill it', async () => {

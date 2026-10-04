@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { snapRowToPointer } from '@/lib/dnd'
+import { besidePointer, centerRowOnPointer, snapRowToPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -405,6 +405,16 @@ export function MonthFlows({
     return [...folders, ...(looseRows.length > 0 ? [{ ...loose, rows: looseRows }] : []), ...rest]
   })()
   const incomeFolderIds = shownIncomeGroups.filter((g) => g.kind === 'folder').map((g) => g.id)
+  // while a row or category is dragged, an empty No folder shows after the folders:
+  // the drop target for taking it out of its folder or envelope
+  const dropGroups: IncomeGroup[] = (() => {
+    if (!incomeDragId || shownIncomeGroups.some((g) => g.kind === 'loose') || incomeFolderIds.length === 0) {
+      return shownIncomeGroups
+    }
+    const at = shownIncomeGroups.findIndex((g) => g.kind !== 'folder')
+    const empty: IncomeGroup = { kind: 'loose', id: '__no_folder__', name: null, rows: [], planned: '0', received: '0', toReceive: '0' }
+    return at === -1 ? [...shownIncomeGroups, empty] : [...shownIncomeGroups.slice(0, at), empty, ...shownIncomeGroups.slice(at)]
+  })()
 
   const onIncomeDragStart = ({ active }: DragStartEvent) => {
     if (incomeFolderIds.includes(String(active.id))) {
@@ -540,7 +550,7 @@ export function MonthFlows({
               sensors={sensors}
               collisionDetection={envelopeCollisions(canEnterEnvelope)}
               measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-              modifiers={[snapRowToPointer]}
+              modifiers={[centerRowOnPointer]}
               onDragStart={onIncomeDragStart}
               onDragOver={onIncomeDragOver}
               onDragEnd={onIncomeDragEnd}
@@ -551,10 +561,10 @@ export function MonthFlows({
               }}
             >
               <SortableContext items={incomeFolderIds} strategy={verticalListSortingStrategy}>
-                {shownIncomeGroups.map((g) => incomeGroup(g, shownIncomeGroups))}
+                {dropGroups.map((g) => incomeGroup(g, dropGroups))}
               </SortableContext>
               {/* no drop animation: the moved row shows in its new place instead */}
-              <DragOverlay dropAnimation={null}>{draggedIncome ? <DragGhost icon={draggedIncome.icon} name={draggedIncome.name} /> : null}</DragOverlay>
+              <DragOverlay dropAnimation={null} modifiers={[besidePointer]}>{draggedIncome ? <DragGhost icon={draggedIncome.icon} name={draggedIncome.name} /> : null}</DragOverlay>
             </DndContext>
           ) : (
             incomeGroups.map((g) => incomeGroup(g, incomeGroups))

@@ -61,6 +61,9 @@ interface BudgetTableProps extends ElementRowExtras {
   sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
   /** the element being dragged: it renders collapsed */
   collapsedElementId?: string | null
+  /** a drag is in progress: an empty No folder shows, as the drop target for
+   *  taking an element out of its folder or envelope */
+  showEmptyNoFolder?: boolean
   /** a FOLDER drag is in progress: sections render header-only */
   hideContents?: boolean
   /** folder drag handle, rendered before the folder name (edit mode) */
@@ -496,6 +499,7 @@ export function BudgetTable({
   renderFolderHandle,
   sectionWrapper,
   collapsedElementId,
+  showEmptyNoFolder = false,
   hideContents,
   hideTotals,
   folderMenu,
@@ -577,9 +581,9 @@ export function BudgetTable({
             }
             if (section.bucket.elements.length === 0 && section.folderIndex === null) {
               // both read-only sections hide when they have nothing to show; the
-              // empty No folder survives only in edit mode (folder actions
-              // present), where it is the drop target for dragging elements out
-              if (isReadOnlySection || realFolders.length === 0 || !renderFolderActions) {
+              // empty No folder survives only as a drop target, while a drag is
+              // in progress (or in the folder-actions edit mode)
+              if (isReadOnlySection || realFolders.length === 0 || !(renderFolderActions || showEmptyNoFolder)) {
                 return []
               }
             }

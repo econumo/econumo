@@ -860,7 +860,9 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] Budget view, categories and envelopes by drag (Expenses and Income
       alike, desktop and tablet/phone Edit structure): an unfolded envelope's
       categories carry grips. While dragging, the item stays dimmed in place,
-      a copy (icon and name) follows the pointer, and one insertion line with a
+      a copy (icon and name) follows right beside the cursor, an empty "No
+      folder" shows after the folders as a drop target (Income and Expenses,
+      when it has nothing in it), and one insertion line with a
       dot at its start marks where it lands: a line starting where rows start
       means a place in a folder (before/after a row, or under the header of an
       empty or folded folder), a line starting where an envelope's categories

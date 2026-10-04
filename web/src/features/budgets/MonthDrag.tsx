@@ -26,10 +26,11 @@ export function DropLine({ level, edge }: { level: 'row' | 'child'; edge: 'befor
 /** what follows the pointer while a row or a category is dragged */
 export function DragGhost({ icon, name }: { icon: string; name: string }) {
   return (
+    // compact and centred on the cursor: the insertion line sits at a row's edge,
+    // clear of it
     <div className="flex h-full items-center">
-      {/* clear of where the insertion line starts, so its level stays readable */}
-      <div className="ml-28 flex min-h-9 items-center gap-2 rounded-md bg-background px-3 py-1.5 text-[15px] shadow-md ring-1 ring-border">
-        <EntityIcon name={icon} className="text-lg text-muted-foreground" />
+      <div className="flex min-h-7 items-center gap-1.5 rounded-md bg-background px-2.5 py-0.5 text-sm shadow-md ring-1 ring-border">
+        <EntityIcon name={icon} className="text-base text-muted-foreground" />
         <span className="truncate">{name}</span>
       </div>
     </div>
@@ -106,7 +107,13 @@ export function DragFolder({
   folderDragging?: boolean
   children: ReactNode
 }) {
-  const sortable = useSortable({ id: sortableId ?? `__container__${dropId}`, disabled: sortableId === null })
+  // a container that is not a folder is neither dragged nor a drop target of its
+  // own: drops land on its `bfolder:` droppable (a bare `disabled: true` still
+  // leaves the sortable registered as a drop target)
+  const sortable = useSortable({
+    id: sortableId ?? `__container__${dropId}`,
+    disabled: sortableId === null ? { draggable: true, droppable: true } : false,
+  })
   const { setNodeRef: setDroppableRef } = useDroppable({ id: dropId, disabled: folderDragging })
   return (
     <div
