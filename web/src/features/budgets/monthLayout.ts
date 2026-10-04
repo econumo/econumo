@@ -21,8 +21,8 @@ export const FOLDER_INDENT = 'pl-6'
 export type RowLevel = 'in-folder' | 'top'
 export const RowLevelContext = createContext<RowLevel>('in-folder')
 export const useRowLevel = () => useContext(RowLevelContext)
-export const ROW_INDENT: Record<RowLevel, string> = { 'in-folder': 'pl-12', top: 'pl-6' }
-export const CHILD_INDENT: Record<RowLevel, string> = { 'in-folder': 'pl-20 sm:pl-22', top: 'pl-14 sm:pl-16' }
+export const ROW_INDENT: Record<RowLevel, string> = { 'in-folder': 'pl-9', top: 'pl-6' }
+export const CHILD_INDENT: Record<RowLevel, string> = { 'in-folder': 'pl-17 sm:pl-19', top: 'pl-14 sm:pl-16' }
 // em dash: a column that carries no value at all, as opposed to a zero
 export const EMPTY_CELL = '—'
 

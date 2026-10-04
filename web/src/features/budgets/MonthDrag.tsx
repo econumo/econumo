@@ -16,11 +16,11 @@ import { ENVELOPE_DROP, ENVELOPE_HEAD_DROP, noShift } from './elementMove'
 // where a line, and a grip, start for each row level: under the row's chevron, or
 // under an envelope's categories (see ROW_INDENT / CHILD_INDENT)
 const LINE_START: Record<RowLevel, Record<'row' | 'child', string>> = {
-  'in-folder': { row: 'left-12', child: 'left-20 sm:left-22' },
+  'in-folder': { row: 'left-9', child: 'left-17 sm:left-19' },
   top: { row: 'left-6', child: 'left-14 sm:left-16' },
 }
-const ROW_GRIP: Record<RowLevel, string> = { 'in-folder': 'left-6', top: 'left-0.5' }
-const CHILD_GRIP: Record<RowLevel, string> = { 'in-folder': 'left-14', top: 'left-8' }
+const ROW_GRIP: Record<RowLevel, string> = { 'in-folder': 'left-3.5', top: 'left-0.5' }
+const CHILD_GRIP: Record<RowLevel, string> = { 'in-folder': 'left-11', top: 'left-8' }
 
 export function DropLine({ level, edge }: { level: 'row' | 'child'; edge: 'before' | 'after' }) {
   const rowLevel = useRowLevel()
