@@ -130,7 +130,7 @@ export function FolderLine({
   name: string
   folded: boolean
   onToggle: () => void
-  /** null for a line without figures (an empty folder in edit mode) */
+  /** null for a line without figures (an empty folder): the columns stay, blank */
   sums: [ReactNode, ReactNode, ReactNode] | null
   /** the drag grip, before the name (edit mode) */
   handle?: ReactNode
@@ -160,13 +160,12 @@ export function FolderLine({
       {actions}
       <span className="flex-1" />
       <RowMenu name={name} actions={menu} />
-      {sums ? (
-        <span data-testid="stat-line" className="contents">
-          <span className={FIRST_COL}>{sums[0]}</span>
-          <span className={SECOND_COL}>{sums[1]}</span>
-          <span className={THIRD_COL}>{sums[2]}</span>
-        </span>
-      ) : null}
+      {/* an empty folder keeps blank columns, so its ⋮ lines up with the others' */}
+      <span data-testid={sums ? 'stat-line' : undefined} className="contents">
+        <span className={FIRST_COL}>{sums?.[0]}</span>
+        <span className={SECOND_COL}>{sums?.[1]}</span>
+        <span className={THIRD_COL}>{sums?.[2]}</span>
+      </span>
       {actionsColumn ? <ActionsSpacer /> : null}
     </header>
   )
