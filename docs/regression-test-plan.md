@@ -754,9 +754,8 @@ and on tablet/phone only with a hardware keyboard.
       to its name. Available is a plain figure: Spent and Available turn red
       only on an overspent row (spent more than its budget and earlier months
       do not cover it), a folder's sums only when the folder as a whole
-      overspent; nothing is green. A future month shows "—" for Spent. On a
-      wide screen the table stops at a readable width instead of spreading
-      the figures to the far right. The page title is in normal case.
+      overspent; nothing is green. A future month shows "—" for Spent. The table
+      spans the full width. The page title is in normal case.
 - [ ] Budget view folders fold (desktop and tablet): a folder's line, "Default
       folder" and "Archived" hide their rows on a click and keep the line with
       its sums; income folders inside Income fold the same way. Folds survive

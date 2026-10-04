@@ -872,8 +872,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           ) : (
             <>
               <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
-                {/* a readable line length: on a wide screen the figures stay near the names */}
-                <div className="max-w-4xl">
                 <div className="flex flex-col">
                   <MonthFlows
                     budget={budget}
@@ -971,7 +969,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                       actionsColumn={editMode}
                     />
                   ) : null}
-                </div>
                 </div>
               </div>
             </>
