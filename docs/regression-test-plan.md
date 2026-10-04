@@ -745,6 +745,22 @@ and on tablet/phone only with a hardware keyboard.
       with money this month. An income envelope unfolds to its categories,
       each with its received amount (opens its transactions); the unfold
       carries over to the Plan grid.
+- [ ] Budget view look (desktop and tablet): no boxes — thin rules
+      separate Income, Savings and Expenses, folders are a softer grey line
+      with their sums, rows sit indented under them, and every heading, sum
+      and amount shares one set of right-aligned columns. The budget
+      currency's code shows once, above Income; there is no per-row currency
+      symbol, and a row in another currency carries a small code tag next
+      to its name. Available is a plain figure: Spent and Available turn red
+      only on an overspent row (spent more than its budget and earlier months
+      do not cover it), a folder's sums only when the folder as a whole
+      overspent; nothing is green. A future month shows "—" for Spent. On a
+      wide screen the table stops at a readable width instead of spreading
+      the figures to the far right. The page title is in normal case.
+- [ ] Budget view folders fold (desktop and tablet): a folder's line, "Default
+      folder" and "Archived" hide their rows on a click and keep the line with
+      its sums; income folders inside Income fold the same way. Folds survive
+      a reload and are shared with the Plan grid and the phone.
 - [ ] Budget view: the income and savings Planned amounts edit inline on a
       desktop (popover) and open the item sheet on a tablet; Received and
       Saved open the transactions dialog (except income Uncategorized);
@@ -984,7 +1000,7 @@ and on tablet/phone only with a hardware keyboard.
       "Comments (N)" / "Add comment", "Set budget", "Transactions"). "Set
       budget" replaces the sheet with the amount dialog (no comments in it);
       "Comments" replaces it with the thread. A savings row's sheet also has
-      "Transactions". A guest's sheet has no "Set budget". The Available pill is not a button; tapping Spent still lists
+      "Transactions". A guest's sheet has no "Set budget". The Available figure is not a button; tapping Spent still lists
       the transactions; the corner marker still opens the thread beside the cell.
 - [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
       the cell is selected and the item sheet opens for that element and

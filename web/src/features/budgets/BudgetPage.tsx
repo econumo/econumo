@@ -117,7 +117,7 @@ function DraggableElement({ id, children }: { id: string; children: ReactNode })
         <button
           type="button"
           aria-label={`move ${id}`}
-          className="mt-[18px] cursor-grab touch-none text-muted-foreground"
+          className="mt-3 cursor-grab touch-none text-muted-foreground"
           {...attributes}
           {...listeners}
         >
@@ -687,8 +687,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     )
   }
 
-  // In edit mode the plus sits in the currency-symbol slot (w-6) so the stat
-  // columns line up with the element rows; folder ordering moved to dragging.
+  // Edit mode: the plus and the folder menu follow the folder's name, so the sums
+  // keep the row columns; folder ordering moved to dragging.
   const folderActions = (bucket: FolderBucket, _index: number, _total: number) => {
     if (!editMode) {
       return null
@@ -708,13 +708,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       </Button>
     )
     if (!bucket.folder) {
-      // the default bucket has no menu — pad to keep its numbers aligned
-      return (
-        <span className="flex items-center gap-1.5 sm:gap-2">
-          {plus}
-          <span className="size-8" />
-        </span>
-      )
+      return plus
     }
     return (
       <span className="flex items-center gap-1.5 sm:gap-2">
@@ -782,7 +776,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           </Button>
         ) : null}
         <h1
-          className={isPhone ? 'min-w-0 shrink truncate text-lg font-medium' : 'min-w-0 shrink truncate text-[22px] uppercase tracking-wide'}
+          className={isPhone ? 'min-w-0 shrink truncate text-lg font-medium' : 'min-w-0 shrink truncate text-xl'}
           title={budget.meta.name}
         >
           {budget.meta.name}
@@ -878,7 +872,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           ) : (
             <>
               <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
-                <div className="mb-3 flex flex-col gap-3">
+                {/* a readable line length: on a wide screen the figures stay near the names */}
+                <div className="max-w-4xl">
+                <div className="flex flex-col">
                   <MonthFlows
                     budget={budget}
                     currencies={currencies}
@@ -913,11 +909,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   <BudgetTable
                     budget={budget}
                     buckets={buckets}
+                    future={selectedDate > currentMonth()}
                     hideTotals
                     hideChildren={dragInProgress}
                     hideContents={draggingFolderId !== null}
                     renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
-                    // only in edit mode — its presence also swaps the folder currency symbol for the plus slot
+                    // only in edit mode
                     renderFolderActions={editMode ? folderActions : undefined}
                     renderActions={editMode ? elementActions : undefined}
                     renderBudgetCell={inlineLimitEditor}
@@ -962,8 +959,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   />
                   </SortableContext>
                 </DndContext>
-                <div className="mt-3 flex flex-col gap-3">
-                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} /> : null}
+                <div className="mt-1 mb-4 flex flex-col">
+                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} future={selectedDate > currentMonth()} /> : null}
                   {totals ? (
                     <MonthTotalsLines
                       budget={budget}
@@ -974,6 +971,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                       actionsColumn={editMode}
                     />
                   ) : null}
+                </div>
                 </div>
               </div>
             </>

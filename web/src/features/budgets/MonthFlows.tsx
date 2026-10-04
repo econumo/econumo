@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
-import { isZero } from '@/lib/decimal'
+import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
 import type { BudgetDto, BudgetSavingsElementDto } from '@/api/dto/budget'
@@ -12,14 +12,9 @@ import type { Id } from '@/api/types'
 import { elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
+import { ActionsSpacer, CurrencyTag, FolderLine, MonthSectionHeader } from './monthLines'
+import { CHILD_INDENT, EMPTY_CELL, FIRST_COL, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
-
-const EMPTY_CELL = '—'
-// the budget table's columns: name | Budget w-24 | Spent w-20/24 | Available w-20/24 | symbol w-6
-const PLANNED_COL = 'hidden w-24 shrink-0 text-right sm:block'
-const ACTUAL_COL = 'w-20 shrink-0 text-center sm:w-24'
-const THIRD_COL = 'w-20 shrink-0 text-center sm:w-24'
-const SYMBOL_COL = 'hidden w-6 shrink-0 text-center text-xs text-muted-foreground sm:block'
 
 export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' }>
 
@@ -29,76 +24,27 @@ const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
   maxPrecision: currency?.fractionDigits ?? 2,
 })
 
-/** The section line: open, it names the section's columns; folded, it carries the
- *  section's sums in those columns. The fold state is the one the Plan view uses. */
-export function MonthSectionHeader({
-  foldKey,
-  label,
-  headings,
-  sums,
-  actionsColumn,
-  testId,
-}: {
-  foldKey: string
-  label: string
-  headings: [string, string, string]
-  sums: [string, string, string]
-  actionsColumn: boolean
-  testId: string
-}) {
-  const { t } = useTranslation()
-  const folded = useBudgetPeriodStore((s) => !!s.planFolds[foldKey])
-  const toggle = useBudgetPeriodStore((s) => s.togglePlanFold)
-  const Chevron = folded ? ChevronRight : ChevronDown
-  const cells = folded ? sums : headings
-  return (
-    <div
-      className={`flex items-center gap-1.5 px-3 sm:gap-2 sm:px-4 ${folded ? 'text-sm tabular-nums' : 'text-[11px] uppercase tracking-wide text-muted-foreground'}`}
-      data-testid={testId}
-    >
-      <button
-        type="button"
-        aria-expanded={!folded}
-        title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
-        onClick={() => toggle(foldKey)}
-        className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left text-sm font-semibold normal-case tracking-normal text-foreground"
-      >
-        <Chevron aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-        <span className="truncate">{label}</span>
-      </button>
-      <span className={PLANNED_COL}>{cells[0]}</span>
-      <span className={ACTUAL_COL}>{cells[1]}</span>
-      <span className={THIRD_COL}>{cells[2]}</span>
-      <span className={SYMBOL_COL} />
-      {actionsColumn ? <span data-testid="actions-spacer" className="w-8 shrink-0" /> : null}
-    </div>
-  )
-}
-
-function useSectionFolded(foldKey: string): boolean {
-  return useBudgetPeriodStore((s) => !!s.planFolds[foldKey])
-}
-
 function FlowRow({
   testId,
   icon,
   name,
+  tag,
   muted = false,
   planned,
   actual,
   third,
-  currency,
   actionsColumn,
   toggle,
 }: {
   testId: string
   icon: string
   name: string
+  /** the row's currency code, when it is not the budget's */
+  tag?: string
   muted?: boolean
   planned: ReactNode
   actual: ReactNode
   third: ReactNode
-  currency: CurrencyDto | undefined
   actionsColumn: boolean
   /** an envelope's name folds and unfolds its categories */
   toggle?: { open: boolean; onToggle: () => void }
@@ -107,39 +53,39 @@ function FlowRow({
   const Chevron = toggle?.open ? ChevronDown : ChevronRight
   const label = (
     <>
-      {toggle ? <Chevron className="hidden size-3.5 shrink-0 text-muted-foreground sm:block" /> : <span className="hidden w-3.5 shrink-0 sm:block" />}
+      {toggle ? <Chevron className="size-3.5 shrink-0 text-muted-foreground" /> : <span className="w-3.5 shrink-0" />}
       <EntityIcon name={icon} className="text-lg text-muted-foreground" />
       <span className={`min-w-0 truncate text-[15px] ${muted ? 'text-muted-foreground' : ''}`} title={name}>
         {name}
       </span>
+      {tag ? <CurrencyTag code={tag} /> : null}
     </>
   )
   return (
-    <div className="flex items-center gap-1.5 rounded-md px-1.5 py-2.5 hover:bg-accent/50 sm:gap-2 sm:px-2" data-testid={testId}>
+    <div className={`${LINE} ${ROW_INDENT} min-h-10 rounded-md py-1.5 hover:bg-accent/50`} data-testid={testId}>
       {toggle ? (
         <button
           type="button"
           aria-expanded={toggle.open}
           title={t(toggle.open ? 'common.button.collapse.label' : 'common.button.expand.label')}
           onClick={toggle.onToggle}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          className={`${NAME_COL} text-left`}
         >
           {label}
         </button>
       ) : (
-        <span className="flex min-w-0 flex-1 items-center gap-2">{label}</span>
+        <span className={NAME_COL}>{label}</span>
       )}
-      <span className={`${PLANNED_COL} text-[15px] tabular-nums`} data-testid="flow-planned">
+      <span className={`${FIRST_COL} text-[15px]`} data-testid="flow-planned">
         {planned}
       </span>
-      <span className={`${ACTUAL_COL} flex justify-center text-[15px] tabular-nums text-muted-foreground`} data-testid="flow-actual">
+      <span className={`${SECOND_COL} text-[15px] text-muted-foreground`} data-testid="flow-actual">
         {actual}
       </span>
-      <span className={`${THIRD_COL} text-[15px] tabular-nums`} data-testid="flow-third">
+      <span className={`${THIRD_COL} text-[15px]`} data-testid="flow-third">
         {third}
       </span>
-      <span className={SYMBOL_COL}>{currency?.symbol}</span>
-      {actionsColumn ? <span className="w-8 shrink-0" /> : null}
+      {actionsColumn ? <ActionsSpacer /> : null}
     </div>
   )
 }
@@ -166,11 +112,14 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
     const c = currencyOf(currencyId)
     return moneyFormat(amount, c, cellOpts(c))
   }
+  const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const exchangeFn = makeBudgetExchange(budget, currencies)
   const unfolded = useBudgetPeriodStore((s) => s.unfoldedElements)
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
-  const incomeFolded = useSectionFolded('income')
-  const savingsFolded = useSectionFolded('savings')
+  const planFolds = useBudgetPeriodStore((s) => s.planFolds)
+  const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
+  const incomeFolded = !!planFolds.income
+  const savingsFolded = !!planFolds.savings
 
   const actualCell = (target: BudgetTransactionsTarget | null, amount: string, currencyId: Id | null) => {
     if (future) {
@@ -206,11 +155,11 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
           testId={`month-income-row-${el.id}`}
           icon={el.icon}
           name={name}
+          tag={tagOf(el.currencyId)}
           muted={el.isArchived === 1}
-          planned={el.id === UNCATEGORIZED_ID ? EMPTY_CELL : renderPlanned({ kind: 'plan', cell: row }, fmt(row.planned, el.currencyId))}
+          planned={el.id === UNCATEGORIZED_ID ? <span className="text-muted-foreground">{EMPTY_CELL}</span> : renderPlanned({ kind: 'plan', cell: row }, fmt(row.planned, el.currencyId))}
           actual={actualCell(listTarget, row.actual, el.currencyId)}
           third={null}
-          currency={currencyOf(el.currencyId)}
           actionsColumn={actionsColumn}
           toggle={expandable ? { open, onToggle: () => toggleElement(el.id) } : undefined}
         />
@@ -221,15 +170,17 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
               return (
                 <li
                   key={child.id}
-                  className="flex items-center gap-1.5 rounded-md py-1.5 pr-1.5 pl-8 text-sm text-muted-foreground hover:bg-accent/50 sm:gap-2 sm:pr-2 sm:pl-12"
+                  className={`${LINE} ${CHILD_INDENT} min-h-8 rounded-md py-1 text-sm text-muted-foreground hover:bg-accent/50`}
                   data-testid={`month-income-child-${child.id}`}
                 >
-                  <EntityIcon name={child.icon} className="text-lg" />
-                  <span className="min-w-0 flex-1 truncate" title={childName}>
-                    {childName}
+                  <span className={NAME_COL}>
+                    <EntityIcon name={child.icon} className="text-lg" />
+                    <span className="truncate" title={childName}>
+                      {childName}
+                    </span>
                   </span>
-                  <span className={PLANNED_COL} />
-                  <span className={`${ACTUAL_COL} flex justify-center tabular-nums`}>
+                  <span className={FIRST_COL} />
+                  <span className={SECOND_COL}>
                     {actualCell(
                       { id: child.id, type: child.type, name: childName, icon: child.icon, currencyId: el.currencyId, parent: { id: el.id, type: el.type } },
                       child.cells[planMonth?.index ?? 0]?.actual ?? '0',
@@ -237,8 +188,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
                     )}
                   </span>
                   <span className={THIRD_COL} />
-                  <span className={SYMBOL_COL} />
-                  {actionsColumn ? <span className="w-8 shrink-0" /> : null}
+                  {actionsColumn ? <ActionsSpacer /> : null}
                 </li>
               )
             })}
@@ -262,23 +212,23 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
         return t('budgets.page.budget.structure.in_archive')
     }
   }
-  const incomeBox = (g: IncomeGroup, groups: IncomeGroup[]) => {
+  const incomeGroup = (g: IncomeGroup, groups: IncomeGroup[]) => {
     const name = groupName(g, groups)
+    // the phone's keys: a folder's own id, and income's own No folder and Archived
+    const foldKey = g.kind === 'folder' ? g.id : `__income${g.id}`
+    const folded = name !== null && !!planFolds[foldKey]
     return (
-      <div key={g.id} className="rounded-md border p-1.5 sm:p-2" data-testid={`month-income-folder-${g.id}`}>
+      <div key={g.id} className="pt-1" data-testid={`month-income-folder-${g.id}`}>
         {name !== null ? (
-          <header className="flex items-center gap-1.5 px-1.5 pb-1 sm:gap-2 sm:px-2">
-            <span className="min-w-0 flex-1 truncate text-sm font-medium" title={name}>
-              {name}
-            </span>
-            <span className={`${PLANNED_COL} text-xs text-muted-foreground tabular-nums`}>{fmt(g.planned)}</span>
-            <span className={`${ACTUAL_COL} text-xs text-muted-foreground tabular-nums`}>{future ? EMPTY_CELL : fmt(g.received)}</span>
-            <span className={THIRD_COL} />
-            <span className={SYMBOL_COL}>{currencyOf(null)?.symbol}</span>
-            {actionsColumn ? <span className="w-8 shrink-0" /> : null}
-          </header>
+          <FolderLine
+            name={name}
+            folded={folded}
+            onToggle={() => togglePlanFold(foldKey)}
+            sums={[fmt(g.planned), future ? EMPTY_CELL : fmt(g.received), null]}
+            actionsColumn={actionsColumn}
+          />
         ) : null}
-        {g.rows.map(incomeRow)}
+        {folded ? null : g.rows.map(incomeRow)}
       </div>
     )
   }
@@ -289,11 +239,11 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
       testId={`month-savings-row-${row.id}`}
       icon={row.icon}
       name={row.name}
+      tag={tagOf(row.currencyId)}
       muted={row.isArchived === 1}
       planned={renderPlanned({ kind: 'savings', row }, fmt(row.budgeted, row.currencyId))}
       actual={actualCell({ id: row.id, type: BudgetElementType.SAVINGS, name: row.name, icon: row.icon, currencyId: row.currencyId }, row.spent, row.currencyId)}
       third={<span title={t('budgets.page.savings.balance_hint')}>{row.closingBalance !== undefined ? fmt(row.closingBalance, row.currencyId) : EMPTY_CELL}</span>}
-      currency={currencyOf(row.currencyId)}
       actionsColumn={actionsColumn}
     />
   )
@@ -303,8 +253,12 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
 
   return (
     <>
+      {/* the budget currency is named once, above every figure on the page */}
+      <div className={`${LINE} text-[10.5px] uppercase tracking-wider text-muted-foreground`} data-testid="month-currency">
+        {currencyOf(base)?.code}
+      </div>
       {planMonth ? (
-        <section className="flex flex-col gap-1" data-testid="month-income">
+        <section className="border-t pt-1 pb-1" data-testid="month-income">
           <MonthSectionHeader
             foldKey="income"
             testId="month-income-header"
@@ -313,11 +267,11 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             sums={[fmt(planMonth.income.planned), future ? EMPTY_CELL : fmt(planMonth.income.received), '']}
             actionsColumn={actionsColumn}
           />
-          {incomeFolded ? null : planMonth.income.groups.map((g) => incomeBox(g, planMonth.income.groups))}
+          {incomeFolded ? null : planMonth.income.groups.map((g) => incomeGroup(g, planMonth.income.groups))}
         </section>
       ) : null}
       {savingsRows.length > 0 ? (
-        <section className="flex flex-col gap-1" data-testid="month-savings">
+        <section className="border-t pt-1 pb-1" data-testid="month-savings">
           <MonthSectionHeader
             foldKey="savings"
             testId="month-savings-header"
@@ -330,20 +284,36 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             ]}
             actionsColumn={actionsColumn}
           />
-          {savingsFolded ? null : <div className="rounded-md border p-1.5 sm:p-2">{savingsRows.map(savingsRow)}</div>}
+          {savingsFolded ? null : savingsRows.map(savingsRow)}
         </section>
       ) : null}
     </>
   )
 }
 
-function TotalLine({ testId, label, value, strong = false, actionsColumn }: { testId: string; label: string; value: string; strong?: boolean; actionsColumn: boolean }) {
+function TotalLine({
+  testId,
+  label,
+  value,
+  strong = false,
+  negative = false,
+  actionsColumn,
+}: {
+  testId: string
+  label: string
+  value: string
+  /** the line the block ends on: full-colour label */
+  strong?: boolean
+  negative?: boolean
+  actionsColumn: boolean
+}) {
   return (
-    <div className={`flex items-center gap-1.5 px-3 py-1 sm:gap-2 sm:px-4 ${strong ? 'font-medium' : ''}`} data-testid={testId}>
-      <span className={`min-w-0 flex-1 truncate text-sm ${strong ? '' : 'text-muted-foreground'}`}>{label}</span>
-      <span className={`${THIRD_COL} text-[15px] tabular-nums`}>{value}</span>
-      <span className={SYMBOL_COL} />
-      {actionsColumn ? <span className="w-8 shrink-0" /> : null}
+    <div className={`${LINE} min-h-8 py-0.5`} data-testid={testId}>
+      <span className={`${NAME_COL} text-sm ${strong ? '' : 'text-muted-foreground'}`}>
+        <span className="truncate">{label}</span>
+      </span>
+      <span className={`${THIRD_COL} text-[15px] ${negative ? 'text-expense' : ''}`}>{value}</span>
+      {actionsColumn ? <ActionsSpacer /> : null}
     </div>
   )
 }
@@ -372,7 +342,7 @@ export function MonthTotalsLines({
   const savingsSpent = hasSavings ? totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, makeBudgetExchange(budget, currencies)).spent : null
   const shared = { actionsColumn }
   return (
-    <div className="flex flex-col" data-testid="month-totals-lines">
+    <div className="flex flex-col pt-1" data-testid="month-totals-lines">
       {planMonth ? (
         <TotalLine testId="month-total-income" label={t('budgets.page.plan.totals.income')} value={future ? EMPTY_CELL : fmt(planMonth.income.received)} {...shared} />
       ) : null}
@@ -387,7 +357,14 @@ export function MonthTotalsLines({
         <TotalLine testId="month-total-savings-balance" label={t('budgets.page.plan.totals.savings_balance')} value={fmt(planMonth.savingsBalance)} {...shared} />
       ) : null}
       {planMonth ? (
-        <TotalLine testId="month-total-balance" label={t('budgets.page.phone.balance')} value={fmt(planMonth.balance)} strong {...shared} />
+        <TotalLine
+          testId="month-total-balance"
+          label={t('budgets.page.phone.balance')}
+          value={fmt(planMonth.balance)}
+          strong
+          negative={cmp(planMonth.balance, '0') < 0}
+          {...shared}
+        />
       ) : null}
     </div>
   )

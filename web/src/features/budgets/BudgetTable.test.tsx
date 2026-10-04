@@ -88,14 +88,30 @@ it('edit mode keeps the empty Default folder as a drop target', async () => {
   expect(screen.getByTestId('budget-folder-Default folder')).toBeInTheDocument()
 })
 
-it('shows spent as-is and available+budgeted as a sign-colored pill', async () => {
+it('shows spent as-is and available+budgeted as a plain figure, with no colour while nothing is wrong', async () => {
   renderTable()
   const food = await screen.findByTestId('element-cat-food')
   // exact match: the wire value is positive and must NOT be rendered negated
   await waitFor(() => expect(within(food).getByTestId('cell-spent')).toHaveTextContent(/^45\.50$/))
-  expect(within(food).getByTestId('cell-available')).toHaveTextContent('354.50')
-  expect(within(food).getByTestId('cell-available').className).toContain('text-income')
-  expect(within(food).getByTestId('cell-available').className).toContain('rounded-full')
+  expect(within(food).getByTestId('cell-available')).toHaveTextContent(/^354\.50$/)
+  expect(within(food).getByTestId('cell-available').className).not.toMatch(/text-(income|expense)|rounded-full/)
+  // the currency is named once at the top of the page, never per row
+  expect(food).not.toHaveTextContent('$')
+})
+
+it('an overspent row turns Spent and Available red, and nothing else', async () => {
+  renderTable((budget) => {
+    const food = budget.structure.elements.find((el) => el.id === 'cat-food')!
+    // 400 spent against 200 with nothing left from earlier months: Available -200
+    food.spent = '400'
+    food.budgeted = '200'
+    food.available = '-400'
+  })
+  const food = await screen.findByTestId('element-cat-food')
+  await waitFor(() => expect(within(food).getByTestId('cell-available')).toHaveTextContent('-200.00'))
+  expect(within(food).getByTestId('cell-available').className).toContain('text-expense')
+  expect(within(food).getByTestId('cell-spent').firstElementChild!.className).toContain('text-expense')
+  expect(within(screen.getByTestId('element-env-1')).getByTestId('cell-available').className).not.toContain('text-expense')
 })
 
 it('rounds float noise in cells to the currency precision', async () => {
@@ -364,16 +380,12 @@ it('Uncategorized lives in its own section, not the no-folder one', async () => 
   expect(within(noFolder).getByTestId('element-env-1')).toBeInTheDocument()
 })
 
-it('Uncategorized hides its icon on desktop but keeps it on mobile', async () => {
+it('Uncategorized carries no icon: its label alone names the one fixed row', async () => {
   renderTable(pushUncategorized)
   const row = await screen.findByTestId(`element-${UNCATEGORIZED_ID}`)
-  const icon = row.querySelector('.material-icon')
-  expect(icon).not.toBeNull()
-  // mobile-only: the wrapper drops the icon from the sm breakpoint up
-  expect(icon!.parentElement).toHaveClass('sm:hidden')
-  // a normal row shows its icon at every width
-  const living = screen.getByTestId('element-env-1')
-  expect(living.querySelector('.material-icon')!.parentElement).not.toHaveClass('sm:hidden')
+  expect(row.querySelector('.material-icon')).toBeNull()
+  // a normal row keeps its icon
+  expect(screen.getByTestId('element-env-1').querySelector('.material-icon')).not.toBeNull()
 })
 
 it('Uncategorized renders as ONE level: a bare row, with no section header above it', async () => {
