@@ -66,8 +66,6 @@ interface BudgetTableProps extends ElementRowExtras {
   labelMenu?: (label: LabelSpendDto) => MenuAction[] | undefined
   /** the Expenses line's ⋮ menu */
   sectionMenu?: MenuAction[]
-  /** empty folders shown elsewhere (one just created from the Income section) */
-  hiddenFolderIds?: ReadonlySet<string>
 }
 
 const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
@@ -491,7 +489,6 @@ export function BudgetTable({
   folderMenu,
   labelMenu,
   sectionMenu,
-  hiddenFolderIds,
   ...extras
 }: BudgetTableProps) {
   const { t } = useTranslation()
@@ -505,7 +502,7 @@ export function BudgetTable({
   const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
 
-  const realFolders = hiddenFolderIds ? buckets.withFolder.filter((b) => !hiddenFolderIds.has(b.folder!.id)) : buckets.withFolder
+  const realFolders = buckets.withFolder
   // fold keys: a folder's own id (the Plan grid's), '__no_folder__', and 'archived'
   // (the Plan grid's Archived band)
   const sections: { key: string; foldKey: string; name: string; bucket: FolderBucket; folderIndex: number | null }[] = [

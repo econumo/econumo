@@ -626,24 +626,23 @@ describe('the ⋮ menus on the Budget view', () => {
     expect(within(screen.getByTestId('column-headers')).queryByRole('button', { name: 'menu Expenses' })).toBeNull()
   })
 
-  it('Create folder from Income lists the new empty folder under Income, not under Expenses', async () => {
-    let created: { id: string; name: string } | null = null
+  it('Create folder from Income creates an income folder, listed under Income while still empty', async () => {
+    let created: { id: string; name: string; side?: string } | null = null
+    const folderWire = () => (created ? [{ id: created.id, name: created.name, position: 9, side: created.side }] : [])
     server.use(
       ...coreHandlers({ user: userWithBudget }),
-      // the server reports a memberless folder with the expense folders
-      http.get('*/api/v1/budget/get-budget', () => {
-        const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
-        if (created) {
-          budget.structure.folders.push({ id: created.id, name: created.name, position: 9 })
-        }
-        return HttpResponse.json({ success: true, message: '', data: { item: budget } })
+      // get-budget leaves income folders out; the plan reports every folder with its side
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      http.get('*/api/v1/budget/get-budget-plan', () => {
+        const plan = JSON.parse(JSON.stringify(fixtureWirePlan))
+        plan.structure.folders = [...plan.structure.folders, ...folderWire()]
+        return HttpResponse.json({ success: true, message: '', data: { item: plan } })
       }),
       http.post('*/api/v1/budget/create-folder', async ({ request }) => {
-        const body = (await request.json()) as { id: string; name: string }
-        created = { id: body.id, name: body.name }
-        return HttpResponse.json({ success: true, message: '', data: { item: { id: body.id, name: body.name, position: 9 } } })
+        const body = (await request.json()) as { id: string; name: string; side?: string }
+        created = { id: body.id, name: body.name, side: body.side }
+        return HttpResponse.json({ success: true, message: '', data: { item: folderWire()[0] } })
       }),
-      planHandler(),
     )
     const user = userEvent.setup()
     renderPage()
@@ -653,8 +652,9 @@ describe('the ⋮ menus on the Budget view', () => {
     await user.type(await screen.findByRole('textbox', { name: 'Folder name' }), 'Side gigs')
     await user.click(screen.getByRole('button', { name: 'Create' }))
 
-    const draft = await screen.findByTestId(`month-income-folder-${created!.id}`)
-    expect(draft).toHaveTextContent('Side gigs')
+    await waitFor(() => expect(created?.side).toBe('income'))
+    const folder = await screen.findByTestId(`month-income-folder-${created!.id}`)
+    expect(folder).toHaveTextContent('Side gigs')
     expect(screen.queryByTestId('budget-folder-Side gigs')).toBeNull()
 
     // an income row may move there; the expense folders are not offered

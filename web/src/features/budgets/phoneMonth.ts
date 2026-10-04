@@ -112,7 +112,8 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
       null,
       buckets.archived.filter(({ element }) => isIncomeType(element.type) && received(element)).map(({ element }) => element),
     ),
-  ].filter((g) => g.rows.length > 0)
+    // an income folder shows even while empty: it was made for income
+  ].filter((g) => g.kind === 'folder' || g.rows.length > 0)
   const rows = groups.flatMap((g) => g.rows)
 
   return {

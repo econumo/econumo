@@ -189,7 +189,9 @@ export function folderSides(plan: BudgetPlanDto): Map<Id, FolderSide> {
   for (const folder of plan.structure.folders) {
     const inFolder = members.filter((el) => el.folderId === folder.id)
     if (inFolder.length === 0) {
-      sides.set(folder.id, 'neutral')
+      // an empty folder keeps the side it was created in; only a server older than
+      // the stored side leaves it open to both
+      sides.set(folder.id, folder.side ?? 'neutral')
     } else {
       sides.set(folder.id, inFolder.some((el) => sideOf(el) === 'income') ? 'income' : 'expense')
     }

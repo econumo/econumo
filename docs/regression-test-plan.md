@@ -789,10 +789,12 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] Budget view, Create folder from the Income line: the new folder shows
       at once under Income, empty ("This folder is empty…"), and not under
       Expenses; an income row's Move to folder… offers it (and never an
-      expense folder), and once a row is in it the folder stays an income
-      folder. (An empty income folder created here shows under Expenses
-      after a reload until it gets its first income item.) An expense row's
-      Move to folder… offers only expense folders and empty ones.
+      expense folder), and the folder stays under Income, empty, also after a
+      reload, and in the Plan grid's Income band. Create folder from the
+      Expenses line makes an expense folder the same way. An expense row's
+      Move to folder… offers only expense folders. Moving the first item of
+      the other side into an EMPTY folder (Plan grid, phone edit mode) is
+      allowed and makes it a folder of that side.
 - [ ] Budget view lines highlight on hover like rows (pointer cursor): the
       Income, Savings and Expenses lines, folder lines, and Reporting tags. A
       click anywhere on such a line folds it, its sums included; in Edit

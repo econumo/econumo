@@ -120,8 +120,6 @@ interface MonthFlowsProps {
   savingsMenu?: (row: BudgetSavingsElementDto) => MenuAction[] | undefined
   incomeSectionMenu?: MenuAction[]
   savingsSectionMenu?: MenuAction[]
-  /** income folders created here that have no member yet (the server cannot tell their side) */
-  draftIncomeFolders?: { id: Id; name: string }[]
   /** drag and drop on hover, for anyone who may configure the budget */
   drag?: {
     onMoveIncome: (item: ElementMoveItem) => void
@@ -145,7 +143,6 @@ export function MonthFlows({
   savingsMenu,
   incomeSectionMenu,
   savingsSectionMenu,
-  draftIncomeFolders = [],
   drag,
 }: MonthFlowsProps) {
   const { t } = useTranslation()
@@ -341,15 +338,7 @@ export function MonthFlows({
     />
   )
 
-  // a draft folder joins the income folders, empty, until its first member makes the
-  // server report it as an income folder
-  const incomeGroups: IncomeGroup[] = (() => {
-    const groups = planMonth?.income.groups ?? []
-    const drafts = draftIncomeFolders
-      .filter((f) => !groups.some((g) => g.id === f.id))
-      .map((f): IncomeGroup => ({ kind: 'folder', id: f.id, name: f.name, rows: [], planned: '0', received: '0', toReceive: '0' }))
-    return [...groups.filter((g) => g.kind === 'folder'), ...drafts, ...groups.filter((g) => g.kind !== 'folder')]
-  })()
+  const incomeGroups: IncomeGroup[] = planMonth?.income.groups ?? []
 
   // the income groups as a drop arrangement: each folder, then the folder-less rows
   const arrangementOf = (groups: IncomeGroup[]): ElementContainer[] => [

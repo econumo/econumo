@@ -50,6 +50,14 @@ it('groups the income rows as the Plan grid does: folders with their sums, then 
   expect(june.income.groups.map((g) => g.kind)).toEqual(['folder', 'loose', 'uncategorized'])
 })
 
+it('an empty income folder still gets its group, and an empty expense-side folder does not', () => {
+  const p = usdPlan()
+  p.structure.folders = [...p.structure.folders, { id: 'bf-new', name: 'New income', position: 2, side: 'income' }, { id: 'bf-exp', name: 'Spare', position: 3, side: 'expense' }]
+  const f = planMonthFigures(p, [usd, eur], '2026-07-01', past)!
+  expect(f.income.groups.map((g) => [g.kind, g.id, g.rows.length])).toContainEqual(['folder', 'bf-new', 0])
+  expect(f.income.groups.map((g) => g.id)).not.toContain('bf-exp')
+})
+
 it('To receive is what a source still owes this month, never below zero', () => {
   expect(cmp(leftToReceive('500', '400'), '100')).toBe(0)
   expect(cmp(leftToReceive('500', '650'), '0')).toBe(0)

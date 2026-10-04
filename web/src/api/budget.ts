@@ -5,6 +5,7 @@ import type {
   BudgetDto,
   BudgetElementDto,
   BudgetFolderDto,
+  BudgetFolderSide,
   BudgetMetaDto,
   BudgetPlanDto,
   BudgetTransactionDto,
@@ -137,7 +138,7 @@ export async function deleteEnvelope(budgetId: Id, id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/budget/delete-envelope'), { budgetId, id })
 }
 
-export async function createBudgetFolder(form: { budgetId: Id; id: Id; name: string }): Promise<BudgetFolderDto> {
+export async function createBudgetFolder(form: { budgetId: Id; id: Id; name: string; side?: BudgetFolderSide }): Promise<BudgetFolderDto> {
   const response = await api.post<Envelope<{ item: BudgetFolderDto }>>(apiUrl('/api/v1/budget/create-folder'), form)
   return response.data.data.item
 }
