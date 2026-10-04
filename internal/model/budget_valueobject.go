@@ -77,6 +77,12 @@ func (t ElementType) IsIncomeSide() bool {
 	return t == ElementIncomeCategory || t == ElementIncomeEnvelope
 }
 
+// IsCategory reports whether the element is a category, the only kind an
+// envelope can hold.
+func (t ElementType) IsCategory() bool {
+	return t == ElementCategory || t == ElementIncomeCategory
+}
+
 // EnvelopeTypeFromSide maps a create-envelope side alias to the element type
 // that stores it. Absent ("") means expense, keeping the wire contract for
 // existing clients.

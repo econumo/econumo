@@ -1857,6 +1857,12 @@ definitions:
         type: string
       budgetId:
         type: string
+      envelopeId:
+        description: |-
+          EnvelopeId puts the category into that envelope instead (folderId and
+          afterId are then ignored). Without it, a category that sits in an envelope
+          leaves it for the given place.
+        type: string
       folderId:
         type: string
       id:

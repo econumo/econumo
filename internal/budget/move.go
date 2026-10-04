@@ -59,6 +59,17 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 		}
 	}
 
+	if req.EnvelopeId != nil && *req.EnvelopeId != "" {
+		envelopeID, perr := vo.ParseId(*req.EnvelopeId)
+		if perr != nil {
+			return nil, model.ValidateBlank(map[string]string{"envelopeId": ""})
+		}
+		if err := s.moveIntoEnvelope(ctx, b, moved, envelopeID); err != nil {
+			return nil, err
+		}
+		return &model.MoveElementResult{}, nil
+	}
+
 	if moved != nil && moved.Type == model.ElementSavings && folderID != nil {
 		return nil, savingsFolderNotAllowedErr()
 	}
@@ -70,6 +81,12 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 	}
 	now := s.clock.Now()
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if moved != nil && moved.Type.IsCategory() {
+			// a category placed anywhere outside an envelope leaves the one it sat in
+			if lerr := s.leaveEnvelopes(txCtx, b, moved.ExternalID, nil); lerr != nil {
+				return lerr
+			}
+		}
 		if moved != nil {
 			// Siblings are the elements already in the TARGET group, excluding the
 			// moved one -- which may be arriving from another folder.
@@ -132,6 +149,69 @@ func inFolder(e *model.BudgetElement, folderID *vo.Id) bool {
 func (a *budgetAggregate) placeInFolder(folderID vo.Id, typ model.ElementType) error {
 	if f := a.folder(folderID); f != nil && f.Side != typ.Side() {
 		return folderSideMixedErr()
+	}
+	return nil
+}
+
+// moveIntoEnvelope makes the category a member of the envelope, taking it out of
+// any other envelope of the budget, in one transaction. syncElements then drops
+// the category's own row out of the listing, as for any envelope child.
+func (s *Service) moveIntoEnvelope(ctx context.Context, b *budgetAggregate, moved *model.BudgetElement, envelopeID vo.Id) error {
+	if !b.hasEnvelope(envelopeID) {
+		return accessDenied()
+	}
+	if moved == nil || !moved.Type.IsCategory() {
+		return errs.NewValidation("Validation failed", errs.FieldError{
+			Key: "id", Message: "Only a category can go into an envelope", Code: errs.CodeBudgetEnvelopeMemberNotCategory,
+		})
+	}
+	for _, e := range b.elements {
+		if e.ExternalID.Equal(envelopeID) && e.Type.IsIncomeSide() != moved.Type.IsIncomeSide() {
+			return errs.NewValidation("Validation failed", errs.FieldError{
+				Key: "envelopeId", Message: "An envelope cannot contain both income and expense categories", Code: errs.CodeBudgetEnvelopeSideMixed,
+			})
+		}
+	}
+	now := s.clock.Now()
+	return s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.leaveEnvelopes(txCtx, b, moved.ExternalID, &envelopeID); err != nil {
+			return err
+		}
+		ids, err := s.envelopes.EnvelopeCategoryIDs(txCtx, envelopeID)
+		if err != nil {
+			return err
+		}
+		member := false
+		for _, id := range ids {
+			member = member || id.Equal(moved.ExternalID)
+		}
+		if !member {
+			if err := s.envelopes.AddEnvelopeCategory(txCtx, envelopeID, moved.ExternalID); err != nil {
+				return err
+			}
+		}
+		return s.syncElements(txCtx, b.budget.ID, now)
+	})
+}
+
+// leaveEnvelopes takes the category out of every envelope of the budget that
+// holds it, except keep (nil = all of them).
+func (s *Service) leaveEnvelopes(ctx context.Context, b *budgetAggregate, categoryID vo.Id, keep *vo.Id) error {
+	for _, env := range b.envelopes {
+		if keep != nil && env.ID.Equal(*keep) {
+			continue
+		}
+		ids, err := s.envelopes.EnvelopeCategoryIDs(ctx, env.ID)
+		if err != nil {
+			return err
+		}
+		for _, id := range ids {
+			if id.Equal(categoryID) {
+				if err := s.envelopes.RemoveEnvelopeCategory(ctx, env.ID, categoryID); err != nil {
+					return err
+				}
+			}
+		}
 	}
 	return nil
 }

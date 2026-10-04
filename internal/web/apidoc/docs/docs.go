@@ -15100,6 +15100,10 @@ const docTemplate = `{
                 "budgetId": {
                     "type": "string"
                 },
+                "envelopeId": {
+                    "description": "EnvelopeId puts the category into that envelope instead (folderId and\nafterId are then ignored). Without it, a category that sits in an envelope\nleaves it for the given place.",
+                    "type": "string"
+                },
                 "folderId": {
                     "type": "string"
                 },

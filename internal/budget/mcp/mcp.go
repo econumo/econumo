@@ -114,6 +114,7 @@ type moveElementInput struct {
 	ElementID      string `json:"element_id" jsonschema:"envelope, tag or category id (UUID), from get_budget"`
 	FolderID       string `json:"folder_id,omitempty" jsonschema:"target folder id (UUID), from get_budget; omit to move to the default (ungrouped) area"`
 	AfterElementID string `json:"after_element_id,omitempty" jsonschema:"place the element directly after this one within the target folder; omit to place it first"`
+	EnvelopeID     string `json:"envelope_id,omitempty" jsonschema:"put the category into this envelope (UUID), from get_budget, instead; folder_id and after_element_id are then ignored"`
 }
 
 // moveElementResult echoes the element that was asked for: MoveElement silently
@@ -472,7 +473,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "move_element",
-			Description: "Move one budget element (an envelope, tag or standalone category) into a folder and/or reorder it. Use get_budget for element_id, folder_id and after_element_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first. A savings row (id = savings account id) reorders only among savings rows and cannot be put into a folder."},
+			Description: "Move one budget element (an envelope, tag or category) into a folder and/or reorder it, or put a category into an envelope (envelope_id). Use get_budget for element_id, folder_id, after_element_id and envelope_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first. A category moved to a folder or the ungrouped area leaves the envelope it was in; a category put into an envelope leaves any other envelope. A savings row (id = savings account id) reorders only among savings rows and cannot be put into a folder."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in moveElementInput) (*sdk.CallToolResult, moveElementResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "move_element")
 				userID, err := webmcp.UserID(ctx)
@@ -480,10 +481,11 @@ func Register(svc *appbudget.Service) webmcp.Register {
 					return nil, moveElementResult{}, err
 				}
 				if _, err := svc.MoveElement(ctx, userID, model.MoveElementRequest{
-					BudgetId: in.BudgetID,
-					Id:       in.ElementID,
-					FolderId: strPtr(in.FolderID),
-					AfterId:  strPtr(in.AfterElementID),
+					BudgetId:   in.BudgetID,
+					Id:         in.ElementID,
+					FolderId:   strPtr(in.FolderID),
+					AfterId:    strPtr(in.AfterElementID),
+					EnvelopeId: strPtr(in.EnvelopeID),
 				}); err != nil {
 					return nil, moveElementResult{}, webmcp.MapErr(ctx, err)
 				}

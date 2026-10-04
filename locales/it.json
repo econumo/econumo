@@ -1873,6 +1873,7 @@
       "transaction_filter_required": "Convalida non riuscita",
       "envelope_side_mixed": "Una busta non può contenere contemporaneamente categorie di entrata e di uscita",
       "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite",
+      "envelope_member_not_category": "Solo una categoria può entrare in una busta",
       "savings_folder_not_allowed": "I risparmi non possono essere inseriti in una cartella",
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
       "savings_account_not_member": "I conti di risparmio devono essere tuoi conti in questo budget",

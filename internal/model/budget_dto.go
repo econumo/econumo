@@ -721,6 +721,10 @@ type MoveElementRequest struct {
 	Id       string  `json:"id"`
 	FolderId *string `json:"folderId"`
 	AfterId  *string `json:"afterId"`
+	// EnvelopeId puts the category into that envelope instead (folderId and
+	// afterId are then ignored). Without it, a category that sits in an envelope
+	// leaves it for the given place.
+	EnvelopeId *string `json:"envelopeId,omitempty"`
 }
 
 func (r MoveElementRequest) Validate() error {
@@ -730,7 +734,7 @@ func (r MoveElementRequest) Validate() error {
 	if _, err := vo.ParseId(r.Id); err != nil {
 		return err
 	}
-	for _, opt := range []*string{r.FolderId, r.AfterId} {
+	for _, opt := range []*string{r.FolderId, r.AfterId, r.EnvelopeId} {
 		if opt == nil || *opt == "" {
 			continue
 		}
