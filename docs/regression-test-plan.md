@@ -1043,13 +1043,15 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 On a phone (< 640 px, the iOS home-screen PWA included) `/budget` and
       `/plan` show the same single month view: header with the budget name in
       normal case, the month strip, and no Budget/Plan switch in the settings
-      menu. At the top, one card under a "USD · Planned · Actual" heading
-      (the budget's currency code at the left) holds an
-      "Income" line (planned, received) and a "Savings" line (planned,
-      saved, in the budget currency); below it, after a wider gap,
+      menu. At the top, under a "USD · Planned · Actual" heading (the
+      budget's currency code at the left), two cards: one with the "Income"
+      line (planned, received), one with the "Savings" line (planned, saved,
+      in the budget currency). Both section lines are bolder and darker than
+      the folder lines inside them, so Savings never reads as one more income
+      folder. Below them, after a wider gap,
       "Expenses · Budget · Spent" heads the expense folders.
 - [ ] 📱 The Income and Savings lines start folded; tapping one unfolds its
-      rows inside the same card, and the fold state survives a month switch
+      rows inside its own card, and the fold state survives a month switch
       and a reload.
 - [ ] 📱 Income unfolded is grouped as in the Plan grid: each income folder
       opens with a line naming it and its Planned / Received sums, followed

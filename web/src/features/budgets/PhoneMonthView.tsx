@@ -180,7 +180,7 @@ function SectionSummary({
       data-testid={testId}
       aria-expanded={open}
       onClick={onToggle}
-      className={`${GRID} min-h-11 w-full rounded-md py-1.5 pl-2 text-left text-xs font-medium text-muted-foreground active:bg-accent/50`}
+      className={`${GRID} min-h-11 w-full rounded-md py-1.5 pl-2 text-left text-sm font-semibold active:bg-accent/50`}
     >
       <span className="flex min-w-0 items-center gap-1">
         <Chevron className="size-4 shrink-0" />
@@ -465,14 +465,15 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   return (
     <div className="flex flex-col gap-3" data-testid="phone-month-view">
       {showFlows ? (
-        // income and savings share one card under one Planned · Actual heading: a
-        // line each, folded by default, so the money coming in and set aside costs
-        // two rows above the expenses
+        // income and savings share one Planned · Actual heading, a card each with a
+        // section line, folded by default, so the money coming in and set aside costs
+        // two lines above the expenses; separate cards keep Savings from reading as
+        // one of the income folders
         <>
           <SectionHeading testId="phone-heading-flows" name={currencyOf(base)?.code ?? ''} first={t('budgets.page.savings.planned')} second={t('budgets.page.phone.actual')} />
-          <Card testId="phone-flows">
+          <div className="flex flex-col gap-2" data-testid="phone-flows">
             {planMonth ? (
-              <>
+              <Card testId="phone-income-card">
                 <SectionSummary
                   testId="phone-income-summary"
                   open={incomeOpen}
@@ -484,10 +485,10 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
                   secondTestId="phone-income-received"
                 />
                 {incomeOpen ? planMonth.income.groups.map((g) => incomeGroup(g, planMonth.income.groups)) : null}
-              </>
+              </Card>
             ) : null}
             {savingsSum ? (
-              <>
+              <Card testId="phone-savings-card">
                 <SectionSummary
                   testId="phone-savings-summary"
                   open={savingsOpen}
@@ -497,9 +498,9 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
                   second={future ? EMPTY : fmt(savingsSum.spent)}
                 />
                 {savingsOpen ? savingsRows.map(savingsRow) : null}
-              </>
+              </Card>
             ) : null}
-          </Card>
+          </div>
         </>
       ) : null}
       <SectionHeading

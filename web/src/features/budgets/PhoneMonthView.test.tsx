@@ -76,9 +76,16 @@ it('heads income and savings with one Planned · Actual row and the expenses wit
   expect(expenses.nextElementSibling).toBe(screen.getByTestId('phone-folder-bf1'))
 })
 
-it('the income line names itself inside the shared card', () => {
-  renderView()
-  expect(within(screen.getByTestId('phone-flows')).getByTestId('phone-income-summary')).toHaveTextContent(/^Income/)
+it('income and savings each get their own card, so Savings never reads as an income folder', () => {
+  renderView({}, (b) => {
+    b.structure.savings = [
+      { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0, budgeted: '100', spent: '20', available: '80' } as never,
+    ]
+  })
+  const income = screen.getByTestId('phone-income-card')
+  expect(within(income).getByTestId('phone-income-summary')).toHaveTextContent(/^Income/)
+  expect(within(income).queryByTestId('phone-savings-summary')).toBeNull()
+  expect(within(screen.getByTestId('phone-savings-card')).getByTestId('phone-savings-summary')).toHaveTextContent(/^Savings/)
 })
 
 it('unfolded, Income is grouped like the Plan grid: a folder line with its sums, then No folder', async () => {
