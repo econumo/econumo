@@ -574,15 +574,20 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     label: t('budgets.modal.create_envelope_form.header'),
     onSelect: () => setEnvelopeDialog({ open: true, envelope: null, folderId, side }),
   })
+  // Envelopes are expense-only: an envelope holds a limit and income has none, so the
+  // server creates only expense envelopes (existing income envelopes stay editable).
+  // Offering one under Income would make an expense envelope and flip the folder.
+  const envelopeActions = (folderId: Id | null, side: BudgetFolderSide): MenuAction[] => (side === 'expense' ? [newEnvelopeAction(folderId, side)] : [])
   const folderActionsFor = (folder: { id: Id; name: string } | null, empty: boolean, side: BudgetFolderSide): MenuAction[] | undefined => {
     if (!configure) {
       return undefined
     }
     if (!folder) {
-      return [newEnvelopeAction(null, side)]
+      const actions = envelopeActions(null, side)
+      return actions.length > 0 ? actions : undefined
     }
     return [
-      newEnvelopeAction(folder.id, side),
+      ...envelopeActions(folder.id, side),
       { label: t('common.button.edit.label'), onSelect: () => setRenameFolder({ id: folder.id, name: folder.name }) },
       {
         label: t('budgets.page.budget.structure.action.delete_folder'),
@@ -602,7 +607,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         : undefined
   const sectionMenu = (side: BudgetFolderSide): MenuAction[] | undefined =>
     configure
-      ? [{ label: t('budgets.page.budget.structure.action.create_folder'), onSelect: () => setCreateFolderSide(side) }, newEnvelopeAction(null, side)]
+      ? [{ label: t('budgets.page.budget.structure.action.create_folder'), onSelect: () => setCreateFolderSide(side) }, ...envelopeActions(null, side)]
       : undefined
   const savingsSectionMenu: MenuAction[] | undefined = editDetails
     ? [{ label: t('budgets.modal.budget_form.savings.label'), onSelect: () => setUpdateBudgetOpen(true) }]

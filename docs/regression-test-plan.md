@@ -779,11 +779,16 @@ and on tablet/phone only with a hardware keyboard.
         Uncategorized (expense or income) has no menu;
       - a savings row: Edit (the account); a reporting tag: Edit ("Edit (no
         access)" for another user's tag);
-      - a folder line: New envelope (in that folder), Edit (rename), Delete
-        folder (greyed out as "Delete folder (not empty)" while the folder
-        has items); "No folder": New envelope;
-      - the Income and Expenses lines: Create folder, New envelope; the
+      - a folder line: New envelope (expense folders only), Edit (rename),
+        Delete folder (greyed out as "Delete folder (not empty)" while the
+        folder has items); the expense "No folder": New envelope;
+      - the Expenses line: Create folder, New envelope; the Income line:
+        Create folder only (envelopes are expense-only, so no income menu
+        offers New envelope; existing income envelopes stay editable); the
         Savings line: Savings accounts (opens the budget's settings).
+      Regression: an income folder must stay under Income after a reload;
+      no Income menu may create an envelope (it would be an expense envelope
+      and turn the folder into an expense folder).
       A guest (or anyone on an archived budget) gets no structure actions:
       only Edit where they own the item. No menu offers Show transactions:
       a row's transactions open from its Spent / Received / Saved figure.

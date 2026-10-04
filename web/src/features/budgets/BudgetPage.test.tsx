@@ -663,6 +663,32 @@ describe('the ⋮ menus on the Budget view', () => {
     expect(within(screen.getByTestId('column-headers')).queryByRole('button', { name: 'menu Expenses' })).toBeNull()
   })
 
+  it('the Income menus offer no New envelope (envelopes are expense-only); the Expenses ones do', async () => {
+    const plan = JSON.parse(JSON.stringify(fixtureWirePlan))
+    plan.structure.folders = [...plan.structure.folders, { id: 'bf-inc', name: 'Side gigs', position: 1, side: 'income' }]
+    plan.structure.elements = plan.structure.elements.map((el: { id: string }) => (el.id === 'cat-freelance' ? { ...el, folderId: 'bf-inc' } : el))
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(plan),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    const items = async () => (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
+
+    await user.click(within(await screen.findByTestId('month-income-header')).getByRole('button', { name: 'menu Income' }))
+    expect(await items()).toEqual(['Create folder'])
+    await user.keyboard('{Escape}')
+    await user.click(within(screen.getByTestId('month-income-folder-bf-inc')).getByRole('button', { name: 'menu Side gigs' }))
+    expect(await items()).not.toContain('New envelope')
+    await user.keyboard('{Escape}')
+    // the folder-less income rows have nothing left to offer: no menu at all
+    expect(within(screen.getByTestId('month-income-folder-__no_folder__')).queryByRole('button', { name: 'menu No folder' })).toBeNull()
+
+    await user.click(within(screen.getByTestId('column-headers')).getByRole('button', { name: 'menu Expenses' }))
+    expect(await items()).toEqual(['Create folder', 'New envelope'])
+  })
+
   it('Create folder from Income creates an income folder, listed under Income while still empty', async () => {
     let created: { id: string; name: string; side?: string } | null = null
     const folderWire = () => (created ? [{ id: created.id, name: created.name, position: 9, side: created.side }] : [])
