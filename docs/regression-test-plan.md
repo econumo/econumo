@@ -750,6 +750,13 @@ and on tablet/phone only with a hardware keyboard.
       has received its plan or more (never negative); income Uncategorized
       shows "—". A folder line and the folded Income line sum their rows'
       figures, so one overpaid source does not hide another still unpaid.
+- [ ] Budget view dashes: a row with nothing planned and nothing received
+      shows a muted "—" under To receive; an expense row with nothing
+      budgeted, nothing spent and nothing left from earlier months shows a
+      muted "—" under Available (money left from earlier months keeps its
+      figure). Folder and section lines follow the same rule. Every dash on
+      the page is muted grey, also in the totals lines. The planned/budget
+      amount itself still reads 0.00, as the cell to edit.
 - [ ] Budget view look (desktop and tablet): no boxes — thin rules
       separate Income, Savings and Expenses, folders are a softer grey line
       with their sums, rows sit indented under them, and every heading, sum

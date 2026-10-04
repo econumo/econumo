@@ -543,6 +543,23 @@ it('the Budget view groups income like the Plan grid: folders with sums, No fold
   expect(await screen.findByTestId('month-income-child-cat-salary')).toBeInTheDocument()
 })
 
+it('an income row with nothing planned and nothing received reads "—" under To receive', async () => {
+  const plan = JSON.parse(JSON.stringify(fixtureWirePlan))
+  // Freelance in July: no plan, nothing in
+  plan.structure.elements.find((el: { id: string }) => el.id === 'cat-freelance').cells[2] = { actual: '0', planned: '' }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(plan),
+  )
+  renderPage()
+  const row = await screen.findByTestId('month-income-row-cat-freelance')
+  expect(within(row).getByTestId('flow-third')).toHaveTextContent(/^—$/)
+  expect(within(within(row).getByTestId('flow-third')).getByText('—')).toHaveClass('text-muted-foreground')
+  // Salaries still expects its 2,000.00
+  expect(within(screen.getByTestId('month-income-row-ie1')).getByTestId('flow-third')).toHaveTextContent(/^2,000\.00$/)
+})
+
 it('a Budget view section header folds its section, shows its sums, and shares the fold with the Plan view', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),

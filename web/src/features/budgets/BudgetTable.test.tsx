@@ -99,6 +99,27 @@ it('shows spent as-is and available+budgeted as a plain figure, with no colour w
   expect(food).not.toHaveTextContent('$')
 })
 
+it('a row with nothing budgeted, spent or left reads "—" under Available, muted; one with something left keeps the figure', async () => {
+  renderTable((budget) => {
+    const food = budget.structure.elements.find((el) => el.id === 'cat-food')!
+    Object.assign(food, { budgeted: '0', spent: '0', available: '0', budgetSpent: '0' })
+  })
+  const food = await screen.findByTestId('element-cat-food')
+  await waitFor(() => expect(within(food).getByTestId('cell-available')).toHaveTextContent(/^—$/))
+  expect(within(within(food).getByTestId('cell-available')).getByText('—')).toHaveClass('text-muted-foreground')
+  // the planned amount stays a figure: it is the cell you edit
+  expect(within(food).getByTestId('cell-budgeted')).toHaveTextContent('0.00')
+})
+
+it('nothing budgeted or spent but money left from earlier months keeps Available as a figure', async () => {
+  renderTable((budget) => {
+    const food = budget.structure.elements.find((el) => el.id === 'cat-food')!
+    Object.assign(food, { budgeted: '0', spent: '0', available: '30', budgetSpent: '0' })
+  })
+  const food = await screen.findByTestId('element-cat-food')
+  await waitFor(() => expect(within(food).getByTestId('cell-available')).toHaveTextContent(/^30\.00$/))
+})
+
 it('an overspent row turns Spent and Available red, and nothing else', async () => {
   renderTable((budget) => {
     const food = budget.structure.elements.find((el) => el.id === 'cat-food')!

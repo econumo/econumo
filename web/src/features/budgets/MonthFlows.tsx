@@ -12,8 +12,8 @@ import type { Id } from '@/api/types'
 import { elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
-import { ActionsSpacer, CurrencyTag, FolderLine, MonthSectionHeader } from './monthLines'
-import { CHILD_INDENT, EMPTY_CELL, FIRST_COL, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
+import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader } from './monthLines'
+import { CHILD_INDENT, FIRST_COL, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
 import { leftToReceive } from './phoneMonth'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 
@@ -124,7 +124,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
 
   const actualCell = (target: BudgetTransactionsTarget | null, amount: string, currencyId: Id | null) => {
     if (future) {
-      return EMPTY_CELL
+      return <Dash />
     }
     const text = fmt(amount, currencyId)
     if (!target || !onShowTransactions) {
@@ -158,9 +158,16 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
           name={name}
           tag={tagOf(el.currencyId)}
           muted={el.isArchived === 1}
-          planned={el.id === UNCATEGORIZED_ID ? <span className="text-muted-foreground">{EMPTY_CELL}</span> : renderPlanned({ kind: 'plan', cell: row }, fmt(row.planned, el.currencyId))}
+          planned={el.id === UNCATEGORIZED_ID ? <Dash /> : renderPlanned({ kind: 'plan', cell: row }, fmt(row.planned, el.currencyId))}
           actual={actualCell(listTarget, row.actual, el.currencyId)}
-          third={el.id === UNCATEGORIZED_ID ? <span className="text-muted-foreground">{EMPTY_CELL}</span> : fmt(leftToReceive(row.planned, row.actual), el.currencyId)}
+          third={
+            // nothing planned and nothing in: a dash, not a zero
+            el.id === UNCATEGORIZED_ID || (isZero(row.planned) && isZero(row.actual)) ? (
+              <Dash />
+            ) : (
+              fmt(leftToReceive(row.planned, row.actual), el.currencyId)
+            )
+          }
           actionsColumn={actionsColumn}
           toggle={expandable ? { open, onToggle: () => toggleElement(el.id) } : undefined}
         />
@@ -225,7 +232,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             name={name}
             folded={folded}
             onToggle={() => togglePlanFold(foldKey)}
-            sums={[fmt(g.planned), future ? EMPTY_CELL : fmt(g.received), fmt(g.toReceive)]}
+            sums={[fmt(g.planned), future ? <Dash key="dash-235-1" /> : fmt(g.received), isZero(g.planned) && isZero(g.received) ? <Dash key="dash-235-2" /> : fmt(g.toReceive)]}
             actionsColumn={actionsColumn}
           />
         ) : null}
@@ -244,7 +251,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
       muted={row.isArchived === 1}
       planned={renderPlanned({ kind: 'savings', row }, fmt(row.budgeted, row.currencyId))}
       actual={actualCell({ id: row.id, type: BudgetElementType.SAVINGS, name: row.name, icon: row.icon, currencyId: row.currencyId }, row.spent, row.currencyId)}
-      third={<span title={t('budgets.page.savings.balance_hint')}>{row.closingBalance !== undefined ? fmt(row.closingBalance, row.currencyId) : EMPTY_CELL}</span>}
+      third={<span title={t('budgets.page.savings.balance_hint')}>{row.closingBalance !== undefined ? fmt(row.closingBalance, row.currencyId) : <Dash />}</span>}
       actionsColumn={actionsColumn}
     />
   )
@@ -265,7 +272,11 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             testId="month-income-header"
             label={t('budgets.page.plan.section.income')}
             headings={[t('budgets.page.savings.planned'), t('budgets.page.sheet.received'), t('budgets.page.budget.structure.tab.to_receive')]}
-            sums={[fmt(planMonth.income.planned), future ? EMPTY_CELL : fmt(planMonth.income.received), fmt(planMonth.income.toReceive)]}
+            sums={[
+              fmt(planMonth.income.planned),
+              future ? <Dash key="dash-277-1" /> : fmt(planMonth.income.received),
+              isZero(planMonth.income.planned) && isZero(planMonth.income.received) ? <Dash key="dash-278-1" /> : fmt(planMonth.income.toReceive),
+            ]}
             actionsColumn={actionsColumn}
           />
           {incomeFolded ? null : planMonth.income.groups.map((g) => incomeGroup(g, planMonth.income.groups))}
@@ -280,8 +291,8 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             headings={[t('budgets.page.savings.planned'), t('budgets.page.savings.saved'), t('budgets.page.sheet.balance')]}
             sums={[
               fmt(savingsSum.budgeted),
-              future ? EMPTY_CELL : fmt(savingsSum.spent),
-              planMonth?.savingsBalance != null ? fmt(planMonth.savingsBalance) : EMPTY_CELL,
+              future ? <Dash key="dash-294-1" /> : fmt(savingsSum.spent),
+              planMonth?.savingsBalance != null ? fmt(planMonth.savingsBalance) : <Dash key="dash-295-1" />,
             ]}
             actionsColumn={actionsColumn}
           />
@@ -302,7 +313,7 @@ function TotalLine({
 }: {
   testId: string
   label: string
-  value: string
+  value: ReactNode
   /** the line the block ends on: full-colour label */
   strong?: boolean
   negative?: boolean
@@ -345,14 +356,14 @@ export function MonthTotalsLines({
   return (
     <div className="flex flex-col pt-1" data-testid="month-totals-lines">
       {planMonth ? (
-        <TotalLine testId="month-total-income" label={t('budgets.page.plan.totals.income')} value={future ? EMPTY_CELL : fmt(planMonth.income.received)} {...shared} />
+        <TotalLine testId="month-total-income" label={t('budgets.page.plan.totals.income')} value={future ? <Dash /> : fmt(planMonth.income.received)} {...shared} />
       ) : null}
-      <TotalLine testId="month-total-expenses" label={t('budgets.page.plan.totals.expenses')} value={future ? EMPTY_CELL : fmt(expensesSpent)} {...shared} />
+      <TotalLine testId="month-total-expenses" label={t('budgets.page.plan.totals.expenses')} value={future ? <Dash /> : fmt(expensesSpent)} {...shared} />
       {planMonth && !isZero(planMonth.transfersNet) ? (
         <TotalLine testId="month-total-transfers" label={t('budgets.page.plan.totals.transfers')} value={fmt(planMonth.transfersNet)} {...shared} />
       ) : null}
       {savingsSpent !== null ? (
-        <TotalLine testId="month-total-savings" label={t('budgets.page.plan.totals.savings')} value={future ? EMPTY_CELL : fmt(savingsSpent)} {...shared} />
+        <TotalLine testId="month-total-savings" label={t('budgets.page.plan.totals.savings')} value={future ? <Dash /> : fmt(savingsSpent)} {...shared} />
       ) : null}
       {planMonth?.savingsBalance != null ? (
         <TotalLine testId="month-total-savings-balance" label={t('budgets.page.plan.totals.savings_balance')} value={fmt(planMonth.savingsBalance)} {...shared} />

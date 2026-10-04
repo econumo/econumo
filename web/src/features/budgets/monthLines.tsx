@@ -2,12 +2,17 @@ import type { ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useBudgetPeriodStore } from './budgetStore'
-import { FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, SECOND_COL, THIRD_COL } from './monthLayout'
+import { EMPTY_CELL, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, SECOND_COL, THIRD_COL } from './monthLayout'
 
 /* edit mode appends a w-8 actions button to element rows; every line without
    one must pad the slot or its amount columns drift out of alignment */
 export function ActionsSpacer() {
   return <span data-testid="actions-spacer" className="w-8 shrink-0" />
+}
+
+/** a column with no value at all: always muted, whatever colour its cell has */
+export function Dash() {
+  return <span className="text-muted-foreground">{EMPTY_CELL}</span>
 }
 
 /** a row whose currency is not the budget's names it once, next to the name */
