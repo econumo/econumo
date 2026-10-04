@@ -539,8 +539,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       },
     ]
   }
-  const showTransactionsAction = (target: BudgetTransactionsTarget | null): MenuAction[] =>
-    target ? [{ label: t('budgets.page.budget.structure.element.action.show_transactions'), onSelect: () => setTransactionsTarget(target) }] : []
   const structureActions = (el: { id: Id; type: BudgetElementType; currencyId: Id | null; isArchived: 0 | 1 }, side: BudgetFolderSide): MenuAction[] => {
     if (!configure) {
       return []
@@ -559,26 +557,19 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       ...remove,
     ]
   }
+  // the transaction list opens from a row's figures (Spent, Received, Saved), not from the menu
   const expenseRowMenu = (element: BudgetElementDto): MenuAction[] =>
-    element.id === UNCATEGORIZED_ID
-      ? showTransactionsAction(transactionsTargetOf(element))
-      : [...editAction({ kind: 'expense', element }), ...structureActions(element, 'expense'), ...showTransactionsAction(transactionsTargetOf(element))]
+    element.id === UNCATEGORIZED_ID ? [] : [...editAction({ kind: 'expense', element }), ...structureActions(element, 'expense')]
   const incomeRowMenu = (cell: PlanCellFigures): MenuAction[] => {
     const target: SheetTarget = { kind: 'plan', cell }
     // income Uncategorized has nothing to edit and no list of its own
     if (cell.element.id === UNCATEGORIZED_ID) {
       return []
     }
-    return [...editAction(target), ...structureActions(cell.element, 'income'), ...showTransactionsAction(sheetTransactionsTargetOf(target))]
+    return [...editAction(target), ...structureActions(cell.element, 'income')]
   }
-  const savingsRowMenu = (row: BudgetSavingsElementDto): MenuAction[] => [
-    ...editAction({ kind: 'savings', row }),
-    ...showTransactionsAction(sheetTransactionsTargetOf({ kind: 'savings', row })),
-  ]
-  const labelMenu = (label: LabelSpendDto): MenuAction[] => [
-    ...editAction({ kind: 'label', label }),
-    ...showTransactionsAction(sheetTransactionsTargetOf({ kind: 'label', label })),
-  ]
+  const savingsRowMenu = (row: BudgetSavingsElementDto): MenuAction[] => editAction({ kind: 'savings', row })
+  const labelMenu = (label: LabelSpendDto): MenuAction[] => editAction({ kind: 'label', label })
   const newEnvelopeAction = (folderId: Id | null, side: BudgetFolderSide): MenuAction => ({
     label: t('budgets.modal.create_envelope_form.header'),
     onSelect: () => setEnvelopeDialog({ open: true, envelope: null, folderId, side }),

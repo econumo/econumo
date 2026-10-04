@@ -773,21 +773,20 @@ and on tablet/phone only with a hardware keyboard.
       line only while Configure → Edit structure is on ("Done editing" turns
       them off again; with it off the view has no ⋮ and no grips):
       - an expense or income category/tag row: Edit (name, icon; greyed out
-        as "Edit (no access)" for a category or tag another user owns), Change currency, Move to
-        folder…, Show transactions; an envelope adds Delete (owner/admin);
-        an archived row keeps Edit, Delete (envelope) and Show transactions;
-        expense Uncategorized has only Show transactions, income
-        Uncategorized no menu;
-      - a savings row: Edit (the account) and Show transactions; a reporting
-        tag: Edit ("Edit (no access)" for another user's tag) and Show
-        transactions;
+        as "Edit (no access)" for a category or tag another user owns),
+        Change currency, Move to folder…; an envelope adds Delete
+        (owner/admin); an archived row keeps Edit and Delete (envelope);
+        Uncategorized (expense or income) has no menu;
+      - a savings row: Edit (the account); a reporting tag: Edit ("Edit (no
+        access)" for another user's tag);
       - a folder line: New envelope (in that folder), Edit (rename), Delete
         folder (greyed out as "Delete folder (not empty)" while the folder
         has items); "No folder": New envelope;
       - the Income and Expenses lines: Create folder, New envelope; the
         Savings line: Savings accounts (opens the budget's settings).
       A guest (or anyone on an archived budget) gets no structure actions:
-      only Edit where they own the item, and Show transactions.
+      only Edit where they own the item. No menu offers Show transactions:
+      a row's transactions open from its Spent / Received / Saved figure.
 - [ ] Budget view, Create folder from the Income line: the new folder shows
       at once under Income, empty ("This folder is empty…"), and not under
       Expenses; an income row's Move to folder… offers it (and never an

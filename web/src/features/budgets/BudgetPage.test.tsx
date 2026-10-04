@@ -614,14 +614,14 @@ describe('the ⋮ menus on the Budget view', () => {
     planHandler(),
   ]
 
-  it('an expense row offers Edit, Change currency, Move to folder and Show transactions', async () => {
+  it('an expense row offers Edit, Change currency and Move to folder; its transactions open from Spent, not the menu', async () => {
     server.use(...plainHandlers())
     const user = userEvent.setup()
     renderPage()
     const food = await screen.findByTestId('element-cat-food')
     await user.click(within(food).getByRole('button', { name: 'menu Food' }))
     const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
-    expect(items).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Show transactions'])
+    expect(items).toEqual(['Edit', 'Change currency', 'Move to folder…'])
   })
 
   it('a greyed-out action says why: Edit on another member\'s category, Delete on a folder with items', async () => {
@@ -640,7 +640,7 @@ describe('the ⋮ menus on the Budget view', () => {
     expect(await item('Delete folder (not empty)')()).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('a guest gets no structure actions, only Show transactions', async () => {
+  it('a guest gets no structure actions, only Edit on what they own', async () => {
     const guestBudget = {
       ...fixtureWireBudget,
       meta: {
@@ -658,9 +658,7 @@ describe('the ⋮ menus on the Budget view', () => {
     const food = await screen.findByTestId('element-cat-food')
     await user.click(within(food).getByRole('button', { name: 'menu Food' }))
     const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
-    expect(items).not.toContain('Change currency')
-    expect(items).not.toContain('Move to folder…')
-    expect(items).toContain('Show transactions')
+    expect(items).toEqual(['Edit'])
     // and the Expenses line has no Create folder for a guest
     expect(within(screen.getByTestId('column-headers')).queryByRole('button', { name: 'menu Expenses' })).toBeNull()
   })
