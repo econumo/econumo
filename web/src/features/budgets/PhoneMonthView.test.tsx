@@ -57,7 +57,7 @@ function renderView(overrides: Partial<PhoneMonthViewProps> = {}, mutate?: (b: B
 
 beforeEach(() => {
   localStorage.clear()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {} })
 })
 
 it('heads income and savings with one Planned · Actual row and the expenses with Expenses · Budget · Spent', () => {
@@ -113,6 +113,36 @@ it('unfolded, Income is grouped like the Plan grid: a folder line with its sums,
   expect(screen.queryByTestId('phone-child-cat-salary')).toBeNull()
   await userEvent.click(within(work).getByRole('button', { name: /Salaries/, expanded: false }))
   expect(screen.getByTestId('phone-child-cat-salary')).toHaveTextContent('350.00')
+})
+
+it('a folder line folds its rows, keeps its sums, and the fold is the Plan grid\'s', async () => {
+  renderView()
+  const card = screen.getByTestId('phone-folder-bf1')
+  const line = within(card).getByRole('button', { name: /Essentials/, expanded: true })
+  expect(within(card).getAllByTestId(/^phone-row-/).length).toBeGreaterThan(0)
+  await userEvent.click(line)
+  expect(within(screen.getByTestId('phone-folder-bf1')).queryAllByTestId(/^phone-row-/)).toHaveLength(0)
+  expect(within(screen.getByTestId('phone-folder-bf1')).getByRole('button', { name: /Essentials/, expanded: false })).toHaveTextContent('200.00')
+  expect(useBudgetPeriodStore.getState().planFolds.bf1).toBe(true)
+})
+
+it('an income folder line folds its rows too', async () => {
+  const freelance = { ...salaries, id: 'cat-freelance', type: 3, name: 'Freelance', children: [] } as PlanElementDto
+  const grouped: PlanMonthFigures = {
+    ...planMonth,
+    income: {
+      rows: [],
+      groups: [{ kind: 'folder', id: 'bf-inc', name: 'Work', rows: [{ element: freelance, planned: '500', actual: '50' }], planned: '500', received: '50' }],
+      planned: '500',
+      received: '50',
+    },
+  }
+  renderView({ planMonth: grouped })
+  await userEvent.click(screen.getByTestId('phone-income-summary'))
+  await userEvent.click(within(screen.getByTestId('phone-income-group-bf-inc')).getByRole('button', { name: /Work/, expanded: true }))
+  expect(screen.queryByTestId('phone-income-row-cat-freelance')).toBeNull()
+  expect(screen.getByTestId('phone-income-group-bf-inc')).toHaveTextContent('500.00')
+  expect(useBudgetPeriodStore.getState().planFolds['bf-inc']).toBe(true)
 })
 
 it('without income folders the rows stay a plain list, no "No folder" line', async () => {

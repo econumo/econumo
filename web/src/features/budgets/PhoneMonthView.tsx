@@ -196,13 +196,30 @@ function SectionSummary({
   )
 }
 
-function CardHeader({ name, first, second }: { name: string; first?: string; second?: string }) {
-  return (
-    <div className={`${GRID} pt-1.5 pb-0.5 pl-2 text-xs font-medium text-muted-foreground`}>
-      <span className="truncate">{name}</span>
+/** a folder's line: its name and sums; the whole line folds the folder's rows */
+function CardHeader({ name, first, second, fold }: { name: string; first?: string; second?: string; fold?: { folded: boolean; onToggle: () => void } }) {
+  const cells = (
+    <>
+      <span className="flex min-w-0 items-center gap-1">
+        {fold ? fold.folded ? <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" /> : <ChevronDown aria-hidden="true" className="size-3.5 shrink-0" /> : null}
+        <span className="truncate">{name}</span>
+      </span>
       <span className="text-right tabular-nums">{first}</span>
       <span className={`text-right tabular-nums ${LAST_CELL}`}>{second}</span>
-    </div>
+    </>
+  )
+  if (!fold) {
+    return <div className={`${GRID} pt-1.5 pb-0.5 pl-2 text-xs font-medium text-muted-foreground`}>{cells}</div>
+  }
+  return (
+    <button
+      type="button"
+      aria-expanded={!fold.folded}
+      onClick={fold.onToggle}
+      className={`${GRID} min-h-9 w-full rounded-md py-1 pl-2 text-left text-xs font-medium text-muted-foreground active:bg-accent/50`}
+    >
+      {cells}
+    </button>
   )
 }
 
@@ -219,6 +236,8 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const { t } = useTranslation()
   const unfolded = useBudgetPeriodStore((s) => s.unfoldedElements)
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
+  const planFolds = useBudgetPeriodStore((s) => s.planFolds)
+  const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
 
   const base = budget.meta.currencyId
   const currencyOf = (id: Id | null) => currencies.find((c) => c.id === (id ?? base))
@@ -304,15 +323,29 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     )
   }
 
-  const folderCard = (key: string, name: string | null, bucket: FolderBucket) => (
-    <Card
-      key={key}
-      testId={`phone-folder-${key}`}
-      header={name !== null ? <CardHeader name={name} first={fmt(bucket.stats.budgeted)} second={future ? EMPTY : fmt(bucket.stats.spent)} /> : undefined}
-    >
-      {bucket.elements.map(expenseRow)}
-    </Card>
-  )
+  // a named folder folds on its line; folded, the line with its sums stays. The fold is
+  // kept under the folder's own key, the one the Plan grid folds it by
+  const folderCard = (key: string, foldKey: string, name: string | null, bucket: FolderBucket) => {
+    const folded = name !== null && !!planFolds[foldKey]
+    return (
+      <Card
+        key={key}
+        testId={`phone-folder-${key}`}
+        header={
+          name !== null ? (
+            <CardHeader
+              name={name}
+              first={fmt(bucket.stats.budgeted)}
+              second={future ? EMPTY : fmt(bucket.stats.spent)}
+              fold={{ folded, onToggle: () => togglePlanFold(foldKey) }}
+            />
+          ) : undefined
+        }
+      >
+        {folded ? null : bucket.elements.map(expenseRow)}
+      </Card>
+    )
+  }
 
   // income and savings fill toward their plan and turn green once it is met: unlike
   // spending, reaching the figure is the goal, so only the bar is coloured
@@ -364,10 +397,20 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   }
   const incomeGroup = (g: IncomeGroup, groups: IncomeGroup[]) => {
     const groupName = incomeGroupName(g, groups)
+    // income's own No folder and Archived groups fold apart from the expense ones
+    const foldKey = g.kind === 'folder' ? g.id : `__income${g.id}`
+    const folded = groupName !== null && !!planFolds[foldKey]
     return (
       <div key={g.id} data-testid={`phone-income-group-${g.id}`}>
-        {groupName !== null ? <CardHeader name={groupName} first={fmt(g.planned)} second={future ? EMPTY : fmt(g.received)} /> : null}
-        {g.rows.map(incomeRow)}
+        {groupName !== null ? (
+          <CardHeader
+            name={groupName}
+            first={fmt(g.planned)}
+            second={future ? EMPTY : fmt(g.received)}
+            fold={{ folded, onToggle: () => togglePlanFold(foldKey) }}
+          />
+        ) : null}
+        {folded ? null : g.rows.map(incomeRow)}
       </div>
     )
   }
@@ -466,12 +509,12 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         first={t('budgets.page.budget.structure.tab.budgeted')}
         second={t('budgets.page.budget.structure.tab.spent')}
       />
-      {buckets.withFolder.filter((b) => b.elements.length > 0).map((b) => folderCard(b.folder!.id, b.folder!.name, b))}
+      {buckets.withFolder.filter((b) => b.elements.length > 0).map((b) => folderCard(b.folder!.id, b.folder!.id, b.folder!.name, b))}
       {buckets.withoutFolder.elements.length > 0
-        ? folderCard('__no_folder__', hasFolders ? t('budgets.page.plan.menu.no_folder') : null, buckets.withoutFolder)
+        ? folderCard('__no_folder__', '__no_folder__', hasFolders ? t('budgets.page.plan.menu.no_folder') : null, buckets.withoutFolder)
         : null}
-      {buckets.uncategorized.elements.length > 0 ? folderCard('__uncategorized__', null, buckets.uncategorized) : null}
-      {buckets.archive.elements.length > 0 ? folderCard('__archive__', t('budgets.page.budget.structure.in_archive'), buckets.archive) : null}
+      {buckets.uncategorized.elements.length > 0 ? folderCard('__uncategorized__', '__uncategorized__', null, buckets.uncategorized) : null}
+      {buckets.archive.elements.length > 0 ? folderCard('__archive__', 'archived', t('budgets.page.budget.structure.in_archive'), buckets.archive) : null}
       {labels.length > 0 ? (
         <Card testId="phone-labels">
           <button

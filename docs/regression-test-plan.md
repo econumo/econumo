@@ -1059,6 +1059,12 @@ and on tablet/phone only with a hardware keyboard.
       income with money this month. Tapping an income envelope's name unfolds
       its categories, each with its received amount, which opens that
       category's transactions.
+- [ ] 📱 Phone folders fold: tapping a folder's line (an expense folder,
+      "No folder", "Archived", or an income folder inside the Income card)
+      hides its rows and keeps the line with its sums, the chevron pointing
+      right; tapping again brings the rows back. Folders start open, and a
+      fold survives a month switch and a reload. Uncategorized has no line and
+      never folds.
 - [ ] 📱 Each expense row shows Budget and Spent with no currency symbol and a
       thin bar under the row. Spent and the bar turn red only when the month
       spent more than its budget and money left from earlier months does not
