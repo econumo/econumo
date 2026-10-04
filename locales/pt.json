@@ -1323,7 +1323,8 @@
           "tab": {
             "budgeted": "Orçamento",
             "spent": "Gasto",
-            "available": "Disponível"
+            "available": "Disponível",
+            "to_receive": "A receber"
           },
           "action": {
             "create_folder": "Criar pasta",

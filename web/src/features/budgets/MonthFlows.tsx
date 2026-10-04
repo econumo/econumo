@@ -14,6 +14,7 @@ import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, FolderLine, MonthSectionHeader } from './monthLines'
 import { CHILD_INDENT, EMPTY_CELL, FIRST_COL, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
+import { leftToReceive } from './phoneMonth'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 
 export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' }>
@@ -102,8 +103,8 @@ interface MonthFlowsProps {
   onShowTransactions?: (target: BudgetTransactionsTarget) => void
 }
 
-/** Income and Savings for one month, above the expenses table: the phone's order and
- *  figures (Planned · Received, Planned · Saved · Balance) in the table's columns. */
+/** Income and Savings for one month, above the expenses table, in the table's columns:
+ *  Planned · Received · To receive, and Planned · Saved · Balance. */
 export function MonthFlows({ budget, currencies, planMonth, future, actionsColumn, renderPlanned, onShowTransactions }: MonthFlowsProps) {
   const { t } = useTranslation()
   const base = budget.meta.currencyId
@@ -159,7 +160,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
           muted={el.isArchived === 1}
           planned={el.id === UNCATEGORIZED_ID ? <span className="text-muted-foreground">{EMPTY_CELL}</span> : renderPlanned({ kind: 'plan', cell: row }, fmt(row.planned, el.currencyId))}
           actual={actualCell(listTarget, row.actual, el.currencyId)}
-          third={null}
+          third={el.id === UNCATEGORIZED_ID ? <span className="text-muted-foreground">{EMPTY_CELL}</span> : fmt(leftToReceive(row.planned, row.actual), el.currencyId)}
           actionsColumn={actionsColumn}
           toggle={expandable ? { open, onToggle: () => toggleElement(el.id) } : undefined}
         />
@@ -224,7 +225,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             name={name}
             folded={folded}
             onToggle={() => togglePlanFold(foldKey)}
-            sums={[fmt(g.planned), future ? EMPTY_CELL : fmt(g.received), null]}
+            sums={[fmt(g.planned), future ? EMPTY_CELL : fmt(g.received), fmt(g.toReceive)]}
             actionsColumn={actionsColumn}
           />
         ) : null}
@@ -263,8 +264,8 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             foldKey="income"
             testId="month-income-header"
             label={t('budgets.page.plan.section.income')}
-            headings={[t('budgets.page.savings.planned'), t('budgets.page.sheet.received'), '']}
-            sums={[fmt(planMonth.income.planned), future ? EMPTY_CELL : fmt(planMonth.income.received), '']}
+            headings={[t('budgets.page.savings.planned'), t('budgets.page.sheet.received'), t('budgets.page.budget.structure.tab.to_receive')]}
+            sums={[fmt(planMonth.income.planned), future ? EMPTY_CELL : fmt(planMonth.income.received), fmt(planMonth.income.toReceive)]}
             actionsColumn={actionsColumn}
           />
           {incomeFolded ? null : planMonth.income.groups.map((g) => incomeGroup(g, planMonth.income.groups))}

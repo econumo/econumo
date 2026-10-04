@@ -1323,7 +1323,8 @@
           "tab": {
             "budgeted": "Budżet",
             "spent": "Wydano",
-            "available": "Dostępne"
+            "available": "Dostępne",
+            "to_receive": "Do otrzymania"
           },
           "action": {
             "create_folder": "Utwórz folder",

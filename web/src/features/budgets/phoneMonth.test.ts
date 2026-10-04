@@ -2,7 +2,7 @@ import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { fixtureWireBudget, fixtureWirePlan } from '@/test/fixtures'
 import type { BudgetPlanDto } from '@/api/dto/budget'
 import { cmp } from '@/lib/decimal'
-import { planCellFigures, planMonthFigures, sheetCell } from './phoneMonth'
+import { leftToReceive, planCellFigures, planMonthFigures, sheetCell } from './phoneMonth'
 
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
@@ -48,6 +48,20 @@ it('groups the income rows as the Plan grid does: folders with their sums, then 
   // June received income in no category: Uncategorized gets a group of its own
   const june = planMonthFigures(planWithIncomeFolder(), [usd, eur], '2026-06-01', past)!
   expect(june.income.groups.map((g) => g.kind)).toEqual(['folder', 'loose', 'uncategorized'])
+})
+
+it('To receive is what a source still owes this month, never below zero', () => {
+  expect(cmp(leftToReceive('500', '400'), '100')).toBe(0)
+  expect(cmp(leftToReceive('500', '650'), '0')).toBe(0)
+  expect(cmp(leftToReceive('0', '300'), '0')).toBe(0)
+  // July: Salaries 2000 planned, nothing in; Freelance 500 planned, 400 in. An overpaid
+  // source would not offset them: each row floors at zero before the sums
+  const f = planMonthFigures(planWithIncomeFolder(), [usd, eur], '2026-07-01', past)!
+  expect(f.income.groups.map((g) => [g.id, Number(g.toReceive)])).toEqual([
+    ['bf-inc', 100],
+    ['__no_folder__', 2000],
+  ])
+  expect(cmp(f.income.toReceive, '2100')).toBe(0)
 })
 
 it('lists the income Uncategorized row only in a month it received something', () => {

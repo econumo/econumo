@@ -1323,7 +1323,8 @@
           "tab": {
             "budgeted": "预算",
             "spent": "已支出",
-            "available": "可用"
+            "available": "可用",
+            "to_receive": "待收"
           },
           "action": {
             "create_folder": "创建文件夹",

@@ -1323,7 +1323,8 @@
           "tab": {
             "budgeted": "Budget",
             "spent": "Uitgegeven",
-            "available": "Beschikbaar"
+            "available": "Beschikbaar",
+            "to_receive": "Te ontvangen"
           },
           "action": {
             "create_folder": "Map aanmaken",

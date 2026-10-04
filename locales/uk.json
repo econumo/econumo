@@ -1323,7 +1323,8 @@
           "tab": {
             "budgeted": "Бюджет",
             "spent": "Витрачено",
-            "available": "Доступно"
+            "available": "Доступно",
+            "to_receive": "Очікується"
           },
           "action": {
             "create_folder": "Створити папку",

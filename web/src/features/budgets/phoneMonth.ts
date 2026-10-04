@@ -3,7 +3,7 @@ import type { BudgetElementType } from '@/api/dto/budget'
 import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, LabelSpendDto, PlanElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
-import { add, isZero } from '@/lib/decimal'
+import { add, cmp, isZero, sub } from '@/lib/decimal'
 import {
   balanceRow,
   bucketPlanRows,
@@ -32,6 +32,14 @@ export interface IncomeGroup {
   /** in the budget currency */
   planned: string
   received: string
+  /** each row's own leftToReceive, summed */
+  toReceive: string
+}
+
+/** what a source is still expected to bring this month: never below zero, so an
+ *  overpaid source does not hide another that has not paid yet */
+export function leftToReceive(planned: string, received: string): string {
+  return cmp(planned, received) > 0 ? sub(planned, received) : '0'
 }
 
 export interface PlanMonthFigures {
@@ -44,6 +52,8 @@ export interface PlanMonthFigures {
     groups: IncomeGroup[]
     planned: string
     received: string
+    /** the groups' toReceive, summed */
+    toReceive: string
   }
   balance: string
   savingsBalance: string | null
@@ -80,7 +90,15 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
     cells.reduce((sum, c) => add(sum, ex(c.element.currencyId, pick(c), index)), '0')
   const group = (kind: IncomeGroup['kind'], id: string, name: string | null, elements: PlanElementDto[]): IncomeGroup => {
     const cells = elements.map((el) => planCellFigures(el, index))
-    return { kind, id, name, rows: cells, planned: inBase(cells, (c) => c.planned), received: inBase(cells, (c) => c.actual) }
+    return {
+      kind,
+      id,
+      name,
+      rows: cells,
+      planned: inBase(cells, (c) => c.planned),
+      received: inBase(cells, (c) => c.actual),
+      toReceive: inBase(cells, (c) => leftToReceive(c.planned, c.actual)),
+    }
   }
   const uncategorized = income.uncategorized?.element
   const groups = [
@@ -100,7 +118,7 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
   return {
     month,
     index,
-    income: { rows, groups, planned: totals[index].incomePlanned, received: totals[index].incomeActual },
+    income: { rows, groups, toReceive: groups.reduce((sum, g) => add(sum, g.toReceive), '0'), planned: totals[index].incomePlanned, received: totals[index].incomeActual },
     balance: balance[index],
     savingsBalance: savings ? savings[index] : null,
     transfersNet: totals[index].transfersNet,

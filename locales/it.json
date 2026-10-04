@@ -1323,7 +1323,8 @@
           "tab": {
             "budgeted": "Budget",
             "spent": "Speso",
-            "available": "Disponibile"
+            "available": "Disponibile",
+            "to_receive": "Da ricevere"
           },
           "action": {
             "create_folder": "Crea cartella",

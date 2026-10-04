@@ -18,9 +18,10 @@ const planMonth: PlanMonthFigures = {
   index: 2,
   income: {
     rows: [{ element: salaries, planned: '2000', actual: '400' }],
-    groups: [{ kind: 'loose', id: '__no_folder__', name: null, rows: [{ element: salaries, planned: '2000', actual: '400' }], planned: '2000', received: '400' }],
+    groups: [{ kind: 'loose', id: '__no_folder__', name: null, rows: [{ element: salaries, planned: '2000', actual: '400' }], planned: '2000', received: '400', toReceive: '0' }],
     planned: '2000',
     received: '400',
+    toReceive: '0',
   },
   balance: '4545',
   savingsBalance: null,
@@ -31,9 +32,10 @@ const planMonth: PlanMonthFigures = {
 function incomeOf(row: { element: PlanElementDto; planned: string; actual: string }): PlanMonthFigures['income'] {
   return {
     rows: [row],
-    groups: [{ kind: 'loose', id: '__no_folder__', name: null, rows: [row], planned: row.planned, received: row.actual }],
+    groups: [{ kind: 'loose', id: '__no_folder__', name: null, rows: [row], planned: row.planned, received: row.actual, toReceive: '0' }],
     planned: row.planned,
     received: row.actual,
+    toReceive: '0',
   }
 }
 
@@ -100,11 +102,12 @@ it('unfolded, Income is grouped like the Plan grid: a folder line with its sums,
     income: {
       rows: [],
       groups: [
-        { kind: 'folder', id: 'bf-inc', name: 'Work', rows: [{ element: salariesEnvelope, planned: '2000', actual: '350' }], planned: '2000', received: '350' },
-        { kind: 'loose', id: '__no_folder__', name: null, rows: [{ element: freelance, planned: '500', actual: '50' }], planned: '500', received: '50' },
+        { kind: 'folder', id: 'bf-inc', name: 'Work', rows: [{ element: salariesEnvelope, planned: '2000', actual: '350' }], planned: '2000', received: '350', toReceive: '0' },
+        { kind: 'loose', id: '__no_folder__', name: null, rows: [{ element: freelance, planned: '500', actual: '50' }], planned: '500', received: '50', toReceive: '0' },
       ],
       planned: '2500',
       received: '400',
+      toReceive: '0',
     },
   }
   renderView({ planMonth: grouped })
@@ -139,9 +142,10 @@ it('an income folder line folds its rows too', async () => {
     ...planMonth,
     income: {
       rows: [],
-      groups: [{ kind: 'folder', id: 'bf-inc', name: 'Work', rows: [{ element: freelance, planned: '500', actual: '50' }], planned: '500', received: '50' }],
+      groups: [{ kind: 'folder', id: 'bf-inc', name: 'Work', rows: [{ element: freelance, planned: '500', actual: '50' }], planned: '500', received: '50', toReceive: '0' }],
       planned: '500',
       received: '50',
+      toReceive: '0',
     },
   }
   renderView({ planMonth: grouped })

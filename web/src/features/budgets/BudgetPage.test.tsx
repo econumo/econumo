@@ -494,6 +494,10 @@ it('the Budget view follows the phone order: Income, Savings, Expenses, then the
 
   // July of the plan fixture: Salaries planned 2000, nothing in; Freelance 500 planned, 400 in
   await waitFor(() => expect(within(income).getByTestId('month-income-row-cat-freelance')).toHaveTextContent('400.00'))
+  // the third column: what each source is still expected to bring
+  expect(within(within(income).getByTestId('month-income-row-cat-freelance')).getByTestId('flow-third')).toHaveTextContent(/^100\.00$/)
+  expect(within(within(income).getByTestId('month-income-row-ie1')).getByTestId('flow-third')).toHaveTextContent(/^2,000\.00$/)
+  expect(screen.getByTestId('month-income-header')).toHaveTextContent('To receive')
   expect(within(income).getByTestId('month-income-row-ie1')).toHaveTextContent('2,000.00')
   const savingsRow = within(savings).getByTestId('month-savings-row-acc-s1')
   expect(savingsRow).toHaveTextContent('100.00')

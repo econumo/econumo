@@ -728,7 +728,7 @@ and on tablet/phone only with a hardware keyboard.
       this device (/budget or /plan), also after a reload, with the month
       (Budget) and the month window (Plan) last shown there.
 - [ ] Budget view (desktop and tablet) uses the phone's order: Income
-      (Planned · Received), Savings (Planned · Saved · Balance, only with
+      (Planned · Received · To receive), Savings (Planned · Saved · Balance, only with
       savings accounts), Expenses (Budget · Spent · Available: folders, No
       folder, Uncategorized, Archived, Reporting tags), then the Total row
       and the lines Income, Expenses, Transfers (only when not zero),
@@ -745,6 +745,11 @@ and on tablet/phone only with a hardware keyboard.
       with money this month. An income envelope unfolds to its categories,
       each with its received amount (opens its transactions); the unfold
       carries over to the Plan grid.
+- [ ] Budget view, Income "To receive": each income row shows what it is
+      still expected to bring this month, Planned − Received, and 0 once it
+      has received its plan or more (never negative); income Uncategorized
+      shows "—". A folder line and the folded Income line sum their rows'
+      figures, so one overpaid source does not hide another still unpaid.
 - [ ] Budget view look (desktop and tablet): no boxes — thin rules
       separate Income, Savings and Expenses, folders are a softer grey line
       with their sums, rows sit indented under them, and every heading, sum
