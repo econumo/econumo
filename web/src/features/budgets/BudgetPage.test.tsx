@@ -543,10 +543,10 @@ it('the Budget view groups income like the Plan grid: folders with sums, No fold
   expect(await screen.findByTestId('month-income-child-cat-salary')).toBeInTheDocument()
 })
 
-it('an income row with nothing planned and nothing received reads "—" under To receive', async () => {
+it('an income row with no plan reads "—" under To receive, even when money came in', async () => {
   const plan = JSON.parse(JSON.stringify(fixtureWirePlan))
-  // Freelance in July: no plan, nothing in
-  plan.structure.elements.find((el: { id: string }) => el.id === 'cat-freelance').cells[2] = { actual: '0', planned: '' }
+  // Freelance in July: no plan, 400 in
+  plan.structure.elements.find((el: { id: string }) => el.id === 'cat-freelance').cells[2] = { actual: '400', planned: '' }
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),

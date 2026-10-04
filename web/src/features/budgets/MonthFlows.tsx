@@ -161,8 +161,8 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
           planned={el.id === UNCATEGORIZED_ID ? <Dash /> : renderPlanned({ kind: 'plan', cell: row }, fmt(row.planned, el.currencyId))}
           actual={actualCell(listTarget, row.actual, el.currencyId)}
           third={
-            // nothing planned and nothing in: a dash, not a zero
-            el.id === UNCATEGORIZED_ID || (isZero(row.planned) && isZero(row.actual)) ? (
+            // with no plan there is nothing to expect: a dash, not a zero
+            el.id === UNCATEGORIZED_ID || isZero(row.planned) ? (
               <Dash />
             ) : (
               fmt(leftToReceive(row.planned, row.actual), el.currencyId)
@@ -232,7 +232,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             name={name}
             folded={folded}
             onToggle={() => togglePlanFold(foldKey)}
-            sums={[fmt(g.planned), future ? <Dash key="dash-235-1" /> : fmt(g.received), isZero(g.planned) && isZero(g.received) ? <Dash key="dash-235-2" /> : fmt(g.toReceive)]}
+            sums={[fmt(g.planned), future ? <Dash key="dash-235-1" /> : fmt(g.received), isZero(g.planned) ? <Dash key="dash-235-2" /> : fmt(g.toReceive)]}
             actionsColumn={actionsColumn}
           />
         ) : null}
@@ -275,7 +275,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             sums={[
               fmt(planMonth.income.planned),
               future ? <Dash key="dash-277-1" /> : fmt(planMonth.income.received),
-              isZero(planMonth.income.planned) && isZero(planMonth.income.received) ? <Dash key="dash-278-1" /> : fmt(planMonth.income.toReceive),
+              isZero(planMonth.income.planned) ? <Dash key="dash-278-1" /> : fmt(planMonth.income.toReceive),
             ]}
             actionsColumn={actionsColumn}
           />

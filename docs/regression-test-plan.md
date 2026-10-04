@@ -747,11 +747,11 @@ and on tablet/phone only with a hardware keyboard.
       carries over to the Plan grid.
 - [ ] Budget view, Income "To receive": each income row shows what it is
       still expected to bring this month, Planned − Received, and 0 once it
-      has received its plan or more (never negative); income Uncategorized
-      shows "—". A folder line and the folded Income line sum their rows'
+      has received its plan or more (never negative); a row with no plan, and
+      income Uncategorized, show "—". A folder line and the folded Income line sum their rows'
       figures, so one overpaid source does not hide another still unpaid.
-- [ ] Budget view dashes: a row with nothing planned and nothing received
-      shows a muted "—" under To receive; an expense row with nothing
+- [ ] Budget view dashes: an income row with no plan shows a muted "—"
+      under To receive, whatever it received; an expense row with nothing
       budgeted, nothing spent and nothing left from earlier months shows a
       muted "—" under Available (money left from earlier months keeps its
       figure). Folder and section lines follow the same rule. Every dash on
