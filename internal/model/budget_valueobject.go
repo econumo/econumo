@@ -77,20 +77,56 @@ func (t ElementType) IsIncomeSide() bool {
 	return t == ElementIncomeCategory || t == ElementIncomeEnvelope
 }
 
+// IsCategory reports whether the element is a category, the only kind an
+// envelope can hold.
+func (t ElementType) IsCategory() bool {
+	return t == ElementCategory || t == ElementIncomeCategory
+}
+
 // EnvelopeTypeFromSide maps a create-envelope side alias to the element type
 // that stores it. Absent ("") means expense, keeping the wire contract for
-// existing clients. Creating income envelopes is deliberately switched off for
-// now: "income" is rejected like any unknown alias, so no client can mint an
-// ElementIncomeEnvelope row until the feature ships end-to-end. Existing rows
-// of that type stay first-class everywhere else (plan view, update, move).
+// existing clients.
 func EnvelopeTypeFromSide(side string) (ElementType, error) {
 	switch side {
 	case "", "expense":
 		return ElementEnvelope, nil
+	case "income":
+		return ElementIncomeEnvelope, nil
 	}
 	return 0, errs.NewValidation("Validation failed", errs.FieldError{
 		Key: "side", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice,
 	})
+}
+
+// FolderSide is the plan-view area a budget folder belongs to. It is stored
+// rather than derived from the members, so an empty income folder stays in the
+// income area. Persisted in budgets_folders.side, therefore frozen.
+type FolderSide string
+
+const (
+	FolderSideExpense FolderSide = "expense"
+	FolderSideIncome  FolderSide = "income"
+)
+
+// FolderSideFromAlias parses a create-folder side; there is no default.
+func FolderSideFromAlias(side string) (FolderSide, error) {
+	switch side {
+	case string(FolderSideExpense):
+		return FolderSideExpense, nil
+	case string(FolderSideIncome):
+		return FolderSideIncome, nil
+	}
+	return "", errs.NewValidation("Validation failed", errs.FieldError{
+		Key: "side", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice,
+	})
+}
+
+// Side is the folder side an element of this type belongs to.
+func (t ElementType) Side() FolderSide {
+	if t.IsIncomeSide() {
+		return FolderSideIncome
+	}
+	return FolderSideExpense
 }
 
 // BudgetRole is a budget participant's role: owner=-1, admin=0, user=1, guest=2.

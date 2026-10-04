@@ -114,7 +114,7 @@ export function AccountDialog() {
     const balanceAmount = evaluatedAmount(balance)
     try {
       if (isNew) {
-        await createAccount.mutateAsync({
+        const created = await createAccount.mutateAsync({
           id: uuidv7(),
           name,
           currencyId,
@@ -122,6 +122,7 @@ export function AccountDialog() {
           icon,
           folderId: params.folderId ?? null,
         })
+        params.onCreated?.(created.item)
       } else {
         await updateAccount.mutateAsync({
           id: account.id,

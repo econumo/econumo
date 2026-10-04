@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -10,7 +11,7 @@ const EDGE_THRESHOLD_PX = 300
 // roughly a screenful of month chips per arrow click
 const SCROLL_STEP_PX = 320
 
-export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string | null; endedAt?: string | null }) {
+export function PeriodStrip({ startedAt, endedAt = null, leading }: { startedAt: string | null; endedAt?: string | null; leading?: ReactNode }) {
   const { t, i18n } = useTranslation()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const setPeriod = useBudgetPeriodStore((s) => s.setPeriod)
@@ -92,6 +93,7 @@ export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string |
 
   return (
     <div className="flex items-center gap-1">
+      {leading}
       {/* desktop-only month steppers, mirroring the plan sheet's nav; touch
           viewports scroll the strip directly */}
       <div className="hidden shrink-0 items-center gap-1 md:flex">

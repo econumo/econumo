@@ -99,7 +99,7 @@ Work in this order:
    for my confirmation. Do not create anything yet.
 5. On my approval, build it:
    - create_budget (name, currency, start date).
-   - create_folder twice: "Base expenses" and "Additional expenses".
+   - create_folder twice, side expense: "Base expenses" and "Additional expenses".
    - Group categories into envelopes with create_envelope ONLY to combine two or
      more categories under one line — pass folder_id and the member category_ids.
      Never wrap a single category in its own envelope; a lone category stays a

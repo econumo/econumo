@@ -38,7 +38,7 @@ func seedAttackerBudget(t *testing.T, h *harness) string {
 func seedVictimFolder(t *testing.T, h *harness, tok string) {
 	t.Helper()
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
-		"budgetId": budgetID1, "id": victimFolderID, "name": "Victim Bills",
+		"budgetId": budgetID1, "id": victimFolderID, "name": "Victim Bills", "side": "expense",
 	}); st != http.StatusOK {
 		t.Fatalf("create-folder precondition=%d body=%s", st, e.raw)
 	}
@@ -145,7 +145,7 @@ func TestCreateFolder_ReusedForeignId_DeniedAndUnchanged(t *testing.T) {
 	attacker := seedAttackerBudget(t, h)
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", attacker, map[string]any{
-		"budgetId": attackerBudgetID, "id": victimFolderID, "name": "Stolen",
+		"budgetId": attackerBudgetID, "id": victimFolderID, "name": "Stolen", "side": "expense",
 	})
 	assertBudgetDenied(t, status, env)
 

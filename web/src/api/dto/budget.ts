@@ -57,10 +57,15 @@ export interface BudgetElementDto extends Omit<BudgetChildElementDto, 'ownerUser
   children: BudgetChildElementDto[]
 }
 
+export type BudgetFolderSide = 'income' | 'expense'
+
 export interface BudgetFolderDto {
   id: Id
   name: string
   position: number
+  /** which section the folder belongs to, kept even while it is empty. Optional on
+   *  the wire: servers older than this field omit it */
+  side?: BudgetFolderSide
 }
 
 /** a reporting label's period spend. No budgeted/available: a label never

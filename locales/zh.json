@@ -1166,7 +1166,7 @@
         "header": "新建预算"
       },
       "update_budget_form": {
-        "header": "编辑预算"
+        "header": "预算设置"
       },
       "create_folder_form": {
         "header": "新建文件夹"
@@ -1311,20 +1311,19 @@
         "settings": {
           "button": "配置",
           "menu": {
-            "edit": "预算详情",
+            "edit": "预算设置",
             "edit_structure": "编辑结构",
-            "edit_structure_done": "完成编辑",
-            "budget_list": "打开预算列表"
+            "edit_structure_done": "完成编辑"
           }
         },
         "structure": {
-          "no_folder": "默认文件夹",
           "in_archive": "已归档",
           "carry_over_hint": "以前月份结转",
           "tab": {
             "budgeted": "预算",
             "spent": "已支出",
-            "available": "可用"
+            "available": "可用",
+            "to_receive": "待收"
           },
           "action": {
             "create_folder": "创建文件夹",
@@ -1332,6 +1331,9 @@
           },
           "empty_folder": {
             "note": "此文件夹为空。请将分类、标签或信封移动到这里，或创建一个新信封。"
+          },
+          "empty_envelope": {
+            "note": "此信封为空。将分类拖到这里，或通过“编辑”选择分类。"
           },
           "element": {
             "action": {
@@ -1394,13 +1396,14 @@
           "savings_balance": "储蓄总额"
         },
         "density": {
-          "hide_empty": "隐藏空行",
           "hidden": "已隐藏 {count} 项",
           "show": "显示"
         },
         "menu": {
           "move_to_folder": "移动到文件夹…",
-          "no_folder": "无文件夹"
+          "no_folder": "无文件夹",
+          "no_access": "无权限",
+          "not_empty": "非空"
         },
         "edit": {
           "no_access_envelope": "无法编辑此信封——您在此预算中的角色为只读。",
@@ -1873,6 +1876,7 @@
       "transaction_filter_required": "校验未通过。",
       "envelope_side_mixed": "信封中不能同时包含收入和支出分类。",
       "folder_side_mixed": "文件夹中不能同时包含收入和支出。",
+      "envelope_member_not_category": "只有分类可以放入信封",
       "savings_folder_not_allowed": "储蓄不能放入文件夹。",
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
       "savings_account_not_member": "储蓄账户必须是您在此预算中的账户",

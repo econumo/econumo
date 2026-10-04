@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -108,25 +108,26 @@ it('/plan on a phone is the same month view, not the plan grid', async () => {
   expect(screen.queryByTestId('plan-sheet')).toBeNull()
 })
 
-it('has no Budget/Plan switch in the settings menu, and the title is not all caps', async () => {
+it('has no Budget/Plan switch anywhere, and the title is not all caps', async () => {
   handlers()
   const user = userEvent.setup()
   renderPage()
   const title = await screen.findByRole('heading', { name: 'Main budget' })
   expect(title.className).not.toContain('uppercase')
+  expect(screen.queryByRole('tablist', { name: 'budget mode' })).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('menuitem', { name: 'Edit structure' })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: 'Edit structure' })).toBeInTheDocument()
   expect(screen.queryByRole('menuitemradio')).toBeNull()
 })
 
-it('/plan on a phone has no Hide empty rows toggle', async () => {
+it('Configure on a phone offers Budget settings and Edit structure, and nothing else', async () => {
   handlers()
   const user = userEvent.setup()
   renderPage('/plan')
   await screen.findByTestId('phone-month-view')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('menuitem', { name: 'Edit structure' })).toBeInTheDocument()
-  expect(screen.queryByRole('menuitemcheckbox')).toBeNull()
+  const dialog = await screen.findByRole('dialog', { name: 'Configure' })
+  expect(within(dialog).getAllByRole('button').map((b) => b.textContent).filter((x) => x !== 'Close')).toEqual(['Budget settings', 'Edit structure'])
 })
 
 it('row tap → sheet → Set budget replaces the sheet and saves the selected month', async () => {
@@ -298,15 +299,26 @@ it('leaves the plan lines out when get-budget-plan fails', async () => {
   expect(screen.getByTestId('phone-row-cat-food')).toBeInTheDocument()
 })
 
-it('edit structure on a phone still shows the table editor', async () => {
-  handlers()
-  const user = userEvent.setup()
-  renderPage()
-  await screen.findByTestId('phone-month-view')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
-  expect(await screen.findByTestId('budget-table')).toBeInTheDocument()
-  expect(screen.queryByTestId('phone-month-view')).toBeNull()
+it('edit structure on a phone shows Income, Savings and Expenses with a ⋮ menu and a grip on every line, on either route', async () => {
+  for (const path of ['/budget', '/plan'] as const) {
+    handlers()
+    const user = userEvent.setup()
+    renderPage(path)
+    await screen.findByTestId('phone-month-view')
+    await user.click(screen.getByRole('button', { name: 'Configure' }))
+    await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
+    expect(await screen.findByTestId('budget-table')).toBeInTheDocument()
+    expect(await screen.findByTestId('month-income')).toBeInTheDocument()
+    expect(screen.queryByTestId('phone-month-view')).toBeNull()
+    expect(screen.queryByTestId('plan-sheet')).toBeNull()
+    // controls show on every line, no hover needed
+    const menu = within(screen.getByTestId('element-cat-food')).getByRole('button', { name: 'menu Food' })
+    expect(menu.className).not.toContain('opacity-0')
+    expect(screen.getByRole('button', { name: 'move cat-food' }).className).not.toContain('opacity-0')
+    await user.click(screen.getByRole('button', { name: /Done editing/ }))
+    expect(await screen.findByTestId('phone-month-view')).toBeInTheDocument()
+    cleanup()
+  }
 })
 
 it('a month three past the current one still carries the unmet plans of the months between', async () => {

@@ -65,12 +65,12 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	sortBudgetFolders(sorted)
 	folders := make([]model.BudgetFolderResult, 0, len(sorted))
 	for _, fl := range sorted {
-		if incomeFolders[fl.ID.String()] {
+		if fl.Side == model.FolderSideIncome || incomeFolders[fl.ID.String()] {
 			continue
 		}
 		// position on the wire is the dense 0-based index; the key that produced
 		// this order never leaves the server.
-		folders = append(folders, model.BudgetFolderResult{Id: fl.ID.String(), Name: fl.Name, Position: len(folders)})
+		folders = append(folders, model.BudgetFolderResult{Id: fl.ID.String(), Name: fl.Name, Position: len(folders), Side: string(fl.Side)})
 	}
 
 	toConvert := map[string][]model.ConvertItem{}

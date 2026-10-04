@@ -185,7 +185,7 @@ it('does not steal focus from a later mouse-opened dialog after a keyboard-opene
   // without the grid stealing focus back — the bug this guards against left
   // editorFromGrid stuck true from the Shift+Enter above
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
   await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
   const dialog = await screen.findByRole('dialog', { name: 'Edit envelope' })
@@ -256,7 +256,7 @@ it('offers no add-comment corner in edit-structure mode', async () => {
 
   expect(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
   await waitFor(() => expect(within(screen.getByTestId('plan-cell-pe1:0')).queryByTestId('comment-marker-add')).toBeNull())
 })
 

@@ -46,19 +46,20 @@ ON CONFLICT (budget_id, user_id) DO UPDATE SET
 DELETE FROM budgets_access WHERE budget_id = $1 AND user_id = $2;
 
 -- name: ListBudgetFolders :many
-SELECT id, budget_id, name, created_at, updated_at, sort_key
+SELECT id, budget_id, name, created_at, updated_at, sort_key, side
 FROM budgets_folders WHERE budget_id = $1 ORDER BY sort_key ASC, id ASC;
 
 -- name: GetBudgetFolder :one
-SELECT id, budget_id, name, created_at, updated_at, sort_key
+SELECT id, budget_id, name, created_at, updated_at, sort_key, side
 FROM budgets_folders WHERE id = $1;
 
 -- name: UpsertBudgetFolder :exec
-INSERT INTO budgets_folders (id, budget_id, name, created_at, updated_at, sort_key)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO budgets_folders (id, budget_id, name, created_at, updated_at, sort_key, side)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 ON CONFLICT (id) DO UPDATE SET
     name       = excluded.name,
     sort_key   = excluded.sort_key,
+    side       = excluded.side,
     updated_at = excluded.updated_at;
 
 -- name: DeleteBudgetFolder :exec

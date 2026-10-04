@@ -72,6 +72,8 @@ type BudgetFolderResult struct {
 	Id       string `json:"id"`
 	Name     string `json:"name"`
 	Position int    `json:"position"`
+	// Side is "expense" or "income".
+	Side string `json:"side"`
 }
 
 // ChildElementResult is a category nested under an envelope/tag element.
@@ -427,7 +429,7 @@ type PlanSavingsFlowResult struct {
 	Amount     string `json:"amount"`
 }
 
-// PlanStructureResult is all folders (income-, expense-sided and neutral) +
+// PlanStructureResult is all folders (both sides, each carrying its side) +
 // all plan rows; savings rows are listed apart from the elements.
 type PlanStructureResult struct {
 	Folders  []BudgetFolderResult       `json:"folders"`
@@ -463,10 +465,12 @@ type CreateBudgetFolderRequest struct {
 	BudgetId string `json:"budgetId"`
 	Id       string `json:"id"`
 	Name     string `json:"name"`
+	// Side is "expense" or "income".
+	Side string `json:"side"`
 }
 
 func (r CreateBudgetFolderRequest) Validate() error {
-	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name, "side": r.Side})
 }
 
 // CreateBudgetFolderResult is {item: BudgetFolderResult}.
@@ -539,9 +543,7 @@ type CreateEnvelopeRequest struct {
 	CurrencyId string   `json:"currencyId"`
 	FolderId   *string  `json:"folderId"`
 	Categories []string `json:"categories"`
-	// Side selects the envelope's (immutable) side: "" or "expense" (default).
-	// "income" is reserved for the plan view's income envelopes and currently
-	// rejected (see EnvelopeTypeFromSide).
+	// Side selects the envelope's (immutable) side: "" or "expense" (default), or "income".
 	Side string `json:"side"`
 }
 
@@ -719,6 +721,10 @@ type MoveElementRequest struct {
 	Id       string  `json:"id"`
 	FolderId *string `json:"folderId"`
 	AfterId  *string `json:"afterId"`
+	// EnvelopeId puts the category into that envelope instead (folderId and
+	// afterId are then ignored). Without it, a category that sits in an envelope
+	// leaves it for the given place.
+	EnvelopeId *string `json:"envelopeId,omitempty"`
 }
 
 func (r MoveElementRequest) Validate() error {
@@ -728,7 +734,7 @@ func (r MoveElementRequest) Validate() error {
 	if _, err := vo.ParseId(r.Id); err != nil {
 		return err
 	}
-	for _, opt := range []*string{r.FolderId, r.AfterId} {
+	for _, opt := range []*string{r.FolderId, r.AfterId, r.EnvelopeId} {
 		if opt == nil || *opt == "" {
 			continue
 		}

@@ -1166,7 +1166,7 @@
         "header": "New budget"
       },
       "update_budget_form": {
-        "header": "Edit budget"
+        "header": "Budget settings"
       },
       "create_folder_form": {
         "header": "New folder"
@@ -1311,20 +1311,19 @@
         "settings": {
           "button": "Configure",
           "menu": {
-            "edit": "Budget details",
+            "edit": "Budget settings",
             "edit_structure": "Edit structure",
-            "edit_structure_done": "Done editing",
-            "budget_list": "Open budget list"
+            "edit_structure_done": "Done editing"
           }
         },
         "structure": {
-          "no_folder": "Default folder",
           "in_archive": "Archived",
           "carry_over_hint": "Left from earlier months",
           "tab": {
             "budgeted": "Budget",
             "spent": "Spent",
-            "available": "Available"
+            "available": "Available",
+            "to_receive": "To receive"
           },
           "action": {
             "create_folder": "Create folder",
@@ -1332,6 +1331,9 @@
           },
           "empty_folder": {
             "note": "This folder is empty. Move a category, tag, or envelope here, or create a new envelope."
+          },
+          "empty_envelope": {
+            "note": "This envelope is empty. Drag a category here, or choose categories with Edit."
           },
           "element": {
             "action": {
@@ -1394,13 +1396,14 @@
           "savings_balance": "Total savings"
         },
         "density": {
-          "hide_empty": "Hide empty rows",
           "hidden": "{count} hidden",
           "show": "Show"
         },
         "menu": {
           "move_to_folder": "Move to folder…",
-          "no_folder": "No folder"
+          "no_folder": "No folder",
+          "no_access": "no access",
+          "not_empty": "not empty"
         },
         "edit": {
           "no_access_envelope": "You can't edit this envelope — your role in this budget is read-only.",
@@ -1873,6 +1876,7 @@
       "transaction_filter_required": "Validation failed",
       "envelope_side_mixed": "An envelope cannot contain both income and expense categories",
       "folder_side_mixed": "A folder cannot contain both income and expenses",
+      "envelope_member_not_category": "Only a category can go into an envelope",
       "savings_folder_not_allowed": "Savings cannot be put into a folder",
       "account_not_removable": "This account has transactions in past months and can no longer be removed from the budget",
       "savings_account_not_member": "Savings accounts must be your own accounts in this budget",
