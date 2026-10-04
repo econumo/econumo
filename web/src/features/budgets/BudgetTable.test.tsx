@@ -54,7 +54,7 @@ it('renders column headers, folder, default and archived sections with aligned s
   expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('45.50')
   expect(within(essentials).getByTestId('stat-line')).not.toHaveTextContent('-45.50')
   expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('354.50')
-  const noFolder = screen.getByTestId('budget-folder-Default folder')
+  const noFolder = screen.getByTestId('budget-folder-No folder')
   expect(within(noFolder).getByText('Living')).toBeInTheDocument()
   // the only archived element is all-zero, so the whole Archived section hides
   expect(screen.queryByTestId('budget-folder-Archived')).not.toBeInTheDocument()
@@ -69,15 +69,15 @@ it('archived elements with a nonzero number stay listed; all-zero ones hide', as
   expect(within(archive).queryByText('zzz-archived')).not.toBeInTheDocument()
 })
 
-it('an empty Default folder hides outside edit mode', async () => {
+it('an empty No folder hides outside edit mode', async () => {
   renderTable((budget) => {
     budget.structure.elements[1].folderId = 'bf1'
   })
   await screen.findByTestId('budget-folder-Essentials')
-  expect(screen.queryByTestId('budget-folder-Default folder')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('budget-folder-No folder')).not.toBeInTheDocument()
 })
 
-it('edit mode keeps the empty Default folder as a drop target', async () => {
+it('edit mode keeps the empty No folder as a drop target', async () => {
   renderTable(
     (budget) => {
       budget.structure.elements[1].folderId = 'bf1'
@@ -85,7 +85,7 @@ it('edit mode keeps the empty Default folder as a drop target', async () => {
     { renderFolderActions: () => null } as never,
   )
   await screen.findByTestId('budget-folder-Essentials')
-  expect(screen.getByTestId('budget-folder-Default folder')).toBeInTheDocument()
+  expect(screen.getByTestId('budget-folder-No folder')).toBeInTheDocument()
 })
 
 it('shows spent as-is and available+budgeted as a plain figure, with no colour while nothing is wrong', async () => {
@@ -375,7 +375,7 @@ it('Uncategorized lives in its own section, not the no-folder one', async () => 
   const section = await screen.findByTestId('budget-folder-Uncategorized')
   expect(within(section).getByTestId(`element-${UNCATEGORIZED_ID}`)).toBeInTheDocument()
   // the no-folder section keeps its own rows and does NOT hold Uncategorized
-  const noFolder = screen.getByTestId('budget-folder-Default folder')
+  const noFolder = screen.getByTestId('budget-folder-No folder')
   expect(within(noFolder).queryByTestId(`element-${UNCATEGORIZED_ID}`)).not.toBeInTheDocument()
   expect(within(noFolder).getByTestId('element-env-1')).toBeInTheDocument()
 })

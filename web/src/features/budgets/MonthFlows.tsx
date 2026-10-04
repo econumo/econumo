@@ -205,7 +205,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
       case 'folder':
         return g.name
       case 'loose':
-        return groups.some((o) => o.kind === 'folder') ? t('budgets.page.budget.structure.no_folder') : null
+        return groups.some((o) => o.kind === 'folder') ? t('budgets.page.plan.menu.no_folder') : null
       case 'uncategorized':
         return null
       case 'archived':

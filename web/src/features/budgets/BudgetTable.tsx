@@ -481,7 +481,7 @@ export function BudgetTable({
   // (the Plan grid's Archived band)
   const sections: { key: string; foldKey: string; name: string; bucket: FolderBucket; folderIndex: number | null }[] = [
     ...realFolders.map((bucket, index) => ({ key: bucket.folder!.id, foldKey: bucket.folder!.id, name: bucket.folder!.name, bucket, folderIndex: index })),
-    { key: '__no_folder__', foldKey: '__no_folder__', name: t('budgets.page.budget.structure.no_folder'), bucket: buckets.withoutFolder, folderIndex: null },
+    { key: '__no_folder__', foldKey: '__no_folder__', name: t('budgets.page.plan.menu.no_folder'), bucket: buckets.withoutFolder, folderIndex: null },
     { key: '__uncategorized__', foldKey: '__uncategorized__', name: t('common.uncategorized'), bucket: buckets.uncategorized, folderIndex: null },
     { key: '__archive__', foldKey: 'archived', name: t('budgets.page.budget.structure.in_archive'), bucket: buckets.archive, folderIndex: null },
   ]
@@ -538,7 +538,7 @@ export function BudgetTable({
             }
             if (section.bucket.elements.length === 0 && section.folderIndex === null) {
               // both read-only sections hide when they have nothing to show; the
-              // empty Default folder survives only in edit mode (folder actions
+              // empty No folder survives only in edit mode (folder actions
               // present), where it is the drop target for dragging elements out
               if (isReadOnlySection || realFolders.length === 0 || !renderFolderActions) {
                 return []

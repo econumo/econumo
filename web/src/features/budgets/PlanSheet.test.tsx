@@ -993,7 +993,7 @@ it('budget-mode envelope dialog still offers expense categories only', async () 
   renderPage('/budget')
   await user.click(await screen.findByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
-  await user.click(await screen.findByRole('button', { name: 'create envelope Default folder' }))
+  await user.click(await screen.findByRole('button', { name: 'create envelope No folder' }))
 
   const dialog = await screen.findByRole('dialog', { name: 'New envelope' })
   expect(within(dialog).getByText('Food')).toBeInTheDocument()

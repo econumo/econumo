@@ -739,7 +739,7 @@ and on tablet/phone only with a hardware keyboard.
       received, saved and the Income / Expenses / Savings lines.
 - [ ] Budget view, Income: grouped as in the Plan grid — each income
       folder in its own box with its Planned / Received sums (in the budget
-      currency), then the folder-less rows (under "Default folder" when
+      currency), then the folder-less rows (under "No folder" when
       folders exist), the income Uncategorized row on its own (only in a
       month it received something), and an Archived box for archived income
       with money this month. An income envelope unfolds to its categories,
@@ -756,7 +756,7 @@ and on tablet/phone only with a hardware keyboard.
       do not cover it), a folder's sums only when the folder as a whole
       overspent; nothing is green. A future month shows "—" for Spent. The table
       spans the full width. The page title is in normal case.
-- [ ] Budget view folders fold (desktop and tablet): a folder's line, "Default
+- [ ] Budget view folders fold (desktop and tablet): a folder's line, "No
       folder" and "Archived" hide their rows on a click and keep the line with
       its sums; income folders inside Income fold the same way. Folds survive
       a reload and are shared with the Plan grid and the phone.

@@ -693,7 +693,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     if (!editMode) {
       return null
     }
-    const name = bucket.folder?.name ?? t('budgets.page.budget.structure.no_folder')
+    const name = bucket.folder?.name ?? t('budgets.page.plan.menu.no_folder')
     const plus = (
       <Button
         type="button"

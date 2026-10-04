@@ -1318,7 +1318,6 @@
           }
         },
         "structure": {
-          "no_folder": "Carpeta predeterminada",
           "in_archive": "Archivado",
           "carry_over_hint": "Sobrante de meses anteriores",
           "tab": {

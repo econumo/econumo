@@ -511,7 +511,7 @@ it('the Budget view follows the phone order: Income, Savings, Expenses, then the
   expect(screen.getByTestId('month-total-balance')).toBeInTheDocument()
 })
 
-it('the Budget view groups income like the Plan grid: folders with sums, the default folder, envelopes unfold to categories', async () => {
+it('the Budget view groups income like the Plan grid: folders with sums, No folder, envelopes unfold to categories', async () => {
   const plan = JSON.parse(JSON.stringify(fixtureWirePlan))
   plan.structure.folders = [...plan.structure.folders, { id: 'bf-inc', name: 'Side gigs', position: 1 }]
   plan.structure.elements = plan.structure.elements.map((el: { id: string }) => (el.id === 'cat-freelance' ? { ...el, folderId: 'bf-inc' } : el))
@@ -529,7 +529,7 @@ it('the Budget view groups income like the Plan grid: folders with sums, the def
   expect(within(folder).getByRole('banner')).toHaveTextContent('400.00')
   expect(within(folder).getByTestId('month-income-row-cat-freelance')).toBeInTheDocument()
   const loose = screen.getByTestId('month-income-folder-__no_folder__')
-  expect(within(loose).getByText('Default folder')).toBeInTheDocument()
+  expect(within(loose).getByText('No folder')).toBeInTheDocument()
   expect(within(loose).getByTestId('month-income-row-ie1')).toBeInTheDocument()
   expect(folder.compareDocumentPosition(loose) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
