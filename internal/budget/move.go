@@ -51,12 +51,19 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 	}
 
 	// First-seen wins: the request keys elements by external id only.
-	var moved *model.BudgetElement
-	for _, e := range b.elements {
-		if e.ExternalID.String() == req.Id {
-			moved = e
-			break
+	moved := elementByExternal(b, req.Id)
+	if moved == nil {
+		// a category created a moment ago has no element row until the next
+		// structure write: make the rows, then look again, so placing it lands
+		if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
+			return s.syncElements(txCtx, b.budget.ID, s.clock.Now())
+		}); err != nil {
+			return nil, err
 		}
+		if b, err = s.loadAggregate(ctx, budgetID); err != nil {
+			return nil, err
+		}
+		moved = elementByExternal(b, req.Id)
 	}
 
 	if req.EnvelopeId != nil && *req.EnvelopeId != "" {
@@ -149,6 +156,15 @@ func inFolder(e *model.BudgetElement, folderID *vo.Id) bool {
 func (a *budgetAggregate) placeInFolder(folderID vo.Id, typ model.ElementType) error {
 	if f := a.folder(folderID); f != nil && f.Side != typ.Side() {
 		return folderSideMixedErr()
+	}
+	return nil
+}
+
+func elementByExternal(b *budgetAggregate, externalID string) *model.BudgetElement {
+	for _, e := range b.elements {
+		if e.ExternalID.String() == externalID {
+			return e
+		}
 	}
 	return nil
 }

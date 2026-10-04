@@ -11,7 +11,7 @@ import { EntityIcon } from '@/components/EntityIcon'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
-import type { BudgetDto, BudgetSavingsElementDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetSavingsElementDto, PlanChildDto } from '@/api/dto/budget'
 import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -119,6 +119,8 @@ interface MonthFlowsProps {
   /** ⋮ menus, shown on hover */
   incomeMenu?: (cell: PlanCellFigures) => MenuAction[] | undefined
   incomeFolderMenu?: (group: IncomeGroup) => MenuAction[] | undefined
+  /** the ⋮ menu of a category inside an unfolded income envelope */
+  incomeChildMenu?: (child: PlanChildDto) => MenuAction[] | undefined
   savingsMenu?: (row: BudgetSavingsElementDto) => MenuAction[] | undefined
   incomeSectionMenu?: MenuAction[]
   savingsSectionMenu?: MenuAction[]
@@ -144,6 +146,7 @@ export function MonthFlows({
   renderPlanned,
   onShowTransactions,
   incomeMenu,
+  incomeChildMenu,
   incomeFolderMenu,
   savingsMenu,
   incomeSectionMenu,
@@ -235,6 +238,7 @@ export function MonthFlows({
                   {childName}
                 </span>
               </span>
+              <RowMenu name={childName} actions={envelope ? incomeChildMenu?.(child) : undefined} />
               <span className={FIRST_COL} />
               <span className={SECOND_COL}>
                 {actualCell(

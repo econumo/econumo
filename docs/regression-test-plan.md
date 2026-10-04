@@ -774,20 +774,33 @@ and on tablet/phone only with a hardware keyboard.
       them off again; with it off the view has no ⋮ and no grips):
       - an expense or income category/tag row: Edit (name, icon; greyed out
         as "Edit (no access)" for a category or tag another user owns),
-        Change currency, Move to folder…; an envelope adds Delete
+        Change currency, Move to folder…, then the category's or tag's own
+        Archive (Unarchive on an archived row), Merge into… (own items of the
+        same kind and type) and Delete (with a confirmation), each greyed out
+        as "(no access)" when another user owns it; an envelope adds Delete
         (owner/admin); an archived row keeps Edit and Delete (envelope);
-        Uncategorized (expense or income) has no menu;
+        Uncategorized (expense or income) has no menu. An archived category
+        moves to Archived at once, a merged or deleted one disappears, its
+        figures folded into the target (merge) — also after a reload;
+      - a category inside an unfolded envelope: Edit, Archive, Merge into…,
+        Delete, the same way;
       - a savings row: Edit (the account); a reporting tag: Edit ("Edit (no
         access)" for another user's tag);
-      - a folder line: New envelope, Edit (rename), Delete folder (greyed
-        out as "Delete folder (not empty)" while the folder has items); the
-        "No folder" line (Income or Expenses): New envelope;
-      - the Expenses and Income lines: Create folder, New envelope; the
-        Savings line: Savings accounts (opens the budget's settings).
+      - a folder line: New envelope, New category, Edit (rename), Delete
+        folder (greyed out as "Delete folder (not empty)" while the folder has
+        items); the "No folder" line (Income or Expenses): New envelope, New
+        category;
+      - the Expenses and Income lines: Create folder, New envelope, New
+        category; the Savings line: New account, Savings accounts (opens the
+        budget's settings).
+      New category asks for a name and icon only (the type is the section's)
+      and the category shows at once at the top of the folder the menu
+      belongs to (or No folder). New account opens the account dialog; the
+      new account shows as a savings row of this budget.
       Regression: an income folder must stay under Income after a reload,
       also after New envelope created an envelope in it.
       A guest (or anyone on an archived budget) gets no structure actions:
-      only Edit where they own the item. No menu offers Show transactions:
+      only Edit, Archive, Merge into… and Delete where they own the item. No menu offers Show transactions:
       a row's transactions open from its Spent / Received / Saved figure.
 - [ ] Budget view, Create folder from the Income line: the new folder shows
       at once under Income, empty ("This folder is empty…", a muted dash in

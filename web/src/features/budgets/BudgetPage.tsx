@@ -52,6 +52,7 @@ import {
   useMoveBudgetFolder,
   useMoveElement,
   useMoveIntoEnvelope,
+  useAddSavingsAccount,
   useChangeElementCurrency,
   canConfigureBudget,
   canEditBudget,
@@ -93,6 +94,8 @@ import type { ElementContainer } from './elementMove'
 import { applyArrangement, arrangementFromBuckets, arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, moveElementInArrangement, placeFromEnvelope, withoutElement } from './elementMove'
 import type { DropIndicator } from './elementMove'
 import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, EnvelopeHeadDrop, FolderGrip } from './MonthDrag'
+import { useClassificationMenu } from './classificationMenu'
+import type { ClassificationRef } from './classificationMenu'
 import { CoinLoader } from '@/components/CoinLoader'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
@@ -149,6 +152,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const orderFolders = useMoveBudgetFolder()
   const moveElement = useMoveElement()
   const moveIntoEnvelope = useMoveIntoEnvelope()
+  const addSavingsAccount = useAddSavingsAccount()
+  const classificationMenu = useClassificationMenu(budgetId ?? '')
   const changeCurrency = useChangeElementCurrency()
   const createBudget = useCreateBudget()
   // the month view's income, Balance and Total savings (phone and desktop alike): the
@@ -615,16 +620,42 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       ...remove,
     ]
   }
+  // the category or tag a line stands for (an envelope stands for neither)
+  const classificationOf = (el: { id: Id; type: BudgetElementType }): ClassificationRef | null =>
+    el.type === BudgetElementType.CATEGORY || el.type === BudgetElementType.INCOME_CATEGORY
+      ? { kind: 'category', id: el.id }
+      : el.type === BudgetElementType.TAG
+        ? { kind: 'tag', id: el.id }
+        : null
+  const classificationActions = (el: { id: Id; type: BudgetElementType }): MenuAction[] => {
+    const ref = el.id === UNCATEGORIZED_ID ? null : classificationOf(el)
+    return ref ? classificationMenu.actionsFor(ref) : []
+  }
   // the transaction list opens from a row's figures (Spent, Received, Saved), not from the menu
   const expenseRowMenu = (element: BudgetElementDto): MenuAction[] =>
-    element.id === UNCATEGORIZED_ID ? [] : [...editAction({ kind: 'expense', element }), ...structureActions(element, 'expense')]
+    element.id === UNCATEGORIZED_ID
+      ? []
+      : [...editAction({ kind: 'expense', element }), ...structureActions(element, 'expense'), ...classificationActions(element)]
   const incomeRowMenu = (cell: PlanCellFigures): MenuAction[] => {
     const target: SheetTarget = { kind: 'plan', cell }
     // income Uncategorized has nothing to edit and no list of its own
     if (cell.element.id === UNCATEGORIZED_ID) {
       return []
     }
-    return [...editAction(target), ...structureActions(cell.element, 'income')]
+    return [...editAction(target), ...structureActions(cell.element, 'income'), ...classificationActions(cell.element)]
+  }
+  // a category inside an envelope: edited, archived, merged or deleted in place
+  const envelopeChildMenu = (child: { id: Id; type: BudgetElementType; name: string; icon: string; ownerUserId: Id | null }): MenuAction[] => {
+    const own = !!user && child.ownerUserId === user.id
+    return [
+      {
+        label: t('common.button.edit.label'),
+        disabled: !own,
+        reason: own ? undefined : t('budgets.page.plan.menu.no_access'),
+        onSelect: () => setCategoryTarget({ id: child.id, name: child.name, icon: child.icon, type: isIncomeType(child.type) ? 'income' : 'expense' }),
+      },
+      ...classificationActions(child),
+    ]
   }
   const savingsRowMenu = (row: BudgetSavingsElementDto): MenuAction[] => editAction({ kind: 'savings', row })
   const labelMenu = (label: LabelSpendDto): MenuAction[] => editAction({ kind: 'label', label })
@@ -637,10 +668,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       return undefined
     }
     if (!folder) {
-      return [newEnvelopeAction(null, side)]
+      return [newEnvelopeAction(null, side), classificationMenu.newCategoryAction(side, null)]
     }
     return [
       newEnvelopeAction(folder.id, side),
+      classificationMenu.newCategoryAction(side, folder.id),
       { label: t('common.button.edit.label'), onSelect: () => setRenameFolder({ id: folder.id, name: folder.name }) },
       {
         label: t('budgets.page.budget.structure.action.delete_folder'),
@@ -660,10 +692,21 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         : undefined
   const sectionMenu = (side: BudgetFolderSide): MenuAction[] | undefined =>
     configure
-      ? [{ label: t('budgets.page.budget.structure.action.create_folder'), onSelect: () => setCreateFolderSide(side) }, newEnvelopeAction(null, side)]
+      ? [
+          { label: t('budgets.page.budget.structure.action.create_folder'), onSelect: () => setCreateFolderSide(side) },
+          newEnvelopeAction(null, side),
+          classificationMenu.newCategoryAction(side, null),
+        ]
       : undefined
   const savingsSectionMenu: MenuAction[] | undefined = editDetails
-    ? [{ label: t('budgets.modal.budget_form.savings.label'), onSelect: () => setUpdateBudgetOpen(true) }]
+    ? [
+        {
+          label: t('accounts.modal.create_form.header'),
+          // a new account made here is a savings account of this budget
+          onSelect: () => openAccountModal({ onCreated: (account) => addSavingsAccount.mutate({ budgetId: budget.meta.id, accountId: account.id }) }),
+        },
+        { label: t('budgets.modal.budget_form.savings.label'), onSelect: () => setUpdateBudgetOpen(true) },
+      ]
     : undefined
   // Move to folder offers the folders of the row's own side (get-budget lists the
   // expense ones; the plan knows the income ones): the server refuses the other side
@@ -834,6 +877,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     onShowTransactions={setTransactionsTarget}
                     incomeMenu={hoverMenus ? incomeRowMenu : undefined}
                     incomeFolderMenu={hoverMenus ? incomeFolderMenu : undefined}
+                    incomeChildMenu={hoverMenus ? envelopeChildMenu : undefined}
                     savingsMenu={hoverMenus ? savingsRowMenu : undefined}
                     incomeSectionMenu={hoverMenus ? sectionMenu('income') : undefined}
                     savingsSectionMenu={hoverMenus ? savingsSectionMenu : undefined}
@@ -940,6 +984,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     }
                     onSpentClick={setTransactionsTarget}
                     rowMenu={hoverMenus ? expenseRowMenu : undefined}
+                    childMenu={hoverMenus ? envelopeChildMenu : undefined}
                     folderMenu={hoverMenus ? expenseFolderMenu : undefined}
                     labelMenu={hoverMenus ? labelMenu : undefined}
                     sectionMenu={hoverMenus ? sectionMenu('expense') : undefined}
@@ -1030,6 +1075,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           }
         }}
       />
+
+      {classificationMenu.dialogs}
 
       <CategoryDialog
         open={categoryTarget !== null}

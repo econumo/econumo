@@ -222,8 +222,12 @@ export async function declineAccess(budgetId: Id): Promise<void> {
 }
 
 // NOTE the wire quirk: the budget id travels under "id", not budgetId.
-export async function addAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
-  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/add-account'), { id: budgetId, accountId })
+export async function addAccount(budgetId: Id, accountId: Id, isSavings?: boolean): Promise<BudgetMetaDto> {
+  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/add-account'), {
+    id: budgetId,
+    accountId,
+    ...(isSavings !== undefined ? { isSavings } : {}),
+  })
   return response.data.data.item
 }
 

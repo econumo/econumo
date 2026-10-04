@@ -5,10 +5,12 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { act } from 'react'
-import { coreHandlers, fixtureBudgets, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureCategories, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { HomePage } from '@/features/home/HomePage'
 import { useBudgetPeriodStore } from './budgetStore'
+import { queryKeys } from '@/app/queryKeys'
+import { useUiStore } from '@/app/uiStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -614,14 +616,16 @@ describe('the ⋮ menus on the Budget view', () => {
     planHandler(),
   ]
 
-  it('an expense row offers Edit, Change currency and Move to folder; its transactions open from Spent, not the menu', async () => {
+  it('an expense row offers Edit, Change currency, Move to folder, and the category\'s Archive, Merge and Delete; its transactions open from Spent, not the menu', async () => {
     server.use(...plainHandlers())
     const user = userEvent.setup()
-    renderPage()
+    const { queryClient } = renderPage()
     const food = await screen.findByTestId('element-cat-food')
+    // the category list says who owns Food
+    await waitFor(() => expect(queryClient.getQueryData(queryKeys.categories)).toBeTruthy())
     await user.click(within(food).getByRole('button', { name: 'menu Food' }))
     const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
-    expect(items).toEqual(['Edit', 'Change currency', 'Move to folder…'])
+    expect(items).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Archive', 'Merge into…', 'Delete'])
   })
 
   it('a greyed-out action says why: Edit on another member\'s category, Delete on a folder with items', async () => {
@@ -640,7 +644,7 @@ describe('the ⋮ menus on the Budget view', () => {
     expect(await item('Delete folder (not empty)')()).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('a guest gets no structure actions, only Edit on what they own', async () => {
+  it('a guest gets no structure actions: only Edit, and Archive, Merge and Delete, on what they own', async () => {
     const guestBudget = {
       ...fixtureWireBudget,
       meta: {
@@ -654,11 +658,13 @@ describe('the ⋮ menus on the Budget view', () => {
     }
     server.use(...plainHandlers(guestBudget))
     const user = userEvent.setup()
-    renderPage()
+    const { queryClient } = renderPage()
     const food = await screen.findByTestId('element-cat-food')
+    await waitFor(() => expect(queryClient.getQueryData(queryKeys.categories)).toBeTruthy())
     await user.click(within(food).getByRole('button', { name: 'menu Food' }))
     const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
-    expect(items).toEqual(['Edit'])
+    // a category is personal: its owner manages it in any budget
+    expect(items).toEqual(['Edit', 'Archive', 'Merge into…', 'Delete'])
     // and the Expenses line has no Create folder for a guest
     expect(within(screen.getByTestId('column-headers')).queryByRole('button', { name: 'menu Expenses' })).toBeNull()
   })
@@ -682,10 +688,10 @@ describe('the ⋮ menus on the Budget view', () => {
     const items = async () => (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
 
     await user.click(within(await screen.findByTestId('month-income-header')).getByRole('button', { name: 'menu Income' }))
-    expect(await items()).toEqual(['Create folder', 'New envelope'])
+    expect(await items()).toEqual(['Create folder', 'New envelope', 'New category'])
     await user.keyboard('{Escape}')
     await user.click(within(screen.getByTestId('month-income-folder-__no_folder__')).getByRole('button', { name: 'menu No folder' }))
-    expect(await items()).toEqual(['New envelope'])
+    expect(await items()).toEqual(['New envelope', 'New category'])
     await user.keyboard('{Escape}')
 
     await user.click(within(screen.getByTestId('month-income-folder-bf-inc')).getByRole('button', { name: 'menu Side gigs' }))
@@ -753,5 +759,101 @@ describe('the ⋮ menus on the Budget view', () => {
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('button', { name: 'Side gigs' })).toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: 'Essentials' })).toBeNull()
+  })
+})
+
+describe('managing categories, tags and accounts from the ⋮ menus', () => {
+  const setup = (budget: unknown = fixtureWireBudget) => {
+    const calls: { path: string; body: Record<string, unknown> }[] = []
+    const record = (path: string) =>
+      http.post(`*${path}`, async ({ request }) => {
+        calls.push({ path, body: (await request.json()) as Record<string, unknown> })
+        return HttpResponse.json({ success: true, message: '', data: path.endsWith('create-category') ? { item: { id: 'cat-new', ownerUserId: 'u1', name: 'Gym', position: 9, type: 'expense', icon: 'x', isArchived: 0, createdAt: '', updatedAt: '' } } : {} })
+      })
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+      planHandler(fixtureWirePlan),
+      record('/api/v1/category/create-category'),
+      record('/api/v1/category/archive-category'),
+      record('/api/v1/category/delete-category'),
+      record('/api/v1/budget/move-element'),
+      record('/api/v1/budget/add-account'),
+    )
+    return calls
+  }
+
+  it('New category in a folder creates an expense category there', async () => {
+    const calls = setup()
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(within(await screen.findByTestId('budget-folder-Essentials')).getByRole('button', { name: 'menu Essentials' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'New category' }))
+    // the type is the section's: no income/expense switch
+    expect(screen.queryByRole('radiogroup', { name: 'type' })).toBeNull()
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Gym')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() => expect(calls.map((c) => c.path)).toEqual(['/api/v1/category/create-category', '/api/v1/budget/move-element']))
+    expect(calls[0].body).toMatchObject({ name: 'Gym', type: 'expense' })
+    expect(calls[1].body).toMatchObject({ budgetId: 'b1', id: 'cat-new', folderId: 'bf1', afterId: null })
+  })
+
+  it('Archive and Delete act on the category behind the row', async () => {
+    const calls = setup()
+    const user = userEvent.setup()
+    const { queryClient } = renderPage()
+    const food = await screen.findByTestId('element-cat-food')
+    await waitFor(() => expect(queryClient.getQueryData(queryKeys.categories)).toBeTruthy())
+    await user.click(within(food).getByRole('button', { name: 'menu Food' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Archive' }))
+    await waitFor(() => expect(calls.map((c) => c.path)).toContain('/api/v1/category/archive-category'))
+    await user.click(within(food).getByRole('button', { name: 'menu Food' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(calls.find((c) => c.path === '/api/v1/category/delete-category')?.body).toMatchObject({ id: 'cat-food' }))
+  })
+
+  it('another member\'s category shows the actions greyed out, saying why', async () => {
+    const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
+    budget.structure.elements.find((el: { id: string }) => el.id === 'cat-food').ownerUserId = 'u9'
+    setup(budget)
+    server.use(
+      http.get('*/api/v1/category/get-category-list', () =>
+        HttpResponse.json({ success: true, message: '', data: { items: fixtureCategories.map((c) => (c.id === 'cat-food' ? { ...c, ownerUserId: 'u9' } : c)) } }),
+      ),
+    )
+    const user = userEvent.setup()
+    const { queryClient } = renderPage()
+    const food = await screen.findByTestId('element-cat-food')
+    await waitFor(() => expect(queryClient.getQueryData(queryKeys.categories)).toBeTruthy())
+    await user.click(within(food).getByRole('button', { name: 'menu Food' }))
+    const texts = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
+    expect(texts).toEqual(expect.arrayContaining(['Archive (no access)', 'Merge into… (no access)', 'Delete (no access)']))
+  })
+
+  it('a category inside an envelope has its own menu', async () => {
+    setup()
+    useBudgetPeriodStore.setState({ unfoldedElements: { 'env-1': true }, foldBudgetId: 'b1' })
+    const user = userEvent.setup()
+    renderPage()
+    const rent = await screen.findByTestId('child-cat-rent')
+    await user.click(within(rent).getByRole('button', { name: 'menu Rent' }))
+    const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
+    expect(items[0]).toBe('Edit')
+    expect(items.some((i) => i?.startsWith('Merge into…'))).toBe(true)
+  })
+
+  it('New account on the Savings line opens the account dialog, and the new account joins as savings', async () => {
+    const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
+    budget.structure.savings = [{ id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0, budgeted: '0', spent: '0', available: '0' }]
+    const calls = setup(budget)
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(within(await screen.findByTestId('month-savings')).getByRole('button', { name: 'menu Savings' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'New account' }))
+    const params = useUiStore.getState().accountModal
+    expect(params?.account).toBeUndefined()
+    act(() => params!.onCreated!({ id: 'acc-new' } as never))
+    await waitFor(() => expect(calls.find((c) => c.path === '/api/v1/budget/add-account')?.body).toEqual({ id: 'b1', accountId: 'acc-new', isSavings: true }))
   })
 })

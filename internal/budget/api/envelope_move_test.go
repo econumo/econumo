@@ -165,3 +165,21 @@ func TestMoveElement_IncomeCategoryIntoIncomeEnvelope(t *testing.T) {
 		t.Fatalf("memberships = %v", got)
 	}
 }
+
+// A category created after the budget's last structure write has no element row
+// yet; placing it must create the row and land it, not silently do nothing.
+func TestMoveElement_PlacesACategoryWithNoElementRowYet(t *testing.T) {
+	h, tok := newEnvelopeMoveBudget(t)
+	const fresh = "cccc5555-0000-7000-8000-0000000000f1"
+	h.f.Category(fixture.Category{ID: fresh, UserID: seedUserID, Name: "Fresh Move", Type: 0, Icon: "i"})
+	var rows int
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM budgets_elements WHERE budget_id = ? AND external_id = ?`, budgetID1, fresh).Scan(&rows); err != nil || rows != 0 {
+		t.Fatalf("setup: element rows = %d (err=%v), want none yet", rows, err)
+	}
+	if st, env := moveTo(t, h, tok, fresh, moveFolder, nil); st != http.StatusOK {
+		t.Fatalf("move = %d; body=%s", st, env.raw)
+	}
+	if folder, key := elementPlace(t, h, fresh); folder != moveFolder || key == "" {
+		t.Fatalf("placed at folder=%q key=%q, want the folder", folder, key)
+	}
+}

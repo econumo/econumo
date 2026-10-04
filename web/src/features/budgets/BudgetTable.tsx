@@ -43,6 +43,8 @@ export interface ElementRowExtras {
   wrapChild?: (child: BudgetChildElementDto, parent: BudgetElementDto, node: ReactNode) => ReactNode
   /** wraps an unfolded envelope's category list (its drop zone) */
   wrapChildren?: (parent: BudgetElementDto, node: ReactNode) => ReactNode
+  /** the ⋮ menu of a category inside an unfolded envelope */
+  childMenu?: (child: BudgetChildElementDto, parent: BudgetElementDto) => MenuAction[] | undefined
   /** a folded envelope's own drop zone, inside its row */
   envelopeHeadDrop?: (element: BudgetElementDto) => ReactNode
   onSpentClick?: (target: BudgetTransactionsTarget) => void
@@ -255,6 +257,7 @@ function ElementRow({
                 {childDisplayName}
               </span>
             </span>
+            <RowMenu name={childDisplayName} actions={isEnvelopeType(element.type) ? extras.childMenu?.(child, element) : undefined} />
             {/* owner sits in the budget column, flush under the amounts; row hover only (multi-user budgets) */}
             <span className={`${FIRST_COL} truncate text-xs text-muted-foreground/60 opacity-0 group-hover:opacity-100`}>{owner?.name}</span>
             <span data-testid="child-spent" className={SECOND_COL}>

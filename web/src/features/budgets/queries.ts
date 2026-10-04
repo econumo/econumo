@@ -420,6 +420,18 @@ export function useMoveElement() {
   })
 }
 
+// an account created from the budget's Savings line joins the budget as a savings member
+export function useAddSavingsAccount() {
+  const invalidate = useInvalidateBudget()
+  return useMutation({
+    mutationFn: ({ budgetId, accountId }: { budgetId: Id; accountId: Id }) => budgetApi.addAccount(budgetId, accountId, true),
+    onSuccess: () => {
+      invalidate()
+      trackEvent(METRICS.BUDGET_SAVINGS_TOGGLE)
+    },
+  })
+}
+
 // joining an envelope changes its membership, as editing the envelope's categories does
 export function useMoveIntoEnvelope() {
   const invalidate = useInvalidateBudget()
