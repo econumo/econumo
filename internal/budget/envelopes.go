@@ -55,13 +55,12 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	if err := s.validateEnvelopeCategories(ctx, b, envType.IsIncomeSide(), req.Categories); err != nil {
 		return nil, err
 	}
-	now := s.clock.Now()
-	var adopted *model.BudgetFolder
 	if folderID != nil {
-		if adopted, err = b.placeInFolder(*folderID, envType, now); err != nil {
+		if err := b.placeInFolder(*folderID, envType); err != nil {
 			return nil, err
 		}
 	}
+	now := s.clock.Now()
 	// A new envelope element lands at the FRONT of its group. With sort keys that
 	// is a single write -- a key below the group's current first -- so no sibling
 	// is touched.
@@ -72,11 +71,6 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if eerr := s.requireFreeEnvelopeID(txCtx, envelopeID); eerr != nil {
 			return eerr
-		}
-		if adopted != nil {
-			if serr := s.folders.SaveFolder(txCtx, adopted); serr != nil {
-				return serr
-			}
 		}
 		env := model.NewBudgetEnvelope(envelopeID, budgetID, req.Name, req.Icon, now)
 		if serr := s.envelopes.SaveEnvelope(txCtx, env); serr != nil {

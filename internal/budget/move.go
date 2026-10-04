@@ -63,19 +63,13 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 		return nil, savingsFolderNotAllowedErr()
 	}
 
-	now := s.clock.Now()
-	var adopted *model.BudgetFolder
 	if moved != nil && folderID != nil {
-		if adopted, err = b.placeInFolder(*folderID, moved.Type, now); err != nil {
+		if err := b.placeInFolder(*folderID, moved.Type); err != nil {
 			return nil, err
 		}
 	}
+	now := s.clock.Now()
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		if adopted != nil {
-			if serr := s.folders.SaveFolder(txCtx, adopted); serr != nil {
-				return serr
-			}
-		}
 		if moved != nil {
 			// Siblings are the elements already in the TARGET group, excluding the
 			// moved one -- which may be arriving from another folder.
@@ -132,43 +126,14 @@ func inFolder(e *model.BudgetElement, folderID *vo.Id) bool {
 	return e.FolderID != nil && e.FolderID.Equal(*folderID)
 }
 
-// folderSide reports which sides the folder's member elements cover: no
-// members = both false. Archived members count — a folder holding
-// only an archived income category is still income-sided.
-func folderSide(elements []*model.BudgetElement, folderID vo.Id) (income, expense bool) {
-	for _, e := range elements {
-		if e.FolderID == nil || !e.FolderID.Equal(folderID) {
-			continue
-		}
-		if e.Type.IsIncomeSide() {
-			income = true
-		} else {
-			expense = true
-		}
+// placeInFolder refuses an element whose side is not the folder's. The side is
+// stored at creation and never changes, so an empty folder keeps it too:
+// income and expenses never share a folder, and nothing moves across.
+func (a *budgetAggregate) placeInFolder(folderID vo.Id, typ model.ElementType) error {
+	if f := a.folder(folderID); f != nil && f.Side != typ.Side() {
+		return folderSideMixedErr()
 	}
-	return income, expense
-}
-
-// placeInFolder applies the side rule for putting an element of type typ into
-// the folder. A folder with members keeps their side and refuses the other one;
-// same-side members never conflict, so the element being re-placed inside its
-// own folder needs no exclusion. An empty folder accepts either side and adopts
-// the element's: the returned folder (nil when unchanged) must be saved in the
-// same transaction as the element write.
-func (a *budgetAggregate) placeInFolder(folderID vo.Id, typ model.ElementType, now time.Time) (*model.BudgetFolder, error) {
-	income, expense := folderSide(a.elements, folderID)
-	if income || expense {
-		if (typ.IsIncomeSide() && expense) || (!typ.IsIncomeSide() && income) {
-			return nil, folderSideMixedErr()
-		}
-		return nil, nil
-	}
-	f := a.folder(folderID)
-	if f == nil || f.Side == typ.Side() {
-		return nil, nil
-	}
-	f.UpdateSide(typ.Side(), now)
-	return f, nil
+	return nil
 }
 
 func folderSideMixedErr() error {

@@ -474,13 +474,4 @@ func TestFolderSide(t *testing.T) {
 	if f.Side != FolderSideExpense {
 		t.Fatalf("default side = %q, want expense", f.Side)
 	}
-	later := time.Unix(60, 0)
-	f.UpdateSide(FolderSideExpense, later)
-	if !f.UpdatedAt.Equal(time.Unix(0, 0)) {
-		t.Error("a no-op side update must not bump updated_at")
-	}
-	f.UpdateSide(FolderSideIncome, later)
-	if f.Side != FolderSideIncome || !f.UpdatedAt.Equal(later) {
-		t.Errorf("side update: side=%q updatedAt=%v", f.Side, f.UpdatedAt)
-	}
 }

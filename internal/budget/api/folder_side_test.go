@@ -103,42 +103,30 @@ func TestGetBudget_EmptyFolderVisibilityFollowsStoredSide(t *testing.T) {
 	}
 }
 
-func TestMoveElement_EmptyFolderAdoptsSide(t *testing.T) {
+func TestMoveElement_EmptiedFolderKeepsSide(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.f.Category(fixture.Category{ID: sideIncomeCatID, UserID: seedUserID, Name: "Wages Side", Type: 1, Icon: "payments"})
 	h.f.Category(fixture.Category{ID: sideExpenseCatID, UserID: seedUserID, Name: "Rent Side", Type: 0, Icon: "home"})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "Folder Side Budget"))
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
-		map[string]any{"budgetId": budgetID1, "id": sideFolderA, "name": "Starts Expense", "side": "expense"})
+		map[string]any{"budgetId": budgetID1, "id": sideFolderA, "name": "Earnings", "side": "income"})
 
-	// The first income element into an empty expense folder is accepted and
-	// turns the folder into an income folder.
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/move-element", tok,
 		map[string]any{"budgetId": budgetID1, "id": sideIncomeCatID, "folderId": sideFolderA, "afterId": nil})
-	if got := storedFolderSide(t, h, sideFolderA); got != "income" {
-		t.Fatalf("folder side after the first income member = %q, want income", got)
-	}
-
-	// Now non-empty and income: an expense element is refused.
-	st, env := h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok,
-		map[string]any{"budgetId": budgetID1, "id": sideExpenseCatID, "folderId": sideFolderA, "afterId": nil})
-	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "A folder cannot contain both income and expenses") {
-		t.Fatalf("expense into non-empty income folder: st=%d body=%s", st, env.raw)
-	}
-
-	// Emptied, it keeps its side: still hidden from get-budget, listed as
-	// income by get-budget-plan.
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/move-element", tok,
 		map[string]any{"budgetId": budgetID1, "id": sideIncomeCatID, "folderId": nil, "afterId": nil})
+
+	// Emptied, it keeps its side: still hidden from get-budget, listed as
+	// income by get-budget-plan, and still refusing an expense element.
 	if got := storedFolderSide(t, h, sideFolderA); got != "income" {
 		t.Fatalf("emptied folder side = %q, want income", got)
 	}
-	env = h.mustDo(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
+	env := h.mustDo(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
 	if strings.Contains(string(env.Data), sideFolderA) {
 		t.Fatalf("an empty income folder must not render in get-budget; body=%s", env.Data)
 	}
-	st, env = getPlan(t, h, tok, "id="+budgetID1+"&months=1")
+	st, env := getPlan(t, h, tok, "id="+budgetID1+"&months=1")
 	if st != http.StatusOK {
 		t.Fatalf("get-budget-plan = %d; body=%s", st, env.raw)
 	}
@@ -146,12 +134,10 @@ func TestMoveElement_EmptyFolderAdoptsSide(t *testing.T) {
 	if len(plan.Structure.Folders) != 1 || plan.Structure.Folders[0].Side != "income" {
 		t.Fatalf("plan folders = %+v, want the one income folder", plan.Structure.Folders)
 	}
-
-	// An empty folder accepts the other side again, and adopts it.
-	h.mustDo(t, http.MethodPost, "/api/v1/budget/move-element", tok,
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok,
 		map[string]any{"budgetId": budgetID1, "id": sideExpenseCatID, "folderId": sideFolderA, "afterId": nil})
-	if got := storedFolderSide(t, h, sideFolderA); got != "expense" {
-		t.Fatalf("folder side after an expense member = %q, want expense", got)
+	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "A folder cannot contain both income and expenses") {
+		t.Fatalf("expense into the emptied income folder: st=%d body=%s", st, env.raw)
 	}
 }
 
@@ -162,7 +148,7 @@ func TestCreateEnvelope_FolderSideAndOwnership(t *testing.T) {
 	const otherBudgetID = "bbbb4444-0000-7000-8000-000000000002"
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(otherBudgetID, "Other Budget"))
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
-		map[string]any{"budgetId": budgetID1, "id": sideFolderA, "name": "Was Income", "side": "income"})
+		map[string]any{"budgetId": budgetID1, "id": sideFolderA, "name": "Earnings", "side": "income"})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
 		map[string]any{"budgetId": otherBudgetID, "id": sideFolderB, "name": "Foreign", "side": "expense"})
 
@@ -180,14 +166,21 @@ func TestCreateEnvelope_FolderSideAndOwnership(t *testing.T) {
 		t.Fatalf("refused envelope must not be written: n=%d err=%v", n, err)
 	}
 
-	// An expense envelope into an empty income folder: accepted, the folder
-	// adopts the expense side.
-	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
+	// An expense envelope into an empty income folder is refused; an income one
+	// goes in, and the folder stays income.
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
 		"budgetId": budgetID1, "id": "beee4444-0000-7000-8000-000000000002", "name": "Home Env", "icon": "i",
 		"currencyId": usdID, "folderId": sideFolderA, "categories": []string{},
 	})
-	if got := storedFolderSide(t, h, sideFolderA); got != "expense" {
-		t.Fatalf("folder side after an expense envelope = %q, want expense", got)
+	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "A folder cannot contain both income and expenses") {
+		t.Fatalf("expense envelope into an empty income folder: st=%d body=%s", st, env.raw)
+	}
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
+		"budgetId": budgetID1, "id": "beee4444-0000-7000-8000-000000000003", "name": "Jobs Env", "icon": "i",
+		"currencyId": usdID, "folderId": sideFolderA, "side": "income", "categories": []string{},
+	})
+	if got := storedFolderSide(t, h, sideFolderA); got != "income" {
+		t.Fatalf("folder side after an income envelope = %q, want income", got)
 	}
 }
 
