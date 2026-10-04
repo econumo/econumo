@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type { BudgetFolderSide } from '@/api/dto/budget'
 import type { PlanElementDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
@@ -25,7 +26,7 @@ export function PlanCreateFolderDialog(props: {
   open: boolean
   elements: PlanElementDto[]
   onClose: () => void
-  onSubmit: (form: { name: string; memberIds: Id[] }) => void
+  onSubmit: (form: { name: string; side: BudgetFolderSide; memberIds: Id[] }) => void
 }) {
   if (!props.open) {
     return null
@@ -40,7 +41,7 @@ function CreateFolderForm({
 }: {
   elements: PlanElementDto[]
   onClose: () => void
-  onSubmit: (form: { name: string; memberIds: Id[] }) => void
+  onSubmit: (form: { name: string; side: BudgetFolderSide; memberIds: Id[] }) => void
 }) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
@@ -58,9 +59,8 @@ function CreateFolderForm({
     return null
   }
 
-  // A folder's side is derived from its members, and a memberless folder renders
-  // in the expense band whatever the user intended — so a member is required, and
-  // switching sides clears the selection rather than letting a folder mix sides.
+  // The folder is created on the chosen side; switching sides clears the selection
+  // rather than letting a folder mix sides.
   const options = elements.filter(
     (el) => el.id !== UNCATEGORIZED_ID && el.isArchived === 0 && (isIncomeType(el.type) ? 'income' : 'expense') === side,
   )
@@ -98,7 +98,7 @@ function CreateFolderForm({
             return
           }
           if (picked.length > 0) {
-            onSubmit({ name: trimmed, memberIds: picked })
+            onSubmit({ name: trimmed, side, memberIds: picked })
           }
         }}
       >

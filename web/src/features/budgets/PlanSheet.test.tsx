@@ -2210,7 +2210,8 @@ it('creates a plan folder with members, switching sides clears the selection', a
   await user.click(within(dialog).getByRole('checkbox', { name: 'Salaries' }))
   await user.click(within(dialog).getByRole('button', { name: 'Create' }))
 
-  await waitFor(() => expect(folderBody).toMatchObject({ name: 'Employment' }))
+  // the chosen side travels with the folder, so it stays an income folder even if emptied
+  await waitFor(() => expect(folderBody).toMatchObject({ name: 'Employment', side: 'income' }))
   await waitFor(() => expect(moves).toHaveLength(1))
   // the folder id is client-generated (uuidv7) and sent as-is on create-folder; the
   // move must target that same id, not whatever id the (irrelevant, mocked) response echoes back

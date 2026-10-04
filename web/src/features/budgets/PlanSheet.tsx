@@ -2492,10 +2492,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, viewSwitch }: 
         open={createFolderOpen}
         elements={plan.structure.elements}
         onClose={() => setCreateFolderOpen(false)}
-        onSubmit={({ name, memberIds }) => {
+        onSubmit={({ name, side, memberIds }) => {
           const id = uuidv7()
           createFolder.mutate(
-            { budgetId: budget.meta.id, id, name },
+            { budgetId: budget.meta.id, id, name, side },
             {
               onSuccess: () => {
                 for (const memberId of memberIds) {
