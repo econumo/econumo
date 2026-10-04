@@ -1166,7 +1166,7 @@
         "header": "新建预算"
       },
       "update_budget_form": {
-        "header": "编辑预算"
+        "header": "预算设置"
       },
       "create_folder_form": {
         "header": "新建文件夹"
@@ -1311,7 +1311,7 @@
         "settings": {
           "button": "配置",
           "menu": {
-            "edit": "预算详情",
+            "edit": "预算设置",
             "edit_structure": "编辑结构",
             "edit_structure_done": "完成编辑"
           }

@@ -1166,7 +1166,7 @@
         "header": "New budget"
       },
       "update_budget_form": {
-        "header": "Edit budget"
+        "header": "Budget settings"
       },
       "create_folder_form": {
         "header": "New folder"
@@ -1311,7 +1311,7 @@
         "settings": {
           "button": "Configure",
           "menu": {
-            "edit": "Budget details",
+            "edit": "Budget settings",
             "edit_structure": "Edit structure",
             "edit_structure_done": "Done editing"
           }

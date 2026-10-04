@@ -1166,7 +1166,7 @@
         "header": "Новий бюджет"
       },
       "update_budget_form": {
-        "header": "Змінити бюджет"
+        "header": "Налаштування бюджету"
       },
       "create_folder_form": {
         "header": "Нова папка"
@@ -1311,7 +1311,7 @@
         "settings": {
           "button": "Налаштувати",
           "menu": {
-            "edit": "Інформація про бюджет",
+            "edit": "Налаштування бюджету",
             "edit_structure": "Змінити структуру",
             "edit_structure_done": "Готово"
           }

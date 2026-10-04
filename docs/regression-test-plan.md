@@ -835,9 +835,9 @@ and on tablet/phone only with a hardware keyboard.
       no "Spending progress" widget appears anywhere on the page.
 - [ ] 📱 The budget header's Configure button (⚙, "CONFIGURE" from sm up)
       is the only control there besides the title. On the desktop Budget
-      view it opens the budget details dialog straight away. On a tablet or
-      phone, and in the Plan grid, it opens a small sheet with two options:
-      "Budget details" and "Edit structure" (an option the user may not use
+      view it opens the "Budget settings" dialog straight away. On a tablet
+      or phone, and in the Plan grid, it opens a small sheet with two options:
+      "Budget settings" and "Edit structure" (an option the user may not use
       reads "(no access)", greyed out); nothing else (no budgets list, no
       Hide empty rows). A guest on the desktop Budget view sees no Configure
       button.

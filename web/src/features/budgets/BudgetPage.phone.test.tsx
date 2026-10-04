@@ -120,14 +120,14 @@ it('has no Budget/Plan switch anywhere, and the title is not all caps', async ()
   expect(screen.queryByRole('menuitemradio')).toBeNull()
 })
 
-it('Configure on a phone offers Budget details and Edit structure, and nothing else', async () => {
+it('Configure on a phone offers Budget settings and Edit structure, and nothing else', async () => {
   handlers()
   const user = userEvent.setup()
   renderPage('/plan')
   await screen.findByTestId('phone-month-view')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   const dialog = await screen.findByRole('dialog', { name: 'Configure' })
-  expect(within(dialog).getAllByRole('button').map((b) => b.textContent).filter((x) => x !== 'Close')).toEqual(['Budget details', 'Edit structure'])
+  expect(within(dialog).getAllByRole('button').map((b) => b.textContent).filter((x) => x !== 'Close')).toEqual(['Budget settings', 'Edit structure'])
 })
 
 it('row tap → sheet → Set budget replaces the sheet and saves the selected month', async () => {

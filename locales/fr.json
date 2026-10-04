@@ -1166,7 +1166,7 @@
         "header": "Nouveau budget"
       },
       "update_budget_form": {
-        "header": "Modifier le budget"
+        "header": "Paramètres du budget"
       },
       "create_folder_form": {
         "header": "Nouveau dossier"
@@ -1311,7 +1311,7 @@
         "settings": {
           "button": "Configurer",
           "menu": {
-            "edit": "Détails du budget",
+            "edit": "Paramètres du budget",
             "edit_structure": "Modifier la structure",
             "edit_structure_done": "Terminer la modification"
           }

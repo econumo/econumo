@@ -1166,7 +1166,7 @@
         "header": "Novo orçamento"
       },
       "update_budget_form": {
-        "header": "Editar orçamento"
+        "header": "Definições do orçamento"
       },
       "create_folder_form": {
         "header": "Nova pasta"
@@ -1311,7 +1311,7 @@
         "settings": {
           "button": "Configurar",
           "menu": {
-            "edit": "Detalhes do orçamento",
+            "edit": "Definições do orçamento",
             "edit_structure": "Editar estrutura",
             "edit_structure_done": "Concluir edição"
           }

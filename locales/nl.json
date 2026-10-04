@@ -1166,7 +1166,7 @@
         "header": "Nieuw budget"
       },
       "update_budget_form": {
-        "header": "Budget bewerken"
+        "header": "Budgetinstellingen"
       },
       "create_folder_form": {
         "header": "Nieuwe map"
@@ -1311,7 +1311,7 @@
         "settings": {
           "button": "Instellen",
           "menu": {
-            "edit": "Budgetgegevens",
+            "edit": "Budgetinstellingen",
             "edit_structure": "Structuur bewerken",
             "edit_structure_done": "Klaar met bewerken"
           }

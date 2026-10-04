@@ -149,7 +149,7 @@ it('owner role: Configure opens the budget details dialog', async () => {
   const user = userEvent.setup()
   renderPage()
   await user.click(await screen.findByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('heading', { name: 'Edit budget' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Budget settings' })).toBeInTheDocument()
 })
 
 it('deleting an empty folder asks for confirmation before posting', async () => {
@@ -297,7 +297,7 @@ it('a server error settles into a retryable error state instead of an endless lo
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
 })
 
-it('Configure opens Budget details at once on the desktop Budget view; the Plan view asks first', async () => {
+it('Configure opens Budget settings at once on the desktop Budget view; the Plan view asks first', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
@@ -309,7 +309,7 @@ it('Configure opens Budget details at once on the desktop Budget view; the Plan 
 
   // the Budget view edits on hover, so there is nothing to choose: the details open
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('dialog', { name: 'Edit budget' })).toBeInTheDocument()
+  expect(await screen.findByRole('dialog', { name: 'Budget settings' })).toBeInTheDocument()
   expect(screen.queryByRole('menuitem')).toBeNull()
   await user.keyboard('{Escape}')
 
@@ -318,7 +318,7 @@ it('Configure opens Budget details at once on the desktop Budget view; the Plan 
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   const dialog = await screen.findByRole('dialog', { name: 'Configure' })
-  expect(within(dialog).getAllByRole('button').map((b) => b.textContent).filter((x) => x !== 'Close')).toEqual(['Budget details', 'Edit structure'])
+  expect(within(dialog).getAllByRole('button').map((b) => b.textContent).filter((x) => x !== 'Close')).toEqual(['Budget settings', 'Edit structure'])
   await user.click(within(dialog).getByRole('button', { name: 'Edit structure' }))
   expect(await screen.findByRole('button', { name: /Done editing/ })).toBeInTheDocument()
 })
