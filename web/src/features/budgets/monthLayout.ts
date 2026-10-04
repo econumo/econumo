@@ -4,7 +4,8 @@ import type { MouseEvent } from 'react'
 // headings, folder lines, rows, children, totals), so headings, sums and amounts
 // share their right edges. The first figure column grows to the left for a
 // carry-over lead-in; the others are fixed.
-export const LINE = 'flex items-center gap-2 px-2 sm:gap-3'
+// right padding = a small button's own (px-2.5), so the last column ends under the header's Configure
+export const LINE = 'flex items-center gap-2 pr-2.5 pl-2 sm:gap-3'
 export const NAME_COL = 'flex min-w-0 flex-1 items-center gap-2'
 export const FIRST_COL = 'hidden min-w-24 shrink-0 items-baseline justify-end gap-1.5 text-right tabular-nums sm:flex'
 export const SECOND_COL = 'flex w-20 shrink-0 justify-end text-right tabular-nums sm:w-24'
