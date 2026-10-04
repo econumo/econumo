@@ -90,9 +90,9 @@ import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { BudgetDialog } from './BudgetDialog'
 import { useCreateBudget } from './queries'
 import type { ElementContainer } from './elementMove'
-import { applyArrangement, arrangementFromBuckets, arrangementItem, dropIndicatorFor, ENVELOPE_DROP, envelopeCollisions, moveElementInArrangement, placeFromEnvelope, withoutElement } from './elementMove'
+import { applyArrangement, arrangementFromBuckets, arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, moveElementInArrangement, placeFromEnvelope, withoutElement } from './elementMove'
 import type { DropIndicator } from './elementMove'
-import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, FolderGrip } from './MonthDrag'
+import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, EnvelopeHeadDrop, FolderGrip } from './MonthDrag'
 import { CoinLoader } from '@/components/CoinLoader'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
@@ -452,8 +452,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     }
     const activeId = String(active.id)
     const overId = over ? String(over.id) : null
-    if (overId?.startsWith(ENVELOPE_DROP)) {
-      const envelopeId = overId.slice(ENVELOPE_DROP.length)
+    const envelopeId = overId ? envelopeOfDrop(overId) : null
+    if (envelopeId !== null) {
       if (canEnterEnvelope(activeId, envelopeId)) {
         setPendingMemberId(activeId)
         moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id: activeId, envelopeId }, { onError: () => setPendingMemberId(null) })
@@ -900,6 +900,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                             isEnvelopeType(parent.type) && parent.isArchived === 0 ? <DragChild id={child.id}>{node}</DragChild> : node
                         : undefined
                     }
+                    envelopeHeadDrop={dragEnabled ? (element) => (element.isArchived === 0 ? <EnvelopeHeadDrop envelopeId={element.id} /> : null) : undefined}
                     wrapChildren={
                       dragEnabled
                         ? (parent, node) =>

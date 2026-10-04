@@ -870,7 +870,10 @@ and on tablet/phone only with a hardware keyboard.
       envelopes moved between folders too. A category dragged out onto a row or
       folder leaves the envelope and lands there; dropped among another
       unfolded envelope's categories it moves into that envelope; a top-level
-      category dropped there joins it the same way. An
+      category dropped there joins it the same way. A folded envelope takes a
+      category dropped on the middle of its row (the row gets a ring and the
+      category-level line shows under it); near the row's top or bottom edge
+      the drop places the category next to the envelope instead. An
       empty envelope unfolds to "This envelope is empty…" and takes a drop.
       The moved category disappears from its old place at once and shows in
       the new one after the refresh, also after a reload. An income category

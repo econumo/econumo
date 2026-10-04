@@ -175,3 +175,11 @@ it('with every income row in a folder, an empty No folder shows while dragging, 
   act(() => income().onDragEnd({ active: { id: 'cat-salary' }, over: { id: 'bfolder:null' } } as never))
   expect(drag.onMoveIncome).toHaveBeenCalledWith({ id: 'cat-salary', folderId: null, position: 0, afterId: null }, expect.any(Function))
 })
+
+it('a folded income envelope takes a category dropped on the middle of its row', () => {
+  const drag = renderFlows()
+  expect(screen.getByTestId('envelope-head-drop-ie1')).toBeInTheDocument()
+  const income = captured[captured.length - 2]
+  act(() => income.onDragEnd({ active: { id: 'cat-freelance' }, over: { id: 'benvh:ie1' } } as never))
+  expect(drag.onMoveIncomeIntoEnvelope).toHaveBeenCalledWith('cat-freelance', 'ie1', expect.any(Function))
+})

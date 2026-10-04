@@ -97,3 +97,18 @@ it('nothing moves for a drop back on its own envelope, or a non-category on a li
   expect(moves).toEqual([])
   expect(screen.getByTestId('child-cat-rent')).toBeInTheDocument()
 })
+
+it('a folded envelope takes a category dropped on the middle of its row', async () => {
+  useBudgetPeriodStore.setState({ unfoldedElements: {} })
+  const moves = renderPage()
+  const envelope = await screen.findByTestId('element-env-1')
+  expect(within(envelope).getByTestId('envelope-head-drop-env-1')).toBeInTheDocument()
+  act(() => expenseDrop().onDragEnd({ active: { id: 'cat-food' }, over: { id: 'benvh:env-1' } } as never))
+  await waitFor(() => expect(moves).toEqual([{ budgetId: 'b1', id: 'cat-food', folderId: null, afterId: null, envelopeId: 'env-1' }]))
+})
+
+it('an unfolded envelope keeps its list as the drop zone, not its row', async () => {
+  renderPage()
+  const envelope = await screen.findByTestId('element-env-1')
+  expect(within(envelope).queryByTestId('envelope-head-drop-env-1')).toBeNull()
+})

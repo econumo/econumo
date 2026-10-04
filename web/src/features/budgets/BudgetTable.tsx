@@ -43,6 +43,8 @@ export interface ElementRowExtras {
   wrapChild?: (child: BudgetChildElementDto, parent: BudgetElementDto, node: ReactNode) => ReactNode
   /** wraps an unfolded envelope's category list (its drop zone) */
   wrapChildren?: (parent: BudgetElementDto, node: ReactNode) => ReactNode
+  /** a folded envelope's own drop zone, inside its row */
+  envelopeHeadDrop?: (element: BudgetElementDto) => ReactNode
   onSpentClick?: (target: BudgetTransactionsTarget) => void
   /** the row's ⋮ menu, shown on hover */
   rowMenu?: (element: BudgetElementDto) => MenuAction[] | undefined
@@ -272,7 +274,7 @@ function ElementRow({
 
   const row = (
     <div className="flex flex-col" data-testid={`element-${element.id}`}>
-      <div className={`${LINE} ${ROW_INDENT} min-h-10 rounded-md py-1.5 hover:bg-accent/50`}>
+      <div className={`${LINE} ${ROW_INDENT} relative min-h-10 rounded-md py-1.5 hover:bg-accent/50`}>
         {expandable ? (
           <button
             type="button"
@@ -295,6 +297,7 @@ function ElementRow({
           {blank ? <Dash /> : moneyFormat(available, currency, opts)}
         </span>
         {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
+        {extras.envelopeHeadDrop && isEnvelopeType(element.type) && !unfolded ? extras.envelopeHeadDrop(element) : null}
       </div>
       {expandable && unfolded ? (extras.wrapChildren ? extras.wrapChildren(element, childList) : childList) : null}
     </div>
@@ -358,7 +361,7 @@ function LabelRow({
 
   return (
     <li className="flex flex-col" data-testid={`budget-label-${label.id}`}>
-      <div className={`${LINE} ${ROW_INDENT} min-h-10 rounded-md py-1.5 hover:bg-accent/50`}>
+      <div className={`${LINE} ${ROW_INDENT} relative min-h-10 rounded-md py-1.5 hover:bg-accent/50`}>
         {expandable ? (
           <button
             type="button"

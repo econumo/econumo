@@ -7,7 +7,7 @@ import { GripVertical } from 'lucide-react'
 import { EntityIcon } from '@/components/EntityIcon'
 import type { SortableHandleProps } from '@/components/SortableList'
 import { lineControlClass, useLineControls } from './monthLayout'
-import { ENVELOPE_DROP, noShift } from './elementMove'
+import { ENVELOPE_DROP, ENVELOPE_HEAD_DROP, noShift } from './elementMove'
 
 /** The insertion line. Its indent tells the level: from where rows start for a
  *  place in a folder, from where an envelope's categories start for a drop into
@@ -164,5 +164,23 @@ export function EnvelopeDrop({ envelopeId, children }: { envelopeId: string; chi
       {children}
       {isOver ? <DropLine level="child" edge="after" /> : null}
     </div>
+  )
+}
+
+/** A folded envelope takes a category on the middle band of its row; the row's
+ *  edges still place the category before or after the envelope. Goes inside the
+ *  (relative) row. */
+export function EnvelopeHeadDrop({ envelopeId }: { envelopeId: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `${ENVELOPE_HEAD_DROP}${envelopeId}` })
+  return (
+    <>
+      <span ref={setNodeRef} aria-hidden="true" data-testid={`envelope-head-drop-${envelopeId}`} className="pointer-events-none absolute inset-x-0 top-1/4 bottom-1/4" />
+      {isOver ? (
+        <>
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-ring/40" />
+          <DropLine level="child" edge="after" />
+        </>
+      ) : null}
+    </>
   )
 }

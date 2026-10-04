@@ -23,9 +23,9 @@ import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FIRST_COL, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
 import { leftToReceive } from './phoneMonth'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
-import { arrangementItem, dropIndicatorFor, ENVELOPE_DROP, envelopeCollisions, moveElementInArrangement, placeFromEnvelope, preferRowCollisions } from './elementMove'
+import { arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, moveElementInArrangement, placeFromEnvelope, preferRowCollisions } from './elementMove'
 import type { DropIndicator, ElementContainer, ElementMoveItem } from './elementMove'
-import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, FolderGrip } from './MonthDrag'
+import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, EnvelopeHeadDrop, FolderGrip } from './MonthDrag'
 import { isEnvelopeType } from './elementEdit'
 
 export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' }>
@@ -257,7 +257,8 @@ export function MonthFlows({
       </div>
     )
     const line = (
-      <div key={`${el.id}:${el.type}`}>
+      <div key={`${el.id}:${el.type}`} className="relative">
+        {childDrag && !open ? <EnvelopeHeadDrop envelopeId={el.id} /> : null}
         <FlowRow
           testId={`month-income-row-${el.id}`}
           icon={el.icon}
@@ -460,8 +461,8 @@ export function MonthFlows({
     const activeId = String(active.id)
     const overId = String(over.id)
     const base = arrangementOf(shownIncomeGroups)
-    if (overId.startsWith(ENVELOPE_DROP)) {
-      const envelopeId = overId.slice(ENVELOPE_DROP.length)
+    const envelopeId = envelopeOfDrop(overId)
+    if (envelopeId !== null) {
       if (canEnterEnvelope(activeId, envelopeId)) {
         setPendingMemberId(activeId)
         drag.onMoveIncomeIntoEnvelope(activeId, envelopeId, () => setPendingMemberId(null))

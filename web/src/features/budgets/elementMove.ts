@@ -145,6 +145,18 @@ export function withoutElement(budget: BudgetDto, id: string): BudgetDto {
 
 /** the drop zone of an unfolded envelope's category list: `benv:<envelope id>` */
 export const ENVELOPE_DROP = 'benv:'
+/** the drop zone of a folded envelope: the middle band of its row */
+export const ENVELOPE_HEAD_DROP = 'benvh:'
+
+/** the envelope a drop target puts the dragged category into, or null */
+export function envelopeOfDrop(overId: string): string | null {
+  for (const prefix of [ENVELOPE_DROP, ENVELOPE_HEAD_DROP]) {
+    if (overId.startsWith(prefix)) {
+      return overId.slice(prefix.length)
+    }
+  }
+  return null
+}
 
 // Rows are nested inside their section droppable, and the dragged row itself
 // travels under the pointer (its own rect always wins a pointer test) — so:
@@ -155,12 +167,15 @@ export function envelopeCollisions(canEnter: (activeId: string, envelopeId: stri
   return (args) => {
     const activeId = String(args.active.id)
     const within = pointerWithin(args).filter((c) => c.id !== args.active.id)
-    const envelope = within.find((c) => String(c.id).startsWith(ENVELOPE_DROP) && canEnter(activeId, String(c.id).slice(ENVELOPE_DROP.length)))
+    const envelope = within.find((c) => {
+      const envelopeId = envelopeOfDrop(String(c.id))
+      return envelopeId !== null && canEnter(activeId, envelopeId)
+    })
     if (envelope) {
       return [envelope]
     }
     const candidates = (within.length > 0 ? within : rectIntersection(args)).filter(
-      (c) => c.id !== args.active.id && !String(c.id).startsWith(ENVELOPE_DROP),
+      (c) => c.id !== args.active.id && envelopeOfDrop(String(c.id)) === null,
     )
     const row = candidates.find((c) => !String(c.id).startsWith('bfolder:'))
     return row ? [row] : candidates
@@ -213,8 +228,9 @@ export function dropIndicatorFor(
   overId: string,
   { fromEnvelope, isFolded }: { fromEnvelope: boolean; isFolded: (folderId: Id | null) => boolean },
 ): DropIndicator | null {
-  if (overId.startsWith(ENVELOPE_DROP)) {
-    return { kind: 'envelope', envelopeId: overId.slice(ENVELOPE_DROP.length) }
+  const envelopeId = envelopeOfDrop(overId)
+  if (envelopeId !== null) {
+    return { kind: 'envelope', envelopeId }
   }
   const landed = landing(base, activeId, overId, fromEnvelope)
   if (!landed) {

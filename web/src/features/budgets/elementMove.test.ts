@@ -1,4 +1,4 @@
-import { applyArrangement, arrangementFromBuckets, arrangementItem, computeElementMove, moveElementInArrangement, dropIndicatorFor, placeFromEnvelope, withoutElement } from './elementMove'
+import { applyArrangement, arrangementFromBuckets, arrangementItem, computeElementMove, moveElementInArrangement, dropIndicatorFor, envelopeOfDrop, placeFromEnvelope, withoutElement } from './elementMove'
 import { bucketElements, makeBudgetExchange } from './budgetMath'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { fixtureWireBudget } from '@/test/fixtures'
@@ -111,4 +111,11 @@ describe('the insertion line', () => {
     expect(dropIndicatorFor(base, 'x', 'b', { fromEnvelope: true, isFolded: () => false })).toEqual({ kind: 'row', id: 'a', edge: 'after' })
     expect(dropIndicatorFor(base, 'a', 'benv:env-1', open)).toEqual({ kind: 'envelope', envelopeId: 'env-1' })
   })
+})
+
+it('both envelope drop zones name their envelope; anything else names none', () => {
+  expect(envelopeOfDrop('benv:e1')).toBe('e1')
+  expect(envelopeOfDrop('benvh:e1')).toBe('e1')
+  expect(envelopeOfDrop('bfolder:null')).toBeNull()
+  expect(envelopeOfDrop('e1')).toBeNull()
 })
