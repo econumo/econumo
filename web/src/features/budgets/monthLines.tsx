@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useBudgetPeriodStore } from './budgetStore'
-import { EMPTY_CELL, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, SECOND_COL, THIRD_COL } from './monthLayout'
+import { EMPTY_CELL, FIRST_COL, FOLD_LINE, FOLDER_INDENT, LINE, NAME_COL, SECOND_COL, THIRD_COL, foldOnLineClick } from './monthLayout'
 
 /* edit mode appends a w-8 actions button to element rows; every line without
    one must pad the slot or its amount columns drift out of alignment */
@@ -48,14 +48,15 @@ export function MonthSectionHeader({
   const cells = folded ? sums : headings
   return (
     <div
-      className={`${LINE} min-h-10 ${folded ? 'text-sm text-muted-foreground' : 'text-[10.5px] uppercase tracking-wider text-muted-foreground'}`}
+      className={`${LINE} ${FOLD_LINE} min-h-10 ${folded ? 'text-sm text-muted-foreground' : 'text-[10.5px] uppercase tracking-wider text-muted-foreground'}`}
       data-testid={testId}
+      onClick={foldOnLineClick(() => toggle(foldKey))}
     >
       <button
         type="button"
+        data-fold=""
         aria-expanded={!folded}
         title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
-        onClick={() => toggle(foldKey)}
         className={`${NAME_COL} py-1 text-left text-[15px] normal-case tracking-normal text-foreground`}
       >
         <Chevron aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
@@ -69,7 +70,7 @@ export function MonthSectionHeader({
   )
 }
 
-/** A folder's line inside a section: the whole name folds the folder's rows; its
+/** A folder's line inside a section: the whole line folds the folder's rows; its
  *  sums stay in the row columns either way. */
 export function FolderLine({
   name,
@@ -94,13 +95,13 @@ export function FolderLine({
   const { t } = useTranslation()
   const Chevron = folded ? ChevronRight : ChevronDown
   return (
-    <header className={`${LINE} ${FOLDER_INDENT} min-h-9 text-sm text-muted-foreground`}>
+    <header className={`${LINE} ${FOLD_LINE} ${FOLDER_INDENT} min-h-9 text-sm text-muted-foreground`} onClick={foldOnLineClick(onToggle)}>
       {handle}
       <button
         type="button"
+        data-fold=""
         aria-expanded={!folded}
         title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
-        onClick={onToggle}
         className="flex min-w-0 items-center gap-1.5 py-1 text-left"
       >
         <Chevron aria-hidden="true" className="size-3.5 shrink-0" />

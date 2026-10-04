@@ -769,6 +769,11 @@ and on tablet/phone only with a hardware keyboard.
       do not cover it), a folder's sums only when the folder as a whole
       overspent; nothing is green. A future month shows "—" for Spent. The table
       spans the full width. The page title is in normal case.
+- [ ] Budget view lines highlight on hover like rows (pointer cursor): the
+      Income, Savings and Expenses lines, folder lines, and Reporting tags. A
+      click anywhere on such a line folds it, its sums included; in Edit
+      structure the grip, the folder's "+" and its "⋮" menu (and the menu's
+      items) keep their own action and do not fold.
 - [ ] Budget view folders fold (desktop and tablet): a folder's line, "No
       folder" and "Archived" hide their rows on a click and keep the line with
       its sums; income folders inside Income fold the same way. Folds survive

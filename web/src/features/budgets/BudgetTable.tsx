@@ -17,7 +17,7 @@ import { budgetTotals, carryOver, displayAvailable, elementDisplayName, nothingT
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader } from './monthLines'
-import { CHILD_INDENT, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
+import { CHILD_INDENT, FIRST_COL, FOLD_LINE, foldOnLineClick, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
 
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
@@ -418,13 +418,16 @@ function ReportingTagsFolder({
 
   return (
     <section data-testid="budget-labels-section">
-      <div className={`${LINE} ${FOLDER_INDENT} min-h-9 text-sm text-muted-foreground`}>
+      <div
+        className={`${LINE} ${FOLD_LINE} ${FOLDER_INDENT} min-h-9 text-sm text-muted-foreground`}
+        onClick={foldOnLineClick(() => toggleElement(REPORTING_TAGS_FOLD_ID))}
+      >
         <button
           type="button"
+          data-fold=""
           className="flex min-w-0 items-center gap-1.5 py-1 text-left"
           aria-expanded={open}
           title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
-          onClick={() => toggleElement(REPORTING_TAGS_FOLD_ID)}
         >
           <Chevron className="size-3.5 shrink-0" />
           <span className="min-w-0 truncate" data-testid="budget-labels-heading">

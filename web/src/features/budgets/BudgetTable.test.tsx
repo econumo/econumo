@@ -39,7 +39,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   server.use(...coreHandlers())
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {} })
 })
 
 it('renders column headers, folder, default and archived sections with aligned stat cells', async () => {
@@ -659,4 +659,25 @@ it('shows no carry-over when earlier months left nothing, and a negative one in 
   const debt = within(screen.getByTestId('element-env-1')).getByTestId('cell-carry')
   await waitFor(() => expect(debt).toHaveTextContent('-30.00 +'))
   expect(debt.className).toContain('text-expense')
+})
+
+it('a click anywhere on a folder line folds it, but the line\'s own controls keep their click', async () => {
+  const user = userEvent.setup()
+  const onAction = vi.fn()
+  renderTable(undefined, {
+    renderFolderActions: () => (
+      <button type="button" aria-label="folder actions" onClick={onAction}>
+        ⋮
+      </button>
+    ),
+  })
+  const essentials = await screen.findByTestId('budget-folder-Essentials')
+  // the folder's own control: acts, does not fold
+  await user.click(within(essentials).getByRole('button', { name: 'folder actions' }))
+  expect(onAction).toHaveBeenCalledTimes(1)
+  expect(useBudgetPeriodStore.getState().planFolds.bf1).toBeUndefined()
+  // the sums, away from the name: folds
+  await user.click(within(essentials).getByTestId('stat-line').firstElementChild as HTMLElement)
+  expect(useBudgetPeriodStore.getState().planFolds.bf1).toBe(true)
+  expect(within(screen.getByTestId('budget-folder-Essentials')).queryByTestId('element-cat-food')).toBeNull()
 })

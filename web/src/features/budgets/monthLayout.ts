@@ -1,3 +1,5 @@
+import type { MouseEvent } from 'react'
+
 // One set of columns for every line of the desktop/tablet Budget view (section
 // headings, folder lines, rows, children, totals), so headings, sums and amounts
 // share their right edges. The first figure column grows to the left for a
@@ -13,3 +15,24 @@ export const ROW_INDENT = 'pl-6'
 export const CHILD_INDENT = 'pl-14 sm:pl-16'
 // em dash: a column that carries no value at all, as opposed to a zero
 export const EMPTY_CELL = '—'
+
+/** The whole line folds, hover-highlighted like a row. Its own controls (the drag
+ *  grip, the folder's plus and menu, an info note) keep their click, and a click in
+ *  a portalled menu, which React bubbles through here, never folds. The fold button
+ *  itself carries data-fold and no handler: its click, mouse or keyboard, lands here. */
+export function foldOnLineClick(onToggle: () => void) {
+  return (e: MouseEvent<HTMLElement>) => {
+    const target = e.target as HTMLElement
+    if (!e.currentTarget.contains(target)) {
+      return
+    }
+    const control = target.closest('button, a, input, [role="menuitem"]')
+    if (control && !control.hasAttribute('data-fold')) {
+      return
+    }
+    onToggle()
+  }
+}
+
+/** the hover and pointer every foldable line shares */
+export const FOLD_LINE = 'cursor-pointer rounded-md hover:bg-accent/50'
