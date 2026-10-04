@@ -779,16 +779,13 @@ and on tablet/phone only with a hardware keyboard.
         Uncategorized (expense or income) has no menu;
       - a savings row: Edit (the account); a reporting tag: Edit ("Edit (no
         access)" for another user's tag);
-      - a folder line: New envelope (expense folders only), Edit (rename),
-        Delete folder (greyed out as "Delete folder (not empty)" while the
-        folder has items); the expense "No folder": New envelope;
-      - the Expenses line: Create folder, New envelope; the Income line:
-        Create folder only (envelopes are expense-only, so no income menu
-        offers New envelope; existing income envelopes stay editable); the
+      - a folder line: New envelope, Edit (rename), Delete folder (greyed
+        out as "Delete folder (not empty)" while the folder has items); the
+        "No folder" line (Income or Expenses): New envelope;
+      - the Expenses and Income lines: Create folder, New envelope; the
         Savings line: Savings accounts (opens the budget's settings).
-      Regression: an income folder must stay under Income after a reload;
-      no Income menu may create an envelope (it would be an expense envelope
-      and turn the folder into an expense folder).
+      Regression: an income folder must stay under Income after a reload,
+      also after New envelope created an envelope in it.
       A guest (or anyone on an archived budget) gets no structure actions:
       only Edit where they own the item. No menu offers Show transactions:
       a row's transactions open from its Spent / Received / Saved figure.
@@ -798,13 +795,14 @@ and on tablet/phone only with a hardware keyboard.
       expense folder), and the folder stays under Income, empty, also after a
       reload, and in the Plan grid's Income band. Create folder from the
       Expenses line makes an expense folder the same way. An expense row's
-      Move to folder… offers only expense folders. Moving the first item of
-      the other side into an EMPTY folder (Plan grid, phone edit mode) is
-      allowed and makes it a folder of that side.
+      Move to folder… offers only expense folders. A folder's side never
+      changes: an item of the other side cannot go into it, not even while
+      it is empty (dragging across sections is not possible, and the server
+      refuses it with "A folder cannot contain both income and expenses").
 - [ ] Budget view lines highlight on hover like rows (pointer cursor): the
       Income, Savings and Expenses lines, folder lines, and Reporting tags. A
       click anywhere on such a line folds it, its sums included; in Edit
-      structure the grip, the folder's "+" and its "⋮" menu (and the menu's
+      structure the grip and the folder's "⋮" menu (and the menu's
       items) keep their own action and do not fold.
 - [ ] Budget view folders fold (desktop and tablet): a folder's line, "No
       folder" and "Archived" hide their rows on a click and keep the line with
@@ -860,8 +858,11 @@ and on tablet/phone only with a hardware keyboard.
       Uncategorized and archived rows have none. The dropped order shows at
       once and survives a reload. Guests and archived budgets show no grips.
 - [ ] Envelopes: create via New envelope in a folder's or section's ⋮ menu on
-      the Budget view, or the "+" on a folder header in Edit structure mode
-      (name, currency, categories multi-select);
+      the Budget view (name, currency, categories multi-select). Under Income
+      it makes an income envelope: the picker lists only income categories,
+      the envelope shows under Income (Planned / Received / To receive) and in
+      the Plan grid's Income band, and it takes one plan for all its
+      categories;
       transactions of member categories aggregate under the envelope; edit
       membership; delete envelope returns categories to top level.
 - [ ] Tag on a transaction: spending counts toward the **tag** element, not the

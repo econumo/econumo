@@ -24,33 +24,19 @@ func elementTypeAndKey(t *testing.T, db *sql.DB, budgetID, externalID string) (t
 	return typ, sortKey, true
 }
 
-// seedIncomeEnvelope plants a type=4 (income) envelope the way the write path
-// no longer can: create-envelope refuses side=income for now, so the test
-// creates a default (expense) envelope with no children, flips the stored
-// type via SQL, and attaches the income children through update-envelope —
-// which validates them against the stored (income) side, so the homogeneity
-// rule is exercised on the way in.
+// seedIncomeEnvelope creates a type=4 (income) envelope through create-envelope
+// with side=income, which validates the children against the income side.
 func seedIncomeEnvelope(t *testing.T, h *harness, tok, budgetID, envID, name string, categories []string) {
 	t.Helper()
+	if categories == nil {
+		categories = []string{}
+	}
 	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
 		"budgetId": budgetID, "id": envID, "name": name, "icon": "payments",
-		"currencyId": usdID, "folderId": nil, "categories": []string{},
+		"currencyId": usdID, "folderId": nil, "side": "income", "categories": categories,
 	})
 	if st != http.StatusOK {
-		t.Fatalf("seed envelope = %d; body=%s", st, env.raw)
-	}
-	if _, err := h.db.Exec(`UPDATE budgets_elements SET type = 4 WHERE budget_id = ? AND external_id = ?`, budgetID, envID); err != nil {
-		t.Fatalf("force income type: %v", err)
-	}
-	if len(categories) == 0 {
-		return
-	}
-	st, env = h.do(t, http.MethodPost, "/api/v1/budget/update-envelope", tok, map[string]any{
-		"budgetId": budgetID, "id": envID, "name": name, "icon": "payments",
-		"currencyId": usdID, "isArchived": 0, "categories": categories,
-	})
-	if st != http.StatusOK {
-		t.Fatalf("attach income children = %d; body=%s", st, env.raw)
+		t.Fatalf("seed income envelope = %d; body=%s", st, env.raw)
 	}
 }
 
@@ -111,28 +97,17 @@ func TestSetLimit_IncomeCategorySelfHeals_AndSurvivesSync(t *testing.T) {
 
 // TestSyncElements_KeepsEnvelopeStoredType: a type=4 (income) envelope element
 // must not be re-ensured as expense (duplicate row -> UNIQUE violation) nor
-// deleted+recreated. We force the stored type via SQL because create-envelope
-// only grows the side field in a later task — this pins the reconciler
-// independently of the write path.
+// deleted+recreated.
 func TestSyncElements_KeepsEnvelopeStoredType(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "Stored Side Budget"))
 
 	const envID = "beee2222-0000-7000-8000-0000000000ab"
-	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
-		"budgetId": budgetID1, "id": envID, "name": "Salaries", "icon": "payments",
-		"currencyId": usdID, "folderId": nil, "categories": []string{},
-	})
-	if st != http.StatusOK {
-		t.Fatalf("create-envelope = %d; body=%s", st, env.raw)
-	}
-	if _, err := h.db.Exec(`UPDATE budgets_elements SET type = 4 WHERE budget_id = ? AND external_id = ?`, budgetID1, envID); err != nil {
-		t.Fatalf("force income type: %v", err)
-	}
+	seedIncomeEnvelope(t, h, tok, budgetID1, envID, "Salaries", nil)
 
 	// move-element on an unrelated element reruns syncElements.
-	st, env = h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
+	st, env := h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
 		"budgetId": budgetID1, "id": envID, "folderId": nil, "afterId": nil,
 	})
 	if st != http.StatusOK {
@@ -181,9 +156,9 @@ func TestCreateBudget_SeedsIncomeCategories(t *testing.T) {
 	}
 }
 
-// TestMoveElement_CrossSideRejected: folder sides are derived from members;
-// mixing income and expense elements in one folder is rejected with the coded
-// error, and emptying a folder reverts it to neutral.
+// TestMoveElement_CrossSideRejected: a folder's side is fixed at creation, so an
+// element of the other side is refused with the coded error -- by an empty
+// folder too.
 func TestMoveElement_CrossSideRejected(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -195,51 +170,46 @@ func TestMoveElement_CrossSideRejected(t *testing.T) {
 	f.Category(fixture.Category{ID: expenseCatID, UserID: seedUserID, Name: "Rent Move", Type: 0, Icon: "home"})
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "Folder Sides Budget"))
 
-	const folderID = "bfff2222-0000-7000-8000-0000000000aa"
+	const expenseFolderID = "bfff2222-0000-7000-8000-0000000000aa"
+	const incomeFolderID = "bfff2222-0000-7000-8000-0000000000a9"
 	h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
-		"budgetId": budgetID1, "id": folderID, "name": "Mixed?", "side": "expense",
+		"budgetId": budgetID1, "id": expenseFolderID, "name": "Bills", "side": "expense",
+	})
+	h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
+		"budgetId": budgetID1, "id": incomeFolderID, "name": "Earnings", "side": "income",
 	})
 
-	// Neutral folder accepts an income element.
-	st, env := h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
-		"budgetId": budgetID1, "id": incomeCatID, "folderId": folderID, "afterId": nil,
-	})
-	if st != http.StatusOK {
-		t.Fatalf("income into neutral folder = %d, want 200; body=%s", st, env.raw)
+	move := func(id, folderID string) (int, envelope) {
+		return h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
+			"budgetId": budgetID1, "id": id, "folderId": folderID, "afterId": nil,
+		})
+	}
+	refused := func(what string, st int, env envelope) {
+		t.Helper()
+		if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "A folder cannot contain both income and expenses") {
+			t.Fatalf("%s: st=%d body=%s (want the folder side-mixing error)", what, st, env.raw)
+		}
 	}
 
-	// Now income-sided: an expense element is rejected with the coded error.
-	st, env = h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
-		"budgetId": budgetID1, "id": expenseCatID, "folderId": folderID, "afterId": nil,
-	})
-	if st != http.StatusBadRequest {
-		t.Fatalf("expense into income folder = %d, want 400; body=%s", st, env.raw)
-	}
-	if !strings.Contains(string(env.raw), "A folder cannot contain both income and expenses") {
-		t.Errorf("want the folder side-mixing message; body=%s", env.raw)
-	}
+	st, env := move(incomeCatID, expenseFolderID)
+	refused("income into an empty expense folder", st, env)
+	st, env = move(expenseCatID, incomeFolderID)
+	refused("expense into an empty income folder", st, env)
 
-	// Emptying the folder reverts it to neutral: the expense move then succeeds.
-	st, env = h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
-		"budgetId": budgetID1, "id": incomeCatID, "folderId": nil, "afterId": nil,
-	})
-	if st != http.StatusOK {
-		t.Fatalf("income out of folder = %d; body=%s", st, env.raw)
+	if st, env = move(incomeCatID, incomeFolderID); st != http.StatusOK {
+		t.Fatalf("income into income folder = %d; body=%s", st, env.raw)
 	}
-	st, env = h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
-		"budgetId": budgetID1, "id": expenseCatID, "folderId": folderID, "afterId": nil,
-	})
-	if st != http.StatusOK {
-		t.Fatalf("expense into re-neutraled folder = %d, want 200; body=%s", st, env.raw)
+	if st, env = move(expenseCatID, expenseFolderID); st != http.StatusOK {
+		t.Fatalf("expense into expense folder = %d; body=%s", st, env.raw)
 	}
+	st, env = move(incomeCatID, expenseFolderID)
+	refused("income from its folder into the expense folder", st, env)
 }
 
-// TestCreateEnvelope_IncomeSide covers the envelope-side matrix while income
-// envelope creation is switched off: side=income is rejected as an invalid
-// choice (nothing is written), homogeneity rejections both directions, unknown
-// category rejected, invalid side rejected, cross-side folder placement
-// rejected at create time, and update keeping the stored side of a seeded
-// income envelope.
+// TestCreateEnvelope_IncomeSide covers the envelope-side matrix: side=income
+// stores a type=4 element holding its income child, homogeneity rejections both
+// directions, unknown category rejected, invalid side rejected, cross-side
+// folder placement rejected at create time, and update keeping the stored side.
 func TestCreateEnvelope_IncomeSide(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -258,15 +228,20 @@ func TestCreateEnvelope_IncomeSide(t *testing.T) {
 		}
 	}
 
-	// side=income is switched off: rejected on the side field, no row written —
-	// even with a perfectly valid income child.
 	const incomeEnvID = "beee2222-0000-7000-8000-0000000000b0"
 	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, envBody(incomeEnvID, "income", []string{incomeCatID}, nil))
-	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), `"side"`) || !strings.Contains(string(env.raw), "The value you selected is not a valid choice.") {
-		t.Fatalf("create income envelope: st=%d body=%s (want 400 with an invalid-choice error on side)", st, env.raw)
+	if st != http.StatusOK || !strings.Contains(string(env.Data), incomeCatID) {
+		t.Fatalf("create income envelope: st=%d body=%s", st, env.raw)
 	}
-	if _, _, found := elementTypeAndKey(t, h.db, budgetID1, incomeEnvID); found {
-		t.Fatalf("rejected income envelope must not leave an element row behind")
+	if typ, _, _ := elementTypeAndKey(t, h.db, budgetID1, incomeEnvID); typ != 4 {
+		t.Fatalf("income envelope element type=%d want 4", typ)
+	}
+
+	// Homogeneity, the other way: an expense child in an income envelope.
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok,
+		envBody("beee2222-0000-7000-8000-0000000000b1", "income", []string{expenseCatID}, nil))
+	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "An envelope cannot contain both income and expense categories") {
+		t.Fatalf("expense child in income envelope: st=%d body=%s", st, env.raw)
 	}
 
 	// Homogeneity: income child in a (default expense) envelope.
@@ -306,13 +281,16 @@ func TestCreateEnvelope_IncomeSide(t *testing.T) {
 		t.Fatalf("expense envelope into income folder: st=%d body=%s", st, env.raw)
 	}
 
-	// A seeded income envelope (type=4) keeps its stored side on update: an
-	// income child is accepted and rendered, an expense child is still rejected
-	// (side is immutable, no side field on update).
-	seedIncomeEnvelope(t, h, tok, budgetID1, incomeEnvID, "Salaries", nil)
-	if typ, _, _ := elementTypeAndKey(t, h.db, budgetID1, incomeEnvID); typ != 4 {
-		t.Fatalf("seeded income envelope element type=%d want 4", typ)
+	// An income envelope goes into the income folder.
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok,
+		envBody("beee2222-0000-7000-8000-0000000000b6", "income", []string{}, folderID))
+	if st != http.StatusOK {
+		t.Fatalf("income envelope into income folder: st=%d body=%s", st, env.raw)
 	}
+
+	// The income envelope keeps its stored side on update: an income child is
+	// accepted and rendered, an expense child is still rejected (side is
+	// immutable, no side field on update).
 	st, env = h.do(t, http.MethodPost, "/api/v1/budget/update-envelope", tok, map[string]any{
 		"budgetId": budgetID1, "id": incomeEnvID, "name": "Salaries", "icon": "payments",
 		"currencyId": usdID, "isArchived": 0, "categories": []string{incomeCatID},
@@ -333,9 +311,8 @@ func TestCreateEnvelope_IncomeSide(t *testing.T) {
 }
 
 // TestGetBudget_ExcludesIncomeEnvelopesAndFolders: an income envelope never
-// renders in get-budget, and a folder that took the income side disappears
-// from the folder list -- and stays gone once emptied, because the side is
-// stored rather than derived from the members.
+// renders in get-budget, and neither does an income folder -- empty, holding
+// the envelope, or emptied again.
 func TestGetBudget_ExcludesIncomeEnvelopesAndFolders(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -350,38 +327,32 @@ func TestGetBudget_ExcludesIncomeEnvelopesAndFolders(t *testing.T) {
 
 	const folderID = "bfff2222-0000-7000-8000-0000000000ac"
 	h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
-		"budgetId": budgetID1, "id": folderID, "name": "Income Folder", "side": "expense",
+		"budgetId": budgetID1, "id": folderID, "name": "Income Folder", "side": "income",
 	})
-	// Neutral folder: visible.
-	st, b := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
-	if st != http.StatusOK {
-		t.Fatalf("get-budget=%d body=%s", st, b.raw)
+	absent := func(when string) {
+		t.Helper()
+		st, b := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
+		if st != http.StatusOK {
+			t.Fatalf("get-budget=%d body=%s", st, b.raw)
+		}
+		for _, id := range []string{folderID, incomeEnvID, incomeCatID} {
+			if strings.Contains(string(b.Data), id) {
+				t.Fatalf("%s: %s must not render in get-budget; body=%s", when, id, b.Data)
+			}
+		}
 	}
-	if !strings.Contains(string(b.Data), folderID) {
-		t.Fatalf("neutral folder must be visible; body=%s", b.Data)
-	}
-	if strings.Contains(string(b.Data), incomeEnvID) || strings.Contains(string(b.Data), incomeCatID) {
-		t.Fatalf("income envelope/category must not render in get-budget; body=%s", b.Data)
-	}
+	absent("empty income folder")
 
-	// Give the folder an income member: it disappears from get-budget.
 	st, env := h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
 		"budgetId": budgetID1, "id": incomeEnvID, "folderId": folderID, "afterId": nil,
 	})
 	if st != http.StatusOK {
 		t.Fatalf("move income envelope into folder = %d; body=%s", st, env.raw)
 	}
-	_, b = h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
-	if strings.Contains(string(b.Data), folderID) {
-		t.Fatalf("income-sided folder must be filtered from get-budget; body=%s", b.Data)
-	}
+	absent("income folder holding the envelope")
 
-	// Empty it again: still an income folder, still absent.
 	h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
 		"budgetId": budgetID1, "id": incomeEnvID, "folderId": nil, "afterId": nil,
 	})
-	_, b = h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
-	if strings.Contains(string(b.Data), folderID) {
-		t.Fatalf("an emptied income folder must stay filtered from get-budget; body=%s", b.Data)
-	}
+	absent("emptied income folder")
 }

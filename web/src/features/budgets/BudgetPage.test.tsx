@@ -663,30 +663,57 @@ describe('the ⋮ menus on the Budget view', () => {
     expect(within(screen.getByTestId('column-headers')).queryByRole('button', { name: 'menu Expenses' })).toBeNull()
   })
 
-  it('the Income menus offer no New envelope (envelopes are expense-only); the Expenses ones do', async () => {
+  it('the Income menus offer New envelope, and it creates an income envelope in that folder', async () => {
     const plan = JSON.parse(JSON.stringify(fixtureWirePlan))
     plan.structure.folders = [...plan.structure.folders, { id: 'bf-inc', name: 'Side gigs', position: 1, side: 'income' }]
     plan.structure.elements = plan.structure.elements.map((el: { id: string }) => (el.id === 'cat-freelance' ? { ...el, folderId: 'bf-inc' } : el))
+    let sent: { folderId: string | null; side?: string; name: string } | null = null
     server.use(
       ...coreHandlers({ user: userWithBudget }),
       http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
       planHandler(plan),
+      http.post('*/api/v1/budget/create-envelope', async ({ request }) => {
+        sent = (await request.json()) as typeof sent
+        return HttpResponse.json({ success: true, message: '', data: { item: { id: 'env-new' } } })
+      }),
     )
     const user = userEvent.setup()
     renderPage()
     const items = async () => (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
 
     await user.click(within(await screen.findByTestId('month-income-header')).getByRole('button', { name: 'menu Income' }))
-    expect(await items()).toEqual(['Create folder'])
-    await user.keyboard('{Escape}')
-    await user.click(within(screen.getByTestId('month-income-folder-bf-inc')).getByRole('button', { name: 'menu Side gigs' }))
-    expect(await items()).not.toContain('New envelope')
-    await user.keyboard('{Escape}')
-    // the folder-less income rows have nothing left to offer: no menu at all
-    expect(within(screen.getByTestId('month-income-folder-__no_folder__')).queryByRole('button', { name: 'menu No folder' })).toBeNull()
-
-    await user.click(within(screen.getByTestId('column-headers')).getByRole('button', { name: 'menu Expenses' }))
     expect(await items()).toEqual(['Create folder', 'New envelope'])
+    await user.keyboard('{Escape}')
+    await user.click(within(screen.getByTestId('month-income-folder-__no_folder__')).getByRole('button', { name: 'menu No folder' }))
+    expect(await items()).toEqual(['New envelope'])
+    await user.keyboard('{Escape}')
+
+    await user.click(within(screen.getByTestId('month-income-folder-bf-inc')).getByRole('button', { name: 'menu Side gigs' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'New envelope' }))
+    await user.type(await screen.findByRole('textbox', { name: 'Name' }), 'Jobs')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() => expect(sent).toMatchObject({ name: 'Jobs', folderId: 'bf-inc', side: 'income' }))
+  })
+
+  it('a new expense envelope sends no side', async () => {
+    let sent: Record<string, unknown> | null = null
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(fixtureWirePlan),
+      http.post('*/api/v1/budget/create-envelope', async ({ request }) => {
+        sent = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ success: true, message: '', data: { item: { id: 'env-new' } } })
+      }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(within(await screen.findByTestId('column-headers')).getByRole('button', { name: 'menu Expenses' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'New envelope' }))
+    await user.type(await screen.findByRole('textbox', { name: 'Name' }), 'Home')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() => expect(sent).toMatchObject({ name: 'Home', folderId: null }))
+    expect(sent).not.toHaveProperty('side')
   })
 
   it('Create folder from Income creates an income folder, listed under Income while still empty', async () => {

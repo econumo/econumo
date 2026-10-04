@@ -63,6 +63,7 @@ type createEnvelopeInput struct {
 	CurrencyID  string   `json:"currency_id" jsonschema:"currency id (UUID), from list_currencies"`
 	FolderID    string   `json:"folder_id,omitempty" jsonschema:"folder id (UUID), from get_budget; omit to leave the envelope ungrouped"`
 	CategoryIDs []string `json:"category_ids,omitempty" jsonschema:"category ids (UUID) grouped under this envelope, from list_categories"`
+	Side        string   `json:"side,omitempty" jsonschema:"expense (default) or income; the categories and the folder must be of the same side"`
 }
 
 type updateEnvelopeInput struct {
@@ -313,6 +314,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 					CurrencyId: in.CurrencyID,
 					FolderId:   strPtr(in.FolderID),
 					Categories: in.CategoryIDs,
+					Side:       in.Side,
 				})
 				if err != nil {
 					return nil, model.CreateEnvelopeResult{}, webmcp.MapErr(ctx, err)
