@@ -180,7 +180,7 @@ function SectionSummary({
       data-testid={testId}
       aria-expanded={open}
       onClick={onToggle}
-      className={`${GRID} min-h-11 w-full rounded-md py-1.5 pl-2 text-left text-sm font-semibold active:bg-accent/50`}
+      className={`${GRID} min-h-11 w-full rounded-md py-1.5 pl-2 text-left text-sm active:bg-accent/50`}
     >
       <span className="flex min-w-0 items-center gap-1">
         <Chevron className="size-4 shrink-0" />

@@ -1046,9 +1046,9 @@ and on tablet/phone only with a hardware keyboard.
       menu. At the top, under a "USD · Planned · Actual" heading (the
       budget's currency code at the left), two cards: one with the "Income"
       line (planned, received), one with the "Savings" line (planned, saved,
-      in the budget currency). Both section lines are bolder and darker than
-      the folder lines inside them, so Savings never reads as one more income
-      folder. Below them, after a wider gap,
+      in the budget currency). Both section lines are darker and slightly
+      larger than the folder lines inside them (regular weight, not bold), so
+      Savings never reads as one more income folder. Below them, after a wider gap,
       "Expenses · Budget · Spent" heads the expense folders.
 - [ ] 📱 The Income and Savings lines start folded; tapping one unfolds its
       rows inside its own card, and the fold state survives a month switch
