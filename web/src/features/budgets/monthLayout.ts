@@ -57,10 +57,17 @@ export const LineControlsContext = createContext<LineControls>('hover')
 export const useLineControls = () => useContext(LineControlsContext)
 
 /** the visibility classes for a line control, given how controls show */
-export function lineControlClass(controls: LineControls, hoverGroup: 'line' | 'drag'): string {
+export function lineControlClass(controls: LineControls, hoverGroup: 'line' | 'drag' | 'child'): string {
   if (controls === 'always') {
     return ''
   }
-  const hover = hoverGroup === 'line' ? 'group-hover/line:opacity-100' : 'group-hover/drag:opacity-100'
+  // an envelope's category has its own group: hovering it inside the envelope's
+  // row must not show the envelope's grip, nor its siblings'
+  const hover = {
+    line: 'group-hover/line:opacity-100',
+    // ...and a row's grip hides while one of its envelope's categories is hovered
+    drag: 'group-hover/drag:opacity-100 group-has-[[data-drag-child]:hover]/drag:opacity-0!',
+    child: 'group-hover/child:opacity-100',
+  }[hoverGroup]
   return `opacity-0 ${hover} focus-visible:opacity-100 data-[state=open]:opacity-100`
 }

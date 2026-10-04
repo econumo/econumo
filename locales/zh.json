@@ -1332,6 +1332,9 @@
           "empty_folder": {
             "note": "此文件夹为空。请将分类、标签或信封移动到这里，或创建一个新信封。"
           },
+          "empty_envelope": {
+            "note": "此信封为空。将分类拖到这里，或通过“编辑”选择分类。"
+          },
           "element": {
             "action": {
               "change_currency": "更改货币",

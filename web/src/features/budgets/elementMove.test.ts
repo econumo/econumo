@@ -1,4 +1,4 @@
-import { applyArrangement, arrangementFromBuckets, arrangementItem, computeElementMove, moveElementInArrangement } from './elementMove'
+import { applyArrangement, arrangementFromBuckets, arrangementItem, computeElementMove, moveElementInArrangement, placeFromEnvelope, withoutElement } from './elementMove'
 import { bucketElements, makeBudgetExchange } from './budgetMath'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { fixtureWireBudget } from '@/test/fixtures'
@@ -63,4 +63,23 @@ it('applyArrangement patches folderId + order; archived elements untouched', () 
   const rebucketed = bucketElements(patched, makeBudgetExchange(patched, [usd, eur]))
   expect(rebucketed.withFolder[0].elements.map((e) => e.id)).toEqual(['env-1', 'cat-food'])
   expect(rebucketed.withoutFolder.elements).toEqual([])
+})
+
+it('a category dragged out of an envelope lands where a row dropped there would', () => {
+  const base = [
+    { folderId: 'f1', ids: ['a', 'b'] },
+    { folderId: null, ids: ['c'] },
+  ]
+  expect(placeFromEnvelope(base, 'x', 'b')).toEqual({ id: 'x', folderId: 'f1', position: 1, afterId: 'a' })
+  expect(placeFromEnvelope(base, 'x', 'bfolder:null')).toEqual({ id: 'x', folderId: null, position: 1, afterId: 'c' })
+  expect(placeFromEnvelope(base, 'x', 'nowhere')).toBeNull()
+})
+
+it('withoutElement drops an element from the top level and from any envelope', () => {
+  const budget = coerceBudgetFixture(fixtureWireBudget)
+  const envelope = budget.structure.elements.find((el) => el.id === 'env-1')!
+  const childId = envelope.children[0].id
+  const hidden = withoutElement(withoutElement(budget, childId), 'cat-food')
+  expect(hidden.structure.elements.find((el) => el.id === 'env-1')!.children.some((c) => c.id === childId)).toBe(false)
+  expect(hidden.structure.elements.some((el) => el.id === 'cat-food')).toBe(false)
 })

@@ -1332,6 +1332,9 @@
           "empty_folder": {
             "note": "Esta carpeta está vacía. Mueve aquí una categoría, una etiqueta o un sobre, o crea un sobre nuevo."
           },
+          "empty_envelope": {
+            "note": "Este sobre está vacío. Arrastra una categoría aquí o elige categorías con Editar."
+          },
           "element": {
             "action": {
               "change_currency": "Cambiar la moneda",

@@ -1332,6 +1332,9 @@
           "empty_folder": {
             "note": "This folder is empty. Move a category, tag, or envelope here, or create a new envelope."
           },
+          "empty_envelope": {
+            "note": "This envelope is empty. Drag a category here, or choose categories with Edit."
+          },
           "element": {
             "action": {
               "change_currency": "Change currency",

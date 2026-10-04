@@ -1332,6 +1332,9 @@
           "empty_folder": {
             "note": "Questa cartella è vuota. Sposta qui una categoria, un tag o una busta, oppure crea una nuova busta."
           },
+          "empty_envelope": {
+            "note": "Questa busta è vuota. Trascina qui una categoria o scegli le categorie con Modifica."
+          },
           "element": {
             "action": {
               "change_currency": "Cambia valuta",

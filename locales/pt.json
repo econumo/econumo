@@ -1332,6 +1332,9 @@
           "empty_folder": {
             "note": "Esta pasta está vazia. Mova para aqui uma categoria, etiqueta ou envelope, ou crie um novo envelope."
           },
+          "empty_envelope": {
+            "note": "Este envelope está vazio. Arraste uma categoria para aqui ou escolha categorias em Editar."
+          },
           "element": {
             "action": {
               "change_currency": "Alterar moeda",

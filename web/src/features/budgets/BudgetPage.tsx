@@ -51,6 +51,7 @@ import {
   useDeleteBudgetFolder,
   useMoveBudgetFolder,
   useMoveElement,
+  useMoveIntoEnvelope,
   useChangeElementCurrency,
   canConfigureBudget,
   canEditBudget,
@@ -89,8 +90,8 @@ import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { BudgetDialog } from './BudgetDialog'
 import { useCreateBudget } from './queries'
 import type { ElementContainer } from './elementMove'
-import { applyArrangement, arrangementFromBuckets, arrangementItem, moveElementInArrangement, preferRowCollisions } from './elementMove'
-import { DragFolder, DragRow, FolderGrip } from './MonthDrag'
+import { applyArrangement, arrangementFromBuckets, arrangementItem, ENVELOPE_DROP, envelopeCollisions, moveElementInArrangement, placeFromEnvelope, withoutElement } from './elementMove'
+import { DragChild, DragFolder, DragRow, EnvelopeDrop, FolderGrip } from './MonthDrag'
 import { CoinLoader } from '@/components/CoinLoader'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
@@ -146,6 +147,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const deleteFolder = useDeleteBudgetFolder()
   const orderFolders = useMoveBudgetFolder()
   const moveElement = useMoveElement()
+  const moveIntoEnvelope = useMoveIntoEnvelope()
   const changeCurrency = useChangeElementCurrency()
   const createBudget = useCreateBudget()
   // the month view's income, Balance and Total savings (phone and desktop alike): the
@@ -228,14 +230,18 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // refetched budget lands) the table renders this arrangement, so the row
   // moves across folders during the drag and never snaps back on drop.
   const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
-  // true only for the drag gesture itself — children collapse for its duration
-  const [dragInProgress, setDragInProgress] = useState(false)
+  // the element being dragged, for the gesture itself: its own categories collapse
+  const [dragActiveId, setDragActiveId] = useState<string | null>(null)
+  // a category on its way into or out of an envelope: hidden until the refetched
+  // budget shows it in its new place, so it never snaps back
+  const [pendingMemberId, setPendingMemberId] = useState<string | null>(null)
   // folder key ('null' for the default bucket) the drag currently targets across folders
   const [dropFolderKey, setDropFolderKey] = useState<string | null>(null)
   // a FOLDER is being dragged: every section renders header-only
   const [draggingFolderId, setDraggingFolderId] = useState<Id | null>(null)
   useEffect(() => {
     setDragArrangement(null)
+    setPendingMemberId(null)
   }, [budget])
 
   const serverBuckets = useMemo(() => {
@@ -249,11 +255,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     if (!budget || !serverBuckets) {
       return serverBuckets
     }
-    if (!dragArrangement) {
+    if (!dragArrangement && !pendingMemberId) {
       return serverBuckets
     }
-    return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies), i18n.language)
-  }, [budget, serverBuckets, dragArrangement, currencies, i18n.language])
+    const shown = pendingMemberId ? withoutElement(budget, pendingMemberId) : budget
+    return bucketElements(dragArrangement ? applyArrangement(shown, dragArrangement) : shown, makeBudgetExchange(budget, currencies), i18n.language)
+  }, [budget, serverBuckets, dragArrangement, pendingMemberId, currencies, i18n.language])
 
   // the Total row sums the expenses only, as on the phone: income and savings have
   // their own sections and totals lines
@@ -364,8 +371,17 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       setDraggingFolderId(activeId)
       return
     }
-    setDragInProgress(true)
+    setDragActiveId(activeId)
   }
+
+  // the envelope each expense category sits in; a category may go into any other
+  // live envelope
+  const envelopeOfCategory = new Map(
+    budget.structure.elements.flatMap((el) => (isEnvelopeType(el.type) ? el.children.map((c) => [c.id, el.id] as const) : [])),
+  )
+  const isExpenseCategory = (id: string) =>
+    envelopeOfCategory.has(id) || budget.structure.elements.some((el) => el.id === id && el.type === BudgetElementType.CATEGORY)
+  const canEnterEnvelope = (activeId: string, envelopeId: string) => isExpenseCategory(activeId) && envelopeOfCategory.get(activeId) !== envelopeId
 
   // container key of the folder the pointer is over (cross-folder move pending)
   const folderKeyOf = (arrangement: ElementContainer[], id: string): string | null => {
@@ -394,7 +410,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
-    setDragInProgress(false)
+    setDragActiveId(null)
     setDropFolderKey(null)
     const { active, over } = event
     if (draggingFolderId) {
@@ -413,6 +429,29 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         id: draggingFolderId,
         afterId: afterIdFromDrop(reordered, draggingFolderId),
       })
+      return
+    }
+    const activeId = String(active.id)
+    const overId = over ? String(over.id) : null
+    if (overId?.startsWith(ENVELOPE_DROP)) {
+      const envelopeId = overId.slice(ENVELOPE_DROP.length)
+      if (canEnterEnvelope(activeId, envelopeId)) {
+        setPendingMemberId(activeId)
+        moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id: activeId, envelopeId }, { onError: () => setPendingMemberId(null) })
+      }
+      return
+    }
+    const fromEnvelope = envelopeOfCategory.get(activeId)
+    if (fromEnvelope) {
+      // dropped back on its own envelope: it stays where it is
+      if (!overId || overId === fromEnvelope) {
+        return
+      }
+      const item = placeFromEnvelope(arrangementFromBuckets(serverBuckets ?? buckets), activeId, overId)
+      if (item) {
+        setPendingMemberId(activeId)
+        moveElement.mutate({ budgetId: budget.meta.id, item }, { onError: () => setPendingMemberId(null) })
+      }
       return
     }
     const base = arrangementFromBuckets(serverBuckets ?? buckets)
@@ -782,7 +821,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     drag={
                       dragEnabled
                         ? {
-                            onMoveIncome: (item) => moveElement.mutate({ budgetId: budget.meta.id, item }),
+                            onMoveIncome: (item, onFailed) => moveElement.mutate({ budgetId: budget.meta.id, item }, { onError: onFailed }),
+                            onMoveIncomeIntoEnvelope: (id, envelopeId, onFailed) =>
+                              moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id, envelopeId }, { onError: onFailed }),
                             onMoveIncomeFolder: (id, afterId) => orderFolders.mutate({ budgetId: budget.meta.id, id, afterId }),
                             onMoveSavings: (id, afterId) =>
                               moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } }),
@@ -793,7 +834,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                 </div>
                 <DndContext
                   sensors={sensors}
-                  collisionDetection={preferRowCollisions}
+                  collisionDetection={envelopeCollisions(canEnterEnvelope)}
                   // rows collapse on drag start, so drop-zone rects must re-measure
                   // mid-drag and the grabbed node re-anchors to the pointer
                   measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
@@ -802,7 +843,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   onDragOver={handleDragOver}
                   onDragEnd={handleDragEnd}
                   onDragCancel={() => {
-                    setDragInProgress(false)
+                    setDragActiveId(null)
                     setDraggingFolderId(null)
                     setDropFolderKey(null)
                     setDragArrangement(null)
@@ -817,7 +858,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     buckets={buckets}
                     future={selectedDate > currentMonth()}
                     hideTotals
-                    hideChildren={dragInProgress}
+                    collapsedElementId={dragActiveId}
                     hideContents={draggingFolderId !== null}
                     renderFolderHandle={dragEnabled ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
                     // only in edit mode
@@ -833,6 +874,18 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                       }
                       return <CommentMarker count={cellComments.length} placement="outset" onOpen={(anchor) => openComments(element, anchor)} />
                     }}
+                    wrapChild={
+                      dragEnabled
+                        ? (child, parent, node) =>
+                            isEnvelopeType(parent.type) && parent.isArchived === 0 ? <DragChild id={child.id}>{node}</DragChild> : node
+                        : undefined
+                    }
+                    wrapChildren={
+                      dragEnabled
+                        ? (parent, node) =>
+                            isEnvelopeType(parent.type) && parent.isArchived === 0 ? <EnvelopeDrop envelopeId={parent.id}>{node}</EnvelopeDrop> : node
+                        : undefined
+                    }
                     renderRowWrapper={
                       dragEnabled
                         ? (element, _bucket, row) => (

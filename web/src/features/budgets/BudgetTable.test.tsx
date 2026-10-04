@@ -18,7 +18,7 @@ const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fracti
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
 
 type TableExtras = ElementRowExtras & {
-  hideChildren?: boolean
+  collapsedElementId?: string | null
   sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
   renderFolderActions?: (bucket: FolderBucket, index: number, total: number) => ReactNode
 }
@@ -163,11 +163,34 @@ it('hideContents renders sections header-only (folder drag in progress)', async 
   expect(within(essentials).getByText('Essentials')).toBeInTheDocument()
 })
 
-it('hideChildren renders unfolded elements collapsed (element drag in progress)', async () => {
+it('the element being dragged renders collapsed; other unfolded envelopes stay open as drop targets', async () => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: { 'env-1': true }, foldBudgetId: null })
-  renderTable(undefined, { hideChildren: true })
+  renderTable(undefined, { collapsedElementId: 'env-1' })
   await screen.findByTestId('element-env-1')
   expect(screen.queryByTestId('child-cat-rent')).not.toBeInTheDocument()
+})
+
+it('an unfolded envelope keeps its categories open while another row is dragged, wrapped as a drop target', async () => {
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: { 'env-1': true }, foldBudgetId: null })
+  const wrapChild = vi.fn((_child, _parent, node) => node)
+  renderTable(undefined, {
+    collapsedElementId: 'cat-food',
+    wrapChild,
+    wrapChildren: (parent, node) => <div data-testid={`drop-${parent.id}`}>{node}</div>,
+  })
+  const drop = await screen.findByTestId('drop-env-1')
+  expect(within(drop).getByTestId('child-cat-rent')).toBeInTheDocument()
+  expect(wrapChild).toHaveBeenCalledWith(expect.objectContaining({ id: 'cat-rent' }), expect.objectContaining({ id: 'env-1' }), expect.anything())
+})
+
+it('an empty envelope still unfolds, to a note that says how to fill it', async () => {
+  const user = userEvent.setup()
+  renderTable((budget) => {
+    budget.structure.elements = budget.structure.elements.map((el) => (el.id === 'env-1' ? { ...el, children: [] } : el))
+  })
+  const envelope = await screen.findByTestId('element-env-1')
+  await user.click(within(envelope).getByRole('button', { expanded: false }))
+  expect(within(envelope).getByText('This envelope is empty. Drag a category here, or choose categories with Edit.')).toBeInTheDocument()
 })
 
 it('clicking the name of a childless element does nothing', async () => {

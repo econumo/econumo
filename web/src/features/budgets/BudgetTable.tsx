@@ -6,12 +6,13 @@ import { EntityIcon } from '@/components/EntityIcon'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
-import type { BudgetDto, BudgetElementDto, LabelSpendDto } from '@/api/dto/budget'
+import type { BudgetChildElementDto, BudgetDto, BudgetElementDto, LabelSpendDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { UserDto } from '@/api/dto/user'
 import { useCurrencies } from '@/features/currencies/queries'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
+import { isEnvelopeType } from './elementEdit'
 import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
 import { budgetTotals, carryOver, displayAvailable, elementDisplayName, nothingToShow, overBudget } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
@@ -38,6 +39,10 @@ export interface ElementRowExtras {
   /** trailing actions (edit-mode menus, drag handle) */
   renderActions?: (element: BudgetElementDto, bucket: FolderBucket) => ReactNode
   renderRowWrapper?: (element: BudgetElementDto, bucket: FolderBucket, row: ReactNode) => ReactNode
+  /** wraps a category inside an unfolded envelope (its drag grip) */
+  wrapChild?: (child: BudgetChildElementDto, parent: BudgetElementDto, node: ReactNode) => ReactNode
+  /** wraps an unfolded envelope's category list (its drop zone) */
+  wrapChildren?: (parent: BudgetElementDto, node: ReactNode) => ReactNode
   onSpentClick?: (target: BudgetTransactionsTarget) => void
   /** the row's ⋮ menu, shown on hover */
   rowMenu?: (element: BudgetElementDto) => MenuAction[] | undefined
@@ -54,8 +59,8 @@ interface BudgetTableProps extends ElementRowExtras {
   renderFolderActions?: (bucket: FolderBucket, index: number, total: number) => ReactNode
   /** wraps folder/no-folder sections (dnd droppables in edit mode) */
   sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
-  /** an element drag is in progress: unfolded rows render collapsed */
-  hideChildren?: boolean
+  /** the element being dragged: it renders collapsed */
+  collapsedElementId?: string | null
   /** a FOLDER drag is in progress: sections render header-only */
   hideContents?: boolean
   /** folder drag handle, rendered before the folder name (edit mode) */
@@ -141,7 +146,8 @@ function ElementRow({
   const currency = currencies.find((c) => c.id === currencyId)
   const available = displayAvailable(element)
   const carry = carryOver(element)
-  const expandable = element.children.length > 0
+  // an envelope unfolds even while empty: its list is where a category is dropped
+  const expandable = element.children.length > 0 || isEnvelopeType(element.type)
   const opts = cellOpts(currency)
   const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
   const displayName = elementDisplayName(element.id, element.name, t)
@@ -223,6 +229,44 @@ function ElementRow({
     return !isUncategorized && extras.wrapBudgetCell ? extras.wrapBudgetCell(element, cell) : cell
   })()
 
+  const childList = (
+    <div className="pb-1" data-testid={`children-${element.id}`}>
+      {element.children.length === 0 ? (
+        <p className={`${CHILD_INDENT} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
+      ) : null}
+      {element.children.map((child) => {
+        const owner = accessById.size > 1 && child.ownerUserId ? accessById.get(child.ownerUserId) : undefined
+        const childDisplayName = elementDisplayName(child.id, child.name, t)
+        const line = (
+          <div
+            key={child.id}
+            className={`group ${LINE} ${CHILD_INDENT} min-h-8 rounded-md py-1 text-sm text-muted-foreground hover:bg-accent/50`}
+            data-testid={`child-${child.id}`}
+          >
+            <span className={NAME_COL}>
+              <EntityIcon name={child.icon} className="text-lg" />
+              <span className="truncate" title={childDisplayName}>
+                {childDisplayName}
+              </span>
+            </span>
+            {/* owner sits in the budget column, flush under the amounts; row hover only (multi-user budgets) */}
+            <span className={`${FIRST_COL} truncate text-xs text-muted-foreground/60 opacity-0 group-hover:opacity-100`}>{owner?.name}</span>
+            <span data-testid="child-spent" className={SECOND_COL}>
+              {spentCell(
+                { id: child.id, type: child.type, name: childDisplayName, icon: child.icon, currencyId: element.currencyId, parent: { id: element.id, type: element.type } },
+                child.spent,
+                false,
+              )}
+            </span>
+            <span className={THIRD_COL} />
+            {actionsColumn ? <ActionsSpacer /> : null}
+          </div>
+        )
+        return extras.wrapChild ? <div key={child.id}>{extras.wrapChild(child, element, line)}</div> : line
+      })}
+    </div>
+  )
+
   const row = (
     <div className="flex flex-col" data-testid={`element-${element.id}`}>
       <div className={`${LINE} ${ROW_INDENT} min-h-10 rounded-md py-1.5 hover:bg-accent/50`}>
@@ -249,39 +293,7 @@ function ElementRow({
         </span>
         {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
       </div>
-      {expandable && unfolded ? (
-        <ul className="pb-1">
-          {element.children.map((child) => {
-            const owner = accessById.size > 1 && child.ownerUserId ? accessById.get(child.ownerUserId) : undefined
-            const childDisplayName = elementDisplayName(child.id, child.name, t)
-            return (
-              <li
-                key={child.id}
-                className={`group ${LINE} ${CHILD_INDENT} min-h-8 rounded-md py-1 text-sm text-muted-foreground hover:bg-accent/50`}
-                data-testid={`child-${child.id}`}
-              >
-                <span className={NAME_COL}>
-                  <EntityIcon name={child.icon} className="text-lg" />
-                  <span className="truncate" title={childDisplayName}>
-                    {childDisplayName}
-                  </span>
-                </span>
-                {/* owner sits in the budget column, flush under the amounts; row hover only (multi-user budgets) */}
-                <span className={`${FIRST_COL} truncate text-xs text-muted-foreground/60 opacity-0 group-hover:opacity-100`}>{owner?.name}</span>
-                <span data-testid="child-spent" className={SECOND_COL}>
-                  {spentCell(
-                    { id: child.id, type: child.type, name: childDisplayName, icon: child.icon, currencyId: element.currencyId, parent: { id: element.id, type: element.type } },
-                    child.spent,
-                    false,
-                  )}
-                </span>
-                <span className={THIRD_COL} />
-                {actionsColumn ? <ActionsSpacer /> : null}
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
+      {expandable && unfolded ? (extras.wrapChildren ? extras.wrapChildren(element, childList) : childList) : null}
     </div>
   )
 
@@ -483,7 +495,7 @@ export function BudgetTable({
   renderFolderActions,
   renderFolderHandle,
   sectionWrapper,
-  hideChildren,
+  collapsedElementId,
   hideContents,
   hideTotals,
   folderMenu,
@@ -524,7 +536,7 @@ export function BudgetTable({
         accessById={accessById}
         extras={rowExtras}
         actionsColumn={actionsColumn}
-        hideChildren={hideChildren}
+        hideChildren={collapsedElementId === element.id}
         future={future}
       />
     ))

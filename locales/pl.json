@@ -1332,6 +1332,9 @@
           "empty_folder": {
             "note": "Ten folder jest pusty. Przenieś tutaj kategorię, tag lub kopertę albo utwórz nową kopertę."
           },
+          "empty_envelope": {
+            "note": "Ta koperta jest pusta. Przeciągnij tu kategorię lub wybierz kategorie przez Edytuj."
+          },
           "element": {
             "action": {
               "change_currency": "Zmień walutę",

@@ -23,9 +23,10 @@ import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FIRST_COL, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
 import { leftToReceive } from './phoneMonth'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
-import { arrangementItem, moveElementInArrangement, preferRowCollisions } from './elementMove'
+import { arrangementItem, ENVELOPE_DROP, envelopeCollisions, moveElementInArrangement, placeFromEnvelope, preferRowCollisions } from './elementMove'
 import type { ElementContainer, ElementMoveItem } from './elementMove'
-import { DragFolder, DragRow, FolderGrip } from './MonthDrag'
+import { DragChild, DragFolder, DragRow, EnvelopeDrop, FolderGrip } from './MonthDrag'
+import { isEnvelopeType } from './elementEdit'
 
 export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' }>
 
@@ -122,7 +123,10 @@ interface MonthFlowsProps {
   savingsSectionMenu?: MenuAction[]
   /** drag and drop on hover, for anyone who may configure the budget */
   drag?: {
-    onMoveIncome: (item: ElementMoveItem) => void
+    /** onFailed: the move did not happen (a hidden row shows again) */
+    onMoveIncome: (item: ElementMoveItem, onFailed?: () => void) => void
+    /** an income category goes into an income envelope */
+    onMoveIncomeIntoEnvelope: (id: Id, envelopeId: Id, onFailed: () => void) => void
     onMoveIncomeFolder: (folderId: Id, afterId: Id | null) => void
     onMoveSavings: (id: Id, afterId: Id | null) => void
   }
@@ -165,8 +169,12 @@ export function MonthFlows({
   const [incomePreview, setIncomePreview] = useState<{ containers: ElementContainer[]; folderIds: string[] } | null>(null)
   const [savingsPreview, setSavingsPreview] = useState<string[] | null>(null)
   const [incomeFolderDragging, setIncomeFolderDragging] = useState(false)
+  // an income category on its way into or out of an envelope: hidden until the
+  // refetched figures show it in its new place
+  const [pendingMemberId, setPendingMemberId] = useState<string | null>(null)
   useEffect(() => {
     setIncomePreview(null)
+    setPendingMemberId(null)
   }, [planMonth])
   useEffect(() => {
     setSavingsPreview(null)
@@ -198,8 +206,53 @@ export function MonthFlows({
     const name = elementDisplayName(el.id, el.name, t)
     // income Uncategorized gathers income booked in expense categories too: no list names it
     const listTarget = el.id === UNCATEGORIZED_ID ? null : { id: el.id, type: el.type, name, icon: el.icon, currencyId: el.currencyId }
-    const expandable = el.children.length > 0
+    // an envelope unfolds even while empty: its list is where a category is dropped
+    const envelope = isEnvelopeType(el.type)
+    const children = el.children.filter((c) => c.id !== pendingMemberId)
+    const expandable = children.length > 0 || envelope
     const open = expandable && !!unfolded[el.id]
+    const childDrag = draggable && envelope && el.isArchived === 0
+    const childList = (
+      <div className="pb-1" data-testid={`month-income-children-${el.id}`}>
+        {children.length === 0 ? (
+          <p className={`${CHILD_INDENT} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
+        ) : null}
+        {children.map((child) => {
+          const childName = elementDisplayName(child.id, child.name, t)
+          const childLine = (
+            <div
+              key={child.id}
+              className={`${LINE} ${CHILD_INDENT} min-h-8 rounded-md py-1 text-sm text-muted-foreground hover:bg-accent/50`}
+              data-testid={`month-income-child-${child.id}`}
+            >
+              <span className={NAME_COL}>
+                <EntityIcon name={child.icon} className="text-lg" />
+                <span className="truncate" title={childName}>
+                  {childName}
+                </span>
+              </span>
+              <span className={FIRST_COL} />
+              <span className={SECOND_COL}>
+                {actualCell(
+                  { id: child.id, type: child.type, name: childName, icon: child.icon, currencyId: el.currencyId, parent: { id: el.id, type: el.type } },
+                  child.cells[planMonth?.index ?? 0]?.actual ?? '0',
+                  el.currencyId,
+                )}
+              </span>
+              <span className={THIRD_COL} />
+              {actionsColumn ? <ActionsSpacer /> : null}
+            </div>
+          )
+          return childDrag ? (
+            <DragChild key={child.id} id={child.id}>
+              {childLine}
+            </DragChild>
+          ) : (
+            childLine
+          )
+        })}
+      </div>
+    )
     const line = (
       <div key={`${el.id}:${el.type}`}>
         <FlowRow
@@ -222,37 +275,7 @@ export function MonthFlows({
           toggle={expandable ? { open, onToggle: () => toggleElement(el.id) } : undefined}
           menu={incomeMenu?.(row)}
         />
-        {open ? (
-          <ul className="pb-1">
-            {el.children.map((child) => {
-              const childName = elementDisplayName(child.id, child.name, t)
-              return (
-                <li
-                  key={child.id}
-                  className={`${LINE} ${CHILD_INDENT} min-h-8 rounded-md py-1 text-sm text-muted-foreground hover:bg-accent/50`}
-                  data-testid={`month-income-child-${child.id}`}
-                >
-                  <span className={NAME_COL}>
-                    <EntityIcon name={child.icon} className="text-lg" />
-                    <span className="truncate" title={childName}>
-                      {childName}
-                    </span>
-                  </span>
-                  <span className={FIRST_COL} />
-                  <span className={SECOND_COL}>
-                    {actualCell(
-                      { id: child.id, type: child.type, name: childName, icon: child.icon, currencyId: el.currencyId, parent: { id: el.id, type: el.type } },
-                      child.cells[planMonth?.index ?? 0]?.actual ?? '0',
-                      el.currencyId,
-                    )}
-                  </span>
-                  <span className={THIRD_COL} />
-                  {actionsColumn ? <ActionsSpacer /> : null}
-                </li>
-              )
-            })}
-          </ul>
-        ) : null}
+        {open ? (childDrag ? <EnvelopeDrop envelopeId={el.id}>{childList}</EnvelopeDrop> : childList) : null}
       </div>
     )
     return draggable ? (
@@ -337,7 +360,17 @@ export function MonthFlows({
     />
   )
 
-  const incomeGroups: IncomeGroup[] = planMonth?.income.groups ?? []
+  const incomeGroups: IncomeGroup[] = (planMonth?.income.groups ?? []).map((g) =>
+    pendingMemberId && g.rows.some((r) => r.element.id === pendingMemberId) ? { ...g, rows: g.rows.filter((r) => r.element.id !== pendingMemberId) } : g,
+  )
+  // the income envelope each income category sits in; a category may go into any
+  // other live income envelope
+  const envelopeOfCategory = new Map(
+    incomeGroups.flatMap((g) => g.rows).flatMap((r) => (isEnvelopeType(r.element.type) ? r.element.children.map((c) => [c.id, r.element.id] as const) : [])),
+  )
+  const isIncomeCategory = (id: string) =>
+    envelopeOfCategory.has(id) || incomeGroups.some((g) => g.rows.some((r) => r.element.id === id && r.element.type === BudgetElementType.INCOME_CATEGORY))
+  const canEnterEnvelope = (activeId: string, envelopeId: string) => isIncomeCategory(activeId) && envelopeOfCategory.get(activeId) !== envelopeId
 
   // the income groups as a drop arrangement: each folder, then the folder-less rows
   const arrangementOf = (groups: IncomeGroup[]): ElementContainer[] => [
@@ -378,6 +411,24 @@ export function MonthFlows({
     const activeId = String(active.id)
     const overId = String(over.id)
     const base = arrangementOf(shownIncomeGroups)
+    if (overId.startsWith(ENVELOPE_DROP)) {
+      const envelopeId = overId.slice(ENVELOPE_DROP.length)
+      if (canEnterEnvelope(activeId, envelopeId)) {
+        setPendingMemberId(activeId)
+        drag.onMoveIncomeIntoEnvelope(activeId, envelopeId, () => setPendingMemberId(null))
+      }
+      return
+    }
+    const fromEnvelope = envelopeOfCategory.get(activeId)
+    if (fromEnvelope) {
+      // dropped back on its own envelope: it stays where it is
+      const item = overId === fromEnvelope ? null : placeFromEnvelope(base, activeId, overId)
+      if (item) {
+        setPendingMemberId(activeId)
+        drag.onMoveIncome(item, () => setPendingMemberId(null))
+      }
+      return
+    }
     if (incomeFolderIds.includes(activeId)) {
       const from = incomeFolderIds.indexOf(activeId)
       const to = incomeFolderIds.indexOf(overId.replace(/^bfolder:/, ''))
@@ -448,7 +499,7 @@ export function MonthFlows({
           {incomeFolded ? null : drag ? (
             <DndContext
               sensors={sensors}
-              collisionDetection={preferRowCollisions}
+              collisionDetection={envelopeCollisions(canEnterEnvelope)}
               measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
               modifiers={[snapRowToPointer]}
               onDragStart={onIncomeDragStart}

@@ -1332,6 +1332,9 @@
           "empty_folder": {
             "note": "Ce dossier est vide. Déplacez-y une catégorie, un tag ou une enveloppe, ou créez une nouvelle enveloppe."
           },
+          "empty_envelope": {
+            "note": "Cette enveloppe est vide. Faites glisser une catégorie ici ou choisissez des catégories avec Modifier."
+          },
           "element": {
             "action": {
               "change_currency": "Changer de devise",

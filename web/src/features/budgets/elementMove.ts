@@ -132,13 +132,47 @@ export function applyArrangement(budget: BudgetDto, arrangement: ElementContaine
   }
 }
 
+/** the budget without one element, wherever it sits (top level or in an envelope):
+ *  a category on its way into or out of an envelope hides until the refetch shows
+ *  it in its new place */
+export function withoutElement(budget: BudgetDto, id: string): BudgetDto {
+  const elements = budget.structure.elements
+    .filter((el) => el.id !== id)
+    .map((el) => (el.children.some((c) => c.id === id) ? { ...el, children: el.children.filter((c) => c.id !== id) } : el))
+  return { ...budget, structure: { ...budget.structure, elements } }
+}
+
+/** the drop zone of an unfolded envelope's category list: `benv:<envelope id>` */
+export const ENVELOPE_DROP = 'benv:'
+
 // Rows are nested inside their section droppable, and the dragged row itself
 // travels under the pointer (its own rect always wins a pointer test) — so:
-// ignore the active row, prefer whatever OTHER row the pointer is inside, and
-// fall back to sections (empty folders, gaps between rows).
-export const preferRowCollisions: CollisionDetection = (args) => {
-  const collisions = pointerWithin(args)
-  const candidates = (collisions.length > 0 ? collisions : rectIntersection(args)).filter((c) => c.id !== args.active.id)
-  const row = candidates.find((c) => !String(c.id).startsWith('bfolder:'))
-  return row ? [row] : candidates
+// ignore the active row, prefer an envelope's category list the pointer is in
+// (when the dragged item may go into it), then whatever OTHER row the pointer is
+// inside, and fall back to sections (empty folders, gaps between rows).
+export function envelopeCollisions(canEnter: (activeId: string, envelopeId: string) => boolean): CollisionDetection {
+  return (args) => {
+    const activeId = String(args.active.id)
+    const within = pointerWithin(args).filter((c) => c.id !== args.active.id)
+    const envelope = within.find((c) => String(c.id).startsWith(ENVELOPE_DROP) && canEnter(activeId, String(c.id).slice(ENVELOPE_DROP.length)))
+    if (envelope) {
+      return [envelope]
+    }
+    const candidates = (within.length > 0 ? within : rectIntersection(args)).filter(
+      (c) => c.id !== args.active.id && !String(c.id).startsWith(ENVELOPE_DROP),
+    )
+    const row = candidates.find((c) => !String(c.id).startsWith('bfolder:'))
+    return row ? [row] : candidates
+  }
+}
+
+export const preferRowCollisions: CollisionDetection = envelopeCollisions(() => false)
+
+/** Where a category dragged out of an envelope lands: the same placement a row
+ *  dropped on `overId` gets. null when it lands nowhere. */
+export function placeFromEnvelope(base: ElementContainer[], activeId: string, overId: string): ElementMoveItem | null {
+  const pseudo = '__envelope__' as Id
+  const moved = moveElementInArrangement([...base, { folderId: pseudo, ids: [activeId] }], activeId, overId)
+  const item = arrangementItem(moved, activeId)
+  return item && item.folderId !== pseudo ? item : null
 }

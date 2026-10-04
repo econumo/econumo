@@ -857,6 +857,19 @@ and on tablet/phone only with a hardware keyboard.
       themselves only, a deleted account's row has no grip; income
       Uncategorized and archived rows have none. The dropped order shows at
       once and survives a reload. Guests and archived budgets show no grips.
+- [ ] Budget view, categories and envelopes by drag (Expenses and Income
+      alike, desktop and tablet/phone Edit structure): an unfolded envelope's
+      categories carry grips. A category dragged out onto a row or folder
+      leaves the envelope and lands there; dropped among another unfolded
+      envelope's categories (the list gets a ring) it moves into that
+      envelope; a top-level category dropped there joins it the same way. An
+      empty envelope unfolds to "This envelope is empty…" and takes a drop.
+      The moved category disappears from its old place at once and shows in
+      the new one after the refresh, also after a reload. An income category
+      never goes into an expense envelope (no ring), nor the other way; an
+      envelope or a tag never goes into an envelope; dropping a category back
+      on its own envelope changes nothing; archived envelopes take no drops
+      and their categories have no grips.
 - [ ] Envelopes: create via New envelope in a folder's or section's ⋮ menu on
       the Budget view (name, currency, categories multi-select). Under Income
       it makes an income envelope: the picker lists only income categories,

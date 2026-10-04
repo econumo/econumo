@@ -160,6 +160,11 @@ export async function moveElement(budgetId: Id, id: Id, folderId: Id | null, aft
   await api.post(apiUrl('/api/v1/budget/move-element'), { budgetId, id, folderId, afterId })
 }
 
+/** puts a category into an envelope, taking it out of any other envelope */
+export async function moveIntoEnvelope(budgetId: Id, id: Id, envelopeId: Id): Promise<void> {
+  await api.post(apiUrl('/api/v1/budget/move-element'), { budgetId, id, folderId: null, afterId: null, envelopeId })
+}
+
 export async function changeElementCurrency(form: { budgetId: Id; elementId: Id; currencyId: Id }): Promise<void> {
   await api.post(apiUrl('/api/v1/budget/change-element-currency'), form)
 }

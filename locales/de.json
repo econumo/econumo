@@ -1332,6 +1332,9 @@
           "empty_folder": {
             "note": "Dieser Ordner ist leer. Verschieben Sie eine Kategorie, ein Tag oder einen Umschlag hierher oder erstellen Sie einen neuen Umschlag."
           },
+          "empty_envelope": {
+            "note": "Dieser Umschlag ist leer. Ziehe eine Kategorie hierher oder wähle Kategorien über Bearbeiten."
+          },
           "element": {
             "action": {
               "change_currency": "Währung ändern",

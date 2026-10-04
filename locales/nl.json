@@ -1332,6 +1332,9 @@
           "empty_folder": {
             "note": "Deze map is leeg. Verplaats hier een categorie, tag of envelop naartoe of maak een nieuwe envelop aan."
           },
+          "empty_envelope": {
+            "note": "Deze envelop is leeg. Sleep hier een categorie naartoe of kies categorieën via Bewerken."
+          },
           "element": {
             "action": {
               "change_currency": "Valuta wijzigen",

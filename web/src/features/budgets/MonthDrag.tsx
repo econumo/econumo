@@ -1,11 +1,12 @@
 import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
-import { useDroppable } from '@dnd-kit/core'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 import type { SortableHandleProps } from '@/components/SortableList'
 import { lineControlClass, useLineControls } from './monthLayout'
+import { ENVELOPE_DROP } from './elementMove'
 
 /** A draggable row: the whole row (and anything unfolded under it) moves with the
  *  drag, the grip in the row's left indent is the only handle. */
@@ -90,6 +91,43 @@ export function DragFolder({
           {children}
         </SortableContext>
       </FolderHandleContext.Provider>
+    </div>
+  )
+}
+
+/** A category inside an unfolded envelope: dragged out to a row or folder, or into
+ *  another envelope's list. It belongs to no sortable list, so nothing shifts. */
+export function DragChild({ id, children }: { id: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id })
+  const controls = useLineControls()
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform) }}
+      data-drag-child=""
+      className={`group/child relative ${isDragging ? 'z-10 opacity-60' : ''}`}
+    >
+      <button
+        type="button"
+        aria-label={`move ${id}`}
+        className={`absolute top-2 left-8 z-10 cursor-grab touch-none text-muted-foreground ${isDragging ? '' : lineControlClass(controls, 'child')}`}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-4" />
+      </button>
+      {children}
+    </div>
+  )
+}
+
+/** An unfolded envelope's category list as a drop target: a category dropped in
+ *  it joins the envelope. */
+export function EnvelopeDrop({ envelopeId, children }: { envelopeId: string; children: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `${ENVELOPE_DROP}${envelopeId}` })
+  return (
+    <div ref={setNodeRef} data-testid={`envelope-drop-${envelopeId}`} className={isOver ? 'rounded-md ring-2 ring-ring' : ''}>
+      {children}
     </div>
   )
 }
