@@ -238,7 +238,7 @@ func TestSavingsSync_DeletedMemberKeepsRow(t *testing.T) {
 
 func TestSavingsMove_FolderRefused(t *testing.T) {
 	h, tok, _ := newSavingsHarness(t, savingsAccountID)
-	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": savingsFolderID, "name": "Folder"})
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": savingsFolderID, "name": "Folder", "side": "expense"})
 	h.syncBudget(t, tok)
 
 	st, env := h.moveElement(t, tok, map[string]any{"id": savingsAccountID, "folderId": savingsFolderID, "afterId": nil})

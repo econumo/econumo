@@ -56,18 +56,14 @@ func TestIsIncomeSide(t *testing.T) {
 
 func TestEnvelopeTypeFromSide(t *testing.T) {
 	for side, wantTyp := range map[string]ElementType{
-		"": ElementEnvelope, "expense": ElementEnvelope,
+		"": ElementEnvelope, "expense": ElementEnvelope, "income": ElementIncomeEnvelope,
 	} {
 		got, err := EnvelopeTypeFromSide(side)
 		if err != nil || got != wantTyp {
 			t.Errorf("EnvelopeTypeFromSide(%q) = %v, %v; want %v, nil", side, got, err, wantTyp)
 		}
 	}
-	// "income" is switched off for now: it must fail exactly like an unknown
-	// alias, so no client can mint an ElementIncomeEnvelope through the write path.
-	for _, side := range []string{"income", "both"} {
-		if _, err := EnvelopeTypeFromSide(side); err == nil {
-			t.Fatalf("side %q must fail validation", side)
-		}
+	if _, err := EnvelopeTypeFromSide("both"); err == nil {
+		t.Fatal(`side "both" must fail validation`)
 	}
 }

@@ -149,7 +149,7 @@ func init() {
 		{Label: "create-budget", CaptureAs: "budget_id", MCPCapturePath: []string{"item", "meta", "id"},
 			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_budget","arguments":{"name":"MCP New Budget","currency_id":"` + apiparity.USD + `","start_date":"2024-05-01","account_ids":["` + apiparity.OwnerAccount + `"]}}}`},
 		{Label: "create-folder", CaptureAs: "folder_id", MCPCapturePath: []string{"item", "id"},
-			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_folder","arguments":{"budget_id":"{{budget_id}}","name":"Bills"}}}`},
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_folder","arguments":{"budget_id":"{{budget_id}}","name":"Bills","side":"expense"}}}`},
 		{Label: "update-folder",
 			RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"update_folder","arguments":{"budget_id":"{{budget_id}}","id":"{{folder_id}}","name":"Bills Renamed"}}}`},
 		{Label: "create-envelope", CaptureAs: "element_id", MCPCapturePath: []string{"item", "id"},

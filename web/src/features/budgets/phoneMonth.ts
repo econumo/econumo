@@ -3,7 +3,7 @@ import type { BudgetElementType } from '@/api/dto/budget'
 import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, LabelSpendDto, PlanElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
-import { isZero } from '@/lib/decimal'
+import { add, cmp, isZero, sub } from '@/lib/decimal'
 import {
   balanceRow,
   bucketPlanRows,
@@ -21,10 +21,40 @@ export interface PlanCellFigures {
   closingBalance?: string
 }
 
+/** One group of income rows, in the Plan grid's order: each folder, then the
+ *  folder-less rows, Uncategorized, and archived rows with money this month. Only
+ *  folders carry a name; each view labels the other kinds itself. */
+export interface IncomeGroup {
+  kind: 'folder' | 'loose' | 'uncategorized' | 'archived'
+  id: string
+  name: string | null
+  rows: PlanCellFigures[]
+  /** in the budget currency */
+  planned: string
+  received: string
+  /** each row's own leftToReceive, summed */
+  toReceive: string
+}
+
+/** what a source is still expected to bring this month: never below zero, so an
+ *  overpaid source does not hide another that has not paid yet */
+export function leftToReceive(planned: string, received: string): string {
+  return cmp(planned, received) > 0 ? sub(planned, received) : '0'
+}
+
 export interface PlanMonthFigures {
   month: string
   index: number
-  income: { rows: PlanCellFigures[]; planned: string; received: string }
+  income: {
+    /** every listed row in order (the phone's flat list) */
+    rows: PlanCellFigures[]
+    /** the same rows grouped as the Plan grid groups them; empty groups are left out */
+    groups: IncomeGroup[]
+    planned: string
+    received: string
+    /** the groups' toReceive, summed */
+    toReceive: string
+  }
   balance: string
   savingsBalance: string | null
   transfersNet: string
@@ -56,22 +86,40 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
   const buckets = bucketPlanRows(plan, false)
   const income = buckets.income
   const received = (el: PlanElementDto) => !isZero(el.cells[index]?.actual ?? '0')
-  const rows = [...income.folders.flatMap((f) => f.rows), ...income.loose].map((r) => planCellFigures(r.element, index))
-  const uncategorized = income.uncategorized?.element
-  if (uncategorized && received(uncategorized)) {
-    rows.push(planCellFigures(uncategorized, index))
-  }
-  // the received total counts archived rows too, so the ones with money this month must be listed
-  for (const { element } of buckets.archived) {
-    if (isIncomeType(element.type) && received(element)) {
-      rows.push(planCellFigures(element, index))
+  const inBase = (cells: PlanCellFigures[], pick: (c: PlanCellFigures) => string) =>
+    cells.reduce((sum, c) => add(sum, ex(c.element.currencyId, pick(c), index)), '0')
+  const group = (kind: IncomeGroup['kind'], id: string, name: string | null, elements: PlanElementDto[]): IncomeGroup => {
+    const cells = elements.map((el) => planCellFigures(el, index))
+    return {
+      kind,
+      id,
+      name,
+      rows: cells,
+      planned: inBase(cells, (c) => c.planned),
+      received: inBase(cells, (c) => c.actual),
+      toReceive: inBase(cells, (c) => leftToReceive(c.planned, c.actual)),
     }
   }
+  const uncategorized = income.uncategorized?.element
+  const groups = [
+    ...income.folders.map((f) => group('folder', f.folder.id, f.folder.name, f.rows.map((r) => r.element))),
+    group('loose', '__no_folder__', null, income.loose.map((r) => r.element)),
+    group('uncategorized', '__uncategorized__', null, uncategorized && received(uncategorized) ? [uncategorized] : []),
+    // the received total counts archived rows too, so the ones with money this month must be listed
+    group(
+      'archived',
+      '__archive__',
+      null,
+      buckets.archived.filter(({ element }) => isIncomeType(element.type) && received(element)).map(({ element }) => element),
+    ),
+    // an income folder shows even while empty: it was made for income
+  ].filter((g) => g.kind === 'folder' || g.rows.length > 0)
+  const rows = groups.flatMap((g) => g.rows)
 
   return {
     month,
     index,
-    income: { rows, planned: totals[index].incomePlanned, received: totals[index].incomeActual },
+    income: { rows, groups, toReceive: groups.reduce((sum, g) => add(sum, g.toReceive), '0'), planned: totals[index].incomePlanned, received: totals[index].incomeActual },
     balance: balance[index],
     savingsBalance: savings ? savings[index] : null,
     transfersNet: totals[index].transfersNet,

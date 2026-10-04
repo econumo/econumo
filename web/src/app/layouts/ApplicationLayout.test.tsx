@@ -11,6 +11,7 @@ import { QUERY_CACHE_KEY, refreshRestoredQueries } from '@/lib/queryPersist'
 import { econumoPackage } from '@/lib/package'
 import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useSidebarStore, useUiStore } from '@/app/uiStore'
+import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
 import { ApplicationLayout } from './ApplicationLayout'
 
 const mockUpdate = vi.hoisted(() => ({ value: null as AvailableUpdate | null }))
@@ -77,6 +78,15 @@ beforeEach(() => {
   // localStorage.clear()
   useSidebarStore.setState({ collapsed: false })
   useUiStore.setState({ searchOpen: false })
+  useBudgetPeriodStore.setState({ lastMode: 'budget' })
+})
+
+it('the Budget & Plan link opens the budget view last opened on this device', async () => {
+  mockViewport(false)
+  renderShell('/')
+  expect(await screen.findByRole('link', { name: 'Budget & Plan' })).toHaveAttribute('href', '/budget')
+  useBudgetPeriodStore.setState({ lastMode: 'plan' })
+  await waitFor(() => expect(screen.getByRole('link', { name: 'Budget & Plan' })).toHaveAttribute('href', '/plan'))
 })
 
 it('sizes the shell with dvh, never svh', async () => {

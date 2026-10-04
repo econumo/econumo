@@ -161,14 +161,26 @@ type BudgetFolder struct {
 	ID        vo.Id
 	BudgetID  vo.Id
 	Name      string
+	Side      FolderSide
 	SortKey   sortkey.Key
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-// NewBudgetFolder creates a folder.
-func NewBudgetFolder(id, budgetID vo.Id, name string, now time.Time) *BudgetFolder {
-	return &BudgetFolder{ID: id, BudgetID: budgetID, Name: name, CreatedAt: now, UpdatedAt: now}
+// NewBudgetFolder creates a folder; an empty side means expense.
+func NewBudgetFolder(id, budgetID vo.Id, name string, side FolderSide, now time.Time) *BudgetFolder {
+	if side == "" {
+		side = FolderSideExpense
+	}
+	return &BudgetFolder{ID: id, BudgetID: budgetID, Name: name, Side: side, CreatedAt: now, UpdatedAt: now}
+}
+
+// UpdateSide changes the side, bumping updated_at only on change.
+func (f *BudgetFolder) UpdateSide(side FolderSide, now time.Time) {
+	if f.Side != side {
+		f.Side = side
+		f.UpdatedAt = now
+	}
 }
 
 // UpdateName changes the name, bumping updated_at only on change.

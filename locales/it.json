@@ -1166,7 +1166,7 @@
         "header": "Nuovo budget"
       },
       "update_budget_form": {
-        "header": "Modifica budget"
+        "header": "Impostazioni del budget"
       },
       "create_folder_form": {
         "header": "Nuova cartella"
@@ -1311,20 +1311,19 @@
         "settings": {
           "button": "Configura",
           "menu": {
-            "edit": "Dettagli del budget",
+            "edit": "Impostazioni del budget",
             "edit_structure": "Modifica la struttura",
-            "edit_structure_done": "Fine",
-            "budget_list": "Apri l'elenco dei budget"
+            "edit_structure_done": "Fine"
           }
         },
         "structure": {
-          "no_folder": "Cartella predefinita",
           "in_archive": "In archivio",
           "carry_over_hint": "Rimasto dai mesi precedenti",
           "tab": {
             "budgeted": "Budget",
             "spent": "Speso",
-            "available": "Disponibile"
+            "available": "Disponibile",
+            "to_receive": "Da ricevere"
           },
           "action": {
             "create_folder": "Crea cartella",
@@ -1332,6 +1331,9 @@
           },
           "empty_folder": {
             "note": "Questa cartella è vuota. Sposta qui una categoria, un tag o una busta, oppure crea una nuova busta."
+          },
+          "empty_envelope": {
+            "note": "Questa busta è vuota. Trascina qui una categoria o scegli le categorie con Modifica."
           },
           "element": {
             "action": {
@@ -1394,13 +1396,14 @@
           "savings_balance": "Risparmi totali"
         },
         "density": {
-          "hide_empty": "Nascondi righe vuote",
           "hidden": "{count} nascoste",
           "show": "Mostra"
         },
         "menu": {
           "move_to_folder": "Sposta nella cartella…",
-          "no_folder": "Nessuna cartella"
+          "no_folder": "Nessuna cartella",
+          "no_access": "nessun accesso",
+          "not_empty": "non vuota"
         },
         "edit": {
           "no_access_envelope": "Non puoi modificare questa busta: il tuo ruolo in questo budget è di sola lettura.",
@@ -1873,6 +1876,7 @@
       "transaction_filter_required": "Convalida non riuscita",
       "envelope_side_mixed": "Una busta non può contenere contemporaneamente categorie di entrata e di uscita",
       "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite",
+      "envelope_member_not_category": "Solo una categoria può entrare in una busta",
       "savings_folder_not_allowed": "I risparmi non possono essere inseriti in una cartella",
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
       "savings_account_not_member": "I conti di risparmio devono essere tuoi conti in questo budget",

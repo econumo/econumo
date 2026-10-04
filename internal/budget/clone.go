@@ -91,7 +91,7 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 		}
 		folderMap := make(map[vo.Id]vo.Id, len(src.folders))
 		for _, f := range src.folders {
-			nf := model.NewBudgetFolder(vo.NewId(), newID, f.Name, now)
+			nf := model.NewBudgetFolder(vo.NewId(), newID, f.Name, f.Side, now)
 			nf.SetSortKey(f.SortKey)
 			if serr := s.folders.SaveFolder(txCtx, nf); serr != nil {
 				return serr

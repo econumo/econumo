@@ -16,3 +16,15 @@ export const snapRowToPointer: Modifier = ({ activatorEvent, draggingNodeRect, t
     y: transform.y + activator.clientY - draggingNodeRect.top - draggingNodeRect.height / 2,
   }
 }
+
+// Budget drags show a floating copy beside the cursor, so the drag re-anchors to
+// the pointer vertically as snapRowToPointer does but keeps its sideways move.
+export const centerRowOnPointer: Modifier = (args) => ({ ...snapRowToPointer(args), x: args.transform.x })
+
+// The floating copy starts just right of the cursor, wherever the row was grabbed.
+export const besidePointer: Modifier = ({ activatorEvent, activeNodeRect, transform }) => {
+  if (!activeNodeRect || !activatorEvent || !('clientX' in activatorEvent)) {
+    return transform
+  }
+  return { ...transform, x: transform.x + (activatorEvent as PointerEvent).clientX - activeNodeRect.left + 12 }
+}

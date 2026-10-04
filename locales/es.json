@@ -1166,7 +1166,7 @@
         "header": "Nuevo presupuesto"
       },
       "update_budget_form": {
-        "header": "Editar el presupuesto"
+        "header": "Ajustes del presupuesto"
       },
       "create_folder_form": {
         "header": "Nueva carpeta"
@@ -1311,20 +1311,19 @@
         "settings": {
           "button": "Configurar",
           "menu": {
-            "edit": "Detalles del presupuesto",
+            "edit": "Ajustes del presupuesto",
             "edit_structure": "Editar la estructura",
-            "edit_structure_done": "Listo",
-            "budget_list": "Abrir la lista de presupuestos"
+            "edit_structure_done": "Listo"
           }
         },
         "structure": {
-          "no_folder": "Carpeta predeterminada",
           "in_archive": "Archivado",
           "carry_over_hint": "Sobrante de meses anteriores",
           "tab": {
             "budgeted": "Presupuesto",
             "spent": "Gastado",
-            "available": "Disponible"
+            "available": "Disponible",
+            "to_receive": "Por recibir"
           },
           "action": {
             "create_folder": "Crear carpeta",
@@ -1332,6 +1331,9 @@
           },
           "empty_folder": {
             "note": "Esta carpeta está vacía. Mueve aquí una categoría, una etiqueta o un sobre, o crea un sobre nuevo."
+          },
+          "empty_envelope": {
+            "note": "Este sobre está vacío. Arrastra una categoría aquí o elige categorías con Editar."
           },
           "element": {
             "action": {
@@ -1394,13 +1396,14 @@
           "savings_balance": "Ahorro total"
         },
         "density": {
-          "hide_empty": "Ocultar filas vacías",
           "hidden": "{count} ocultas",
           "show": "Mostrar"
         },
         "menu": {
           "move_to_folder": "Mover a carpeta…",
-          "no_folder": "Sin carpeta"
+          "no_folder": "Sin carpeta",
+          "no_access": "sin acceso",
+          "not_empty": "no está vacía"
         },
         "edit": {
           "no_access_envelope": "No puedes editar este sobre: tu rol en este presupuesto es de solo lectura.",
@@ -1873,6 +1876,7 @@
       "transaction_filter_required": "La validación falló.",
       "envelope_side_mixed": "Un sobre no puede contener a la vez categorías de ingresos y gastos.",
       "folder_side_mixed": "Una carpeta no puede contener a la vez ingresos y gastos.",
+      "envelope_member_not_category": "Solo una categoría puede ir en un sobre",
       "savings_folder_not_allowed": "Los ahorros no se pueden colocar en una carpeta.",
       "account_not_removable": "Esta cuenta tiene transacciones en meses anteriores y ya no se puede quitar del presupuesto",
       "savings_account_not_member": "Las cuentas de ahorro deben ser tus propias cuentas en este presupuesto",

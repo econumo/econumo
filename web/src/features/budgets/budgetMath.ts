@@ -212,6 +212,12 @@ export function rowProgress(row: { budgeted: string; spent: string; carry?: stri
   return Math.max(0, Math.min(Number(div(row.spent, pool)), 1))
 }
 
+/** Nothing budgeted, nothing spent and nothing left from earlier months: the row's
+ *  Available reads as a dash rather than a zero. `available` is the displayed one. */
+export function nothingToShow(row: { budgeted: string; spent: string; available: string }): boolean {
+  return isZero(row.budgeted) && isZero(row.spent) && isZero(row.available)
+}
+
 /** The row turns red only when this month spent more than its budget and what
  *  earlier months left does not cover it. `available` is the displayed Available. */
 export function overBudget(row: { budgeted: string; spent: string; available: string }, future = false): boolean {

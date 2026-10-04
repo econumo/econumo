@@ -35,6 +35,8 @@ export interface OpenTransactionParams {
 export interface OpenAccountParams {
   account?: AccountDto
   folderId?: Id | null
+  /** a new account was created (not called on edit) */
+  onCreated?: (account: AccountDto) => void
 }
 
 export interface OpenRecurringParams {

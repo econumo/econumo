@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
@@ -18,7 +18,8 @@ const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fracti
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
 
 type TableExtras = ElementRowExtras & {
-  hideChildren?: boolean
+  collapsedElementId?: string | null
+  showEmptyNoFolder?: boolean
   sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
   renderFolderActions?: (bucket: FolderBucket, index: number, total: number) => ReactNode
 }
@@ -39,7 +40,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   server.use(...coreHandlers())
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {} })
 })
 
 it('renders column headers, folder, default and archived sections with aligned stat cells', async () => {
@@ -54,7 +55,7 @@ it('renders column headers, folder, default and archived sections with aligned s
   expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('45.50')
   expect(within(essentials).getByTestId('stat-line')).not.toHaveTextContent('-45.50')
   expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('354.50')
-  const noFolder = screen.getByTestId('budget-folder-Default folder')
+  const noFolder = screen.getByTestId('budget-folder-No folder')
   expect(within(noFolder).getByText('Living')).toBeInTheDocument()
   // the only archived element is all-zero, so the whole Archived section hides
   expect(screen.queryByTestId('budget-folder-Archived')).not.toBeInTheDocument()
@@ -69,15 +70,15 @@ it('archived elements with a nonzero number stay listed; all-zero ones hide', as
   expect(within(archive).queryByText('zzz-archived')).not.toBeInTheDocument()
 })
 
-it('an empty Default folder hides outside edit mode', async () => {
+it('an empty No folder hides outside edit mode', async () => {
   renderTable((budget) => {
     budget.structure.elements[1].folderId = 'bf1'
   })
   await screen.findByTestId('budget-folder-Essentials')
-  expect(screen.queryByTestId('budget-folder-Default folder')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('budget-folder-No folder')).not.toBeInTheDocument()
 })
 
-it('edit mode keeps the empty Default folder as a drop target', async () => {
+it('edit mode keeps the empty No folder as a drop target', async () => {
   renderTable(
     (budget) => {
       budget.structure.elements[1].folderId = 'bf1'
@@ -85,17 +86,54 @@ it('edit mode keeps the empty Default folder as a drop target', async () => {
     { renderFolderActions: () => null } as never,
   )
   await screen.findByTestId('budget-folder-Essentials')
-  expect(screen.getByTestId('budget-folder-Default folder')).toBeInTheDocument()
+  expect(screen.getByTestId('budget-folder-No folder')).toBeInTheDocument()
 })
 
-it('shows spent as-is and available+budgeted as a sign-colored pill', async () => {
+it('shows spent as-is and available+budgeted as a plain figure, with no colour while nothing is wrong', async () => {
   renderTable()
   const food = await screen.findByTestId('element-cat-food')
   // exact match: the wire value is positive and must NOT be rendered negated
   await waitFor(() => expect(within(food).getByTestId('cell-spent')).toHaveTextContent(/^45\.50$/))
-  expect(within(food).getByTestId('cell-available')).toHaveTextContent('354.50')
-  expect(within(food).getByTestId('cell-available').className).toContain('text-income')
-  expect(within(food).getByTestId('cell-available').className).toContain('rounded-full')
+  expect(within(food).getByTestId('cell-available')).toHaveTextContent(/^354\.50$/)
+  expect(within(food).getByTestId('cell-available').className).not.toMatch(/text-(income|expense)|rounded-full/)
+  // the currency is named once at the top of the page, never per row
+  expect(food).not.toHaveTextContent('$')
+})
+
+it('a row with nothing budgeted, spent or left reads "—" under Available, muted; one with something left keeps the figure', async () => {
+  renderTable((budget) => {
+    const food = budget.structure.elements.find((el) => el.id === 'cat-food')!
+    Object.assign(food, { budgeted: '0', spent: '0', available: '0', budgetSpent: '0' })
+  })
+  const food = await screen.findByTestId('element-cat-food')
+  await waitFor(() => expect(within(food).getByTestId('cell-available')).toHaveTextContent(/^—$/))
+  expect(within(within(food).getByTestId('cell-available')).getByText('—')).toHaveClass('text-muted-foreground/50')
+  // the planned amount stays a figure: it is the cell you edit
+  expect(within(food).getByTestId('cell-budgeted')).toHaveTextContent('0.00')
+})
+
+it('nothing budgeted or spent but money left from earlier months keeps Available as a figure', async () => {
+  renderTable((budget) => {
+    const food = budget.structure.elements.find((el) => el.id === 'cat-food')!
+    Object.assign(food, { budgeted: '0', spent: '0', available: '30', budgetSpent: '0' })
+  })
+  const food = await screen.findByTestId('element-cat-food')
+  await waitFor(() => expect(within(food).getByTestId('cell-available')).toHaveTextContent(/^30\.00$/))
+})
+
+it('an overspent row turns Spent and Available red, and nothing else', async () => {
+  renderTable((budget) => {
+    const food = budget.structure.elements.find((el) => el.id === 'cat-food')!
+    // 400 spent against 200 with nothing left from earlier months: Available -200
+    food.spent = '400'
+    food.budgeted = '200'
+    food.available = '-400'
+  })
+  const food = await screen.findByTestId('element-cat-food')
+  await waitFor(() => expect(within(food).getByTestId('cell-available')).toHaveTextContent('-200.00'))
+  expect(within(food).getByTestId('cell-available').className).toContain('text-expense')
+  expect(within(food).getByTestId('cell-spent').firstElementChild!.className).toContain('text-expense')
+  expect(within(screen.getByTestId('element-env-1')).getByTestId('cell-available').className).not.toContain('text-expense')
 })
 
 it('rounds float noise in cells to the currency precision', async () => {
@@ -126,11 +164,46 @@ it('hideContents renders sections header-only (folder drag in progress)', async 
   expect(within(essentials).getByText('Essentials')).toBeInTheDocument()
 })
 
-it('hideChildren renders unfolded elements collapsed (element drag in progress)', async () => {
+it('the element being dragged renders collapsed; other unfolded envelopes stay open as drop targets', async () => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: { 'env-1': true }, foldBudgetId: null })
-  renderTable(undefined, { hideChildren: true })
+  renderTable(undefined, { collapsedElementId: 'env-1' })
   await screen.findByTestId('element-env-1')
   expect(screen.queryByTestId('child-cat-rent')).not.toBeInTheDocument()
+})
+
+it('an unfolded envelope keeps its categories open while another row is dragged, wrapped as a drop target', async () => {
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: { 'env-1': true }, foldBudgetId: null })
+  const wrapChild = vi.fn((_child, _parent, node) => node)
+  renderTable(undefined, {
+    collapsedElementId: 'cat-food',
+    wrapChild,
+    wrapChildren: (parent, node) => <div data-testid={`drop-${parent.id}`}>{node}</div>,
+  })
+  const drop = await screen.findByTestId('drop-env-1')
+  expect(within(drop).getByTestId('child-cat-rent')).toBeInTheDocument()
+  expect(wrapChild).toHaveBeenCalledWith(expect.objectContaining({ id: 'cat-rent' }), expect.objectContaining({ id: 'env-1' }), expect.anything())
+})
+
+it('an empty No folder shows only while a drag is in progress, as a drop target', async () => {
+  const intoFolder = (budget: BudgetDto) => {
+    budget.structure.elements = budget.structure.elements.map((el) => (el.isArchived === 0 ? { ...el, folderId: 'bf1' } : el))
+  }
+  renderTable(intoFolder)
+  await screen.findByTestId('budget-folder-Essentials')
+  expect(screen.queryByTestId('budget-folder-No folder')).toBeNull()
+  cleanup()
+  renderTable(intoFolder, { showEmptyNoFolder: true })
+  expect(await screen.findByTestId('budget-folder-No folder')).toHaveTextContent('This folder is empty')
+})
+
+it('an empty envelope still unfolds, to a note that says how to fill it', async () => {
+  const user = userEvent.setup()
+  renderTable((budget) => {
+    budget.structure.elements = budget.structure.elements.map((el) => (el.id === 'env-1' ? { ...el, children: [] } : el))
+  })
+  const envelope = await screen.findByTestId('element-env-1')
+  await user.click(within(envelope).getByRole('button', { expanded: false }))
+  expect(within(envelope).getByText('This envelope is empty. Drag a category here, or choose categories with Edit.')).toBeInTheDocument()
 })
 
 it('clicking the name of a childless element does nothing', async () => {
@@ -359,21 +432,17 @@ it('Uncategorized lives in its own section, not the no-folder one', async () => 
   const section = await screen.findByTestId('budget-folder-Uncategorized')
   expect(within(section).getByTestId(`element-${UNCATEGORIZED_ID}`)).toBeInTheDocument()
   // the no-folder section keeps its own rows and does NOT hold Uncategorized
-  const noFolder = screen.getByTestId('budget-folder-Default folder')
+  const noFolder = screen.getByTestId('budget-folder-No folder')
   expect(within(noFolder).queryByTestId(`element-${UNCATEGORIZED_ID}`)).not.toBeInTheDocument()
   expect(within(noFolder).getByTestId('element-env-1')).toBeInTheDocument()
 })
 
-it('Uncategorized hides its icon on desktop but keeps it on mobile', async () => {
+it('Uncategorized carries no icon: its label alone names the one fixed row', async () => {
   renderTable(pushUncategorized)
   const row = await screen.findByTestId(`element-${UNCATEGORIZED_ID}`)
-  const icon = row.querySelector('.material-icon')
-  expect(icon).not.toBeNull()
-  // mobile-only: the wrapper drops the icon from the sm breakpoint up
-  expect(icon!.parentElement).toHaveClass('sm:hidden')
-  // a normal row shows its icon at every width
-  const living = screen.getByTestId('element-env-1')
-  expect(living.querySelector('.material-icon')!.parentElement).not.toHaveClass('sm:hidden')
+  expect(row.querySelector('.material-icon')).toBeNull()
+  // a normal row keeps its icon
+  expect(screen.getByTestId('element-env-1').querySelector('.material-icon')).not.toBeNull()
 })
 
 it('Uncategorized renders as ONE level: a bare row, with no section header above it', async () => {
@@ -626,4 +695,25 @@ it('shows no carry-over when earlier months left nothing, and a negative one in 
   const debt = within(screen.getByTestId('element-env-1')).getByTestId('cell-carry')
   await waitFor(() => expect(debt).toHaveTextContent('-30.00 +'))
   expect(debt.className).toContain('text-expense')
+})
+
+it('a click anywhere on a folder line folds it, but the line\'s own controls keep their click', async () => {
+  const user = userEvent.setup()
+  const onAction = vi.fn()
+  renderTable(undefined, {
+    renderFolderActions: () => (
+      <button type="button" aria-label="folder actions" onClick={onAction}>
+        ⋮
+      </button>
+    ),
+  })
+  const essentials = await screen.findByTestId('budget-folder-Essentials')
+  // the folder's own control: acts, does not fold
+  await user.click(within(essentials).getByRole('button', { name: 'folder actions' }))
+  expect(onAction).toHaveBeenCalledTimes(1)
+  expect(useBudgetPeriodStore.getState().planFolds.bf1).toBeUndefined()
+  // the sums, away from the name: folds
+  await user.click(within(essentials).getByTestId('stat-line').firstElementChild as HTMLElement)
+  expect(useBudgetPeriodStore.getState().planFolds.bf1).toBe(true)
+  expect(within(screen.getByTestId('budget-folder-Essentials')).queryByTestId('element-cat-food')).toBeNull()
 })

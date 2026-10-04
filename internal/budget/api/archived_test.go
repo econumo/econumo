@@ -23,7 +23,7 @@ func TestArchivedBudget_WriteMatrix(t *testing.T) {
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
 		map[string]any{"id": budgetID1, "name": "Budget", "currencyId": usdID, "startDate": "2026-06-01", "accountIds": []string{accountID}})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-folder", tok,
-		map[string]any{"budgetId": budgetID1, "id": archFolderID1, "name": "Folder"})
+		map[string]any{"budgetId": budgetID1, "id": archFolderID1, "name": "Folder", "side": "expense"})
 	h.f.Account(fixture.Account{ID: accountID2, UserID: seedUserID, CurrencyID: usdID})
 	h.f.User(fixture.User{ID: otherUserID, Email: "o@e.test", Name: "O", Password: "pw", Salt: seedSalt})
 	h.f.Connect(seedUserID, otherUserID)
@@ -38,7 +38,7 @@ func TestArchivedBudget_WriteMatrix(t *testing.T) {
 	}{
 		{"update-budget", "/api/v1/budget/update-budget", map[string]any{"id": budgetID1, "name": "Renamed", "currencyId": usdID}},
 		{"reset-budget", "/api/v1/budget/reset-budget", map[string]any{"id": budgetID1, "startedAt": "2026-07-01 00:00:00"}},
-		{"create-folder", "/api/v1/budget/create-folder", map[string]any{"budgetId": budgetID1, "id": archFolderID2, "name": "Folder2"}},
+		{"create-folder", "/api/v1/budget/create-folder", map[string]any{"budgetId": budgetID1, "id": archFolderID2, "name": "Folder2", "side": "expense"}},
 		{"update-folder", "/api/v1/budget/update-folder", map[string]any{"budgetId": budgetID1, "id": archFolderID1, "name": "Folder3"}},
 		{"delete-folder", "/api/v1/budget/delete-folder", map[string]any{"budgetId": budgetID1, "id": archFolderID1}},
 		{"move-folder", "/api/v1/budget/move-folder", map[string]any{"budgetId": budgetID1, "id": archFolderID1, "after": ""}},

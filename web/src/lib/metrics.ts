@@ -96,7 +96,6 @@ export const METRICS = {
   BUDGET_ENVELOPE_CREATE: 'appBudgetEnvelopeCreate',
   BUDGET_PLAN_OPEN: 'appBudgetPlanOpen',
   BUDGET_PLAN_CHANGE_WINDOW: 'appBudgetPlanChangeWindow',
-  BUDGET_PLAN_HIDE_EMPTY_TOGGLE: 'appBudgetPlanHideEmptyToggle',
   BUDGET_PLAN_FILL_RIGHT: 'appBudgetPlanFillRight',
   BUDGET_PLAN_PASTE_CELL: 'appBudgetPlanPasteCell',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',

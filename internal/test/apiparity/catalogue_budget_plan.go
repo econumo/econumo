@@ -5,9 +5,8 @@ package apiparity
 // expense limit, transactions in distinct months on both sides (including
 // category-less rows for the two Uncategorized cells) — plus the months-bounds
 // validation error and a closing get-budget re-proof that none of it leaks
-// into the budget view. Income ENVELOPE creation is switched off for now
-// (side=income is rejected — budget_income_elements carries that rejection),
-// so planned income here lives on the standalone income category.
+// into the budget view. Planned income here lives on the standalone income
+// category (budget_income_elements covers an income envelope).
 //
 // The fixture's dirty Envelope1<-CatSalary link (an expense envelope holding
 // an income-category child, re-seeded AFTER migrations run — a state

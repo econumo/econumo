@@ -41,7 +41,7 @@ func TestGetBudgetPlan_SkeletonShape(t *testing.T) {
 
 	const folderID2 = "bfff2222-0000-7000-8000-0000000000b0"
 	h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
-		"budgetId": budgetID1, "id": folderID2, "name": "Bills",
+		"budgetId": budgetID1, "id": folderID2, "name": "Bills", "side": "expense",
 	})
 
 	st, env := getPlan(t, h, tok, "id="+budgetID1+"&from=2024-04-15&months=3")

@@ -222,19 +222,6 @@ it('offers a hover-only "Add comment" corner on a budgeted cell without comments
   expect(screen.queryByLabelText('Budget')).toBeNull()
 })
 
-it('offers no add-comment corner in edit-structure mode', async () => {
-  registerMonthlyHandlers()
-  mockViewport()
-  const user = userEvent.setup()
-  renderPage('/budget')
-
-  const row = await screen.findByTestId('element-env-1')
-  expect(within(row).getByTestId('comment-marker-add')).toBeInTheDocument()
-  await user.click(await screen.findByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
-  await waitFor(() => expect(within(screen.getByTestId('element-env-1')).queryByTestId('comment-marker-add')).toBeNull())
-})
-
 it('offers no add-comment corner on an archived budget (its threads are read-only)', async () => {
   registerMonthlyHandlers({ ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, isArchived: 1 } })
   mockViewport()

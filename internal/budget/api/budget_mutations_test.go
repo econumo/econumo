@@ -144,7 +144,7 @@ func TestMoveElement_NoTypeField(t *testing.T) {
 	tok := h.token(t)
 	seedBudget(t, h, tok)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
-		"budgetId": budgetID1, "id": bFolderID1, "name": "Bills",
+		"budgetId": budgetID1, "id": bFolderID1, "name": "Bills", "side": "expense",
 	}); st != http.StatusOK {
 		t.Fatalf("create-folder precondition=%d body=%s", st, e.raw)
 	}

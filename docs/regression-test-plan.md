@@ -716,9 +716,124 @@ and on tablet/phone only with a hardware keyboard.
       shows details; totals row; uncategorized and labels sections appear with
       info notes when relevant.
 - [ ] 📱 Section order: the Reporting tags folder is the last expense section,
-      below Uncategorized and Archived (desktop: right above the Savings block;
+      below Uncategorized and Archived (desktop: right above the Total row;
       phone: right above the Total card), and still shows when neither of those
       has anything to show.
+- [ ] "Budget" / "Plan" (desktop and tablet) are plain words at the start
+      of the month row, the current one underlined: left of the month strip
+      on /budget, left of the ‹ › arrows in the Plan grid on /plan. They swap
+      between the two; the page header carries no view switch.
+- [ ] 📱 The main menu's "Budget & Plan" link opens the view last opened on
+      this device (/budget or /plan), also after a reload, with the month
+      (Budget) and the month window (Plan) last shown there.
+- [ ] Budget view (desktop and tablet) uses the phone's order: Income
+      (Planned · Received · To receive), Savings (Planned · Saved · Balance, only with
+      savings accounts), Expenses (Budget · Spent · Available: folders, No
+      folder, Uncategorized, Archived, Reporting tags), then the Total row
+      and the lines Income, Expenses, Transfers (only when not zero),
+      Savings, Total savings and Balance at month end. Each section header
+      folds its section; a folded header shows the section's sums in its
+      columns, and the fold carries over to the same section of the Plan
+      grid (and back) and survives a reload. A future month shows "—" for
+      received, saved and the Income / Expenses / Savings lines.
+- [ ] Budget view, Income: grouped as in the Plan grid — each income
+      folder in its own box with its Planned / Received sums (in the budget
+      currency), then the folder-less rows (under "No folder" when
+      folders exist), the income Uncategorized row on its own (only in a
+      month it received something), and an Archived box for archived income
+      with money this month. An income envelope unfolds to its categories,
+      each with its received amount (opens its transactions); the unfold
+      carries over to the Plan grid.
+- [ ] Budget view, Income "To receive": each income row shows what it is
+      still expected to bring this month, Planned − Received, and 0 once it
+      has received its plan or more (never negative); a row with no plan, and
+      income Uncategorized, show "—". A folder line and the folded Income line sum their rows'
+      figures, so one overpaid source does not hide another still unpaid.
+- [ ] Budget view dashes: an income row with no plan shows a muted "—"
+      under To receive, whatever it received; an expense row with nothing
+      budgeted, nothing spent and nothing left from earlier months shows a
+      muted "—" under Available (money left from earlier months keeps its
+      figure). Folder and section lines follow the same rule. Every dash on
+      the page is a light, half-strength grey (lighter than the muted
+      figures), also in the totals lines. The planned/budget
+      amount itself still reads 0.00, as the cell to edit.
+- [ ] Budget view look (desktop and tablet): no boxes — thin rules
+      separate Income, Savings and Expenses, folders are a softer grey line
+      with their sums, rows sit indented under them, and every heading, sum
+      and amount shares one set of right-aligned columns. The budget
+      currency's code shows once, above Income; there is no per-row currency
+      symbol, and a row in another currency carries a small code tag next
+      to its name. Available is a plain figure: Spent and Available turn red
+      only on an overspent row (spent more than its budget and earlier months
+      do not cover it), a folder's sums only when the folder as a whole
+      overspent; nothing is green. A future month shows "—" for Spent. The table
+      spans the full width. The page title is in normal case.
+- [ ] Budget view ⋮ menus: on a desktop (mouse) they show on hover and while
+      open, with no mode to switch on; on a tablet or phone they show on every
+      line only while Configure → Edit structure is on ("Done editing" turns
+      them off again; with it off the view has no ⋮ and no grips):
+      - an expense or income category/tag row: Edit (name, icon; greyed out
+        as "Edit (no access)" for a category or tag another user owns),
+        Change currency, Move to folder…, then the category's or tag's own
+        Archive (Unarchive on an archived row), Merge into… (own items of the
+        same kind and type) and Delete (with a confirmation), each greyed out
+        as "(no access)" when another user owns it; an envelope adds Delete
+        (owner/admin); an archived row keeps Edit and Delete (envelope);
+        Uncategorized (expense or income) has no menu. An archived category
+        moves to Archived at once, a merged or deleted one disappears, its
+        figures folded into the target (merge) — also after a reload;
+      - a category inside an unfolded envelope: Edit, Archive, Merge into…,
+        Delete, the same way;
+      - a savings row: Edit (the account); a reporting tag: Edit ("Edit (no
+        access)" for another user's tag);
+      - a folder line: New envelope, New category, Edit (rename), Delete
+        folder (greyed out as "Delete folder (not empty)" while the folder has
+        items); the "No folder" line (Income or Expenses): New envelope, New
+        category;
+      - the Expenses and Income lines: Create folder, New envelope, New
+        category; the Savings line: New account, Savings accounts (opens the
+        budget's settings).
+      New category asks for a name and icon only (the type is the section's)
+      and the category shows at once at the top of the folder the menu
+      belongs to (or No folder). New account opens the account dialog; the
+      new account shows as a savings row of this budget.
+      Regression: an income folder must stay under Income after a reload,
+      also after New envelope created an envelope in it.
+      A guest (or anyone on an archived budget) gets no structure actions:
+      only Edit, Archive, Merge into… and Delete where they own the item. No menu offers Show transactions:
+      a row's transactions open from its Spent / Received / Saved figure.
+- [ ] Budget view, Create folder from the Income line: the new folder shows
+      at once under Income, empty ("This folder is empty…", a muted dash in
+      each figure column instead of zeros, on the phone too), and not under
+      Expenses; an income row's Move to folder… offers it (and never an
+      expense folder), and the folder stays under Income, empty, also after a
+      reload, and in the Plan grid's Income band. Create folder from the
+      Expenses line makes an expense folder the same way. An expense row's
+      Move to folder… offers only expense folders. A folder's side never
+      changes: an item of the other side cannot go into it, not even while
+      it is empty (dragging across sections is not possible, and the server
+      refuses it with "A folder cannot contain both income and expenses").
+- [ ] Budget view lines highlight on hover like rows (pointer cursor): the
+      Income, Savings and Expenses lines, folder lines, and Reporting tags. A
+      click anywhere on such a line folds it, its sums included; in Edit
+      structure the grip and the folder's "⋮" menu (and the menu's
+      items) keep their own action and do not fold.
+- [ ] Budget view nesting (desktop and tablet): a row inside a folder sits a
+      half step in from the folder line, its chevron just right of the folder's (an
+      envelope or tag in "No folder" reads as inside it, not beside it); an
+      envelope's categories sit one step further in. Rows with no folder line
+      above them (Uncategorized, every row when there are no folders, savings)
+      sit at the folder line's step. Drag grips and insertion lines follow the
+      same steps.
+- [ ] Budget view folders fold (desktop and tablet): a folder's line, "No
+      folder" and "Archived" hide their rows on a click and keep the line with
+      its sums; income folders inside Income fold the same way. Folds survive
+      a reload and are shared with the Plan grid and the phone.
+- [ ] Budget view: the income and savings Planned amounts edit inline on a
+      desktop (popover) and open the item sheet on a tablet; Received and
+      Saved open the transactions dialog (except income Uncategorized);
+      Balance, Total savings and the Income line match the Plan grid's
+      figures for the same month.
 - [ ] Element visibility rule: a category/tag/envelope with **either** spending
       or a limit (incl. carried over) is visible; with neither it is not.
 - [ ] Set a limit via the inline editor on a budgeted amount (desktop) or the
@@ -739,11 +854,60 @@ and on tablet/phone only with a hardware keyboard.
       edge keeps extending the window (past months included).
 - [ ] 📱 The budget header shows no currency chips on /budget or /plan, and
       no "Spending progress" widget appears anywhere on the page.
-- [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
-      per-element menu (change currency, move to folder, edit envelope, delete
-      envelope), delete folder; leaving the mode persists the layout.
-- [ ] Envelopes: create via the "+" button on a folder header in Edit
-      structure mode (name, currency, categories multi-select);
+- [ ] 📱 The budget header's Configure button (⚙, "CONFIGURE" from sm up)
+      is the only control there besides the title. On the desktop Budget
+      view it opens the "Budget settings" dialog straight away. On a tablet
+      or phone, and in the Plan grid, it opens a small sheet with two options:
+      "Budget settings" and "Edit structure" (an option the user may not use
+      reads "(no access)", greyed out); nothing else (no budgets list, no
+      Hide empty rows). A guest on the desktop Budget view sees no Configure
+      button.
+- [ ] 📱 **Edit structure** on a tablet or phone (Configure → Edit
+      structure, "Done editing" to leave): the Budget view shows Income,
+      Savings and Expenses with a ⋮ menu and a drag grip on every line (on a
+      phone this replaces the month view, on /budget and /plan alike), and
+      everything the desktop ⋮ menus offer works the same. On a desktop the
+      Budget view has no such mode. The Plan grid (desktop and tablet) keeps
+      its own Edit structure mode, reached the same way.
+- [ ] Budget view drag and drop (for anyone who may configure the budget):
+      on a desktop hovering a row shows a grip in its left indent; on a
+      tablet or phone every row shows one while Edit structure is on; dragging moves the row within its
+      folder or into another folder of the same section (an expense row
+      never into Income, an income row never into Expenses); a folder line's
+      grip reorders folders within the section; savings rows reorder among
+      themselves only, a deleted account's row has no grip; income
+      Uncategorized and archived rows have none. The dropped order shows at
+      once and survives a reload. Guests and archived budgets show no grips.
+- [ ] Budget view, categories and envelopes by drag (Expenses and Income
+      alike, desktop and tablet/phone Edit structure): an unfolded envelope's
+      categories carry grips. While dragging, the item stays dimmed in place,
+      a copy (icon and name) follows right beside the cursor, an empty "No
+      folder" shows after the folders as a drop target (Income and Expenses,
+      when it has nothing in it), and one insertion line with a
+      dot at its start marks where it lands: a line starting where rows start
+      means a place in a folder (before/after a row, or under the header of an
+      empty or folded folder), a line starting where an envelope's categories
+      start, under its list, means into that envelope. This holds for rows and
+      envelopes moved between folders too. A category dragged out onto a row or
+      folder leaves the envelope and lands there; dropped among another
+      unfolded envelope's categories it moves into that envelope; a top-level
+      category dropped there joins it the same way. A folded envelope takes a
+      category dropped on the middle of its row (the row gets a ring and the
+      category-level line shows under it); near the row's top or bottom edge
+      the drop places the category next to the envelope instead. An
+      empty envelope unfolds to "This envelope is empty…" and takes a drop.
+      The moved category disappears from its old place at once and shows in
+      the new one after the refresh, also after a reload. An income category
+      never goes into an expense envelope (no ring), nor the other way; an
+      envelope or a tag never goes into an envelope; dropping a category back
+      on its own envelope changes nothing; archived envelopes take no drops
+      and their categories have no grips.
+- [ ] Envelopes: create via New envelope in a folder's or section's ⋮ menu on
+      the Budget view (name, currency, categories multi-select). Under Income
+      it makes an income envelope: the picker lists only income categories,
+      the envelope shows under Income (Planned / Received / To receive) and in
+      the Plan grid's Income band, and it takes one plan for all its
+      categories;
       transactions of member categories aggregate under the envelope; edit
       membership; delete envelope returns categories to top level.
 - [ ] Tag on a transaction: spending counts toward the **tag** element, not the
@@ -751,8 +915,8 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] **Plan sheet** 📱: spreadsheet grid renders months; inline edit of a
       planned amount; keyboard cell navigation (arrows), Excel-style
       fill-right by drag handle (desktop) and Shift+Arrow; month window
-      scrolling; hide-empty-rows toggle; transfers/balance totals rows show
-      tooltips.
+      scrolling; transfers/balance totals rows show tooltips. There is no
+      "Hide empty rows" option any more (all rows show).
 - [ ] 📱 **Budget settings — Accounts and Savings accounts pickers**: the
       create and edit budget dialogs show Name, Currency, then two picker rows
       (styled like Currency): "Accounts" (the included accounts' names, and
@@ -804,14 +968,17 @@ and on tablet/phone only with a hardware keyboard.
       its balance still counts as Total savings, not everyday Balance — the
       split still sums to the Balance.
 - [ ] 📱 **Plan sheet — Savings section**: with a savings account in the
-      budget, a "Savings" section appears below Expenses and above Archived,
+      budget, a "Savings" section appears right below Income and above the
+      expense folders,
       one row per savings account in their saved order; a budget without
       savings accounts shows no such section.
 - [ ] 📱 Fold the Savings header: its rows hide, and stay hidden after a
       reload; unfold brings them back.
-- [ ] Plan sheet keyboard: ArrowDown from the last expense row lands on the
-      first savings row, and from the last savings row on the first archived
-      row; with Savings folded it skips straight to Archived.
+- [ ] Plan sheet keyboard: ArrowDown from the last income row lands on the
+      first savings row, and from the last savings row on the first expense
+      row (or folder); with Savings folded it skips straight to the expenses.
+- [ ] Plan sheet totals: below Income, Expenses, Transfers and Savings come
+      Total savings and then Balance (the phone's order).
 - [ ] 📱 Edit a savings row's planned amount (popover on desktop; on a tablet
       or phone the item sheet's "Set budget"): the new value shows at once and
       survives a reload.
@@ -877,11 +1044,9 @@ and on tablet/phone only with a hardware keyboard.
       drops by the amount and the RRSP row's rises by it, the Savings line and
       the Total savings are unchanged, and from that month on the TFSA row's
       balance is that much lower and the RRSP row's that much higher.
-- [ ] **Budget view (desktop and tablet) shows no savings**: with a savings
-      account in the budget, no Savings block appears and the Total row counts
-      the expense categories only (its Budget, Spent and Available match the
-      folders' sums). Savings are planned and tracked in the Plan view and, on
-      a phone, in the month view.
+- [ ] **Budget view Total row counts expenses only**: with a savings account
+      in the budget, the Savings section lists it, while the Total row's
+      Budget, Spent and Available still match the expense folders' sums.
 - [ ] 📱 Phone month view, Savings unfolded: one row per savings account with
       Planned and Saved (the row's item sheet adds Balance at month end); at
       320px and 375px, also in German, Polish and Ukrainian, a long account
@@ -952,7 +1117,7 @@ and on tablet/phone only with a hardware keyboard.
       "Comments (N)" / "Add comment", "Set budget", "Transactions"). "Set
       budget" replaces the sheet with the amount dialog (no comments in it);
       "Comments" replaces it with the thread. A savings row's sheet also has
-      "Transactions". A guest's sheet has no "Set budget". The Available pill is not a button; tapping Spent still lists
+      "Transactions". A guest's sheet has no "Set budget". The Available figure is not a button; tapping Spent still lists
       the transactions; the corner marker still opens the thread beside the cell.
 - [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
       the cell is selected and the item sheet opens for that element and
@@ -1011,14 +1176,30 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 On a phone (< 640 px, the iOS home-screen PWA included) `/budget` and
       `/plan` show the same single month view: header with the budget name in
       normal case, the month strip, and no Budget/Plan switch in the settings
-      menu. At the top, one card under a "USD · Planned · Actual" heading
-      (the budget's currency code at the left) holds an
-      "Income" line (planned, received) and a "Savings" line (planned,
-      saved, in the budget currency); below it, after a wider gap,
+      menu. At the top, under a "USD · Planned · Actual" heading (the
+      budget's currency code at the left), two cards: one with the "Income"
+      line (planned, received), one with the "Savings" line (planned, saved,
+      in the budget currency). Both section lines are darker and slightly
+      larger than the folder lines inside them (regular weight, not bold), so
+      Savings never reads as one more income folder. Below them, after a wider gap,
       "Expenses · Budget · Spent" heads the expense folders.
 - [ ] 📱 The Income and Savings lines start folded; tapping one unfolds its
-      rows inside the same card, and the fold state survives a month switch
+      rows inside its own card, and the fold state survives a month switch
       and a reload.
+- [ ] 📱 Income unfolded is grouped as in the Plan grid: each income folder
+      opens with a line naming it and its Planned / Received sums, followed
+      by its rows; then the folder-less rows (under "No folder" when income
+      folders exist, with no line otherwise), the income Uncategorized row
+      (only in a month it received something), and "Archived" for archived
+      income with money this month. Tapping an income envelope's name unfolds
+      its categories, each with its received amount, which opens that
+      category's transactions.
+- [ ] 📱 Phone folders fold: tapping a folder's line (an expense folder,
+      "No folder", "Archived", or an income folder inside the Income card)
+      hides its rows and keeps the line with its sums, the chevron pointing
+      right; tapping again brings the rows back. Folders start open, and a
+      fold survives a month switch and a reload. Uncategorized has no line and
+      never folds.
 - [ ] 📱 Each expense row shows Budget and Spent with no currency symbol and a
       thin bar under the row. Spent and the bar turn red only when the month
       spent more than its budget and money left from earlier months does not
@@ -1118,9 +1299,6 @@ and on tablet/phone only with a hardware keyboard.
       reporting tag's own edit dialog (kind locked) in place of the sheet; it
       is greyed out for a reporting tag that belongs to another user. A rename
       shows on the row at once.
-- [ ] 📱 "Edit structure" on a phone shows the route's structure editor — the
-      budget table on /budget, the plan grid in edit mode on /plan (drag to
-      reorder, folder menus); "Done" returns to the month view.
 
 ## 10. Budget lifecycle & list
 

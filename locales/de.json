@@ -1166,7 +1166,7 @@
         "header": "Neues Budget"
       },
       "update_budget_form": {
-        "header": "Budget bearbeiten"
+        "header": "Budgeteinstellungen"
       },
       "create_folder_form": {
         "header": "Neuer Ordner"
@@ -1311,20 +1311,19 @@
         "settings": {
           "button": "Konfigurieren",
           "menu": {
-            "edit": "Budgetdetails",
+            "edit": "Budgeteinstellungen",
             "edit_structure": "Struktur bearbeiten",
-            "edit_structure_done": "Fertig",
-            "budget_list": "Budgetliste öffnen"
+            "edit_structure_done": "Fertig"
           }
         },
         "structure": {
-          "no_folder": "Standardordner",
           "in_archive": "Archiviert",
           "carry_over_hint": "Aus früheren Monaten übrig",
           "tab": {
             "budgeted": "Budget",
             "spent": "Ausgegeben",
-            "available": "Verfügbar"
+            "available": "Verfügbar",
+            "to_receive": "Ausstehend"
           },
           "action": {
             "create_folder": "Ordner erstellen",
@@ -1332,6 +1331,9 @@
           },
           "empty_folder": {
             "note": "Dieser Ordner ist leer. Verschieben Sie eine Kategorie, ein Tag oder einen Umschlag hierher oder erstellen Sie einen neuen Umschlag."
+          },
+          "empty_envelope": {
+            "note": "Dieser Umschlag ist leer. Ziehe eine Kategorie hierher oder wähle Kategorien über Bearbeiten."
           },
           "element": {
             "action": {
@@ -1394,13 +1396,14 @@
           "savings_balance": "Ersparnisse gesamt"
         },
         "density": {
-          "hide_empty": "Leere Zeilen ausblenden",
           "hidden": "{count} ausgeblendet",
           "show": "Einblenden"
         },
         "menu": {
           "move_to_folder": "In Ordner verschieben…",
-          "no_folder": "Kein Ordner"
+          "no_folder": "Kein Ordner",
+          "no_access": "kein Zugriff",
+          "not_empty": "nicht leer"
         },
         "edit": {
           "no_access_envelope": "Sie können diesen Umschlag nicht bearbeiten — Ihre Rolle in diesem Budget ist schreibgeschützt.",
@@ -1873,6 +1876,7 @@
       "transaction_filter_required": "Validierung fehlgeschlagen",
       "envelope_side_mixed": "Ein Umschlag kann nicht gleichzeitig Einnahmen- und Ausgabenkategorien enthalten",
       "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten",
+      "envelope_member_not_category": "Nur Kategorien können in einen Umschlag gelegt werden",
       "savings_folder_not_allowed": "Ersparnisse können nicht in einen Ordner verschoben werden",
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
       "savings_account_not_member": "Sparkonten müssen deine eigenen Konten in diesem Budget sein",

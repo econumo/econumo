@@ -6,6 +6,8 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 /** the reporting-tags folder exists only in rendering: no folder row stands behind
  *  it, so its fold state is keyed by a reserved literal no element id (a UUID) can
  *  collide with; the table and the phone view share it */
+export type BudgetMode = 'budget' | 'plan'
+
 export const REPORTING_TAGS_FOLD_ID = '__reporting_tags__'
 
 function firstOfCurrentMonth(): string {
@@ -23,6 +25,9 @@ export function normalizePeriod(date: string): string {
 }
 
 interface BudgetPeriodState {
+  /** the view last opened, so the main menu's link returns to it */
+  lastMode: BudgetMode
+  setLastMode: (mode: BudgetMode) => void
   selectedDate: string
   setPeriod: (date: string) => void
   /** element rows default folded; presence = unfolded (Vue semantics) */
@@ -36,13 +41,16 @@ interface BudgetPeriodState {
   /** folded plan sections: 'income', folder ids, 'archived' */
   planFolds: Record<string, true>
   togglePlanFold: (key: string) => void
+  /** the Plan grid's hide-empty-rows filter: no control turns it on until the Plan
+   *  view is reworked, so it is not persisted (a device that had it on is not stuck) */
   planHideEmpty: boolean
-  togglePlanHideEmpty: () => void
 }
 
 export const useBudgetPeriodStore = create<BudgetPeriodState>()(
   persist(
     (set, get) => ({
+      lastMode: 'budget',
+      setLastMode: (mode) => set({ lastMode: mode }),
       selectedDate: firstOfCurrentMonth(),
       setPeriod: (date) => {
         trackEvent(METRICS.BUDGET_CHANGE_DATE)
@@ -82,11 +90,7 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
           return { planFolds: next }
         }),
       planHideEmpty: false,
-      togglePlanHideEmpty: () => {
-        trackEvent(METRICS.BUDGET_PLAN_HIDE_EMPTY_TOGGLE)
-        set((state) => ({ planHideEmpty: !state.planHideEmpty }))
-      },
     }),
-    { name: 'budgetPeriod' },
+    { name: 'budgetPeriod', partialize: ({ planHideEmpty: _hidden, ...rest }) => rest },
   ),
 )

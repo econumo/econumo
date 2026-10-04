@@ -1166,7 +1166,7 @@
         "header": "Novo orçamento"
       },
       "update_budget_form": {
-        "header": "Editar orçamento"
+        "header": "Definições do orçamento"
       },
       "create_folder_form": {
         "header": "Nova pasta"
@@ -1311,20 +1311,19 @@
         "settings": {
           "button": "Configurar",
           "menu": {
-            "edit": "Detalhes do orçamento",
+            "edit": "Definições do orçamento",
             "edit_structure": "Editar estrutura",
-            "edit_structure_done": "Concluir edição",
-            "budget_list": "Abrir lista de orçamentos"
+            "edit_structure_done": "Concluir edição"
           }
         },
         "structure": {
-          "no_folder": "Pasta predefinida",
           "in_archive": "Em arquivo",
           "carry_over_hint": "Restante de meses anteriores",
           "tab": {
             "budgeted": "Orçamento",
             "spent": "Gasto",
-            "available": "Disponível"
+            "available": "Disponível",
+            "to_receive": "A receber"
           },
           "action": {
             "create_folder": "Criar pasta",
@@ -1332,6 +1331,9 @@
           },
           "empty_folder": {
             "note": "Esta pasta está vazia. Mova para aqui uma categoria, etiqueta ou envelope, ou crie um novo envelope."
+          },
+          "empty_envelope": {
+            "note": "Este envelope está vazio. Arraste uma categoria para aqui ou escolha categorias em Editar."
           },
           "element": {
             "action": {
@@ -1394,13 +1396,14 @@
           "savings_balance": "Poupança total"
         },
         "density": {
-          "hide_empty": "Ocultar linhas vazias",
           "hidden": "{count} ocultas",
           "show": "Mostrar"
         },
         "menu": {
           "move_to_folder": "Mover para pasta…",
-          "no_folder": "Sem pasta"
+          "no_folder": "Sem pasta",
+          "no_access": "sem acesso",
+          "not_empty": "não está vazia"
         },
         "edit": {
           "no_access_envelope": "Não pode editar este envelope — o seu papel neste orçamento é só de leitura.",
@@ -1873,6 +1876,7 @@
       "transaction_filter_required": "Falha na validação.",
       "envelope_side_mixed": "Um envelope não pode conter ao mesmo tempo categorias de receita e despesa.",
       "folder_side_mixed": "Uma pasta não pode conter ao mesmo tempo receitas e despesas.",
+      "envelope_member_not_category": "Só uma categoria pode entrar num envelope",
       "savings_folder_not_allowed": "As poupanças não podem ser colocadas numa pasta.",
       "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
       "savings_account_not_member": "As contas poupança têm de ser contas suas neste orçamento",

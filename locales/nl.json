@@ -1166,7 +1166,7 @@
         "header": "Nieuw budget"
       },
       "update_budget_form": {
-        "header": "Budget bewerken"
+        "header": "Budgetinstellingen"
       },
       "create_folder_form": {
         "header": "Nieuwe map"
@@ -1311,20 +1311,19 @@
         "settings": {
           "button": "Instellen",
           "menu": {
-            "edit": "Budgetgegevens",
+            "edit": "Budgetinstellingen",
             "edit_structure": "Structuur bewerken",
-            "edit_structure_done": "Klaar met bewerken",
-            "budget_list": "Budgetlijst openen"
+            "edit_structure_done": "Klaar met bewerken"
           }
         },
         "structure": {
-          "no_folder": "Standaardmap",
           "in_archive": "Gearchiveerd",
           "carry_over_hint": "Over van eerdere maanden",
           "tab": {
             "budgeted": "Budget",
             "spent": "Uitgegeven",
-            "available": "Beschikbaar"
+            "available": "Beschikbaar",
+            "to_receive": "Te ontvangen"
           },
           "action": {
             "create_folder": "Map aanmaken",
@@ -1332,6 +1331,9 @@
           },
           "empty_folder": {
             "note": "Deze map is leeg. Verplaats hier een categorie, tag of envelop naartoe of maak een nieuwe envelop aan."
+          },
+          "empty_envelope": {
+            "note": "Deze envelop is leeg. Sleep hier een categorie naartoe of kies categorieën via Bewerken."
           },
           "element": {
             "action": {
@@ -1394,13 +1396,14 @@
           "savings_balance": "Totaal spaargeld"
         },
         "density": {
-          "hide_empty": "Lege rijen verbergen",
           "hidden": "{count} verborgen",
           "show": "Tonen"
         },
         "menu": {
           "move_to_folder": "Naar map verplaatsen…",
-          "no_folder": "Geen map"
+          "no_folder": "Geen map",
+          "no_access": "geen toegang",
+          "not_empty": "niet leeg"
         },
         "edit": {
           "no_access_envelope": "U kunt deze envelop niet bewerken — uw rol in dit budget is alleen-lezen.",
@@ -1873,6 +1876,7 @@
       "transaction_filter_required": "Validatie mislukt.",
       "envelope_side_mixed": "Een envelop kan niet tegelijk inkomsten- en uitgavencategorieën bevatten.",
       "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten.",
+      "envelope_member_not_category": "Alleen een categorie kan in een envelop worden geplaatst",
       "savings_folder_not_allowed": "Spaargeld kan niet in een map worden geplaatst.",
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
       "savings_account_not_member": "Spaarrekeningen moeten je eigen rekeningen in dit budget zijn",
