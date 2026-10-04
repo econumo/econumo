@@ -256,7 +256,7 @@ export function MonthFlows({
       </div>
     )
     return draggable ? (
-      <DragRow key={`${el.id}:${el.type}`} id={el.id} hoverOnly>
+      <DragRow key={`${el.id}:${el.type}`} id={el.id}>
         {line}
       </DragRow>
     ) : (
@@ -313,7 +313,6 @@ export function MonthFlows({
         dropId={`bfolder:${g.kind === 'folder' ? g.id : 'null'}`}
         rowIds={g.rows.map((r) => r.element.id)}
         folderDragging={incomeFolderDragging}
-        hoverOnly
       >
         {section}
       </DragFolder>
@@ -489,7 +488,7 @@ export function MonthFlows({
             >
               <SortableContext items={liveSavings.map((r) => r.id)} strategy={verticalListSortingStrategy}>
                 {liveSavings.map((row) => (
-                  <DragRow key={row.id} id={row.id} hoverOnly>
+                  <DragRow key={row.id} id={row.id}>
                     {savingsRow(row)}
                   </DragRow>
                 ))}

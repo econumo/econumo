@@ -5,7 +5,7 @@ import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { snapRowToPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
-import { Check, ChevronLeft, FolderPlus, MoreVertical, Plus, Settings2 } from 'lucide-react'
+import { Check, ChevronLeft, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
@@ -85,7 +85,8 @@ import { PhoneMonthView } from './PhoneMonthView'
 import { ViewSwitch } from './ViewSwitch'
 import { MonthFlows, MonthTotalsLines } from './MonthFlows'
 import type { FlowTarget } from './MonthFlows'
-import type { MenuAction } from './monthLayout'
+import { LineControlsContext } from './monthLayout'
+import type { LineControls, MenuAction } from './monthLayout'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import type { EnvelopeDialogTarget } from './EnvelopeDialog'
@@ -140,7 +141,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // this identical option internally — if it ever gains a non-option budget source,
   // this derivation must follow, or the markers below silently stop tracking writes.
   const budgetId = userOption(user, UserOptions.BUDGET)
-  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(mode === 'budget' || phoneView ? budgetId : null, selectedDate, 1)
+  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(mode === 'budget' || isPhone ? budgetId : null, selectedDate, 1)
   // an element or a savings row: both dialogs need only the cell's id and name
   const [commentsTarget, setCommentsTarget] = useState<{ el: CellTarget; anchor: HTMLElement | null } | null>(null)
   const openComments = (el: CellTarget, anchor: HTMLElement | null = null) => setCommentsTarget({ el, anchor })
@@ -164,7 +165,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // what precedes the window, so a future month's Balance needs every unmet plan
   // from the current month on inside it.
   const monthPlanFirst = selectedDate < currentMonth() ? selectedDate : currentMonth()
-  const monthPlan = useBudgetPlan(mode === 'budget' || phoneView ? budgetId : null, monthPlanFirst, monthDiff(monthPlanFirst, selectedDate) + 1)
+  const monthPlan = useBudgetPlan(mode === 'budget' || isPhone ? budgetId : null, monthPlanFirst, monthDiff(monthPlanFirst, selectedDate) + 1)
   const planSetLimit = usePlanSetLimit(monthPlan.planKey)
   const planMonth = useMemo(
     () => (monthPlan.data && !monthPlan.isPlaceholderData ? planMonthFigures(monthPlan.data, currencies, selectedDate) : null),
@@ -524,9 +525,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   }
   // The ⋮ menus on the desktop/tablet month view: every line offers what it can do,
   // with no mode to switch on; Edit structure keeps its own menus while it is on.
-  const hoverMenus = !isPhone && !editMode
-  // dragging needs no mode either: grips show on hover for anyone who may configure
-  const dragEnabled = editMode || (hoverMenus && configure)
+  // With a mouse every line's ⋮ menu and grip show on hover, no mode needed; a touch
+  // screen has no hover, so there they show on every line while edit mode is on
+  const lineControls: LineControls | null = isCompact ? (editMode ? 'always' : null) : 'hover'
+  const hoverMenus = lineControls !== null
+  const dragEnabled = hoverMenus && configure
   const editAction = (target: SheetTarget): MenuAction[] => {
     const access = sheetEditAccess(target)
     if (access === null) {
@@ -701,86 +704,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     )
   }
 
-  // Edit mode: the plus and the folder menu follow the folder's name, so the sums
-  // keep the row columns; folder ordering moved to dragging.
-  const folderActions = (bucket: FolderBucket, _index: number, _total: number) => {
-    if (!editMode) {
-      return null
-    }
-    const name = bucket.folder?.name ?? t('budgets.page.plan.menu.no_folder')
-    const plus = (
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-6"
-        aria-label={`create envelope ${name}`}
-        title={t('budgets.modal.create_envelope_form.header')}
-        onClick={() => setEnvelopeDialog({ open: true, envelope: null, folderId: bucket.folder?.id ?? null })}
-      >
-        <Plus className="size-4" />
-      </Button>
-    )
-    if (!bucket.folder) {
-      return plus
-    }
-    return (
-      <span className="flex items-center gap-1.5 sm:gap-2">
-        {plus}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="ghost" size="icon" aria-label={`budget folder actions ${bucket.folder.name}`}>
-              <MoreVertical className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setRenameFolder({ id: bucket.folder!.id, name: bucket.folder!.name })}>
-              {t('common.button.edit.label')}
-            </DropdownMenuItem>
-            {bucket.elements.length === 0 ? (
-              <DropdownMenuItem
-                variant="destructive"
-                onSelect={() => setDeleteFolderTarget({ id: bucket.folder!.id, name: bucket.folder!.name })}
-              >
-                {t('budgets.page.budget.structure.action.delete_folder')}
-              </DropdownMenuItem>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </span>
-    )
-  }
-
-  const elementActions = (element: BudgetElementDto) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" aria-label={`element actions ${element.name}`}>
-          <MoreVertical className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => setCurrencyTarget({ id: element.id, currencyId: element.currencyId })}>
-          {t('budgets.page.budget.structure.element.action.change_currency')}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => setMoveFolderTarget({ id: element.id, side: 'expense' })}>
-          {t('budgets.page.plan.menu.move_to_folder')}
-        </DropdownMenuItem>
-        {element.type === BudgetElementType.ENVELOPE ? (
-          <>
-            <DropdownMenuItem onSelect={() => setEnvelopeDialog({ open: true, envelope: element, folderId: element.folderId })}>
-              {t('common.button.edit.label')}
-            </DropdownMenuItem>
-            {canDeleteEnvelope(budget.meta, user?.id) ? (
-              <DropdownMenuItem variant="destructive" onSelect={() => setDeleteEnvelopeTarget({ id: element.id })}>
-                {t('common.button.delete.label')}
-              </DropdownMenuItem>
-            ) : null}
-          </>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-
   return (
     <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
       <header className="flex items-center gap-2">
@@ -819,8 +742,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
                 {t('budgets.page.budget.settings.menu.edit')}
               </DropdownMenuItem>
-              {/* the Budget view edits on hover; phones and the Plan grid keep the mode */}
-              {mode === 'plan' || isPhone ? (
+              {/* with a mouse the Budget view edits on hover; touch screens and the Plan grid switch a mode on */}
+              {mode === 'plan' || isCompact ? (
                 <DropdownMenuItem disabled={!configure} onSelect={() => setEditMode(true)}>
                   {t('budgets.page.budget.settings.menu.edit_structure')}
                 </DropdownMenuItem>
@@ -864,21 +787,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             </div>
           )}
         </>
-      ) : mode === 'plan' ? (
+      ) : mode === 'plan' && !isPhone ? (
         <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} viewSwitch={viewSwitch} />
       ) : (
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
           <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} leading={viewSwitch} />
-
-          {editMode ? (
-            <div>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setCreateFolderSide('expense')}>
-                <FolderPlus className="size-4" />
-                {t('budgets.page.budget.structure.action.create_folder')}
-              </Button>
-            </div>
-          ) : null}
 
           {isPlaceholderData || periodSwitching ? (
             // month switch in flight — the strip stays put, the stale table is
@@ -889,15 +803,16 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           ) : (
             <>
               <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+                <LineControlsContext.Provider value={lineControls ?? 'hover'}>
                 <div className="flex flex-col">
                   <MonthFlows
                     budget={budget}
                     currencies={currencies}
                     planMonth={planMonth}
                     future={selectedDate > currentMonth()}
-                    actionsColumn={editMode}
+                    actionsColumn={false}
                     renderPlanned={renderFlowPlanned}
-                    onShowTransactions={editMode ? undefined : setTransactionsTarget}
+                    onShowTransactions={setTransactionsTarget}
                     incomeMenu={hoverMenus ? incomeRowMenu : undefined}
                     incomeFolderMenu={hoverMenus ? incomeFolderMenu : undefined}
                     savingsMenu={hoverMenus ? savingsRowMenu : undefined}
@@ -945,8 +860,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     hideContents={draggingFolderId !== null}
                     renderFolderHandle={dragEnabled ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
                     // only in edit mode
-                    renderFolderActions={editMode ? folderActions : undefined}
-                    renderActions={editMode ? elementActions : undefined}
                     renderBudgetCell={inlineLimitEditor}
                     // touch viewports reach set budget, comments and transactions through the item sheet
                     onBudgetCellDetails={isCompact && !editMode ? (element) => setSheetTarget({ kind: 'expense', element }) : undefined}
@@ -962,7 +875,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     renderRowWrapper={
                       dragEnabled
                         ? (element, _bucket, row) => (
-                            <DragRow key={element.id} id={element.id} hoverOnly={!editMode}>
+                            <DragRow key={element.id} id={element.id}>
                               {row}
                             </DragRow>
                           )
@@ -979,7 +892,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                                 rowIds={bucket.elements.map((el) => el.id)}
                                 highlighted={dropFolderKey === folderKey}
                                 folderDragging={draggingFolderId !== null}
-                                hoverOnly={!editMode}
                               >
                                 {node}
                               </DragFolder>
@@ -987,7 +899,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                           }
                         : undefined
                     }
-                    onSpentClick={editMode ? undefined : setTransactionsTarget}
+                    onSpentClick={setTransactionsTarget}
                     rowMenu={hoverMenus ? expenseRowMenu : undefined}
                     folderMenu={hoverMenus ? expenseFolderMenu : undefined}
                     labelMenu={hoverMenus ? labelMenu : undefined}
@@ -996,7 +908,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   </SortableContext>
                 </DndContext>
                 <div className="mt-1 mb-4 flex flex-col">
-                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} future={selectedDate > currentMonth()} /> : null}
+                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={false} future={selectedDate > currentMonth()} /> : null}
                   {totals ? (
                     <MonthTotalsLines
                       budget={budget}
@@ -1004,10 +916,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                       planMonth={planMonth}
                       expensesSpent={totals.spent}
                       future={selectedDate > currentMonth()}
-                      actionsColumn={editMode}
+                      actionsColumn={false}
                     />
                   ) : null}
                 </div>
+                </LineControlsContext.Provider>
               </div>
             </>
           )}

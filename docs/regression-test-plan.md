@@ -769,9 +769,10 @@ and on tablet/phone only with a hardware keyboard.
       do not cover it), a folder's sums only when the folder as a whole
       overspent; nothing is green. A future month shows "—" for Spent. The table
       spans the full width. The page title is in normal case.
-- [ ] Budget view ⋮ menus (desktop and tablet; on a touch screen the ⋮ is
-      always visible, with a mouse it shows on hover and while open), no
-      mode to switch on:
+- [ ] Budget view ⋮ menus: on a desktop (mouse) they show on hover and while
+      open, with no mode to switch on; on a tablet or phone they show on every
+      line only while Configure → Edit structure is on ("Done editing" turns
+      them off again; with it off the view has no ⋮ and no grips):
       - an expense or income category/tag row: Edit (name, icon; greyed out
         as "Edit (no access)" for a category or tag another user owns), Change currency, Move to
         folder…, Show transactions; an envelope adds Delete (owner/admin);
@@ -831,14 +832,17 @@ and on tablet/phone only with a hardware keyboard.
       edge keeps extending the window (past months included).
 - [ ] 📱 The budget header shows no currency chips on /budget or /plan, and
       no "Spending progress" widget appears anywhere on the page.
-- [ ] **Edit structure** mode on a phone (and in the Plan grid): create
-      folder, drag elements between folders, per-element menu (change
-      currency, move to folder, edit envelope, delete envelope), delete
-      folder; leaving the mode persists the layout. The desktop/tablet Budget
-      view has no such mode: Configure offers no "Edit structure" there.
-- [ ] Budget view drag and drop (desktop and tablet, for anyone who may
-      configure the budget): hovering a row shows a grip in its left indent
-      (always visible on a touch screen); dragging moves the row within its
+- [ ] 📱 **Edit structure** on a tablet or phone (Configure → Edit
+      structure, "Done editing" to leave): the Budget view shows Income,
+      Savings and Expenses with a ⋮ menu and a drag grip on every line (on a
+      phone this replaces the month view, on /budget and /plan alike), and
+      everything the desktop ⋮ menus offer works the same. On a desktop the
+      Budget view has no such mode: Configure offers no "Edit structure"
+      there. The Plan grid (desktop and tablet) keeps its own Edit structure
+      mode.
+- [ ] Budget view drag and drop (for anyone who may configure the budget):
+      on a desktop hovering a row shows a grip in its left indent; on a
+      tablet or phone every row shows one while Edit structure is on; dragging moves the row within its
       folder or into another folder of the same section (an expense row
       never into Income, an income row never into Expenses); a folder line's
       grip reorders folders within the section; savings rows reorder among
@@ -1239,9 +1243,6 @@ and on tablet/phone only with a hardware keyboard.
       reporting tag's own edit dialog (kind locked) in place of the sheet; it
       is greyed out for a reporting tag that belongs to another user. A rename
       shows on the row at once.
-- [ ] 📱 "Edit structure" on a phone shows the route's structure editor — the
-      budget table on /budget, the plan grid in edit mode on /plan (drag to
-      reorder, folder menus); "Done" returns to the month view.
 
 ## 10. Budget lifecycle & list
 

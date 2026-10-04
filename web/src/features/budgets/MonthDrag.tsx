@@ -5,15 +5,13 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 import type { SortableHandleProps } from '@/components/SortableList'
-
-// With a mouse a grip shows only while its line is hovered (or focused, or being
-// dragged); touch screens have no hover, so there it always shows.
-const HOVER_GRIP = 'opacity-0 focus-visible:opacity-100 pointer-coarse:opacity-100'
+import { lineControlClass, useLineControls } from './monthLayout'
 
 /** A draggable row: the whole row (and anything unfolded under it) moves with the
  *  drag, the grip in the row's left indent is the only handle. */
-export function DragRow({ id, hoverOnly = false, children }: { id: string; hoverOnly?: boolean; children: ReactNode }) {
+export function DragRow({ id, children }: { id: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const controls = useLineControls()
   return (
     <div
       ref={setNodeRef}
@@ -23,9 +21,7 @@ export function DragRow({ id, hoverOnly = false, children }: { id: string; hover
       <button
         type="button"
         aria-label={`move ${id}`}
-        className={`absolute top-3 left-0.5 z-10 cursor-grab touch-none text-muted-foreground ${
-          hoverOnly ? `${HOVER_GRIP} group-hover/drag:opacity-100 ${isDragging ? 'opacity-100' : ''}` : ''
-        }`}
+        className={`absolute top-3 left-0.5 z-10 cursor-grab touch-none text-muted-foreground ${isDragging ? '' : lineControlClass(controls, 'drag')}`}
         {...attributes}
         {...listeners}
       >
@@ -38,10 +34,11 @@ export function DragRow({ id, hoverOnly = false, children }: { id: string; hover
 
 // The folder section is a sortable item itself (folder reorder); its grip lives in
 // the folder line, so the handle props travel via context.
-const FolderHandleContext = createContext<(SortableHandleProps & { hoverOnly: boolean }) | null>(null)
+const FolderHandleContext = createContext<SortableHandleProps | null>(null)
 
 export function FolderGrip({ name }: { name: string }) {
   const handle = useContext(FolderHandleContext)
+  const controls = useLineControls()
   if (!handle) {
     return null
   }
@@ -49,7 +46,7 @@ export function FolderGrip({ name }: { name: string }) {
     <button
       type="button"
       aria-label={`move folder ${name}`}
-      className={`absolute left-0.5 z-10 cursor-grab touch-none text-muted-foreground ${handle.hoverOnly ? `${HOVER_GRIP} group-hover/line:opacity-100` : ''}`}
+      className={`absolute left-0.5 z-10 cursor-grab touch-none text-muted-foreground ${lineControlClass(controls, 'line')}`}
       {...handle.attributes}
       {...(handle.listeners ?? {})}
     >
@@ -66,7 +63,6 @@ export function DragFolder({
   rowIds,
   highlighted = false,
   folderDragging = false,
-  hoverOnly = false,
   children,
 }: {
   /** null for a container that is not a folder (No folder) */
@@ -76,7 +72,6 @@ export function DragFolder({
   highlighted?: boolean
   /** a folder drag is in flight: row drop zones pause */
   folderDragging?: boolean
-  hoverOnly?: boolean
   children: ReactNode
 }) {
   const sortable = useSortable({ id: sortableId ?? `__container__${dropId}`, disabled: sortableId === null })
@@ -90,7 +85,7 @@ export function DragFolder({
       style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
       className={`${isOver || highlighted ? 'rounded-md ring-2 ring-ring' : ''} ${sortable.isDragging ? 'relative z-10 opacity-60' : ''}`}
     >
-      <FolderHandleContext.Provider value={sortableId !== null ? { attributes: sortable.attributes, listeners: sortable.listeners, hoverOnly } : null}>
+      <FolderHandleContext.Provider value={sortableId !== null ? { attributes: sortable.attributes, listeners: sortable.listeners } : null}>
         <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
           {children}
         </SortableContext>

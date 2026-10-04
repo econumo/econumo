@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { MenuAction } from './monthLayout'
-import { EMPTY_CELL, FIRST_COL, FOLD_LINE, FOLDER_INDENT, LINE, NAME_COL, SECOND_COL, THIRD_COL, foldOnLineClick } from './monthLayout'
+import { EMPTY_CELL, FIRST_COL, FOLD_LINE, FOLDER_INDENT, LINE, NAME_COL, SECOND_COL, THIRD_COL, foldOnLineClick, lineControlClass, useLineControls } from './monthLayout'
 
 /* edit mode appends a w-8 actions button to element rows; every line without
    one must pad the slot or its amount columns drift out of alignment */
@@ -18,9 +18,10 @@ export function Dash() {
   return <span className="text-muted-foreground/50">{EMPTY_CELL}</span>
 }
 
-/** A line's ⋮ menu: it shows while the pointer is over the line (always on touch
- *  screens, which have no hover), and stays while open. Nothing for no actions. */
+/** A line's ⋮ menu: with a mouse it shows while the pointer is over the line (and
+ *  stays while open); in a touch screen's edit mode it shows on every line. */
 export function RowMenu({ name, actions }: { name: string; actions: MenuAction[] | undefined }) {
+  const controls = useLineControls()
   if (!actions || actions.length === 0) {
     return null
   }
@@ -32,7 +33,7 @@ export function RowMenu({ name, actions }: { name: string; actions: MenuAction[]
           variant="ghost"
           size="icon"
           aria-label={`menu ${name}`}
-          className="size-7 shrink-0 text-muted-foreground opacity-0 group-hover/line:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 pointer-coarse:opacity-100"
+          className={`size-7 shrink-0 text-muted-foreground ${lineControlClass(controls, 'line')}`}
         >
           <MoreVertical className="size-4" />
         </Button>

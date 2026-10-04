@@ -351,6 +351,31 @@ it('the header tabs navigate between /budget and /plan and reflect the route', a
   expect(router.state.location.pathname).toBe('/budget')
 })
 
+it('tablet viewport: no ⋮ menus or grips until Edit structure is on; then on every line; Done hides them', async () => {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  const food = await screen.findByTestId('element-cat-food')
+  expect(within(food).queryByRole('button', { name: 'menu Food' })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^move / })).toBeNull()
+
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  const menu = within(screen.getByTestId('element-cat-food')).getByRole('button', { name: 'menu Food' })
+  expect(menu.className).not.toContain('opacity-0')
+  expect(screen.getByRole('button', { name: 'move cat-food' }).className).not.toContain('opacity-0')
+
+  await user.click(screen.getByRole('button', { name: /Done editing/ }))
+  expect(within(screen.getByTestId('element-cat-food')).queryByRole('button', { name: 'menu Food' })).toBeNull()
+})
+
 it('tablet viewport: the views lead the month row, as on desktop, and nothing is left in the settings menu', async () => {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),

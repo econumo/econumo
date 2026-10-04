@@ -1,3 +1,4 @@
+import { createContext, useContext } from 'react'
 import type { MouseEvent } from 'react'
 
 // One set of columns for every line of the desktop/tablet Budget view (section
@@ -47,4 +48,19 @@ export interface MenuAction {
   disabled?: boolean
   /** why a disabled action is greyed out, shown after its label: "Edit (no access)" */
   reason?: string
+}
+
+/** How a line's controls (its ⋮ menu and drag grip) show: under the pointer with a
+ *  mouse, or on every line while a touch screen's edit mode is on. */
+export type LineControls = 'hover' | 'always'
+export const LineControlsContext = createContext<LineControls>('hover')
+export const useLineControls = () => useContext(LineControlsContext)
+
+/** the visibility classes for a line control, given how controls show */
+export function lineControlClass(controls: LineControls, hoverGroup: 'line' | 'drag'): string {
+  if (controls === 'always') {
+    return ''
+  }
+  const hover = hoverGroup === 'line' ? 'group-hover/line:opacity-100' : 'group-hover/drag:opacity-100'
+  return `opacity-0 ${hover} focus-visible:opacity-100 data-[state=open]:opacity-100`
 }
