@@ -72,6 +72,8 @@ type BudgetFolderResult struct {
 	Id       string `json:"id"`
 	Name     string `json:"name"`
 	Position int    `json:"position"`
+	// Side is "expense" or "income".
+	Side string `json:"side"`
 }
 
 // ChildElementResult is a category nested under an envelope/tag element.
@@ -427,7 +429,7 @@ type PlanSavingsFlowResult struct {
 	Amount     string `json:"amount"`
 }
 
-// PlanStructureResult is all folders (income-, expense-sided and neutral) +
+// PlanStructureResult is all folders (both sides, each carrying its side) +
 // all plan rows; savings rows are listed apart from the elements.
 type PlanStructureResult struct {
 	Folders  []BudgetFolderResult       `json:"folders"`
@@ -463,6 +465,8 @@ type CreateBudgetFolderRequest struct {
 	BudgetId string `json:"budgetId"`
 	Id       string `json:"id"`
 	Name     string `json:"name"`
+	// Side is optional: "expense" (default when absent) or "income".
+	Side string `json:"side"`
 }
 
 func (r CreateBudgetFolderRequest) Validate() error {

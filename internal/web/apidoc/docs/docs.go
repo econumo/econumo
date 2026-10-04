@@ -12664,6 +12664,10 @@ const docTemplate = `{
                 },
                 "position": {
                     "type": "integer"
+                },
+                "side": {
+                    "description": "Side is \"expense\" or \"income\".",
+                    "type": "string"
                 }
             }
         },
@@ -13122,6 +13126,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "side": {
+                    "description": "Side is optional: \"expense\" (default when absent) or \"income\".",
                     "type": "string"
                 }
             }

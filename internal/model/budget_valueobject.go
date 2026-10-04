@@ -93,6 +93,38 @@ func EnvelopeTypeFromSide(side string) (ElementType, error) {
 	})
 }
 
+// FolderSide is the plan-view area a budget folder belongs to. It is stored
+// rather than derived from the members, so an empty income folder stays in the
+// income area. Persisted in budgets_folders.side, therefore frozen.
+type FolderSide string
+
+const (
+	FolderSideExpense FolderSide = "expense"
+	FolderSideIncome  FolderSide = "income"
+)
+
+// FolderSideFromAlias parses a create-folder side. Absent ("") means expense,
+// keeping the wire contract for existing clients.
+func FolderSideFromAlias(side string) (FolderSide, error) {
+	switch side {
+	case "", string(FolderSideExpense):
+		return FolderSideExpense, nil
+	case string(FolderSideIncome):
+		return FolderSideIncome, nil
+	}
+	return "", errs.NewValidation("Validation failed", errs.FieldError{
+		Key: "side", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice,
+	})
+}
+
+// Side is the folder side an element of this type belongs to.
+func (t ElementType) Side() FolderSide {
+	if t.IsIncomeSide() {
+		return FolderSideIncome
+	}
+	return FolderSideExpense
+}
+
 // BudgetRole is a budget participant's role: owner=-1, admin=0, user=1, guest=2.
 // owner is synthetic — never stored (only admin/user/guest are persisted); the
 // meta builder stamps the budget's owner with it.

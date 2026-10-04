@@ -452,3 +452,33 @@ func TestBudget_ArchiveUnarchive_Idempotent(t *testing.T) {
 		t.Fatal("second Unarchive bumped updatedAt")
 	}
 }
+
+func TestFolderSide(t *testing.T) {
+	for in, want := range map[string]FolderSide{"": FolderSideExpense, "expense": FolderSideExpense, "income": FolderSideIncome} {
+		got, err := FolderSideFromAlias(in)
+		if err != nil || got != want {
+			t.Errorf("FolderSideFromAlias(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+	if _, err := FolderSideFromAlias("savings"); err == nil {
+		t.Error("an unknown side must be rejected")
+	}
+	if ElementIncomeEnvelope.Side() != FolderSideIncome || ElementIncomeCategory.Side() != FolderSideIncome ||
+		ElementCategory.Side() != FolderSideExpense || ElementTag.Side() != FolderSideExpense {
+		t.Error("element types map to the wrong folder side")
+	}
+
+	f := NewBudgetFolder(vo.NewId(), vo.NewId(), "Folder", "", time.Unix(0, 0))
+	if f.Side != FolderSideExpense {
+		t.Fatalf("default side = %q, want expense", f.Side)
+	}
+	later := time.Unix(60, 0)
+	f.UpdateSide(FolderSideExpense, later)
+	if !f.UpdatedAt.Equal(time.Unix(0, 0)) {
+		t.Error("a no-op side update must not bump updated_at")
+	}
+	f.UpdateSide(FolderSideIncome, later)
+	if f.Side != FolderSideIncome || !f.UpdatedAt.Equal(later) {
+		t.Errorf("side update: side=%q updatedAt=%v", f.Side, f.UpdatedAt)
+	}
+}

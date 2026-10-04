@@ -333,8 +333,9 @@ func TestCreateEnvelope_IncomeSide(t *testing.T) {
 }
 
 // TestGetBudget_ExcludesIncomeEnvelopesAndFolders: an income envelope never
-// renders in get-budget, an income-sided folder disappears from the folder
-// list, and a re-neutraled folder comes back.
+// renders in get-budget, and a folder that took the income side disappears
+// from the folder list -- and stays gone once emptied, because the side is
+// stored rather than derived from the members.
 func TestGetBudget_ExcludesIncomeEnvelopesAndFolders(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -375,12 +376,12 @@ func TestGetBudget_ExcludesIncomeEnvelopesAndFolders(t *testing.T) {
 		t.Fatalf("income-sided folder must be filtered from get-budget; body=%s", b.Data)
 	}
 
-	// Empty it again: back to neutral, visible again.
+	// Empty it again: still an income folder, still absent.
 	h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
 		"budgetId": budgetID1, "id": incomeEnvID, "folderId": nil, "afterId": nil,
 	})
 	_, b = h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
-	if !strings.Contains(string(b.Data), folderID) {
-		t.Fatalf("re-neutraled folder must reappear; body=%s", b.Data)
+	if strings.Contains(string(b.Data), folderID) {
+		t.Fatalf("an emptied income folder must stay filtered from get-budget; body=%s", b.Data)
 	}
 }

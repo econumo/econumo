@@ -221,7 +221,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	sortBudgetFolders(sorted)
 	folders := make([]model.BudgetFolderResult, 0, len(sorted))
 	for i, fl := range sorted {
-		folders = append(folders, model.BudgetFolderResult{Id: fl.ID.String(), Name: fl.Name, Position: i})
+		folders = append(folders, model.BudgetFolderResult{Id: fl.ID.String(), Name: fl.Name, Position: i, Side: string(fl.Side)})
 	}
 
 	// --- window data: three whole-window queries ---

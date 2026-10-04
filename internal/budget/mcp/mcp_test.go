@@ -220,6 +220,27 @@ func TestBudgetTools_BuildFlow(t *testing.T) {
 	if elementFolderID == "" {
 		t.Fatalf("create_folder: empty folder id: %#v", folderItem)
 	}
+	if folderItem["side"] != "expense" {
+		t.Fatalf("create_folder: default side = %#v, want expense", folderItem["side"])
+	}
+
+	incomeFolderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Earnings", "side": "income"},
+	})
+	if err != nil || incomeFolderRes.IsError {
+		t.Fatalf("create_folder side=income: %v %#v", err, incomeFolderRes)
+	}
+	if item, _ := structured(t, incomeFolderRes)["item"].(map[string]any); item["side"] != "income" {
+		t.Fatalf("create_folder side=income: item = %#v", item)
+	}
+	badSideRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Nowhere", "side": "savings"},
+	})
+	if err != nil || !badSideRes.IsError {
+		t.Fatalf("create_folder side=savings must be a tool error: %v %#v", err, badSideRes)
+	}
 
 	createEnvelopeRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name: "create_envelope",

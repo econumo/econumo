@@ -22,6 +22,10 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req model.Crea
 	if err := model.ValidateName("Folder", req.Name); err != nil {
 		return nil, err
 	}
+	side, err := model.FolderSideFromAlias(req.Side)
+	if err != nil {
+		return nil, err
+	}
 	b, err := s.loadAggregate(ctx, budgetID)
 	if err != nil {
 		return nil, err
@@ -46,7 +50,7 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req model.Crea
 		if kerr != nil {
 			return kerr
 		}
-		created = model.NewBudgetFolder(folderID, budgetID, req.Name, now)
+		created = model.NewBudgetFolder(folderID, budgetID, req.Name, side, now)
 		created.SetSortKey(key)
 		return s.folders.SaveFolder(txCtx, created)
 	})
@@ -54,7 +58,7 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req model.Crea
 		return nil, err
 	}
 	return &model.CreateBudgetFolderResult{Item: model.BudgetFolderResult{
-		Id: created.ID.String(), Name: created.Name, Position: folderIndex(b.folders, created),
+		Id: created.ID.String(), Name: created.Name, Position: folderIndex(b.folders, created), Side: string(created.Side),
 	}}, nil
 }
 
@@ -99,7 +103,7 @@ func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req model.Upda
 		return nil, err
 	}
 	return &model.UpdateBudgetFolderResult{Item: model.BudgetFolderResult{
-		Id: updated.ID.String(), Name: updated.Name, Position: folderIndex(b.folders, updated),
+		Id: updated.ID.String(), Name: updated.Name, Position: folderIndex(b.folders, updated), Side: string(updated.Side),
 	}}, nil
 }
 

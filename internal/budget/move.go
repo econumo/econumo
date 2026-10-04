@@ -62,12 +62,20 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 	if moved != nil && moved.Type == model.ElementSavings && folderID != nil {
 		return nil, savingsFolderNotAllowedErr()
 	}
-	if moved != nil && folderID != nil && sideMixed(b.elements, *folderID, moved.Type) {
-		return nil, folderSideMixedErr()
-	}
 
 	now := s.clock.Now()
+	var adopted *model.BudgetFolder
+	if moved != nil && folderID != nil {
+		if adopted, err = b.placeInFolder(*folderID, moved.Type, now); err != nil {
+			return nil, err
+		}
+	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if adopted != nil {
+			if serr := s.folders.SaveFolder(txCtx, adopted); serr != nil {
+				return serr
+			}
+		}
 		if moved != nil {
 			// Siblings are the elements already in the TARGET group, excluding the
 			// moved one -- which may be arriving from another folder.
@@ -124,8 +132,8 @@ func inFolder(e *model.BudgetElement, folderID *vo.Id) bool {
 	return e.FolderID != nil && e.FolderID.Equal(*folderID)
 }
 
-// folderSide reports the folder's derived side over its member elements: no
-// members = neutral (both false). Archived members count — a folder holding
+// folderSide reports which sides the folder's member elements cover: no
+// members = both false. Archived members count — a folder holding
 // only an archived income category is still income-sided.
 func folderSide(elements []*model.BudgetElement, folderID vo.Id) (income, expense bool) {
 	for _, e := range elements {
@@ -141,15 +149,26 @@ func folderSide(elements []*model.BudgetElement, folderID vo.Id) (income, expens
 	return income, expense
 }
 
-// sideMixed reports whether placing an element of type typ into the folder
-// would mix income and expense sides. Same-side members never conflict, so the
-// element being re-placed inside its own folder needs no exclusion.
-func sideMixed(elements []*model.BudgetElement, folderID vo.Id, typ model.ElementType) bool {
-	income, expense := folderSide(elements, folderID)
-	if typ.IsIncomeSide() {
-		return expense
+// placeInFolder applies the side rule for putting an element of type typ into
+// the folder. A folder with members keeps their side and refuses the other one;
+// same-side members never conflict, so the element being re-placed inside its
+// own folder needs no exclusion. An empty folder accepts either side and adopts
+// the element's: the returned folder (nil when unchanged) must be saved in the
+// same transaction as the element write.
+func (a *budgetAggregate) placeInFolder(folderID vo.Id, typ model.ElementType, now time.Time) (*model.BudgetFolder, error) {
+	income, expense := folderSide(a.elements, folderID)
+	if income || expense {
+		if (typ.IsIncomeSide() && expense) || (!typ.IsIncomeSide() && income) {
+			return nil, folderSideMixedErr()
+		}
+		return nil, nil
 	}
-	return income
+	f := a.folder(folderID)
+	if f == nil || f.Side == typ.Side() {
+		return nil, nil
+	}
+	f.UpdateSide(typ.Side(), now)
+	return f, nil
 }
 
 func folderSideMixedErr() error {

@@ -47,6 +47,7 @@ type budgetIDInput struct {
 type createFolderInput struct {
 	BudgetID string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
 	Name     string `json:"name" jsonschema:"folder name"`
+	Side     string `json:"side,omitempty" jsonschema:"expense (default) or income: the plan area the folder belongs to"`
 }
 
 type updateFolderInput struct {
@@ -269,6 +270,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 					BudgetId: in.BudgetID,
 					Id:       vo.NewId().String(), // entity id, minted server-side for MCP
 					Name:     in.Name,
+					Side:     in.Side,
 				})
 				if err != nil {
 					return nil, model.CreateBudgetFolderResult{}, webmcp.MapErr(ctx, err)
