@@ -9,13 +9,23 @@ import { planMonthFigures } from './phoneMonth'
 
 // dnd-kit stand-in: each section's onDragStart/onDragEnd is captured and fired
 // directly, in render order (income first, then savings)
-let captured: { onDragStart?: (e: never) => void; onDragEnd: (e: never) => void }[] = []
+let captured: { onDragStart?: (e: never) => void; onDragOver?: (e: never) => void; onDragEnd: (e: never) => void }[] = []
 vi.mock('@dnd-kit/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dnd-kit/core')>()
   return {
     ...actual,
-    DndContext: ({ onDragStart, onDragEnd, children }: { onDragStart?: (e: never) => void; onDragEnd: (e: never) => void; children: ReactNode }) => {
-      captured.push({ onDragStart, onDragEnd })
+    DndContext: ({
+      onDragStart,
+      onDragOver,
+      onDragEnd,
+      children,
+    }: {
+      onDragStart?: (e: never) => void
+      onDragOver?: (e: never) => void
+      onDragEnd: (e: never) => void
+      children: ReactNode
+    }) => {
+      captured.push({ onDragStart, onDragOver, onDragEnd })
       return children
     },
   }
@@ -131,4 +141,15 @@ describe('income categories and envelopes', () => {
     expect(drag.onMoveIncomeIntoEnvelope).not.toHaveBeenCalled()
     expect(screen.getByTestId('month-income-child-cat-salary')).toBeInTheDocument()
   })
+})
+
+it('dragging shows one insertion line: row-level after the row it lands behind, none on its own spot', () => {
+  renderFlows()
+  const income = () => captured[captured.length - 2]
+  act(() => income().onDragOver!({ active: { id: 'ie1' }, over: { id: 'bfolder:bf-inc' } } as never))
+  const freelance = screen.getByTestId('month-income-row-cat-freelance').closest('.group\\/drag') as HTMLElement
+  expect(within(freelance).getByTestId('drop-line-row')).toBeInTheDocument()
+  expect(screen.getAllByTestId('drop-line-row')).toHaveLength(1)
+  act(() => income().onDragOver!({ active: { id: 'ie1' }, over: { id: 'ie1' } } as never))
+  expect(screen.queryByTestId('drop-line-row')).toBeNull()
 })

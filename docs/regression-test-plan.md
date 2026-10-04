@@ -859,10 +859,16 @@ and on tablet/phone only with a hardware keyboard.
       once and survives a reload. Guests and archived budgets show no grips.
 - [ ] Budget view, categories and envelopes by drag (Expenses and Income
       alike, desktop and tablet/phone Edit structure): an unfolded envelope's
-      categories carry grips. A category dragged out onto a row or folder
-      leaves the envelope and lands there; dropped among another unfolded
-      envelope's categories (the list gets a ring) it moves into that
-      envelope; a top-level category dropped there joins it the same way. An
+      categories carry grips. While dragging, the item stays dimmed in place,
+      a copy (icon and name) follows the pointer, and one insertion line with a
+      dot at its start marks where it lands: a line starting where rows start
+      means a place in a folder (before/after a row, or under the header of an
+      empty or folded folder), a line starting where an envelope's categories
+      start, under its list, means into that envelope. This holds for rows and
+      envelopes moved between folders too. A category dragged out onto a row or
+      folder leaves the envelope and lands there; dropped among another
+      unfolded envelope's categories it moves into that envelope; a top-level
+      category dropped there joins it the same way. An
       empty envelope unfolds to "This envelope is empty…" and takes a drop.
       The moved category disappears from its old place at once and shows in
       the new one after the refresh, also after a reload. An income category

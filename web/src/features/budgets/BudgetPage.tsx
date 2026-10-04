@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
-import { DndContext, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { snapRowToPointer } from '@/lib/dnd'
@@ -90,8 +90,9 @@ import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { BudgetDialog } from './BudgetDialog'
 import { useCreateBudget } from './queries'
 import type { ElementContainer } from './elementMove'
-import { applyArrangement, arrangementFromBuckets, arrangementItem, ENVELOPE_DROP, envelopeCollisions, moveElementInArrangement, placeFromEnvelope, withoutElement } from './elementMove'
-import { DragChild, DragFolder, DragRow, EnvelopeDrop, FolderGrip } from './MonthDrag'
+import { applyArrangement, arrangementFromBuckets, arrangementItem, dropIndicatorFor, ENVELOPE_DROP, envelopeCollisions, moveElementInArrangement, placeFromEnvelope, withoutElement } from './elementMove'
+import type { DropIndicator } from './elementMove'
+import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, FolderGrip } from './MonthDrag'
 import { CoinLoader } from '@/components/CoinLoader'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
@@ -235,8 +236,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // a category on its way into or out of an envelope: hidden until the refetched
   // budget shows it in its new place, so it never snaps back
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null)
-  // folder key ('null' for the default bucket) the drag currently targets across folders
-  const [dropFolderKey, setDropFolderKey] = useState<string | null>(null)
+  // where the dragged row or category would land: the insertion line
+  const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null)
+  const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   // a FOLDER is being dragged: every section renders header-only
   const [draggingFolderId, setDraggingFolderId] = useState<Id | null>(null)
   useEffect(() => {
@@ -383,35 +385,52 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     envelopeOfCategory.has(id) || budget.structure.elements.some((el) => el.id === id && el.type === BudgetElementType.CATEGORY)
   const canEnterEnvelope = (activeId: string, envelopeId: string) => isExpenseCategory(activeId) && envelopeOfCategory.get(activeId) !== envelopeId
 
-  // container key of the folder the pointer is over (cross-folder move pending)
-  const folderKeyOf = (arrangement: ElementContainer[], id: string): string | null => {
-    if (id.startsWith('bfolder:')) {
-      return id.slice('bfolder:'.length)
-    }
-    const container = arrangement.find((c) => c.ids.includes(id))
-    return container ? String(container.folderId) : null
-  }
-
-  // No DOM re-ordering happens DURING the drag: within a folder the sortable
-  // strategy previews the move with pure transforms, a cross-folder target is
-  // only highlighted. Everything applies once, on drop — mutating the row
-  // order mid-drag shifts layout under the pointer and feedback-loops the
-  // drag-over → re-measure cycle. Folder drags preview the same way (sortable
-  // sections) while every section renders collapsed.
+  // No DOM re-ordering happens DURING the drag: rows stay put, a floating copy
+  // follows the pointer and the insertion line marks where the drop lands.
+  // Everything applies once, on drop — mutating the row order mid-drag shifts
+  // layout under the pointer and feedback-loops the drag-over → re-measure cycle.
+  // Folder drags preview with sortable sections while every section renders
+  // collapsed.
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
-    if (draggingFolderId || !over || active.id === over.id) {
+    if (draggingFolderId) {
       return
     }
-    const base = arrangementFromBuckets(buckets)
-    const sourceKey = folderKeyOf(base, String(active.id))
-    const targetKey = folderKeyOf(base, String(over.id))
-    setDropFolderKey(targetKey !== sourceKey ? targetKey : null)
+    const activeId = String(active.id)
+    const overId = over ? String(over.id) : null
+    const fromEnvelope = envelopeOfCategory.get(activeId)
+    if (!overId || overId === activeId || overId === fromEnvelope) {
+      setDropIndicator(null)
+      return
+    }
+    setDropIndicator(
+      dropIndicatorFor(arrangementFromBuckets(buckets), activeId, overId, {
+        fromEnvelope: fromEnvelope !== undefined,
+        isFolded: (folderId) => !!planFolds[folderId ?? '__no_folder__'],
+      }),
+    )
   }
+
+  // the floating copy of what is being dragged: a row, or a category from an envelope
+  const draggedItem = (() => {
+    if (!dragActiveId) {
+      return null
+    }
+    for (const el of budget.structure.elements) {
+      if (el.id === dragActiveId) {
+        return { icon: el.icon, name: el.name }
+      }
+      const child = el.children.find((c) => c.id === dragActiveId)
+      if (child) {
+        return { icon: child.icon, name: child.name }
+      }
+    }
+    return null
+  })()
 
   const handleDragEnd = (event: DragEndEvent) => {
     setDragActiveId(null)
-    setDropFolderKey(null)
+    setDropIndicator(null)
     const { active, over } = event
     if (draggingFolderId) {
       setDraggingFolderId(null)
@@ -845,7 +864,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   onDragCancel={() => {
                     setDragActiveId(null)
                     setDraggingFolderId(null)
-                    setDropFolderKey(null)
+                    setDropIndicator(null)
                     setDragArrangement(null)
                   }}
                 >
@@ -889,7 +908,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     renderRowWrapper={
                       dragEnabled
                         ? (element, _bucket, row) => (
-                            <DragRow key={element.id} id={element.id}>
+                            <DragRow
+                              key={element.id}
+                              id={element.id}
+                              indicator={dropIndicator?.kind === 'row' && dropIndicator.id === element.id ? dropIndicator.edge : undefined}
+                            >
                               {row}
                             </DragRow>
                           )
@@ -904,7 +927,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                                 sortableId={bucket.folder?.id ?? null}
                                 dropId={`bfolder:${folderKey}`}
                                 rowIds={bucket.elements.map((el) => el.id)}
-                                highlighted={dropFolderKey === folderKey}
+                                indicator={dropIndicator?.kind === 'folder' && String(dropIndicator.folderId) === folderKey}
                                 folderDragging={draggingFolderId !== null}
                               >
                                 {node}
@@ -920,6 +943,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     sectionMenu={hoverMenus ? sectionMenu('expense') : undefined}
                   />
                   </SortableContext>
+                  {/* no drop animation: the moved row shows in its new place instead */}
+                  <DragOverlay dropAnimation={null}>{draggedItem ? <DragGhost icon={draggedItem.icon} name={draggedItem.name} /> : null}</DragOverlay>
                 </DndContext>
                 <div className="mt-1 mb-4 flex flex-col">
                   {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={false} future={selectedDate > currentMonth()} /> : null}

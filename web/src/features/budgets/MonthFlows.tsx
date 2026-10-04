@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { DndContext, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { snapRowToPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
@@ -23,9 +23,9 @@ import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FIRST_COL, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
 import { leftToReceive } from './phoneMonth'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
-import { arrangementItem, ENVELOPE_DROP, envelopeCollisions, moveElementInArrangement, placeFromEnvelope, preferRowCollisions } from './elementMove'
-import type { ElementContainer, ElementMoveItem } from './elementMove'
-import { DragChild, DragFolder, DragRow, EnvelopeDrop, FolderGrip } from './MonthDrag'
+import { arrangementItem, dropIndicatorFor, ENVELOPE_DROP, envelopeCollisions, moveElementInArrangement, placeFromEnvelope, preferRowCollisions } from './elementMove'
+import type { DropIndicator, ElementContainer, ElementMoveItem } from './elementMove'
+import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, FolderGrip } from './MonthDrag'
 import { isEnvelopeType } from './elementEdit'
 
 export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' }>
@@ -172,6 +172,9 @@ export function MonthFlows({
   // an income category on its way into or out of an envelope: hidden until the
   // refetched figures show it in its new place
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null)
+  // the income row or category being dragged, and where it would land
+  const [incomeDragId, setIncomeDragId] = useState<string | null>(null)
+  const [incomeIndicator, setIncomeIndicator] = useState<DropIndicator | null>(null)
   useEffect(() => {
     setIncomePreview(null)
     setPendingMemberId(null)
@@ -279,7 +282,11 @@ export function MonthFlows({
       </div>
     )
     return draggable ? (
-      <DragRow key={`${el.id}:${el.type}`} id={el.id}>
+      <DragRow
+        key={`${el.id}:${el.type}`}
+        id={el.id}
+        indicator={incomeIndicator?.kind === 'row' && incomeIndicator.id === el.id ? incomeIndicator.edge : undefined}
+      >
         {line}
       </DragRow>
     ) : (
@@ -335,6 +342,7 @@ export function MonthFlows({
         sortableId={g.kind === 'folder' ? g.id : null}
         dropId={`bfolder:${g.kind === 'folder' ? g.id : 'null'}`}
         rowIds={g.rows.map((r) => r.element.id)}
+        indicator={incomeIndicator?.kind === 'folder' && (incomeIndicator.folderId ?? 'null') === (g.kind === 'folder' ? g.id : 'null')}
         folderDragging={incomeFolderDragging}
       >
         {section}
@@ -401,10 +409,41 @@ export function MonthFlows({
   const onIncomeDragStart = ({ active }: DragStartEvent) => {
     if (incomeFolderIds.includes(String(active.id))) {
       setIncomeFolderDragging(true)
+      return
     }
+    setIncomeDragId(String(active.id))
   }
+  const onIncomeDragOver = ({ active, over }: DragOverEvent) => {
+    const activeId = String(active.id)
+    const overId = over ? String(over.id) : null
+    const fromEnvelope = envelopeOfCategory.get(activeId)
+    if (incomeFolderIds.includes(activeId) || !overId || overId === activeId || overId === fromEnvelope) {
+      setIncomeIndicator(null)
+      return
+    }
+    setIncomeIndicator(
+      dropIndicatorFor(arrangementOf(shownIncomeGroups), activeId, overId, {
+        fromEnvelope: fromEnvelope !== undefined,
+        isFolded: (folderId) => !!planFolds[folderId ?? '__income__no_folder__'],
+      }),
+    )
+  }
+  const draggedIncome = (() => {
+    for (const row of shownIncomeGroups.flatMap((g) => g.rows)) {
+      if (row.element.id === incomeDragId) {
+        return { icon: row.element.icon, name: elementDisplayName(row.element.id, row.element.name, t) }
+      }
+      const child = row.element.children.find((c) => c.id === incomeDragId)
+      if (child) {
+        return { icon: child.icon, name: child.name }
+      }
+    }
+    return null
+  })()
   const onIncomeDragEnd = ({ active, over }: DragEndEvent) => {
     setIncomeFolderDragging(false)
+    setIncomeDragId(null)
+    setIncomeIndicator(null)
     if (!drag || !over || active.id === over.id) {
       return
     }
@@ -503,12 +542,19 @@ export function MonthFlows({
               measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
               modifiers={[snapRowToPointer]}
               onDragStart={onIncomeDragStart}
+              onDragOver={onIncomeDragOver}
               onDragEnd={onIncomeDragEnd}
-              onDragCancel={() => setIncomeFolderDragging(false)}
+              onDragCancel={() => {
+                setIncomeFolderDragging(false)
+                setIncomeDragId(null)
+                setIncomeIndicator(null)
+              }}
             >
               <SortableContext items={incomeFolderIds} strategy={verticalListSortingStrategy}>
                 {shownIncomeGroups.map((g) => incomeGroup(g, shownIncomeGroups))}
               </SortableContext>
+              {/* no drop animation: the moved row shows in its new place instead */}
+              <DragOverlay dropAnimation={null}>{draggedIncome ? <DragGhost icon={draggedIncome.icon} name={draggedIncome.name} /> : null}</DragOverlay>
             </DndContext>
           ) : (
             incomeGroups.map((g) => incomeGroup(g, incomeGroups))

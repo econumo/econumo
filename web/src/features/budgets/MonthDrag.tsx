@@ -1,24 +1,54 @@
 import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
+import { EntityIcon } from '@/components/EntityIcon'
 import type { SortableHandleProps } from '@/components/SortableList'
 import { lineControlClass, useLineControls } from './monthLayout'
-import { ENVELOPE_DROP } from './elementMove'
+import { ENVELOPE_DROP, noShift } from './elementMove'
 
-/** A draggable row: the whole row (and anything unfolded under it) moves with the
- *  drag, the grip in the row's left indent is the only handle. */
-export function DragRow({ id, children }: { id: string; children: ReactNode }) {
+/** The insertion line. Its indent tells the level: from where rows start for a
+ *  place in a folder, from where an envelope's categories start for a drop into
+ *  that envelope. */
+export function DropLine({ level, edge }: { level: 'row' | 'child'; edge: 'before' | 'after' }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-testid={`drop-line-${level}`}
+      // a ring dot marks where the line starts, so its level reads at a glance
+      className={`pointer-events-none absolute right-2 z-20 h-0.5 rounded-full bg-ring before:absolute before:-top-[3px] before:-left-2 before:size-2 before:rounded-full before:border-2 before:border-ring before:bg-background ${level === 'child' ? 'left-14 sm:left-16' : 'left-8'} ${edge === 'before' ? '-top-px' : '-bottom-px'}`}
+    />
+  )
+}
+
+/** what follows the pointer while a row or a category is dragged */
+export function DragGhost({ icon, name }: { icon: string; name: string }) {
+  return (
+    <div className="flex h-full items-center">
+      {/* clear of where the insertion line starts, so its level stays readable */}
+      <div className="ml-28 flex min-h-9 items-center gap-2 rounded-md bg-background px-3 py-1.5 text-[15px] shadow-md ring-1 ring-border">
+        <EntityIcon name={icon} className="text-lg text-muted-foreground" />
+        <span className="truncate">{name}</span>
+      </div>
+    </div>
+  )
+}
+
+/** A draggable row: the grip in the row's left indent is the only handle; while it
+ *  is dragged the row stays dimmed in place. `indicator`: the drop lands right
+ *  before or after this row. */
+export function DragRow({ id, indicator, children }: { id: string; indicator?: 'before' | 'after'; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const controls = useLineControls()
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`group/drag relative ${isDragging ? 'z-10 opacity-60' : ''}`}
+      className={`group/drag relative ${isDragging ? 'opacity-40' : ''}`}
     >
+      {indicator ? <DropLine level="row" edge={indicator} /> : null}
       <button
         type="button"
         aria-label={`move ${id}`}
@@ -62,7 +92,7 @@ export function DragFolder({
   sortableId,
   dropId,
   rowIds,
-  highlighted = false,
+  indicator = false,
   folderDragging = false,
   children,
 }: {
@@ -70,13 +100,14 @@ export function DragFolder({
   sortableId: string | null
   dropId: string
   rowIds: string[]
-  highlighted?: boolean
+  /** the drop lands in this folder, whose rows are not shown (empty or folded) */
+  indicator?: boolean
   /** a folder drag is in flight: row drop zones pause */
   folderDragging?: boolean
   children: ReactNode
 }) {
   const sortable = useSortable({ id: sortableId ?? `__container__${dropId}`, disabled: sortableId === null })
-  const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: dropId, disabled: folderDragging })
+  const { setNodeRef: setDroppableRef } = useDroppable({ id: dropId, disabled: folderDragging })
   return (
     <div
       ref={(el) => {
@@ -84,10 +115,11 @@ export function DragFolder({
         setDroppableRef(el)
       }}
       style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
-      className={`${isOver || highlighted ? 'rounded-md ring-2 ring-ring' : ''} ${sortable.isDragging ? 'relative z-10 opacity-60' : ''}`}
+      className={`relative ${sortable.isDragging ? 'z-10 opacity-60' : ''}`}
     >
+      {indicator ? <DropLine level="row" edge="after" /> : null}
       <FolderHandleContext.Provider value={sortableId !== null ? { attributes: sortable.attributes, listeners: sortable.listeners } : null}>
-        <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
+        <SortableContext items={rowIds} strategy={noShift}>
           {children}
         </SortableContext>
       </FolderHandleContext.Provider>
@@ -96,17 +128,12 @@ export function DragFolder({
 }
 
 /** A category inside an unfolded envelope: dragged out to a row or folder, or into
- *  another envelope's list. It belongs to no sortable list, so nothing shifts. */
+ *  another envelope's list. It stays dimmed in place; a floating copy moves. */
 export function DragChild({ id, children }: { id: string; children: ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id })
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id })
   const controls = useLineControls()
   return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform) }}
-      data-drag-child=""
-      className={`group/child relative ${isDragging ? 'z-10 opacity-60' : ''}`}
-    >
+    <div ref={setNodeRef} data-drag-child="" className={`group/child relative ${isDragging ? 'opacity-40' : ''}`}>
       <button
         type="button"
         aria-label={`move ${id}`}
@@ -126,8 +153,9 @@ export function DragChild({ id, children }: { id: string; children: ReactNode })
 export function EnvelopeDrop({ envelopeId, children }: { envelopeId: string; children: ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: `${ENVELOPE_DROP}${envelopeId}` })
   return (
-    <div ref={setNodeRef} data-testid={`envelope-drop-${envelopeId}`} className={isOver ? 'rounded-md ring-2 ring-ring' : ''}>
+    <div ref={setNodeRef} data-testid={`envelope-drop-${envelopeId}`} className="relative">
       {children}
+      {isOver ? <DropLine level="child" edge="after" /> : null}
     </div>
   )
 }

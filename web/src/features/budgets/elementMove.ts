@@ -1,5 +1,6 @@
 import { pointerWithin, rectIntersection } from '@dnd-kit/core'
 import type { CollisionDetection } from '@dnd-kit/core'
+import type { SortingStrategy } from '@dnd-kit/sortable'
 import type { BudgetBuckets } from './budgetMath'
 import type { BudgetDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
@@ -168,11 +169,69 @@ export function envelopeCollisions(canEnter: (activeId: string, envelopeId: stri
 
 export const preferRowCollisions: CollisionDetection = envelopeCollisions(() => false)
 
+// where the dragged item would land: the moved arrangement and the wire item. A
+// category coming out of an envelope is in no container yet, so it starts in a
+// stand-in one.
+const OUT_OF_ENVELOPE = '__envelope__' as Id
+function landing(
+  base: ElementContainer[],
+  activeId: string,
+  overId: string,
+  fromEnvelope: boolean,
+): { final: ElementContainer[]; item: ElementMoveItem } | null {
+  if (fromEnvelope) {
+    const final = moveElementInArrangement([...base, { folderId: OUT_OF_ENVELOPE, ids: [activeId] }], activeId, overId)
+    const item = arrangementItem(final, activeId)
+    return item && item.folderId !== OUT_OF_ENVELOPE ? { final, item } : null
+  }
+  const final = moveElementInArrangement(base, activeId, overId)
+  const item = arrangementItem(final, activeId)
+  const before = arrangementItem(base, activeId)
+  if (!item || (before && before.folderId === item.folderId && before.position === item.position)) {
+    return null
+  }
+  return { final, item }
+}
+
 /** Where a category dragged out of an envelope lands: the same placement a row
  *  dropped on `overId` gets. null when it lands nowhere. */
 export function placeFromEnvelope(base: ElementContainer[], activeId: string, overId: string): ElementMoveItem | null {
-  const pseudo = '__envelope__' as Id
-  const moved = moveElementInArrangement([...base, { folderId: pseudo, ids: [activeId] }], activeId, overId)
-  const item = arrangementItem(moved, activeId)
-  return item && item.folderId !== pseudo ? item : null
+  return landing(base, activeId, overId, true)?.item ?? null
 }
+
+/** The insertion line while dragging: before or after a row (top level), under a
+ *  folder's header (an empty or folded folder), or under an envelope's categories
+ *  (the drop puts the category into it). */
+export type DropIndicator =
+  | { kind: 'row'; id: string; edge: 'before' | 'after' }
+  | { kind: 'folder'; folderId: Id | null }
+  | { kind: 'envelope'; envelopeId: string }
+
+export function dropIndicatorFor(
+  base: ElementContainer[],
+  activeId: string,
+  overId: string,
+  { fromEnvelope, isFolded }: { fromEnvelope: boolean; isFolded: (folderId: Id | null) => boolean },
+): DropIndicator | null {
+  if (overId.startsWith(ENVELOPE_DROP)) {
+    return { kind: 'envelope', envelopeId: overId.slice(ENVELOPE_DROP.length) }
+  }
+  const landed = landing(base, activeId, overId, fromEnvelope)
+  if (!landed) {
+    return null
+  }
+  const { final, item } = landed
+  if (isFolded(item.folderId)) {
+    return { kind: 'folder', folderId: item.folderId }
+  }
+  if (item.afterId) {
+    return { kind: 'row', id: item.afterId, edge: 'after' }
+  }
+  const next = final.find((c) => c.folderId === item.folderId)?.ids.find((id) => id !== activeId)
+  return next ? { kind: 'row', id: next, edge: 'before' } : { kind: 'folder', folderId: item.folderId }
+}
+
+/** Rows stay put while a row is dragged: a floating copy follows the pointer and
+ *  the insertion line shows where it lands, inside a folder and across folders
+ *  alike. */
+export const noShift: SortingStrategy = () => null

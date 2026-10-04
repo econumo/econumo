@@ -1,4 +1,4 @@
-import { applyArrangement, arrangementFromBuckets, arrangementItem, computeElementMove, moveElementInArrangement, placeFromEnvelope, withoutElement } from './elementMove'
+import { applyArrangement, arrangementFromBuckets, arrangementItem, computeElementMove, moveElementInArrangement, dropIndicatorFor, placeFromEnvelope, withoutElement } from './elementMove'
 import { bucketElements, makeBudgetExchange } from './budgetMath'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { fixtureWireBudget } from '@/test/fixtures'
@@ -82,4 +82,33 @@ it('withoutElement drops an element from the top level and from any envelope', (
   const hidden = withoutElement(withoutElement(budget, childId), 'cat-food')
   expect(hidden.structure.elements.find((el) => el.id === 'env-1')!.children.some((c) => c.id === childId)).toBe(false)
   expect(hidden.structure.elements.some((el) => el.id === 'cat-food')).toBe(false)
+})
+
+describe('the insertion line', () => {
+  const base = [
+    { folderId: 'f1', ids: ['a', 'b', 'c'] },
+    { folderId: 'f2', ids: [] as string[] },
+    { folderId: null, ids: ['d'] },
+  ]
+  const open = { fromEnvelope: false, isFolded: () => false }
+
+  it('sits after the row the drop lands behind, or before the first row of its folder', () => {
+    // moving down within a folder lands after the row it is dropped on
+    expect(dropIndicatorFor(base, 'a', 'c', open)).toEqual({ kind: 'row', id: 'c', edge: 'after' })
+    // moving up lands before it
+    expect(dropIndicatorFor(base, 'c', 'a', open)).toEqual({ kind: 'row', id: 'a', edge: 'before' })
+    // into another folder, onto its first row
+    expect(dropIndicatorFor(base, 'b', 'd', open)).toEqual({ kind: 'row', id: 'd', edge: 'before' })
+  })
+
+  it('sits under the header of an empty or folded folder, and is gone on a drop onto its own spot', () => {
+    expect(dropIndicatorFor(base, 'a', 'bfolder:f2', open)).toEqual({ kind: 'folder', folderId: 'f2' })
+    expect(dropIndicatorFor(base, 'd', 'b', { fromEnvelope: false, isFolded: (f) => f === 'f1' })).toEqual({ kind: 'folder', folderId: 'f1' })
+    expect(dropIndicatorFor(base, 'b', 'b', open)).toBeNull()
+  })
+
+  it('a category from an envelope gets a row-level line; an envelope list gets the category-level one', () => {
+    expect(dropIndicatorFor(base, 'x', 'b', { fromEnvelope: true, isFolded: () => false })).toEqual({ kind: 'row', id: 'a', edge: 'after' })
+    expect(dropIndicatorFor(base, 'a', 'benv:env-1', open)).toEqual({ kind: 'envelope', envelopeId: 'env-1' })
+  })
 })
