@@ -17,7 +17,7 @@ import { budgetTotals, carryOver, displayAvailable, elementDisplayName, nothingT
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader } from './monthLines'
-import { CHILD_INDENT, EMPTY_CELL, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
+import { CHILD_INDENT, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
 
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
@@ -345,11 +345,15 @@ function LabelRow({
         ) : (
           <span className={NAME_COL}>{name}</span>
         )}
-        <span className={`${FIRST_COL} text-[15px] text-muted-foreground`}>{EMPTY_CELL}</span>
+        <span className={`${FIRST_COL} text-[15px]`}>
+          <Dash />
+        </span>
         <span className={`${SECOND_COL} text-[15px]`}>
           {spentCell({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null }, label.spent)}
         </span>
-        <span className={`${THIRD_COL} text-[15px] text-muted-foreground`}>{EMPTY_CELL}</span>
+        <span className={`${THIRD_COL} text-[15px]`}>
+          <Dash />
+        </span>
       </div>
       {expandable && unfolded ? (
         <ul className="pb-1">

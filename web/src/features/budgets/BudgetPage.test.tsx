@@ -555,7 +555,7 @@ it('an income row with no plan reads "—" under To receive, even when money cam
   renderPage()
   const row = await screen.findByTestId('month-income-row-cat-freelance')
   expect(within(row).getByTestId('flow-third')).toHaveTextContent(/^—$/)
-  expect(within(within(row).getByTestId('flow-third')).getByText('—')).toHaveClass('text-muted-foreground')
+  expect(within(within(row).getByTestId('flow-third')).getByText('—')).toHaveClass('text-muted-foreground/50')
   // Salaries still expects its 2,000.00
   expect(within(screen.getByTestId('month-income-row-ie1')).getByTestId('flow-third')).toHaveTextContent(/^2,000\.00$/)
 })

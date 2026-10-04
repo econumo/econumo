@@ -106,7 +106,7 @@ it('a row with nothing budgeted, spent or left reads "—" under Available, mute
   })
   const food = await screen.findByTestId('element-cat-food')
   await waitFor(() => expect(within(food).getByTestId('cell-available')).toHaveTextContent(/^—$/))
-  expect(within(within(food).getByTestId('cell-available')).getByText('—')).toHaveClass('text-muted-foreground')
+  expect(within(within(food).getByTestId('cell-available')).getByText('—')).toHaveClass('text-muted-foreground/50')
   // the planned amount stays a figure: it is the cell you edit
   expect(within(food).getByTestId('cell-budgeted')).toHaveTextContent('0.00')
 })

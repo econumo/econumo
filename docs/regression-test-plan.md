@@ -755,7 +755,8 @@ and on tablet/phone only with a hardware keyboard.
       budgeted, nothing spent and nothing left from earlier months shows a
       muted "—" under Available (money left from earlier months keeps its
       figure). Folder and section lines follow the same rule. Every dash on
-      the page is muted grey, also in the totals lines. The planned/budget
+      the page is a light, half-strength grey (lighter than the muted
+      figures), also in the totals lines. The planned/budget
       amount itself still reads 0.00, as the cell to edit.
 - [ ] Budget view look (desktop and tablet): no boxes — thin rules
       separate Income, Savings and Expenses, folders are a softer grey line

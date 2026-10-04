@@ -12,7 +12,7 @@ export function ActionsSpacer() {
 
 /** a column with no value at all: always muted, whatever colour its cell has */
 export function Dash() {
-  return <span className="text-muted-foreground">{EMPTY_CELL}</span>
+  return <span className="text-muted-foreground/50">{EMPTY_CELL}</span>
 }
 
 /** a row whose currency is not the budget's names it once, next to the name */
