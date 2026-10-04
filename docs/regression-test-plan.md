@@ -790,7 +790,8 @@ and on tablet/phone only with a hardware keyboard.
       only Edit where they own the item. No menu offers Show transactions:
       a row's transactions open from its Spent / Received / Saved figure.
 - [ ] Budget view, Create folder from the Income line: the new folder shows
-      at once under Income, empty ("This folder is empty…"), and not under
+      at once under Income, empty ("This folder is empty…", a muted dash in
+      each figure column instead of zeros, on the phone too), and not under
       Expenses; an income row's Move to folder… offers it (and never an
       expense folder), and the folder stays under Income, empty, also after a
       reload, and in the Plan grid's Income band. Create folder from the

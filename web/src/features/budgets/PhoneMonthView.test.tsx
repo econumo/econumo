@@ -539,3 +539,17 @@ it('tapping a reporting tag opens its sheet', async () => {
   expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'label', label })
   expect(props.onShowTransactions).not.toHaveBeenCalled()
 })
+
+it('an empty income folder reads as dashes in its Planned and Received', async () => {
+  renderView({
+    planMonth: {
+      ...planMonth,
+      income: {
+        ...planMonth.income,
+        groups: [...planMonth.income.groups, { kind: 'folder', id: 'bf-later', name: 'Later', rows: [], planned: '0', received: '0', toReceive: '0' }],
+      },
+    },
+  })
+  await userEvent.click(screen.getByTestId('phone-income-summary'))
+  expect(screen.getByTestId('phone-income-group-bf-later')).toHaveTextContent(/^Later——$/)
+})

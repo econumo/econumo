@@ -405,8 +405,9 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         {groupName !== null ? (
           <CardHeader
             name={groupName}
-            first={fmt(g.planned)}
-            second={future ? EMPTY : fmt(g.received)}
+            // an empty folder reads as dashes
+            first={g.rows.length === 0 ? EMPTY : fmt(g.planned)}
+            second={future || g.rows.length === 0 ? EMPTY : fmt(g.received)}
             fold={{ folded, onToggle: () => togglePlanFold(foldKey) }}
           />
         ) : null}

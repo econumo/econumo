@@ -326,7 +326,11 @@ export function MonthFlows({
             folded={folded}
             onToggle={() => togglePlanFold(foldKey)}
             menu={incomeFolderMenu?.(g)}
-            sums={[fmt(g.planned), future ? <Dash key="dash-235-1" /> : fmt(g.received), isZero(g.planned) ? <Dash key="dash-235-2" /> : fmt(g.toReceive)]}
+            sums={
+              g.rows.length === 0
+                ? null
+                : [fmt(g.planned), future ? <Dash key="dash-235-1" /> : fmt(g.received), isZero(g.planned) ? <Dash key="dash-235-2" /> : fmt(g.toReceive)]
+            }
             actionsColumn={actionsColumn}
           />
         ) : null}

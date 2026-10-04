@@ -183,3 +183,12 @@ it('a folded income envelope takes a category dropped on the middle of its row',
   act(() => income.onDragEnd({ active: { id: 'cat-freelance' }, over: { id: 'benvh:ie1' } } as never))
   expect(drag.onMoveIncomeIntoEnvelope).toHaveBeenCalledWith('cat-freelance', 'ie1', expect.any(Function))
 })
+
+it('an empty income folder reads as dashes, not zeros', () => {
+  renderFlows((p) => {
+    p.structure.folders = p.structure.folders.map((f) => (f.id === 'bf-inc' ? { ...f, side: 'income' as const } : f))
+    p.structure.elements = p.structure.elements.map((el) => (el.id === 'cat-freelance' ? { ...el, folderId: null } : el))
+  })
+  const folder = screen.getByTestId('month-income-folder-bf-inc')
+  expect(within(folder).getByTestId('empty-folder-sums').textContent).toBe('———')
+})
