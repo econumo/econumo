@@ -1400,7 +1400,9 @@
         },
         "menu": {
           "move_to_folder": "Naar map verplaatsen…",
-          "no_folder": "Geen map"
+          "no_folder": "Geen map",
+          "no_access": "geen toegang",
+          "not_empty": "niet leeg"
         },
         "edit": {
           "no_access_envelope": "U kunt deze envelop niet bewerken — uw rol in dit budget is alleen-lezen.",

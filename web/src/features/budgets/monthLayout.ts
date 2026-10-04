@@ -45,4 +45,6 @@ export interface MenuAction {
   destructive?: boolean
   /** shown, but greyed out: the action exists, the user may not use it here */
   disabled?: boolean
+  /** why a disabled action is greyed out, shown after its label: "Edit (no access)" */
+  reason?: string
 }

@@ -529,7 +529,18 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const dragEnabled = editMode || (hoverMenus && configure)
   const editAction = (target: SheetTarget): MenuAction[] => {
     const access = sheetEditAccess(target)
-    return access === null ? [] : [{ label: t('common.button.edit.label'), disabled: !access, onSelect: () => editFromSheet(target) }]
+    if (access === null) {
+      return []
+    }
+    return [
+      {
+        label: t('common.button.edit.label'),
+        disabled: !access,
+        // a category, tag or reporting tag another member owns: only its owner edits it
+        reason: access ? undefined : t('budgets.page.plan.menu.no_access'),
+        onSelect: () => editFromSheet(target),
+      },
+    ]
   }
   const showTransactionsAction = (target: BudgetTransactionsTarget | null): MenuAction[] =>
     target ? [{ label: t('budgets.page.budget.structure.element.action.show_transactions'), onSelect: () => setTransactionsTarget(target) }] : []
@@ -585,9 +596,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     return [
       newEnvelopeAction(folder.id, side),
       { label: t('common.button.edit.label'), onSelect: () => setRenameFolder({ id: folder.id, name: folder.name }) },
-      ...(empty
-        ? [{ label: t('budgets.page.budget.structure.action.delete_folder'), destructive: true, onSelect: () => setDeleteFolderTarget({ id: folder.id, name: folder.name }) }]
-        : []),
+      {
+        label: t('budgets.page.budget.structure.action.delete_folder'),
+        destructive: true,
+        disabled: !empty,
+        reason: empty ? undefined : t('budgets.page.plan.menu.not_empty'),
+        onSelect: () => setDeleteFolderTarget({ id: folder.id, name: folder.name }),
+      },
     ]
   }
   const expenseFolderMenu = (bucket: FolderBucket) => folderActionsFor(bucket.folder ? { id: bucket.folder.id, name: bucket.folder.name } : null, bucket.elements.length === 0, 'expense')

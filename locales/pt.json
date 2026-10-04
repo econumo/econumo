@@ -1400,7 +1400,9 @@
         },
         "menu": {
           "move_to_folder": "Mover para pasta…",
-          "no_folder": "Sem pasta"
+          "no_folder": "Sem pasta",
+          "no_access": "sem acesso",
+          "not_empty": "não está vazia"
         },
         "edit": {
           "no_access_envelope": "Não pode editar este envelope — o seu papel neste orçamento é só de leitura.",

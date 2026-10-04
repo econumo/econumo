@@ -1400,7 +1400,9 @@
         },
         "menu": {
           "move_to_folder": "Przenieś do folderu…",
-          "no_folder": "Brak folderu"
+          "no_folder": "Brak folderu",
+          "no_access": "brak dostępu",
+          "not_empty": "niepusty"
         },
         "edit": {
           "no_access_envelope": "Nie możesz edytować tej koperty — Twoja rola w tym budżecie jest tylko do odczytu.",

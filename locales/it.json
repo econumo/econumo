@@ -1400,7 +1400,9 @@
         },
         "menu": {
           "move_to_folder": "Sposta nella cartella…",
-          "no_folder": "Nessuna cartella"
+          "no_folder": "Nessuna cartella",
+          "no_access": "nessun accesso",
+          "not_empty": "non vuota"
         },
         "edit": {
           "no_access_envelope": "Non puoi modificare questa busta: il tuo ruolo in questo budget è di sola lettura.",

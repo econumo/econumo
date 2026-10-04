@@ -1400,7 +1400,9 @@
         },
         "menu": {
           "move_to_folder": "Déplacer vers un dossier…",
-          "no_folder": "Aucun dossier"
+          "no_folder": "Aucun dossier",
+          "no_access": "pas d'accès",
+          "not_empty": "pas vide"
         },
         "edit": {
           "no_access_envelope": "Vous ne pouvez pas modifier cette enveloppe — votre rôle dans ce budget est en lecture seule.",

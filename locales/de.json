@@ -1400,7 +1400,9 @@
         },
         "menu": {
           "move_to_folder": "In Ordner verschieben…",
-          "no_folder": "Kein Ordner"
+          "no_folder": "Kein Ordner",
+          "no_access": "kein Zugriff",
+          "not_empty": "nicht leer"
         },
         "edit": {
           "no_access_envelope": "Sie können diesen Umschlag nicht bearbeiten — Ihre Rolle in diesem Budget ist schreibgeschützt.",

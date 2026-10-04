@@ -773,15 +773,17 @@ and on tablet/phone only with a hardware keyboard.
       always visible, with a mouse it shows on hover and while open), no
       mode to switch on:
       - an expense or income category/tag row: Edit (name, icon; greyed out
-        for a category or tag another user owns), Change currency, Move to
+        as "Edit (no access)" for a category or tag another user owns), Change currency, Move to
         folder…, Show transactions; an envelope adds Delete (owner/admin);
         an archived row keeps Edit, Delete (envelope) and Show transactions;
         expense Uncategorized has only Show transactions, income
         Uncategorized no menu;
       - a savings row: Edit (the account) and Show transactions; a reporting
-        tag: Edit (greyed out for another user's tag) and Show transactions;
+        tag: Edit ("Edit (no access)" for another user's tag) and Show
+        transactions;
       - a folder line: New envelope (in that folder), Edit (rename), Delete
-        folder (only when empty); "No folder": New envelope;
+        folder (greyed out as "Delete folder (not empty)" while the folder
+        has items); "No folder": New envelope;
       - the Income and Expenses lines: Create folder, New envelope; the
         Savings line: Savings accounts (opens the budget's settings).
       A guest (or anyone on an archived budget) gets no structure actions:

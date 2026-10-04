@@ -47,6 +47,7 @@ export function RowMenu({ name, actions }: { name: string; actions: MenuAction[]
             onSelect={a.onSelect}
           >
             {a.label}
+            {a.disabled && a.reason ? <span className="-ml-1 text-muted-foreground"> ({a.reason})</span> : null}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

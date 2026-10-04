@@ -1400,7 +1400,9 @@
         },
         "menu": {
           "move_to_folder": "移动到文件夹…",
-          "no_folder": "无文件夹"
+          "no_folder": "无文件夹",
+          "no_access": "无权限",
+          "not_empty": "非空"
         },
         "edit": {
           "no_access_envelope": "无法编辑此信封——您在此预算中的角色为只读。",

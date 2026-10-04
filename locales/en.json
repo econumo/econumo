@@ -1400,7 +1400,9 @@
         },
         "menu": {
           "move_to_folder": "Move to folder…",
-          "no_folder": "No folder"
+          "no_folder": "No folder",
+          "no_access": "no access",
+          "not_empty": "not empty"
         },
         "edit": {
           "no_access_envelope": "You can't edit this envelope — your role in this budget is read-only.",

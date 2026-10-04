@@ -116,6 +116,7 @@ it('Create folder from the Expenses line posts with a v7 id', async () => {
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.budgetId).toBe('b1')
   expect(body!.name).toBe('Fun')
+  expect(body!.side).toBe('expense')
   expect(String(body!.id)).toMatch(/^[0-9a-f-]{36}$/)
 })
 
@@ -599,6 +600,22 @@ describe('the ⋮ menus on the Budget view', () => {
     await user.click(within(food).getByRole('button', { name: 'menu Food' }))
     const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
     expect(items).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Show transactions'])
+  })
+
+  it('a greyed-out action says why: Edit on another member\'s category, Delete on a folder with items', async () => {
+    const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
+    budget.structure.elements.find((el: { id: string }) => el.id === 'cat-food').ownerUserId = 'u9'
+    server.use(...plainHandlers(budget))
+    const user = userEvent.setup()
+    renderPage()
+    const food = await screen.findByTestId('element-cat-food')
+    await user.click(within(food).getByRole('button', { name: 'menu Food' }))
+    const item = (text: string) => async () => (await screen.findAllByRole('menuitem')).find((i) => i.textContent === text)
+    expect(await item('Edit (no access)')()).toHaveAttribute('aria-disabled', 'true')
+    await user.keyboard('{Escape}')
+
+    await user.click(within(screen.getByTestId('budget-folder-Essentials')).getByRole('button', { name: 'menu Essentials' }))
+    expect(await item('Delete folder (not empty)')()).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('a guest gets no structure actions, only Show transactions', async () => {
