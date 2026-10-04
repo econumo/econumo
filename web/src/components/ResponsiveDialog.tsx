@@ -150,7 +150,10 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         ref={contentRef}
-        className={size === 'wide' ? 'sm:max-w-2xl' : undefined}
+        // one column that may shrink below its content's width: a long line (a
+        // list of account names) truncates inside the dialog instead of widening
+        // every field past its edge
+        className={`grid-cols-[minmax(0,1fr)] ${size === 'wide' ? 'sm:max-w-2xl' : ''}`}
         onInteractOutside={onInteractOutside}
         onEscapeKeyDown={onEscapeKeyDown}
         onCloseAutoFocus={onCloseAutoFocus}
