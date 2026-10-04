@@ -31,7 +31,7 @@ import { useIsPhone } from '@/hooks/useIsPhone'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
-import type { BudgetElementDto } from '@/api/dto/budget'
+import type { BudgetElementDto, BudgetSavingsElementDto, LabelSpendDto } from '@/api/dto/budget'
 import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
@@ -72,7 +72,7 @@ import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetMode } from './budgetStore'
 import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
-import { currentMonth, monthDiff } from './planMath'
+import { currentMonth, folderSides, monthDiff } from './planMath'
 import { BudgetTable, BudgetTotals } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
 import { PlanSheet, commentsReadOnly } from './PlanSheet'
@@ -82,11 +82,12 @@ import { CommentMarker } from './CommentThread'
 import { CommentsPanel } from './CommentsPanel'
 import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
-import { planMonthFigures, sheetCell, sheetElement, sheetSetsPlan, type SheetTarget } from './phoneMonth'
+import { planMonthFigures, sheetCell, sheetElement, sheetSetsPlan, type IncomeGroup, type PlanCellFigures, type SheetTarget } from './phoneMonth'
 import { PhoneMonthView } from './PhoneMonthView'
 import { ViewSwitch } from './ViewSwitch'
 import { MonthFlows, MonthTotalsLines } from './MonthFlows'
 import type { FlowTarget } from './MonthFlows'
+import type { MenuAction } from './monthLayout'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import type { EnvelopeDialogTarget } from './EnvelopeDialog'
@@ -286,15 +287,19 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const viewSwitch = isPhone ? null : <ViewSwitch mode={mode} onSwitch={switchBudgetMode} />
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
-  const [createFolderOpen, setCreateFolderOpen] = useState(false)
+  // the section a folder is being created from; null while the prompt is closed
+  const [createFolderSide, setCreateFolderSide] = useState<'income' | 'expense' | null>(null)
+  // income folders created here with no member yet: the server reports a memberless
+  // folder with the expenses, so until its first income item it is listed under Income
+  const [draftIncomeFolders, setDraftIncomeFolders] = useState<{ id: Id; name: string }[]>([])
   const [renameFolder, setRenameFolder] = useState<{ id: Id; name: string } | null>(null)
   const [envelopeDialog, setEnvelopeDialog] = useState<{ open: boolean; envelope: EnvelopeDialogTarget | null; folderId: Id | null; side?: 'expense' | 'income' }>({ open: false, envelope: null, folderId: null })
   const [categoryTarget, setCategoryTarget] = useState<Pick<CategoryDto, 'id' | 'name' | 'type' | 'icon'> | null>(null)
   const [tagTarget, setTagTarget] = useState<TagDialogItem | null>(null)
-  const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<BudgetElementDto | null>(null)
+  const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<{ id: Id } | null>(null)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: Id; name: string } | null>(null)
-  const [currencyTarget, setCurrencyTarget] = useState<BudgetElementDto | null>(null)
-  const [moveFolderTarget, setMoveFolderTarget] = useState<BudgetElementDto | null>(null)
+  const [currencyTarget, setCurrencyTarget] = useState<{ id: Id; currencyId: Id | null } | null>(null)
+  const [moveFolderTarget, setMoveFolderTarget] = useState<{ id: Id; side: 'income' | 'expense' } | null>(null)
   const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean; setsPlan?: boolean }) | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
   const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null)
@@ -619,6 +624,108 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       setCategoryTarget({ id: el.id, name: el.name, icon: el.icon, type: isIncomeType(el.type) ? 'income' : 'expense' })
     }
   }
+  // The ⋮ menus on the desktop/tablet month view: every line offers what it can do,
+  // with no mode to switch on; Edit structure keeps its own menus while it is on.
+  const hoverMenus = !isPhone && !editMode
+  const editAction = (target: SheetTarget): MenuAction[] => {
+    const access = sheetEditAccess(target)
+    return access === null ? [] : [{ label: t('common.button.edit.label'), disabled: !access, onSelect: () => editFromSheet(target) }]
+  }
+  const showTransactionsAction = (target: BudgetTransactionsTarget | null): MenuAction[] =>
+    target ? [{ label: t('budgets.page.budget.structure.element.action.show_transactions'), onSelect: () => setTransactionsTarget(target) }] : []
+  const structureActions = (el: { id: Id; type: BudgetElementType; currencyId: Id | null; isArchived: 0 | 1 }, side: 'income' | 'expense'): MenuAction[] => {
+    if (!configure) {
+      return []
+    }
+    const remove: MenuAction[] =
+      isEnvelopeType(el.type) && canDeleteEnvelope(budget.meta, user?.id)
+        ? [{ label: t('common.button.delete.label'), destructive: true, onSelect: () => setDeleteEnvelopeTarget({ id: el.id }) }]
+        : []
+    // an archived row is history: it can still be opened (an envelope unarchives there) or removed
+    if (el.isArchived === 1) {
+      return remove
+    }
+    return [
+      { label: t('budgets.page.budget.structure.element.action.change_currency'), onSelect: () => setCurrencyTarget({ id: el.id, currencyId: el.currencyId }) },
+      { label: t('budgets.page.plan.menu.move_to_folder'), onSelect: () => setMoveFolderTarget({ id: el.id, side }) },
+      ...remove,
+    ]
+  }
+  const expenseRowMenu = (element: BudgetElementDto): MenuAction[] =>
+    element.id === UNCATEGORIZED_ID
+      ? showTransactionsAction(transactionsTargetOf(element))
+      : [...editAction({ kind: 'expense', element }), ...structureActions(element, 'expense'), ...showTransactionsAction(transactionsTargetOf(element))]
+  const incomeRowMenu = (cell: PlanCellFigures): MenuAction[] => {
+    const target: SheetTarget = { kind: 'plan', cell }
+    // income Uncategorized has nothing to edit and no list of its own
+    if (cell.element.id === UNCATEGORIZED_ID) {
+      return []
+    }
+    return [...editAction(target), ...structureActions(cell.element, 'income'), ...showTransactionsAction(sheetTransactionsTargetOf(target))]
+  }
+  const savingsRowMenu = (row: BudgetSavingsElementDto): MenuAction[] => [
+    ...editAction({ kind: 'savings', row }),
+    ...showTransactionsAction(sheetTransactionsTargetOf({ kind: 'savings', row })),
+  ]
+  const labelMenu = (label: LabelSpendDto): MenuAction[] => [
+    ...editAction({ kind: 'label', label }),
+    ...showTransactionsAction(sheetTransactionsTargetOf({ kind: 'label', label })),
+  ]
+  const newEnvelopeAction = (folderId: Id | null, side: 'income' | 'expense'): MenuAction => ({
+    label: t('budgets.modal.create_envelope_form.header'),
+    onSelect: () => setEnvelopeDialog({ open: true, envelope: null, folderId, side }),
+  })
+  const folderActionsFor = (folder: { id: Id; name: string } | null, empty: boolean, side: 'income' | 'expense'): MenuAction[] | undefined => {
+    if (!configure) {
+      return undefined
+    }
+    if (!folder) {
+      return [newEnvelopeAction(null, side)]
+    }
+    return [
+      newEnvelopeAction(folder.id, side),
+      { label: t('common.button.edit.label'), onSelect: () => setRenameFolder({ id: folder.id, name: folder.name }) },
+      ...(empty
+        ? [{ label: t('budgets.page.budget.structure.action.delete_folder'), destructive: true, onSelect: () => setDeleteFolderTarget({ id: folder.id, name: folder.name }) }]
+        : []),
+    ]
+  }
+  const expenseFolderMenu = (bucket: FolderBucket) => folderActionsFor(bucket.folder ? { id: bucket.folder.id, name: bucket.folder.name } : null, bucket.elements.length === 0, 'expense')
+  const incomeFolderMenu = (group: IncomeGroup) =>
+    group.kind === 'folder' && group.name !== null
+      ? folderActionsFor({ id: group.id, name: group.name }, group.rows.length === 0, 'income')
+      : group.kind === 'loose'
+        ? folderActionsFor(null, false, 'income')
+        : undefined
+  const sectionMenu = (side: 'income' | 'expense'): MenuAction[] | undefined =>
+    configure
+      ? [{ label: t('budgets.page.budget.structure.action.create_folder'), onSelect: () => setCreateFolderSide(side) }, newEnvelopeAction(null, side)]
+      : undefined
+  const savingsSectionMenu: MenuAction[] | undefined = editDetails
+    ? [{ label: t('budgets.modal.budget_form.savings.label'), onSelect: () => setUpdateBudgetOpen(true) }]
+    : undefined
+  // a draft stays an income folder while it is still memberless and not deleted
+  const pendingIncomeFolders = draftIncomeFolders.filter((d) => {
+    const bucket = buckets.withFolder.find((b) => b.folder?.id === d.id)
+    return bucket !== undefined && bucket.elements.length === 0
+  })
+  const hiddenFolderIds = new Set(pendingIncomeFolders.map((d) => d.id))
+  // Move to folder offers the folders of the row's own side plus the memberless ones:
+  // the server refuses a folder that already holds the other side
+  const moveTargetFolders = (side: 'income' | 'expense'): { id: Id; name: string }[] => {
+    if (side === 'expense') {
+      return budget.structure.folders.filter((f) => !hiddenFolderIds.has(f.id))
+    }
+    const plan = monthPlan.data
+    if (!plan) {
+      return pendingIncomeFolders
+    }
+    const sides = folderSides(plan)
+    const listed = [...plan.structure.folders].sort((a, b) => a.position - b.position).filter((f) => sides.get(f.id) !== 'expense')
+    // a folder just created may not be in the plan yet
+    return [...listed, ...pendingIncomeFolders.filter((d) => !listed.some((f) => f.id === d.id))]
+  }
+
   // phones get no hover corner; edit mode owns the pointer for dragging
   const cellActionsDisabled = isPhone || editMode
   // the hover-only corner that starts a thread on a cell with none yet
@@ -745,10 +852,10 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => setCurrencyTarget(element)}>
+        <DropdownMenuItem onSelect={() => setCurrencyTarget({ id: element.id, currencyId: element.currencyId })}>
           {t('budgets.page.budget.structure.element.action.change_currency')}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => setMoveFolderTarget(element)}>
+        <DropdownMenuItem onSelect={() => setMoveFolderTarget({ id: element.id, side: 'expense' })}>
           {t('budgets.page.plan.menu.move_to_folder')}
         </DropdownMenuItem>
         {element.type === BudgetElementType.ENVELOPE ? (
@@ -757,7 +864,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               {t('common.button.edit.label')}
             </DropdownMenuItem>
             {canDeleteEnvelope(budget.meta, user?.id) ? (
-              <DropdownMenuItem variant="destructive" onSelect={() => setDeleteEnvelopeTarget(element)}>
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleteEnvelopeTarget({ id: element.id })}>
                 {t('common.button.delete.label')}
               </DropdownMenuItem>
             ) : null}
@@ -856,7 +963,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
 
           {editMode ? (
             <div>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setCreateFolderOpen(true)}>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setCreateFolderSide('expense')}>
                 <FolderPlus className="size-4" />
                 {t('budgets.page.budget.structure.action.create_folder')}
               </Button>
@@ -881,6 +988,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     actionsColumn={editMode}
                     renderPlanned={renderFlowPlanned}
                     onShowTransactions={editMode ? undefined : setTransactionsTarget}
+                    incomeMenu={hoverMenus ? incomeRowMenu : undefined}
+                    incomeFolderMenu={hoverMenus ? incomeFolderMenu : undefined}
+                    savingsMenu={hoverMenus ? savingsRowMenu : undefined}
+                    incomeSectionMenu={hoverMenus ? sectionMenu('income') : undefined}
+                    savingsSectionMenu={hoverMenus ? savingsSectionMenu : undefined}
+                    draftIncomeFolders={pendingIncomeFolders}
                   />
                 </div>
                 <DndContext
@@ -954,6 +1067,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                         : undefined
                     }
                     onSpentClick={editMode ? undefined : setTransactionsTarget}
+                    rowMenu={hoverMenus ? expenseRowMenu : undefined}
+                    folderMenu={hoverMenus ? expenseFolderMenu : undefined}
+                    labelMenu={hoverMenus ? labelMenu : undefined}
+                    sectionMenu={hoverMenus ? sectionMenu('expense') : undefined}
+                    hiddenFolderIds={hiddenFolderIds}
                   />
                   </SortableContext>
                 </DndContext>
@@ -977,9 +1095,23 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       )}
 
       <PromptDialog
-        open={createFolderOpen}
-        onClose={() => setCreateFolderOpen(false)}
-        onSubmit={(name) => createFolder.mutate({ budgetId: budget.meta.id, id: uuidv7(), name }, { onSuccess: () => setCreateFolderOpen(false) })}
+        open={createFolderSide !== null}
+        onClose={() => setCreateFolderSide(null)}
+        onSubmit={(name) => {
+          const id = uuidv7()
+          const side = createFolderSide
+          createFolder.mutate(
+            { budgetId: budget.meta.id, id, name },
+            {
+              onSuccess: () => {
+                if (side === 'income') {
+                  setDraftIncomeFolders((drafts) => [...drafts, { id, name }])
+                }
+                setCreateFolderSide(null)
+              },
+            },
+          )
+        }}
         title={t('budgets.modal.create_folder_form.header')}
         inputLabel={t('budgets.form.budget.folder_name.label')}
         validate={folderNameValidator}
@@ -1058,7 +1190,14 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         onClose={() => setDeleteFolderTarget(null)}
         onConfirm={() => {
           if (deleteFolderTarget) {
-            deleteFolder.mutate({ budgetId: budget.meta.id, id: deleteFolderTarget.id }, { onSettled: () => setDeleteFolderTarget(null) })
+            const id = deleteFolderTarget.id
+            deleteFolder.mutate(
+              { budgetId: budget.meta.id, id },
+              {
+                onSuccess: () => setDraftIncomeFolders((drafts) => drafts.filter((d) => d.id !== id)),
+                onSettled: () => setDeleteFolderTarget(null),
+              },
+            )
           }
         }}
         title={t('budgets.modal.delete_folder.header')}
@@ -1088,7 +1227,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           title={t('budgets.page.plan.menu.move_to_folder')}
         >
           <ul className="flex max-h-72 flex-col overflow-y-auto scrollbar-slim">
-            {budget.structure.folders.map((f) => (
+            {moveTargetFolders(moveFolderTarget.side).map((f) => (
               <li key={f.id}>
                 <button
                   type="button"

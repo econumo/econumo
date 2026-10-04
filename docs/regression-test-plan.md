@@ -769,6 +769,30 @@ and on tablet/phone only with a hardware keyboard.
       do not cover it), a folder's sums only when the folder as a whole
       overspent; nothing is green. A future month shows "—" for Spent. The table
       spans the full width. The page title is in normal case.
+- [ ] Budget view ⋮ menus (desktop and tablet; on a touch screen the ⋮ is
+      always visible, with a mouse it shows on hover and while open), no
+      mode to switch on:
+      - an expense or income category/tag row: Edit (name, icon; greyed out
+        for a category or tag another user owns), Change currency, Move to
+        folder…, Show transactions; an envelope adds Delete (owner/admin);
+        an archived row keeps Edit, Delete (envelope) and Show transactions;
+        expense Uncategorized has only Show transactions, income
+        Uncategorized no menu;
+      - a savings row: Edit (the account) and Show transactions; a reporting
+        tag: Edit (greyed out for another user's tag) and Show transactions;
+      - a folder line: New envelope (in that folder), Edit (rename), Delete
+        folder (only when empty); "No folder": New envelope;
+      - the Income and Expenses lines: Create folder, New envelope; the
+        Savings line: Savings accounts (opens the budget's settings).
+      A guest (or anyone on an archived budget) gets no structure actions:
+      only Edit where they own the item, and Show transactions.
+- [ ] Budget view, Create folder from the Income line: the new folder shows
+      at once under Income, empty ("This folder is empty…"), and not under
+      Expenses; an income row's Move to folder… offers it (and never an
+      expense folder), and once a row is in it the folder stays an income
+      folder. (An empty income folder created here shows under Expenses
+      after a reload until it gets its first income item.) An expense row's
+      Move to folder… offers only expense folders and empty ones.
 - [ ] Budget view lines highlight on hover like rows (pointer cursor): the
       Income, Savings and Expenses lines, folder lines, and Reporting tags. A
       click anywhere on such a line folds it, its sums included; in Edit

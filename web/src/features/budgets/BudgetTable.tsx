@@ -16,7 +16,8 @@ import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
 import { budgetTotals, carryOver, displayAvailable, elementDisplayName, nothingToShow, overBudget } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
-import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader } from './monthLines'
+import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu } from './monthLines'
+import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FIRST_COL, FOLD_LINE, foldOnLineClick, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
 
 export interface ElementRowExtras {
@@ -38,6 +39,8 @@ export interface ElementRowExtras {
   renderActions?: (element: BudgetElementDto, bucket: FolderBucket) => ReactNode
   renderRowWrapper?: (element: BudgetElementDto, bucket: FolderBucket, row: ReactNode) => ReactNode
   onSpentClick?: (target: BudgetTransactionsTarget) => void
+  /** the row's ⋮ menu, shown on hover */
+  rowMenu?: (element: BudgetElementDto) => MenuAction[] | undefined
 }
 
 interface BudgetTableProps extends ElementRowExtras {
@@ -57,6 +60,14 @@ interface BudgetTableProps extends ElementRowExtras {
   hideContents?: boolean
   /** folder drag handle, rendered before the folder name (edit mode) */
   renderFolderHandle?: (bucket: FolderBucket) => ReactNode
+  /** a folder line's ⋮ menu (real folders and No folder) */
+  folderMenu?: (bucket: FolderBucket) => MenuAction[] | undefined
+  /** a reporting tag's ⋮ menu */
+  labelMenu?: (label: LabelSpendDto) => MenuAction[] | undefined
+  /** the Expenses line's ⋮ menu */
+  sectionMenu?: MenuAction[]
+  /** empty folders shown elsewhere (one just created from the Income section) */
+  hiddenFolderIds?: ReadonlySet<string>
 }
 
 const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
@@ -230,6 +241,7 @@ function ElementRow({
         ) : (
           <span className={NAME_COL}>{name}</span>
         )}
+        <RowMenu name={displayName} actions={extras.rowMenu?.(element)} />
         {budgetCell}
         <span data-testid="cell-spent" className={`${SECOND_COL} text-[15px]`}>
           {spentCell({ id: element.id, type: element.type, name: displayName, icon: element.icon, currencyId: element.currencyId }, element.spent, overspent)}
@@ -286,12 +298,14 @@ function LabelRow({
   opts,
   future,
   onLabelClick,
+  menu,
 }: {
   label: LabelSpendDto
   currency: CurrencyDto | undefined
   opts: MoneyFormatOptions
   future: boolean
   onLabelClick?: (target: BudgetTransactionsTarget) => void
+  menu?: MenuAction[]
 }) {
   const { t } = useTranslation()
   const unfolded = useBudgetPeriodStore((s) => !!s.unfoldedElements[label.id])
@@ -345,6 +359,7 @@ function LabelRow({
         ) : (
           <span className={NAME_COL}>{name}</span>
         )}
+        <RowMenu name={label.name} actions={menu} />
         <span className={`${FIRST_COL} text-[15px]`}>
           <Dash />
         </span>
@@ -403,12 +418,14 @@ function ReportingTagsFolder({
   future,
   actionsColumn,
   onLabelClick,
+  labelMenu,
 }: {
   labels: LabelSpendDto[]
   currency: CurrencyDto | undefined
   future: boolean
   actionsColumn: boolean
   onLabelClick?: (target: BudgetTransactionsTarget) => void
+  labelMenu?: (label: LabelSpendDto) => MenuAction[] | undefined
 }) {
   const { t } = useTranslation()
   const open = useBudgetPeriodStore((s) => !!s.unfoldedElements[REPORTING_TAGS_FOLD_ID])
@@ -441,7 +458,7 @@ function ReportingTagsFolder({
       {open ? (
         <ul>
           {labels.map((label) => (
-            <LabelRow key={label.id} label={label} currency={currency} opts={opts} future={future} onLabelClick={onLabelClick} />
+            <LabelRow key={label.id} label={label} currency={currency} opts={opts} future={future} onLabelClick={onLabelClick} menu={labelMenu?.(label)} />
           ))}
         </ul>
       ) : null}
@@ -471,6 +488,10 @@ export function BudgetTable({
   hideChildren,
   hideContents,
   hideTotals,
+  folderMenu,
+  labelMenu,
+  sectionMenu,
+  hiddenFolderIds,
   ...extras
 }: BudgetTableProps) {
   const { t } = useTranslation()
@@ -484,7 +505,7 @@ export function BudgetTable({
   const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
 
-  const realFolders = buckets.withFolder
+  const realFolders = hiddenFolderIds ? buckets.withFolder.filter((b) => !hiddenFolderIds.has(b.folder!.id)) : buckets.withFolder
   // fold keys: a folder's own id (the Plan grid's), '__no_folder__', and 'archived'
   // (the Plan grid's Archived band)
   const sections: { key: string; foldKey: string; name: string; bucket: FolderBucket; folderIndex: number | null }[] = [
@@ -524,6 +545,7 @@ export function BudgetTable({
           nothingToShow(totals) ? <Dash key="dash-517-1" /> : moneyFormat(totals.available, budgetCurrency, opts),
         ]}
         actionsColumn={actionsColumn}
+        menu={sectionMenu}
       />
 
       {folded
@@ -540,7 +562,7 @@ export function BudgetTable({
               }
               return [
                 <section key={section.key} data-testid={`budget-folder-${section.name}`}>
-                  {rowsOf(section.bucket, { onSpentClick: extras.onSpentClick })}
+                  {rowsOf(section.bucket, { onSpentClick: extras.onSpentClick, rowMenu: extras.rowMenu })}
                 </section>,
               ]
             }
@@ -568,6 +590,7 @@ export function BudgetTable({
                   onBudgetCellComments: extras.onBudgetCellComments,
                   onBudgetCellDetails: extras.onBudgetCellDetails,
                   wrapBudgetCell: extras.wrapBudgetCell,
+                  rowMenu: extras.rowMenu,
                 }
               : extras
             const sectionNode = (
@@ -581,6 +604,7 @@ export function BudgetTable({
                     handle={!isReadOnlySection ? renderFolderHandle?.(section.bucket) : null}
                     actions={!isReadOnlySection ? renderFolderActions?.(section.bucket, section.folderIndex ?? -1, realFolders.length) : null}
                     actionsColumn={actionsColumn}
+                    menu={!isReadOnlySection ? folderMenu?.(section.bucket) : undefined}
                   />
                 ) : null}
                 {hideContents || sectionFolded ? null : section.bucket.elements.length === 0 ? (
@@ -603,7 +627,14 @@ export function BudgetTable({
           actions, drag handles, section/row wrappers) reach it, so it can
           never be renamed, moved, deleted, or become a drop target */}
       {!folded && labels.length > 0 ? (
-        <ReportingTagsFolder labels={labels} currency={budgetCurrency} future={future} actionsColumn={actionsColumn} onLabelClick={extras.onSpentClick} />
+        <ReportingTagsFolder
+          labels={labels}
+          currency={budgetCurrency}
+          future={future}
+          actionsColumn={actionsColumn}
+          onLabelClick={extras.onSpentClick}
+          labelMenu={labelMenu}
+        />
       ) : null}
 
       {hideTotals ? null : <BudgetTotals budget={budget} totals={totals} actionsColumn={actionsColumn} future={future} />}

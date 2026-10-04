@@ -12,7 +12,8 @@ import type { Id } from '@/api/types'
 import { elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
-import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader } from './monthLines'
+import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu } from './monthLines'
+import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FIRST_COL, LINE, NAME_COL, ROW_INDENT, SECOND_COL, THIRD_COL } from './monthLayout'
 import { leftToReceive } from './phoneMonth'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
@@ -36,6 +37,7 @@ function FlowRow({
   third,
   actionsColumn,
   toggle,
+  menu,
 }: {
   testId: string
   icon: string
@@ -49,6 +51,7 @@ function FlowRow({
   actionsColumn: boolean
   /** an envelope's name folds and unfolds its categories */
   toggle?: { open: boolean; onToggle: () => void }
+  menu?: MenuAction[]
 }) {
   const { t } = useTranslation()
   const Chevron = toggle?.open ? ChevronDown : ChevronRight
@@ -77,6 +80,7 @@ function FlowRow({
       ) : (
         <span className={NAME_COL}>{label}</span>
       )}
+      <RowMenu name={name} actions={menu} />
       <span className={`${FIRST_COL} text-[15px]`} data-testid="flow-planned">
         {planned}
       </span>
@@ -101,11 +105,33 @@ interface MonthFlowsProps {
   /** the planned cell: the page decides between the inline editor, the item sheet and comments */
   renderPlanned: (target: FlowTarget, text: string) => ReactNode
   onShowTransactions?: (target: BudgetTransactionsTarget) => void
+  /** ⋮ menus, shown on hover */
+  incomeMenu?: (cell: PlanCellFigures) => MenuAction[] | undefined
+  incomeFolderMenu?: (group: IncomeGroup) => MenuAction[] | undefined
+  savingsMenu?: (row: BudgetSavingsElementDto) => MenuAction[] | undefined
+  incomeSectionMenu?: MenuAction[]
+  savingsSectionMenu?: MenuAction[]
+  /** income folders created here that have no member yet (the server cannot tell their side) */
+  draftIncomeFolders?: { id: Id; name: string }[]
 }
 
 /** Income and Savings for one month, above the expenses table, in the table's columns:
  *  Planned · Received · To receive, and Planned · Saved · Balance. */
-export function MonthFlows({ budget, currencies, planMonth, future, actionsColumn, renderPlanned, onShowTransactions }: MonthFlowsProps) {
+export function MonthFlows({
+  budget,
+  currencies,
+  planMonth,
+  future,
+  actionsColumn,
+  renderPlanned,
+  onShowTransactions,
+  incomeMenu,
+  incomeFolderMenu,
+  savingsMenu,
+  incomeSectionMenu,
+  savingsSectionMenu,
+  draftIncomeFolders = [],
+}: MonthFlowsProps) {
   const { t } = useTranslation()
   const base = budget.meta.currencyId
   const currencyOf = (id: Id | null) => currencies.find((c) => c.id === (id ?? base))
@@ -170,6 +196,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
           }
           actionsColumn={actionsColumn}
           toggle={expandable ? { open, onToggle: () => toggleElement(el.id) } : undefined}
+          menu={incomeMenu?.(row)}
         />
         {open ? (
           <ul className="pb-1">
@@ -232,11 +259,16 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
             name={name}
             folded={folded}
             onToggle={() => togglePlanFold(foldKey)}
+            menu={incomeFolderMenu?.(g)}
             sums={[fmt(g.planned), future ? <Dash key="dash-235-1" /> : fmt(g.received), isZero(g.planned) ? <Dash key="dash-235-2" /> : fmt(g.toReceive)]}
             actionsColumn={actionsColumn}
           />
         ) : null}
-        {folded ? null : g.rows.map(incomeRow)}
+        {folded ? null : g.rows.length === 0 ? (
+          <p className={`${ROW_INDENT} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_folder.note')}</p>
+        ) : (
+          g.rows.map(incomeRow)
+        )}
       </div>
     )
   }
@@ -253,8 +285,19 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
       actual={actualCell({ id: row.id, type: BudgetElementType.SAVINGS, name: row.name, icon: row.icon, currencyId: row.currencyId }, row.spent, row.currencyId)}
       third={<span title={t('budgets.page.savings.balance_hint')}>{row.closingBalance !== undefined ? fmt(row.closingBalance, row.currencyId) : <Dash />}</span>}
       actionsColumn={actionsColumn}
+      menu={savingsMenu?.(row)}
     />
   )
+
+  // a draft folder joins the income folders, empty, until its first member makes the
+  // server report it as an income folder
+  const incomeGroups: IncomeGroup[] = (() => {
+    const groups = planMonth?.income.groups ?? []
+    const drafts = draftIncomeFolders
+      .filter((f) => !groups.some((g) => g.id === f.id))
+      .map((f): IncomeGroup => ({ kind: 'folder', id: f.id, name: f.name, rows: [], planned: '0', received: '0', toReceive: '0' }))
+    return [...groups.filter((g) => g.kind === 'folder'), ...drafts, ...groups.filter((g) => g.kind !== 'folder')]
+  })()
 
   const savingsRows = [...(budget.structure.savings ?? [])].sort((a, b) => a.isArchived - b.isArchived || a.position - b.position)
   const savingsSum = totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, exchangeFn)
@@ -278,8 +321,9 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
               isZero(planMonth.income.planned) ? <Dash key="dash-278-1" /> : fmt(planMonth.income.toReceive),
             ]}
             actionsColumn={actionsColumn}
+            menu={incomeSectionMenu}
           />
-          {incomeFolded ? null : planMonth.income.groups.map((g) => incomeGroup(g, planMonth.income.groups))}
+          {incomeFolded ? null : incomeGroups.map((g) => incomeGroup(g, incomeGroups))}
         </section>
       ) : null}
       {savingsRows.length > 0 ? (
@@ -295,6 +339,7 @@ export function MonthFlows({ budget, currencies, planMonth, future, actionsColum
               planMonth?.savingsBalance != null ? fmt(planMonth.savingsBalance) : <Dash key="dash-295-1" />,
             ]}
             actionsColumn={actionsColumn}
+            menu={savingsSectionMenu}
           />
           {savingsFolded ? null : savingsRows.map(savingsRow)}
         </section>

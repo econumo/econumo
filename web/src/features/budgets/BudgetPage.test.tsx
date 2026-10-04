@@ -584,3 +584,85 @@ it('a Budget view section header folds its section, shows its sums, and shares t
   expect(useBudgetPeriodStore.getState().planFolds.expense).toBe(true)
 })
 
+
+describe('the ⋮ menus on the Budget view', () => {
+  const plainHandlers = (budget: unknown = fixtureWireBudget) => [
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    planHandler(),
+  ]
+
+  it('an expense row offers Edit, Change currency, Move to folder and Show transactions', async () => {
+    server.use(...plainHandlers())
+    const user = userEvent.setup()
+    renderPage()
+    const food = await screen.findByTestId('element-cat-food')
+    await user.click(within(food).getByRole('button', { name: 'menu Food' }))
+    const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
+    expect(items).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Show transactions'])
+  })
+
+  it('a guest gets no structure actions, only Show transactions', async () => {
+    const guestBudget = {
+      ...fixtureWireBudget,
+      meta: {
+        ...fixtureWireBudget.meta,
+        ownerUserId: 'u9',
+        access: [
+          { user: { id: 'u9', avatar: 'face:sky', name: 'Owner' }, role: 'owner', isAccepted: 1 },
+          { user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'guest', isAccepted: 1 },
+        ],
+      },
+    }
+    server.use(...plainHandlers(guestBudget))
+    const user = userEvent.setup()
+    renderPage()
+    const food = await screen.findByTestId('element-cat-food')
+    await user.click(within(food).getByRole('button', { name: 'menu Food' }))
+    const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
+    expect(items).not.toContain('Change currency')
+    expect(items).not.toContain('Move to folder…')
+    expect(items).toContain('Show transactions')
+    // and the Expenses line has no Create folder for a guest
+    expect(within(screen.getByTestId('column-headers')).queryByRole('button', { name: 'menu Expenses' })).toBeNull()
+  })
+
+  it('Create folder from Income lists the new empty folder under Income, not under Expenses', async () => {
+    let created: { id: string; name: string } | null = null
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      // the server reports a memberless folder with the expense folders
+      http.get('*/api/v1/budget/get-budget', () => {
+        const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
+        if (created) {
+          budget.structure.folders.push({ id: created.id, name: created.name, position: 9 })
+        }
+        return HttpResponse.json({ success: true, message: '', data: { item: budget } })
+      }),
+      http.post('*/api/v1/budget/create-folder', async ({ request }) => {
+        const body = (await request.json()) as { id: string; name: string }
+        created = { id: body.id, name: body.name }
+        return HttpResponse.json({ success: true, message: '', data: { item: { id: body.id, name: body.name, position: 9 } } })
+      }),
+      planHandler(),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    const header = await screen.findByTestId('month-income-header')
+    await user.click(within(header).getByRole('button', { name: 'menu Income' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Create folder' }))
+    await user.type(await screen.findByRole('textbox', { name: 'Folder name' }), 'Side gigs')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+
+    const draft = await screen.findByTestId(`month-income-folder-${created!.id}`)
+    expect(draft).toHaveTextContent('Side gigs')
+    expect(screen.queryByTestId('budget-folder-Side gigs')).toBeNull()
+
+    // an income row may move there; the expense folders are not offered
+    await user.click(within(screen.getByTestId('month-income-row-cat-freelance')).getByRole('button', { name: 'menu Freelance' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Move to folder…' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('button', { name: 'Side gigs' })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Essentials' })).toBeNull()
+  })
+})

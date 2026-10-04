@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, MoreVertical } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useBudgetPeriodStore } from './budgetStore'
+import type { MenuAction } from './monthLayout'
 import { EMPTY_CELL, FIRST_COL, FOLD_LINE, FOLDER_INDENT, LINE, NAME_COL, SECOND_COL, THIRD_COL, foldOnLineClick } from './monthLayout'
 
 /* edit mode appends a w-8 actions button to element rows; every line without
@@ -13,6 +16,42 @@ export function ActionsSpacer() {
 /** a column with no value at all: always muted, whatever colour its cell has */
 export function Dash() {
   return <span className="text-muted-foreground/50">{EMPTY_CELL}</span>
+}
+
+/** A line's ⋮ menu: it shows while the pointer is over the line (always on touch
+ *  screens, which have no hover), and stays while open. Nothing for no actions. */
+export function RowMenu({ name, actions }: { name: string; actions: MenuAction[] | undefined }) {
+  if (!actions || actions.length === 0) {
+    return null
+  }
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`menu ${name}`}
+          className="size-7 shrink-0 text-muted-foreground opacity-0 group-hover/line:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 pointer-coarse:opacity-100"
+        >
+          <MoreVertical className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-44">
+        {actions.map((a) => (
+          <DropdownMenuItem
+            key={a.label}
+            className="whitespace-nowrap"
+            variant={a.destructive ? 'destructive' : 'default'}
+            disabled={a.disabled}
+            onSelect={a.onSelect}
+          >
+            {a.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 /** a row whose currency is not the budget's names it once, next to the name */
@@ -33,6 +72,7 @@ export function MonthSectionHeader({
   sums,
   actionsColumn,
   testId,
+  menu,
 }: {
   foldKey: string
   label: string
@@ -40,6 +80,8 @@ export function MonthSectionHeader({
   sums: [ReactNode, ReactNode, ReactNode]
   actionsColumn: boolean
   testId: string
+  /** the section's ⋮ menu (create folder, choose savings accounts) */
+  menu?: MenuAction[]
 }) {
   const { t } = useTranslation()
   const folded = useBudgetPeriodStore((s) => !!s.planFolds[foldKey])
@@ -62,6 +104,7 @@ export function MonthSectionHeader({
         <Chevron aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         <span className="truncate">{label}</span>
       </button>
+      <RowMenu name={label} actions={menu} />
       <span className={FIRST_COL}>{cells[0]}</span>
       <span className={SECOND_COL}>{cells[1]}</span>
       <span className={THIRD_COL}>{cells[2]}</span>
@@ -80,6 +123,7 @@ export function FolderLine({
   handle,
   actions,
   actionsColumn,
+  menu,
 }: {
   name: string
   folded: boolean
@@ -91,6 +135,8 @@ export function FolderLine({
   /** folder actions, right after the name (edit mode) */
   actions?: ReactNode
   actionsColumn: boolean
+  /** the folder's ⋮ menu, shown on hover */
+  menu?: MenuAction[]
 }) {
   const { t } = useTranslation()
   const Chevron = folded ? ChevronRight : ChevronDown
@@ -111,6 +157,7 @@ export function FolderLine({
       </button>
       {actions}
       <span className="flex-1" />
+      <RowMenu name={name} actions={menu} />
       {sums ? (
         <span data-testid="stat-line" className="contents">
           <span className={FIRST_COL}>{sums[0]}</span>
