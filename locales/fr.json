@@ -1313,8 +1313,7 @@
           "menu": {
             "edit": "Détails du budget",
             "edit_structure": "Modifier la structure",
-            "edit_structure_done": "Terminer la modification",
-            "budget_list": "Ouvrir la liste des budgets"
+            "edit_structure_done": "Terminer la modification"
           }
         },
         "structure": {
@@ -1394,7 +1393,6 @@
           "savings_balance": "Épargne totale"
         },
         "density": {
-          "hide_empty": "Masquer les lignes vides",
           "hidden": "{count} masquées",
           "show": "Afficher"
         },

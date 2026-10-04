@@ -120,7 +120,7 @@ it('Create folder from the Expenses line posts with a v7 id', async () => {
   expect(String(body!.id)).toMatch(/^[0-9a-f-]{36}$/)
 })
 
-it('guest role: the Budget details menu item is disabled', async () => {
+it('guest role: no Configure button on the desktop Budget view (nothing a guest may configure)', async () => {
   const guestBudget = {
     ...fixtureWireBudget,
     meta: {
@@ -136,15 +136,12 @@ it('guest role: the Budget details menu item is disabled', async () => {
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: guestBudget } })),
   )
-  const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('menuitem', { name: 'Budget details' })).toHaveAttribute('aria-disabled', 'true')
-  // the Budget view edits on hover: no Edit structure mode to offer
-  expect(screen.queryByRole('menuitem', { name: 'Edit structure' })).toBeNull()
+  await screen.findByRole('tablist', { name: 'period' })
+  expect(screen.queryByRole('button', { name: 'Configure' })).toBeNull()
 })
 
-it('owner role: the Budget details menu item opens the edit dialog', async () => {
+it('owner role: Configure opens the budget details dialog', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
@@ -152,9 +149,6 @@ it('owner role: the Budget details menu item opens the edit dialog', async () =>
   const user = userEvent.setup()
   renderPage()
   await user.click(await screen.findByRole('button', { name: 'Configure' }))
-  const item = await screen.findByRole('menuitem', { name: 'Budget details' })
-  expect(item).not.toHaveAttribute('aria-disabled', 'true')
-  await user.click(item)
   expect(await screen.findByRole('heading', { name: 'Edit budget' })).toBeInTheDocument()
 })
 
@@ -303,7 +297,7 @@ it('a server error settles into a retryable error state instead of an endless lo
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
 })
 
-it('offers hide-empty in the settings menu only on /plan', async () => {
+it('Configure opens Budget details at once on the desktop Budget view; the Plan view asks first', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
@@ -313,17 +307,20 @@ it('offers hide-empty in the settings menu only on /plan', async () => {
   const { router } = renderPage()
   await screen.findByRole('tablist', { name: 'period' })
 
+  // the Budget view edits on hover, so there is nothing to choose: the details open
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  expect(screen.queryByRole('menuitemcheckbox', { name: 'Hide empty rows' })).not.toBeInTheDocument()
+  expect(await screen.findByRole('dialog', { name: 'Edit budget' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem')).toBeNull()
   await user.keyboard('{Escape}')
 
+  // the Plan grid has an edit mode: Configure offers both, and nothing else
   await act(() => router.navigate('/plan'))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  const item = await screen.findByRole('menuitemcheckbox', { name: 'Hide empty rows' })
-  expect(useBudgetPeriodStore.getState().planHideEmpty).toBe(false)
-  await user.click(item)
-  expect(useBudgetPeriodStore.getState().planHideEmpty).toBe(true)
+  const dialog = await screen.findByRole('dialog', { name: 'Configure' })
+  expect(within(dialog).getAllByRole('button').map((b) => b.textContent).filter((x) => x !== 'Close')).toEqual(['Budget details', 'Edit structure'])
+  await user.click(within(dialog).getByRole('button', { name: 'Edit structure' }))
+  expect(await screen.findByRole('button', { name: /Done editing/ })).toBeInTheDocument()
 })
 
 it('the header tabs navigate between /budget and /plan and reflect the route', async () => {
@@ -367,7 +364,7 @@ it('tablet viewport: no ⋮ menus or grips until Edit structure is on; then on e
   expect(screen.queryByRole('button', { name: /^move / })).toBeNull()
 
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
   const menu = within(screen.getByTestId('element-cat-food')).getByRole('button', { name: 'menu Food' })
   expect(menu.className).not.toContain('opacity-0')
   expect(screen.getByRole('button', { name: 'move cat-food' }).className).not.toContain('opacity-0')
@@ -410,7 +407,7 @@ it('the route hop remounts the page: edit structure started on /plan is off agai
   const { router } = renderPage('/plan')
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
   expect(screen.getByRole('button', { name: 'Done editing' })).toBeInTheDocument()
 
   await act(() => router.navigate('/budget'))

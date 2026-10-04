@@ -1313,8 +1313,7 @@
           "menu": {
             "edit": "Информация о бюджете",
             "edit_structure": "Изменить структуру",
-            "edit_structure_done": "Готово",
-            "budget_list": "Открыть список бюджетов"
+            "edit_structure_done": "Готово"
           }
         },
         "structure": {
@@ -1394,7 +1393,6 @@
           "savings_balance": "Всего сбережений"
         },
         "density": {
-          "hide_empty": "Скрывать пустые строки",
           "hidden": "{count} скрыто",
           "show": "Показать"
         },

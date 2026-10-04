@@ -722,8 +722,7 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] "Budget" / "Plan" (desktop and tablet) are plain words at the start
       of the month row, the current one underlined: left of the month strip
       on /budget, left of the ‹ › arrows in the Plan grid on /plan. They swap
-      between the two; the page header and the Configure menu carry no view
-      switch.
+      between the two; the page header carries no view switch.
 - [ ] 📱 The main menu's "Budget & Plan" link opens the view last opened on
       this device (/budget or /plan), also after a reload, with the month
       (Budget) and the month window (Plan) last shown there.
@@ -832,14 +831,21 @@ and on tablet/phone only with a hardware keyboard.
       edge keeps extending the window (past months included).
 - [ ] 📱 The budget header shows no currency chips on /budget or /plan, and
       no "Spending progress" widget appears anywhere on the page.
+- [ ] 📱 The budget header's Configure button (⚙, "CONFIGURE" from sm up)
+      is the only control there besides the title. On the desktop Budget
+      view it opens the budget details dialog straight away. On a tablet or
+      phone, and in the Plan grid, it opens a small sheet with two options:
+      "Budget details" and "Edit structure" (an option the user may not use
+      reads "(no access)", greyed out); nothing else (no budgets list, no
+      Hide empty rows). A guest on the desktop Budget view sees no Configure
+      button.
 - [ ] 📱 **Edit structure** on a tablet or phone (Configure → Edit
       structure, "Done editing" to leave): the Budget view shows Income,
       Savings and Expenses with a ⋮ menu and a drag grip on every line (on a
       phone this replaces the month view, on /budget and /plan alike), and
       everything the desktop ⋮ menus offer works the same. On a desktop the
-      Budget view has no such mode: Configure offers no "Edit structure"
-      there. The Plan grid (desktop and tablet) keeps its own Edit structure
-      mode.
+      Budget view has no such mode. The Plan grid (desktop and tablet) keeps
+      its own Edit structure mode, reached the same way.
 - [ ] Budget view drag and drop (for anyone who may configure the budget):
       on a desktop hovering a row shows a grip in its left indent; on a
       tablet or phone every row shows one while Edit structure is on; dragging moves the row within its
@@ -859,8 +865,8 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] **Plan sheet** 📱: spreadsheet grid renders months; inline edit of a
       planned amount; keyboard cell navigation (arrows), Excel-style
       fill-right by drag handle (desktop) and Shift+Arrow; month window
-      scrolling; hide-empty-rows toggle; transfers/balance totals rows show
-      tooltips.
+      scrolling; transfers/balance totals rows show tooltips. There is no
+      "Hide empty rows" option any more (all rows show).
 - [ ] 📱 **Budget settings — Accounts and Savings accounts pickers**: the
       create and edit budget dialogs show Name, Currency, then two picker rows
       (styled like Currency): "Accounts" (the included accounts' names, and

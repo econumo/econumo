@@ -116,18 +116,18 @@ it('has no Budget/Plan switch anywhere, and the title is not all caps', async ()
   expect(title.className).not.toContain('uppercase')
   expect(screen.queryByRole('tablist', { name: 'budget mode' })).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('menuitem', { name: 'Edit structure' })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: 'Edit structure' })).toBeInTheDocument()
   expect(screen.queryByRole('menuitemradio')).toBeNull()
 })
 
-it('/plan on a phone has no Hide empty rows toggle', async () => {
+it('Configure on a phone offers Budget details and Edit structure, and nothing else', async () => {
   handlers()
   const user = userEvent.setup()
   renderPage('/plan')
   await screen.findByTestId('phone-month-view')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('menuitem', { name: 'Edit structure' })).toBeInTheDocument()
-  expect(screen.queryByRole('menuitemcheckbox')).toBeNull()
+  const dialog = await screen.findByRole('dialog', { name: 'Configure' })
+  expect(within(dialog).getAllByRole('button').map((b) => b.textContent).filter((x) => x !== 'Close')).toEqual(['Budget details', 'Edit structure'])
 })
 
 it('row tap → sheet → Set budget replaces the sheet and saves the selected month', async () => {
@@ -306,7 +306,7 @@ it('edit structure on a phone shows Income, Savings and Expenses with a ⋮ menu
     renderPage(path)
     await screen.findByTestId('phone-month-view')
     await user.click(screen.getByRole('button', { name: 'Configure' }))
-    await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+    await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
     expect(await screen.findByTestId('budget-table')).toBeInTheDocument()
     expect(await screen.findByTestId('month-income')).toBeInTheDocument()
     expect(screen.queryByTestId('phone-month-view')).toBeNull()

@@ -116,7 +116,7 @@ function useHandlers(plan: unknown = savingsPlan, extra: Parameters<typeof serve
 
 async function enterEditMode(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 }
 
 const rowIds = (section: HTMLElement) => [...section.querySelectorAll('[data-row-id]')].map((r) => r.getAttribute('data-row-id'))

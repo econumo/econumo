@@ -1313,8 +1313,7 @@
           "menu": {
             "edit": "Budget details",
             "edit_structure": "Edit structure",
-            "edit_structure_done": "Done editing",
-            "budget_list": "Open budget list"
+            "edit_structure_done": "Done editing"
           }
         },
         "structure": {
@@ -1394,7 +1393,6 @@
           "savings_balance": "Total savings"
         },
         "density": {
-          "hide_empty": "Hide empty rows",
           "hidden": "{count} hidden",
           "show": "Show"
         },

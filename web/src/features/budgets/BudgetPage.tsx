@@ -12,14 +12,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { InfoBox } from '@/components/InfoBox'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { PromptDialog } from '@/components/PromptDialog'
@@ -125,8 +117,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
-  const planHideEmpty = useBudgetPeriodStore((s) => s.planHideEmpty)
-  const togglePlanHideEmpty = useBudgetPeriodStore((s) => s.togglePlanHideEmpty)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
   const [editMode, setEditMode] = useState(false)
   const phoneView = isPhone && !editMode
@@ -189,6 +179,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const viewSwitch = isPhone ? null : <ViewSwitch mode={mode} onSwitch={switchBudgetMode} />
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
+  const [configureOpen, setConfigureOpen] = useState(false)
   // the section a folder is being created in; null while the prompt is closed
   const [createFolderSide, setCreateFolderSide] = useState<BudgetFolderSide | null>(null)
   const [renameFolder, setRenameFolder] = useState<{ id: Id; name: string } | null>(null)
@@ -275,6 +266,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const configure = budget && !archived ? canConfigureBudget(budget.meta, user?.id) : false
   const editDetails = budget && !archived ? canEditBudget(budget.meta, user?.id) : false
   const limitsEditable = budget && !archived ? canUpdateLimits(budget.meta, user?.id, selectedDate) : false
+  // the views with an edit mode to switch on: the Budget view edits on hover with a mouse
+  const structureMode = isCompact || mode === 'plan'
+  const configureVisible = editDetails || (structureMode && configure)
 
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
@@ -724,44 +718,20 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             <Check className="size-4" />
             {t('budgets.page.budget.settings.menu.edit_structure_done')}
           </Button>
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="uppercase tracking-wide text-muted-foreground"
-                aria-label={t('budgets.page.budget.settings.button')}
-              >
-                <Settings2 className="size-4" />
-                <span className="hidden sm:inline">{t('budgets.page.budget.settings.button')}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
-                {t('budgets.page.budget.settings.menu.edit')}
-              </DropdownMenuItem>
-              {/* with a mouse the Budget view edits on hover; touch screens and the Plan grid switch a mode on */}
-              {mode === 'plan' || isCompact ? (
-                <DropdownMenuItem disabled={!configure} onSelect={() => setEditMode(true)}>
-                  {t('budgets.page.budget.settings.menu.edit_structure')}
-                </DropdownMenuItem>
-              ) : null}
-              {mode === 'plan' && !phoneView ? (
-                <>
-                  <DropdownMenuCheckboxItem checked={planHideEmpty} onCheckedChange={() => togglePlanHideEmpty()}>
-                    {t('budgets.page.plan.density.hide_empty')}
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuSeparator />
-                </>
-              ) : null}
-              <DropdownMenuItem onSelect={() => navigate(RouterPage.SETTINGS_BUDGETS)}>
-                {t('budgets.page.budget.settings.menu.budget_list')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        ) : configureVisible ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="uppercase tracking-wide text-muted-foreground"
+            aria-label={t('budgets.page.budget.settings.button')}
+            title={t('budgets.page.budget.settings.button')}
+            onClick={() => (structureMode ? setConfigureOpen(true) : setUpdateBudgetOpen(true))}
+          >
+            <Settings2 className="size-4" />
+            <span className="hidden sm:inline">{t('budgets.page.budget.settings.button')}</span>
+          </Button>
+        ) : null}
       </header>
 
       {phoneView ? (
@@ -1143,6 +1113,32 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         readOnly={commentsTarget ? commentsReadOnly(budget.meta, selectedDate) : true}
         truncated={commentsTruncated}
       />
+
+      {/* a view with an edit mode (touch screens, the Plan grid) chooses first; the
+          desktop Budget view edits on hover, so Configure opens the details at once */}
+      <ResponsiveDialog open={configureOpen} onOpenChange={(o) => !o && setConfigureOpen(false)} title={t('budgets.page.budget.settings.button')}>
+        <ul className="flex flex-col">
+          {[
+            { label: t('budgets.page.budget.settings.menu.edit'), allowed: editDetails, onSelect: () => setUpdateBudgetOpen(true) },
+            { label: t('budgets.page.budget.settings.menu.edit_structure'), allowed: configure, onSelect: () => setEditMode(true) },
+          ].map((option) => (
+            <li key={option.label}>
+              <button
+                type="button"
+                disabled={!option.allowed}
+                className="w-full rounded-md px-2 py-2.5 text-left text-sm hover:bg-econumo-hover disabled:pointer-events-none disabled:opacity-50"
+                onClick={() => {
+                  setConfigureOpen(false)
+                  option.onSelect()
+                }}
+              >
+                {option.label}
+                {option.allowed ? null : <span className="text-muted-foreground"> ({t('budgets.page.plan.menu.no_access')})</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </ResponsiveDialog>
 
       <BudgetUpdateDialog open={updateBudgetOpen} budget={budget} onClose={() => setUpdateBudgetOpen(false)} />
 

@@ -1313,8 +1313,7 @@
           "menu": {
             "edit": "预算详情",
             "edit_structure": "编辑结构",
-            "edit_structure_done": "完成编辑",
-            "budget_list": "打开预算列表"
+            "edit_structure_done": "完成编辑"
           }
         },
         "structure": {
@@ -1394,7 +1393,6 @@
           "savings_balance": "储蓄总额"
         },
         "density": {
-          "hide_empty": "隐藏空行",
           "hidden": "已隐藏 {count} 项",
           "show": "显示"
         },
