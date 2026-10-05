@@ -91,6 +91,7 @@ function AvailablePill({ available, currency }: { available: string; currency: C
   return (
     <span
       data-testid="available-pill"
+      data-pill=""
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-sm font-medium tabular-nums ${
         cmp(available, '0') >= 0 ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'
       }`}
@@ -503,7 +504,7 @@ function ReportingTagsFolder({
 
 function FolderSumPill({ value, danger = false, testId }: { value: string; danger?: boolean; testId: string }) {
   return (
-    <span data-testid={testId} className={`inline-flex items-center rounded-full bg-muted px-2 py-0.5 tabular-nums ${danger ? 'text-expense' : ''}`}>
+    <span data-testid={testId} data-pill="" className={`inline-flex items-center rounded-full bg-muted px-2 py-0.5 tabular-nums ${danger ? 'text-expense' : ''}`}>
       {value}
     </span>
   )
