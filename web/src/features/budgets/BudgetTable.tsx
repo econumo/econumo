@@ -502,23 +502,15 @@ function ReportingTagsFolder({
   )
 }
 
-function FolderAvailablePill({ value, danger }: { value: string; danger: boolean }) {
-  return (
-    <span data-testid="folder-sum-available" data-pill="" className={`inline-flex items-center rounded-full bg-muted px-2 py-0.5 tabular-nums ${danger ? 'text-expense' : ''}`}>
-      {value}
-    </span>
-  )
-}
-
-/** a folder's sums, in the row columns: Available in a grey pill, and red text only
- *  where the folder as a whole overspent */
+/** a folder's sums, in the row columns: muted, and red only where the folder as a
+ *  whole overspent */
 function folderSums(stats: BucketStats, currency: CurrencyDto | undefined, future: boolean): [ReactNode, ReactNode, ReactNode] {
   const opts = cellOpts(currency)
   const danger = overBudget(stats, future)
   return [
     moneyFormat(stats.budgeted, currency, opts),
     future ? <Dash key="dash-452-1" /> : <span key="spent" className={danger ? 'text-expense' : ''}>{moneyFormat(stats.spent, currency, opts)}</span>,
-    nothingToShow(stats) ? <Dash key="dash-453-1" /> : <FolderAvailablePill key="available" danger={danger} value={moneyFormat(stats.available, currency, opts)} />,
+    nothingToShow(stats) ? <Dash key="dash-453-1" /> : <span key="available" className={danger ? 'text-expense' : ''}>{moneyFormat(stats.available, currency, opts)}</span>,
   ]
 }
 

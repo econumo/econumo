@@ -101,11 +101,10 @@ it('shows spent as-is and available+budgeted as a green pill while money is left
   expect(food).not.toHaveTextContent('$')
 })
 
-it("a folder shows its Available sum as a grey pill and its other sums as plain figures", async () => {
+it('a folder shows its sums as plain figures, lined up with the pills in the rows', async () => {
   renderTable()
   const folder = await screen.findByTestId('budget-folder-Essentials')
-  expect(within(folder).getByTestId('folder-sum-available').className).toMatch(/rounded-full.*bg-muted/)
-  expect(within(folder).getByTestId('stat-line').querySelectorAll('.rounded-full')).toHaveLength(1)
+  expect(within(folder).getByTestId('stat-line').querySelectorAll('.rounded-full')).toHaveLength(0)
 })
 
 it('a row with nothing budgeted, spent or left reads "—" under Available, muted; one with something left keeps the figure', async () => {
