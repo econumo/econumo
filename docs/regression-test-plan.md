@@ -763,10 +763,11 @@ and on tablet/phone only with a hardware keyboard.
       and amount shares one set of right-aligned columns. The budget
       currency's code shows once, above Income; there is no per-row currency
       symbol, and a row in another currency carries a small code tag next
-      to its name. Available is a plain figure: Spent and Available turn red
-      only on an overspent row (spent more than its budget and earlier months
-      do not cover it), a folder's sums only when the folder as a whole
-      overspent; nothing is green. A future month shows "—" for Spent. The table
+      to its name. An expense row's Available is a pill: green while it is
+      zero or more, red once it is negative ("—" when there is nothing to
+      show). Spent turns red only on an overspent row (spent more than its
+      budget and earlier months do not cover it); folder and total sums stay
+      plain figures, red only when the folder as a whole overspent. A future month shows "—" for Spent. The table
       spans the full width. The page title is in normal case.
 - [ ] Budget view ⋮ menus: on a desktop (mouse) they show on hover and while
       open, with no mode to switch on; on a tablet or phone they show on every
