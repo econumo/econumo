@@ -766,8 +766,9 @@ and on tablet/phone only with a hardware keyboard.
       to its name. An expense row's Available is a pill: green while it is
       zero or more, red once it is negative ("—" when there is nothing to
       show). Spent turns red only on an overspent row (spent more than its
-      budget and earlier months do not cover it). An expense folder's sums are
-      grey pills, their text red only when the folder as a whole overspent;
+      budget and earlier months do not cover it). An expense folder's Available
+      sum is a grey pill (its Budget and Spent sums stay plain figures), the
+      text red only when the folder as a whole overspent;
       the totals stay plain figures. A future month shows "—" for Spent. The table
       spans the full width. The page title is in normal case.
 - [ ] Budget view ⋮ menus: on a desktop (mouse) they show on hover and while
