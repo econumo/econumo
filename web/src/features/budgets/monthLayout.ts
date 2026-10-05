@@ -10,7 +10,9 @@ export const LINE = 'group/line flex items-center gap-2 pr-2.5 pl-2 sm:gap-3'
 export const NAME_COL = 'flex min-w-0 flex-1 items-center gap-2'
 export const FIRST_COL = 'hidden min-w-24 shrink-0 items-baseline justify-end gap-1.5 text-right tabular-nums sm:flex'
 export const SECOND_COL = 'flex w-20 shrink-0 justify-end text-right tabular-nums sm:w-24'
-export const THIRD_COL = 'flex w-20 shrink-0 justify-end text-right tabular-nums sm:w-28'
+// every figure, dash and heading in the last column sits inset by a pill's own padding,
+// so plain values line up with the digits inside the Available / folder-sum pills
+export const THIRD_COL = 'flex w-20 shrink-0 justify-end pr-2 text-right tabular-nums sm:w-28 [&>[data-pill]]:-mr-2'
 /** folder lines sit one step in from their section heading */
 export const FOLDER_INDENT = 'pl-6'
 
