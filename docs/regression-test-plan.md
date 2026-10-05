@@ -825,6 +825,10 @@ and on tablet/phone only with a hardware keyboard.
       above them (Uncategorized, every row when there are no folders, savings)
       sit at the folder line's step. Drag grips and insertion lines follow the
       same steps.
+- [ ] Budget view Uncategorized (desktop and tablet, expense and income): the
+      line reads like a folder line, not a row: the folder line's step,
+      height, small muted text and no icon, its name lined up with the folder
+      names above it; Budget/Planned and Available/To receive show "—".
 - [ ] Budget view folders fold (desktop and tablet): a folder's line, "No
       folder" and "Archived" hide their rows on a click and keep the line with
       its sums; income folders inside Income fold the same way. Folds survive

@@ -20,7 +20,7 @@ import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu } from './monthLines'
 import type { MenuAction, RowLevel } from './monthLayout'
-import { CHILD_INDENT, FIRST_COL, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
+import { CHILD_INDENT, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
 import { leftToReceive } from './phoneMonth'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 import { arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, moveElementInArrangement, placeFromEnvelope, preferRowCollisions } from './elementMove'
@@ -42,6 +42,7 @@ function FlowRow({
   name,
   tag,
   muted = false,
+  folderLike = false,
   planned,
   actual,
   third,
@@ -55,6 +56,9 @@ function FlowRow({
   /** the row's currency code, when it is not the budget's */
   tag?: string
   muted?: boolean
+  /** Uncategorized sits among the folders and reads like one: a folder line's step,
+   *  height and type, with no icon */
+  folderLike?: boolean
   planned: ReactNode
   actual: ReactNode
   third: ReactNode
@@ -66,18 +70,22 @@ function FlowRow({
   const { t } = useTranslation()
   const level = useRowLevel()
   const Chevron = toggle?.open ? ChevronDown : ChevronRight
+  const size = folderLike ? '' : 'text-[15px]'
   const label = (
     <>
       {toggle ? <Chevron className="size-3.5 shrink-0 text-muted-foreground" /> : <span className="w-3.5 shrink-0" />}
-      <EntityIcon name={icon} className="text-lg text-muted-foreground" />
-      <span className={`min-w-0 truncate text-[15px] ${muted ? 'text-muted-foreground' : ''}`} title={name}>
+      {folderLike ? null : <EntityIcon name={icon} className="text-lg text-muted-foreground" />}
+      <span className={`min-w-0 truncate ${size} ${muted ? 'text-muted-foreground' : ''}`} title={name}>
         {name}
       </span>
       {tag ? <CurrencyTag code={tag} /> : null}
     </>
   )
   return (
-    <div className={`${LINE} ${ROW_INDENT[level]} min-h-10 rounded-md py-1.5 hover:bg-accent/50`} data-testid={testId}>
+    <div
+      className={`${LINE} rounded-md hover:bg-accent/50 ${folderLike ? `${FOLDER_INDENT} min-h-9 text-sm text-muted-foreground` : `${ROW_INDENT[level]} min-h-10 py-1.5`}`}
+      data-testid={testId}
+    >
       {toggle ? (
         <button
           type="button"
@@ -89,16 +97,16 @@ function FlowRow({
           {label}
         </button>
       ) : (
-        <span className={NAME_COL}>{label}</span>
+        <span className={`${NAME_COL} ${folderLike ? 'gap-1.5!' : ''}`}>{label}</span>
       )}
       <RowMenu name={name} actions={menu} />
-      <span className={`${FIRST_COL} text-[15px]`} data-testid="flow-planned">
+      <span className={`${FIRST_COL} ${size}`} data-testid="flow-planned">
         {planned}
       </span>
-      <span className={`${SECOND_COL} text-[15px] text-muted-foreground`} data-testid="flow-actual">
+      <span className={`${SECOND_COL} ${size} text-muted-foreground`} data-testid="flow-actual">
         {actual}
       </span>
-      <span className={`${THIRD_COL} text-[15px]`} data-testid="flow-third">
+      <span className={`${THIRD_COL} ${size}`} data-testid="flow-third">
         {third}
       </span>
       {actionsColumn ? <ActionsSpacer /> : null}
@@ -270,6 +278,7 @@ export function MonthFlows({
           name={name}
           tag={tagOf(el.currencyId)}
           muted={el.isArchived === 1}
+          folderLike={el.id === UNCATEGORIZED_ID}
           planned={el.id === UNCATEGORIZED_ID ? <Dash /> : renderPlanned({ kind: 'plan', cell: row }, fmt(row.planned, el.currencyId))}
           actual={actualCell(listTarget, row.actual, el.currencyId)}
           third={

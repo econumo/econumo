@@ -166,6 +166,9 @@ function ElementRow({
   // months left does not cover it
   const overspent = !isUncategorized && overBudget({ budgeted: element.budgeted, spent: element.spent, available }, future)
   const blank = isUncategorized || nothingToShow({ budgeted: element.budgeted, spent: element.spent, available })
+  // Uncategorized sits among the folders and reads like one: a folder line's step,
+  // height and type, with no icon
+  const size = isUncategorized ? '' : 'text-[15px]'
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string, danger: boolean) => {
     if (future) {
@@ -192,7 +195,7 @@ function ElementRow({
     <>
       {expandable ? <Chevron className="size-3.5 shrink-0 text-muted-foreground" /> : <span className="w-3.5 shrink-0" />}
       {isUncategorized ? null : <EntityIcon name={element.icon} className="text-lg text-muted-foreground" />}
-      <span className="truncate text-[15px]" title={displayName}>
+      <span className={`truncate ${size}`} title={displayName}>
         {displayName}
       </span>
       {currencyId !== budget.meta.currencyId && currency ? <CurrencyTag code={currency.code} /> : null}
@@ -202,7 +205,7 @@ function ElementRow({
 
   const budgetCell = (() => {
     const cell = (
-      <span {...{ [COMMENT_ANCHOR_ATTR]: '' }} className={`group/cell relative ${FIRST_COL} text-[15px]`} data-testid="cell-budgeted">
+      <span {...{ [COMMENT_ANCHOR_ATTR]: '' }} className={`group/cell relative ${FIRST_COL} ${size}`} data-testid="cell-budgeted">
         {carryText !== null ? <CarryLeadIn carry={carry} text={carryText} testId="cell-carry" /> : null}
         <span className="shrink-0">
           {isUncategorized ? (
@@ -278,7 +281,9 @@ function ElementRow({
 
   const row = (
     <div className="flex flex-col" data-testid={`element-${element.id}`}>
-      <div className={`${LINE} ${ROW_INDENT[level]} relative min-h-10 rounded-md py-1.5 hover:bg-accent/50`}>
+      <div
+        className={`${LINE} relative rounded-md hover:bg-accent/50 ${isUncategorized ? `${FOLDER_INDENT} min-h-9 text-sm text-muted-foreground` : `${ROW_INDENT[level]} min-h-10 py-1.5`}`}
+      >
         {expandable ? (
           <button
             type="button"
@@ -290,14 +295,15 @@ function ElementRow({
             {name}
           </button>
         ) : (
-          <span className={NAME_COL}>{name}</span>
+          // a folder line's chevron-to-name gap, so the name lines up with the folders'
+          <span className={`${NAME_COL} ${isUncategorized ? 'gap-1.5!' : ''}`}>{name}</span>
         )}
         <RowMenu name={displayName} actions={extras.rowMenu?.(element)} />
         {budgetCell}
-        <span data-testid="cell-spent" className={`${SECOND_COL} text-[15px]`}>
+        <span data-testid="cell-spent" className={`${SECOND_COL} ${size}`}>
           {spentCell({ id: element.id, type: element.type, name: displayName, icon: element.icon, currencyId: element.currencyId }, element.spent, overspent)}
         </span>
-        <span data-testid="cell-available" className={`${THIRD_COL} text-[15px] ${blank ? 'text-muted-foreground' : overspent ? 'text-expense' : ''}`}>
+        <span data-testid="cell-available" className={`${THIRD_COL} ${size} ${blank ? 'text-muted-foreground' : overspent ? 'text-expense' : ''}`}>
           {blank ? <Dash /> : moneyFormat(available, currency, opts)}
         </span>
         {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
@@ -582,7 +588,7 @@ export function BudgetTable({
                 return []
               }
               return [
-                <section key={section.key} data-testid={`budget-folder-${section.name}`}>
+                <section key={section.key} className="pt-1" data-testid={`budget-folder-${section.name}`}>
                   <RowLevelContext.Provider value="top">
                     {rowsOf(section.bucket, { onSpentClick: extras.onSpentClick, rowMenu: extras.rowMenu })}
                   </RowLevelContext.Provider>
