@@ -59,6 +59,9 @@ interface RowProps {
   onOpen: () => void
   /** an expandable row's name folds and unfolds its children */
   toggle?: { open: boolean; onToggle: () => void }
+  /** Uncategorized sits among the folders and reads like one: a folder line's height
+   *  and type, with no icon and no bar */
+  folderLike?: boolean
 }
 
 // with a bar under it, the row's first line gives up its bottom padding and minimum
@@ -68,12 +71,29 @@ const NAME_CELL = 'flex min-w-0 items-center gap-2 pl-2'
 
 // the name and the figures are separate targets: the name folds an expandable row
 // (and does nothing otherwise), only Budget/Spent open the item sheet
-function PhoneRow({ testId, icon, name, tag, carry, first, second, secondClass = '', progress = null, barClass = '', commented = false, ariaLabel, onOpen, toggle }: RowProps) {
+function PhoneRow({
+  testId,
+  icon,
+  name,
+  tag,
+  carry,
+  first,
+  second,
+  secondClass = '',
+  progress = null,
+  barClass = '',
+  commented = false,
+  ariaLabel,
+  onOpen,
+  toggle,
+  folderLike = false,
+}: RowProps) {
   const Chevron = toggle?.open ? ChevronDown : ChevronRight
-  const pad = cellPad(progress !== null)
+  const pad = folderLike ? 'min-h-9 py-1' : cellPad(progress !== null)
+  const size = folderLike ? 'text-xs font-medium text-muted-foreground' : 'text-[15px]'
   const label = (
     <>
-      <span className="min-w-0 truncate text-[15px]">{name}</span>
+      <span className={`min-w-0 truncate ${size}`}>{name}</span>
       {tag ? (
         <span data-testid="phone-currency-tag" className="shrink-0 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
           {tag}
@@ -88,6 +108,12 @@ function PhoneRow({ testId, icon, name, tag, carry, first, second, secondClass =
           <Chevron aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
           {label}
         </button>
+      ) : folderLike ? (
+        // a folder header's chevron slot and gap, so the name lines up with the folders'
+        <span className={`${NAME_CELL} ${pad} gap-1!`}>
+          <span className="w-3.5 shrink-0" />
+          {label}
+        </span>
       ) : (
         <span className={`${NAME_CELL} ${pad}`}>
           <EntityIcon name={icon} className="text-lg text-muted-foreground" />
@@ -100,7 +126,7 @@ function PhoneRow({ testId, icon, name, tag, carry, first, second, secondClass =
         onClick={onOpen}
         className={`col-span-2 grid grid-cols-subgrid items-center rounded-md pr-2 active:bg-accent/50 ${pad}`}
       >
-        <span className="flex items-baseline justify-end gap-1 text-right text-[15px] tabular-nums">
+        <span className={`flex items-baseline justify-end gap-1 text-right tabular-nums ${size}`}>
           {carry ? (
             <span data-testid="phone-carry" className={`shrink-0 text-[13px] ${carry.negative ? 'text-expense' : 'text-muted-foreground'}`}>
               {carry.text}
@@ -108,7 +134,7 @@ function PhoneRow({ testId, icon, name, tag, carry, first, second, secondClass =
           ) : null}
           <span className="shrink-0">{first}</span>
         </span>
-        <span className={`relative text-right text-[15px] tabular-nums ${secondClass}`}>
+        <span className={`relative text-right tabular-nums ${size} ${secondClass}`}>
           {second}
           {commented ? (
             <span
@@ -317,6 +343,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: carryText ? `${carryText} ${budgetText}` : budgetText, spent: spentText })}
           onOpen={() => onOpenSheet({ kind: 'expense', element })}
           toggle={expandable ? { open, onToggle: () => toggleElement(element.id) } : undefined}
+          folderLike={isUncategorized}
         />
         {expandable && open ? element.children.map((child) => childLine(child, child.spent, element)) : null}
       </div>
@@ -357,7 +384,9 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const incomeRow = (row: PlanCellFigures) => {
     const el = row.element
     const name = elementDisplayName(el.id, el.name, t)
-    const planned = fmt(row.planned, el.currencyId)
+    // income Uncategorized can never be planned: a dash, as on the desktop
+    const isUncategorized = el.id === UNCATEGORIZED_ID
+    const planned = isUncategorized ? EMPTY : fmt(row.planned, el.currencyId)
     const received = future ? EMPTY : fmt(row.actual, el.currencyId)
     const expandable = el.children.length > 0
     const open = expandable && !!unfolded[el.id]
@@ -370,11 +399,12 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           tag={tagOf(el.currencyId)}
           first={planned}
           second={received}
-          {...planBar(row.planned, row.actual)}
+          {...(isUncategorized ? {} : planBar(row.planned, row.actual))}
           commented={commented(el.id)}
           ariaLabel={t('budgets.page.phone.income_row_aria', { name, planned, received })}
           onOpen={() => onOpenSheet({ kind: 'plan', cell: row })}
           toggle={expandable ? { open, onToggle: () => toggleElement(el.id) } : undefined}
+          folderLike={isUncategorized}
         />
         {open && planMonth ? el.children.map((child) => childLine(child, child.cells[planMonth.index]?.actual ?? '0', el)) : null}
       </div>
