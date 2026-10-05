@@ -86,6 +86,21 @@ const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
   maxPrecision: currency?.fractionDigits ?? 2,
 })
 
+/* an expense row's Available: a green pill while money is left, red once it runs out */
+function AvailablePill({ available, currency }: { available: string; currency: CurrencyDto | undefined }) {
+  return (
+    <span
+      data-testid="available-pill"
+      data-pill=""
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-sm font-medium tabular-nums ${
+        cmp(available, '0') >= 0 ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'
+      }`}
+    >
+      {moneyFormat(available, currency, cellOpts(currency))}
+    </span>
+  )
+}
+
 /* An explanation available on demand. Kept out of any collapsible trigger:
    explaining a block must never fold it. */
 export function InfoNote({ text, testId }: { text: string; testId: string }) {
@@ -303,8 +318,8 @@ function ElementRow({
         <span data-testid="cell-spent" className={`${SECOND_COL} ${size}`}>
           {spentCell({ id: element.id, type: element.type, name: displayName, icon: element.icon, currencyId: element.currencyId }, element.spent, overspent)}
         </span>
-        <span data-testid="cell-available" className={`${THIRD_COL} ${size} ${blank ? 'text-muted-foreground' : overspent ? 'text-expense' : ''}`}>
-          {blank ? <Dash /> : moneyFormat(available, currency, opts)}
+        <span data-testid="cell-available" className={`${THIRD_COL} ${size} ${blank ? 'text-muted-foreground' : ''}`}>
+          {blank ? <Dash /> : <AvailablePill available={available} currency={currency} />}
         </span>
         {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
         {extras.envelopeHeadDrop && isEnvelopeType(element.type) && !unfolded ? extras.envelopeHeadDrop(element) : null}
