@@ -399,11 +399,17 @@ navigation (single-pane vs sidebar).
       or with a bad currency → `status: failed`, row in the Inbox's Failed
       imports section with the error text and the raw payload; Retry re-parses
       (toast with the outcome), Discard removes it.
-- [ ] Map card → account (owned accounts only in the picker; shared accounts
-      absent): the queue replays — toast "N imported, N matched, N skipped";
+- [ ] Map card → account (the picker lists my accounts plus accounts shared
+      with me as admin or user; guest-only shares are absent): the queue replays — toast "N imported, N matched, N skipped";
       imported transactions appear on the account with the glyph; a same-amount
       hand-entered transaction within ±3 days is adopted (no duplicate) and shows
       the provenance card.
+- [ ] A card mapped to an account shared with me imports its taps onto that
+      account without categories, payees, tags or labels (my import rules
+      don't apply there; the owner's categories do), and applying a classify
+      rule leaves those rows untouched. When the owner revokes the share, new
+      taps queue in the Inbox with "No access to the account" until the card
+      is remapped.
 - [ ] A new card whose first taps were all in a foreign currency (USD taps →
       CAD account) maps without error; its queued taps import converted at the
       day's rate (a tap with no stored rate stays queued), and the provenance
