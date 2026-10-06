@@ -17,7 +17,7 @@ import type { ElementMoveItem } from './elementMove'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useBudgetPeriodStore } from './budgetStore'
-import { addMonths, currentMonth } from './planMath'
+import { addMonths, currentMonth, monthDiff } from './planMath'
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -191,10 +191,21 @@ export function useSetLimit() {
 
 export const PLAN_BUFFER = 2
 
-export function planFetchWindow(firstMonth: string, visibleMonths: number): { from: string; months: number } {
-  // buffer both sides so arrow navigation renders instantly; the server caps months at 24
-  const months = Math.min(visibleMonths + 2 * PLAN_BUFFER, 24)
-  return { from: addMonths(firstMonth, -PLAN_BUFFER), months }
+const PLAN_MONTHS_MAX = 24
+
+export function planFetchWindow(firstMonth: string, visibleMonths: number, now?: Date): { from: string; months: number } {
+  // buffer both sides so arrow navigation renders instantly
+  const buffered = addMonths(firstMonth, -PLAN_BUFFER)
+  const end = addMonths(firstMonth, visibleMonths + PLAN_BUFFER)
+  // The server books only what precedes the window and the projections add the
+  // unmet plans of the current and later months inside it, so a window ahead of
+  // the current month must reach back to it, or every projected balance drops
+  // the months in between. Past the server's month cap it cannot.
+  const cur = currentMonth(now)
+  if (buffered > cur && monthDiff(cur, end) <= PLAN_MONTHS_MAX) {
+    return { from: cur, months: monthDiff(cur, end) }
+  }
+  return { from: buffered, months: Math.min(visibleMonths + 2 * PLAN_BUFFER, PLAN_MONTHS_MAX) }
 }
 
 export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number) {
