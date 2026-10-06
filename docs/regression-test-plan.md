@@ -996,6 +996,12 @@ and on tablet/phone only with a hardware keyboard.
       row (or folder); with Savings folded it skips straight to the expenses.
 - [ ] Plan sheet totals: below Income, Expenses, Transfers and Savings come
       Total savings and then Balance (the phone's order).
+- [ ] 📱 Plan a savings top-up (e.g. 6,000) in every month of the next year,
+      then step the Plan sheet forward with the arrows until its first month
+      is several months past the current one: each month's savings closing
+      balance, Total savings and Balance read the same as they did in the
+      first window (they still count the current month's unmet plan), and
+      keep growing by the top-up through the last planned month.
 - [ ] 📱 Edit a savings row's planned amount (popover on desktop; on a tablet
       or phone the item sheet's "Set budget"): the new value shows at once and
       survives a reload.
