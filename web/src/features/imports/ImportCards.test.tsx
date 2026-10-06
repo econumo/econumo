@@ -95,3 +95,18 @@ it('the account picker lists accounts already in the card\'s currency first', as
   const optionNames = within(select).getAllByRole('option').map((o) => o.textContent)
   expect(optionNames).toEqual(['', 'Euro Stash', 'Cash', 'Bank', 'Under the mattress'])
 })
+
+it('the picker lists accounts shared with me for writing, not guest-only ones', async () => {
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+  const shared = (id: string, name: string, role: string) => ({
+    ...fixtureAccounts[0], id, name, owner: partner,
+    sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role, isAccepted: 1 }],
+  })
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, shared('s-user', 'Family card', 'user'), shared('s-guest', 'Read only', 'guest')] }))
+  const user = userEvent.setup()
+  renderCards(source)
+  await user.click(await screen.findByRole('button', { name: 'Map to account' }))
+  const picker = await screen.findByLabelText('Account')
+  await waitFor(() => expect(within(picker).getByRole('option', { name: /Family card/ })).toBeInTheDocument())
+  expect(within(picker).queryByRole('option', { name: /Read only/ })).not.toBeInTheDocument()
+})

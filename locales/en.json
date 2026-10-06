@@ -674,6 +674,7 @@
       "reason": {
         "unmapped": "Card not mapped",
         "account_deleted": "Account deleted",
+        "no_access": "No access to the account",
         "no_rate": "No exchange rate for {currency}"
       },
       "import": "Import",

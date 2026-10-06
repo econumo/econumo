@@ -44,6 +44,7 @@ func (fakeAccounts) AccountOwner(_ context.Context, id vo.Id) (vo.Id, error) {
 	}
 	return vo.Id{}, errs.NewNotFound("Account not found")
 }
+func (fakeAccounts) HasWriteGrant(context.Context, vo.Id, vo.Id) (bool, error)  { return false, nil }
 func (fakeAccounts) AccountDeleted(context.Context, vo.Id) (bool, error)        { return false, nil }
 func (fakeAccounts) AccountCurrencyCode(context.Context, vo.Id) (string, error) { return "USD", nil }
 

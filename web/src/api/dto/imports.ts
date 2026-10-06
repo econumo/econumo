@@ -4,7 +4,7 @@ import type { CreateTransactionDto, TransactionDto, TransactionType } from './tr
 
 export type ImportProvider = 'apple-wallet' | 'simplefin'
 export type ImportCardState = 'mapped' | 'ignored' | 'unmapped'
-export type ImportQueueReason = 'unmapped' | 'account_deleted' | 'no_rate'
+export type ImportQueueReason = 'unmapped' | 'account_deleted' | 'no_access' | 'no_rate'
 export type IngestStatus = 'created' | 'queued' | 'skipped' | 'duplicate' | 'failed'
 export type ImportRunStatus = 'running' | 'completed' | 'partial' | 'failed'
 

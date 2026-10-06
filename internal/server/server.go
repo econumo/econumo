@@ -384,7 +384,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	importsRepo := importsrepo.NewRepo(cfg.DatabaseDriver, txm)
 	importsSvc := appimports.NewService(
 		importsRepo,
-		NewImportsAccountReader(accountSvc, currencyLookup),
+		NewImportsAccountReader(accountSvc, accountAccessResolver, currencyLookup),
 		NewImportsCurrencyConverter(currencyLookup, rateProvider, convertor),
 		NewImportsTransactionWriter(transactionSvc),
 		NewImportsTransactionLister(transactionRepo),

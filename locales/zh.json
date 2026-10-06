@@ -674,6 +674,7 @@
       "reason": {
         "unmapped": "卡片未映射",
         "account_deleted": "账户已删除",
+        "no_access": "无权访问该账户",
         "no_rate": "没有 {currency} 的汇率"
       },
       "import": "导入",

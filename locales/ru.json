@@ -674,6 +674,7 @@
       "reason": {
         "unmapped": "Карта не привязана",
         "account_deleted": "Счёт удалён",
+        "no_access": "Нет доступа к счёту",
         "no_rate": "Нет курса для {currency}"
       },
       "import": "Импортировать",

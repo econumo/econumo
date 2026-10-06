@@ -27,7 +27,9 @@ function reasonText(t: TFunction, row: ImportQueuedEventDto): string {
     ? t('imports.queue.reason.no_rate', { currency: row.currency })
     : row.reason === 'account_deleted'
       ? t('imports.queue.reason.account_deleted')
-      : t('imports.queue.reason.unmapped')
+      : row.reason === 'no_access'
+        ? t('imports.queue.reason.no_access')
+        : t('imports.queue.reason.unmapped')
 }
 
 // no CurrencyLike (symbol/fractionDigits) travels with a queue row, only the

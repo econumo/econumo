@@ -85,6 +85,14 @@ func (s *Service) queuedEntry(ctx context.Context, src *model.ImportSource, acco
 		entry.Reason = model.ImportQueueReasonAccountDeleted
 		return entry, nil
 	}
+	_, writable, err := s.writeAccess(ctx, src.UserID, *al.AccountID)
+	if err != nil {
+		return entry, err
+	}
+	if !writable {
+		entry.Reason = model.ImportQueueReasonNoAccess
+		return entry, nil
+	}
 	entry.Reason = model.ImportQueueReasonNoRate
 	return entry, nil
 }
