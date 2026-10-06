@@ -35,8 +35,9 @@ type clock struct{ t time.Time }
 
 func (c clock) Now() time.Time { return c.t }
 
-// fakeAccounts: acct1 (userA, USD, live), acctB (userB). deleted toggles acct1.
-type fakeAccounts struct{ deleted bool }
+// fakeAccounts: acct1 (userA, USD, live), acctB (userB). deleted toggles
+// acct1; shared gives userA a write grant on acctB.
+type fakeAccounts struct{ deleted, shared bool }
 
 func (f *fakeAccounts) AccountOwner(_ context.Context, id vo.Id) (vo.Id, error) {
 	switch id.String() {
@@ -46,6 +47,9 @@ func (f *fakeAccounts) AccountOwner(_ context.Context, id vo.Id) (vo.Id, error) 
 		return vo.MustParseId(userB), nil
 	}
 	return vo.Id{}, errs.NewNotFound("Account not found")
+}
+func (f *fakeAccounts) HasWriteGrant(_ context.Context, accountID, userID vo.Id) (bool, error) {
+	return f.shared && accountID.String() == acctB && userID.String() == userA, nil
 }
 func (f *fakeAccounts) AccountDeleted(_ context.Context, id vo.Id) (bool, error) {
 	if id.String() != acct1 && id.String() != acctB {

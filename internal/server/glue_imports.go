@@ -20,6 +20,10 @@ type importsAccountSource interface {
 	AccountCurrency(ctx context.Context, id vo.Id) (vo.Id, error)
 }
 
+type importsAccountGrants interface {
+	HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
+}
+
 type importsCurrencyByID interface {
 	GetByID(ctx context.Context, id string) (currencyrepo.CurrencyView, error)
 }
@@ -29,15 +33,20 @@ type importsCurrencyByID interface {
 // Wallet payload speaks.
 type ImportsAccountReader struct {
 	accounts   importsAccountSource
+	grants     importsAccountGrants
 	currencies importsCurrencyByID
 }
 
-func NewImportsAccountReader(accounts importsAccountSource, currencies importsCurrencyByID) *ImportsAccountReader {
-	return &ImportsAccountReader{accounts: accounts, currencies: currencies}
+func NewImportsAccountReader(accounts importsAccountSource, grants importsAccountGrants, currencies importsCurrencyByID) *ImportsAccountReader {
+	return &ImportsAccountReader{accounts: accounts, grants: grants, currencies: currencies}
 }
 
 func (r *ImportsAccountReader) AccountOwner(ctx context.Context, id vo.Id) (vo.Id, error) {
 	return r.accounts.AccountOwner(ctx, id)
+}
+
+func (r *ImportsAccountReader) HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error) {
+	return r.grants.HasWriteGrant(ctx, accountID, userID)
 }
 
 func (r *ImportsAccountReader) AccountDeleted(ctx context.Context, id vo.Id) (bool, error) {

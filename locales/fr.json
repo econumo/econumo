@@ -674,6 +674,7 @@
       "reason": {
         "unmapped": "Carte non associée",
         "account_deleted": "Compte supprimé",
+        "no_access": "Pas d'accès au compte",
         "no_rate": "Aucun taux de change pour {currency}"
       },
       "import": "Importer",

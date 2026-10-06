@@ -674,6 +674,7 @@
       "reason": {
         "unmapped": "Kaart niet gekoppeld",
         "account_deleted": "Rekening verwijderd",
+        "no_access": "Geen toegang tot de rekening",
         "no_rate": "Geen wisselkoers voor {currency}"
       },
       "import": "Importeren",

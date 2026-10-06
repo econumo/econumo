@@ -23,6 +23,7 @@ const (
 	ImportQueueReasonUnmapped       = "unmapped"
 	ImportQueueReasonAccountDeleted = "account_deleted"
 	ImportQueueReasonNoRate         = "no_rate"
+	ImportQueueReasonNoAccess       = "no_access"
 )
 
 func blankField(key string) errs.FieldError {

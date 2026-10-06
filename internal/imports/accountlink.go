@@ -22,11 +22,11 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 		if err != nil {
 			return errs.NewNotFound("Account not found")
 		}
-		owner, err := s.accounts.AccountOwner(ctx, accountID)
+		_, writable, err := s.writeAccess(ctx, userID, accountID)
 		if err != nil {
 			return err
 		}
-		if owner != userID {
+		if !writable {
 			return errs.NewNotFound("Account not found")
 		}
 		deleted, err := s.accounts.AccountDeleted(ctx, accountID)
@@ -92,6 +92,23 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 		return nil
 	})
 	return out, err
+}
+
+// writeAccess applies the transaction feature's write rule — the owner, or an
+// accepted admin/user grantee — so a card can go wherever its user could
+// enter the transaction by hand. owned tells the caller whether the user's
+// own classifications fit the account: on a shared account they must be the
+// owner's.
+func (s *Service) writeAccess(ctx context.Context, userID, accountID vo.Id) (owned, writable bool, err error) {
+	owner, err := s.accounts.AccountOwner(ctx, accountID)
+	if err != nil {
+		return false, false, err
+	}
+	if owner.Equal(userID) {
+		return true, true, nil
+	}
+	writable, err = s.accounts.HasWriteGrant(ctx, accountID, userID)
+	return false, writable, err
 }
 
 // externalName prefers the bridge's display name over the opaque external
