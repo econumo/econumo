@@ -43,8 +43,8 @@ export function formatPlanMonth(m: string, lang: string, now?: Date): string {
   return periodLabeler(lang, now)(monthDate(m))
 }
 
-// monthLayout's PLAN_NAME_COL (w-52)
-export const PLAN_NAME_COL_PX = 208
+// monthLayout's PLAN_NAME_COL (w-56)
+export const PLAN_NAME_COL_PX = 224
 // wide enough for `actual · plan`, so a desktop never hits the PLAN_ACTUALS_MIN_COL_PX fallback
 export const PLAN_MIN_MONTH_COL_PX = 130
 /** below this a month column cannot fit `12,345.67 · 12,345.67`: the months before the

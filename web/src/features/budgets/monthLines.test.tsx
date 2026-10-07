@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import { FolderLine, MonthSectionHeader, TotalLine } from './monthLines'
-import { LineLayoutContext } from './monthLayout'
+import { LineControlsContext, LineLayoutContext } from './monthLayout'
 
 it('an empty folder reads as a dash in each of its three columns, so its ⋮ sits where the others do', () => {
   render(<FolderLine name="Bills" folded={false} onToggle={() => {}} sums={null} actionsColumn={false} menu={[{ label: 'Edit', onSelect: () => {} }]} />)
@@ -40,4 +40,23 @@ it('plan layout: a totals line colours each negative month on its own', () => {
   inPlan(<TotalLine testId="bal" label="Balance" values={['5', '-3', '1']} negative={[false, true, false]} actionsColumn={false} />)
   expect(screen.getByText('-3').closest('[data-col]')!.className).toContain('text-expense')
   expect(screen.getByText('5').closest('[data-col]')!.className).not.toContain('text-expense')
+})
+
+it('plan layout: a hidden ⋮ takes no room in the name column until the line is hovered', () => {
+  inPlan(<FolderLine name="A rather long folder name" folded={false} onToggle={() => {}} sums={['1', '2', '3']} actionsColumn={false} menu={[{ label: 'Edit', onSelect: () => {} }]} />)
+  const slot = screen.getByRole('button', { name: 'menu A rather long folder name' }).parentElement!
+  expect(slot.className).toMatch(/(^| )w-0( |$)/)
+  expect(slot.className).toContain('group-hover/line:w-7')
+  expect(slot.className).toContain('has-[[data-state=open]]:w-7')
+})
+
+it('plan layout: on a touch screen in edit mode the ⋮ keeps its room', () => {
+  render(
+    <LineLayoutContext.Provider value={{ kind: 'plan', cols: 3, selectedCol: 1 }}>
+      <LineControlsContext.Provider value="always">
+        <FolderLine name="Bills" folded={false} onToggle={() => {}} sums={['1', '2', '3']} actionsColumn={false} menu={[{ label: 'Edit', onSelect: () => {} }]} />
+      </LineControlsContext.Provider>
+    </LineLayoutContext.Provider>,
+  )
+  expect(screen.getByRole('button', { name: 'menu Bills' }).parentElement!.className).not.toMatch(/(^| )w-0( |$)/)
 })

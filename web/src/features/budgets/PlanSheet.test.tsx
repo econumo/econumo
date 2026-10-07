@@ -2425,8 +2425,8 @@ it('gives expanded child rows the same row-hover treatment as their parents', as
   expect(lineClasses(childRow)).toEqual(lineClasses(parentRow))
   const childName = childRow.querySelector('[role="gridcell"]') as HTMLElement
   const parentName = parentRow.querySelector('[role="gridcell"]') as HTMLElement
-  expect(childName.className).toContain('w-52')
-  expect(parentName.className).toContain('w-52')
+  expect(childName.className).toContain('w-56')
+  expect(parentName.className).toContain('w-56')
   expect(childName.className).toMatch(/\bpl-1[79]\b/)
 })
 
@@ -2741,6 +2741,42 @@ it('an envelope never goes into another envelope', async () => {
   // a category of the envelope it is already in stays put too
   act(() => expense().onDragStart({ active: { id: 'cat-rent' } }))
   act(() => expense().onDragEnd({ active: { id: 'cat-rent' }, over: { id: 'benv:pe1' } }))
+  await new Promise((r) => setTimeout(r, 50))
+  expect(calls).toEqual([])
+})
+
+it('a row dropped on a folded folder joins it last, as in the Budget view', async () => {
+  usePlanHandlers()
+  const calls: unknown[] = []
+  server.use(http.post('*/api/v1/budget/move-element', async ({ request }) => {
+    calls.push(await request.json())
+    await delay('infinite')
+    return HttpResponse.json({ success: true, message: '', data: {} })
+  }))
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Essentials' }))
+  expect(screen.queryByTestId('plan-cell-pe1:0')).not.toBeInTheDocument()
+  const expense = () => capturedDragContexts[capturedDragContexts.length - 1]
+  act(() => expense().onDragStart({ active: { id: 'cat-food' } }))
+  act(() => expense().onDragEnd({ active: { id: 'cat-food' }, over: { id: 'bfolder:bf1' } }))
+  // after Living, the folded folder's last member
+  await waitFor(() => expect(calls).toEqual([{ budgetId: 'b1', id: 'cat-food', folderId: 'bf1', afterId: 'pe1' }]))
+})
+
+it('the expense section never takes an income category into an expense envelope', async () => {
+  usePlanHandlers()
+  const calls: unknown[] = []
+  server.use(http.post('*/api/v1/budget/move-element', async ({ request }) => {
+    calls.push(await request.json())
+    return HttpResponse.json({ success: true, message: '', data: {} })
+  }))
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const expense = () => capturedDragContexts[capturedDragContexts.length - 1]
+  act(() => expense().onDragStart({ active: { id: 'cat-freelance' } }))
+  act(() => expense().onDragEnd({ active: { id: 'cat-freelance' }, over: { id: 'benv:pe1' } }))
   await new Promise((r) => setTimeout(r, 50))
   expect(calls).toEqual([])
 })

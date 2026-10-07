@@ -67,10 +67,11 @@ export function Dash() {
  *  stays while open); in a touch screen's edit mode it shows on every line. */
 export function RowMenu({ name, actions }: { name: string; actions: MenuAction[] | undefined }) {
   const controls = useLineControls()
+  const plan = useLineLayout().kind === 'plan'
   if (!actions || actions.length === 0) {
     return null
   }
-  return (
+  const menu = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -98,6 +99,17 @@ export function RowMenu({ name, actions }: { name: string; actions: MenuAction[]
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+  if (!plan || controls === 'always') {
+    return menu
+  }
+  // The Plan grid's name column is fixed-width: a hidden ⋮ takes none of it, so a
+  // long name only gives way while the line is hovered, the menu open or the button
+  // focused.
+  return (
+    <span className="-ml-2 flex w-0 shrink-0 justify-end group-hover/line:ml-0 group-hover/line:w-7 has-[[data-state=open]]:ml-0 has-[[data-state=open]]:w-7 has-[:focus-visible]:ml-0 has-[:focus-visible]:w-7">
+      {menu}
+    </span>
   )
 }
 

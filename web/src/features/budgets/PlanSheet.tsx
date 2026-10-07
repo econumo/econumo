@@ -1001,22 +1001,14 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
 
   // The band's element buckets as the arrangement elementMove.ts operates on:
   // one container per folder plus the loose rows. Uncategorized and archived
-  // rows are excluded — they carry no position the server would honour.
-  //
-  // Mirrors the RENDER-side filtering exactly (FolderRows' fold, and the
-  // incomeLoose/expenseLoose above for the loose bucket): only rows actually on
-  // screen can be under the pointer during a drag, so afterId must be read from that
-  // same set — anchoring to a folded-away row would silently place the moved element
-  // after something the user never saw.
+  // rows are excluded — they carry no position the server would honour. A folded
+  // folder keeps all its members: none of them can be under the pointer, and a drop
+  // on the folder itself appends after the last one, as in the Budget view.
   function bandArrangement(side: 'income' | 'expense'): ElementContainer[] {
     const band = shownRows![side]
-    const loose = side === 'income' ? incomeLoose : expenseLoose
     return [
-      ...band.folders.map((f) => ({
-        folderId: f.folder.id as Id | null,
-        ids: draggableIds(folded(f.folder.id) ? [] : f.rows),
-      })),
-      { folderId: null as Id | null, ids: draggableIds(loose) },
+      ...band.folders.map((f) => ({ folderId: f.folder.id as Id | null, ids: draggableIds(f.rows) })),
+      { folderId: null as Id | null, ids: draggableIds(band.loose) },
     ]
   }
 
@@ -1110,7 +1102,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (envelopeId !== null) {
       if (canEnterEnvelope(side)(activeId, envelopeId)) {
         holdMember(activeId)
-        moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id: activeId, envelopeId }, { onError: releaseMember })
+        moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id: activeId, envelopeId }, { onError: releaseHold })
       }
       return
     }
@@ -1120,7 +1112,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       const item = overId === fromEnvelope ? null : placeFromEnvelope(bandArrangement(side), activeId, overId)
       if (item) {
         holdMember(activeId)
-        moveElement.mutate({ budgetId: budget.meta.id, item }, { onError: releaseMember })
+        moveElement.mutate({ budgetId: budget.meta.id, item }, { onError: releaseHold })
       }
       return
     }
@@ -1132,8 +1124,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     setPendingMemberId(id)
   }
 
-  function releaseMember() {
+  // A failed move drops every held preview, not just its own: arrangedFrom is shared,
+  // so a hold left behind would never be released by the next plan.
+  function releaseHold() {
     arrangedFrom.current = undefined
+    setDragArrangement(null)
     setPendingMemberId(null)
   }
 
@@ -1178,12 +1173,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     setDragArrangement(moved)
     moveElement.mutate(
       { budgetId: budget.meta.id, item },
-      {
-        onError: () => {
-          arrangedFrom.current = undefined
-          setDragArrangement(null)
-        },
-      },
+      { onError: releaseHold },
     )
   }
 
