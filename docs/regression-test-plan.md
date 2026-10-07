@@ -1014,6 +1014,12 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 A deleted savings account stays in the Savings section, read-only (no
       amount editor, no drag grip), only while it still has a plan or actual
       activity in the visible period; once neither remains it drops out.
+      Only plans for months before the current one count: delete a savings
+      account that has plans set for this month and later months, and in
+      those months (Budget and Plan views) it shows only if it had activity,
+      with no planned amount, and the Total's planned figure leaves its plan
+      out. Activity that nets to zero within a month (money in, then the
+      same amount out) does not count as activity.
 - [ ] An everyday→savings transfer counts toward "Saved" (the savings row's
       Actual, and the monthly block's Saved column); a savings↔savings
       transfer and a transfer with an account that is not a budget member do

@@ -8,6 +8,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -522,7 +523,15 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	}
 
 	result := s.emitPlanElements(elements, converted, nMonths)
-	savings := emitPlanSavings(savingsRows, plannedFor, savingsHasActual, convertedGetter(converted), nMonths)
+	cur := localMonth(s.clock.Now(), reqctx.Location(ctx))
+	currentIdx := nMonths
+	for i, m := range monthsList {
+		if !m.Before(cur) {
+			currentIdx = i
+			break
+		}
+	}
+	savings := emitPlanSavings(savingsRows, plannedFor, savingsHasActual, convertedGetter(converted), nMonths, currentIdx)
 	return model.PlanStructureResult{Folders: folders, Elements: result, Savings: savings}, nil
 }
 

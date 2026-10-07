@@ -346,6 +346,31 @@ func TestGetBudgetSavings_DeletedAccountWithPlanOnly(t *testing.T) {
 	}
 }
 
+// A deleted savings account expects nothing more, so from the current month
+// (August) on its plan no longer counts: a plan alone does not keep its row,
+// and a row kept for its activity reports nothing budgeted.
+func TestGetBudgetSavings_DeletedAccountIgnoresCurrentAndLaterPlans(t *testing.T) {
+	h, tok, _ := newSavingsBudget(t)
+	h.setLimit(t, tok, savingsUSDID, "2026-09-01", "70")
+	if _, err := h.db.Exec(`UPDATE accounts SET is_deleted = 1 WHERE id = ?`, savingsUSDID); err != nil {
+		t.Fatal(err)
+	}
+
+	later, _ := h.savingsBudget(t, tok, "2026-09-15")
+	if _, ok := savingsByID(later.Item.Structure.Savings)[savingsUSDID]; ok {
+		t.Errorf("September savings = %+v, want the deleted S1 hidden despite its plan", later.Item.Structure.Savings)
+	}
+
+	current, _ := h.savingsBudget(t, tok, "2026-08-15")
+	s1, ok := savingsByID(current.Item.Structure.Savings)[savingsUSDID]
+	if !ok {
+		t.Fatalf("August savings = %+v, want the deleted S1 kept for its activity", current.Item.Structure.Savings)
+	}
+	if s1.Budgeted != "0" || s1.Spent != "300" || s1.Available != "-300" {
+		t.Errorf("S1 = %+v, want budgeted 0, spent 300, available -300 (August's plan of 400 dropped)", s1)
+	}
+}
+
 // withSavingsHistory adds, on top of newSavingsBudget, a June deposit of 1000 on
 // S1 and an August S1->S2 move of 55 USD / 50 EUR: a savings<->savings transfer
 // is not saved money, so it moves only the balances.
