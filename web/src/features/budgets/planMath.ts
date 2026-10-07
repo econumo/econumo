@@ -88,18 +88,17 @@ export function planWindow(selected: string, visible: number, startedAt: string,
 
 export interface PlanRow {
   element: PlanElementDto
-  hidden: boolean
 }
 export interface PlanFolderSection {
   folder: BudgetFolderDto
   rows: PlanRow[]
 }
 export interface PlanRows {
-  income: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null; hiddenCount: number }
+  income: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null }
   /** member-less folders: they belong to neither side yet, so they sit between the
    *  two bands (header-only) until a move gives them one */
   neutral: PlanFolderSection[]
-  expense: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null; hiddenCount: number }
+  expense: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null }
   archived: PlanRow[]
 }
 
@@ -133,8 +132,6 @@ export function projectSavingsClosings(s: PlanSavingsElementDto, months: string[
   })
   return { ...s, cells }
 }
-
-const isRowHidden = (el: PlanElementDto): boolean => el.cells.every((c) => isZero(c.actual) && c.planned === '')
 
 /** the overspend highlight: an expense actual past its plan, in ANY month — an
  *  unset plan reads as 0 everywhere else in the grid, so it counts as 0 here too */
@@ -172,46 +169,41 @@ export function folderSides(plan: BudgetPlanDto): Map<Id, FolderSide> {
   return sides
 }
 
-export function bucketPlanRows(plan: BudgetPlanDto, hideEmpty: boolean): PlanRows {
+export function bucketPlanRows(plan: BudgetPlanDto): PlanRows {
   const folders = [...plan.structure.folders].sort((a, b) => a.position - b.position)
   const elements = plan.structure.elements
 
   const archived = elements
     .filter((el) => el.isArchived === 1)
-    .map((el) => ({ element: el, hidden: false }))
+    .map((element) => ({ element }))
     .sort((a, b) => compareNames(a.element.name, b.element.name))
 
   const active = elements.filter((el) => el.isArchived === 0 && el.id !== UNCATEGORIZED_ID)
   const uncategorized = elements.filter((el) => el.isArchived === 0 && el.id === UNCATEGORIZED_ID)
   const uncategorizedFor = (side: Side): PlanRow | null => {
     const el = uncategorized.find((e) => sideOf(e) === side)
-    return el ? { element: el, hidden: false } : null
+    return el ? { element: el } : null
   }
 
   const folderSide = folderSides(plan)
 
-  const toRow = (el: PlanElementDto): PlanRow => ({ element: el, hidden: isRowHidden(el) })
-  const keep = (rows: PlanRow[]): PlanRow[] => (hideEmpty ? rows.filter((r) => !r.hidden) : rows)
-  const countHidden = (rows: PlanRow[]): number => rows.filter((r) => r.hidden).length
+  const toRow = (element: PlanElementDto): PlanRow => ({ element })
 
-  const sectionsFor = (side: Side): { folders: PlanFolderSection[]; loose: PlanRow[]; hiddenCount: number } => {
-    let hiddenCount = 0
+  const sectionsFor = (side: Side): { folders: PlanFolderSection[]; loose: PlanRow[] } => {
     const folderSections = folders
       .filter((f) => folderSide.get(f.id) === side)
-      .map((folder) => {
-        const rows = active
+      .map((folder) => ({
+        folder,
+        rows: active
           .filter((el) => el.folderId === folder.id)
           .sort((a, b) => a.position - b.position)
-          .map(toRow)
-        hiddenCount += countHidden(rows)
-        return { folder, rows: keep(rows) }
-      })
-    const looseRows = active
+          .map(toRow),
+      }))
+    const loose = active
       .filter((el) => el.folderId === null && sideOf(el) === side)
       .sort((a, b) => a.position - b.position)
       .map(toRow)
-    hiddenCount += countHidden(looseRows)
-    return { folders: folderSections, loose: keep(looseRows), hiddenCount }
+    return { folders: folderSections, loose }
   }
 
   const income = sectionsFor('income')
@@ -360,6 +352,31 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
       savingsPlanned,
       effectiveSavings: effSavings,
     }
+  })
+}
+
+/** A section's or folder's per-month sums in budget currency: what came in or went
+ *  out, and what was planned. Archived rows are history, not part of the plan. */
+export function planGroupSums(
+  rows: PlanElementDto[],
+  months: string[],
+  monthIndex: (m: string) => number,
+  ex: MonthExchange,
+): { actual: string; planned: string }[] {
+  return months.map((m) => {
+    const i = monthIndex(m)
+    let actual = '0'
+    let planned = '0'
+    if (i >= 0) {
+      for (const el of rows) {
+        const cell = el.isArchived === 0 ? el.cells[i] : undefined
+        if (cell) {
+          actual = add(actual, ex(el.currencyId, cell.actual, i))
+          planned = add(planned, ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i))
+        }
+      }
+    }
+    return { actual, planned }
   })
 }
 

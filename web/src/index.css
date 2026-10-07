@@ -291,15 +291,12 @@
   }
 }
 
-/* Plan grid: rows sit flush and share hairline dividers, so the last row of any
-   grouping must not draw a line across that grouping's bottom edge. The divider
-   lives on the row's [data-row-id] wrapper; scoping to that attribute (rather
-   than every last child) leaves a folder that ends a band untouched, and a
-   folder's terminal row is suppressed the same way. */
-.plan-band-income > [data-row-id]:last-child,
-.plan-band-expense > [data-row-id]:last-child,
-.plan-band-archived > [data-row-id]:last-child,
-.plan-band-savings > [data-row-id]:last-child,
-[data-testid^='plan-folder-'] [data-row-id]:last-child {
+/* Plan grid: rows and folder lines sit flush and share hairline dividers; each
+   section opens with its own top rule, so the last line of a section must not
+   draw a second one under it. That last line is a row, or the last row (or the
+   folded line) of the section's last folder. The divider lives on the row's
+   [data-row-id] wrapper and the folder line's [role=row] wrapper. */
+.plan-band > [data-row-id]:last-child,
+.plan-band > [data-testid^='plan-folder-']:last-child > :last-child {
   border-bottom: 0;
 }

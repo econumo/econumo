@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { EntityIcon } from '@/components/EntityIcon'
+import { isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { BudgetCommentDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
 import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
@@ -121,6 +122,31 @@ export interface GridCtx {
 }
 
 const figureClass = (ctx: GridCtx, col: number): string => `${PLAN_FIGURE_COL}${col === ctx.selectedCol ? ` ${PLAN_SELECTED_TINT}` : ''}`
+
+/** A section's or folder's month: `actual · plan` up to the selected month, plan alone
+ *  after it, the same way the rows read. `sum` is null for a month the plan has no
+ *  data for. */
+export function SumCell({
+  index,
+  sum,
+  month,
+  ctx,
+  fmt,
+}: {
+  index: number
+  sum: { actual: string; planned: string } | null
+  month: string
+  ctx: Pick<GridCtx, 'selected' | 'showActuals'>
+  fmt: (v: string) => string
+}) {
+  const actual = sum && (month === ctx.selected || (month < ctx.selected && ctx.showActuals)) ? sum.actual : null
+  return (
+    <span data-testid={`plan-sum-${index}`} className="text-sm text-muted-foreground tabular-nums">
+      {actual !== null ? `${fmt(actual)} · ` : ''}
+      {sum && !isZero(sum.planned) ? fmt(sum.planned) : ''}
+    </span>
+  )
+}
 
 // A child is a read-only breakdown of its parent's actuals: it carries no limit and
 // is not selectable (no aria-selected, no click/keyboard target) — only rows a limit

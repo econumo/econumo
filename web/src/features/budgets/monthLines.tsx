@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { HTMLAttributes, ReactNode } from 'react'
 import { ChevronDown, ChevronRight, MoreVertical } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -182,6 +182,7 @@ export function FolderLine({
   actions,
   actionsColumn,
   menu,
+  nameCell,
 }: {
   name: string
   folded: boolean
@@ -195,6 +196,8 @@ export function FolderLine({
   actionsColumn: boolean
   /** the folder's ⋮ menu, shown on hover */
   menu?: MenuAction[]
+  /** the Plan grid's name column: a gridcell the keyboard selection can land on */
+  nameCell?: HTMLAttributes<HTMLSpanElement>
 }) {
   const { t } = useTranslation()
   const layout = useLineLayout()
@@ -223,7 +226,13 @@ export function FolderLine({
   const dashes = Array.from({ length: plan ? layout.cols : 3 }, (_, i) => <Dash key={i} />)
   return (
     <header className={`${plan ? PLAN_LINE : LINE} ${FOLD_LINE} ${plan ? '' : FOLDER_INDENT} relative min-h-9 text-sm text-muted-foreground`} onClick={foldOnLineClick(onToggle)}>
-      {plan ? <span className={`${PLAN_NAME_COL} ${FOLDER_INDENT}`}>{nameParts}</span> : nameParts}
+      {plan ? (
+        <span {...nameCell} className={`${PLAN_NAME_COL} ${FOLDER_INDENT} ${nameCell?.className ?? ''}`.trim()}>
+          {nameParts}
+        </span>
+      ) : (
+        nameParts
+      )}
       {/* an empty folder reads as dashes in the same columns, so its ⋮ lines up
           with the others' */}
       <span data-testid={sums ? 'stat-line' : 'empty-folder-sums'} className="contents">

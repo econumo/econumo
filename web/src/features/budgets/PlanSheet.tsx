@@ -9,7 +9,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS as DndCSS } from '@dnd-kit/utilities'
 import type { SortableHandleProps } from '@/components/SortableList'
 import { afterIdFromDrop } from '@/lib/ordering'
-import { ChevronDown, ChevronRight, GripVertical, MoreVertical } from 'lucide-react'
+import { GripVertical, MoreVertical } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -19,7 +19,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PromptDialog } from '@/components/PromptDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
-import { cmp, isZero } from '@/lib/decimal'
+import { isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type {
@@ -80,7 +80,6 @@ import {
   addMonths,
   balanceRow,
   bucketPlanRows,
-  currentMonth,
   everydayBalanceRow,
   fillTargetCol,
   folderSides,
@@ -90,16 +89,19 @@ import {
   planHasSavingsData,
   projectSavingsClosings,
   planMonthExchange,
+  planGroupSums,
   planTotals,
   planVisibleCount,
   planWindow,
   savingsAsPlanElement,
   savingsBalanceRow,
 } from './planMath'
-import type { FolderSide, MonthExchange, PlanFolderSection, PlanMonthTotals, PlanRow, PlanRows } from './planMath'
+import type { FolderSide, MonthExchange, PlanFolderSection, PlanRow, PlanRows } from './planMath'
 import type { MenuAction } from './monthLayout'
-import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT } from './monthLayout'
-import { ElementRow, cellDomId, commentsReadOnly, isEditableCell, selectedClass, sourceAmount } from './PlanRows'
+import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext } from './monthLayout'
+import { FolderLine, MonthSectionHeader } from './monthLines'
+import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, selectedClass, sourceAmount } from './PlanRows'
+import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
 import type { GridCtx, PlanLimitTarget, PlanSelection } from './PlanRows'
 
 export interface PlanSheetProps {
@@ -119,6 +121,10 @@ const isFolderRowKey = (rk: string): boolean => rk.startsWith('pfolder:')
 // A folder header has a single cell, so whatever column the selection carries (kept so
 // Up/Down through a header lands back on the same month), its DOM cell is the -1 one.
 const selectionDomId = (sel: PlanSelection): string => cellDomId(sel.rowKey, isFolderRowKey(sel.rowKey) ? -1 : sel.col)
+
+type GroupSums = ReturnType<typeof planGroupSums>
+
+const monthColClass = (col: number, selectedCol: number): string => `${PLAN_FIGURE_COL}${col === selectedCol ? ` ${PLAN_SELECTED_TINT}` : ''}`
 
 // Radix portals render popover/dialog/drawer/dropdown-menu content outside the grid's
 // DOM subtree, but React re-dispatches both keyboard AND click events through the
@@ -329,41 +335,13 @@ function LooseRowsContainer({ rows, ctx }: { rows: PlanRow[]; ctx: GridCtx }) {
 // is out of the ordering entirely — neither can be dropped anywhere meaningful.
 const isDraggableRow = (r: PlanRow): boolean => r.element.id !== UNCATEGORIZED_ID && r.element.isArchived === 0
 
-function SectionHeader({
-  label,
-  foldKey,
-  folded,
-  onToggleFold,
-}: {
-  label: string
-  foldKey: string
-  folded: boolean
-  onToggleFold: (key: string) => void
-}) {
-  const { t } = useTranslation()
-  const Chevron = folded ? ChevronRight : ChevronDown
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-x-2 px-2 pt-2 pb-1">
-      <button
-        type="button"
-        className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-        aria-expanded={!folded}
-        title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
-        onClick={() => onToggleFold(foldKey)}
-      >
-        <Chevron className="size-3.5 shrink-0" />
-        {label}
-      </button>
-    </div>
-  )
-}
-
-// A folder with zero members (neutral, per folderSides) still renders — a header and,
-// when expanded, the same empty-folder hint the budget page shows: a folder only
+// A folder with zero members (neutral, per folderSides) still renders — its line and,
+// when expanded, the same empty-folder hint the budget view shows: a folder only
 // disappears if it doesn't exist, not because it currently has no side.
 function FolderRows({
   section,
   ctx,
+  sums,
   folded,
   collapsed,
   onToggleFold,
@@ -372,8 +350,10 @@ function FolderRows({
 }: {
   section: PlanFolderSection
   ctx: GridCtx
+  /** one per visible month; null for a folder with no rows */
+  sums: ReactNode[] | null
   folded: boolean
-  /** a folder drag is in flight: hide every folder's rows so the headers reorder as
+  /** a folder drag is in flight: hide every folder's rows so the lines reorder as
    *  compact blocks. Distinct from `folded`, which is the user's own fold state and
    *  still drives the chevron and aria-expanded. */
   collapsed: boolean
@@ -383,266 +363,68 @@ function FolderRows({
 }) {
   const { t } = useTranslation()
   const visibleRows = collapsed || folded ? [] : section.rows
-  const Chevron = folded ? ChevronRight : ChevronDown
   const rk = folderRowKey(section.folder.id)
   const selected = ctx.selection?.rowKey === rk
   return (
     <div data-testid={`plan-folder-${section.folder.id}`}>
-      {/* the whole header row is the fold target, not just the name — its own controls
-          (the drag grip, the actions menu and its portalled
-          items, whose clicks re-dispatch through this tree) keep their action and
-          don't fold. A fold click also selects the header, so the arrow keys pick up
-          from here (ArrowLeft/ArrowRight fold/unfold, Up/Down walk the rows). */}
+      {/* FolderLine folds on a click anywhere on it; the same click selects the
+          folder line, so the arrow keys pick up from here (ArrowLeft/ArrowRight
+          fold/unfold, Up/Down walk the rows). Its own controls (the grip, the
+          actions menu and its portalled items) keep their action and select nothing. */}
       <div
         role="row"
-        className="flex cursor-pointer flex-wrap items-center justify-between gap-x-2 px-2 py-1"
+        className="border-b border-border/60"
         onClick={(e) => {
-          if ((e.target as HTMLElement).closest(CLICK_ESCAPE_SELECTOR)) {
+          const target = e.target as HTMLElement
+          if (!e.currentTarget.contains(target)) {
+            return
+          }
+          const control = target.closest('button, a, input, [role="menuitem"]')
+          if (control && !control.hasAttribute('data-fold')) {
             return
           }
           ctx.select(rk, -1, e)
-          onToggleFold(section.folder.id)
         }}
       >
-        <span
-          role="gridcell"
-          id={cellDomId(rk, -1)}
-          aria-selected={selected}
-          className={`flex min-w-0 items-center gap-1${selectedClass(selected)}`}
-        >
-          {ctx.editMode ? <PlanFolderGrip name={section.folder.name} /> : null}
-          <button
-            type="button"
-            className="flex min-w-0 items-center gap-1.5 truncate px-1.5 text-sm font-medium"
-            aria-expanded={!folded}
-            title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
-            onClick={(e) => {
-              ctx.select(rk, -1, e)
-              onToggleFold(section.folder.id)
-            }}
-          >
-            <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="truncate">{section.folder.name}</span>
-          </button>
-        </span>
-        <span className="flex items-center gap-2">
-          {ctx.editMode ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`budget folder actions ${section.folder.name}`}>
-                  <MoreVertical className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => onRename(section.folder)}>{t('common.button.edit.label')}</DropdownMenuItem>
-                {/* same rule as the budget view: only a member-less folder is deletable here —
-                    the server would drop a populated one and strand its members */}
-                {section.rows.length === 0 ? (
-                  <DropdownMenuItem variant="destructive" onSelect={() => onDelete(section.folder)}>
-                    {t('budgets.page.budget.structure.action.delete_folder')}
-                  </DropdownMenuItem>
-                ) : null}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-        </span>
+        <FolderLine
+          name={section.folder.name}
+          folded={folded}
+          onToggle={() => onToggleFold(section.folder.id)}
+          sums={sums}
+          handle={ctx.editMode ? <PlanFolderGrip name={section.folder.name} /> : null}
+          actions={
+            ctx.editMode ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={`budget folder actions ${section.folder.name}`}>
+                    <MoreVertical className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => onRename(section.folder)}>{t('common.button.edit.label')}</DropdownMenuItem>
+                  {/* same rule as the budget view: only a member-less folder is deletable here —
+                      the server would drop a populated one and strand its members */}
+                  {section.rows.length === 0 ? (
+                    <DropdownMenuItem variant="destructive" onSelect={() => onDelete(section.folder)}>
+                      {t('budgets.page.budget.structure.action.delete_folder')}
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null
+          }
+          actionsColumn={false}
+          nameCell={{ role: 'gridcell', id: cellDomId(rk, -1), 'aria-selected': selected, className: selectedClass(selected) }}
+        />
       </div>
       {!folded && !collapsed && section.rows.length === 0 ? (
-        <p className="px-2 py-1 text-xs text-muted-foreground">{t('budgets.page.budget.structure.empty_folder.note')}</p>
+        <p className={`${ROW_INDENT['in-folder']} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_folder.note')}</p>
       ) : (
         <PlanRowList rows={visibleRows} ctx={ctx} />
       )}
     </div>
   )
 }
-
-/** the totals lines that drill down to a transaction list: the click opens the
- *  month's list of transfers that crossed the budget boundary. */
-type TotalsLink = 'transfers'
-
-interface TotalsRowSpec {
-  key: 'income' | 'expenses' | 'transfers' | 'savings'
-  labelKey: string
-  value: (t: PlanMonthTotals) => string
-  link?: TotalsLink
-  /** a signed line: negatives render destructive, like the Balance row */
-  signed?: boolean
-}
-
-// Uncategorized is NOT a totals line: it is an element row inside the income and
-// expense bands (see the uncategorized rows those sections render), and its actual
-// is already carried by the Income/Expenses lines here. Net is gone too — the
-// Balance row below chains on effectiveNet, so it says the same thing one row down.
-const TOTALS_ROWS: TotalsRowSpec[] = [
-  { key: 'income', labelKey: 'budgets.page.plan.totals.income', value: (t) => t.effectiveIncome },
-  { key: 'expenses', labelKey: 'budgets.page.plan.totals.expenses', value: (t) => t.effectiveExpense },
-  { key: 'transfers', labelKey: 'budgets.page.plan.totals.transfers', value: (t) => t.transfersNet, link: 'transfers', signed: true },
-]
-
-// only listed while the budget has savings rows, so a budget without them keeps
-// today's totals block exactly
-const SAVINGS_TOTALS_ROW: TotalsRowSpec = { key: 'savings', labelKey: 'budgets.page.plan.totals.savings', value: (t) => t.effectiveSavings }
-
-const monthColClass = (col: number, selectedCol: number): string => `${PLAN_FIGURE_COL}${col === selectedCol ? ` ${PLAN_SELECTED_TINT}` : ''}`
-
-function PlanTotals({
-  visibleMonths,
-  monthIndex,
-  selectedCol,
-  totals,
-  currency,
-  showSavings,
-  onLinkClick,
-}: {
-  visibleMonths: string[]
-  monthIndex: (m: string) => number
-  selectedCol: number
-  totals: PlanMonthTotals[]
-  currency: CurrencyDto | undefined
-  showSavings: boolean
-  onLinkClick: (link: TotalsLink, month: string) => void
-}) {
-  const { t } = useTranslation()
-  const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
-  const specs = showSavings ? [...TOTALS_ROWS, SAVINGS_TOTALS_ROW] : TOTALS_ROWS
-  return (
-    <div role="rowgroup" className="mt-2 flex flex-col border-t" data-testid="plan-totals">
-      {specs.map((spec) => (
-        <Fragment key={spec.key}>
-          <div role="row" className={`${PLAN_LINE} min-h-8`}>
-            <span className={PLAN_NAME_COL}>
-              <span className="truncate text-xs font-medium text-muted-foreground">{t(spec.labelKey)}</span>
-            </span>
-            {visibleMonths.map((m, i) => {
-              const idx = monthIndex(m)
-              const row = idx >= 0 ? totals[idx] : undefined
-              const value = row ? spec.value(row) : undefined
-              const negative = spec.signed && value !== undefined && cmp(value, '0') < 0
-              const tone = negative ? 'text-destructive' : ''
-              // a zero has nothing to list, so it stays plain text — except a
-              // transfers net that only cancels out (in == out != 0) still has rows
-              const linkable =
-                spec.link && row && value !== undefined
-                  ? spec.link === 'transfers'
-                    ? !(isZero(row.transfersIn) && isZero(row.transfersOut))
-                    : !isZero(value)
-                  : false
-              const title =
-                spec.link === 'transfers' && row
-                  ? `${t('budgets.page.plan.totals.transfers_tooltip', { in: fmt(row.transfersIn), out: fmt(row.transfersOut) })}. ${t('budgets.page.plan.totals.show_transactions')}`
-                  : t('budgets.page.plan.totals.show_transactions')
-              return (
-                <div key={m} data-col={i} className={`${monthColClass(i, selectedCol)} py-1`}>
-                  {linkable ? (
-                    <button
-                      type="button"
-                      title={title}
-                      aria-label={`transactions ${t(spec.labelKey)} ${m}`}
-                      data-testid={`plan-totals-${spec.key}-link-${i}`}
-                      className={`text-sm tabular-nums underline-offset-2 hover:underline ${tone}`}
-                      onClick={() => onLinkClick(spec.link!, m)}
-                    >
-                      {fmt(value!)}
-                    </button>
-                  ) : (
-                    <span className={`text-sm ${tone}`} data-testid={`plan-totals-${spec.key}-${i}`}>
-                      {value !== undefined ? fmt(value) : '—'}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </Fragment>
-      ))}
-    </div>
-  )
-}
-
-function PlanBalanceLine({
-  label,
-  testIdPrefix,
-  values,
-  visibleMonths,
-  monthIndex,
-  selectedCol,
-  currency,
-  cur,
-}: {
-  label: string
-  testIdPrefix: string
-  values: string[]
-  visibleMonths: string[]
-  monthIndex: (m: string) => number
-  selectedCol: number
-  currency: CurrencyDto | undefined
-  cur: string
-}) {
-  return (
-    <div role="row" className={`${PLAN_LINE} min-h-9`}>
-      <span className={PLAN_NAME_COL}>
-        <span className="truncate text-xs font-semibold">{label}</span>
-      </span>
-      {visibleMonths.map((m, i) => {
-        const idx = monthIndex(m)
-        const value = idx >= 0 ? values[idx] : undefined
-        const negative = value !== undefined && cmp(value, '0') < 0
-        return (
-          <div
-            key={m}
-            data-col={i}
-            data-testid={`${testIdPrefix}-${i}`}
-            className={`${monthColClass(i, selectedCol)} py-1.5 text-sm ${m === cur ? 'font-semibold' : ''} ${negative ? 'text-destructive' : ''}`}
-          >
-            {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// With savings rows the combined balance splits in two: Balance becomes the
-// everyday part and Savings balance the rest, so the pair always sums to the
-// single Balance a budget without savings shows.
-function PlanBalanceRow({
-  visibleMonths,
-  monthIndex,
-  selectedCol,
-  balance,
-  savingsBalance,
-  currency,
-  cur,
-}: {
-  visibleMonths: string[]
-  monthIndex: (m: string) => number
-  selectedCol: number
-  balance: string[]
-  savingsBalance: string[] | null
-  currency: CurrencyDto | undefined
-  cur: string
-}) {
-  const { t } = useTranslation()
-  const shared = { visibleMonths, monthIndex, selectedCol, currency, cur }
-  return (
-    <div
-      role="rowgroup"
-      className="sticky bottom-0 z-10 border-t bg-background"
-      data-testid="plan-balance-row"
-    >
-      {savingsBalance ? (
-        <PlanBalanceLine
-          label={t('budgets.page.plan.totals.savings_balance')}
-          testIdPrefix="plan-savings-balance"
-          values={savingsBalance}
-          {...shared}
-        />
-      ) : null}
-      <PlanBalanceLine label={t('budgets.page.plan.totals.balance')} testIdPrefix="plan-balance" values={balance} {...shared} />
-    </div>
-  )
-}
-
 
 // Same flattening the renderer walks (folders -> loose, income then savings then
 // neutral folders then expense, then archived), so Up/Down can never reach a row that isn't on
@@ -768,7 +550,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   // the totals drill-down: which bucket, and which column's month
   const [transactionsTarget, setTransactionsTarget] = useState<{ target: BudgetTransactionsTarget; month: string } | null>(null)
   const openTotalsTransactions = useCallback(
-    (_link: TotalsLink, month: string) => {
+    (month: string) => {
       const target: BudgetTransactionsTarget = {
         id: TRANSFERS_TARGET_ID,
         type: 'transfers',
@@ -938,7 +720,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       }),
     [t],
   )
-  const cur = currentMonth()
   // same wording as the budget view's period strip
   const monthLabel = useMemo(() => {
     const label = periodLabeler(i18n.language)
@@ -1057,10 +838,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       return null
     }
     if (!dragArrangement) {
-      return bucketPlanRows(plan, false)
+      return bucketPlanRows(plan)
     }
     const structure = { ...plan.structure, elements: placeElements(plan.structure.elements, dragArrangement) }
-    return bucketPlanRows({ ...plan, structure }, false)
+    return bucketPlanRows({ ...plan, structure })
   }, [plan, dragArrangement])
 
   // Live savings rows by position, then any deleted account's rows: those stay in
@@ -1078,7 +859,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     return [
       ...placed.filter((el) => el.isArchived === 0).sort(byPosition),
       ...placed.filter((el) => el.isArchived !== 0).sort(byPosition),
-    ].map((element) => ({ element, hidden: false }))
+    ].map((element) => ({ element }))
   }, [plan, dragArrangement])
 
   // Rows that earn their place per VISIBLE window, not per fetched cells (the fetch
@@ -1135,6 +916,24 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     [shownRows, savingsRows, folded],
   )
   const folderSideMap = useMemo(() => (plan ? folderSides(plan) : new Map<Id, FolderSide>()), [plan])
+  // Per-month sums of every section and folder line, keyed by fold key. Memoized
+  // like the totals: they convert every cell, and the arrow keys re-render the grid.
+  const groupSums = useMemo(() => {
+    const sums = new Map<string, GroupSums>()
+    if (!shownRows || !ex) {
+      return sums
+    }
+    const sumOf = (rows: PlanRow[]) => planGroupSums(rows.map((r) => r.element), visibleMonths, monthIndex, ex)
+    for (const side of ['income', 'expense'] as const) {
+      const band = shownRows[side]
+      for (const f of band.folders) {
+        sums.set(f.folder.id, sumOf(f.rows))
+      }
+      sums.set(side, sumOf([...band.folders.flatMap((f) => f.rows), ...band.loose, ...(band.uncategorized ? [band.uncategorized] : [])]))
+    }
+    sums.set('savings', sumOf(savingsRows))
+    return sums
+  }, [shownRows, savingsRows, visibleMonths, monthIndex, ex])
 
   const ctx: GridCtx | null = useMemo(() => {
     if (!plan) {
@@ -1232,6 +1031,12 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const savingsFolded = folded('savings')
   const savingsLive = savingsRows.filter(isDraggableRow)
   const savingsDeleted = savingsRows.filter((r) => !isDraggableRow(r))
+
+  const fmtBudget = (v: string) => moneyFormat(v, planCurrency, { showCurrency: false, useNativePrecision: false })
+  const sumCells = (sums: GroupSums | undefined): ReactNode[] =>
+    visibleMonths.map((m, i) => (
+      <SumCell key={m} index={i} sum={sums && monthIndex(m) >= 0 ? sums[i] : null} month={m} ctx={ctx} fmt={fmtBudget} />
+    ))
 
   // The band's element buckets as the arrangement elementMove.ts operates on:
   // one container per folder plus the loose rows. Uncategorized and archived
@@ -1732,16 +1537,16 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             )
           })}
         </div>
-        <section
-          role="rowgroup"
-          data-testid="plan-section-income"
-          className="plan-band-income flex flex-col py-1"
-        >
-          <SectionHeader
-            label={t('budgets.page.plan.section.income')}
+        {/* Sections sit flush, split by a hairline, so the selected month's tint runs
+            unbroken from the month header down to the Balance line. */}
+        <section role="rowgroup" data-testid="plan-section-income" className="plan-band plan-band-income flex flex-col">
+          <MonthSectionHeader
             foldKey="income"
-            folded={incomeFolded}
-            onToggleFold={togglePlanFold}
+            testId="plan-section-line-income"
+            label={t('budgets.page.plan.section.income')}
+            headings={[]}
+            sums={sumCells(groupSums.get('income'))}
+            actionsColumn={false}
           />
           {!incomeFolded ? (
             <PlanBand
@@ -1757,6 +1562,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                   <FolderRows
                     section={f}
                     ctx={ctx}
+                    sums={f.rows.length > 0 ? sumCells(groupSums.get(f.folder.id)) : null}
                     folded={folded(f.folder.id)}
                     collapsed={draggingFolder}
                     onToggleFold={togglePlanFold}
@@ -1772,10 +1578,12 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                   <Fragment key={f.folder.id}>{section}</Fragment>
                 )
               })}
-              {editMode ? <LooseRowsContainer rows={incomeLoose} ctx={ctx} /> : <PlanRowList rows={incomeLoose} ctx={ctx} />}
-              {shownRows.income.uncategorized ? (
-                <ElementRow key={rowKey(shownRows.income.uncategorized)} row={shownRows.income.uncategorized} ctx={ctx} />
-              ) : null}
+              <RowLevelContext.Provider value="top">
+                {editMode ? <LooseRowsContainer rows={incomeLoose} ctx={ctx} /> : <PlanRowList rows={incomeLoose} ctx={ctx} />}
+                {shownRows.income.uncategorized ? (
+                  <ElementRow key={rowKey(shownRows.income.uncategorized)} row={shownRows.income.uncategorized} ctx={ctx} />
+                ) : null}
+              </RowLevelContext.Provider>
             </PlanBand>
           ) : null}
         </section>
@@ -1783,15 +1591,17 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         {hasSavings ? (
           // Its own drag context: a savings row reorders among savings rows only and
           // can never reach a folder, which the server refuses for it anyway.
-          <section role="rowgroup" data-testid="plan-section-savings" className="plan-band-savings mt-6 flex flex-col py-1">
-            <SectionHeader
-              label={t('budgets.page.plan.section.savings')}
+          <section role="rowgroup" data-testid="plan-section-savings" className="plan-band plan-band-savings flex flex-col border-t">
+            <MonthSectionHeader
               foldKey="savings"
-              folded={savingsFolded}
-              onToggleFold={togglePlanFold}
+              testId="plan-section-line-savings"
+              label={t('budgets.page.plan.section.savings')}
+              headings={[]}
+              sums={sumCells(groupSums.get('savings'))}
+              actionsColumn={false}
             />
             {!savingsFolded ? (
-              <>
+              <RowLevelContext.Provider value="top">
                 <PlanBand
                   editMode={editMode}
                   sensors={sensors}
@@ -1805,7 +1615,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                 {savingsDeleted.map((r) => (
                   <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
                 ))}
-              </>
+              </RowLevelContext.Provider>
             ) : null}
           </section>
         ) : null}
@@ -1815,7 +1625,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           // bands rather than defaulting into one. Their own drag context keeps folder
           // reordering available; rows reach them via "Move to folder…" (a neutral
           // folder is offered to both sides there), never by a cross-band drag.
-          <section role="rowgroup" data-testid="plan-section-neutral" className="plan-band-neutral mt-6 flex flex-col py-1">
+          <section role="rowgroup" data-testid="plan-section-neutral" className="plan-band plan-band-neutral flex flex-col border-t">
             <PlanBand
               editMode={editMode}
               sensors={sensors}
@@ -1829,6 +1639,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                   <FolderRows
                     section={f}
                     ctx={ctx}
+                    sums={f.rows.length > 0 ? sumCells(groupSums.get(f.folder.id)) : null}
                     folded={folded(f.folder.id)}
                     collapsed={draggingFolder}
                     onToggleFold={togglePlanFold}
@@ -1848,16 +1659,14 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           </section>
         ) : null}
 
-        <section
-          role="rowgroup"
-          data-testid="plan-section-expense"
-          className="plan-band-expense mt-6 flex flex-col py-1"
-        >
-          <SectionHeader
-            label={t('budgets.page.plan.section.expenses')}
+        <section role="rowgroup" data-testid="plan-section-expense" className="plan-band plan-band-expense flex flex-col border-t">
+          <MonthSectionHeader
             foldKey="expense"
-            folded={expenseFolded}
-            onToggleFold={togglePlanFold}
+            testId="plan-section-line-expense"
+            label={t('budgets.page.plan.section.expenses')}
+            headings={[]}
+            sums={sumCells(groupSums.get('expense'))}
+            actionsColumn={false}
           />
           {!expenseFolded ? (
             <PlanBand
@@ -1873,6 +1682,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                   <FolderRows
                     section={f}
                     ctx={ctx}
+                    sums={f.rows.length > 0 ? sumCells(groupSums.get(f.folder.id)) : null}
                     folded={folded(f.folder.id)}
                     collapsed={draggingFolder}
                     onToggleFold={togglePlanFold}
@@ -1888,47 +1698,48 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                   <Fragment key={f.folder.id}>{section}</Fragment>
                 )
               })}
-              {editMode ? <LooseRowsContainer rows={expenseLoose} ctx={ctx} /> : <PlanRowList rows={expenseLoose} ctx={ctx} />}
-              {shownRows.expense.uncategorized ? (
-                <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
-              ) : null}
+              <RowLevelContext.Provider value="top">
+                {editMode ? <LooseRowsContainer rows={expenseLoose} ctx={ctx} /> : <PlanRowList rows={expenseLoose} ctx={ctx} />}
+                {shownRows.expense.uncategorized ? (
+                  <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
+                ) : null}
+              </RowLevelContext.Provider>
             </PlanBand>
           ) : null}
         </section>
 
         {shownRows.archived.length > 0 ? (
-          <section role="rowgroup" data-testid="plan-section-archived" className="plan-band-archived flex flex-col py-1">
-            <SectionHeader
-              label={t('budgets.page.plan.section.archived')}
+          <section role="rowgroup" data-testid="plan-section-archived" className="plan-band plan-band-archived flex flex-col border-t">
+            {/* archived rows are history, not plan: the line carries no sums */}
+            <MonthSectionHeader
               foldKey="archived"
-              folded={folded('archived')}
-              onToggleFold={togglePlanFold}
+              testId="plan-section-line-archived"
+              label={t('budgets.page.plan.section.archived')}
+              headings={[]}
+              sums={visibleMonths.map(() => null)}
+              actionsColumn={false}
             />
-            {!folded('archived')
-              ? shownRows.archived.map((r) => <ElementRow key={rowKey(r)} row={r} ctx={ctx} />)
-              : null}
+            {!folded('archived') ? (
+              <RowLevelContext.Provider value="top">
+                {shownRows.archived.map((r) => (
+                  <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
+                ))}
+              </RowLevelContext.Provider>
+            ) : null}
           </section>
         ) : null}
 
         <PlanTotals
           visibleMonths={visibleMonths}
           monthIndex={monthIndex}
-          selectedCol={selectedCol}
-          totals={totals}
           currency={planCurrency}
+          totals={totals}
           showSavings={hasSavings}
-          onLinkClick={openTotalsTransactions}
+          savingsBalance={savingsBalance}
+          onTransfersClick={openTotalsTransactions}
         />
 
-        <PlanBalanceRow
-          visibleMonths={visibleMonths}
-          monthIndex={monthIndex}
-          selectedCol={selectedCol}
-          balance={everydayBalance}
-          savingsBalance={savingsBalance}
-          currency={planCurrency}
-          cur={cur}
-        />
+        <PlanBalanceRow visibleMonths={visibleMonths} monthIndex={monthIndex} currency={planCurrency} balance={everydayBalance} />
         </LineControlsContext.Provider>
         </LineLayoutContext.Provider>
       </div>

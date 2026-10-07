@@ -19,6 +19,7 @@ import {
   makePlanExchange,
   monthDate,
   monthDiff,
+  planGroupSums,
   planHasSavingsData,
   planMonthExchange,
   planTotals,
@@ -27,6 +28,7 @@ import {
   projectSavingsClosings,
   savingsBalanceRow,
 } from './planMath'
+import type { MonthExchange } from './planMath'
 
 const usd: CurrencyDto = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur: CurrencyDto = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
@@ -147,14 +149,14 @@ describe('bucketPlanRows', () => {
       structure: { folders: [f1], elements: [incomeEnvelope, expenseCategory, incomeCategory, uncatIncome, uncatExpense] },
     })
 
-    const rows = bucketPlanRows(plan, false)
+    const rows = bucketPlanRows(plan)
 
-    expect(rows.income.folders).toEqual([{ folder: f1, rows: [{ element: incomeEnvelope, hidden: false }] }])
-    expect(rows.income.loose).toEqual([{ element: incomeCategory, hidden: false }])
-    expect(rows.income.uncategorized).toEqual({ element: uncatIncome, hidden: false })
+    expect(rows.income.folders).toEqual([{ folder: f1, rows: [{ element: incomeEnvelope }] }])
+    expect(rows.income.loose).toEqual([{ element: incomeCategory }])
+    expect(rows.income.uncategorized).toEqual({ element: uncatIncome })
     expect(rows.expense.folders).toEqual([])
-    expect(rows.expense.loose).toEqual([{ element: expenseCategory, hidden: false }])
-    expect(rows.expense.uncategorized).toEqual({ element: uncatExpense, hidden: false })
+    expect(rows.expense.loose).toEqual([{ element: expenseCategory }])
+    expect(rows.expense.uncategorized).toEqual({ element: uncatExpense })
   })
 
   it('neutral folders get their own bucket, in position order, joining neither side', () => {
@@ -162,7 +164,7 @@ describe('bucketPlanRows', () => {
     const f3: BudgetFolderDto = { id: 'f3', name: 'Another Empty', position: 1 }
     const plan = mkPlan({ structure: { folders: [f2, f3], elements: [] } })
 
-    const rows = bucketPlanRows(plan, false)
+    const rows = bucketPlanRows(plan)
 
     expect(rows.neutral).toEqual([
       { folder: f3, rows: [] },
@@ -172,55 +174,33 @@ describe('bucketPlanRows', () => {
     expect(rows.income.folders).toEqual([])
   })
 
-  it('hideEmpty removes all-empty rows and counts them per side; rows with any planned survive', () => {
-    const hidden = mkEl({
-      id: 'cat-hidden',
-      type: 1,
-      name: 'Hidden',
-      position: 0,
-      cells: [
-        { actual: '0', planned: '' },
-        { actual: '0', planned: '' },
-      ],
-    })
-    // planned '0' (not empty) in month 0 keeps this row visible even though nothing is spent
-    const surviving = mkEl({
-      id: 'cat-surviving',
-      type: 1,
-      name: 'Surviving',
-      position: 1,
-      cells: [
-        { actual: '0', planned: '0' },
-        { actual: '0', planned: '' },
-      ],
-    })
-    const plan = mkPlan({ structure: { folders: [], elements: [hidden, surviving] } })
-
-    const shown = bucketPlanRows(plan, false)
-    expect(shown.expense.loose).toEqual([
-      { element: hidden, hidden: true },
-      { element: surviving, hidden: false },
-    ])
-    expect(shown.expense.hiddenCount).toBe(1)
-
-    const filtered = bucketPlanRows(plan, true)
-    expect(filtered.expense.loose).toEqual([{ element: surviving, hidden: false }])
-    expect(filtered.expense.hiddenCount).toBe(1)
-  })
-
   it('archived rows leave the sections and sort by name', () => {
     const zebra = mkEl({ id: 'cat-zebra', type: 1, name: 'Zebra', isArchived: 1, position: 0, cells: [{ actual: '10', planned: '' }, { actual: '0', planned: '' }] })
     const apple = mkEl({ id: 'env-apple', type: 4, name: 'Apple', isArchived: 1, position: 1, cells: [{ actual: '20', planned: '' }, { actual: '0', planned: '' }] })
     const active = mkEl({ id: 'cat-active', type: 1, name: 'Active', position: 0, cells: [{ actual: '5', planned: '' }, { actual: '0', planned: '' }] })
     const plan = mkPlan({ structure: { folders: [], elements: [zebra, apple, active] } })
 
-    const rows = bucketPlanRows(plan, false)
+    const rows = bucketPlanRows(plan)
 
     expect(rows.archived.map((r) => r.element.id)).toEqual(['env-apple', 'cat-zebra'])
-    expect(rows.expense.loose).toEqual([{ element: active, hidden: false }])
+    expect(rows.expense.loose).toEqual([{ element: active }])
     expect(rows.income.loose).toEqual([])
     expect(rows.income.folders).toEqual([])
   })
+})
+
+it('planGroupSums adds actual and plan per month in budget currency, skipping archived rows', () => {
+  const el = (id: string, cells: { actual: string; planned: string }[], isArchived: 0 | 1 = 0) =>
+    ({ id, type: BudgetElementType.CATEGORY, name: id, icon: '', currencyId: 'usd', isArchived, folderId: null, position: 0, ownerUserId: null, cells, children: [] })
+  const months = ['2026-06-01', '2026-07-01']
+  const ex: MonthExchange = (_from, amount) => amount
+  const sums = planGroupSums(
+    [el('a', [{ actual: '10', planned: '20' }, { actual: '1', planned: '' }]), el('b', [{ actual: '5', planned: '5' }, { actual: '0', planned: '7' }]), el('z', [{ actual: '99', planned: '99' }, { actual: '99', planned: '99' }], 1)],
+    months,
+    (m) => months.indexOf(m),
+    ex,
+  )
+  expect(sums).toEqual([{ actual: '15', planned: '25' }, { actual: '1', planned: '7' }])
 })
 
 describe('folderSides', () => {

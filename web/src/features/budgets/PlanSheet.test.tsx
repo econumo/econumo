@@ -11,7 +11,8 @@ import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { toast } from 'sonner'
-import { balanceRow, formatPlanMonth, makePlanExchange, planTotals } from './planMath'
+import { balanceRow, formatPlanMonth, makePlanExchange, planGroupSums, planTotals } from './planMath'
+import { isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -487,6 +488,65 @@ it('totals block renders one effective value per cell for income/expenses/transf
   // effectiveNet is no longer a footer line of its own; the running balance chains on it
   const expected = moneyFormat(balance[3], fixtureUsd, { showCurrency: false, useNativePrecision: false })
   expect(screen.getByTestId('plan-balance-2')).toHaveTextContent(expected)
+})
+
+it('section and folder lines carry per-month sums whether open or folded', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const expenses = screen.getByTestId('plan-section-line-expense')
+  expect(within(expenses).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+  await user.click(within(expenses).getByRole('button', { expanded: true }))
+  expect(within(screen.getByTestId('plan-section-line-expense')).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+})
+
+it('section and folder sums read actual · plan up to the selected month, plan alone after it', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
+  const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
+  // window Jun/Jul/Aug = fetched months 1..3; Essentials (bf1) holds pe1 alone
+  const pe1 = plan.structure.elements.find((el) => el.id === 'pe1')!
+  const sums = planGroupSums([pe1], plan.months, (m) => plan.months.indexOf(m), ex)
+  const folderLine = within(screen.getByTestId('plan-folder-bf1')).getAllByRole('row')[0]
+  const cell = (col: number) => within(folderLine).getByTestId(`plan-sum-${col}`)
+  const plannedText = (v: string) => (isZero(v) ? '' : fmt(v))
+  expect(cell(0)).toHaveTextContent(`${fmt(sums[1].actual)} · ${plannedText(sums[1].planned)}`.trim())
+  expect(cell(1)).toHaveTextContent(`${fmt(sums[2].actual)} · ${plannedText(sums[2].planned)}`.trim())
+  // Aug is after the selected July: its plan alone, no actual
+  expect(cell(2).textContent).toBe(plannedText(sums[3].planned))
+})
+
+it('totals: Income, Expenses, Savings, Total savings, then a sticky Balance; Transfers only when non-zero', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const lines = within(screen.getByTestId('plan-totals')).getAllByTestId(/^plan-total-/).map((l) => l.getAttribute('data-testid'))
+  expect(lines[0]).toBe('plan-total-income')
+  expect(lines[1]).toBe('plan-total-expenses')
+  // the fixture's June crossed the budget boundary, and June is on screen
+  expect(lines).toContain('plan-total-transfers')
+  expect(within(screen.getByTestId('plan-balance-row')).getByTestId('plan-total-balance')).toBeInTheDocument()
+})
+
+it('totals: no Transfers line when nothing crossed the boundary in the visible months', async () => {
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler({ ...plan, transfers: [] }),
+  )
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const lines = within(screen.getByTestId('plan-totals')).getAllByTestId(/^plan-total-/).map((l) => l.getAttribute('data-testid'))
+  expect(lines).toEqual(['plan-total-income', 'plan-total-expenses'])
 })
 
 it('folding a section header collapses its rows and persists', async () => {
@@ -1973,17 +2033,23 @@ describe('income/expense split', () => {
     expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
   })
 
-  it('separates the bands with a gap, not a rule', async () => {
+  it('separates the sections with a hairline, not a gap, so the selected month tint never breaks', async () => {
     usePlanHandlers()
     renderPage()
     await screen.findByTestId('plan-sheet')
 
-    expect(screen.getByTestId('plan-section-income').classList.contains('plan-band-income')).toBe(true)
+    const income = screen.getByTestId('plan-section-income')
+    expect(income.classList.contains('plan-band-income')).toBe(true)
+    // the month header's own rule sits right above the first section
+    expect(income.classList.contains('border-t')).toBe(false)
     const expenseSection = screen.getByTestId('plan-section-expense')
     expect(expenseSection.classList.contains('plan-band-expense')).toBe(true)
-    // whitespace separates the two sections; the old border-t-2 rule is gone
-    expect(expenseSection.classList.contains('mt-6')).toBe(true)
-    expect(expenseSection.classList.contains('border-t-2')).toBe(false)
+    expect(expenseSection.classList.contains('border-t')).toBe(true)
+    for (const cls of ['mt-6', 'py-1', 'border-t-2']) {
+      expect(expenseSection.classList.contains(cls)).toBe(false)
+    }
+    // the section opens on its line
+    expect(expenseSection.firstElementChild).toBe(screen.getByTestId('plan-section-line-expense'))
   })
 
   it('hides an uncategorized row whose visible cells are all zero, and it returns when the window covers its spend', async () => {
@@ -2069,7 +2135,8 @@ it('transfers line: signed net per month, a tooltip with the in/out split, and a
   // window Jun/Jul/Aug; the fixture's June crossed 50 in / 150 out
   const junLink = screen.getByTestId('plan-totals-transfers-link-0')
   expect(junLink).toHaveTextContent('-100.00')
-  expect(junLink.className).toContain('text-destructive')
+  // money leaving the budget is no problem in itself: only a negative Balance is red
+  expect(junLink.closest('[data-col]')!.className).not.toContain('text-expense')
   expect(junLink).toHaveAttribute('title', 'In 50.00 · Out 150.00. Show transactions')
 
   // nothing crossed in July: plain text, no link
@@ -2171,30 +2238,19 @@ it('tints the selected month top to bottom, header and body alike, and marks a h
   headers.forEach((h) => expect(h.className).not.toMatch(/font-(bold|semibold)/))
 })
 
-it('bolds only the current month in the Balance row', async () => {
+it('the Balance line carries no bold: a full-colour label and regular figures, red only when negative', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   renderPage()
   await screen.findByTestId('plan-sheet')
 
-  // the Balance figure marks the current month (Aug, the test clock), not the selected one
-  const headers = within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')
-  const currentCol = headers.findIndex((h) => h.getAttribute('data-month') === '2026-08-01')
-  expect(currentCol).toBe(2)
-
-  const cells = [...document.querySelectorAll('[data-testid^="plan-balance-"]')].filter((c) =>
-    /plan-balance-\d+$/.test(c.getAttribute('data-testid') ?? ''),
-  )
-  expect(cells.length).toBeGreaterThan(1)
-
-  cells.forEach((cell, i) => {
-    const bold = cell.className.includes('font-semibold')
-    expect(bold).toBe(i === currentCol)
-  })
-
-  // the row label keeps its weight regardless of which months are on screen
-  const label = within(screen.getByTestId('plan-balance-row')).getByText('Balance')
-  expect(label.className).toContain('font-semibold')
+  const line = screen.getByTestId('plan-total-balance')
+  expect(line.outerHTML).not.toMatch(/font-(bold|semibold)/)
+  expect(within(line).getByText('Balance').parentElement!.className).not.toContain('text-muted-foreground')
+  // the fixture's balance stays positive, so no month reads red
+  for (let col = 0; col < 3; col++) {
+    expect(screen.getByTestId(`plan-balance-${col}`).closest('[data-col]')!.className).not.toContain('text-expense')
+  }
 })
 
 it('gives expanded child rows the same row-hover treatment as their parents', async () => {

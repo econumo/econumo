@@ -318,7 +318,7 @@ it('edit mode: savings rows reorder within their own band only, with folderId nu
   await waitFor(() => expect(rowIds(screen.getByTestId('plan-section-savings'))).toEqual(['acc-s2:5', 'acc-s1:5', 'acc-s3:5']))
 })
 
-it('totals gain a Savings line below Transfers; the balance splits into Balance and Total savings', async () => {
+it('totals gain a Savings line after Expenses and a Total savings line; the sticky Balance is the everyday part', async () => {
   useHandlers()
   renderPage()
   await screen.findByTestId('plan-section-savings')
@@ -331,9 +331,8 @@ it('totals gain a Savings line below Transfers; the balance splits into Balance 
   const everyday = everydayBalanceRow(combined, savings)
   const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
 
-  const totalsBlock = screen.getByTestId('plan-totals')
-  const labels = within(totalsBlock).getAllByRole('row').map((r) => r.firstElementChild?.textContent)
-  expect(labels).toEqual(['Income', 'Expenses', 'Transfers', 'Savings'])
+  expect(totalLines()).toEqual(['income', 'expenses', 'savings', 'transfers', 'savings-balance'])
+  expect(within(screen.getByTestId('plan-total-savings-balance')).getByText('Total savings')).toBeInTheDocument()
   // window Jun/Jul/Aug = plan months 1..3
   for (let col = 0; col < 3; col++) {
     expect(screen.getByTestId(`plan-totals-savings-${col}`)).toHaveTextContent(fmt(totals[col + 1].effectiveSavings))
@@ -341,11 +340,12 @@ it('totals gain a Savings line below Transfers; the balance splits into Balance 
     expect(screen.getByTestId(`plan-savings-balance-${col}`)).toHaveTextContent(fmt(savings[col + 1]))
   }
 
+  // the sticky line is the everyday Balance alone; Total savings scrolls with the totals
   const balanceArea = screen.getByTestId('plan-balance-row')
   expect(within(balanceArea).getByText('Balance')).toBeInTheDocument()
+  expect(within(balanceArea).queryByText('Total savings')).not.toBeInTheDocument()
   // a plain label: no info note beside it
-  expect(within(balanceArea).getByText('Total savings')).toBeInTheDocument()
-  expect(within(balanceArea).queryByRole('button', { name: 'About' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'About' })).toBeNull()
   expect(screen.queryByTestId('plan-savings-balance-info')).toBeNull()
 })
 
@@ -389,10 +389,9 @@ it('without savings rows: no Savings section, totals line or balance row, and Ba
   renderPage()
   await screen.findByTestId('plan-sheet')
   expect(screen.queryByTestId('plan-section-savings')).not.toBeInTheDocument()
-  const labels = within(screen.getByTestId('plan-totals')).getAllByRole('row').map((r) => r.firstElementChild?.textContent)
-  expect(labels).toEqual(['Income', 'Expenses', 'Transfers'])
+  expect(totalLines()).toEqual(['income', 'expenses', 'transfers'])
   expect(screen.queryByTestId('plan-savings-balance-0')).not.toBeInTheDocument()
-  expect(within(screen.getByTestId('plan-balance-row')).queryByText('Total savings')).not.toBeInTheDocument()
+  expect(screen.queryByText('Total savings')).not.toBeInTheDocument()
 
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
@@ -416,8 +415,7 @@ it('a deleted savings account with only an opening balance splits the balance wi
 
   // no rows to show, so no Savings section and no Savings line in totals
   expect(screen.queryByTestId('plan-section-savings')).not.toBeInTheDocument()
-  const labels = within(screen.getByTestId('plan-totals')).getAllByRole('row').map((r) => r.firstElementChild?.textContent)
-  expect(labels).toEqual(['Income', 'Expenses', 'Transfers'])
+  expect(totalLines()).toEqual(['income', 'expenses', 'transfers', 'savings-balance'])
 
   // but the balance still splits: the 1000 opening balance is savings money, not everyday money
   const plan = openingOnlyPlan as unknown as BudgetPlanDto
@@ -428,9 +426,8 @@ it('a deleted savings account with only an opening balance splits the balance wi
   const everyday = everydayBalanceRow(combined, savings)
   const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
 
-  const balanceArea = screen.getByTestId('plan-balance-row')
-  expect(within(balanceArea).getByText('Balance')).toBeInTheDocument()
-  expect(within(balanceArea).getByText('Total savings')).toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-balance-row')).getByText('Balance')).toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-totals')).getByText('Total savings')).toBeInTheDocument()
   for (let col = 0; col < 3; col++) {
     expect(screen.getByTestId(`plan-balance-${col}`)).toHaveTextContent(fmt(everyday[col + 1]))
     expect(screen.getByTestId(`plan-savings-balance-${col}`)).toHaveTextContent(fmt(savings[col + 1]))
@@ -452,9 +449,16 @@ it('savings rows carry no balance line of their own: balances live on the Total 
   expect(document.querySelectorAll('[data-testid="cell-closing"]')).toHaveLength(0)
   expect(cell).not.toHaveTextContent('1,200.00')
   // the per-month values of that line are covered by the balance split test above
-  expect(within(screen.getByTestId('plan-balance-row')).getByText('Total savings')).toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-totals')).getByText('Total savings')).toBeInTheDocument()
   expect(screen.getByTestId('plan-savings-balance-0')).toBeInTheDocument()
 })
+
+/** the totals block's lines, top to bottom, by key */
+function totalLines(): string[] {
+  return within(screen.getByTestId('plan-totals'))
+    .getAllByTestId(/^plan-total-/)
+    .map((l) => (l.getAttribute('data-testid') ?? '').replace('plan-total-', ''))
+}
 
 function captureTxListParams() {
   let params: URLSearchParams | undefined
