@@ -330,44 +330,31 @@ func TestGetBudgetSavings_KeylessRowsFollowMembershipOrder(t *testing.T) {
 	}
 }
 
-func TestGetBudgetSavings_DeletedAccountWithPlanOnly(t *testing.T) {
+// A deleted account's plan counts only in a month it had activity: the July,
+// August (current) and September plans alone keep no row, while August's
+// activity keeps the row with its plan.
+func TestGetBudgetSavings_DeletedAccountPlanCountsOnlyWithActivity(t *testing.T) {
 	h, tok, _ := newSavingsBudget(t)
 	h.setLimit(t, tok, savingsUSDID, "2026-07-01", "70")
+	h.setLimit(t, tok, savingsUSDID, "2026-09-01", "90")
 	if _, err := h.db.Exec(`UPDATE accounts SET is_deleted = 1 WHERE id = ?`, savingsUSDID); err != nil {
 		t.Fatal(err)
 	}
-	view, _ := h.savingsBudget(t, tok, "2026-07-15")
+
+	for _, date := range []string{"2026-07-15", "2026-09-15"} {
+		view, _ := h.savingsBudget(t, tok, date)
+		if _, ok := savingsByID(view.Item.Structure.Savings)[savingsUSDID]; ok {
+			t.Errorf("%s savings = %+v, want the deleted S1 hidden: a plan without activity", date, view.Item.Structure.Savings)
+		}
+	}
+
+	view, _ := h.savingsBudget(t, tok, "2026-08-15")
 	s1, ok := savingsByID(view.Item.Structure.Savings)[savingsUSDID]
 	if !ok {
-		t.Fatalf("July savings = %+v, want the deleted S1 kept for its plan", view.Item.Structure.Savings)
+		t.Fatalf("August savings = %+v, want the deleted S1 kept for its activity", view.Item.Structure.Savings)
 	}
-	if s1.IsArchived != 1 || s1.Budgeted != "70" || s1.Spent != "0" {
-		t.Errorf("S1 = %+v, want isArchived 1, budgeted 70, spent 0", s1)
-	}
-}
-
-// A deleted savings account expects nothing more, so from the current month
-// (August) on its plan no longer counts: a plan alone does not keep its row,
-// and a row kept for its activity reports nothing budgeted.
-func TestGetBudgetSavings_DeletedAccountIgnoresCurrentAndLaterPlans(t *testing.T) {
-	h, tok, _ := newSavingsBudget(t)
-	h.setLimit(t, tok, savingsUSDID, "2026-09-01", "70")
-	if _, err := h.db.Exec(`UPDATE accounts SET is_deleted = 1 WHERE id = ?`, savingsUSDID); err != nil {
-		t.Fatal(err)
-	}
-
-	later, _ := h.savingsBudget(t, tok, "2026-09-15")
-	if _, ok := savingsByID(later.Item.Structure.Savings)[savingsUSDID]; ok {
-		t.Errorf("September savings = %+v, want the deleted S1 hidden despite its plan", later.Item.Structure.Savings)
-	}
-
-	current, _ := h.savingsBudget(t, tok, "2026-08-15")
-	s1, ok := savingsByID(current.Item.Structure.Savings)[savingsUSDID]
-	if !ok {
-		t.Fatalf("August savings = %+v, want the deleted S1 kept for its activity", current.Item.Structure.Savings)
-	}
-	if s1.Budgeted != "0" || s1.Spent != "300" || s1.Available != "-300" {
-		t.Errorf("S1 = %+v, want budgeted 0, spent 300, available -300 (August's plan of 400 dropped)", s1)
+	if s1.IsArchived != 1 || s1.Budgeted != "400" || s1.Spent != "300" || s1.Available != "100" {
+		t.Errorf("S1 = %+v, want isArchived 1, budgeted 400, spent 300, available 100", s1)
 	}
 }
 
