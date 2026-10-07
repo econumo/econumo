@@ -1376,7 +1376,8 @@
           "next": "更晚的月份"
         },
         "cell": {
-          "aria": "{name}，{month}：实际 {actual}，计划 {planned}"
+          "aria": "{name}，{month}：实际 {actual}，计划 {planned}",
+          "edit_aria": "{name} 的计划，{month}"
         },
         "fill": {
           "handle_aria": "将预算复制到后续月份"

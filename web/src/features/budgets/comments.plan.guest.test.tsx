@@ -103,10 +103,10 @@ it('lets a guest start a thread on a cell with no existing comments, on desktop'
   const cell = await screen.findByTestId('plan-cell-pe1:0')
   expect(within(cell).queryByTestId('comment-marker')).toBeNull()
 
-  // Enter opens no amount editor for a guest; Shift+Enter still opens the thread
+  // Enter opens no editor for a guest; Shift+Enter still opens the thread
   await user.click(cell)
   await user.keyboard('{Enter}')
-  expect(screen.queryByLabelText('Budget')).toBeNull()
+  expect(screen.queryByRole('textbox')).toBeNull()
   await user.keyboard('{Shift>}{Enter}{/Shift}')
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
 })

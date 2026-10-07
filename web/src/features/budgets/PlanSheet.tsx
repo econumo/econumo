@@ -19,8 +19,8 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PromptDialog } from '@/components/PromptDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
-import { isZero } from '@/lib/decimal'
-import { moneyFormat } from '@/lib/money'
+import { cmp, isZero } from '@/lib/decimal'
+import { moneyFormat, normalizeNumber } from '@/lib/money'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type {
   BudgetDto,
@@ -102,7 +102,8 @@ import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLA
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
 import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, selectedClass, sourceAmount } from './PlanRows'
 import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
-import type { GridCtx, PlanLimitTarget, PlanSelection } from './PlanRows'
+import type { GridCtx, PlanCellEdit, PlanLimitTarget, PlanSelection } from './PlanRows'
+import type { CellMove } from './PlanCellInput'
 
 export interface PlanSheetProps {
   /** the ALREADY-LOADED budget (meta for permissions/currency); plan data is fetched inside */
@@ -490,6 +491,18 @@ function FolderRows({
 // children are read-only breakdown lines and are stepped over.
 type FlatRow = { kind: 'element'; rowKey: string; el: PlanElementDto } | { kind: 'folder'; rowKey: string; foldKey: string }
 
+// The open in-cell editor, with what its commit needs captured when it opened: the
+// window can move before the commit lands (Tab at the last column pages it), and the
+// write must go to the month that was being edited.
+interface CellEditState extends PlanCellEdit {
+  elementId: Id
+  monthIndex: number
+  /** the plan as it stood when editing began; committing it unchanged writes nothing */
+  planned: string
+}
+
+const unsetPlan = (planned: string): boolean => planned === '' || isZero(planned)
+
 // The Budget view's fold keys for a section's No folder group, so a fold carries over
 const NO_FOLDER_KEY: Record<'income' | 'expense', string> = { income: '__income__no_folder__', expense: '__no_folder__' }
 
@@ -678,6 +691,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const unfoldedElements = useBudgetPeriodStore((s) => s.unfoldedElements)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
   const [fillDrag, setFillDrag] = useState<FillDrag | null>(null)
+  const [editing, setEditing] = useState<CellEditState | null>(null)
 
   // Keyboard navigation moves the selection without moving the scroller, so the
   // cursor walks off screen. Scroll the minimum needed to bring it back, measuring
@@ -759,6 +773,14 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   // by month, not by planWindow's column: a stored month outside the budget (before
   // its start, after its end) has no column to tint
   const selectedCol = visibleMonths.indexOf(selectedDate)
+  // An editor whose month left the window (a resize, the strip) closes rather than
+  // reappearing, stale, when that month scrolls back in. Leaving its cell by click or
+  // key has already committed it.
+  useEffect(() => {
+    if (editing && !visibleMonths.includes(editing.month)) {
+      setEditing(null)
+    }
+  }, [editing, visibleMonths])
   const layout = useMemo(() => ({ kind: 'plan' as const, cols: visible, selectedCol }), [visible, selectedCol])
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
   // The uncategorized row's synthetic id names no real element the server would
@@ -983,6 +1005,36 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     [shownRows, savingsRows, folded],
   )
   const folderSideMap = useMemo(() => (plan ? folderSides(plan) : new Map<Id, FolderSide>()), [plan])
+
+  // Touch keeps the item sheet (and its amount dialog); a read-only cell never opens an editor.
+  const startEdit = useCallback(
+    (rk: string, col: number, opts: { replace: boolean; text?: string }) => {
+      const entry = flatRows.find((r) => r.rowKey === rk)
+      const month = visibleMonths[col]
+      if (isCompact || entry?.kind !== 'element' || month === undefined) {
+        return
+      }
+      const idx = monthIndex(month)
+      if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
+        return
+      }
+      const planned = entry.el.cells[idx]?.planned ?? ''
+      const initial = opts.replace ? (opts.text ?? '') : unsetPlan(planned) ? '' : normalizeNumber(planned)
+      setSelection({ rowKey: rk, col })
+      // a second double-click inside an open editor must not reset what was typed
+      setEditing((cur) =>
+        cur && cur.rowKey === rk && cur.month === month
+          ? cur
+          : { rowKey: rk, col, month, initial, replace: opts.replace, elementId: entry.el.id, monthIndex: idx, planned },
+      )
+    },
+    [flatRows, visibleMonths, isCompact, monthIndex, budget.meta, userId],
+  )
+  // The commit/cancel bodies move the selection with the same rules as the arrow keys,
+  // which live below the loading guard; the grid context gets stable forwarders.
+  const editActions = useRef<{ finish: (raw: string, move: CellMove) => void; cancel: () => void } | null>(null)
+  const finishEdit = useCallback((raw: string, move: CellMove) => editActions.current?.finish(raw, move), [])
+  const cancelEdit = useCallback(() => editActions.current?.cancel(), [])
   // Per-month sums of every section and folder line, keyed by fold key. Memoized
   // like the totals: they convert every cell, and the arrow keys re-render the grid.
   const groupSums = useMemo(() => {
@@ -1038,6 +1090,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         cancel: fillCancel,
       },
       editMode,
+      editing,
+      startEdit,
+      finishEdit,
+      cancelEdit,
       rowMenu,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1068,6 +1124,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     fillEnd,
     fillCancel,
     editMode,
+    editing,
+    startEdit,
+    finishEdit,
+    cancelEdit,
     rowMenu,
   ])
 
@@ -1292,11 +1352,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       }
       return
     }
-    if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
-      return
-    }
-    editorFromGrid.current = true
-    setPlanLimitTarget({ el: entry.el, month, monthIndex: idx })
+    startEdit(entry.rowKey, col, { replace: false })
   }
 
   // The element row under the roving selection (null for none / a folder row), and
@@ -1404,6 +1460,95 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     }
   }
 
+  // The arrow keys' walk, shared with the in-cell editor's Enter/Tab/↑/↓. At the
+  // window's edges ← from the name cell and → from the last column page the window by
+  // a month (clamped at the budget's start and end); the column stays put.
+  function moveSelection(from: PlanSelection, dir: CellMove) {
+    const idx = flatRows.findIndex((r) => r.rowKey === from.rowKey)
+    switch (dir) {
+      case 'up':
+        if (idx > 0) {
+          select(flatRows[idx - 1].rowKey, from.col)
+        }
+        break
+      case 'down':
+        if (idx >= 0 && idx < flatRows.length - 1) {
+          select(flatRows[idx + 1].rowKey, from.col)
+        }
+        break
+      case 'left':
+        if (from.col === -1) {
+          // -1 is the leftmost reachable column, so ← here shifts the window instead
+          // of going nowhere: the name cell stays reachable while the window can
+          // still be paged from it
+          if (!atStart) {
+            shiftWindow(-1)
+          }
+          select(from.rowKey, -1)
+        } else {
+          select(from.rowKey, from.col - 1)
+        }
+        break
+      case 'right':
+        if (from.col >= visible - 1) {
+          if (!atEnd) {
+            shiftWindow(1)
+          }
+          select(from.rowKey, visible - 1)
+        } else {
+          select(from.rowKey, from.col + 1)
+        }
+        break
+      case 'none':
+        break
+    }
+  }
+
+  editActions.current = {
+    // The write targets the month captured when editing began, and is sent before the
+    // move: a Tab at the last column pages the window, and the column then names the
+    // next month.
+    finish: (raw, move) => {
+      const ed = editing
+      setEditing(null)
+      if (!ed) {
+        return
+      }
+      const parsed = limitAmountFromInput(raw)
+      const before = unsetPlan(ed.planned) ? null : ed.planned
+      const changed = parsed.ok && (before === null || parsed.amount === null ? before !== parsed.amount : cmp(before, parsed.amount) !== 0)
+      if (parsed.ok && changed) {
+        commit(ed.elementId, ed.month, ed.monthIndex, parsed.amount)
+      }
+      // a click elsewhere ('none') leaves focus and the selection to that click
+      if (move !== 'none') {
+        containerRef.current?.focus()
+        moveSelection({ rowKey: ed.rowKey, col: ed.col }, move)
+      }
+    },
+    cancel: () => {
+      setEditing(null)
+      // Esc hands focus back to the grid; a blur has already sent it somewhere else
+      if (containerRef.current?.contains(document.activeElement)) {
+        containerRef.current.focus()
+      }
+    },
+  }
+
+  function clearSelectedCell() {
+    const cell = selectedMonthCell()
+    if (!cell || !isEditableCell(cell.entry.el, cell.month, cell.idx, budget.meta, userId)) {
+      return
+    }
+    if (unsetPlan(cell.entry.el.cells[cell.idx]?.planned ?? '')) {
+      return
+    }
+    setLimit.mutate(
+      { budgetId: budget.meta.id, elementId: cell.entry.el.id, period: cell.month, amount: null, monthIndex: cell.idx },
+      { onSuccess: () => trackEvent(METRICS.BUDGET_PLAN_CLEAR_CELL) },
+    )
+  }
+
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (fillDrag) {
       if (e.key === 'Escape') {
@@ -1467,8 +1612,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       }
       return
     }
-    const idx = flatRows.findIndex((r) => r.rowKey === selection.rowKey)
-    const entry = flatRows[idx]
+    const entry = flatRows.find((r) => r.rowKey === selection.rowKey)
+    if (!entry) {
+      return
+    }
     // Left/Right on a highlighted folder header fold/unfold it and never move the
     // selection or page the window — a header has no month cells to walk. Enter and
     // Space toggle it too (Enter has no edit action on a folder outside its menu).
@@ -1477,15 +1624,11 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault()
-          if (idx > 0) {
-            select(flatRows[idx - 1].rowKey, selection.col)
-          }
+          moveSelection(selection, 'up')
           break
         case 'ArrowDown':
           e.preventDefault()
-          if (idx < flatRows.length - 1) {
-            select(flatRows[idx + 1].rowKey, selection.col)
-          }
+          moveSelection(selection, 'down')
           break
         case 'ArrowLeft':
           e.preventDefault()
@@ -1514,55 +1657,50 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     // the months), ArrowLeft collapses an expanded one (and only then pages the window).
     const expandable = entry.el.children.length > 0
     const unfolded = !!unfoldedElements[entry.el.id]
+    // A month cell edits like a spreadsheet: typing replaces the value, F2 edits it,
+    // Delete/Backspace clears it. Read-only cells take none of it (startEdit and
+    // clearSelectedCell both check).
+    if (selection.col >= 0 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (/^[0-9.,-]$/.test(e.key)) {
+        e.preventDefault()
+        startEdit(entry.rowKey, selection.col, { replace: true, text: e.key })
+        return
+      }
+      if (e.key === 'F2' && !e.shiftKey) {
+        e.preventDefault()
+        startEdit(entry.rowKey, selection.col, { replace: false })
+        return
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault()
+        clearSelectedCell()
+        return
+      }
+    }
     switch (e.key) {
       case 'ArrowUp':
         e.preventDefault()
-        if (idx > 0) {
-          select(flatRows[idx - 1].rowKey, selection.col)
-        }
+        moveSelection(selection, 'up')
         break
       case 'ArrowDown':
         e.preventDefault()
-        if (idx < flatRows.length - 1) {
-          select(flatRows[idx + 1].rowKey, selection.col)
-        }
+        moveSelection(selection, 'down')
         break
       case 'ArrowLeft':
         e.preventDefault()
-        if (selection.col === -1) {
-          if (expandable && unfolded) {
-            toggleElement(entry.el.id)
-            break
-          }
-          // -1 is the leftmost reachable column, so ArrowLeft here shifts the window
-          // instead of going nowhere — keeps the name cell reachable while the window
-          // can still be paged from it. Clamped at the budget start.
-          if (!atStart) {
-            shiftWindow(-1)
-          }
-          select(selection.rowKey, -1)
-        } else if (selection.col === 0) {
-          select(selection.rowKey, -1)
-        } else {
-          select(selection.rowKey, selection.col - 1)
+        if (selection.col === -1 && expandable && unfolded) {
+          toggleElement(entry.el.id)
+          break
         }
+        moveSelection(selection, 'left')
         break
       case 'ArrowRight':
         e.preventDefault()
-        if (selection.col === -1) {
-          if (expandable && !unfolded) {
-            toggleElement(entry.el.id)
-            break
-          }
-          select(selection.rowKey, 0)
-        } else if (selection.col >= visible - 1) {
-          if (!atEnd) {
-            shiftWindow(1)
-          }
-          select(selection.rowKey, visible - 1)
-        } else {
-          select(selection.rowKey, selection.col + 1)
+        if (selection.col === -1 && expandable && !unfolded) {
+          toggleElement(entry.el.id)
+          break
         }
+        moveSelection(selection, 'right')
         break
       case 'Enter':
         e.preventDefault()

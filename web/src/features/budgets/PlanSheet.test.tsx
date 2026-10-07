@@ -431,14 +431,14 @@ it('editing a planned cell sends set-limit with the cell month and patches optim
   renderPage()
   await screen.findByTestId('plan-sheet')
 
-  // pe1's second visible column (Jul/Aug/Sep window -> Aug); Enter opens the amount dialog
+  // pe1's second visible column (Jul/Aug/Sep window -> Aug); Enter edits it in place
   const cell = screen.getByTestId('plan-cell-pe1:1')
   await user.click(cell)
   await user.keyboard('{Enter}')
-  const input = await screen.findByLabelText('Budget')
+  const input = await screen.findByRole('textbox', { name: 'Plan for Living, August' })
   await user.clear(input)
   await user.type(input, '350')
-  await user.click(screen.getByRole('button', { name: 'Save' }))
+  await user.keyboard('{Enter}')
 
   await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'pe1', period: '2026-08-01', amount: '350' }))
   expect(within(cell).getByTestId('cell-planned')).toHaveTextContent('350')
@@ -773,11 +773,12 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
   await screen.findByTestId('plan-sheet')
 
   // guest role: pe1 would normally be editable for the owner, but not here — no
-  // fill handle, and Enter opens no amount editor
+  // fill handle, and Enter opens no in-cell editor
   const pe1Cell = screen.getByTestId('plan-cell-pe1:1')
   await user.click(pe1Cell)
   expect(within(pe1Cell).queryByTestId('fill-handle')).not.toBeInTheDocument()
   await user.keyboard('{Enter}')
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
   // children never carry their own limit, regardless of role
@@ -794,6 +795,7 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
     await user.click(cell)
     expect(within(cell).queryByTestId('fill-handle')).not.toBeInTheDocument()
     await user.keyboard('{Enter}')
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   }
 })
@@ -902,7 +904,7 @@ it('arrow keys move the selection and shift the window at the edges', async () =
   expect(await screen.findByTestId('plan-cell-cat-food:2')).toHaveAttribute('aria-selected', 'true')
 })
 
-it('Enter opens the editor on an editable cell and is inert on read-only cells', async () => {
+it('Enter opens the in-cell editor on an editable cell and is inert on read-only cells', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
@@ -913,16 +915,17 @@ it('Enter opens the editor on an editable cell and is inert on read-only cells',
   await user.click(screen.getByTestId('plan-cell-pe1:1'))
   grid.focus()
   await user.keyboard('{Enter}')
-  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(await screen.findByRole('textbox', { name: 'Plan for Living, July' })).toBeInTheDocument()
   await user.keyboard('{Escape}')
-  await waitFor(() => expect(screen.queryByLabelText('Budget')).not.toBeInTheDocument())
+  await waitFor(() => expect(screen.queryByRole('textbox')).not.toBeInTheDocument())
 
   // uncategorized rows are never editable, regardless of role
   const uncatCell = screen.getAllByTestId('plan-cell-uncategorized:1')[0]
   await user.click(uncatCell)
   grid.focus()
   await user.keyboard('{Enter}')
-  expect(screen.queryByLabelText('Budget')).not.toBeInTheDocument()
+  await user.keyboard('5')
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
 
   // children never carry their own limit (and are not selectable at all)
   const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
@@ -931,7 +934,7 @@ it('Enter opens the editor on an editable cell and is inert on read-only cells',
   await user.click(childCell)
   grid.focus()
   await user.keyboard('{Enter}')
-  expect(screen.queryByLabelText('Budget')).not.toBeInTheDocument()
+  expect(screen.queryByRole('textbox', { name: /^Plan for/ })).not.toBeInTheDocument()
 })
 
 it('cells expose the aria label and aria-selected', async () => {
@@ -954,7 +957,7 @@ it('cells expose the aria label and aria-selected', async () => {
   expect(cell).toHaveAttribute('aria-selected', 'true')
 })
 
-it('keystrokes inside the popover editor reach it, not the grid: ArrowLeft moves the caret and Enter commits set-limit', async () => {
+it('keystrokes inside the in-cell editor reach it, not the grid: ArrowLeft moves the caret and Enter commits set-limit', async () => {
   let body: unknown
   server.use(
     ...coreHandlers({ user: userWithBudget }),
@@ -976,18 +979,17 @@ it('keystrokes inside the popover editor reach it, not the grid: ArrowLeft moves
   await user.click(screen.getByTestId('plan-cell-pe1:1'))
   grid.focus()
   await user.keyboard('{Enter}')
-  const input = await screen.findByLabelText('Budget')
+  const input = await screen.findByRole('textbox', { name: 'Plan for Living, July' })
 
-  // ArrowLeft while the popover input has focus must move the caret, not the
-  // grid's window/selection — the grid must not intercept it.
+  // ArrowLeft while the editor has focus must move the caret, not the grid's
+  // window/selection — the grid must not intercept it.
   const monthBefore = useBudgetPeriodStore.getState().selectedDate
   await user.clear(input)
   await user.type(input, '12{ArrowLeft}3')
   expect(input).toHaveValue('132')
   expect(useBudgetPeriodStore.getState().selectedDate).toBe(monthBefore)
 
-  // Enter inside the input must submit the form (commit), not be swallowed by
-  // the grid's own Enter handling.
+  // Enter inside the input commits, not swallowed by the grid's own Enter handling
   await user.keyboard('{Enter}')
   await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'pe1', period: '2026-07-01', amount: '132' }))
 })
@@ -1944,7 +1946,7 @@ describe('clipboard and keyboard fill', () => {
     expect(bodies).toHaveLength(0)
   })
 
-  it('paste inside the open amount dialog input is left to the input, not the grid', async () => {
+  it('paste inside the open in-cell editor is left to the input, not the grid', async () => {
     const bodies: unknown[] = []
     useCapturingHandlers(bodies)
     useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
@@ -1955,7 +1957,7 @@ describe('clipboard and keyboard fill', () => {
     const cell = screen.getByTestId('plan-cell-pe1:0')
     await user.click(cell)
     await user.keyboard('{Enter}')
-    const input = (await screen.findByLabelText('Budget')) as HTMLInputElement
+    const input = (await screen.findByRole('textbox', { name: 'Plan for Living, June' })) as HTMLInputElement
     expect(fireEvent.paste(input as HTMLInputElement, { clipboardData: clipboard('150') })).toBe(true)
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(bodies).toHaveLength(0)

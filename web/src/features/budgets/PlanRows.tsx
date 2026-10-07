@@ -20,6 +20,8 @@ import { CurrencyTag, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FOLDER_INDENT, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, useRowLevel } from './monthLayout'
 import { planCellView } from './planCell'
+import { PlanCellInput } from './PlanCellInput'
+import type { CellMove } from './PlanCellInput'
 import type { PlanRow } from './planMath'
 
 export interface PlanLimitTarget {
@@ -76,6 +78,16 @@ export function commentsReadOnly(meta: BudgetMetaDto, month: string): boolean {
   return !!meta.endedAt && month > `${meta.endedAt.slice(0, 7)}-01`
 }
 
+/** the cell whose in-cell editor is open. `month` pins it: the editor stays on the
+ *  month it was opened for even if the window moves under it. */
+export interface PlanCellEdit {
+  rowKey: string
+  col: number
+  month: string
+  initial: string
+  replace: boolean
+}
+
 export interface GridCtx {
   visibleMonths: string[]
   monthIndex: (m: string) => number
@@ -117,6 +129,12 @@ export interface GridCtx {
     cancel: () => void
   }
   editMode: boolean
+  editing: PlanCellEdit | null
+  /** opens the in-cell editor on an editable month cell (desktop only); `text` is the
+   *  typed character that replaces the value */
+  startEdit: (rowKey: string, col: number, opts: { replace: boolean; text?: string }) => void
+  finishEdit: (raw: string, move: CellMove) => void
+  cancelEdit: () => void
   /** a row's ⋮ menu */
   rowMenu?: (el: PlanElementDto) => MenuAction[] | undefined
 }
@@ -267,8 +285,9 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
           // source keeps its handle mounted even after the pointer has left the cell:
           // the handle holds the pointer capture, and unmounting it would drop the
           // pointerup that commits the fill.
+          const editing = ctx.editing?.rowKey === rk && ctx.editing.month === m ? ctx.editing : null
           const showFillHandle =
-            (selected || hoverCol === i || fillSource) && editable && !!cell && !ctx.isCompact && ctx.visibleMonths.length > 1
+            !editing && (selected || hoverCol === i || fillSource) && editable && !!cell && !ctx.isCompact && ctx.visibleMonths.length > 1
           const cellComments = ctx.commentsByCell.get(commentCellKey(el.id, m)) ?? []
           const commentCount = cellComments.length
           const target = { el, month: m, monthIndex: idx }
@@ -296,41 +315,57 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                   ctx.openSheet(target)
                 }
               }}
+              onDoubleClick={(e) => {
+                // the actual opens transactions and the corner opens comments: a
+                // double-click on either acts on that control, not on the plan
+                if (!(e.target as HTMLElement).closest('button, [role="button"], input')) {
+                  ctx.startEdit(rk, i, { replace: false })
+                }
+              }}
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
-              <span className="flex items-baseline gap-1">
-                {actual === null ? null : actualLinkable ? (
-                  <button
-                    type="button"
-                    data-testid="cell-actual"
-                    title={t('budgets.page.budget.structure.element.action.show_transactions')}
-                    className={`text-xs tabular-nums underline-offset-2 hover:underline ${actualColor}`}
-                    onClick={(e) => {
-                      // the cell's own click is skipped (a touch tap there opens the
-                      // item sheet), but the clicked cell still becomes the selection
-                      e.stopPropagation()
-                      ctx.select(rk, i, e)
-                      ctx.openTransactions(el, m)
-                    }}
-                  >
-                    {fmt(actual)}
-                  </button>
-                ) : (
-                  <span data-testid="cell-actual" className={`text-xs tabular-nums ${actualColor}`}>
-                    {fmt(actual)}
+              {editing ? (
+                <PlanCellInput
+                  initial={editing.initial}
+                  label={t('budgets.page.plan.cell.edit_aria', { name: displayName, month: ctx.monthLabel(m) })}
+                  onCommit={ctx.finishEdit}
+                  onCancel={ctx.cancelEdit}
+                />
+              ) : (
+                <span className="flex items-baseline gap-1">
+                  {actual === null ? null : actualLinkable ? (
+                    <button
+                      type="button"
+                      data-testid="cell-actual"
+                      title={t('budgets.page.budget.structure.element.action.show_transactions')}
+                      className={`text-xs tabular-nums underline-offset-2 hover:underline ${actualColor}`}
+                      onClick={(e) => {
+                        // the cell's own click is skipped (a touch tap there opens the
+                        // item sheet), but the clicked cell still becomes the selection
+                        e.stopPropagation()
+                        ctx.select(rk, i, e)
+                        ctx.openTransactions(el, m)
+                      }}
+                    >
+                      {fmt(actual)}
+                    </button>
+                  ) : (
+                    <span data-testid="cell-actual" className={`text-xs tabular-nums ${actualColor}`}>
+                      {fmt(actual)}
+                    </span>
+                  )}
+                  {actual !== null && view.plan !== null ? (
+                    <span aria-hidden="true" className="text-xs text-muted-foreground/60">
+                      ·
+                    </span>
+                  ) : null}
+                  <span data-testid="cell-planned" className="text-[15px] tabular-nums">
+                    {view.plan !== null ? fmt(view.plan) : ''}
                   </span>
-                )}
-                {actual !== null && view.plan !== null ? (
-                  <span aria-hidden="true" className="text-xs text-muted-foreground/60">
-                    ·
-                  </span>
-                ) : null}
-                <span data-testid="cell-planned" className="text-[15px] tabular-nums">
-                  {view.plan !== null ? fmt(view.plan) : ''}
                 </span>
-              </span>
-              {(commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
+              )}
+              {!editing && (commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
                 <CommentMarker count={commentCount} onOpen={(anchor) => ctx.openComments(target, { anchor })} />
               ) : null}
               {showFillHandle ? (
@@ -352,7 +387,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
             <CellShell
               key={m}
               comments={isUncategorized ? [] : cellComments}
-              previewDisabled={ctx.commentsOpen || ctx.editMode}
+              previewDisabled={ctx.commentsOpen || ctx.editMode || !!editing}
               shortcutDisabled={ctx.editMode}
               onOpenComments={isUncategorized ? undefined : (anchor) => ctx.openComments(target, { anchor })}
             >

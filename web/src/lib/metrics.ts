@@ -98,6 +98,7 @@ export const METRICS = {
   BUDGET_PLAN_CHANGE_WINDOW: 'appBudgetPlanChangeWindow',
   BUDGET_PLAN_FILL_RIGHT: 'appBudgetPlanFillRight',
   BUDGET_PLAN_PASTE_CELL: 'appBudgetPlanPasteCell',
+  BUDGET_PLAN_CLEAR_CELL: 'appBudgetPlanClearCell',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
   BUDGET_TRANSACTIONS_OPEN: 'appBudgetTransactionsOpen',
   BUDGET_UPDATE_COMMENT: 'appBudgetUpdateComment',

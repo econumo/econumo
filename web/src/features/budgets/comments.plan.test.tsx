@@ -95,7 +95,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-it('opens the thread from the marker as a popover, and keeps the amount editor comment-free', async () => {
+it('opens the thread from the marker as a popover, and keeps the in-cell editor comment-free', async () => {
   usePlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -106,9 +106,12 @@ it('opens the thread from the marker as a popover, and keeps the amount editor c
 
   await user.click(cell)
   await user.keyboard('{Enter}')
-  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(await screen.findByRole('textbox', { name: 'Plan for Living, August' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
+  // the corner marker steps aside while the cell is being edited
+  expect(within(cell).queryByTestId('comment-marker')).toBeNull()
   await user.keyboard('{Escape}')
+  expect(screen.queryByRole('textbox')).toBeNull()
 
   await user.click(within(cell).getByTestId('comment-marker'))
   expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
@@ -164,7 +167,7 @@ it('opens the thread with Shift+Enter and leaves Enter editing the amount', asyn
   await user.keyboard('{Escape}')
 
   await user.keyboard('{Enter}')
-  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(await screen.findByRole('textbox', { name: 'Plan for Living, August' })).toBeInTheDocument()
 })
 
 it('does not steal focus from a later mouse-opened dialog after a keyboard-opened thread closes', async () => {
@@ -295,7 +298,7 @@ it('a tablet tap on a plan cell opens the item sheet for that month', async () =
   expect(within(sheet).getByRole('button', { name: 'Comments (1)' })).toBeInTheDocument()
 })
 
-it('a tablet Enter on a selected plan cell opens the item sheet, not the amount dialog', async () => {
+it('a tablet Enter on a selected plan cell opens the item sheet, not an amount editor', async () => {
   usePlanHandlers()
   mockTabletViewport()
   const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
@@ -312,6 +315,7 @@ it('a tablet Enter on a selected plan cell opens the item sheet, not the amount 
   await user.keyboard('{Enter}')
   expect(await screen.findByTestId('element-sheet')).toBeInTheDocument()
   expect(screen.queryByLabelText('Budget')).toBeNull()
+  expect(screen.queryByRole('textbox', { name: /^Plan for/ })).toBeNull()
 })
 
 it('a tablet sheet’s Set budget opens the amount dialog with no comments in it', async () => {

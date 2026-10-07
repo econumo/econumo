@@ -235,11 +235,10 @@ it('editing a savings planned cell sends set-limit with the account id and patch
   const cell = screen.getByTestId('plan-cell-acc-s1:2')
   await user.click(cell)
   await user.keyboard('{Enter}')
-  // a savings amount is a plan to meet, not a spending limit
-  const input = await screen.findByLabelText('Plan')
+  const input = await screen.findByRole('textbox', { name: 'Plan for Rainy day, August' })
   await user.clear(input)
   await user.type(input, '350')
-  await user.click(screen.getByRole('button', { name: 'Save' }))
+  await user.keyboard('{Enter}')
 
   await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-08-01', amount: '350' }))
   expect(within(cell).getByTestId('cell-planned')).toHaveTextContent('350')
@@ -386,7 +385,7 @@ it('a deleted-account savings row is read-only: no cell editor, no grip', async 
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-section-savings')
-  // a live account's cell takes the fill handle and Enter's amount editor; the deleted one neither
+  // a live account's cell takes the fill handle and the in-cell editor; the deleted one neither
   await user.click(screen.getByTestId('plan-cell-acc-s1:0'))
   expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByTestId('fill-handle')).toBeInTheDocument()
   const deletedCell = screen.getByTestId('plan-cell-acc-s3:0')
@@ -394,6 +393,8 @@ it('a deleted-account savings row is read-only: no cell editor, no grip', async 
   await user.click(deletedCell)
   expect(within(deletedCell).queryByTestId('fill-handle')).not.toBeInTheDocument()
   await user.keyboard('{Enter}')
+  await user.keyboard('5')
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   await enterEditMode(user)
   await screen.findByRole('button', { name: 'move Rainy day' })

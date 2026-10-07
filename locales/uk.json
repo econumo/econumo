@@ -1376,7 +1376,8 @@
           "next": "Наступні місяці"
         },
         "cell": {
-          "aria": "{name}, {month}: факт {actual}, план {planned}"
+          "aria": "{name}, {month}: факт {actual}, план {planned}",
+          "edit_aria": "План для {name}, {month}"
         },
         "fill": {
           "handle_aria": "Скопіювати бюджет на наступні місяці"

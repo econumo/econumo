@@ -1376,7 +1376,8 @@
           "next": "Meses siguientes"
         },
         "cell": {
-          "aria": "{name}, {month}: real {actual}, previsto {planned}"
+          "aria": "{name}, {month}: real {actual}, previsto {planned}",
+          "edit_aria": "Plan para {name}, {month}"
         },
         "fill": {
           "handle_aria": "Copiar el presupuesto a los meses siguientes"
