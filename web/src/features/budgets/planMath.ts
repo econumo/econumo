@@ -355,8 +355,9 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
   })
 }
 
-/** A section's or folder's per-month sums in budget currency: what came in or went
- *  out, and what was planned. Archived rows are history, not part of the plan. */
+/** A section's or folder's per-month sums in budget currency, so a line reads as the
+ *  sum of the rows listed under it. As in planTotals, every row's actual counts but
+ *  only a live row's plan: an archived row or deleted account plans nothing. */
 export function planGroupSums(
   rows: PlanElementDto[],
   months: string[],
@@ -369,10 +370,12 @@ export function planGroupSums(
     let planned = '0'
     if (i >= 0) {
       for (const el of rows) {
-        const cell = el.isArchived === 0 ? el.cells[i] : undefined
+        const cell = el.cells[i]
         if (cell) {
           actual = add(actual, ex(el.currencyId, cell.actual, i))
-          planned = add(planned, ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i))
+          if (el.isArchived === 0) {
+            planned = add(planned, ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i))
+          }
         }
       }
     }

@@ -522,6 +522,112 @@ it('section and folder sums read actual · plan up to the selected month, plan a
   expect(cell(2).textContent).toBe(plannedText(sums[3].planned))
 })
 
+it('a past cell with an actual and no plan reads the actual alone, with no dangling dot', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  // Food in July (column 1): 125 spent, nothing planned
+  const cell = screen.getByTestId('plan-cell-cat-food:1')
+  expect(within(cell).getByTestId('cell-actual')).toHaveTextContent('125.00')
+  expect(cell).not.toHaveTextContent('·')
+  // with both figures the dot separates them
+  expect(screen.getByTestId('plan-cell-cat-food:0')).toHaveTextContent(/130\.00\s*·\s*150\.00/)
+})
+
+it('the Archived line sums its rows: their actuals, never their plans', async () => {
+  const plan = {
+    ...fixtureWirePlan,
+    structure: {
+      ...fixtureWirePlan.structure,
+      elements: [
+        ...fixtureWirePlan.structure.elements,
+        {
+          id: 'arch-1', type: 1, name: 'Old hobby', icon: 'delete', currencyId: 'cur-usd', isArchived: 1, folderId: null, position: 9, ownerUserId: 'u1',
+          cells: [{ actual: '0', planned: '' }, { actual: '18.53', planned: '40' }, { actual: '0', planned: '' }, { actual: '0', planned: '' }],
+          children: [],
+        },
+      ],
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(plan),
+  )
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  const line = await screen.findByTestId('plan-section-line-archived')
+  // June: 18.53 spent; the archived row's 40 plan is not part of the plan
+  expect(within(line).getByTestId('plan-sum-0').textContent).toBe('18.53')
+})
+
+it('with folders, an expense section names its folder-less rows under a No folder line that folds like a folder', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const expense = screen.getByTestId('plan-section-expense')
+  const noFolder = within(expense).getByTestId('plan-folder-__no_folder__')
+  const button = within(noFolder).getByRole('button', { name: 'No folder' })
+  // after the real folders, with its own sums
+  expect(screen.getByTestId('plan-folder-bf1').compareDocumentPosition(noFolder) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(within(noFolder).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+  // its rows sit a folder's step in, like the rows of a real folder
+  const food = document.querySelector('[data-row-id="cat-food:1"]') as HTMLElement
+  expect(noFolder).toContainElement(food)
+  expect(within(food).getByTitle('Food').closest('[role="gridcell"]')!.className).toContain('pl-9')
+
+  // the keyboard reaches it: ArrowDown from Essentials' last row selects the line
+  await user.click(within(document.querySelector('[data-row-id="pe1:0"]') as HTMLElement).getByTitle('Living'))
+  screen.getByTestId('plan-sheet').focus()
+  await user.keyboard('{ArrowDown}')
+  expect(button.closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
+
+  // folding hides the folder-less rows only; Uncategorized stays
+  await user.click(button)
+  expect(useBudgetPeriodStore.getState().planFolds.__no_folder__).toBe(true)
+  expect(document.querySelector('[data-row-id="cat-food:1"]')).not.toBeInTheDocument()
+  expect(document.querySelector('[data-row-id="uncategorized:1"]')).toBeInTheDocument()
+  // and the keyboard skips the folded rows
+  await user.keyboard('{ArrowDown}')
+  expect(within(document.querySelector('[data-row-id="uncategorized:1"]') as HTMLElement).getAllByRole('gridcell')[0]).toHaveAttribute('aria-selected', 'true')
+})
+
+it('an income section names its folder-less rows only when it has a folder, and shares the Budget view fold key', async () => {
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const { unmount } = renderPage()
+  await screen.findByTestId('plan-sheet')
+  // no income folder: the loose income rows stand alone at the top step
+  const income = screen.getByTestId('plan-section-income')
+  expect(within(income).queryByText('No folder')).not.toBeInTheDocument()
+  const freelance = document.querySelector('[data-row-id="cat-freelance:3"]') as HTMLElement
+  expect(within(freelance).getByTitle('Freelance').closest('[role="gridcell"]')!.className).toContain('pl-6')
+  unmount()
+
+  server.use(
+    planHandler({
+      ...plan,
+      structure: {
+        ...plan.structure,
+        folders: [...plan.structure.folders, { id: 'bf-bonus', name: 'Bonuses Folder', position: 1 }],
+        elements: plan.structure.elements.map((el) => (el.id === 'ie1' ? { ...el, folderId: 'bf-bonus' } : el)),
+      },
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const noFolder = within(screen.getByTestId('plan-section-income')).getByTestId('plan-folder-__income__no_folder__')
+  expect(noFolder).toContainElement(document.querySelector('[data-row-id="cat-freelance:3"]') as HTMLElement)
+  await user.click(within(noFolder).getByRole('button', { name: 'No folder' }))
+  expect(useBudgetPeriodStore.getState().planFolds.__income__no_folder__).toBe(true)
+  expect(document.querySelector('[data-row-id="cat-freelance:3"]')).not.toBeInTheDocument()
+})
+
 it('totals: Income, Expenses, Savings, Total savings, then a sticky Balance; Transfers only when non-zero', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
@@ -774,9 +880,11 @@ it('arrow keys move the selection and shift the window at the edges', async () =
   expect(await screen.findByTestId('plan-cell-pe1:0')).toHaveAttribute('data-month', '2026-05-01')
   expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
 
-  // ArrowDown walks to the next data row (pe1 is the only row in the Essentials folder,
-  // so the flat list's next entry is the first loose expense row, Food)
+  // ArrowDown walks on (pe1 is the only row in the Essentials folder, so the flat
+  // list's next entry is the No folder line, then its first row, Food)
   grid.focus()
+  await user.keyboard('{ArrowDown}')
+  expect(within(screen.getByTestId('plan-folder-__no_folder__')).getAllByRole('gridcell')[0]).toHaveAttribute('aria-selected', 'true')
   await user.keyboard('{ArrowDown}')
   expect(screen.getByTestId('plan-cell-cat-food:0')).toHaveAttribute('aria-selected', 'true')
   expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'false')
@@ -1089,7 +1197,8 @@ it('Enter on a highlighted envelope, category, or tag opens its edit dialog when
   // a modal opened from the keyboard has no trigger to hand focus back to, so the
   // sheet must reclaim it itself — otherwise the arrow keys are dead after closing
   await waitFor(() => expect(screen.getByTestId('plan-sheet')).toHaveFocus())
-  await user.keyboard('{ArrowDown}')
+  // past the No folder line to its first row
+  await user.keyboard('{ArrowDown}{ArrowDown}')
   const foodRow = document.querySelector('[data-row-id="cat-food:1"]') as HTMLElement
   expect(within(foodRow).getAllByRole('gridcell')[0]).toHaveAttribute('aria-selected', 'true')
 
@@ -1136,11 +1245,12 @@ it('child rows are not selectable by click or keyboard', async () => {
     expect(cell).not.toHaveAttribute('aria-selected')
   }
 
-  // ArrowDown from the expanded parent skips its children and lands on the next root row
+  // ArrowDown from the expanded parent skips its children: the No folder line, then
+  // the next root row
   grid.focus()
-  await user.keyboard('{ArrowDown}')
+  await user.keyboard('{ArrowDown}{ArrowDown}')
   expect(screen.getByTestId('plan-cell-cat-food:0')).toHaveAttribute('aria-selected', 'true')
-  await user.keyboard('{ArrowUp}')
+  await user.keyboard('{ArrowUp}{ArrowUp}')
   expect(parentCell).toHaveAttribute('aria-selected', 'true')
 })
 

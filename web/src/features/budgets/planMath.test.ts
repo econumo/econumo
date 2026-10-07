@@ -189,7 +189,7 @@ describe('bucketPlanRows', () => {
   })
 })
 
-it('planGroupSums adds actual and plan per month in budget currency, skipping archived rows', () => {
+it('planGroupSums adds every row\'s actual but only live rows\' plans, per month in budget currency', () => {
   const el = (id: string, cells: { actual: string; planned: string }[], isArchived: 0 | 1 = 0) =>
     ({ id, type: BudgetElementType.CATEGORY, name: id, icon: '', currencyId: 'usd', isArchived, folderId: null, position: 0, ownerUserId: null, cells, children: [] })
   const months = ['2026-06-01', '2026-07-01']
@@ -200,7 +200,8 @@ it('planGroupSums adds actual and plan per month in budget currency, skipping ar
     (m) => months.indexOf(m),
     ex,
   )
-  expect(sums).toEqual([{ actual: '15', planned: '25' }, { actual: '1', planned: '7' }])
+  // the archived row z adds its actual (a line is the sum of the rows under it), never its plan
+  expect(sums).toEqual([{ actual: '114', planned: '25' }, { actual: '100', planned: '7' }])
 })
 
 describe('folderSides', () => {

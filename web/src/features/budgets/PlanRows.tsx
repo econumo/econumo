@@ -140,10 +140,10 @@ export function SumCell({
   fmt: (v: string) => string
 }) {
   const actual = sum && (month === ctx.selected || (month < ctx.selected && ctx.showActuals)) ? sum.actual : null
+  const plan = sum && !isZero(sum.planned) ? sum.planned : null
   return (
     <span data-testid={`plan-sum-${index}`} className="text-sm text-muted-foreground tabular-nums">
-      {actual !== null ? `${fmt(actual)} · ` : ''}
-      {sum && !isZero(sum.planned) ? fmt(sum.planned) : ''}
+      {[actual, plan].filter((v) => v !== null).map(fmt).join(' · ')}
     </span>
   )
 }
@@ -321,7 +321,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                     {fmt(actual)}
                   </span>
                 )}
-                {actual !== null ? (
+                {actual !== null && view.plan !== null ? (
                   <span aria-hidden="true" className="text-xs text-muted-foreground/60">
                     ·
                   </span>

@@ -99,7 +99,7 @@ import {
 import type { FolderSide, MonthExchange, PlanFolderSection, PlanRow, PlanRows } from './planMath'
 import type { MenuAction } from './monthLayout'
 import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext } from './monthLayout'
-import { FolderLine, MonthSectionHeader } from './monthLines'
+import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
 import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, selectedClass, sourceAmount } from './PlanRows'
 import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
 import type { GridCtx, PlanLimitTarget, PlanSelection } from './PlanRows'
@@ -335,6 +335,88 @@ function LooseRowsContainer({ rows, ctx }: { rows: PlanRow[]; ctx: GridCtx }) {
 // is out of the ordering entirely — neither can be dropped anywhere meaningful.
 const isDraggableRow = (r: PlanRow): boolean => r.element.id !== UNCATEGORIZED_ID && r.element.isArchived === 0
 
+// A folder-like group of rows: a real folder, or the No folder group that names a
+// section's folder-less rows once the section has folders. Its line folds the rows
+// (`foldKey` is the group's fold key, shared with the Budget view) and is a row of
+// the grid the keyboard selection can land on.
+function FolderGroup({
+  foldKey,
+  name,
+  ctx,
+  sums,
+  folded,
+  onToggleFold,
+  handle,
+  actions,
+  empty,
+  children,
+}: {
+  foldKey: string
+  name: string
+  ctx: GridCtx
+  /** one per visible month; null for a group with no rows */
+  sums: ReactNode[] | null
+  folded: boolean
+  onToggleFold: (key: string) => void
+  handle?: ReactNode
+  actions?: ReactNode
+  /** unfolded and holding no rows: the empty-folder hint shows instead of them */
+  empty: boolean
+  children: ReactNode
+}) {
+  const { t } = useTranslation()
+  const rk = folderRowKey(foldKey)
+  const selected = ctx.selection?.rowKey === rk
+  return (
+    <div data-testid={`plan-folder-${foldKey}`}>
+      {/* FolderLine folds on a click anywhere on it; the same click selects the
+          line, so the arrow keys pick up from here (ArrowLeft/ArrowRight
+          fold/unfold, Up/Down walk the rows). Its own controls (the grip, the
+          actions menu and its portalled items) keep their action and select nothing. */}
+      <div
+        role="row"
+        className="border-b border-border/60"
+        onClick={(e) => {
+          const target = e.target as HTMLElement
+          if (!e.currentTarget.contains(target)) {
+            return
+          }
+          const control = target.closest('button, a, input, [role="menuitem"]')
+          if (control && !control.hasAttribute('data-fold')) {
+            return
+          }
+          ctx.select(rk, -1, e)
+        }}
+      >
+        <FolderLine
+          name={name}
+          folded={folded}
+          onToggle={() => onToggleFold(foldKey)}
+          sums={sums}
+          handle={handle}
+          actions={actions}
+          actionsColumn={false}
+          nameCell={{ role: 'gridcell', id: cellDomId(rk, -1), 'aria-selected': selected, className: selectedClass(selected) }}
+        />
+      </div>
+      {empty ? (
+        // stacked over blank month cells, so the selected month's tint runs through it
+        <div className="grid">
+          <div className={`${PLAN_LINE} min-h-7 [grid-area:1/1]`}>
+            <span className={PLAN_NAME_COL} />
+            <FigureCells cells={ctx.visibleMonths.map(() => null)} />
+          </div>
+          <p className={`${ROW_INDENT['in-folder']} px-2 py-1 text-xs text-muted-foreground [grid-area:1/1]`}>
+            {t('budgets.page.budget.structure.empty_folder.note')}
+          </p>
+        </div>
+      ) : (
+        children
+      )}
+    </div>
+  )
+}
+
 // A folder with zero members (neutral, per folderSides) still renders — its line and,
 // when expanded, the same empty-folder hint the budget view shows: a folder only
 // disappears if it doesn't exist, not because it currently has no side.
@@ -363,66 +445,40 @@ function FolderRows({
 }) {
   const { t } = useTranslation()
   const visibleRows = collapsed || folded ? [] : section.rows
-  const rk = folderRowKey(section.folder.id)
-  const selected = ctx.selection?.rowKey === rk
   return (
-    <div data-testid={`plan-folder-${section.folder.id}`}>
-      {/* FolderLine folds on a click anywhere on it; the same click selects the
-          folder line, so the arrow keys pick up from here (ArrowLeft/ArrowRight
-          fold/unfold, Up/Down walk the rows). Its own controls (the grip, the
-          actions menu and its portalled items) keep their action and select nothing. */}
-      <div
-        role="row"
-        className="border-b border-border/60"
-        onClick={(e) => {
-          const target = e.target as HTMLElement
-          if (!e.currentTarget.contains(target)) {
-            return
-          }
-          const control = target.closest('button, a, input, [role="menuitem"]')
-          if (control && !control.hasAttribute('data-fold')) {
-            return
-          }
-          ctx.select(rk, -1, e)
-        }}
-      >
-        <FolderLine
-          name={section.folder.name}
-          folded={folded}
-          onToggle={() => onToggleFold(section.folder.id)}
-          sums={sums}
-          handle={ctx.editMode ? <PlanFolderGrip name={section.folder.name} /> : null}
-          actions={
-            ctx.editMode ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={`budget folder actions ${section.folder.name}`}>
-                    <MoreVertical className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => onRename(section.folder)}>{t('common.button.edit.label')}</DropdownMenuItem>
-                  {/* same rule as the budget view: only a member-less folder is deletable here —
-                      the server would drop a populated one and strand its members */}
-                  {section.rows.length === 0 ? (
-                    <DropdownMenuItem variant="destructive" onSelect={() => onDelete(section.folder)}>
-                      {t('budgets.page.budget.structure.action.delete_folder')}
-                    </DropdownMenuItem>
-                  ) : null}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null
-          }
-          actionsColumn={false}
-          nameCell={{ role: 'gridcell', id: cellDomId(rk, -1), 'aria-selected': selected, className: selectedClass(selected) }}
-        />
-      </div>
-      {!folded && !collapsed && section.rows.length === 0 ? (
-        <p className={`${ROW_INDENT['in-folder']} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_folder.note')}</p>
-      ) : (
-        <PlanRowList rows={visibleRows} ctx={ctx} />
-      )}
-    </div>
+    <FolderGroup
+      foldKey={section.folder.id}
+      name={section.folder.name}
+      ctx={ctx}
+      sums={sums}
+      folded={folded}
+      onToggleFold={onToggleFold}
+      handle={ctx.editMode ? <PlanFolderGrip name={section.folder.name} /> : null}
+      actions={
+        ctx.editMode ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={`budget folder actions ${section.folder.name}`}>
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => onRename(section.folder)}>{t('common.button.edit.label')}</DropdownMenuItem>
+              {/* same rule as the budget view: only a member-less folder is deletable here —
+                  the server would drop a populated one and strand its members */}
+              {section.rows.length === 0 ? (
+                <DropdownMenuItem variant="destructive" onSelect={() => onDelete(section.folder)}>
+                  {t('budgets.page.budget.structure.action.delete_folder')}
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null
+      }
+      empty={!folded && !collapsed && section.rows.length === 0}
+    >
+      <PlanRowList rows={visibleRows} ctx={ctx} />
+    </FolderGroup>
   )
 }
 
@@ -432,36 +488,47 @@ function FolderRows({
 // folded/unfolded by keyboard) followed by its visible members. Only root element
 // rows — the ones a limit can be set on — are in the order: an expanded envelope's
 // children are read-only breakdown lines and are stepped over.
-type FlatRow = { kind: 'element'; rowKey: string; el: PlanElementDto } | { kind: 'folder'; rowKey: string; folderId: Id }
+type FlatRow = { kind: 'element'; rowKey: string; el: PlanElementDto } | { kind: 'folder'; rowKey: string; foldKey: string }
+
+// The Budget view's fold keys for a section's No folder group, so a fold carries over
+const NO_FOLDER_KEY: Record<'income' | 'expense', string> = { income: '__income__no_folder__', expense: '__no_folder__' }
+
+/** a section names its folder-less rows only next to real folders, as the Budget view does */
+const hasNoFolderLine = (band: PlanRows['income']): boolean => band.folders.length > 0 && band.loose.length > 0
 
 function buildFlatRows(rows: PlanRows, savingsRows: PlanRow[], folded: (key: string) => boolean): FlatRow[] {
   const flatRows: FlatRow[] = []
   const pushRow = (r: PlanRow) => {
     flatRows.push({ kind: 'element', rowKey: rowKey(r), el: r.element })
   }
-  const pushFolder = (f: PlanFolderSection) => {
-    flatRows.push({ kind: 'folder', rowKey: folderRowKey(f.folder.id), folderId: f.folder.id })
-    if (!folded(f.folder.id)) {
-      f.rows.forEach(pushRow)
+  const pushGroup = (foldKey: string, groupRows: PlanRow[]) => {
+    flatRows.push({ kind: 'folder', rowKey: folderRowKey(foldKey), foldKey })
+    if (!folded(foldKey)) {
+      groupRows.forEach(pushRow)
+    }
+  }
+  const pushFolder = (f: PlanFolderSection) => pushGroup(f.folder.id, f.rows)
+  const pushSide = (side: 'income' | 'expense') => {
+    const band = rows[side]
+    band.folders.forEach(pushFolder)
+    if (hasNoFolderLine(band)) {
+      pushGroup(NO_FOLDER_KEY[side], band.loose)
+    } else {
+      band.loose.forEach(pushRow)
+    }
+    if (band.uncategorized) {
+      pushRow(band.uncategorized)
     }
   }
   if (!folded('income')) {
-    rows.income.folders.forEach(pushFolder)
-    rows.income.loose.forEach(pushRow)
-    if (rows.income.uncategorized) {
-      pushRow(rows.income.uncategorized)
-    }
+    pushSide('income')
   }
   if (!folded('savings')) {
     savingsRows.forEach(pushRow)
   }
   rows.neutral.forEach(pushFolder)
   if (!folded('expense')) {
-    rows.expense.folders.forEach(pushFolder)
-    rows.expense.loose.forEach(pushRow)
-    if (rows.expense.uncategorized) {
-      pushRow(rows.expense.uncategorized)
-    }
+    pushSide('expense')
   }
   if (rows.archived.length > 0 && !folded('archived')) {
     rows.archived.forEach(pushRow)
@@ -929,9 +996,11 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       for (const f of band.folders) {
         sums.set(f.folder.id, sumOf(f.rows))
       }
+      sums.set(NO_FOLDER_KEY[side], sumOf(band.loose))
       sums.set(side, sumOf([...band.folders.flatMap((f) => f.rows), ...band.loose, ...(band.uncategorized ? [band.uncategorized] : [])]))
     }
     sums.set('savings', sumOf(savingsRows))
+    sums.set('archived', sumOf(shownRows.archived))
     return sums
   }, [shownRows, savingsRows, visibleMonths, monthIndex, ex])
 
@@ -1024,9 +1093,12 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const dialogCell = planLimitTarget ? planLimitTarget.el.cells[planLimitTarget.monthIndex] : undefined
 
   const incomeFolded = folded('income')
-  const incomeLoose = incomeFolded ? [] : shownRows.income.loose
   const expenseFolded = folded('expense')
-  const expenseLoose = expenseFolded ? [] : shownRows.expense.loose
+  // the folder-less rows on screen: none while their section, or their No folder line, is folded
+  const looseShown = (side: 'income' | 'expense', sectionFolded: boolean): PlanRow[] =>
+    sectionFolded || (hasNoFolderLine(shownRows[side]) && folded(NO_FOLDER_KEY[side])) ? [] : shownRows[side].loose
+  const incomeLoose = looseShown('income', incomeFolded)
+  const expenseLoose = looseShown('expense', expenseFolded)
 
   const savingsFolded = folded('savings')
   const savingsLive = savingsRows.filter(isDraggableRow)
@@ -1037,6 +1109,29 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     visibleMonths.map((m, i) => (
       <SumCell key={m} index={i} sum={sums && monthIndex(m) >= 0 ? sums[i] : null} month={m} ctx={ctx} fmt={fmtBudget} />
     ))
+
+  // a section's folder-less rows: under a No folder line next to real folders, at
+  // that line's step on their own otherwise
+  const looseGroup = (side: 'income' | 'expense', rows: PlanRow[]) => {
+    const list = editMode ? <LooseRowsContainer rows={rows} ctx={ctx} /> : <PlanRowList rows={rows} ctx={ctx} />
+    if (!hasNoFolderLine(shownRows[side])) {
+      return <RowLevelContext.Provider value="top">{list}</RowLevelContext.Provider>
+    }
+    const key = NO_FOLDER_KEY[side]
+    return (
+      <FolderGroup
+        foldKey={key}
+        name={t('budgets.page.plan.menu.no_folder')}
+        ctx={ctx}
+        sums={sumCells(groupSums.get(key))}
+        folded={folded(key)}
+        onToggleFold={togglePlanFold}
+        empty={false}
+      >
+        {list}
+      </FolderGroup>
+    )
+  }
 
   // The band's element buckets as the arrangement elementMove.ts operates on:
   // one container per folder plus the loose rows. Uncategorized and archived
@@ -1177,7 +1272,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
 
   function handleEnter(entry: FlatRow, col: number) {
     if (entry.kind === 'folder') {
-      togglePlanFold(entry.folderId)
+      togglePlanFold(entry.foldKey)
       return
     }
     if (col === -1) {
@@ -1378,7 +1473,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     // selection or page the window — a header has no month cells to walk. Enter and
     // Space toggle it too (Enter has no edit action on a folder outside its menu).
     if (entry.kind === 'folder') {
-      const isFolded = folded(entry.folderId)
+      const isFolded = folded(entry.foldKey)
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault()
@@ -1395,19 +1490,19 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         case 'ArrowLeft':
           e.preventDefault()
           if (!isFolded) {
-            togglePlanFold(entry.folderId)
+            togglePlanFold(entry.foldKey)
           }
           break
         case 'ArrowRight':
           e.preventDefault()
           if (isFolded) {
-            togglePlanFold(entry.folderId)
+            togglePlanFold(entry.foldKey)
           }
           break
         case 'Enter':
         case ' ':
           e.preventDefault()
-          togglePlanFold(entry.folderId)
+          togglePlanFold(entry.foldKey)
           break
         default:
           break
@@ -1578,8 +1673,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                   <Fragment key={f.folder.id}>{section}</Fragment>
                 )
               })}
+              {looseGroup('income', incomeLoose)}
               <RowLevelContext.Provider value="top">
-                {editMode ? <LooseRowsContainer rows={incomeLoose} ctx={ctx} /> : <PlanRowList rows={incomeLoose} ctx={ctx} />}
                 {shownRows.income.uncategorized ? (
                   <ElementRow key={rowKey(shownRows.income.uncategorized)} row={shownRows.income.uncategorized} ctx={ctx} />
                 ) : null}
@@ -1698,8 +1793,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                   <Fragment key={f.folder.id}>{section}</Fragment>
                 )
               })}
+              {looseGroup('expense', expenseLoose)}
               <RowLevelContext.Provider value="top">
-                {editMode ? <LooseRowsContainer rows={expenseLoose} ctx={ctx} /> : <PlanRowList rows={expenseLoose} ctx={ctx} />}
                 {shownRows.expense.uncategorized ? (
                   <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
                 ) : null}
@@ -1710,13 +1805,12 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
 
         {shownRows.archived.length > 0 ? (
           <section role="rowgroup" data-testid="plan-section-archived" className="plan-band plan-band-archived flex flex-col border-t">
-            {/* archived rows are history, not plan: the line carries no sums */}
             <MonthSectionHeader
               foldKey="archived"
               testId="plan-section-line-archived"
               label={t('budgets.page.plan.section.archived')}
               headings={[]}
-              sums={visibleMonths.map(() => null)}
+              sums={sumCells(groupSums.get('archived'))}
               actionsColumn={false}
             />
             {!folded('archived') ? (

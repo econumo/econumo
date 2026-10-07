@@ -10,7 +10,7 @@ import type { BudgetPlanDto } from '@/api/dto/budget'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 import { toast } from 'sonner'
-import { balanceRow, everydayBalanceRow, makePlanExchange, planTotals, savingsAsPlanElement, savingsBalanceRow } from './planMath'
+import { balanceRow, everydayBalanceRow, makePlanExchange, planGroupSums, planTotals, savingsAsPlanElement, savingsBalanceRow } from './planMath'
 import { moneyFormat } from '@/lib/money'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -162,6 +162,22 @@ it('renders the Savings section after Income and before Expenses (the phone orde
   // section rather than moving to the Archived band
   expect(rowIds(section)).toEqual(['acc-s1:5', 'acc-s2:5', 'acc-s3:5'])
   expect(within(archived).queryByTitle('Closed deposit')).not.toBeInTheDocument()
+})
+
+it('the Savings line sums every row listed under it, a deleted account\'s actual included', async () => {
+  useHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
+  renderPage()
+  const line = await screen.findByTestId('plan-section-line-savings')
+  const plan = savingsPlan as unknown as BudgetPlanDto
+  const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
+  const rows = (plan.structure.savings ?? []).map(savingsAsPlanElement)
+  const sums = planGroupSums(rows, plan.months, (m) => plan.months.indexOf(m), ex)
+  const liveOnly = planGroupSums(rows.filter((r) => r.isArchived === 0), plan.months, (m) => plan.months.indexOf(m), ex)
+  // window May/Jun/Jul: Closed deposit (deleted) saved 10 EUR in May
+  expect(sums[0].actual).not.toBe(liveOnly[0].actual)
+  const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
+  expect(within(line).getByTestId('plan-sum-0')).toHaveTextContent(fmt(sums[0].actual))
 })
 
 it('folding the Savings header hides its rows and persists the fold', async () => {
