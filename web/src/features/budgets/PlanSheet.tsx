@@ -1518,7 +1518,9 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       const before = unsetPlan(ed.planned) ? null : ed.planned
       const changed = parsed.ok && (before === null || parsed.amount === null ? before !== parsed.amount : cmp(before, parsed.amount) !== 0)
       if (parsed.ok && changed) {
-        commit(ed.elementId, ed.month, ed.monthIndex, parsed.amount)
+        // the optimistic patch indexes the plan as it is now; -1 (the month is no
+        // longer in it) patches nothing and the server write still goes by period
+        commit(ed.elementId, ed.month, monthIndex(ed.month), parsed.amount)
       }
       // a click elsewhere ('none') leaves focus and the selection to that click
       if (move !== 'none') {
@@ -1537,7 +1539,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
 
   function clearSelectedCell() {
     const cell = selectedMonthCell()
-    if (!cell || !isEditableCell(cell.entry.el, cell.month, cell.idx, budget.meta, userId)) {
+    if (isCompact || !cell || !isEditableCell(cell.entry.el, cell.month, cell.idx, budget.meta, userId)) {
       return
     }
     if (unsetPlan(cell.entry.el.cells[cell.idx]?.planned ?? '')) {
@@ -1658,9 +1660,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     const expandable = entry.el.children.length > 0
     const unfolded = !!unfoldedElements[entry.el.id]
     // A month cell edits like a spreadsheet: typing replaces the value, F2 edits it,
-    // Delete/Backspace clears it. Read-only cells take none of it (startEdit and
-    // clearSelectedCell both check).
-    if (selection.col >= 0 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    // Delete/Backspace clears it. Touch keeps the item sheet even with a hardware
+    // keyboard, and read-only cells take none of it (startEdit and clearSelectedCell
+    // both check).
+    if (selection.col >= 0 && !isCompact && !e.ctrlKey && !e.metaKey && !e.altKey) {
       if (/^[0-9.,-]$/.test(e.key)) {
         e.preventDefault()
         startEdit(entry.rowKey, selection.col, { replace: true, text: e.key })

@@ -320,6 +320,60 @@ it('on a tablet typing opens no editor', async () => {
   expect(calls).toEqual([])
 })
 
+it('on a tablet Delete and Backspace never clear a plan', async () => {
+  mockCompactViewport()
+  usePlanHandlers()
+  const calls = recordSetLimit()
+  renderPage()
+  const grid = await screen.findByTestId('plan-sheet')
+  // a tap opens the item sheet; close it and keep the selection it made
+  fireEvent.click(screen.getByTestId('plan-cell-pe1:1'))
+  fireEvent.keyDown(await screen.findByTestId('element-sheet'), { key: 'Escape' })
+  await waitFor(() => expect(screen.queryByTestId('element-sheet')).not.toBeInTheDocument())
+  expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
+  fireEvent.keyDown(grid, { key: 'Delete' })
+  fireEvent.keyDown(grid, { key: 'Backspace' })
+  await new Promise((r) => setTimeout(r, 50))
+  expect(calls).toEqual([])
+  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.BUDGET_PLAN_CLEAR_CELL)
+})
+
+it('an IME composition Enter does not commit the cell', async () => {
+  usePlanHandlers()
+  const calls = recordSetLimit()
+  renderPage()
+  const { grid } = await gridAtFirstExpenseCell()
+  fireEvent.keyDown(grid, { key: '1' })
+  const input = await screen.findByRole('textbox')
+  fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
+  expect(screen.getByRole('textbox')).toBe(input)
+  expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
+  await new Promise((r) => setTimeout(r, 30))
+  expect(calls).toEqual([])
+})
+
+it('the browser window losing focus keeps the editor open and writes nothing', async () => {
+  usePlanHandlers()
+  const calls = recordSetLimit()
+  renderPage()
+  const { grid } = await gridAtFirstExpenseCell()
+  fireEvent.keyDown(grid, { key: '4' })
+  const input = await screen.findByRole('textbox')
+  const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+  try {
+    fireEvent.blur(input)
+  } finally {
+    hasFocus.mockRestore()
+  }
+  expect(screen.getByRole('textbox')).toBe(input)
+  expect(input).toHaveValue('4')
+  await new Promise((r) => setTimeout(r, 30))
+  expect(calls).toEqual([])
+  // back in the window, the edit goes on as usual
+  fireEvent.keyDown(input, { key: 'Enter' })
+  await waitFor(() => expect(calls).toEqual([expect.objectContaining({ elementId: 'pe1', period: '2026-07-01', amount: '4' })]))
+})
+
 it('editing at the right edge: Tab commits to the edited month, then the window moves', async () => {
   usePlanHandlers()
   const calls = recordSetLimit()

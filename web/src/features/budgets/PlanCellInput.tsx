@@ -48,6 +48,10 @@ export function PlanCellInput({
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     // the grid's own keys (arrows, Enter, Delete, Shift+F2) must not act on the cell underneath
     e.stopPropagation()
+    // an IME's Enter/Escape confirms or cancels the composition, not the cell
+    if (e.nativeEvent.isComposing) {
+      return
+    }
     if (e.key === 'Escape') {
       e.preventDefault()
       closed.current = true
@@ -77,6 +81,11 @@ export function PlanCellInput({
         }}
         onKeyDown={onKeyDown}
         onBlur={() => {
+          // switching windows or tabs is not leaving the cell: the browser hands focus
+          // back here on return, so a half-typed value stays open rather than written
+          if (!document.hasFocus()) {
+            return
+          }
           // a click elsewhere commits; an invalid value there is dropped rather than
           // leaving an editor open in a cell the user has already left
           if (!closed.current && !tryCommit('none')) {
