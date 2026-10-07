@@ -266,6 +266,46 @@ it('one visible month (narrow screen): the selected month is the only column, an
   }
 })
 
+it('an ended budget: the keyboard never pages past the end month, and pages back from it', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () =>
+      HttpResponse.json({
+        success: true,
+        message: '',
+        data: { item: { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, endedAt: '2026-08-01 00:00:00' } } },
+      }),
+    ),
+    planHandler(),
+  )
+  // the end month selected: the window ends there, so Aug is the last column
+  useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' })
+  const user = userEvent.setup()
+  renderPage()
+  const grid = await screen.findByTestId('plan-sheet')
+  const headerCols = () => within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')
+  const months = () => headerCols().map((c) => c.getAttribute('data-month'))
+  await waitFor(() => expect(months()).toEqual(['2026-06-01', '2026-07-01', '2026-08-01']))
+  expect(headerCols()[2]).toHaveAttribute('data-selected-col', 'true')
+
+  await user.click(screen.getByTestId('plan-cell-cat-freelance:2'))
+  grid.focus()
+  // past the last column at the end month: nothing to page to
+  fireEvent.keyDown(grid, { key: 'ArrowRight' })
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-08-01')
+  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
+  expect(months()).toEqual(['2026-06-01', '2026-07-01', '2026-08-01'])
+  expect(screen.getByTestId('plan-cell-cat-freelance:2')).toHaveAttribute('aria-selected', 'true')
+
+  // walk to the name cell, then once more: the window moves back by one month
+  for (let i = 0; i < 4; i++) {
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+  }
+  await waitFor(() => expect(months()).toEqual(['2026-05-01', '2026-06-01', '2026-07-01']))
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01')
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
+})
+
 it('the plan window position survives a remount', async () => {
   usePlanHandlers()
   const { unmount } = renderPage()
@@ -564,6 +604,31 @@ it('scrolls a keyboard-selected row back into view, clearing the sticky balance 
 
   // 260 (cell bottom) - 160 (top of the sticky footer) = 100px of scrolling
   expect(grid.scrollTop).toBe(100)
+})
+
+it('scrolls a keyboard-selected row back into view below the sticky month header', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  const grid = await screen.findByTestId('plan-sheet')
+
+  await user.click(screen.getByTestId('plan-cell-pe1:0'))
+
+  // the sticky header covers the scroller's top 30px; the selected cell is half under it
+  const rect = (top: number, bottom: number) => () => ({ top, bottom, height: bottom - top, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => {} }) as DOMRect
+  grid.getBoundingClientRect = rect(0, 200)
+  screen.getByTestId('plan-month-header').getBoundingClientRect = rect(0, 30)
+  screen.getByTestId('plan-balance-row').getBoundingClientRect = rect(160, 200)
+  const target = screen.getByTestId('plan-cell-cat-food:0')
+  const targetCell = document.getElementById(target.id) as HTMLElement
+  targetCell.getBoundingClientRect = rect(10, 40)
+
+  grid.scrollTop = 100
+  await user.click(screen.getByTestId('plan-cell-cat-food:0'))
+
+  // 30 (header bottom) - 10 (cell top) = 20px back up
+  expect(grid.scrollTop).toBe(80)
 })
 
 it('arrow keys move the selection and shift the window at the edges', async () => {
