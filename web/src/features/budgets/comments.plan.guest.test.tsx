@@ -85,7 +85,6 @@ beforeEach(() => {
     unfoldedElements: {},
     foldBudgetId: null,
     planFolds: {},
-    planHideEmpty: false,
   })
 })
 
@@ -103,9 +102,12 @@ it('lets a guest start a thread on a cell with no existing comments, on desktop'
   // be editable for a real member — the guest role is what makes it read-only
   const cell = await screen.findByTestId('plan-cell-pe1:0')
   expect(within(cell).queryByTestId('comment-marker')).toBeNull()
-  expect(within(cell).queryByLabelText(/^limit /)).toBeNull()
 
-  await user.click(within(cell).getByLabelText(/^comments /))
+  // Enter opens no amount editor for a guest; Shift+Enter still opens the thread
+  await user.click(cell)
+  await user.keyboard('{Enter}')
+  expect(screen.queryByLabelText('Budget')).toBeNull()
+  await user.keyboard('{Shift>}{Enter}{/Shift}')
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
 })
 

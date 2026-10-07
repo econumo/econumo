@@ -43,26 +43,17 @@ export function formatPlanMonth(m: string, lang: string, now?: Date): string {
   return periodLabeler(lang, now)(monthDate(m))
 }
 
-export const PLAN_NAME_COL_PX = 210
+// monthLayout's PLAN_NAME_COL (w-52)
+export const PLAN_NAME_COL_PX = 208
 export const PLAN_MIN_MONTH_COL_PX = 110
-/** the trailing track closing every row: the currency symbol always, plus the actions
- *  menu in edit mode. Months must not be measured against space it occupies, or they
- *  stretch and the visible window silently narrows. */
-export const PLAN_CURRENCY_COL_PX = 24
-export const PLAN_ACTIONS_COL_PX = 32
+/** below this a month column cannot fit `12,345.67 · 12,345.67`: the months before the
+ *  selected one drop their actual before the grid drops a month */
+export const PLAN_ACTUALS_MIN_COL_PX = 150
+/** PLAN_LINE's pl-2 + pr-2.5; its month cells carry their own padding and no gap */
+const PLAN_LINE_PADDING_PX = 18
 
-/** the row's own chrome the grid template does not describe: px-2 either side, plus a
- *  gap-1 between every track. Ignoring it made the row wider than its container, which
- *  is what produced a horizontal scrollbar once the currency track was added. */
-const PLAN_ROW_PADDING_PX = 16
-const PLAN_TRACK_GAP_PX = 4
-
-export function planVisibleCount(containerWidthPx: number, editMode = false): number {
-  const tail = PLAN_CURRENCY_COL_PX + (editMode ? PLAN_ACTIONS_COL_PX : 0)
-  const fixed = PLAN_NAME_COL_PX + tail + PLAN_ROW_PADDING_PX
-  // n months means n + 2 tracks (name + months + tail), so n + 1 gaps
-  const perMonth = PLAN_MIN_MONTH_COL_PX + PLAN_TRACK_GAP_PX
-  const fit = Math.floor((containerWidthPx - fixed - PLAN_TRACK_GAP_PX) / perMonth)
+export function planVisibleCount(containerWidthPx: number): number {
+  const fit = Math.floor((containerWidthPx - PLAN_NAME_COL_PX - PLAN_LINE_PADDING_PX) / PLAN_MIN_MONTH_COL_PX)
   return fit < 3 ? 1 : Math.min(fit, 12)
 }
 
@@ -144,15 +135,6 @@ export function projectSavingsClosings(s: PlanSavingsElementDto, months: string[
 
 const isRowHidden = (el: PlanElementDto): boolean => el.cells.every((c) => isZero(c.actual) && c.planned === '')
 
-// Shared by the folder section renderer and the keyboard grid's flat row list, so
-// which rows are on screen and which rows Up/Down can reach can never diverge.
-export function visibleSectionRows(rows: PlanRow[], folded: boolean, hideEmpty: boolean, revealed: boolean): PlanRow[] {
-  if (folded) {
-    return []
-  }
-  return hideEmpty && !revealed ? rows.filter((r) => !r.hidden) : rows
-}
-
 /** the overspend highlight: an expense actual past its plan, in ANY month — an
  *  unset plan reads as 0 everywhere else in the grid, so it counts as 0 here too */
 export function isOverspent(type: BudgetElementType, cell: PlanCellDto | undefined): boolean {
@@ -160,17 +142,6 @@ export function isOverspent(type: BudgetElementType, cell: PlanCellDto | undefin
     return false
   }
   return cmp(cell.actual, cell.planned === '' ? '0' : cell.planned) > 0
-}
-
-/** the underspend highlight: a PAST month whose plan the actual stayed under — the
- *  current and future months are still open, so being under plan there means nothing
- *  yet. Never true without a plan (unset = 0), and never on the income side. Never on
- *  a savings row either: saving less than planned is no win. */
-export function isUnderspent(type: BudgetElementType, cell: PlanCellDto | undefined, month: string, cur: string): boolean {
-  if (!cell || isIncomeType(type) || type === BudgetElementType.SAVINGS || month >= cur) {
-    return false
-  }
-  return cmp(cell.planned === '' ? '0' : cell.planned, cell.actual) > 0
 }
 
 type Side = 'income' | 'expense'

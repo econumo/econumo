@@ -47,9 +47,6 @@ interface BudgetPeriodState {
   /** folded plan sections: 'income', folder ids, 'archived' */
   planFolds: Record<string, true>
   togglePlanFold: (key: string) => void
-  /** the Plan grid's hide-empty-rows filter: no control turns it on until the Plan
-   *  view is reworked, so it is not persisted (a device that had it on is not stuck) */
-  planHideEmpty: boolean
 }
 
 export const useBudgetPeriodStore = create<BudgetPeriodState>()(
@@ -94,8 +91,7 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
           }
           return { planFolds: next }
         }),
-      planHideEmpty: false,
     }),
-    { name: 'budgetPeriod', partialize: ({ planHideEmpty: _hidden, ...rest }) => rest },
+    { name: 'budgetPeriod' },
   ),
 )

@@ -13,6 +13,7 @@ import {
   LINE,
   NAME_COL,
   PLAN_FIGURE_COL,
+  PLAN_LINE,
   PLAN_NAME_COL,
   PLAN_SELECTED_TINT,
   SECOND_COL,
@@ -149,7 +150,7 @@ export function MonthSectionHeader({
   )
   return (
     <div
-      className={`${LINE} ${FOLD_LINE} min-h-10 ${showSums ? 'text-sm text-muted-foreground' : 'text-[10.5px] uppercase tracking-wider text-muted-foreground'}`}
+      className={`${plan ? PLAN_LINE : LINE} ${FOLD_LINE} min-h-10 ${showSums ? 'text-sm text-muted-foreground' : 'text-[10.5px] uppercase tracking-wider text-muted-foreground'}`}
       data-testid={testId}
       onClick={foldOnLineClick(() => toggle(foldKey))}
     >
@@ -221,7 +222,7 @@ export function FolderLine({
   )
   const dashes = Array.from({ length: plan ? layout.cols : 3 }, (_, i) => <Dash key={i} />)
   return (
-    <header className={`${LINE} ${FOLD_LINE} ${plan ? '' : FOLDER_INDENT} relative min-h-9 text-sm text-muted-foreground`} onClick={foldOnLineClick(onToggle)}>
+    <header className={`${plan ? PLAN_LINE : LINE} ${FOLD_LINE} ${plan ? '' : FOLDER_INDENT} relative min-h-9 text-sm text-muted-foreground`} onClick={foldOnLineClick(onToggle)}>
       {plan ? <span className={`${PLAN_NAME_COL} ${FOLDER_INDENT}`}>{nameParts}</span> : nameParts}
       {/* an empty folder reads as dashes in the same columns, so its ⋮ lines up
           with the others' */}
@@ -254,7 +255,7 @@ export function TotalLine({
   const plan = useLineLayout().kind === 'plan'
   const isNegative = (i: number) => (Array.isArray(negative) ? !!negative[i] : negative)
   return (
-    <div className={`${LINE} min-h-8 py-0.5`} data-testid={testId}>
+    <div className={plan ? `${PLAN_LINE} min-h-8` : `${LINE} min-h-8 py-0.5`} data-testid={testId}>
       <span className={`${plan ? PLAN_NAME_COL : NAME_COL} text-sm ${strong ? '' : 'text-muted-foreground'}`}>
         <span className="truncate">{label}</span>
       </span>

@@ -134,7 +134,6 @@ beforeEach(() => {
     unfoldedElements: {},
     foldBudgetId: null,
     planFolds: {},
-    planHideEmpty: false,
   })
 })
 
@@ -218,8 +217,10 @@ it('editing a savings planned cell sends set-limit with the account id and patch
 
   // Jun/Jul/Aug window: column 2 is August
   const cell = screen.getByTestId('plan-cell-acc-s1:2')
-  await user.click(within(cell).getByRole('button', { name: 'limit Rainy day' }))
-  const input = await screen.findByLabelText('Budget')
+  await user.click(cell)
+  await user.keyboard('{Enter}')
+  // a savings amount is a plan to meet, not a spending limit
+  const input = await screen.findByLabelText('Plan')
   await user.clear(input)
   await user.type(input, '350')
   await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -265,7 +266,7 @@ it('the savings row menu offers no "Move to folder…"', async () => {
   renderPage()
   await screen.findByTestId('plan-section-savings')
   await enterEditMode(user)
-  await user.click(await screen.findByRole('button', { name: 'element actions Rainy day' }))
+  await user.click(await screen.findByRole('button', { name: 'menu Rainy day' }))
   expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
   expect(screen.queryByRole('menuitem', { name: 'Move to folder…' })).not.toBeInTheDocument()
 })
@@ -369,10 +370,15 @@ it('a deleted-account savings row is read-only: no cell editor, no grip', async 
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-section-savings')
-  const deletedRow = document.querySelector('[data-row-id="acc-s3:5"]') as HTMLElement
-  expect(within(deletedRow).queryByRole('button', { name: /^limit / })).not.toBeInTheDocument()
-  expect(within(screen.getByTestId('plan-cell-acc-s3:0')).getByTestId('cell-planned')).toHaveTextContent('40')
-  expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByRole('button', { name: 'limit Rainy day' })).toBeInTheDocument()
+  // a live account's cell takes the fill handle and Enter's amount editor; the deleted one neither
+  await user.click(screen.getByTestId('plan-cell-acc-s1:0'))
+  expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByTestId('fill-handle')).toBeInTheDocument()
+  const deletedCell = screen.getByTestId('plan-cell-acc-s3:0')
+  expect(within(deletedCell).getByTestId('cell-planned')).toHaveTextContent('40')
+  await user.click(deletedCell)
+  expect(within(deletedCell).queryByTestId('fill-handle')).not.toBeInTheDocument()
+  await user.keyboard('{Enter}')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   await enterEditMode(user)
   await screen.findByRole('button', { name: 'move Rainy day' })
   expect(screen.queryByRole('button', { name: 'move Closed deposit' })).not.toBeInTheDocument()
@@ -431,8 +437,7 @@ it('a deleted savings account with only an opening balance splits the balance wi
   }
 })
 
-it('each savings cell shows the balance at the end of its month; from the current month on it adds the unmet plans so far', async () => {
-  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0)) // July is current, August future
+it('savings rows carry no balance line of their own: balances live on the Total savings line', async () => {
   const closings = ['1100', '1200', '1250', '1250']
   const plan = {
     ...savingsPlan,
@@ -443,16 +448,12 @@ it('each savings cell shows the balance at the end of its month; from the curren
   }
   useHandlers(plan)
   renderPage()
-  await screen.findByTestId('plan-cell-acc-s1:0')
-  // columns start in June: 0 = June, 1 = July, 2 = August. June is past: booked, its
-  // missed 50 never arrives
-  expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByTestId('cell-closing')).toHaveTextContent('1,200.00')
-  // July planned 200, saved 50: the 150 still to come closes July at 1,400
-  expect(within(screen.getByTestId('plan-cell-acc-s1:1')).getByTestId('cell-closing')).toHaveTextContent('1,400.00')
-  // August adds its own 200 on top
-  expect(within(screen.getByTestId('plan-cell-acc-s1:2')).getByTestId('cell-closing')).toHaveTextContent('1,600.00')
-  // expense rows carry no balance line
-  expect(document.querySelectorAll('[data-testid="cell-closing"]')).toHaveLength(3)
+  const cell = await screen.findByTestId('plan-cell-acc-s1:0')
+  expect(document.querySelectorAll('[data-testid="cell-closing"]')).toHaveLength(0)
+  expect(cell).not.toHaveTextContent('1,200.00')
+  // the per-month values of that line are covered by the balance split test above
+  expect(within(screen.getByTestId('plan-balance-row')).getByText('Total savings')).toBeInTheDocument()
+  expect(screen.getByTestId('plan-savings-balance-0')).toBeInTheDocument()
 })
 
 function captureTxListParams() {

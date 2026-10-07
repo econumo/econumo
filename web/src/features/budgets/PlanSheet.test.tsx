@@ -115,7 +115,6 @@ beforeEach(() => {
     unfoldedElements: {},
     foldBudgetId: null,
     planFolds: {},
-    planHideEmpty: false,
   })
 })
 
@@ -137,25 +136,66 @@ it('/plan renders the sheet: months, income on top, cells', async () => {
   expect(within(cell).getByTestId('cell-planned')).toBeInTheDocument()
 })
 
-it('overspend turns the actual red in a past month and with no plan set; never on income', async () => {
+it('a row is one line: actual · plan up to the selected month, plan alone after it', async () => {
   usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  const grid = await screen.findByTestId('plan-sheet')
+  // fixture pe1 (expense): Jun = history, Jul = selected, Aug = future
+  const jun = screen.getByTestId('plan-cell-pe1:0')
+  const aug = screen.getByTestId('plan-cell-pe1:2')
+  expect(within(jun).getByTestId('cell-actual')).toBeInTheDocument()
+  expect(within(jun).getByTestId('cell-planned')).toBeInTheDocument()
+  expect(within(aug).queryByTestId('cell-actual')).not.toBeInTheDocument()
+  // Aug is unplanned: blank, never 0.00
+  expect(within(aug).getByTestId('cell-planned')).toHaveTextContent(/^$/)
+  // no currency symbol column, no savings balance line
+  expect(within(grid).queryByText('$')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('cell-closing')).not.toBeInTheDocument()
+})
+
+it('an unplanned month is blank, and only an over-plan actual is red', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  for (const actual of screen.getAllByTestId('cell-actual')) {
+    expect(actual.className).not.toContain('text-income')
+  }
+  for (const planned of screen.getAllByTestId('cell-planned')) {
+    expect(planned.textContent).not.toBe('0.00')
+  }
+})
+
+it('clicking an actual opens that row and month in the transactions list', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  await user.click(within(screen.getByTestId('plan-cell-pe1:1')).getByTestId('cell-actual'))
+  expect(await screen.findByRole('dialog')).toBeInTheDocument()
+})
+
+it('overspend turns the actual red, also with no plan set; never on income, and nothing turns green', async () => {
+  usePlanHandlers()
+  // May (history), Jun (selected), Jul
   useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
   renderPage()
   await screen.findByTestId('plan-month-header')
-  // July: 125 spent, no plan stored — a past month by the time this runs (fixture months are 2026)
-  const foodJuly = screen.getAllByTestId('plan-cell-cat-food:2')[0]
-  expect(within(foodJuly).getByTestId('cell-actual')).toHaveClass('text-destructive')
-  // May: 120 spent against a 150 plan in a past month — under, so green
-  const foodMay = screen.getAllByTestId('plan-cell-cat-food:0')[0]
-  expect(within(foodMay).getByTestId('cell-actual')).not.toHaveClass('text-destructive')
-  expect(within(foodMay).getByTestId('cell-actual')).toHaveClass('text-income')
+  const actual = (testId: string) => within(screen.getByTestId(testId)).getByTestId('cell-actual')
+  // May: vacation spent 20 with nothing planned
+  expect(actual('plan-cell-tag1:0')).toHaveClass('text-expense')
+  // pe1 Jun: 60 of 200; cat-food May: 120 of 150 — under, plain (no green any more)
+  expect(actual('plan-cell-pe1:1')).not.toHaveClass('text-expense')
+  expect(actual('plan-cell-cat-food:0')).not.toHaveClass('text-expense')
+  expect(actual('plan-cell-cat-food:0')).not.toHaveClass('text-income')
   // income over an unset plan is neither
-  const freelanceMay = screen.getAllByTestId('plan-cell-cat-freelance:0')[0]
-  expect(within(freelanceMay).getByTestId('cell-actual')).not.toHaveClass('text-destructive')
-  expect(within(freelanceMay).getByTestId('cell-actual')).not.toHaveClass('text-income')
-  // June: 2000 vs 2000 for Salaries (income) — plain; env-eur June 40 vs 100 — green
-  const eurJune = screen.getAllByTestId('plan-cell-env-eur:1')[0]
-  expect(within(eurJune).getByTestId('cell-actual')).toHaveClass('text-income')
+  expect(actual('plan-cell-cat-freelance:0')).not.toHaveClass('text-expense')
+  // env-eur Jun: 40 of 100 — under, plain
+  expect(actual('plan-cell-env-eur:1')).not.toHaveClass('text-income')
+  // Jul is after the selected month: its 125 of nothing is not shown at all
+  expect(within(screen.getByTestId('plan-cell-cat-food:2')).queryByTestId('cell-actual')).not.toBeInTheDocument()
 })
 
 it('shares the month strip with the Budget view and centres the window on the selected month', async () => {
@@ -348,9 +388,10 @@ it('editing a planned cell sends set-limit with the cell month and patches optim
   renderPage()
   await screen.findByTestId('plan-sheet')
 
-  // pe1's second visible column (Jul/Aug/Sep window -> Aug)
+  // pe1's second visible column (Jul/Aug/Sep window -> Aug); Enter opens the amount dialog
   const cell = screen.getByTestId('plan-cell-pe1:1')
-  await user.click(within(cell).getByRole('button', { name: 'limit Living' }))
+  await user.click(cell)
+  await user.keyboard('{Enter}')
   const input = await screen.findByLabelText('Budget')
   await user.clear(input)
   await user.type(input, '350')
@@ -424,21 +465,7 @@ it('folding a section header collapses its rows and persists', async () => {
 })
 
 it('clicking anywhere on a folder header row toggles the fold, but its own controls keep their action', async () => {
-  // put the dormant row inside the Essentials folder so its header carries a "Show" notice
-  const plan = fixtureWirePlan as unknown as BudgetPlanDto
-  const planWithDormantInFolder: BudgetPlanDto = {
-    ...plan,
-    structure: {
-      ...plan.structure,
-      elements: plan.structure.elements.map((el) => (el.id === 'cat-dormant' ? { ...el, folderId: 'bf1' } : el)),
-    },
-  }
-  server.use(
-    ...coreHandlers({ user: userWithBudget }),
-    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-    planHandler(planWithDormantInFolder),
-  )
-  useBudgetPeriodStore.setState({ planHideEmpty: true })
+  usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -446,7 +473,6 @@ it('clicking anywhere on a folder header row toggles the fold, but its own contr
   const folder = screen.getByTestId('plan-folder-bf1')
   const nameButton = within(folder).getByRole('button', { name: 'Essentials' })
   const header = nameButton.parentElement!.parentElement as HTMLElement
-  expect(within(header).getByText('1 hidden')).toBeInTheDocument()
   expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
 
   // the blank part of the header row folds…
@@ -456,11 +482,6 @@ it('clicking anywhere on a folder header row toggles the fold, but its own contr
   // …and unfolds
   await user.click(header)
   expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
-
-  // "Show" reveals the hidden row without touching the fold
-  await user.click(within(header).getByRole('button', { name: 'Show' }))
-  expect(document.querySelector('[data-row-id="cat-dormant:1"]')).toBeInTheDocument()
-  expect(nameButton).toHaveAttribute('aria-expanded', 'true')
 
   // the edit-mode grip is a drag handle, not a fold toggle
   await user.click(screen.getByRole('button', { name: 'Configure' }))
@@ -525,24 +546,6 @@ it('edit mode: a folder header menu renames the folder, and deletes it only when
   await waitFor(() => expect(deleteBody).toEqual({ budgetId: 'b1', id: 'bf-empty' }))
 })
 
-it('hide-empty removes dormant rows, shows the per-section count, Show reveals them', async () => {
-  usePlanHandlers()
-  const user = userEvent.setup()
-  renderPage()
-  await screen.findByTestId('plan-sheet')
-
-  expect(document.querySelector('[data-row-id="cat-dormant:1"]')).toBeInTheDocument()
-
-  // no control turns the filter on until the Plan view is reworked; the machinery stays
-  act(() => useBudgetPeriodStore.setState({ planHideEmpty: true }))
-  expect(document.querySelector('[data-row-id="cat-dormant:1"]')).not.toBeInTheDocument()
-  expect(screen.getByText('1 hidden')).toBeInTheDocument()
-
-  await user.click(screen.getByRole('button', { name: 'Show' }))
-  expect(document.querySelector('[data-row-id="cat-dormant:1"]')).toBeInTheDocument()
-  expect(screen.queryByText('1 hidden')).not.toBeInTheDocument()
-})
-
 it('uncategorized and child cells are not editable; guest role sees no editors', async () => {
   const guestBudget = {
     ...fixtureWireBudget,
@@ -561,9 +564,13 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
   renderPage()
   await screen.findByTestId('plan-sheet')
 
-  // guest role: pe1 would normally be editable for the owner, but not here
+  // guest role: pe1 would normally be editable for the owner, but not here — no
+  // fill handle, and Enter opens no amount editor
   const pe1Cell = screen.getByTestId('plan-cell-pe1:1')
-  expect(within(pe1Cell).queryByRole('button', { name: /limit/i })).not.toBeInTheDocument()
+  await user.click(pe1Cell)
+  expect(within(pe1Cell).queryByTestId('fill-handle')).not.toBeInTheDocument()
+  await user.keyboard('{Enter}')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
   // children never carry their own limit, regardless of role
   const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
@@ -576,7 +583,10 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
   const uncatCells = screen.getAllByTestId('plan-cell-uncategorized:1')
   expect(uncatCells).toHaveLength(2)
   for (const cell of uncatCells) {
-    expect(within(cell).queryByRole('button', { name: /limit/i })).not.toBeInTheDocument()
+    await user.click(cell)
+    expect(within(cell).queryByTestId('fill-handle')).not.toBeInTheDocument()
+    await user.keyboard('{Enter}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   }
 })
 
@@ -1594,55 +1604,6 @@ describe('fill handle', () => {
     )
   })
 
-  it('opening the LimitEditor popover then dragging the fill handle dismisses it, and the drag still commits', async () => {
-    const bodies: unknown[] = []
-    server.use(
-      ...coreHandlers({ user: userWithBudget }),
-      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-      planHandler(),
-      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
-        bodies.push(await request.json())
-        return HttpResponse.json({ success: true, message: '', data: {} })
-      }),
-    )
-    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
-    const user = userEvent.setup()
-    renderPage()
-    await screen.findByTestId('plan-sheet')
-
-    const cell = screen.getByTestId('plan-cell-pe1:0')
-    await user.click(cell)
-    await user.click(within(cell).getByRole('button', { name: 'limit Living' }))
-    expect(document.querySelector('[data-slot="popover-content"]')).toBeInTheDocument()
-    // Radix's DismissableLayer registers its document-level pointerdown listener in a
-    // setTimeout(0) after the layer mounts, so the very next synchronous event misses it
-    await new Promise((resolve) => setTimeout(resolve, 0))
-
-    const handle = screen.getByTestId('fill-handle')
-    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
-    fireEvent.pointerMove(handle, { clientX: 320, pointerId: 1 })
-    expect(screen.getByTestId('plan-cell-pe1:1').className).toContain('fill-covered')
-    fireEvent.pointerUp(handle, { clientX: 320, pointerId: 1 })
-    // Popover defers outside-pointerdown dismissal to the click that follows it (so a
-    // drag-select doesn't dismiss mid-gesture) — that detection needs the pointerdown to
-    // actually reach Radix's document listener, which the deleted stopPropagation used to
-    // block. A neutral click (not on a grid cell, so this assertion isn't riding on the
-    // unrelated cell-focus side effect of ctx.select) stands in for wherever the drag's
-    // real mouseup/click ultimately lands.
-    fireEvent.click(document.body)
-    // Radix's DismissableLayer dismisses the popover through this sequence — it must not
-    // be swallowed by a stopPropagation on the handle's pointerdown listener
-    await waitFor(() => expect(document.querySelector('[data-slot="popover-content"]')).not.toBeInTheDocument())
-
-    await waitFor(() => expect(bodies).toHaveLength(2))
-    expect(bodies).toEqual(
-      expect.arrayContaining([
-        { budgetId: 'b1', elementId: 'pe1', period: '2026-07-01', amount: '200' },
-        { budgetId: 'b1', elementId: 'pe1', period: '2026-08-01', amount: '200' },
-      ]),
-    )
-  })
-
   it('compact mode: the fill handle does not render on a selected editable cell', async () => {
     mockCompactViewport()
     usePlanHandlers()
@@ -1771,7 +1732,7 @@ describe('clipboard and keyboard fill', () => {
     expect(bodies).toHaveLength(0)
   })
 
-  it('paste inside the open LimitEditor input is left to the input, not the grid', async () => {
+  it('paste inside the open amount dialog input is left to the input, not the grid', async () => {
     const bodies: unknown[] = []
     useCapturingHandlers(bodies)
     useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
@@ -1781,9 +1742,8 @@ describe('clipboard and keyboard fill', () => {
 
     const cell = screen.getByTestId('plan-cell-pe1:0')
     await user.click(cell)
-    await user.click(within(cell).getByRole('button', { name: 'limit Living' }))
-    const input = document.querySelector<HTMLInputElement>('[data-slot="popover-content"] input')
-    expect(input).not.toBeNull()
+    await user.keyboard('{Enter}')
+    const input = (await screen.findByLabelText('Budget')) as HTMLInputElement
     expect(fireEvent.paste(input as HTMLInputElement, { clipboardData: clipboard('150') })).toBe(true)
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(bodies).toHaveLength(0)
@@ -1971,29 +1931,6 @@ describe('income/expense split', () => {
     expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
   })
 
-  it('hide-empty count for expense loose rows sits on the Expenses header', async () => {
-    usePlanHandlers()
-    const user = userEvent.setup()
-    renderPage()
-    await screen.findByTestId('plan-sheet')
-
-    act(() => useBudgetPeriodStore.setState({ planHideEmpty: true }))
-    expect(document.querySelector('[data-row-id="cat-dormant:1"]')).not.toBeInTheDocument()
-
-    const expenseSection = screen.getByTestId('plan-section-expense')
-    const header = within(expenseSection).getByRole('button', { name: 'Expenses' }).parentElement as HTMLElement
-    const hiddenNotice = within(header).getByText('1 hidden')
-
-    // it sits in the header, not as a trailing line after the last visible row
-    // (uncategorized now renders in the totals block, so anchor on a loose row)
-    const lastRow = within(expenseSection).getByTestId('plan-cell-cat-food:0')
-    expect(hiddenNotice.compareDocumentPosition(lastRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-
-    await user.click(within(header).getByRole('button', { name: 'Show' }))
-    expect(document.querySelector('[data-row-id="cat-dormant:1"]')).toBeInTheDocument()
-    expect(within(expenseSection).queryByText('1 hidden')).not.toBeInTheDocument()
-  })
-
   it('separates the bands with a gap, not a rule', async () => {
     usePlanHandlers()
     renderPage()
@@ -2164,9 +2101,10 @@ it('rules element rows flush with hairline dividers', async () => {
   expect(wrapper).toContainElement(row)
 })
 
-it('leaves the month columns unmarked in the grid body; the header tints the selected month', async () => {
+it('tints the selected month top to bottom, header and body alike, and marks a hovered cell alone', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
 
@@ -2174,18 +2112,19 @@ it('leaves the month columns unmarked in the grid body; the header tints the sel
   const sheet = screen.getByTestId('plan-sheet')
   expect(sheet.parentElement).not.toHaveAttribute('data-hover-col')
   expect(document.querySelector('[data-hover-col]')).toBeNull()
+  const hovered = screen.getByTestId('plan-cell-pe1:0')
+  await user.hover(hovered)
+  expect(hovered.className).toContain('outline-border')
+  expect(screen.getByTestId('plan-cell-pe1:2').className).not.toContain('outline-border')
 
-  // nothing in the body singles a month out — no tint, no rules
-  const headerRow = screen.getByTestId('plan-month-header')
-  expect(document.querySelectorAll('.plan-current-month')).toHaveLength(0)
-  sheet.querySelectorAll('[data-col]').forEach((c) => {
-    if (!headerRow.contains(c)) {
-      expect(c.className).not.toContain('bg-accent/40')
-    }
-  })
+  // Jul is the second column: every line's cell in it carries the tint, no other does
+  const tinted = [...sheet.querySelectorAll('[data-col]')].filter((c) => c.className.includes('bg-accent/40'))
+  expect(tinted.length).toBeGreaterThan(5)
+  tinted.forEach((c) => expect(c).toHaveAttribute('data-col', '1'))
+  sheet.querySelectorAll('[data-col="1"]').forEach((c) => expect(c.className).toContain('bg-accent/40'))
 
   // the header marks the selected month by tint alone, never by weight
-  const headers = within(headerRow).getAllByRole('columnheader')
+  const headers = within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')
   expect(headers.filter((h) => h.className.includes('bg-accent/40')).map((h) => h.getAttribute('data-month'))).toEqual(['2026-07-01'])
   headers.forEach((h) => expect(h.className).not.toMatch(/font-(bold|semibold)/))
 })
@@ -2229,16 +2168,19 @@ it('gives expanded child rows the same row-hover treatment as their parents', as
 
   // budget mode tints child rows on hover just like parents (BudgetTable.tsx);
   // plan mode must not diverge
-  expect(childRow.className).toContain('plan-row')
-
-  // the child row's grid must share the parent row's horizontal padding — the fixed
-  // name column absorbs the indent, so the month cells line up under the parent's
-  // (extra padding on the row itself would shrink the 1fr month tracks and shift them)
   const parentRow = screen.getByTestId('plan-cell-pe1:0').closest('[role="row"]') as HTMLElement
-  expect(parentRow.className).toContain('px-2')
-  expect(childRow.className).toContain('px-2')
-  expect(childRow.className).not.toMatch(/\bpl-\d/)
-  expect(childRow.style.gridTemplateColumns).toBe(parentRow.style.gridTemplateColumns)
+  expect(childRow.className).toContain('hover:bg-accent/50')
+  expect(parentRow.className).toContain('hover:bg-accent/50')
+
+  // both lines share the same padding; the indent lives inside the fixed-width name
+  // column, so the month cells line up under the parent's
+  const lineClasses = (row: HTMLElement) => row.className.split(' ').filter((c) => /^p[lrx]-/.test(c))
+  expect(lineClasses(childRow)).toEqual(lineClasses(parentRow))
+  const childName = childRow.querySelector('[role="gridcell"]') as HTMLElement
+  const parentName = parentRow.querySelector('[role="gridcell"]') as HTMLElement
+  expect(childName.className).toContain('w-52')
+  expect(parentName.className).toContain('w-52')
+  expect(childName.className).toMatch(/\bpl-1[79]\b/)
 })
 
 it('shows plan row actions only in edit mode, with side-filtered move-to-folder', async () => {
@@ -2263,12 +2205,12 @@ it('shows plan row actions only in edit mode, with side-filtered move-to-folder'
   await screen.findByTestId('plan-sheet')
 
   // read-only by default: no row menus
-  expect(screen.queryByRole('button', { name: /element actions/i })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /^menu / })).not.toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
-  await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
+  await user.click(await screen.findByRole('button', { name: 'menu Living' }))
   expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
   await user.click(screen.getByRole('menuitem', { name: 'Move to folder…' }))
 
@@ -2306,7 +2248,7 @@ it('picking a folder in the move dialog fires move-element with the right payloa
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
-  await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
+  await user.click(await screen.findByRole('button', { name: 'menu Living' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Move to folder…' }))
 
   const dialog = await screen.findByRole('dialog', { name: 'Move to folder…' })
@@ -2530,64 +2472,6 @@ it('a fill drag past the sortable activation distance still commits in edit mode
   await waitFor(() => expect(fillBody).toMatchObject({ elementId: 'pe1' }))
 })
 
-it('the arrangement a drag anchors to matches the filtered (hideEmpty) rows actually on screen, never a hidden one', async () => {
-  // Expense loose order: cat-food (hidden by hideEmpty — zeroed out below) -> tag1
-  // (visible, the drop target) -> env-eur (visible, the dragged row, sits after tag1).
-  // Dragging env-eur onto tag1 is the backward-drag case that exposes the bug: an
-  // arrangement built from the UNFILTERED rows still has cat-food at index 0, and
-  // moveElementInArrangement's insert-at-target-index math (elementMove.ts) lands the
-  // moved row right after whatever preceded the target in that unfiltered list — here,
-  // cat-food, a row hideEmpty has hidden from the user entirely. With the fix, cat-food
-  // is excluded from the arrangement, so env-eur can only ever land first (afterId: null).
-  const plan = fixtureWirePlan as unknown as BudgetPlanDto
-  const planWithHiddenLeadRow: BudgetPlanDto = {
-    ...plan,
-    structure: {
-      ...plan.structure,
-      elements: plan.structure.elements.map((el) => {
-        if (el.id === 'cat-food') {
-          return { ...el, cells: el.cells.map(() => ({ actual: '0', planned: '' })) }
-        }
-        return el
-      }),
-    },
-  }
-  let body: unknown
-  server.use(
-    ...coreHandlers({ user: userWithBudget }),
-    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-    planHandler(planWithHiddenLeadRow),
-    http.post('*/api/v1/budget/move-element', async ({ request }) => {
-      body = await request.json()
-      return HttpResponse.json({ success: true, message: '', data: {} })
-    }),
-  )
-  useBudgetPeriodStore.setState({ planHideEmpty: true })
-  const user = userEvent.setup()
-  renderPage()
-  await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
-  await screen.findByRole('button', { name: 'move vacation' })
-
-  // cat-food is hidden (hideEmpty is on and it has no activity/plan anywhere in this
-  // variant) — it must not be reachable by row queries, confirming the drag below truly
-  // has no way to land on it through the DOM, yet the bug reaches it anyway internally.
-  expect(screen.queryByRole('button', { name: 'move Food' })).not.toBeInTheDocument()
-
-  // PlanSheet renders the income band's DndContext before the expense band's on every
-  // commit, so regardless of how many renders happened while the page settled, the LAST
-  // captured handler is always the current expense band's onDragEnd.
-  const expenseDragEnd = capturedDragEnds[capturedDragEnds.length - 1]
-  expenseDragEnd({ active: { id: 'env-eur' }, over: { id: 'tag1' } })
-
-  await waitFor(() => expect(body).toBeDefined())
-  expect(body).toMatchObject({ id: 'env-eur' })
-  const afterId = (body as { afterId: string | null }).afterId
-  expect(afterId).not.toBe('cat-food')
-  expect(afterId).toBeNull()
-})
-
 it('holds the dropped order locally instead of snapping back until the refetch lands', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
@@ -2651,26 +2535,22 @@ it('measures the grid with a callback ref so the loader cannot skip the measurem
   }
 })
 
-it('closes every row with the currency, then the actions menu in edit mode', async () => {
+it('names a foreign-currency row by its code next to the name; the edit-mode menu sits in the name column', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
-  await screen.findByTestId('plan-sheet')
+  const grid = await screen.findByTestId('plan-sheet')
 
-  // the currency closes the row at rest — the name cell no longer carries it
-  const row = screen.getByTestId('plan-cell-pe1:0').closest('[role="row"]')!
-  expect(row.querySelector('[role="gridcell"]')!.textContent).not.toContain('$')
-  expect(row.lastElementChild!.textContent).toContain('$')
+  // no trailing currency track: a budget-currency row shows none, a EUR row its code
+  const nameCell = (testId: string) => screen.getByTestId(testId).closest('[role="row"]')!.querySelector('[role="gridcell"]') as HTMLElement
+  expect(within(nameCell('plan-cell-pe1:0')).queryByTestId('currency-tag')).not.toBeInTheDocument()
+  expect(within(nameCell('plan-cell-env-eur:0')).getByTestId('currency-tag')).toHaveTextContent('EUR')
+  expect(within(grid).queryByText('$')).not.toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
-  const menu = await screen.findByRole('button', { name: 'element actions Living' })
-
-  // the menu joins the currency in that same trailing track, not the name cell
-  const editRow = menu.closest('[role="row"]')!
-  expect(editRow.lastElementChild).toContainElement(menu)
-  expect(editRow.lastElementChild!.textContent).toContain('$')
-  expect(menu.closest('[role="gridcell"]')).toBeNull()
+  const menu = await screen.findByRole('button', { name: 'menu Living' })
+  expect(nameCell('plan-cell-pe1:0')).toContainElement(menu)
 })
 
 it('collapses folder contents while a folder drag is in flight, and still drops correctly', async () => {
@@ -2821,26 +2701,26 @@ it('offers Edit and Delete on an envelope row, but not on a category or a tag', 
   await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
   // ie1/Salaries is an income envelope (type 4)
-  await user.click(await screen.findByRole('button', { name: 'element actions Salaries' }))
+  await user.click(await screen.findByRole('button', { name: 'menu Salaries' }))
   expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
   expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
   await user.keyboard('{Escape}')
 
   // pe1/Living is an expense envelope (type 0) — same four items
-  await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
+  await user.click(await screen.findByRole('button', { name: 'menu Living' }))
   expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
   expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
   await user.keyboard('{Escape}')
 
   // cat-food/Food is a category (type 1): currency + move only
-  await user.click(await screen.findByRole('button', { name: 'element actions Food' }))
+  await user.click(await screen.findByRole('button', { name: 'menu Food' }))
   expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
   expect(screen.queryByRole('menuitem', { name: 'Edit' })).not.toBeInTheDocument()
   expect(screen.queryByRole('menuitem', { name: 'Delete' })).not.toBeInTheDocument()
   await user.keyboard('{Escape}')
 
   // tag1/vacation is a tag (type 2): currency + move only
-  await user.click(await screen.findByRole('button', { name: 'element actions vacation' }))
+  await user.click(await screen.findByRole('button', { name: 'menu vacation' }))
   expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
   expect(screen.queryByRole('menuitem', { name: 'Edit' })).not.toBeInTheDocument()
   expect(screen.queryByRole('menuitem', { name: 'Delete' })).not.toBeInTheDocument()
@@ -2863,7 +2743,7 @@ it('editing an income envelope opens the dialog on the income side and saves', a
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
-  await user.click(await screen.findByRole('button', { name: 'element actions Salaries' }))
+  await user.click(await screen.findByRole('button', { name: 'menu Salaries' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
 
   const dialog = await screen.findByRole('dialog', { name: 'Edit envelope' })
@@ -2899,7 +2779,7 @@ it('deleting an income envelope confirms first, then fires delete-envelope', asy
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
-  await user.click(await screen.findByRole('button', { name: 'element actions Salaries' }))
+  await user.click(await screen.findByRole('button', { name: 'menu Salaries' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Delete' }))
 
   const confirm = await screen.findByRole('dialog', { name: 'Delete envelope?' })

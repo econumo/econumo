@@ -88,7 +88,6 @@ beforeEach(() => {
     unfoldedElements: {},
     foldBudgetId: null,
     planFolds: {},
-    planHideEmpty: false,
   })
 })
 
@@ -105,7 +104,8 @@ it('opens the thread from the marker as a popover, and keeps the amount editor c
   const cell = await screen.findByTestId('plan-cell-pe1:1')
   expect(within(cell).getByTestId('comment-marker')).toHaveAccessibleName('1 comment')
 
-  await user.click(within(cell).getByLabelText(/^limit /))
+  await user.click(cell)
+  await user.keyboard('{Enter}')
   expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
   await user.keyboard('{Escape}')
@@ -185,7 +185,7 @@ it('does not steal focus from a later mouse-opened dialog after a keyboard-opene
   // editorFromGrid stuck true from the Shift+Enter above
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
-  await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
+  await user.click(await screen.findByRole('button', { name: 'menu Living' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
   const dialog = await screen.findByRole('dialog', { name: 'Edit envelope' })
   await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))

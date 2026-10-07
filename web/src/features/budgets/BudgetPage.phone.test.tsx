@@ -91,7 +91,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   phone()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planHideEmpty: false })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
 })
 
 it('renders the single month view on /budget and on /plan alike', async () => {

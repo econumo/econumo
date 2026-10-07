@@ -18,9 +18,13 @@ export const THIRD_COL = 'flex w-20 shrink-0 justify-end pr-2 text-right tabular
 export type LineLayout = { kind: 'budget' } | { kind: 'plan'; cols: number; selectedCol: number }
 export const LineLayoutContext = createContext<LineLayout>({ kind: 'budget' })
 export const useLineLayout = () => useContext(LineLayoutContext)
-// 13rem = 208px, matching the sticky header's PLAN_NAME_COL_PX
+// The Plan grid's line: no gap and no vertical padding, so each month's cells stack
+// edge to edge and the selected month's tint reads as one unbroken column. Its
+// horizontal padding is LINE's, which planVisibleCount measures as PLAN_LINE_PADDING_PX.
+export const PLAN_LINE = 'group/line flex items-stretch pr-2.5 pl-2'
+// 13rem = 208px = planMath's PLAN_NAME_COL_PX
 export const PLAN_NAME_COL = 'flex w-52 shrink-0 min-w-0 items-center gap-2'
-export const PLAN_FIGURE_COL = 'flex min-w-0 flex-1 basis-0 items-baseline justify-end gap-1 px-2 text-right tabular-nums'
+export const PLAN_FIGURE_COL = 'flex min-w-0 flex-1 basis-0 items-center justify-end gap-1 px-2 text-right tabular-nums'
 export const PLAN_SELECTED_TINT = 'bg-accent/40'
 /** folder lines sit one step in from their section heading */
 export const FOLDER_INDENT = 'pl-6'
