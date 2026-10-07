@@ -16,6 +16,7 @@ import { CommentMarker } from './CommentThread'
 import { CellShell } from './CellShell'
 import { COMMENT_ANCHOR_ATTR } from './cellDom'
 import { isEnvelopeType } from './elementEdit'
+import { DragChild, EnvelopeDrop, EnvelopeHeadDrop } from './MonthDrag'
 import { CurrencyTag, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FOLDER_INDENT, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, useRowLevel } from './monthLayout'
@@ -129,6 +130,10 @@ export interface GridCtx {
     cancel: () => void
   }
   editMode: boolean
+  /** rows, folders and envelope categories drag by their grips */
+  drag: boolean
+  /** the element being dragged: its own categories fold for the gesture */
+  dragActiveId: string | null
   editing: PlanCellEdit | null
   /** opens the in-cell editor on an editable month cell (desktop only); `text` is the
    *  typed character that replaces the value */
@@ -231,6 +236,9 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
   const displayName = elementDisplayName(el.id, el.name, t)
   const isUncategorized = el.id === UNCATEGORIZED_ID
   const expandable = el.children.length > 0 || isEnvelopeType(el.type)
+  const open = expandable && unfolded && ctx.dragActiveId !== el.id
+  // a live envelope takes categories dropped on it and lets its own be dragged out
+  const childDrag = ctx.drag && isEnvelopeType(el.type) && el.isArchived === 0
   const Chevron = unfolded ? ChevronDown : ChevronRight
   const rk = `${el.id}:${el.type}`
   const nameSelected = ctx.selection?.rowKey === rk && ctx.selection.col === -1
@@ -241,10 +249,27 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
   const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
   // the transactions list cannot show income nobody categorized
   const actualLinkable = !(isUncategorized && isIncomeType(el.type))
+  const childList = open ? (
+    <div>
+      {el.children.length === 0 ? (
+        <p className={`${CHILD_INDENT[level]} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
+      ) : null}
+      {el.children.map((child) => {
+        const line = <ChildRow key={child.id} child={child} parentCurrency={currency} ctx={ctx} menu={isEnvelopeType(el.type) ? ctx.childMenu?.(child) : undefined} />
+        return childDrag ? (
+          <DragChild key={child.id} id={child.id}>
+            {line}
+          </DragChild>
+        ) : (
+          line
+        )
+      })}
+    </div>
+  ) : null
 
   return (
     <div data-row-id={rk} className="border-b border-border/60">
-      <div role="row" className={`${PLAN_LINE} min-h-9 hover:bg-accent/50`}>
+      <div role="row" className={`${PLAN_LINE} relative min-h-9 hover:bg-accent/50`}>
         <div
           role="gridcell"
           id={cellDomId(rk, -1)}
@@ -400,17 +425,9 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
             </CellShell>
           )
         })}
+        {childDrag && !open ? <EnvelopeHeadDrop envelopeId={el.id} /> : null}
       </div>
-      {expandable && unfolded ? (
-        <div>
-          {el.children.length === 0 ? (
-            <p className={`${CHILD_INDENT[level]} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
-          ) : null}
-          {el.children.map((child) => (
-            <ChildRow key={child.id} child={child} parentCurrency={currency} ctx={ctx} menu={isEnvelopeType(el.type) ? ctx.childMenu?.(child) : undefined} />
-          ))}
-        </div>
-      ) : null}
+      {open ? (childDrag ? <EnvelopeDrop envelopeId={el.id}>{childList}</EnvelopeDrop> : childList) : null}
     </div>
   )
 })

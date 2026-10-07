@@ -1,15 +1,11 @@
-import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ClipboardEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
-import type { CollisionDetection, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
-import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
-// aliased: a bare `CSS` import would shadow the global CSS object, whose
-// CSS.escape the selection scroll-into-view effect below depends on
-import { CSS as DndCSS } from '@dnd-kit/utilities'
-import type { SortableHandleProps } from '@/components/SortableList'
+import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import type { CollisionDetection, DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { besidePointer, centerRowOnPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
-import { GripVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { CoinLoader } from '@/components/CoinLoader'
@@ -22,7 +18,7 @@ import type {
   PlanCellDto,
   PlanElementDto,
 } from '@/api/dto/budget'
-import { BudgetElementType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { useIsCompact } from '@/hooks/useIsCompact'
@@ -40,10 +36,21 @@ import {
   useFillPlannedCells,
   useMoveBudgetFolder,
   useMoveElement,
+  useMoveIntoEnvelope,
   usePlanSetLimit,
 } from './queries'
-import { arrangementItem, moveElementInArrangement, placeElements } from './elementMove'
-import type { ElementContainer } from './elementMove'
+import {
+  arrangementItem,
+  dropIndicatorFor,
+  envelopeCollisions,
+  envelopeOfDrop,
+  moveElementInArrangement,
+  placeElements,
+  placeFromEnvelope,
+  preferRowCollisions,
+} from './elementMove'
+import type { DropIndicator, ElementContainer } from './elementMove'
+import { DragFolder, DragGhost, DragRow, FolderGrip } from './MonthDrag'
 import { CommentsPanel } from './CommentsPanel'
 import { ElementSheet } from './ElementSheet'
 import { planCellFigures } from './phoneMonth'
@@ -138,129 +145,26 @@ interface FillDrag {
   colWidth: number
 }
 
-// Rows nest inside their folder section, and the dragged row travels under the
-// pointer (its own rect always wins a pointer test) — so ignore the active row,
-// prefer whatever OTHER row the pointer is inside, and fall back to sections
-// (folder headers, or the loose-area container droppable for an empty band).
-const preferRowCollisions: CollisionDetection = (args) => {
-  const collisions = pointerWithin(args)
-  const candidates = (collisions.length > 0 ? collisions : rectIntersection(args)).filter((c) => c.id !== args.active.id)
-  const row = candidates.find((c) => !String(c.id).startsWith('pfolder:') && !String(c.id).startsWith('bfolder:'))
-  return row ? [row] : candidates
-}
-
-// The grip is the activation handle; the whole row travels with the transform.
-// items-start is required because an unfolded element renders its children inside
-// this same wrapper — centering would drag the grip down to the middle of the whole
-// expanded block. So the grip gets its own box matching the root row's height
-// (py-1.5, mirroring ElementRow) and centers inside that, rather than carrying a
-// hand-tuned top margin that silently drifts whenever row padding changes.
-function PlanSortableRow({ id, name, children }: { id: string; name: string; children: ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+// A row in a list: under its grip when drag is on (the wrapper sits OUTSIDE the
+// row's own [data-row-id] element, so selection, keyboard navigation and the fill
+// handle are untouched by it), bare otherwise.
+function PlanRowList({ rows, ctx, indicator }: { rows: PlanRow[]; ctx: GridCtx; indicator: DropIndicator | null }) {
   return (
-    <div
-      ref={setNodeRef}
-      data-plan-sortable={id}
-      style={{ transform: DndCSS.Transform.toString(transform), transition }}
-      className={isDragging ? 'opacity-60' : undefined}
-    >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-1">
-        <button
-          type="button"
-          aria-label={`move ${name}`}
-          className="row-start-1 flex h-full cursor-grab touch-none items-center text-muted-foreground"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="size-4" />
-        </button>
-        <div className="row-start-1 min-w-0">{children}</div>
-      </div>
-    </div>
-  )
-}
-
-// The folder is a sortable item itself; its grip lives in the header rendered by
-// FolderRows, so the handle props travel via context rather than another prop hop.
-const PlanFolderHandleContext = createContext<SortableHandleProps | null>(null)
-
-function PlanFolderGrip({ name }: { name: string }) {
-  const handle = useContext(PlanFolderHandleContext)
-  if (!handle) {
-    return null
-  }
-  return (
-    <button
-      type="button"
-      aria-label={`move folder ${name}`}
-      className="cursor-grab touch-none text-muted-foreground"
-      {...handle.attributes}
-      {...(handle.listeners ?? {})}
-    >
-      <GripVertical className="size-4" />
-    </button>
-  )
-}
-
-function PlanSortableFolder({ section, children }: { section: PlanFolderSection; children: ReactNode }) {
-  const sortable = useSortable({ id: `pfolder:${section.folder.id}` })
-  return (
-    <div
-      ref={sortable.setNodeRef}
-      style={{ transform: DndCSS.Transform.toString(sortable.transform), transition: sortable.transition }}
-      className={sortable.isDragging ? 'opacity-60' : undefined}
-    >
-      <PlanFolderHandleContext.Provider value={{ attributes: sortable.attributes, listeners: sortable.listeners }}>
-        {children}
-      </PlanFolderHandleContext.Provider>
-    </div>
-  )
-}
-
-// One sortable list per bucket (a folder's members, or a band's loose rows).
-// Outside edit mode this is a plain map, so the read-only sheet keeps its exact
-// DOM. The wrapper always sits OUTSIDE the row's own [data-row-id] element, so
-// selection, keyboard navigation and the fill handle are untouched by it.
-function PlanRowList({ rows, ctx }: { rows: PlanRow[]; ctx: GridCtx }) {
-  const { t } = useTranslation()
-  if (!ctx.editMode) {
-    return (
-      <>
-        {rows.map((r) => (
-          <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
-        ))}
-      </>
-    )
-  }
-  return (
-    <SortableContext items={rows.filter(isDraggableRow).map((r) => r.element.id)} strategy={verticalListSortingStrategy}>
+    <>
       {rows.map((r) =>
-        isDraggableRow(r) ? (
-          <PlanSortableRow key={rowKey(r)} id={r.element.id} name={elementDisplayName(r.element.id, r.element.name, t)}>
+        ctx.drag && isDraggableRow(r) ? (
+          <DragRow key={rowKey(r)} id={r.element.id} indicator={indicator?.kind === 'row' && indicator.id === r.element.id ? indicator.edge : undefined}>
             <ElementRow row={r} ctx={ctx} />
-          </PlanSortableRow>
+          </DragRow>
         ) : (
           <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
         ),
       )}
-    </SortableContext>
+    </>
   )
 }
 
-// A band's loose rows have no bordered wrapper the way a folder does (FolderRows
-// supplies one), so an empty loose list leaves no droppable surface at all —
-// a row could never leave a folder unless it happened to land exactly on another
-// loose row. This container droppable gives that empty space a drop target,
-// mirroring BudgetPage's per-bucket `bfolder:<key>` droppable so the existing
-// `bfolder:null` branch in moveElementInArrangement (elementMove.ts) becomes reachable.
-function LooseRowsContainer({ rows, ctx }: { rows: PlanRow[]; ctx: GridCtx }) {
-  const { setNodeRef } = useDroppable({ id: 'bfolder:null' })
-  return (
-    <div ref={setNodeRef} data-testid="plan-loose-drop" className="min-h-2">
-      <PlanRowList rows={rows} ctx={ctx} />
-    </div>
-  )
-}
+const draggableIds = (rows: PlanRow[]): string[] => rows.filter(isDraggableRow).map((r) => r.element.id)
 
 // Uncategorized is a synthetic bucket with no stored position, and an archived row
 // is out of the ordering entirely — neither can be dropped anywhere meaningful.
@@ -359,6 +263,7 @@ function FolderRows({
   collapsed,
   onToggleFold,
   menu,
+  indicator,
 }: {
   section: PlanFolderSection
   ctx: GridCtx
@@ -371,6 +276,7 @@ function FolderRows({
   collapsed: boolean
   onToggleFold: (key: string) => void
   menu?: MenuAction[]
+  indicator: DropIndicator | null
 }) {
   const visibleRows = collapsed || folded ? [] : section.rows
   return (
@@ -381,11 +287,11 @@ function FolderRows({
       sums={sums}
       folded={folded}
       onToggleFold={onToggleFold}
-      handle={ctx.editMode ? <PlanFolderGrip name={section.folder.name} /> : null}
+      handle={ctx.drag ? <FolderGrip name={section.folder.name} /> : null}
       menu={menu}
       empty={!folded && !collapsed && section.rows.length === 0}
     >
-      <PlanRowList rows={visibleRows} ctx={ctx} />
+      <PlanRowList rows={visibleRows} ctx={ctx} indicator={indicator} />
     </FolderGroup>
   )
 }
@@ -413,26 +319,38 @@ const unsetPlan = (planned: string): boolean => planned === '' || isZero(planned
 // The Budget view's fold keys for a section's No folder group, so a fold carries over
 const NO_FOLDER_KEY: Record<'income' | 'expense', string> = { income: '__income__no_folder__', expense: '__no_folder__' }
 
-/** a section names its folder-less rows only next to real folders, as the Budget view does */
-const hasNoFolderLine = (band: PlanRows['income']): boolean => band.folders.length > 0 && band.loose.length > 0
+/** a section names its folder-less rows only next to real folders, as the Budget view
+ *  does; while one of its rows drags, an empty No folder shows too: the drop target
+ *  for taking a row out of its folder or envelope */
+const hasNoFolderLine = (band: PlanRows['income'], rowDragging: boolean): boolean =>
+  band.folders.length > 0 && (band.loose.length > 0 || rowDragging)
 
-function buildFlatRows(rows: PlanRows, savingsRows: PlanRow[], folded: (key: string) => boolean): FlatRow[] {
+/** the section a drag runs in: each has its own DndContext */
+type DragSide = 'income' | 'savings' | 'neutral' | 'expense'
+
+interface DragState {
+  /** a row or category drags in this section */
+  rowIn: DragSide | null
+  /** a folder drags in this section: its folders show their lines only */
+  folderIn: DragSide | null
+}
+
+function buildFlatRows(rows: PlanRows, savingsRows: PlanRow[], folded: (key: string) => boolean, drag: DragState): FlatRow[] {
   const flatRows: FlatRow[] = []
   const pushRow = (r: PlanRow) => {
     flatRows.push({ kind: 'element', rowKey: rowKey(r), el: r.element })
   }
-  const pushGroup = (foldKey: string, groupRows: PlanRow[]) => {
+  const pushGroup = (foldKey: string, groupRows: PlanRow[], side: DragSide) => {
     flatRows.push({ kind: 'folder', rowKey: folderRowKey(foldKey), foldKey })
-    if (!folded(foldKey)) {
+    if (!folded(foldKey) && drag.folderIn !== side) {
       groupRows.forEach(pushRow)
     }
   }
-  const pushFolder = (f: PlanFolderSection) => pushGroup(f.folder.id, f.rows)
   const pushSide = (side: 'income' | 'expense') => {
     const band = rows[side]
-    band.folders.forEach(pushFolder)
-    if (hasNoFolderLine(band)) {
-      pushGroup(NO_FOLDER_KEY[side], band.loose)
+    band.folders.forEach((f) => pushGroup(f.folder.id, f.rows, side))
+    if (hasNoFolderLine(band, drag.rowIn === side)) {
+      pushGroup(NO_FOLDER_KEY[side], band.loose, side)
     } else {
       band.loose.forEach(pushRow)
     }
@@ -446,7 +364,7 @@ function buildFlatRows(rows: PlanRows, savingsRows: PlanRow[], folded: (key: str
   if (!folded('savings')) {
     savingsRows.forEach(pushRow)
   }
-  rows.neutral.forEach(pushFolder)
+  rows.neutral.forEach((f) => pushGroup(f.folder.id, f.rows, 'neutral'))
   if (!folded('expense')) {
     pushSide('expense')
   }
@@ -456,57 +374,28 @@ function buildFlatRows(rows: PlanRows, savingsRows: PlanRow[], folded: (key: str
   return flatRows
 }
 
-// Each band gets its own DndContext, and that is what enforces the two hard
-// constraints: an element's side comes from its type and a folder's from its
-// members, so neither may cross the divider. A drag started in one band simply
-// has no droppable in the other — the invalid drop cannot be expressed, rather
-// than being rejected after the fact (the server would answer
-// CodeBudgetFolderSideMixed for elements, and order-folders persists position
-// only, so a cross-band folder move would silently snap back on reload).
-function PlanBand({
-  editMode,
-  sensors,
-  folderIds,
-  onDragStart,
-  onDragEnd,
-  onDragCancel,
-  children,
-}: {
-  editMode: boolean
-  sensors: ReturnType<typeof useSensors>
-  folderIds: string[]
-  onDragStart: (event: DragStartEvent) => void
-  onDragEnd: (event: DragEndEvent) => void
-  onDragCancel: () => void
-  children: ReactNode
-}) {
-  if (!editMode) {
-    return <>{children}</>
-  }
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={preferRowCollisions}
-      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onDragCancel={onDragCancel}
-    >
-      <SortableContext items={folderIds.map((id) => `pfolder:${id}`)} strategy={verticalListSortingStrategy}>
-        {children}
-      </SortableContext>
-    </DndContext>
-  )
-}
-
 export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
   const [sheetCellTarget, setSheetCellTarget] = useState<PlanLimitTarget | null>(null)
   const openSheet = useCallback((target: PlanLimitTarget) => setSheetCellTarget(target), [])
+  // a dropped order, held until the refetched plan replaces it so nothing snaps back
   const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
-  const [draggingFolder, setDraggingFolder] = useState(false)
+  // a category on its way into or out of an envelope: hidden until the refetched
+  // plan shows it in its new place
+  const [pendingMemberId, setPendingMemberId] = useState<string | null>(null)
+  // the row or category being dragged, the folder being dragged, and the section the
+  // drag runs in
+  const [dragActiveId, setDragActiveId] = useState<string | null>(null)
+  const [draggingFolderId, setDraggingFolderId] = useState<Id | null>(null)
+  const [dragSide, setDragSide] = useState<DragSide | null>(null)
+  // where the dragged row or category would land: the insertion line
+  const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null)
+  const dragState: DragState = useMemo(
+    () => ({ rowIn: dragActiveId !== null ? dragSide : null, folderIn: draggingFolderId !== null ? dragSide : null }),
+    [dragActiveId, draggingFolderId, dragSide],
+  )
   // the open comment thread: anchored to its cell on desktop/tablet, a sheet on a phone
   const [commentsDialogTarget, setCommentsDialogTarget] = useState<(PlanLimitTarget & { anchor: HTMLElement | null }) | null>(null)
   const commentsOpen = commentsDialogTarget !== null
@@ -517,6 +406,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const editorFromGrid = useRef(false)
   const moveElement = useMoveElement()
   const orderFolders = useMoveBudgetFolder()
+  const moveIntoEnvelope = useMoveIntoEnvelope()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   // the totals drill-down: which bucket, and which column's month
   const [transactionsTarget, setTransactionsTarget] = useState<{ target: BudgetTransactionsTarget; month: string } | null>(null)
@@ -625,9 +515,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   // the plan's OWN window, so both caches cover exactly the same months
   const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(budget.meta.id, fetchFrom, planFetchWindow(firstMonth, visible).months)
 
-  // The optimistic drop order is released only when genuinely fresh plan data arrives:
-  // a refetch yields a new object, so keying on identity hands over in one frame with
-  // no window where the stale server order is rendered.
+  // The optimistic drop (an order, or a category hidden on its way into or out of an
+  // envelope) is released only when genuinely fresh plan data arrives: a refetch yields
+  // a new object, so keying on identity hands over in one frame with no window where
+  // the stale server order is rendered.
   const arrangedFrom = useRef<BudgetPlanDto | null | undefined>(undefined)
   useEffect(() => {
     if (arrangedFrom.current === undefined) {
@@ -636,6 +527,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (plan !== arrangedFrom.current) {
       arrangedFrom.current = undefined
       setDragArrangement(null)
+      setPendingMemberId(null)
     }
   }, [plan])
 
@@ -712,6 +604,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   // there they show on every line while edit mode is on, and not at all without it.
   const lineControls: LineControls | null = isCompact ? (editMode ? 'always' : null) : 'hover'
   const hoverMenus = lineControls !== null
+  // grips show with the menus, for whoever may arrange the budget; an archived
+  // budget is read-only whatever the role
+  const dragEnabled = hoverMenus && budget.meta.isArchived === 0 && canConfigureBudget(budget.meta, userId)
   const selectedIndex = monthIndex(selectedDate)
   const rowMenu = hoverMenus ? (el: PlanElementDto) => menus.planRowMenu(el, selectedIndex) : undefined
   const childMenu = hoverMenus ? menus.envelopeChildMenu : undefined
@@ -770,12 +665,20 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (!plan) {
       return null
     }
-    if (!dragArrangement) {
+    if (!dragArrangement && !pendingMemberId) {
       return bucketPlanRows(plan)
     }
-    const structure = { ...plan.structure, elements: placeElements(plan.structure.elements, dragArrangement) }
-    return bucketPlanRows({ ...plan, structure })
-  }, [plan, dragArrangement])
+    let elements = plan.structure.elements
+    if (pendingMemberId) {
+      elements = elements
+        .filter((el) => el.id !== pendingMemberId)
+        .map((el) => (el.children.some((c) => c.id === pendingMemberId) ? { ...el, children: el.children.filter((c) => c.id !== pendingMemberId) } : el))
+    }
+    if (dragArrangement) {
+      elements = placeElements(elements, dragArrangement)
+    }
+    return bucketPlanRows({ ...plan, structure: { ...plan.structure, elements } })
+  }, [plan, dragArrangement, pendingMemberId])
 
   // Live savings rows by position, then any deleted account's rows: those stay in
   // this section as read-only history rather than joining the Archived band. A
@@ -845,8 +748,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     [balance, savingsBalance],
   )
   const flatRows = useMemo(
-    () => (shownRows ? buildFlatRows(shownRows, savingsRows, folded) : []),
-    [shownRows, savingsRows, folded],
+    () => (shownRows ? buildFlatRows(shownRows, savingsRows, folded, dragState) : []),
+    [shownRows, savingsRows, folded, dragState],
   )
 
   // Touch keeps the item sheet (and its amount dialog); a read-only cell never opens an editor.
@@ -933,6 +836,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         cancel: fillCancel,
       },
       editMode,
+      drag: dragEnabled,
+      dragActiveId,
       editing,
       startEdit,
       finishEdit,
@@ -966,6 +871,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     fillEnd,
     fillCancel,
     editMode,
+    dragEnabled,
+    dragActiveId,
     editing,
     startEdit,
     finishEdit,
@@ -998,9 +905,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
 
   const incomeFolded = folded('income')
   const expenseFolded = folded('expense')
-  // the folder-less rows on screen: none while their section, or their No folder line, is folded
+  const noFolderLine = (side: 'income' | 'expense'): boolean => hasNoFolderLine(shownRows[side], dragState.rowIn === side)
+  // the folder-less rows on screen: none while their section, or their No folder line,
+  // is folded, nor while a folder of their section drags
   const looseShown = (side: 'income' | 'expense', sectionFolded: boolean): PlanRow[] =>
-    sectionFolded || (hasNoFolderLine(shownRows[side]) && folded(NO_FOLDER_KEY[side])) ? [] : shownRows[side].loose
+    sectionFolded || dragState.folderIn === side || (noFolderLine(side) && folded(NO_FOLDER_KEY[side])) ? [] : shownRows[side].loose
   const incomeLoose = looseShown('income', incomeFolded)
   const expenseLoose = looseShown('expense', expenseFolded)
 
@@ -1017,27 +926,76 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const folderMenu = (f: PlanFolderSection, side: BudgetFolderSide) =>
     hoverMenus ? menus.folderActionsFor({ id: f.folder.id, name: f.folder.name }, f.rows.length === 0, side) : undefined
 
+  // the drop lands in this folder (null: the folder-less rows), whose rows are not shown
+  const folderIndicator = (folderId: Id | null): boolean => dropIndicator?.kind === 'folder' && (dropIndicator.folderId ?? null) === folderId
+
+  // A folder's line and rows: sortable among the section's folders and a drop target
+  // for rows while drag is on.
+  const folderSection = (f: PlanFolderSection, side: DragSide, menu: MenuAction[] | undefined) => {
+    const collapsed = dragState.folderIn === side
+    const isFolded = folded(f.folder.id)
+    const node = (
+      <FolderRows
+        section={f}
+        ctx={ctx}
+        sums={f.rows.length > 0 ? sumCells(groupSums.get(f.folder.id)) : null}
+        folded={isFolded}
+        collapsed={collapsed}
+        onToggleFold={togglePlanFold}
+        menu={menu}
+        indicator={dropIndicator}
+      />
+    )
+    return dragEnabled ? (
+      <DragFolder
+        key={f.folder.id}
+        sortableId={f.folder.id}
+        dropId={`bfolder:${f.folder.id}`}
+        rowIds={collapsed || isFolded ? [] : draggableIds(f.rows)}
+        indicator={folderIndicator(f.folder.id)}
+        folderDragging={draggingFolderId !== null}
+      >
+        {node}
+      </DragFolder>
+    ) : (
+      <Fragment key={f.folder.id}>{node}</Fragment>
+    )
+  }
+
   // a section's folder-less rows: under a No folder line next to real folders, at
   // that line's step on their own otherwise
   const looseGroup = (side: 'income' | 'expense', rows: PlanRow[]) => {
-    const list = editMode ? <LooseRowsContainer rows={rows} ctx={ctx} /> : <PlanRowList rows={rows} ctx={ctx} />
-    if (!hasNoFolderLine(shownRows[side])) {
-      return <RowLevelContext.Provider value="top">{list}</RowLevelContext.Provider>
-    }
+    const list = <PlanRowList rows={rows} ctx={ctx} indicator={dropIndicator} />
     const key = NO_FOLDER_KEY[side]
-    return (
+    const all = shownRows[side].loose
+    const node = !noFolderLine(side) ? (
+      <RowLevelContext.Provider value="top">{list}</RowLevelContext.Provider>
+    ) : (
       <FolderGroup
         foldKey={key}
         name={t('budgets.page.plan.menu.no_folder')}
         ctx={ctx}
-        sums={sumCells(groupSums.get(key))}
+        sums={all.length > 0 ? sumCells(groupSums.get(key)) : null}
         folded={folded(key)}
         onToggleFold={togglePlanFold}
         menu={hoverMenus ? menus.folderActionsFor(null, false, side) : undefined}
-        empty={false}
+        empty={all.length === 0 && !folded(key) && dragState.folderIn !== side}
       >
         {list}
       </FolderGroup>
+    )
+    return dragEnabled ? (
+      <DragFolder
+        sortableId={null}
+        dropId="bfolder:null"
+        rowIds={draggableIds(rows)}
+        indicator={folderIndicator(null)}
+        folderDragging={draggingFolderId !== null}
+      >
+        {node}
+      </DragFolder>
+    ) : (
+      node
     )
   }
 
@@ -1056,55 +1014,143 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     return [
       ...band.folders.map((f) => ({
         folderId: f.folder.id as Id | null,
-        ids: (folded(f.folder.id) ? [] : f.rows)
-          .filter(isDraggableRow)
-          .map((r) => r.element.id),
+        ids: draggableIds(folded(f.folder.id) ? [] : f.rows),
       })),
-      { folderId: null as Id | null, ids: loose.filter(isDraggableRow).map((r) => r.element.id) },
+      { folderId: null as Id | null, ids: draggableIds(loose) },
     ]
   }
 
-  function handleBandDragStart(event: DragStartEvent) {
-    setDraggingFolder(String(event.active.id).startsWith('pfolder:'))
+  // The envelope each category sits in. A category may go into any other live
+  // envelope of its own side; the section's own DndContext keeps the other side's
+  // envelopes out of reach, and this keeps the rule explicit.
+  const elementById = new Map(plan.structure.elements.map((el) => [el.id, el]))
+  const envelopeOfCategory = new Map(
+    plan.structure.elements.flatMap((el) => (isEnvelopeType(el.type) ? el.children.map((c) => [c.id, el.id] as const) : [])),
+  )
+  const sideOf = (el: PlanElementDto): 'income' | 'expense' => (isIncomeType(el.type) ? 'income' : 'expense')
+  const CATEGORY_TYPE = { income: BudgetElementType.INCOME_CATEGORY, expense: BudgetElementType.CATEGORY } as const
+  const isCategoryOf = (side: 'income' | 'expense', id: string): boolean => {
+    const envelope = elementById.get(envelopeOfCategory.get(id) ?? '')
+    return envelope ? sideOf(envelope) === side : elementById.get(id)?.type === CATEGORY_TYPE[side]
+  }
+  const canEnterEnvelope = (side: 'income' | 'expense') => (activeId: string, envelopeId: string): boolean => {
+    const envelope = elementById.get(envelopeId)
+    return (
+      !!envelope &&
+      isEnvelopeType(envelope.type) &&
+      envelope.isArchived === 0 &&
+      sideOf(envelope) === side &&
+      isCategoryOf(side, activeId) &&
+      envelopeOfCategory.get(activeId) !== envelopeId
+    )
+  }
+  const folderIds = new Set(plan.structure.folders.map((f) => f.id))
+
+  const resetDrag = () => {
+    setDragActiveId(null)
+    setDraggingFolderId(null)
+    setDragSide(null)
+    setDropIndicator(null)
   }
 
-  function handleBandDragEnd(side: 'income' | 'expense' | 'neutral', event: DragEndEvent) {
-    setDraggingFolder(false)
-    const { active, over } = event
-    if (!over || active.id === over.id) {
+  // Folder-ness is read off the dragged id rather than the drag state, which a drop
+  // in the same tick as its start would not see yet.
+  function handleDragStart(side: DragSide, { active }: DragStartEvent) {
+    const activeId = String(active.id)
+    setDragSide(side)
+    if (folderIds.has(activeId)) {
+      setDraggingFolderId(activeId)
       return
     }
-    const activeId = String(active.id)
-    const overId = String(over.id)
+    setDragActiveId(activeId)
+  }
 
-    if (activeId.startsWith('pfolder:')) {
+  // No DOM re-ordering happens DURING the drag: rows stay put, a floating copy
+  // follows the pointer and the insertion line marks where the drop lands.
+  // Everything applies once, on drop — mutating the row order mid-drag shifts
+  // layout under the pointer and feedback-loops the drag-over → re-measure cycle.
+  function handleDragOver(side: 'income' | 'expense', { active, over }: DragOverEvent) {
+    const activeId = String(active.id)
+    const overId = over ? String(over.id) : null
+    const fromEnvelope = envelopeOfCategory.get(activeId)
+    if (folderIds.has(activeId) || !overId || overId === activeId || overId === fromEnvelope) {
+      setDropIndicator(null)
+      return
+    }
+    setDropIndicator(
+      dropIndicatorFor(bandArrangement(side), activeId, overId, {
+        fromEnvelope: fromEnvelope !== undefined,
+        isFolded: (folderId) => (folderId === null ? noFolderLine(side) && folded(NO_FOLDER_KEY[side]) : folded(folderId)),
+      }),
+    )
+  }
+
+  function handleDragEnd(side: 'income' | 'expense' | 'neutral', { active, over }: DragEndEvent) {
+    resetDrag()
+    const activeId = String(active.id)
+    const overId = over ? String(over.id) : null
+    if (folderIds.has(activeId)) {
       // order-folders takes one global sequence, so the anchor is read from the
-      // full position-sorted folder list, not just this band's slice.
-      const draggedId = activeId.slice('pfolder:'.length)
-      const targetId = overId.startsWith('pfolder:') ? overId.slice('pfolder:'.length) : null
-      const folderIds = [...plan!.structure.folders].sort((a, b) => a.position - b.position).map((f) => f.id)
-      const from = folderIds.indexOf(draggedId)
-      const to = targetId ? folderIds.indexOf(targetId) : -1
+      // full position-sorted folder list, not just this section's slice.
+      const ordered = [...plan!.structure.folders].sort((a, b) => a.position - b.position).map((f) => f.id)
+      const from = ordered.indexOf(activeId)
+      const to = overId ? ordered.indexOf(overId.replace(/^bfolder:/, '')) : -1
       if (from === -1 || to === -1 || from === to) {
         return
       }
-      const reordered = arrayMove(folderIds, from, to)
-      orderFolders.mutate({ budgetId: budget.meta.id, id: draggedId, afterId: afterIdFromDrop(reordered, draggedId) })
+      const reordered = arrayMove(ordered, from, to)
+      orderFolders.mutate({ budgetId: budget.meta.id, id: activeId, afterId: afterIdFromDrop(reordered, activeId) })
       return
     }
-    if (side === 'neutral') {
-      // the neutral band holds only header-only folders — no rows to move
+    // the neutral section holds only header-only folders: no rows to move
+    if (side === 'neutral' || !overId || overId === activeId) {
       return
     }
+    const envelopeId = envelopeOfDrop(overId)
+    if (envelopeId !== null) {
+      if (canEnterEnvelope(side)(activeId, envelopeId)) {
+        holdMember(activeId)
+        moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id: activeId, envelopeId }, { onError: releaseMember })
+      }
+      return
+    }
+    const fromEnvelope = envelopeOfCategory.get(activeId)
+    if (fromEnvelope) {
+      // dropped back on its own envelope: it stays where it is
+      const item = overId === fromEnvelope ? null : placeFromEnvelope(bandArrangement(side), activeId, overId)
+      if (item) {
+        holdMember(activeId)
+        moveElement.mutate({ budgetId: budget.meta.id, item }, { onError: releaseMember })
+      }
+      return
+    }
+    commitElementMove(bandArrangement(side), activeId, overId)
+  }
 
-    // a row dropped on a folder header lands in that folder, appended
-    const target = overId.startsWith('pfolder:') ? `bfolder:${overId.slice('pfolder:'.length)}` : overId
-    commitElementMove(bandArrangement(side), activeId, target)
+  function holdMember(id: string) {
+    arrangedFrom.current = plan
+    setPendingMemberId(id)
+  }
+
+  function releaseMember() {
+    arrangedFrom.current = undefined
+    setPendingMemberId(null)
+  }
+
+  function handleSavingsDragOver({ active, over }: DragOverEvent) {
+    const ids = savingsLive.map((r) => r.element.id)
+    const overId = over ? String(over.id) : null
+    if (!overId || overId === String(active.id) || !ids.includes(overId)) {
+      setDropIndicator(null)
+      return
+    }
+    setDropIndicator(dropIndicatorFor([{ folderId: null, ids }], String(active.id), overId, { fromEnvelope: false, isFolded: () => false }))
   }
 
   // The savings band is one folder-less list: the only valid target is another
   // live savings row, so the move always carries folderId null.
   function handleSavingsDragEnd(event: DragEndEvent) {
+    resetDrag()
     const { active, over } = event
     if (!over || active.id === over.id) {
       return
@@ -1140,6 +1186,61 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       },
     )
   }
+
+  // the floating copy of what is being dragged: a row, or a category from an envelope
+  const draggedItem = (() => {
+    if (!dragActiveId) {
+      return null
+    }
+    for (const el of [...plan.structure.elements, ...savingsRows.map((r) => r.element)]) {
+      if (el.id === dragActiveId) {
+        return { icon: el.icon, name: elementDisplayName(el.id, el.name, t) }
+      }
+      const child = el.children.find((c) => c.id === dragActiveId)
+      if (child) {
+        return { icon: child.icon, name: elementDisplayName(child.id, child.name, t) }
+      }
+    }
+    return null
+  })()
+
+  // One DndContext per section, and that is what enforces the two hard constraints:
+  // an element's side comes from its type and a folder's from its members, so neither
+  // may cross the divider. A drag started in one section has no droppable in another —
+  // the invalid drop cannot be expressed, rather than being rejected after the fact
+  // (the server would answer CodeBudgetFolderSideMixed for elements, and order-folders
+  // persists position only, so a cross-section folder move would silently snap back).
+  const sectionDnd = (
+    side: DragSide,
+    collisionDetection: CollisionDetection,
+    sortableFolderIds: string[],
+    handlers: { onDragOver?: (e: DragOverEvent) => void; onDragEnd: (e: DragEndEvent) => void },
+    children: ReactNode,
+  ) =>
+    dragEnabled ? (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collisionDetection}
+        // rows collapse on drag start, so drop-zone rects must re-measure mid-drag and
+        // the grabbed node re-anchors to the pointer
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        modifiers={[centerRowOnPointer]}
+        onDragStart={(e) => handleDragStart(side, e)}
+        onDragOver={handlers.onDragOver}
+        onDragEnd={handlers.onDragEnd}
+        onDragCancel={resetDrag}
+      >
+        <SortableContext items={sortableFolderIds} strategy={verticalListSortingStrategy}>
+          {children}
+        </SortableContext>
+        {/* no drop animation: the moved row shows in its new place instead */}
+        <DragOverlay dropAnimation={null} modifiers={[besidePointer]}>
+          {draggedItem ? <DragGhost icon={draggedItem.icon} name={draggedItem.name} /> : null}
+        </DragOverlay>
+      </DndContext>
+    ) : (
+      children
+    )
 
   // Enter on the highlighted name cell opens the element's own edit dialog, the row
   // menu's Edit, gated by the right the backend enforces on the matching update
@@ -1621,43 +1722,23 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             actionsColumn={false}
             menu={hoverMenus ? menus.sectionMenu('income') : undefined}
           />
-          {!incomeFolded ? (
-            <PlanBand
-              editMode={editMode}
-              sensors={sensors}
-              folderIds={shownRows.income.folders.map((f) => f.folder.id)}
-              onDragStart={handleBandDragStart}
-              onDragEnd={(e) => handleBandDragEnd('income', e)}
-              onDragCancel={() => setDraggingFolder(false)}
-            >
-              {shownRows.income.folders.map((f) => {
-                const section = (
-                  <FolderRows
-                    section={f}
-                    ctx={ctx}
-                    sums={f.rows.length > 0 ? sumCells(groupSums.get(f.folder.id)) : null}
-                    folded={folded(f.folder.id)}
-                    collapsed={draggingFolder}
-                    onToggleFold={togglePlanFold}
-                    menu={folderMenu(f, 'income')}
-                  />
-                )
-                return editMode ? (
-                  <PlanSortableFolder key={f.folder.id} section={f}>
-                    {section}
-                  </PlanSortableFolder>
-                ) : (
-                  <Fragment key={f.folder.id}>{section}</Fragment>
-                )
-              })}
-              {looseGroup('income', incomeLoose)}
-              <RowLevelContext.Provider value="top">
-                {shownRows.income.uncategorized ? (
-                  <ElementRow key={rowKey(shownRows.income.uncategorized)} row={shownRows.income.uncategorized} ctx={ctx} />
-                ) : null}
-              </RowLevelContext.Provider>
-            </PlanBand>
-          ) : null}
+          {!incomeFolded
+            ? sectionDnd(
+                'income',
+                envelopeCollisions(canEnterEnvelope('income')),
+                shownRows.income.folders.map((f) => f.folder.id),
+                { onDragOver: (e) => handleDragOver('income', e), onDragEnd: (e) => handleDragEnd('income', e) },
+                <>
+                  {shownRows.income.folders.map((f) => folderSection(f, 'income', folderMenu(f, 'income')))}
+                  {looseGroup('income', incomeLoose)}
+                  <RowLevelContext.Provider value="top">
+                    {shownRows.income.uncategorized ? (
+                      <ElementRow key={rowKey(shownRows.income.uncategorized)} row={shownRows.income.uncategorized} ctx={ctx} />
+                    ) : null}
+                  </RowLevelContext.Provider>
+                </>,
+              )
+            : null}
         </section>
 
         {hasSavings ? (
@@ -1675,16 +1756,19 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             />
             {!savingsFolded ? (
               <RowLevelContext.Provider value="top">
-                <PlanBand
-                  editMode={editMode}
-                  sensors={sensors}
-                  folderIds={[]}
-                  onDragStart={handleBandDragStart}
-                  onDragEnd={handleSavingsDragEnd}
-                  onDragCancel={() => setDraggingFolder(false)}
-                >
-                  <PlanRowList rows={savingsLive} ctx={ctx} />
-                </PlanBand>
+                {sectionDnd(
+                  'savings',
+                  preferRowCollisions,
+                  [],
+                  { onDragOver: handleSavingsDragOver, onDragEnd: handleSavingsDragEnd },
+                  dragEnabled ? (
+                    <DragFolder sortableId={null} dropId="bfolder:null" rowIds={draggableIds(savingsLive)}>
+                      <PlanRowList rows={savingsLive} ctx={ctx} indicator={dropIndicator} />
+                    </DragFolder>
+                  ) : (
+                    <PlanRowList rows={savingsLive} ctx={ctx} indicator={null} />
+                  ),
+                )}
                 {savingsDeleted.map((r) => (
                   <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
                 ))}
@@ -1699,35 +1783,13 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           // reordering available; rows reach them via "Move to folder…" (a neutral
           // folder is offered to both sides there), never by a cross-band drag.
           <section role="rowgroup" data-testid="plan-section-neutral" className="plan-band plan-band-neutral flex flex-col border-t">
-            <PlanBand
-              editMode={editMode}
-              sensors={sensors}
-              folderIds={shownRows.neutral.map((f) => f.folder.id)}
-              onDragStart={handleBandDragStart}
-              onDragEnd={(e) => handleBandDragEnd('neutral', e)}
-              onDragCancel={() => setDraggingFolder(false)}
-            >
-              {shownRows.neutral.map((f) => {
-                const section = (
-                  <FolderRows
-                    section={f}
-                    ctx={ctx}
-                    sums={f.rows.length > 0 ? sumCells(groupSums.get(f.folder.id)) : null}
-                    folded={folded(f.folder.id)}
-                    collapsed={draggingFolder}
-                    onToggleFold={togglePlanFold}
-                    menu={folderMenu(f, f.folder.side ?? 'expense')}
-                  />
-                )
-                return editMode ? (
-                  <PlanSortableFolder key={f.folder.id} section={f}>
-                    {section}
-                  </PlanSortableFolder>
-                ) : (
-                  <Fragment key={f.folder.id}>{section}</Fragment>
-                )
-              })}
-            </PlanBand>
+            {sectionDnd(
+              'neutral',
+              preferRowCollisions,
+              shownRows.neutral.map((f) => f.folder.id),
+              { onDragEnd: (e) => handleDragEnd('neutral', e) },
+              shownRows.neutral.map((f) => folderSection(f, 'neutral', folderMenu(f, f.folder.side ?? 'expense'))),
+            )}
           </section>
         ) : null}
 
@@ -1741,43 +1803,23 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             actionsColumn={false}
             menu={hoverMenus ? menus.sectionMenu('expense') : undefined}
           />
-          {!expenseFolded ? (
-            <PlanBand
-              editMode={editMode}
-              sensors={sensors}
-              folderIds={shownRows.expense.folders.map((f) => f.folder.id)}
-              onDragStart={handleBandDragStart}
-              onDragEnd={(e) => handleBandDragEnd('expense', e)}
-              onDragCancel={() => setDraggingFolder(false)}
-            >
-              {shownRows.expense.folders.map((f) => {
-                const section = (
-                  <FolderRows
-                    section={f}
-                    ctx={ctx}
-                    sums={f.rows.length > 0 ? sumCells(groupSums.get(f.folder.id)) : null}
-                    folded={folded(f.folder.id)}
-                    collapsed={draggingFolder}
-                    onToggleFold={togglePlanFold}
-                    menu={folderMenu(f, 'expense')}
-                  />
-                )
-                return editMode ? (
-                  <PlanSortableFolder key={f.folder.id} section={f}>
-                    {section}
-                  </PlanSortableFolder>
-                ) : (
-                  <Fragment key={f.folder.id}>{section}</Fragment>
-                )
-              })}
-              {looseGroup('expense', expenseLoose)}
-              <RowLevelContext.Provider value="top">
-                {shownRows.expense.uncategorized ? (
-                  <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
-                ) : null}
-              </RowLevelContext.Provider>
-            </PlanBand>
-          ) : null}
+          {!expenseFolded
+            ? sectionDnd(
+                'expense',
+                envelopeCollisions(canEnterEnvelope('expense')),
+                shownRows.expense.folders.map((f) => f.folder.id),
+                { onDragOver: (e) => handleDragOver('expense', e), onDragEnd: (e) => handleDragEnd('expense', e) },
+                <>
+                  {shownRows.expense.folders.map((f) => folderSection(f, 'expense', folderMenu(f, 'expense')))}
+                  {looseGroup('expense', expenseLoose)}
+                  <RowLevelContext.Provider value="top">
+                    {shownRows.expense.uncategorized ? (
+                      <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
+                    ) : null}
+                  </RowLevelContext.Provider>
+                </>,
+              )
+            : null}
         </section>
 
         {shownRows.archived.length > 0 ? (

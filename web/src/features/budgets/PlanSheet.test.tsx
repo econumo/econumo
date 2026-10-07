@@ -21,35 +21,38 @@ vi.mock('@/lib/metrics', async (importOriginal) => {
 })
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
-// jsdom cannot drive real dnd-kit pointer drags (no layout), so onDragEnd is
+// jsdom cannot drive real dnd-kit pointer drags (no layout), so the handlers are
 // captured here and fired directly with a synthetic {active, over} pair — the
 // same shape dnd-kit itself would report. PlanSheet mounts one DndContext per
-// band, income before expense, on every render — so this array only grows
-// (never resets), but its LAST entry is always the current expense band's
-// handler and the one before it the current income band's, regardless of how
-// many renders happened first.
+// section in DOM order (income, savings when present, neutral when present,
+// expense) on every render — so these arrays only grow (never reset), but the
+// LAST entry is always the current expense section's.
 let capturedDragEnds: ((event: { active: { id: string }; over: { id: string } | null }) => void)[] = []
 interface CapturedDragContext {
   onDragStart: (event: { active: { id: string } }) => void
+  onDragOver: (event: { active: { id: string }; over: { id: string } | null }) => void
   onDragEnd: (event: { active: { id: string }; over: { id: string } | null }) => void
+  onDragCancel: () => void
 }
 let capturedDragContexts: CapturedDragContext[] = []
+// a test that needs dnd-kit's own pointer sensor mounts the real context instead
+let realDndContext = false
 vi.mock('@dnd-kit/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dnd-kit/core')>()
+  const { createElement } = await import('react')
   return {
     ...actual,
-    DndContext: ({
-      onDragStart,
-      onDragEnd,
-      children,
-    }: {
+    DndContext: (props: {
       onDragStart: (event: never) => void
+      onDragOver: (event: never) => void
       onDragEnd: (event: never) => void
+      onDragCancel: () => void
       children: ReactNode
     }) => {
+      const { onDragStart, onDragOver, onDragEnd, onDragCancel, children } = props
       capturedDragEnds.push(onDragEnd as never)
-      capturedDragContexts.push({ onDragStart, onDragEnd } as never)
-      return children
+      capturedDragContexts.push({ onDragStart, onDragOver, onDragEnd, onDragCancel } as never)
+      return realDndContext ? createElement(actual.DndContext, props as never) : children
     },
   }
 })
@@ -111,6 +114,7 @@ beforeEach(() => {
   mockViewport()
   capturedDragEnds = []
   capturedDragContexts = []
+  realDndContext = false
   useBudgetPeriodStore.setState({
     selectedDate: '2026-07-01',
     unfoldedElements: {},
@@ -1489,7 +1493,7 @@ it('a folder with no elements renders header-only in its own band between income
   expect(within(screen.getByTestId('plan-folder-bf1')).queryByText(note)).not.toBeInTheDocument()
 })
 
-it('in edit mode, empty folders reorder among themselves inside the neutral band', async () => {
+it('empty folders reorder among themselves inside the neutral band', async () => {
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   const planWithEmptyFolders: BudgetPlanDto = {
     ...plan,
@@ -1512,13 +1516,8 @@ it('in edit mode, empty folders reorder among themselves inside the neutral band
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
-  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
-  mockCompactViewport()
-  const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
   // the empty folders' grips live in the neutral band, in neither side's band
   const neutral = screen.getByTestId('plan-section-neutral')
@@ -1527,9 +1526,10 @@ it('in edit mode, empty folders reorder among themselves inside the neutral band
   expect(within(screen.getByTestId('plan-section-expense')).queryByRole('button', { name: /move folder Empty/ })).not.toBeInTheDocument()
 
   // bands mount their DndContexts in DOM order: income, neutral, expense
-  const neutralCtx = capturedDragContexts[capturedDragContexts.length - 2]
-  neutralCtx.onDragStart({ active: { id: 'pfolder:bf-e1' } })
-  neutralCtx.onDragEnd({ active: { id: 'pfolder:bf-e1' }, over: { id: 'pfolder:bf-e2' } })
+  // folders reorder by their plain ids, as in the Budget view
+  const neutralCtx = () => capturedDragContexts[capturedDragContexts.length - 2]
+  act(() => neutralCtx().onDragStart({ active: { id: 'bf-e1' } }))
+  act(() => neutralCtx().onDragEnd({ active: { id: 'bf-e1' }, over: { id: 'bf-e2' } }))
   await waitFor(() => expect(body).toEqual({ budgetId: 'b1', id: 'bf-e1', afterId: 'bf-e2' }))
 })
 
@@ -1570,6 +1570,45 @@ describe('fill handle', () => {
     // is draggable too; gating on a set limit hid the handle on every 0.00 cell
     await user.click(screen.getByTestId('plan-cell-pe1:2'))
     expect(screen.getByTestId('plan-cell-pe1:2')).toContainElement(screen.getByTestId('fill-handle'))
+  })
+
+  it('a fill drag on a row with a hover drag grip fills and never starts a row drag', async () => {
+    // dnd-kit's PointerSensor activates at 4px of movement, and the fill drag moves
+    // horizontally well past that. The two stay separate because the sensor's
+    // activator is bound to the grip alone — the fill handle's pointerdown never
+    // reaches it — so the row must not tear loose from the grid mid-fill.
+    realDndContext = true
+    let fillBody: unknown
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(),
+      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+        fillBody = await request.json()
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+    )
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+    const dragged = (id: string) => screen.getByRole('button', { name: `move ${id}` }).parentElement!.className.includes('opacity-40')
+
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    const handle = within(screen.getByTestId('plan-cell-pe1:0')).getByTestId('fill-handle')
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 0, clientY: 0, button: 0, isPrimary: true })
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 110, clientY: 0 })
+    fireEvent.pointerMove(document, { pointerId: 1, clientX: 110, clientY: 0 })
+    expect(dragged('pe1')).toBe(false)
+    fireEvent.pointerUp(handle, { pointerId: 1 })
+    await waitFor(() => expect(fillBody).toMatchObject({ elementId: 'pe1' }))
+
+    // the same gesture on the grip does start a row drag: the check above can see one
+    const grip = screen.getByRole('button', { name: 'move cat-food' })
+    fireEvent.pointerDown(grip, { pointerId: 2, clientX: 0, clientY: 0, button: 0, isPrimary: true })
+    fireEvent.pointerMove(document, { pointerId: 2, clientX: 0, clientY: 40 })
+    await waitFor(() => expect(dragged('cat-food')).toBe(true))
+    fireEvent.pointerUp(document, { pointerId: 2 })
   })
 
   it('renders on a hovered editable cell while another cell is selected, and a drag from it selects the source cell', async () => {
@@ -2496,9 +2535,8 @@ it('a section ⋮ menu creates a folder on that section\'s side', async () => {
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New folder' })).not.toBeInTheDocument())
 })
 
-it('shows drag handles only in edit mode', async () => {
+it('tablet: drag handles show only in Edit structure', async () => {
   usePlanHandlers()
-  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
   mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
@@ -2512,11 +2550,43 @@ it('shows drag handles only in edit mode', async () => {
   expect(screen.getAllByRole('button', { name: /^move / }).length).toBeGreaterThan(0)
 })
 
+it('rows show the hover drag grip, folders the folder grip', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  expect(screen.getAllByRole('button', { name: /^move / }).length).toBeGreaterThan(0)
+  expect(screen.getAllByRole('button', { name: /^move folder / }).length).toBeGreaterThan(0)
+})
+
+it('a guest gets no drag grips: only who may configure the budget drags', async () => {
+  const guestBudget = {
+    ...fixtureWireBudget,
+    meta: {
+      ...fixtureWireBudget.meta,
+      ownerUserId: 'u9',
+      access: [
+        { user: { id: 'u9', avatar: 'face:sky', name: 'Owner' }, role: 'owner', isAccepted: 1 },
+        { user: { id: fixtureUser.id, avatar: 'face:emerald', name: 'Ada' }, role: 'guest', isAccepted: 1 },
+      ],
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: guestBudget } })),
+    planHandler(),
+  )
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  await screen.findByRole('button', { name: 'menu Living' })
+  expect(screen.queryByRole('button', { name: /^move / })).not.toBeInTheDocument()
+})
+
 it('scopes every drag handle to its own band, so no drag can cross the income/expense divider', async () => {
   // An element's side comes from its TYPE and a folder's from its members, and
   // order-folders persists position only — so a cross-band drop would either be
   // rejected by the server (CodeBudgetFolderSideMixed) or silently snap back on
-  // reload. Per-band SortableContexts are what make the drop impossible at all.
+  // reload. One DndContext per section is what makes the drop impossible at all.
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   const planWithFolders: BudgetPlanDto = {
     ...plan,
@@ -2531,76 +2601,68 @@ it('scopes every drag handle to its own band, so no drag can cross the income/ex
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
     planHandler(planWithFolders),
   )
-  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
-  mockCompactViewport()
-  const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
   const income = screen.getByTestId('plan-section-income')
   const expense = screen.getByTestId('plan-section-expense')
 
   // income handles: the Salaries row and its Bonuses folder — and nothing expense-sided
-  expect(within(income).getByRole('button', { name: 'move Salaries' })).toBeInTheDocument()
+  expect(within(income).getByRole('button', { name: 'move ie1' })).toBeInTheDocument()
   expect(within(income).getByRole('button', { name: 'move folder Bonuses Folder' })).toBeInTheDocument()
-  expect(within(income).queryByRole('button', { name: 'move Living' })).not.toBeInTheDocument()
+  expect(within(income).queryByRole('button', { name: 'move pe1' })).not.toBeInTheDocument()
 
   // expense handles live in the other band entirely
-  expect(within(expense).getByRole('button', { name: 'move Living' })).toBeInTheDocument()
+  expect(within(expense).getByRole('button', { name: 'move pe1' })).toBeInTheDocument()
   expect(within(expense).getByRole('button', { name: 'move folder Essentials' })).toBeInTheDocument()
-  expect(within(expense).queryByRole('button', { name: 'move Salaries' })).not.toBeInTheDocument()
+  expect(within(expense).queryByRole('button', { name: 'move ie1' })).not.toBeInTheDocument()
 })
 
-it('keeps the drag grip on its own root row, not stretched by expanded children', async () => {
+it('an unfolded envelope gives each category its own grip, under the row grip', async () => {
   usePlanHandlers()
-  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
-  mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
-  const grip = screen.getByRole('button', { name: 'move Living' })
-  const wrapper = grip.closest('[data-plan-sortable]') as HTMLElement
+  const grip = screen.getByRole('button', { name: 'move pe1' })
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  // the grip sits beside the row, outside its [data-row-id], at the row's top
+  expect(pe1Row).not.toContainElement(grip)
+  expect(grip.parentElement).toContainElement(pe1Row)
+  expect(grip.className).toContain('top-3')
 
-  // grip and row share grid row 1, so the grip's h-full resolves against the ROOT
-  // row's height. jsdom has no layout, so assert the mechanism rather than pixels:
-  // a stretched grip would be the old flex + hand-tuned margin arrangement.
-  expect(grip.className).toContain('row-start-1')
-  expect(grip.className).toContain('h-full')
-  expect(grip.className).not.toMatch(/\bmt-\d/)
+  expect(screen.queryByRole('button', { name: 'move cat-rent' })).not.toBeInTheDocument()
+  await user.click(within(pe1Row).getByRole('button', { name: 'Expand' }))
+  const childGrip = await screen.findByRole('button', { name: 'move cat-rent' })
+  // the category list is the envelope's drop zone, and the row grip stays on its row
+  expect(screen.getByTestId('envelope-drop-pe1')).toContainElement(childGrip)
+  expect(screen.getByTestId('envelope-drop-pe1')).toContainElement(screen.getByTestId('plan-cell-cat-rent:0'))
+  expect(grip.parentElement).toContainElement(childGrip)
+})
 
-  // expanding pe1/Living adds child rows INSIDE the same wrapper; the grip must not
-  // be pulled to the middle of the whole expanded block
-  expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument()
-  await user.click(within(wrapper).getByRole('button', { name: 'Expand' }))
-  expect(await screen.findByTestId('plan-cell-cat-rent:0')).toBeInTheDocument()
-  const rootRow = wrapper.querySelector('[role="row"]') as HTMLElement
-  expect(rootRow).toContainElement(screen.getByTestId('plan-cell-pe1:0'))
-  expect(rootRow).not.toContainElement(screen.getByTestId('plan-cell-cat-rent:0'))
-  expect(grip.parentElement).toBe(wrapper.firstElementChild)
+it('a folded envelope takes a category on its row', async () => {
+  usePlanHandlers()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  expect(within(pe1Row).getByTestId('envelope-head-drop-pe1')).toBeInTheDocument()
+  // a category has nothing to take in
+  expect(screen.queryByTestId('envelope-head-drop-cat-food')).not.toBeInTheDocument()
 })
 
 it('keeps the uncategorized totals line undraggable', async () => {
   usePlanHandlers()
-  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
-  mockCompactViewport()
-  const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
+  await screen.findByRole('button', { name: 'move pe1' })
 
   // uncategorized is a synthetic bucket with no position of its own
-  expect(screen.queryByRole('button', { name: 'move Uncategorized' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'move uncategorized' })).not.toBeInTheDocument()
 })
 
-it('tablet edit mode keeps roving keyboard navigation working through the sortable wrapper', async () => {
-  // the sortable wrapper adds DOM depth around each row: selection and arrow-key
-  // navigation must survive it (desktop Plan has no edit mode; a tablet has no fill handle)
+it('tablet edit mode keeps roving keyboard navigation working through the drag wrapper', async () => {
+  // the drag wrapper adds DOM depth around each row: selection and arrow-key
+  // navigation must survive it (a tablet has no fill handle)
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   mockCompactViewport()
@@ -2619,15 +2681,106 @@ it('tablet edit mode keeps roving keyboard navigation working through the sortab
   expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
 
   // the row is still reachable by its data-row-id anchor, unchanged by the wrapper:
-  // the grip lives on the sortable OUTSIDE it, which is what keeps every existing
-  // [data-row-id] query working
+  // the grip lives OUTSIDE it, which is what keeps every [data-row-id] query working
   const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
-  expect(pe1Row).toBeInTheDocument()
-  expect(within(pe1Row).queryByRole('button', { name: 'move Living' })).not.toBeInTheDocument()
-  const sortable = pe1Row.closest('[data-plan-sortable="pe1"]') as HTMLElement
-  expect(within(sortable).getByRole('button', { name: 'move Living' })).toBeInTheDocument()
+  expect(within(pe1Row).queryByRole('button', { name: 'move pe1' })).not.toBeInTheDocument()
+  expect(within(pe1Row.parentElement!).getByRole('button', { name: 'move pe1' })).toBeInTheDocument()
 })
 
+it('dragging an expense category onto an envelope moves it into the envelope', async () => {
+  usePlanHandlers()
+  const calls: unknown[] = []
+  server.use(http.post('*/api/v1/budget/move-element', async ({ request }) => {
+    calls.push(await request.json())
+    return HttpResponse.json({ success: true, message: '', data: {} })
+  }))
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  // contexts mount income, savings (when present), expense: the expense one is last
+  const expense = capturedDragContexts[capturedDragContexts.length - 1]
+  act(() => {
+    expense.onDragStart({ active: { id: 'cat-food' } })
+    expense.onDragEnd({ active: { id: 'cat-food' }, over: { id: 'benv:pe1' } })
+  })
+  // cat-food is a loose expense category, pe1 the expense envelope "Living"
+  await waitFor(() => expect(calls).toEqual([expect.objectContaining({ id: 'cat-food', envelopeId: 'pe1' })]))
+})
+
+it('dragging an income category onto an income envelope moves it into the envelope', async () => {
+  usePlanHandlers()
+  const calls: unknown[] = []
+  server.use(http.post('*/api/v1/budget/move-element', async ({ request }) => {
+    calls.push(await request.json())
+    await delay('infinite')
+    return HttpResponse.json({ success: true, message: '', data: {} })
+  }))
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  // income mounts first: the set of the latest render is [income, expense]
+  const income = () => capturedDragContexts[capturedDragContexts.length - 2]
+  act(() => income().onDragStart({ active: { id: 'cat-freelance' } }))
+  act(() => income().onDragEnd({ active: { id: 'cat-freelance' }, over: { id: 'benvh:ie1' } }))
+  await waitFor(() => expect(calls).toEqual([expect.objectContaining({ id: 'cat-freelance', envelopeId: 'ie1' })]))
+  // it leaves its old place at once instead of waiting for the refetch
+  await waitFor(() => expect(document.querySelector('[data-row-id="cat-freelance:3"]')).toBeNull())
+})
+
+it('an envelope never goes into another envelope', async () => {
+  usePlanHandlers()
+  const calls: unknown[] = []
+  server.use(http.post('*/api/v1/budget/move-element', async ({ request }) => {
+    calls.push(await request.json())
+    return HttpResponse.json({ success: true, message: '', data: {} })
+  }))
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const expense = () => capturedDragContexts[capturedDragContexts.length - 1]
+  act(() => expense().onDragStart({ active: { id: 'pe1' } }))
+  act(() => expense().onDragEnd({ active: { id: 'pe1' }, over: { id: 'benv:env-eur' } }))
+  // a category of the envelope it is already in stays put too
+  act(() => expense().onDragStart({ active: { id: 'cat-rent' } }))
+  act(() => expense().onDragEnd({ active: { id: 'cat-rent' }, over: { id: 'benv:pe1' } }))
+  await new Promise((r) => setTimeout(r, 50))
+  expect(calls).toEqual([])
+})
+
+it('a category dragged out of its envelope lands as a row where it is dropped', async () => {
+  usePlanHandlers()
+  const calls: unknown[] = []
+  server.use(http.post('*/api/v1/budget/move-element', async ({ request }) => {
+    calls.push(await request.json())
+    await delay('infinite')
+    return HttpResponse.json({ success: true, message: '', data: {} })
+  }))
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  await user.click(within(document.querySelector('[data-row-id="pe1:0"]') as HTMLElement).getByRole('button', { name: 'Expand' }))
+  await screen.findByTestId('plan-cell-cat-rent:0')
+  const expense = () => capturedDragContexts[capturedDragContexts.length - 1]
+  act(() => expense().onDragStart({ active: { id: 'cat-rent' } }))
+  // dropped on Food, the first folder-less row: it lands first among them
+  act(() => expense().onDragEnd({ active: { id: 'cat-rent' }, over: { id: 'cat-food' } }))
+  await waitFor(() => expect(calls).toEqual([{ budgetId: 'b1', id: 'cat-rent', folderId: null, afterId: null }]))
+  // hidden from the envelope until the refetch shows it in its new place
+  await waitFor(() => expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument())
+})
+
+it('while a row is dragged the insertion line marks where it lands', async () => {
+  usePlanHandlers()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const expense = () => capturedDragContexts[capturedDragContexts.length - 1]
+  act(() => expense().onDragStart({ active: { id: 'cat-food' } }))
+  // Food dragged down over Euro Stash lands right after it
+  act(() => expense().onDragOver({ active: { id: 'cat-food' }, over: { id: 'env-eur' } }))
+  const line = await screen.findByTestId('drop-line-row')
+  expect(line.parentElement).toContainElement(document.querySelector('[data-row-id="env-eur:0"]') as HTMLElement)
+  expect(line.parentElement).not.toContainElement(document.querySelector('[data-row-id="tag1:2"]') as HTMLElement)
+  act(() => expense().onDragCancel())
+  expect(screen.queryByTestId('drop-line-row')).not.toBeInTheDocument()
+})
 
 it('holds the dropped order locally instead of snapping back until the refetch lands', async () => {
   server.use(
@@ -2641,14 +2794,9 @@ it('holds the dropped order locally instead of snapping back until the refetch l
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
-  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
-  mockCompactViewport()
-  const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
-  await screen.findByRole('button', { name: 'move Food' })
+  await screen.findByRole('button', { name: 'move cat-food' })
 
   // the expense band's LOOSE rows (cat-food, tag1, env-eur) are the reorderable set
   const looseOrder = () =>
@@ -2658,8 +2806,9 @@ it('holds the dropped order locally instead of snapping back until the refetch l
   expect(looseOrder()[0]).toBe('cat-food:1')
 
   // drop the first loose row onto the last one
-  const expenseDragEnd = capturedDragEnds[capturedDragEnds.length - 1]
-  expenseDragEnd({ active: { id: 'cat-food' }, over: { id: 'env-eur' } })
+  const expense = () => capturedDragContexts[capturedDragContexts.length - 1]
+  act(() => expense().onDragStart({ active: { id: 'cat-food' } }))
+  act(() => expense().onDragEnd({ active: { id: 'cat-food' }, over: { id: 'env-eur' } }))
 
   // the reorder shows immediately, while the move-element call is still in flight
   await waitFor(() => expect(looseOrder()[0]).not.toBe('cat-food:1'))
@@ -2720,21 +2869,16 @@ it('collapses folder contents while a folder drag is in flight, and still drops 
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
-  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
-  mockCompactViewport()
-  const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
   // pe1/Living sits inside the "Essentials" folder and is visible at rest
   expect(screen.getByTestId('plan-cell-pe1:0')).toBeInTheDocument()
   const folderHeader = screen.getByRole('button', { name: 'Essentials' })
   expect(folderHeader).toHaveAttribute('aria-expanded', 'true')
 
-  const expenseCtx = capturedDragContexts[capturedDragContexts.length - 1]
-  expenseCtx.onDragStart({ active: { id: 'pfolder:bf1' } })
+  const expense = () => capturedDragContexts[capturedDragContexts.length - 1]
+  act(() => expense().onDragStart({ active: { id: 'bf1' } }))
 
   // rows hide so the headers reorder as compact blocks, but the folder's own fold
   // state is untouched — the chevron must not claim the user collapsed it
@@ -2742,9 +2886,9 @@ it('collapses folder contents while a folder drag is in flight, and still drops 
   expect(screen.getByRole('button', { name: 'Essentials' })).toHaveAttribute('aria-expanded', 'true')
 
   // the plan fixture ships a single folder, so there is nothing to reorder against —
-  // this covers the collapse lifecycle, not the reorder itself (which
-  // 'reorders folders within a band' already covers)
-  expenseCtx.onDragEnd({ active: { id: 'pfolder:bf1' }, over: null })
+  // this covers the collapse lifecycle, not the reorder itself (which the neutral
+  // band's test covers)
+  act(() => expense().onDragEnd({ active: { id: 'bf1' }, over: null }))
 
   // contents come back once the drag ends
   await waitFor(() => expect(screen.getByTestId('plan-cell-pe1:0')).toBeInTheDocument())
@@ -2769,14 +2913,9 @@ it('does not bounce after the move resolves but before the refetch returns', asy
     // resolves immediately, so onSuccess/onSettled both fire while the refetch is pending
     http.post('*/api/v1/budget/move-element', () => HttpResponse.json({ success: true, message: '', data: {} })),
   )
-  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
-  mockCompactViewport()
-  const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
-  await screen.findByRole('button', { name: 'move Food' })
+  await screen.findByRole('button', { name: 'move cat-food' })
 
   const looseOrder = () =>
     [...document.querySelectorAll('[data-testid="plan-section-expense"] [data-row-id]')]
@@ -2784,8 +2923,9 @@ it('does not bounce after the move resolves but before the refetch returns', asy
       .filter((id) => id === 'cat-food:1' || id === 'tag1:2' || id === 'env-eur:0')
   expect(looseOrder()[0]).toBe('cat-food:1')
 
-  const expenseDragEnd = capturedDragEnds[capturedDragEnds.length - 1]
-  expenseDragEnd({ active: { id: 'cat-food' }, over: { id: 'env-eur' } })
+  const expense = () => capturedDragContexts[capturedDragContexts.length - 1]
+  act(() => expense().onDragStart({ active: { id: 'cat-food' } }))
+  act(() => expense().onDragEnd({ active: { id: 'cat-food' }, over: { id: 'env-eur' } }))
 
   await waitFor(() => expect(looseOrder()[0]).not.toBe('cat-food:1'))
 
@@ -2796,13 +2936,10 @@ it('does not bounce after the move resolves but before the refetch returns', asy
   expect(settled).toContain('cat-food:1')
 })
 
-it('a row can be dragged out of a folder onto the band loose container even when the loose list is empty', async () => {
-  // pe1/Living is the sole member of the "Essentials" folder in the base fixture, and
-  // the expense band's loose rows are non-empty there — so make them empty by moving
-  // every loose expense element into the folder too, isolating the empty-loose-list case
-  // Finding 2 covers: BudgetPage gives every bucket (including "no folder") a container
-  // droppable, so a row can always be dragged out even onto empty space; PlanSheet lacked
-  // that droppable entirely, making the gesture silently inert whenever loose was empty.
+it('while a row is dragged an empty No folder shows as the way out of a folder', async () => {
+  // pe1/Living is the sole member of the "Essentials" folder in the base fixture;
+  // move every loose expense element into the folder too, so the No folder group is
+  // empty and would not render at rest
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   const planWithEmptyLoose: BudgetPlanDto = {
     ...plan,
@@ -2822,34 +2959,28 @@ it('a row can be dragged out of a folder onto the band loose container even when
     planHandler(planWithEmptyLoose),
     http.post('*/api/v1/budget/move-element', async ({ request }) => {
       body = await request.json()
+      await delay('infinite')
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
-  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
-  mockCompactViewport()
-  const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
-  await screen.findByRole('button', { name: 'move Food' })
-
-  // the expense band's loose list is empty (every loose element was moved into the
-  // folder above) — a working escape hatch needs a drop TARGET to exist even with
-  // nothing rendered in it. Without Finding 2's fix there is no such element at all.
+  await screen.findByRole('button', { name: 'move cat-food' })
   const expenseSection = screen.getByTestId('plan-section-expense')
-  expect(within(expenseSection).getByTestId('plan-loose-drop')).toBeInTheDocument()
+  expect(within(expenseSection).queryByTestId('plan-folder-__no_folder__')).not.toBeInTheDocument()
 
-  expect(capturedDragEnds.length).toBeGreaterThanOrEqual(2)
-  // see the sibling test above: the last captured handler is always the current
-  // expense band's onDragEnd, since income always renders first within a commit.
-  const expenseDragEnd = capturedDragEnds[capturedDragEnds.length - 1]
-  // dropping directly on the loose-area container droppable (empty space, no row to
-  // land on) — this id only exists once LooseRowsContainer's useDroppable is wired up
-  expenseDragEnd({ active: { id: 'cat-food' }, over: { id: 'bfolder:null' } })
+  const expense = () => capturedDragContexts[capturedDragContexts.length - 1]
+  act(() => expense().onDragStart({ active: { id: 'cat-food' } }))
+  // the drop target for taking it out of its folder: an empty No folder group
+  expect(within(expenseSection).getByTestId('plan-folder-__no_folder__')).toBeInTheDocument()
+  act(() => expense().onDragEnd({ active: { id: 'cat-food' }, over: { id: 'bfolder:null' } }))
 
   await waitFor(() => expect(body).toBeDefined())
   expect(body).toMatchObject({ id: 'cat-food', folderId: null })
+  // the row shows under No folder while the call is in flight
+  await waitFor(() =>
+    expect(within(screen.getByTestId('plan-folder-__no_folder__')).getByTestId('plan-cell-cat-food:0')).toBeInTheDocument(),
+  )
 })
 
 it('row ⋮ menus: an envelope offers Edit and Delete, a category and a tag Edit and their own classification actions', async () => {

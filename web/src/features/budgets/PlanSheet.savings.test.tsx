@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -112,11 +112,6 @@ function useHandlers(plan: unknown = savingsPlan, extra: Parameters<typeof serve
     ),
     ...extra,
   )
-}
-
-async function enterEditMode(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 }
 
 const rowIds = (section: HTMLElement) => [...section.querySelectorAll('[data-row-id]')].map((r) => r.getAttribute('data-row-id'))
@@ -299,7 +294,7 @@ it('Enter on a savings name cell opens no category or tag dialog', async () => {
   expect(toast.error).not.toHaveBeenCalled()
 })
 
-it('tablet edit mode: savings rows reorder within their own band only, with folderId null', async () => {
+it('savings rows reorder within their own band only, with folderId null', async () => {
   const bodies: unknown[] = []
   useHandlers(savingsPlan, [
     http.post('*/api/v1/budget/move-element', async ({ request }) => {
@@ -308,28 +303,20 @@ it('tablet edit mode: savings rows reorder within their own band only, with fold
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   ])
-  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
-  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-  }))
-  const user = userEvent.setup()
   renderPage()
-  await screen.findByTestId('plan-section-savings')
-  await enterEditMode(user)
   const section = await screen.findByTestId('plan-section-savings')
-  expect(await within(section).findByRole('button', { name: 'move Rainy day' })).toBeInTheDocument()
-  expect(within(section).getByRole('button', { name: 'move Holiday fund' })).toBeInTheDocument()
+  expect(await within(section).findByRole('button', { name: 'move acc-s1' })).toBeInTheDocument()
+  expect(within(section).getByRole('button', { name: 'move acc-s2' })).toBeInTheDocument()
   // the deleted account's row is read-only history: no grip
-  expect(within(section).queryByRole('button', { name: 'move Closed deposit' })).not.toBeInTheDocument()
-  // no folder or loose-area droppable inside the savings band
-  expect(within(section).queryByTestId('plan-loose-drop')).not.toBeInTheDocument()
+  expect(within(section).queryByRole('button', { name: 'move acc-s3' })).not.toBeInTheDocument()
+  // no folder inside the savings band
   expect(section.querySelector('[data-testid^="plan-folder-"]')).toBeNull()
 
   const savingsDragEnd = capturedDragEnds[capturedDragEnds.length - 2]
   // a folder target is not expressible from this band: nothing is sent
-  savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'pfolder:bf1' } })
-  savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'bfolder:null' } })
-  savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'acc-s1' } })
+  act(() => savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'bf1' } }))
+  act(() => savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'bfolder:null' } }))
+  act(() => savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'acc-s1' } }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
   expect(bodies[0]).toEqual({ budgetId: 'b1', id: 'acc-s2', folderId: null, afterId: null })
