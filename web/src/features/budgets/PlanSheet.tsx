@@ -9,7 +9,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS as DndCSS } from '@dnd-kit/utilities'
 import type { SortableHandleProps } from '@/components/SortableList'
 import { afterIdFromDrop } from '@/lib/ordering'
-import { ChevronDown, ChevronLeft, ChevronRight, GripVertical, MoreVertical } from 'lucide-react'
+import { ChevronDown, ChevronRight, GripVertical, MoreVertical } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -91,7 +91,6 @@ import {
   addMonths,
   balanceRow,
   bucketPlanRows,
-  clampFirstMonth,
   currentMonth,
   everydayBalanceRow,
   fillTargetCol,
@@ -100,12 +99,13 @@ import {
   isUnderspent,
   makePlanExchange,
   monthDate,
+  monthDiff,
   planHasSavingsData,
   projectSavingsClosings,
-  planInitialFirstMonth,
   planMonthExchange,
   planTotals,
   planVisibleCount,
+  planWindow,
   savingsAsPlanElement,
   savingsBalanceRow,
   visibleSectionRows,
@@ -118,8 +118,6 @@ export interface PlanSheetProps {
   currencies: CurrencyDto[]
   userId: Id | undefined
   editMode: boolean
-  /** the Budget / Plan switch, at the start of the month header row */
-  viewSwitch?: ReactNode
 }
 
 const rowKey = (r: PlanRow): string => `${r.element.id}:${r.element.type}`
@@ -1168,7 +1166,7 @@ function PlanBand({
   )
 }
 
-export function PlanSheet({ budget, currencies, userId, editMode, viewSwitch }: PlanSheetProps) {
+export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
@@ -1257,8 +1255,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, viewSwitch }: 
   const visible = width > 0 ? planVisibleCount(width, editMode) : 3
 
   const startedAt = budget.meta.startedAt
-  const persisted = useBudgetPeriodStore((s) => s.planFirstMonth)
-  const setPlanFirstMonth = useBudgetPeriodStore((s) => s.setPlanFirstMonth)
+  const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
+  const stepPeriod = useBudgetPeriodStore((s) => s.stepPeriod)
   const hideEmpty = useBudgetPeriodStore((s) => s.planHideEmpty)
   const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
@@ -1270,7 +1268,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, viewSwitch }: 
 
   // Keyboard navigation moves the selection without moving the scroller, so the
   // cursor walks off screen. Scroll the minimum needed to bring it back, measuring
-  // against the sticky balance row that floats over the scroller's bottom edge.
+  // against the sticky month header and balance row that float over the scroller's edges.
   useEffect(() => {
     const scroller = containerRef.current
     if (!selection || !scroller) {
@@ -1282,16 +1280,26 @@ export function PlanSheet({ budget, currencies, userId, editMode, viewSwitch }: 
     }
     const view = scroller.getBoundingClientRect()
     const box = cell.getBoundingClientRect()
+    const header = scroller.querySelector<HTMLElement>('[data-testid="plan-month-header"]')
     const footer = scroller.querySelector<HTMLElement>('[data-testid="plan-balance-row"]')
+    const topEdge = header ? header.getBoundingClientRect().bottom : view.top
     const bottomEdge = footer ? footer.getBoundingClientRect().top : view.bottom
-    if (box.top < view.top) {
-      scroller.scrollTop -= view.top - box.top
+    if (box.top < topEdge) {
+      scroller.scrollTop -= topEdge - box.top
     } else if (box.bottom > bottomEdge) {
       scroller.scrollTop += box.bottom - bottomEdge
     }
   }, [selection])
-  const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt, budget.meta.endedAt)
+  const { first: firstMonth } = planWindow(selectedDate, visible, startedAt, budget.meta.endedAt)
   const atStart = firstMonth <= startedAt.slice(0, 7) + '-01'
+  const atEnd = !!budget.meta.endedAt && addMonths(firstMonth, visible - 1) >= budget.meta.endedAt.slice(0, 7) + '-01'
+  // The window is derived from the selected month, and a clamped window (at the start or
+  // end month) does not follow it one to one; pick the selected month that moves the
+  // window itself by one, so the cursor's column lands on the neighbouring month.
+  const shiftWindow = (delta: number) => {
+    const first = addMonths(firstMonth, delta)
+    stepPeriod(monthDiff(selectedDate, visible > 1 ? addMonths(first, 1) : first))
+  }
 
   const { data: plan, isPending, isError, refetch, planKey, fetchFrom } = useBudgetPlan(budget.meta.id, firstMonth, visible)
   const setLimit = usePlanSetLimit(planKey)
@@ -2057,10 +2065,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, viewSwitch }: 
           }
           // -1 is the leftmost reachable column, so ArrowLeft here shifts the window
           // instead of going nowhere — keeps the name cell reachable while the window
-          // can still be paged from it. Clamped at the budget start, same as the prev
-          // nav button (F8).
+          // can still be paged from it. Clamped at the budget start.
           if (!atStart) {
-            setPlanFirstMonth(addMonths(firstMonth, -1))
+            shiftWindow(-1)
           }
           select(selection.rowKey, -1)
         } else if (selection.col === 0) {
@@ -2078,7 +2085,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, viewSwitch }: 
           }
           select(selection.rowKey, 0)
         } else if (selection.col >= visible - 1) {
-          setPlanFirstMonth(addMonths(firstMonth, 1))
+          if (!atEnd) {
+            shiftWindow(1)
+          }
           select(selection.rowKey, visible - 1)
         } else {
           select(selection.rowKey, selection.col + 1)
@@ -2119,45 +2128,6 @@ export function PlanSheet({ budget, currencies, userId, editMode, viewSwitch }: 
           </Button>
         </div>
       ) : null}
-      <div role="rowgroup">
-        <div role="row" className="grid items-center bg-background" style={{ gridTemplateColumns: gridCols }}>
-          <div className="flex items-center gap-1 px-2">
-            {viewSwitch}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={t('budgets.page.plan.nav.prev')}
-              disabled={atStart}
-              onClick={() => setPlanFirstMonth(addMonths(firstMonth, -1))}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={t('budgets.page.plan.nav.next')}
-              onClick={() => setPlanFirstMonth(addMonths(firstMonth, 1))}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-          {visibleMonths.map((m, i) => (
-            <div
-              key={m}
-              role="columnheader"
-              data-month={m}
-              data-col={i}
-              className={`px-2 py-1 text-right text-xs uppercase tracking-wide ${m === cur ? 'font-bold text-foreground' : 'text-muted-foreground'}`}
-            >
-              {monthLabel(m)}
-            </div>
-          ))}
-          <span />
-        </div>
-      </div>
-
       <div
         ref={attachContainer}
         role="grid"
@@ -2171,6 +2141,32 @@ export function PlanSheet({ budget, currencies, userId, editMode, viewSwitch }: 
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
         data-testid="plan-sheet"
       >
+        <div
+          role="row"
+          data-testid="plan-month-header"
+          className="sticky top-0 z-20 grid items-center border-b bg-background"
+          style={{ gridTemplateColumns: gridCols }}
+        >
+          <span />
+          {visibleMonths.map((m, i) => {
+            // by month, not by planWindow's column: a stored month outside the budget
+            // (before its start, after its end) has no column to tint
+            const selected = m === selectedDate
+            return (
+              <div
+                key={m}
+                role="columnheader"
+                data-month={m}
+                data-col={i}
+                data-selected-col={selected ? 'true' : undefined}
+                className={`px-2 py-1.5 text-right text-[10.5px] uppercase tracking-wider ${selected ? 'bg-accent/40 text-foreground' : 'text-muted-foreground'}`}
+              >
+                {monthLabel(m)}
+              </div>
+            )
+          })}
+          <span />
+        </div>
         <section
           role="rowgroup"
           data-testid="plan-section-income"

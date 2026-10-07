@@ -133,7 +133,6 @@ beforeEach(() => {
     selectedDate: '2026-07-01',
     unfoldedElements: {},
     foldBudgetId: null,
-    planFirstMonth: '2026-06-01',
     planFolds: {},
     planHideEmpty: false,
   })

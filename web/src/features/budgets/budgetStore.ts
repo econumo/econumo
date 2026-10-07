@@ -24,6 +24,12 @@ export function normalizePeriod(date: string): string {
   return `${match[1]}-${match[2]}-01`
 }
 
+function addMonthsToPeriod(period: string, delta: number): string {
+  const [y, m] = period.split('-').map(Number)
+  const d = new Date(y, m - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+
 interface BudgetPeriodState {
   /** the view last opened, so the main menu's link returns to it */
   lastMode: BudgetMode
@@ -36,8 +42,8 @@ interface BudgetPeriodState {
   /** fold state belongs to one budget; reset when the budget id changes */
   foldBudgetId: Id | null
   resetFoldsFor: (budgetId: Id) => void
-  planFirstMonth: string | null
-  setPlanFirstMonth: (month: string) => void
+  /** the Plan grid's cursor walked off an edge: the window (and the strip) move */
+  stepPeriod: (delta: number) => void
   /** folded plan sections: 'income', folder ids, 'archived' */
   planFolds: Record<string, true>
   togglePlanFold: (key: string) => void
@@ -73,10 +79,9 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
           set({ foldBudgetId: budgetId, unfoldedElements: {} })
         }
       },
-      planFirstMonth: null,
-      setPlanFirstMonth: (month) => {
+      stepPeriod: (delta) => {
         trackEvent(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
-        set({ planFirstMonth: normalizePeriod(month) })
+        set((s) => ({ selectedDate: addMonthsToPeriod(s.selectedDate, delta) }))
       },
       planFolds: {},
       togglePlanFold: (key) =>

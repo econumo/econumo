@@ -66,17 +66,6 @@ export function planVisibleCount(containerWidthPx: number, editMode = false): nu
   return fit < 3 ? 1 : Math.min(fit, 12)
 }
 
-export function clampFirstMonth(firstMonth: string, startedAt: string, endedAt?: string): string {
-  const startMonth = `${startedAt.slice(0, 7)}-01`
-  let clamped = firstMonth < startMonth ? startMonth : firstMonth
-  // never open the window past the budget's last covered month
-  if (endedAt) {
-    const endMonth = `${endedAt.slice(0, 7)}-01`
-    if (clamped > endMonth) clamped = endMonth < startMonth ? startMonth : endMonth
-  }
-  return clamped
-}
-
 /** Excel fill: the column the drag currently targets. Right-only — never
  *  before startCol; clamped to the last visible column; a degenerate
  *  colWidth (<= 0) stays on the source. */
@@ -86,11 +75,6 @@ export function fillTargetCol(startCol: number, deltaX: number, colWidth: number
   }
   const target = startCol + Math.round(deltaX / colWidth)
   return Math.min(Math.max(target, startCol), lastCol)
-}
-
-export function planInitialFirstMonth(persisted: string | null, startedAt: string, visible: number, now?: Date): string {
-  const base = persisted !== null ? persisted : visible === 1 ? currentMonth(now) : addMonths(currentMonth(now), -1)
-  return clampFirstMonth(base, startedAt)
 }
 
 /** The Plan grid's months: the selected month with one month of history before it,

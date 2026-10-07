@@ -12,7 +12,6 @@ import {
   addMonths,
   balanceRow,
   bucketPlanRows,
-  clampFirstMonth,
   everydayBalanceRow,
   fillTargetCol,
   folderSides,
@@ -23,7 +22,6 @@ import {
   monthDate,
   monthDiff,
   planHasSavingsData,
-  planInitialFirstMonth,
   planMonthExchange,
   planTotals,
   planVisibleCount,
@@ -127,32 +125,6 @@ describe('window math', () => {
     expect(planVisibleCount(fixed + month * 8, true)).toBe(7)
     expect(planVisibleCount(fixed + PLAN_ACTIONS_COL_PX + month * 8, true)).toBe(8)
     expect(planVisibleCount(fixed + month * 8)).toBe(8)
-  })
-
-  it('planInitialFirstMonth anchors current month second, clamps at start, single-column starts current', () => {
-    const now = new Date(2026, 7, 15) // August 2026 -> currentMonth '2026-08-01'
-    const startedAt = '2026-01-01 00:00:00'
-    // no persisted value, multi-column -> current month minus one
-    expect(planInitialFirstMonth(null, startedAt, 3, now)).toBe('2026-07-01')
-    // persisted value after the start month is used as-is
-    expect(planInitialFirstMonth('2026-03-01', startedAt, 3, now)).toBe('2026-03-01')
-    // persisted value before the start month is clamped to the start
-    expect(planInitialFirstMonth('2025-11-01', startedAt, 5, now)).toBe('2026-01-01')
-    // single visible column with no persisted value starts at the current month
-    expect(planInitialFirstMonth(null, startedAt, 1, now)).toBe('2026-08-01')
-  })
-
-  it('clampFirstMonth never starts past the budget end month', () => {
-    expect(clampFirstMonth('2026-09-01', '2026-01-01 00:00:00', '2026-06-01 00:00:00')).toBe('2026-06-01')
-    // inside the range is untouched, and an absent end month is unbounded
-    expect(clampFirstMonth('2026-03-01', '2026-01-01 00:00:00', '2026-06-01 00:00:00')).toBe('2026-03-01')
-    expect(clampFirstMonth('2026-09-01', '2026-01-01 00:00:00', '')).toBe('2026-09-01')
-  })
-
-  it('clampFirstMonth never precedes the budget start month', () => {
-    expect(clampFirstMonth('2025-12-01', '2026-01-01 00:00:00')).toBe('2026-01-01')
-    expect(clampFirstMonth('2026-05-01', '2026-01-01 00:00:00')).toBe('2026-05-01')
-    expect(clampFirstMonth('2026-01-01', '2026-01-01 00:00:00')).toBe('2026-01-01')
   })
 })
 

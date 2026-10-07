@@ -74,9 +74,9 @@ function usePlanHandlers() {
   )
 }
 
-// The plan fixtures span May-Aug 2026 and read "today" off the system clock (the
-// default three-month window resolves to Jul/Aug/Sep, same as PlanSheet.test.tsx),
-// so the clock is pinned the same way here.
+// The plan fixtures span May-Aug 2026 and read "today" off the system clock, so the
+// clock is pinned to Aug 2026 and the selected month is August: a three-month window
+// of Jul/Aug/Sep.
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(2026, 7, 15, 12, 0, 0))
@@ -84,10 +84,9 @@ beforeEach(() => {
   window.econumoConfig = {}
   mockViewport()
   useBudgetPeriodStore.setState({
-    selectedDate: '2026-07-01',
+    selectedDate: '2026-08-01',
     unfoldedElements: {},
     foldBudgetId: null,
-    planFirstMonth: null,
     planFolds: {},
     planHideEmpty: false,
   })
@@ -267,7 +266,9 @@ it('offers no add-comment corner on a month after the budget ends (its thread is
       HttpResponse.json({
         success: true,
         message: '',
-        data: { item: { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, endedAt: '2026-08-01 00:00:00' } } },
+        // a one-month budget: the window never runs past the end month unless the
+        // budget is shorter than the window, so Aug and Sep trail after July's end
+        data: { item: { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, startedAt: '2026-07-01 00:00:00', endedAt: '2026-07-01 00:00:00' } } },
       }),
     ),
     planHandler(),

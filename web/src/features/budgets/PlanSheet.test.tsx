@@ -114,7 +114,6 @@ beforeEach(() => {
     selectedDate: '2026-07-01',
     unfoldedElements: {},
     foldBudgetId: null,
-    planFirstMonth: null,
     planFolds: {},
     planHideEmpty: false,
   })
@@ -127,7 +126,7 @@ afterEach(() => {
 it('/plan renders the sheet: months, income on top, cells', async () => {
   usePlanHandlers()
   renderPage()
-  await screen.findByText(/jul/i)
+  await screen.findByTestId('plan-month-header')
   const income = screen.getByTestId('plan-section-income')
   const firstExpense = screen.getByTestId('plan-section-expense')
   expect(income.compareDocumentPosition(firstExpense) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -140,9 +139,9 @@ it('/plan renders the sheet: months, income on top, cells', async () => {
 
 it('overspend turns the actual red in a past month and with no plan set; never on income', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
   renderPage()
-  await screen.findByText(/may/i)
+  await screen.findByTestId('plan-month-header')
   // July: 125 spent, no plan stored — a past month by the time this runs (fixture months are 2026)
   const foodJuly = screen.getAllByTestId('plan-cell-cat-food:2')[0]
   expect(within(foodJuly).getByTestId('cell-actual')).toHaveClass('text-destructive')
@@ -159,43 +158,135 @@ it('overspend turns the actual red in a past month and with no plan set; never o
   expect(within(eurJune).getByTestId('cell-actual')).toHaveClass('text-income')
 })
 
-it('arrows shift the window by one month, clamped at the budget start', async () => {
+it('shares the month strip with the Budget view and centres the window on the selected month', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-01-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  // the strip and the Budget/Plan words are the Budget view's
+  expect(screen.getByRole('tablist', { name: 'period' })).toBeInTheDocument()
+  expect(screen.getByRole('tab', { name: /plan/i, selected: true })).toBeInTheDocument()
+  const header = screen.getByTestId('plan-month-header')
+  const cols = within(header).getAllByRole('columnheader')
+  // jsdom width 0 -> 3 visible: Jun (history), Jul (selected), Aug
+  expect(cols.map((c) => c.getAttribute('data-month'))).toEqual(['2026-06-01', '2026-07-01', '2026-08-01'])
+  expect(cols[1]).toHaveAttribute('data-selected-col', 'true')
+})
+
+it('moves the selected month when the cursor walks past the last column', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  const grid = await screen.findByTestId('plan-sheet')
+  grid.focus()
+  // select the first row's last month column, then step right off the edge
+  fireEvent.keyDown(grid, { key: 'ArrowDown' })
+  fireEvent.keyDown(grid, { key: 'ArrowRight' })
+  fireEvent.keyDown(grid, { key: 'ArrowRight' })
+  fireEvent.keyDown(grid, { key: 'ArrowRight' })
+  await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-08-01'))
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
+})
+
+it('keeps the selected month when switching from Plan to Budget', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await screen.findByText(/jan/i)
-  const prev = screen.getByRole('button', { name: 'Earlier months' })
-  const next = screen.getByRole('button', { name: 'Later months' })
-  expect(prev).toBeDisabled()
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('tab', { name: /budget/i }))
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01')
+})
 
-  await user.click(next)
-  await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-02-01'))
-  expect(screen.getByRole('button', { name: 'Earlier months' })).not.toBeDisabled()
+it('the keyboard pages the window one month at a time, clamped at the budget start', async () => {
+  usePlanHandlers()
+  // the budget's start month: no history column, the selected month comes first
+  useBudgetPeriodStore.setState({ selectedDate: '2026-01-01' })
+  const user = userEvent.setup()
+  renderPage()
+  const grid = await screen.findByTestId('plan-sheet')
+  const headerCols = () => within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')
+  const months = () => headerCols().map((c) => c.getAttribute('data-month'))
+  expect(months()).toEqual(['2026-01-01', '2026-02-01', '2026-03-01'])
+  expect(headerCols()[0]).toHaveAttribute('data-selected-col', 'true')
 
-  await user.click(screen.getByRole('button', { name: 'Earlier months' }))
-  await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-01-01'))
-  expect(screen.getByRole('button', { name: 'Earlier months' })).toBeDisabled()
+  await user.click(screen.getByTestId('plan-cell-cat-freelance:0'))
+  grid.focus()
+  // ArrowLeft to the name cell, then once more: nothing before the start to page to
+  fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+  fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-01-01')
+  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
+
+  // off the last column the window itself moves by one month, even from the clamped
+  // start window: Feb..Apr, with Mar selected after its history month
+  for (let i = 0; i < 4; i++) {
+    fireEvent.keyDown(grid, { key: 'ArrowRight' })
+  }
+  await waitFor(() => expect(months()).toEqual(['2026-02-01', '2026-03-01', '2026-04-01']))
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-03-01')
+  expect(headerCols()[1]).toHaveAttribute('data-selected-col', 'true')
+  expect(screen.getByTestId('plan-cell-cat-freelance:2')).toHaveAttribute('aria-selected', 'true')
+
+  // and back: off the name cell the window returns to the start
+  for (let i = 0; i < 4; i++) {
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+  }
+  await waitFor(() => expect(months()).toEqual(['2026-01-01', '2026-02-01', '2026-03-01']))
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-02-01')
+})
+
+it('one visible month (narrow screen): the selected month is the only column, and the arrows page it', async () => {
+  // under the three-month floor planVisibleCount collapses the grid to one column
+  const widthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(300)
+  try {
+    usePlanHandlers()
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+    const user = userEvent.setup()
+    renderPage()
+    const grid = await screen.findByTestId('plan-sheet')
+    const headerCols = () => within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')
+    const months = () => headerCols().map((c) => c.getAttribute('data-month'))
+    await waitFor(() => expect(months()).toEqual(['2026-07-01']))
+    expect(headerCols()[0]).toHaveAttribute('data-selected-col', 'true')
+
+    await user.click(screen.getByTestId('plan-cell-cat-freelance:0'))
+    grid.focus()
+    fireEvent.keyDown(grid, { key: 'ArrowRight' })
+    await waitFor(() => expect(months()).toEqual(['2026-08-01']))
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-08-01')
+
+    // the name cell, then back a month
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+    await waitFor(() => expect(months()).toEqual(['2026-07-01']))
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
+  } finally {
+    widthSpy.mockRestore()
+  }
 })
 
 it('the plan window position survives a remount', async () => {
   usePlanHandlers()
-  const user = userEvent.setup()
   const { unmount } = renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Later months' }))
-  const monthAfterNav = useBudgetPeriodStore.getState().planFirstMonth
-  expect(monthAfterNav).not.toBeNull()
+  act(() => useBudgetPeriodStore.getState().stepPeriod(1))
   unmount()
 
   renderPage()
-  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe(monthAfterNav)
   await screen.findByTestId('plan-sheet')
+  const cols = within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')
+  expect(cols.map((c) => c.getAttribute('data-month'))).toEqual(['2026-07-01', '2026-08-01', '2026-09-01'])
 })
 
-it('setPlanFirstMonth fires BUDGET_PLAN_CHANGE_WINDOW', () => {
-  useBudgetPeriodStore.getState().setPlanFirstMonth('2026-05-01')
+it('stepPeriod moves the selected month across years and fires BUDGET_PLAN_CHANGE_WINDOW only', () => {
+  useBudgetPeriodStore.setState({ selectedDate: '2026-12-01' })
+  useBudgetPeriodStore.getState().stepPeriod(1)
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2027-01-01')
+  useBudgetPeriodStore.getState().stepPeriod(-2)
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01')
   expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
+  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.BUDGET_CHANGE_DATE)
 })
 
 it('editing a planned cell sends set-limit with the cell month and patches optimistically', async () => {
@@ -212,6 +303,7 @@ it('editing a planned cell sends set-limit with the cell month and patches optim
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
+  useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -230,7 +322,7 @@ it('editing a planned cell sends set-limit with the cell month and patches optim
 
 it('totals block renders one effective value per cell for income/expenses/transfers, and the running balance', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   renderPage()
   await screen.findByTestId('plan-sheet')
 
@@ -424,7 +516,7 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
   // window May/Jun/Jul: both uncategorized rows have their spend inside it (income
   // actual at Jun, expense actual at May and Jul), so the assertions below actually
   // exercise both rows instead of silently matching zero or one of them
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -450,7 +542,7 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
 
 it('scrolls a keyboard-selected row back into view, clearing the sticky balance row', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   const grid = await screen.findByTestId('plan-sheet')
@@ -476,7 +568,7 @@ it('scrolls a keyboard-selected row back into view, clearing the sticky balance 
 
 it('arrow keys move the selection and shift the window at the edges', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -491,7 +583,7 @@ it('arrow keys move the selection and shift the window at the edges', async () =
   // -1, shifts the window back a month, keeping the row selected
   grid.focus()
   await user.keyboard('{ArrowLeft}{ArrowLeft}')
-  await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
+  await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01'))
   const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
   expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
 
@@ -516,18 +608,18 @@ it('arrow keys move the selection and shift the window at the edges', async () =
   grid.focus()
   await user.keyboard('{ArrowRight}{ArrowRight}')
   expect(screen.getByTestId('plan-cell-cat-food:2')).toHaveAttribute('aria-selected', 'true')
-  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01')
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01')
 
   // a third ArrowRight from the last column shifts the window forward, keeping row+col
   grid.focus()
   await user.keyboard('{ArrowRight}')
-  await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01'))
+  await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01'))
   expect(await screen.findByTestId('plan-cell-cat-food:2')).toHaveAttribute('aria-selected', 'true')
 })
 
 it('Enter opens the editor on an editable cell and is inert on read-only cells', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -559,7 +651,7 @@ it('Enter opens the editor on an editable cell and is inert on read-only cells',
 
 it('cells expose the aria label and aria-selected', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -589,7 +681,7 @@ it('keystrokes inside the popover editor reach it, not the grid: ArrowLeft moves
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -603,11 +695,11 @@ it('keystrokes inside the popover editor reach it, not the grid: ArrowLeft moves
 
   // ArrowLeft while the popover input has focus must move the caret, not the
   // grid's window/selection — the grid must not intercept it.
-  const monthBefore = useBudgetPeriodStore.getState().planFirstMonth
+  const monthBefore = useBudgetPeriodStore.getState().selectedDate
   await user.clear(input)
   await user.type(input, '12{ArrowLeft}3')
   expect(input).toHaveValue('132')
-  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe(monthBefore)
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe(monthBefore)
 
   // Enter inside the input must submit the form (commit), not be swallowed by
   // the grid's own Enter handling.
@@ -617,7 +709,7 @@ it('keystrokes inside the popover editor reach it, not the grid: ArrowLeft moves
 
 it('ArrowLeft reaches the name cell (col -1) by keyboard, Space there toggles expansion, and ArrowLeft again shifts the window', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -629,7 +721,7 @@ it('ArrowLeft reaches the name cell (col -1) by keyboard, Space there toggles ex
   const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
   const nameCell = within(pe1Row).getByTitle('Living').closest('[role="gridcell"]') as HTMLElement
   expect(nameCell).toHaveAttribute('aria-selected', 'true')
-  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
 
   // Space on the name cell toggles the row's expansion (pe1/Living has children)
   expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument()
@@ -640,7 +732,7 @@ it('ArrowLeft reaches the name cell (col -1) by keyboard, Space there toggles ex
 
   // ArrowLeft again, still at -1, shifts the window back a month and keeps the selection at -1
   await user.keyboard('{ArrowLeft}')
-  await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
+  await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01'))
   expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
 })
 
@@ -648,7 +740,7 @@ it('ArrowLeft reaches the name cell (col -1) by keyboard, Space there toggles ex
 // children, so a click meant to highlight the row never springs the breakdown open.
 it('clicking an envelope name selects it without expanding; only the chevron toggles the children', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -670,7 +762,7 @@ it('clicking an envelope name selects it without expanding; only the chevron tog
 
 it('ArrowRight on a collapsed envelope name cell expands it and ArrowLeft collapses it; otherwise the keys navigate as before', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -698,10 +790,10 @@ it('ArrowRight on a collapsed envelope name cell expands it and ArrowLeft collap
   await user.keyboard('{ArrowLeft}')
   await waitFor(() => expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument())
   expect(nameCell).toHaveAttribute('aria-selected', 'true')
-  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
   // collapsed + ArrowLeft: pages the window back as before
   await user.keyboard('{ArrowLeft}')
-  await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
+  await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01'))
 
   // a row without children never folds on ArrowRight/ArrowLeft — plain navigation
   await user.click(screen.getByTestId('plan-cell-cat-food:0'))
@@ -712,7 +804,7 @@ it('ArrowRight on a collapsed envelope name cell expands it and ArrowLeft collap
 
 it('folder headers are selectable: ArrowLeft/ArrowRight fold/unfold them, Up/Down step through them keeping the column', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -735,7 +827,7 @@ it('folder headers are selectable: ArrowLeft/ArrowRight fold/unfold them, Up/Dow
   await user.keyboard('{ArrowRight}')
   expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
   expect(headerCell).toHaveAttribute('aria-selected', 'true')
-  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
 
   // ArrowDown lands on the folder's first member row (name column, where the click put it)
   await user.keyboard('{ArrowDown}')
@@ -749,7 +841,7 @@ it('folder headers are selectable: ArrowLeft/ArrowRight fold/unfold them, Up/Dow
   expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
   await user.keyboard('{ArrowLeft}')
   expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
-  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
   // Space toggles it back open
   await user.keyboard(' ')
   expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
@@ -800,7 +892,7 @@ it('Enter on a highlighted envelope, category, or tag opens its edit dialog when
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -849,7 +941,7 @@ it('Enter on a highlighted envelope, category, or tag opens its edit dialog when
 // not move the highlight, and the arrow keys step straight over them.
 it('child rows are not selectable by click or keyboard', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01', foldBudgetId: 'b1', unfoldedElements: { pe1: true } })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', foldBudgetId: 'b1', unfoldedElements: { pe1: true } })
   const user = userEvent.setup()
   renderPage()
   const childCell = await screen.findByTestId('plan-cell-cat-rent:0')
@@ -902,8 +994,7 @@ it('archived rows show only with a value in a visible month; the section disappe
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
     planHandler(plan),
   )
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
-  const user = userEvent.setup()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   renderPage()
   await screen.findByTestId('plan-sheet')
 
@@ -914,14 +1005,14 @@ it('archived rows show only with a value in a visible month; the section disappe
   expect(within(section).queryByTitle('Nothing')).not.toBeInTheDocument()
 
   // May..Jul: the May spend comes on screen, the August plan leaves it
-  await user.click(screen.getByRole('button', { name: 'Earlier months' }))
+  act(() => useBudgetPeriodStore.getState().stepPeriod(-1))
   await waitFor(() => expect(within(screen.getByTestId('plan-section-archived')).getByTitle('Only May')).toBeInTheDocument())
   expect(within(screen.getByTestId('plan-section-archived')).queryByTitle('Only Aug')).not.toBeInTheDocument()
 
   // a window with no archived values at all drops the section entirely: Sep..Nov
   // (only May and Aug carry values, and neither is visible then)
   for (let i = 0; i < 4; i++) {
-    await user.click(screen.getByRole('button', { name: 'Later months' }))
+    act(() => useBudgetPeriodStore.getState().stepPeriod(1))
   }
   await waitFor(() => expect(screen.queryByTestId('plan-section-archived')).not.toBeInTheDocument())
 })
@@ -944,7 +1035,7 @@ it('Enter without the right to edit explains why in a toast instead of opening a
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: guestBudget } })),
     planHandler(guestPlan),
   )
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -988,7 +1079,7 @@ it('budget-mode envelope dialog still offers expense categories only', async () 
 
 it('clicking a cell focuses the grid so arrow keys work immediately, no manual focus needed', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -1013,7 +1104,7 @@ it('the selected cell gets a visible focus ring', async () => {
   expect(cell.className).toMatch(/ring-2/)
 })
 
-it('grid structure: sections are rowgroups, the month header sits outside the grid, and aria-activedescendant tracks the selection', async () => {
+it('grid structure: sections are rowgroups, the sticky month header is the grid\'s first row, and aria-activedescendant tracks the selection', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
@@ -1025,8 +1116,11 @@ it('grid structure: sections are rowgroups, the month header sits outside the gr
   expect(screen.getByTestId('plan-section-expense')).toHaveAttribute('role', 'rowgroup')
   expect(grid).not.toHaveAttribute('aria-activedescendant')
 
-  const monthHeader = screen.getAllByRole('columnheader')[0]
-  expect(grid.contains(monthHeader)).toBe(false)
+  // inside the scroller, so it shares the rows' width and stays put while they scroll
+  const headerRow = screen.getByTestId('plan-month-header')
+  expect(grid.firstElementChild).toBe(headerRow)
+  expect(headerRow).toHaveClass('sticky', 'top-0')
+  expect(headerRow).toHaveAttribute('role', 'row')
 
   const cell = screen.getByTestId('plan-cell-pe1:0')
   await user.click(cell)
@@ -1056,7 +1150,7 @@ it('a failed plan fetch shows the error state instead of a blank area, and retry
 
 it('ArrowLeft at the name cell does not page the window past the budget start', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-01-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-02-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -1065,12 +1159,12 @@ it('ArrowLeft at the name cell does not page the window past the budget start', 
   await user.click(screen.getByTestId('plan-cell-pe1:0'))
   grid.focus()
   await user.keyboard('{ArrowLeft}')
-  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-01-01')
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-02-01')
 
   // at the name cell AND already at the budget start: a further ArrowLeft must not
   // page earlier (the prev nav button is disabled here too — same clamp, keyboard path)
   await user.keyboard('{ArrowLeft}')
-  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-01-01')
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-02-01')
   const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
   expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
 })
@@ -1171,7 +1265,7 @@ describe('fill handle', () => {
 
   it('renders on any selected editable cell, including one with no limit set', async () => {
     usePlanHandlers()
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1203,7 +1297,7 @@ describe('fill handle', () => {
         return HttpResponse.json({ success: true, message: '', data: {} })
       }),
     )
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1262,7 +1356,7 @@ describe('fill handle', () => {
       }),
     )
     // window is May/Jun/Jul; tag1's col0 (May) has planned '' — it displays 0.00
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1292,7 +1386,7 @@ describe('fill handle', () => {
         return HttpResponse.json({ success: true, message: '', data: {} })
       }),
     )
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1339,7 +1433,7 @@ describe('fill handle', () => {
         return HttpResponse.json({ success: true, message: '', data: {} })
       }),
     )
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1371,7 +1465,7 @@ describe('fill handle', () => {
         return HttpResponse.json({ success: true, message: '', data: {} })
       }),
     )
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1389,7 +1483,7 @@ describe('fill handle', () => {
     // still mid-drag: the covered range is unchanged and the window has not paged
     expect(screen.getByTestId('plan-cell-pe1:1').className).toContain('fill-covered')
     expect(screen.getByTestId('plan-cell-pe1:2').className).not.toContain('fill-covered')
-    expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
 
     fireEvent.pointerUp(handle, { clientX: 210, pointerId: 1 })
     await waitFor(() => expect(bodies).toHaveLength(1))
@@ -1407,7 +1501,7 @@ describe('fill handle', () => {
         return HttpResponse.json({ success: true, message: '', data: {} })
       }),
     )
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1446,7 +1540,7 @@ describe('fill handle', () => {
         return HttpResponse.json({ success: true, message: '', data: {} })
       }),
     )
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1487,7 +1581,7 @@ describe('fill handle', () => {
   it('compact mode: the fill handle does not render on a selected editable cell', async () => {
     mockCompactViewport()
     usePlanHandlers()
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1519,7 +1613,7 @@ describe('clipboard and keyboard fill', () => {
 
   it('copy writes the selected cell: planned amount, 0 for an unset cell, the name on the name cell', async () => {
     usePlanHandlers()
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1560,7 +1654,7 @@ describe('clipboard and keyboard fill', () => {
   it('paste writes a single amount into the selected editable cell through set-limit', async () => {
     const bodies: unknown[] = []
     useCapturingHandlers(bodies)
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1583,7 +1677,7 @@ describe('clipboard and keyboard fill', () => {
   it('paste of non-numeric text, or onto a non-editable / name cell, writes nothing', async () => {
     const bodies: unknown[] = []
     useCapturingHandlers(bodies)
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1615,7 +1709,7 @@ describe('clipboard and keyboard fill', () => {
   it('paste inside the open LimitEditor input is left to the input, not the grid', async () => {
     const bodies: unknown[] = []
     useCapturingHandlers(bodies)
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1634,7 +1728,7 @@ describe('clipboard and keyboard fill', () => {
   it('Shift+ArrowRight extends a fill range from the selected cell; releasing Shift copies the value into it', async () => {
     const bodies: unknown[] = []
     useCapturingHandlers(bodies)
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1656,7 +1750,7 @@ describe('clipboard and keyboard fill', () => {
     expect(aug.className).toContain('fill-covered')
     // at the last visible column: clamps, never pages the window
     fireEvent.keyDown(grid, { key: 'ArrowRight', shiftKey: true })
-    expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
     expect(jun).toHaveAttribute('aria-selected', 'true')
 
     // a plain arrow mid-fill is swallowed like the pointer drag
@@ -1680,7 +1774,7 @@ describe('clipboard and keyboard fill', () => {
   it('Shift+ArrowLeft shrinks the range; a range shrunk to nothing writes nothing on release', async () => {
     const bodies: unknown[] = []
     useCapturingHandlers(bodies)
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1713,7 +1807,7 @@ describe('clipboard and keyboard fill', () => {
   it('Escape or losing focus cancels a keyboard fill without any request', async () => {
     const bodies: unknown[] = []
     useCapturingHandlers(bodies)
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1740,7 +1834,7 @@ describe('clipboard and keyboard fill', () => {
   it('Shift+ArrowRight on the name cell or a non-editable cell starts nothing and does not move the selection', async () => {
     const bodies: unknown[] = []
     useCapturingHandlers(bodies)
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1769,7 +1863,7 @@ describe('income/expense split', () => {
     usePlanHandlers()
     // window Jun/Jul/Aug: both uncategorized rows have their spend inside it (income
     // actual at Jun, expense actual at Jul), so neither is hidden by the zero-spend filter
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1862,7 +1956,7 @@ describe('income/expense split', () => {
       http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
       planHandler(plan),
     )
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-07-01' })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1883,16 +1977,16 @@ describe('income/expense split', () => {
     expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
 
     // navigate back two months so 2026-05 enters the window -> row reappears
-    await user.click(screen.getByRole('button', { name: 'Earlier months' }))
-    await user.click(screen.getByRole('button', { name: 'Earlier months' }))
-    await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
+    act(() => useBudgetPeriodStore.getState().stepPeriod(-1))
+    act(() => useBudgetPeriodStore.getState().stepPeriod(-1))
+    await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01'))
     expect(document.querySelector('[data-row-id="uncategorized:3"]')).toBeInTheDocument()
   })
 })
 
 it('scrolls the income/expenses/net trio and pins only the balance row', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   renderPage()
   await screen.findByTestId('plan-sheet')
 
@@ -1924,7 +2018,7 @@ it('scrolls the income/expenses/net trio and pins only the balance row', async (
 
 it('transfers line: signed net per month, a tooltip with the in/out split, and a link only where money crossed', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   renderPage()
   await screen.findByTestId('plan-sheet')
 
@@ -1960,7 +2054,7 @@ it('clicking a totals link opens the transaction list for THAT column\'s month',
       return HttpResponse.json({ success: true, message: '', data: { items: [] } })
     }),
   )
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01', selectedDate: '2026-07-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2005,9 +2099,9 @@ it('rules element rows flush with hairline dividers', async () => {
   expect(wrapper).toContainElement(row)
 })
 
-it('leaves the current month column unmarked in the grid body, bold in the header only', async () => {
+it('leaves the month columns unmarked in the grid body; the header tints the selected month', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   renderPage()
   await screen.findByTestId('plan-sheet')
 
@@ -2016,25 +2110,31 @@ it('leaves the current month column unmarked in the grid body, bold in the heade
   expect(sheet.parentElement).not.toHaveAttribute('data-hover-col')
   expect(document.querySelector('[data-hover-col]')).toBeNull()
 
-  // nothing in the body singles the current month out — no tint, no rules
+  // nothing in the body singles a month out — no tint, no rules
+  const headerRow = screen.getByTestId('plan-month-header')
   expect(document.querySelectorAll('.plan-current-month')).toHaveLength(0)
-  sheet.querySelectorAll('[data-col]').forEach((c) => expect(c.className).not.toContain('bg-accent/40'))
+  sheet.querySelectorAll('[data-col]').forEach((c) => {
+    if (!headerRow.contains(c)) {
+      expect(c.className).not.toContain('bg-accent/40')
+    }
+  })
 
-  // the bold month name in the header and the bold Balance figure under it are the
-  // current-month cues; the body rows stay uniform
-  const header = [...document.querySelectorAll('[role="columnheader"]')].find((h) => h.className.includes('font-bold'))
-  expect(header).toBeDefined()
+  // the header marks the selected month by tint alone, never by weight
+  const headers = within(headerRow).getAllByRole('columnheader')
+  expect(headers.filter((h) => h.className.includes('bg-accent/40')).map((h) => h.getAttribute('data-month'))).toEqual(['2026-07-01'])
+  headers.forEach((h) => expect(h.className).not.toMatch(/font-(bold|semibold)/))
 })
 
 it('bolds only the current month in the Balance row', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   renderPage()
   await screen.findByTestId('plan-sheet')
 
-  // the header already marks the current column; the Balance figure must agree with it
-  const headers = [...document.querySelectorAll('[role="columnheader"]')]
-  const currentCol = headers.findIndex((h) => h.className.includes('font-bold'))
+  // the Balance figure marks the current month (Aug, the test clock), not the selected one
+  const headers = within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')
+  const currentCol = headers.findIndex((h) => h.getAttribute('data-month') === '2026-08-01')
+  expect(currentCol).toBe(2)
 
   const cells = [...document.querySelectorAll('[data-testid^="plan-balance-"]')].filter((c) =>
     /plan-balance-\d+$/.test(c.getAttribute('data-testid') ?? ''),
@@ -2303,7 +2403,7 @@ it('edit mode keeps roving keyboard navigation and the fill handle working', asy
   // the sortable wrapper adds DOM depth around each row: selection, arrow-key
   // navigation and the Excel-style fill handle must all survive it
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2344,7 +2444,7 @@ it('a fill drag past the sortable activation distance still commits in edit mode
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
-  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
