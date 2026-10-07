@@ -135,8 +135,10 @@ export interface GridCtx {
   startEdit: (rowKey: string, col: number, opts: { replace: boolean; text?: string }) => void
   finishEdit: (raw: string, move: CellMove) => void
   cancelEdit: () => void
-  /** a row's ⋮ menu */
+  /** a row's ⋮ menu; undefined while the line controls are off (touch, no edit mode) */
   rowMenu?: (el: PlanElementDto) => MenuAction[] | undefined
+  /** the ⋮ menu of a category inside an envelope */
+  childMenu?: (child: PlanChildDto) => MenuAction[] | undefined
 }
 
 const figureClass = (ctx: GridCtx, col: number): string => `${PLAN_FIGURE_COL}${col === ctx.selectedCol ? ` ${PLAN_SELECTED_TINT}` : ''}`
@@ -174,10 +176,12 @@ export const ChildRow = memo(function ChildRow({
   child,
   parentCurrency,
   ctx,
+  menu,
 }: {
   child: PlanChildDto
   parentCurrency: CurrencyDto | undefined
   ctx: GridCtx
+  menu?: MenuAction[]
 }) {
   const { t } = useTranslation()
   const level = useRowLevel()
@@ -189,6 +193,7 @@ export const ChildRow = memo(function ChildRow({
       <span role="gridcell" className={`${PLAN_NAME_COL} ${CHILD_INDENT[level]}`} title={displayName}>
         <EntityIcon name={child.icon} className="text-lg" />
         <span className="min-w-0 flex-1 truncate">{displayName}</span>
+        <RowMenu name={displayName} actions={menu} />
       </span>
       {ctx.visibleMonths.map((m, i) => {
         const idx = ctx.monthIndex(m)
@@ -402,7 +407,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
             <p className={`${CHILD_INDENT[level]} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
           ) : null}
           {el.children.map((child) => (
-            <ChildRow key={child.id} child={child} parentCurrency={currency} ctx={ctx} />
+            <ChildRow key={child.id} child={child} parentCurrency={currency} ctx={ctx} menu={isEnvelopeType(el.type) ? ctx.childMenu?.(child) : undefined} />
           ))}
         </div>
       ) : null}

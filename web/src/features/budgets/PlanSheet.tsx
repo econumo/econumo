@@ -9,71 +9,49 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS as DndCSS } from '@dnd-kit/utilities'
 import type { SortableHandleProps } from '@/components/SortableList'
 import { afterIdFromDrop } from '@/lib/ordering'
-import { GripVertical, MoreVertical } from 'lucide-react'
-import { v7 as uuidv7 } from 'uuid'
+import { GripVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { CoinLoader } from '@/components/CoinLoader'
-import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { PromptDialog } from '@/components/PromptDialog'
-import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat, normalizeNumber } from '@/lib/money'
-import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type {
   BudgetDto,
-  BudgetFolderDto,
+  BudgetFolderSide,
   BudgetPlanDto,
   PlanCellDto,
   PlanElementDto,
 } from '@/api/dto/budget'
-import { BudgetElementType, isIncomeType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
-import type { CategoryDto } from '@/api/dto/category'
+import { BudgetElementType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { useIsCompact } from '@/hooks/useIsCompact'
-import { CategoryDialog } from '@/features/classifications/CategoryDialog'
-import { TagDialog } from '@/features/classifications/TagDialog'
-import type { TagDialogItem } from '@/features/classifications/TagDialog'
-import { useUpdateCategory } from '@/features/classifications/queries'
-import { useAccounts } from '@/features/accounts/queries'
-import { useUiStore } from '@/app/uiStore'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import {
   canConfigureBudget,
-  canDeleteEnvelope,
   canEditBudget,
   commentCellKey,
   planFetchWindow,
   useBudgetComments,
   useBudgetPlan,
-  useChangeElementCurrency,
-  useCreateBudgetFolder,
-  useDeleteBudgetFolder,
-  useDeleteEnvelope,
   useFillPlannedCells,
   useMoveBudgetFolder,
   useMoveElement,
   usePlanSetLimit,
-  useUpdateBudgetFolder,
-  useUpdateEnvelope,
 } from './queries'
 import { arrangementItem, moveElementInArrangement, placeElements } from './elementMove'
 import type { ElementContainer } from './elementMove'
 import { CommentsPanel } from './CommentsPanel'
 import { ElementSheet } from './ElementSheet'
 import { planCellFigures } from './phoneMonth'
-import { elementEditAccess, isEnvelopeType } from './elementEdit'
-import { EnvelopeDialog } from './EnvelopeDialog'
-import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
+import { isEnvelopeType } from './elementEdit'
 import { limitAmountFromInput } from './limitAmount'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { SetLimitDialog } from './SetLimitDialog'
+import { useBudgetLineMenus } from './useBudgetLineMenus'
 import {
   PLAN_ACTUALS_MIN_COL_PX,
   PLAN_NAME_COL_PX,
@@ -82,7 +60,6 @@ import {
   bucketPlanRows,
   everydayBalanceRow,
   fillTargetCol,
-  folderSides,
   makePlanExchange,
   monthDate,
   monthDiff,
@@ -96,8 +73,8 @@ import {
   savingsAsPlanElement,
   savingsBalanceRow,
 } from './planMath'
-import type { FolderSide, MonthExchange, PlanFolderSection, PlanRow, PlanRows } from './planMath'
-import type { MenuAction } from './monthLayout'
+import type { MonthExchange, PlanFolderSection, PlanRow, PlanRows } from './planMath'
+import type { LineControls, MenuAction } from './monthLayout'
 import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
 import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, selectedClass, sourceAmount } from './PlanRows'
@@ -111,6 +88,8 @@ export interface PlanSheetProps {
   currencies: CurrencyDto[]
   userId: Id | undefined
   editMode: boolean
+  /** opens Budget settings (the savings section's menu chooses accounts there) */
+  onOpenSettings: () => void
 }
 
 const rowKey = (r: PlanRow): string => `${r.element.id}:${r.element.type}`
@@ -157,55 +136,6 @@ interface FillDrag {
   targetCol: number
   startX: number
   colWidth: number
-}
-
-// Side-filtered folder picker: an income element may only land in an income or
-// neutral folder. The server enforces this too (CodeBudgetFolderSideMixed); the
-// filter keeps the user from ever seeing that error.
-function MoveToFolderDialog({
-  target,
-  folders,
-  folderSideMap,
-  onClose,
-  onPick,
-}: {
-  target: PlanElementDto | null
-  folders: BudgetFolderDto[]
-  folderSideMap: Map<Id, FolderSide>
-  onClose: () => void
-  onPick: (folderId: Id | null) => void
-}) {
-  const { t } = useTranslation()
-  if (!target) {
-    return null
-  }
-  const side: 'income' | 'expense' = isIncomeType(target.type) ? 'income' : 'expense'
-  const targets = folders.filter((f) => {
-    const s = folderSideMap.get(f.id) ?? 'neutral'
-    return s === side || s === 'neutral'
-  })
-  return (
-    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.page.plan.menu.move_to_folder')}>
-      <ul className="flex max-h-72 flex-col overflow-y-auto scrollbar-slim">
-        {targets.map((f) => (
-          <li key={f.id}>
-            <button
-              type="button"
-              className="w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover"
-              onClick={() => onPick(f.id)}
-            >
-              {f.name}
-            </button>
-          </li>
-        ))}
-        <li>
-          <button type="button" className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover" onClick={() => onPick(null)}>
-            {t('budgets.page.plan.menu.no_folder')}
-          </button>
-        </li>
-      </ul>
-    </ResponsiveDialog>
-  )
 }
 
 // Rows nest inside their folder section, and the dragged row travels under the
@@ -348,7 +278,7 @@ function FolderGroup({
   folded,
   onToggleFold,
   handle,
-  actions,
+  menu,
   empty,
   children,
 }: {
@@ -360,7 +290,7 @@ function FolderGroup({
   folded: boolean
   onToggleFold: (key: string) => void
   handle?: ReactNode
-  actions?: ReactNode
+  menu?: MenuAction[]
   /** unfolded and holding no rows: the empty-folder hint shows instead of them */
   empty: boolean
   children: ReactNode
@@ -395,7 +325,7 @@ function FolderGroup({
           onToggle={() => onToggleFold(foldKey)}
           sums={sums}
           handle={handle}
-          actions={actions}
+          menu={menu}
           actionsColumn={false}
           nameCell={{ role: 'gridcell', id: cellDomId(rk, -1), 'aria-selected': selected, className: selectedClass(selected) }}
         />
@@ -428,8 +358,7 @@ function FolderRows({
   folded,
   collapsed,
   onToggleFold,
-  onRename,
-  onDelete,
+  menu,
 }: {
   section: PlanFolderSection
   ctx: GridCtx
@@ -441,10 +370,8 @@ function FolderRows({
    *  still drives the chevron and aria-expanded. */
   collapsed: boolean
   onToggleFold: (key: string) => void
-  onRename: (folder: BudgetFolderDto) => void
-  onDelete: (folder: BudgetFolderDto) => void
+  menu?: MenuAction[]
 }) {
-  const { t } = useTranslation()
   const visibleRows = collapsed || folded ? [] : section.rows
   return (
     <FolderGroup
@@ -455,27 +382,7 @@ function FolderRows({
       folded={folded}
       onToggleFold={onToggleFold}
       handle={ctx.editMode ? <PlanFolderGrip name={section.folder.name} /> : null}
-      actions={
-        ctx.editMode ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={`budget folder actions ${section.folder.name}`}>
-                <MoreVertical className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => onRename(section.folder)}>{t('common.button.edit.label')}</DropdownMenuItem>
-              {/* same rule as the budget view: only a member-less folder is deletable here —
-                  the server would drop a populated one and strand its members */}
-              {section.rows.length === 0 ? (
-                <DropdownMenuItem variant="destructive" onSelect={() => onDelete(section.folder)}>
-                  {t('budgets.page.budget.structure.action.delete_folder')}
-                </DropdownMenuItem>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : null
-      }
+      menu={menu}
       empty={!folded && !collapsed && section.rows.length === 0}
     >
       <PlanRowList rows={visibleRows} ctx={ctx} />
@@ -592,7 +499,7 @@ function PlanBand({
   )
 }
 
-export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetProps) {
+export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
@@ -600,15 +507,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const openSheet = useCallback((target: PlanLimitTarget) => setSheetCellTarget(target), [])
   const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
   const [draggingFolder, setDraggingFolder] = useState(false)
-  const [moveFolderTarget, setMoveFolderTarget] = useState<PlanElementDto | null>(null)
-  const [currencyTarget, setCurrencyTarget] = useState<PlanElementDto | null>(null)
-  const [createFolderOpen, setCreateFolderOpen] = useState(false)
-  const [envelopeTarget, setEnvelopeTarget] = useState<PlanElementDto | null>(null)
-  const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<PlanElementDto | null>(null)
-  const [categoryTarget, setCategoryTarget] = useState<Pick<CategoryDto, 'id' | 'name' | 'type' | 'icon'> | null>(null)
-  const [tagTarget, setTagTarget] = useState<TagDialogItem | null>(null)
-  const [renameFolderTarget, setRenameFolderTarget] = useState<BudgetFolderDto | null>(null)
-  const [deleteFolderTarget, setDeleteFolderTarget] = useState<BudgetFolderDto | null>(null)
   // the open comment thread: anchored to its cell on desktop/tablet, a sheet on a phone
   const [commentsDialogTarget, setCommentsDialogTarget] = useState<(PlanLimitTarget & { anchor: HTMLElement | null }) | null>(null)
   const commentsOpen = commentsDialogTarget !== null
@@ -619,13 +517,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const editorFromGrid = useRef(false)
   const moveElement = useMoveElement()
   const orderFolders = useMoveBudgetFolder()
-  const changeCurrency = useChangeElementCurrency()
-  const createFolder = useCreateBudgetFolder()
-  const updateEnvelope = useUpdateEnvelope()
-  const deleteEnvelope = useDeleteEnvelope()
-  const updateCategory = useUpdateCategory()
-  const updateFolder = useUpdateBudgetFolder()
-  const deleteFolder = useDeleteBudgetFolder()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   // the totals drill-down: which bucket, and which column's month
   const [transactionsTarget, setTransactionsTarget] = useState<{ target: BudgetTransactionsTarget; month: string } | null>(null)
@@ -667,14 +558,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     observerRef.current = ro
   }, [])
   useEffect(() => () => observerRef.current?.disconnect(), [])
-  const editorOpen =
-    envelopeTarget !== null || categoryTarget !== null || tagTarget !== null || commentsDialogTarget !== null || planLimitTarget !== null
-  useEffect(() => {
-    if (!editorOpen && editorFromGrid.current) {
-      editorFromGrid.current = false
-      containerRef.current?.focus()
-    }
-  }, [editorOpen])
   // ResizeObserver never fires in jsdom, so width stays 0 there — the same
   // floor a real narrow viewport would collapse to (planVisibleCount<3 -> 1).
   const visible = width > 0 ? planVisibleCount(width) : 3
@@ -731,6 +614,14 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const { data: plan, isPending, isError, refetch, planKey, fetchFrom } = useBudgetPlan(budget.meta.id, firstMonth, visible)
   const setLimit = usePlanSetLimit(planKey)
   const fillCells = useFillPlannedCells(planKey)
+  const menus = useBudgetLineMenus({ budget, plan, userId, onOpenSettings })
+  const editorOpen = menus.editorOpen || commentsDialogTarget !== null || planLimitTarget !== null
+  useEffect(() => {
+    if (!editorOpen && editorFromGrid.current) {
+      editorFromGrid.current = false
+      containerRef.current?.focus()
+    }
+  }, [editorOpen])
   // the plan's OWN window, so both caches cover exactly the same months
   const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(budget.meta.id, fetchFrom, planFetchWindow(firstMonth, visible).months)
 
@@ -815,62 +706,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     return (m: string) => label(monthDate(m))
   }, [i18n.language])
   const canEdit = canEditBudget(budget.meta, userId)
-  const { data: accounts = [] } = useAccounts()
-  const openAccountModal = useUiStore((s) => s.openAccountModal)
-  const sheetEdit = sheetCellTarget ? elementEditAccess(sheetCellTarget.el, userId, canEdit && budget.meta.isArchived === 0, accounts) : null
-  // the sheet's pencil: the element's own edit dialog replaces the sheet
-  const editFromSheet = (el: PlanElementDto) => {
-    setSheetCellTarget(null)
-    if (isEnvelopeType(el.type)) {
-      setEnvelopeTarget(el)
-    } else if (el.type === BudgetElementType.SAVINGS) {
-      const account = accounts.find((a) => a.id === el.id)
-      if (account) {
-        openAccountModal({ account })
-      }
-    } else if (el.type === BudgetElementType.TAG) {
-      setTagTarget({ id: el.id, name: el.name, kind: 'tag', icon: el.icon })
-    } else {
-      setCategoryTarget({ id: el.id, name: el.name, icon: el.icon, type: isIncomeType(el.type) ? 'income' : 'expense' })
-    }
-  }
-  const canDeleteEnvelopes = canDeleteEnvelope(budget.meta, userId)
-  // edit mode's element actions; the hover menus outside it come with the shared Budget-view menus
-  const rowMenu = useMemo(() => {
-    if (!editMode) {
-      return undefined
-    }
-    return (el: PlanElementDto): MenuAction[] | undefined => {
-      if (el.id === UNCATEGORIZED_ID) {
-        return undefined
-      }
-      const actions: MenuAction[] = [{ label: t('budgets.page.budget.structure.element.action.change_currency'), onSelect: () => setCurrencyTarget(el) }]
-      // a savings row lives in its own section and never in a folder (the server
-      // refuses one with budget.savings_folder_not_allowed)
-      if (el.type !== BudgetElementType.SAVINGS) {
-        actions.push({ label: t('budgets.page.plan.menu.move_to_folder'), onSelect: () => setMoveFolderTarget(el) })
-      }
-      // The budget view's wire response strips income envelopes and income-sided
-      // folders, so the plan sheet is the only surface where an income envelope is
-      // reachable: Edit/Delete must live here or one could never be changed.
-      if (isEnvelopeType(el.type)) {
-        actions.push({ label: t('common.button.edit.label'), onSelect: () => setEnvelopeTarget(el) })
-        if (canDeleteEnvelopes) {
-          actions.push({ label: t('common.button.delete.label'), onSelect: () => setDeleteEnvelopeTarget(el), destructive: true })
-        }
-      }
-      return actions
-    }
-  }, [editMode, canDeleteEnvelopes, t])
-  const folderNameValidator = (value: string): string | null => {
-    if (!isNotEmpty(value)) {
-      return t('budgets.form.budget.folder_name.validation.required_field')
-    }
-    if (!isValidBudgetFolderName(value)) {
-      return t('budgets.form.budget.folder_name.validation.invalid_name')
-    }
-    return null
-  }
+  const sheetPlanTarget = sheetCellTarget ? { kind: 'plan' as const, cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null
+  const sheetEdit = sheetPlanTarget ? menus.editAccess(sheetPlanTarget) : null
+  // With a mouse every line's ⋮ menu shows on hover; a touch screen has no hover, so
+  // there they show on every line while edit mode is on, and not at all without it.
+  const lineControls: LineControls | null = isCompact ? (editMode ? 'always' : null) : 'hover'
+  const hoverMenus = lineControls !== null
+  const selectedIndex = monthIndex(selectedDate)
+  const rowMenu = hoverMenus ? (el: PlanElementDto) => menus.planRowMenu(el, selectedIndex) : undefined
+  const childMenu = hoverMenus ? menus.envelopeChildMenu : undefined
 
   const fillStart = useCallback(
     (rk: string, el: PlanElementDto, col: number, e: ReactPointerEvent<HTMLElement>) => {
@@ -1004,7 +848,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     () => (shownRows ? buildFlatRows(shownRows, savingsRows, folded) : []),
     [shownRows, savingsRows, folded],
   )
-  const folderSideMap = useMemo(() => (plan ? folderSides(plan) : new Map<Id, FolderSide>()), [plan])
 
   // Touch keeps the item sheet (and its amount dialog); a read-only cell never opens an editor.
   const startEdit = useCallback(
@@ -1056,7 +899,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     return sums
   }, [shownRows, savingsRows, visibleMonths, monthIndex, ex])
 
-  const ctx: GridCtx | null = useMemo(() => {
+  const gridCtx: GridCtx | null = useMemo(() => {
     if (!plan) {
       return null
     }
@@ -1094,7 +937,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       startEdit,
       finishEdit,
       cancelEdit,
-      rowMenu,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -1128,8 +970,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     startEdit,
     finishEdit,
     cancelEdit,
-    rowMenu,
   ])
+  // The ⋮ menus read live rights, categories and tags, so they are rebuilt on every
+  // render rather than memoized; moving the selection re-renders the rows anyway.
+  const ctx: GridCtx | null = gridCtx && { ...gridCtx, rowMenu, childMenu }
 
   if (!plan || !shownRows || !ctx || !ex) {
     if (isError) {
@@ -1170,6 +1014,9 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       <SumCell key={m} index={i} sum={sums && monthIndex(m) >= 0 ? sums[i] : null} month={m} ctx={ctx} fmt={fmtBudget} />
     ))
 
+  const folderMenu = (f: PlanFolderSection, side: BudgetFolderSide) =>
+    hoverMenus ? menus.folderActionsFor({ id: f.folder.id, name: f.folder.name }, f.rows.length === 0, side) : undefined
+
   // a section's folder-less rows: under a No folder line next to real folders, at
   // that line's step on their own otherwise
   const looseGroup = (side: 'income' | 'expense', rows: PlanRow[]) => {
@@ -1186,6 +1033,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         sums={sumCells(groupSums.get(key))}
         folded={folded(key)}
         onToggleFold={togglePlanFold}
+        menu={hoverMenus ? menus.folderActionsFor(null, false, side) : undefined}
         empty={false}
       >
         {list}
@@ -1293,41 +1141,36 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     )
   }
 
-  // Enter on the highlighted name cell opens the element's own edit dialog (the one
-  // the row menu / settings pages use), gated by the right the backend enforces on
-  // the matching update endpoint: budget role for an envelope (owner|admin|user),
-  // row ownership for a category or tag — update-category/update-tag answer anyone
-  // but the owner with NotFound, so a shared row must not offer the dialog at all.
-  function openElementEditor(entry: Extract<FlatRow, { kind: 'element' }>) {
-    const target = entry.el
-    // a savings row is an account, edited from the accounts screen, not here
-    if (target.id === UNCATEGORIZED_ID || target.type === BudgetElementType.SAVINGS) {
+  // Enter on the highlighted name cell opens the element's own edit dialog, the row
+  // menu's Edit, gated by the right the backend enforces on the matching update
+  // endpoint: budget role for an envelope, row ownership for a category or tag
+  // (update-category/update-tag answer anyone but the owner with NotFound).
+  function editFromName(el: PlanElementDto) {
+    const target = { kind: 'plan' as const, cell: planCellFigures(el, selectedIndex) }
+    const access = menus.editAccess(target)
+    if (access === null) {
       return
     }
-    // no right to edit: say why instead of silently ignoring the keystroke; a fixed
-    // toast id so hammering Enter does not stack copies
-    if (isEnvelopeType(target.type)) {
-      if (canEdit) {
+    if (access) {
+      // an account opens in the app's own account modal, which hands focus back itself
+      if (el.type !== BudgetElementType.SAVINGS) {
         editorFromGrid.current = true
-        setEnvelopeTarget(entry.el)
-      } else {
-        toast.error(t('budgets.page.plan.edit.no_access_envelope'), { id: 'plan-edit-no-access' })
       }
+      menus.editFromSheet(target)
       return
     }
-    if (!userId || target.ownerUserId !== userId) {
-      toast.error(
-        target.type === BudgetElementType.TAG ? t('budgets.page.plan.edit.no_access_tag') : t('budgets.page.plan.edit.no_access_category'),
-        { id: 'plan-edit-no-access' },
-      )
+    // a savings account the caller cannot administer has no dialog to explain
+    if (el.type === BudgetElementType.SAVINGS) {
       return
     }
-    editorFromGrid.current = true
-    if (target.type === BudgetElementType.TAG) {
-      setTagTarget({ id: target.id, name: target.name, kind: 'tag', icon: target.icon })
-      return
-    }
-    setCategoryTarget({ id: target.id, name: target.name, icon: target.icon, type: isIncomeType(target.type) ? 'income' : 'expense' })
+    // say why instead of silently ignoring the keystroke; a fixed toast id so
+    // hammering Enter does not stack copies
+    const message = isEnvelopeType(el.type)
+      ? t('budgets.page.plan.edit.no_access_envelope')
+      : el.type === BudgetElementType.TAG
+        ? t('budgets.page.plan.edit.no_access_tag')
+        : t('budgets.page.plan.edit.no_access_category')
+    toast.error(message, { id: 'plan-edit-no-access' })
   }
 
   function handleEnter(entry: FlatRow, col: number) {
@@ -1336,7 +1179,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       return
     }
     if (col === -1) {
-      openElementEditor(entry)
+      editFromName(entry.el)
       return
     }
     const month = visibleMonths[col]
@@ -1733,13 +1576,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {editMode ? (
-        <div className="flex items-center gap-2 px-2 pb-1">
-          <Button type="button" variant="secondary" size="sm" onClick={() => setCreateFolderOpen(true)}>
-            {t('budgets.page.budget.structure.action.create_folder')}
-          </Button>
-        </div>
-      ) : null}
       <div
         ref={attachContainer}
         role="grid"
@@ -1754,7 +1590,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         data-testid="plan-sheet"
       >
         <LineLayoutContext.Provider value={layout}>
-        <LineControlsContext.Provider value={editMode ? 'always' : 'hover'}>
+        <LineControlsContext.Provider value={lineControls ?? 'hover'}>
         <div role="row" data-testid="plan-month-header" className={`sticky top-0 z-20 ${PLAN_LINE} border-b bg-background`}>
           <span className={PLAN_NAME_COL} />
           {visibleMonths.map((m, i) => {
@@ -1783,6 +1619,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             headings={[]}
             sums={sumCells(groupSums.get('income'))}
             actionsColumn={false}
+            menu={hoverMenus ? menus.sectionMenu('income') : undefined}
           />
           {!incomeFolded ? (
             <PlanBand
@@ -1802,8 +1639,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                     folded={folded(f.folder.id)}
                     collapsed={draggingFolder}
                     onToggleFold={togglePlanFold}
-                    onRename={setRenameFolderTarget}
-                    onDelete={setDeleteFolderTarget}
+                    menu={folderMenu(f, 'income')}
                   />
                 )
                 return editMode ? (
@@ -1835,6 +1671,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
               headings={[]}
               sums={sumCells(groupSums.get('savings'))}
               actionsColumn={false}
+              menu={hoverMenus ? menus.savingsSectionMenu : undefined}
             />
             {!savingsFolded ? (
               <RowLevelContext.Provider value="top">
@@ -1879,8 +1716,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                     folded={folded(f.folder.id)}
                     collapsed={draggingFolder}
                     onToggleFold={togglePlanFold}
-                    onRename={setRenameFolderTarget}
-                    onDelete={setDeleteFolderTarget}
+                    menu={folderMenu(f, f.folder.side ?? 'expense')}
                   />
                 )
                 return editMode ? (
@@ -1903,6 +1739,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             headings={[]}
             sums={sumCells(groupSums.get('expense'))}
             actionsColumn={false}
+            menu={hoverMenus ? menus.sectionMenu('expense') : undefined}
           />
           {!expenseFolded ? (
             <PlanBand
@@ -1922,8 +1759,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                     folded={folded(f.folder.id)}
                     collapsed={draggingFolder}
                     onToggleFold={togglePlanFold}
-                    onRename={setRenameFolderTarget}
-                    onDelete={setDeleteFolderTarget}
+                    menu={folderMenu(f, 'expense')}
                   />
                 )
                 return editMode ? (
@@ -2007,7 +1843,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       />
 
       <ElementSheet
-        target={sheetCellTarget ? { kind: 'plan', cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null}
+        target={sheetPlanTarget}
         month={sheetCellTarget?.month ?? ''}
         baseCurrencyId={budget.meta.currencyId}
         currencies={currencies}
@@ -2036,7 +1872,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
               }
             : undefined
         }
-        onEdit={sheetCellTarget && sheetEdit !== null ? () => editFromSheet(sheetCellTarget.el) : undefined}
+        onEdit={
+          sheetPlanTarget && sheetEdit !== null
+            ? () => {
+                // the element's own edit dialog replaces the sheet
+                setSheetCellTarget(null)
+                menus.editFromSheet(sheetPlanTarget)
+              }
+            : undefined
+        }
         canEdit={sheetEdit === true}
       />
 
@@ -2055,142 +1899,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         truncated={commentsTruncated}
       />
 
-      <MoveToFolderDialog
-        target={moveFolderTarget}
-        folders={plan.structure.folders}
-        folderSideMap={folderSideMap}
-        onClose={() => setMoveFolderTarget(null)}
-        onPick={(folderId) => {
-          if (moveFolderTarget) {
-            moveElement.mutate({
-              budgetId: budget.meta.id,
-              item: { id: moveFolderTarget.id, folderId, position: 0, afterId: null },
-            })
-          }
-          setMoveFolderTarget(null)
-        }}
-      />
-
-      {currencyTarget ? (
-        <CurrencyPickerDialog
-          open
-          title={t('budgets.modal.change_element_currency_form.header')}
-          value={currencyTarget.currencyId ?? budget.meta.currencyId}
-          onClose={() => setCurrencyTarget(null)}
-          onPick={(currencyId) => {
-            changeCurrency.mutate(
-              { budgetId: budget.meta.id, elementId: currencyTarget.id, currencyId },
-              { onSuccess: () => setCurrencyTarget(null) },
-            )
-          }}
-        />
-      ) : null}
-
-      <PlanCreateFolderDialog
-        open={createFolderOpen}
-        elements={plan.structure.elements}
-        onClose={() => setCreateFolderOpen(false)}
-        onSubmit={({ name, side, memberIds }) => {
-          const id = uuidv7()
-          createFolder.mutate(
-            { budgetId: budget.meta.id, id, name, side },
-            {
-              onSuccess: () => {
-                for (const memberId of memberIds) {
-                  moveElement.mutate({ budgetId: budget.meta.id, item: { id: memberId, folderId: id, position: 0, afterId: null } })
-                }
-                setCreateFolderOpen(false)
-              },
-            },
-          )
-        }}
-      />
-
-      <PromptDialog
-        open={renameFolderTarget !== null}
-        onClose={() => setRenameFolderTarget(null)}
-        onSubmit={(name) => {
-          if (renameFolderTarget) {
-            updateFolder.mutate({ budgetId: budget.meta.id, id: renameFolderTarget.id, name }, { onSuccess: () => setRenameFolderTarget(null) })
-          }
-        }}
-        title={t('budgets.modal.update_folder_form.header')}
-        inputLabel={t('budgets.form.budget.folder_name.label')}
-        initialValue={renameFolderTarget?.name ?? ''}
-        validate={folderNameValidator}
-        submitLabel={t('common.button.update.label')}
-        cancelLabel={t('common.button.cancel.label')}
-      />
-
-      <ConfirmDialog
-        open={deleteFolderTarget !== null}
-        onClose={() => setDeleteFolderTarget(null)}
-        onConfirm={() => {
-          if (deleteFolderTarget) {
-            deleteFolder.mutate({ budgetId: budget.meta.id, id: deleteFolderTarget.id }, { onSettled: () => setDeleteFolderTarget(null) })
-          }
-        }}
-        title={t('budgets.modal.delete_folder.header')}
-        question={t('budgets.modal.delete_folder.question', { name: deleteFolderTarget?.name ?? '' })}
-        confirmLabel={t('common.button.delete.label')}
-        cancelLabel={t('common.button.cancel.label')}
-        destructive
-      />
-
-      <EnvelopeDialog
-        open={envelopeTarget !== null}
-        envelope={envelopeTarget}
-        budgetCurrencyId={budget.meta.currencyId}
-        side={envelopeTarget && isIncomeType(envelopeTarget.type) ? 'income' : 'expense'}
-        onClose={() => setEnvelopeTarget(null)}
-        onSubmit={(form) => {
-          if (envelopeTarget) {
-            updateEnvelope.mutate(
-              {
-                budgetId: budget.meta.id,
-                id: envelopeTarget.id,
-                name: form.name,
-                icon: form.icon,
-                currencyId: form.currencyId,
-                isArchived: form.isArchived,
-                categories: form.categories,
-              },
-              { onSuccess: () => setEnvelopeTarget(null) },
-            )
-          }
-        }}
-      />
-
-      <CategoryDialog
-        open={categoryTarget !== null}
-        category={categoryTarget}
-        onClose={() => setCategoryTarget(null)}
-        onSubmit={(form) => {
-          if (categoryTarget) {
-            updateCategory.mutate(
-              { id: categoryTarget.id, name: form.name, icon: form.icon },
-              { onSuccess: () => setCategoryTarget(null) },
-            )
-          }
-        }}
-      />
-
-      <TagDialog open={tagTarget !== null} item={tagTarget} onClose={() => setTagTarget(null)} />
-
-      <ConfirmDialog
-        open={deleteEnvelopeTarget !== null}
-        onClose={() => setDeleteEnvelopeTarget(null)}
-        onConfirm={() => {
-          if (deleteEnvelopeTarget) {
-            deleteEnvelope.mutate({ budgetId: budget.meta.id, id: deleteEnvelopeTarget.id }, { onSettled: () => setDeleteEnvelopeTarget(null) })
-          }
-        }}
-        title={t('budgets.modal.delete_envelope.header')}
-        question={t('budgets.modal.delete_envelope.question')}
-        confirmLabel={t('common.button.delete.label')}
-        cancelLabel={t('common.button.cancel.label')}
-        destructive
-      />
+      {menus.dialogs}
     </div>
   )
 }

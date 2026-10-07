@@ -186,8 +186,6 @@ it('does not steal focus from a later mouse-opened dialog after a keyboard-opene
   // a later, unrelated mouse-opened dialog (the row menu's own Edit) must close
   // without the grid stealing focus back — the bug this guards against left
   // editorFromGrid stuck true from the Shift+Enter above
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
   await user.click(await screen.findByRole('button', { name: 'menu Living' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
   const dialog = await screen.findByRole('dialog', { name: 'Edit envelope' })
@@ -252,7 +250,8 @@ it('offers no add-comment corner on the uncategorized row', async () => {
 
 it('offers no add-comment corner in edit-structure mode', async () => {
   usePlanHandlers()
-  mockViewport()
+  // only a touch screen has an edit mode
+  mockTabletViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   renderPage('/plan')
 

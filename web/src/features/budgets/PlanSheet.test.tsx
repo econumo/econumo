@@ -691,15 +691,15 @@ it('clicking anywhere on a folder header row toggles the fold, but its own contr
   await user.click(header)
   expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
 
-  // the edit-mode grip is a drag handle, not a fold toggle
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
-  await user.click(await screen.findByRole('button', { name: 'move folder Essentials' }))
+  // the ⋮ menu opens its menu, not a fold
+  await user.click(within(folder).getByRole('button', { name: 'menu Essentials' }))
+  expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+  await user.keyboard('{Escape}')
   expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
-  expect(within(screen.getByTestId('plan-folder-bf1')).getByRole('button', { name: 'Essentials' })).toHaveAttribute('aria-expanded', 'true')
+  expect(nameButton).toHaveAttribute('aria-expanded', 'true')
 })
 
-it('edit mode: a folder header menu renames the folder, and deletes it only when it has no members', async () => {
+it('a folder ⋮ menu renames the folder, and deletes it only when it has no members', async () => {
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   const planWithEmptyFolder: BudgetPlanDto = {
     ...plan,
@@ -724,15 +724,11 @@ it('edit mode: a folder header menu renames the folder, and deletes it only when
   renderPage()
   await screen.findByTestId('plan-sheet')
 
-  // read-only: no folder menus
-  expect(screen.queryByRole('button', { name: /budget folder actions/ })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
-
-  // Essentials has a member: rename offered, delete not
-  await user.click(await screen.findByRole('button', { name: 'budget folder actions Essentials' }))
+  // Essentials has a member: rename offered, delete greyed out with the reason
+  await user.click(await screen.findByRole('button', { name: 'menu Essentials' }))
   expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
-  expect(screen.queryByRole('menuitem', { name: 'Delete folder' })).not.toBeInTheDocument()
+  expect(screen.getByRole('menuitem', { name: /Delete folder/ })).toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('menuitem', { name: /Delete folder/ })).toHaveTextContent('(not empty)')
   await user.click(screen.getByRole('menuitem', { name: 'Edit' }))
   const rename = await screen.findByRole('dialog', { name: 'Rename folder' })
   const input = within(rename).getByDisplayValue('Essentials')
@@ -745,7 +741,7 @@ it('edit mode: a folder header menu renames the folder, and deletes it only when
   expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
 
   // the empty folder offers delete, behind a confirmation
-  await user.click(screen.getByRole('button', { name: 'budget folder actions Fun' }))
+  await user.click(screen.getByRole('button', { name: 'menu Fun' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Delete folder' }))
   expect(deleteBody).toBeUndefined()
   const confirm = await screen.findByRole('dialog', { name: 'Delete folder?' })
@@ -1516,6 +1512,8 @@ it('in edit mode, empty folders reorder among themselves inside the neutral band
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
+  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
+  mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2393,7 +2391,7 @@ it('gives expanded child rows the same row-hover treatment as their parents', as
   expect(childName.className).toMatch(/\bpl-1[79]\b/)
 })
 
-it('shows plan row actions only in edit mode, with side-filtered move-to-folder', async () => {
+it('a row ⋮ menu offers Change currency and a side-filtered Move to folder, with no mode to switch on', async () => {
   // pe1/Living (expense-sided) starts in 'bf1'/Essentials; ie1/Salaries (income) puts
   // 'bf-bonus' on the income side, so the filter is exercised both ways
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
@@ -2414,13 +2412,10 @@ it('shows plan row actions only in edit mode, with side-filtered move-to-folder'
   renderPage()
   await screen.findByTestId('plan-sheet')
 
-  // read-only by default: no row menus
-  expect(screen.queryByRole('button', { name: /^menu / })).not.toBeInTheDocument()
-
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
-
-  await user.click(await screen.findByRole('button', { name: 'menu Living' }))
+  // the menu shows on hover: present in the DOM, hidden until the pointer is over the line
+  const trigger = await screen.findByRole('button', { name: 'menu Living' })
+  expect(trigger).toHaveClass('opacity-0', 'group-hover/line:opacity-100')
+  await user.click(trigger)
   expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
   await user.click(screen.getByRole('menuitem', { name: 'Move to folder…' }))
 
@@ -2429,6 +2424,15 @@ it('shows plan row actions only in edit mode, with side-filtered move-to-folder'
   expect(within(dialog).getByRole('button', { name: 'Essentials' })).toBeInTheDocument()
   expect(within(dialog).getByRole('button', { name: 'No folder' })).toBeInTheDocument()
   expect(within(dialog).queryByRole('button', { name: 'Bonuses Folder' })).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Move to folder…' })).not.toBeInTheDocument())
+
+  // ie1/Salaries is income: income folders only
+  await user.click(screen.getByRole('button', { name: 'menu Salaries' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Move to folder…' }))
+  const incomeDialog = await screen.findByRole('dialog', { name: 'Move to folder…' })
+  expect(within(incomeDialog).getByRole('button', { name: 'Bonuses Folder' })).toBeInTheDocument()
+  expect(within(incomeDialog).queryByRole('button', { name: 'Essentials' })).not.toBeInTheDocument()
 })
 
 it('picking a folder in the move dialog fires move-element with the right payload and closes the dialog', async () => {
@@ -2455,8 +2459,6 @@ it('picking a folder in the move dialog fires move-element with the right payloa
   renderPage()
   await screen.findByTestId('plan-sheet')
 
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
   await user.click(await screen.findByRole('button', { name: 'menu Living' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Move to folder…' }))
@@ -2468,9 +2470,8 @@ it('picking a folder in the move dialog fires move-element with the right payloa
   expect(screen.queryByRole('dialog', { name: 'Move to folder…' })).not.toBeInTheDocument()
 })
 
-it('creates a plan folder with members, switching sides clears the selection', async () => {
+it('a section ⋮ menu creates a folder on that section\'s side', async () => {
   let folderBody: unknown
-  const moves: unknown[] = []
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
@@ -2479,51 +2480,26 @@ it('creates a plan folder with members, switching sides clears the selection', a
       folderBody = await request.json()
       return HttpResponse.json({ success: true, message: '', data: { item: { id: 'nf1', name: 'Employment', position: 9 } } })
     }),
-    http.post('*/api/v1/budget/move-element', async ({ request }) => {
-      moves.push(await request.json())
-      return HttpResponse.json({ success: true, message: '', data: {} })
-    }),
   )
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
-  await user.click(await screen.findByRole('button', { name: 'Create folder' }))
+  await user.click(within(screen.getByTestId('plan-section-line-income')).getByRole('button', { name: 'menu Income' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Create folder' }))
   const dialog = await screen.findByRole('dialog', { name: 'New folder' })
-
-  // submit is blocked with no members
   await user.type(within(dialog).getByLabelText('Folder name'), 'Employment')
-  expect(within(dialog).getByRole('button', { name: 'Create' })).toBeDisabled()
-
-  // income is the default side: grouping income is the reason this dialog exists
-  expect(within(dialog).getByRole('tab', { name: 'Income' })).toHaveAttribute('aria-selected', 'true')
-  expect(within(dialog).getByRole('tab', { name: 'Expenses' })).toHaveAttribute('aria-selected', 'false')
-
-  // pick an income element (ie1's top-level name is "Salaries"; its child is "Salary")
-  await user.click(within(dialog).getByRole('checkbox', { name: 'Salaries' }))
-  expect(within(dialog).getByRole('button', { name: 'Create' })).toBeEnabled()
-
-  // flipping back to expense clears the income selection
-  await user.click(within(dialog).getByRole('tab', { name: 'Expenses' }))
-  expect(within(dialog).getByRole('button', { name: 'Create' })).toBeDisabled()
-
-  await user.click(within(dialog).getByRole('tab', { name: 'Income' }))
-  await user.click(within(dialog).getByRole('checkbox', { name: 'Salaries' }))
   await user.click(within(dialog).getByRole('button', { name: 'Create' }))
 
-  // the chosen side travels with the folder, so it stays an income folder even if emptied
-  await waitFor(() => expect(folderBody).toMatchObject({ name: 'Employment', side: 'income' }))
-  await waitFor(() => expect(moves).toHaveLength(1))
-  // the folder id is client-generated (uuidv7) and sent as-is on create-folder; the
-  // move must target that same id, not whatever id the (irrelevant, mocked) response echoes back
-  const clientFolderId = (folderBody as { id: string }).id
-  expect(moves[0]).toMatchObject({ id: 'ie1', folderId: clientFolderId })
+  // the side travels with the folder, so it stays an income folder while empty
+  await waitFor(() => expect(folderBody).toMatchObject({ budgetId: 'b1', name: 'Employment', side: 'income' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New folder' })).not.toBeInTheDocument())
 })
 
 it('shows drag handles only in edit mode', async () => {
   usePlanHandlers()
+  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
+  mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2555,6 +2531,8 @@ it('scopes every drag handle to its own band, so no drag can cross the income/ex
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
     planHandler(planWithFolders),
   )
+  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
+  mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2577,6 +2555,8 @@ it('scopes every drag handle to its own band, so no drag can cross the income/ex
 
 it('keeps the drag grip on its own root row, not stretched by expanded children', async () => {
   usePlanHandlers()
+  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
+  mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2606,6 +2586,8 @@ it('keeps the drag grip on its own root row, not stretched by expanded children'
 
 it('keeps the uncategorized totals line undraggable', async () => {
   usePlanHandlers()
+  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
+  mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2616,11 +2598,12 @@ it('keeps the uncategorized totals line undraggable', async () => {
   expect(screen.queryByRole('button', { name: 'move Uncategorized' })).not.toBeInTheDocument()
 })
 
-it('edit mode keeps roving keyboard navigation and the fill handle working', async () => {
-  // the sortable wrapper adds DOM depth around each row: selection, arrow-key
-  // navigation and the Excel-style fill handle must all survive it
+it('tablet edit mode keeps roving keyboard navigation working through the sortable wrapper', async () => {
+  // the sortable wrapper adds DOM depth around each row: selection and arrow-key
+  // navigation must survive it (desktop Plan has no edit mode; a tablet has no fill handle)
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2629,6 +2612,8 @@ it('edit mode keeps roving keyboard navigation and the fill handle working', asy
 
   await user.click(screen.getByTestId('plan-cell-pe1:0'))
   expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
+  // edit mode owns the tap: no item sheet
+  expect(screen.queryByTestId('element-sheet')).not.toBeInTheDocument()
 
   await user.keyboard('{ArrowRight}')
   expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
@@ -2641,46 +2626,8 @@ it('edit mode keeps roving keyboard navigation and the fill handle working', asy
   expect(within(pe1Row).queryByRole('button', { name: 'move Living' })).not.toBeInTheDocument()
   const sortable = pe1Row.closest('[data-plan-sortable="pe1"]') as HTMLElement
   expect(within(sortable).getByRole('button', { name: 'move Living' })).toBeInTheDocument()
-
-  // the fill handle still renders on the selected editable cell
-  expect(within(screen.getByTestId('plan-cell-pe1:1')).getByTestId('fill-handle')).toBeInTheDocument()
 })
 
-it('a fill drag past the sortable activation distance still commits in edit mode', async () => {
-  // dnd-kit's PointerSensor activates at 4px of movement, and the fill drag moves
-  // horizontally well past that. The two stay separate because the sensor's
-  // activator is bound to the grip alone — the fill handle's pointerdown never
-  // reaches it — so the row must not tear loose from the grid mid-fill.
-  let fillBody: unknown
-  server.use(
-    ...coreHandlers({ user: userWithBudget }),
-    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-    planHandler(),
-    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
-      fillBody = await request.json()
-      return HttpResponse.json({ success: true, message: '', data: {} })
-    }),
-  )
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
-  const user = userEvent.setup()
-  renderPage()
-  await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
-
-  await user.click(screen.getByTestId('plan-cell-pe1:0'))
-  const handle = within(screen.getByTestId('plan-cell-pe1:0')).getByTestId('fill-handle')
-
-  // jsdom reports a 0-wide cell, so drive fillTargetCol with an explicit column width
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 100, height: 20, top: 0, left: 0, right: 100, bottom: 20, x: 0, y: 0, toJSON: () => ({}) } as DOMRect)
-  fireEvent.pointerDown(handle, { pointerId: 1, clientX: 0, clientY: 0, button: 0, isPrimary: true })
-  fireEvent.pointerMove(handle, { pointerId: 1, clientX: 100, clientY: 0 })
-  fireEvent.pointerUp(handle, { pointerId: 1 })
-  vi.restoreAllMocks()
-
-  // and the fill itself still commits, so the guard did not break the gesture
-  await waitFor(() => expect(fillBody).toMatchObject({ elementId: 'pe1' }))
-})
 
 it('holds the dropped order locally instead of snapping back until the refetch lands', async () => {
   server.use(
@@ -2694,6 +2641,8 @@ it('holds the dropped order locally instead of snapping back until the refetch l
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
+  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
+  mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2745,9 +2694,8 @@ it('measures the grid with a callback ref so the loader cannot skip the measurem
   }
 })
 
-it('names a foreign-currency row by its code next to the name; the edit-mode menu sits in the name column', async () => {
+it('names a foreign-currency row by its code next to the name; the row ⋮ menu sits in the name column', async () => {
   usePlanHandlers()
-  const user = userEvent.setup()
   renderPage()
   const grid = await screen.findByTestId('plan-sheet')
 
@@ -2757,8 +2705,6 @@ it('names a foreign-currency row by its code next to the name; the edit-mode men
   expect(within(nameCell('plan-cell-env-eur:0')).getByTestId('currency-tag')).toHaveTextContent('EUR')
   expect(within(grid).queryByText('$')).not.toBeInTheDocument()
 
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
   const menu = await screen.findByRole('button', { name: 'menu Living' })
   expect(nameCell('plan-cell-pe1:0')).toContainElement(menu)
 })
@@ -2774,6 +2720,8 @@ it('collapses folder contents while a folder drag is in flight, and still drops 
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
+  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
+  mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2821,6 +2769,8 @@ it('does not bounce after the move resolves but before the refetch returns', asy
     // resolves immediately, so onSuccess/onSettled both fire while the refetch is pending
     http.post('*/api/v1/budget/move-element', () => HttpResponse.json({ success: true, message: '', data: {} })),
   )
+  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
+  mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2875,6 +2825,8 @@ it('a row can be dragged out of a folder onto the band loose container even when
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
+  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
+  mockCompactViewport()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2900,40 +2852,40 @@ it('a row can be dragged out of a folder onto the band loose container even when
   expect(body).toMatchObject({ id: 'cat-food', folderId: null })
 })
 
-it('offers Edit and Delete on an envelope row, but not on a category or a tag', async () => {
+it('row ⋮ menus: an envelope offers Edit and Delete, a category and a tag Edit and their own classification actions', async () => {
   // the budget view's wire response strips income envelopes entirely, so the plan
   // sheet is the ONLY place ie1/Salaries can be managed at all
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
+  const items = () => screen.getAllByRole('menuitem').map((i) => i.textContent)
 
   // ie1/Salaries is an income envelope (type 4)
   await user.click(await screen.findByRole('button', { name: 'menu Salaries' }))
-  expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
-  expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+  await screen.findByRole('menuitem', { name: 'Edit' })
+  expect(items()).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Delete'])
   await user.keyboard('{Escape}')
 
-  // pe1/Living is an expense envelope (type 0) — same four items
+  // pe1/Living is an expense envelope (type 0) — the same items
   await user.click(await screen.findByRole('button', { name: 'menu Living' }))
-  expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
-  expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+  await screen.findByRole('menuitem', { name: 'Edit' })
+  expect(items()).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Delete'])
   await user.keyboard('{Escape}')
 
-  // cat-food/Food is a category (type 1): currency + move only
+  // cat-food/Food is a category (type 1): the envelope's Delete is not offered, its
+  // own classification actions follow instead
   await user.click(await screen.findByRole('button', { name: 'menu Food' }))
-  expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
-  expect(screen.queryByRole('menuitem', { name: 'Edit' })).not.toBeInTheDocument()
-  expect(screen.queryByRole('menuitem', { name: 'Delete' })).not.toBeInTheDocument()
+  await screen.findByRole('menuitem', { name: 'Edit' })
+  expect(items().slice(0, 3)).toEqual(['Edit', 'Change currency', 'Move to folder…'])
+  expect(items()).toContain('Archive')
   await user.keyboard('{Escape}')
 
-  // tag1/vacation is a tag (type 2): currency + move only
+  // tag1/vacation is a tag (type 2)
   await user.click(await screen.findByRole('button', { name: 'menu vacation' }))
-  expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
-  expect(screen.queryByRole('menuitem', { name: 'Edit' })).not.toBeInTheDocument()
-  expect(screen.queryByRole('menuitem', { name: 'Delete' })).not.toBeInTheDocument()
+  await screen.findByRole('menuitem', { name: 'Edit' })
+  expect(items().slice(0, 3)).toEqual(['Edit', 'Change currency', 'Move to folder…'])
+  expect(items()).toContain('Archive')
 })
 
 it('editing an income envelope opens the dialog on the income side and saves', async () => {
@@ -2950,8 +2902,6 @@ it('editing an income envelope opens the dialog on the income side and saves', a
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
   await user.click(await screen.findByRole('button', { name: 'menu Salaries' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
@@ -2986,8 +2936,6 @@ it('deleting an income envelope confirms first, then fires delete-envelope', asy
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
   await user.click(await screen.findByRole('button', { name: 'menu Salaries' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Delete' }))
@@ -3006,29 +2954,24 @@ it('reopening the create-folder dialog after a successful create starts blank', 
     http.post('*/api/v1/budget/create-folder', () =>
       HttpResponse.json({ success: true, message: '', data: { item: { id: 'nf1', name: 'Employment', position: 9 } } }),
     ),
-    http.post('*/api/v1/budget/move-element', () => HttpResponse.json({ success: true, message: '', data: {} })),
   )
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
+  const createFolder = async () => {
+    await user.click(within(screen.getByTestId('plan-section-line-expense')).getByRole('button', { name: 'menu Expenses' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Create folder' }))
+    return screen.findByRole('dialog', { name: 'New folder' })
+  }
 
-  await user.click(await screen.findByRole('button', { name: 'Create folder' }))
-  const dialog = await screen.findByRole('dialog', { name: 'New folder' })
+  const dialog = await createFolder()
   await user.type(within(dialog).getByLabelText('Folder name'), 'Employment')
-  await user.click(within(dialog).getByRole('tab', { name: 'Income' }))
-  await user.click(within(dialog).getByRole('checkbox', { name: 'Salaries' }))
   await user.click(within(dialog).getByRole('button', { name: 'Create' }))
-
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New folder' })).not.toBeInTheDocument())
 
-  // the success path closes from the parent, so nothing local can reset the fields —
-  // a surviving name + members would let a second submit duplicate the folder
-  await user.click(await screen.findByRole('button', { name: 'Create folder' }))
-  const reopened = await screen.findByRole('dialog', { name: 'New folder' })
+  // a surviving name would let a second submit duplicate the folder
+  const reopened = await createFolder()
   expect(within(reopened).getByLabelText('Folder name')).toHaveValue('')
-  expect(within(reopened).getByRole('button', { name: 'Create' })).toBeDisabled()
 })
 
 it('rejects a too-short folder name inline instead of letting the server refuse it', async () => {
@@ -3045,16 +2988,62 @@ it('rejects a too-short folder name inline instead of letting the server refuse 
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
 
-  await user.click(await screen.findByRole('button', { name: 'Create folder' }))
+  await user.click(within(screen.getByTestId('plan-section-line-income')).getByRole('button', { name: 'menu Income' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Create folder' }))
   const dialog = await screen.findByRole('dialog', { name: 'New folder' })
   await user.type(within(dialog).getByLabelText('Folder name'), 'Ab')
-  await user.click(within(dialog).getByRole('tab', { name: 'Income' }))
-  await user.click(within(dialog).getByRole('checkbox', { name: 'Salaries' }))
   await user.click(within(dialog).getByRole('button', { name: 'Create' }))
 
   expect(await within(dialog).findByText('Folder name must be 3-64 characters')).toBeInTheDocument()
   expect(called).toBe(false)
+})
+
+it('Plan rows, folders and sections offer the Budget view ⋮ menus on hover', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getAllByRole('button', { name: /^menu / })[0])
+  const items = screen.getAllByRole('menuitem').map((i) => i.textContent)
+  expect(items.some((x) => /create folder/i.test(x ?? ''))).toBe(true)
+})
+
+it('desktop Plan view: Configure opens Budget settings at once, no Edit structure', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: /configure/i }))
+  expect(screen.queryByText(/edit structure/i)).not.toBeInTheDocument()
+  expect(await screen.findByRole('dialog')).toBeInTheDocument()
+})
+
+it('a category inside an envelope offers its own ⋮ menu, as in the Budget view', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const living = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  await user.click(within(living).getByTitle('Expand'))
+  const child = (await waitFor(() => document.querySelector('[data-row-id="cat-rent:1"]'))) as HTMLElement
+  await user.click(within(child).getByRole('button', { name: 'menu Rent' }))
+  expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+  // its classification actions follow; Rent is not among the caller's own categories here
+  expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toContain('Archive (no access)')
+})
+
+it('tablet: no ⋮ menus until Edit structure is on, then on every line', async () => {
+  usePlanHandlers()
+  mockCompactViewport()
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  expect(screen.queryByRole('button', { name: /^menu / })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
+  const living = await screen.findByRole('button', { name: 'menu Living' })
+  expect(living).not.toHaveClass('opacity-0')
+  expect(within(screen.getByTestId('plan-section-line-income')).getByRole('button', { name: 'menu Income' })).toBeInTheDocument()
 })

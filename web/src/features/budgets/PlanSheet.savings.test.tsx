@@ -275,15 +275,15 @@ it('a keyboard fill on a savings row writes each month and patches structure.sav
   expect(within(screen.getByTestId('plan-cell-acc-s2:2')).getByTestId('cell-planned')).toHaveTextContent('50')
 })
 
-it('the savings row menu offers no "Move to folder…"', async () => {
+it('the savings row menu offers its Edit alone: no "Move to folder…", no Change currency', async () => {
   useHandlers()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-section-savings')
-  await enterEditMode(user)
   await user.click(await screen.findByRole('button', { name: 'menu Rainy day' }))
-  expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
-  expect(screen.queryByRole('menuitem', { name: 'Move to folder…' })).not.toBeInTheDocument()
+  const items = await screen.findAllByRole('menuitem')
+  expect(items).toHaveLength(1)
+  expect(items[0]).toHaveTextContent(/^Edit/)
 })
 
 it('Enter on a savings name cell opens no category or tag dialog', async () => {
@@ -299,7 +299,7 @@ it('Enter on a savings name cell opens no category or tag dialog', async () => {
   expect(toast.error).not.toHaveBeenCalled()
 })
 
-it('edit mode: savings rows reorder within their own band only, with folderId null', async () => {
+it('tablet edit mode: savings rows reorder within their own band only, with folderId null', async () => {
   const bodies: unknown[] = []
   useHandlers(savingsPlan, [
     http.post('*/api/v1/budget/move-element', async ({ request }) => {
@@ -308,6 +308,10 @@ it('edit mode: savings rows reorder within their own band only, with folderId nu
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   ])
+  // desktop Plan has no edit mode: the grips live in the tablet's Edit structure
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-section-savings')
@@ -380,7 +384,7 @@ it('a savings cell with comments shows the marker, and Shift+Enter opens its thr
   expect(await screen.findByText('Top up after the bonus')).toBeInTheDocument()
 })
 
-it('a deleted-account savings row is read-only: no cell editor, no grip', async () => {
+it('a deleted-account savings row is read-only: no cell editor (its missing grip is checked with the reorder)', async () => {
   useHandlers()
   const user = userEvent.setup()
   renderPage()
@@ -396,9 +400,6 @@ it('a deleted-account savings row is read-only: no cell editor, no grip', async 
   await user.keyboard('5')
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  await enterEditMode(user)
-  await screen.findByRole('button', { name: 'move Rainy day' })
-  expect(screen.queryByRole('button', { name: 'move Closed deposit' })).not.toBeInTheDocument()
 })
 
 it('without savings rows: no Savings section, totals line or balance row, and Balance is the combined balance', async () => {
