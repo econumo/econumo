@@ -1371,10 +1371,6 @@
           "savings": "Сбережения",
           "archived": "В архиве"
         },
-        "nav": {
-          "prev": "Предыдущие месяцы",
-          "next": "Следующие месяцы"
-        },
         "cell": {
           "aria": "{name}, {month}: факт {actual}, план {planned}",
           "edit_aria": "План для {name}, {month}"
@@ -1396,10 +1392,6 @@
           "balance": "Баланс",
           "savings": "Сбережения",
           "savings_balance": "Всего сбережений"
-        },
-        "density": {
-          "hidden": "{count} скрыто",
-          "show": "Показать"
         },
         "menu": {
           "move_to_folder": "Переместить в папку…",

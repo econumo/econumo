@@ -1371,10 +1371,6 @@
           "savings": "Savings",
           "archived": "Archived"
         },
-        "nav": {
-          "prev": "Earlier months",
-          "next": "Later months"
-        },
         "cell": {
           "aria": "{name}, {month}: actual {actual}, planned {planned}",
           "edit_aria": "Plan for {name}, {month}"
@@ -1396,10 +1392,6 @@
           "balance": "Balance",
           "savings": "Savings",
           "savings_balance": "Total savings"
-        },
-        "density": {
-          "hidden": "{count} hidden",
-          "show": "Show"
         },
         "menu": {
           "move_to_folder": "Move to folder…",

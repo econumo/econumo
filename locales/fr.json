@@ -1371,10 +1371,6 @@
           "savings": "Épargne",
           "archived": "Archivés"
         },
-        "nav": {
-          "prev": "Mois précédents",
-          "next": "Mois suivants"
-        },
         "cell": {
           "aria": "{name}, {month} : réel {actual}, prévu {planned}",
           "edit_aria": "Plan pour {name}, {month}"
@@ -1396,10 +1392,6 @@
           "balance": "Solde",
           "savings": "Épargne",
           "savings_balance": "Épargne totale"
-        },
-        "density": {
-          "hidden": "{count} masquées",
-          "show": "Afficher"
         },
         "menu": {
           "move_to_folder": "Déplacer vers un dossier…",

@@ -1371,10 +1371,6 @@
           "savings": "Oszczędności",
           "archived": "W archiwum"
         },
-        "nav": {
-          "prev": "Wcześniejsze miesiące",
-          "next": "Późniejsze miesiące"
-        },
         "cell": {
           "aria": "{name}, {month}: rzeczywiste {actual}, planowane {planned}",
           "edit_aria": "Plan dla {name}, {month}"
@@ -1396,10 +1392,6 @@
           "balance": "Saldo",
           "savings": "Oszczędności",
           "savings_balance": "Oszczędności łącznie"
-        },
-        "density": {
-          "hidden": "{count} ukrytych",
-          "show": "Pokaż"
         },
         "menu": {
           "move_to_folder": "Przenieś do folderu…",

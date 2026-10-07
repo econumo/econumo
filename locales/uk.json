@@ -1371,10 +1371,6 @@
           "savings": "Заощадження",
           "archived": "В архіві"
         },
-        "nav": {
-          "prev": "Попередні місяці",
-          "next": "Наступні місяці"
-        },
         "cell": {
           "aria": "{name}, {month}: факт {actual}, план {planned}",
           "edit_aria": "План для {name}, {month}"
@@ -1396,10 +1392,6 @@
           "balance": "Баланс",
           "savings": "Заощадження",
           "savings_balance": "Усього заощаджень"
-        },
-        "density": {
-          "hidden": "{count} приховано",
-          "show": "Показати"
         },
         "menu": {
           "move_to_folder": "Перемістити до папки…",
