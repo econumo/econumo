@@ -41,7 +41,7 @@ import {
 import { AccountActionsMenu } from './AccountActions'
 import { useAccountActions } from './useAccountActions'
 import type { FolderBucket } from './accountOrdering'
-import { bucketsFromAccounts, moveAccount, accountMoveFrom } from './accountOrdering'
+import { accountCollisions, bucketsFromAccounts, moveAccount, accountMoveFrom } from './accountOrdering'
 import { snapRowToPointer } from '@/lib/dnd'
 
 const COLLAPSED_FOLDERS_KEY = 'settings.accounts.collapsedFolders'
@@ -393,7 +393,7 @@ export function AccountsSettingsPage() {
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={draggingFolderId ? closestCenter : accountCollisions(buckets)}
         // collapsing the folders on drag start reshuffles the layout, so the
         // droppable rects must be re-measured mid-drag, not cached from before
         measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
