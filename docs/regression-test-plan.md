@@ -949,11 +949,12 @@ and on tablet/phone only with a hardware keyboard.
       with an end month stops at its end month (no columns after it); when
       only one month fits (a narrow window) the single column is the selected
       month. Resizing the window adds/drops future columns without
-      changing the selected month; a month column is never narrower than what
-      fits `12,345.67 · 12,345.67` (the grid drops a month before it
-      truncates a figure), and on a desktop width the history month's actual
-      shows.
-- [ ] Plan rows are one line, in the Budget view's row height and indents
+      changing the selected month; at about 1280px roughly 5 months show and
+      the history month's `actual · plan` is not clipped; when a column gets
+      too narrow, past months drop their actual before the grid drops a
+      month, so a plan figure is never truncated, and the selected month
+      always shows its actual.
+- [ ] 📱 Plan rows are one line, in the Budget view's row height and indents
       (folder → row → envelope category), icon and name, and hairlines between
       rows. A month up to the selected one reads `actual · plan` (smaller,
       muted actual, then the plan figure); months after it show the plan
@@ -963,11 +964,11 @@ and on tablet/phone only with a hardware keyboard.
       the grid. There is no `$` column and no per-cell balance line; a row in
       another currency shows its currency code next to its name. Names are
       readable at the full name column width.
-- [ ] Plan actual colours: the actual is red only on an expense row that is
+- [ ] 📱 Plan actual colours: the actual is red only on an expense row that is
       over its plan, or has spending with nothing planned, in any month up to
       the selected one (an expense row under plan is plain grey, never
       green); income and savings actuals are never red or green.
-- [ ] Plan section and folder lines (Income, Savings, Expenses, folders, "No
+- [ ] 📱 Plan section and folder lines (Income, Savings, Expenses, folders, "No
       folder", Archived) use the Budget view's thin-line style, with no boxes
       and no bold, and show per-month sums in the same `actual · plan` form,
       open or folded; a section/folder line sums every row listed under it
@@ -975,7 +976,7 @@ and on tablet/phone only with a hardware keyboard.
       folders groups its loose rows under a "No folder" line. A click on a line
       folds it; folds are shared with the Budget view and the phone and survive
       a reload.
-- [ ] Plan totals, in order: Income, Expenses, Savings (only with savings
+- [ ] 📱 Plan totals, in order: Income, Expenses, Savings (only with savings
       accounts), Transfers (only when not zero; a negative one is not red),
       Total savings (only with savings accounts), then a sticky Balance at the
       bottom (no bold on the current month; a negative balance is red). Past
@@ -993,15 +994,15 @@ and on tablet/phone only with a hardware keyboard.
       - a formula works (`=100*3`); an invalid formula keeps the editor open
         with the validation message, and an unchanged value sends nothing;
       - the value shows at once and survives a reload; an IME composition's
-        Enter and switching to another window never commit an edit;
-      - Delete / Backspace on a selected cell clears the plan: the cell goes
-        blank and the plan is gone after a reload;
-      - a read-only cell (guest, archived element, before the budget start,
-        archived budget) can be selected but never opens an editor: typing,
-        F2, Enter, double-click and Delete do nothing there;
-      - Ctrl/⌘+C / V (single cell), the fill handle and Shift+→ fill, and
-        Shift+Enter / Shift+F2 comments work as before; Enter on the name cell
-        opens the element's edit dialog.
+        Enter and switching to another window never commit an edit.
+- [ ] Plan clear and read-only cells, desktop: Delete / Backspace on a
+      selected cell clears the plan (the cell goes blank and the plan is gone
+      after a reload). A read-only cell (guest, archived element, before the
+      budget start, archived budget) can be selected but never opens an
+      editor: typing, F2, Enter, double-click and Delete do nothing there.
+      Ctrl/⌘+C / V (single cell), the fill handle and Shift+→ fill, and
+      Shift+Enter / Shift+F2 comments work as before; Enter on the name cell
+      opens the element's edit dialog.
 - [ ] Plan edge paging, desktop: → on the last column (or ← on the first)
       moves the selected month by one — the window and the strip move together
       — so the next month appears (at a clamp at the start or end of the
@@ -1089,8 +1090,6 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] Plan grid keyboard: ArrowDown from the last income row lands on the
       first savings row, and from the last savings row on the first expense
       row (or folder); with Savings folded it skips straight to the expenses.
-- [ ] Plan totals order: Income, Expenses, Savings, Transfers (only when not
-      zero), Total savings, then the sticky Balance (the phone's order).
 - [ ] 📱 Plan a savings top-up (e.g. 6,000) in every month of the next year,
       then pick a month several months past the current one in the strip (or
       walk there with → past the grid's last column on a desktop): the Total
@@ -1217,15 +1216,15 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] Desktop: rest the pointer on a commented cell: after a moment a card
       previews its latest two comments (plus "+N more"); it disappears when
       the pointer leaves (it stays while the pointer is on the card itself),
-      and never shows while the thread or the amount editor is open — not even
-      when the pointer drifts off the open amount editor and back over the
+      and never shows while the thread or the editor (the Plan grid's in-cell
+      editor) is open — not even
+      when the pointer drifts off the open editor and back over the
       cell. Tabbing onto a cell's amount shows no card.
 - [ ] Desktop: hover a cell with no comments (Budget view budgeted amount,
       Archive rows included; savings Planned cell; Plan view month cell): a
       faint grey triangle appears at its top-right, where the purple marker
       would be, and disappears when the pointer leaves. Clicking it opens the
-      empty thread in a popover beside the cell (the amount editor does not
-      open). A guest gets it too. It never appears on the uncategorized row,
+      empty thread in a popover beside the cell (no editor opens). A guest gets it too. It never appears on the uncategorized row,
       in edit-structure mode, on an archived budget or a month outside the
       budget's range, or on phones and tablets. Right-clicking a cell shows
       the browser's normal context menu.
