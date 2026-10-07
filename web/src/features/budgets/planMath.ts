@@ -45,10 +45,11 @@ export function formatPlanMonth(m: string, lang: string, now?: Date): string {
 
 // monthLayout's PLAN_NAME_COL (w-52)
 export const PLAN_NAME_COL_PX = 208
-export const PLAN_MIN_MONTH_COL_PX = 110
+// wide enough for `actual · plan`, so a desktop never hits the PLAN_ACTUALS_MIN_COL_PX fallback
+export const PLAN_MIN_MONTH_COL_PX = 130
 /** below this a month column cannot fit `12,345.67 · 12,345.67`: the months before the
  *  selected one drop their actual before the grid drops a month */
-export const PLAN_ACTUALS_MIN_COL_PX = 150
+export const PLAN_ACTUALS_MIN_COL_PX = 120
 /** PLAN_LINE's pl-2 + pr-2.5; its month cells carry their own padding and no gap */
 const PLAN_LINE_PADDING_PX = 18
 

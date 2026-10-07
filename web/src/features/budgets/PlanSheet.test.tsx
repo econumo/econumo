@@ -168,13 +168,55 @@ it('an unplanned month is blank, and only an over-plan actual is red', async () 
 })
 
 it('clicking an actual opens that row and month in the transactions list', async () => {
+  let params: URLSearchParams | undefined
+  usePlanHandlers()
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      params = new URL(request.url).searchParams
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  // the history column: its month, not the selected one
+  await user.click(within(screen.getByTestId('plan-cell-pe1:0')).getByTestId('cell-actual'))
+  expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  await waitFor(() => expect(params?.get('envelopeId')).toBe('pe1'))
+  expect(params?.get('periodStart')).toBe('2026-06-01')
+})
+
+it('clicking an actual selects its cell, so the keyboard picks up there once the list closes', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByTestId('plan-cell-cat-food:0'))
   await user.click(within(screen.getByTestId('plan-cell-pe1:1')).getByTestId('cell-actual'))
-  expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  await screen.findByRole('dialog')
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByTestId('plan-cell-cat-food:0')).toHaveAttribute('aria-selected', 'false')
+})
+
+it('a desktop-width grid keeps the history month\'s actual: the narrow-column fallback does not fire', async () => {
+  const widthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1080)
+  try {
+    usePlanHandlers()
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+    // more than the jsdom fallback's three columns, so the real width is in effect
+    await waitFor(() => expect(within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader').length).toBeGreaterThan(3))
+    const jun = screen.getByTestId('plan-cell-pe1:0')
+    expect(jun).toHaveAttribute('data-month', '2026-06-01')
+    expect(within(jun).getByTestId('cell-actual')).toBeInTheDocument()
+  } finally {
+    widthSpy.mockRestore()
+  }
 })
 
 it('overspend turns the actual red, also with no plan set; never on income, and nothing turns green', async () => {

@@ -5,6 +5,7 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import { add, sub } from '@/lib/decimal'
 import { fixtureWirePlan } from '@/test/fixtures'
 import {
+  PLAN_ACTUALS_MIN_COL_PX,
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
   addMonths,
@@ -117,6 +118,16 @@ describe('window math', () => {
     expect(planVisibleCount(fixed + month * 3)).toBe(3)
     expect(planVisibleCount(fixed + month * 7 + 50)).toBe(7)
     expect(planVisibleCount(fixed + month * 40)).toBe(12)
+  })
+
+  it('planVisibleCount never packs months narrower than `actual · plan` needs', () => {
+    // the narrow-column fallback that hides history actuals must not fire on a desktop
+    for (let w = 600; w <= 2600; w += 10) {
+      const n = planVisibleCount(w)
+      if (n > 1) {
+        expect((w - PLAN_NAME_COL_PX) / n).toBeGreaterThanOrEqual(PLAN_ACTUALS_MIN_COL_PX)
+      }
+    }
   })
 })
 

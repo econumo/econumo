@@ -246,7 +246,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
           const cellComments = ctx.commentsByCell.get(commentCellKey(el.id, m)) ?? []
           const commentCount = cellComments.length
           const target = { el, month: m, monthIndex: idx }
-          const actualClass = `text-xs tabular-nums underline-offset-2 hover:underline ${view.over ? 'text-expense' : 'text-muted-foreground'}`
+          const actualColor = view.over ? 'text-expense' : 'text-muted-foreground'
           const cellNode = (
             <div
               {...{ [COMMENT_ANCHOR_ATTR]: '' }}
@@ -279,16 +279,19 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                     type="button"
                     data-testid="cell-actual"
                     title={t('budgets.page.budget.structure.element.action.show_transactions')}
-                    className={actualClass}
+                    className={`text-xs tabular-nums underline-offset-2 hover:underline ${actualColor}`}
                     onClick={(e) => {
+                      // the cell's own click is skipped (a touch tap there opens the
+                      // item sheet), but the clicked cell still becomes the selection
                       e.stopPropagation()
+                      ctx.select(rk, i, e)
                       ctx.openTransactions(el, m)
                     }}
                   >
                     {fmt(actual)}
                   </button>
                 ) : (
-                  <span data-testid="cell-actual" className={actualClass}>
+                  <span data-testid="cell-actual" className={`text-xs tabular-nums ${actualColor}`}>
                     {fmt(actual)}
                   </span>
                 )}
