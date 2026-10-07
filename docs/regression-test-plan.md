@@ -274,6 +274,11 @@ navigation (single-pane vs sidebar).
       folders.
 - [ ] Drag-and-drop an account within a folder and across folders (desktop);
       order persists after reload.
+- [ ] 📱 Settings → Accounts with small folders (1–3 accounts each and one
+      empty folder): drag an account a row within its folder, then on into the
+      neighbouring folder and hold it on the boundary — the row settles
+      without the "Unexpected Application Error" (React #185) screen; dropping
+      into the empty folder works; order persists after reload.
 - [ ] Delete an account with transactions → confirm dialog; account disappears;
       its balance is zeroed by an automatic "Balance adjustment (account
       deleted)" correction; a budget that included it keeps the history
