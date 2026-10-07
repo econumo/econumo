@@ -13,6 +13,15 @@ export const SECOND_COL = 'flex w-20 shrink-0 justify-end text-right tabular-num
 // every figure, dash and heading in the last column sits inset by a pill's own padding,
 // so plain values line up with the digits inside the Available / folder-sum pills
 export const THIRD_COL = 'flex w-20 shrink-0 justify-end pr-2 text-right tabular-nums sm:w-28 [&>[data-pill]]:-mr-2'
+/** The Plan grid reuses the lines with one figure column per month instead of the
+ *  Budget view's three fixed ones. */
+export type LineLayout = { kind: 'budget' } | { kind: 'plan'; cols: number; selectedCol: number }
+export const LineLayoutContext = createContext<LineLayout>({ kind: 'budget' })
+export const useLineLayout = () => useContext(LineLayoutContext)
+// 13rem = 208px, matching the sticky header's PLAN_NAME_COL_PX
+export const PLAN_NAME_COL = 'flex w-52 shrink-0 min-w-0 items-center gap-2'
+export const PLAN_FIGURE_COL = 'flex min-w-0 flex-1 basis-0 items-baseline justify-end gap-1 px-2 text-right tabular-nums'
+export const PLAN_SELECTED_TINT = 'bg-accent/40'
 /** folder lines sit one step in from their section heading */
 export const FOLDER_INDENT = 'pl-6'
 
