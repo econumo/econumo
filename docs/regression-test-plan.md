@@ -949,17 +949,20 @@ and on tablet/phone only with a hardware keyboard.
       with an end month stops at its end month (no columns after it); when
       only one month fits (a narrow window) the single column is the selected
       month. Resizing the window adds/drops future columns without
-      changing the selected month; at about 1280px roughly 5 months show and
-      the history month's `actual · plan` is not clipped; when a column gets
-      too narrow, past months drop their actual before the grid drops a
-      month, so a plan figure is never truncated, and the selected month
-      always shows its actual.
+      changing the selected month; at about 1280px 4–5 months show and the
+      history month's `actual · plan` is neither clipped nor wrapped onto a
+      second line. Every month up to the selected one always shows its
+      actual; should a column ever run short of room, only the actual is cut
+      short, never the plan figure.
 - [ ] 📱 Plan rows are one line, in the Budget view's row height and indents
       (folder → row → envelope category), icon and name, and hairlines between
-      rows. A month up to the selected one reads `actual · plan` (smaller,
+      rows; where one section ends and the next begins there is a single rule,
+      never a double one. A month up to the selected one reads `actual · plan` (smaller,
       muted actual, then the plan figure); months after it show the plan
       alone. An unplanned month shows a blank plan (never 0.00) and no "·";
-      a month with no actual yet shows `— · 55`. Income: received · planned;
+      a planned month with no actual yet shows `— · 55` (a muted dash, not a
+      link); a month with neither an actual nor a plan is blank, never
+      `0.00`. Income: received · planned;
       savings: saved · planned; expenses: spent · budget. No bold anywhere in
       the grid. There is no `$` column and no per-cell balance line; a row in
       another currency shows its currency code next to its name. Names are
@@ -970,8 +973,9 @@ and on tablet/phone only with a hardware keyboard.
       green); income and savings actuals are never red or green.
 - [ ] 📱 Plan section and folder lines (Income, Savings, Expenses, folders, "No
       folder", Archived) use the Budget view's thin-line style, with no boxes
-      and no bold, and show per-month sums in the same `actual · plan` form,
-      open or folded; a section/folder line sums every row listed under it
+      and no bold, and show per-month sums in the same `actual · plan` form
+      (`— · 55` when nothing happened yet against a plan), on one line, open or
+      folded; a section/folder line sums every row listed under it
       (the Archived line shows its rows' actuals, with no plan). A section with
       folders groups its loose rows under a "No folder" line. A click on a line
       folds it; folds are shared with the Budget view and the phone and survive
@@ -980,9 +984,10 @@ and on tablet/phone only with a hardware keyboard.
       accounts), Transfers (only when not zero; a negative one is not red),
       Total savings (only with savings accounts), then a sticky Balance at the
       bottom (no bold on the current month; a negative balance is red). Past
-      and current months show actuals, future months the projection. Hovering
-      the Transfers and Balance lines shows their tooltips; clicking a past or
-      current month's Transfers opens that month's transfers.
+      and current months show actuals, future months the projection.
+- [ ] Plan totals, desktop: hovering the Transfers and Balance lines shows
+      their tooltips; clicking a past or current month's Transfers opens that
+      month's transfers. Hovering a cut-short actual shows its full value.
 - [ ] Plan cell editing, desktop (mouse): clicking a cell selects it (ring)
       and the arrow keys move the selection (the name column too).
       - typing a digit, `-`, `.` or `,` edits the cell in place, replacing
@@ -1003,11 +1008,18 @@ and on tablet/phone only with a hardware keyboard.
       Ctrl/⌘+C / V (single cell), the fill handle and Shift+→ fill, and
       Shift+Enter / Shift+F2 comments work as before; Enter on the name cell
       opens the element's edit dialog.
-- [ ] Plan edge paging, desktop: → on the last column (or ← on the first)
-      moves the selected month by one — the window and the strip move together
-      — so the next month appears (at a clamp at the start or end of the
-      budget the strip's selected month may jump by two so the window still
-      moves by exactly one month); at the budget's first and last month it stops.
+- [ ] Plan edge paging, desktop: → on the last column moves the selected
+      month by one; ← on the first month column goes to the name cell, and ←
+      on the name cell moves it back by one. The window and the strip move
+      together, so the next (or previous) month appears (at a clamp at the
+      start or end of the budget the strip's selected month may jump by two so
+      the window still moves by exactly one month); at the budget's first and
+      last month it stops.
+- [ ] Plan keys on a focused control, desktop: with a cell selected, Tab to a
+      row's ⋮ (or open and Esc-close its menu so focus returns to it) and press
+      Enter or ↓: only the menu opens — no in-cell editor, no edit dialog.
+      Enter or Space on a focused fold chevron folds/unfolds the row, and a
+      digit typed there opens no editor.
 - [ ] 📱 Plan actuals open transactions: clicking a past or current month's
       actual figure (desktop; on a tablet the item sheet's "Transactions")
       opens that row's transactions for that month, as clicking Spent /

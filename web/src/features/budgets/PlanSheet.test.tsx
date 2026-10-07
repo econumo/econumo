@@ -14,6 +14,8 @@ import { toast } from 'sonner'
 import { balanceRow, formatPlanMonth, makePlanExchange, planGroupSums, planTotals } from './planMath'
 import { isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
@@ -207,7 +209,7 @@ it('clicking an actual selects its cell, so the keyboard picks up there once the
   expect(screen.getByTestId('plan-cell-cat-food:0')).toHaveAttribute('aria-selected', 'false')
 })
 
-it('a desktop-width grid keeps the history month\'s actual: the narrow-column fallback does not fire', async () => {
+it('a desktop-width grid shows the history month\'s actual', async () => {
   const widthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1080)
   try {
     usePlanHandlers()
@@ -520,8 +522,9 @@ it('section and folder sums read actual · plan up to the selected month, plan a
   const folderLine = within(screen.getByTestId('plan-folder-bf1')).getAllByRole('row')[0]
   const cell = (col: number) => within(folderLine).getByTestId(`plan-sum-${col}`)
   const plannedText = (v: string) => (isZero(v) ? '' : fmt(v))
-  expect(cell(0)).toHaveTextContent(`${fmt(sums[1].actual)} · ${plannedText(sums[1].planned)}`.trim())
-  expect(cell(1)).toHaveTextContent(`${fmt(sums[2].actual)} · ${plannedText(sums[2].planned)}`.trim())
+  // two separate figures, the dot between them; one line, never wrapped
+  expect(cell(0).textContent).toBe(`${fmt(sums[1].actual)}·${plannedText(sums[1].planned)}`)
+  expect(cell(1).textContent).toBe(`${fmt(sums[2].actual)}·${plannedText(sums[2].planned)}`)
   // Aug is after the selected July: its plan alone, no actual
   expect(cell(2).textContent).toBe(plannedText(sums[3].planned))
 })
@@ -537,6 +540,74 @@ it('a past cell with an actual and no plan reads the actual alone, with no dangl
   expect(cell).not.toHaveTextContent('·')
   // with both figures the dot separates them
   expect(screen.getByTestId('plan-cell-cat-food:0')).toHaveTextContent(/130\.00\s*·\s*150\.00/)
+})
+
+it('a planned month with nothing spent yet reads "— · plan"; an empty one stays blank', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  // Freelance in June (history): nothing received against a 500 plan
+  const jun = screen.getByTestId('plan-cell-cat-freelance:0')
+  expect(within(jun).queryByTestId('cell-actual')).not.toBeInTheDocument()
+  expect(within(jun).getByTestId('cell-no-actual')).toHaveTextContent('—')
+  expect(jun).toHaveTextContent(/—\s*·\s*500\.00/)
+  // the dash is a mark, not a link to an empty transactions list
+  expect(within(jun).queryByRole('button', { name: /—/ })).not.toBeInTheDocument()
+  // Salaries in the selected July: the same
+  expect(within(screen.getByTestId('plan-cell-ie1:1')).getByTestId('cell-no-actual')).toBeInTheDocument()
+  // Unused: no actual and no plan, so nothing at all, not 0.00
+  const dormant = screen.getByTestId('plan-cell-cat-dormant:0')
+  expect(within(dormant).queryByTestId('cell-actual')).not.toBeInTheDocument()
+  expect(within(dormant).queryByTestId('cell-no-actual')).not.toBeInTheDocument()
+  expect(dormant).not.toHaveTextContent(/\S/)
+})
+
+it('the plan figure never wraps or shrinks; only the actual may be cut, its full value in the tooltip', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const cell = screen.getByTestId('plan-cell-cat-food:0')
+  expect(within(cell).getByTestId('cell-planned')).toHaveClass('shrink-0', 'whitespace-nowrap')
+  const actual = within(cell).getByTestId('cell-actual')
+  expect(actual).toHaveClass('min-w-0', 'truncate')
+  expect(actual.getAttribute('title')).toContain('130.00')
+  expect(cell).toHaveClass('whitespace-nowrap')
+})
+
+it('a section\'s last line draws no bottom rule over the next section\'s top rule, through the drag wrappers too', async () => {
+  // no Uncategorized rows: each section then ends inside a folder group and a row's drag wrapper
+  const plan = {
+    ...fixtureWirePlan,
+    structure: { ...fixtureWirePlan.structure, elements: fixtureWirePlan.structure.elements.filter((el) => el.id !== 'uncategorized') },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(plan),
+  )
+  const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+  const rule = css.match(/\.plan-band[^{]*\{[^}]*\}/)![0]
+  const style = document.createElement('style')
+  style.textContent = `.border-b { border-bottom: 1px solid; }\n${rule}`
+  document.head.appendChild(style)
+  try {
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+    for (const id of ['plan-section-income', 'plan-section-expense']) {
+      const lines = Array.from(screen.getByTestId(id).querySelectorAll<HTMLElement>('[data-plan-line]'))
+      const last = lines[lines.length - 1]
+      // the drag wrapper sits between the band and the line
+      expect(last.parentElement).not.toBe(screen.getByTestId(id))
+      expect(getComputedStyle(last).borderBottomWidth).toMatch(/^0(px)?$/)
+      for (const line of lines.slice(0, -1)) {
+        expect(getComputedStyle(line).borderBottomWidth).toBe('1px')
+      }
+    }
+  } finally {
+    style.remove()
+  }
 })
 
 it('the Archived line sums its rows: their actuals, never their plans', async () => {
@@ -1260,7 +1331,7 @@ it('child rows are not selectable by click or keyboard', async () => {
 // value — a nonzero actual or a set plan — in a VISIBLE month, and the whole section
 // goes when none does. Values in the fetched-but-offscreen buffer months don't count,
 // so paging the window can hide or reveal a row. Same rule as the budget view's
-// Archive section, and independent of the density toggle.
+// Archive section.
 it('archived rows show only with a value in a visible month; the section disappears otherwise', async () => {
   const archived = (id: string, name: string, cells: { actual: string; planned: string }[]) => ({
     id, type: 1, name, icon: 'delete', currencyId: 'cur-usd', isArchived: 1, folderId: null, position: 9, ownerUserId: 'u1', cells, children: [],

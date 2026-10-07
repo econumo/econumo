@@ -293,10 +293,13 @@
 
 /* Plan grid: rows and folder lines sit flush and share hairline dividers; each
    section opens with its own top rule, so the last line of a section must not
-   draw a second one under it. That last line is a row, or the last row (or the
-   folded line) of the section's last folder. The divider lives on the row's
-   [data-row-id] wrapper and the folder line's [role=row] wrapper. */
-.plan-band > [data-row-id]:last-child,
-.plan-band > [data-testid^='plan-folder-']:last-child > :last-child {
+   draw a second one under it. A line ([data-plan-line]: a row, or a folder's
+   line) is the section's last when it and every wrapper above it up to the
+   section (the drag wrappers, a folder's group) is the last child. Three
+   wrapper levels cover the deepest case: drag folder > folder > drag row. */
+.plan-band > [data-plan-line]:last-child,
+.plan-band > :last-child > [data-plan-line]:last-child,
+.plan-band > :last-child > :last-child > [data-plan-line]:last-child,
+.plan-band > :last-child > :last-child > :last-child > [data-plan-line]:last-child {
   border-bottom: 0;
 }

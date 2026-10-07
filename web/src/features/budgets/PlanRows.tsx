@@ -17,10 +17,10 @@ import { CellShell } from './CellShell'
 import { COMMENT_ANCHOR_ATTR } from './cellDom'
 import { isEnvelopeType } from './elementEdit'
 import { DragChild, EnvelopeDrop, EnvelopeHeadDrop } from './MonthDrag'
-import { CurrencyTag, RowMenu } from './monthLines'
+import { CurrencyTag, Dash, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FOLDER_INDENT, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, useRowLevel } from './monthLayout'
-import { planCellView } from './planCell'
+import { planCellView, shownActual } from './planCell'
 import { PlanCellInput } from './PlanCellInput'
 import type { CellMove } from './PlanCellInput'
 import type { PlanRow } from './planMath'
@@ -96,22 +96,16 @@ export interface GridCtx {
   selected: string
   /** its column, -1 when the window does not show it; that column is tinted */
   selectedCol: number
-  /** a month column too narrow for `actual · plan`: the months before the selected
-   *  one show their plan alone */
-  showActuals: boolean
   currencies: CurrencyDto[]
   baseCurrencyId: Id
   meta: BudgetMetaDto
   userId: Id | undefined
   isCompact: boolean
   monthLabel: (m: string) => string
-  commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
   /** touch viewports: a cell tap opens the item sheet */
   openSheet: (target: PlanLimitTarget) => void
   openTransactions: (el: PlanElementDto, month: string) => void
   commentsByCell: Map<string, BudgetCommentDto[]>
-  /** the fetch backing `commentsByCell` hit the 2000-item server cap and dropped the oldest */
-  commentsTruncated: boolean
   /** `fromGrid` marks a keyboard-originated open (Shift+Enter / Shift+F2) so the
    *  grid reclaims focus when the thread closes; `anchor` is the cell to pin the
    *  popover to: undefined = look it up from the grid; null = no anchor, open as a
@@ -119,7 +113,6 @@ export interface GridCtx {
   openComments: (target: PlanLimitTarget, opts?: { fromGrid?: boolean; anchor?: HTMLElement | null }) => void
   /** a thread is open: hover previews stay shut */
   commentsOpen: boolean
-  canEdit: boolean
   selection: PlanSelection | null
   select: (rowKey: string, col: number, e?: { target: EventTarget | null }) => void
   fill: {
@@ -161,14 +154,32 @@ export function SumCell({
   index: number
   sum: { actual: string; planned: string } | null
   month: string
-  ctx: Pick<GridCtx, 'selected' | 'showActuals'>
+  ctx: Pick<GridCtx, 'selected'>
   fmt: (v: string) => string
 }) {
-  const actual = sum && (month === ctx.selected || (month < ctx.selected && ctx.showActuals)) ? sum.actual : null
   const plan = sum && !isZero(sum.planned) ? sum.planned : null
+  const { actual, dash } = shownActual(sum && month <= ctx.selected ? sum.actual : null, plan !== null)
   return (
-    <span data-testid={`plan-sum-${index}`} className="text-sm text-muted-foreground tabular-nums">
-      {[actual, plan].filter((v) => v !== null).map(fmt).join(' · ')}
+    <span data-testid={`plan-sum-${index}`} className="flex min-w-0 items-baseline gap-1 text-muted-foreground tabular-nums">
+      {actual !== null ? (
+        <span className="min-w-0 truncate text-xs" title={fmt(actual)}>
+          {fmt(actual)}
+        </span>
+      ) : dash ? (
+        <span className="text-xs">
+          <Dash />
+        </span>
+      ) : null}
+      {(actual !== null || dash) && plan !== null ? <FigureDot /> : null}
+      {plan !== null ? <span className="shrink-0 text-sm whitespace-nowrap">{fmt(plan)}</span> : null}
+    </span>
+  )
+}
+
+function FigureDot() {
+  return (
+    <span aria-hidden="true" className="shrink-0 text-xs text-muted-foreground/60">
+      ·
     </span>
   )
 }
@@ -203,7 +214,7 @@ export const ChildRow = memo(function ChildRow({
       {ctx.visibleMonths.map((m, i) => {
         const idx = ctx.monthIndex(m)
         const cell = idx >= 0 ? child.cells[idx] : undefined
-        const actual = cell && (m === ctx.selected || (m < ctx.selected && ctx.showActuals)) ? cell.actual : null
+        const { actual } = shownActual(cell && m <= ctx.selected ? cell.actual : null, false)
         return (
           <div
             key={m}
@@ -215,7 +226,7 @@ export const ChildRow = memo(function ChildRow({
             className={`${figureClass(ctx, i)} py-1`}
           >
             {actual !== null ? (
-              <span data-testid="cell-actual" className="text-xs tabular-nums">
+              <span data-testid="cell-actual" className="min-w-0 truncate text-xs tabular-nums" title={fmt(actual)}>
                 {fmt(actual)}
               </span>
             ) : null}
@@ -268,7 +279,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
   ) : null
 
   return (
-    <div data-row-id={rk} className="border-b border-border/60">
+    <div data-row-id={rk} data-plan-line="" className="border-b border-border/60">
       <div role="row" className={`${PLAN_LINE} relative min-h-9 hover:bg-accent/50`}>
         <div
           role="gridcell"
@@ -306,7 +317,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
           const cell = idx >= 0 ? el.cells[idx] : undefined
           const editable = isEditableCell(el, m, idx, ctx.meta, ctx.userId)
           const view = planCellView({ type: el.type, cell, month: m, selected: ctx.selected })
-          const actual = ctx.showActuals || m === ctx.selected ? view.actual : null
+          const actual = view.actual
           const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
           const fillSource = ctx.fill.active?.rowKey === rk && ctx.fill.active.startCol === i
           const filled = ctx.fill.active?.rowKey === rk && i > ctx.fill.active.startCol && i <= ctx.fill.active.targetCol
@@ -363,13 +374,21 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                   onCancel={ctx.cancelEdit}
                 />
               ) : (
-                <span className="flex items-baseline gap-1">
-                  {actual === null ? null : actualLinkable ? (
+                // the plan never gives way: when a column runs out of room only the
+                // actual is cut, its full figure kept in the tooltip
+                <span className="flex min-w-0 items-baseline gap-1">
+                  {actual === null ? (
+                    view.dash ? (
+                      <span data-testid="cell-no-actual" className="text-xs">
+                        <Dash />
+                      </span>
+                    ) : null
+                  ) : actualLinkable ? (
                     <button
                       type="button"
                       data-testid="cell-actual"
-                      title={t('budgets.page.budget.structure.element.action.show_transactions')}
-                      className={`text-xs tabular-nums underline-offset-2 hover:underline ${actualColor}`}
+                      title={`${fmt(actual)}. ${t('budgets.page.budget.structure.element.action.show_transactions')}`}
+                      className={`min-w-0 truncate text-xs tabular-nums underline-offset-2 hover:underline ${actualColor}`}
                       onClick={(e) => {
                         // the cell's own click is skipped (a touch tap there opens the
                         // item sheet), but the clicked cell still becomes the selection
@@ -381,16 +400,12 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                       {fmt(actual)}
                     </button>
                   ) : (
-                    <span data-testid="cell-actual" className={`text-xs tabular-nums ${actualColor}`}>
+                    <span data-testid="cell-actual" className={`min-w-0 truncate text-xs tabular-nums ${actualColor}`} title={fmt(actual)}>
                       {fmt(actual)}
                     </span>
                   )}
-                  {actual !== null && view.plan !== null ? (
-                    <span aria-hidden="true" className="text-xs text-muted-foreground/60">
-                      ·
-                    </span>
-                  ) : null}
-                  <span data-testid="cell-planned" className="text-[15px] tabular-nums">
+                  {(actual !== null || view.dash) && view.plan !== null ? <FigureDot /> : null}
+                  <span data-testid="cell-planned" className="shrink-0 text-[15px] whitespace-nowrap tabular-nums">
                     {view.plan !== null ? fmt(view.plan) : ''}
                   </span>
                 </span>

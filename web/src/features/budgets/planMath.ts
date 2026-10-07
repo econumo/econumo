@@ -45,11 +45,8 @@ export function formatPlanMonth(m: string, lang: string, now?: Date): string {
 
 // monthLayout's PLAN_NAME_COL (w-56)
 export const PLAN_NAME_COL_PX = 224
-// wide enough for `actual · plan`, so a desktop never hits the PLAN_ACTUALS_MIN_COL_PX fallback
-export const PLAN_MIN_MONTH_COL_PX = 130
-/** below this a month column cannot fit `12,345.67 · 12,345.67`: the months before the
- *  selected one drop their actual before the grid drops a month */
-export const PLAN_ACTUALS_MIN_COL_PX = 120
+// wide enough for `12,345.67 · 12,345.67` with the cell's padding
+export const PLAN_MIN_MONTH_COL_PX = 150
 /** PLAN_LINE's pl-2 + pr-2.5; its month cells carry their own padding and no gap */
 const PLAN_LINE_PADDING_PX = 18
 
@@ -69,9 +66,9 @@ export function fillTargetCol(startCol: number, deltaX: number, colWidth: number
   return Math.min(Math.max(target, startCol), lastCol)
 }
 
-/** The Plan grid's months: the selected month with one month of history before it,
- *  then the future, kept inside the budget's start and end months. */
-export function planWindow(selected: string, visible: number, startedAt: string, endedAt?: string | null): { first: string; selectedCol: number } {
+/** The Plan grid's first month: the selected month with one month of history before
+ *  it, then the future, kept inside the budget's start and end months. */
+export function planWindow(selected: string, visible: number, startedAt: string, endedAt?: string | null): string {
   const start = `${startedAt.slice(0, 7)}-01`
   let first = visible > 1 ? addMonths(selected, -1) : selected
   if (endedAt) {
@@ -83,7 +80,7 @@ export function planWindow(selected: string, visible: number, startedAt: string,
   if (first < start) {
     first = start
   }
-  return { first, selectedCol: Math.max(0, monthDiff(first, selected)) }
+  return first
 }
 
 export interface PlanRow {

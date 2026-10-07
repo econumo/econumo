@@ -5,7 +5,6 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import { add, sub } from '@/lib/decimal'
 import { fixtureWirePlan } from '@/test/fixtures'
 import {
-  PLAN_ACTUALS_MIN_COL_PX,
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
   addMonths,
@@ -123,11 +122,10 @@ describe('window math', () => {
   })
 
   it('planVisibleCount never packs months narrower than `actual · plan` needs', () => {
-    // the narrow-column fallback that hides history actuals must not fire on a desktop
     for (let w = 600; w <= 2600; w += 10) {
       const n = planVisibleCount(w)
       if (n > 1) {
-        expect((w - PLAN_NAME_COL_PX) / n).toBeGreaterThanOrEqual(PLAN_ACTUALS_MIN_COL_PX)
+        expect((w - PLAN_NAME_COL_PX - 18) / n).toBeGreaterThanOrEqual(PLAN_MIN_MONTH_COL_PX)
       }
     }
   })
@@ -1073,19 +1071,19 @@ it('planMonthExchange converts at the given month\'s rates', () => {
 
 describe('planWindow', () => {
   it('puts the selected month in column 2 with one month of history', () => {
-    expect(planWindow('2026-10-01', 6, '2025-01-01')).toEqual({ first: '2026-09-01', selectedCol: 1 })
+    expect(planWindow('2026-10-01', 6, '2025-01-01')).toBe('2026-09-01')
   })
   it('shows only the selected month when one column fits', () => {
-    expect(planWindow('2026-10-01', 1, '2025-01-01')).toEqual({ first: '2026-10-01', selectedCol: 0 })
+    expect(planWindow('2026-10-01', 1, '2025-01-01')).toBe('2026-10-01')
   })
   it('starts at the start month when the history month is before it', () => {
-    expect(planWindow('2026-10-01', 6, '2026-10-15')).toEqual({ first: '2026-10-01', selectedCol: 0 })
+    expect(planWindow('2026-10-01', 6, '2026-10-15')).toBe('2026-10-01')
   })
   it('ends at the end month of an ended budget', () => {
     // Oct selected, 6 columns, budget ends Dec: window Jul..Dec, Oct is column 3
-    expect(planWindow('2026-10-01', 6, '2025-01-01', '2026-12-01')).toEqual({ first: '2026-07-01', selectedCol: 3 })
+    expect(planWindow('2026-10-01', 6, '2025-01-01', '2026-12-01')).toBe('2026-07-01')
   })
   it('never starts before the start month even when the end pulls it back', () => {
-    expect(planWindow('2026-10-01', 6, '2026-09-01', '2026-11-01')).toEqual({ first: '2026-09-01', selectedCol: 1 })
+    expect(planWindow('2026-10-01', 6, '2026-09-01', '2026-11-01')).toBe('2026-09-01')
   })
 })

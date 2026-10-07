@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
@@ -404,4 +404,53 @@ it('editing at the left edge: Shift+Tab commits to the edited month and lands on
   expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
   expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'false')
   expect(grid.getAttribute('aria-activedescendant')).toMatch(/pe1_0--1$/)
+})
+
+it('two clears in quick succession are tracked twice', async () => {
+  usePlanHandlers()
+  const calls: unknown[] = []
+  server.use(
+    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+      calls.push(await request.json())
+      await delay(50)
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  renderPage()
+  const { grid } = await gridAtFirstExpenseCell()
+  fireEvent.keyDown(grid, { key: 'Delete' })
+  // vacation is planned 50 in July: cleared before the first request has answered
+  fireEvent.click(screen.getByTestId('plan-cell-tag1:1'))
+  fireEvent.keyDown(grid, { key: 'Delete' })
+  await waitFor(() => expect(calls).toHaveLength(2))
+  await waitFor(() => expect(vi.mocked(trackEvent).mock.calls.filter(([m]) => m === METRICS.BUDGET_PLAN_CLEAR_CELL)).toHaveLength(2))
+})
+
+it('keys pressed on a focused control in the grid are the control\'s, not the grid\'s', async () => {
+  usePlanHandlers()
+  renderPage()
+  await gridAtFirstExpenseCell()
+  // a month cell is selected; Enter or a digit on Living's fold chevron opens no editor
+  const living = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  const chevron = within(living).getByRole('button', { name: 'Expand' })
+  chevron.focus()
+  fireEvent.keyDown(chevron, { key: 'Enter' })
+  fireEvent.keyDown(chevron, { key: '5' })
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+
+  // Enter on the ⋮ trigger opens its menu and nothing else: no in-cell editor ...
+  const trigger = within(living).getByRole('button', { name: 'menu Living' })
+  trigger.focus()
+  fireEvent.keyDown(trigger, { key: 'Enter' })
+  expect(await screen.findByRole('menu')).toBeInTheDocument()
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+  await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+
+  // ... and, with the name cell selected, no edit dialog
+  fireEvent.click(within(living).getByTitle('Living'))
+  trigger.focus()
+  fireEvent.keyDown(trigger, { key: 'Enter' })
+  expect(await screen.findByRole('menu')).toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })

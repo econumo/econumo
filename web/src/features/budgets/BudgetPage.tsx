@@ -815,7 +815,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         </>
       )}
 
-      {menus.dialogs}
+      {/* the desktop Plan grid renders its own copy of the menus' dialogs */}
+      {mode === 'plan' && !isPhone ? null : menus.dialogs}
 
       <SetLimitDialog
         target={limitTarget ? { id: limitTarget.id, name: elementDisplayName(limitTarget.id, limitTarget.name, t), value: limitTarget.budgeted } : null}

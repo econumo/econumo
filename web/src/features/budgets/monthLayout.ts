@@ -24,7 +24,7 @@ export const useLineLayout = () => useContext(LineLayoutContext)
 export const PLAN_LINE = 'group/line flex items-stretch pr-2.5 pl-2'
 // 14rem = 224px = planMath's PLAN_NAME_COL_PX
 export const PLAN_NAME_COL = 'flex w-56 shrink-0 min-w-0 items-center gap-2'
-export const PLAN_FIGURE_COL = 'flex min-w-0 flex-1 basis-0 items-center justify-end gap-1 px-2 text-right tabular-nums'
+export const PLAN_FIGURE_COL = 'flex min-w-0 flex-1 basis-0 items-center justify-end gap-1 px-2 text-right whitespace-nowrap tabular-nums'
 export const PLAN_SELECTED_TINT = 'bg-accent/40'
 /** folder lines sit one step in from their section heading */
 export const FOLDER_INDENT = 'pl-6'

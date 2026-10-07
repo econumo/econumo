@@ -28,7 +28,6 @@ import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransacti
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import {
   canConfigureBudget,
-  canEditBudget,
   commentCellKey,
   planFetchWindow,
   useBudgetComments,
@@ -60,8 +59,6 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { SetLimitDialog } from './SetLimitDialog'
 import { useBudgetLineMenus } from './useBudgetLineMenus'
 import {
-  PLAN_ACTUALS_MIN_COL_PX,
-  PLAN_NAME_COL_PX,
   addMonths,
   balanceRow,
   bucketPlanRows,
@@ -119,15 +116,20 @@ const monthColClass = (col: number, selectedCol: number): string => `${PLAN_FIGU
 // onClick/the grid's onKeyDown.
 //
 // The keydown guard: a keystroke typed inside an open editor/menu must not be hijacked
-// by grid navigation (Enter closing the popover without committing, ArrowLeft not
+// by grid navigation (Enter running a grid action instead of the dialog's, ArrowLeft not
 // moving the caret, ArrowDown moving the grid selection instead of a menu highlight).
 const KEYDOWN_ESCAPE_SELECTOR =
   'input, textarea, [data-slot="popover-content"], [data-slot="dialog-content"], [data-slot="drawer-content"], [data-slot="dropdown-menu-content"]'
 // The click guard (F2): a cell click that bubbles up from a nested interactive control —
-// the actual's transactions link, a still-open popover's input, an open dropdown menu's items —
+// the actual's transactions link, the in-cell editor's input, an open dropdown menu's items —
 // must not steal focus back onto the grid; those controls already manage their own
 // focus, and the grid regains it naturally once they close.
 const CLICK_ESCAPE_SELECTOR = `button, [role="button"], ${KEYDOWN_ESCAPE_SELECTOR}`
+// A focused control inside the grid (a row's ⋮, a fold chevron, an actual's link) keeps
+// its own activation keys: the grid acting on Enter too would open the cell editor or
+// the edit dialog behind its menu, and its preventDefault would cancel the click.
+const CONTROL_SELECTOR = 'button, [role="button"], [aria-haspopup]'
+const GRID_KEYS_ON_CONTROL = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Escape']
 
 /** Excel-style fill-right state: startCol is the source column (the value being
  *  copied), targetCol the column currently covered (>= startCol). A pointer fill is
@@ -210,6 +212,7 @@ function FolderGroup({
           actions menu and its portalled items) keep their action and select nothing. */}
       <div
         role="row"
+        data-plan-line=""
         className="border-b border-border/60"
         onClick={(e) => {
           const target = e.target as HTMLElement
@@ -451,8 +454,6 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   // ResizeObserver never fires in jsdom, so width stays 0 there — the same
   // floor a real narrow viewport would collapse to (planVisibleCount<3 -> 1).
   const visible = width > 0 ? planVisibleCount(width) : 3
-  // jsdom's 0 width keeps every actual, as a wide screen would
-  const showActuals = width === 0 || (width - PLAN_NAME_COL_PX) / visible >= PLAN_ACTUALS_MIN_COL_PX
 
   const startedAt = budget.meta.startedAt
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
@@ -490,7 +491,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       scroller.scrollTop += box.bottom - bottomEdge
     }
   }, [selection])
-  const { first: firstMonth } = planWindow(selectedDate, visible, startedAt, budget.meta.endedAt)
+  const firstMonth = planWindow(selectedDate, visible, startedAt, budget.meta.endedAt)
   const atStart = firstMonth <= startedAt.slice(0, 7) + '-01'
   const atEnd = !!budget.meta.endedAt && addMonths(firstMonth, visible - 1) >= budget.meta.endedAt.slice(0, 7) + '-01'
   // The window is derived from the selected month, and a clamped window (at the start or
@@ -553,8 +554,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   )
 
   const visibleMonths = useMemo(() => Array.from({ length: visible }, (_, i) => addMonths(firstMonth, i)), [visible, firstMonth])
-  // by month, not by planWindow's column: a stored month outside the budget (before
-  // its start, after its end) has no column to tint
+  // a stored month outside the budget (before its start, after its end) has no
+  // column to tint
   const selectedCol = visibleMonths.indexOf(selectedDate)
   // An editor whose month left the window (a resize, the strip) closes rather than
   // reappearing, stale, when that month scrolls back in. Leaving its cell by click or
@@ -597,7 +598,6 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     const label = periodLabeler(i18n.language)
     return (m: string) => label(monthDate(m))
   }, [i18n.language])
-  const canEdit = canEditBudget(budget.meta, userId)
   const sheetPlanTarget = sheetCellTarget ? { kind: 'plan' as const, cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null
   const sheetEdit = sheetPlanTarget ? menus.editAccess(sheetPlanTarget) : null
   // With a mouse every line's ⋮ menu shows on hover; a touch screen has no hover, so
@@ -811,21 +811,17 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       monthIndex,
       selected: selectedDate,
       selectedCol,
-      showActuals,
       currencies,
       baseCurrencyId: budget.meta.currencyId,
       meta: budget.meta,
       userId,
       isCompact,
       monthLabel,
-      commit,
       openSheet,
       openTransactions,
       commentsByCell,
-      commentsTruncated,
       openComments,
       commentsOpen,
-      canEdit,
       selection,
       select,
       fill: {
@@ -850,19 +846,15 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     monthIndex,
     selectedDate,
     selectedCol,
-    showActuals,
     currencies,
     budget.meta,
     userId,
     isCompact,
     monthLabel,
-    commit,
     commentsByCell,
-    commentsTruncated,
     openComments,
     openTransactions,
     commentsOpen,
-    canEdit,
     selection,
     select,
     fillDrag,
@@ -1479,13 +1471,23 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (unsetPlan(cell.entry.el.cells[cell.idx]?.planned ?? '')) {
       return
     }
-    setLimit.mutate(
-      { budgetId: budget.meta.id, elementId: cell.entry.el.id, period: cell.month, amount: null, monthIndex: cell.idx },
-      { onSuccess: () => trackEvent(METRICS.BUDGET_PLAN_CLEAR_CELL) },
-    )
+    // per-call mutate callbacks only fire for the latest call, so a second clear made
+    // before the first lands would swallow the first's event; the promise is per call.
+    // A failure is already handled by the mutation, which rolls the cell back.
+    setLimit
+      .mutateAsync({ budgetId: budget.meta.id, elementId: cell.entry.el.id, period: cell.month, amount: null, monthIndex: cell.idx })
+      .then(() => trackEvent(METRICS.BUDGET_PLAN_CLEAR_CELL))
+      .catch(() => {})
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    // a control already handled it (a ⋮ trigger opens its menu on Enter or ArrowDown)
+    if (e.defaultPrevented) {
+      return
+    }
+    if ((e.target as HTMLElement).closest(CONTROL_SELECTOR) && !GRID_KEYS_ON_CONTROL.includes(e.key)) {
+      return
+    }
     if (fillDrag) {
       if (e.key === 'Escape') {
         setFillDrag(null)
@@ -1510,7 +1512,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     // Radix portals render popover/dialog/drawer/dropdown-menu content outside the
     // grid's DOM subtree, but React re-dispatches the event through the component
     // tree, so it still reaches this handler. Without this guard, typing in the
-    // amount dialog, any other dialog, or an open row menu gets its Arrow/Enter keys
+    // in-cell editor, a dialog, or an open row menu gets its Arrow/Enter keys
     // hijacked by grid navigation (Enter closing the dialog without committing,
     // ArrowLeft not moving the caret, ArrowDown moving the grid selection instead of
     // the menu highlight).
