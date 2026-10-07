@@ -93,6 +93,23 @@ export function planInitialFirstMonth(persisted: string | null, startedAt: strin
   return clampFirstMonth(base, startedAt)
 }
 
+/** The Plan grid's months: the selected month with one month of history before it,
+ *  then the future, kept inside the budget's start and end months. */
+export function planWindow(selected: string, visible: number, startedAt: string, endedAt?: string | null): { first: string; selectedCol: number } {
+  const start = `${startedAt.slice(0, 7)}-01`
+  let first = visible > 1 ? addMonths(selected, -1) : selected
+  if (endedAt) {
+    const lastFirst = addMonths(`${endedAt.slice(0, 7)}-01`, -(visible - 1))
+    if (first > lastFirst) {
+      first = lastFirst
+    }
+  }
+  if (first < start) {
+    first = start
+  }
+  return { first, selectedCol: Math.max(0, monthDiff(first, selected)) }
+}
+
 export interface PlanRow {
   element: PlanElementDto
   hidden: boolean

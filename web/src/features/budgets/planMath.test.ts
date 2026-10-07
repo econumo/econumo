@@ -27,6 +27,7 @@ import {
   planMonthExchange,
   planTotals,
   planVisibleCount,
+  planWindow,
   projectSavingsClosings,
   savingsBalanceRow,
 } from './planMath'
@@ -1145,4 +1146,23 @@ it('planMonthExchange converts at the given month\'s rates', () => {
   // the fixture's EUR rate moves from 0.90 (May) to 0.93 (Aug): the two months must differ
   expect(may('cur-eur', 'cur-usd', '100')).not.toBe(aug('cur-eur', 'cur-usd', '100'))
   expect(may('cur-usd', 'cur-usd', '100')).toBe('100')
+})
+
+describe('planWindow', () => {
+  it('puts the selected month in column 2 with one month of history', () => {
+    expect(planWindow('2026-10-01', 6, '2025-01-01')).toEqual({ first: '2026-09-01', selectedCol: 1 })
+  })
+  it('shows only the selected month when one column fits', () => {
+    expect(planWindow('2026-10-01', 1, '2025-01-01')).toEqual({ first: '2026-10-01', selectedCol: 0 })
+  })
+  it('starts at the start month when the history month is before it', () => {
+    expect(planWindow('2026-10-01', 6, '2026-10-15')).toEqual({ first: '2026-10-01', selectedCol: 0 })
+  })
+  it('ends at the end month of an ended budget', () => {
+    // Oct selected, 6 columns, budget ends Dec: window Jul..Dec, Oct is column 3
+    expect(planWindow('2026-10-01', 6, '2025-01-01', '2026-12-01')).toEqual({ first: '2026-07-01', selectedCol: 3 })
+  })
+  it('never starts before the start month even when the end pulls it back', () => {
+    expect(planWindow('2026-10-01', 6, '2026-09-01', '2026-11-01')).toEqual({ first: '2026-09-01', selectedCol: 1 })
+  })
 })
