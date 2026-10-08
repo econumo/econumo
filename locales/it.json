@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "name_column": {
+          "resize": "Ridimensiona la colonna dei nomi",
+          "resize_hint": "Trascina per ridimensionare, doppio clic per ripristinare"
+        },
         "toggle": {
           "budget": "Budget",
           "plan": "Piano"

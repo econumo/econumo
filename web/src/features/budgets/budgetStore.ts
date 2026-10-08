@@ -44,6 +44,9 @@ interface BudgetPeriodState {
   resetFoldsFor: (budgetId: Id) => void
   /** the Plan grid's cursor walked off an edge: the window (and the strip) move */
   stepPeriod: (delta: number) => void
+  /** the Plan grid's name column width in px, as the user dragged it; null = default */
+  planNameWidth: number | null
+  setPlanNameWidth: (px: number | null) => void
   /** folded plan sections: 'income', folder ids, 'archived' */
   planFolds: Record<string, true>
   togglePlanFold: (key: string) => void
@@ -80,6 +83,8 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
         trackEvent(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
         set((s) => ({ selectedDate: addMonthsToPeriod(s.selectedDate, delta) }))
       },
+      planNameWidth: null,
+      setPlanNameWidth: (px) => set({ planNameWidth: px }),
       planFolds: {},
       togglePlanFold: (key) =>
         set((state) => {

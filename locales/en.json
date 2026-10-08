@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "name_column": {
+          "resize": "Resize the name column",
+          "resize_hint": "Drag to resize, double-click to reset"
+        },
         "toggle": {
           "budget": "Budget",
           "plan": "Plan"

@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "name_column": {
+          "resize": "调整名称列宽度",
+          "resize_hint": "拖动调整宽度，双击恢复默认"
+        },
         "toggle": {
           "budget": "预算",
           "plan": "计划"

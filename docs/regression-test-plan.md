@@ -950,6 +950,13 @@ and on tablet/phone only with a hardware keyboard.
       ‹ › move the window by one month (the selected month moves with it),
       disabled at the budget's first and last month. Switching Budget ↔ Plan
       keeps the month. No horizontal scroll.
+- [ ] Plan name column width, desktop: drag the edge between the names and
+      the first month in the month row (it highlights on hover): the name
+      column follows the pointer between about 160 and 480px; on release the
+      months re-fit (a wider name column can mean one month fewer). The
+      width survives a reload and applies to every budget on this device.
+      With the edge focused, ← / → resize it in small steps without moving
+      the grid's selection; a double-click resets it to the default width.
 - [ ] 📱 Plan window at the edges: with the budget's start month selected
       the grid has no history column and starts at the start month; a budget
       with an end month stops at its end month (no columns after it); when

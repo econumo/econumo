@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ClipboardEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { ClipboardEvent, CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { CollisionDetection, DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
@@ -74,6 +74,10 @@ import {
   planGroupSums,
   planTotals,
   planVisibleCount,
+  PLAN_NAME_COL_MAX_PX,
+  PLAN_NAME_COL_MIN_PX,
+  PLAN_NAME_COL_PX,
+  clampPlanNameWidth,
   planWindow,
   savingsAsPlanElement,
   savingsBalanceRow,
@@ -460,7 +464,19 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   useEffect(() => () => observerRef.current?.disconnect(), [])
   // ResizeObserver never fires in jsdom, so width stays 0 there — the same
   // floor a real narrow viewport would collapse to (planVisibleCount<3 -> 1).
-  const visible = width > 0 ? planVisibleCount(width) : 3
+  // the name column's width: the one being dragged, else the remembered one. Months
+  // re-fit to the remembered width only, so they don't come and go mid-drag.
+  const storedNameWidth = useBudgetPeriodStore((s) => s.planNameWidth)
+  const setPlanNameWidth = useBudgetPeriodStore((s) => s.setPlanNameWidth)
+  const [dragNameWidth, setDragNameWidth] = useState<number | null>(null)
+  const nameResize = useRef<{ startX: number; startWidth: number } | null>(null)
+  const committedNameWidth = storedNameWidth ?? PLAN_NAME_COL_PX
+  const nameWidth = dragNameWidth ?? committedNameWidth
+  const commitNameWidth = (px: number | null) => {
+    setPlanNameWidth(px === null ? null : clampPlanNameWidth(px))
+    trackEvent(METRICS.BUDGET_PLAN_RESIZE_NAME_COLUMN)
+  }
+  const visible = width > 0 ? planVisibleCount(width, committedNameWidth) : 3
 
   const startedAt = budget.meta.startedAt
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
@@ -1690,6 +1706,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         onPaste={handlePaste}
         aria-activedescendant={selection ? selectionDomId(selection) : undefined}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+        style={{ '--plan-name-col': `${nameWidth}px` } as CSSProperties}
         data-testid="plan-sheet"
       >
         <LineLayoutContext.Provider value={layout}>
@@ -1697,7 +1714,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         {/* The month row is the Plan view's month selector: a click makes that month
             the selected one, and ‹ › move the window a month at a time. */}
         <div role="row" data-testid="plan-month-header" className={`sticky top-0 z-20 ${PLAN_LINE} border-b bg-background`}>
-          <span className={`${PLAN_NAME_COL} gap-1!`}>
+          <span className={`${PLAN_NAME_COL} relative gap-1!`}>
             {viewSwitch}
             <Button
               type="button"
@@ -1721,6 +1738,51 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             >
               <ChevronRight className="size-4" />
             </Button>
+            {/* the name column's edge: drag (or ← →) to resize, double-click to reset */}
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={t('budgets.page.plan.name_column.resize')}
+              aria-valuemin={PLAN_NAME_COL_MIN_PX}
+              aria-valuemax={PLAN_NAME_COL_MAX_PX}
+              aria-valuenow={nameWidth}
+              title={t('budgets.page.plan.name_column.resize_hint')}
+              tabIndex={0}
+              data-testid="plan-name-resize"
+              className="absolute top-0 -right-1.5 z-10 h-full w-3 cursor-col-resize touch-none rounded-sm hover:bg-ring/30 focus-visible:bg-ring/40 focus-visible:outline-none"
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture?.(e.pointerId)
+                e.preventDefault()
+                nameResize.current = { startX: e.clientX, startWidth: nameWidth }
+              }}
+              onPointerMove={(e) => {
+                const drag = nameResize.current
+                if (drag) {
+                  setDragNameWidth(clampPlanNameWidth(drag.startWidth + e.clientX - drag.startX))
+                }
+              }}
+              onPointerUp={(e) => {
+                const drag = nameResize.current
+                if (drag) {
+                  nameResize.current = null
+                  setDragNameWidth(null)
+                  commitNameWidth(drag.startWidth + e.clientX - drag.startX)
+                }
+              }}
+              onPointerCancel={() => {
+                nameResize.current = null
+                setDragNameWidth(null)
+              }}
+              onDoubleClick={() => commitNameWidth(null)}
+              onKeyDown={(e) => {
+                // the grid's arrows move the selection; here they belong to the edge
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  commitNameWidth(nameWidth + (e.key === 'ArrowRight' ? 16 : -16))
+                }
+              }}
+            />
           </span>
           {visibleMonths.map((m, i) => {
             const selected = i === selectedCol

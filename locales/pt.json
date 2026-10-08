@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "name_column": {
+          "resize": "Redimensionar a coluna de nomes",
+          "resize_hint": "Arraste para redimensionar; clique duas vezes para repor"
+        },
         "toggle": {
           "budget": "Orçamento",
           "plan": "Plano"

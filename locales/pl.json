@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "name_column": {
+          "resize": "Zmień szerokość kolumny nazw",
+          "resize_hint": "Przeciągnij, aby zmienić szerokość; kliknij dwukrotnie, aby przywrócić"
+        },
         "toggle": {
           "budget": "Budżet",
           "plan": "Plan"

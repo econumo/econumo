@@ -23,6 +23,9 @@ import {
   planMonthExchange,
   planTotals,
   planVisibleCount,
+  clampPlanNameWidth,
+  PLAN_NAME_COL_MIN_PX,
+  PLAN_NAME_COL_MAX_PX,
   planWindow,
   projectSavingsClosings,
   savingsBalanceRow,
@@ -119,6 +122,21 @@ describe('window math', () => {
     expect(planVisibleCount(fixed + month * 3)).toBe(3)
     expect(planVisibleCount(fixed + month * 7 + 50)).toBe(7)
     expect(planVisibleCount(fixed + month * 40)).toBe(12)
+  })
+
+  it('planVisibleCount measures against the name column width it is given', () => {
+    const month = PLAN_MIN_MONTH_COL_PX
+    // a 400px name column leaves room for 3 months where the default leaves 5
+    expect(planVisibleCount(224 + 18 + month * 5)).toBe(5)
+    expect(planVisibleCount(224 + 18 + month * 5, 400)).toBe(3)
+  })
+
+  it('clampPlanNameWidth keeps the name column between its bounds', () => {
+    expect(clampPlanNameWidth(100)).toBe(PLAN_NAME_COL_MIN_PX)
+    expect(clampPlanNameWidth(5000)).toBe(PLAN_NAME_COL_MAX_PX)
+    expect(clampPlanNameWidth(300.6)).toBe(301)
+    expect(PLAN_NAME_COL_MIN_PX).toBe(160)
+    expect(PLAN_NAME_COL_MAX_PX).toBe(480)
   })
 
   it('planVisibleCount never packs months narrower than `actual · plan` needs', () => {

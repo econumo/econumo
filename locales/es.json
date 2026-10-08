@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "name_column": {
+          "resize": "Cambiar el ancho de la columna de nombres",
+          "resize_hint": "Arrastra para cambiar el ancho; doble clic para restablecer"
+        },
         "toggle": {
           "budget": "Presupuesto",
           "plan": "Plan"

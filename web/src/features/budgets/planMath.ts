@@ -43,15 +43,21 @@ export function formatPlanMonth(m: string, lang: string, now?: Date): string {
   return periodLabeler(lang, now)(monthDate(m))
 }
 
-// monthLayout's PLAN_NAME_COL (w-56)
+// the name column's default width; the user can drag it between the bounds below
 export const PLAN_NAME_COL_PX = 224
+export const PLAN_NAME_COL_MIN_PX = 160
+export const PLAN_NAME_COL_MAX_PX = 480
+
+export function clampPlanNameWidth(px: number): number {
+  return Math.min(PLAN_NAME_COL_MAX_PX, Math.max(PLAN_NAME_COL_MIN_PX, Math.round(px)))
+}
 // wide enough for `12,345.67 · 12,345.67` with the cell's padding
 export const PLAN_MIN_MONTH_COL_PX = 150
 /** PLAN_LINE's pl-2 + pr-2.5; its month cells carry their own padding and no gap */
 const PLAN_LINE_PADDING_PX = 18
 
-export function planVisibleCount(containerWidthPx: number): number {
-  const fit = Math.floor((containerWidthPx - PLAN_NAME_COL_PX - PLAN_LINE_PADDING_PX) / PLAN_MIN_MONTH_COL_PX)
+export function planVisibleCount(containerWidthPx: number, nameWidthPx: number = PLAN_NAME_COL_PX): number {
+  const fit = Math.floor((containerWidthPx - nameWidthPx - PLAN_LINE_PADDING_PX) / PLAN_MIN_MONTH_COL_PX)
   return fit < 3 ? 1 : Math.min(fit, 12)
 }
 

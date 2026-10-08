@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "name_column": {
+          "resize": "Breedte van de naamkolom aanpassen",
+          "resize_hint": "Sleep om de breedte aan te passen, dubbelklik om te herstellen"
+        },
         "toggle": {
           "budget": "Budget",
           "plan": "Plan"

@@ -122,6 +122,7 @@ beforeEach(() => {
     unfoldedElements: {},
     foldBudgetId: null,
     planFolds: {},
+    planNameWidth: null,
   })
 })
 
@@ -2541,8 +2542,8 @@ it('gives expanded child rows the same row-hover treatment as their parents', as
   expect(lineClasses(childRow)).toEqual(lineClasses(parentRow))
   const childName = childRow.querySelector('[role="gridcell"]') as HTMLElement
   const parentName = parentRow.querySelector('[role="gridcell"]') as HTMLElement
-  expect(childName.className).toContain('w-56')
-  expect(parentName.className).toContain('w-56')
+  expect(childName.className).toContain('w-[var(--plan-name-col,14rem)]')
+  expect(parentName.className).toContain('w-[var(--plan-name-col,14rem)]')
   expect(childName.className).toMatch(/\bpl-1[79]\b/)
 })
 
@@ -3329,4 +3330,41 @@ it('tablet: no ⋮ menus until Edit structure is on, then on every line', async 
   const living = await screen.findByRole('button', { name: 'menu Living' })
   expect(living).not.toHaveClass('opacity-0')
   expect(within(screen.getByTestId('plan-section-line-income')).getByRole('button', { name: 'menu Income' })).toBeInTheDocument()
+})
+
+it('the name column is resized from its edge in the month row, remembered, and reset by double-click', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', planNameWidth: null })
+  const user = userEvent.setup()
+  renderPage()
+  const grid = await screen.findByTestId('plan-sheet')
+  const edge = within(screen.getByTestId('plan-month-header')).getByRole('separator', { name: /name column/i })
+  expect(edge).toHaveAttribute('aria-valuenow', '224')
+  expect(grid.style.getPropertyValue('--plan-name-col')).toBe('224px')
+
+  edge.focus()
+  await user.keyboard('{ArrowRight}{ArrowRight}')
+  expect(edge).toHaveAttribute('aria-valuenow', '256')
+  expect(grid.style.getPropertyValue('--plan-name-col')).toBe('256px')
+  expect(useBudgetPeriodStore.getState().planNameWidth).toBe(256)
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_RESIZE_NAME_COLUMN)
+  // the arrows resize the column; they never move the grid's selection
+  expect(document.querySelector('[role="gridcell"][aria-selected="true"]')).toBeNull()
+
+  // a pointer drag: 60px to the left
+  fireEvent.pointerDown(edge, { clientX: 500, pointerId: 1 })
+  fireEvent.pointerMove(edge, { clientX: 440, pointerId: 1 })
+  expect(grid.style.getPropertyValue('--plan-name-col')).toBe('196px')
+  fireEvent.pointerUp(edge, { clientX: 440, pointerId: 1 })
+  expect(useBudgetPeriodStore.getState().planNameWidth).toBe(196)
+
+  // never below the minimum
+  fireEvent.pointerDown(edge, { clientX: 500, pointerId: 1 })
+  fireEvent.pointerMove(edge, { clientX: 0, pointerId: 1 })
+  fireEvent.pointerUp(edge, { clientX: 0, pointerId: 1 })
+  expect(useBudgetPeriodStore.getState().planNameWidth).toBe(160)
+
+  await user.dblClick(edge)
+  expect(useBudgetPeriodStore.getState().planNameWidth).toBeNull()
+  expect(edge).toHaveAttribute('aria-valuenow', '224')
 })
