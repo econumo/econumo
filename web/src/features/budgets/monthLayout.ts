@@ -27,6 +27,9 @@ export const PLAN_NAME_COL = 'flex w-[var(--plan-name-col,14rem)] shrink-0 min-w
 // each month column opens with the rows' own hairline, so the grid reads like a sheet
 export const PLAN_FIGURE_COL = 'flex min-w-0 flex-1 basis-0 items-center justify-end gap-1 border-l border-border/60 px-2 text-right whitespace-nowrap tabular-nums'
 export const PLAN_SELECTED_TINT = 'bg-accent/40'
+// a section (Savings, Expenses, the totals…) opens with a heavier rule than the rows'
+// hairlines, so the blocks read apart without a gap breaking the selected month's tint
+export const PLAN_SECTION_RULE = 'border-t-2 border-foreground/25'
 /** folder lines sit one step in from their section heading */
 export const FOLDER_INDENT = 'pl-6'
 

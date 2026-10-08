@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "sums": {
+          "show": "显示 {name} 的合计",
+          "hide": "隐藏 {name} 的合计"
+        },
         "name_column": {
           "resize": "调整名称列宽度",
           "resize_hint": "拖动调整宽度，双击恢复默认"

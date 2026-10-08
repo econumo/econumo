@@ -122,6 +122,28 @@ export function CurrencyTag({ code }: { code: string }) {
   )
 }
 
+/** The Plan grid's Σ: an open line's sums show only once the user asks for them —
+ *  the rows right below already carry the figures. Shown on hover; once pressed it
+ *  stays visible so the line says why it has numbers. */
+function SumToggle({ sumKey, name }: { sumKey: string; name: string }) {
+  const { t } = useTranslation()
+  const shown = useBudgetPeriodStore((s) => !!s.planSumsShown[sumKey])
+  const toggle = useBudgetPeriodStore((s) => s.togglePlanSums)
+  const controls = useLineControls()
+  return (
+    <button
+      type="button"
+      aria-pressed={shown}
+      aria-label={t(shown ? 'budgets.page.plan.sums.hide' : 'budgets.page.plan.sums.show', { name })}
+      title={t(shown ? 'budgets.page.plan.sums.hide' : 'budgets.page.plan.sums.show', { name })}
+      className={`flex size-6 shrink-0 items-center justify-center rounded text-sm hover:bg-accent ${shown ? 'text-foreground' : `text-muted-foreground ${lineControlClass(controls, 'line')}`}`}
+      onClick={() => toggle(sumKey)}
+    >
+      Σ
+    </button>
+  )
+}
+
 /** A section's line: open, it names the section's columns; folded, it carries the
  *  section's sums in those columns. The fold state is the one the Plan grid uses. */
 export function MonthSectionHeader({
@@ -132,6 +154,7 @@ export function MonthSectionHeader({
   actionsColumn,
   testId,
   menu,
+  sumsOnDemand = false,
 }: {
   foldKey: string
   label: string
@@ -141,13 +164,18 @@ export function MonthSectionHeader({
   testId: string
   /** the section's ⋮ menu (create folder, choose savings accounts) */
   menu?: MenuAction[]
+  /** Plan grid: an open line's sums wait for its Σ */
+  sumsOnDemand?: boolean
 }) {
   const { t } = useTranslation()
   const folded = useBudgetPeriodStore((s) => !!s.planFolds[foldKey])
+  const sumsAsked = useBudgetPeriodStore((s) => !!s.planSumsShown[foldKey])
   const toggle = useBudgetPeriodStore((s) => s.togglePlanFold)
   const Chevron = folded ? ChevronRight : ChevronDown
-  const plan = useLineLayout().kind === 'plan'
+  const layout = useLineLayout()
+  const plan = layout.kind === 'plan'
   const showSums = folded || plan
+  const blank = plan && sumsOnDemand && !folded && !sumsAsked
   const foldButton = (
     <button
       type="button"
@@ -169,6 +197,7 @@ export function MonthSectionHeader({
       {plan ? (
         <span className={PLAN_NAME_COL}>
           {foldButton}
+          {sumsOnDemand && !folded ? <SumToggle sumKey={foldKey} name={label} /> : null}
           <RowMenu name={label} actions={menu} />
         </span>
       ) : (
@@ -177,11 +206,13 @@ export function MonthSectionHeader({
           <RowMenu name={label} actions={menu} />
         </>
       )}
-      <FigureCells cells={showSums ? sums : headings} />
+      <FigureCells cells={blank ? blankCells(layout) : showSums ? sums : headings} />
       {actionsColumn ? <ActionsSpacer /> : null}
     </div>
   )
 }
+
+const blankCells = (layout: ReturnType<typeof useLineLayout>): null[] => Array.from({ length: layout.kind === 'plan' ? layout.cols : 3 }, () => null)
 
 /** A folder's line inside a section: the whole line folds the folder's rows; its
  *  sums stay in the row columns either way. */
@@ -195,6 +226,7 @@ export function FolderLine({
   actionsColumn,
   menu,
   nameCell,
+  sumKey,
 }: {
   name: string
   folded: boolean
@@ -210,10 +242,16 @@ export function FolderLine({
   menu?: MenuAction[]
   /** the Plan grid's name column: a gridcell the keyboard selection can land on */
   nameCell?: HTMLAttributes<HTMLSpanElement>
+  /** Plan grid: the folder's fold key; an open folder's sums wait for its Σ */
+  sumKey?: string
 }) {
   const { t } = useTranslation()
   const layout = useLineLayout()
   const plan = layout.kind === 'plan'
+  const sumsAsked = useBudgetPeriodStore((s) => (sumKey ? !!s.planSumsShown[sumKey] : false))
+  const onDemand = plan && sumKey !== undefined && sums !== null && !folded
+  // an open folder with nothing in it has nothing to sum: no Σ and no dashes either
+  const blank = (onDemand && !sumsAsked) || (plan && sumKey !== undefined && sums === null && !folded)
   const Chevron = folded ? ChevronRight : ChevronDown
   const nameParts = (
     <>
@@ -232,6 +270,7 @@ export function FolderLine({
       </button>
       {actions}
       <span className="flex-1" />
+      {onDemand ? <SumToggle sumKey={sumKey} name={name} /> : null}
       <RowMenu name={name} actions={menu} />
     </>
   )
@@ -248,7 +287,7 @@ export function FolderLine({
       {/* an empty folder reads as dashes in the same columns, so its ⋮ lines up
           with the others' */}
       <span data-testid={sums ? 'stat-line' : 'empty-folder-sums'} className="contents">
-        <FigureCells cells={sums ?? dashes} />
+        <FigureCells cells={blank ? blankCells(layout) : (sums ?? dashes)} />
       </span>
       {actionsColumn ? <ActionsSpacer /> : null}
     </header>

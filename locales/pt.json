@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "sums": {
+          "show": "Mostrar totais de {name}",
+          "hide": "Ocultar totais de {name}"
+        },
         "name_column": {
           "resize": "Redimensionar a coluna de nomes",
           "resize_hint": "Arraste para redimensionar; clique duas vezes para repor"

@@ -47,6 +47,9 @@ interface BudgetPeriodState {
   /** the Plan grid's name column width in px, as the user dragged it; null = default */
   planNameWidth: number | null
   setPlanNameWidth: (px: number | null) => void
+  /** Plan grid section/folder lines (by fold key) whose sums the user turned on with Σ */
+  planSumsShown: Record<string, true>
+  togglePlanSums: (key: string) => void
   /** folded plan sections: 'income', folder ids, 'archived' */
   planFolds: Record<string, true>
   togglePlanFold: (key: string) => void
@@ -85,6 +88,19 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       },
       planNameWidth: null,
       setPlanNameWidth: (px) => set({ planNameWidth: px }),
+      planSumsShown: {},
+      togglePlanSums: (key) => {
+        trackEvent(METRICS.BUDGET_PLAN_TOGGLE_SUMS)
+        set((state) => {
+          const next = { ...state.planSumsShown }
+          if (next[key]) {
+            delete next[key]
+          } else {
+            next[key] = true
+          }
+          return { planSumsShown: next }
+        })
+      },
       planFolds: {},
       togglePlanFold: (key) =>
         set((state) => {

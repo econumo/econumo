@@ -129,6 +129,7 @@ beforeEach(() => {
     unfoldedElements: {},
     foldBudgetId: null,
     planFolds: {},
+    planSumsShown: {},
   })
 })
 
@@ -161,7 +162,7 @@ it('renders the Savings section after Income and before Expenses (the phone orde
 
 it('the Savings line sums every row listed under it, a deleted account\'s actual included', async () => {
   useHandlers()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-06-01', planSumsShown: { savings: true } })
   renderPage()
   const line = await screen.findByTestId('plan-section-line-savings')
   const plan = savingsPlan as unknown as BudgetPlanDto

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
+import { PLAN_SECTION_RULE } from './monthLayout'
 import { Dash, TotalLine } from './monthLines'
 import type { PlanMonthTotals } from './planMath'
 
@@ -88,7 +89,7 @@ export function PlanTotals({
     )
   })
   return (
-    <div role="rowgroup" className="flex flex-col border-t" data-testid="plan-totals">
+    <div role="rowgroup" className={`flex flex-col ${PLAN_SECTION_RULE}`} data-testid="plan-totals">
       <PlanTotalRow
         testId="plan-total-income"
         label={t('budgets.page.plan.totals.income')}

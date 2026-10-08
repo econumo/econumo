@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "sums": {
+          "show": "Totalen van {name} tonen",
+          "hide": "Totalen van {name} verbergen"
+        },
         "name_column": {
           "resize": "Breedte van de naamkolom aanpassen",
           "resize_hint": "Sleep om de breedte aan te passen, dubbelklik om te herstellen"

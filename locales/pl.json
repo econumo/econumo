@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "sums": {
+          "show": "Pokaż sumy dla {name}",
+          "hide": "Ukryj sumy dla {name}"
+        },
         "name_column": {
           "resize": "Zmień szerokość kolumny nazw",
           "resize_hint": "Przeciągnij, aby zmienić szerokość; kliknij dwukrotnie, aby przywrócić"

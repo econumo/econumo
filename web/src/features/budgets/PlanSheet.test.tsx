@@ -123,6 +123,7 @@ beforeEach(() => {
     foldBudgetId: null,
     planFolds: {},
     planNameWidth: null,
+    planSumsShown: {},
   })
 })
 
@@ -542,21 +543,35 @@ it('totals block renders one effective value per cell for income/expenses/transf
   expect(screen.getByTestId('plan-balance-2')).toHaveTextContent(expected)
 })
 
-it('section and folder lines carry per-month sums whether open or folded', async () => {
+it('an open section or folder line shows its sums only after Σ; a folded one always shows them', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
-  const expenses = screen.getByTestId('plan-section-line-expense')
-  expect(within(expenses).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
-  await user.click(within(expenses).getByRole('button', { expanded: true }))
-  expect(within(screen.getByTestId('plan-section-line-expense')).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+  const line = () => screen.getByTestId('plan-section-line-expense')
+  const folderLine = () => within(screen.getByTestId('plan-folder-bf1')).getAllByRole('row')[0]
+  // open: no figures, only the month cells (lines and tint stay)
+  expect(within(line()).queryAllByTestId(/^plan-sum-/)).toHaveLength(0)
+  expect(within(folderLine()).queryAllByTestId(/^plan-sum-/)).toHaveLength(0)
+  // Σ shows that line's sums, and only that line's
+  await user.click(within(line()).getByRole('button', { name: /show sums.*expenses/i }))
+  expect(within(line()).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+  expect(within(folderLine()).queryAllByTestId(/^plan-sum-/)).toHaveLength(0)
+  expect(useBudgetPeriodStore.getState().planSumsShown).toEqual({ expense: true })
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_TOGGLE_SUMS)
+  // pressed again, they go
+  await user.click(within(line()).getByRole('button', { name: /hide sums.*expenses/i }))
+  expect(within(line()).queryAllByTestId(/^plan-sum-/)).toHaveLength(0)
+  // folded: the sums are the only figures left, so they show, and there is no Σ
+  await user.click(within(folderLine()).getByRole('button', { name: 'Essentials' }))
+  expect(within(folderLine()).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+  expect(within(folderLine()).queryByRole('button', { name: /sums/i })).not.toBeInTheDocument()
 })
 
 it('section and folder sums read actual · plan up to the selected month, plan alone after it', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', planSumsShown: { bf1: true } })
   renderPage()
   await screen.findByTestId('plan-sheet')
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
@@ -676,7 +691,7 @@ it('the Archived line sums its rows: their actuals, never their plans', async ()
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
     planHandler(plan),
   )
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', planSumsShown: { archived: true } })
   renderPage()
   const line = await screen.findByTestId('plan-section-line-archived')
   // June: 18.53 spent; the archived row's 40 plan is not part of the plan
@@ -685,7 +700,7 @@ it('the Archived line sums its rows: their actuals, never their plans', async ()
 
 it('with folders, an expense section names its folder-less rows under a No folder line that folds like a folder', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', planSumsShown: { __no_folder__: true } })
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
@@ -2299,7 +2314,7 @@ describe('income/expense split', () => {
     expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
   })
 
-  it('separates the sections with a hairline, not a gap, so the selected month tint never breaks', async () => {
+  it('separates the sections with a heavier rule, not a gap, so the selected month tint never breaks', async () => {
     usePlanHandlers()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -2310,8 +2325,10 @@ describe('income/expense split', () => {
     expect(income.classList.contains('border-t')).toBe(false)
     const expenseSection = screen.getByTestId('plan-section-expense')
     expect(expenseSection.classList.contains('plan-band-expense')).toBe(true)
-    expect(expenseSection.classList.contains('border-t')).toBe(true)
-    for (const cls of ['mt-6', 'py-1', 'border-t-2']) {
+    // heavier than the rows' hairlines, so the blocks read apart
+    expect(expenseSection.classList.contains('border-t-2')).toBe(true)
+    expect(screen.getByTestId('plan-totals').classList.contains('border-t-2')).toBe(true)
+    for (const cls of ['mt-6', 'py-1']) {
       expect(expenseSection.classList.contains(cls)).toBe(false)
     }
     // the section opens on its line

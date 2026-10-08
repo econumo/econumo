@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "sums": {
+          "show": "Mostrar totales de {name}",
+          "hide": "Ocultar totales de {name}"
+        },
         "name_column": {
           "resize": "Cambiar el ancho de la columna de nombres",
           "resize_hint": "Arrastra para cambiar el ancho; doble clic para restablecer"

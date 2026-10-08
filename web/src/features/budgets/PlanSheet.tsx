@@ -84,7 +84,7 @@ import {
 } from './planMath'
 import type { MonthExchange, PlanFolderSection, PlanRow, PlanRows } from './planMath'
 import type { LineControls, MenuAction } from './monthLayout'
-import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext } from './monthLayout'
+import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SECTION_RULE, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
 import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, selectedClass, sourceAmount } from './PlanRows'
 import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
@@ -243,6 +243,7 @@ function FolderGroup({
           menu={menu}
           actionsColumn={false}
           nameCell={{ role: 'gridcell', id: cellDomId(rk, -1), 'aria-selected': selected, className: selectedClass(selected) }}
+          sumKey={foldKey}
         />
       </div>
       {empty ? (
@@ -1710,7 +1711,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         data-testid="plan-sheet"
       >
         <LineLayoutContext.Provider value={layout}>
-        <LineControlsContext.Provider value={lineControls ?? 'hover'}>
+        {/* a touch screen outside edit mode has no menus or grips to hide, and no hover:
+            what controls it has (the sums' Σ) show at once */}
+        <LineControlsContext.Provider value={lineControls ?? (isCompact ? 'always' : 'hover')}>
         {/* The month row is the Plan view's month selector: a click makes that month
             the selected one, and ‹ › move the window a month at a time. */}
         <div role="row" data-testid="plan-month-header" className={`sticky top-0 z-20 ${PLAN_LINE} border-b bg-background`}>
@@ -1817,6 +1820,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         <section role="rowgroup" data-testid="plan-section-income" className="plan-band plan-band-income flex flex-col">
           <MonthSectionHeader
             foldKey="income"
+            sumsOnDemand
             testId="plan-section-line-income"
             label={t('budgets.page.plan.section.income')}
             headings={[]}
@@ -1846,9 +1850,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         {hasSavings ? (
           // Its own drag context: a savings row reorders among savings rows only and
           // can never reach a folder, which the server refuses for it anyway.
-          <section role="rowgroup" data-testid="plan-section-savings" className="plan-band plan-band-savings flex flex-col border-t">
+          <section role="rowgroup" data-testid="plan-section-savings" className={`plan-band plan-band-savings flex flex-col ${PLAN_SECTION_RULE}`}>
             <MonthSectionHeader
               foldKey="savings"
+              sumsOnDemand
               testId="plan-section-line-savings"
               label={t('budgets.page.plan.section.savings')}
               headings={[]}
@@ -1884,7 +1889,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           // bands rather than defaulting into one. Their own drag context keeps folder
           // reordering available; rows reach them via "Move to folder…" (a neutral
           // folder is offered to both sides there), never by a cross-band drag.
-          <section role="rowgroup" data-testid="plan-section-neutral" className="plan-band plan-band-neutral flex flex-col border-t">
+          <section role="rowgroup" data-testid="plan-section-neutral" className={`plan-band plan-band-neutral flex flex-col ${PLAN_SECTION_RULE}`}>
             {sectionDnd(
               'neutral',
               preferRowCollisions,
@@ -1895,9 +1900,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           </section>
         ) : null}
 
-        <section role="rowgroup" data-testid="plan-section-expense" className="plan-band plan-band-expense flex flex-col border-t">
+        <section role="rowgroup" data-testid="plan-section-expense" className={`plan-band plan-band-expense flex flex-col ${PLAN_SECTION_RULE}`}>
           <MonthSectionHeader
             foldKey="expense"
+            sumsOnDemand
             testId="plan-section-line-expense"
             label={t('budgets.page.plan.section.expenses')}
             headings={[]}
@@ -1925,9 +1931,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         </section>
 
         {shownRows.archived.length > 0 ? (
-          <section role="rowgroup" data-testid="plan-section-archived" className="plan-band plan-band-archived flex flex-col border-t">
+          <section role="rowgroup" data-testid="plan-section-archived" className={`plan-band plan-band-archived flex flex-col ${PLAN_SECTION_RULE}`}>
             <MonthSectionHeader
               foldKey="archived"
+              sumsOnDemand
               testId="plan-section-line-archived"
               label={t('budgets.page.plan.section.archived')}
               headings={[]}

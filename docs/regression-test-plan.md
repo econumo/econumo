@@ -989,13 +989,18 @@ and on tablet/phone only with a hardware keyboard.
       green); income and savings actuals are never red or green.
 - [ ] 📱 Plan section and folder lines (Income, Savings, Expenses, folders, "No
       folder", Archived) use the Budget view's thin-line style, with no boxes
-      and no bold, and show per-month sums in the same `actual · plan` form
-      (`— · 55` when nothing happened yet against a plan), on one line, open or
-      folded; a section/folder line sums every row listed under it
-      (the Archived line shows its rows' actuals, with no plan). A section with
-      folders groups its loose rows under a "No folder" line. A click on a line
-      folds it; folds are shared with the Budget view and the phone and survive
-      a reload.
+      and no bold. Sections (Savings, Expenses, Archived, the totals) open
+      with a heavier rule than the rows' hairlines. A FOLDED line shows its
+      per-month sums in the same `actual · plan` form (`— · 55` when nothing
+      happened yet against a plan), on one line. An OPEN line shows no figures
+      (an empty folder no dashes either): hovering it shows a Σ button before
+      its ⋮ (on a tablet Σ shows without hover); Σ shows that line's sums
+      and stays visible, pressed, until pressed again — only that line, and
+      the choice survives a reload (per device). A section/folder line sums
+      every row listed under it (the Archived line shows its rows' actuals,
+      with no plan). A section with folders groups its loose rows under a "No
+      folder" line. A click on a line folds it; folds are shared with the
+      Budget view and the phone and survive a reload.
 - [ ] 📱 Plan totals, in order: Income, Expenses, Savings (only with savings
       accounts), Transfers (only when not zero; a negative one is not red),
       Total savings (only with savings accounts), then a sticky Balance at the

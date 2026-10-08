@@ -1361,6 +1361,10 @@
         }
       },
       "plan": {
+        "sums": {
+          "show": "Show sums for {name}",
+          "hide": "Hide sums for {name}"
+        },
         "name_column": {
           "resize": "Resize the name column",
           "resize_hint": "Drag to resize, double-click to reset"
