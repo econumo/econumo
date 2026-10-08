@@ -372,7 +372,8 @@ export function planGroupSums(
         const cell = el.cells[i]
         if (cell) {
           actual = add(actual, ex(el.currencyId, cell.actual, i))
-          if (el.isArchived === 0) {
+          // a deleted savings account keeps its plan, as in the Savings total
+          if (el.isArchived === 0 || el.type === BudgetElementType.SAVINGS) {
             planned = add(planned, ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i))
           }
         }

@@ -202,6 +202,15 @@ it('planGroupSums adds every row\'s actual but only live rows\' plans, per month
   expect(sums).toEqual([{ actual: '114', planned: '25' }, { actual: '100', planned: '7' }])
 })
 
+it('planGroupSums counts a deleted savings account\'s plan, as the Savings total does', () => {
+  const months = ['2026-06-01', '2026-07-01']
+  const ex: MonthExchange = (_from, amount) => amount
+  const live = mkEl({ id: 's1', type: BudgetElementType.SAVINGS, name: 'Fund', cells: [{ actual: '10', planned: '50' }, { actual: '0', planned: '50' }] })
+  const deleted = mkEl({ id: 's2', type: BudgetElementType.SAVINGS, name: 'Old', isArchived: 1, cells: [{ actual: '30', planned: '40' }, { actual: '0', planned: '' }] })
+  const sums = planGroupSums([live, deleted], months, (m) => months.indexOf(m), ex)
+  expect(sums).toEqual([{ actual: '40', planned: '90' }, { actual: '0', planned: '50' }])
+})
+
 describe('folderSides', () => {
   it('derives income/expense/neutral per folder from members, matching bucketPlanRows', () => {
     const f1: BudgetFolderDto = { id: 'f1', name: 'Job', position: 0 }
