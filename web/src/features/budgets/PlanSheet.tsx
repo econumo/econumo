@@ -244,8 +244,9 @@ function FolderGroup({
             <span className={PLAN_NAME_COL} />
             <FigureCells cells={ctx.visibleMonths.map(() => null)} />
           </div>
-          <p className={`${ROW_INDENT['in-folder']} px-2 py-1 text-xs text-muted-foreground [grid-area:1/1]`}>
-            {t('budgets.page.budget.structure.empty_folder.note')}
+          {/* the text sits on the page colour so the month lines stop behind it */}
+          <p className={`${ROW_INDENT['in-folder']} self-center px-2 py-1 text-xs text-muted-foreground [grid-area:1/1]`}>
+            <span className="relative bg-background pr-1">{t('budgets.page.budget.structure.empty_folder.note')}</span>
           </p>
         </div>
       ) : (

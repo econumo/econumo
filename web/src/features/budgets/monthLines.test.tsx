@@ -31,6 +31,19 @@ it('plan layout: the selected month column is tinted on every line', () => {
   expect(cells[0].className).not.toContain('bg-accent/40')
 })
 
+it('plan layout: every month column opens with a vertical hairline', () => {
+  inPlan(<FolderLine name="Daily" folded={false} onToggle={() => {}} sums={['1', '2', '3']} actionsColumn={false} />)
+  for (const cell of document.querySelectorAll('[data-col]')) {
+    expect(cell.className).toContain('border-l')
+    expect(cell.className).toContain('border-border/60')
+  }
+})
+
+it('budget layout: the three figure columns draw no vertical lines', () => {
+  render(<FolderLine name="Daily" folded={false} onToggle={() => {}} sums={['1', '2', '3']} actionsColumn={false} />)
+  expect(document.querySelector('.border-l')).toBeNull()
+})
+
 it('plan layout: an empty folder shows one dash per month', () => {
   inPlan(<FolderLine name="Empty" folded={false} onToggle={() => {}} sums={null} actionsColumn={false} />, 4, 0)
   expect(screen.getAllByText('—')).toHaveLength(4)

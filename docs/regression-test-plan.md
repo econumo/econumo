@@ -962,7 +962,10 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 Plan rows are one line, in the Budget view's row height and indents
       (folder → row → envelope category), icon and name, and hairlines between
       rows; where one section ends and the next begins there is a single rule,
-      never a double one. A month up to the selected one reads `actual · plan` (smaller,
+      never a double one. Matching vertical hairlines separate the name column
+      and every month column, from the month header down to the Balance line,
+      like a spreadsheet (an empty folder's note covers them under its text;
+      the Budget view has no vertical lines). A month up to the selected one reads `actual · plan` (smaller,
       muted actual, then the plan figure); months after it show the plan
       alone. An unplanned month shows a blank plan (never 0.00) and no "·";
       a planned month with no actual yet shows `— · 55` (a muted dash, not a
