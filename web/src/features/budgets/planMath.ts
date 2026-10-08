@@ -358,7 +358,9 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
       const isPast = month < cur
       const effective = isPast ? actual : cmp(actual, planned) >= 0 ? actual : planned
       savingsActual = add(savingsActual, actual)
-      if (el.isArchived === 0) savingsPlanned = add(savingsPlanned, planned)
+      // a deleted account's plan arrives only for months it had activity, and
+      // counts there as in the monthly Total
+      savingsPlanned = add(savingsPlanned, planned)
       effSavings = add(effSavings, el.isArchived === 0 ? effective : actual)
     }
     // Net carries the boundary transfers so the Balance row (which chains on
