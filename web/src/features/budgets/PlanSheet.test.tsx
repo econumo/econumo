@@ -207,6 +207,24 @@ it('clicking an actual selects its cell, so the keyboard picks up there once the
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
   expect(screen.getByTestId('plan-cell-cat-food:0')).toHaveAttribute('aria-selected', 'false')
+  // the grid takes focus back, so typing edits the selected cell straight away
+  await waitFor(() => expect(screen.getByTestId('plan-sheet')).toHaveFocus())
+  await user.keyboard('7')
+  expect(await screen.findByRole('textbox', { name: /living/i })).toHaveValue('7')
+})
+
+it('the grid takes focus back when the Transfers list closes', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByTestId('plan-cell-cat-food:0'))
+  await user.click(screen.getByRole('button', { name: /^transactions .* 2026-06-01$/i }))
+  await screen.findByRole('dialog')
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() => expect(screen.getByTestId('plan-sheet')).toHaveFocus())
 })
 
 it('a desktop-width grid shows the history month\'s actual', async () => {

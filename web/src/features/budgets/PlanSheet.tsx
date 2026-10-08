@@ -402,8 +402,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   // the open comment thread: anchored to its cell on desktop/tablet, a sheet on a phone
   const [commentsDialogTarget, setCommentsDialogTarget] = useState<(PlanLimitTarget & { anchor: HTMLElement | null }) | null>(null)
   const commentsOpen = commentsDialogTarget !== null
-  // A modal opened from the keyboard (Enter on the name cell) has no trigger for
-  // Radix to hand focus back to, so on close focus would fall to <body> and the
+  // A modal opened from the grid (Enter on the name cell, an actual or a Transfers
+  // figure) has no trigger Radix can hand focus back to — the keyboard has none, and
+  // a figure button re-renders away — so on close focus would fall to <body> and the
   // arrow keys go dead. Remember that the grid opened it and reclaim focus once it
   // closes; mouse-opened dialogs (row menu) leave focus alone as before.
   const editorFromGrid = useRef(false)
@@ -422,6 +423,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         icon: 'sync_alt',
         currencyId: null,
       }
+      editorFromGrid.current = true
       setTransactionsTarget({ target, month })
     },
     [t],
@@ -506,7 +508,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const setLimit = usePlanSetLimit(planKey)
   const fillCells = useFillPlannedCells(planKey)
   const menus = useBudgetLineMenus({ budget, plan, userId, onOpenSettings })
-  const editorOpen = menus.editorOpen || commentsDialogTarget !== null || planLimitTarget !== null
+  const editorOpen = menus.editorOpen || commentsDialogTarget !== null || planLimitTarget !== null || transactionsTarget !== null
   useEffect(() => {
     if (!editorOpen && editorFromGrid.current) {
       editorFromGrid.current = false
@@ -586,11 +588,13 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     [visibleMonths],
   )
   const openTransactions = useCallback(
-    (el: PlanElementDto, month: string) =>
+    (el: PlanElementDto, month: string) => {
+      editorFromGrid.current = true
       setTransactionsTarget({
         target: { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId },
         month,
-      }),
+      })
+    },
     [t],
   )
   // same wording as the budget view's period strip

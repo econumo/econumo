@@ -1030,6 +1030,9 @@ and on tablet/phone only with a hardware keyboard.
       opens that row's transactions for that month, as clicking Spent /
       Received / Saved does in the Budget view — except for income
       Uncategorized, which has none; the clicked cell becomes the selection.
+      Desktop: close the list (Esc or ×) and type a digit right away — the
+      selected cell opens its editor and the arrow keys move, with no extra
+      click (same after a Transfers figure's list).
 - [ ] Plan hover and structure, desktop: the hovered row highlights and the
       hovered cell gets a light outline; the ⋮ menu and a drag grip appear
       only on hover (the ⋮ takes no room otherwise and overlays the end of
