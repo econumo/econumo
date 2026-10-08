@@ -950,6 +950,11 @@ and on tablet/phone only with a hardware keyboard.
       ‹ › move the window by one month (the selected month moves with it),
       disabled at the budget's first and last month. Switching Budget ↔ Plan
       keeps the month. No horizontal scroll.
+- [ ] Plan crosshair: selecting a month cell (click or arrows) lightly
+      highlights its whole row and its whole month column — the month
+      header, section/folder lines, every row and the totals — over the
+      selected month's tint; selecting a name cell or a folder line highlights
+      its row only; moving the selection moves both.
 - [ ] Plan name column width, desktop: drag the edge between the names and
       the first month in the month row (it highlights on hover): the name
       column follows the pointer between about 160 and 480px; on release the
@@ -996,7 +1001,9 @@ and on tablet/phone only with a hardware keyboard.
       (an empty folder no dashes either): hovering it shows a Σ button before
       its ⋮ (on a tablet Σ shows without hover); Σ shows that line's sums
       and stays visible, pressed, until pressed again — only that line, and
-      the choice survives a reload (per device). A section/folder line sums
+      the choice survives a reload (per device). Hovering one month cell of
+      an open line shows a Σ in that cell: clicking it shows that month's sum
+      only (click the sum to hide it again; also remembered per device). A section/folder line sums
       every row listed under it (the Archived line shows its rows' actuals,
       with no plan). A section with folders groups its loose rows under a "No
       folder" line. A click on a line folds it; folds are shared with the

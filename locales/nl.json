@@ -1362,6 +1362,8 @@
       },
       "plan": {
         "sums": {
+          "show_month": "Totaal van {name} in {month} tonen",
+          "hide_month": "Totaal van {name} in {month} verbergen",
           "show": "Totalen van {name} tonen",
           "hide": "Totalen van {name} verbergen"
         },

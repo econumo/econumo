@@ -1362,6 +1362,8 @@
       },
       "plan": {
         "sums": {
+          "show_month": "Show the {month} sum for {name}",
+          "hide_month": "Hide the {month} sum for {name}",
           "show": "Show sums for {name}",
           "hide": "Hide sums for {name}"
         },

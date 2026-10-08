@@ -12,6 +12,7 @@ import {
   FOLDER_INDENT,
   LINE,
   NAME_COL,
+  PLAN_CROSSHAIR,
   PLAN_FIGURE_COL,
   PLAN_LINE,
   PLAN_NAME_COL,
@@ -49,7 +50,15 @@ export function FigureCells({ cells, cellClassName }: { cells: ReactNode[]; cell
         <span
           key={i}
           data-col={i}
-          className={[PLAN_FIGURE_COL, i === layout.selectedCol ? PLAN_SELECTED_TINT : '', cellClassName?.(i) ?? ''].filter(Boolean).join(' ')}
+          data-crosshair={i === layout.crosshairCol ? 'col' : undefined}
+          className={[
+            PLAN_FIGURE_COL,
+            i === layout.selectedCol ? PLAN_SELECTED_TINT : '',
+            i === layout.crosshairCol ? PLAN_CROSSHAIR : '',
+            cellClassName?.(i) ?? '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
         >
           {cell}
         </span>
@@ -144,6 +153,44 @@ function SumToggle({ sumKey, name }: { sumKey: string; name: string }) {
   )
 }
 
+/** One month's sum on an open Plan line: a Σ that shows on hovering the cell, and
+ *  once pressed the sum itself, which hides again on a second press. Remembered per
+ *  line and month, like the line's own Σ. */
+function CellSum({ sumKey, index, name, value }: { sumKey: string; index: number; name: string; value: ReactNode }) {
+  const { t } = useTranslation()
+  const layout = useLineLayout()
+  const controls = useLineControls()
+  const month = layout.kind === 'plan' ? layout.months?.[index] : undefined
+  const key = `${sumKey}@${month}`
+  const shown = useBudgetPeriodStore((s) => !!s.planSumsShown[key])
+  const toggle = useBudgetPeriodStore((s) => s.togglePlanSums)
+  if (!month || layout.kind !== 'plan') {
+    return null
+  }
+  const label = t(shown ? 'budgets.page.plan.sums.hide_month' : 'budgets.page.plan.sums.show_month', { name, month: layout.monthLabels?.[index] ?? month })
+  return (
+    <button
+      type="button"
+      aria-pressed={shown}
+      aria-label={label}
+      title={label}
+      className="group/sum -mx-2 flex h-full min-w-0 flex-1 items-center justify-end gap-1 self-stretch px-2"
+      onClick={() => toggle(key)}
+    >
+      {shown ? (
+        value
+      ) : (
+        <span
+          aria-hidden="true"
+          className={`text-sm text-muted-foreground ${controls === 'always' ? '' : 'opacity-0 group-hover/sum:opacity-100 group-focus-visible/sum:opacity-100'}`}
+        >
+          Σ
+        </span>
+      )}
+    </button>
+  )
+}
+
 /** A section's line: open, it names the section's columns; folded, it carries the
  *  section's sums in those columns. The fold state is the one the Plan grid uses. */
 export function MonthSectionHeader({
@@ -206,7 +253,9 @@ export function MonthSectionHeader({
           <RowMenu name={label} actions={menu} />
         </>
       )}
-      <FigureCells cells={blank ? blankCells(layout) : showSums ? sums : headings} />
+      <FigureCells
+        cells={blank ? sums.map((value, i) => <CellSum key={i} sumKey={foldKey} index={i} name={label} value={value} />) : showSums ? sums : headings}
+      />
       {actionsColumn ? <ActionsSpacer /> : null}
     </div>
   )
@@ -250,8 +299,9 @@ export function FolderLine({
   const plan = layout.kind === 'plan'
   const sumsAsked = useBudgetPeriodStore((s) => (sumKey ? !!s.planSumsShown[sumKey] : false))
   const onDemand = plan && sumKey !== undefined && sums !== null && !folded
+  const onDemandCells = onDemand && !sumsAsked
   // an open folder with nothing in it has nothing to sum: no Σ and no dashes either
-  const blank = (onDemand && !sumsAsked) || (plan && sumKey !== undefined && sums === null && !folded)
+  const blank = plan && sumKey !== undefined && sums === null && !folded
   const Chevron = folded ? ChevronRight : ChevronDown
   const nameParts = (
     <>
@@ -287,7 +337,15 @@ export function FolderLine({
       {/* an empty folder reads as dashes in the same columns, so its ⋮ lines up
           with the others' */}
       <span data-testid={sums ? 'stat-line' : 'empty-folder-sums'} className="contents">
-        <FigureCells cells={blank ? blankCells(layout) : (sums ?? dashes)} />
+        <FigureCells
+          cells={
+            onDemandCells && sums && sumKey !== undefined
+              ? sums.map((value, i) => <CellSum key={i} sumKey={sumKey} index={i} name={name} value={value} />)
+              : blank
+                ? blankCells(layout)
+                : (sums ?? dashes)
+          }
+        />
       </span>
       {actionsColumn ? <ActionsSpacer /> : null}
     </header>

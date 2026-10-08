@@ -19,7 +19,7 @@ import { isEnvelopeType } from './elementEdit'
 import { DragChild, EnvelopeDrop, EnvelopeHeadDrop } from './MonthDrag'
 import { CurrencyTag, Dash, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
-import { CHILD_INDENT, FOLDER_INDENT, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, useRowLevel } from './monthLayout'
+import { CHILD_INDENT, FOLDER_INDENT, PLAN_CROSSHAIR, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, useRowLevel } from './monthLayout'
 import { planCellView, shownActual } from './planCell'
 import { PlanCellInput } from './PlanCellInput'
 import type { CellMove } from './PlanCellInput'
@@ -96,6 +96,8 @@ export interface GridCtx {
   selected: string
   /** its column, -1 when the window does not show it; that column is tinted */
   selectedCol: number
+  /** the selected cell's column, highlighted down the grid; -1 on a name cell or nothing */
+  crosshairCol: number
   currencies: CurrencyDto[]
   baseCurrencyId: Id
   meta: BudgetMetaDto
@@ -139,7 +141,8 @@ export interface GridCtx {
   childMenu?: (child: PlanChildDto) => MenuAction[] | undefined
 }
 
-const figureClass = (ctx: GridCtx, col: number): string => `${PLAN_FIGURE_COL}${col === ctx.selectedCol ? ` ${PLAN_SELECTED_TINT}` : ''}`
+const figureClass = (ctx: GridCtx, col: number): string =>
+  `${PLAN_FIGURE_COL}${col === ctx.selectedCol ? ` ${PLAN_SELECTED_TINT}` : ''}${col === ctx.crosshairCol ? ` ${PLAN_CROSSHAIR}` : ''}`
 
 /** A section's or folder's month: `actual · plan` up to the selected month, plan alone
  *  after it, the same way the rows read. `sum` is null for a month the plan has no
@@ -223,6 +226,7 @@ export const ChildRow = memo(function ChildRow({
             data-month={m}
             data-col={i}
             data-testid={`plan-cell-${child.id}:${i}`}
+            data-crosshair={i === ctx.crosshairCol ? 'col' : undefined}
             className={`${figureClass(ctx, i)} py-1`}
           >
             {actual !== null ? (
@@ -280,7 +284,11 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
 
   return (
     <div data-row-id={rk} data-plan-line="" className="border-b border-border/60">
-      <div role="row" className={`${PLAN_LINE} relative min-h-9 hover:bg-accent/50`}>
+      <div
+        role="row"
+        data-crosshair={ctx.selection?.rowKey === rk ? 'row' : undefined}
+        className={`${PLAN_LINE} relative min-h-9 hover:bg-accent/50${ctx.selection?.rowKey === rk ? ` ${PLAN_CROSSHAIR}` : ''}`}
+      >
         <div
           role="gridcell"
           id={cellDomId(rk, -1)}
@@ -348,6 +356,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
               data-month={m}
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
+              data-crosshair={i === ctx.crosshairCol ? 'col' : undefined}
               className={`group/cell relative ${figureClass(ctx, i)} py-1${editable ? ' cursor-pointer' : ''}${hoverCol === i ? ' outline outline-1 outline-border' : ''}${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
               onClick={(e) => {
                 ctx.select(rk, i, e)

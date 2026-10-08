@@ -84,7 +84,7 @@ import {
 } from './planMath'
 import type { MonthExchange, PlanFolderSection, PlanRow, PlanRows } from './planMath'
 import type { LineControls, MenuAction } from './monthLayout'
-import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SECTION_RULE, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext } from './monthLayout'
+import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
 import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, selectedClass, sourceAmount } from './PlanRows'
 import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
@@ -221,7 +221,8 @@ function FolderGroup({
       <div
         role="row"
         data-plan-line=""
-        className="border-b border-border/60"
+        data-crosshair={selected ? 'row' : undefined}
+        className={`border-b border-border/60${selected ? ` ${PLAN_CROSSHAIR}` : ''}`}
         onClick={(e) => {
           const target = e.target as HTMLElement
           if (!e.currentTarget.contains(target)) {
@@ -590,7 +591,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       setEditing(null)
     }
   }, [editing, visibleMonths])
-  const layout = useMemo(() => ({ kind: 'plan' as const, cols: visible, selectedCol }), [visible, selectedCol])
+  // the selected cell's month column, marked down the whole grid; a name cell or a
+  // folder line marks its row only
+  const crosshairCol = selection && selection.col >= 0 && !isFolderRowKey(selection.rowKey) ? selection.col : -1
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
   // The uncategorized row's synthetic id names no real element the server would
   // accept, so it gets no comment entry point at all — guarded here too since the
@@ -625,6 +628,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     const label = periodLabeler(i18n.language)
     return (m: string) => label(monthDate(m))
   }, [i18n.language])
+  const layout = useMemo(
+    () => ({ kind: 'plan' as const, cols: visible, selectedCol, crosshairCol, months: visibleMonths, monthLabels: visibleMonths.map(monthLabel) }),
+    [visible, selectedCol, crosshairCol, visibleMonths, monthLabel],
+  )
   const sheetPlanTarget = sheetCellTarget ? { kind: 'plan' as const, cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null
   const sheetEdit = sheetPlanTarget ? menus.editAccess(sheetPlanTarget) : null
   // With a mouse every line's ⋮ menu shows on hover; a touch screen has no hover, so
@@ -838,6 +845,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       monthIndex,
       selected: selectedDate,
       selectedCol,
+      crosshairCol,
       currencies,
       baseCurrencyId: budget.meta.currencyId,
       meta: budget.meta,
@@ -873,6 +881,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     monthIndex,
     selectedDate,
     selectedCol,
+    crosshairCol,
     currencies,
     budget.meta,
     userId,
@@ -1796,8 +1805,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
                 data-month={m}
                 data-col={i}
                 data-selected-col={selected ? 'true' : undefined}
+                data-crosshair={i === crosshairCol ? 'col' : undefined}
                 aria-selected={selected}
-                className={`${monthColClass(i, selectedCol)} p-0!`}
+                className={`${monthColClass(i, selectedCol)}${i === crosshairCol ? ` ${PLAN_CROSSHAIR}` : ''} p-0!`}
               >
                 <button
                   type="button"

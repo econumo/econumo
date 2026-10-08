@@ -1362,6 +1362,8 @@
       },
       "plan": {
         "sums": {
+          "show_month": "Показать сумму за {month}: {name}",
+          "hide_month": "Скрыть сумму за {month}: {name}",
           "show": "Показать суммы: {name}",
           "hide": "Скрыть суммы: {name}"
         },

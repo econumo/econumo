@@ -1362,6 +1362,8 @@
       },
       "plan": {
         "sums": {
+          "show_month": "Mostrar el total de {name} en {month}",
+          "hide_month": "Ocultar el total de {name} en {month}",
           "show": "Mostrar totales de {name}",
           "hide": "Ocultar totales de {name}"
         },

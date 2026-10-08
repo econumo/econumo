@@ -1362,6 +1362,8 @@
       },
       "plan": {
         "sums": {
+          "show_month": "显示 {name} 在 {month} 的合计",
+          "hide_month": "隐藏 {name} 在 {month} 的合计",
           "show": "显示 {name} 的合计",
           "hide": "隐藏 {name} 的合计"
         },

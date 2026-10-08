@@ -1362,6 +1362,8 @@
       },
       "plan": {
         "sums": {
+          "show_month": "Pokaż sumę {name} za {month}",
+          "hide_month": "Ukryj sumę {name} za {month}",
           "show": "Pokaż sumy dla {name}",
           "hide": "Ukryj sumy dla {name}"
         },

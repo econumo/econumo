@@ -15,7 +15,11 @@ export const SECOND_COL = 'flex w-20 shrink-0 justify-end text-right tabular-num
 export const THIRD_COL = 'flex w-20 shrink-0 justify-end pr-2 text-right tabular-nums sm:w-28 [&>[data-pill]]:-mr-2'
 /** The Plan grid reuses the lines with one figure column per month instead of the
  *  Budget view's three fixed ones. */
-export type LineLayout = { kind: 'budget' } | { kind: 'plan'; cols: number; selectedCol: number }
+export type LineLayout =
+  | { kind: 'budget' }
+  /** crosshairCol: the selected cell's column, highlighted on every line (-1 = none) */
+  /** months / monthLabels: the visible months and their names, for per-month controls */
+  | { kind: 'plan'; cols: number; selectedCol: number; crosshairCol?: number; months?: string[]; monthLabels?: string[] }
 export const LineLayoutContext = createContext<LineLayout>({ kind: 'budget' })
 export const useLineLayout = () => useContext(LineLayoutContext)
 // The Plan grid's line: no gap and no vertical padding, so each month's cells stack
@@ -27,6 +31,9 @@ export const PLAN_NAME_COL = 'flex w-[var(--plan-name-col,14rem)] shrink-0 min-w
 // each month column opens with the rows' own hairline, so the grid reads like a sheet
 export const PLAN_FIGURE_COL = 'flex min-w-0 flex-1 basis-0 items-center justify-end gap-1 border-l border-border/60 px-2 text-right whitespace-nowrap tabular-nums'
 export const PLAN_SELECTED_TINT = 'bg-accent/40'
+// the selected cell's row and column, as a spreadsheet marks them: an overlay, so it
+// layers over the selected month's tint and a row's hover rather than replacing them
+export const PLAN_CROSSHAIR = 'relative after:pointer-events-none after:absolute after:inset-0 after:bg-ring/[0.08]'
 // a section (Savings, Expenses, the totals…) opens with a heavier rule than the rows'
 // hairlines, so the blocks read apart without a gap breaking the selected month's tint
 export const PLAN_SECTION_RULE = 'border-t-2 border-foreground/25'

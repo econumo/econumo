@@ -3385,3 +3385,58 @@ it('the name column is resized from its edge in the month row, remembered, and r
   expect(useBudgetPeriodStore.getState().planNameWidth).toBeNull()
   expect(edge).toHaveAttribute('aria-valuenow', '224')
 })
+
+it('selecting a cell highlights its whole row and its whole month column', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const sheet = screen.getByTestId('plan-sheet')
+  const colCells = (col: number) => Array.from(sheet.querySelectorAll(`[data-col="${col}"]`))
+  // nothing selected: no crosshair
+  expect(sheet.querySelector('[data-crosshair]')).toBeNull()
+
+  await user.click(screen.getByTestId('plan-cell-pe1:1'))
+  // the row: Living's line
+  const row = document.querySelector('[data-row-id="pe1:0"] [role="row"]') ?? document.querySelector('[data-row-id="pe1:0"]')!
+  expect(row.closest('[data-crosshair="row"]')).not.toBeNull()
+  // the column: every line's July cell — the month header, section and folder lines, other rows, totals
+  const july = colCells(1)
+  expect(july.length).toBeGreaterThan(5)
+  for (const cell of july) {
+    expect(cell).toHaveAttribute('data-crosshair', 'col')
+  }
+  expect(within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')[1]).toHaveAttribute('data-crosshair', 'col')
+  // other columns and rows stay plain
+  for (const cell of colCells(0)) {
+    expect(cell).not.toHaveAttribute('data-crosshair')
+  }
+  expect(document.querySelector('[data-row-id="cat-food:1"]')!.querySelector('[data-crosshair="row"]')).toBeNull()
+
+  // a name cell: the row only, no column
+  await user.click(within(document.querySelector('[data-row-id="cat-food:1"]') as HTMLElement).getByTitle('Food'))
+  expect(document.querySelector('[data-row-id="cat-food:1"]')!.querySelector('[data-crosshair="row"]') ?? document.querySelector('[data-row-id="cat-food:1"][data-crosshair="row"]')).not.toBeNull()
+  expect(sheet.querySelector('[data-crosshair="col"]')).toBeNull()
+})
+
+it('one cell of an open line shows its own sum from its Σ, and hides it on a second click', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const line = () => screen.getByTestId('plan-section-line-expense')
+  expect(within(line()).queryAllByTestId(/^plan-sum-/)).toHaveLength(0)
+  await user.click(within(line()).getByRole('button', { name: /show the july sum for expenses/i }))
+  // July alone
+  expect(within(line()).getAllByTestId(/^plan-sum-/).map((c) => c.getAttribute('data-testid'))).toEqual(['plan-sum-1'])
+  expect(useBudgetPeriodStore.getState().planSumsShown).toEqual({ 'expense@2026-07-01': true })
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_TOGGLE_SUMS)
+  // the shown sum is the button that hides it again
+  await user.click(within(line()).getByRole('button', { name: /hide the july sum for expenses/i }))
+  expect(within(line()).queryAllByTestId(/^plan-sum-/)).toHaveLength(0)
+  // the line's own Σ still shows every month
+  await user.click(within(line()).getByRole('button', { name: /show sums for expenses/i }))
+  expect(within(line()).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+})
