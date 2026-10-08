@@ -274,6 +274,11 @@ navigation (single-pane vs sidebar).
       folders.
 - [ ] Drag-and-drop an account within a folder and across folders (desktop);
       order persists after reload.
+- [ ] 📱 Settings → Accounts with small folders (1–3 accounts each and one
+      empty folder): drag an account a row within its folder, then on into the
+      neighbouring folder and hold it on the boundary — the row settles
+      without the "Unexpected Application Error" (React #185) screen; dropping
+      into the empty folder works; order persists after reload.
 - [ ] Delete an account with transactions → confirm dialog; account disappears;
       its balance is zeroed by an automatic "Balance adjustment (account
       deleted)" correction; a budget that included it keeps the history
@@ -1119,8 +1124,13 @@ and on tablet/phone only with a hardware keyboard.
       area, and its ⋮ menu is Edit only (no "Move to folder…", no "Change
       currency"), in the Budget view and the Plan grid alike.
 - [ ] 📱 A deleted savings account stays in the Savings section, read-only (no
-      amount editor, no drag grip), only while it still has a plan or actual
-      activity in the visible period; once neither remains it drops out.
+      amount editor, no drag grip), only in months where it had activity; a
+      plan alone does not keep it. Delete a savings account with plans set
+      for past months without transactions and for months ahead: in those
+      months (Budget and Plan views) the row is gone and the Total's planned
+      figure leaves its plan out, while a month with transactions still shows
+      the row with its plan. Activity that nets to zero within a month (money
+      in, then the same amount out) does not count as activity.
 - [ ] An everyday→savings transfer counts toward "Saved" (the savings row's
       Actual, and the monthly block's Saved column); a savings↔savings
       transfer and a transfer with an account that is not a budget member do

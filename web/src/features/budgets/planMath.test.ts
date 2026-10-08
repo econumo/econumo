@@ -642,10 +642,11 @@ describe('savings + net + balance split', () => {
       id: 'sav-archived',
       name: 'Closed Fund',
       isArchived: 1,
+      // a deleted account's plan arrives only for months it had activity
       cells: [
         { actual: '20', planned: '999' },
         { actual: '10', planned: '999' },
-        { actual: '0', planned: '999' },
+        { actual: '0', planned: '' },
       ],
     })
     return mkPlan({
@@ -658,21 +659,21 @@ describe('savings + net + balance split', () => {
     })
   }
 
-  it('planTotals: savingsActual/savingsPlanned convert EUR->USD per month; archived rows are excluded from savingsPlanned; effectiveSavings follows past=actual / current+future=max, archived always actual', () => {
+  it('planTotals: savingsActual/savingsPlanned convert EUR->USD per month; archived (deleted) rows count in savingsPlanned like the monthly Total; effectiveSavings follows past=actual / current+future=max, archived always actual', () => {
     const plan = buildPlan()
     const ex = makePlanExchange(plan, [usd, eur])
     const totals = planTotals(plan, ex, now)
 
     // month 0 (past): savingsA 100/2=50, archived 20/2=10 -> savingsActual 60
     expect(totals[0].savingsActual).toBe('60')
-    // savingsPlanned excludes the archived row's 999 plan: 150/2 = 75
-    expect(totals[0].savingsPlanned).toBe('75')
+    // savingsPlanned includes the archived row's plan: (150 + 999)/2 = 574.5
+    expect(totals[0].savingsPlanned).toBe('574.5')
     // effectiveSavings past = actual for both rows: 50 + 10 = 60
     expect(totals[0].effectiveSavings).toBe('60')
 
     // month 1 (current): savingsA 300/2=150, archived 10/2=5 -> savingsActual 155
     expect(totals[1].savingsActual).toBe('155')
-    expect(totals[1].savingsPlanned).toBe('200') // 400/2
+    expect(totals[1].savingsPlanned).toBe('699.5') // (400 + 999)/2
     // effectiveSavings: max(150,200)=200 + archived actual 5 = 205
     expect(totals[1].effectiveSavings).toBe('205')
 
@@ -694,8 +695,8 @@ describe('savings + net + balance split', () => {
     expect(totals[2].netActual).toBe('-200') // -200 - 0
 
     // netPlanned = income(0) - expensePlanned(200) - savingsPlanned
-    expect(totals[0].netPlanned).toBe('-275') // -200 - 75
-    expect(totals[1].netPlanned).toBe('-400') // -200 - 200
+    expect(totals[0].netPlanned).toBe('-774.5') // -200 - 574.5
+    expect(totals[1].netPlanned).toBe('-899.5') // -200 - 699.5
     expect(totals[2].netPlanned).toBe('-400') // -200 - 200
 
     const withoutSavings = mkPlan({ ...plan, structure: { ...plan.structure, savings: [] } })
