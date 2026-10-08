@@ -226,21 +226,62 @@ func TestGetBudgetPlanSavings_DeletedAccount(t *testing.T) {
 	}
 
 	planned, _ := h.savingsPlan(t, tok, budgetID1, "&from=2026-07-01&months=1")
-	s1, ok := planSavingsByID(planned.Item.Structure.Savings)[savingsUSDID]
+	if _, ok := planSavingsByID(planned.Item.Structure.Savings)[savingsUSDID]; ok {
+		t.Errorf("July savings = %+v, want the deleted S1 hidden: a plan without activity", planned.Item.Structure.Savings)
+	}
+
+	active, _ := h.savingsPlan(t, tok, budgetID1, "&from=2026-08-01&months=1")
+	s1, ok := planSavingsByID(active.Item.Structure.Savings)[savingsUSDID]
 	if !ok {
-		t.Fatalf("July savings = %+v, want the deleted S1 kept for its plan", planned.Item.Structure.Savings)
+		t.Fatalf("August savings = %+v, want the deleted S1 kept for its activity", active.Item.Structure.Savings)
 	}
 	if s1.IsArchived != 1 {
 		t.Errorf("S1 isArchived = %d, want 1", s1.IsArchived)
 	}
-	assertPlanCells(t, "S1", s1.Cells, []planSavingsCellView{{"0", "70"}})
-
-	active, _ := h.savingsPlan(t, tok, budgetID1, "&from=2026-08-01&months=1")
-	s1, ok = planSavingsByID(active.Item.Structure.Savings)[savingsUSDID]
-	if !ok {
-		t.Fatalf("August savings = %+v, want the deleted S1 kept for its activity", active.Item.Structure.Savings)
-	}
 	assertPlanCells(t, "S1", s1.Cells, []planSavingsCellView{{"300", ""}})
+}
+
+// A deleted account's plan shows only in a month it had activity (August): the
+// July and September plans neither keep the row nor appear in the cells.
+func TestGetBudgetPlanSavings_DeletedAccountPlanCountsOnlyWithActivity(t *testing.T) {
+	h, tok, _ := newSavingsBudget(t)
+	h.setLimit(t, tok, savingsUSDID, "2026-07-01", "70")
+	h.setLimit(t, tok, savingsUSDID, "2026-09-01", "90")
+	if _, err := h.db.Exec(`UPDATE accounts SET is_deleted = 1 WHERE id = ?`, savingsUSDID); err != nil {
+		t.Fatal(err)
+	}
+
+	later, _ := h.savingsPlan(t, tok, budgetID1, "&from=2026-09-01&months=3")
+	if _, ok := planSavingsByID(later.Item.Structure.Savings)[savingsUSDID]; ok {
+		t.Errorf("September+ savings = %+v, want the deleted S1 hidden despite its plan", later.Item.Structure.Savings)
+	}
+
+	view, _ := h.savingsPlan(t, tok, budgetID1, savingsPlanWindow)
+	s1, ok := planSavingsByID(view.Item.Structure.Savings)[savingsUSDID]
+	if !ok {
+		t.Fatalf("July-September savings = %+v, want the deleted S1 kept", view.Item.Structure.Savings)
+	}
+	assertPlanCells(t, "S1", s1.Cells, []planSavingsCellView{{"0", ""}, {"300", "400"}, {"0", ""}})
+}
+
+// Activity that nets to zero (a deposit drained in the same month) keeps a
+// deleted account's plan row no more than it keeps its monthly row.
+func TestGetBudgetPlanSavings_DeletedAccountNetZeroMonthHidden(t *testing.T) {
+	h, tok, _ := newSavingsBudget(t)
+	for _, tx := range []fixture.Transaction{
+		{AccountID: accountID, AccountRecipientID: savingsUSDID, Amount: "50", AmountRecipient: "50", SpentAt: time.Date(2026, 7, 3, 12, 0, 0, 0, time.UTC)},
+		{AccountID: savingsUSDID, AccountRecipientID: accountID, Amount: "50", AmountRecipient: "50", SpentAt: time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC)},
+	} {
+		tx.UserID, tx.Type = seedUserID, 2
+		h.f.Transaction(tx)
+	}
+	if _, err := h.db.Exec(`UPDATE accounts SET is_deleted = 1 WHERE id = ?`, savingsUSDID); err != nil {
+		t.Fatal(err)
+	}
+	view, _ := h.savingsPlan(t, tok, budgetID1, "&from=2026-07-01&months=1")
+	if _, ok := planSavingsByID(view.Item.Structure.Savings)[savingsUSDID]; ok {
+		t.Errorf("July savings = %+v, want the deleted S1 hidden: its July activity nets to zero", view.Item.Structure.Savings)
+	}
 }
 
 func TestGetBudgetPlanSavings_EmptyIsArray(t *testing.T) {
