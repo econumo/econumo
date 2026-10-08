@@ -1115,3 +1115,14 @@ describe('planWindow', () => {
     expect(planWindow('2026-10-01', 6, '2026-09-01', '2026-11-01')).toBe('2026-09-01')
   })
 })
+
+it('planGroupSums can sum savings balances instead of what was saved', () => {
+  const months = ['2026-06-01', '2026-07-01']
+  const ex: MonthExchange = (_from, amount) => amount
+  const a = mkEl({ id: 's1', type: BudgetElementType.SAVINGS, name: 'A', cells: [{ actual: '10', planned: '50', closingBalance: '1000' }, { actual: '0', planned: '50', closingBalance: '1050' }] })
+  const b = mkEl({ id: 's2', type: BudgetElementType.SAVINGS, name: 'B', cells: [{ actual: '5', planned: '', closingBalance: '200' }, { actual: '0', planned: '', closingBalance: '200' }] })
+  expect(planGroupSums([a, b], months, (m) => months.indexOf(m), ex, 'balance')).toEqual([
+    { actual: '1200', planned: '50' },
+    { actual: '1250', planned: '50' },
+  ])
+})

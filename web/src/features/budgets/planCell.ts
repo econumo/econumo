@@ -19,6 +19,8 @@ export interface PlanCellView {
   /** null: nothing planned (blank, never 0) */
   plan: string | null
   over: boolean
+  /** a savings account: `actual` is its month-end balance (projected ahead), not what was saved */
+  balance: boolean
 }
 
 /** A zero actual is only worth a mark next to a plan, as "— · 55"; on its own the
@@ -32,13 +34,19 @@ export function shownActual(actual: string | null, hasPlan: boolean): Pick<PlanC
 
 export function planCellView({ type, cell, month, selected }: PlanCellViewInput): PlanCellView {
   if (!cell) {
-    return { actual: null, dash: false, plan: null, over: false }
+    return { actual: null, dash: false, plan: null, over: false, balance: false }
   }
   const past = month <= selected
   const plan = cell.planned === '' ? null : cell.planned
+  // where a savings account stands says more than what went in that month; ahead of
+  // today it is the projection (unmet plans still to come), flat without a plan
+  if (type === BudgetElementType.SAVINGS && cell.closingBalance !== undefined) {
+    return { actual: cell.closingBalance, dash: false, plan, over: false, balance: true }
+  }
   return {
     ...shownActual(past ? cell.actual : null, plan !== null),
     plan,
     over: past && type !== BudgetElementType.SAVINGS && isOverspent(type, cell),
+    balance: false,
   }
 }

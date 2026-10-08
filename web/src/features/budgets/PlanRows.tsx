@@ -153,15 +153,20 @@ export function SumCell({
   month,
   ctx,
   fmt,
+  balance = false,
 }: {
   index: number
   sum: { actual: string; planned: string } | null
   month: string
   ctx: Pick<GridCtx, 'selected'>
   fmt: (v: string) => string
+  /** the Savings line: its figure is the total month-end balance, in every month */
+  balance?: boolean
 }) {
   const plan = sum && !isZero(sum.planned) ? sum.planned : null
-  const { actual, dash } = shownActual(sum && month <= ctx.selected ? sum.actual : null, plan !== null)
+  const { actual, dash } = balance
+    ? { actual: sum ? sum.actual : null, dash: false }
+    : shownActual(sum && month <= ctx.selected ? sum.actual : null, plan !== null)
   return (
     <span data-testid={`plan-sum-${index}`} className="flex min-w-0 items-baseline gap-1 text-muted-foreground tabular-nums">
       {actual !== null ? (
@@ -392,11 +397,12 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                         <Dash />
                       </span>
                     ) : null
-                  ) : actualLinkable ? (
+                  ) : actualLinkable && (!view.balance || m <= ctx.selected) ? (
                     <button
                       type="button"
                       data-testid="cell-actual"
-                      title={`${fmt(actual)}. ${t('budgets.page.budget.structure.element.action.show_transactions')}`}
+                      data-figure={view.balance ? 'balance' : undefined}
+                      title={`${fmt(actual)}. ${view.balance ? `${t('budgets.page.savings.balance_hint')} ` : ''}${t('budgets.page.budget.structure.element.action.show_transactions')}`}
                       className={`min-w-0 truncate text-xs tabular-nums underline-offset-2 hover:underline ${actualColor}`}
                       onClick={(e) => {
                         // the cell's own click is skipped (a touch tap there opens the
@@ -409,7 +415,12 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                       {fmt(actual)}
                     </button>
                   ) : (
-                    <span data-testid="cell-actual" className={`min-w-0 truncate text-xs tabular-nums ${actualColor}`} title={fmt(actual)}>
+                    <span
+                      data-testid="cell-actual"
+                      data-figure={view.balance ? 'balance' : undefined}
+                      className={`min-w-0 truncate text-xs tabular-nums ${actualColor}`}
+                      title={view.balance ? `${fmt(actual)}. ${t('budgets.page.savings.balance_hint')}` : fmt(actual)}
+                    >
                       {fmt(actual)}
                     </span>
                   )}

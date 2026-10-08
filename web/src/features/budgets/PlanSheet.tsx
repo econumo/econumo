@@ -831,7 +831,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       sums.set(NO_FOLDER_KEY[side], sumOf(band.loose))
       sums.set(side, sumOf([...band.folders.flatMap((f) => f.rows), ...band.loose, ...(band.uncategorized ? [band.uncategorized] : [])]))
     }
-    sums.set('savings', sumOf(savingsRows))
+    sums.set('savings', planGroupSums(savingsRows.map((r) => r.element), visibleMonths, monthIndex, ex, 'balance'))
     sums.set('archived', sumOf(shownRows.archived))
     return sums
   }, [shownRows, savingsRows, visibleMonths, monthIndex, ex])
@@ -946,9 +946,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const savingsDeleted = savingsRows.filter((r) => !isDraggableRow(r))
 
   const fmtBudget = (v: string) => moneyFormat(v, planCurrency, { showCurrency: false, useNativePrecision: false })
-  const sumCells = (sums: GroupSums | undefined): ReactNode[] =>
+  const sumCells = (sums: GroupSums | undefined, balance = false): ReactNode[] =>
     visibleMonths.map((m, i) => (
-      <SumCell key={m} index={i} sum={sums && monthIndex(m) >= 0 ? sums[i] : null} month={m} ctx={ctx} fmt={fmtBudget} />
+      <SumCell key={m} index={i} sum={sums && monthIndex(m) >= 0 ? sums[i] : null} month={m} ctx={ctx} fmt={fmtBudget} balance={balance} />
     ))
 
   const folderMenu = (f: PlanFolderSection, side: BudgetFolderSide) =>
@@ -1867,7 +1867,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
               testId="plan-section-line-savings"
               label={t('budgets.page.plan.section.savings')}
               headings={[]}
-              sums={sumCells(groupSums.get('savings'))}
+              sums={sumCells(groupSums.get('savings'), true)}
               actionsColumn={false}
               menu={hoverMenus ? menus.savingsSectionMenu : undefined}
             />

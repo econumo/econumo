@@ -440,7 +440,7 @@ it('a deleted savings account with only an opening balance splits the balance wi
   }
 })
 
-it('savings rows carry no balance line of their own: balances live on the Total savings line', async () => {
+it('a savings row shows its month-end balance instead of what was saved, projected in future months', async () => {
   const closings = ['1100', '1200', '1250', '1250']
   const plan = {
     ...savingsPlan,
@@ -451,12 +451,18 @@ it('savings rows carry no balance line of their own: balances live on the Total 
   }
   useHandlers(plan)
   renderPage()
-  const cell = await screen.findByTestId('plan-cell-acc-s1:0')
+  // the selected July is column 1: June (history) and July show the booked balance
+  const jun = await screen.findByTestId('plan-cell-acc-s1:0')
+  const junFigure = within(jun).getByTestId('cell-actual')
+  expect(junFigure).toHaveAttribute('data-figure', 'balance')
+  expect(junFigure).toHaveTextContent('1,200.00')
+  expect(junFigure.tagName).toBe('BUTTON')
+  // a later month still shows a balance (the projection), but it lists no transactions
+  const aug = within(screen.getByTestId('plan-cell-acc-s1:2')).getByTestId('cell-actual')
+  expect(aug).toHaveAttribute('data-figure', 'balance')
+  expect(aug.tagName).toBe('SPAN')
+  // no extra balance line under the row
   expect(document.querySelectorAll('[data-testid="cell-closing"]')).toHaveLength(0)
-  expect(cell).not.toHaveTextContent('1,200.00')
-  // the per-month values of that line are covered by the balance split test above
-  expect(within(screen.getByTestId('plan-totals')).getByText('Total savings')).toBeInTheDocument()
-  expect(screen.getByTestId('plan-savings-balance-0')).toBeInTheDocument()
 })
 
 /** the totals block's lines, top to bottom, by key */

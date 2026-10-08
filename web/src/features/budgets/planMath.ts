@@ -368,6 +368,8 @@ export function planGroupSums(
   months: string[],
   monthIndex: (m: string) => number,
   ex: MonthExchange,
+  /** 'balance': savings rows add their month-end balance in place of what was saved */
+  figure: 'actual' | 'balance' = 'actual',
 ): { actual: string; planned: string }[] {
   return months.map((m) => {
     const i = monthIndex(m)
@@ -377,7 +379,8 @@ export function planGroupSums(
       for (const el of rows) {
         const cell = el.cells[i]
         if (cell) {
-          actual = add(actual, ex(el.currencyId, cell.actual, i))
+          const figureValue = figure === 'balance' && cell.closingBalance !== undefined ? cell.closingBalance : cell.actual
+          actual = add(actual, ex(el.currencyId, figureValue, i))
           // a deleted savings account keeps its plan, as in the Savings total
           if (el.isArchived === 0 || el.type === BudgetElementType.SAVINGS) {
             planned = add(planned, ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i))

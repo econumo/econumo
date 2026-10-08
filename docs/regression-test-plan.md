@@ -984,7 +984,8 @@ and on tablet/phone only with a hardware keyboard.
       a planned month with no actual yet shows `— · 55` (a muted dash, not a
       link); a month with neither an actual nor a plan is blank, never
       `0.00`. Income: received · planned;
-      savings: saved · planned; expenses: spent · budget. No bold anywhere in
+      savings: balance · planned (see the Savings section item); expenses:
+      spent · budget. No bold anywhere in
       the grid. There is no `$` column and no per-cell balance line; a row in
       another currency shows its currency code next to its name. Names are
       readable at the full name column width.
@@ -1127,7 +1128,14 @@ and on tablet/phone only with a hardware keyboard.
       budget, a "Savings" section appears right below Income and above the
       expense folders,
       one row per savings account in their saved order; a budget without
-      savings accounts shows no such section.
+      savings accounts shows no such section. Each savings cell reads
+      `balance · plan` in EVERY month: the account's balance at the month's
+      end (not what was saved that month) — the booked balance for past
+      months, the projected one from the current month on (the balance so far
+      plus the plans still to come; without a plan it stays flat). A past or
+      current month's balance opens that month's transactions; a later one
+      is plain text, its tooltip saying it is a balance. The Savings line's Σ
+      sums the balances the same way.
 - [ ] 📱 Fold the Savings header: its rows hide, and stay hidden after a
       reload; unfold brings them back.
 - [ ] Plan grid keyboard: ArrowDown from the last income row lands on the
