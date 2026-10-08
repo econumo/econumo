@@ -390,7 +390,9 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
               ) : (
                 // the plan never gives way: when a column runs out of room only the
                 // actual is cut, its full figure kept in the tooltip
-                <span className="flex min-w-0 items-baseline gap-1">
+                // a savings balance keeps to the cell's left edge, so balances line up
+                // down the column whatever the plan beside them
+                <span data-testid="cell-figures" className={`flex min-w-0 items-baseline gap-1${view.balance ? ' flex-1 justify-between' : ''}`}>
                   {actual === null ? (
                     view.dash ? (
                       <span data-testid="cell-no-actual" className="text-xs">
@@ -424,10 +426,19 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                       {fmt(actual)}
                     </span>
                   )}
-                  {(actual !== null || view.dash) && view.plan !== null ? <FigureDot /> : null}
-                  <span data-testid="cell-planned" className="shrink-0 text-[15px] whitespace-nowrap tabular-nums">
-                    {view.plan !== null ? fmt(view.plan) : ''}
-                  </span>
+                  {view.balance ? (
+                    // the cell's two ends already keep balance and plan apart: no dot
+                    <span data-testid="cell-planned" className="shrink-0 text-[15px] whitespace-nowrap tabular-nums">
+                      {view.plan !== null ? fmt(view.plan) : <Dash />}
+                    </span>
+                  ) : (
+                    <>
+                      {(actual !== null || view.dash) && view.plan !== null ? <FigureDot /> : null}
+                      <span data-testid="cell-planned" className="shrink-0 text-[15px] whitespace-nowrap tabular-nums">
+                        {view.plan !== null ? fmt(view.plan) : ''}
+                      </span>
+                    </>
+                  )}
                 </span>
               )}
               {!editing && (commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (

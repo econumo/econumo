@@ -1128,8 +1128,10 @@ and on tablet/phone only with a hardware keyboard.
       budget, a "Savings" section appears right below Income and above the
       expense folders,
       one row per savings account in their saved order; a budget without
-      savings accounts shows no such section. Each savings cell reads
-      `balance · plan` in EVERY month: the account's balance at the month's
+      savings accounts shows no such section. Each savings cell shows the
+      balance at its LEFT edge and the plan at its right (no dot between; a
+      muted "—" where nothing is planned), in EVERY month, so balances line
+      up down the column. The balance is the account's balance at the month's
       end (not what was saved that month) — the booked balance for past
       months, the projected one from the current month on (the balance so far
       plus the plans still to come; without a plan it stays flat). A past or

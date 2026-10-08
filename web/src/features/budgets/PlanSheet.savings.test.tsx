@@ -465,6 +465,31 @@ it('a savings row shows its month-end balance instead of what was saved, project
   expect(document.querySelectorAll('[data-testid="cell-closing"]')).toHaveLength(0)
 })
 
+it('a savings cell keeps its balance on the left and the plan on the right, a dash where nothing is planned', async () => {
+  const closings = ['1100', '1200', '1250', '1250']
+  const plan = {
+    ...savingsPlan,
+    structure: {
+      ...savingsPlan.structure,
+      savings: [
+        {
+          ...savingsS1,
+          cells: savingsS1.cells.map((c, i) => ({ ...c, planned: i === 3 ? '' : c.planned, closingBalance: closings[i] })),
+        },
+      ],
+    },
+  }
+  useHandlers(plan)
+  renderPage()
+  // August (column 2) has no plan: the balance still leads, a muted dash stands for the plan
+  const aug = await screen.findByTestId('plan-cell-acc-s1:2')
+  expect(within(aug).getByTestId('cell-actual')).toHaveTextContent('1,250.00')
+  expect(within(aug).getByTestId('cell-planned')).toHaveTextContent('—')
+  expect(within(aug).getByTestId('cell-figures')).toHaveClass('justify-between')
+  // a planned month lays out the same way
+  expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByTestId('cell-figures')).toHaveClass('justify-between')
+})
+
 /** the totals block's lines, top to bottom, by key */
 function totalLines(): string[] {
   return within(screen.getByTestId('plan-totals'))
