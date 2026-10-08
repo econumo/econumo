@@ -731,14 +731,16 @@ and on tablet/phone only with a hardware keyboard.
       phone: right above the Total card), and still shows when neither of those
       has anything to show.
 - [ ] "Budget" / "Plan" (desktop and tablet) are plain words at the start
-      of the month row, the current one underlined, and the row is the same
-      on /budget and /plan: `Budget · Plan │ ‹ › month strip`. They swap
-      between the two; the page header carries no view switch.
+      of the month row, the current one underlined: `Budget · Plan │ ‹ › month
+      strip` on /budget, and on /plan at the start of the Plan grid's own
+      month row (above the names). They swap between the two; the page header
+      carries no view switch.
 - [ ] 📱 The main menu's "Budget & Plan" link opens the view last opened on
       this device (/budget or /plan), also after a reload, with the month
       last shown there. The selected month is shared by both views: pick a
-      month in the strip, switch Budget ↔ Plan (and back), and the same
-      month is still selected.
+      month (the strip on /budget, a month name in the Plan grid's month row
+      on /plan), switch Budget ↔ Plan (and back), and the same month is still
+      selected.
 - [ ] Budget view (desktop and tablet) uses the phone's order: Income
       (Planned · Received · To receive), Savings (Planned · Saved · Balance, only with
       savings accounts), Expenses (Budget · Spent · Available: folders, No
@@ -873,11 +875,11 @@ and on tablet/phone only with a hardware keyboard.
       Months past the end month are not offered (the active month stays
       visible even if the stored selection is outside); scrolling never
       extends past the end month.
-- [ ] Period strip desktop arrows (‹ ›, left of the strip, hidden on mobile
-      where the strip scrolls by touch), on /budget and on /plan alike (the
-      Plan grid has no arrows of its own): they PAN the strip only — the
-      selected month and the table or grid below never change; panning to
-      either edge keeps extending the window (past months included).
+- [ ] Period strip desktop arrows on /budget (‹ ›, left of the strip, hidden
+      on mobile where the strip scrolls by touch): they PAN the strip only —
+      the selected month and the table below never change; panning to either
+      edge keeps extending the window (past months included). /plan on
+      desktop and tablet has no strip (see "Plan grid header and window").
 - [ ] 📱 The budget header shows no currency chips on /budget or /plan, and
       no "Spending progress" widget appears anywhere on the page.
 - [ ] 📱 The budget header's Configure button (⚙, "CONFIGURE" from sm up)
@@ -939,16 +941,15 @@ and on tablet/phone only with a hardware keyboard.
       membership; delete envelope returns categories to top level.
 - [ ] Tag on a transaction: spending counts toward the **tag** element, not the
       category (tagged-spend accounting rule).
-- [ ] 📱 **Plan grid header and window** (desktop and tablet): the header
-      is the Budget view's, `Budget · Plan │ ‹ › month strip`. Clicking a
-      month in the strip makes it the tinted column (tinted top to bottom,
-      header to Balance), with one month before it as history and future
-      months after it; the tint follows the selected month. Switching
-      Budget ↔ Plan keeps the month. The ‹ › arrows pan the strip only: the
-      selected month and the grid never change. There are no month labels
-      or arrows of the grid's own and no horizontal scroll; a sticky
-      month-heading row sits under the strip and the month names line up
-      over their columns, also while the page scrolls.
+- [ ] 📱 **Plan grid header and window** (desktop and tablet): there is
+      ONE row of months — the grid's sticky month row, no strip above it. It
+      starts with `Budget · Plan ‹ ›` over the names, then the month names
+      over their columns, also while the page scrolls. Clicking a month name
+      makes it the tinted column (tinted top to bottom, header to Balance),
+      with one month before it as history and future months after it.
+      ‹ › move the window by one month (the selected month moves with it),
+      disabled at the budget's first and last month. Switching Budget ↔ Plan
+      keeps the month. No horizontal scroll.
 - [ ] 📱 Plan window at the edges: with the budget's start month selected
       the grid has no history column and starts at the start month; a budget
       with an end month stops at its end month (no columns after it); when
@@ -1018,9 +1019,9 @@ and on tablet/phone only with a hardware keyboard.
       opens the element's edit dialog.
 - [ ] Plan edge paging, desktop: → on the last column moves the selected
       month by one; ← on the first month column goes to the name cell, and ←
-      on the name cell moves it back by one. The window and the strip move
-      together, so the next (or previous) month appears (at a clamp at the
-      start or end of the budget the strip's selected month may jump by two so
+      on the name cell moves it back by one. The window and the month row
+      move together, so the next (or previous) month appears (at a clamp at
+      the start or end of the budget the selected month may jump by two so
       the window still moves by exactly one month); at the budget's first and
       last month it stops.
 - [ ] Plan keys on a focused control, desktop: with a cell selected, Tab to a
@@ -1114,8 +1115,9 @@ and on tablet/phone only with a hardware keyboard.
       first savings row, and from the last savings row on the first expense
       row (or folder); with Savings folded it skips straight to the expenses.
 - [ ] 📱 Plan a savings top-up (e.g. 6,000) in every month of the next year,
-      then pick a month several months past the current one in the strip (or
-      walk there with → past the grid's last column on a desktop): the Total
+      then pick a month several months past the current one (the strip on
+      /budget, the month row or ‹ › on /plan, or → past the grid's last
+      column on a desktop): the Total
       savings and Balance lines read the same as they did when that month
       was in an earlier window (they still count the current month's unmet
       plan), and keep growing by the top-up through the last planned month.

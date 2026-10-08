@@ -6,6 +6,7 @@ import type { CollisionDetection, DragEndEvent, DragOverEvent, DragStartEvent } 
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { besidePointer, centerRowOnPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { CoinLoader } from '@/components/CoinLoader'
@@ -94,6 +95,9 @@ export interface PlanSheetProps {
   editMode: boolean
   /** opens Budget settings (the savings section's menu chooses accounts there) */
   onOpenSettings: () => void
+  /** the Budget / Plan words: the grid's month row is this view's month selector,
+   *  so they sit at its start, where the Budget view's strip has them */
+  viewSwitch?: ReactNode
 }
 
 const rowKey = (r: PlanRow): string => `${r.element.id}:${r.element.type}`
@@ -378,7 +382,7 @@ function buildFlatRows(rows: PlanRows, savingsRows: PlanRow[], folded: (key: str
   return flatRows
 }
 
-export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings }: PlanSheetProps) {
+export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings, viewSwitch }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
@@ -461,6 +465,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const startedAt = budget.meta.startedAt
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const stepPeriod = useBudgetPeriodStore((s) => s.stepPeriod)
+  const setPeriod = useBudgetPeriodStore((s) => s.setPeriod)
   const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
   const folded = useCallback((key: string): boolean => !!planFolds[key], [planFolds])
@@ -1689,8 +1694,34 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       >
         <LineLayoutContext.Provider value={layout}>
         <LineControlsContext.Provider value={lineControls ?? 'hover'}>
+        {/* The month row is the Plan view's month selector: a click makes that month
+            the selected one, and ‹ › move the window a month at a time. */}
         <div role="row" data-testid="plan-month-header" className={`sticky top-0 z-20 ${PLAN_LINE} border-b bg-background`}>
-          <span className={PLAN_NAME_COL} />
+          <span className={`${PLAN_NAME_COL} gap-1!`}>
+            {viewSwitch}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label={t('budgets.page.budget.nav.prev')}
+              disabled={atStart}
+              onClick={() => shiftWindow(-1)}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label={t('budgets.page.budget.nav.next')}
+              disabled={atEnd}
+              onClick={() => shiftWindow(1)}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </span>
           {visibleMonths.map((m, i) => {
             const selected = i === selectedCol
             return (
@@ -1700,9 +1731,21 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
                 data-month={m}
                 data-col={i}
                 data-selected-col={selected ? 'true' : undefined}
-                className={`${monthColClass(i, selectedCol)} py-1.5 text-[10.5px] uppercase tracking-wider ${selected ? 'text-foreground' : 'text-muted-foreground'}`}
+                aria-selected={selected}
+                className={`${monthColClass(i, selectedCol)} p-0!`}
               >
-                {monthLabel(m)}
+                <button
+                  type="button"
+                  aria-pressed={selected}
+                  className={`h-full w-full px-2 py-2 text-right text-xs uppercase tracking-wide ${selected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => {
+                    if (!selected) {
+                      setPeriod(m)
+                    }
+                  }}
+                >
+                  {monthLabel(m)}
+                </button>
               </div>
             )
           })}

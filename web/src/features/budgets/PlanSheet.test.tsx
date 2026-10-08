@@ -265,19 +265,46 @@ it('overspend turns the actual red, also with no plan set; never on income, and 
   expect(within(screen.getByTestId('plan-cell-cat-food:2')).queryByTestId('cell-actual')).not.toBeInTheDocument()
 })
 
-it('shares the month strip with the Budget view and centres the window on the selected month', async () => {
+it("the month row is the Plan view's only month selector, centred on the selected month", async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   renderPage()
   await screen.findByTestId('plan-sheet')
-  // the strip and the Budget/Plan words are the Budget view's
-  expect(screen.getByRole('tablist', { name: 'period' })).toBeInTheDocument()
-  expect(screen.getByRole('tab', { name: /plan/i, selected: true })).toBeInTheDocument()
+  // no second row of months above the grid: the Budget view's strip is not shown
+  expect(screen.queryByRole('tablist', { name: 'period' })).not.toBeInTheDocument()
   const header = screen.getByTestId('plan-month-header')
+  // the Budget/Plan words sit at the start of the month row
+  expect(within(header).getByRole('tab', { name: /plan/i, selected: true })).toBeInTheDocument()
   const cols = within(header).getAllByRole('columnheader')
   // jsdom width 0 -> 3 visible: Jun (history), Jul (selected), Aug
   expect(cols.map((c) => c.getAttribute('data-month'))).toEqual(['2026-06-01', '2026-07-01', '2026-08-01'])
   expect(cols[1]).toHaveAttribute('data-selected-col', 'true')
+})
+
+it('clicking a month in the month row selects it; the arrows move the window one month', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const header = screen.getByTestId('plan-month-header')
+  const months = () => within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader').map((c) => c.getAttribute('data-month'))
+  // Jun selected: May, Jun, Jul
+  expect(months()).toEqual(['2026-05-01', '2026-06-01', '2026-07-01'])
+  await user.click(within(header).getAllByRole('columnheader')[2].querySelector('button')!)
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
+  await waitFor(() => expect(months()).toEqual(['2026-06-01', '2026-07-01', '2026-08-01']))
+  await user.click(within(screen.getByTestId('plan-month-header')).getByRole('button', { name: /later months/i }))
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-08-01')
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
+  await user.click(within(screen.getByTestId('plan-month-header')).getByRole('button', { name: /earlier months/i }))
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
+})
+
+it('the Budget view keeps its month strip', async () => {
+  usePlanHandlers()
+  renderPage('/budget')
+  expect(await screen.findByRole('tablist', { name: 'period' })).toBeInTheDocument()
 })
 
 it('moves the selected month when the cursor walks past the last column', async () => {

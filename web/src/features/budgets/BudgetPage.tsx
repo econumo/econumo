@@ -650,8 +650,14 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       ) : mode === 'plan' && !isPhone ? (
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
-          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} leading={viewSwitch} />
-          <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} onOpenSettings={() => setUpdateBudgetOpen(true)} />
+          <PlanSheet
+            budget={budget}
+            currencies={currencies}
+            userId={user?.id}
+            editMode={editMode}
+            onOpenSettings={() => setUpdateBudgetOpen(true)}
+            viewSwitch={viewSwitch}
+          />
         </>
       ) : (
         <>
