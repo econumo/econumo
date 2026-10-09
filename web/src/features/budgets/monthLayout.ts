@@ -35,7 +35,7 @@ export const PLAN_SELECTED_TINT = 'bg-accent/40'
 // layers over the selected month's tint and a row's hover rather than replacing them
 // a whisper of the ring's colour: enough to tell it from the current month's grey
 // tint, faint enough that the selected cell's ring stays the strong mark
-export const PLAN_CROSSHAIR = 'relative after:pointer-events-none after:absolute after:inset-0 after:bg-ring/[0.035]'
+export const PLAN_CROSSHAIR = 'relative after:pointer-events-none after:absolute after:inset-0 after:bg-ring/[0.055]'
 // a section (Savings, Expenses, the totals…) opens with a heavier rule than the rows'
 // hairlines, so the blocks read apart without a gap breaking the selected month's tint
 export const PLAN_SECTION_RULE = 'border-t-2 border-foreground/25'
