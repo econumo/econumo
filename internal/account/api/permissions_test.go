@@ -109,3 +109,88 @@ func TestGetAccountList_ExcludesUnsharedAccount(t *testing.T) {
 		}
 	}
 }
+
+// A "Full control" (admin) grantee may edit the account's settings and balance,
+// exactly like the owner; the correction is authored by the grantee.
+func TestUpdateAccount_AcceptedAdminGrantee_Success(t *testing.T) {
+	h := newHarness(t)
+	h.seedAccount(t, victimAccountID, otherUserID, "Theirs")
+	h.seedGrant(t, victimAccountID, seedUserID, 0)
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodPost, "/api/v1/account/update-account", tok, map[string]any{
+		"id": victimAccountID, "name": "Renamed", "balance": "42.5", "icon": "wallet",
+		"updatedAt": "2024-01-01 12:00:00",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
+	}
+	var data struct {
+		Item struct {
+			Name    string `json:"name"`
+			Balance string `json:"balance"`
+		} `json:"item"`
+		Transaction *struct {
+			Author struct {
+				ID string `json:"id"`
+			} `json:"author"`
+		} `json:"transaction"`
+	}
+	mustDecode(t, env.Data, &data)
+	if data.Item.Name != "Renamed" {
+		t.Fatalf("name=%q want Renamed; body: %s", data.Item.Name, env.raw)
+	}
+	if data.Item.Balance != "42.5" {
+		t.Fatalf("balance=%q want 42.5; body: %s", data.Item.Balance, env.raw)
+	}
+	if data.Transaction == nil || data.Transaction.Author.ID != seedUserID {
+		t.Fatalf("correction author want %s; body: %s", seedUserID, env.raw)
+	}
+}
+
+func TestUpdateAccount_NonAdminGrantee_403(t *testing.T) {
+	for name, role := range map[string]int{"user": 1, "guest": 2} {
+		t.Run(name, func(t *testing.T) {
+			h := newHarness(t)
+			h.seedAccount(t, victimAccountID, otherUserID, "Theirs")
+			h.seedGrant(t, victimAccountID, seedUserID, role)
+			tok := h.token(t)
+			status, env := h.do(t, http.MethodPost, "/api/v1/account/update-account", tok, map[string]any{
+				"id": victimAccountID, "name": "Renamed", "balance": "0", "icon": "wallet",
+				"updatedAt": "2024-01-01 12:00:00",
+			})
+			assertDenied(t, status, env)
+		})
+	}
+}
+
+func TestUpdateAccount_PendingAdminGrantee_403(t *testing.T) {
+	h := newHarness(t)
+	h.seedAccount(t, victimAccountID, otherUserID, "Theirs")
+	h.f.AccountAccessPending(victimAccountID, seedUserID, 0)
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodPost, "/api/v1/account/update-account", tok, map[string]any{
+		"id": victimAccountID, "name": "Renamed", "balance": "0", "icon": "wallet",
+		"updatedAt": "2024-01-01 12:00:00",
+	})
+	assertDenied(t, status, env)
+}
+
+// The account stays the owner's: an admin grantee cannot switch it to a custom
+// currency that only the grantee holds.
+func TestUpdateAccount_AdminGrantee_GranteeCustomCurrency_400(t *testing.T) {
+	h := newHarness(t)
+	h.seedAccount(t, victimAccountID, otherUserID, "Theirs")
+	h.seedGrant(t, victimAccountID, seedUserID, 0)
+	customID := h.f.Currency(fixture.Currency{Code: "XGR", Symbol: "G", UserID: seedUserID, Rate: "2.00000000"})
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodPost, "/api/v1/account/update-account", tok, map[string]any{
+		"id": victimAccountID, "name": "Theirs", "balance": "0", "icon": "wallet",
+		"currencyId": customID, "updatedAt": "2024-01-01 12:00:00",
+	})
+	if status != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400; body: %s", status, env.raw)
+	}
+	if _, ok := env.errorsMap()["currencyId"]; !ok {
+		t.Fatalf("want currencyId field error; body: %s", env.raw)
+	}
+}
