@@ -36,10 +36,14 @@ interface BudgetPeriodState {
   setLastMode: (mode: BudgetMode) => void
   selectedDate: string
   setPeriod: (date: string) => void
-  /** element rows default folded; presence = unfolded (Vue semantics) */
+  /** element rows default folded; presence = unfolded (Vue semantics). The Budget
+   *  view (and the phone) and the Plan grid each keep their own fold state, so
+   *  folding a line in one view leaves the other as it was. */
   unfoldedElements: Record<Id, true>
   toggleElement: (id: Id) => void
-  /** fold state belongs to one budget; reset when the budget id changes */
+  planUnfoldedElements: Record<Id, true>
+  togglePlanElement: (id: Id) => void
+  /** element fold state belongs to one budget; reset when the budget id changes */
   foldBudgetId: Id | null
   resetFoldsFor: (budgetId: Id) => void
   /** the Plan grid's cursor walked off an edge: the window (and the strip) move */
@@ -50,9 +54,22 @@ interface BudgetPeriodState {
   /** Plan grid section/folder lines (by fold key) whose sums the user turned on with Σ */
   planSumsShown: Record<string, true>
   togglePlanSums: (key: string) => void
-  /** folded plan sections: 'income', folder ids, 'archived' */
+  /** folded sections and folders, by fold key ('income', folder ids, 'archived'):
+   *  the Budget view's and the Plan grid's */
+  budgetFolds: Record<string, true>
+  toggleBudgetFold: (key: string) => void
   planFolds: Record<string, true>
   togglePlanFold: (key: string) => void
+}
+
+function toggleKey<K extends string>(map: Record<K, true>, key: K): Record<K, true> {
+  const next = { ...map }
+  if (next[key]) {
+    delete next[key]
+  } else {
+    next[key] = true
+  }
+  return next
 }
 
 export const useBudgetPeriodStore = create<BudgetPeriodState>()(
@@ -66,20 +83,13 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
         set({ selectedDate: normalizePeriod(date) })
       },
       unfoldedElements: {},
-      toggleElement: (id) =>
-        set((state) => {
-          const next = { ...state.unfoldedElements }
-          if (next[id]) {
-            delete next[id]
-          } else {
-            next[id] = true
-          }
-          return { unfoldedElements: next }
-        }),
+      toggleElement: (id) => set((state) => ({ unfoldedElements: toggleKey(state.unfoldedElements, id) })),
+      planUnfoldedElements: {},
+      togglePlanElement: (id) => set((state) => ({ planUnfoldedElements: toggleKey(state.planUnfoldedElements, id) })),
       foldBudgetId: null,
       resetFoldsFor: (budgetId) => {
         if (get().foldBudgetId !== budgetId) {
-          set({ foldBudgetId: budgetId, unfoldedElements: {} })
+          set({ foldBudgetId: budgetId, unfoldedElements: {}, planUnfoldedElements: {} })
         }
       },
       stepPeriod: (delta) => {
@@ -91,28 +101,24 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       planSumsShown: {},
       togglePlanSums: (key) => {
         trackEvent(METRICS.BUDGET_PLAN_TOGGLE_SUMS)
-        set((state) => {
-          const next = { ...state.planSumsShown }
-          if (next[key]) {
-            delete next[key]
-          } else {
-            next[key] = true
-          }
-          return { planSumsShown: next }
-        })
+        set((state) => ({ planSumsShown: toggleKey(state.planSumsShown, key) }))
       },
+      budgetFolds: {},
+      toggleBudgetFold: (key) => set((state) => ({ budgetFolds: toggleKey(state.budgetFolds, key) })),
       planFolds: {},
-      togglePlanFold: (key) =>
-        set((state) => {
-          const next = { ...state.planFolds }
-          if (next[key]) {
-            delete next[key]
-          } else {
-            next[key] = true
-          }
-          return { planFolds: next }
-        }),
+      togglePlanFold: (key) => set((state) => ({ planFolds: toggleKey(state.planFolds, key) })),
     }),
-    { name: 'budgetPeriod' },
+    {
+      name: 'budgetPeriod',
+      version: 1,
+      // version 0 shared one fold state between both views: each view starts from it
+      migrate: (persisted, version) => {
+        const state = (persisted ?? {}) as Partial<BudgetPeriodState>
+        if (version < 1) {
+          return { ...state, planUnfoldedElements: { ...state.unfoldedElements }, budgetFolds: { ...state.planFolds } }
+        }
+        return state
+      },
+    },
   ),
 )

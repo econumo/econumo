@@ -53,7 +53,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   mockViewport()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {} })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
 })
 
 it('renders the full budget page: strip, chips, table, totals', async () => {
@@ -600,14 +600,14 @@ it('a Budget view section header folds its section, shows its sums, and shares t
 
   await user.click(within(header).getByRole('button', { name: 'Income' }))
   expect(screen.queryByTestId('month-income-row-cat-freelance')).toBeNull()
-  expect(useBudgetPeriodStore.getState().planFolds.income).toBe(true)
+  expect(useBudgetPeriodStore.getState().budgetFolds.income).toBe(true)
   // folded: the section's sums take the column headings' place
   expect(screen.getByTestId('month-income-header')).toHaveTextContent('2,500.00')
   expect(screen.getByTestId('month-income-header')).not.toHaveTextContent('Planned')
 
   await user.click(within(screen.getByTestId('column-headers')).getByRole('button', { name: 'Expenses' }))
   expect(screen.queryByTestId('budget-folder-Essentials')).toBeNull()
-  expect(useBudgetPeriodStore.getState().planFolds.expense).toBe(true)
+  expect(useBudgetPeriodStore.getState().budgetFolds.expense).toBe(true)
 })
 
 

@@ -238,8 +238,8 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
   const { t } = useTranslation()
   const level = useRowLevel()
   const el = row.element
-  const unfolded = useBudgetPeriodStore((s) => !!s.unfoldedElements[el.id])
-  const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
+  const unfolded = useBudgetPeriodStore((s) => !!s.planUnfoldedElements[el.id])
+  const togglePlanElement = useBudgetPeriodStore((s) => s.togglePlanElement)
   const currency = ctx.currencies.find((c) => c.id === el.currencyId)
   const displayName = elementDisplayName(el.id, el.name, t)
   const isUncategorized = el.id === UNCATEGORIZED_ID
@@ -294,7 +294,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
               className="flex shrink-0 items-center"
               aria-expanded={unfolded}
               title={t(unfolded ? 'common.button.collapse.label' : 'common.button.expand.label')}
-              onClick={() => toggleElement(el.id)}
+              onClick={() => togglePlanElement(el.id)}
             >
               <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
             </button>

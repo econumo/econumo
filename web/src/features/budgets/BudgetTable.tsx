@@ -543,9 +543,9 @@ export function BudgetTable({
   const actionsColumn = !!extras.renderActions
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
   const labels = budget.structure.labels ?? []
-  const folded = useBudgetPeriodStore((s) => !!s.planFolds.expense)
-  const planFolds = useBudgetPeriodStore((s) => s.planFolds)
-  const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
+  const folded = useBudgetPeriodStore((s) => !!s.budgetFolds.expense)
+  const budgetFolds = useBudgetPeriodStore((s) => s.budgetFolds)
+  const toggleBudgetFold = useBudgetPeriodStore((s) => s.toggleBudgetFold)
 
   const realFolders = buckets.withFolder
   // fold keys: a folder's own id (the Plan grid's), '__no_folder__', and 'archived'
@@ -620,7 +620,7 @@ export function BudgetTable({
             }
             // without real folders the folder-less rows need no line naming them
             const named = section.key !== '__no_folder__' || realFolders.length > 0 || !!renderFolderActions
-            const sectionFolded = named && !!planFolds[section.foldKey]
+            const sectionFolded = named && !!budgetFolds[section.foldKey]
             const rowExtras: ElementRowExtras = isReadOnlySection
               ? {
                   onSpentClick: extras.onSpentClick,
@@ -643,7 +643,7 @@ export function BudgetTable({
                   <FolderLine
                     name={section.name}
                     folded={sectionFolded}
-                    onToggle={() => togglePlanFold(section.foldKey)}
+                    onToggle={() => toggleBudgetFold(section.foldKey)}
                     sums={section.bucket.elements.length > 0 ? folderSums(section.bucket.stats, budgetCurrency, future) : null}
                     handle={!isReadOnlySection ? renderFolderHandle?.(section.bucket) : null}
                     actions={!isReadOnlySection ? renderFolderActions?.(section.bucket, section.folderIndex ?? -1, realFolders.length) : null}
