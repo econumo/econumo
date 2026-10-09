@@ -12,10 +12,11 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// UpdateAccount updates the account (ownership required) and reconciles its
-// balance. If the current computed balance differs from the requested one, it
-// writes a correction transaction of (actualBalance - requestedBalance) dated at
-// the request's updatedAt, and returns it; otherwise transaction is null.
+// UpdateAccount updates the account (owner or accepted admin grantee) and
+// reconciles its balance. If the current computed balance differs from the
+// requested one, it writes a correction transaction of (actualBalance -
+// requestedBalance) dated at the request's updatedAt, and returns it; otherwise
+// transaction is null.
 func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.UpdateAccountRequest) (*model.UpdateAccountResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -49,17 +50,19 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.Upd
 		correction *model.CorrectionResult
 	)
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if aerr := s.requireOwnerAdmin(ctx, userID, id); aerr != nil {
+			return aerr
+		}
 		acct, gerr := s.accounts.GetByID(ctx, id)
 		if gerr != nil {
 			return gerr
 		}
-		if !acct.UserID.Equal(userID) {
-			return errs.NewAccessDenied("Access denied")
-		}
 		// Only gate the currency when it actually changes: a form resending the
 		// account's current (possibly foreign/archived) currency must keep working.
+		// The account stays the owner's, so a grantee may not denominate it in a
+		// custom currency only the grantee holds.
 		if currencyID != nil && !currencyID.Equal(acct.CurrencyID) {
-			if cerr := s.currency.EnsureUsable(ctx, userID.String(), currencyID.String()); cerr != nil {
+			if cerr := s.currency.EnsureUsable(ctx, acct.UserID.String(), currencyID.String()); cerr != nil {
 				return cerr
 			}
 		}
@@ -151,7 +154,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.Upd
 		return nil, err
 	}
 	item.Position = idx
-	// Fill the correction's author (the account owner = the requesting user).
+	// Fill the correction's author: the requesting user, who may be a grantee.
 	if correction != nil {
 		owner, oerr := s.users.GetOwner(ctx, userID.String())
 		if oerr != nil {
