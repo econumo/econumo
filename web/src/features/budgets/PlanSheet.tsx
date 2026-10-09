@@ -1591,31 +1591,36 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         <LineControlsContext.Provider value={lineControls ?? (isCompact ? 'always' : 'hover')}>
         {/* The month row is the Plan view's month selector: a click makes that month
             the selected one, and ‹ › move the window a month at a time. */}
-        <div role="row" data-testid="plan-month-header" className={`sticky top-0 z-20 ${PLAN_LINE} border-b bg-background`}>
-          <span className={`${PLAN_NAME_COL} relative gap-1!`}>
-            {viewSwitch}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label={t('budgets.page.budget.nav.prev')}
-              disabled={atStart}
-              onClick={() => shiftWindow(-1)}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label={t('budgets.page.budget.nav.next')}
-              disabled={atEnd}
-              onClick={() => shiftWindow(1)}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
+        {/* the Budget view's month row in the same place and size (its 44px plus the
+            rule, the switch flush with the page edge, size-8 arrows), so switching
+            views moves nothing but the months */}
+        <div role="row" data-testid="plan-month-header" className={`sticky top-0 z-20 ${PLAN_LINE} min-h-[45px] border-b bg-background`}>
+          <span className={`${PLAN_NAME_COL} relative`}>
+            <span className="-ml-2 flex items-center gap-1">
+              {viewSwitch}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                aria-label={t('budgets.page.budget.nav.prev')}
+                disabled={atStart}
+                onClick={() => shiftWindow(-1)}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                aria-label={t('budgets.page.budget.nav.next')}
+                disabled={atEnd}
+                onClick={() => shiftWindow(1)}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </span>
             {/* the name column's edge: drag (or ← →) to resize, double-click to reset */}
             <div
               role="separator"
@@ -1678,7 +1683,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
                 <button
                   type="button"
                   aria-pressed={selected}
-                  className={`h-full w-full px-2 py-2 text-right text-xs uppercase tracking-wide ${selected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`h-full w-full px-2 py-2 text-right text-sm uppercase tracking-wide ${selected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                   onClick={() => {
                     if (!selected) {
                       setPeriod(m)

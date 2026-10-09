@@ -731,7 +731,9 @@ and on tablet/phone only with a hardware keyboard.
       phone: right above the Total card), and still shows when neither of those
       has anything to show.
 - [ ] "Budget" / "Plan" (desktop and tablet) are plain words at the start
-      of the month row, the current one underlined: `Budget · Plan │ ‹ › month
+      of the month row, the current one underlined and bold. Switching between
+      /budget and /plan moves neither the two words nor the ‹ › arrows by a
+      pixel (same row height and place in both views): `Budget · Plan │ ‹ › month
       strip` on /budget, and on /plan at the start of the Plan grid's own
       month row (above the names). They swap between the two; the page header
       carries no view switch.
