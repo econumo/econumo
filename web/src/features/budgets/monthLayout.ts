@@ -13,6 +13,32 @@ export const SECOND_COL = 'flex w-20 shrink-0 justify-end text-right tabular-num
 // every figure, dash and heading in the last column sits inset by a pill's own padding,
 // so plain values line up with the digits inside the Available / folder-sum pills
 export const THIRD_COL = 'flex w-20 shrink-0 justify-end pr-2 text-right tabular-nums sm:w-28 [&>[data-pill]]:-mr-2'
+/** The Plan grid reuses the lines with one figure column per month instead of the
+ *  Budget view's three fixed ones. */
+export type LineLayout =
+  | { kind: 'budget' }
+  /** crosshairCol: the selected cell's column, highlighted on every line (-1 = none) */
+  /** months / monthLabels: the visible months and their names, for per-month controls */
+  | { kind: 'plan'; cols: number; selectedCol: number; crosshairCol?: number; months?: string[]; monthLabels?: string[] }
+export const LineLayoutContext = createContext<LineLayout>({ kind: 'budget' })
+export const useLineLayout = () => useContext(LineLayoutContext)
+// The Plan grid's line: no gap and no vertical padding, so each month's cells stack
+// edge to edge and the selected month's tint reads as one unbroken column. Its
+// horizontal padding is LINE's, which planVisibleCount measures as PLAN_LINE_PADDING_PX.
+export const PLAN_LINE = 'group/line flex items-stretch pr-2.5 pl-2'
+// the grid sets --plan-name-col to the width the user dragged; 14rem = planMath's PLAN_NAME_COL_PX
+export const PLAN_NAME_COL = 'flex w-[var(--plan-name-col,14rem)] shrink-0 min-w-0 items-center gap-2'
+// each month column opens with the rows' own hairline, so the grid reads like a sheet
+export const PLAN_FIGURE_COL = 'flex min-w-0 flex-1 basis-0 items-center justify-end gap-1 border-l border-border/60 px-2 text-right whitespace-nowrap tabular-nums'
+export const PLAN_SELECTED_TINT = 'bg-accent/40'
+// the selected cell's row and column, as a spreadsheet marks them: an overlay, so it
+// layers over the selected month's tint and a row's hover rather than replacing them
+// a whisper of the ring's colour: enough to tell it from the current month's grey
+// tint, faint enough that the selected cell's ring stays the strong mark
+export const PLAN_CROSSHAIR = 'relative after:pointer-events-none after:absolute after:inset-0 after:bg-ring/[0.055]'
+// a section (Savings, Expenses, the totals…) opens with a heavier rule than the rows'
+// hairlines, so the blocks read apart without a gap breaking the selected month's tint
+export const PLAN_SECTION_RULE = 'border-t-2 border-foreground/25'
 /** folder lines sit one step in from their section heading */
 export const FOLDER_INDENT = 'pl-6'
 

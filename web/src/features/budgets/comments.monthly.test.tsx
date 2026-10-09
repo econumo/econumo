@@ -82,7 +82,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   mockViewport()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planHideEmpty: false })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
 })
 
 it('opens the thread from the marker as a popover beside the cell, and keeps the amount editor comment-free', async () => {

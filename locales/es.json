@@ -1361,6 +1361,16 @@
         }
       },
       "plan": {
+        "sums": {
+          "show_month": "Mostrar el total de {name} en {month}",
+          "hide_month": "Ocultar el total de {name} en {month}",
+          "show": "Mostrar totales de {name}",
+          "hide": "Ocultar totales de {name}"
+        },
+        "name_column": {
+          "resize": "Cambiar el ancho de la columna de nombres",
+          "resize_hint": "Arrastra para cambiar el ancho; doble clic para restablecer"
+        },
         "toggle": {
           "budget": "Presupuesto",
           "plan": "Plan"
@@ -1371,12 +1381,9 @@
           "savings": "Ahorros",
           "archived": "Archivado"
         },
-        "nav": {
-          "prev": "Meses anteriores",
-          "next": "Meses siguientes"
-        },
         "cell": {
-          "aria": "{name}, {month}: real {actual}, previsto {planned}"
+          "aria": "{name}, {month}: real {actual}, previsto {planned}",
+          "edit_aria": "Plan para {name}, {month}"
         },
         "fill": {
           "handle_aria": "Copiar el presupuesto a los meses siguientes"
@@ -1388,17 +1395,13 @@
         "totals": {
           "income": "Ingresos",
           "expenses": "Gastos",
-          "transfers": "Transferencias",
+          "transfers": "Transferencias fuera del presupuesto",
           "transfers_tooltip": "Entradas {in} · Salidas {out}",
           "show_transactions": "Mostrar las transacciones",
           "net": "Neto",
           "balance": "Saldo",
           "savings": "Ahorros",
           "savings_balance": "Ahorro total"
-        },
-        "density": {
-          "hidden": "{count} ocultas",
-          "show": "Mostrar"
         },
         "menu": {
           "move_to_folder": "Mover a carpeta…",

@@ -1361,6 +1361,16 @@
         }
       },
       "plan": {
+        "sums": {
+          "show_month": "Mostrar o total de {name} em {month}",
+          "hide_month": "Ocultar o total de {name} em {month}",
+          "show": "Mostrar totais de {name}",
+          "hide": "Ocultar totais de {name}"
+        },
+        "name_column": {
+          "resize": "Redimensionar a coluna de nomes",
+          "resize_hint": "Arraste para redimensionar; clique duas vezes para repor"
+        },
         "toggle": {
           "budget": "Orçamento",
           "plan": "Plano"
@@ -1371,12 +1381,9 @@
           "savings": "Poupança",
           "archived": "Em arquivo"
         },
-        "nav": {
-          "prev": "Meses anteriores",
-          "next": "Meses seguintes"
-        },
         "cell": {
-          "aria": "{name}, {month}: real {actual}, previsto {planned}"
+          "aria": "{name}, {month}: real {actual}, previsto {planned}",
+          "edit_aria": "Plano para {name}, {month}"
         },
         "fill": {
           "handle_aria": "Copiar o orçamento para os meses seguintes"
@@ -1388,17 +1395,13 @@
         "totals": {
           "income": "Receitas",
           "expenses": "Despesas",
-          "transfers": "Transferências",
+          "transfers": "Transferências fora do orçamento",
           "transfers_tooltip": "Entradas {in} · Saídas {out}",
           "show_transactions": "Mostrar transações",
           "net": "Líquido",
           "balance": "Saldo",
           "savings": "Poupança",
           "savings_balance": "Poupança total"
-        },
-        "density": {
-          "hidden": "{count} ocultas",
-          "show": "Mostrar"
         },
         "menu": {
           "move_to_folder": "Mover para pasta…",

@@ -1361,6 +1361,16 @@
         }
       },
       "plan": {
+        "sums": {
+          "show_month": "Pokaż sumę {name} za {month}",
+          "hide_month": "Ukryj sumę {name} za {month}",
+          "show": "Pokaż sumy dla {name}",
+          "hide": "Ukryj sumy dla {name}"
+        },
+        "name_column": {
+          "resize": "Zmień szerokość kolumny nazw",
+          "resize_hint": "Przeciągnij, aby zmienić szerokość; kliknij dwukrotnie, aby przywrócić"
+        },
         "toggle": {
           "budget": "Budżet",
           "plan": "Plan"
@@ -1371,12 +1381,9 @@
           "savings": "Oszczędności",
           "archived": "W archiwum"
         },
-        "nav": {
-          "prev": "Wcześniejsze miesiące",
-          "next": "Późniejsze miesiące"
-        },
         "cell": {
-          "aria": "{name}, {month}: rzeczywiste {actual}, planowane {planned}"
+          "aria": "{name}, {month}: rzeczywiste {actual}, planowane {planned}",
+          "edit_aria": "Plan dla {name}, {month}"
         },
         "fill": {
           "handle_aria": "Skopiuj budżet na kolejne miesiące"
@@ -1388,17 +1395,13 @@
         "totals": {
           "income": "Przychody",
           "expenses": "Wydatki",
-          "transfers": "Przelewy",
+          "transfers": "Przelewy poza budżet",
           "transfers_tooltip": "Przychodzące {in} · Wychodzące {out}",
           "show_transactions": "Pokaż transakcje",
           "net": "Netto",
           "balance": "Saldo",
           "savings": "Oszczędności",
           "savings_balance": "Oszczędności łącznie"
-        },
-        "density": {
-          "hidden": "{count} ukrytych",
-          "show": "Pokaż"
         },
         "menu": {
           "move_to_folder": "Przenieś do folderu…",

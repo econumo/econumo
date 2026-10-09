@@ -1361,6 +1361,16 @@
         }
       },
       "plan": {
+        "sums": {
+          "show_month": "Totaal van {name} in {month} tonen",
+          "hide_month": "Totaal van {name} in {month} verbergen",
+          "show": "Totalen van {name} tonen",
+          "hide": "Totalen van {name} verbergen"
+        },
+        "name_column": {
+          "resize": "Breedte van de naamkolom aanpassen",
+          "resize_hint": "Sleep om de breedte aan te passen, dubbelklik om te herstellen"
+        },
         "toggle": {
           "budget": "Budget",
           "plan": "Plan"
@@ -1371,12 +1381,9 @@
           "savings": "Sparen",
           "archived": "Gearchiveerd"
         },
-        "nav": {
-          "prev": "Eerdere maanden",
-          "next": "Latere maanden"
-        },
         "cell": {
-          "aria": "{name}, {month}: werkelijk {actual}, gepland {planned}"
+          "aria": "{name}, {month}: werkelijk {actual}, gepland {planned}",
+          "edit_aria": "Plan voor {name}, {month}"
         },
         "fill": {
           "handle_aria": "Budget naar de volgende maanden kopiëren"
@@ -1388,17 +1395,13 @@
         "totals": {
           "income": "Inkomsten",
           "expenses": "Uitgaven",
-          "transfers": "Overboekingen",
+          "transfers": "Overboekingen buiten het budget",
           "transfers_tooltip": "In {in} · Uit {out}",
           "show_transactions": "Transacties tonen",
           "net": "Netto",
           "balance": "Saldo",
           "savings": "Sparen",
           "savings_balance": "Totaal spaargeld"
-        },
-        "density": {
-          "hidden": "{count} verborgen",
-          "show": "Tonen"
         },
         "menu": {
           "move_to_folder": "Naar map verplaatsen…",
