@@ -1559,6 +1559,10 @@ User C sees none of it.
       controls anywhere — row menu, preview, FAB); `user` can write
       transactions; `admin` can also edit the account. Verify on desktop
       dropdowns AND mobile bottom sheets.
+- [ ] B as `admin` ("Full control") renames the shared account and changes
+      its balance: Save succeeds (no "Access denied"), A sees the new name,
+      and the balance correction lists B as its author. Saving with a custom
+      currency only B holds is refused ("Currency is not available").
 - [ ] Shared account shows the owner's avatar/mark in B's sidebar; A sees B's
       avatar on the account's shared stack.
 - [ ] B sees A's categories/payees/tags via the shared account and can use
