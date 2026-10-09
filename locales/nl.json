@@ -1395,7 +1395,7 @@
         "totals": {
           "income": "Inkomsten",
           "expenses": "Uitgaven",
-          "transfers": "Buiten het budget",
+          "transfers": "Overboekingen buiten het budget",
           "transfers_tooltip": "In {in} · Uit {out}",
           "show_transactions": "Transacties tonen",
           "net": "Netto",

@@ -509,7 +509,7 @@ it('totals block renders one effective value per cell for income/expenses/transf
   const totalsBlock = screen.getByTestId('plan-totals')
   expect(within(totalsBlock).getByText('Income')).toBeInTheDocument()
   expect(within(totalsBlock).getByText('Expenses')).toBeInTheDocument()
-  expect(within(totalsBlock).getByText('Outside budget')).toBeInTheDocument()
+  expect(within(totalsBlock).getByText('Transfers outside budget')).toBeInTheDocument()
   expect(within(screen.getByTestId('plan-balance-row')).getByText('Balance')).toBeInTheDocument()
 
   // window is Jun/Jul/Aug (visible=3 in jsdom, firstMonth pinned above); the last
@@ -2363,7 +2363,7 @@ it('scrolls the income/expenses/net trio and pins only the balance row', async (
   expect(totalRows).toHaveLength(3)
   expect(totalRows[0]).toHaveTextContent('Income')
   expect(totalRows[1]).toHaveTextContent('Expenses')
-  expect(totalRows[2]).toHaveTextContent('Outside budget')
+  expect(totalRows[2]).toHaveTextContent('Transfers outside budget')
   expect(within(totals).queryByText('Uncategorized')).not.toBeInTheDocument()
   expect(within(totals).queryByText('Net')).not.toBeInTheDocument()
   expect(within(balance).getByText('Balance')).toBeInTheDocument()
@@ -2419,7 +2419,7 @@ it('clicking a totals link opens the transaction list for THAT column\'s month',
   // Transfers, June (column 0) — not the budget page's selected July period
   await user.click(screen.getByTestId('plan-totals-transfers-link-0'))
   const dialog = await screen.findByRole('dialog')
-  expect(within(dialog).getByText('Outside budget')).toBeInTheDocument()
+  expect(within(dialog).getByText('Transfers outside budget')).toBeInTheDocument()
   await waitFor(() => expect(seen).toHaveLength(1))
   expect(seen[0].searchParams.get('transfers')).toBe('1')
   expect(seen[0].searchParams.get('periodStart')).toBe('2026-06-01')

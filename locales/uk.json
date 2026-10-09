@@ -1395,7 +1395,7 @@
         "totals": {
           "income": "Доходи",
           "expenses": "Витрати",
-          "transfers": "Поза бюджетом",
+          "transfers": "Перекази поза бюджетом",
           "transfers_tooltip": "Вхідні {in} · Вихідні {out}",
           "show_transactions": "Показати транзакції",
           "net": "Нетто",

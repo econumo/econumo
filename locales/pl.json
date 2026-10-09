@@ -1395,7 +1395,7 @@
         "totals": {
           "income": "Przychody",
           "expenses": "Wydatki",
-          "transfers": "Poza budżetem",
+          "transfers": "Przelewy poza budżet",
           "transfers_tooltip": "Przychodzące {in} · Wychodzące {out}",
           "show_transactions": "Pokaż transakcje",
           "net": "Netto",

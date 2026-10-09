@@ -1395,7 +1395,7 @@
         "totals": {
           "income": "Revenus",
           "expenses": "Dépenses",
-          "transfers": "Hors budget",
+          "transfers": "Virements hors budget",
           "transfers_tooltip": "Entrées {in} · Sorties {out}",
           "show_transactions": "Afficher les transactions",
           "net": "Net",

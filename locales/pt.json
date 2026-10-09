@@ -1395,7 +1395,7 @@
         "totals": {
           "income": "Receitas",
           "expenses": "Despesas",
-          "transfers": "Fora do orçamento",
+          "transfers": "Transferências fora do orçamento",
           "transfers_tooltip": "Entradas {in} · Saídas {out}",
           "show_transactions": "Mostrar transações",
           "net": "Líquido",
