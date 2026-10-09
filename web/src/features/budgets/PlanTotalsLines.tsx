@@ -102,6 +102,9 @@ export function PlanTotals({
         values={monthValues(cols, (idx) => at(idx)?.effectiveExpense, 'plan-totals-expenses')}
         actionsColumn={false}
       />
+      {showTransfers ? (
+        <PlanTotalRow testId="plan-total-transfers" label={t('budgets.page.plan.totals.transfers')} values={transferValues} actionsColumn={false} />
+      ) : null}
       {showSavings ? (
         <PlanTotalRow
           testId="plan-total-savings"
@@ -109,9 +112,6 @@ export function PlanTotals({
           values={monthValues(cols, (idx) => at(idx)?.effectiveSavings, 'plan-totals-savings')}
           actionsColumn={false}
         />
-      ) : null}
-      {showTransfers ? (
-        <PlanTotalRow testId="plan-total-transfers" label={t('budgets.page.plan.totals.transfers')} values={transferValues} actionsColumn={false} />
       ) : null}
       {savingsBalance ? (
         <PlanTotalRow

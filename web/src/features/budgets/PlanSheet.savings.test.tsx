@@ -339,7 +339,8 @@ it('totals gain a Savings line after Expenses and a Total savings line; the stic
   const everyday = everydayBalanceRow(combined, savings)
   const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
 
-  expect(totalLines()).toEqual(['income', 'expenses', 'savings', 'transfers', 'savings-balance'])
+  // the Budget view's order: Transfers before Savings
+  expect(totalLines()).toEqual(['income', 'expenses', 'transfers', 'savings', 'savings-balance'])
   expect(within(screen.getByTestId('plan-total-savings-balance')).getByText('Total savings')).toBeInTheDocument()
   // window Jun/Jul/Aug = plan months 1..3
   for (let col = 0; col < 3; col++) {

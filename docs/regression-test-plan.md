@@ -745,7 +745,7 @@ and on tablet/phone only with a hardware keyboard.
       (Planned · Received · To receive), Savings (Planned · Saved · Balance, only with
       savings accounts), Expenses (Budget · Spent · Available: folders, No
       folder, Uncategorized, Archived, Reporting tags), then the Total row
-      and the lines Income, Expenses, Transfers (only when not zero),
+      and the lines Income, Expenses, "Outside budget" (only when not zero),
       Savings, Total savings and Balance at month end. Each section header
       folds its section; a folded header shows the section's sums in its
       columns, and the fold carries over to the same section of the Plan
@@ -1010,10 +1010,11 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 Plan section and folder lines (Income, Savings, Expenses, folders, "No
       folder", Archived) use the Budget view's thin-line style, with no boxes
       and no bold. Sections (Savings, Expenses, Archived, the totals) open
-      with a heavier rule than the rows' hairlines. A FOLDED line shows its
-      per-month sums in the same `actual · plan` form (`— · 55` when nothing
-      happened yet against a plan), on one line. An OPEN line shows no figures
-      (an empty folder no dashes either): hovering it shows a Σ button before
+      with a heavier rule than the rows' hairlines. A section or folder line
+      shows NO figures by default, folded or open (an empty folder no dashes
+      either). Its sums, when shown, use the same `actual · plan` form (`— · 55`
+      when nothing happened yet against a plan), on one line. Hovering a line
+      shows a Σ button before
       its ⋮ (on a tablet Σ shows without hover); Σ shows that line's sums
       and stays visible, pressed, until pressed again — only that line, and
       the choice survives a reload (per device). Hovering one month cell of
@@ -1023,13 +1024,16 @@ and on tablet/phone only with a hardware keyboard.
       with no plan). A section with folders groups its loose rows under a "No
       folder" line. A click on a line folds it; folds are shared with the
       Budget view and the phone and survive a reload.
-- [ ] 📱 Plan totals, in order: Income, Expenses, Savings (only with savings
-      accounts), Transfers (only when not zero; a negative one is not red),
+- [ ] 📱 Plan totals, in order (as in the Budget view): Income, Expenses,
+      "Outside budget" (money moved between the budget's accounts and others;
+      only when not zero; a negative one is not red), Savings (only with savings
+      accounts),
       Total savings (only with savings accounts), then a sticky Balance at the
       bottom (no bold on the current month; a negative balance is red). Past
       and current months show actuals, future months the projection.
-- [ ] Plan totals, desktop: hovering the Transfers and Balance lines shows
-      their tooltips; clicking a past or current month's Transfers opens that
+- [ ] Plan totals, desktop: hovering the "Outside budget" and Balance lines
+      shows their tooltips; clicking a past or current month's "Outside budget"
+      figure opens that
       month's transfers. Hovering a cut-short actual shows its full value.
 - [ ] Plan cell editing, desktop (mouse): clicking a cell selects it (ring)
       and the arrow keys move the selection between month cells (never onto
@@ -1076,7 +1080,7 @@ and on tablet/phone only with a hardware keyboard.
       Uncategorized, which has none; the clicked cell becomes the selection.
       Desktop: close the list (Esc or ×) and type a digit right away — the
       selected cell opens its editor and the arrow keys move, with no extra
-      click (same after a Transfers figure's list).
+      click (same after an "Outside budget" figure's list).
 - [ ] Plan hover and structure, desktop: the hovered row highlights and the
       hovered cell gets a light outline; the ⋮ menu and a drag grip appear
       only on hover (the ⋮ takes no room otherwise and overlays the end of
@@ -1193,7 +1197,7 @@ and on tablet/phone only with a hardware keyboard.
       Actual, and the monthly block's Saved column); a savings↔savings
       transfer and a transfer with an account that is not a budget member do
       not move it either way.
-- [ ] 📱 Totals: a "Savings" line appears below Transfers (actual for past
+- [ ] 📱 Totals: a "Savings" line appears below "Outside budget" (actual for past
       months, the larger of actual and planned for the current and future
       months); without savings accounts the line is absent.
 - [ ] 📱 Balance split: the sticky area shows "Balance" (everyday accounts) and
@@ -1483,7 +1487,7 @@ and on tablet/phone only with a hardware keyboard.
       empty read-only thread shows none.
 - [ ] 📱 The Totals card lists, in order: Budget ("left + budget", with
       "… available" under it, red when negative; expenses only), Income
-      (received), Expenses (spent), Transfers (only when money
+      (received), Expenses (spent), "Outside budget" (only when money
       crossed the budget boundary that month), Savings (saved, only with
       savings accounts), Total savings (with savings accounts), Balance at
       month end. A future month shows "—" for received, spent and saved. Balance and Total savings match

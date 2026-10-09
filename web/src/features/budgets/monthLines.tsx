@@ -222,7 +222,8 @@ export function MonthSectionHeader({
   const layout = useLineLayout()
   const plan = layout.kind === 'plan'
   const showSums = folded || plan
-  const blank = plan && sumsOnDemand && !folded && !sumsAsked
+  // a section's sums wait for Σ even folded: the totals below already carry them
+  const blank = plan && sumsOnDemand && !sumsAsked
   const foldButton = (
     <button
       type="button"
@@ -244,7 +245,7 @@ export function MonthSectionHeader({
       {plan ? (
         <span className={PLAN_NAME_COL}>
           {foldButton}
-          {sumsOnDemand && !folded ? <SumToggle sumKey={foldKey} name={label} /> : null}
+          {sumsOnDemand ? <SumToggle sumKey={foldKey} name={label} /> : null}
           <RowMenu name={label} actions={menu} />
         </span>
       ) : (
@@ -298,10 +299,11 @@ export function FolderLine({
   const layout = useLineLayout()
   const plan = layout.kind === 'plan'
   const sumsAsked = useBudgetPeriodStore((s) => (sumKey ? !!s.planSumsShown[sumKey] : false))
-  const onDemand = plan && sumKey !== undefined && sums !== null && !folded
+  // a folder's sums wait for Σ, folded or open
+  const onDemand = plan && sumKey !== undefined && sums !== null
   const onDemandCells = onDemand && !sumsAsked
-  // an open folder with nothing in it has nothing to sum: no Σ and no dashes either
-  const blank = plan && sumKey !== undefined && sums === null && !folded
+  // a folder with nothing in it has nothing to sum: no Σ and no dashes either
+  const blank = plan && sumKey !== undefined && sums === null
   const Chevron = folded ? ChevronRight : ChevronDown
   const nameParts = (
     <>

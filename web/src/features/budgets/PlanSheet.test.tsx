@@ -509,7 +509,7 @@ it('totals block renders one effective value per cell for income/expenses/transf
   const totalsBlock = screen.getByTestId('plan-totals')
   expect(within(totalsBlock).getByText('Income')).toBeInTheDocument()
   expect(within(totalsBlock).getByText('Expenses')).toBeInTheDocument()
-  expect(within(totalsBlock).getByText('Transfers')).toBeInTheDocument()
+  expect(within(totalsBlock).getByText('Outside budget')).toBeInTheDocument()
   expect(within(screen.getByTestId('plan-balance-row')).getByText('Balance')).toBeInTheDocument()
 
   // window is Jun/Jul/Aug (visible=3 in jsdom, firstMonth pinned above); the last
@@ -546,7 +546,7 @@ it('totals block renders one effective value per cell for income/expenses/transf
   expect(screen.getByTestId('plan-balance-2')).toHaveTextContent(expected)
 })
 
-it('an open section or folder line shows its sums only after Σ; a folded one always shows them', async () => {
+it('a section or folder line shows its sums only after Σ, folded or open', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
@@ -566,10 +566,11 @@ it('an open section or folder line shows its sums only after Σ; a folded one al
   // pressed again, they go
   await user.click(within(line()).getByRole('button', { name: /hide sums.*expenses/i }))
   expect(within(line()).queryAllByTestId(/^plan-sum-/)).toHaveLength(0)
-  // folded: the sums are the only figures left, so they show, and there is no Σ
+  // folded: still no figures until asked; the folder's Σ is there too
   await user.click(within(folderLine()).getByRole('button', { name: 'Essentials' }))
+  expect(within(folderLine()).queryAllByTestId(/^plan-sum-/)).toHaveLength(0)
+  await user.click(within(folderLine()).getByRole('button', { name: /show sums for essentials/i }))
   expect(within(folderLine()).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
-  expect(within(folderLine()).queryByRole('button', { name: /sums/i })).not.toBeInTheDocument()
 })
 
 it('section and folder sums read actual · plan up to the selected month, plan alone after it', async () => {
@@ -2362,7 +2363,7 @@ it('scrolls the income/expenses/net trio and pins only the balance row', async (
   expect(totalRows).toHaveLength(3)
   expect(totalRows[0]).toHaveTextContent('Income')
   expect(totalRows[1]).toHaveTextContent('Expenses')
-  expect(totalRows[2]).toHaveTextContent('Transfers')
+  expect(totalRows[2]).toHaveTextContent('Outside budget')
   expect(within(totals).queryByText('Uncategorized')).not.toBeInTheDocument()
   expect(within(totals).queryByText('Net')).not.toBeInTheDocument()
   expect(within(balance).getByText('Balance')).toBeInTheDocument()
@@ -2418,7 +2419,7 @@ it('clicking a totals link opens the transaction list for THAT column\'s month',
   // Transfers, June (column 0) — not the budget page's selected July period
   await user.click(screen.getByTestId('plan-totals-transfers-link-0'))
   const dialog = await screen.findByRole('dialog')
-  expect(within(dialog).getByText('Transfers')).toBeInTheDocument()
+  expect(within(dialog).getByText('Outside budget')).toBeInTheDocument()
   await waitFor(() => expect(seen).toHaveLength(1))
   expect(seen[0].searchParams.get('transfers')).toBe('1')
   expect(seen[0].searchParams.get('periodStart')).toBe('2026-06-01')
@@ -3403,4 +3404,22 @@ it('one cell of an open line shows its own sum from its Σ, and hides it on a se
   // the line's own Σ still shows every month
   await user.click(within(line()).getByRole('button', { name: /show sums for expenses/i }))
   expect(within(line()).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+})
+
+it('a section line shows no sums by default, folded or open; its Σ works either way', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', planFolds: { expense: true } })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const line = () => screen.getByTestId('plan-section-line-expense')
+  // folded, and still no figures
+  expect(within(line()).getByRole('button', { name: 'Expenses', expanded: false })).toBeInTheDocument()
+  expect(within(line()).queryAllByTestId(/^plan-sum-/)).toHaveLength(0)
+  await user.click(within(line()).getByRole('button', { name: /show sums for expenses/i }))
+  expect(within(line()).getAllByTestId(/^plan-sum-/)).toHaveLength(3)
+  // one month's Σ works on a folded section too
+  await user.click(within(line()).getByRole('button', { name: /hide sums for expenses/i }))
+  await user.click(within(line()).getByRole('button', { name: /show the july sum for expenses/i }))
+  expect(within(line()).getAllByTestId(/^plan-sum-/).map((c) => c.getAttribute('data-testid'))).toEqual(['plan-sum-1'])
 })
