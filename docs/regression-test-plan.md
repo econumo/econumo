@@ -664,6 +664,9 @@ and on tablet/phone only with a hardware keyboard.
       grouped by day; each row names its account with the account icon on the
       right, under the amount; transfers read "From → To" (both icons) with no
       +/− sign; a long account name truncates without squeezing the title.
+- [ ] Future-dated transactions (dated tomorrow or later) are not in the
+      empty-query list; typing a query that matches one, or drilling into its
+      category/payee/tag/label, does show it (dimmed).
 - [ ] With at least one connection, every transaction row shows its author's
       avatar on the row icon (even on accounts that are not shared); with no
       connections there are no avatars. The account page keeps its own rule
