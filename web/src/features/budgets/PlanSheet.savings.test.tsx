@@ -194,7 +194,6 @@ it('ArrowDown walks from the last income row into the savings rows, then on into
   const grid = screen.getByTestId('plan-sheet')
   const cellOf = (rowId: string, col: number) =>
     (document.querySelector(`[data-row-id="${rowId}"]`) as HTMLElement).querySelector(`[data-col="${col}"][role="gridcell"]`) as HTMLElement
-  const expenseFolder = () => document.querySelector('[data-testid="plan-folder-bf1"] [role="gridcell"]') as HTMLElement
 
   // the income band's last row is its uncategorized line (June carries income)
   await user.click(cellOf('uncategorized:3', 0))
@@ -203,15 +202,16 @@ it('ArrowDown walks from the last income row into the savings rows, then on into
   expect(cellOf('acc-s1:5', 0)).toHaveAttribute('aria-selected', 'true')
   await user.keyboard('{ArrowDown}{ArrowDown}')
   expect(cellOf('acc-s3:5', 0)).toHaveAttribute('aria-selected', 'true')
+  // the Expenses section and Essentials folder lines are no stops: on to Living
   await user.keyboard('{ArrowDown}')
-  expect(expenseFolder()).toHaveAttribute('aria-selected', 'true')
+  expect(cellOf('pe1:0', 0)).toHaveAttribute('aria-selected', 'true')
 
   // folded, the savings rows drop out of the keyboard order too
   useBudgetPeriodStore.setState({ planFolds: { savings: true } })
   await user.click(cellOf('uncategorized:3', 0))
   grid.focus()
   await user.keyboard('{ArrowDown}')
-  expect(expenseFolder()).toHaveAttribute('aria-selected', 'true')
+  expect(cellOf('pe1:0', 0)).toHaveAttribute('aria-selected', 'true')
 })
 
 it('editing a savings planned cell sends set-limit with the account id and patches structure.savings optimistically', async () => {
@@ -282,7 +282,7 @@ it('the savings row menu offers its Edit alone: no "Move to folder…", no Chang
   expect(items[0]).toHaveTextContent(/^Edit/)
 })
 
-it('Enter on a savings name cell opens no category or tag dialog', async () => {
+it('Enter on a savings month cell edits its plan and opens no account, category or tag dialog', async () => {
   useHandlers()
   const user = userEvent.setup()
   renderPage()
@@ -290,7 +290,8 @@ it('Enter on a savings name cell opens no category or tag dialog', async () => {
   const grid = screen.getByTestId('plan-sheet')
   await user.click(screen.getByTestId('plan-cell-acc-s1:0'))
   grid.focus()
-  await user.keyboard('{ArrowLeft}{Enter}')
+  await user.keyboard('{Enter}')
+  expect(await screen.findByRole('textbox', { name: 'Plan for Rainy day, June' })).toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(toast.error).not.toHaveBeenCalled()
 })
@@ -488,6 +489,44 @@ it('a savings cell keeps its balance on the left and the plan on the right, a da
   expect(within(aug).getByTestId('cell-figures')).toHaveClass('justify-between')
   // a planned month lays out the same way
   expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByTestId('cell-figures')).toHaveClass('justify-between')
+})
+
+it('while a savings month is edited its balance stays on the left, the editor in the plan\'s place', async () => {
+  const closings = ['1100', '1200', '1250', '1250']
+  const plan = {
+    ...savingsPlan,
+    structure: { ...savingsPlan.structure, savings: [{ ...savingsS1, cells: savingsS1.cells.map((c, i) => ({ ...c, closingBalance: closings[i] })) }] },
+  }
+  useHandlers(plan)
+  const user = userEvent.setup()
+  renderPage()
+  // July (column 1): balance 1,250.00, planned 200
+  const jul = await screen.findByTestId('plan-cell-acc-s1:1')
+  await user.click(jul)
+  screen.getByTestId('plan-sheet').focus()
+  await user.keyboard('{F2}')
+  const input = await screen.findByRole('textbox', { name: 'Plan for Rainy day, July' })
+  expect(input).toHaveValue('200')
+  const balance = within(jul).getByTestId('cell-actual')
+  expect(balance).toHaveAttribute('data-figure', 'balance')
+  expect(balance).toHaveTextContent('1,250.00')
+  expect(balance).toBeVisible()
+  expect(within(jul).queryByTestId('cell-planned')).not.toBeInTheDocument()
+  // balance first, the editor after it
+  const figures = within(jul).getByTestId('cell-figures')
+  expect(figures.firstElementChild).toBe(balance)
+  expect(figures).toContainElement(input)
+  expect(balance.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+  // a projected month's balance (a later month, no link) stays in view too
+  await user.keyboard('{Escape}')
+  const aug = screen.getByTestId('plan-cell-acc-s1:2')
+  const projected = within(aug).getByTestId('cell-actual').textContent
+  expect(projected).toMatch(/\d/)
+  fireEvent.doubleClick(within(aug).getByTestId('cell-planned'))
+  expect(await screen.findByRole('textbox', { name: 'Plan for Rainy day, August' })).toBeInTheDocument()
+  expect(within(aug).getByTestId('cell-actual')).toHaveAttribute('data-figure', 'balance')
+  expect(within(aug).getByTestId('cell-actual')).toHaveTextContent(projected!)
 })
 
 /** the totals block's lines, top to bottom, by key */

@@ -289,7 +289,7 @@ export function FolderLine({
   actionsColumn: boolean
   /** the folder's ⋮ menu, shown on hover */
   menu?: MenuAction[]
-  /** the Plan grid's name column: a gridcell the keyboard selection can land on */
+  /** the Plan grid's name column: a rowheader, never a keyboard stop */
   nameCell?: HTMLAttributes<HTMLSpanElement>
   /** Plan grid: the folder's fold key; an open folder's sums wait for its Σ */
   sumKey?: string

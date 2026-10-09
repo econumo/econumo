@@ -953,8 +953,17 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] Plan crosshair: selecting a month cell (click or arrows) lightly
       highlights its whole row and its whole month column — the month
       header, section/folder lines, every row and the totals — over the
-      selected month's tint; selecting a name cell or a folder line highlights
-      its row only; moving the selection moves both.
+      selected month's tint; moving the selection moves both. Clicking a name
+      or a folder line highlights nothing new (the previous selection stays).
+- [ ] Plan keyboard stops, desktop: the keyboard cursor lives only in month
+      cells. A name is never selected (by click or keys) and a click on it
+      does nothing — only its chevron folds the row's breakdown, and editing
+      the element is the row ⋮ menu's Edit (Enter, Space, ← / → and Ctrl/⌘+C
+      on the grid never open a dialog, fold a row or copy a name). Section
+      and folder lines (including "No folder") are no stops either: ↑ / ↓ go
+      row to row in the same month, stepping over them and over the rows of
+      a folded folder or section; a click on a folder line folds it and
+      selects nothing; the arrows never fold or unfold anything.
 - [ ] Plan name column width, desktop: drag the edge between the names and
       the first month in the month row (it highlights on hover): the name
       column follows the pointer between about 160 and 480px; on release the
@@ -1018,12 +1027,18 @@ and on tablet/phone only with a hardware keyboard.
       their tooltips; clicking a past or current month's Transfers opens that
       month's transfers. Hovering a cut-short actual shows its full value.
 - [ ] Plan cell editing, desktop (mouse): clicking a cell selects it (ring)
-      and the arrow keys move the selection (the name column too).
+      and the arrow keys move the selection between month cells (never onto
+      a name or a section/folder line).
+      - the editor takes only the plan's part of the cell: the month's actual
+        (on a savings row, its balance) stays in view on the left while the
+        plan is edited;
       - typing a digit, `-`, `.` or `,` edits the cell in place, replacing
         the value with what was typed;
       - F2, Enter or a double-click edit the current value, caret at the end;
-      - while editing: Enter commits and moves down; Tab / Shift+Tab commit and
-        move right / left; ↑ / ↓ commit and move; ← / → move the caret; Esc
+      - while editing: Enter commits and moves down to the next row (over any
+        folder line); Tab / Shift+Tab commit and move right / left (Shift+Tab
+        on the first month commits, then pages the window back like ←);
+        ↑ / ↓ commit and move; ← / → move the caret; Esc
         cancels (the value is unchanged); clicking another cell commits;
       - a formula works (`=100*3`); an invalid formula keeps the editor open
         with the validation message, and an unchanged value sends nothing;
@@ -1035,11 +1050,11 @@ and on tablet/phone only with a hardware keyboard.
       budget start, archived budget) can be selected but never opens an
       editor: typing, F2, Enter, double-click and Delete do nothing there.
       Ctrl/⌘+C / V (single cell), the fill handle and Shift+→ fill, and
-      Shift+Enter / Shift+F2 comments work as before; Enter on the name cell
-      opens the element's edit dialog.
+      Shift+Enter / Shift+F2 comments work as before; Enter on a read-only
+      cell opens no dialog and shows no toast.
 - [ ] Plan edge paging, desktop: → on the last column moves the selected
-      month by one; ← on the first month column goes to the name cell, and ←
-      on the name cell moves it back by one. The window and the month row
+      month forward by one; ← on the first month column moves it back by one
+      (the selection stays in the first column). The window and the month row
       move together, so the next (or previous) month appears (at a clamp at
       the start or end of the budget the selected month may jump by two so
       the window still moves by exactly one month); at the budget's first and
@@ -1142,7 +1157,8 @@ and on tablet/phone only with a hardware keyboard.
       reload; unfold brings them back.
 - [ ] Plan grid keyboard: ArrowDown from the last income row lands on the
       first savings row, and from the last savings row on the first expense
-      row (or folder); with Savings folded it skips straight to the expenses.
+      row (past the Expenses and folder lines, which are no stops); with
+      Savings folded it skips straight to the expenses.
 - [ ] 📱 Plan a savings top-up (e.g. 6,000) in every month of the next year,
       then pick a month several months past the current one (the strip on
       /budget, the month row or ‹ › on /plan, or → past the grid's last

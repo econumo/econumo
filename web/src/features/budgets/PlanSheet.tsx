@@ -86,7 +86,7 @@ import type { MonthExchange, PlanFolderSection, PlanRow, PlanRows } from './plan
 import type { LineControls, MenuAction } from './monthLayout'
 import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
-import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, selectedClass, sourceAmount } from './PlanRows'
+import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, sourceAmount } from './PlanRows'
 import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
 import type { GridCtx, PlanCellEdit, PlanLimitTarget, PlanSelection } from './PlanRows'
 import type { CellMove } from './PlanCellInput'
@@ -105,14 +105,8 @@ export interface PlanSheetProps {
 }
 
 const rowKey = (r: PlanRow): string => `${r.element.id}:${r.element.type}`
-// A folder header is a selectable row of the grid too (fold/unfold by keyboard); it
-// shares the selection's rowKey space with the element rows under a distinct prefix.
-const folderRowKey = (folderId: Id): string => `pfolder:${folderId}`
-const isFolderRowKey = (rk: string): boolean => rk.startsWith('pfolder:')
 
-// A folder header has a single cell, so whatever column the selection carries (kept so
-// Up/Down through a header lands back on the same month), its DOM cell is the -1 one.
-const selectionDomId = (sel: PlanSelection): string => cellDomId(sel.rowKey, isFolderRowKey(sel.rowKey) ? -1 : sel.col)
+const selectionDomId = (sel: PlanSelection): string => cellDomId(sel.rowKey, sel.col)
 
 type GroupSums = ReturnType<typeof planGroupSums>
 
@@ -210,31 +204,10 @@ function FolderGroup({
   children: ReactNode
 }) {
   const { t } = useTranslation()
-  const rk = folderRowKey(foldKey)
-  const selected = ctx.selection?.rowKey === rk
   return (
     <div data-testid={`plan-folder-${foldKey}`}>
-      {/* FolderLine folds on a click anywhere on it; the same click selects the
-          line, so the arrow keys pick up from here (ArrowLeft/ArrowRight
-          fold/unfold, Up/Down walk the rows). Its own controls (the grip, the
-          actions menu and its portalled items) keep their action and select nothing. */}
-      <div
-        role="row"
-        data-plan-line=""
-        data-crosshair={selected ? 'row' : undefined}
-        className={`border-b border-border/60${selected ? ` ${PLAN_CROSSHAIR}` : ''}`}
-        onClick={(e) => {
-          const target = e.target as HTMLElement
-          if (!e.currentTarget.contains(target)) {
-            return
-          }
-          const control = target.closest('button, a, input, [role="menuitem"]')
-          if (control && !control.hasAttribute('data-fold')) {
-            return
-          }
-          ctx.select(rk, -1, e)
-        }}
-      >
+      {/* a click anywhere on the line folds it; the keyboard cursor never stops here */}
+      <div role="row" data-plan-line="" className="border-b border-border/60">
         <FolderLine
           name={name}
           folded={folded}
@@ -243,7 +216,7 @@ function FolderGroup({
           handle={handle}
           menu={menu}
           actionsColumn={false}
-          nameCell={{ role: 'gridcell', id: cellDomId(rk, -1), 'aria-selected': selected, className: selectedClass(selected) }}
+          nameCell={{ role: 'rowheader' }}
           sumKey={foldKey}
         />
       </div>
@@ -312,11 +285,10 @@ function FolderRows({
 
 // Same flattening the renderer walks (folders -> loose, income then savings then
 // neutral folders then expense, then archived), so Up/Down can never reach a row that isn't on
-// screen. A folder contributes its header (a selectable row of its own, so it can be
-// folded/unfolded by keyboard) followed by its visible members. Only root element
-// rows — the ones a limit can be set on — are in the order: an expanded envelope's
+// screen. Section and folder lines are no stops; a folder contributes its visible
+// members only. Only root element rows — the ones a limit can be set on — are in the order: an expanded envelope's
 // children are read-only breakdown lines and are stepped over.
-type FlatRow = { kind: 'element'; rowKey: string; el: PlanElementDto } | { kind: 'folder'; rowKey: string; foldKey: string }
+type FlatRow = { kind: 'element'; rowKey: string; el: PlanElementDto }
 
 // The open in-cell editor, with what its commit needs captured when it opened: the
 // window can move before the commit lands (Tab at the last column pages it), and the
@@ -354,8 +326,9 @@ function buildFlatRows(rows: PlanRows, savingsRows: PlanRow[], folded: (key: str
   const pushRow = (r: PlanRow) => {
     flatRows.push({ kind: 'element', rowKey: rowKey(r), el: r.element })
   }
+  // section and folder lines are not stops: the cursor walks rows, and a folded
+  // group's rows are skipped
   const pushGroup = (foldKey: string, groupRows: PlanRow[], side: DragSide) => {
-    flatRows.push({ kind: 'folder', rowKey: folderRowKey(foldKey), foldKey })
     if (!folded(foldKey) && drag.folderIn !== side) {
       groupRows.forEach(pushRow)
     }
@@ -413,9 +386,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   // the open comment thread: anchored to its cell on desktop/tablet, a sheet on a phone
   const [commentsDialogTarget, setCommentsDialogTarget] = useState<(PlanLimitTarget & { anchor: HTMLElement | null }) | null>(null)
   const commentsOpen = commentsDialogTarget !== null
-  // A modal opened from the grid (Enter on the name cell, an actual or a Transfers
-  // figure) has no trigger Radix can hand focus back to — the keyboard has none, and
-  // a figure button re-renders away — so on close focus would fall to <body> and the
+  // A modal opened from the grid (an actual or a Transfers figure) has no trigger
+  // Radix can hand focus back to — the keyboard has none, and a figure button
+  // re-renders away — so on close focus would fall to <body> and the
   // arrow keys go dead. Remember that the grid opened it and reclaim focus once it
   // closes; mouse-opened dialogs (row menu) leave focus alone as before.
   const editorFromGrid = useRef(false)
@@ -487,8 +460,6 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
   const folded = useCallback((key: string): boolean => !!planFolds[key], [planFolds])
-  const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
-  const unfoldedElements = useBudgetPeriodStore((s) => s.unfoldedElements)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
   const [fillDrag, setFillDrag] = useState<FillDrag | null>(null)
   const [editing, setEditing] = useState<CellEditState | null>(null)
@@ -591,9 +562,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       setEditing(null)
     }
   }, [editing, visibleMonths])
-  // the selected cell's month column, marked down the whole grid; a name cell or a
-  // folder line marks its row only
-  const crosshairCol = selection && selection.col >= 0 && !isFolderRowKey(selection.rowKey) ? selection.col : -1
+  // the selected cell's month column, marked down the whole grid
+  const crosshairCol = selection ? selection.col : -1
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
   // The uncategorized row's synthetic id names no real element the server would
   // accept, so it gets no comment entry point at all — guarded here too since the
@@ -1260,47 +1230,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       children
     )
 
-  // Enter on the highlighted name cell opens the element's own edit dialog, the row
-  // menu's Edit, gated by the right the backend enforces on the matching update
-  // endpoint: budget role for an envelope, row ownership for a category or tag
-  // (update-category/update-tag answer anyone but the owner with NotFound).
-  function editFromName(el: PlanElementDto) {
-    const target = { kind: 'plan' as const, cell: planCellFigures(el, selectedIndex) }
-    const access = menus.editAccess(target)
-    if (access === null) {
-      return
-    }
-    if (access) {
-      // an account opens in the app's own account modal, which hands focus back itself
-      if (el.type !== BudgetElementType.SAVINGS) {
-        editorFromGrid.current = true
-      }
-      menus.editFromSheet(target)
-      return
-    }
-    // a savings account the caller cannot administer has no dialog to explain
-    if (el.type === BudgetElementType.SAVINGS) {
-      return
-    }
-    // say why instead of silently ignoring the keystroke; a fixed toast id so
-    // hammering Enter does not stack copies
-    const message = isEnvelopeType(el.type)
-      ? t('budgets.page.plan.edit.no_access_envelope')
-      : el.type === BudgetElementType.TAG
-        ? t('budgets.page.plan.edit.no_access_tag')
-        : t('budgets.page.plan.edit.no_access_category')
-    toast.error(message, { id: 'plan-edit-no-access' })
-  }
-
   function handleEnter(entry: FlatRow, col: number) {
-    if (entry.kind === 'folder') {
-      togglePlanFold(entry.foldKey)
-      return
-    }
-    if (col === -1) {
-      editFromName(entry.el)
-      return
-    }
     const month = visibleMonths[col]
     if (month === undefined) {
       return
@@ -1317,12 +1247,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     startEdit(entry.rowKey, col, { replace: false })
   }
 
-  // The element row under the roving selection (null for none / a folder row), and
-  // that row's month cell as the clipboard and keyboard-fill actions need it (null on
-  // the name cell too).
+  // The element row under the roving selection (null for none), and that row's month
+  // cell as the clipboard and keyboard-fill actions need it.
   function selectedElementRow(): (FlatRow & { kind: 'element' }) | null {
-    const entry = selection ? flatRows.find((r) => r.rowKey === selection.rowKey) : undefined
-    return entry?.kind === 'element' ? entry : null
+    return (selection && flatRows.find((r) => r.rowKey === selection.rowKey)) || null
   }
 
   function selectedMonthCell(): { entry: FlatRow & { kind: 'element' }; col: number; month: string; idx: number } | null {
@@ -1351,7 +1279,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       return
     }
     const cell = selectedMonthCell()
-    const text = selection.col === -1 ? entry.el.name : cell ? sourceAmount(cell.entry.el, cell.idx) : null
+    const text = cell ? sourceAmount(cell.entry.el, cell.idx) : null
     if (text === null) {
       return
     }
@@ -1387,7 +1315,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   // Shift+ArrowRight on an editable month cell arms a keyboard fill covering the next
   // column (clamped to the visible window — what is highlighted is what gets written,
   // same as the pointer drag); the source cell stays selected. Non-editable sources
-  // and the name cell arm nothing.
+  // arm nothing.
   function startKeyboardFill() {
     const cell = selectedMonthCell()
     if (!cell || !isEditableCell(cell.entry.el, cell.month, cell.idx, budget.meta, userId)) {
@@ -1423,8 +1351,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   }
 
   // The arrow keys' walk, shared with the in-cell editor's Enter/Tab/↑/↓. At the
-  // window's edges ← from the name cell and → from the last column page the window by
-  // a month (clamped at the budget's start and end); the column stays put.
+  // window's edges ← from the first month and → from the last page the window by a
+  // month (clamped at the budget's start and end); the column stays put.
   function moveSelection(from: PlanSelection, dir: CellMove) {
     const idx = flatRows.findIndex((r) => r.rowKey === from.rowKey)
     switch (dir) {
@@ -1439,14 +1367,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         }
         break
       case 'left':
-        if (from.col === -1) {
-          // -1 is the leftmost reachable column, so ← here shifts the window instead
-          // of going nowhere: the name cell stays reachable while the window can
-          // still be paged from it
+        if (from.col === 0) {
           if (!atStart) {
             shiftWindow(-1)
           }
-          select(from.rowKey, -1)
+          select(from.rowKey, 0)
         } else {
           select(from.rowKey, from.col - 1)
         }
@@ -1568,7 +1493,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       return
     }
     // Shift+Arrow left/right belongs to the keyboard fill: swallowed even when nothing
-    // arms (name cell, non-editable source) so the selection never jumps under a held
+    // arms (a non-editable source) so the selection never jumps under a held
     // Shift. Shift+ArrowLeft with no fill armed is a no-op — the fill only grows right.
     if (e.shiftKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
       e.preventDefault()
@@ -1590,52 +1515,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (!entry) {
       return
     }
-    // Left/Right on a highlighted folder header fold/unfold it and never move the
-    // selection or page the window — a header has no month cells to walk. Enter and
-    // Space toggle it too (Enter has no edit action on a folder outside its menu).
-    if (entry.kind === 'folder') {
-      const isFolded = folded(entry.foldKey)
-      switch (e.key) {
-        case 'ArrowUp':
-          e.preventDefault()
-          moveSelection(selection, 'up')
-          break
-        case 'ArrowDown':
-          e.preventDefault()
-          moveSelection(selection, 'down')
-          break
-        case 'ArrowLeft':
-          e.preventDefault()
-          if (!isFolded) {
-            togglePlanFold(entry.foldKey)
-          }
-          break
-        case 'ArrowRight':
-          e.preventDefault()
-          if (isFolded) {
-            togglePlanFold(entry.foldKey)
-          }
-          break
-        case 'Enter':
-        case ' ':
-          e.preventDefault()
-          togglePlanFold(entry.foldKey)
-          break
-        default:
-          break
-      }
-      return
-    }
-    // On a highlighted name cell of a row with children, Left/Right fold/unfold the
-    // breakdown first: ArrowRight expands a collapsed row (and only then walks into
-    // the months), ArrowLeft collapses an expanded one (and only then pages the window).
-    const expandable = entry.el.children.length > 0
-    const unfolded = !!unfoldedElements[entry.el.id]
     // A month cell edits like a spreadsheet: typing replaces the value, F2 edits it,
     // Delete/Backspace clears it. Touch keeps the item sheet even with a hardware
     // keyboard, and read-only cells take none of it (startEdit and clearSelectedCell
     // both check).
-    if (selection.col >= 0 && !isCompact && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (!isCompact && !e.ctrlKey && !e.metaKey && !e.altKey) {
       if (/^[0-9.,-]$/.test(e.key)) {
         e.preventDefault()
         startEdit(entry.rowKey, selection.col, { replace: true, text: e.key })
@@ -1663,18 +1547,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         break
       case 'ArrowLeft':
         e.preventDefault()
-        if (selection.col === -1 && expandable && unfolded) {
-          toggleElement(entry.el.id)
-          break
-        }
         moveSelection(selection, 'left')
         break
       case 'ArrowRight':
         e.preventDefault()
-        if (selection.col === -1 && expandable && !unfolded) {
-          toggleElement(entry.el.id)
-          break
-        }
         moveSelection(selection, 'right')
         break
       case 'Enter':
@@ -1687,16 +1563,6 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           return
         }
         handleEnter(entry, selection.col)
-        break
-      case ' ':
-        // Space on the name cell folds/unfolds the element's children (Enter is the
-        // edit shortcut); preventDefault so the scroller does not page down.
-        if (selection.col === -1) {
-          e.preventDefault()
-          if (expandable) {
-            toggleElement(entry.el.id)
-          }
-        }
         break
       default:
         break

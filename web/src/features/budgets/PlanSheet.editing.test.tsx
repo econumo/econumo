@@ -105,9 +105,9 @@ it('typing a digit edits the cell in place and Enter commits and moves down', as
   fireEvent.keyDown(input, { key: 'Enter' })
   await waitFor(() => expect(calls).toEqual([expect.objectContaining({ elementId: 'pe1', period: '2026-07-01', amount: '75' })]))
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-  // the selection moved one row down: the expense section's No folder line follows Living
+  // the selection moved one row down, over the No folder line (no stop) to Food
   expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'false')
-  expect(within(screen.getByTestId('plan-folder-__no_folder__')).getAllByRole('gridcell')[0]).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByTestId('plan-cell-cat-food:1')).toHaveAttribute('aria-selected', 'true')
   expect(grid).toHaveFocus()
 })
 
@@ -158,8 +158,11 @@ it('Shift+Tab commits and moves left; ↑ commits and moves up', async () => {
   fireEvent.keyDown(await screen.findByRole('textbox'), { key: 'ArrowUp' })
   await waitFor(() => expect(calls).toHaveLength(2))
   expect(calls[1]).toEqual(expect.objectContaining({ elementId: 'pe1', period: '2026-06-01', amount: '4' }))
-  // the Essentials folder line sits above Living
-  expect(within(screen.getByTestId('plan-folder-bf1')).getAllByRole('gridcell')[0]).toHaveAttribute('aria-selected', 'true')
+  // the Expenses section and Essentials folder lines above Living are no stops: the
+  // row above is the income side's Uncategorized, in the same month
+  expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'false')
+  const incomeUncat = document.querySelector('[data-row-id="uncategorized:3"]') as HTMLElement
+  expect(within(incomeUncat).getAllByRole('gridcell')[0]).toHaveAttribute('aria-selected', 'true')
 })
 
 it('← and → inside the editor move the caret, not the selection', async () => {
@@ -392,7 +395,7 @@ it('editing at the right edge: Tab commits to the edited month, then the window 
   expect(screen.getByTestId('plan-cell-pe1:2')).toHaveAttribute('aria-selected', 'true')
 })
 
-it('editing at the left edge: Shift+Tab commits to the edited month and lands on the name cell', async () => {
+it('editing at the left edge: Shift+Tab commits to the edited month, then the window moves back', async () => {
   usePlanHandlers()
   const calls = recordSetLimit()
   renderPage()
@@ -401,9 +404,41 @@ it('editing at the left edge: Shift+Tab commits to the edited month and lands on
   fireEvent.keyDown(grid, { key: '6' })
   fireEvent.keyDown(await screen.findByRole('textbox'), { key: 'Tab', shiftKey: true })
   await waitFor(() => expect(calls).toEqual([expect.objectContaining({ elementId: 'pe1', period: '2026-06-01', amount: '6' })]))
-  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
-  expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'false')
-  expect(grid.getAttribute('aria-activedescendant')).toMatch(/pe1_0--1$/)
+  expect(calls).toHaveLength(1)
+  // like ← on the first month: the window pages back and the selection keeps its
+  // column, now May
+  await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01'))
+  await waitFor(() => expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('data-month', '2026-05-01'))
+  expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
+  expect(grid.getAttribute('aria-activedescendant')).toBe(screen.getByTestId('plan-cell-pe1:0').id)
+})
+
+// The editor takes the plan's place only: the month's actual stays in view beside it.
+it('while a month is edited its actual stays in view beside the editor', async () => {
+  usePlanHandlers()
+  renderPage()
+  const { grid, cell } = await gridAtFirstExpenseCell()
+  // Living, July: 45 spent of 250 planned
+  expect(within(cell).getByTestId('cell-actual')).toHaveTextContent('45')
+  fireEvent.keyDown(grid, { key: 'F2' })
+  const input = await screen.findByRole('textbox', { name: 'Plan for Living, July' })
+  expect(cell).toContainElement(input)
+  expect(input).toHaveValue('250')
+  const actual = within(cell).getByTestId('cell-actual')
+  expect(actual).toHaveTextContent('45')
+  expect(actual).toBeVisible()
+  // the plan figure itself is what the editor replaces
+  expect(within(cell).queryByTestId('cell-planned')).not.toBeInTheDocument()
+  fireEvent.keyDown(input, { key: 'Escape' })
+  expect(within(cell).getByTestId('cell-planned')).toHaveTextContent('250')
+
+  // typing over the value and double-clicking keep it in view the same way
+  fireEvent.keyDown(grid, { key: '9' })
+  expect(within(cell).getByTestId('cell-actual')).toHaveTextContent('45')
+  fireEvent.keyDown(await screen.findByRole('textbox'), { key: 'Escape' })
+  fireEvent.doubleClick(within(cell).getByTestId('cell-planned'))
+  expect(await screen.findByRole('textbox')).toBeInTheDocument()
+  expect(within(cell).getByTestId('cell-actual')).toHaveTextContent('45')
 })
 
 it('two clears in quick succession are tracked twice', async () => {
@@ -447,7 +482,8 @@ it('keys pressed on a focused control in the grid are the control\'s, not the gr
   fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
   await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
 
-  // ... and, with the name cell selected, no edit dialog
+  // ... and a click on the name (which selects nothing) leaves Enter on the ⋮
+  // trigger opening only its menu: no edit dialog
   fireEvent.click(within(living).getByTitle('Living'))
   trigger.focus()
   fireEvent.keyDown(trigger, { key: 'Enter' })

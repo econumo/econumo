@@ -31,13 +31,8 @@ export interface PlanLimitTarget {
   monthIndex: number
 }
 
-/** roving grid selection: col -1 = the row's name cell, 0..visible-1 = month cells.
- *  -1 is the leftmost reachable column: ArrowRight there goes to 0, ArrowLeft at 0
- *  goes to -1, and ArrowLeft AT -1 shifts the window back a month (selection stays
- *  at -1) — the name cell is always reachable by keyboard alone. On a name cell with
- *  children, ArrowRight/ArrowLeft first unfold/fold the breakdown and only then move
- *  on. rowKey may also name a folder header (`pfolder:<id>`), which has just the
- *  name cell but keeps whatever col the selection arrived with. */
+/** roving grid selection: a row's month cell (col 0..visible-1). Names and section or
+ *  folder lines are not stops; ← on the first month and → on the last page the window. */
 export interface PlanSelection {
   rowKey: string
   col: number
@@ -96,7 +91,7 @@ export interface GridCtx {
   selected: string
   /** its column, -1 when the window does not show it; that column is tinted */
   selectedCol: number
-  /** the selected cell's column, highlighted down the grid; -1 on a name cell or nothing */
+  /** the selected cell's column, highlighted down the grid; -1 when nothing is selected */
   crosshairCol: number
   currencies: CurrencyDto[]
   baseCurrencyId: Id
@@ -261,7 +256,6 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
   const childDrag = ctx.drag && isEnvelopeType(el.type) && el.isArchived === 0
   const Chevron = unfolded ? ChevronDown : ChevronRight
   const rk = `${el.id}:${el.type}`
-  const nameSelected = ctx.selection?.rowKey === rk && ctx.selection.col === -1
   // The fill handle also shows on the month cell under the mouse, so a value can be
   // dragged right without first clicking the cell to select it. Row-local state, so a
   // hover re-renders this row only, never the grid.
@@ -294,16 +288,13 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
         data-crosshair={ctx.selection?.rowKey === rk ? 'row' : undefined}
         className={`${PLAN_LINE} relative min-h-9 hover:bg-accent/50${ctx.selection?.rowKey === rk ? ` ${PLAN_CROSSHAIR}` : ''}`}
       >
+        {/* the name is not a cell the cursor visits: the keyboard walks the months */}
         <div
-          role="gridcell"
-          id={cellDomId(rk, -1)}
-          aria-selected={nameSelected}
-          className={`${PLAN_NAME_COL} ${isUncategorized ? `${FOLDER_INDENT} gap-1.5! text-sm text-muted-foreground` : ROW_INDENT[level]} py-1${selectedClass(nameSelected)}`}
-          onClick={(e) => ctx.select(rk, -1, e)}
+          role="rowheader"
+          className={`${PLAN_NAME_COL} ${isUncategorized ? `${FOLDER_INDENT} gap-1.5! text-sm text-muted-foreground` : ROW_INDENT[level]} py-1`}
         >
-          {/* the name is a selection target only; just the chevron (or ArrowRight/
-              ArrowLeft on the highlighted name cell) folds the breakdown, so a click
-              meant to highlight the row never springs its children open */}
+          {/* only the chevron folds the breakdown: a click elsewhere on the name
+              does nothing */}
           {expandable ? (
             <button
               type="button"
@@ -380,67 +371,70 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
-              {editing ? (
-                <PlanCellInput
-                  initial={editing.initial}
-                  label={t('budgets.page.plan.cell.edit_aria', { name: displayName, month: ctx.monthLabel(m) })}
-                  onCommit={ctx.finishEdit}
-                  onCancel={ctx.cancelEdit}
-                />
-              ) : (
-                // the plan never gives way: when a column runs out of room only the
-                // actual is cut, its full figure kept in the tooltip
-                // a savings balance keeps to the cell's left edge, so balances line up
-                // down the column whatever the plan beside them
-                <span data-testid="cell-figures" className={`flex min-w-0 items-baseline gap-1${view.balance ? ' flex-1 justify-between' : ''}`}>
-                  {actual === null ? (
-                    view.dash ? (
-                      <span data-testid="cell-no-actual" className="text-xs">
-                        <Dash />
-                      </span>
-                    ) : null
-                  ) : actualLinkable && (!view.balance || m <= ctx.selected) ? (
-                    <button
-                      type="button"
-                      data-testid="cell-actual"
-                      data-figure={view.balance ? 'balance' : undefined}
-                      title={`${fmt(actual)}. ${view.balance ? `${t('budgets.page.savings.balance_hint')} ` : ''}${t('budgets.page.budget.structure.element.action.show_transactions')}`}
-                      className={`min-w-0 truncate text-xs tabular-nums underline-offset-2 hover:underline ${actualColor}`}
-                      onClick={(e) => {
-                        // the cell's own click is skipped (a touch tap there opens the
-                        // item sheet), but the clicked cell still becomes the selection
-                        e.stopPropagation()
-                        ctx.select(rk, i, e)
-                        ctx.openTransactions(el, m)
-                      }}
-                    >
-                      {fmt(actual)}
-                    </button>
-                  ) : (
-                    <span
-                      data-testid="cell-actual"
-                      data-figure={view.balance ? 'balance' : undefined}
-                      className={`min-w-0 truncate text-xs tabular-nums ${actualColor}`}
-                      title={view.balance ? `${fmt(actual)}. ${t('budgets.page.savings.balance_hint')}` : fmt(actual)}
-                    >
-                      {fmt(actual)}
+              {/* the plan never gives way: when a column runs out of room only the
+                  actual is cut, its full figure kept in the tooltip. A savings balance
+                  keeps to the cell's left edge, so balances line up down the column;
+                  while the plan is edited the actual stays in view beside the editor. */}
+              <span
+                data-testid="cell-figures"
+                className={`flex min-w-0 gap-1${view.balance || editing ? ' flex-1 justify-between' : ''} ${editing ? 'items-center' : 'items-baseline'}`}
+              >
+                {actual === null ? (
+                  view.dash ? (
+                    <span data-testid="cell-no-actual" className="text-xs">
+                      <Dash />
                     </span>
-                  )}
-                  {view.balance ? (
-                    // the cell's two ends already keep balance and plan apart: no dot
+                  ) : null
+                ) : actualLinkable && (!view.balance || m <= ctx.selected) ? (
+                  <button
+                    type="button"
+                    data-testid="cell-actual"
+                    data-figure={view.balance ? 'balance' : undefined}
+                    title={`${fmt(actual)}. ${view.balance ? `${t('budgets.page.savings.balance_hint')} ` : ''}${t('budgets.page.budget.structure.element.action.show_transactions')}`}
+                    className={`min-w-0 truncate text-xs tabular-nums underline-offset-2 hover:underline ${actualColor}`}
+                    onClick={(e) => {
+                      // the cell's own click is skipped (a touch tap there opens the
+                      // item sheet), but the clicked cell still becomes the selection
+                      e.stopPropagation()
+                      ctx.select(rk, i, e)
+                      ctx.openTransactions(el, m)
+                    }}
+                  >
+                    {fmt(actual)}
+                  </button>
+                ) : (
+                  <span
+                    data-testid="cell-actual"
+                    data-figure={view.balance ? 'balance' : undefined}
+                    className={`min-w-0 truncate text-xs tabular-nums ${actualColor}`}
+                    title={view.balance ? `${fmt(actual)}. ${t('budgets.page.savings.balance_hint')}` : fmt(actual)}
+                  >
+                    {fmt(actual)}
+                  </span>
+                )}
+                {editing ? (
+                  <span className="w-[58%] min-w-16 shrink-0">
+                    <PlanCellInput
+                      initial={editing.initial}
+                      label={t('budgets.page.plan.cell.edit_aria', { name: displayName, month: ctx.monthLabel(m) })}
+                      onCommit={ctx.finishEdit}
+                      onCancel={ctx.cancelEdit}
+                    />
+                  </span>
+                ) : view.balance ? (
+                  // the cell's two ends already keep balance and plan apart: no dot
+                  <span data-testid="cell-planned" className="shrink-0 text-[15px] whitespace-nowrap tabular-nums">
+                    {view.plan !== null ? fmt(view.plan) : <Dash />}
+                  </span>
+                ) : (
+                  <>
+                    {(actual !== null || view.dash) && view.plan !== null ? <FigureDot /> : null}
                     <span data-testid="cell-planned" className="shrink-0 text-[15px] whitespace-nowrap tabular-nums">
-                      {view.plan !== null ? fmt(view.plan) : <Dash />}
+                      {view.plan !== null ? fmt(view.plan) : ''}
                     </span>
-                  ) : (
-                    <>
-                      {(actual !== null || view.dash) && view.plan !== null ? <FigureDot /> : null}
-                      <span data-testid="cell-planned" className="shrink-0 text-[15px] whitespace-nowrap tabular-nums">
-                        {view.plan !== null ? fmt(view.plan) : ''}
-                      </span>
-                    </>
-                  )}
-                </span>
-              )}
+                  </>
+                )}
+              </span>
               {!editing && (commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
                 <CommentMarker count={commentCount} onOpen={(anchor) => ctx.openComments(target, { anchor })} />
               ) : null}
