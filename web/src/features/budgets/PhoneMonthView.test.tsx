@@ -59,7 +59,7 @@ function renderView(overrides: Partial<PhoneMonthViewProps> = {}, mutate?: (b: B
 
 beforeEach(() => {
   localStorage.clear()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {} })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
 })
 
 it('heads income and savings with one Planned · Actual row and the expenses with Expenses · Budget · Spent', () => {
@@ -133,7 +133,7 @@ it('a folder line folds its rows, keeps its sums, and the fold is the Plan grid\
   await userEvent.click(line)
   expect(within(screen.getByTestId('phone-folder-bf1')).queryAllByTestId(/^phone-row-/)).toHaveLength(0)
   expect(within(screen.getByTestId('phone-folder-bf1')).getByRole('button', { name: /Essentials/, expanded: false })).toHaveTextContent('200.00')
-  expect(useBudgetPeriodStore.getState().planFolds.bf1).toBe(true)
+  expect(useBudgetPeriodStore.getState().budgetFolds.bf1).toBe(true)
 })
 
 it('an income folder line folds its rows too', async () => {
@@ -153,7 +153,7 @@ it('an income folder line folds its rows too', async () => {
   await userEvent.click(within(screen.getByTestId('phone-income-group-bf-inc')).getByRole('button', { name: /Work/, expanded: true }))
   expect(screen.queryByTestId('phone-income-row-cat-freelance')).toBeNull()
   expect(screen.getByTestId('phone-income-group-bf-inc')).toHaveTextContent('500.00')
-  expect(useBudgetPeriodStore.getState().planFolds['bf-inc']).toBe(true)
+  expect(useBudgetPeriodStore.getState().budgetFolds['bf-inc']).toBe(true)
 })
 
 it('without income folders the rows stay a plain list, no "No folder" line', async () => {

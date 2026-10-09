@@ -204,7 +204,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null)
   // where the dragged row or category would land: the insertion line
   const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null)
-  const planFolds = useBudgetPeriodStore((s) => s.planFolds)
+  const budgetFolds = useBudgetPeriodStore((s) => s.budgetFolds)
   // a FOLDER is being dragged: every section renders header-only
   const [draggingFolderId, setDraggingFolderId] = useState<Id | null>(null)
   useEffect(() => {
@@ -363,7 +363,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     setDropIndicator(
       dropIndicatorFor(arrangementFromBuckets(buckets), activeId, overId, {
         fromEnvelope: fromEnvelope !== undefined,
-        isFolded: (folderId) => !!planFolds[folderId ?? '__no_folder__'],
+        isFolded: (folderId) => !!budgetFolds[folderId ?? '__no_folder__'],
       }),
     )
   }

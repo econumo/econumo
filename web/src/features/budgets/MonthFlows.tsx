@@ -172,10 +172,10 @@ export function MonthFlows({
   const exchangeFn = makeBudgetExchange(budget, currencies)
   const unfolded = useBudgetPeriodStore((s) => s.unfoldedElements)
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
-  const planFolds = useBudgetPeriodStore((s) => s.planFolds)
-  const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
-  const incomeFolded = !!planFolds.income
-  const savingsFolded = !!planFolds.savings
+  const budgetFolds = useBudgetPeriodStore((s) => s.budgetFolds)
+  const toggleBudgetFold = useBudgetPeriodStore((s) => s.toggleBudgetFold)
+  const incomeFolded = !!budgetFolds.income
+  const savingsFolded = !!budgetFolds.savings
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   // a dropped order holds until the refetched figures replace it, so nothing snaps back
   const [incomePreview, setIncomePreview] = useState<{ containers: ElementContainer[]; folderIds: string[] } | null>(null)
@@ -328,7 +328,7 @@ export function MonthFlows({
     const level: RowLevel = name === null ? 'top' : 'in-folder'
     // the phone's keys: a folder's own id, and income's own No folder and Archived
     const foldKey = g.kind === 'folder' ? g.id : `__income${g.id}`
-    const folded = name !== null && !!planFolds[foldKey]
+    const folded = name !== null && !!budgetFolds[foldKey]
     // folders and the folder-less rows take part in drag and drop; Uncategorized and
     // archived rows stay where they are
     const draggable = !!drag && (g.kind === 'folder' || g.kind === 'loose')
@@ -339,7 +339,7 @@ export function MonthFlows({
             handle={draggable && g.kind === 'folder' ? <FolderGrip name={name} /> : undefined}
             name={name}
             folded={folded}
-            onToggle={() => togglePlanFold(foldKey)}
+            onToggle={() => toggleBudgetFold(foldKey)}
             menu={incomeFolderMenu?.(g)}
             sums={
               g.rows.length === 0
@@ -455,7 +455,7 @@ export function MonthFlows({
     setIncomeIndicator(
       dropIndicatorFor(arrangementOf(shownIncomeGroups), activeId, overId, {
         fromEnvelope: fromEnvelope !== undefined,
-        isFolded: (folderId) => !!planFolds[folderId ?? '__income__no_folder__'],
+        isFolded: (folderId) => !!budgetFolds[folderId ?? '__income__no_folder__'],
       }),
     )
   }

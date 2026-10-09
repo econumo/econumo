@@ -262,8 +262,8 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const { t } = useTranslation()
   const unfolded = useBudgetPeriodStore((s) => s.unfoldedElements)
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
-  const planFolds = useBudgetPeriodStore((s) => s.planFolds)
-  const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
+  const budgetFolds = useBudgetPeriodStore((s) => s.budgetFolds)
+  const toggleBudgetFold = useBudgetPeriodStore((s) => s.toggleBudgetFold)
 
   const base = budget.meta.currencyId
   const currencyOf = (id: Id | null) => currencies.find((c) => c.id === (id ?? base))
@@ -353,7 +353,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   // a named folder folds on its line; folded, the line with its sums stays. The fold is
   // kept under the folder's own key, the one the Plan grid folds it by
   const folderCard = (key: string, foldKey: string, name: string | null, bucket: FolderBucket) => {
-    const folded = name !== null && !!planFolds[foldKey]
+    const folded = name !== null && !!budgetFolds[foldKey]
     return (
       <Card
         key={key}
@@ -364,7 +364,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
               name={name}
               first={fmt(bucket.stats.budgeted)}
               second={future ? EMPTY : fmt(bucket.stats.spent)}
-              fold={{ folded, onToggle: () => togglePlanFold(foldKey) }}
+              fold={{ folded, onToggle: () => toggleBudgetFold(foldKey) }}
             />
           ) : undefined
         }
@@ -429,7 +429,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     const groupName = incomeGroupName(g, groups)
     // income's own No folder and Archived groups fold apart from the expense ones
     const foldKey = g.kind === 'folder' ? g.id : `__income${g.id}`
-    const folded = groupName !== null && !!planFolds[foldKey]
+    const folded = groupName !== null && !!budgetFolds[foldKey]
     return (
       <div key={g.id} data-testid={`phone-income-group-${g.id}`}>
         {groupName !== null ? (
@@ -438,7 +438,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
             // an empty folder reads as dashes
             first={g.rows.length === 0 ? EMPTY : fmt(g.planned)}
             second={future || g.rows.length === 0 ? EMPTY : fmt(g.received)}
-            fold={{ folded, onToggle: () => togglePlanFold(foldKey) }}
+            fold={{ folded, onToggle: () => toggleBudgetFold(foldKey) }}
           />
         ) : null}
         {folded ? null : g.rows.map(incomeRow)}
