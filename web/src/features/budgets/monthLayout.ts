@@ -33,7 +33,9 @@ export const PLAN_FIGURE_COL = 'flex min-w-0 flex-1 basis-0 items-center justify
 export const PLAN_SELECTED_TINT = 'bg-accent/40'
 // the selected cell's row and column, as a spreadsheet marks them: an overlay, so it
 // layers over the selected month's tint and a row's hover rather than replacing them
-export const PLAN_CROSSHAIR = 'relative after:pointer-events-none after:absolute after:inset-0 after:bg-ring/[0.08]'
+// a whisper of the ring's colour: enough to tell it from the current month's grey
+// tint, faint enough that the selected cell's ring stays the strong mark
+export const PLAN_CROSSHAIR = 'relative after:pointer-events-none after:absolute after:inset-0 after:bg-ring/[0.035]'
 // a section (Savings, Expenses, the totals…) opens with a heavier rule than the rows'
 // hairlines, so the blocks read apart without a gap breaking the selected month's tint
 export const PLAN_SECTION_RULE = 'border-t-2 border-foreground/25'
