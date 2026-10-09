@@ -987,7 +987,12 @@ and on tablet/phone only with a hardware keyboard.
       never a double one. Matching vertical hairlines separate the name column
       and every month column, from the month header down to the Balance line,
       like a spreadsheet (an empty folder's note covers them under its text;
-      the Budget view has no vertical lines). A month up to the selected one reads `actual · plan` (smaller,
+      the Budget view has no vertical lines). Every month cell has one fixed
+      layout: the small actual (or "—", or a savings balance) at the cell's
+      LEFT edge, the plan at its RIGHT edge, no dot between — and editing
+      swaps only the plan for the editor, so nothing moves when editing
+      starts or ends, with or without an actual. Below, `actual · plan` means
+      that pair. A month up to the selected one reads `actual · plan` (smaller,
       muted actual, then the plan figure); months after it show the plan
       alone. An unplanned month shows a blank plan (never 0.00) and no "·";
       a planned month with no actual yet shows `— · 55` (a muted dash, not a

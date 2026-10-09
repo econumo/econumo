@@ -586,14 +586,14 @@ it('section and folder sums read actual · plan up to the selected month, plan a
   const folderLine = within(screen.getByTestId('plan-folder-bf1')).getAllByRole('row')[0]
   const cell = (col: number) => within(folderLine).getByTestId(`plan-sum-${col}`)
   const plannedText = (v: string) => (isZero(v) ? '' : fmt(v))
-  // two separate figures, the dot between them; one line, never wrapped
-  expect(cell(0).textContent).toBe(`${fmt(sums[1].actual)}·${plannedText(sums[1].planned)}`)
-  expect(cell(1).textContent).toBe(`${fmt(sums[2].actual)}·${plannedText(sums[2].planned)}`)
+  // two separate figures at the cell's two ends, no dot; one line, never wrapped
+  expect(cell(0).textContent).toBe(`${fmt(sums[1].actual)}${plannedText(sums[1].planned)}`)
+  expect(cell(1).textContent).toBe(`${fmt(sums[2].actual)}${plannedText(sums[2].planned)}`)
   // Aug is after the selected July: its plan alone, no actual
   expect(cell(2).textContent).toBe(plannedText(sums[3].planned))
 })
 
-it('a past cell with an actual and no plan reads the actual alone, with no dangling dot', async () => {
+it('a cell keeps its actual at the left edge and its plan at the right, with no dot between', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   renderPage()
@@ -602,11 +602,16 @@ it('a past cell with an actual and no plan reads the actual alone, with no dangl
   const cell = screen.getByTestId('plan-cell-cat-food:1')
   expect(within(cell).getByTestId('cell-actual')).toHaveTextContent('125.00')
   expect(cell).not.toHaveTextContent('·')
-  // with both figures the dot separates them
-  expect(screen.getByTestId('plan-cell-cat-food:0')).toHaveTextContent(/130\.00\s*·\s*150\.00/)
+  // with both figures: actual first, plan last, spread to the two ends
+  const both = screen.getByTestId('plan-cell-cat-food:0')
+  expect(both).toHaveTextContent(/^130\.00\s*150\.00$/)
+  expect(within(both).getByTestId('cell-figures')).toHaveClass('justify-between')
+  expect(within(both).getByTestId('cell-planned')).toHaveClass('ml-auto')
+  // with no actual the plan still sits at the right
+  expect(within(screen.getByTestId('plan-cell-cat-food:2')).getByTestId('cell-planned')).toHaveClass('ml-auto')
 })
 
-it('a planned month with nothing spent yet reads "— · plan"; an empty one stays blank', async () => {
+it('a planned month with nothing spent yet reads "— … plan"; an empty one stays blank', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   renderPage()
@@ -615,7 +620,7 @@ it('a planned month with nothing spent yet reads "— · plan"; an empty one sta
   const jun = screen.getByTestId('plan-cell-cat-freelance:0')
   expect(within(jun).queryByTestId('cell-actual')).not.toBeInTheDocument()
   expect(within(jun).getByTestId('cell-no-actual')).toHaveTextContent('—')
-  expect(jun).toHaveTextContent(/—\s*·\s*500\.00/)
+  expect(jun).toHaveTextContent(/^—\s*500\.00$/)
   // the dash is a mark, not a link to an empty transactions list
   expect(within(jun).queryByRole('button', { name: /—/ })).not.toBeInTheDocument()
   // Salaries in the selected July: the same

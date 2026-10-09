@@ -163,7 +163,7 @@ export function SumCell({
     ? { actual: sum ? sum.actual : null, dash: false }
     : shownActual(sum && month <= ctx.selected ? sum.actual : null, plan !== null)
   return (
-    <span data-testid={`plan-sum-${index}`} className="flex min-w-0 items-baseline gap-1 text-muted-foreground tabular-nums">
+    <span data-testid={`plan-sum-${index}`} className="flex min-w-0 flex-1 items-baseline justify-between gap-1 text-muted-foreground tabular-nums">
       {actual !== null ? (
         <span className="min-w-0 truncate text-xs" title={fmt(actual)}>
           {fmt(actual)}
@@ -173,16 +173,7 @@ export function SumCell({
           <Dash />
         </span>
       ) : null}
-      {(actual !== null || dash) && plan !== null ? <FigureDot /> : null}
-      {plan !== null ? <span className="shrink-0 text-sm whitespace-nowrap">{fmt(plan)}</span> : null}
-    </span>
-  )
-}
-
-function FigureDot() {
-  return (
-    <span aria-hidden="true" className="shrink-0 text-xs text-muted-foreground/60">
-      ·
+      {plan !== null ? <span className="ml-auto shrink-0 text-sm whitespace-nowrap">{fmt(plan)}</span> : null}
     </span>
   )
 }
@@ -229,11 +220,13 @@ export const ChildRow = memo(function ChildRow({
             data-crosshair={i === ctx.crosshairCol ? 'col' : undefined}
             className={`${figureClass(ctx, i)} py-1`}
           >
-            {actual !== null ? (
-              <span data-testid="cell-actual" className="min-w-0 truncate text-xs tabular-nums" title={fmt(actual)}>
-                {fmt(actual)}
-              </span>
-            ) : null}
+            <span className="flex min-w-0 flex-1">
+              {actual !== null ? (
+                <span data-testid="cell-actual" className="min-w-0 truncate text-xs tabular-nums" title={fmt(actual)}>
+                  {fmt(actual)}
+                </span>
+              ) : null}
+            </span>
           </div>
         )
       })}
@@ -371,13 +364,13 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
-              {/* the plan never gives way: when a column runs out of room only the
-                  actual is cut, its full figure kept in the tooltip. A savings balance
-                  keeps to the cell's left edge, so balances line up down the column;
-                  while the plan is edited the actual stays in view beside the editor. */}
+              {/* one layout in every month, edited or not: the actual (a balance, a dash)
+                  at the cell's left edge, the plan — or its editor — at the right. Nothing
+                  shifts when editing starts. The plan never gives way: when a column runs
+                  out of room only the actual is cut, its full figure in the tooltip. */}
               <span
                 data-testid="cell-figures"
-                className={`flex min-w-0 gap-1${view.balance || editing ? ' flex-1 justify-between' : ''} ${editing ? 'items-center' : 'items-baseline'}`}
+                className={`flex min-w-0 flex-1 justify-between gap-1 ${editing ? 'items-center' : 'items-baseline'}`}
               >
                 {actual === null ? (
                   view.dash ? (
@@ -413,7 +406,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                   </span>
                 )}
                 {editing ? (
-                  <span className="w-[58%] min-w-16 shrink-0">
+                  <span className="ml-auto w-[58%] min-w-16 shrink-0">
                     <PlanCellInput
                       initial={editing.initial}
                       label={t('budgets.page.plan.cell.edit_aria', { name: displayName, month: ctx.monthLabel(m) })}
@@ -421,18 +414,10 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                       onCancel={ctx.cancelEdit}
                     />
                   </span>
-                ) : view.balance ? (
-                  // the cell's two ends already keep balance and plan apart: no dot
-                  <span data-testid="cell-planned" className="shrink-0 text-[15px] whitespace-nowrap tabular-nums">
-                    {view.plan !== null ? fmt(view.plan) : <Dash />}
-                  </span>
                 ) : (
-                  <>
-                    {(actual !== null || view.dash) && view.plan !== null ? <FigureDot /> : null}
-                    <span data-testid="cell-planned" className="shrink-0 text-[15px] whitespace-nowrap tabular-nums">
-                      {view.plan !== null ? fmt(view.plan) : ''}
-                    </span>
-                  </>
+                  <span data-testid="cell-planned" className="ml-auto shrink-0 text-[15px] whitespace-nowrap tabular-nums">
+                    {view.plan !== null ? fmt(view.plan) : view.balance ? <Dash /> : ''}
+                  </span>
                 )}
               </span>
               {!editing && (commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
