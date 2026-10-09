@@ -1361,6 +1361,16 @@
         }
       },
       "plan": {
+        "sums": {
+          "show_month": "Show the {month} sum for {name}",
+          "hide_month": "Hide the {month} sum for {name}",
+          "show": "Show sums for {name}",
+          "hide": "Hide sums for {name}"
+        },
+        "name_column": {
+          "resize": "Resize the name column",
+          "resize_hint": "Drag to resize, double-click to reset"
+        },
         "toggle": {
           "budget": "Budget",
           "plan": "Plan"
@@ -1371,12 +1381,9 @@
           "savings": "Savings",
           "archived": "Archived"
         },
-        "nav": {
-          "prev": "Earlier months",
-          "next": "Later months"
-        },
         "cell": {
-          "aria": "{name}, {month}: actual {actual}, planned {planned}"
+          "aria": "{name}, {month}: actual {actual}, planned {planned}",
+          "edit_aria": "Plan for {name}, {month}"
         },
         "fill": {
           "handle_aria": "Copy budget to the following months"
@@ -1388,17 +1395,13 @@
         "totals": {
           "income": "Income",
           "expenses": "Expenses",
-          "transfers": "Transfers",
+          "transfers": "Transfers outside budget",
           "transfers_tooltip": "In {in} · Out {out}",
           "show_transactions": "Show transactions",
           "net": "Net",
           "balance": "Balance",
           "savings": "Savings",
           "savings_balance": "Total savings"
-        },
-        "density": {
-          "hidden": "{count} hidden",
-          "show": "Show"
         },
         "menu": {
           "move_to_folder": "Move to folder…",

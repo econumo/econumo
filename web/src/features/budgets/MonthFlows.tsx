@@ -18,7 +18,7 @@ import type { Id } from '@/api/types'
 import { elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
-import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu } from './monthLines'
+import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu, TotalLine } from './monthLines'
 import type { MenuAction, RowLevel } from './monthLayout'
 import { CHILD_INDENT, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
 import { leftToReceive } from './phoneMonth'
@@ -636,33 +636,6 @@ export function MonthFlows({
   )
 }
 
-function TotalLine({
-  testId,
-  label,
-  value,
-  strong = false,
-  negative = false,
-  actionsColumn,
-}: {
-  testId: string
-  label: string
-  value: ReactNode
-  /** the line the block ends on: full-colour label */
-  strong?: boolean
-  negative?: boolean
-  actionsColumn: boolean
-}) {
-  return (
-    <div className={`${LINE} min-h-8 py-0.5`} data-testid={testId}>
-      <span className={`${NAME_COL} text-sm ${strong ? '' : 'text-muted-foreground'}`}>
-        <span className="truncate">{label}</span>
-      </span>
-      <span className={`${THIRD_COL} text-[15px] ${negative ? 'text-expense' : ''}`}>{value}</span>
-      {actionsColumn ? <ActionsSpacer /> : null}
-    </div>
-  )
-}
-
 /** The phone totals card's lines under the Total row: what came in, went out and was
  *  set aside this month, then where the savings and the everyday money end up. */
 export function MonthTotalsLines({
@@ -689,23 +662,23 @@ export function MonthTotalsLines({
   return (
     <div className="flex flex-col pt-1" data-testid="month-totals-lines">
       {planMonth ? (
-        <TotalLine testId="month-total-income" label={t('budgets.page.plan.totals.income')} value={future ? <Dash /> : fmt(planMonth.income.received)} {...shared} />
+        <TotalLine testId="month-total-income" label={t('budgets.page.plan.totals.income')} values={[future ? <Dash key="dash" /> : fmt(planMonth.income.received)]} {...shared} />
       ) : null}
-      <TotalLine testId="month-total-expenses" label={t('budgets.page.plan.totals.expenses')} value={future ? <Dash /> : fmt(expensesSpent)} {...shared} />
+      <TotalLine testId="month-total-expenses" label={t('budgets.page.plan.totals.expenses')} values={[future ? <Dash key="dash" /> : fmt(expensesSpent)]} {...shared} />
       {planMonth && !isZero(planMonth.transfersNet) ? (
-        <TotalLine testId="month-total-transfers" label={t('budgets.page.plan.totals.transfers')} value={fmt(planMonth.transfersNet)} {...shared} />
+        <TotalLine testId="month-total-transfers" label={t('budgets.page.plan.totals.transfers')} values={[fmt(planMonth.transfersNet)]} {...shared} />
       ) : null}
       {savingsSpent !== null ? (
-        <TotalLine testId="month-total-savings" label={t('budgets.page.plan.totals.savings')} value={future ? <Dash /> : fmt(savingsSpent)} {...shared} />
+        <TotalLine testId="month-total-savings" label={t('budgets.page.plan.totals.savings')} values={[future ? <Dash key="dash" /> : fmt(savingsSpent)]} {...shared} />
       ) : null}
       {planMonth?.savingsBalance != null ? (
-        <TotalLine testId="month-total-savings-balance" label={t('budgets.page.plan.totals.savings_balance')} value={fmt(planMonth.savingsBalance)} {...shared} />
+        <TotalLine testId="month-total-savings-balance" label={t('budgets.page.plan.totals.savings_balance')} values={[fmt(planMonth.savingsBalance)]} {...shared} />
       ) : null}
       {planMonth ? (
         <TotalLine
           testId="month-total-balance"
           label={t('budgets.page.phone.balance')}
-          value={fmt(planMonth.balance)}
+          values={[fmt(planMonth.balance)]}
           strong
           negative={cmp(planMonth.balance, '0') < 0}
           {...shared}

@@ -35,9 +35,8 @@ export function PeriodStrip({ startedAt, endedAt = null, leading }: { startedAt:
   const canExtendBefore = true
   const canExtendAfter = allItems.length > 0 && !allItems[allItems.length - 1].afterEnd
   // The desktop arrows pan the strip only — the selected month never moves, so
-  // the table below stays put while you look around (same idea as the plan
-  // sheet's nav shifting its window without moving the selection). Scrolling
-  // triggers handleScroll, so the window keeps extending at either edge.
+  // the table below stays put while you look around. Scrolling triggers
+  // handleScroll, so the window keeps extending at either edge.
   // Assign scrollLeft rather than scrollBy({behavior:'smooth'}): smooth scrolling
   // is a no-op under prefers-reduced-motion (and in jsdom), which would leave the
   // arrows dead. handleScroll still fires, so the window extends at either edge.

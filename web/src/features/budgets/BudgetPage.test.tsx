@@ -53,7 +53,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   mockViewport()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planHideEmpty: false, planFolds: {} })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {} })
 })
 
 it('renders the full budget page: strip, chips, table, totals', async () => {
@@ -299,7 +299,7 @@ it('a server error settles into a retryable error state instead of an endless lo
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
 })
 
-it('Configure opens Budget settings at once on the desktop Budget view; the Plan view asks first', async () => {
+it('Configure opens Budget settings at once on the desktop, in the Budget and Plan views alike', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
@@ -309,20 +309,18 @@ it('Configure opens Budget settings at once on the desktop Budget view; the Plan
   const { router } = renderPage()
   await screen.findByRole('tablist', { name: 'period' })
 
-  // the Budget view edits on hover, so there is nothing to choose: the details open
+  // both views edit on hover, so there is nothing to choose: the details open
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   expect(await screen.findByRole('dialog', { name: 'Budget settings' })).toBeInTheDocument()
   expect(screen.queryByRole('menuitem')).toBeNull()
   await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Budget settings' })).not.toBeInTheDocument())
 
-  // the Plan grid has an edit mode: Configure offers both, and nothing else
   await act(() => router.navigate('/plan'))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  const dialog = await screen.findByRole('dialog', { name: 'Configure' })
-  expect(within(dialog).getAllByRole('button').map((b) => b.textContent).filter((x) => x !== 'Close')).toEqual(['Budget settings', 'Edit structure'])
-  await user.click(within(dialog).getByRole('button', { name: 'Edit structure' }))
-  expect(await screen.findByRole('button', { name: /Done editing/ })).toBeInTheDocument()
+  expect(await screen.findByRole('dialog', { name: 'Budget settings' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Edit structure' })).not.toBeInTheDocument()
 })
 
 it('the header tabs navigate between /budget and /plan and reflect the route', async () => {
@@ -405,6 +403,10 @@ it('the route hop remounts the page: edit structure started on /plan is off agai
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
     planHandler(),
   )
+  // only a touch screen has an edit mode to start
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
   const user = userEvent.setup()
   const { router } = renderPage('/plan')
   await screen.findByTestId('plan-sheet')

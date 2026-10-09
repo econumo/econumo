@@ -1361,6 +1361,16 @@
         }
       },
       "plan": {
+        "sums": {
+          "show_month": "Summe für {name} im {month} anzeigen",
+          "hide_month": "Summe für {name} im {month} ausblenden",
+          "show": "Summen für {name} anzeigen",
+          "hide": "Summen für {name} ausblenden"
+        },
+        "name_column": {
+          "resize": "Breite der Namensspalte ändern",
+          "resize_hint": "Zum Ändern ziehen, Doppelklick setzt zurück"
+        },
         "toggle": {
           "budget": "Budget",
           "plan": "Plan"
@@ -1371,12 +1381,9 @@
           "savings": "Sparen",
           "archived": "Archiviert"
         },
-        "nav": {
-          "prev": "Frühere Monate",
-          "next": "Spätere Monate"
-        },
         "cell": {
-          "aria": "{name}, {month}: Ist {actual}, geplant {planned}"
+          "aria": "{name}, {month}: Ist {actual}, geplant {planned}",
+          "edit_aria": "Plan für {name}, {month}"
         },
         "fill": {
           "handle_aria": "Budget auf die folgenden Monate kopieren"
@@ -1388,17 +1395,13 @@
         "totals": {
           "income": "Einnahmen",
           "expenses": "Ausgaben",
-          "transfers": "Überweisungen",
+          "transfers": "Überweisungen außerhalb des Budgets",
           "transfers_tooltip": "Eingang {in} · Ausgang {out}",
           "show_transactions": "Transaktionen anzeigen",
           "net": "Netto",
           "balance": "Saldo",
           "savings": "Sparen",
           "savings_balance": "Ersparnisse gesamt"
-        },
-        "density": {
-          "hidden": "{count} ausgeblendet",
-          "show": "Einblenden"
         },
         "menu": {
           "move_to_folder": "In Ordner verschieben…",

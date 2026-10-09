@@ -23,7 +23,14 @@ export function ViewSwitch({ mode, onSwitch }: { mode: BudgetMode; onSwitch: (mo
           }`}
           onClick={() => onSwitch(v.mode)}
         >
-          {t(v.labelKey)}
+          {/* an invisible bold copy holds the bold width, so the words never shift
+              when the selection moves between them */}
+          <span className="inline-grid">
+            <span aria-hidden="true" className="invisible col-start-1 row-start-1 font-semibold">
+              {t(v.labelKey)}
+            </span>
+            <span className="col-start-1 row-start-1">{t(v.labelKey)}</span>
+          </span>
         </button>
       ))}
     </div>

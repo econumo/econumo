@@ -83,7 +83,7 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
   const savings = planHasSavingsData(plan) ? savingsBalanceRow(plan, totals, ex, now) : null
   const balance = savings ? everydayBalanceRow(combined, savings) : combined
 
-  const buckets = bucketPlanRows(plan, false)
+  const buckets = bucketPlanRows(plan)
   const income = buckets.income
   const received = (el: PlanElementDto) => !isZero(el.cells[index]?.actual ?? '0')
   const inBase = (cells: PlanCellFigures[], pick: (c: PlanCellFigures) => string) =>

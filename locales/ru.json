@@ -1361,6 +1361,16 @@
         }
       },
       "plan": {
+        "sums": {
+          "show_month": "Показать сумму за {month}: {name}",
+          "hide_month": "Скрыть сумму за {month}: {name}",
+          "show": "Показать суммы: {name}",
+          "hide": "Скрыть суммы: {name}"
+        },
+        "name_column": {
+          "resize": "Изменить ширину столбца названий",
+          "resize_hint": "Перетащите, чтобы изменить ширину; двойной щелчок — сбросить"
+        },
         "toggle": {
           "budget": "Бюджет",
           "plan": "План"
@@ -1371,12 +1381,9 @@
           "savings": "Сбережения",
           "archived": "В архиве"
         },
-        "nav": {
-          "prev": "Предыдущие месяцы",
-          "next": "Следующие месяцы"
-        },
         "cell": {
-          "aria": "{name}, {month}: факт {actual}, план {planned}"
+          "aria": "{name}, {month}: факт {actual}, план {planned}",
+          "edit_aria": "План для {name}, {month}"
         },
         "fill": {
           "handle_aria": "Скопировать бюджет на следующие месяцы"
@@ -1388,17 +1395,13 @@
         "totals": {
           "income": "Доходы",
           "expenses": "Расходы",
-          "transfers": "Переводы",
+          "transfers": "Переводы вне бюджета",
           "transfers_tooltip": "Входящие {in} · Исходящие {out}",
           "show_transactions": "Показать транзакции",
           "net": "Нетто",
           "balance": "Баланс",
           "savings": "Сбережения",
           "savings_balance": "Всего сбережений"
-        },
-        "density": {
-          "hidden": "{count} скрыто",
-          "show": "Показать"
         },
         "menu": {
           "move_to_folder": "Переместить в папку…",
