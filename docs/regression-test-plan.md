@@ -740,9 +740,8 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 The main menu's "Budget & Plan" link opens the view last opened on
       this device (/budget or /plan), also after a reload, with the month
       last shown there. The selected month is shared by both views: pick a
-      month (the strip on /budget, a month name in the Plan grid's month row
-      on /plan), switch Budget ↔ Plan (and back), and the same month is still
-      selected.
+      month in the strip on /budget (or page with ‹ › on /plan), switch
+      Budget ↔ Plan (and back), and the same month is still selected.
 - [ ] Budget view (desktop and tablet) uses the phone's order: Income
       (Planned · Received · To receive), Savings (Planned · Saved · Balance, only with
       savings accounts), Expenses (Budget · Spent · Available: folders, No
@@ -946,16 +945,16 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 **Plan grid header and window** (desktop and tablet): there is
       ONE row of months — the grid's sticky month row, no strip above it. It
       starts with `Budget · Plan ‹ ›` over the names, then the month names
-      over their columns, also while the page scrolls. Clicking a month name
-      makes it the tinted column (tinted top to bottom, header to Balance),
-      with one month before it as history and future months after it.
-      ‹ › move the window by one month (the selected month moves with it),
+      over their columns, also while the page scrolls. The month names are
+      plain labels (a click does nothing); the CURRENT calendar month's name
+      is bold, and no column is tinted. The window starts one month before the
+      month selected in the Budget view. ‹ › move the window by one month,
       disabled at the budget's first and last month. Switching Budget ↔ Plan
       keeps the month. No horizontal scroll.
 - [ ] Plan crosshair: selecting a month cell (click or arrows) lightly
       highlights its whole row and its whole month column — the month
-      header, section/folder lines, every row and the totals — over the
-      selected month's tint; moving the selection moves both. Clicking a name
+      header, section/folder lines, every row and the totals; moving the
+      selection moves both. Clicking a name
       or a folder line highlights nothing new (the previous selection stays).
 - [ ] Plan keyboard stops, desktop: the keyboard cursor lives only in month
       cells. A name is never selected (by click or keys) and a click on it
@@ -980,7 +979,7 @@ and on tablet/phone only with a hardware keyboard.
       month. Resizing the window adds/drops future columns without
       changing the selected month; at about 1280px 4–5 months show and the
       history month's `actual · plan` is neither clipped nor wrapped onto a
-      second line. Every month up to the selected one always shows its
+      second line. Every month up to the current one always shows its
       actual; should a column ever run short of room, only the actual is cut
       short, never the plan figure.
 - [ ] 📱 Plan rows are one line, in the Budget view's row height and indents
@@ -994,9 +993,9 @@ and on tablet/phone only with a hardware keyboard.
       LEFT edge, the plan at its RIGHT edge, no dot between — and editing
       swaps only the plan for the editor, so nothing moves when editing
       starts or ends, with or without an actual. Below, `actual · plan` means
-      that pair. A month up to the selected one reads `actual · plan` (smaller,
-      muted actual, then the plan figure); months after it show the plan
-      alone. An unplanned month shows a blank plan (never 0.00) and no "·";
+      that pair. A month up to the CURRENT calendar month reads `actual · plan`
+      (smaller, muted actual, then the plan figure), whichever month is
+      selected; later months show the plan alone. An unplanned month shows a blank plan (never 0.00) and no "·";
       a planned month with no actual yet shows `— · 55` (a muted dash, not a
       link); a month with neither an actual nor a plan is blank, never
       `0.00`. Income: received · planned;
@@ -1007,7 +1006,7 @@ and on tablet/phone only with a hardware keyboard.
       readable at the full name column width.
 - [ ] 📱 Plan actual colours: the actual is red only on an expense row that is
       over its plan, or has spending with nothing planned, in any month up to
-      the selected one (an expense row under plan is plain grey, never
+      the current one (an expense row under plan is plain grey, never
       green); income and savings actuals are never red or green.
 - [ ] 📱 Plan section and folder lines (Income, Savings, Expenses, folders, "No
       folder", Archived) use the Budget view's thin-line style, with no boxes

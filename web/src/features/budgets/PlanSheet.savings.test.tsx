@@ -451,9 +451,11 @@ it('a savings row shows its month-end balance instead of what was saved, project
       savings: [{ ...savingsS1, cells: savingsS1.cells.map((c, i) => ({ ...c, closingBalance: closings[i] })) }],
     },
   }
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
   useHandlers(plan)
   renderPage()
-  // the selected July is column 1: June (history) and July show the booked balance
+  // the current month is July here (the suite's clock says August): June and July
+  // show the booked balance, August the projection
   const jun = await screen.findByTestId('plan-cell-acc-s1:0')
   const junFigure = within(jun).getByTestId('cell-actual')
   expect(junFigure).toHaveAttribute('data-figure', 'balance')

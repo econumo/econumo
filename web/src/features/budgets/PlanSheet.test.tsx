@@ -263,8 +263,9 @@ it('overspend turns the actual red, also with no plan set; never on income, and 
   expect(actual('plan-cell-cat-freelance:0')).not.toHaveClass('text-expense')
   // env-eur Jun: 40 of 100 — under, plain
   expect(actual('plan-cell-env-eur:1')).not.toHaveClass('text-income')
-  // Jul is after the selected month: its 125 of nothing is not shown at all
-  expect(within(screen.getByTestId('plan-cell-cat-food:2')).queryByTestId('cell-actual')).not.toBeInTheDocument()
+  // Jul is before the current August, so its actual shows whatever month is picked:
+  // 125 spent with nothing planned is over, red
+  expect(actual('plan-cell-cat-food:2')).toHaveClass('text-expense')
 })
 
 it("the month row is the Plan view's only month selector, centred on the selected month", async () => {
@@ -283,7 +284,7 @@ it("the month row is the Plan view's only month selector, centred on the selecte
   expect(cols[1]).toHaveAttribute('data-selected-col', 'true')
 })
 
-it('clicking a month in the month row selects it; the arrows move the window one month', async () => {
+it('the month names are labels, not buttons; the arrows move the window one month', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
   const user = userEvent.setup()
@@ -293,14 +294,17 @@ it('clicking a month in the month row selects it; the arrows move the window one
   const months = () => within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader').map((c) => c.getAttribute('data-month'))
   // Jun selected: May, Jun, Jul
   expect(months()).toEqual(['2026-05-01', '2026-06-01', '2026-07-01'])
-  await user.click(within(header).getAllByRole('columnheader')[2].querySelector('button')!)
+  for (const h of within(header).getAllByRole('columnheader')) {
+    expect(h.querySelector('button')).toBeNull()
+  }
+  await user.click(within(header).getAllByRole('columnheader')[2])
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01')
+  await user.click(within(screen.getByTestId('plan-month-header')).getByRole('button', { name: /later months/i }))
   expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
   await waitFor(() => expect(months()).toEqual(['2026-06-01', '2026-07-01', '2026-08-01']))
-  await user.click(within(screen.getByTestId('plan-month-header')).getByRole('button', { name: /later months/i }))
-  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-08-01')
   expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
   await user.click(within(screen.getByTestId('plan-month-header')).getByRole('button', { name: /earlier months/i }))
-  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01')
 })
 
 it('the Budget view keeps its month strip', async () => {
@@ -2456,7 +2460,7 @@ it('rules element rows flush with hairline dividers', async () => {
   expect(wrapper).toContainElement(row)
 })
 
-it('tints the selected month top to bottom, header and body alike, and marks a hovered cell alone', async () => {
+it('marks a hovered cell alone, and no month column is tinted', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
   const user = userEvent.setup()
@@ -2472,16 +2476,8 @@ it('tints the selected month top to bottom, header and body alike, and marks a h
   expect(hovered.className).toContain('outline-border')
   expect(screen.getByTestId('plan-cell-pe1:2').className).not.toContain('outline-border')
 
-  // Jul is the second column: every line's cell in it carries the tint, no other does
-  const tinted = [...sheet.querySelectorAll('[data-col]')].filter((c) => c.className.includes('bg-accent/40'))
-  expect(tinted.length).toBeGreaterThan(5)
-  tinted.forEach((c) => expect(c).toHaveAttribute('data-col', '1'))
-  sheet.querySelectorAll('[data-col="1"]').forEach((c) => expect(c.className).toContain('bg-accent/40'))
-
-  // the header marks the selected month by tint alone, never by weight
-  const headers = within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')
-  expect(headers.filter((h) => h.className.includes('bg-accent/40')).map((h) => h.getAttribute('data-month'))).toEqual(['2026-07-01'])
-  headers.forEach((h) => expect(h.className).not.toMatch(/font-(bold|semibold)/))
+  // the picked month is no column of its own: nothing is tinted
+  expect([...sheet.querySelectorAll('[data-col]')].filter((c) => c.className.includes('bg-accent/40'))).toHaveLength(0)
 })
 
 it('the Balance line carries no bold: a full-colour label and regular figures, red only when negative', async () => {
@@ -3422,4 +3418,35 @@ it('a section line shows no sums by default, folded or open; its Σ works either
   await user.click(within(line()).getByRole('button', { name: /hide sums for expenses/i }))
   await user.click(within(line()).getByRole('button', { name: /show the july sum for expenses/i }))
   expect(within(line()).getAllByTestId(/^plan-sum-/).map((c) => c.getAttribute('data-testid'))).toEqual(['plan-sum-1'])
+})
+
+it('the Plan grid marks the current month in bold and shades no column; actuals run up to the current month', async () => {
+  usePlanHandlers()
+  // the clock is 2026-08-15; the picked month is June: window May, Jun, Jul
+  useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
+  renderPage()
+  const sheet = await screen.findByTestId('plan-sheet')
+  expect(sheet.querySelector('.bg-accent\\/40')).toBeNull()
+  // the picked month is not marked at all
+  const headers = within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')
+  expect(headers.map((h) => h.getAttribute('data-month'))).toEqual(['2026-05-01', '2026-06-01', '2026-07-01'])
+  for (const h of headers) {
+    expect(h.querySelector('[data-month-label]')).not.toHaveClass('font-semibold')
+  }
+  // July is before the current August: it shows its actual even though June is picked
+  expect(within(screen.getByTestId('plan-cell-pe1:2')).getByTestId('cell-actual')).toBeInTheDocument()
+})
+
+it('the current month name is bold in the month row', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const headers = within(screen.getByTestId('plan-month-header')).getAllByRole('columnheader')
+  const aug = headers.find((h) => h.getAttribute('data-month') === '2026-08-01')!
+  expect(aug.querySelector('[data-month-label]')).toHaveClass('font-semibold')
+  expect(aug).toHaveAttribute('aria-current', 'date')
+  for (const h of headers.filter((x) => x !== aug)) {
+    expect(h.querySelector('[data-month-label]')).not.toHaveClass('font-semibold')
+  }
 })

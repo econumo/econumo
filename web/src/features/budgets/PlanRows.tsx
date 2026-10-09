@@ -87,9 +87,9 @@ export interface PlanCellEdit {
 export interface GridCtx {
   visibleMonths: string[]
   monthIndex: (m: string) => number
-  /** the month selected in the strip: actuals show up to it, plans alone after it */
+  /** the current month: actuals show up to it, plans alone after it */
   selected: string
-  /** its column, -1 when the window does not show it; that column is tinted */
+  /** a tinted column, -1 for none (the Plan grid tints none) */
   selectedCol: number
   /** the selected cell's column, highlighted down the grid; -1 when nothing is selected */
   crosshairCol: number

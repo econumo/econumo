@@ -61,6 +61,7 @@ import { SetLimitDialog } from './SetLimitDialog'
 import { useBudgetLineMenus } from './useBudgetLineMenus'
 import {
   addMonths,
+  currentMonth,
   balanceRow,
   bucketPlanRows,
   everydayBalanceRow,
@@ -84,7 +85,7 @@ import {
 } from './planMath'
 import type { MonthExchange, PlanFolderSection, PlanRow, PlanRows } from './planMath'
 import type { LineControls, MenuAction } from './monthLayout'
-import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext } from './monthLayout'
+import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
 import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, sourceAmount } from './PlanRows'
 import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
@@ -110,7 +111,6 @@ const selectionDomId = (sel: PlanSelection): string => cellDomId(sel.rowKey, sel
 
 type GroupSums = ReturnType<typeof planGroupSums>
 
-const monthColClass = (col: number, selectedCol: number): string => `${PLAN_FIGURE_COL}${col === selectedCol ? ` ${PLAN_SELECTED_TINT}` : ''}`
 
 // Radix portals render popover/dialog/drawer/dropdown-menu content outside the grid's
 // DOM subtree, but React re-dispatches both keyboard AND click events through the
@@ -456,7 +456,6 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const startedAt = budget.meta.startedAt
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const stepPeriod = useBudgetPeriodStore((s) => s.stepPeriod)
-  const setPeriod = useBudgetPeriodStore((s) => s.setPeriod)
   const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
   const folded = useCallback((key: string): boolean => !!planFolds[key], [planFolds])
@@ -553,7 +552,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const visibleMonths = useMemo(() => Array.from({ length: visible }, (_, i) => addMonths(firstMonth, i)), [visible, firstMonth])
   // a stored month outside the budget (before its start, after its end) has no
   // column to tint
+  // the picked month only anchors the window; the grid marks the current month instead
   const selectedCol = visibleMonths.indexOf(selectedDate)
+  const cur = currentMonth()
   // An editor whose month left the window (a resize, the strip) closes rather than
   // reappearing, stale, when that month scrolls back in. Leaving its cell by click or
   // key has already committed it.
@@ -599,8 +600,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     return (m: string) => label(monthDate(m))
   }, [i18n.language])
   const layout = useMemo(
-    () => ({ kind: 'plan' as const, cols: visible, selectedCol, crosshairCol, months: visibleMonths, monthLabels: visibleMonths.map(monthLabel) }),
-    [visible, selectedCol, crosshairCol, visibleMonths, monthLabel],
+    () => ({ kind: 'plan' as const, cols: visible, selectedCol: -1, crosshairCol, months: visibleMonths, monthLabels: visibleMonths.map(monthLabel) }),
+    [visible, crosshairCol, visibleMonths, monthLabel],
   )
   const sheetPlanTarget = sheetCellTarget ? { kind: 'plan' as const, cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null
   const sheetEdit = sheetPlanTarget ? menus.editAccess(sheetPlanTarget) : null
@@ -813,8 +814,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     return {
       visibleMonths,
       monthIndex,
-      selected: selectedDate,
-      selectedCol,
+      selected: cur,
+      selectedCol: -1,
       crosshairCol,
       currencies,
       baseCurrencyId: budget.meta.currencyId,
@@ -850,7 +851,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     visibleMonths,
     monthIndex,
     selectedDate,
-    selectedCol,
+    cur,
     crosshairCol,
     currencies,
     budget.meta,
@@ -1589,8 +1590,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         {/* a touch screen outside edit mode has no menus or grips to hide, and no hover:
             what controls it has (the sums' Σ) show at once */}
         <LineControlsContext.Provider value={lineControls ?? (isCompact ? 'always' : 'hover')}>
-        {/* The month row is the Plan view's month selector: a click makes that month
-            the selected one, and ‹ › move the window a month at a time. */}
+        {/* The month row labels the columns; ‹ › move the window a month at a time. */}
         {/* the Budget view's month row in the same place and size (its 44px plus the
             rule, the switch flush with the page edge, size-8 arrows), so switching
             views moves nothing but the months */}
@@ -1669,6 +1669,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           </span>
           {visibleMonths.map((m, i) => {
             const selected = i === selectedCol
+            const current = m === cur
             return (
               <div
                 key={m}
@@ -1677,26 +1678,20 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
                 data-col={i}
                 data-selected-col={selected ? 'true' : undefined}
                 data-crosshair={i === crosshairCol ? 'col' : undefined}
-                aria-selected={selected}
-                className={`${monthColClass(i, selectedCol)}${i === crosshairCol ? ` ${PLAN_CROSSHAIR}` : ''} p-0!`}
+                aria-current={current ? 'date' : undefined}
+                className={`${PLAN_FIGURE_COL}${i === crosshairCol ? ` ${PLAN_CROSSHAIR}` : ''} p-0!`}
               >
-                <button
-                  type="button"
-                  aria-pressed={selected}
-                  className={`h-full w-full px-2 py-2 text-right text-sm uppercase tracking-wide ${selected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                  onClick={() => {
-                    if (!selected) {
-                      setPeriod(m)
-                    }
-                  }}
+                <span
+                  data-month-label=""
+                  className={`block w-full px-2 py-2 text-right text-sm uppercase tracking-wide ${current ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
                 >
                   {monthLabel(m)}
-                </button>
+                </span>
               </div>
             )
           })}
         </div>
-        {/* Sections sit flush, split by a hairline, so the selected month's tint runs
+        {/* Sections sit flush, split by a rule, so the crosshair's column runs
             unbroken from the month header down to the Balance line. */}
         <section role="rowgroup" data-testid="plan-section-income" className="plan-band plan-band-income flex flex-col">
           <MonthSectionHeader
