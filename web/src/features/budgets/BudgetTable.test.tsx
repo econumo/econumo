@@ -40,7 +40,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   server.use(...coreHandlers())
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {} })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
 })
 
 it('renders column headers, folder, default and archived sections with aligned stat cells', async () => {
@@ -162,6 +162,16 @@ it('fold toggle expands children and persists in the store', async () => {
   await user.click(within(living).getByText('Living'))
   expect(await screen.findByTestId('child-cat-rent')).toBeInTheDocument()
   expect(useBudgetPeriodStore.getState().unfoldedElements['env-1']).toBe(true)
+  // the Plan grid keeps its own fold state
+  expect(useBudgetPeriodStore.getState().planUnfoldedElements['env-1']).toBeUndefined()
+})
+
+it('ignores lines unfolded in the Plan grid', async () => {
+  useBudgetPeriodStore.setState({ planUnfoldedElements: { 'env-1': true }, planFolds: { bf1: true } })
+  renderTable()
+  await screen.findByTestId('element-env-1')
+  expect(screen.queryByTestId('child-cat-rent')).not.toBeInTheDocument()
+  expect(within(screen.getByTestId('budget-folder-Essentials')).getByTestId('element-cat-food')).toBeInTheDocument()
 })
 
 it('hideContents renders sections header-only (folder drag in progress)', async () => {
@@ -718,9 +728,10 @@ it('a click anywhere on a folder line folds it, but the line\'s own controls kee
   // the folder's own control: acts, does not fold
   await user.click(within(essentials).getByRole('button', { name: 'folder actions' }))
   expect(onAction).toHaveBeenCalledTimes(1)
-  expect(useBudgetPeriodStore.getState().planFolds.bf1).toBeUndefined()
+  expect(useBudgetPeriodStore.getState().budgetFolds.bf1).toBeUndefined()
   // the sums, away from the name: folds
   await user.click(within(essentials).getByTestId('stat-line').firstElementChild as HTMLElement)
-  expect(useBudgetPeriodStore.getState().planFolds.bf1).toBe(true)
+  expect(useBudgetPeriodStore.getState().budgetFolds.bf1).toBe(true)
+  expect(useBudgetPeriodStore.getState().planFolds.bf1).toBeUndefined()
   expect(within(screen.getByTestId('budget-folder-Essentials')).queryByTestId('element-cat-food')).toBeNull()
 })

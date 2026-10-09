@@ -752,8 +752,9 @@ and on tablet/phone only with a hardware keyboard.
       and the lines Income, Expenses, "Transfers outside budget" (only when not zero),
       Savings, Total savings and Balance at month end. Each section header
       folds its section; a folded header shows the section's sums in its
-      columns, and the fold carries over to the same section of the Plan
-      grid (and back) and survives a reload. A future month shows "—" for
+      columns, and the fold survives a reload. Budget and Plan fold on their
+      own: folding a section, folder or envelope in one view leaves the same
+      line in the other view as it was (and back). A future month shows "—" for
       received, saved and the Income / Expenses / Savings lines.
 - [ ] Budget view, Income: grouped as in the Plan grid — each income
       folder as a thin line with its Planned / Received sums (in the budget
@@ -762,7 +763,7 @@ and on tablet/phone only with a hardware keyboard.
       month it received something), and an Archived line for archived income
       with money this month. An income envelope unfolds to its categories,
       each with its received amount (opens its transactions); the unfold
-      carries over to the Plan grid.
+      does not carry over to the Plan grid.
 - [ ] Budget view, Income "To receive": each income row shows what it is
       still expected to bring this month, Planned − Received, and 0 once it
       has received its plan or more (never negative); a row with no plan, and

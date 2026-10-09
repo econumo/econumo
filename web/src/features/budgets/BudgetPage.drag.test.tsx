@@ -60,7 +60,7 @@ beforeEach(() => {
   captured = []
   localStorage.clear()
   window.econumoConfig = {}
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: { 'env-1': true }, foldBudgetId: 'b1', planFolds: {} })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: { 'env-1': true }, foldBudgetId: 'b1', planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
 })
 
 it('an unfolded envelope lists its categories with grips, inside its drop zone', async () => {

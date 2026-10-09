@@ -74,7 +74,7 @@ function renderFlows(adjust?: (p: BudgetPlanDto) => void) {
 
 beforeEach(() => {
   captured = []
-  useBudgetPeriodStore.setState({ unfoldedElements: {}, planFolds: {} })
+  useBudgetPeriodStore.setState({ unfoldedElements: {}, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
 })
 
 it('income rows and folders carry hover grips; Uncategorized and savings history do not move', () => {
@@ -114,7 +114,7 @@ it('savings rows reorder among themselves only', () => {
 
 describe('income categories and envelopes', () => {
   beforeEach(() => {
-    useBudgetPeriodStore.setState({ unfoldedElements: { ie1: true }, planFolds: {} })
+    useBudgetPeriodStore.setState({ unfoldedElements: { ie1: true }, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
   })
 
   it('an unfolded income envelope lists its categories with grips, as a drop zone', () => {
@@ -164,7 +164,7 @@ it('dragging shows one insertion line: row-level after the row it lands behind, 
 })
 
 it('with every income row in a folder, an empty No folder shows while dragging, and a category from an envelope drops there', () => {
-  useBudgetPeriodStore.setState({ unfoldedElements: { ie1: true }, planFolds: {} })
+  useBudgetPeriodStore.setState({ unfoldedElements: { ie1: true }, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
   const drag = renderFlows((p) => {
     p.structure.elements = p.structure.elements.map((el) => (el.id === 'ie1' ? { ...el, folderId: 'bf-inc' } : el))
   })

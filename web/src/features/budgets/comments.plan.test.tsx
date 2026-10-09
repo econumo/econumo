@@ -86,6 +86,7 @@ beforeEach(() => {
   useBudgetPeriodStore.setState({
     selectedDate: '2026-08-01',
     unfoldedElements: {},
+    planUnfoldedElements: {},
     foldBudgetId: null,
     planFolds: {},
   })

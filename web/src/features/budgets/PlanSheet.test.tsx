@@ -120,6 +120,7 @@ beforeEach(() => {
   useBudgetPeriodStore.setState({
     selectedDate: '2026-07-01',
     unfoldedElements: {},
+    planUnfoldedElements: {},
     foldBudgetId: null,
     planFolds: {},
     planNameWidth: null,
@@ -820,6 +821,8 @@ it('folding a section header collapses its rows and persists', async () => {
   await user.click(screen.getByRole('button', { name: 'Essentials' }))
   expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
   expect(useBudgetPeriodStore.getState().planFolds.bf1).toBe(true)
+  // the Budget view keeps its own fold state
+  expect(useBudgetPeriodStore.getState().budgetFolds.bf1).toBeUndefined()
 
   unmount()
   renderPage()
@@ -1190,6 +1193,8 @@ it('clicking a name selects nothing and does not expand; only the chevron toggle
   await user.click(chevron)
   expect(await screen.findByTestId('plan-cell-cat-rent:0')).toBeInTheDocument()
   expect(within(pe1Row).getByRole('button', { name: 'Collapse' })).toHaveAttribute('aria-expanded', 'true')
+  expect(useBudgetPeriodStore.getState().planUnfoldedElements.pe1).toBe(true)
+  expect(useBudgetPeriodStore.getState().unfoldedElements.pe1).toBeUndefined()
   await user.click(within(pe1Row).getByRole('button', { name: 'Collapse' }))
   await waitFor(() => expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument())
 })
@@ -1342,7 +1347,7 @@ it('the row ⋮ menu edits an envelope, category, or tag; Enter on a month cell 
 // not move the highlight, and the arrow keys step straight over them.
 it('child rows are not selectable by click or keyboard', async () => {
   usePlanHandlers()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', foldBudgetId: 'b1', unfoldedElements: { pe1: true } })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', foldBudgetId: 'b1', planUnfoldedElements: { pe1: true } })
   const user = userEvent.setup()
   renderPage()
   const childCell = await screen.findByTestId('plan-cell-cat-rent:0')

@@ -192,7 +192,7 @@ function CellSum({ sumKey, index, name, value }: { sumKey: string; index: number
 }
 
 /** A section's line: open, it names the section's columns; folded, it carries the
- *  section's sums in those columns. The fold state is the one the Plan grid uses. */
+ *  section's sums in those columns. Each view folds its sections on its own. */
 export function MonthSectionHeader({
   foldKey,
   label,
@@ -215,12 +215,12 @@ export function MonthSectionHeader({
   sumsOnDemand?: boolean
 }) {
   const { t } = useTranslation()
-  const folded = useBudgetPeriodStore((s) => !!s.planFolds[foldKey])
-  const sumsAsked = useBudgetPeriodStore((s) => !!s.planSumsShown[foldKey])
-  const toggle = useBudgetPeriodStore((s) => s.togglePlanFold)
-  const Chevron = folded ? ChevronRight : ChevronDown
   const layout = useLineLayout()
   const plan = layout.kind === 'plan'
+  const folded = useBudgetPeriodStore((s) => !!(plan ? s.planFolds : s.budgetFolds)[foldKey])
+  const sumsAsked = useBudgetPeriodStore((s) => !!s.planSumsShown[foldKey])
+  const toggle = useBudgetPeriodStore((s) => (plan ? s.togglePlanFold : s.toggleBudgetFold))
+  const Chevron = folded ? ChevronRight : ChevronDown
   const showSums = folded || plan
   // a section's sums wait for Σ even folded: the totals below already carry them
   const blank = plan && sumsOnDemand && !sumsAsked
