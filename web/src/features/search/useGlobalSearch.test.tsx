@@ -77,6 +77,32 @@ it('empty query: every transaction, no entity groups', async () => {
   expect(result.current.labels).toEqual([])
 })
 
+describe('future transactions', () => {
+  const future = tx({ id: 't-future', accountId: 'a1', amount: '70', categoryId: 'cat-food', description: 'concert tickets', date: '2099-01-01 10:00:00' })
+  beforeEach(() => {
+    server.use(...coreHandlers({ transactions: [...transactions, future], categories, payees, tags, labels, accounts: [...fixtureAccounts, sharedAccount] }))
+  })
+
+  it('the recent feed leaves them out', async () => {
+    const { result } = renderHook(() => useGlobalSearch('', ALL), { wrapper })
+    await waitFor(() => expect(result.current.transactionCount).toBe(TOTAL_TX))
+    expect(txIds(result)).not.toContain('t-future')
+  })
+
+  it('a query still finds them', async () => {
+    const { result } = renderHook(() => useGlobalSearch('concert', ALL), { wrapper })
+    await waitFor(() => expect(result.current.transactionCount).toBeGreaterThan(0))
+    expect(txIds(result)).toEqual(['t-future'])
+  })
+
+  it('a drill-down still lists them', async () => {
+    const scope: SearchScope = { kind: 'category', id: 'cat-food' }
+    const { result } = renderHook(() => useGlobalSearch('', scope), { wrapper })
+    await waitFor(() => expect(result.current.transactionCount).toBe(3))
+    expect(txIds(result)[0]).toBe('t-future')
+  })
+})
+
 it('classifications are own-only and archived ones come last', async () => {
   const { result } = renderHook(() => useGlobalSearch('f', ALL), { wrapper })
   await waitFor(() => expect(result.current.categories.length).toBeGreaterThan(0))

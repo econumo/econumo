@@ -111,8 +111,10 @@ export function useGlobalSearch(query: string, scope: SearchScope): GlobalSearch
   return useMemo(() => {
     const groups = scope.kind === 'all'
     const me = user?.id
+    // the unfiltered feed is "recent"; a query or drill-down still reaches scheduled ones
+    const recentFeed = groups && !query.trim()
     const matched = enriched
-      .filter(({ tx, fields }) => inScope(tx, scope) && matchesTerms(fields, query))
+      .filter(({ tx, fields }) => !(recentFeed && tx.isInFuture) && inScope(tx, scope) && matchesTerms(fields, query))
       .map(({ tx }, index) => ({ tx, index }))
       .sort((a, b) => (a.tx.date < b.tx.date ? 1 : a.tx.date > b.tx.date ? -1 : a.index - b.index))
       .map(({ tx }) => ({ tx, groupDay: dayKey(tx.date) }))
