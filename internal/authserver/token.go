@@ -252,7 +252,16 @@ func (s *Service) handleRotatedRefresh(ctx context.Context, hash string, clientI
 		return errInvalidGrant
 	}
 	latest := g.PrevRefreshTokenHash != nil && *g.PrevRefreshTokenHash == hash
-	if latest && g.RotatedAt != nil && now.Sub(*g.RotatedAt) <= RefreshGrace {
+	// Absolute: instance clocks may differ slightly, but a large backward step
+	// must not stretch the window and suppress revocation.
+	var elapsed time.Duration
+	if g.RotatedAt != nil {
+		elapsed = now.Sub(*g.RotatedAt)
+		if elapsed < 0 {
+			elapsed = -elapsed
+		}
+	}
+	if latest && g.RotatedAt != nil && elapsed <= RefreshGrace {
 		slog.WarnContext(ctx, "oauth-refresh-reuse", "grant_id", g.ID.String(), "revoked", false)
 		return errInvalidGrant
 	}

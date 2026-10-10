@@ -199,6 +199,43 @@ func TestRefresh_GraceOnlyForTheLatestRotatedToken(t *testing.T) {
 	}
 }
 
+func TestRefresh_ReplayAfterBackwardClockStep(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		back    time.Duration
+		revoked bool
+	}{{"back 10 minutes", 10 * time.Minute, true}, {"back 10 seconds", 10 * time.Second, false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, creds, clock, user := newTestService(t)
+			cid, code := approve(t, s, user)
+			r0, _ := exchange(s, cid, code)
+			refresh := func(rt string) (model.TokenResponse, error) {
+				return s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: rt})
+			}
+			r1, err := refresh(r0.RefreshToken)
+			if err != nil {
+				t.Fatal(err)
+			}
+			clock.Advance(-tc.back)
+			_, err = refresh(r0.RefreshToken)
+			wantOAuth(t, err, "invalid_grant")
+			list, _ := s.ListConnectedApps(ctx, user)
+			if tc.revoked {
+				if len(list) != 0 || len(creds.revoked) != 1 {
+					t.Fatalf("a replay after a large backward clock step must revoke the grant: %v %v", list, creds.revoked)
+				}
+				return
+			}
+			if len(list) != 1 || len(creds.revoked) != 0 {
+				t.Fatal("a small backward step stays inside the grace window")
+			}
+			if _, err := refresh(r1.RefreshToken); err != nil {
+				t.Fatalf("grant must survive: %v", err)
+			}
+		})
+	}
+}
+
 func TestRefresh_ExpiryAndClientBinding(t *testing.T) {
 	s, _, clock, user := newTestService(t)
 	cid, code := approve(t, s, user)
