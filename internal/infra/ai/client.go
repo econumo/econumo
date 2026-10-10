@@ -23,6 +23,10 @@ type Config struct {
 	Endpoint string // base URL including the API prefix, e.g. https://api.openai.com/v1
 	APIKey   string // empty for keyless local servers
 	Model    string
+	// Sign, when set, supplies the bearer per call from the requesting
+	// user's id, replacing APIKey. The econumo:// dialect signs a
+	// econumo-ai:v1 token here so the AI gateway can attribute usage.
+	Sign func(userID string) (string, error)
 }
 
 type Client struct {
@@ -56,10 +60,11 @@ type response struct {
 	} `json:"choices"`
 }
 
-// Complete sends one system+user exchange and returns the assistant text.
+// Complete sends one system+user exchange on behalf of userID and returns the
+// assistant text; userID only matters when Config.Sign is set.
 // Errors carry the HTTP status only: the response body may echo the prompt
 // (the user's payee strings) or the key, and errors end up in logs.
-func (c *Client) Complete(ctx context.Context, system, user string) (string, error) {
+func (c *Client) Complete(ctx context.Context, userID, system, user string) (string, error) {
 	body, err := json.Marshal(request{Model: c.cfg.Model, Messages: []message{{Role: "system", Content: system}, {Role: "user", Content: user}}})
 	if err != nil {
 		return "", err
@@ -69,8 +74,14 @@ func (c *Client) Complete(ctx context.Context, system, user string) (string, err
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if c.cfg.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.cfg.APIKey)
+	bearer := c.cfg.APIKey
+	if c.cfg.Sign != nil {
+		if bearer, err = c.cfg.Sign(userID); err != nil {
+			return "", fmt.Errorf("ai: signing the request: %w", err)
+		}
+	}
+	if bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+bearer)
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {

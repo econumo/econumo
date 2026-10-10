@@ -62,9 +62,10 @@ type ClassificationLister interface {
 	LabelsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
 }
 
-// Completer is one chat completion. nil = AI disabled.
+// Completer is one chat completion. nil = AI disabled. userID names the
+// requesting user so a metering endpoint can attribute the call.
 type Completer interface {
-	Complete(ctx context.Context, system, user string) (string, error)
+	Complete(ctx context.Context, userID, system, user string) (string, error)
 }
 
 // AttemptLimiter caps ingest per user; every request counts (Allow then

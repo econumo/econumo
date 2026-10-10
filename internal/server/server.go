@@ -414,7 +414,14 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	// The completion client is injected here, never imported by the feature:
 	// internal/imports declares the Completer interface and nothing more.
 	if cfg.AIEnabled {
-		importsSvc.SetCompleter(ai.New(ai.Config{Endpoint: cfg.AIEndpoint, APIKey: cfg.AIAPIKey, Model: cfg.AIModel}))
+		aiCfg := ai.Config{Endpoint: cfg.AIEndpoint, APIKey: cfg.AIAPIKey, Model: cfg.AIModel}
+		if cfg.AIDialect == config.AIDialectEconumo {
+			// An econumo AI gateway: each call carries a short-lived
+			// token naming the user, signed with the admin token both sides share.
+			aiSigner := handoff.NewSigner(cfg.AdminToken)
+			aiCfg.Sign = func(uid string) (string, error) { return aiSigner.SignAI(uid, clk.Now()) }
+		}
+		importsSvc.SetCompleter(ai.New(aiCfg))
 	}
 	importsHandlers := handlerimports.NewHandlers(importsSvc)
 

@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +23,7 @@ func TestComplete_PostsChatCompletionAndReturnsContent(t *testing.T) {
 	defer srv.Close()
 
 	c := New(Config{Endpoint: srv.URL + "/v1", APIKey: "sk-test", Model: "gpt-5-mini"})
-	out, err := c.Complete(context.Background(), "SYS", "USER")
+	out, err := c.Complete(context.Background(), "user-1", "SYS", "USER")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +56,7 @@ func TestComplete_KeylessSendsNoAuthorization(t *testing.T) {
 		_, _ = io.WriteString(w, `{"choices":[{"message":{"content":"ok"}}]}`)
 	}))
 	defer srv.Close()
-	if _, err := New(Config{Endpoint: srv.URL, Model: "llama3"}).Complete(context.Background(), "s", "u"); err != nil {
+	if _, err := New(Config{Endpoint: srv.URL, Model: "llama3"}).Complete(context.Background(), "user-1", "s", "u"); err != nil {
 		t.Fatal(err)
 	}
 	if hasAuth || gotAuth != "" {
@@ -69,7 +70,7 @@ func TestComplete_ErrorsNeverCarryTheBodyOrKey(t *testing.T) {
 		_, _ = io.WriteString(w, `{"error":{"message":"bad key sk-test leaked"}}`)
 	}))
 	defer srv.Close()
-	_, err := New(Config{Endpoint: srv.URL, APIKey: "sk-test", Model: "m"}).Complete(context.Background(), "s", "u")
+	_, err := New(Config{Endpoint: srv.URL, APIKey: "sk-test", Model: "m"}).Complete(context.Background(), "user-1", "s", "u")
 	if err == nil {
 		t.Fatal("expected an error on 401")
 	}
@@ -86,10 +87,36 @@ func TestComplete_MalformedAndEmptyReplies(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = io.WriteString(w, body)
 		}))
-		_, err := New(Config{Endpoint: srv.URL, Model: "m"}).Complete(context.Background(), "s", "u")
+		_, err := New(Config{Endpoint: srv.URL, Model: "m"}).Complete(context.Background(), "user-1", "s", "u")
 		srv.Close()
 		if err == nil {
 			t.Fatalf("body %q: expected an error", body)
 		}
+	}
+}
+
+func TestComplete_SignSuppliesThePerUserBearer(t *testing.T) {
+	var auth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth = r.Header.Get("Authorization")
+		_, _ = io.WriteString(w, `{"choices":[{"message":{"role":"assistant","content":"ok"}}]}`)
+	}))
+	defer srv.Close()
+	c := New(Config{Endpoint: srv.URL, APIKey: "ignored", Model: "m", Sign: func(uid string) (string, error) { return "tok-for-" + uid, nil }})
+	if _, err := c.Complete(context.Background(), "user-7", "s", "u"); err != nil {
+		t.Fatal(err)
+	}
+	if auth != "Bearer tok-for-user-7" {
+		t.Fatalf("Authorization = %q", auth)
+	}
+}
+
+func TestComplete_SignFailureSendsNothing(t *testing.T) {
+	called := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true }))
+	defer srv.Close()
+	c := New(Config{Endpoint: srv.URL, Model: "m", Sign: func(string) (string, error) { return "", errors.New("boom") }})
+	if _, err := c.Complete(context.Background(), "u", "s", "u"); err == nil || called {
+		t.Fatalf("err=%v called=%v", err, called)
 	}
 }

@@ -12,6 +12,12 @@ import { ImportRulesPage } from './ImportRulesPage'
 vi.mock('@/hooks/useIsCompact', () => ({ useIsCompact: () => false }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
+const access = vi.hoisted(() => ({ state: 'full_access' as 'full_access' | 'trial' | 'readonly' }))
+vi.mock('@/features/user/queries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/user/queries')>()),
+  useAccessState: () => ({ state: access.state, accessUntil: '', daysLeft: null, billingEnabled: true }),
+}))
+
 // jsdom cannot drive a real dnd-kit drag (no layout for collision detection),
 // so this stands in for the drop: it renders the real row (via renderItem,
 // exercising the real ImportRulesPage reorder wiring) plus a "move down"
@@ -93,6 +99,7 @@ function renderPage(data: Record<string, unknown> = {}) {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
+  access.state = 'full_access'
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({ matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
   for (const k of Object.keys(posted)) delete posted[k]
 })
@@ -167,6 +174,20 @@ it('with AI enabled, suggestions can be accepted or discarded', async () => {
   await user.click(within(suggestion).getByRole('button', { name: 'Accept' }))
   await waitFor(() => expect(posted.create![0]).toMatchObject({ matchValue: 'UBER', categoryId: 'cat-food', priority: 2 }))
   await waitFor(() => expect(screen.queryByRole('region', { name: 'Suggested rules' })).not.toBeInTheDocument())
+})
+
+it('disables Suggest rules for a readonly user', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  access.state = 'readonly'
+  renderPage()
+  expect(await screen.findByRole('button', { name: 'Suggest rules' })).toBeDisabled()
+})
+
+it('enables Suggest rules for a full-access user', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  access.state = 'full_access'
+  renderPage()
+  expect(await screen.findByRole('button', { name: 'Suggest rules' })).toBeEnabled()
 })
 
 it('reordering persists the new priorities', async () => {

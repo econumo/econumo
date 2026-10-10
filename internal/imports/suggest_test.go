@@ -17,10 +17,12 @@ type fakeCompleter struct {
 	err      error
 	calls    int
 	lastUser string
+	lastUID  string
 }
 
-func (f *fakeCompleter) Complete(_ context.Context, _ string, user string) (string, error) {
+func (f *fakeCompleter) Complete(_ context.Context, uid string, _ string, user string) (string, error) {
 	f.calls++
+	f.lastUID = uid
 	f.lastUser = user
 	return f.reply, f.err
 }
@@ -120,6 +122,9 @@ func TestSuggestRules_ValidatesEveryProposedRow(t *testing.T) {
 	}
 	if !strings.Contains(fc.lastUser, "Blue Bottle") || !strings.Contains(fc.lastUser, `"Coffee"`) {
 		t.Fatalf("prompt must carry the payee strings and entity names: %s", fc.lastUser)
+	}
+	if fc.lastUID != uid.String() {
+		t.Fatalf("completer must be told who asked: got %q, want %q", fc.lastUID, uid.String())
 	}
 	if strings.Contains(fc.lastUser, "4.75") {
 		t.Fatalf("prompt must not carry amounts: %s", fc.lastUser)
