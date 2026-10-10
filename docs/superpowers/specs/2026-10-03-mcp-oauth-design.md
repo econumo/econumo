@@ -104,7 +104,8 @@ used / never existed. Expired rows are purged opportunistically on exchange.
 
 `oauth_grants` is indexed on `user_id`. Dead grants (revoked or expired more
 than 30 days ago), dead `oauth` access tokens (same rule, one set-based DELETE)
-and expired codes are purged best-effort after each successful code exchange.
+and expired codes are purged best-effort after successful code exchanges and refreshes,
+at most once every 10 minutes.
 
 **`oauth_refresh_tokens_spent`** — `token_hash` TEXT PK, `grant_id` FK
 `ON DELETE CASCADE` (indexed), `spent_at` DATETIME. One row per rotation; rows

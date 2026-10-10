@@ -3,19 +3,21 @@ package authserver
 import (
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/port"
 )
 
 const (
-	Scope           = "mcp"
-	CodeTTL         = 2 * time.Minute
-	AccessTokenTTL  = time.Hour
-	GrantIdleTTL    = 90 * 24 * time.Hour
-	RefreshGrace    = 60 * time.Second
-	UnusedClientTTL = 30 * 24 * time.Hour
-	DeadRetention   = 30 * 24 * time.Hour
+	Scope                = "mcp"
+	CodeTTL              = 2 * time.Minute
+	AccessTokenTTL       = time.Hour
+	GrantIdleTTL         = 90 * 24 * time.Hour
+	RefreshGrace         = 60 * time.Second
+	UnusedClientTTL      = 30 * 24 * time.Hour
+	DeadRetention        = 30 * 24 * time.Hour
+	HousekeepingInterval = 10 * time.Minute
 )
 
 type Service struct {
@@ -25,6 +27,9 @@ type Service struct {
 	clock   port.Clock
 	limiter Limiter
 	issuer  string
+
+	hkMu   sync.Mutex
+	hkLast time.Time
 }
 
 // A nil limiter disables rate limiting. The server is enabled only for an

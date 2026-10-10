@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/url"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -345,6 +347,90 @@ func TestExchange_HousekeepingPurgesDeadOAuthTokens(t *testing.T) {
 	}
 	if len(creds.purged) != 1 || !creds.purged[0].Equal(clock.Now().Add(-DeadRetention)) {
 		t.Fatalf("purge cutoff = %v", creds.purged)
+	}
+}
+
+func refreshWith(s *Service, clientID, refresh string) (model.TokenResponse, error) {
+	return s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: clientID, RefreshToken: refresh})
+}
+
+func TestRefresh_HousekeepingPurgesDeadRows(t *testing.T) {
+	s, creds, clock, user := newTestService(t)
+	cid, code := approve(t, s, user)
+	tr, err := exchange(s, cid, code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientID := vo.MustParseId(cid)
+	old := clock.Now().Add(-60 * 24 * time.Hour)
+	dead := &model.OAuthGrant{ID: vo.NewId(), UserID: user, ClientID: clientID, RefreshTokenHash: "dead-hash",
+		CreatedAt: old, LastUsedAt: old, ExpiresAt: old, RevokedAt: &old}
+	if err := s.repo.InsertGrant(ctx, dead); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.repo.InsertCode(ctx, &model.OAuthAuthorizationCode{CodeHash: "stale-code", ClientID: clientID, UserID: user,
+		RedirectURI: "x", CodeChallenge: "c", Resource: "r", CreatedAt: old, ExpiresAt: old}); err != nil {
+		t.Fatal(err)
+	}
+	clock.Advance(HousekeepingInterval)
+	purged := len(creds.purged)
+	if _, err := refreshWith(s, cid, tr.RefreshToken); err != nil {
+		t.Fatal(err)
+	}
+	if len(creds.purged) != purged+1 || !creds.purged[purged].Equal(clock.Now().Add(-DeadRetention)) {
+		t.Fatalf("a refresh must purge dead oauth tokens: %v", creds.purged)
+	}
+	if _, err := s.repo.GetGrant(ctx, dead.ID); err == nil {
+		t.Fatal("a refresh must purge long-dead grants")
+	}
+	if _, err := s.repo.ConsumeCode(ctx, "stale-code"); err == nil {
+		t.Fatal("a refresh must purge expired codes")
+	}
+}
+
+func TestHousekeeping_ThrottledToOncePerInterval(t *testing.T) {
+	s, creds, clock, user := newTestService(t)
+	cid, code := approve(t, s, user)
+	tr, err := exchange(s, cid, code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(creds.purged) != 1 {
+		t.Fatalf("the first call always runs: %d", len(creds.purged))
+	}
+	clock.Advance(HousekeepingInterval - time.Second)
+	tr, err = refreshWith(s, cid, tr.RefreshToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(creds.purged) != 1 {
+		t.Fatalf("a refresh inside the interval must not run housekeeping again: %d", len(creds.purged))
+	}
+	clock.Advance(time.Second)
+	if _, err := refreshWith(s, cid, tr.RefreshToken); err != nil {
+		t.Fatal(err)
+	}
+	if len(creds.purged) != 2 {
+		t.Fatalf("a refresh after the interval must run housekeeping: %d", len(creds.purged))
+	}
+}
+
+func TestHousekeepingDue_RaceFree(t *testing.T) {
+	s, _, clock, _ := newTestService(t)
+	var wg sync.WaitGroup
+	var ran atomic.Int64
+	for range 50 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if s.housekeepingDue(clock.Now()) {
+				ran.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	if ran.Load() != 1 {
+		t.Fatalf("concurrent callers inside one interval must elect exactly one runner, got %d", ran.Load())
 	}
 }
 

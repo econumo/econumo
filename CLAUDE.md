@@ -330,8 +330,9 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   (two processes sharing credentials); a replay of any older spent token at any age, or of the
   latest one after 60 s, is treated as theft and revokes the grant and its tokens. A
   successful code exchange revokes the user's other grants for the same client (re-authorizing replaces the
-  connection), then purges, best-effort, expired codes and grants and `oauth` access tokens
-  revoked/expired more than 30 days ago.
+  connection). After successful code exchanges and refreshes, at most once every 10 minutes
+  per process, it purges, best-effort and outside the transaction, expired codes and grants
+  and `oauth` access tokens revoked/expired more than 30 days ago.
 - Revocation: `revoke-connected-app` takes the user row lock first. The reclaim
   (`reset-password`, CLI `user:change-password`) and `user:deactivate` revoke every grant and
   every `oauth` token in their own transaction (through the user feature's
@@ -1037,7 +1038,8 @@ In the distroless image these run via the binary directly, e.g.
   `token:purge [days]` does the same globally in one indexed DELETE (the
   revoked_at/expires_at indexes exist for it). The login purge covers sessions and
   PATs only: `oauth` tokens (1 h lifetime, so far more of them) are purged by the MCP
-  OAuth server's housekeeping after each code exchange, in one set-based DELETE.
+  OAuth server's housekeeping after successful code exchanges and refreshes, at most once
+  every 10 minutes, in one set-based DELETE.
 - Sessions/PAT management endpoints: `get-session-list`, `revoke-session`,
   `revoke-other-sessions`, `get-personal-token-list`, `create-personal-token`,
   `revoke-personal-token` (all under `/api/v1/user/`).

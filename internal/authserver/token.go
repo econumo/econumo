@@ -136,7 +136,22 @@ func tokenResponse(access, refresh string) model.TokenResponse {
 	return model.TokenResponse{AccessToken: access, TokenType: "Bearer", ExpiresIn: int(AccessTokenTTL / time.Second), RefreshToken: refresh, Scope: Scope}
 }
 
+// housekeepingDue elects at most one caller per HousekeepingInterval; the
+// first call after start always wins.
+func (s *Service) housekeepingDue(now time.Time) bool {
+	s.hkMu.Lock()
+	defer s.hkMu.Unlock()
+	if !s.hkLast.IsZero() && now.Sub(s.hkLast) < HousekeepingInterval {
+		return false
+	}
+	s.hkLast = now
+	return true
+}
+
 func (s *Service) housekeeping(ctx context.Context, now time.Time) {
+	if !s.housekeepingDue(now) {
+		return
+	}
 	if err := s.repo.PurgeExpiredCodes(ctx, now); err != nil {
 		slog.WarnContext(ctx, "oauth code purge failed", "err", err)
 	}
@@ -213,6 +228,7 @@ func (s *Service) refresh(ctx context.Context, req model.TokenRequest) (model.To
 	reqctx.AddLogAttr(ctx, "client_id", c.ID.String())
 	reqctx.AddLogAttr(ctx, "grant_id", g.ID.String())
 	reqctx.AddLogAttr(ctx, "user_id", g.UserID.String())
+	s.housekeeping(ctx, now)
 	return resp, nil
 }
 
