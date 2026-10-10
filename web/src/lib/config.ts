@@ -17,6 +17,8 @@ export interface EconumoConfig {
   VERSION_LABEL?: string
   INSTANCE_ID?: string
   AI_ENABLED?: boolean
+  IMPORT_APPLE_WALLET?: boolean
+  IMPORT_SIMPLEFIN?: boolean
   BILLING_URL?: string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
@@ -143,6 +145,23 @@ export function getBillingUrl(): string {
 
 export function isAiEnabled(): boolean {
   return window.econumoConfig?.AI_ENABLED === true
+}
+
+// The import providers (ECONUMO_IMPORT_APPLE_WALLET / ECONUMO_IMPORT_SIMPLEFIN)
+// are off unless the server says otherwise, and the server does not mount the
+// routes of one that is off.
+export function isAppleWalletImportEnabled(): boolean {
+  return window.econumoConfig?.IMPORT_APPLE_WALLET === true
+}
+
+export function isSimpleFINImportEnabled(): boolean {
+  return window.econumoConfig?.IMPORT_SIMPLEFIN === true
+}
+
+// Any provider on: import rules, run history and the Inbox's import sections
+// exist only then; with both off nothing fetches an import endpoint.
+export function isTransactionImportEnabled(): boolean {
+  return isAppleWalletImportEnabled() || isSimpleFINImportEnabled()
 }
 
 export function isCustomApiAllowed(): boolean {
