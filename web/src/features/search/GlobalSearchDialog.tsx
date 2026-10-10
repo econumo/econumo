@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
+import { XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -142,21 +143,29 @@ function SearchPanel({ onPreview, dismissible }: { onPreview: (tx: ViewTransacti
       {drilled && scope.kind !== 'all' ? <DrillHeader type={scope.kind} item={drilled} onBack={goBack} className="max-sm:px-2" /> : null}
       <Command shouldFilter={false} loop className="min-h-0 bg-transparent p-0 max-sm:flex-1">
         {/* the shared InputGroup box is h-11 up to the tablet breakpoint (max-md); phones alone get a taller h-12 */}
-        <div className="max-sm:[&_[data-slot=input-group]]:h-12!">
-          <CommandInput
-            ref={inputRef}
-            autoFocus
-            value={query}
-            onValueChange={changeQuery}
-            onKeyDown={(e) => {
-              // a held Backspace clearing the query must not also leave the drill-down
-              if (e.key === 'Backspace' && !e.repeat && query === '' && scope.kind !== 'all') {
-                e.preventDefault()
-                goBack()
-              }
-            }}
-            placeholder={isPhone ? t('search.title') : t('search.placeholder')}
-          />
+        <div className="flex items-end gap-1 max-sm:[&_[data-slot=input-group]]:h-12!">
+          <div className="min-w-0 flex-1">
+            <CommandInput
+              ref={inputRef}
+              autoFocus
+              value={query}
+              onValueChange={changeQuery}
+              onKeyDown={(e) => {
+                // a held Backspace clearing the query must not also leave the drill-down
+                if (e.key === 'Backspace' && !e.repeat && query === '' && scope.kind !== 'all') {
+                  e.preventDefault()
+                  goBack()
+                }
+              }}
+              placeholder={isPhone ? t('search.title') : t('search.placeholder')}
+            />
+          </div>
+          {/* the bottom Close bar sits under the on-screen keyboard while typing; this one stays in reach */}
+          {isPhone && dismissible ? (
+            <Button type="button" variant="ghost" className="-mr-3 size-12 shrink-0" onClick={close} aria-label={t('common.button.close.label')}>
+              <XIcon className="size-5" />
+            </Button>
+          ) : null}
         </div>
         <CommandList className="mt-2 max-h-none max-sm:min-h-0 max-sm:flex-1 sm:max-h-[70vh]">
           {result.accounts.length > 0 ? (
