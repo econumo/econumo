@@ -37,13 +37,14 @@ func NewService(repo Repository, creds Credentials, tx port.TxRunner, clock port
 
 func secureIssuer(appURL string) string {
 	u, err := url.Parse(strings.TrimSpace(appURL))
-	if err != nil || u.Hostname() == "" {
+	if err != nil || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
 		return ""
 	}
-	if u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname())) {
+	scheme, host := strings.ToLower(u.Scheme), strings.ToLower(u.Host)
+	if scheme != "https" && !(scheme == "http" && isLoopbackHost(strings.ToLower(u.Hostname()))) {
 		return ""
 	}
-	return strings.TrimRight(strings.TrimSpace(appURL), "/")
+	return scheme + "://" + host + strings.TrimRight(u.EscapedPath(), "/")
 }
 
 func (s *Service) Enabled() bool       { return s.issuer != "" }

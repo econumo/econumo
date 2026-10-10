@@ -13,9 +13,10 @@ authorization spec can connect the same way.
 
 - Set `ECONUMO_URL` to the public https URL of your instance (for example
   `https://econumo.example.com`). It is the issuer of the sign-in flow and the
-  address the clients are told to use. With it unset, or set to a plain `http://`
-  address that is not on this computer (`localhost`/`127.0.0.1`), the browser
-  sign-in is off and `/mcp` accepts personal access tokens only (see below).
+  address the clients are told to use. The browser sign-in is off, and `/mcp`
+  accepts personal access tokens only (see below), when it is unset or is a
+  plain `http://` address (plain http is accepted only for `localhost`,
+  `127.0.0.1` and `[::1]`).
 - Claude on the web, desktop and mobile connects from Anthropic's servers, so
   the instance must be reachable from the internet. Claude Code and Codex run
   on your computer and only need to reach the URL from there.

@@ -594,8 +594,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   bodies byte-for-byte unchanged (the wrapper is not installed). Must be an absolute
   http(s) URL — plain http is allowed (unlike `ECONUMO_BILLING_URL`, an app link carries no
   signed token). Not a translatable string, so it touches no `emails.*` catalogue key.
-  It is also the issuer of the MCP OAuth server (`internal/authserver`): set, it enables
-  that server; unset, it is off.
+  It is also the issuer of the MCP OAuth server (`internal/authserver`): an `https://` URL
+  (plain `http://` only on a loopback host) enables that server; unset or anything else leaves it off.
 - `ECONUMO_OAUTH_GOOGLE_*` / `ECONUMO_OAUTH_APPLE_*` / `ECONUMO_OIDC_*` — three independent
   "Sign in with…" provider slots (`internal/oauth`), each **all-or-nothing**: any one variable
   of a slot set without the rest fails at boot naming the missing variable. Google needs
@@ -759,7 +759,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET` and
   `IMPORT_SIMPLEFIN` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
-  apps (Profile row, copyable address) only when it is non-empty.
+  apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
+  instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom
+  backend on another origin; the app uses the merged per-server value as is.
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
   `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,

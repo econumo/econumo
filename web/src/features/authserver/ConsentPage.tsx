@@ -61,35 +61,41 @@ function useInteractionArmed() {
       clearTimer()
       setArmed(true)
     }
+    const armIfReady = () => {
+      if (ready()) arm()
+    }
+    const disarm = () => {
+      clearTimer()
+      setArmed(false)
+    }
     const sync = () => {
       if (ready()) {
-        timer ??= setTimeout(arm, ARM_DELAY_MS)
+        timer ??= setTimeout(() => {
+          timer = undefined
+          armIfReady()
+        }, ARM_DELAY_MS)
       } else {
-        clearTimer()
-        setArmed(false)
+        disarm()
       }
     }
     // Browsers dispatch motionless pointer events when content appears under a
     // resting cursor; only real movement counts.
     const onPointerMove = (e: PointerEvent) => {
-      if ((e.movementX !== 0 || e.movementY !== 0) && ready()) arm()
-    }
-    const onKeyDown = () => {
-      if (ready()) arm()
+      if (e.movementX !== 0 || e.movementY !== 0) armIfReady()
     }
     sync()
     document.addEventListener('visibilitychange', sync)
     window.addEventListener('focus', sync)
-    window.addEventListener('blur', sync)
+    window.addEventListener('blur', disarm)
     window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', armIfReady)
     return () => {
       clearTimer()
       document.removeEventListener('visibilitychange', sync)
       window.removeEventListener('focus', sync)
-      window.removeEventListener('blur', sync)
+      window.removeEventListener('blur', disarm)
       window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keydown', armIfReady)
     }
   }, [])
   return armed

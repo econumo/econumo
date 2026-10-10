@@ -337,18 +337,32 @@ describe('double-clickjacking guard', () => {
   })
 
   it('cancels the pending timer when focus is lost before it fires', async () => {
-    const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
     await renderConsent()
     vi.useFakeTimers()
     const allow = screen.getByRole('button', { name: /allow/i })
+    focused.mockReturnValue(true)
     act(() => {
       window.dispatchEvent(new Event('focus'))
       vi.advanceTimersByTime(300)
     })
+    expect(allow).toBeDisabled()
     focused.mockReturnValue(false)
     act(() => {
       window.dispatchEvent(new Event('blur'))
       vi.advanceTimersByTime(2000)
+    })
+    expect(allow).toBeDisabled()
+  })
+
+  it('disarms on blur even if the document still reports focus during the event', async () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    await renderConsent()
+    const allow = screen.getByRole('button', { name: /allow/i })
+    pointerMove(4)
+    expect(allow).toBeEnabled()
+    act(() => {
+      window.dispatchEvent(new Event('blur'))
     })
     expect(allow).toBeDisabled()
   })

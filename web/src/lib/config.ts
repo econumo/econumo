@@ -146,9 +146,22 @@ export function getBillingUrl(): string {
 
 // The server merges MCP_URL unconditionally (server truth): the address MCP
 // clients connect to, '' when the OAuth server is disabled (no https
-// ECONUMO_URL), in which case the Connected apps UI is hidden.
+// ECONUMO_URL), in which case the Connected apps UI is hidden. On the web the
+// value describes the instance SERVING the page, so a tab pointed at another
+// backend (custom API host) must not show it next to that backend's grants; the
+// app merges the selected server's own value, so it is used as is. Origins (not
+// raw strings) and a malformed stored host fails closed, as for
+// oauthFlowCanReturnHere.
 export function mcpUrl(): string {
-  return window.econumoConfig?.MCP_URL || ''
+  const url = window.econumoConfig?.MCP_URL || ''
+  if (!url || isNativeApp()) {
+    return url
+  }
+  try {
+    return new URL(backendHost()).origin === window.location.origin ? url : ''
+  } catch {
+    return ''
+  }
 }
 
 export function isAiEnabled(): boolean {
