@@ -392,6 +392,61 @@ export function planGroupSums(
   })
 }
 
+export interface PlanCellRef {
+  rowKey: string
+  col: number
+}
+
+/** The rectangle two cells span over the grid's on-screen row order. A corner whose
+ *  row is no longer shown (folded, filtered) spans nothing. */
+export function planCellRange(rowOrder: string[], a: PlanCellRef, b: PlanCellRef): PlanCellRef[] {
+  const ra = rowOrder.indexOf(a.rowKey)
+  const rb = rowOrder.indexOf(b.rowKey)
+  if (ra < 0 || rb < 0) {
+    return []
+  }
+  const cells: PlanCellRef[] = []
+  for (let r = Math.min(ra, rb); r <= Math.max(ra, rb); r++) {
+    for (let c = Math.min(a.col, b.col); c <= Math.max(a.col, b.col); c++) {
+      cells.push({ rowKey: rowOrder[r], col: c })
+    }
+  }
+  return cells
+}
+
+export interface PlanSelectionSum {
+  count: number
+  planned: string
+  actual: string
+}
+
+/** What a multi-cell selection adds up to, in the budget currency at each month's own
+ *  rate. Actuals count up to `current` only, as the grid shows them; a savings row adds
+ *  what was saved, since its month-end balances added across months mean nothing. */
+export function planSelectionSum(
+  cells: { el: PlanElementDto; month: string }[],
+  monthIndex: (m: string) => number,
+  ex: MonthExchange,
+  current: string,
+): PlanSelectionSum {
+  let planned = '0'
+  let actual = '0'
+  for (const { el, month } of cells) {
+    const i = monthIndex(month)
+    const cell = i >= 0 ? el.cells[i] : undefined
+    if (!cell) {
+      continue
+    }
+    if (cell.planned !== '') {
+      planned = add(planned, ex(el.currencyId, cell.planned, i))
+    }
+    if (month <= current) {
+      actual = add(actual, ex(el.currencyId, cell.actual, i))
+    }
+  }
+  return { count: cells.length, planned, actual }
+}
+
 export function balanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: MonthExchange, now?: Date): string[] {
   void now
   let running = plan.openingBalances.reduce((acc, b) => add(acc, ex(b.currencyId, b.amount, 0)), '0')

@@ -1437,6 +1437,11 @@
           "truncated": "Vengono mostrati i 2000 commenti più recenti.",
           "add": "Aggiungi commento",
           "more": "+{count} altri"
+        },
+        "selection": {
+          "count": "{count} cella | {count} celle",
+          "planned": "Piano",
+          "actual": "Effettivo"
         }
       },
       "savings": {

@@ -1437,6 +1437,11 @@
           "truncated": "仅显示最新的 2000 条评论。",
           "add": "添加评论",
           "more": "还有 {count} 条"
+        },
+        "selection": {
+          "count": "{count} 个单元格",
+          "planned": "计划",
+          "actual": "实际"
         }
       },
       "savings": {

@@ -18,8 +18,10 @@ import {
   makePlanExchange,
   monthDate,
   monthDiff,
+  planCellRange,
   planGroupSums,
   planHasSavingsData,
+  planSelectionSum,
   planMonthExchange,
   planTotals,
   planVisibleCount,
@@ -1125,4 +1127,93 @@ it('planGroupSums can sum savings balances instead of what was saved', () => {
     { actual: '1200', planned: '50' },
     { actual: '1250', planned: '50' },
   ])
+})
+
+describe('planCellRange', () => {
+  const rows = ['a', 'b', 'c', 'd']
+  it('covers every row and column between the two corners, whichever way they point', () => {
+    const fwd = planCellRange(rows, { rowKey: 'b', col: 1 }, { rowKey: 'c', col: 2 })
+    expect(fwd).toEqual([
+      { rowKey: 'b', col: 1 },
+      { rowKey: 'b', col: 2 },
+      { rowKey: 'c', col: 1 },
+      { rowKey: 'c', col: 2 },
+    ])
+    expect(planCellRange(rows, { rowKey: 'c', col: 2 }, { rowKey: 'b', col: 1 })).toEqual(fwd)
+  })
+  it('is the one cell when both corners are the same', () => {
+    expect(planCellRange(rows, { rowKey: 'd', col: 0 }, { rowKey: 'd', col: 0 })).toEqual([{ rowKey: 'd', col: 0 }])
+  })
+  it('is empty when a corner is no longer on screen', () => {
+    expect(planCellRange(rows, { rowKey: 'gone', col: 0 }, { rowKey: 'a', col: 1 })).toEqual([])
+  })
+})
+
+describe('planSelectionSum', () => {
+  const months = ['2026-06-01', '2026-07-01', '2026-08-01']
+  const monthIndex = (m: string) => months.indexOf(m)
+  // EUR doubles into the budget currency in June, triples in July: the month's own rate
+  const ex: MonthExchange = (from, amount, i) => (from === 'cur-eur' ? String(Number(amount) * (i + 2)) : amount)
+  const cells3 = (a: [string, string][]) => a.map(([actual, planned]) => ({ actual, planned }))
+
+  it('adds plans and actuals across rows and months in the budget currency', () => {
+    const food = mkEl({ id: 'f', type: BudgetElementType.CATEGORY, name: 'Food', cells: cells3([['10', '20'], ['5', ''], ['0', '0']]) })
+    const trip = mkEl({ id: 't', type: BudgetElementType.TAG, name: 'Trip', currencyId: 'cur-eur', cells: cells3([['1', '4'], ['2', '3'], ['0', '0']]) })
+    const sum = planSelectionSum(
+      [
+        { el: food, month: '2026-06-01' },
+        { el: food, month: '2026-07-01' },
+        { el: trip, month: '2026-06-01' },
+        { el: trip, month: '2026-07-01' },
+      ],
+      monthIndex,
+      ex,
+      '2026-07-01',
+    )
+    // plans 20 + 0 + 4×2 + 3×3, actuals 10 + 5 + 1×2 + 2×3
+    expect(sum).toEqual({ count: 4, planned: '37', actual: '23' })
+  })
+
+  it('leaves out actuals after the current month, as the grid does', () => {
+    const food = mkEl({ id: 'f', type: BudgetElementType.CATEGORY, name: 'Food', cells: cells3([['10', '20'], ['5', '1'], ['7', '2']]) })
+    const sum = planSelectionSum(
+      months.map((month) => ({ el: food, month })),
+      monthIndex,
+      ex,
+      '2026-07-01',
+    )
+    expect(sum).toEqual({ count: 3, planned: '23', actual: '15' })
+  })
+
+  it('adds what a savings account saved, not its month-end balance', () => {
+    const fund = mkEl({
+      id: 's',
+      type: BudgetElementType.SAVINGS,
+      name: 'Fund',
+      cells: [
+        { actual: '100', planned: '100', closingBalance: '1100' },
+        { actual: '50', planned: '100', closingBalance: '1150' },
+        { actual: '0', planned: '', closingBalance: '1150' },
+      ],
+    })
+    const sum = planSelectionSum(
+      [
+        { el: fund, month: '2026-06-01' },
+        { el: fund, month: '2026-07-01' },
+      ],
+      monthIndex,
+      ex,
+      '2026-07-01',
+    )
+    expect(sum).toEqual({ count: 2, planned: '200', actual: '150' })
+  })
+
+  it('counts a month the plan has no data for without adding anything', () => {
+    const food = mkEl({ id: 'f', type: BudgetElementType.CATEGORY, name: 'Food', cells: cells3([['10', '20'], ['5', ''], ['0', '0']]) })
+    expect(planSelectionSum([{ el: food, month: '2026-06-01' }, { el: food, month: '2026-12-01' }], monthIndex, ex, '2026-12-01')).toEqual({
+      count: 2,
+      planned: '20',
+      actual: '10',
+    })
+  })
 })
