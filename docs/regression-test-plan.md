@@ -1015,7 +1015,9 @@ and on tablet/phone only with a hardware keyboard.
       selected; later months show the plan alone. An unplanned month shows a blank plan (never 0.00) and no "·";
       a planned month with no actual yet shows `— · 55` (a muted dash, not a
       link); a month with neither an actual nor a plan is blank, never
-      `0.00`. Income: received · planned;
+      `0.00`. A plan set to 0 likewise stays blank (no `— · 0.00`) while the
+      month's actual or savings balance is zero or not shown (later months);
+      next to a non-zero actual/balance it reads `12 · 0.00`. Income: received · planned;
       savings: balance · planned (see the Savings section item); expenses:
       spent · budget. No bold anywhere in
       the grid. There is no `$` column and no per-cell balance line; a row in
