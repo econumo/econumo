@@ -135,6 +135,11 @@ const (
 	CodeOAuthIdentityTaken          = "oauth.identity_taken"
 	CodeOAuthProviderAlreadyLinked  = "oauth.provider_already_linked"
 	CodeOAuthLastSignInMethod       = "oauth.last_sign_in_method"
+
+	CodeAuthServerDisabled         = "authserver.disabled"
+	CodeAuthServerClientNotFound   = "authserver.client_not_found"
+	CodeAuthServerRedirectMismatch = "authserver.redirect_uri_mismatch"
+	CodeAuthServerGrantNotFound    = "authserver.grant_not_found"
 )
 
 var AllCodes = []string{
@@ -264,4 +269,9 @@ var AllCodes = []string{
 	CodeOAuthIdentityTaken,
 	CodeOAuthProviderAlreadyLinked,
 	CodeOAuthLastSignInMethod,
+
+	CodeAuthServerDisabled,
+	CodeAuthServerClientNotFound,
+	CodeAuthServerRedirectMismatch,
+	CodeAuthServerGrantNotFound,
 }

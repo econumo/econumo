@@ -52,6 +52,7 @@ type Service struct {
 	logoutURLs            LogoutURLBuilder
 	oauthGrants           OAuthReclaimer
 	identityEmails        IdentityEmailLister
+	mcpGrants             MCPGrantRevoker
 }
 
 func NewService(
@@ -120,6 +121,10 @@ func (s *Service) SetLogoutURLBuilder(b LogoutURLBuilder) { s.logoutURLs = b }
 // SetOAuthReclaimer installs the oauth feature's reclaim adapter for the
 // password-reset cascade, wired the same way and for the same reason.
 func (s *Service) SetOAuthReclaimer(r OAuthReclaimer) { s.oauthGrants = r }
+
+// SetMCPGrantRevoker installs the MCP OAuth server's grant revocation for the
+// reclaim and deactivation cascades, wired after construction like the above.
+func (s *Service) SetMCPGrantRevoker(r MCPGrantRevoker) { s.mcpGrants = r }
 
 // SetIdentityEmailLister installs the oauth feature's linked-address lookup for
 // the change-email notice, wired after construction like the two above.

@@ -36,6 +36,12 @@ export function createPersistOptions() {
     maxAge: CACHE_MAX_AGE_MS,
     // a release may change response shapes; never restore across versions
     buster: getVersion(),
+    // an authorization request carries single-use OAuth state and is only
+    // meaningful for the page that asked
+    dehydrateOptions: {
+      shouldDehydrateQuery: (query: { queryKey: readonly unknown[]; state: { status: string } }) =>
+        query.queryKey[0] !== 'authserver' && query.state.status === 'success',
+    },
   }
 }
 

@@ -61,7 +61,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN` and `INSTANCE_ID` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID` and `MCP_URL` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. The merge is per server: typing a
@@ -139,9 +139,9 @@ aws CLI installed.
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the fourteen features (`account`, `admin`, `budget`, `category`, `connection`,
-`currency`, `imports`, `oauth`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
-tree holding its own use cases, persistence, and HTTP edge; the entities and
+layers. Each of the sixteen features (`account`, `admin`, `authserver`, `budget`, `category`, `connection`,
+`currency`, `imports`, `label`, `oauth`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+tree (`internal/version` is a build-info leaf that archtest also auto-detects, not a slice) holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
 
@@ -168,7 +168,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   │   ports.go ..............   consumer-side interfaces for capabilities OTHER features provide
 │   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
 │   │   ├── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
-│   │   └── mcp/ ...................  MCP edge (all nine features have one): tool registration, mirroring
+│   │   └── mcp/ ...................  MCP edge (ten features have one): tool registration, mirroring
 │   │                                 api/ (see MCP endpoint below; prompts live in internal/web/mcp)
 │   ├── infra/ .................... engine-agnostic infrastructure shared by every feature:
 │   │   ├── storage/sqlc/ ......... sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
@@ -283,6 +283,64 @@ intended credential for MCP clients). Shared edge infra lives in
 `internal/web/mcp/`; each feature that exposes MCP surface registers its own
 tools/prompts from an `internal/<feature>/mcp/` package, composed at
 `server.BuildAPI` exactly like `RegisterAPI`.
+
+**MCP OAuth** (`internal/authserver`, not to be confused with `internal/oauth`,
+which is Econumo as a *client* of Google/Apple/OIDC): a hand-written OAuth 2.1
+authorization server so MCP clients (Claude, Codex) connect by URL alone and
+sign in through the browser instead of pasting a PAT. Setup guide:
+`docs/mcp-setup.md`; design: `docs/superpowers/specs/2026-10-03-mcp-oauth-design.md`.
+It is enabled only when `ECONUMO_URL` is an `https://` origin with no path (plain `http://`
+only on a loopback host: `localhost`, `127.0.0.1`, `[::1]`; issuer = `scheme://host`,
+resource = `<issuer>/mcp`). A path other than `/` is refused because discovery, `/mcp` and
+every OAuth route are root-mounted, so a path-based issuer could not publish its RFC 8414 /
+RFC 9728 metadata. Any other value, a path included, leaves it disabled and `serve` logs one
+WARN, because refresh tokens, client secrets and bearer tokens must not cross a network in
+the clear. The handler is always mounted on the root mux, but while disabled all five public
+routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
+- Discovery: `/.well-known/oauth-protected-resource[/mcp]` and
+  `/.well-known/oauth-authorization-server`; an unauthenticated `/mcp` 401 adds
+  `WWW-Authenticate: Bearer resource_metadata=…, scope="mcp"` (body unchanged, REST 401s untouched).
+- `POST /oauth/register`: open dynamic client registration (public clients, or
+  `client_secret_post`/`client_secret_basic`). Redirect URIs must be https (ASCII host
+  only) or http on a loopback host (`127.0.0.1`, `[::1]`, `localhost`; the port is
+  ignored when matching), at most 2048 bytes; clients never approved are purged
+  on the next registration once 30 days old. Registration is behind the global per-endpoint rate cap; the token
+  endpoint has no limiter of its own.
+- Consent lives at the SPA route `/oauth/authorize`. The session is a localStorage
+  bearer token, so the browser cannot carry it to a Go-rendered page: the SPA calls
+  `get-authorization-request` and then `POST /api/v1/authserver/approve-authorization`
+  (or `decline-authorization`) and navigates to the returned `redirectUrl`. An unknown
+  client or unmatched redirect URI is an error page that never redirects; any other
+  request fault yields an error `redirectUrl`, but the page shows a "Return to {host}"
+  button instead of navigating on its own. `code_challenge` must be a 43-char base64url
+  S256 challenge, `state` at most 1024 bytes. Any requested `scope` is accepted (on
+  authorize and refresh) and `mcp` is always granted. Approve takes the user row lock and
+  re-checks that the presenting session is unrevoked before storing the code with the
+  generation read under that lock, so a reclaim racing the approval leaves no code behind.
+  The Allow button stays disabled until a real pointer/key event or ~500 ms of the page
+  being visible and focused (double-clickjacking guard).
+- `POST /oauth/token`: PKCE S256 only; `resource`, when sent, must be
+  `<ECONUMO_URL>/mcp` (trailing slash tolerated), else `invalid_target`. Errors are RFC 6749
+  JSON, not the envelope, with `Cache-Control: no-store`.
+- Access tokens are `access_tokens` rows of kind `oauth` / scope `mcp` (`eco_oat_…`, fixed
+  1 h, linked to their grant by `grant_id`), admitted only on `/mcp` — anywhere else they
+  get the frozen 401. Turning OAuth off also stops admitting already-issued OAuth access
+  tokens on `/mcp` (the chain passes `AllowMCPScope: authSrv.Enabled()`). Refresh tokens
+  rotate on every use; a grant idles out 90 days after its last refresh. Every rotated-away
+  hash is kept in `oauth_refresh_tokens_spent` for as long as the grant row lives. Replaying
+  the token rotated away most recently, within 60 s, is refused with `invalid_grant` and
+  leaves the grant alone (two processes sharing credentials); a replay of any older spent
+  token at any age, or of the latest one after 60 s, is treated as theft and revokes the
+  grant and its tokens. A successful code exchange revokes the user's other grants for the
+  same client (re-authorizing replaces the connection). After successful code exchanges and
+  refreshes, at most once every 10 minutes per process, it purges, best-effort and outside
+  the transaction, expired codes and grants and `oauth` access tokens revoked/expired more
+  than 30 days ago.
+- Revocation: `revoke-connected-app` takes the user row lock first. The reclaim
+  (`reset-password`, CLI `user:change-password`) and `user:deactivate` revoke every grant and
+  every `oauth` token in their own transaction (through the user feature's
+  `MCPGrantRevoker` port); `update-password` keeps them, like PATs. A code approved
+  before a reclaim fails at exchange via the credentials-generation fence.
 
 ### Frontend architecture (React 19 + Vite)
 
@@ -541,6 +599,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   bodies byte-for-byte unchanged (the wrapper is not installed). Must be an absolute
   http(s) URL — plain http is allowed (unlike `ECONUMO_BILLING_URL`, an app link carries no
   signed token). Not a translatable string, so it touches no `emails.*` catalogue key.
+  It is also the issuer of the MCP OAuth server (`internal/authserver`): an `https://` origin
+  with no path (plain `http://` only on a loopback host) enables that server; unset or anything else leaves it off.
 - `ECONUMO_OAUTH_GOOGLE_*` / `ECONUMO_OAUTH_APPLE_*` / `ECONUMO_OIDC_*` — three independent
   "Sign in with…" provider slots (`internal/oauth`), each **all-or-nothing**: any one variable
   of a slot set without the rest fails at boot naming the missing variable. Google needs
@@ -701,8 +761,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `IMPORT_APPLE_WALLET` and
-  `IMPORT_SIMPLEFIN` are always present (server truth).
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET` and
+  `IMPORT_SIMPLEFIN` are always present (server truth). `MCP_URL` is the MCP OAuth resource
+  URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
+  apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
+  instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom
+  backend on another origin; the app uses the merged per-server value as is.
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
   `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,
@@ -891,19 +955,22 @@ In the distroless image these run via the binary directly, e.g.
   `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
   in the middleware's small allowlist (account security actions — logout, session/PAT
   revocation, password update, email change, `oauth/start-link`,
-  `oauth/complete-link`, `oauth/unlink-identity` —
+  `oauth/complete-link`, `oauth/unlink-identity`, `authserver/revoke-connected-app`
+  and `authserver/decline-authorization` (declining writes nothing) —
   plus `update-analytics`: withdrawing from product analytics is a privacy right, not a
   paid feature, so it must work regardless of access level); `GET` reads are never restricted.
 
 ## Authentication
 
 - **Method**: opaque bearer tokens stored (sha256-hashed) in the `access_tokens` table.
-  Two kinds: `session` (minted at login; sliding 30-day TTL — expiry renews on use, with
-  last-used persistence throttled to once per 5 minutes) and `personal` (user-created
-  PATs with an optional fixed expiry, shown exactly once at creation).
+  Three kinds: `session` (minted at login; sliding 30-day TTL — expiry renews on use, with
+  last-used persistence throttled to once per 5 minutes), `personal` (user-created
+  PATs with an optional fixed expiry, shown exactly once at creation) and `oauth`
+  (minted by the MCP OAuth server, see "MCP endpoint"; 1 h fixed expiry, scope `mcp`).
   Every token carries a scope: `full` (sessions, ordinary PATs) or `ingest` (a PAT
   that may ONLY call `/api/v1/import/ingest-*`; anywhere else it gets the frozen 401
-  `"Invalid access token"`). `create-personal-token` requires `scope`.
+  `"Invalid access token"`) or `mcp` (`oauth` tokens only; admitted solely on `/mcp`, the
+  frozen 401 elsewhere). `create-personal-token` requires `scope` and cannot mint `mcp`.
 - The `user` feature owns everything: `Authenticate` (the per-request hot path),
   session/PAT use cases, and the revocation cascades. The middleware seam is
   `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
@@ -972,7 +1039,10 @@ In the distroless image these run via the binary directly, e.g.
   concurrent resend has just emailed.
 - Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
   `token:purge [days]` does the same globally in one indexed DELETE (the
-  revoked_at/expires_at indexes exist for it).
+  revoked_at/expires_at indexes exist for it). The login purge covers sessions and
+  PATs only: `oauth` tokens (1 h lifetime, so far more of them) are purged by the MCP
+  OAuth server's housekeeping after successful code exchanges and refreshes, at most once
+  every 10 minutes, in one set-based DELETE.
 - Sessions/PAT management endpoints: `get-session-list`, `revoke-session`,
   `revoke-other-sessions`, `get-personal-token-list`, `create-personal-token`,
   `revoke-personal-token` (all under `/api/v1/user/`).
@@ -1044,7 +1114,7 @@ data unreadable. Most are also asserted by the test suite.
 - **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy email data to plaintext (the repo writes the row `id` into `identifier` automatically, so no re-derivation is needed).
 
 ### Access tokens (`internal/user/token.go`)
-- Format: `eco_ses_` (session) / `eco_pat_` (personal) + `base64.RawURLEncoding` of 32
+- Format: `eco_ses_` (session) / `eco_pat_` (personal) / `eco_oat_` (oauth) + `base64.RawURLEncoding` of 32
   random bytes (43 chars, alphabet `[A-Za-z0-9_-]`). Only `hex(sha256(token))` is stored.
 - 401 messages are exact: `"Access token not found"` (missing/malformed header) and
   `"Invalid access token"` (unknown/expired/revoked token, and any internal

@@ -1,6 +1,7 @@
 package fixture
 
 import (
+	"encoding/json"
 	"strconv"
 	"time"
 
@@ -711,6 +712,43 @@ func (b *Builder) AccessToken(tk AccessToken) string {
 	b.insert(`INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
 		id, tk.UserID, tk.Kind, tk.TokenHash, scope, nullable(tk.Name), nullable(tk.UserAgent), now, now, exp)
+	return id
+}
+
+// OAuthClient seeds one registered MCP client (public, no secret).
+type OAuthClient struct {
+	ID           string
+	Name         string
+	RedirectURIs []string
+}
+
+func (b *Builder) OAuthClient(c OAuthClient) string {
+	b.t.Helper()
+	id := b.orNewID(c.ID)
+	uris, err := json.Marshal(c.RedirectURIs)
+	if err != nil {
+		b.t.Fatalf("fixture oauth client: %v", err)
+	}
+	b.insert(`INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at) VALUES (?, ?, ?, NULL, ?, NULL)`,
+		id, c.Name, string(uris), b.now())
+	return id
+}
+
+// OAuthGrant seeds one live grant (expires in 2099, clear of any test clock).
+// refreshHash must be unique across grants.
+type OAuthGrant struct {
+	ID          string
+	UserID      string
+	ClientID    string
+	RefreshHash string
+}
+
+func (b *Builder) OAuthGrant(g OAuthGrant) string {
+	b.t.Helper()
+	id := b.orNewID(g.ID)
+	now := b.now()
+	b.insert(`INSERT INTO oauth_grants (id, user_id, client_id, refresh_token_hash, created_at, last_used_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		id, g.UserID, g.ClientID, g.RefreshHash, now, now, time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC))
 	return id
 }
 

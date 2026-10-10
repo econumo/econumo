@@ -9,7 +9,9 @@ import { isNativeApp } from './platform'
 // bundled default by design. INSTANCE_ID is server truth too: an app pointed
 // at a self-hosted backend must report that backend's instance, not none.
 // PASSWORD_LOGIN decides whether the login screen offers a password form at all.
-const MERGED_KEYS = ['ALLOW_REGISTRATION', 'PASSWORD_LOGIN', 'INSTANCE_ID'] as const
+// MCP_URL is the selected backend's MCP address ('' when its OAuth server is
+// off), so Connected apps never shows another server's address.
+const MERGED_KEYS = ['ALLOW_REGISTRATION', 'PASSWORD_LOGIN', 'INSTANCE_ID', 'MCP_URL'] as const
 
 // Minimum server version the bundled app is compatible with; an older server
 // hard-blocks the app. The server's own floor arrives as MIN_APP_VERSION in

@@ -53,8 +53,20 @@ func (accessTokenPgsqlQuerier) DeleteDeadAccessTokens(ctx context.Context, db ba
 	return pgsqlgen.New(db).DeleteDeadAccessTokens(ctx, pgsqlgen.DeleteDeadAccessTokensParams(p))
 }
 
+func (accessTokenPgsqlQuerier) DeleteDeadOAuthAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadOAuthTokParams) (int64, error) {
+	return pgsqlgen.New(db).DeleteDeadOAuthAccessTokens(ctx, pgsqlgen.DeleteDeadOAuthAccessTokensParams(p))
+}
+
 func (accessTokenPgsqlQuerier) InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error) {
 	return pgsqlgen.New(db).InsertAccessTokenIfGeneration(ctx, pgsqlgen.InsertAccessTokenIfGenerationParams(p))
+}
+
+func (accessTokenPgsqlQuerier) InsertOAuthAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertOAuthTokenIfGenParams) (int64, error) {
+	return pgsqlgen.New(db).InsertOAuthAccessTokenIfGeneration(ctx, pgsqlgen.InsertOAuthAccessTokenIfGenerationParams(p))
+}
+
+func (accessTokenPgsqlQuerier) RevokeAccessTokensByGrant(ctx context.Context, db backend.DBTX, p revokeTokensByGrantParams) error {
+	return pgsqlgen.New(db).RevokeAccessTokensByGrant(ctx, pgsqlgen.RevokeAccessTokensByGrantParams(p))
 }
 
 func (accessTokenPgsqlQuerier) InsertAccessTokenIfPresenterLive(ctx context.Context, db backend.DBTX, p insertTokenIfPresenterLiveParams) (int64, error) {

@@ -1853,6 +1853,40 @@
       "readonly": "Accesso in sola lettura: le modifiche sono disattivate"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "Collega un'app a Econumo",
+      "wantsAccess": "vuole accedere al tuo account Econumo.",
+      "redirect": "Dopo il tuo consenso verrai reindirizzato a {host}.",
+      "loopback": "Dopo il tuo consenso tornerai a un'app su questo computer.",
+      "fullAccess": "Potrà leggere e modificare tutti i tuoi dati di Econumo.",
+      "signedInAs": "Accesso effettuato come {email}",
+      "switchAccount": "Non sei tu? Cambia account",
+      "allow": "Consenti",
+      "deny": "Rifiuta",
+      "invalidTitle": "Questa app ha inviato una richiesta non valida",
+      "invalidBody": "Econumo non può collegarla. Torna all'app e riprova.",
+      "returnToHost": "Torna a {host}",
+      "returnToApp": "Torna all'app",
+      "readonly": "Il tuo account è in sola lettura, quindi non è possibile collegare app."
+    },
+    "apps": {
+      "title": "App connesse",
+      "description": "App come Claude o Codex a cui hai consentito di usare i tuoi dati Econumo. Revocare un'app la disconnette subito.",
+      "empty": "Nessuna app è ancora connessa.",
+      "howTo": "In Claude o Codex, aggiungi un connettore personalizzato o un server MCP con questo indirizzo e accedi quando richiesto.",
+      "unavailable": "Il collegamento di app di IA non è disponibile su questo server. L'amministratore deve impostare ECONUMO_URL sull'indirizzo https del server, senza percorso.",
+      "copy": "Copia",
+      "copied": "Copiato",
+      "revoke": "Revoca",
+      "revokeConfirm": "{name} perderà l'accesso ai tuoi dati Econumo.",
+      "connected": "Connessa il {date}",
+      "lastUsed": "Ultimo utilizzo {when}",
+      "loopback": "Funziona su questo computer",
+      "returnsTo": "Ti riporta a {host}",
+      "menuItem": "App connesse"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Questo valore non deve essere vuoto.",
@@ -1947,6 +1981,12 @@
       "name_length": "Il nome del tag deve contenere da {min} a {max} caratteri",
       "cannot_be_merged": "I tag selezionati non possono essere uniti.",
       "list_empty": "L'elenco dei tag è vuoto"
+    },
+    "authserver": {
+      "disabled": "Il collegamento di app non è disponibile su questo server.",
+      "client_not_found": "La registrazione di questa app è scaduta o non è riconosciuta. Rimuovi Econumo dall'app e aggiungilo di nuovo.",
+      "redirect_uri_mismatch": "Questo link di accesso non è valido per questa app. Avvia di nuovo la connessione dall'app.",
+      "grant_not_found": "App collegata non trovata."
     },
     "oauth": {
       "provider_not_configured": "Il provider di accesso non è configurato",

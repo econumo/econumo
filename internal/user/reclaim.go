@@ -28,7 +28,10 @@ func (s *Service) reclaimCredentials(ctx context.Context, u *model.User, provenE
 	if err := s.emailChangeRequests.DeleteByUser(ctx, u.ID); err != nil {
 		return err
 	}
-	if err := s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal); err != nil {
+	if err := s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal, model.TokenKindOAuth); err != nil {
+		return err
+	}
+	if err := s.revokeMCPGrants(ctx, u.ID); err != nil {
 		return err
 	}
 	if s.oauthGrants == nil {
@@ -45,6 +48,22 @@ func (s *Service) reclaimCredentials(ctx context.Context, u *model.User, provenE
 	}
 	if grants > 0 {
 		reqctx.AddLogAttr(ctx, "oauth_grants_revoked", grants)
+	}
+	return nil
+}
+
+// revokeMCPGrants ends the user's MCP client authorizations in the caller's
+// transaction, so the refresh tokens die with the access tokens revoked beside it.
+func (s *Service) revokeMCPGrants(ctx context.Context, userID vo.Id) error {
+	if s.mcpGrants == nil {
+		return nil
+	}
+	n, err := s.mcpGrants.RevokeAllForUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		reqctx.AddLogAttr(ctx, "mcp_grants_revoked", n)
 	}
 	return nil
 }

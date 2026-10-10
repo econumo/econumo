@@ -15,6 +15,7 @@ window.econumoConfig = {
   PASSWORD_LOGIN: true,
   INSTANCE_ID: '',
   BILLING_URL: '',
+  MCP_URL: '',
   AI_ENABLED: false,
   IMPORT_APPLE_WALLET: false,
   IMPORT_SIMPLEFIN: false,

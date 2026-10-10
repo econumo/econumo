@@ -17,6 +17,11 @@
 //	                            wrapped in the global chain plus the caller-
 //	                            supplied auth/timezone-fallback handler; nil
 //	                            Deps.MCP leaves it unmounted
+//	/oauth/{register,token}, /.well-known/oauth-*
+//	                  (*)    -> OAuth authorization server for MCP clients
+//	                            (Deps.OAuthServer; it answers 404 itself while
+//	                            ECONUMO_URL is unset); /oauth/authorize is an
+//	                            SPA route
 //	/                 (*)    -> SPA file server with index.html fallback
 //
 // The auth middleware itself is built in the user module and is applied by
@@ -86,6 +91,11 @@ type Deps struct {
 	// applied by the composition root). Nil = endpoint not mounted.
 	MCP http.Handler
 
+	// OAuthServer serves the public OAuth discovery, registration and token
+	// routes (its own handler sets CORS, so the global CORS middleware is not
+	// applied). Nil = not mounted.
+	OAuthServer http.Handler
+
 	// SPA is the filesystem the SPA catch-all serves. In production it is the
 	// SPA embedded in the binary (web.DistFS); it is a seam for tests to inject
 	// a fixture FS. Nil falls back to the embedded build.
@@ -113,6 +123,12 @@ type Deps struct {
 	// so this leaf never imports the version package). The web SPA ships
 	// embedded, so it can never be stale and ignores the key.
 	MinAppVersion string
+
+	// MCPURL is merged into the served econumo-config.js as MCP_URL: the
+	// address MCP clients connect to (authserver ResourceURL), or "" when the
+	// OAuth server is disabled. Always emitted, so the SPA hides its
+	// Connected apps UI instead of advertising an address that cannot work.
+	MCPURL string
 
 	// InstanceID is the per-deployment digest merged into the served
 	// econumo-config.js as INSTANCE_ID (instance.ID, resolved by the
@@ -177,6 +193,22 @@ func New(deps Deps) http.Handler {
 		root.Handle("/mcp", global(deps.MCP))
 	}
 
+	// OAuth authorization server. The patterns are listed here rather than
+	// delegated to a prefix so /oauth/authorize stays with the SPA catch-all
+	// (the consent page) and the rest of /.well-known/ keeps its 404.
+	if deps.OAuthServer != nil {
+		oauth := middleware.Chain(middleware.RequestID, middleware.AccessLog, middleware.Recover)(deps.OAuthServer)
+		for _, p := range []string{
+			"/.well-known/oauth-protected-resource",
+			"/.well-known/oauth-protected-resource/mcp",
+			"/.well-known/oauth-authorization-server",
+			"/oauth/register",
+			"/oauth/token",
+		} {
+			root.Handle(p, oauth)
+		}
+	}
+
 	// SPA catch-all. Not wrapped in the API global chain (static assets do not
 	// need request-id/cors/timezone); spa.Handler refuses /api and /_ paths so
 	// it never shadows the server-side groups.
@@ -228,6 +260,7 @@ func New(deps Deps) http.Handler {
 		// works, so an empty value must switch the SPA's billing UI off rather than
 		// leave a stale default pointing at a portal the server will not mint for.
 		"BILLING_URL":       deps.Cfg.BillingURL,
+		"MCP_URL":           deps.MCPURL,
 		"ALLOW_CUSTOM_API":  allowCustomAPI,
 		"LILTAG_CONFIG_URL": liltagConfigURL,
 		"LILTAG_CACHE_TTL":  liltagCacheTTL,

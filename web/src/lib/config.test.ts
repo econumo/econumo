@@ -1,4 +1,4 @@
-import { getInstanceId, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getVersionLabel, getBillingUrl } from './config'
+import { getInstanceId, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getVersionLabel, getBillingUrl, mcpUrl } from './config'
 
 beforeEach(() => {
   localStorage.clear()
@@ -35,6 +35,43 @@ describe('flags', () => {
     expect(getBillingUrl()).toBe('')
     window.econumoConfig = { BILLING_URL: 'https://pay.example.test/cloud/' }
     expect(getBillingUrl()).toBe('https://pay.example.test/cloud/')
+  })
+
+  it('returns the MCP URL, empty when unset', () => {
+    expect(mcpUrl()).toBe('')
+    window.econumoConfig = { MCP_URL: 'https://money.example.test/mcp' }
+    expect(mcpUrl()).toBe('https://money.example.test/mcp')
+  })
+
+  describe('mcpUrl with a custom backend', () => {
+    beforeEach(() => {
+      window.econumoConfig = { ALLOW_CUSTOM_API: true, MCP_URL: 'https://serving.example.test/mcp' }
+      selfHosted(true)
+    })
+    afterEach(() => {
+      delete (window as { Capacitor?: unknown }).Capacitor
+    })
+
+    it('is empty on the web when the page is pointed at another origin', () => {
+      backendHost('https://other.example.test')
+      expect(mcpUrl()).toBe('')
+    })
+
+    it('is kept on the web when the backend is the serving origin', () => {
+      backendHost(`${window.location.origin}/`)
+      expect(mcpUrl()).toBe('https://serving.example.test/mcp')
+    })
+
+    it('is empty on the web when the stored host is malformed', () => {
+      backendHost('not a url')
+      expect(mcpUrl()).toBe('')
+    })
+
+    it('keeps the merged per-server value in the native app', () => {
+      window.Capacitor = { isNativePlatform: () => true }
+      backendHost('https://other.example.test')
+      expect(mcpUrl()).toBe('https://serving.example.test/mcp')
+    })
   })
 })
 
