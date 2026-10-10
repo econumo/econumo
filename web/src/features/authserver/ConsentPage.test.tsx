@@ -59,8 +59,10 @@ function pointerMove(dx: number) {
   })
 }
 
-// Allow is armed by a real interaction with the page; tests move the pointer.
+// Allow is armed by a real interaction with the page while it is focused
+// (jsdom reports no focus by default); tests move the pointer.
 async function clickAllow() {
+  vi.spyOn(document, 'hasFocus').mockReturnValue(true)
   const allow = await screen.findByRole('button', { name: /allow/i })
   pointerMove(4)
   await waitFor(() => expect(allow).toBeEnabled())
@@ -273,8 +275,8 @@ describe('double-clickjacking guard', () => {
     expect(allow).toBeEnabled()
   })
 
-  it('arms on a keypress or a moving pointer, not a motionless one', async () => {
-    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+  it('arms on a keypress or a moving pointer while focused, not a motionless one', async () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     await renderConsent()
     const allow = screen.getByRole('button', { name: /allow/i })
     pointerMove(0)
@@ -285,12 +287,103 @@ describe('double-clickjacking guard', () => {
     expect(allow).toBeEnabled()
   })
 
-  it('arms on pointer movement', async () => {
-    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+  it('arms on pointer movement while focused', async () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     await renderConsent()
     const allow = screen.getByRole('button', { name: /allow/i })
     expect(allow).toBeDisabled()
     pointerMove(-3)
+    expect(allow).toBeEnabled()
+  })
+
+  it('does not arm on pointer movement or a keypress while the window is not focused', async () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    await renderConsent()
+    const allow = screen.getByRole('button', { name: /allow/i })
+    pointerMove(5)
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }))
+    })
+    expect(allow).toBeDisabled()
+  })
+
+  it('disarms when the window loses focus and re-arms only after a fresh interval', async () => {
+    const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    await renderConsent()
+    vi.useFakeTimers()
+    const allow = screen.getByRole('button', { name: /allow/i })
+    pointerMove(4)
+    expect(allow).toBeEnabled()
+
+    focused.mockReturnValue(false)
+    act(() => {
+      window.dispatchEvent(new Event('blur'))
+    })
+    expect(allow).toBeDisabled()
+
+    focused.mockReturnValue(true)
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+    })
+    expect(allow).toBeDisabled()
+    act(() => {
+      vi.advanceTimersByTime(499)
+    })
+    expect(allow).toBeDisabled()
+    act(() => {
+      vi.advanceTimersByTime(2)
+    })
+    expect(allow).toBeEnabled()
+  })
+
+  it('cancels the pending timer when focus is lost before it fires', async () => {
+    const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    await renderConsent()
+    vi.useFakeTimers()
+    const allow = screen.getByRole('button', { name: /allow/i })
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+      vi.advanceTimersByTime(300)
+    })
+    focused.mockReturnValue(false)
+    act(() => {
+      window.dispatchEvent(new Event('blur'))
+      vi.advanceTimersByTime(2000)
+    })
+    expect(allow).toBeDisabled()
+  })
+
+  it('disarms when the page becomes hidden and re-arms after a fresh interval once visible', async () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    await renderConsent()
+    vi.useFakeTimers()
+    const allow = screen.getByRole('button', { name: /allow/i })
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }))
+    })
+    expect(allow).toBeEnabled()
+
+    visibility.mockReturnValue('hidden')
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    expect(allow).toBeDisabled()
+    pointerMove(5)
+    expect(allow).toBeDisabled() // hidden pages cannot arm either
+
+    visibility.mockReturnValue('visible')
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    expect(allow).toBeDisabled()
+    act(() => {
+      vi.advanceTimersByTime(499)
+    })
+    expect(allow).toBeDisabled()
+    act(() => {
+      vi.advanceTimersByTime(2)
+    })
     expect(allow).toBeEnabled()
   })
 

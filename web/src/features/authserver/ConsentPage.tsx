@@ -38,45 +38,60 @@ function Shell({ children }: { children: ReactNode }) {
 const ARM_DELAY_MS = 500
 
 // Double-clickjacking guard: a page that opens this one under the user's
-// cursor can make the second click of a double-click land on Allow. The
-// button arms only after the user demonstrably interacts with this page (a
-// pointer that actually moves, or a key) or after it has been visible and
-// focused for ARM_DELAY_MS; losing focus or visibility restarts the wait.
+// cursor can make the second click of a double-click land on Allow. Allow is
+// armed only while this page is visible AND focused, and only after the user
+// demonstrably interacts with it (a pointer that actually moves, or a key) or
+// after it has stayed visible and focused for ARM_DELAY_MS. The listeners stay
+// installed for the component's lifetime: losing focus or visibility disarms
+// the button again and cancels the pending timer, so returning to an
+// already-open consent window restarts the wait instead of leaving Allow
+// clickable.
 function useInteractionArmed() {
   const [armed, setArmed] = useState(false)
   useEffect(() => {
-    if (armed) return
     let timer: ReturnType<typeof setTimeout> | undefined
-    const arm = () => setArmed(true)
-    const check = () => {
-      const ready = document.visibilityState === 'visible' && document.hasFocus()
-      if (ready && timer === undefined) {
-        timer = setTimeout(arm, ARM_DELAY_MS)
-      } else if (!ready && timer !== undefined) {
+    const clearTimer = () => {
+      if (timer !== undefined) {
         clearTimeout(timer)
         timer = undefined
+      }
+    }
+    const ready = () => document.visibilityState === 'visible' && document.hasFocus()
+    const arm = () => {
+      clearTimer()
+      setArmed(true)
+    }
+    const sync = () => {
+      if (ready()) {
+        timer ??= setTimeout(arm, ARM_DELAY_MS)
+      } else {
+        clearTimer()
+        setArmed(false)
       }
     }
     // Browsers dispatch motionless pointer events when content appears under a
     // resting cursor; only real movement counts.
     const onPointerMove = (e: PointerEvent) => {
-      if (e.movementX !== 0 || e.movementY !== 0) arm()
+      if ((e.movementX !== 0 || e.movementY !== 0) && ready()) arm()
     }
-    check()
-    document.addEventListener('visibilitychange', check)
-    window.addEventListener('focus', check)
-    window.addEventListener('blur', check)
+    const onKeyDown = () => {
+      if (ready()) arm()
+    }
+    sync()
+    document.addEventListener('visibilitychange', sync)
+    window.addEventListener('focus', sync)
+    window.addEventListener('blur', sync)
     window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('keydown', arm)
+    window.addEventListener('keydown', onKeyDown)
     return () => {
-      if (timer !== undefined) clearTimeout(timer)
-      document.removeEventListener('visibilitychange', check)
-      window.removeEventListener('focus', check)
-      window.removeEventListener('blur', check)
+      clearTimer()
+      document.removeEventListener('visibilitychange', sync)
+      window.removeEventListener('focus', sync)
+      window.removeEventListener('blur', sync)
       window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('keydown', arm)
+      window.removeEventListener('keydown', onKeyDown)
     }
-  }, [armed])
+  }, [])
   return armed
 }
 

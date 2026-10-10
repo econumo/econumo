@@ -1787,6 +1787,10 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       Deny buttons. Allow stays disabled for about half a second after the page
       appears (or until you move the mouse or press a key); Deny works at once.
       A double-click that lands on the page as it opens does not approve.
+- [ ] Switching to another window or tab and back (or clicking outside the
+      browser window) disables Allow again; it re-enables about half a second
+      after the consent page is visible and focused again, or on the next mouse
+      move or key press made while it is focused. Deny stays usable throughout.
 - [ ] 📱 A client that registered a loopback redirect (Claude Code, Codex) shows
       "After you allow, you'll return to an app on this computer." instead of a
       host.
