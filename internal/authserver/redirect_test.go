@@ -4,7 +4,7 @@ import "testing"
 
 func TestValidateRedirectURI(t *testing.T) {
 	ok := []string{"https://claude.ai/api/mcp/auth_callback", "http://127.0.0.1:33418/callback", "http://localhost/cb", "http://[::1]:9/cb"}
-	bad := []string{"", "/relative", "http://example.com/cb", "https://a.test/cb#frag", "javascript:alert(1)", "https://user:pw@a.test/cb", "ftp://a.test/cb", "cursor://anysphere/cb", "https://cl\u0430ude.ai/cb", "https://\u00e9xample.test/cb"}
+	bad := []string{"", "/relative", "http://example.com/cb", "https://a.test/cb#frag", "javascript:alert(1)", "https://user:pw@a.test/cb", "ftp://a.test/cb", "cursor://anysphere/cb", "https://cl\u0430ude.ai/cb", "https://\u00e9xample.test/cb", "https://:123/cb", "http://:8080/cb"}
 	for _, u := range ok {
 		if err := ValidateRedirectURI(u); err != nil {
 			t.Errorf("%q rejected: %v", u, err)

@@ -10,7 +10,7 @@ func isLoopbackHost(h string) bool { return h == "127.0.0.1" || h == "::1" || h 
 
 func ValidateRedirectURI(raw string) error {
 	u, err := url.Parse(raw)
-	if err != nil || !u.IsAbs() || u.Host == "" || u.Fragment != "" || u.User != nil {
+	if err != nil || !u.IsAbs() || u.Hostname() == "" || u.Fragment != "" || u.User != nil {
 		return errors.New("redirect URI must be absolute, without fragment or userinfo")
 	}
 	// A non-ASCII host can spell a lookalike of a trusted one; the consent
