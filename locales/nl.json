@@ -473,11 +473,16 @@
     "open": "Postvak IN, {count} wachtend",
     "empty": "Alles is bijgewerkt",
     "sections": {
+      "due": "Te boeken",
       "sharing": "Gedeeld",
       "sync": "Synchronisatieproblemen",
       "failed": "Mislukte imports",
       "to_review": "Te beoordelen",
       "skipped": "Overgeslagen ({count})"
+    },
+    "due": {
+      "overdue": "Achterstallig · {date}",
+      "today": "Vandaag"
     },
     "sharing": {
       "invited_you": "{name} heeft u uitgenodigd",

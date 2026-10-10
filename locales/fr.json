@@ -473,11 +473,16 @@
     "open": "Boîte de réception, {count} en attente",
     "empty": "Tout est à jour",
     "sections": {
+      "due": "À enregistrer",
       "sharing": "Partages",
       "sync": "Problèmes de synchronisation",
       "failed": "Importations échouées",
       "to_review": "À vérifier",
       "skipped": "Ignorés ({count})"
+    },
+    "due": {
+      "overdue": "En retard · {date}",
+      "today": "Aujourd'hui"
     },
     "sharing": {
       "invited_you": "{name} vous invite",

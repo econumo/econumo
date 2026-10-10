@@ -3,8 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
-import { formatInboxCount, isSyncProblem, useInbox } from './useInbox'
+import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
+import { formatDateTime } from '@/lib/datetime'
+import { formatInboxCount, isDueRecurring, isSyncProblem, useInbox } from './useInbox'
 
 const owner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
 
@@ -126,9 +127,78 @@ it('with transaction import off: loads on invites alone and never calls an impor
   onTestFinished(() => server.events.removeListener('request:start', record))
   server.use(...coreHandlers({ accounts: [pendingAccount] }))
   const { result } = renderHook(() => useInbox(), { wrapper })
-  expect(result.current.isLoaded).toBe(true)
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
   await waitFor(() => expect(result.current.invites).toHaveLength(1))
   expect(result.current.count).toBe(1)
   expect(result.current.importsError).toBe(false)
   expect(importCalls).toEqual([])
+})
+
+const daysFromNow = (days: number) => formatDateTime(new Date(Date.now() + days * 24 * 3600 * 1000))
+const template = (over: Record<string, unknown> = {}) => ({
+  id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+  amount: '50', categoryId: 'cat-food', payeeId: null, tagId: null, labelIds: [], description: 'rent',
+  schedule: 'monthly', nextPaymentAt: daysFromNow(-3), ...over,
+})
+const startOfToday = () => {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return formatDateTime(d)
+}
+const sharedWith = (role: string, isAccepted = 1) => ({
+  ...fixtureAccounts[0], id: 'a-shared', owner,
+  sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role, isAccepted }],
+})
+
+describe('isDueRecurring', () => {
+  const accounts = [...fixtureAccounts, sharedWith('user'), { ...sharedWith('guest'), id: 'a-readonly' }] as never
+
+  it.each([
+    ['overdue', daysFromNow(-3), true],
+    ['due at the start of today', startOfToday(), true],
+    ['due tomorrow', daysFromNow(1), false],
+    ['due next year', daysFromNow(365), false],
+  ])('%s on my own account', (_name, nextPaymentAt, expected) => {
+    expect(isDueRecurring(template({ nextPaymentAt }) as never, accounts, 'u1')).toBe(expected)
+  })
+
+  it('includes a template on an account shared with me for writing, whoever created it', () => {
+    expect(isDueRecurring(template({ accountId: 'a-shared', ownerUserId: 'u2' }) as never, accounts, 'u1')).toBe(true)
+  })
+
+  it('leaves out a template on an account shared with me read-only', () => {
+    expect(isDueRecurring(template({ accountId: 'a-readonly', ownerUserId: 'u2' }) as never, accounts, 'u1')).toBe(false)
+  })
+
+  it('leaves out a template whose account is not in my account list', () => {
+    expect(isDueRecurring(template({ accountId: 'a-gone' }) as never, accounts, 'u1')).toBe(false)
+  })
+
+  it('leaves everything out before the user is known', () => {
+    expect(isDueRecurring(template() as never, accounts, undefined)).toBe(false)
+  })
+})
+
+it('counts due recurring templates, oldest first, and leaves future ones out', async () => {
+  const wrapper = makeWrapper()
+  server.use(...coreHandlers({
+    recurring: [
+      template({ id: 'r-recent', nextPaymentAt: daysFromNow(-1) }),
+      template({ id: 'r-future', nextPaymentAt: daysFromNow(30) }),
+      template({ id: 'r-old', nextPaymentAt: daysFromNow(-20) }),
+    ],
+  }))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.dueRecurring.map((r) => r.id)).toEqual(['r-old', 'r-recent']))
+  expect(result.current.count).toBe(2)
+})
+
+it('is not loaded until the recurring list resolves', async () => {
+  const wrapper = makeWrapper()
+  server.use(...coreHandlers())
+  server.use(http.get('*/api/v1/recurring/get-recurring-transaction-list', () => new Promise(() => {})))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  // the import queries settle, the recurring one never does
+  await new Promise((r) => setTimeout(r, 50))
+  expect(result.current.isLoaded).toBe(false)
 })

@@ -473,11 +473,16 @@
     "open": "Posta in arrivo, {count} in attesa",
     "empty": "Tutto aggiornato",
     "sections": {
+      "due": "In scadenza",
       "sharing": "Condivisioni",
       "sync": "Problemi di sincronizzazione",
       "failed": "Importazioni non riuscite",
       "to_review": "Da rivedere",
       "skipped": "Saltati ({count})"
+    },
+    "due": {
+      "overdue": "Scaduto · {date}",
+      "today": "Oggi"
     },
     "sharing": {
       "invited_you": "{name} ti ha invitato",

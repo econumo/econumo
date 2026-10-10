@@ -5,6 +5,7 @@ import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { FailedImportsSection, SkippedSection, ToReviewSection } from '@/features/imports/QueueSections'
+import { DueRecurringSection } from './DueRecurringSection'
 import { SharingSection } from './SharingSection'
 import { SyncProblemsSection } from './SyncProblemsSection'
 import { useInbox } from './useInbox'
@@ -30,8 +31,8 @@ export function InboxPage() {
     <SettingsShell title={t('inbox.title')} backTo={RouterPage.HOME}>
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
         {empty ? <p className="px-1 text-sm text-muted-foreground">{t('inbox.empty')}</p> : null}
-        {inbox.invites.length > 0 ? (
-          <InboxSection title={t('inbox.sections.sharing')}><SharingSection invites={inbox.invites} /></InboxSection>
+        {inbox.dueRecurring.length > 0 ? (
+          <InboxSection title={t('inbox.sections.due')}><DueRecurringSection items={inbox.dueRecurring} /></InboxSection>
         ) : null}
         {inbox.importsError ? (
           <div className="flex flex-col items-center gap-3 p-6 text-center">
@@ -39,14 +40,14 @@ export function InboxPage() {
             <Button type="button" onClick={inbox.retryImports}>{t('imports.queue.retry')}</Button>
           </div>
         ) : null}
+        {inbox.queued.length > 0 ? (
+          <InboxSection title={t('inbox.sections.to_review')}><ToReviewSection queued={inbox.queued} /></InboxSection>
+        ) : null}
         {inbox.syncProblems.length > 0 ? (
           <InboxSection title={t('inbox.sections.sync')}><SyncProblemsSection sources={inbox.syncProblems} /></InboxSection>
         ) : null}
         {inbox.failed.length > 0 ? (
           <InboxSection title={t('inbox.sections.failed')}><FailedImportsSection failed={inbox.failed} /></InboxSection>
-        ) : null}
-        {inbox.queued.length > 0 ? (
-          <InboxSection title={t('inbox.sections.to_review')}><ToReviewSection queued={inbox.queued} /></InboxSection>
         ) : null}
         {inbox.skipped.length > 0 ? (
           <section className="flex flex-col gap-2">
@@ -57,6 +58,9 @@ export function InboxPage() {
             </button>
             {skippedOpen ? <SkippedSection skipped={inbox.skipped} /> : null}
           </section>
+        ) : null}
+        {inbox.invites.length > 0 ? (
+          <InboxSection title={t('inbox.sections.sharing')}><SharingSection invites={inbox.invites} /></InboxSection>
         ) : null}
       </div>
     </SettingsShell>
