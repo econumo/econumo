@@ -1437,6 +1437,11 @@
           "truncated": "Affichage des 2000 commentaires les plus récents.",
           "add": "Ajouter un commentaire",
           "more": "+{count} de plus"
+        },
+        "selection": {
+          "count": "{count} cellule | {count} cellules",
+          "planned": "Prévu",
+          "actual": "Réel"
         }
       },
       "savings": {

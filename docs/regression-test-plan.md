@@ -1081,6 +1081,20 @@ and on tablet/phone only with a hardware keyboard.
       Ctrl/⌘+C / V (single cell), the fill handle and Shift+→ fill, and
       Shift+Enter / Shift+F2 comments work as before; Enter on a read-only
       cell opens no dialog and shows no toast.
+- [ ] Plan multi-cell sum, desktop: dragging across month cells, or
+      Shift+clicking a cell, selects the rectangle from the selected cell
+      (which keeps its ring; the others tint); Ctrl/⌘+click adds or removes
+      one cell. With two or more selected, a floating hint under the
+      selection's bottom-right corner (above it near the Balance row) reads
+      "N cells · Plan … · Actual …" in the budget currency: a foreign-currency
+      row converts at each month's rate, actuals count only up to the current
+      month, and a savings row adds what was saved, not its balance. The hint
+      scrolls with the cells. Esc, a plain click, an arrow key, opening the
+      editor or paging the months goes back to one cell. Typing, F2, Delete,
+      paste and fill still act on the ringed cell only. Dragging from the fill
+      handle still fills, and dragging a row by its grip still moves it.
+- [ ] 📱 Plan multi-cell sum on a tablet: Shift/Ctrl+tap and drags select
+      nothing extra and show no hint.
 - [ ] Plan edge paging, desktop: → on the last column moves the selected
       month forward by one; ← on the first month column moves it back by one
       (the selection stays in the first column). The window and the month row

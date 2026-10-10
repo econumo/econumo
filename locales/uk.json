@@ -1437,6 +1437,11 @@
           "truncated": "Показано останні 2000 коментарів.",
           "add": "Додати коментар",
           "more": "ще {count}"
+        },
+        "selection": {
+          "count": "{count} клітинка | {count} клітинки | {count} клітинок",
+          "planned": "План",
+          "actual": "Факт"
         }
       },
       "savings": {

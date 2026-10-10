@@ -1437,6 +1437,11 @@
           "truncated": "Wyświetlono 2000 najnowszych komentarzy.",
           "add": "Dodaj komentarz",
           "more": "+{count} więcej"
+        },
+        "selection": {
+          "count": "{count} komórka | {count} komórki | {count} komórek",
+          "planned": "Plan",
+          "actual": "Faktycznie"
         }
       },
       "savings": {

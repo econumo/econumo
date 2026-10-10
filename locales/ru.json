@@ -1437,6 +1437,11 @@
           "truncated": "Показаны последние 2000 комментариев.",
           "add": "Добавить комментарий",
           "more": "ещё {count}"
+        },
+        "selection": {
+          "count": "{count} ячейка | {count} ячейки | {count} ячеек",
+          "planned": "План",
+          "actual": "Факт"
         }
       },
       "savings": {

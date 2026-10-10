@@ -72,7 +72,9 @@ import {
   planHasSavingsData,
   projectSavingsClosings,
   planMonthExchange,
+  planCellRange,
   planGroupSums,
+  planSelectionSum,
   planTotals,
   planVisibleCount,
   PLAN_NAME_COL_MAX_PX,
@@ -83,11 +85,12 @@ import {
   savingsAsPlanElement,
   savingsBalanceRow,
 } from './planMath'
-import type { MonthExchange, PlanFolderSection, PlanRow, PlanRows } from './planMath'
+import type { MonthExchange, PlanCellRef, PlanFolderSection, PlanRow, PlanRows } from './planMath'
 import type { LineControls, MenuAction } from './monthLayout'
 import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
-import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, sourceAmount } from './PlanRows'
+import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, pickedKey, sourceAmount } from './PlanRows'
+import { PlanSelectionHint } from './PlanSelectionHint'
 import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
 import type { GridCtx, PlanCellEdit, PlanLimitTarget, PlanSelection } from './PlanRows'
 import type { CellMove } from './PlanCellInput'
@@ -460,6 +463,21 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
   const folded = useCallback((key: string): boolean => !!planFolds[key], [planFolds])
   const [selection, setSelection] = useState<PlanSelection | null>(null)
+  // Desktop: every selected cell once a drag, Shift+click or Ctrl/⌘+click takes in
+  // more than the active one — empty while one cell is selected. It is only read,
+  // never written through: typing, Delete, paste and fill act on the active cell.
+  const [picked, setPickedCells] = useState<PlanCellRef[]>([])
+  const pickedRef = useRef<PlanCellRef[]>([])
+  const setPicked = useCallback((next: PlanCellRef[]) => {
+    const multi = next.length > 1 ? next : []
+    if (pickedRef.current.length === 0 && multi.length > 0) {
+      trackEvent(METRICS.BUDGET_PLAN_SELECT_CELLS)
+    }
+    pickedRef.current = multi
+    setPickedCells(multi)
+  }, [])
+  const dragSelectFrom = useRef<PlanCellRef | null>(null)
+  const [dragSelecting, setDragSelecting] = useState(false)
   const [fillDrag, setFillDrag] = useState<FillDrag | null>(null)
   const [editing, setEditing] = useState<CellEditState | null>(null)
 
@@ -537,11 +555,12 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   // grid regains it naturally once they close.
   const select = useCallback((rk: string, col: number, e?: { target: EventTarget | null }) => {
     setSelection({ rowKey: rk, col })
+    setPicked([])
     const target = e?.target as HTMLElement | null | undefined
     if (!target?.closest(CLICK_ESCAPE_SELECTOR)) {
       containerRef.current?.focus()
     }
-  }, [])
+  }, [setPicked])
 
   const commit = useCallback(
     (elementId: Id, month: string, monthIndex: number, amount: string | null) =>
@@ -563,6 +582,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       setEditing(null)
     }
   }, [editing, visibleMonths])
+  // a multi-selection names columns, which page away under it; a touch layout has none
+  useEffect(() => {
+    setPicked([])
+  }, [visibleMonths, isCompact, setPicked])
   // the selected cell's month column, marked down the whole grid
   const crosshairCol = selection ? selection.col : -1
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
@@ -772,6 +795,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       const planned = entry.el.cells[idx]?.planned ?? ''
       const initial = opts.replace ? (opts.text ?? '') : unsetPlan(planned) ? '' : normalizeNumber(planned)
       setSelection({ rowKey: rk, col })
+      setPicked([])
       // a second double-click inside an open editor must not reset what was typed
       setEditing((cur) =>
         cur && cur.rowKey === rk && cur.month === month
@@ -779,7 +803,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           : { rowKey: rk, col, month, initial, replace: opts.replace, elementId: entry.el.id, monthIndex: idx, planned },
       )
     },
-    [flatRows, visibleMonths, isCompact, monthIndex, budget.meta, userId],
+    [flatRows, visibleMonths, isCompact, monthIndex, budget.meta, userId, setPicked],
   )
   // The commit/cancel bodies move the selection with the same rules as the arrow keys,
   // which live below the loading guard; the grid context gets stable forwarders.
@@ -807,6 +831,94 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     return sums
   }, [shownRows, savingsRows, visibleMonths, monthIndex, ex])
 
+  const rowOrder = useMemo(() => flatRows.map((r) => r.rowKey), [flatRows])
+  // Excel's model: Shift+click spans the rectangle from the active cell, which stays
+  // active; Ctrl/⌘+click adds a cell (it becomes the active one) or takes one out.
+  const pick = useCallback(
+    (rk: string, col: number, mode: 'range' | 'toggle') => {
+      if (isCompact) {
+        return
+      }
+      containerRef.current?.focus()
+      const cell = { rowKey: rk, col }
+      const anchor = selection && rowOrder.includes(selection.rowKey) ? selection : null
+      if (!anchor) {
+        setSelection(cell)
+        setPicked([])
+        return
+      }
+      if (mode === 'range') {
+        setPicked(planCellRange(rowOrder, anchor, cell))
+        return
+      }
+      const base = picked.length > 0 ? picked : [anchor]
+      const same = (c: PlanCellRef) => c.rowKey === rk && c.col === col
+      if (!base.some(same)) {
+        setSelection(cell)
+        setPicked([...base, cell])
+        return
+      }
+      const next = base.filter((c) => !same(c))
+      if (same(anchor) && next.length > 0) {
+        setSelection(next[next.length - 1])
+      }
+      setPicked(next)
+    },
+    [isCompact, selection, rowOrder, picked, setPicked],
+  )
+  // A plain press on a month cell arms the drag; it starts selecting only once the
+  // pointer reaches another cell, so a click stays a click. The release can land
+  // anywhere, so the window hears it.
+  const dragSelectStart = useCallback((rk: string, col: number) => {
+    dragSelectFrom.current = { rowKey: rk, col }
+    const end = () => {
+      dragSelectFrom.current = null
+      setDragSelecting(false)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+    }
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+  }, [])
+  const dragSelectOver = useCallback(
+    (rk: string, col: number, buttons: number) => {
+      const from = dragSelectFrom.current
+      if (!from) {
+        return
+      }
+      // released outside the window: no pointerup ever reached it
+      if (buttons === 0) {
+        dragSelectFrom.current = null
+        setDragSelecting(false)
+        return
+      }
+      setDragSelecting(true)
+      window.getSelection()?.removeAllRanges()
+      setSelection(from)
+      setPicked(planCellRange(rowOrder, from, { rowKey: rk, col }))
+      containerRef.current?.focus()
+    },
+    [rowOrder, setPicked],
+  )
+  // the picked cells still on screen: a fold can hide a row of them
+  const shownPicked = useMemo(() => picked.filter((c) => c.col < visible && rowOrder.includes(c.rowKey)), [picked, visible, rowOrder])
+  const pickedSet = useMemo(
+    () => (shownPicked.length > 1 ? new Set(shownPicked.map((c) => pickedKey(c.rowKey, c.col))) : null),
+    [shownPicked],
+  )
+  const selectionSum = useMemo(() => {
+    if (!ex || shownPicked.length < 2) {
+      return null
+    }
+    const els = new Map(flatRows.map((r) => [r.rowKey, r.el]))
+    const cells = shownPicked.flatMap((c) => {
+      const el = els.get(c.rowKey)
+      const month = visibleMonths[c.col]
+      return el && month !== undefined ? [{ el, month }] : []
+    })
+    return planSelectionSum(cells, monthIndex, ex, cur)
+  }, [ex, shownPicked, flatRows, visibleMonths, monthIndex, cur])
+
   const gridCtx: GridCtx | null = useMemo(() => {
     if (!plan) {
       return null
@@ -830,6 +942,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       commentsOpen,
       selection,
       select,
+      picked: pickedSet,
+      pick,
+      dragSelect: { active: dragSelecting, start: dragSelectStart, over: dragSelectOver },
       fill: {
         active: fillDrag ? { rowKey: fillDrag.rowKey, startCol: fillDrag.startCol, targetCol: fillDrag.targetCol } : null,
         start: fillStart,
@@ -864,6 +979,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     commentsOpen,
     selection,
     select,
+    pickedSet,
+    pick,
+    dragSelecting,
+    dragSelectStart,
+    dragSelectOver,
     fillDrag,
     fillStart,
     fillMove,
@@ -1485,6 +1605,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (flatRows.length === 0) {
       return
     }
+    if (e.key === 'Escape' && picked.length > 0) {
+      e.preventDefault()
+      setPicked([])
+      return
+    }
     const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
     if (!selection || !flatRows.some((r) => r.rowKey === selection.rowKey)) {
       if (arrowKeys.includes(e.key)) {
@@ -1582,7 +1707,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         onCopy={handleCopy}
         onPaste={handlePaste}
         aria-activedescendant={selection ? selectionDomId(selection) : undefined}
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+        aria-multiselectable={isCompact ? undefined : true}
+        className={`relative flex min-h-0 flex-1 flex-col overflow-y-auto${dragSelecting ? ' select-none' : ''}`}
         style={{ '--plan-name-col': `${nameWidth}px` } as CSSProperties}
         data-testid="plan-sheet"
       >
@@ -1840,6 +1966,14 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         <PlanBalanceRow visibleMonths={visibleMonths} monthIndex={monthIndex} currency={planCurrency} balance={everydayBalance} />
         </LineControlsContext.Provider>
         </LineLayoutContext.Provider>
+        {selectionSum ? (
+          <PlanSelectionHint
+            sum={selectionSum}
+            cellIds={shownPicked.map((c) => cellDomId(c.rowKey, c.col))}
+            currency={planCurrency}
+            containerRef={containerRef}
+          />
+        ) : null}
       </div>
 
       {/* the totals drill-down lists the CLICKED column's month, not the budget page's period */}

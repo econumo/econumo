@@ -1437,6 +1437,11 @@
           "truncated": "Die neuesten 2000 Kommentare werden angezeigt.",
           "add": "Kommentar hinzufügen",
           "more": "+{count} weitere"
+        },
+        "selection": {
+          "count": "{count} Zelle | {count} Zellen",
+          "planned": "Plan",
+          "actual": "Ist"
         }
       },
       "savings": {
