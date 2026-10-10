@@ -265,3 +265,16 @@ func TestMCPOAuth_PasswordResetBetweenApproveAndExchange(t *testing.T) {
 		t.Fatalf("exchange after a credential reclaim must be invalid_grant: %d %v", status, tok)
 	}
 }
+
+func TestMCPOAuth_DisabledOnPlainHTTPRemoteIssuer(t *testing.T) {
+	h := buildOAuthTestAPI(t, "http://econumo.lan")
+	resp := oauthDo(t, h, "GET", "/.well-known/oauth-authorization-server", "")
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 404 || !strings.Contains(string(body), `"error":"invalid_request"`) {
+		t.Fatalf("metadata over plain http = %d %s", resp.StatusCode, body)
+	}
+	resp = oauthDo(t, h, "POST", "/mcp", `{}`)
+	if resp.StatusCode != 401 || resp.Header.Get("WWW-Authenticate") != "" {
+		t.Fatalf("mcp 401 must carry no challenge: %d %q", resp.StatusCode, resp.Header.Get("WWW-Authenticate"))
+	}
+}

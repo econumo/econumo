@@ -250,6 +250,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	authSrv := appauthserver.NewService(authserverrepo.NewRepo(cfg.DatabaseDriver, txm), userSvc, txm, clk, authLimiter, cfg.AppURL)
 	userSvc.SetMCPGrantRevoker(authSrv)
+	if cfg.AppURL != "" && !authSrv.Enabled() {
+		slog.Warn("mcp oauth disabled: ECONUMO_URL must be https (plain http only on a loopback host)")
+	}
 
 	// Shared-account access resolver (account owner + connected-user grant role),
 	// used by the category/tag create-for-account paths.

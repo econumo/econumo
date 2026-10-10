@@ -289,10 +289,12 @@ which is Econumo as a *client* of Google/Apple/OIDC): a hand-written OAuth 2.1
 authorization server so MCP clients (Claude, Codex) connect by URL alone and
 sign in through the browser instead of pasting a PAT. Setup guide:
 `docs/mcp-setup.md`; design: `docs/superpowers/specs/2026-10-03-mcp-oauth-design.md`.
-It is enabled only when `ECONUMO_URL` is set (issuer = that URL without a trailing
-slash, resource = `<issuer>/mcp`). The handler is always mounted on the root mux,
-but with `ECONUMO_URL` unset all five public routes answer a JSON 404 and `/mcp`
-sends no `WWW-Authenticate`.
+It is enabled only when `ECONUMO_URL` is an `https://` URL (plain `http://` only on a
+loopback host: `localhost`, `127.0.0.1`, `[::1]`; issuer = that URL without a trailing
+slash, resource = `<issuer>/mcp`). Any other value leaves it disabled and `serve` logs one
+WARN, because refresh tokens, client secrets and bearer tokens must not cross a network in
+the clear. The handler is always mounted on the root mux, but while disabled all five public
+routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
 - Discovery: `/.well-known/oauth-protected-resource[/mcp]` and
   `/.well-known/oauth-authorization-server`; an unauthenticated `/mcp` 401 adds
   `WWW-Authenticate: Bearer resource_metadata=…, scope="mcp"` (body unchanged, REST 401s untouched).

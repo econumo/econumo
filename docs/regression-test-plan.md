@@ -1776,7 +1776,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       unauthenticated `POST <URL>/mcp` answers 401 with a `WWW-Authenticate`
       header pointing at the protected-resource document and carrying
       `scope="mcp"`. With `ECONUMO_URL`
-      unset, the well-known, `/oauth/register` and `/oauth/token` routes answer a
+      unset, or set to a plain `http://` address on a non-loopback host (the log
+      shows one "mcp oauth disabled" warning at start-up), the well-known, `/oauth/register` and `/oauth/token` routes answer a
       JSON 404 and `/mcp` sends no `WWW-Authenticate`.
 - [ ] 📱 Signed in, the consent page (`/oauth/authorize?...`) is headed "Connect
       an app to Econumo" and shows the app's name followed by "wants to access
