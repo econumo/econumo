@@ -1875,6 +1875,7 @@
       "description": "Les applications comme Claude ou Codex auxquelles vous avez autorisé l'accès à vos données Econumo. Révoquer une application la déconnecte immédiatement.",
       "empty": "Aucune application n'est encore connectée.",
       "howTo": "Dans Claude ou Codex, ajoutez un connecteur personnalisé ou un serveur MCP avec cette adresse, puis connectez-vous lorsque c'est demandé.",
+      "unavailable": "La connexion d'applications d'IA n'est pas disponible sur ce serveur. L'administrateur doit définir ECONUMO_URL sur une adresse https.",
       "copy": "Copier",
       "copied": "Copié",
       "revoke": "Révoquer",

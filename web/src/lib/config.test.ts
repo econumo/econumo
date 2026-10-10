@@ -1,4 +1,4 @@
-import { getInstanceId, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getVersionLabel, getBillingUrl } from './config'
+import { getInstanceId, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getVersionLabel, getBillingUrl, mcpUrl } from './config'
 
 beforeEach(() => {
   localStorage.clear()
@@ -35,6 +35,12 @@ describe('flags', () => {
     expect(getBillingUrl()).toBe('')
     window.econumoConfig = { BILLING_URL: 'https://pay.example.test/cloud/' }
     expect(getBillingUrl()).toBe('https://pay.example.test/cloud/')
+  })
+
+  it('returns the MCP URL, empty when unset', () => {
+    expect(mcpUrl()).toBe('')
+    window.econumoConfig = { MCP_URL: 'https://money.example.test/mcp' }
+    expect(mcpUrl()).toBe('https://money.example.test/mcp')
   })
 })
 

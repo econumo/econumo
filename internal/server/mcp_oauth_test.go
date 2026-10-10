@@ -278,3 +278,18 @@ func TestMCPOAuth_DisabledOnPlainHTTPRemoteIssuer(t *testing.T) {
 		t.Fatalf("mcp 401 must carry no challenge: %d %q", resp.StatusCode, resp.Header.Get("WWW-Authenticate"))
 	}
 }
+
+func TestMCPOAuth_ServedConfigCarriesMCPURL(t *testing.T) {
+	for _, tc := range []struct{ appURL, want string }{
+		{"https://econumo.example.test/", `"MCP_URL":"https://econumo.example.test/mcp"`},
+		{"", `"MCP_URL":""`},
+		{"http://econumo.lan", `"MCP_URL":""`},
+	} {
+		h := buildOAuthTestAPI(t, tc.appURL)
+		resp := oauthDo(t, h, "GET", "/econumo-config.js", "")
+		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != 200 || !strings.Contains(string(body), tc.want) {
+			t.Errorf("appURL %q: %d, want %s in %s", tc.appURL, resp.StatusCode, tc.want, body)
+		}
+	}
+}

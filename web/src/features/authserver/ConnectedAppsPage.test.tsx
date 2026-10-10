@@ -38,7 +38,7 @@ beforeEach(() => {
   vi.mocked(revokeConnectedApp).mockReset().mockResolvedValue(undefined)
   vi.mocked(trackEvent).mockClear()
   localStorage.clear()
-  window.econumoConfig = {}
+  window.econumoConfig = { MCP_URL: 'https://money.example.test/mcp' }
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
@@ -81,14 +81,34 @@ test('cancelling the confirmation revokes nothing', async () => {
   expect(trackEvent).not.toHaveBeenCalled()
 })
 
-test('empty state shows the MCP address with a copy button', async () => {
+test('empty state shows the served MCP address, not the page origin, with a copy button', async () => {
   vi.mocked(getConnectedApps).mockResolvedValue([])
   const writeText = vi.fn().mockResolvedValue(undefined)
   const user = userEvent.setup()
   Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
   renderPage()
-  expect(await screen.findByText(`${window.location.origin}/mcp`)).toBeInTheDocument()
+  expect(await screen.findByText('https://money.example.test/mcp')).toBeInTheDocument()
+  expect(screen.queryByText(`${window.location.origin}/mcp`)).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: /copy/i }))
-  expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/mcp`)
+  expect(writeText).toHaveBeenCalledWith('https://money.example.test/mcp')
   expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument()
+})
+
+test('without a served MCP address the empty state says it is unavailable and offers no copy', async () => {
+  window.econumoConfig = { MCP_URL: '' }
+  vi.mocked(getConnectedApps).mockResolvedValue([])
+  renderPage()
+  expect(await screen.findByText(/isn't available on this server/)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /copy/i })).not.toBeInTheDocument()
+  expect(screen.queryByText(/\/mcp/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/add a custom connector/)).not.toBeInTheDocument()
+})
+
+test('existing grants stay listed and revocable when the MCP address is unavailable', async () => {
+  window.econumoConfig = { MCP_URL: '' }
+  vi.mocked(getConnectedApps).mockResolvedValue(apps)
+  renderPage()
+  expect(await screen.findByText('Claude')).toBeInTheDocument()
+  expect(screen.getAllByRole('button', { name: 'Revoke' })).toHaveLength(2)
+  expect(screen.queryByRole('button', { name: /copy/i })).not.toBeInTheDocument()
 })

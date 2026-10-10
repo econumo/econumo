@@ -6,7 +6,8 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
 import type { ConnectedAppDto } from '@/api/dto/authserver'
-import { backendHost } from '@/lib/config'
+import { mcpUrl } from '@/lib/config'
+import { useServerConfig } from '@/lib/appConfig'
 import { copyText } from '@/lib/clipboard'
 import { formatDate } from '@/lib/datetime'
 import { parseUtcDateTime, relativeTime } from '@/features/settings/securityFormat'
@@ -20,10 +21,11 @@ export function ConnectedAppsPage() {
   const [confirmRevoke, setConfirmRevoke] = useState<ConnectedAppDto | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const mcpUrl = `${backendHost().replace(/\/+$/, '')}/mcp`
+  useServerConfig((s) => s.revision)
+  const address = mcpUrl()
 
   const copy = () => {
-    void copyText(mcpUrl).then(setCopied)
+    void copyText(address).then(setCopied)
   }
 
   return (
@@ -41,14 +43,20 @@ export function ConnectedAppsPage() {
         {apps && apps.length === 0 ? (
           <div className="flex flex-col gap-3 px-1">
             <p className="text-sm text-muted-foreground">{t('authserver.apps.empty')}</p>
-            <div className="flex items-center gap-2 rounded-lg bg-econumo-card px-3 py-2">
-              <code className="min-w-0 flex-1 break-all text-xs">{mcpUrl}</code>
-              <Button type="button" size="sm" variant="secondary" onClick={copy}>
-                {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-                {copied ? t('authserver.apps.copied') : t('authserver.apps.copy')}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">{t('authserver.apps.howTo')}</p>
+            {address ? (
+              <>
+                <div className="flex items-center gap-2 rounded-lg bg-econumo-card px-3 py-2">
+                  <code className="min-w-0 flex-1 break-all text-xs">{address}</code>
+                  <Button type="button" size="sm" variant="secondary" onClick={copy}>
+                    {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                    {copied ? t('authserver.apps.copied') : t('authserver.apps.copy')}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">{t('authserver.apps.howTo')}</p>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">{t('authserver.apps.unavailable')}</p>
+            )}
           </div>
         ) : null}
         {(apps ?? []).map((app) => (

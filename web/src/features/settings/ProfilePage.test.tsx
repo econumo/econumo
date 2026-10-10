@@ -242,6 +242,19 @@ it('shows a Sign-in methods row in the Security group', async () => {
   expect(screen.getByText('Change password')).toBeInTheDocument()
 })
 
+it('shows the Connected apps row only when the server serves an MCP address', async () => {
+  window.econumoConfig = { MCP_URL: 'https://money.example.test/mcp' }
+  renderPage()
+  expect(await screen.findByText('Connected apps')).toBeInTheDocument()
+})
+
+it('hides the Connected apps row when the server serves no MCP address', async () => {
+  window.econumoConfig = { MCP_URL: '' }
+  renderPage()
+  expect(await screen.findByText('Sign-in methods')).toBeInTheDocument()
+  expect(screen.queryByText('Connected apps')).not.toBeInTheDocument()
+})
+
 it('replaces "Change password" with "Set a password" when the user has no password', async () => {
   server.use(...coreHandlers({ user: { ...fixtureUser, hasPassword: false } }))
   renderPage()

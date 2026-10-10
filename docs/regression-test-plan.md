@@ -1816,6 +1816,12 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Read-only account: pressing Allow shows "Your account is read-only, so apps
       can't be connected." and "Return to the app" sends the client back with an
       `access_denied` result; Deny works on a read-only account too.
+- [ ] 📱 With `ECONUMO_URL` unset or plain `http://` on a non-loopback host
+      (OAuth off), Settings > Profile has no Connected apps row; opening
+      `/settings/profile/connected-apps` directly shows "Connecting AI apps
+      isn't available on this server. The administrator needs to set
+      ECONUMO_URL to an https address." with no address and no Copy button, and
+      any apps connected earlier are still listed with Revoke.
 - [ ] 📱 Settings > Profile > Connected apps lists each approved app with its
       name, "Sends you back to <host>" (or "Runs on this computer" for a
       loopback client), "Connected <date>" and "Last used <when>".
@@ -1827,7 +1833,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       client's next tool call is rejected with 401 and it prompts to sign in
       again; Cancel keeps it. Works on a read-only account too.
 - [ ] With no connected apps the page shows "No apps are connected yet.", the MCP
-      address (`<your Econumo URL>/mcp`) with a Copy button (the button shows
+      address the server reports (`<ECONUMO_URL>/mcp`, the same address the
+      client is told to use) with a Copy button (the button shows
       "Copied") and the hint on adding it to Claude or Codex.
 - [ ] An MCP-issued token works only on `/mcp`: using the same token against a
       REST route (for example `get-user-data`) answers 401 "Invalid access

@@ -1875,6 +1875,7 @@
       "description": "您已允许访问 Econumo 数据的应用，例如 Claude 或 Codex。撤销某个应用后，它会立即退出登录。",
       "empty": "尚未连接任何应用。",
       "howTo": "在 Claude 或 Codex 中，使用此地址添加自定义连接器或 MCP 服务器，并在提示时登录。",
+      "unavailable": "此服务器不支持连接 AI 应用。管理员需要将 ECONUMO_URL 设置为 https 地址。",
       "copy": "复制",
       "copied": "已复制",
       "revoke": "撤销",

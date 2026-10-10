@@ -511,8 +511,13 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		slog.Warn("instance id unavailable", "err", err)
 		instanceID = ""
 	}
+	mcpURL := ""
+	if authSrv.Enabled() {
+		mcpURL = authSrv.ResourceURL()
+	}
 	return router.New(router.Deps{
 		Cfg:                cfg,
+		MCPURL:             mcpURL,
 		DB:                 pinger{db},
 		RegisterAPI:        registerAPI,
 		SupportedLanguages: i18n.Supported,

@@ -1875,6 +1875,7 @@
       "description": "Aplikacje takie jak Claude lub Codex, którym udzielono dostępu do Twoich danych w Econumo. Cofnięcie dostępu aplikacji natychmiast ją wylogowuje.",
       "empty": "Nie połączono jeszcze żadnych aplikacji.",
       "howTo": "W Claude lub Codex dodaj własny konektor lub serwer MCP z tym adresem i zaloguj się, gdy zostaniesz o to poproszony.",
+      "unavailable": "Łączenie aplikacji AI nie jest dostępne na tym serwerze. Administrator musi ustawić ECONUMO_URL na adres https.",
       "copy": "Kopiuj",
       "copied": "Skopiowano",
       "revoke": "Cofnij dostęp",

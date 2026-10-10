@@ -124,6 +124,12 @@ type Deps struct {
 	// embedded, so it can never be stale and ignores the key.
 	MinAppVersion string
 
+	// MCPURL is merged into the served econumo-config.js as MCP_URL: the
+	// address MCP clients connect to (authserver ResourceURL), or "" when the
+	// OAuth server is disabled. Always emitted, so the SPA hides its
+	// Connected apps UI instead of advertising an address that cannot work.
+	MCPURL string
+
 	// InstanceID is the per-deployment digest merged into the served
 	// econumo-config.js as INSTANCE_ID (instance.ID, resolved by the
 	// composition root against the migrated database). Empty (an unmigrated
@@ -254,6 +260,7 @@ func New(deps Deps) http.Handler {
 		// works, so an empty value must switch the SPA's billing UI off rather than
 		// leave a stale default pointing at a portal the server will not mint for.
 		"BILLING_URL":       deps.Cfg.BillingURL,
+		"MCP_URL":           deps.MCPURL,
 		"ALLOW_CUSTOM_API":  allowCustomAPI,
 		"LILTAG_CONFIG_URL": liltagConfigURL,
 		"LILTAG_CACHE_TTL":  liltagCacheTTL,

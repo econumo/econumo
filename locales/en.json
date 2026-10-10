@@ -1875,6 +1875,7 @@
       "description": "Apps like Claude or Codex that you allowed to use your Econumo data. Revoking an app signs it out right away.",
       "empty": "No apps are connected yet.",
       "howTo": "In Claude or Codex, add a custom connector / MCP server with this address and sign in when asked.",
+      "unavailable": "Connecting AI apps isn't available on this server. The administrator needs to set ECONUMO_URL to an https address.",
       "copy": "Copy",
       "copied": "Copied",
       "revoke": "Revoke",

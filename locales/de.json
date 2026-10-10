@@ -1875,6 +1875,7 @@
       "description": "Apps wie Claude oder Codex, denen Sie den Zugriff auf Ihre Econumo-Daten erlaubt haben. Wenn Sie eine App widerrufen, wird sie sofort abgemeldet.",
       "empty": "Es sind noch keine Apps verbunden.",
       "howTo": "Fügen Sie in Claude oder Codex einen benutzerdefinierten Connector bzw. MCP-Server mit dieser Adresse hinzu und melden Sie sich an, wenn Sie dazu aufgefordert werden.",
+      "unavailable": "Das Verbinden von KI-Apps ist auf diesem Server nicht verfügbar. Der Administrator muss ECONUMO_URL auf eine https-Adresse setzen.",
       "copy": "Kopieren",
       "copied": "Kopiert",
       "revoke": "Widerrufen",

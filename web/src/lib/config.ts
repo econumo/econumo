@@ -20,6 +20,7 @@ export interface EconumoConfig {
   IMPORT_APPLE_WALLET?: boolean
   IMPORT_SIMPLEFIN?: boolean
   BILLING_URL?: string
+  MCP_URL?: string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
   IMPORT_MATCHER?: { matchDays: number; tipDays: number; tipTolerancePct: number; tokenMinLength: number }
@@ -141,6 +142,13 @@ export function getVersionLabel(): string {
 // econumo-config.js (server truth); '' means billing UI is disabled.
 export function getBillingUrl(): string {
   return window.econumoConfig?.BILLING_URL || ''
+}
+
+// The server merges MCP_URL unconditionally (server truth): the address MCP
+// clients connect to, '' when the OAuth server is disabled (no https
+// ECONUMO_URL), in which case the Connected apps UI is hidden.
+export function mcpUrl(): string {
+  return window.econumoConfig?.MCP_URL || ''
 }
 
 export function isAiEnabled(): boolean {

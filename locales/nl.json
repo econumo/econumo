@@ -1875,6 +1875,7 @@
       "description": "Apps zoals Claude of Codex waaraan je toegang tot je Econumo-gegevens hebt gegeven. Als je een app intrekt, wordt die meteen afgemeld.",
       "empty": "Er zijn nog geen apps gekoppeld.",
       "howTo": "Voeg in Claude of Codex een aangepaste connector of MCP-server toe met dit adres en log in wanneer erom wordt gevraagd.",
+      "unavailable": "Het koppelen van AI-apps is op deze server niet beschikbaar. De beheerder moet ECONUMO_URL instellen op een https-adres.",
       "copy": "Kopiëren",
       "copied": "Gekopieerd",
       "revoke": "Intrekken",
