@@ -42,7 +42,7 @@ function makeWrapper() {
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = {}
+  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
   server.use(...coreHandlers())
   trackEventMock.mockClear()
 })

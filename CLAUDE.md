@@ -623,6 +623,20 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
+- `ECONUMO_IMPORT_APPLE_WALLET` / `ECONUMO_IMPORT_SIMPLEFIN` — the two transaction-import
+  providers (strict booleans, both default `false`; malformed fails at boot). A provider that is
+  off loses its own routes (Apple Wallet: `ingest-apple-wallet-event`; SimpleFIN:
+  `claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
+  `sync-source`), `create-source` refuses it with `import.provider_unsupported`, and its existing
+  sources and their queued/failed rows drop out of `get-source-list` and `get-queued-event-list`
+  (`imports.Service.DisableProvider`; stored data is untouched). With BOTH off, `server.BuildAPI`
+  does not mount `internal/imports/api` at all, so every `/api/v1/import/*` route 404s and import
+  rules, the queue and run history are gone with it (`config.Config.TransactionImport()` = either
+  on). The SPA reads the served `IMPORT_APPLE_WALLET` / `IMPORT_SIMPLEFIN` keys: each provider's
+  settings page and route follow its own flag; Import rules, import history, the Data page's
+  rules/history rows and the Inbox's import sections need either; with both off it never fetches
+  an import endpoint. CSV import/export is not part of it and is always on. The apiparity harness
+  turns both on so the catalogue keeps covering the import routes.
 - `ECONUMO_IMPORT_MATCH_DAYS` / `ECONUMO_IMPORT_TIP_DAYS` / `ECONUMO_IMPORT_TIP_TOLERANCE` /
   `ECONUMO_IMPORT_TOKEN_MIN_LENGTH` — transaction-import matcher thresholds (defaults 3 / 5 / 20 / 3;
   ranges 0–31 days, 0–31 days, 0–100 percent, 1–16 chars). Strict parse: malformed or out-of-range
@@ -687,7 +701,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN` and `BILLING_URL` are always present (server truth).
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `IMPORT_APPLE_WALLET` and
+  `IMPORT_SIMPLEFIN` are always present (server truth).
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
   `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,
