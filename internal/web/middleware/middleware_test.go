@@ -533,7 +533,7 @@ func TestAuth_MCPScopeOnlyOnMCPPath(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		req.Header.Set("Authorization", "Bearer eco_oat_x")
 		rec := httptest.NewRecorder()
-		Auth(stub)(ok).ServeHTTP(rec, req)
+		AuthWith(stub, AuthOptions{AllowMCPScope: true})(ok).ServeHTTP(rec, req)
 		if rec.Code != want {
 			t.Errorf("%s = %d, want %d", path, rec.Code, want)
 		}

@@ -31,6 +31,9 @@ const MCPPath = "/mcp"
 type AuthOptions struct {
 	// Challenge, when non-empty, is sent as WWW-Authenticate on every 401.
 	Challenge string
+	// AllowMCPScope admits mcp-scoped (OAuth) tokens on MCPPath. Only the /mcp
+	// chain sets it, and only while the OAuth server is enabled.
+	AllowMCPScope bool
 }
 
 // StoredLanguageResolver is an optional capability of the wired
@@ -139,16 +142,15 @@ func AuthWith(authn TokenAuthenticator, opts AuthOptions) Middleware {
 				return
 			}
 			// Allowlist, not a denylist: three known scopes (full anywhere; ingest
-			// only under IngestPathPrefix; mcp only on /mcp — those tokens are
-			// issued for the /mcp resource), so an empty or unknown stored scope is
-			// rejected everywhere — the repo read path does not validate the column,
-			// so this gate is the only place that does. The 401 text is identical to
-			// a bad token on purpose: an ingest or mcp credential must not reveal
-			// that it is valid elsewhere.
+			// only under IngestPathPrefix; mcp only on /mcp while OAuth is enabled),
+			// so an empty or unknown stored scope is rejected everywhere — the repo
+			// read path does not validate the column, so this gate is the only place
+			// that does. The 401 text is identical to a bad token on purpose: an
+			// ingest or mcp credential must not reveal that it is valid elsewhere.
 			switch {
 			case p.Scope == model.TokenScopeFull:
 			case p.Scope == model.TokenScopeIngest && strings.HasPrefix(r.URL.Path, IngestPathPrefix):
-			case p.Scope == model.TokenScopeMCP && r.URL.Path == MCPPath:
+			case p.Scope == model.TokenScopeMCP && opts.AllowMCPScope && r.URL.Path == MCPPath:
 			default:
 				deny(errs.NewUnauthorized("Invalid access token"))
 				return

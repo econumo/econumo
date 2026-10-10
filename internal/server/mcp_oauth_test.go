@@ -293,3 +293,39 @@ func TestMCPOAuth_ServedConfigCarriesMCPURL(t *testing.T) {
 		}
 	}
 }
+
+func TestMCPOAuth_DisabledStopsAdmittingIssuedOAuthTokens(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	build := func(appURL string) http.Handler {
+		return server.BuildAPI(config.Config{
+			DatabaseDriver: db.Engine, CurrencyBase: "USD", AllowRegistration: true,
+			RateLimitLogin: 5, RateLimitReset: 5, RateLimitRemind: 3, RateLimitRegister: 5,
+			RateLimitWindow: 15 * time.Minute, RateLimitGlobal: 60, AppURL: appURL,
+		}, db.Raw, server.Seams{Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar)})
+	}
+	on := build("https://econumo.example.test")
+	session, clientID, code := flowSignIn(t, on)
+	status, tok := flowTokenRequest(t, on, url.Values{"grant_type": {"authorization_code"}, "code": {code},
+		"redirect_uri": {oauthCallback}, "code_verifier": {oauthVerifier}, "client_id": {clientID}, "resource": {"https://econumo.example.test/mcp"}})
+	access, _ := tok["access_token"].(string)
+	if status != 200 || access == "" {
+		t.Fatalf("token exchange: %d %v", status, tok)
+	}
+	status, out := flowJSON(t, on, "POST", "/api/v1/user/create-personal-token", session, map[string]any{"name": "pat", "scope": "full"})
+	data, _ := out["data"].(map[string]any)
+	pat, _ := data["token"].(string)
+	if status != 200 || pat == "" {
+		t.Fatalf("create-personal-token: %d %v", status, out)
+	}
+	if status, out := flowDo(t, on, "POST", "/mcp", access, "application/json", mcpInitBody); status != 200 {
+		t.Fatalf("mcp with oauth token while enabled: %d %v", status, out)
+	}
+
+	off := build("")
+	if status, out := flowDo(t, off, "POST", "/mcp", access, "application/json", mcpInitBody); status != 401 {
+		t.Fatalf("an issued oauth token must be refused once oauth is off: %d %v", status, out)
+	}
+	if status, out := flowDo(t, off, "POST", "/mcp", pat, "application/json", mcpInitBody); status != 200 {
+		t.Fatalf("a PAT must keep working with oauth off: %d %v", status, out)
+	}
+}

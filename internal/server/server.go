@@ -495,7 +495,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		labelmcp.Register(labelReadSvc, labelSvc),
 	)
 	mcpHandler := middleware.Chain(
-		middleware.AuthWith(authn, middleware.AuthOptions{Challenge: oauthhttp.Challenge(authSrv)}),
+		middleware.AuthWith(authn, middleware.AuthOptions{Challenge: oauthhttp.Challenge(authSrv), AllowMCPScope: authSrv.Enabled()}),
 		timezoneFallback(userSvc),
 	)(webmcp.NewHandler(mcpRegister))
 

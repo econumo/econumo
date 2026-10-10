@@ -16,7 +16,8 @@ authorization spec can connect the same way.
   address the clients are told to use. The browser sign-in is off, and `/mcp`
   accepts personal access tokens only (see below), when it is unset or is a
   plain `http://` address (plain http is accepted only for `localhost`,
-  `127.0.0.1` and `[::1]`).
+  `127.0.0.1` and `[::1]`). Switching the sign-in off also stops `/mcp` from
+  accepting access tokens that were issued earlier.
 - Claude on the web, desktop and mobile connects from Anthropic's servers, so
   the instance must be reachable from the internet. Claude Code and Codex run
   on your computer and only need to reach the URL from there.

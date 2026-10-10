@@ -322,7 +322,8 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   JSON, not the envelope, with `Cache-Control: no-store`.
 - Access tokens are `access_tokens` rows of kind `oauth` / scope `mcp` (`eco_oat_…`, fixed
   1 h, linked to their grant by `grant_id`), admitted only on `/mcp` — anywhere else they
-  get the frozen 401. Refresh tokens rotate on every use; a grant idles out 90 days after
+  get the frozen 401. Turning OAuth off also stops admitting already-issued OAuth access
+  tokens on `/mcp` (the chain passes `AllowMCPScope: authSrv.Enabled()`). Refresh tokens rotate on every use; a grant idles out 90 days after
   its last refresh. Every rotated-away hash is kept in
   `oauth_refresh_tokens_spent` for as long as the grant row lives. Replaying the token rotated
   away most recently, within 60 s, is refused with `invalid_grant` and leaves the grant alone
