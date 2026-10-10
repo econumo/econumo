@@ -739,8 +739,9 @@ and on tablet/phone only with a hardware keyboard.
       closes); Delete removes it and the list updates.
 - [ ] Keyboard: ↑/↓ move the highlight, Enter opens the highlighted row, Esc
       closes search.
-- [ ] 📱 On a phone the search field reads "Search", there is no corner ✕, and
-      a full-width Close button at the bottom closes the search; the list
+- [ ] 📱 On a phone the search field reads "Search" with a ✕ to its right, and
+      a full-width Close button sits at the bottom; each closes the search, the
+      ✕ stays reachable while the on-screen keyboard is up, and the list
       scrolls between the field and the Close button.
 
 ## 8. Currencies
