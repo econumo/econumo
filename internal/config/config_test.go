@@ -683,16 +683,20 @@ func TestLoad_ImportMatcherBounds(t *testing.T) {
 
 func TestParseAIDSN(t *testing.T) {
 	cases := []struct {
-		name, dsn, endpoint, apiKey, model string
-		wantErr                            bool
+		name, dsn, dialect, endpoint, apiKey, model string
+		wantErr                                     bool
 	}{
 		{name: "empty disables", dsn: ""},
-		{name: "openai with key", dsn: "openai://sk-abc@api.openai.com?model=gpt-5-mini", endpoint: "https://api.openai.com/v1", apiKey: "sk-abc", model: "gpt-5-mini"},
-		{name: "scheme is case-insensitive", dsn: "OpenAI://sk-abc@api.openai.com?model=m", endpoint: "https://api.openai.com/v1", apiKey: "sk-abc", model: "m"},
-		{name: "keyless loopback is plain http", dsn: "openai://localhost:11434?model=llama3", endpoint: "http://localhost:11434/v1", model: "llama3"},
-		{name: "127.0.0.1 is plain http", dsn: "openai://127.0.0.1:8000?model=m", endpoint: "http://127.0.0.1:8000/v1", model: "m"},
-		{name: "custom prefix kept, trailing slash trimmed", dsn: "openai://k@gateway.example/openai/v1/?model=m", endpoint: "https://gateway.example/openai/v1", apiKey: "k", model: "m"},
-		{name: "insecure flag forces http on a LAN host", dsn: "openai://10.0.0.5:8080?model=m&insecure=true", endpoint: "http://10.0.0.5:8080/v1", model: "m"},
+		{name: "openai with key", dsn: "openai://sk-abc@api.openai.com?model=gpt-5-mini", dialect: "openai", endpoint: "https://api.openai.com/v1", apiKey: "sk-abc", model: "gpt-5-mini"},
+		{name: "scheme is case-insensitive", dsn: "OpenAI://sk-abc@api.openai.com?model=m", dialect: "openai", endpoint: "https://api.openai.com/v1", apiKey: "sk-abc", model: "m"},
+		{name: "keyless loopback is plain http", dsn: "openai://localhost:11434?model=llama3", dialect: "openai", endpoint: "http://localhost:11434/v1", model: "llama3"},
+		{name: "127.0.0.1 is plain http", dsn: "openai://127.0.0.1:8000?model=m", dialect: "openai", endpoint: "http://127.0.0.1:8000/v1", model: "m"},
+		{name: "custom prefix kept, trailing slash trimmed", dsn: "openai://k@gateway.example/openai/v1/?model=m", dialect: "openai", endpoint: "https://gateway.example/openai/v1", apiKey: "k", model: "m"},
+		{name: "insecure flag forces http on a LAN host", dsn: "openai://10.0.0.5:8080?model=m&insecure=true", dialect: "openai", endpoint: "http://10.0.0.5:8080/v1", model: "m"},
+		{name: "econumo keyless", dsn: "econumo://ai.example.com?model=openai/gpt-5-mini", dialect: "econumo", endpoint: "https://ai.example.com/v1", model: "openai/gpt-5-mini"},
+		{name: "econumo loopback", dsn: "econumo://localhost:8290?model=m", dialect: "econumo", endpoint: "http://localhost:8290/v1", model: "m"},
+		{name: "econumo refuses a key", dsn: "econumo://k@ai.example.com?model=m", wantErr: true},
+		{name: "econumo needs a model", dsn: "econumo://ai.example.com", wantErr: true},
 		{name: "unknown scheme", dsn: "anthropic://k@api.anthropic.com?model=m", wantErr: true},
 		{name: "missing model", dsn: "openai://k@api.openai.com", wantErr: true},
 		{name: "missing host", dsn: "openai://k@?model=m", wantErr: true},
@@ -700,7 +704,7 @@ func TestParseAIDSN(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			endpoint, apiKey, model, err := parseAIDSN(tc.dsn)
+			dialect, endpoint, apiKey, model, err := parseAIDSN(tc.dsn)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatal("expected error")
@@ -710,10 +714,47 @@ func TestParseAIDSN(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if endpoint != tc.endpoint || apiKey != tc.apiKey || model != tc.model {
-				t.Fatalf("got (%q, %q, %q), want (%q, %q, %q)", endpoint, apiKey, model, tc.endpoint, tc.apiKey, tc.model)
+			if dialect != tc.dialect || endpoint != tc.endpoint || apiKey != tc.apiKey || model != tc.model {
+				t.Fatalf("got (%q, %q, %q, %q), want (%q, %q, %q, %q)", dialect, endpoint, apiKey, model, tc.dialect, tc.endpoint, tc.apiKey, tc.model)
 			}
 		})
+	}
+}
+
+func TestLoad_AIDSNEconumoNeedsTheAdminToken(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_AI_DSN", "econumo://ai.example.com?model=m")
+	t.Setenv("ECONUMO_ADMIN_PORT", "")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", "")
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "ECONUMO_ADMIN_TOKEN") || !strings.Contains(err.Error(), "ECONUMO_ADMIN_PORT") {
+		t.Fatalf("econumo:// without the admin pair must fail boot naming both halves, got %v", err)
+	}
+	// The safe configuration when only signing is wanted: the admin listener
+	// pinned to loopback.
+	t.Setenv("ECONUMO_ADMIN_PORT", "127.0.0.1:9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("a", 32))
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.AIDialect != AIDialectEconumo || !c.AIEnabled || c.AIEndpoint != "https://ai.example.com/v1" || c.AdminPort != "127.0.0.1:9090" {
+		t.Fatalf("ai config = %+v", c)
+	}
+}
+
+func TestParseAIDSN_ParseErrorsKeepSecretsOut(t *testing.T) {
+	for _, dsn := range []string{
+		"openai://sk-SECRET@api.openai.com:badport?model=m",
+		"econumo://k-SECRET@gateway.example:badport?model=m",
+	} {
+		_, _, _, _, err := parseAIDSN(dsn)
+		if err == nil {
+			t.Fatalf("%q must fail to parse", dsn)
+		}
+		if strings.Contains(err.Error(), "SECRET") {
+			t.Fatalf("error echoes the DSN secret: %v", err)
+		}
 	}
 }
 

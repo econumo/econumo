@@ -115,11 +115,12 @@ type Config struct {
 	MailFrom     string // from query param
 	MailReplyTo  string // reply_to query param
 
-	// AI — DERIVED from ECONUMO_AI_DSN (openai://<key>@host[:port][/prefix]?model=…).
+	// AI — DERIVED from ECONUMO_AI_DSN (openai://<key>@host[:port][/prefix]?model=… or econumo://host[:port][/prefix]?model=…).
 	// Empty disables import-rule suggestions: suggest-rules answers a coded
 	// 400 and the SPA hides the action (AI_ENABLED in econumo-config.js).
 	AIDSN      string
 	AIEnabled  bool
+	AIDialect  string // AIDialectOpenAI | AIDialectEconumo, from the DSN scheme
 	AIEndpoint string // https://host/v1 (plain http for loopback hosts or ?insecure=true)
 	AIAPIKey   string
 	AIModel    string
@@ -217,11 +218,11 @@ func Load() (Config, error) {
 	// The completion endpoint is a scheme-prefixed DSN for the same reason:
 	// one variable turns the feature on and carries every part of it.
 	c.AIDSN = getEnv("ECONUMO_AI_DSN", "")
-	aiEndpoint, aiKey, aiModel, err := parseAIDSN(c.AIDSN)
+	aiDialect, aiEndpoint, aiKey, aiModel, err := parseAIDSN(c.AIDSN)
 	if err != nil {
 		return Config{}, err
 	}
-	c.AIEndpoint, c.AIAPIKey, c.AIModel = aiEndpoint, aiKey, aiModel
+	c.AIDialect, c.AIEndpoint, c.AIAPIKey, c.AIModel = aiDialect, aiEndpoint, aiKey, aiModel
 	c.AIEnabled = c.AIEndpoint != ""
 
 	// Strict parse (unlike the lenient getBool): a typo while trying to
@@ -318,6 +319,13 @@ func Load() (Config, error) {
 	// The token is an HMAC key as well as a bearer credential.
 	if c.AdminToken != "" && len(c.AdminToken) < 32 {
 		return Config{}, fmt.Errorf("ECONUMO_ADMIN_TOKEN: must be at least 32 characters")
+	}
+	// The signing key is the admin token, and the token only exists as half of
+	// the admin pair (checked above), so econumo:// implies the admin listener
+	// exactly as ECONUMO_BILLING_URL does. A loopback-pinned port keeps that
+	// listener unreachable when only the signing key is wanted.
+	if c.AIDialect == AIDialectEconumo && c.AdminToken == "" {
+		return Config{}, errors.New("ECONUMO_AI_DSN: econumo:// needs ECONUMO_ADMIN_TOKEN, and with it ECONUMO_ADMIN_PORT (the token signs each AI call; set ECONUMO_ADMIN_PORT=127.0.0.1:<port> if nothing should reach the admin API)")
 	}
 
 	if v := os.Getenv("ECONUMO_BILLING_URL"); v != "" {
@@ -605,9 +613,15 @@ func parseMailerDSN(dsn string) (provider, apiKey, from, replyTo string, err err
 	}
 }
 
+// AI dialects ECONUMO_AI_DSN's scheme selects.
+const (
+	AIDialectOpenAI  = "openai"  // static bearer key (or none) — any OpenAI-compatible server
+	AIDialectEconumo = "econumo" // an econumo AI gateway: per-user token signed with ECONUMO_ADMIN_TOKEN
+)
+
 // parseAIDSN maps ECONUMO_AI_DSN to the chat-completions base endpoint the
-// way parseMailerDSN maps MAILER_DSN: the scheme picks the API dialect (only
-// the OpenAI-compatible one exists), the userinfo is the key, the host is
+// way parseMailerDSN maps MAILER_DSN: the scheme picks the API dialect
+// (openai:// or econumo://), the userinfo is the key, the host is
 // the server, and the model is mandatory because no default is right for
 // both a hosted vendor and a local runtime.
 //
@@ -615,27 +629,37 @@ func parseMailerDSN(dsn string) (provider, apiKey, from, replyTo string, err err
 //	openai://<api-key>@api.openai.com?model=gpt-5-mini -> https://api.openai.com/v1, key, model
 //	openai://localhost:11434?model=llama3              -> http://localhost:11434/v1, keyless (loopback = plain http)
 //	openai://host/custom/v1?model=m&insecure=true      -> http://host/custom/v1 (insecure forces plain http elsewhere)
-func parseAIDSN(dsn string) (endpoint, apiKey, model string, err error) {
+//	econumo://ai.example.com?model=m                   -> https://ai.example.com/v1, no key, signed per user
+func parseAIDSN(dsn string) (dialect, endpoint, apiKey, model string, err error) {
 	dsn = strings.TrimSpace(dsn)
 	if dsn == "" {
-		return "", "", "", nil
+		return "", "", "", "", nil
 	}
 	u, err := url.Parse(dsn)
 	if err != nil {
-		return "", "", "", fmt.Errorf("ECONUMO_AI_DSN: %w", err)
+		// url.Error quotes the whole DSN, userinfo (the key) included.
+		var ue *url.Error
+		if errors.As(err, &ue) {
+			err = ue.Err
+		}
+		return "", "", "", "", fmt.Errorf("ECONUMO_AI_DSN: %v", err)
 	}
-	if strings.ToLower(u.Scheme) != "openai" {
-		return "", "", "", fmt.Errorf("ECONUMO_AI_DSN: unsupported scheme %q (want openai://)", u.Scheme)
+	dialect = strings.ToLower(u.Scheme)
+	if dialect != AIDialectOpenAI && dialect != AIDialectEconumo {
+		return "", "", "", "", fmt.Errorf("ECONUMO_AI_DSN: unsupported scheme %q (want openai:// or econumo://)", u.Scheme)
 	}
 	if u.Host == "" || u.Hostname() == "" {
-		return "", "", "", errors.New("ECONUMO_AI_DSN: host is required")
+		return "", "", "", "", errors.New("ECONUMO_AI_DSN: host is required")
 	}
 	q := u.Query()
 	model = strings.TrimSpace(q.Get("model"))
 	if model == "" {
-		return "", "", "", errors.New("ECONUMO_AI_DSN: model query parameter is required")
+		return "", "", "", "", errors.New("ECONUMO_AI_DSN: model query parameter is required")
 	}
 	if u.User != nil {
+		if dialect == AIDialectEconumo {
+			return "", "", "", "", errors.New("ECONUMO_AI_DSN: econumo:// carries no key (calls are signed with ECONUMO_ADMIN_TOKEN)")
+		}
 		apiKey = u.User.Username()
 	}
 	scheme := "https"
@@ -647,7 +671,7 @@ func parseAIDSN(dsn string) (endpoint, apiKey, model string, err error) {
 	if path == "" {
 		path = "/v1"
 	}
-	return scheme + "://" + u.Host + path, apiKey, model, nil
+	return dialect, scheme + "://" + u.Host + path, apiKey, model, nil
 }
 
 func getEnv(key, def string) string {

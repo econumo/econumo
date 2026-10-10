@@ -107,7 +107,7 @@ func (s *Service) SuggestRules(ctx context.Context, userID vo.Id, req model.Sugg
 	if err != nil {
 		return nil, err
 	}
-	reply, err := s.completer.Complete(ctx, suggestSystemPrompt, string(payload))
+	reply, err := s.completer.Complete(ctx, userID.String(), suggestSystemPrompt, string(payload))
 	if err != nil {
 		// Type only: the error may quote the endpoint's response body.
 		reqctx.AddLogAttr(ctx, "ai_error_type", fmt.Sprintf("%T", err))

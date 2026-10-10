@@ -10,6 +10,7 @@ import { SortableList } from '@/components/SortableList'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SettingsShell } from '@/features/settings/SettingsShell'
+import { useAccessState } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { isAiEnabled } from '@/lib/config'
 import { ImportRuleDialog, emptyRuleSpec } from './ImportRuleDialog'
@@ -28,6 +29,9 @@ export function ImportRulesPage() {
   const remove = useDeleteImportRule()
   const create = useCreateImportRule()
   const suggest = useSuggestImportRules()
+  // Readonly users are refused by the server (402) before any AI call; show
+  // the action disabled rather than let the click be the first they hear of it.
+  const { state: accessState } = useAccessState()
   const [editor, setEditor] = useState<Editor>({ kind: 'closed' })
   const [deleting, setDeleting] = useState<ImportRuleDto | null>(null)
   const [suggestions, setSuggestions] = useState<ImportRuleSuggestionDto[] | null>(null)
@@ -86,7 +90,7 @@ export function ImportRulesPage() {
         <div className="flex flex-wrap gap-2">
           <Button type="button" onClick={() => setEditor({ kind: 'create', initial: emptyRuleSpec(rules.length) })}>{t('imports.rules.page.add')}</Button>
           {isAiEnabled() ? (
-            <Button type="button" variant="secondary" disabled={suggest.isPending} onClick={runSuggest}>
+            <Button type="button" variant="secondary" disabled={suggest.isPending || accessState === 'readonly'} onClick={runSuggest}>
               {suggest.isPending ? t('imports.rules.suggest.running') : t('imports.rules.suggest.button')}
             </Button>
           ) : null}

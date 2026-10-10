@@ -655,6 +655,15 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   is optional for local servers (`openai://localhost:11434?model=llama3.1`). Unset (default) =
   disabled: the endpoint returns 400 `import.ai_disabled` and the SPA hides the action. A bad
   scheme/missing host/missing `model` fails at boot.
+  `econumo://<gateway-host>[:port][/prefix]?model=<model>` routes through an econumo AI gateway
+  instead. It carries no key: each call's bearer is a 5-minute `econumo-ai:v1` token for the
+  requesting user, signed with `ECONUMO_ADMIN_TOKEN` (required with this scheme; boot fails
+  without it, and a key in the DSN fails boot too). The token only exists as half of the admin
+  pair, so this scheme also opens the admin listener, exactly like `ECONUMO_BILLING_URL`; when
+  only signing is wanted, pin it to loopback (`ECONUMO_ADMIN_PORT=127.0.0.1:9090`) so nothing
+  else can reach it. `?insecure=true` works for `econumo://` too
+  and sends the signed token over plain http; use it only on a trusted internal network, for
+  example when econumo reaches the gateway over a private Docker network.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:

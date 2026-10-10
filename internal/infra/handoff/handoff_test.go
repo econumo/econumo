@@ -90,3 +90,34 @@ func TestSignedTokenIsURLSafe(t *testing.T) {
 		}
 	}
 }
+
+// A fixed vector: the gateway verifying these tokens implements the scheme
+// separately, so only a shared literal proves both agree byte for byte.
+func TestSignAIMatchesTheFixedVector(t *testing.T) {
+	const key = "test-admin-token-0123456789abcdef"
+	const want = "eyJ1aWQiOiJ1MSIsImV4cCI6MjAwMDAwMDAwMH0.lhkDdd6-2Gpd5ECgVd9dLlhx62QFj1USMk5lJMvn3zc"
+	got, err := NewSigner(key).SignAI("u1", time.Unix(2000000000, 0).Add(-AITTL))
+	if err != nil || got != want {
+		t.Fatalf("SignAI = %q, %v; want %q", got, err, want)
+	}
+}
+
+func TestAITokensAreDomainSeparated(t *testing.T) {
+	const key = "test-admin-token-0123456789abcdef"
+	now := time.Unix(1_900_000_000, 0)
+	s := NewSigner(key)
+	ai, _ := s.SignAI("u1", now)
+	ho, _ := s.Sign("u1", now)
+	if uid, err := VerifyAI(ai, key, now); err != nil || uid != "u1" {
+		t.Fatalf("VerifyAI(ai) = %q, %v", uid, err)
+	}
+	if _, err := Verify(ai, key, now); err == nil {
+		t.Fatal("an econumo-ai token verified as a handoff token")
+	}
+	if _, err := VerifyAI(ho, key, now); err == nil {
+		t.Fatal("a handoff token verified as an econumo-ai token")
+	}
+	if _, err := VerifyAI(ai, key, now.Add(AITTL)); err == nil {
+		t.Fatal("an AI token must expire after AITTL")
+	}
+}
