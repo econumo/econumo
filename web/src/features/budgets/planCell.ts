@@ -16,7 +16,7 @@ export interface PlanCellView {
   actual: string | null
   /** nothing happened yet against a plan: a dash stands in the actual's place */
   dash: boolean
-  /** null: nothing planned (blank, never 0) */
+  /** null: nothing planned (blank, never 0), or a zero plan with nothing beside it */
   plan: string | null
   over: boolean
   /** a savings account: `actual` is its month-end balance (projected ahead), not what was saved */
@@ -32,19 +32,29 @@ export function shownActual(actual: string | null, hasPlan: boolean): Pick<PlanC
   return { actual: null, dash: hasPlan }
 }
 
+/** A zero plan only means something next to a figure: on its own it reads as noise,
+ *  so a month with no actual (or a zero one) and a zero plan stays blank. */
+function shownPlan(planned: string, actual: string | null): string | null {
+  if (planned === '' || (isZero(planned) && (actual === null || isZero(actual)))) {
+    return null
+  }
+  return planned
+}
+
 export function planCellView({ type, cell, month, selected }: PlanCellViewInput): PlanCellView {
   if (!cell) {
     return { actual: null, dash: false, plan: null, over: false, balance: false }
   }
   const past = month <= selected
-  const plan = cell.planned === '' ? null : cell.planned
   // where a savings account stands says more than what went in that month; ahead of
   // today it is the projection (unmet plans still to come), flat without a plan
   if (type === BudgetElementType.SAVINGS && cell.closingBalance !== undefined) {
-    return { actual: cell.closingBalance, dash: false, plan, over: false, balance: true }
+    return { actual: cell.closingBalance, dash: false, plan: shownPlan(cell.planned, cell.closingBalance), over: false, balance: true }
   }
+  const actual = past ? cell.actual : null
+  const plan = shownPlan(cell.planned, actual)
   return {
-    ...shownActual(past ? cell.actual : null, plan !== null),
+    ...shownActual(actual, plan !== null),
     plan,
     over: past && type !== BudgetElementType.SAVINGS && isOverspent(type, cell),
     balance: false,
