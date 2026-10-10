@@ -23,7 +23,7 @@ revoking it in Settings cuts it off immediately.
 | Token lifetime | 1-hour access tokens + rotating refresh tokens, grant expires 90 days after its last refresh |
 | Scope | One scope, `mcp` = full access (everything a PAT can do on `/mcp`) |
 | Client registration | Open DCR; public clients (`none`) and confidential (`client_secret_post` / `client_secret_basic`) |
-| Enablement | On whenever `ECONUMO_URL` is set (it is the issuer and the resource origin); no extra flag. Unset = every endpoint below 404s and `/mcp` is unchanged |
+| Enablement | On whenever `ECONUMO_URL` is set to an https origin with no path (it is the issuer and the resource origin); no extra flag. Unset = every endpoint below 404s and `/mcp` is unchanged |
 | REST | Unchanged. OAuth-issued tokens are rejected on REST; sessions and PATs keep working on `/mcp` |
 
 Out of scope (YAGNI): Client ID Metadata Documents (Claude falls back to DCR;
@@ -136,7 +136,7 @@ in one statement.
   `WWW-Authenticate: Bearer resource_metadata="<URL>/.well-known/oauth-protected-resource/mcp", scope="mcp"`.
   The body stays the existing frozen envelope. REST `401`s are unchanged.
 
-`<URL>` is `ECONUMO_URL` with any trailing slash removed.
+`<URL>` is `ECONUMO_URL` (an origin, no path) with any trailing slash removed.
 
 ### Registration — `POST /oauth/register`
 

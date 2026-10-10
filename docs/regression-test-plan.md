@@ -1820,7 +1820,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Read-only account: pressing Allow shows "Your account is read-only, so apps
       can't be connected." and "Return to the app" sends the client back with an
       `access_denied` result; Deny works on a read-only account too.
-- [ ] 📱 With `ECONUMO_URL` unset or plain `http://` on a non-loopback host
+- [ ] 📱 With `ECONUMO_URL` unset, carrying a path, or plain `http://` on a non-loopback host
       (OAuth off), Settings > Profile has no Connected apps row; opening
       `/settings/profile/connected-apps` directly shows "Connecting AI apps
       isn't available on this server. The administrator needs to set

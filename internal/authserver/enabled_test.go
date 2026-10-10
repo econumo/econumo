@@ -26,7 +26,9 @@ func TestNewServiceEnabledOnlyForSecureIssuer(t *testing.T) {
 		{"https://econumo.example.test/#frag", false, ""},
 		{"https://econumo.example.test/?", false, ""},
 		{"HTTPS://Econumo.Example.TEST/", true, "https://econumo.example.test"},
-		{"https://econumo.example.test/app/", true, "https://econumo.example.test/app"},
+		{"https://money.example/", true, "https://money.example"},
+		{"https://money.example/app", false, ""},
+		{"https://money.example/app/", false, ""},
 		{"  https://econumo.example.test  ", true, "https://econumo.example.test"},
 	}
 	for _, c := range cases {

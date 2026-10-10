@@ -11,10 +11,12 @@ authorization spec can connect the same way.
 
 ## Prerequisites
 
-- Set `ECONUMO_URL` to the public https URL of your instance (for example
-  `https://econumo.example.com`). It is the issuer of the sign-in flow and the
+- Set `ECONUMO_URL` to the public https origin of your instance, with no path
+  (for example `https://econumo.example.com`; `https://example.com/econumo` does
+  not work, because the sign-in endpoints and discovery are served from the
+  root). It is the issuer of the sign-in flow and the
   address the clients are told to use. The browser sign-in is off, and `/mcp`
-  accepts personal access tokens only (see below), when it is unset or is a
+  accepts personal access tokens only (see below), when it is unset, has a path, or is a
   plain `http://` address (plain http is accepted only for `localhost`,
   `127.0.0.1` and `[::1]`). Switching the sign-in off also stops `/mcp` from
   accepting access tokens that were issued earlier.

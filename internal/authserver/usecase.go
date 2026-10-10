@@ -35,7 +35,8 @@ type Service struct {
 // A nil limiter disables rate limiting. The server is enabled only for an
 // https issuer (plain http only on a loopback host), because refresh tokens,
 // client secrets and bearer tokens would otherwise cross the network in the
-// clear; any other appURL leaves it disabled.
+// clear, and only for an origin with no path; any other appURL leaves it
+// disabled.
 func NewService(repo Repository, creds Credentials, tx port.TxRunner, clock port.Clock, limiter Limiter, appURL string) *Service {
 	return &Service{repo: repo, creds: creds, tx: tx, clock: clock, limiter: limiter, issuer: secureIssuer(appURL)}
 }
@@ -45,11 +46,16 @@ func secureIssuer(appURL string) string {
 	if err != nil || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
 		return ""
 	}
+	// Discovery, /mcp and every OAuth route are served from the root, so an
+	// issuer with a path could not publish its own metadata (RFC 8414).
+	if p := u.EscapedPath(); p != "" && p != "/" {
+		return ""
+	}
 	scheme, host := strings.ToLower(u.Scheme), strings.ToLower(u.Host)
 	if scheme != "https" && !(scheme == "http" && isLoopbackHost(strings.ToLower(u.Hostname()))) {
 		return ""
 	}
-	return scheme + "://" + host + strings.TrimRight(u.EscapedPath(), "/")
+	return scheme + "://" + host
 }
 
 func (s *Service) Enabled() bool       { return s.issuer != "" }

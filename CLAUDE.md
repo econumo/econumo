@@ -289,10 +289,12 @@ which is Econumo as a *client* of Google/Apple/OIDC): a hand-written OAuth 2.1
 authorization server so MCP clients (Claude, Codex) connect by URL alone and
 sign in through the browser instead of pasting a PAT. Setup guide:
 `docs/mcp-setup.md`; design: `docs/superpowers/specs/2026-10-03-mcp-oauth-design.md`.
-It is enabled only when `ECONUMO_URL` is an `https://` URL (plain `http://` only on a
-loopback host: `localhost`, `127.0.0.1`, `[::1]`; issuer = that URL without a trailing
-slash, resource = `<issuer>/mcp`). Any other value leaves it disabled and `serve` logs one
-WARN, because refresh tokens, client secrets and bearer tokens must not cross a network in
+It is enabled only when `ECONUMO_URL` is an `https://` origin with no path (plain `http://`
+only on a loopback host: `localhost`, `127.0.0.1`, `[::1]`; issuer = `scheme://host`,
+resource = `<issuer>/mcp`). A URL with any path other than `/` leaves it disabled, because
+discovery, `/mcp` and every OAuth route are root-mounted, so a path-based issuer could not
+publish its RFC 8414 / RFC 9728 metadata. Any other value leaves it disabled and `serve` logs
+one WARN, because refresh tokens, client secrets and bearer tokens must not cross a network in
 the clear. The handler is always mounted on the root mux, but while disabled all five public
 routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
 - Discovery: `/.well-known/oauth-protected-resource[/mcp]` and
@@ -597,8 +599,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   bodies byte-for-byte unchanged (the wrapper is not installed). Must be an absolute
   http(s) URL — plain http is allowed (unlike `ECONUMO_BILLING_URL`, an app link carries no
   signed token). Not a translatable string, so it touches no `emails.*` catalogue key.
-  It is also the issuer of the MCP OAuth server (`internal/authserver`): an `https://` URL
-  (plain `http://` only on a loopback host) enables that server; unset or anything else leaves it off.
+  It is also the issuer of the MCP OAuth server (`internal/authserver`): an `https://` origin
+  with no path (plain `http://` only on a loopback host) enables that server; unset or anything else leaves it off.
 - `ECONUMO_OAUTH_GOOGLE_*` / `ECONUMO_OAUTH_APPLE_*` / `ECONUMO_OIDC_*` — three independent
   "Sign in with…" provider slots (`internal/oauth`), each **all-or-nothing**: any one variable
   of a slot set without the rest fails at boot naming the missing variable. Google needs
