@@ -360,7 +360,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
               data-crosshair={i === ctx.crosshairCol ? 'col' : undefined}
-              className={`group/cell relative ${figureClass(ctx, i)} py-1${editable ? ' cursor-pointer' : ''}${hoverCol === i ? ' outline outline-1 outline-border' : ''}${selectedClass(selected)}${picked ? ' bg-ring/10' : ''}${filled ? ' fill-covered bg-ring/15' : ''}`}
+              className={`group/cell relative ${figureClass(ctx, i)} py-1${editable ? ' cursor-pointer' : ''}${hoverCol === i ? ' outline outline-1 outline-border' : ''}${selectedClass(selected)}${picked ? ' bg-ring/15' : ''}${filled ? ' fill-covered bg-ring/15' : ''}`}
               onMouseDown={(e) => {
                 // Shift+click would otherwise also select the page's text in between;
                 // an open editor keeps the press, so its blur still commits it
