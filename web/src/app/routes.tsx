@@ -35,7 +35,7 @@ import { ImportRunPage } from '@/features/imports/ImportRunPage'
 import { ImportRulesPage } from '@/features/imports/ImportRulesPage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { BudgetPage } from '@/features/budgets/BudgetPage'
-import { isTransactionImportEnabled } from '@/lib/config'
+import { isAppleWalletImportEnabled, isSimpleFINImportEnabled, isTransactionImportEnabled } from '@/lib/config'
 
 export function createRouter() {
   return createBrowserRouter([
@@ -80,10 +80,10 @@ export function createRouter() {
                 { path: '/settings/recurring', element: <RecurringSettingsPage /> },
                 { path: '/settings/data', element: <ImportsDataPage /> },
                 { path: '/inbox', element: <InboxPage /> },
+                ...(isAppleWalletImportEnabled() ? [{ path: '/settings/apple-wallet', element: <AppleWalletPage /> }] : []),
+                ...(isSimpleFINImportEnabled() ? [{ path: '/settings/simplefin', element: <SimpleFINPage /> }] : []),
                 ...(isTransactionImportEnabled()
                   ? [
-                      { path: '/settings/apple-wallet', element: <AppleWalletPage /> },
-                      { path: '/settings/simplefin', element: <SimpleFINPage /> },
                       { path: '/settings/import-rules', element: <ImportRulesPage /> },
                       { path: '/imports/runs', element: <ImportRunListPage /> },
                       { path: '/imports/runs/:id', element: <ImportRunPage /> },

@@ -1,8 +1,10 @@
 package server_test
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,55 +14,113 @@ import (
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
-func importRouteStatus(t *testing.T, enabled bool, scope, method, path string) int {
+type importServer struct {
+	t     *testing.T
+	url   string
+	f     *fixture.Builder
+	user  string
+	token string
+}
+
+func newImportServer(t *testing.T, appleWallet, simpleFIN bool) importServer {
 	t.Helper()
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	userID := f.User(fixture.User{})
-	rawToken := "eco_pat_transaction-import-test-token-000000000000"
 	exp := time.Now().UTC().Add(24 * time.Hour)
-	f.AccessToken(fixture.AccessToken{
-		UserID:    userID,
-		Kind:      "personal",
-		Scope:     scope,
-		TokenHash: appuser.HashAccessToken(rawToken),
-		ExpiresAt: &exp,
-	})
+	full := "eco_pat_transaction-import-test-full-0000000000000"
+	ingest := "eco_pat_transaction-import-test-ingest-00000000000"
+	f.AccessToken(fixture.AccessToken{UserID: userID, Kind: "personal", TokenHash: appuser.HashAccessToken(full), ExpiresAt: &exp})
+	f.AccessToken(fixture.AccessToken{UserID: userID, Kind: "personal", Scope: "ingest", TokenHash: appuser.HashAccessToken(ingest), ExpiresAt: &exp})
 
 	cfg := baseTestConfig(db.Engine)
-	cfg.TransactionImport = enabled
+	cfg.ImportAppleWallet = appleWallet
+	cfg.ImportSimpleFIN = simpleFIN
 	ts := httptest.NewServer(server.BuildAPI(cfg, db.Raw, server.Seams{Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar)}))
 	t.Cleanup(ts.Close)
-
-	req, err := http.NewRequest(method, ts.URL+path, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Authorization", "Bearer "+rawToken)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp.Body.Close()
-	return resp.StatusCode
+	return importServer{t: t, url: ts.URL, f: f, user: userID, token: full}
 }
 
-func TestTransactionImport_DisabledRoutesAreNotMounted(t *testing.T) {
-	for _, tc := range []struct{ scope, method, path string }{
-		{"full", http.MethodGet, "/api/v1/import/get-source-list"},
-		{"full", http.MethodGet, "/api/v1/import/get-rule-list"},
-		{"ingest", http.MethodPost, "/api/v1/import/ingest-apple-wallet-event"},
+func (s importServer) do(method, path, body string) (int, string) {
+	s.t.Helper()
+	token := s.token
+	if strings.Contains(path, "/ingest-") {
+		token = "eco_pat_transaction-import-test-ingest-00000000000"
+	}
+	req, err := http.NewRequest(method, s.url+path, strings.NewReader(body))
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, string(b)
+}
+
+var (
+	sharedImportRoutes = [][2]string{
+		{http.MethodGet, "/api/v1/import/get-source-list"},
+		{http.MethodGet, "/api/v1/import/get-rule-list"},
+		{http.MethodGet, "/api/v1/import/get-queued-event-list"},
+	}
+	appleWalletRoutes = [][2]string{{http.MethodPost, "/api/v1/import/ingest-apple-wallet-event"}}
+	simpleFINRoutes   = [][2]string{
+		{http.MethodGet, "/api/v1/import/get-credential-key"},
+		{http.MethodPost, "/api/v1/import/sync-source"},
+		{http.MethodPost, "/api/v1/import/claim-setup-token"},
+	}
+)
+
+func TestImportProviders_RoutesFollowTheFlags(t *testing.T) {
+	for _, tc := range []struct {
+		name                   string
+		appleWallet, simpleFIN bool
+	}{
+		{"both off", false, false},
+		{"apple wallet only", true, false},
+		{"simplefin only", false, true},
+		{"both on", true, true},
 	} {
-		t.Run(tc.path, func(t *testing.T) {
-			if got := importRouteStatus(t, false, tc.scope, tc.method, tc.path); got != http.StatusNotFound {
-				t.Errorf("%s %s with transaction import off: status %d, want 404", tc.method, tc.path, got)
+		t.Run(tc.name, func(t *testing.T) {
+			s := newImportServer(t, tc.appleWallet, tc.simpleFIN)
+			check := func(routes [][2]string, mounted bool) {
+				for _, r := range routes {
+					status, _ := s.do(r[0], r[1], "{}")
+					if mounted == (status == http.StatusNotFound) {
+						t.Errorf("%s %s: status %d, mounted=%v", r[0], r[1], status, mounted)
+					}
+				}
 			}
+			check(sharedImportRoutes, tc.appleWallet || tc.simpleFIN)
+			check(appleWalletRoutes, tc.appleWallet)
+			check(simpleFINRoutes, tc.simpleFIN)
 		})
 	}
 }
 
-func TestTransactionImport_EnabledRoutesAreMounted(t *testing.T) {
-	if got := importRouteStatus(t, true, "full", http.MethodGet, "/api/v1/import/get-source-list"); got != http.StatusOK {
-		t.Fatalf("get-source-list with transaction import on: status %d, want 200", got)
+func TestImportProviders_DisabledProviderSourceIsRefusedAndHidden(t *testing.T) {
+	s := newImportServer(t, false, true)
+	srcID := s.f.ImportSource(fixture.ImportSource{UserID: s.user, Provider: "apple-wallet", Name: "Old iPhone"})
+	s.f.ImportTransactionLink(fixture.ImportTransactionLink{
+		SourceID: srcID, ExternalAccountID: "Apple Card", ExternalTransactionID: "tap-1", Status: "queued",
+		ExternalPayee: "Old Coffee", ExternalAmount: "4.50000000", ExternalCurrency: "USD",
+	})
+
+	status, body := s.do(http.MethodPost, "/api/v1/import/create-source", `{"provider":"apple-wallet","name":"iPhone"}`)
+	if status != http.StatusBadRequest || !strings.Contains(body, "This import provider is not supported.") {
+		t.Fatalf("create-source for a disabled provider: %d %s", status, body)
+	}
+	status, body = s.do(http.MethodGet, "/api/v1/import/get-source-list", "")
+	if status != http.StatusOK || strings.Contains(body, "Old iPhone") {
+		t.Fatalf("a disabled provider's source must not be listed: %d %s", status, body)
+	}
+	status, body = s.do(http.MethodGet, "/api/v1/import/get-queued-event-list", "")
+	if status != http.StatusOK || strings.Contains(body, "Old Coffee") {
+		t.Fatalf("a disabled provider's queued rows must not be listed: %d %s", status, body)
 	}
 }

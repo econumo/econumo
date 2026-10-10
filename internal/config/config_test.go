@@ -611,29 +611,42 @@ func TestLoad_ImportAllowPrivateHosts(t *testing.T) {
 	}
 }
 
-func TestLoad_TransactionImport(t *testing.T) {
+func TestLoad_ImportProviders(t *testing.T) {
 	t.Setenv("PORT", "8080")
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.TransactionImport {
-		t.Error("transaction import must be off by default")
+	if cfg.ImportAppleWallet || cfg.ImportSimpleFIN || cfg.TransactionImport() {
+		t.Error("both import providers must be off by default")
 	}
 
-	t.Setenv("ECONUMO_TRANSACTION_IMPORT", "true")
+	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "true")
 	cfg, err = Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.TransactionImport {
-		t.Error("TransactionImport should be true")
+	if cfg.ImportAppleWallet || !cfg.ImportSimpleFIN || !cfg.TransactionImport() {
+		t.Errorf("SimpleFIN alone: apple=%v simplefin=%v any=%v", cfg.ImportAppleWallet, cfg.ImportSimpleFIN, cfg.TransactionImport())
 	}
 
-	t.Setenv("ECONUMO_TRANSACTION_IMPORT", "yes please")
-	if _, err := Load(); err == nil {
-		t.Error("malformed ECONUMO_TRANSACTION_IMPORT must fail at boot")
+	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "false")
+	t.Setenv("ECONUMO_IMPORT_APPLE_WALLET", "true")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.ImportAppleWallet || cfg.ImportSimpleFIN || !cfg.TransactionImport() {
+		t.Errorf("Apple Wallet alone: apple=%v simplefin=%v any=%v", cfg.ImportAppleWallet, cfg.ImportSimpleFIN, cfg.TransactionImport())
+	}
+
+	for _, key := range []string{"ECONUMO_IMPORT_APPLE_WALLET", "ECONUMO_IMPORT_SIMPLEFIN"} {
+		t.Setenv(key, "yes please")
+		if _, err := Load(); err == nil {
+			t.Errorf("malformed %s must fail at boot", key)
+		}
+		t.Setenv(key, "false")
 	}
 }
 

@@ -41,10 +41,13 @@ type Config struct {
 	EmailVerification          bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
 	CurrencyUpdateIntervalDays int  // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
 
-	// TransactionImport is ECONUMO_TRANSACTION_IMPORT: Apple Wallet, SimpleFIN
-	// and import rules (every /api/v1/import route). Off by default while the
-	// feature matures; CSV import/export is not part of it and stays on.
-	TransactionImport     bool
+	// ImportAppleWallet / ImportSimpleFIN are ECONUMO_IMPORT_APPLE_WALLET /
+	// ECONUMO_IMPORT_SIMPLEFIN: the two transaction-import providers, both off
+	// by default while the feature matures. Import rules, the queue and run
+	// history exist only while at least one is on (TransactionImport). CSV
+	// import/export is not part of it and stays on.
+	ImportAppleWallet     bool
+	ImportSimpleFIN       bool
 	ImportMatchDays       int // ECONUMO_IMPORT_MATCH_DAYS: ± window for the same-amount import adopt (default 3, 0-31)
 	ImportTipDays         int // ECONUMO_IMPORT_TIP_DAYS: how many days after a tap a bank record may post (default 5, 0-31)
 	ImportTipTolerancePct int // ECONUMO_IMPORT_TIP_TOLERANCE: percent of the tap amount a posted amount may differ by (default 20, 0-100)
@@ -290,11 +293,12 @@ func Load() (Config, error) {
 		*p.dst = n
 	}
 
-	transactionImport, err := getBoolStrict("ECONUMO_TRANSACTION_IMPORT", false)
-	if err != nil {
+	if c.ImportAppleWallet, err = getBoolStrict("ECONUMO_IMPORT_APPLE_WALLET", false); err != nil {
 		return Config{}, err
 	}
-	c.TransactionImport = transactionImport
+	if c.ImportSimpleFIN, err = getBoolStrict("ECONUMO_IMPORT_SIMPLEFIN", false); err != nil {
+		return Config{}, err
+	}
 
 	// Strict parse: a typo must fail at boot rather than silently opening the
 	// server's private network to a user-supplied bridge URL.
@@ -753,4 +757,10 @@ func getDurationStrict(key string, def time.Duration) (time.Duration, error) {
 		return 0, fmt.Errorf("%s %q is not a positive Go duration (e.g. \"15m\")", key, v)
 	}
 	return d, nil
+}
+
+// TransactionImport reports whether any import provider is on, which is what
+// mounts the shared import routes (sources, queue, runs, rules).
+func (c Config) TransactionImport() bool {
+	return c.ImportAppleWallet || c.ImportSimpleFIN
 }

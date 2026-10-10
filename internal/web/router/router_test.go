@@ -222,7 +222,7 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	// the dist file), so every key is present: the ones explicitly set above,
 	// plus every other key at its default (LILTAG_CONFIG_URL, LILTAG_CACHE_TTL,
 	// INSTANCE_ID, VERSION, VERSION_LABEL, IMPORT_MATCHER) and MIN_APP_VERSION because it was set.
-	want := `window.econumoConfig = {"AI_ENABLED":false,"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","IMPORT_MATCHER":{"matchDays":0,"tipDays":0,"tipTolerancePct":0,"tokenMinLength":0},"INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MIN_APP_VERSION":"v9.9.9","PASSWORD_LOGIN":true,"TRANSACTION_IMPORT":false,"VERSION":null,"VERSION_LABEL":null};`
+	want := `window.econumoConfig = {"AI_ENABLED":false,"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","IMPORT_APPLE_WALLET":false,"IMPORT_MATCHER":{"matchDays":0,"tipDays":0,"tipTolerancePct":0,"tokenMinLength":0},"IMPORT_SIMPLEFIN":false,"INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MIN_APP_VERSION":"v9.9.9","PASSWORD_LOGIN":true,"VERSION":null,"VERSION_LABEL":null};`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
 	}
@@ -278,7 +278,8 @@ func TestRuntimeConfigOverrides_UnsetKeysGetDefaults(t *testing.T) {
 		`"VERSION_LABEL":null`,
 		`"INSTANCE_ID":""`,
 		`"PASSWORD_LOGIN":true`,
-		`"TRANSACTION_IMPORT":false`,
+		`"IMPORT_APPLE_WALLET":false`,
+		`"IMPORT_SIMPLEFIN":false`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("default %q missing:\n%s", want, body)
@@ -307,19 +308,22 @@ func TestRuntimeConfigOverrides_PasswordLoginDisabled(t *testing.T) {
 	}
 }
 
-func TestRuntimeConfigOverrides_TransactionImportEnabled(t *testing.T) {
+func TestRuntimeConfigOverrides_ImportProviders(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	h := router.New(router.Deps{SPA: os.DirFS(dir), Cfg: config.Config{TransactionImport: true}})
+	h := router.New(router.Deps{SPA: os.DirFS(dir), Cfg: config.Config{ImportSimpleFIN: true}})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
-	if body := readBody(t, resp); !strings.Contains(body, `"TRANSACTION_IMPORT":true`) {
-		t.Fatalf("TRANSACTION_IMPORT must be true:\n%s", body)
+	body := readBody(t, resp)
+	for _, want := range []string{`"IMPORT_APPLE_WALLET":false`, `"IMPORT_SIMPLEFIN":true`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %s:\n%s", want, body)
+		}
 	}
 }
 

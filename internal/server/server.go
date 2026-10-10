@@ -397,6 +397,12 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			TokenMinLength:  cfg.ImportTokenMinLength,
 		},
 	)
+	if !cfg.ImportAppleWallet {
+		importsSvc.DisableProvider(model.ImportProviderAppleWallet)
+	}
+	if !cfg.ImportSimpleFIN {
+		importsSvc.DisableProvider(model.ImportProviderSimpleFIN)
+	}
 	importsSvc.RegisterParser(model.ImportProviderAppleWallet, applewallet.Parser{})
 	importsSvc.RegisterParser(model.ImportProviderSimpleFIN, simplefin.Parser{})
 	if seams.ImportProviders == nil {
@@ -420,12 +426,16 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
 
-	// Disabled means unrouted: every /api/v1/import path 404s, ingest-scoped
-	// PATs included, so no import write can land while the switch is off
+	// Disabled means unrouted: with both providers off every /api/v1/import
+	// path 404s, and a provider that is off loses its own routes (Apple
+	// Wallet's ingest, SimpleFIN's credential and sync) the same way
 	// (Compose skips the nil).
 	var importsAPI router.RegisterAPI
-	if cfg.TransactionImport {
-		importsAPI = handlerimports.RegisterAPI(importsHandlers, authn)
+	if cfg.TransactionImport() {
+		importsAPI = handlerimports.RegisterAPI(importsHandlers, authn, handlerimports.Providers{
+			AppleWallet: cfg.ImportAppleWallet,
+			SimpleFIN:   cfg.ImportSimpleFIN,
+		})
 	}
 
 	registerAPI := router.Compose(

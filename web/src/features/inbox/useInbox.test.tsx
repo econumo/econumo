@@ -33,7 +33,7 @@ const f = (eventId: string) => ({ eventId, sourceId: 's1', receivedAt: '2026-08-
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = { TRANSACTION_IMPORT: true }
+  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
 })
 
 it.each([

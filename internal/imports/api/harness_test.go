@@ -233,7 +233,7 @@ func newHarness(t *testing.T) *harness {
 	svc.RegisterProvider(model.ImportProviderSimpleFIN, provider)
 
 	mux := http.NewServeMux()
-	handlerimports.RegisterAPI(handlerimports.NewHandlers(svc), authstub.Authenticator{})(mux)
+	handlerimports.RegisterAPI(handlerimports.NewHandlers(svc), authstub.Authenticator{}, handlerimports.Providers{AppleWallet: true, SimpleFIN: true})(mux)
 	srv := httptest.NewServer(middleware.Chain(middleware.RequestID, middleware.AccessLog)(mux))
 	t.Cleanup(srv.Close)
 	return &harness{srv: srv, txns: txns, entities: entities, f: f, provider: provider}

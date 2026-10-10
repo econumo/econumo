@@ -43,7 +43,7 @@ function renderSections(importQueue: unknown) {
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = { TRANSACTION_IMPORT: true }
+  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
   useUiStore.setState({ transactionModal: null })
   vi.mocked(toast.error).mockClear()
   vi.mocked(toast.success).mockClear()

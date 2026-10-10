@@ -11,6 +11,9 @@ import (
 // CreateSource is idempotent per (user, provider): the shortcut setup can
 // be re-run without leaving duplicate sources behind.
 func (s *Service) CreateSource(ctx context.Context, userID vo.Id, req model.CreateImportSourceRequest) (*model.CreateImportSourceResult, error) {
+	if s.disabled[req.Provider] {
+		return nil, errs.NewValidation("Validation failed", errs.FieldError{Key: "provider", Message: "This import provider is not supported.", Code: errs.CodeImportProviderUnsupported})
+	}
 	var out *model.CreateImportSourceResult
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		src, err := s.repo.GetSourceByUserProvider(ctx, userID, req.Provider)
@@ -45,7 +48,7 @@ func (s *Service) CreateSource(ctx context.Context, userID vo.Id, req model.Crea
 }
 
 func (s *Service) GetSourceList(ctx context.Context, userID vo.Id) (*model.GetImportSourceListResult, error) {
-	sources, err := s.repo.ListSourcesByUser(ctx, userID)
+	sources, err := s.enabledSources(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

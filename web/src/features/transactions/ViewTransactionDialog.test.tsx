@@ -235,7 +235,7 @@ it('renders no labels card when the transaction has no labels', async () => {
 })
 
 it('lists the import provenance for an imported transaction', async () => {
-  window.econumoConfig = { TRANSACTION_IMPORT: true }
+  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
   server.use(http.get('*/api/v1/import/get-transaction-import-list', () =>
     HttpResponse.json({ success: true, message: '', data: { items: [{
       id: 'l1', sourceId: 's1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'Apple Card',

@@ -24,7 +24,7 @@ function renderPage() {
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = { TRANSACTION_IMPORT: true }
+  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
