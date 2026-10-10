@@ -471,9 +471,9 @@
   "inbox": {
     "title": "Skrzynka odbiorcza",
     "open": "Skrzynka: do przejrzenia {count}",
-    "empty": "Wszystko na bieżąco",
+    "empty": "Brak nowych powiadomień",
     "sections": {
-      "due": "Do zaksięgowania",
+      "due": "Zaplanowane transakcje",
       "sharing": "Udostępnianie",
       "sync": "Problemy z synchronizacją",
       "failed": "Nieudane importy",
@@ -1424,7 +1424,7 @@
           "disclosure": "Komentarze ({count})",
           "comment_label": "Komentarz",
           "marker_aria": "{count} komentarz | {count} komentarze | {count} komentarzy",
-          "composer_placeholder": "Dodaj notatkę dla tego miesiąca",
+          "composer_placeholder": "Dodaj notatkę",
           "post": "Opublikuj",
           "edit": "Edytuj",
           "delete": "Usuń",
@@ -1448,7 +1448,7 @@
         "title": "Oszczędności",
         "planned": "Zaplanowano",
         "saved": "Zaoszczędzono",
-        "balance_hint": "Saldo na koniec miesiąca. W bieżącym i kolejnych miesiącach uwzględnia zaplanowane oszczędności, które jeszcze nie wpłynęły."
+        "balance_hint": "Saldo na koniec miesiąca."
       },
       "phone": {
         "row_aria": "{name}, budżet {budget}, wydano {spent}",
@@ -1891,7 +1891,7 @@
       "envelope_side_mixed": "Koperta nie może jednocześnie zawierać kategorii przychodów i wydatków.",
       "folder_side_mixed": "Folder nie może jednocześnie zawierać przychodów i wydatków.",
       "envelope_member_not_category": "Do koperty można dodać tylko kategorię",
-      "savings_folder_not_allowed": "Oszczędności nie można umieścić w folderze.",
+      "savings_folder_not_allowed": "Kont oszczędnościowych nie można umieścić w folderze",
       "account_not_removable": "To konto ma transakcje w poprzednich miesiącach i nie można go już usunąć z budżetu",
       "savings_account_not_member": "Konta oszczędnościowe muszą być Twoimi kontami w tym budżecie",
       "savings_removal_unconfirmed": "Spowoduje to usunięcie zaplanowanych kwot i komentarzy kont oszczędnościowych, które wyłączono lub usunięto z tego budżetu; potwierdź, aby kontynuować",

@@ -471,9 +471,9 @@
   "inbox": {
     "title": "Postvak IN",
     "open": "Postvak IN, {count} wachtend",
-    "empty": "Alles is bijgewerkt",
+    "empty": "Geen nieuwe meldingen",
     "sections": {
-      "due": "Te boeken",
+      "due": "Geplande transacties",
       "sharing": "Gedeeld",
       "sync": "Synchronisatieproblemen",
       "failed": "Mislukte imports",
@@ -1424,7 +1424,7 @@
           "disclosure": "Opmerkingen ({count})",
           "comment_label": "Opmerking",
           "marker_aria": "{count} opmerking | {count} opmerkingen",
-          "composer_placeholder": "Voeg een notitie toe voor deze maand",
+          "composer_placeholder": "Voeg een notitie toe",
           "post": "Plaatsen",
           "edit": "Bewerken",
           "delete": "Verwijderen",
@@ -1448,7 +1448,7 @@
         "title": "Sparen",
         "planned": "Gepland",
         "saved": "Gespaard",
-        "balance_hint": "Saldo aan het einde van de maand. Voor de huidige en latere maanden telt het geplande sparen dat nog moet komen mee."
+        "balance_hint": "Saldo aan het einde van de maand."
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, uitgegeven {spent}",
@@ -1890,8 +1890,8 @@
       "transaction_filter_required": "Validatie mislukt.",
       "envelope_side_mixed": "Een envelop kan niet tegelijk inkomsten- en uitgavencategorieën bevatten.",
       "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten.",
-      "envelope_member_not_category": "Alleen een categorie kan in een envelop worden geplaatst",
-      "savings_folder_not_allowed": "Spaargeld kan niet in een map worden geplaatst.",
+      "envelope_member_not_category": "Alleen een categorie kan aan een envelop worden toegevoegd",
+      "savings_folder_not_allowed": "Spaarrekeningen kunnen niet in een map worden geplaatst",
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
       "savings_account_not_member": "Spaarrekeningen moeten je eigen rekeningen in dit budget zijn",
       "savings_removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen verwijderd van de spaarrekeningen die je in dit budget hebt uitgeschakeld of eruit hebt verwijderd; bevestig om door te gaan",

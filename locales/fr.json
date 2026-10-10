@@ -471,9 +471,9 @@
   "inbox": {
     "title": "Boîte de réception",
     "open": "Boîte de réception, {count} en attente",
-    "empty": "Tout est à jour",
+    "empty": "Aucune nouvelle notification",
     "sections": {
-      "due": "À enregistrer",
+      "due": "Transactions planifiées",
       "sharing": "Partages",
       "sync": "Problèmes de synchronisation",
       "failed": "Importations échouées",
@@ -1424,7 +1424,7 @@
           "disclosure": "Commentaires ({count})",
           "comment_label": "Commentaire",
           "marker_aria": "{count} commentaire | {count} commentaires",
-          "composer_placeholder": "Ajouter une note pour ce mois",
+          "composer_placeholder": "Ajouter une note",
           "post": "Publier",
           "edit": "Modifier",
           "delete": "Supprimer",
@@ -1448,7 +1448,7 @@
         "title": "Épargne",
         "planned": "Prévu",
         "saved": "Épargné",
-        "balance_hint": "Solde en fin de mois. Pour le mois en cours et les suivants, il inclut l'épargne prévue encore à venir."
+        "balance_hint": "Solde en fin de mois."
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, dépensé {spent}",
@@ -1890,8 +1890,8 @@
       "transaction_filter_required": "La validation a échoué.",
       "envelope_side_mixed": "Une enveloppe ne peut pas contenir à la fois des catégories de revenus et de dépenses.",
       "folder_side_mixed": "Un dossier ne peut pas contenir à la fois des revenus et des dépenses.",
-      "envelope_member_not_category": "Seule une catégorie peut aller dans une enveloppe",
-      "savings_folder_not_allowed": "L'épargne ne peut pas être placée dans un dossier.",
+      "envelope_member_not_category": "Seule une catégorie peut être ajoutée à une enveloppe",
+      "savings_folder_not_allowed": "Les comptes d'épargne ne peuvent pas être placés dans un dossier",
       "account_not_removable": "Ce compte a des transactions dans des mois passés et ne peut plus être retiré du budget",
       "savings_account_not_member": "Les comptes d'épargne doivent être vos propres comptes dans ce budget",
       "savings_removal_unconfirmed": "Cela supprime les montants prévus et les commentaires des comptes d'épargne que vous avez désactivés ou retirés de ce budget ; confirmez pour continuer",

@@ -126,7 +126,7 @@ it('the composer posts on click and on Cmd/Ctrl+Enter, and is disabled while bla
   )
   const user = userEvent.setup()
   renderThread({ comments: [] })
-  const composer = screen.getByPlaceholderText('Add a note for this month')
+  const composer = screen.getByPlaceholderText('Add a note')
   const post = screen.getByRole('button', { name: 'Post' })
   expect(post).toBeDisabled()
 
@@ -147,7 +147,7 @@ it('the composer posts on click and on Cmd/Ctrl+Enter, and is disabled while bla
 it('the counter shows n/500 and the post button disables past 500 characters', async () => {
   const user = userEvent.setup()
   renderThread({ comments: [] })
-  const composer = screen.getByPlaceholderText('Add a note for this month')
+  const composer = screen.getByPlaceholderText('Add a note')
   const post = screen.getByRole('button', { name: 'Post' })
 
   await user.type(composer, 'hello')
@@ -171,7 +171,7 @@ it('the counter shows n/500 and the post button disables past 500 characters', a
 
 it('readOnly hides the composer and every menu, and shows the read-only hint', () => {
   renderThread({ comments: [commentByAda, commentByBob], currentUserId: 'u1', canModerate: true, readOnly: true })
-  expect(screen.queryByPlaceholderText('Add a note for this month')).toBeNull()
+  expect(screen.queryByPlaceholderText('Add a note')).toBeNull()
   expect(screen.queryByRole('button', { name: 'Post' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
@@ -198,7 +198,7 @@ it('a failed post leaves the typed comment in the composer instead of silently d
   )
   const user = userEvent.setup()
   renderThread({ comments: [] })
-  const composer = screen.getByPlaceholderText('Add a note for this month')
+  const composer = screen.getByPlaceholderText('Add a note')
 
   await user.type(composer, 'Do not lose this')
   await user.click(screen.getByRole('button', { name: 'Post' }))
@@ -224,7 +224,7 @@ it('a second post while the first is in flight sends nothing', async () => {
   )
   const user = userEvent.setup()
   renderThread({ comments: [] })
-  const composer = screen.getByPlaceholderText('Add a note for this month')
+  const composer = screen.getByPlaceholderText('Add a note')
   const post = screen.getByRole('button', { name: 'Post' })
 
   await user.type(composer, 'Once')
@@ -250,7 +250,7 @@ it('a post landing after the composer was edited keeps the newer text', async ()
   )
   const user = userEvent.setup()
   renderThread({ comments: [] })
-  const composer = screen.getByPlaceholderText('Add a note for this month')
+  const composer = screen.getByPlaceholderText('Add a note')
   const post = screen.getByRole('button', { name: 'Post' })
 
   await user.type(composer, 'First')
@@ -274,7 +274,7 @@ it('retrying a failed post of the same text reuses its id, so the server can ded
   )
   const user = userEvent.setup()
   renderThread({ comments: [] })
-  const composer = screen.getByPlaceholderText('Add a note for this month')
+  const composer = screen.getByPlaceholderText('Add a note')
   const post = screen.getByRole('button', { name: 'Post' })
 
   await user.type(composer, 'Retry me')

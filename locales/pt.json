@@ -471,9 +471,9 @@
   "inbox": {
     "title": "Caixa de entrada",
     "open": "Caixa de entrada: {count} por rever",
-    "empty": "Tudo em dia",
+    "empty": "Sem novas notificações",
     "sections": {
-      "due": "Pendentes",
+      "due": "Transações agendadas",
       "sharing": "Partilhas",
       "sync": "Problemas de sincronização",
       "failed": "Importações falhadas",
@@ -1424,7 +1424,7 @@
           "disclosure": "Comentários ({count})",
           "comment_label": "Comentário",
           "marker_aria": "{count} comentário | {count} comentários",
-          "composer_placeholder": "Adicione uma nota para este mês",
+          "composer_placeholder": "Adicione uma nota",
           "post": "Publicar",
           "edit": "Editar",
           "delete": "Eliminar",
@@ -1448,7 +1448,7 @@
         "title": "Poupança",
         "planned": "Planeado",
         "saved": "Poupado",
-        "balance_hint": "Saldo no fim do mês. No mês atual e nos seguintes inclui a poupança planeada que ainda falta."
+        "balance_hint": "Saldo no fim do mês."
       },
       "phone": {
         "row_aria": "{name}, orçamento {budget}, gasto {spent}",
@@ -1890,8 +1890,8 @@
       "transaction_filter_required": "Falha na validação.",
       "envelope_side_mixed": "Um envelope não pode conter ao mesmo tempo categorias de receita e despesa.",
       "folder_side_mixed": "Uma pasta não pode conter ao mesmo tempo receitas e despesas.",
-      "envelope_member_not_category": "Só uma categoria pode entrar num envelope",
-      "savings_folder_not_allowed": "As poupanças não podem ser colocadas numa pasta.",
+      "envelope_member_not_category": "Só é possível adicionar uma categoria a um envelope",
+      "savings_folder_not_allowed": "As contas poupança não podem ser colocadas numa pasta",
       "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
       "savings_account_not_member": "As contas poupança têm de ser contas suas neste orçamento",
       "savings_removal_unconfirmed": "Isto elimina os montantes planeados e os comentários das contas poupança que desativou ou removeu deste orçamento; confirme para continuar",

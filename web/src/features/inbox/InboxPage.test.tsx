@@ -297,7 +297,7 @@ it('puts Due first and Sharing last, marking overdue templates and today\'s apar
   expect(screen.getByTestId('due-r-today')).not.toHaveTextContent('Overdue')
   await screen.findByText('Partner invited you')
   const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-  expect(headings).toEqual(['Due', 'To review', 'Sharing'])
+  expect(headings).toEqual(['Scheduled transactions', 'To review', 'Sharing'])
 })
 
 it('posting a due template from the Inbox drops it and lowers the badge', async () => {

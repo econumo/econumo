@@ -471,9 +471,9 @@
   "inbox": {
     "title": "收件箱",
     "open": "收件箱，{count} 项待处理",
-    "empty": "全部处理完毕",
+    "empty": "没有新通知",
     "sections": {
-      "due": "待处理",
+      "due": "计划交易",
       "sharing": "共享",
       "sync": "同步问题",
       "failed": "导入失败",
@@ -1424,7 +1424,7 @@
           "disclosure": "评论（{count}）",
           "comment_label": "评论",
           "marker_aria": "{count} 条评论",
-          "composer_placeholder": "为本月添加备注",
+          "composer_placeholder": "添加备注",
           "post": "发布",
           "edit": "编辑",
           "delete": "删除",
@@ -1448,7 +1448,7 @@
         "title": "储蓄",
         "planned": "计划",
         "saved": "已储蓄",
-        "balance_hint": "月末余额。当前及之后的月份包含尚未存入的计划储蓄。"
+        "balance_hint": "月末余额。"
       },
       "phone": {
         "row_aria": "{name}，预算 {budget}，已支出 {spent}",
@@ -1890,8 +1890,8 @@
       "transaction_filter_required": "校验未通过。",
       "envelope_side_mixed": "信封中不能同时包含收入和支出分类。",
       "folder_side_mixed": "文件夹中不能同时包含收入和支出。",
-      "envelope_member_not_category": "只有分类可以放入信封",
-      "savings_folder_not_allowed": "储蓄不能放入文件夹。",
+      "envelope_member_not_category": "只能将分类添加到信封中",
+      "savings_folder_not_allowed": "储蓄账户不能放入文件夹",
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
       "savings_account_not_member": "储蓄账户必须是您在此预算中的账户",
       "savings_removal_unconfirmed": "这将删除你在此预算中关闭或移除的储蓄账户的计划金额和评论；请确认以继续",

@@ -473,7 +473,7 @@
     "open": "Inbox, {count} waiting",
     "empty": "All caught up",
     "sections": {
-      "due": "Due",
+      "due": "Scheduled transactions",
       "sharing": "Sharing",
       "sync": "Sync problems",
       "failed": "Failed imports",
@@ -1424,7 +1424,7 @@
           "disclosure": "Comments ({count})",
           "comment_label": "Comment",
           "marker_aria": "{count} comment | {count} comments",
-          "composer_placeholder": "Add a note for this month",
+          "composer_placeholder": "Add a note",
           "post": "Post",
           "edit": "Edit",
           "delete": "Delete",
@@ -1448,7 +1448,7 @@
         "title": "Savings",
         "planned": "Planned",
         "saved": "Saved",
-        "balance_hint": "Balance at the end of the month. For the current and later months it includes the planned savings still to come."
+        "balance_hint": "Balance at the end of the month."
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, spent {spent}",

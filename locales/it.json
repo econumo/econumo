@@ -471,9 +471,9 @@
   "inbox": {
     "title": "Posta in arrivo",
     "open": "Posta in arrivo, {count} in attesa",
-    "empty": "Tutto aggiornato",
+    "empty": "Nessuna nuova notifica",
     "sections": {
-      "due": "In scadenza",
+      "due": "Transazioni programmate",
       "sharing": "Condivisioni",
       "sync": "Problemi di sincronizzazione",
       "failed": "Importazioni non riuscite",
@@ -1424,7 +1424,7 @@
           "disclosure": "Commenti ({count})",
           "comment_label": "Commento",
           "marker_aria": "{count} commento | {count} commenti",
-          "composer_placeholder": "Aggiungi una nota per questo mese",
+          "composer_placeholder": "Aggiungi una nota",
           "post": "Pubblica",
           "edit": "Modifica",
           "delete": "Elimina",
@@ -1448,7 +1448,7 @@
         "title": "Risparmi",
         "planned": "Previsto",
         "saved": "Risparmiato",
-        "balance_hint": "Saldo a fine mese. Per il mese corrente e i successivi include i risparmi previsti ancora da versare."
+        "balance_hint": "Saldo a fine mese."
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, speso {spent}",
@@ -1890,8 +1890,8 @@
       "transaction_filter_required": "Convalida non riuscita",
       "envelope_side_mixed": "Una busta non può contenere contemporaneamente categorie di entrata e di uscita",
       "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite",
-      "envelope_member_not_category": "Solo una categoria può entrare in una busta",
-      "savings_folder_not_allowed": "I risparmi non possono essere inseriti in una cartella",
+      "envelope_member_not_category": "Solo una categoria può essere aggiunta a una busta",
+      "savings_folder_not_allowed": "I conti di risparmio non possono essere inseriti in una cartella",
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
       "savings_account_not_member": "I conti di risparmio devono essere tuoi conti in questo budget",
       "savings_removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti dei conti di risparmio che hai disattivato o rimosso da questo budget; conferma per continuare",

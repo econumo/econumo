@@ -471,9 +471,9 @@
   "inbox": {
     "title": "Posteingang",
     "open": "Posteingang, {count} ausstehend",
-    "empty": "Alles erledigt",
+    "empty": "Keine neuen Benachrichtigungen",
     "sections": {
-      "due": "Fällig",
+      "due": "Geplante Transaktionen",
       "sharing": "Freigaben",
       "sync": "Synchronisierungsprobleme",
       "failed": "Fehlgeschlagene Importe",
@@ -1424,7 +1424,7 @@
           "disclosure": "Kommentare ({count})",
           "comment_label": "Kommentar",
           "marker_aria": "{count} Kommentar | {count} Kommentare",
-          "composer_placeholder": "Notiz für diesen Monat hinzufügen",
+          "composer_placeholder": "Notiz hinzufügen",
           "post": "Veröffentlichen",
           "edit": "Bearbeiten",
           "delete": "Löschen",
@@ -1448,7 +1448,7 @@
         "title": "Sparen",
         "planned": "Geplant",
         "saved": "Gespart",
-        "balance_hint": "Saldo am Monatsende. Für den laufenden und spätere Monate enthält er die noch ausstehenden geplanten Sparbeträge."
+        "balance_hint": "Saldo am Monatsende."
       },
       "phone": {
         "row_aria": "{name}, Budget {budget}, ausgegeben {spent}",
@@ -1890,8 +1890,8 @@
       "transaction_filter_required": "Validierung fehlgeschlagen",
       "envelope_side_mixed": "Ein Umschlag kann nicht gleichzeitig Einnahmen- und Ausgabenkategorien enthalten",
       "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten",
-      "envelope_member_not_category": "Nur Kategorien können in einen Umschlag gelegt werden",
-      "savings_folder_not_allowed": "Ersparnisse können nicht in einen Ordner verschoben werden",
+      "envelope_member_not_category": "Nur Kategorien können zu einem Umschlag hinzugefügt werden",
+      "savings_folder_not_allowed": "Sparkonten können nicht in einen Ordner verschoben werden",
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
       "savings_account_not_member": "Sparkonten müssen deine eigenen Konten in diesem Budget sein",
       "savings_removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare der Sparkonten gelöscht, die du in diesem Budget ausgeschaltet oder daraus entfernt hast; bestätige, um fortzufahren",
