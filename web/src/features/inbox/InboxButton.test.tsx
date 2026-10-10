@@ -19,6 +19,7 @@ vi.mock('./useInbox', async (importOriginal) => ({
 
 function makeInbox(over: Partial<Inbox> = {}): Inbox {
   return {
+    dueRecurring: [],
     invites: [],
     syncProblems: [],
     failed: [],
@@ -73,10 +74,10 @@ it('caps the badge at 99+', () => {
 })
 
 it('navigates to the Inbox page and tracks INBOX_OPEN on click', async () => {
-  mockInbox.value = makeInbox({ queued: [{} as never, {} as never], failed: [{} as never], count: 3 })
+  mockInbox.value = makeInbox({ dueRecurring: [{} as never], queued: [{} as never, {} as never], failed: [{} as never], count: 4 })
   renderButton()
   const user = userEvent.setup()
-  await user.click(screen.getByRole('link', { name: 'Inbox, 3 waiting' }))
+  await user.click(screen.getByRole('link', { name: 'Inbox, 4 waiting' }))
   expect(await screen.findByText('INBOX PAGE')).toBeInTheDocument()
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.INBOX_OPEN, { invites: 0, syncProblems: 0, failed: 1, queued: 2 })
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.INBOX_OPEN, { dueRecurring: 1, invites: 0, syncProblems: 0, failed: 1, queued: 2 })
 })

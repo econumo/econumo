@@ -16,6 +16,7 @@ export function InboxButton({ variant }: { variant: 'row' | 'rail' }) {
       title={label}
       onClick={() =>
         trackEvent(METRICS.INBOX_OPEN, {
+          dueRecurring: inbox.dueRecurring.length,
           invites: inbox.invites.length,
           syncProblems: inbox.syncProblems.length,
           failed: inbox.failed.length,

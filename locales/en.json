@@ -473,11 +473,16 @@
     "open": "Inbox, {count} waiting",
     "empty": "All caught up",
     "sections": {
+      "due": "Due",
       "sharing": "Sharing",
       "sync": "Sync problems",
       "failed": "Failed imports",
       "to_review": "To review",
       "skipped": "Skipped ({count})"
+    },
+    "due": {
+      "overdue": "Overdue · {date}",
+      "today": "Today"
     },
     "sharing": {
       "invited_you": "{name} invited you",

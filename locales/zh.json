@@ -473,11 +473,16 @@
     "open": "收件箱，{count} 项待处理",
     "empty": "全部处理完毕",
     "sections": {
+      "due": "待处理",
       "sharing": "共享",
       "sync": "同步问题",
       "failed": "导入失败",
       "to_review": "待审核",
       "skipped": "已跳过（{count}）"
+    },
+    "due": {
+      "overdue": "已逾期 · {date}",
+      "today": "今天"
     },
     "sharing": {
       "invited_you": "{name} 邀请了您",

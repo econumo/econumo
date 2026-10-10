@@ -473,11 +473,16 @@
     "open": "Bandeja de entrada: {count} por revisar",
     "empty": "Todo al día",
     "sections": {
+      "due": "Pendientes",
       "sharing": "Compartidos",
       "sync": "Problemas de sincronización",
       "failed": "Importaciones fallidas",
       "to_review": "Para revisar",
       "skipped": "Omitidos ({count})"
+    },
+    "due": {
+      "overdue": "Vencido · {date}",
+      "today": "Hoy"
     },
     "sharing": {
       "invited_you": "{name} te ha invitado",
