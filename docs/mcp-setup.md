@@ -87,7 +87,7 @@ with or without `ECONUMO_URL`.
 
 - The client says the server does not support authorization, or never opens a
   browser: check `ECONUMO_URL` is set, is the exact address the client uses
-  (https, no typo, no different host) and that
+  (https, with no path, no typo, no different host) and that
   `<your Econumo URL>/.well-known/oauth-authorization-server` returns JSON.
 - Behind a reverse proxy, make sure `/.well-known/*`, `/oauth/*` and `/mcp`
   are passed through to Econumo, not only `/api`.

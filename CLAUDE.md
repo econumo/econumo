@@ -291,10 +291,10 @@ sign in through the browser instead of pasting a PAT. Setup guide:
 `docs/mcp-setup.md`; design: `docs/superpowers/specs/2026-10-03-mcp-oauth-design.md`.
 It is enabled only when `ECONUMO_URL` is an `https://` origin with no path (plain `http://`
 only on a loopback host: `localhost`, `127.0.0.1`, `[::1]`; issuer = `scheme://host`,
-resource = `<issuer>/mcp`). A URL with any path other than `/` leaves it disabled, because
-discovery, `/mcp` and every OAuth route are root-mounted, so a path-based issuer could not
-publish its RFC 8414 / RFC 9728 metadata. Any other value leaves it disabled and `serve` logs
-one WARN, because refresh tokens, client secrets and bearer tokens must not cross a network in
+resource = `<issuer>/mcp`). A path other than `/` is refused because discovery, `/mcp` and
+every OAuth route are root-mounted, so a path-based issuer could not publish its RFC 8414 /
+RFC 9728 metadata. Any other value, a path included, leaves it disabled and `serve` logs one
+WARN, because refresh tokens, client secrets and bearer tokens must not cross a network in
 the clear. The handler is always mounted on the root mux, but while disabled all five public
 routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
 - Discovery: `/.well-known/oauth-protected-resource[/mcp]` and

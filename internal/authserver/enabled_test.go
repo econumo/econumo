@@ -13,6 +13,8 @@ func TestNewServiceEnabledOnlyForSecureIssuer(t *testing.T) {
 		{"http://localhost:8181", true, ""},
 		{"http://127.0.0.1", true, ""},
 		{"http://[::1]:8181", true, ""},
+		{"https://h:/", false, ""},
+		{"http://localhost:/", false, ""},
 		{"http://econumo.lan", false, ""},
 		{"http://192.168.1.5", false, ""},
 		{"http://econumo.example.test", false, ""},

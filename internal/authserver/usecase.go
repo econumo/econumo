@@ -51,6 +51,9 @@ func secureIssuer(appURL string) string {
 	if p := u.EscapedPath(); p != "" && p != "/" {
 		return ""
 	}
+	if strings.HasSuffix(u.Host, ":") {
+		return ""
+	}
 	scheme, host := strings.ToLower(u.Scheme), strings.ToLower(u.Host)
 	if scheme != "https" && !(scheme == "http" && isLoopbackHost(strings.ToLower(u.Hostname()))) {
 		return ""
