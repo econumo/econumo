@@ -14,7 +14,7 @@ func (s *Service) GetQueue(ctx context.Context, userID vo.Id) (*model.GetImportQ
 	out := &model.GetImportQueueResult{
 		Queued: []model.ImportQueuedEventResult{}, Skipped: []model.ImportQueuedEventResult{}, Failed: []model.ImportFailedEventResult{},
 	}
-	sources, err := s.repo.ListSourcesByUser(ctx, userID)
+	sources, err := s.enabledSources(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +83,14 @@ func (s *Service) queuedEntry(ctx context.Context, src *model.ImportSource, acco
 	}
 	if deleted {
 		entry.Reason = model.ImportQueueReasonAccountDeleted
+		return entry, nil
+	}
+	_, writable, err := s.writeAccess(ctx, src.UserID, *al.AccountID)
+	if err != nil {
+		return entry, err
+	}
+	if !writable {
+		entry.Reason = model.ImportQueueReasonNoAccess
 		return entry, nil
 	}
 	entry.Reason = model.ImportQueueReasonNoRate

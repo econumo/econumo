@@ -13,15 +13,19 @@ import type {
   UpdateImportAccountDto,
 } from '@/api/dto/imports'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { isTransactionImportEnabled } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useApplyTransactionItem } from '@/features/transactions/queries'
 
+// The queries reached from surfaces that exist with transaction import off
+// (the Inbox, the transaction dialogs) never fetch then: the server does not
+// mount the routes.
 export function useImportSources() {
-  return useQuery({ queryKey: queryKeys.importSources, queryFn: importsApi.getImportSourceList, staleTime: TEN_MINUTES })
+  return useQuery({ queryKey: queryKeys.importSources, queryFn: importsApi.getImportSourceList, staleTime: TEN_MINUTES, enabled: isTransactionImportEnabled() })
 }
 
 export function useImportQueue() {
-  return useQuery({ queryKey: queryKeys.importQueue, queryFn: importsApi.getImportQueue, staleTime: TEN_MINUTES })
+  return useQuery({ queryKey: queryKeys.importQueue, queryFn: importsApi.getImportQueue, staleTime: TEN_MINUTES, enabled: isTransactionImportEnabled() })
 }
 
 export function useCreateImportSource() {
@@ -168,7 +172,7 @@ export function useTransactionImportLinks(transactionId: Id, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.transactionImports(transactionId),
     queryFn: () => importsApi.getTransactionImportList(transactionId),
-    enabled,
+    enabled: enabled && isTransactionImportEnabled(),
     staleTime: TEN_MINUTES,
   })
 }
@@ -219,8 +223,12 @@ export function useSyncImportSource() {
       }
       trackEvent(METRICS.IMPORT_SYNC, { trigger: result.run.trigger, imported: result.run.importedCount, matched: result.run.matchedCount })
     },
-    // a failed sync still wrote a run row
-    onError: () => void queryClient.invalidateQueries({ queryKey: ['importRuns'] }),
+    // a failed sync still wrote a run row, and the source's lastRunStatus
+    // must reach the Inbox badge immediately
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: ['importRuns'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
+    },
   })
 }
 

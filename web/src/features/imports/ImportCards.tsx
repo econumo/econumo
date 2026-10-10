@@ -6,6 +6,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
 import { useAccounts } from '@/features/accounts/queries'
+import { canWriteToAccount } from '@/features/connections/shared'
 import { useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { dayKey, formatDayHeading } from '@/lib/datetime'
@@ -23,14 +24,14 @@ export function ImportCards({ source, cards = source.cards, variant = 'card' }: 
   const [mapTarget, setMapTarget] = useState<ImportCardDto | null>(null)
   const [unlinkTarget, setUnlinkTarget] = useState<ImportCardDto | null>(null)
   const [accountId, setAccountId] = useState('')
-  // link-account requires ownership (the backend rejects shared accounts), so
-  // the picker lists only my own accounts. Within that, accounts already in
-  // the card's currency come first (Array#sort is stable, so ties keep their
-  // original account-list order).
-  const ownAccounts = accounts.filter((a) => a.owner.id === user?.id)
+  // link-account takes any account I can add transactions to (mine, or shared
+  // with me as admin/user), so the picker lists exactly those. Within that,
+  // accounts already in the card's currency come first (Array#sort is stable,
+  // so ties keep their original account-list order).
+  const writableAccounts = accounts.filter((a) => canWriteToAccount(a, user?.id))
   const pickerAccounts = mapTarget
-    ? [...ownAccounts].sort((a, b) => Number(b.currency.code === mapTarget.externalCurrency) - Number(a.currency.code === mapTarget.externalCurrency))
-    : ownAccounts
+    ? [...writableAccounts].sort((a, b) => Number(b.currency.code === mapTarget.externalCurrency) - Number(a.currency.code === mapTarget.externalCurrency))
+    : writableAccounts
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? ''
 
   const submitMap = () => {

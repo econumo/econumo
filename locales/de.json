@@ -16,8 +16,7 @@
       "onboarding": "Erste Schritte",
       "create_account": "Konto hinzufügen",
       "collapse_menu": "Menü einklappen",
-      "expand_menu": "Menü ausklappen",
-      "sharing_requests": "Eingehende Einladungen"
+      "expand_menu": "Menü ausklappen"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,38 @@
     "make_recurring": "Als wiederkehrend festlegen",
     "not_posted": "Nicht gebucht"
   },
+  "inbox": {
+    "title": "Posteingang",
+    "open": "Posteingang, {count} ausstehend",
+    "empty": "Keine neuen Benachrichtigungen",
+    "sections": {
+      "due": "Geplante Transaktionen",
+      "sharing": "Freigaben",
+      "sync": "Synchronisierungsprobleme",
+      "failed": "Fehlgeschlagene Importe",
+      "to_review": "Zu prüfen",
+      "skipped": "Übersprungen ({count})"
+    },
+    "due": {
+      "overdue": "Überfällig · {date}",
+      "today": "Heute"
+    },
+    "sharing": {
+      "invited_you": "{name} hat Sie eingeladen",
+      "account": "Konto",
+      "budget": "Budget",
+      "choose_folder": "Wählen Sie einen Ordner für dieses Konto",
+      "general_folder_hint": "General (wird erstellt)",
+      "decline_question": "Zugriff auf „{name}“ ablehnen?"
+    },
+    "sync": {
+      "failed": "{source}-Synchronisierung fehlgeschlagen",
+      "partial": "{source} mit Fehlern synchronisiert",
+      "when": "Letzter Versuch {date}"
+    }
+  },
   "imports": {
     "badge": "Importiert",
-    "banner": {
-      "text": "{count} importierte Transaktion wartet auf Prüfung | {count} importierte Transaktionen warten auf Prüfung",
-      "cta": "Prüfen"
-    },
     "data_page": {
       "menu_item": "Import & Export",
       "header": "Import & Export",
@@ -650,15 +675,11 @@
       }
     },
     "queue": {
-      "header": "Importwarteschlange",
-      "empty": "Nichts zu prüfen.",
       "card_amount": "Kartenbetrag: {amount} {currency}",
-      "queued": "Wartet auf Prüfung",
-      "skipped": "Übersprungen",
-      "failed": "Braucht Aufmerksamkeit",
       "reason": {
         "unmapped": "Karte nicht zugeordnet",
         "account_deleted": "Konto gelöscht",
+        "no_access": "Kein Zugriff auf das Konto",
         "no_rate": "Kein Wechselkurs für {currency}"
       },
       "import": "Importieren",
@@ -873,7 +894,7 @@
       "settings": {
         "profile": {
           "menu_item": "Profil",
-          "header": "Profil",
+          "header": "Persönliche Einstellungen",
           "groups": {
             "personal_details": "Persönliche Angaben",
             "preferences": "Voreinstellungen",
@@ -1151,7 +1172,7 @@
         "header": "Neues Budget"
       },
       "update_budget_form": {
-        "header": "Budget bearbeiten"
+        "header": "Budgeteinstellungen"
       },
       "create_folder_form": {
         "header": "Neuer Ordner"
@@ -1296,20 +1317,19 @@
         "settings": {
           "button": "Konfigurieren",
           "menu": {
-            "edit": "Budgetdetails",
+            "edit": "Budgeteinstellungen",
             "edit_structure": "Struktur bearbeiten",
-            "edit_structure_done": "Fertig",
-            "budget_list": "Budgetliste öffnen"
+            "edit_structure_done": "Fertig"
           }
         },
         "structure": {
-          "no_folder": "Standardordner",
           "in_archive": "Archiviert",
           "carry_over_hint": "Aus früheren Monaten übrig",
           "tab": {
             "budgeted": "Budget",
             "spent": "Ausgegeben",
-            "available": "Verfügbar"
+            "available": "Verfügbar",
+            "to_receive": "Ausstehend"
           },
           "action": {
             "create_folder": "Ordner erstellen",
@@ -1317,6 +1337,9 @@
           },
           "empty_folder": {
             "note": "Dieser Ordner ist leer. Verschieben Sie eine Kategorie, ein Tag oder einen Umschlag hierher oder erstellen Sie einen neuen Umschlag."
+          },
+          "empty_envelope": {
+            "note": "Dieser Umschlag ist leer. Ziehe eine Kategorie hierher oder wähle Kategorien über Bearbeiten."
           },
           "element": {
             "action": {
@@ -1343,6 +1366,16 @@
         }
       },
       "plan": {
+        "sums": {
+          "show_month": "Summe für {name} im {month} anzeigen",
+          "hide_month": "Summe für {name} im {month} ausblenden",
+          "show": "Summen für {name} anzeigen",
+          "hide": "Summen für {name} ausblenden"
+        },
+        "name_column": {
+          "resize": "Breite der Namensspalte ändern",
+          "resize_hint": "Zum Ändern ziehen, Doppelklick setzt zurück"
+        },
         "toggle": {
           "budget": "Budget",
           "plan": "Plan"
@@ -1353,12 +1386,9 @@
           "savings": "Sparen",
           "archived": "Archiviert"
         },
-        "nav": {
-          "prev": "Frühere Monate",
-          "next": "Spätere Monate"
-        },
         "cell": {
-          "aria": "{name}, {month}: Ist {actual}, geplant {planned}"
+          "aria": "{name}, {month}: Ist {actual}, geplant {planned}",
+          "edit_aria": "Plan für {name}, {month}"
         },
         "fill": {
           "handle_aria": "Budget auf die folgenden Monate kopieren"
@@ -1370,7 +1400,7 @@
         "totals": {
           "income": "Einnahmen",
           "expenses": "Ausgaben",
-          "transfers": "Überweisungen",
+          "transfers": "Überweisungen außerhalb des Budgets",
           "transfers_tooltip": "Eingang {in} · Ausgang {out}",
           "show_transactions": "Transaktionen anzeigen",
           "net": "Netto",
@@ -1378,14 +1408,11 @@
           "savings": "Sparen",
           "savings_balance": "Ersparnisse gesamt"
         },
-        "density": {
-          "hide_empty": "Leere Zeilen ausblenden",
-          "hidden": "{count} ausgeblendet",
-          "show": "Einblenden"
-        },
         "menu": {
           "move_to_folder": "In Ordner verschieben…",
-          "no_folder": "Kein Ordner"
+          "no_folder": "Kein Ordner",
+          "no_access": "kein Zugriff",
+          "not_empty": "nicht leer"
         },
         "edit": {
           "no_access_envelope": "Sie können diesen Umschlag nicht bearbeiten — Ihre Rolle in diesem Budget ist schreibgeschützt.",
@@ -1397,7 +1424,7 @@
           "disclosure": "Kommentare ({count})",
           "comment_label": "Kommentar",
           "marker_aria": "{count} Kommentar | {count} Kommentare",
-          "composer_placeholder": "Notiz für diesen Monat hinzufügen",
+          "composer_placeholder": "Notiz hinzufügen",
           "post": "Veröffentlichen",
           "edit": "Bearbeiten",
           "delete": "Löschen",
@@ -1410,13 +1437,18 @@
           "truncated": "Die neuesten 2000 Kommentare werden angezeigt.",
           "add": "Kommentar hinzufügen",
           "more": "+{count} weitere"
+        },
+        "selection": {
+          "count": "{count} Zelle | {count} Zellen",
+          "planned": "Plan",
+          "actual": "Ist"
         }
       },
       "savings": {
         "title": "Sparen",
         "planned": "Geplant",
         "saved": "Gespart",
-        "balance_hint": "Saldo am Monatsende. Für den laufenden und spätere Monate enthält er die noch ausstehenden geplanten Sparbeträge."
+        "balance_hint": "Saldo am Monatsende."
       },
       "phone": {
         "row_aria": "{name}, Budget {budget}, ausgegeben {spent}",
@@ -1482,6 +1514,12 @@
         "confirm": "Zusammenführen",
         "warning": "Alle Transaktionen von „{name}“ werden verschoben, und „{name}“ wird gelöscht.",
         "envelope_info": "Wenn beide in verschiedenen Umschlägen liegen, aktualisiere zuerst dein Budget, damit deine geplanten Beträge nicht verloren gehen — beim Zusammenführen werden die Limits addiert."
+      },
+      "archive": {
+        "action": "Archivieren"
+      },
+      "unarchive": {
+        "action": "Aus Archiv holen"
       }
     },
     "categories": {
@@ -1767,17 +1805,25 @@
           "required_field": "Pflichtfeld"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Eingehende Einladungen",
-      "empty": "Keine offenen Anfragen",
-      "invited_you": "{name} hat Sie eingeladen",
-      "account": "Konto",
-      "budget": "Budget",
-      "choose_folder": "Wählen Sie einen Ordner für dieses Konto",
-      "general_folder_hint": "General (wird erstellt)",
-      "decline_question": "Zugriff auf „{name}“ ablehnen?"
     }
+  },
+  "search": {
+    "title": "Suche",
+    "placeholder": "Transaktionen, Konten, Kategorien suchen…",
+    "groups": {
+      "accounts": "Konten",
+      "categories": "Kategorien",
+      "payees": "Zahlungsempfänger",
+      "tags": "Tags",
+      "labels": "Auswertungs-Tags",
+      "transactions": "Transaktionen"
+    },
+    "show_all": "Alle anzeigen ({count})",
+    "hidden_folder": "Ausgeblendeter Ordner",
+    "back": "Zurück",
+    "nothing_found": "Nichts gefunden",
+    "open": "Suche",
+    "open_tooltip": "Suche ({shortcut})"
   },
   "subscription": {
     "banner": {
@@ -1877,7 +1923,8 @@
       "transaction_filter_required": "Validierung fehlgeschlagen",
       "envelope_side_mixed": "Ein Umschlag kann nicht gleichzeitig Einnahmen- und Ausgabenkategorien enthalten",
       "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten",
-      "savings_folder_not_allowed": "Ersparnisse können nicht in einen Ordner verschoben werden",
+      "envelope_member_not_category": "Nur Kategorien können zu einem Umschlag hinzugefügt werden",
+      "savings_folder_not_allowed": "Sparkonten können nicht in einen Ordner verschoben werden",
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
       "savings_account_not_member": "Sparkonten müssen deine eigenen Konten in diesem Budget sein",
       "savings_removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare der Sparkonten gelöscht, die du in diesem Budget ausgeschaltet oder daraus entfernt hast; bestätige, um fortzufahren",

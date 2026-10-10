@@ -1,9 +1,9 @@
 import { isIncomeType, isPlannedType } from '@/api/dto/budget'
 import type { BudgetElementType } from '@/api/dto/budget'
-import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, PlanElementDto } from '@/api/dto/budget'
+import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, LabelSpendDto, PlanElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
-import { isZero } from '@/lib/decimal'
+import { add, cmp, isZero, sub } from '@/lib/decimal'
 import {
   balanceRow,
   bucketPlanRows,
@@ -21,10 +21,40 @@ export interface PlanCellFigures {
   closingBalance?: string
 }
 
+/** One group of income rows, in the Plan grid's order: each folder, then the
+ *  folder-less rows, Uncategorized, and archived rows with money this month. Only
+ *  folders carry a name; each view labels the other kinds itself. */
+export interface IncomeGroup {
+  kind: 'folder' | 'loose' | 'uncategorized' | 'archived'
+  id: string
+  name: string | null
+  rows: PlanCellFigures[]
+  /** in the budget currency */
+  planned: string
+  received: string
+  /** each row's own leftToReceive, summed */
+  toReceive: string
+}
+
+/** what a source is still expected to bring this month: never below zero, so an
+ *  overpaid source does not hide another that has not paid yet */
+export function leftToReceive(planned: string, received: string): string {
+  return cmp(planned, received) > 0 ? sub(planned, received) : '0'
+}
+
 export interface PlanMonthFigures {
   month: string
   index: number
-  income: { rows: PlanCellFigures[]; planned: string; received: string }
+  income: {
+    /** every listed row in order (the phone's flat list) */
+    rows: PlanCellFigures[]
+    /** the same rows grouped as the Plan grid groups them; empty groups are left out */
+    groups: IncomeGroup[]
+    planned: string
+    received: string
+    /** the groups' toReceive, summed */
+    toReceive: string
+  }
   balance: string
   savingsBalance: string | null
   transfersNet: string
@@ -53,25 +83,43 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
   const savings = planHasSavingsData(plan) ? savingsBalanceRow(plan, totals, ex, now) : null
   const balance = savings ? everydayBalanceRow(combined, savings) : combined
 
-  const buckets = bucketPlanRows(plan, false)
+  const buckets = bucketPlanRows(plan)
   const income = buckets.income
   const received = (el: PlanElementDto) => !isZero(el.cells[index]?.actual ?? '0')
-  const rows = [...income.folders.flatMap((f) => f.rows), ...income.loose].map((r) => planCellFigures(r.element, index))
-  const uncategorized = income.uncategorized?.element
-  if (uncategorized && received(uncategorized)) {
-    rows.push(planCellFigures(uncategorized, index))
-  }
-  // the received total counts archived rows too, so the ones with money this month must be listed
-  for (const { element } of buckets.archived) {
-    if (isIncomeType(element.type) && received(element)) {
-      rows.push(planCellFigures(element, index))
+  const inBase = (cells: PlanCellFigures[], pick: (c: PlanCellFigures) => string) =>
+    cells.reduce((sum, c) => add(sum, ex(c.element.currencyId, pick(c), index)), '0')
+  const group = (kind: IncomeGroup['kind'], id: string, name: string | null, elements: PlanElementDto[]): IncomeGroup => {
+    const cells = elements.map((el) => planCellFigures(el, index))
+    return {
+      kind,
+      id,
+      name,
+      rows: cells,
+      planned: inBase(cells, (c) => c.planned),
+      received: inBase(cells, (c) => c.actual),
+      toReceive: inBase(cells, (c) => leftToReceive(c.planned, c.actual)),
     }
   }
+  const uncategorized = income.uncategorized?.element
+  const groups = [
+    ...income.folders.map((f) => group('folder', f.folder.id, f.folder.name, f.rows.map((r) => r.element))),
+    group('loose', '__no_folder__', null, income.loose.map((r) => r.element)),
+    group('uncategorized', '__uncategorized__', null, uncategorized && received(uncategorized) ? [uncategorized] : []),
+    // the received total counts archived rows too, so the ones with money this month must be listed
+    group(
+      'archived',
+      '__archive__',
+      null,
+      buckets.archived.filter(({ element }) => isIncomeType(element.type) && received(element)).map(({ element }) => element),
+    ),
+    // an income folder shows even while empty: it was made for income
+  ].filter((g) => g.kind === 'folder' || g.rows.length > 0)
+  const rows = groups.flatMap((g) => g.rows)
 
   return {
     month,
     index,
-    income: { rows, planned: totals[index].incomePlanned, received: totals[index].incomeActual },
+    income: { rows, groups, toReceive: groups.reduce((sum, g) => add(sum, g.toReceive), '0'), planned: totals[index].incomePlanned, received: totals[index].incomeActual },
     balance: balance[index],
     savingsBalance: savings ? savings[index] : null,
     transfersNet: totals[index].transfersNet,
@@ -82,6 +130,7 @@ export type SheetTarget =
   | { kind: 'expense'; element: BudgetElementDto }
   | { kind: 'savings'; row: BudgetSavingsElementDto }
   | { kind: 'plan'; cell: PlanCellFigures }
+  | { kind: 'label'; label: LabelSpendDto }
 
 export interface SheetCell {
   id: Id
@@ -98,6 +147,9 @@ export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell {
       return { id: target.row.id, name: target.row.name, currencyId: target.row.currencyId, amount: target.row.budgeted }
     case 'plan':
       return { id: target.cell.element.id, name: target.cell.element.name, currencyId: target.cell.element.currencyId, amount: target.cell.planned }
+    case 'label':
+      // a reporting tag has no amount to set; its spend is already in the budget currency
+      return { id: target.label.id, name: target.label.name, currencyId: baseCurrencyId, amount: '0' }
   }
 }
 
@@ -109,6 +161,8 @@ export function sheetSetsPlan(target: SheetTarget): boolean {
       return true
     case 'plan':
       return isPlannedType(target.cell.element.type)
+    case 'label':
+      return false
   }
 }
 
@@ -124,7 +178,21 @@ export interface SheetElement {
   children: { id: Id }[]
 }
 
-export function sheetElement(target: SheetTarget): SheetElement {
+export function sheetIcon(target: SheetTarget): string {
+  switch (target.kind) {
+    case 'expense':
+      return target.element.icon
+    case 'savings':
+      return target.row.icon
+    case 'plan':
+      return target.cell.element.icon
+    case 'label':
+      return target.label.icon
+  }
+}
+
+/** a reporting tag is not a budget element: it edits through its own dialog */
+export function sheetElement(target: Exclude<SheetTarget, { kind: 'label' }>): SheetElement {
   switch (target.kind) {
     case 'expense':
       return target.element

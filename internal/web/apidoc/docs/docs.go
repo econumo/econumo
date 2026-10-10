@@ -13094,6 +13094,10 @@ const docTemplate = `{
                 },
                 "position": {
                     "type": "integer"
+                },
+                "side": {
+                    "description": "Side is \"expense\" or \"income\".",
+                    "type": "string"
                 }
             }
         },
@@ -13576,6 +13580,10 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "side": {
+                    "description": "Side is \"expense\" or \"income\".",
+                    "type": "string"
                 }
             }
         },
@@ -13741,7 +13749,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "side": {
-                    "description": "Side selects the envelope's (immutable) side: \"\" or \"expense\" (default).\n\"income\" is reserved for the plan view's income envelopes and currently\nrejected (see EnvelopeTypeFromSide).",
+                    "description": "Side selects the envelope's (immutable) side: \"\" or \"expense\" (default), or \"income\".",
                     "type": "string"
                 }
             }
@@ -15191,6 +15199,18 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "lastRunAt": {
+                    "type": "string"
+                },
+                "lastRunError": {
+                    "type": "string"
+                },
+                "lastRunErrorAccountId": {
+                    "type": "string"
+                },
+                "lastRunStatus": {
+                    "type": "string"
+                },
                 "lastSyncedAt": {
                     "type": "string"
                 },
@@ -15531,6 +15551,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "budgetId": {
+                    "type": "string"
+                },
+                "envelopeId": {
+                    "description": "EnvelopeId puts the category into that envelope instead (folderId and\nafterId are then ignored). Without it, a category that sits in an envelope\nleaves it for the given place.",
                     "type": "string"
                 },
                 "folderId": {

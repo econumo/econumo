@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -10,7 +10,7 @@ import type { BudgetPlanDto } from '@/api/dto/budget'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 import { toast } from 'sonner'
-import { balanceRow, everydayBalanceRow, makePlanExchange, planTotals, savingsAsPlanElement, savingsBalanceRow } from './planMath'
+import { balanceRow, everydayBalanceRow, makePlanExchange, planGroupSums, planTotals, savingsAsPlanElement, savingsBalanceRow } from './planMath'
 import { moneyFormat } from '@/lib/money'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -20,8 +20,9 @@ vi.mock('@/lib/metrics', async (importOriginal) => {
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
 // Same dnd-kit stand-in as PlanSheet.test.tsx: every band's onDragEnd is captured and
-// fired directly. The savings band renders after the expense band, so while savings
-// rows exist its handler is the LAST captured entry.
+// fired directly. Each render mounts the income, savings and expense bands in that
+// order (the fixture has no neutral folders), so the savings handler is the
+// second-to-last captured entry.
 let capturedDragEnds: ((event: { active: { id: string }; over: { id: string } | null }) => void)[] = []
 vi.mock('@dnd-kit/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dnd-kit/core')>()
@@ -113,11 +114,6 @@ function useHandlers(plan: unknown = savingsPlan, extra: Parameters<typeof serve
   )
 }
 
-async function enterEditMode(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
-}
-
 const rowIds = (section: HTMLElement) => [...section.querySelectorAll('[data-row-id]')].map((r) => r.getAttribute('data-row-id'))
 
 beforeEach(() => {
@@ -131,10 +127,10 @@ beforeEach(() => {
   useBudgetPeriodStore.setState({
     selectedDate: '2026-07-01',
     unfoldedElements: {},
+    planUnfoldedElements: {},
     foldBudgetId: null,
-    planFirstMonth: '2026-06-01',
     planFolds: {},
-    planHideEmpty: false,
+    planSumsShown: {},
   })
 })
 
@@ -148,19 +144,37 @@ it('savingsAsPlanElement adapts a savings row to the element row shape', () => {
   expect(el.cells).toBe(savingsS1.cells)
 })
 
-it('renders the Savings section after Expenses and before Archived, rows in position order', async () => {
+it('renders the Savings section after Income and before Expenses (the phone order), rows in position order', async () => {
   useHandlers()
   renderPage()
   const section = await screen.findByTestId('plan-section-savings')
+  const income = screen.getByTestId('plan-section-income')
   const expense = screen.getByTestId('plan-section-expense')
   const archived = screen.getByTestId('plan-section-archived')
-  expect(expense.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(section.compareDocumentPosition(archived) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(income.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(section.compareDocumentPosition(expense) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(expense.compareDocumentPosition(archived) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(within(section).getByRole('button', { name: 'Savings' })).toBeInTheDocument()
   // live rows by position, then the deleted account's row — which stays in this
   // section rather than moving to the Archived band
   expect(rowIds(section)).toEqual(['acc-s1:5', 'acc-s2:5', 'acc-s3:5'])
   expect(within(archived).queryByTitle('Closed deposit')).not.toBeInTheDocument()
+})
+
+it('the Savings line sums every row listed under it, a deleted account\'s actual included', async () => {
+  useHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-06-01', planSumsShown: { savings: true } })
+  renderPage()
+  const line = await screen.findByTestId('plan-section-line-savings')
+  const plan = savingsPlan as unknown as BudgetPlanDto
+  const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
+  const rows = (plan.structure.savings ?? []).map(savingsAsPlanElement)
+  const sums = planGroupSums(rows, plan.months, (m) => plan.months.indexOf(m), ex)
+  const liveOnly = planGroupSums(rows.filter((r) => r.isArchived === 0), plan.months, (m) => plan.months.indexOf(m), ex)
+  // window May/Jun/Jul: Closed deposit (deleted) saved 10 EUR in May
+  expect(sums[0].actual).not.toBe(liveOnly[0].actual)
+  const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
+  expect(within(line).getByTestId('plan-sum-0')).toHaveTextContent(fmt(sums[0].actual))
 })
 
 it('folding the Savings header hides its rows and persists the fold', async () => {
@@ -173,7 +187,7 @@ it('folding the Savings header hides its rows and persists the fold', async () =
   expect(useBudgetPeriodStore.getState().planFolds.savings).toBe(true)
 })
 
-it('ArrowDown walks from the last expense row into the savings rows, then on into Archived', async () => {
+it('ArrowDown walks from the last income row into the savings rows, then on into the expenses', async () => {
   useHandlers()
   const user = userEvent.setup()
   renderPage()
@@ -182,22 +196,23 @@ it('ArrowDown walks from the last expense row into the savings rows, then on int
   const cellOf = (rowId: string, col: number) =>
     (document.querySelector(`[data-row-id="${rowId}"]`) as HTMLElement).querySelector(`[data-col="${col}"][role="gridcell"]`) as HTMLElement
 
-  // the expense band's last row is its uncategorized line (July carries spend)
-  await user.click(cellOf('uncategorized:1', 0))
+  // the income band's last row is its uncategorized line (June carries income)
+  await user.click(cellOf('uncategorized:3', 0))
   grid.focus()
   await user.keyboard('{ArrowDown}')
   expect(cellOf('acc-s1:5', 0)).toHaveAttribute('aria-selected', 'true')
   await user.keyboard('{ArrowDown}{ArrowDown}')
   expect(cellOf('acc-s3:5', 0)).toHaveAttribute('aria-selected', 'true')
+  // the Expenses section and Essentials folder lines are no stops: on to Living
   await user.keyboard('{ArrowDown}')
-  expect(cellOf('arch-1:1', 0)).toHaveAttribute('aria-selected', 'true')
+  expect(cellOf('pe1:0', 0)).toHaveAttribute('aria-selected', 'true')
 
   // folded, the savings rows drop out of the keyboard order too
   useBudgetPeriodStore.setState({ planFolds: { savings: true } })
-  await user.click(cellOf('uncategorized:1', 0))
+  await user.click(cellOf('uncategorized:3', 0))
   grid.focus()
   await user.keyboard('{ArrowDown}')
-  expect(cellOf('arch-1:1', 0)).toHaveAttribute('aria-selected', 'true')
+  expect(cellOf('pe1:0', 0)).toHaveAttribute('aria-selected', 'true')
 })
 
 it('editing a savings planned cell sends set-limit with the account id and patches structure.savings optimistically', async () => {
@@ -215,11 +230,12 @@ it('editing a savings planned cell sends set-limit with the account id and patch
 
   // Jun/Jul/Aug window: column 2 is August
   const cell = screen.getByTestId('plan-cell-acc-s1:2')
-  await user.click(within(cell).getByRole('button', { name: 'limit Rainy day' }))
-  const input = await screen.findByLabelText('Budget')
+  await user.click(cell)
+  await user.keyboard('{Enter}')
+  const input = await screen.findByRole('textbox', { name: 'Plan for Rainy day, August' })
   await user.clear(input)
   await user.type(input, '350')
-  await user.click(screen.getByRole('button', { name: 'Save' }))
+  await user.keyboard('{Enter}')
 
   await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-08-01', amount: '350' }))
   expect(within(cell).getByTestId('cell-planned')).toHaveTextContent('350')
@@ -256,18 +272,18 @@ it('a keyboard fill on a savings row writes each month and patches structure.sav
   expect(within(screen.getByTestId('plan-cell-acc-s2:2')).getByTestId('cell-planned')).toHaveTextContent('50')
 })
 
-it('the savings row menu offers no "Move to folder…"', async () => {
+it('the savings row menu offers its Edit alone: no "Move to folder…", no Change currency', async () => {
   useHandlers()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-section-savings')
-  await enterEditMode(user)
-  await user.click(await screen.findByRole('button', { name: 'element actions Rainy day' }))
-  expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
-  expect(screen.queryByRole('menuitem', { name: 'Move to folder…' })).not.toBeInTheDocument()
+  await user.click(await screen.findByRole('button', { name: 'menu Rainy day' }))
+  const items = await screen.findAllByRole('menuitem')
+  expect(items).toHaveLength(1)
+  expect(items[0]).toHaveTextContent(/^Edit/)
 })
 
-it('Enter on a savings name cell opens no category or tag dialog', async () => {
+it('Enter on a savings month cell edits its plan and opens no account, category or tag dialog', async () => {
   useHandlers()
   const user = userEvent.setup()
   renderPage()
@@ -275,12 +291,13 @@ it('Enter on a savings name cell opens no category or tag dialog', async () => {
   const grid = screen.getByTestId('plan-sheet')
   await user.click(screen.getByTestId('plan-cell-acc-s1:0'))
   grid.focus()
-  await user.keyboard('{ArrowLeft}{Enter}')
+  await user.keyboard('{Enter}')
+  expect(await screen.findByRole('textbox', { name: 'Plan for Rainy day, June' })).toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(toast.error).not.toHaveBeenCalled()
 })
 
-it('edit mode: savings rows reorder within their own band only, with folderId null', async () => {
+it('savings rows reorder within their own band only, with folderId null', async () => {
   const bodies: unknown[] = []
   useHandlers(savingsPlan, [
     http.post('*/api/v1/budget/move-element', async ({ request }) => {
@@ -289,24 +306,20 @@ it('edit mode: savings rows reorder within their own band only, with folderId nu
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   ])
-  const user = userEvent.setup()
   renderPage()
-  await screen.findByTestId('plan-section-savings')
-  await enterEditMode(user)
   const section = await screen.findByTestId('plan-section-savings')
-  expect(await within(section).findByRole('button', { name: 'move Rainy day' })).toBeInTheDocument()
-  expect(within(section).getByRole('button', { name: 'move Holiday fund' })).toBeInTheDocument()
+  expect(await within(section).findByRole('button', { name: 'move acc-s1' })).toBeInTheDocument()
+  expect(within(section).getByRole('button', { name: 'move acc-s2' })).toBeInTheDocument()
   // the deleted account's row is read-only history: no grip
-  expect(within(section).queryByRole('button', { name: 'move Closed deposit' })).not.toBeInTheDocument()
-  // no folder or loose-area droppable inside the savings band
-  expect(within(section).queryByTestId('plan-loose-drop')).not.toBeInTheDocument()
+  expect(within(section).queryByRole('button', { name: 'move acc-s3' })).not.toBeInTheDocument()
+  // no folder inside the savings band
   expect(section.querySelector('[data-testid^="plan-folder-"]')).toBeNull()
 
-  const savingsDragEnd = capturedDragEnds[capturedDragEnds.length - 1]
+  const savingsDragEnd = capturedDragEnds[capturedDragEnds.length - 2]
   // a folder target is not expressible from this band: nothing is sent
-  savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'pfolder:bf1' } })
-  savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'bfolder:null' } })
-  savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'acc-s1' } })
+  act(() => savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'bf1' } }))
+  act(() => savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'bfolder:null' } }))
+  act(() => savingsDragEnd({ active: { id: 'acc-s2' }, over: { id: 'acc-s1' } }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
   expect(bodies[0]).toEqual({ budgetId: 'b1', id: 'acc-s2', folderId: null, afterId: null })
@@ -314,7 +327,7 @@ it('edit mode: savings rows reorder within their own band only, with folderId nu
   await waitFor(() => expect(rowIds(screen.getByTestId('plan-section-savings'))).toEqual(['acc-s2:5', 'acc-s1:5', 'acc-s3:5']))
 })
 
-it('totals gain a Savings line below Transfers; the balance splits into Balance and Total savings', async () => {
+it('totals gain a Savings line after Expenses and a Total savings line; the sticky Balance is the everyday part', async () => {
   useHandlers()
   renderPage()
   await screen.findByTestId('plan-section-savings')
@@ -327,9 +340,9 @@ it('totals gain a Savings line below Transfers; the balance splits into Balance 
   const everyday = everydayBalanceRow(combined, savings)
   const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
 
-  const totalsBlock = screen.getByTestId('plan-totals')
-  const labels = within(totalsBlock).getAllByRole('row').map((r) => r.firstElementChild?.textContent)
-  expect(labels).toEqual(['Income', 'Expenses', 'Transfers', 'Savings'])
+  // the Budget view's order: Transfers before Savings
+  expect(totalLines()).toEqual(['income', 'expenses', 'transfers', 'savings', 'savings-balance'])
+  expect(within(screen.getByTestId('plan-total-savings-balance')).getByText('Total savings')).toBeInTheDocument()
   // window Jun/Jul/Aug = plan months 1..3
   for (let col = 0; col < 3; col++) {
     expect(screen.getByTestId(`plan-totals-savings-${col}`)).toHaveTextContent(fmt(totals[col + 1].effectiveSavings))
@@ -337,11 +350,12 @@ it('totals gain a Savings line below Transfers; the balance splits into Balance 
     expect(screen.getByTestId(`plan-savings-balance-${col}`)).toHaveTextContent(fmt(savings[col + 1]))
   }
 
+  // the sticky line is the everyday Balance alone; Total savings scrolls with the totals
   const balanceArea = screen.getByTestId('plan-balance-row')
   expect(within(balanceArea).getByText('Balance')).toBeInTheDocument()
+  expect(within(balanceArea).queryByText('Total savings')).not.toBeInTheDocument()
   // a plain label: no info note beside it
-  expect(within(balanceArea).getByText('Total savings')).toBeInTheDocument()
-  expect(within(balanceArea).queryByRole('button', { name: 'About' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'About' })).toBeNull()
   expect(screen.queryByTestId('plan-savings-balance-info')).toBeNull()
 })
 
@@ -361,18 +375,22 @@ it('a savings cell with comments shows the marker, and Shift+Enter opens its thr
   expect(await screen.findByText('Top up after the bonus')).toBeInTheDocument()
 })
 
-it('a deleted-account savings row is read-only: no cell editor, no grip', async () => {
+it('a deleted-account savings row is read-only: no cell editor (its missing grip is checked with the reorder)', async () => {
   useHandlers()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-section-savings')
-  const deletedRow = document.querySelector('[data-row-id="acc-s3:5"]') as HTMLElement
-  expect(within(deletedRow).queryByRole('button', { name: /^limit / })).not.toBeInTheDocument()
-  expect(within(screen.getByTestId('plan-cell-acc-s3:0')).getByTestId('cell-planned')).toHaveTextContent('40')
-  expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByRole('button', { name: 'limit Rainy day' })).toBeInTheDocument()
-  await enterEditMode(user)
-  await screen.findByRole('button', { name: 'move Rainy day' })
-  expect(screen.queryByRole('button', { name: 'move Closed deposit' })).not.toBeInTheDocument()
+  // a live account's cell takes the fill handle and the in-cell editor; the deleted one neither
+  await user.click(screen.getByTestId('plan-cell-acc-s1:0'))
+  expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByTestId('fill-handle')).toBeInTheDocument()
+  const deletedCell = screen.getByTestId('plan-cell-acc-s3:0')
+  expect(within(deletedCell).getByTestId('cell-planned')).toHaveTextContent('40')
+  await user.click(deletedCell)
+  expect(within(deletedCell).queryByTestId('fill-handle')).not.toBeInTheDocument()
+  await user.keyboard('{Enter}')
+  await user.keyboard('5')
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
 it('without savings rows: no Savings section, totals line or balance row, and Balance is the combined balance', async () => {
@@ -380,10 +398,9 @@ it('without savings rows: no Savings section, totals line or balance row, and Ba
   renderPage()
   await screen.findByTestId('plan-sheet')
   expect(screen.queryByTestId('plan-section-savings')).not.toBeInTheDocument()
-  const labels = within(screen.getByTestId('plan-totals')).getAllByRole('row').map((r) => r.firstElementChild?.textContent)
-  expect(labels).toEqual(['Income', 'Expenses', 'Transfers'])
+  expect(totalLines()).toEqual(['income', 'expenses', 'transfers'])
   expect(screen.queryByTestId('plan-savings-balance-0')).not.toBeInTheDocument()
-  expect(within(screen.getByTestId('plan-balance-row')).queryByText('Total savings')).not.toBeInTheDocument()
+  expect(screen.queryByText('Total savings')).not.toBeInTheDocument()
 
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
@@ -407,8 +424,7 @@ it('a deleted savings account with only an opening balance splits the balance wi
 
   // no rows to show, so no Savings section and no Savings line in totals
   expect(screen.queryByTestId('plan-section-savings')).not.toBeInTheDocument()
-  const labels = within(screen.getByTestId('plan-totals')).getAllByRole('row').map((r) => r.firstElementChild?.textContent)
-  expect(labels).toEqual(['Income', 'Expenses', 'Transfers'])
+  expect(totalLines()).toEqual(['income', 'expenses', 'transfers', 'savings-balance'])
 
   // but the balance still splits: the 1000 opening balance is savings money, not everyday money
   const plan = openingOnlyPlan as unknown as BudgetPlanDto
@@ -419,17 +435,15 @@ it('a deleted savings account with only an opening balance splits the balance wi
   const everyday = everydayBalanceRow(combined, savings)
   const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
 
-  const balanceArea = screen.getByTestId('plan-balance-row')
-  expect(within(balanceArea).getByText('Balance')).toBeInTheDocument()
-  expect(within(balanceArea).getByText('Total savings')).toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-balance-row')).getByText('Balance')).toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-totals')).getByText('Total savings')).toBeInTheDocument()
   for (let col = 0; col < 3; col++) {
     expect(screen.getByTestId(`plan-balance-${col}`)).toHaveTextContent(fmt(everyday[col + 1]))
     expect(screen.getByTestId(`plan-savings-balance-${col}`)).toHaveTextContent(fmt(savings[col + 1]))
   }
 })
 
-it('each savings cell shows the balance at the end of its month; from the current month on it adds the unmet plans so far', async () => {
-  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0)) // July is current, August future
+it('a savings row shows its month-end balance instead of what was saved, projected in future months', async () => {
   const closings = ['1100', '1200', '1250', '1250']
   const plan = {
     ...savingsPlan,
@@ -438,19 +452,93 @@ it('each savings cell shows the balance at the end of its month; from the curren
       savings: [{ ...savingsS1, cells: savingsS1.cells.map((c, i) => ({ ...c, closingBalance: closings[i] })) }],
     },
   }
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
   useHandlers(plan)
   renderPage()
-  await screen.findByTestId('plan-cell-acc-s1:0')
-  // columns start in June: 0 = June, 1 = July, 2 = August. June is past: booked, its
-  // missed 50 never arrives
-  expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByTestId('cell-closing')).toHaveTextContent('1,200.00')
-  // July planned 200, saved 50: the 150 still to come closes July at 1,400
-  expect(within(screen.getByTestId('plan-cell-acc-s1:1')).getByTestId('cell-closing')).toHaveTextContent('1,400.00')
-  // August adds its own 200 on top
-  expect(within(screen.getByTestId('plan-cell-acc-s1:2')).getByTestId('cell-closing')).toHaveTextContent('1,600.00')
-  // expense rows carry no balance line
-  expect(document.querySelectorAll('[data-testid="cell-closing"]')).toHaveLength(3)
+  // the current month is July here (the suite's clock says August): June and July
+  // show the booked balance, August the projection
+  const jun = await screen.findByTestId('plan-cell-acc-s1:0')
+  const junFigure = within(jun).getByTestId('cell-actual')
+  expect(junFigure).toHaveAttribute('data-figure', 'balance')
+  expect(junFigure).toHaveTextContent('1,200.00')
+  expect(junFigure.tagName).toBe('BUTTON')
+  // a later month still shows a balance (the projection), but it lists no transactions
+  const aug = within(screen.getByTestId('plan-cell-acc-s1:2')).getByTestId('cell-actual')
+  expect(aug).toHaveAttribute('data-figure', 'balance')
+  expect(aug.tagName).toBe('SPAN')
+  // no extra balance line under the row
+  expect(document.querySelectorAll('[data-testid="cell-closing"]')).toHaveLength(0)
 })
+
+it('a savings cell keeps its balance on the left and the plan on the right, a dash where nothing is planned', async () => {
+  const closings = ['1100', '1200', '1250', '1250']
+  const plan = {
+    ...savingsPlan,
+    structure: {
+      ...savingsPlan.structure,
+      savings: [
+        {
+          ...savingsS1,
+          cells: savingsS1.cells.map((c, i) => ({ ...c, planned: i === 3 ? '' : c.planned, closingBalance: closings[i] })),
+        },
+      ],
+    },
+  }
+  useHandlers(plan)
+  renderPage()
+  // August (column 2) has no plan: the balance still leads, a muted dash stands for the plan
+  const aug = await screen.findByTestId('plan-cell-acc-s1:2')
+  expect(within(aug).getByTestId('cell-actual')).toHaveTextContent('1,250.00')
+  expect(within(aug).getByTestId('cell-planned')).toHaveTextContent('—')
+  expect(within(aug).getByTestId('cell-figures')).toHaveClass('justify-between')
+  // a planned month lays out the same way
+  expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByTestId('cell-figures')).toHaveClass('justify-between')
+})
+
+it('while a savings month is edited its balance stays on the left, the editor in the plan\'s place', async () => {
+  const closings = ['1100', '1200', '1250', '1250']
+  const plan = {
+    ...savingsPlan,
+    structure: { ...savingsPlan.structure, savings: [{ ...savingsS1, cells: savingsS1.cells.map((c, i) => ({ ...c, closingBalance: closings[i] })) }] },
+  }
+  useHandlers(plan)
+  const user = userEvent.setup()
+  renderPage()
+  // July (column 1): balance 1,250.00, planned 200
+  const jul = await screen.findByTestId('plan-cell-acc-s1:1')
+  await user.click(jul)
+  screen.getByTestId('plan-sheet').focus()
+  await user.keyboard('{F2}')
+  const input = await screen.findByRole('textbox', { name: 'Plan for Rainy day, July' })
+  expect(input).toHaveValue('200')
+  const balance = within(jul).getByTestId('cell-actual')
+  expect(balance).toHaveAttribute('data-figure', 'balance')
+  expect(balance).toHaveTextContent('1,250.00')
+  expect(balance).toBeVisible()
+  expect(within(jul).queryByTestId('cell-planned')).not.toBeInTheDocument()
+  // balance first, the editor after it
+  const figures = within(jul).getByTestId('cell-figures')
+  expect(figures.firstElementChild).toBe(balance)
+  expect(figures).toContainElement(input)
+  expect(balance.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+  // a projected month's balance (a later month, no link) stays in view too
+  await user.keyboard('{Escape}')
+  const aug = screen.getByTestId('plan-cell-acc-s1:2')
+  const projected = within(aug).getByTestId('cell-actual').textContent
+  expect(projected).toMatch(/\d/)
+  fireEvent.doubleClick(within(aug).getByTestId('cell-planned'))
+  expect(await screen.findByRole('textbox', { name: 'Plan for Rainy day, August' })).toBeInTheDocument()
+  expect(within(aug).getByTestId('cell-actual')).toHaveAttribute('data-figure', 'balance')
+  expect(within(aug).getByTestId('cell-actual')).toHaveTextContent(projected!)
+})
+
+/** the totals block's lines, top to bottom, by key */
+function totalLines(): string[] {
+  return within(screen.getByTestId('plan-totals'))
+    .getAllByTestId(/^plan-total-/)
+    .map((l) => (l.getAttribute('data-testid') ?? '').replace('plan-total-', ''))
+}
 
 function captureTxListParams() {
   let params: URLSearchParams | undefined

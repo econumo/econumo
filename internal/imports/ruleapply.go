@@ -42,6 +42,15 @@ func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.Previ
 		if err != nil {
 			return nil, err
 		}
+		if r.Action != model.ImportRuleActionSkip {
+			owned, err := s.ownsAccount(ctx, userID, live.AccountID)
+			if err != nil {
+				return nil, err
+			}
+			if !owned {
+				continue
+			}
+		}
 		out.Matched++
 		applied, err := s.appliedOf(ctx, l)
 		if err != nil {
@@ -87,6 +96,13 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 		if err != nil {
 			return nil, err
 		}
+		owned, err := s.ownsAccount(ctx, userID, live.AccountID)
+		if err != nil {
+			return nil, err
+		}
+		if !owned {
+			continue
+		}
 		if !req.IncludeEdited {
 			applied, aerr := s.appliedOf(ctx, l)
 			if aerr != nil {
@@ -121,6 +137,20 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 
 // scopedLinks narrows to rows that are linked to a live transaction: a
 // queued or skipped row has nothing to rewrite and a preview must not count it.
+// ownsAccount gates applying a rule's targets: they are the user's own
+// categories, payees, tags and labels, which a shared account's transactions
+// cannot carry (they take the owner's), so those rows are left out.
+func (s *Service) ownsAccount(ctx context.Context, userID, accountID vo.Id) (bool, error) {
+	owner, err := s.accounts.AccountOwner(ctx, accountID)
+	if isNotFoundErr(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return owner.Equal(userID), nil
+}
+
 func (s *Service) scopedLinks(ctx context.Context, userID vo.Id, scope, runID, sourceID string) ([]model.ImportTransactionLink, error) {
 	var links []model.ImportTransactionLink
 	var err error

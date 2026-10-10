@@ -98,9 +98,12 @@ export const METRICS = {
   BUDGET_ENVELOPE_CREATE: 'appBudgetEnvelopeCreate',
   BUDGET_PLAN_OPEN: 'appBudgetPlanOpen',
   BUDGET_PLAN_CHANGE_WINDOW: 'appBudgetPlanChangeWindow',
-  BUDGET_PLAN_HIDE_EMPTY_TOGGLE: 'appBudgetPlanHideEmptyToggle',
   BUDGET_PLAN_FILL_RIGHT: 'appBudgetPlanFillRight',
   BUDGET_PLAN_PASTE_CELL: 'appBudgetPlanPasteCell',
+  BUDGET_PLAN_RESIZE_NAME_COLUMN: 'appBudgetPlanResizeNameColumn',
+  BUDGET_PLAN_TOGGLE_SUMS: 'appBudgetPlanToggleSums',
+  BUDGET_PLAN_CLEAR_CELL: 'appBudgetPlanClearCell',
+  BUDGET_PLAN_SELECT_CELLS: 'appBudgetPlanSelectCells',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
   BUDGET_TRANSACTIONS_OPEN: 'appBudgetTransactionsOpen',
   BUDGET_UPDATE_COMMENT: 'appBudgetUpdateComment',
@@ -144,6 +147,9 @@ export const METRICS = {
   IMPORT_RULE_CREATE: 'appImportRuleCreate',
   IMPORT_RULE_APPLY: 'appImportRuleApply',
   IMPORT_RULES_SUGGEST: 'appImportRulesSuggest',
+  INBOX_OPEN: 'appInboxOpen',
+  GLOBAL_SEARCH_OPEN: 'appGlobalSearchOpen',
+  GLOBAL_SEARCH_SELECT: 'appGlobalSearchSelect',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

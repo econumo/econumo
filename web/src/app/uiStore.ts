@@ -35,6 +35,8 @@ export interface OpenTransactionParams {
 export interface OpenAccountParams {
   account?: AccountDto
   folderId?: Id | null
+  /** a new account was created (not called on edit) */
+  onCreated?: (account: AccountDto) => void
 }
 
 export interface OpenRecurringParams {
@@ -62,6 +64,9 @@ interface UiState {
   setSwitchAccountPrompt: (id: Id | null) => void
   rulePrompt: RulePromptParams | null
   setRulePrompt: (params: RulePromptParams | null) => void
+  searchOpen: boolean
+  openSearch: () => void
+  closeSearch: () => void
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -78,6 +83,12 @@ export const useUiStore = create<UiState>()((set) => ({
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),
   rulePrompt: null,
   setRulePrompt: (params) => set({ rulePrompt: params }),
+  searchOpen: false,
+  openSearch: () => {
+    trackEvent(METRICS.GLOBAL_SEARCH_OPEN)
+    set({ searchOpen: true })
+  },
+  closeSearch: () => set({ searchOpen: false }),
 }))
 
 interface SidebarState {

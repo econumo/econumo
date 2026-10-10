@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
@@ -6,10 +6,12 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureBudgets, fixtureOwner, fixtureUser } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
 import { QUERY_CACHE_KEY, refreshRestoredQueries } from '@/lib/queryPersist'
+import { econumoPackage } from '@/lib/package'
 import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
-import { useSidebarStore } from '@/app/uiStore'
+import { useSidebarStore, useUiStore } from '@/app/uiStore'
+import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
 import { ApplicationLayout } from './ApplicationLayout'
 
 const mockUpdate = vi.hoisted(() => ({ value: null as AvailableUpdate | null }))
@@ -71,9 +73,20 @@ beforeEach(() => {
   window.econumoConfig = {}
   server.use(...coreHandlers())
   mockUpdate.value = null
-  // the sidebar-collapsed flag lives in a module-level zustand store, so it
-  // survives across tests in this file independent of localStorage.clear()
+  // the sidebar-collapsed flag and the search dialog live in module-level
+  // zustand stores, so they survive across tests in this file independent of
+  // localStorage.clear()
   useSidebarStore.setState({ collapsed: false })
+  useUiStore.setState({ searchOpen: false })
+  useBudgetPeriodStore.setState({ lastMode: 'budget' })
+})
+
+it('the Budget & Plan link opens the budget view last opened on this device', async () => {
+  mockViewport(false)
+  renderShell('/')
+  expect(await screen.findByRole('link', { name: 'Budget & Plan' })).toHaveAttribute('href', '/budget')
+  useBudgetPeriodStore.setState({ lastMode: 'plan' })
+  await waitFor(() => expect(screen.getByRole('link', { name: 'Budget & Plan' })).toHaveAttribute('href', '/plan'))
 })
 
 it('sizes the shell with dvh, never svh', async () => {
@@ -102,10 +115,85 @@ it('shows the loading gate, then the sidebar tree with folder totals', async () 
   expect(screen.getByText('2,100.00 $')).toBeInTheDocument()
   // single-currency folder total (and the matching account row): native
   expect(screen.getAllByText('100.50 $').length).toBeGreaterThanOrEqual(2)
-  // user block + nav
-  expect(screen.getByText('Ada')).toBeInTheDocument()
+  // top row + nav
+  expect(screen.queryByText('Ada')).not.toBeInTheDocument()
+  expect(screen.queryByText(fixtureUser.email)).not.toBeInTheDocument()
   expect(screen.getByText('Budget & Plan')).toBeInTheDocument()
-  expect(screen.getByText('Settings')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
+})
+
+it('shows the Inbox link in the full sidebar, and between the Home mark and Budget links in the icon rail', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Inbox' })).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Cash')).not.toBeInTheDocument()
+  const railLinks = screen.getAllByRole('link')
+  const homeIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/')
+  const inboxIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/inbox')
+  const budgetIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/budget')
+  expect(homeIndex).toBeGreaterThanOrEqual(0)
+  expect(inboxIndex).toBeGreaterThan(homeIndex)
+  expect(budgetIndex).toBeGreaterThan(inboxIndex)
+
+  const search = screen.getByRole('button', { name: 'Search' })
+  const inbox = screen.getByRole('link', { name: 'Inbox' })
+  expect(search.compareDocumentPosition(inbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+it('puts Inbox above the onboarding link in the icon rail when onboarding is incomplete', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  server.use(...coreHandlers({ user: { ...fixtureUser, options: [...fixtureUser.options.filter((o) => o.name !== 'onboarding'), { name: 'onboarding', value: 'started' }] } }))
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Cash')).not.toBeInTheDocument()
+  const railLinks = screen.getAllByRole('link')
+  const homeIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/')
+  const inboxIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/inbox')
+  const onboardingIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/onboarding')
+  const budgetIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/budget')
+  expect(homeIndex).toBeGreaterThanOrEqual(0)
+  expect(onboardingIndex).toBeGreaterThanOrEqual(0)
+  expect(inboxIndex).toBeGreaterThan(homeIndex)
+  expect(onboardingIndex).toBeGreaterThan(inboxIndex)
+  expect(budgetIndex).toBeGreaterThan(onboardingIndex)
+
+  const search = screen.getByRole('button', { name: 'Search' })
+  const inbox = screen.getByRole('link', { name: 'Inbox' })
+  const onboarding = screen.getByRole('link', { name: 'Getting started' })
+  expect(search.compareDocumentPosition(inbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(inbox.compareDocumentPosition(onboarding) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+it('the top row shows a Home link with the logo and version, a Search button and Inbox, and no user name/profile link', async () => {
+  mockViewport(false)
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  const topRow = screen.getByTestId('sidebar-top-row')
+  const homeLink = within(topRow).getByRole('link', { name: 'Econumo' })
+  expect(homeLink).toHaveAttribute('href', '/')
+  expect(within(homeLink).getByText(econumoPackage().label)).toBeInTheDocument()
+  expect(within(topRow).getByRole('button', { name: 'Search' })).toBeInTheDocument()
+  expect(within(topRow).getByRole('link', { name: 'Inbox' })).toBeInTheDocument()
+  const profileLinks = screen.queryAllByRole('link').filter((link) => link.getAttribute('href') === '/settings/profile')
+  expect(profileLinks).toHaveLength(0)
+  expect(screen.queryByText('Ada')).not.toBeInTheDocument()
+  expect(screen.queryByText(fixtureUser.email)).not.toBeInTheDocument()
+})
+
+it('clicking the top row Search button opens global search', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Search' }))
+  await waitFor(() => expect(useUiStore.getState().searchOpen).toBe(true))
 })
 
 it('a reload with a persisted cache skips the boot loader and refreshes in the background', async () => {
@@ -203,17 +291,16 @@ it('desktop divider click collapses the sidebar to an icon rail and back', async
   expect(await screen.findByText('Cash')).toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
-  // account names and the user name are gone, only icons remain
+  // account names are gone, only icons remain
   expect(screen.queryByText('Cash')).not.toBeInTheDocument()
-  expect(screen.queryByText('Ada')).not.toBeInTheDocument()
   expect(screen.queryByText('Budget & Plan')).not.toBeInTheDocument()
-  // the account is still reachable as an icon button, avatar still shown
+  // the account is still reachable as an icon button, the Home mark still shown
   expect(screen.getByRole('button', { name: 'Cash' })).toBeInTheDocument()
-  expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', fixtureUser.avatar)
+  expect(screen.getByRole('link', { name: 'Econumo' })).toHaveAttribute('href', '/')
 
   await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
   expect(await screen.findByText('Cash')).toBeInTheDocument()
-  expect(screen.getByText('Ada')).toBeInTheDocument()
+  expect(screen.getByText('Budget & Plan')).toBeInTheDocument()
 })
 
 it('compact viewport shows only the sidebar at / and only the workspace elsewhere', async () => {
@@ -230,79 +317,21 @@ it('compact viewport hides the sidebar on content routes', async () => {
   expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument()
 })
 
-const fixtureOtherOwner = { id: 'u2', avatar: 'pets:sky', name: 'Bob' }
-
-// One pending account invite + one pending budget invite for the current
-// user (u1) — two invites owned by someone else, count === 2.
-const pendingAccount = {
-  id: 'a-pending', owner: fixtureOtherOwner, folderId: null, name: 'Shared Cash', position: 0,
-  currency: fixtureAccounts[0].currency, balance: '10', type: 1, icon: 'wallet',
-  sharedAccess: [{ user: fixtureOwner, role: 'user', isAccepted: 0 }],
-}
-const pendingBudget = {
-  id: 'b-pending', ownerUserId: fixtureOtherOwner.id, name: 'Shared Budget', startedAt: '2026-01-01 00:00:00',
-  currencyId: fixtureAccounts[0].currency.id,
-  access: [
-    { user: fixtureOtherOwner, role: 'owner', isAccepted: 1 },
-    { user: fixtureOwner, role: 'user', isAccepted: 0 },
-  ],
-}
-
-it('shows a sharing-requests button above the Budget link when invites are pending, and clicking it opens the dialog', async () => {
-  mockViewport(false)
-  server.use(...coreHandlers({ accounts: [...fixtureAccounts, pendingAccount], budgets: [...fixtureBudgets, pendingBudget] }))
-  const user = userEvent.setup()
-  renderShell('/')
-  expect(await screen.findByText('Cash')).toBeInTheDocument()
-
-  const button = screen.getByRole('button', { name: /Sharing requests/ })
-  expect(button).toHaveTextContent('2')
-  const budgetLink = screen.getByRole('link', { name: 'Budget & Plan' })
-  // eslint-disable-next-line no-bitwise
-  expect(button.compareDocumentPosition(budgetLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-
-  await user.click(button)
-  expect(await screen.findByRole('heading', { name: 'Sharing requests' })).toBeInTheDocument()
-})
-
-it('hides the sharing-requests button when there are no pending invites', async () => {
-  mockViewport(false)
-  renderShell('/')
-  expect(await screen.findByText('Cash')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /Sharing requests/ })).not.toBeInTheDocument()
-})
-
-it('collapsed rail shows the sharing-requests icon button with a count bubble, and clicking it opens the dialog', async () => {
-  mockViewport(false)
-  server.use(...coreHandlers({ accounts: [...fixtureAccounts, pendingAccount], budgets: [...fixtureBudgets, pendingBudget] }))
-  const user = userEvent.setup()
-  renderShell('/account/a1')
-  expect(await screen.findByText('Cash')).toBeInTheDocument()
-
-  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
-  expect(screen.queryByText('Budget & Plan')).not.toBeInTheDocument()
-
-  const button = screen.getByTitle('Sharing requests')
-  expect(button).toHaveTextContent('2')
-  await user.click(button)
-  expect(await screen.findByRole('heading', { name: 'Sharing requests' })).toBeInTheDocument()
-})
-
 it('shows an update dot on the full-footer Settings link when an update is available', async () => {
   mockViewport(false)
   mockUpdate.value = { version: 'v9.9.9', url: 'https://econumo.com/releases/v9.9.9/' }
   renderShell('/')
   expect(await screen.findByText('Cash')).toBeInTheDocument()
-  const settingsLink = screen.getByText('Settings').closest('a')
-  expect(settingsLink?.querySelector('[data-testid="update-dot"]')).toBeInTheDocument()
+  const settingsLink = screen.getByRole('link', { name: 'Settings' })
+  expect(settingsLink.querySelector('[data-testid="update-dot"]')).toBeInTheDocument()
 })
 
 it('shows no update dot on the full-footer Settings link when no update is available', async () => {
   mockViewport(false)
   renderShell('/')
   expect(await screen.findByText('Cash')).toBeInTheDocument()
-  const settingsLink = screen.getByText('Settings').closest('a')
-  expect(settingsLink?.querySelector('[data-testid="update-dot"]')).not.toBeInTheDocument()
+  const settingsLink = screen.getByRole('link', { name: 'Settings' })
+  expect(settingsLink.querySelector('[data-testid="update-dot"]')).not.toBeInTheDocument()
 })
 
 it('shows an update dot on the icon-rail Settings gear when an update is available', async () => {

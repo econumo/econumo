@@ -78,7 +78,7 @@ func (s stubConvertor) Convert(_ context.Context, _, _ time.Time, _, _ vo.Id, su
 
 func TestImportsAccountReader_CurrencyCode(t *testing.T) {
 	usd := vo.NewId()
-	r := NewImportsAccountReader(stubAccounts{currency: usd}, stubCurrencyByID{views: map[string]currencyrepo.CurrencyView{usd.String(): {ID: usd.String(), Code: "USD"}}})
+	r := NewImportsAccountReader(stubAccounts{currency: usd}, nil, stubCurrencyByID{views: map[string]currencyrepo.CurrencyView{usd.String(): {ID: usd.String(), Code: "USD"}}})
 	code, err := r.AccountCurrencyCode(context.Background(), vo.NewId())
 	if err != nil || code != "USD" {
 		t.Fatalf("code = %q, %v", code, err)

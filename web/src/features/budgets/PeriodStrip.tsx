@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -10,7 +11,7 @@ const EDGE_THRESHOLD_PX = 300
 // roughly a screenful of month chips per arrow click
 const SCROLL_STEP_PX = 320
 
-export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string | null; endedAt?: string | null }) {
+export function PeriodStrip({ startedAt, endedAt = null, leading }: { startedAt: string | null; endedAt?: string | null; leading?: ReactNode }) {
   const { t, i18n } = useTranslation()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const setPeriod = useBudgetPeriodStore((s) => s.setPeriod)
@@ -34,9 +35,8 @@ export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string |
   const canExtendBefore = true
   const canExtendAfter = allItems.length > 0 && !allItems[allItems.length - 1].afterEnd
   // The desktop arrows pan the strip only — the selected month never moves, so
-  // the table below stays put while you look around (same idea as the plan
-  // sheet's nav shifting its window without moving the selection). Scrolling
-  // triggers handleScroll, so the window keeps extending at either edge.
+  // the table below stays put while you look around. Scrolling triggers
+  // handleScroll, so the window keeps extending at either edge.
   // Assign scrollLeft rather than scrollBy({behavior:'smooth'}): smooth scrolling
   // is a no-op under prefers-reduced-motion (and in jsdom), which would leave the
   // arrows dead. handleScroll still fires, so the window extends at either edge.
@@ -92,6 +92,7 @@ export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string |
 
   return (
     <div className="flex items-center gap-1">
+      {leading}
       {/* desktop-only month steppers, mirroring the plan sheet's nav; touch
           viewports scroll the strip directly */}
       <div className="hidden shrink-0 items-center gap-1 md:flex">

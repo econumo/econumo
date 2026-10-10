@@ -10,6 +10,7 @@ import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
 import { apiErrorMessage } from '@/lib/apiError'
+import { isTransactionImportEnabled } from '@/lib/config'
 import { decryptCredential } from '@/lib/importCrypto'
 import { syncStartDate } from './syncWindow'
 import { useImportKey } from './useImportKey'
@@ -33,12 +34,9 @@ function LinkRow({ label, to }: { label: string; to: string }) {
   )
 }
 
-export function ImportsDataPage() {
+// Pull sync, import rules and run history: only with transaction import on.
+function TransactionImportRows() {
   const { t } = useTranslation()
-  const [exportOpen, setExportOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
-  const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
-
   const navigate = useNavigate()
   const { data: sources = [] } = useImportSources()
   const { state: keyState } = useImportKey()
@@ -82,6 +80,23 @@ export function ImportsDataPage() {
   }
 
   return (
+    <>
+      {pullSources.length > 0 ? (
+        <ActionRow label={syncing ? t('imports.simplefin.sync.running') : t('imports.data_page.sync_all')} onClick={() => void syncAll()} disabled={syncing} />
+      ) : null}
+      <LinkRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} />
+      <LinkRow label={t('imports.data_page.history')} to={RouterPage.IMPORT_RUNS} />
+    </>
+  )
+}
+
+export function ImportsDataPage() {
+  const { t } = useTranslation()
+  const [exportOpen, setExportOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
+
+  return (
     <SettingsShell
       title={t('imports.data_page.header')}
       backTo={RouterPage.SETTINGS}
@@ -89,11 +104,7 @@ export function ImportsDataPage() {
       <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
         <ActionRow label={t('settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
         <ActionRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
-        {pullSources.length > 0 ? (
-          <ActionRow label={syncing ? t('imports.simplefin.sync.running') : t('imports.data_page.sync_all')} onClick={() => void syncAll()} disabled={syncing} />
-        ) : null}
-        <LinkRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} />
-        <LinkRow label={t('imports.data_page.history')} to={RouterPage.IMPORT_RUNS} />
+        {isTransactionImportEnabled() ? <TransactionImportRows /> : null}
       </div>
 
       <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />

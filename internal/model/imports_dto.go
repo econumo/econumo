@@ -23,6 +23,7 @@ const (
 	ImportQueueReasonUnmapped       = "unmapped"
 	ImportQueueReasonAccountDeleted = "account_deleted"
 	ImportQueueReasonNoRate         = "no_rate"
+	ImportQueueReasonNoAccess       = "no_access"
 )
 
 func blankField(key string) errs.FieldError {
@@ -201,14 +202,18 @@ type ImportCardResult struct {
 }
 
 type ImportSourceResult struct {
-	Id                   string             `json:"id"`
-	Provider             string             `json:"provider"`
-	Name                 string             `json:"name"`
-	Status               string             `json:"status"`
-	CreatedAt            string             `json:"createdAt"`
-	LastSyncedAt         string             `json:"lastSyncedAt"`
-	CredentialCiphertext string             `json:"credentialCiphertext"`
-	Cards                []ImportCardResult `json:"cards"`
+	Id                    string             `json:"id"`
+	Provider              string             `json:"provider"`
+	Name                  string             `json:"name"`
+	Status                string             `json:"status"`
+	CreatedAt             string             `json:"createdAt"`
+	LastSyncedAt          string             `json:"lastSyncedAt"`
+	LastRunStatus         string             `json:"lastRunStatus"`
+	LastRunAt             string             `json:"lastRunAt"`
+	LastRunError          string             `json:"lastRunError"`
+	LastRunErrorAccountId string             `json:"lastRunErrorAccountId"`
+	CredentialCiphertext  string             `json:"credentialCiphertext"`
+	Cards                 []ImportCardResult `json:"cards"`
 }
 
 type CreateImportSourceResult struct {

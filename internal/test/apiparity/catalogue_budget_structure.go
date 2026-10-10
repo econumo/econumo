@@ -14,7 +14,7 @@ func init() {
 		)
 		return []Call{
 			{Label: "create-folder", Method: "POST", Path: "/api/v1/budget/create-folder", Auth: "owner",
-				Body: map[string]any{"budgetId": Budget, "id": newFolder, "name": "Bills"}},
+				Body: map[string]any{"budgetId": Budget, "id": newFolder, "name": "Bills", "side": "expense"}},
 			{Label: "update-folder", Method: "POST", Path: "/api/v1/budget/update-folder", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "id": newFolder, "name": "Bills 2"}},
 			{Label: "move-folder", Method: "POST", Path: "/api/v1/budget/move-folder", Auth: "owner",
@@ -41,6 +41,15 @@ func init() {
 			// and silently append without the golden noticing.
 			{Label: "move-element-after-anchor", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "id": TagWork, "folderId": BudgetFolder1, "afterId": CatFood}},
+			// A category goes into an envelope through move-element's envelopeId,
+			// and leaves it for a plain placement; a tag cannot go in.
+			{Label: "move-element-into-envelope", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "id": CatFood, "folderId": nil, "afterId": nil, "envelopeId": newEnvelope}},
+			{Label: "get-budget-category-in-envelope", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
+			{Label: "err:tag-into-envelope", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "id": TagWork, "folderId": nil, "afterId": nil, "envelopeId": newEnvelope}},
+			{Label: "move-element-out-of-envelope", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "id": CatFood, "folderId": BudgetFolder1, "afterId": nil}},
 			{Label: "change-element-currency", Method: "POST", Path: "/api/v1/budget/change-element-currency", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "elementId": CatFood, "currencyId": USD}},
 			{Label: "delete-envelope", Method: "POST", Path: "/api/v1/budget/delete-envelope", Auth: "owner",

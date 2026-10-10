@@ -16,6 +16,7 @@ import type { TagDto } from '@/api/dto/tag'
 import { useUiStore } from '@/app/uiStore'
 import { useAccounts } from '@/features/accounts/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
+import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData } from '@/features/user/queries'
@@ -187,21 +188,8 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
     }
   }
 
-  const canChange = (tx: ViewTransaction): boolean => {
-    const account = tx.account
-    if (!account) {
-      return false
-    }
-    if (!canWriteToAccount(account, user?.id)) {
-      return false
-    }
-    if (tx.type === 'transfer') {
-      // same rule as AccountPage.canTouchRow: a missing recipient (#261) is
-      // broken, not hidden, so the row stays deletable
-      return !!tx.account && (tx.accountRecipientId === null || !!tx.accountRecipient)
-    }
-    return true
-  }
+  const canChange = (tx: ViewTransaction): boolean =>
+    canTouchTransaction(tx, !!tx.account && canWriteToAccount(tx.account, user?.id))
 
   let currentDay: string | null = null
   const rows: { kind: 'sep' | 'tx'; key: string; label?: string; tx?: NonNullable<typeof transactions>[number] }[] = []

@@ -327,7 +327,7 @@ func (q *Queries) GetBudgetEnvelope(ctx context.Context, id string) (BudgetsEnve
 }
 
 const getBudgetFolder = `-- name: GetBudgetFolder :one
-SELECT id, budget_id, name, created_at, updated_at, sort_key
+SELECT id, budget_id, name, created_at, updated_at, sort_key, side
 FROM budgets_folders WHERE id = ?
 `
 
@@ -341,6 +341,7 @@ func (q *Queries) GetBudgetFolder(ctx context.Context, id string) (BudgetsFolder
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.SortKey,
+		&i.Side,
 	)
 	return i, err
 }
@@ -707,7 +708,7 @@ func (q *Queries) ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]B
 }
 
 const listBudgetFolders = `-- name: ListBudgetFolders :many
-SELECT id, budget_id, name, created_at, updated_at, sort_key
+SELECT id, budget_id, name, created_at, updated_at, sort_key, side
 FROM budgets_folders WHERE budget_id = ? ORDER BY sort_key ASC, id ASC
 `
 
@@ -727,6 +728,7 @@ func (q *Queries) ListBudgetFolders(ctx context.Context, budgetID string) ([]Bud
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.SortKey,
+			&i.Side,
 		); err != nil {
 			return nil, err
 		}
@@ -1248,11 +1250,12 @@ func (q *Queries) UpsertBudgetEnvelope(ctx context.Context, arg UpsertBudgetEnve
 }
 
 const upsertBudgetFolder = `-- name: UpsertBudgetFolder :exec
-INSERT INTO budgets_folders (id, budget_id, name, created_at, updated_at, sort_key)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO budgets_folders (id, budget_id, name, created_at, updated_at, sort_key, side)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     name       = excluded.name,
     sort_key   = excluded.sort_key,
+    side       = excluded.side,
     updated_at = excluded.updated_at
 `
 
@@ -1263,6 +1266,7 @@ type UpsertBudgetFolderParams struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	SortKey   string
+	Side      string
 }
 
 func (q *Queries) UpsertBudgetFolder(ctx context.Context, arg UpsertBudgetFolderParams) error {
@@ -1273,6 +1277,7 @@ func (q *Queries) UpsertBudgetFolder(ctx context.Context, arg UpsertBudgetFolder
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.SortKey,
+		arg.Side,
 	)
 	return err
 }

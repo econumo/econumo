@@ -82,7 +82,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   mockViewport()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planHideEmpty: false })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
 })
 
 it('opens the thread from the marker as a popover beside the cell, and keeps the amount editor comment-free', async () => {
@@ -220,19 +220,6 @@ it('offers a hover-only "Add comment" corner on a budgeted cell without comments
   expect(within(popover).getByText('No comments yet.')).toBeInTheDocument()
   expect(within(popover).getByRole('button', { name: 'Post' })).toBeInTheDocument()
   expect(screen.queryByLabelText('Budget')).toBeNull()
-})
-
-it('offers no add-comment corner in edit-structure mode', async () => {
-  registerMonthlyHandlers()
-  mockViewport()
-  const user = userEvent.setup()
-  renderPage('/budget')
-
-  const row = await screen.findByTestId('element-env-1')
-  expect(within(row).getByTestId('comment-marker-add')).toBeInTheDocument()
-  await user.click(await screen.findByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
-  await waitFor(() => expect(within(screen.getByTestId('element-env-1')).queryByTestId('comment-marker-add')).toBeNull())
 })
 
 it('offers no add-comment corner on an archived budget (its threads are read-only)', async () => {

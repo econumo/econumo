@@ -713,6 +713,7 @@ it('a queued import in a foreign currency opens with an empty amount and shows t
 })
 
 it('editing an imported transaction prompts for a rule only when the classification diverges from what the import applied', async () => {
+  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
   const seen = captureUpdate()
   const importLink = {
     id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
@@ -749,6 +750,7 @@ it('editing an imported transaction prompts for a rule only when the classificat
 // save against that stale snapshot alone re-opened the prompt on every later
 // save of the same transaction — offering to create a SECOND identical rule.
 it('re-saving an already corrected import does not prompt again, but a further correction does', async () => {
+  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
   const seen = captureUpdate()
   const importLink = {
     id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
@@ -803,4 +805,23 @@ it('refuses to submit a transfer without a recipient account', async () => {
   expect(called).toBe(false)
   // the dialog stays open for the user to pick the account
   expect(screen.getByRole('heading', { name: 'Add transaction' })).toBeInTheDocument()
+})
+
+it('account pickers match the account name with skipped letters, never its balance', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  const picker = await screen.findByRole('combobox', { name: 'account' })
+
+  await user.click(picker)
+  await user.clear(picker)
+  await user.keyboard('eurstsh')
+  const options = await screen.findAllByRole('option')
+  expect(options).toHaveLength(1)
+  expect(options[0]).toHaveTextContent('Euro Stash')
+
+  // "2000" is Bank's balance, not part of any name
+  await user.clear(picker)
+  await user.keyboard('2000')
+  expect(screen.queryAllByRole('option')).toHaveLength(0)
 })

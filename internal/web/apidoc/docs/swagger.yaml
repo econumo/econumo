@@ -290,6 +290,9 @@ definitions:
         type: string
       position:
         type: integer
+      side:
+        description: Side is "expense" or "income".
+        type: string
     type: object
   model.BudgetPlanResult:
     properties:
@@ -613,6 +616,9 @@ definitions:
         type: string
       name:
         type: string
+      side:
+        description: Side is "expense" or "income".
+        type: string
     type: object
   model.CreateBudgetFolderResult:
     properties:
@@ -725,10 +731,8 @@ definitions:
       name:
         type: string
       side:
-        description: |-
-          Side selects the envelope's (immutable) side: "" or "expense" (default).
-          "income" is reserved for the plan view's income envelopes and currently
-          rejected (see EnvelopeTypeFromSide).
+        description: 'Side selects the envelope''s (immutable) side: "" or "expense"
+          (default), or "income".'
         type: string
     type: object
   model.CreateEnvelopeResult:
@@ -1675,6 +1679,14 @@ definitions:
         type: string
       id:
         type: string
+      lastRunAt:
+        type: string
+      lastRunError:
+        type: string
+      lastRunErrorAccountId:
+        type: string
+      lastRunStatus:
+        type: string
       lastSyncedAt:
         type: string
       name:
@@ -1895,6 +1907,12 @@ definitions:
       afterId:
         type: string
       budgetId:
+        type: string
+      envelopeId:
+        description: |-
+          EnvelopeId puts the category into that envelope instead (folderId and
+          afterId are then ignored). Without it, a category that sits in an envelope
+          leaves it for the given place.
         type: string
       folderId:
         type: string

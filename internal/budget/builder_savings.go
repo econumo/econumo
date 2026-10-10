@@ -112,10 +112,14 @@ func (s *Service) addSavings(ctx context.Context, f filters, options map[string]
 		if perr != nil {
 			return nil, nil, perr
 		}
+		amount := vo.NewDecimal(a.Amount)
 		toConvert[key] = append(toConvert[key], model.ConvertItem{
-			PeriodStart: start, PeriodEnd: end, From: accountCur, To: r.currencyID, Amount: vo.NewDecimal(a.Amount),
+			PeriodStart: start, PeriodEnd: end, From: accountCur, To: r.currencyID, Amount: amount,
 		})
-		hasActual[a.AccountID] = true
+		// a month whose activity nets to zero is no activity, as in the monthly view
+		if !amount.IsZero() {
+			hasActual[a.AccountID] = true
+		}
 	}
 	return rows, hasActual, nil
 }
@@ -245,8 +249,10 @@ func emitMonthlySavings(ms monthlySavings, limits map[string]budgetedAmount, get
 	for _, r := range ms.rows {
 		budgeted := orZero(limits[elementKey(r.account.ID, model.ElementSavings)].budgeted, zero)
 		spent := get(savingsSpentKey(r.account.ID))
-		// A deleted account stays only while it still carries a plan or activity.
-		if r.account.IsDeleted && budgeted.IsZero() && spent.IsZero() {
+		// A deleted account shows only in a month it had activity, which its
+		// history needs to add up. A plan alone does not keep it: the row is
+		// read-only, so a plan set ahead could never be cleared.
+		if r.account.IsDeleted && spent.IsZero() {
 			continue
 		}
 		closing := get(savingsClosingKey(r.account.ID))
@@ -269,8 +275,8 @@ func emitMonthlySavings(ms monthlySavings, limits map[string]budgetedAmount, get
 
 // addPlanSavings queues each savings row's per-month actual into the plan's
 // single bulk conversion, account currency -> element currency, under the
-// same planKey scheme as the elements. hasActual marks accounts with any
-// activity in the window.
+// same planKey scheme as the elements. hasActual marks accounts with a
+// non-zero net in some window month.
 func (s *Service) addPlanSavings(ctx context.Context, f filters, options map[string]elementOption, monthsList []time.Time, monthIdx map[string]int, toConvert map[string][]model.ConvertItem) ([]savingsRow, map[string]bool, error) {
 	windowEnd := monthsList[0].AddDate(0, len(monthsList), 0)
 	rows, hasActual, err := s.addSavings(ctx, f, options, monthsList[0], windowEnd,
@@ -342,20 +348,23 @@ func (s *Service) addPlanSavingsClosings(ctx context.Context, f filters, rows []
 }
 
 // emitPlanSavings renders the plan's savings rows in savingsRows order. A
-// deleted account stays only while it carries a plan or activity in the window.
+// deleted account stays only while it has activity in the window, and shows its
+// plan only in the months it had activity, as in the monthly view.
 func emitPlanSavings(rows []savingsRow, plannedFor func(string) []string, hasActual map[string]bool, get func(string) vo.DecimalNumber, nMonths int) []model.PlanSavingsElementResult {
 	out := []model.PlanSavingsElementResult{}
 	for _, r := range rows {
 		index := elementKey(r.account.ID, model.ElementSavings)
 		planned := plannedFor(index)
-		hasPlan := false
-		for _, p := range planned {
-			if p != "" {
-				hasPlan = true
+		if r.account.IsDeleted {
+			if !hasActual[r.account.ID] {
+				continue
 			}
-		}
-		if r.account.IsDeleted && !hasPlan && !hasActual[r.account.ID] {
-			continue
+			planned = append([]string(nil), planned...)
+			for i := range planned {
+				if get(planKey(i, index)).IsZero() {
+					planned[i] = ""
+				}
+			}
 		}
 		cells := make([]model.PlanSavingsCellResult, nMonths)
 		for i := range cells {

@@ -16,8 +16,7 @@
       "onboarding": "Getting started",
       "create_account": "Add account",
       "collapse_menu": "Collapse menu",
-      "expand_menu": "Expand menu",
-      "sharing_requests": "Sharing requests"
+      "expand_menu": "Expand menu"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,38 @@
     "make_recurring": "Make recurring",
     "not_posted": "Not posted"
   },
+  "inbox": {
+    "title": "Inbox",
+    "open": "Inbox, {count} waiting",
+    "empty": "All caught up",
+    "sections": {
+      "due": "Scheduled transactions",
+      "sharing": "Sharing",
+      "sync": "Sync problems",
+      "failed": "Failed imports",
+      "to_review": "To review",
+      "skipped": "Skipped ({count})"
+    },
+    "due": {
+      "overdue": "Overdue · {date}",
+      "today": "Today"
+    },
+    "sharing": {
+      "invited_you": "{name} invited you",
+      "account": "Account",
+      "budget": "Budget",
+      "choose_folder": "Choose a folder for this account",
+      "general_folder_hint": "General (will be created)",
+      "decline_question": "Decline access to \"{name}\"?"
+    },
+    "sync": {
+      "failed": "{source} sync failed",
+      "partial": "{source} synced with errors",
+      "when": "Last attempt {date}"
+    }
+  },
   "imports": {
     "badge": "Imported",
-    "banner": {
-      "text": "{count} imported transaction is waiting for review | {count} imported transactions are waiting for review",
-      "cta": "Review"
-    },
     "data_page": {
       "menu_item": "Import & export",
       "header": "Import & export",
@@ -650,15 +675,11 @@
       }
     },
     "queue": {
-      "header": "Import queue",
-      "empty": "Nothing to review.",
       "card_amount": "Card amount: {amount} {currency}",
-      "queued": "Waiting for review",
-      "skipped": "Skipped",
-      "failed": "Needs attention",
       "reason": {
         "unmapped": "Card not mapped",
         "account_deleted": "Account deleted",
+        "no_access": "No access to the account",
         "no_rate": "No exchange rate for {currency}"
       },
       "import": "Import",
@@ -873,7 +894,7 @@
       "settings": {
         "profile": {
           "menu_item": "Profile",
-          "header": "Profile",
+          "header": "Personal settings",
           "groups": {
             "personal_details": "Personal details",
             "preferences": "Preferences",
@@ -1151,7 +1172,7 @@
         "header": "New budget"
       },
       "update_budget_form": {
-        "header": "Edit budget"
+        "header": "Budget settings"
       },
       "create_folder_form": {
         "header": "New folder"
@@ -1296,20 +1317,19 @@
         "settings": {
           "button": "Configure",
           "menu": {
-            "edit": "Budget details",
+            "edit": "Budget settings",
             "edit_structure": "Edit structure",
-            "edit_structure_done": "Done editing",
-            "budget_list": "Open budget list"
+            "edit_structure_done": "Done editing"
           }
         },
         "structure": {
-          "no_folder": "Default folder",
           "in_archive": "Archived",
           "carry_over_hint": "Left from earlier months",
           "tab": {
             "budgeted": "Budget",
             "spent": "Spent",
-            "available": "Available"
+            "available": "Available",
+            "to_receive": "To receive"
           },
           "action": {
             "create_folder": "Create folder",
@@ -1317,6 +1337,9 @@
           },
           "empty_folder": {
             "note": "This folder is empty. Move a category, tag, or envelope here, or create a new envelope."
+          },
+          "empty_envelope": {
+            "note": "This envelope is empty. Drag a category here, or choose categories with Edit."
           },
           "element": {
             "action": {
@@ -1343,6 +1366,16 @@
         }
       },
       "plan": {
+        "sums": {
+          "show_month": "Show the {month} sum for {name}",
+          "hide_month": "Hide the {month} sum for {name}",
+          "show": "Show sums for {name}",
+          "hide": "Hide sums for {name}"
+        },
+        "name_column": {
+          "resize": "Resize the name column",
+          "resize_hint": "Drag to resize, double-click to reset"
+        },
         "toggle": {
           "budget": "Budget",
           "plan": "Plan"
@@ -1353,12 +1386,9 @@
           "savings": "Savings",
           "archived": "Archived"
         },
-        "nav": {
-          "prev": "Earlier months",
-          "next": "Later months"
-        },
         "cell": {
-          "aria": "{name}, {month}: actual {actual}, planned {planned}"
+          "aria": "{name}, {month}: actual {actual}, planned {planned}",
+          "edit_aria": "Plan for {name}, {month}"
         },
         "fill": {
           "handle_aria": "Copy budget to the following months"
@@ -1370,7 +1400,7 @@
         "totals": {
           "income": "Income",
           "expenses": "Expenses",
-          "transfers": "Transfers",
+          "transfers": "Transfers outside budget",
           "transfers_tooltip": "In {in} · Out {out}",
           "show_transactions": "Show transactions",
           "net": "Net",
@@ -1378,14 +1408,11 @@
           "savings": "Savings",
           "savings_balance": "Total savings"
         },
-        "density": {
-          "hide_empty": "Hide empty rows",
-          "hidden": "{count} hidden",
-          "show": "Show"
-        },
         "menu": {
           "move_to_folder": "Move to folder…",
-          "no_folder": "No folder"
+          "no_folder": "No folder",
+          "no_access": "no access",
+          "not_empty": "not empty"
         },
         "edit": {
           "no_access_envelope": "You can't edit this envelope — your role in this budget is read-only.",
@@ -1397,7 +1424,7 @@
           "disclosure": "Comments ({count})",
           "comment_label": "Comment",
           "marker_aria": "{count} comment | {count} comments",
-          "composer_placeholder": "Add a note for this month",
+          "composer_placeholder": "Add a note",
           "post": "Post",
           "edit": "Edit",
           "delete": "Delete",
@@ -1410,13 +1437,18 @@
           "truncated": "Showing the latest 2000 comments.",
           "add": "Add comment",
           "more": "+{count} more"
+        },
+        "selection": {
+          "count": "{count} cell | {count} cells",
+          "planned": "Plan",
+          "actual": "Actual"
         }
       },
       "savings": {
         "title": "Savings",
         "planned": "Planned",
         "saved": "Saved",
-        "balance_hint": "Balance at the end of the month. For the current and later months it includes the planned savings still to come."
+        "balance_hint": "Balance at the end of the month."
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, spent {spent}",
@@ -1482,6 +1514,12 @@
         "confirm": "Merge",
         "warning": "All transactions from “{name}” will be moved, and “{name}” will be deleted.",
         "envelope_info": "If the two sit in different envelopes, update your budget first so you don’t lose your planned amounts — limits are added together when merging."
+      },
+      "archive": {
+        "action": "Archive"
+      },
+      "unarchive": {
+        "action": "Unarchive"
       }
     },
     "categories": {
@@ -1767,17 +1805,25 @@
           "required_field": "Required field"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Sharing requests",
-      "empty": "No pending requests",
-      "invited_you": "{name} invited you",
-      "account": "Account",
-      "budget": "Budget",
-      "choose_folder": "Choose a folder for this account",
-      "general_folder_hint": "General (will be created)",
-      "decline_question": "Decline access to \"{name}\"?"
     }
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search transactions, accounts, categories…",
+    "groups": {
+      "accounts": "Accounts",
+      "categories": "Categories",
+      "payees": "Payees",
+      "tags": "Tags",
+      "labels": "Labels",
+      "transactions": "Transactions"
+    },
+    "show_all": "Show all ({count})",
+    "hidden_folder": "Hidden folder",
+    "back": "Back",
+    "nothing_found": "Nothing found",
+    "open": "Search",
+    "open_tooltip": "Search ({shortcut})"
   },
   "subscription": {
     "banner": {
@@ -1877,6 +1923,7 @@
       "transaction_filter_required": "Validation failed",
       "envelope_side_mixed": "An envelope cannot contain both income and expense categories",
       "folder_side_mixed": "A folder cannot contain both income and expenses",
+      "envelope_member_not_category": "Only a category can go into an envelope",
       "savings_folder_not_allowed": "Savings cannot be put into a folder",
       "account_not_removable": "This account has transactions in past months and can no longer be removed from the budget",
       "savings_account_not_member": "Savings accounts must be your own accounts in this budget",

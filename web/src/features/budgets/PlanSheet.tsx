@@ -1,116 +1,99 @@
-import { createContext, Fragment, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import type { ClipboardEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ClipboardEvent, CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
-import type { CollisionDetection, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
-import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
-// aliased: a bare `CSS` import would shadow the global CSS object, whose
-// CSS.escape the selection scroll-into-view effect below depends on
-import { CSS as DndCSS } from '@dnd-kit/utilities'
-import type { SortableHandleProps } from '@/components/SortableList'
+import { DndContext, DragOverlay, MeasuringStrategy, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import type { CollisionDetection, DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { besidePointer, centerRowOnPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
-import { ChevronDown, ChevronLeft, ChevronRight, GripVertical, MoreVertical } from 'lucide-react'
-import { v7 as uuidv7 } from 'uuid'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { EntityIcon } from '@/components/EntityIcon'
 import { CoinLoader } from '@/components/CoinLoader'
-import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { PromptDialog } from '@/components/PromptDialog'
-import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { cmp, isZero } from '@/lib/decimal'
-import { moneyFormat } from '@/lib/money'
-import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
+import { moneyFormat, normalizeNumber } from '@/lib/money'
 import type {
-  BudgetCommentDto,
   BudgetDto,
-  BudgetFolderDto,
-  BudgetMetaDto,
+  BudgetFolderSide,
   BudgetPlanDto,
   PlanCellDto,
-  PlanChildDto,
   PlanElementDto,
 } from '@/api/dto/budget'
 import { BudgetElementType, isIncomeType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
-import type { CategoryDto } from '@/api/dto/category'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { useIsCompact } from '@/hooks/useIsCompact'
-import { CategoryDialog } from '@/features/classifications/CategoryDialog'
-import { TagDialog } from '@/features/classifications/TagDialog'
-import type { TagDialogItem } from '@/features/classifications/TagDialog'
-import { useUpdateCategory } from '@/features/classifications/queries'
-import { useAccounts } from '@/features/accounts/queries'
-import { useUiStore } from '@/app/uiStore'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import {
   canConfigureBudget,
-  canDeleteEnvelope,
-  canEditBudget,
-  canUpdateLimits,
   commentCellKey,
   planFetchWindow,
   useBudgetComments,
   useBudgetPlan,
-  useChangeElementCurrency,
-  useCreateBudgetFolder,
-  useDeleteBudgetFolder,
-  useDeleteEnvelope,
   useFillPlannedCells,
   useMoveBudgetFolder,
   useMoveElement,
+  useMoveIntoEnvelope,
   usePlanSetLimit,
-  useUpdateBudgetFolder,
-  useUpdateEnvelope,
 } from './queries'
-import { arrangementItem, moveElementInArrangement, placeElements } from './elementMove'
-import type { ElementContainer } from './elementMove'
+import {
+  arrangementItem,
+  dropIndicatorFor,
+  envelopeCollisions,
+  envelopeOfDrop,
+  moveElementInArrangement,
+  placeElements,
+  placeFromEnvelope,
+  preferRowCollisions,
+} from './elementMove'
+import type { DropIndicator, ElementContainer } from './elementMove'
+import { DragFolder, DragGhost, DragRow, FolderGrip } from './MonthDrag'
 import { CommentsPanel } from './CommentsPanel'
-import { CommentMarker } from './CommentThread'
-import { CellShell } from './CellShell'
-import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { ElementSheet } from './ElementSheet'
 import { planCellFigures } from './phoneMonth'
-import { elementEditAccess, isEnvelopeType } from './elementEdit'
-import { EnvelopeDialog } from './EnvelopeDialog'
-import { LimitEditor } from './LimitEditor'
-import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
+import { isEnvelopeType } from './elementEdit'
 import { limitAmountFromInput } from './limitAmount'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { SetLimitDialog } from './SetLimitDialog'
+import { useBudgetLineMenus } from './useBudgetLineMenus'
 import {
-  PLAN_ACTIONS_COL_PX,
-  PLAN_CURRENCY_COL_PX,
-  PLAN_MIN_MONTH_COL_PX,
-  PLAN_NAME_COL_PX,
   addMonths,
+  currentMonth,
   balanceRow,
   bucketPlanRows,
-  clampFirstMonth,
-  currentMonth,
   everydayBalanceRow,
   fillTargetCol,
-  folderSides,
-  isOverspent,
-  isUnderspent,
   makePlanExchange,
   monthDate,
+  monthDiff,
   planHasSavingsData,
   projectSavingsClosings,
-  planInitialFirstMonth,
   planMonthExchange,
+  planCellRange,
+  planGroupSums,
+  planSelectionSum,
   planTotals,
   planVisibleCount,
+  PLAN_NAME_COL_MAX_PX,
+  PLAN_NAME_COL_MIN_PX,
+  PLAN_NAME_COL_PX,
+  clampPlanNameWidth,
+  planWindow,
   savingsAsPlanElement,
   savingsBalanceRow,
-  visibleSectionRows,
 } from './planMath'
-import type { FolderSide, MonthExchange, PlanFolderSection, PlanMonthTotals, PlanRow, PlanRows } from './planMath'
+import type { MonthExchange, PlanCellRef, PlanFolderSection, PlanRow, PlanRows } from './planMath'
+import type { LineControls, MenuAction } from './monthLayout'
+import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, ROW_INDENT, RowLevelContext } from './monthLayout'
+import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
+import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, pickedKey, sourceAmount } from './PlanRows'
+import { PlanSelectionHint } from './PlanSelectionHint'
+import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
+import type { GridCtx, PlanCellEdit, PlanLimitTarget, PlanSelection } from './PlanRows'
+import type { CellMove } from './PlanCellInput'
 
 export interface PlanSheetProps {
   /** the ALREADY-LOADED budget (meta for permissions/currency); plan data is fetched inside */
@@ -118,24 +101,19 @@ export interface PlanSheetProps {
   currencies: CurrencyDto[]
   userId: Id | undefined
   editMode: boolean
+  /** opens Budget settings (the savings section's menu chooses accounts there) */
+  onOpenSettings: () => void
+  /** the Budget / Plan words: the grid's month row is this view's month selector,
+   *  so they sit at its start, where the Budget view's strip has them */
+  viewSwitch?: ReactNode
 }
 
 const rowKey = (r: PlanRow): string => `${r.element.id}:${r.element.type}`
-// A folder header is a selectable row of the grid too (fold/unfold by keyboard); it
-// shares the selection's rowKey space with the element rows under a distinct prefix.
-const folderRowKey = (folderId: Id): string => `pfolder:${folderId}`
-const isFolderRowKey = (rk: string): boolean => rk.startsWith('pfolder:')
 
-// A stable DOM id per gridcell, used by aria-activedescendant. rowKey already embeds
-// a ':' (id:type), which is valid in an HTML id but not worth relying on downstream, so
-// it's sanitized to a safe character set.
-const cellDomId = (rk: string, col: number): string => `plan-cell-${rk.replace(/[^a-zA-Z0-9_-]/g, '_')}-${col}`
-// A folder header has a single cell, so whatever column the selection carries (kept so
-// Up/Down through a header lands back on the same month), its DOM cell is the -1 one.
-const selectionDomId = (sel: PlanSelection): string => cellDomId(sel.rowKey, isFolderRowKey(sel.rowKey) ? -1 : sel.col)
+const selectionDomId = (sel: PlanSelection): string => cellDomId(sel.rowKey, sel.col)
 
-const SELECTED_RING = ' ring-2 ring-ring rounded-sm'
-const selectedClass = (selected: boolean): string => (selected ? SELECTED_RING : '')
+type GroupSums = ReturnType<typeof planGroupSums>
+
 
 // Radix portals render popover/dialog/drawer/dropdown-menu content outside the grid's
 // DOM subtree, but React re-dispatches both keyboard AND click events through the
@@ -143,45 +121,20 @@ const selectedClass = (selected: boolean): string => (selected ? SELECTED_RING :
 // onClick/the grid's onKeyDown.
 //
 // The keydown guard: a keystroke typed inside an open editor/menu must not be hijacked
-// by grid navigation (Enter closing the popover without committing, ArrowLeft not
+// by grid navigation (Enter running a grid action instead of the dialog's, ArrowLeft not
 // moving the caret, ArrowDown moving the grid selection instead of a menu highlight).
 const KEYDOWN_ESCAPE_SELECTOR =
   'input, textarea, [data-slot="popover-content"], [data-slot="dialog-content"], [data-slot="drawer-content"], [data-slot="dropdown-menu-content"]'
 // The click guard (F2): a cell click that bubbles up from a nested interactive control —
-// the LimitEditor trigger, a still-open popover's input, an open dropdown menu's items —
+// the actual's transactions link, the in-cell editor's input, an open dropdown menu's items —
 // must not steal focus back onto the grid; those controls already manage their own
 // focus, and the grid regains it naturally once they close.
 const CLICK_ESCAPE_SELECTOR = `button, [role="button"], ${KEYDOWN_ESCAPE_SELECTOR}`
-
-// A future month with no activity yet reads as a dash, same as a missing
-// cell; a real (possibly zero) actual in a past/current month still prints.
-function renderActual(actual: string | undefined, month: string, cur: string, currency: CurrencyDto | undefined): string {
-  if (actual === undefined) {
-    return '—'
-  }
-  if (month > cur && isZero(actual)) {
-    return '—'
-  }
-  return moneyFormat(actual, currency, { showCurrency: false, useNativePrecision: false })
-}
-
-interface PlanLimitTarget {
-  el: PlanElementDto
-  month: string
-  monthIndex: number
-}
-
-/** roving grid selection: col -1 = the row's name cell, 0..visible-1 = month cells.
- *  -1 is the leftmost reachable column: ArrowRight there goes to 0, ArrowLeft at 0
- *  goes to -1, and ArrowLeft AT -1 shifts the window back a month (selection stays
- *  at -1) — the name cell is always reachable by keyboard alone. On a name cell with
- *  children, ArrowRight/ArrowLeft first unfold/fold the breakdown and only then move
- *  on. rowKey may also name a folder header (`pfolder:<id>`), which has just the
- *  name cell but keeps whatever col the selection arrived with. */
-export interface PlanSelection {
-  rowKey: string
-  col: number
-}
+// A focused control inside the grid (a row's ⋮, a fold chevron, an actual's link) keeps
+// its own activation keys: the grid acting on Enter too would open the cell editor or
+// the edit dialog behind its menu, and its preventDefault would cancel the click.
+const CONTROL_SELECTOR = 'button, [role="button"], [aria-haspopup]'
+const GRID_KEYS_ON_CONTROL = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Escape']
 
 /** Excel-style fill-right state: startCol is the source column (the value being
  *  copied), targetCol the column currently covered (>= startCol). A pointer fill is
@@ -199,923 +152,211 @@ interface FillDrag {
   colWidth: number
 }
 
-// an unset cell reads as 0 everywhere else in the grid, so copying/filling from it
-// carries an explicit 0 rather than an empty limit
-function sourceAmount(el: PlanElementDto, monthIndex: number): string {
-  const planned = monthIndex >= 0 ? (el.cells[monthIndex]?.planned ?? '') : ''
-  return planned === '' ? '0' : planned
-}
-
-/** A row is editable per-cell only for a non-uncategorized, non-archived parent row,
- *  with a fetched cell and update rights for that month — children never carry limits. */
-function isEditableCell(el: PlanElementDto, month: string, monthIndex: number, meta: BudgetMetaDto, userId: Id | undefined): boolean {
-  return el.id !== UNCATEGORIZED_ID && el.isArchived === 0 && monthIndex >= 0 && canUpdateLimits(meta, userId, month)
-}
-
-// A comment thread's read/write gate is independent of the role-based `isEditableCell`
-// above: a guest may still post, but nobody may write once the budget is archived or
-// the month falls outside its start/end range — the thread stays readable either way.
-// Exported: the monthly view (BudgetPage) shares this exact rule rather than
-// reimplementing it, so both views agree on when a thread is read-only.
-export function commentsReadOnly(meta: BudgetMetaDto, month: string): boolean {
-  if (meta.isArchived === 1) {
-    return true
-  }
-  if (month < `${meta.startedAt.slice(0, 7)}-01`) {
-    return true
-  }
-  return !!meta.endedAt && month > `${meta.endedAt.slice(0, 7)}-01`
-}
-
-interface GridCtx {
-  visibleMonths: string[]
-  monthIndex: (m: string) => number
-  cur: string
-  currencies: CurrencyDto[]
-  gridCols: string
-  meta: BudgetMetaDto
-  userId: Id | undefined
-  isCompact: boolean
-  monthLabel: (m: string) => string
-  commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
-  /** touch viewports: a cell tap opens the item sheet */
-  openSheet: (target: PlanLimitTarget) => void
-  commentsByCell: Map<string, BudgetCommentDto[]>
-  /** the fetch backing `commentsByCell` hit the 2000-item server cap and dropped the oldest */
-  commentsTruncated: boolean
-  /** `fromGrid` marks a keyboard-originated open (Shift+Enter / Shift+F2) so the
-   *  grid reclaims focus when the thread closes; `anchor` is the cell to pin the
-   *  popover to: undefined = look it up from the grid; null = no anchor, open as a
-   *  sheet/dialog */
-  openComments: (target: PlanLimitTarget, opts?: { fromGrid?: boolean; anchor?: HTMLElement | null }) => void
-  /** a thread is open: hover previews stay shut */
-  commentsOpen: boolean
-  canEdit: boolean
-  selection: PlanSelection | null
-  select: (rowKey: string, col: number, e?: { target: EventTarget | null }) => void
-  fill: {
-    active: { rowKey: string; startCol: number; targetCol: number } | null
-    start: (rowKey: string, el: PlanElementDto, col: number, e: ReactPointerEvent<HTMLElement>) => void
-    move: (e: ReactPointerEvent<HTMLElement>) => void
-    end: () => void
-    cancel: () => void
-  }
-  editMode: boolean
-  onChangeCurrency: (el: PlanElementDto) => void
-  onMoveToFolder: (el: PlanElementDto) => void
-  onEditEnvelope: (el: PlanElementDto) => void
-  onDeleteEnvelope: (el: PlanElementDto) => void
-  canDeleteEnvelopes: boolean
-  onRenameFolder: (folder: BudgetFolderDto) => void
-  onDeleteFolder: (folder: BudgetFolderDto) => void
-}
-
-// The budget view's wire response strips income envelopes and income-sided folders
-// (internal/budget/builder_structure_build.go), so the plan sheet is the only surface
-// where an income envelope is reachable — Edit/Delete must live here or an existing
-// one could never be renamed, archived, re-scoped, or removed through any UI.
-
-function RowMenu({ el, ctx }: { el: PlanElementDto; ctx: GridCtx }) {
-  const { t } = useTranslation()
+// A row in a list: under its grip when drag is on (the wrapper sits OUTSIDE the
+// row's own [data-row-id] element, so selection, keyboard navigation and the fill
+// handle are untouched by it), bare otherwise.
+function PlanRowList({ rows, ctx, indicator }: { rows: PlanRow[]; ctx: GridCtx; indicator: DropIndicator | null }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" className="w-8 shrink-0" aria-label={`element actions ${el.name}`}>
-          <MoreVertical className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => ctx.onChangeCurrency(el)}>
-          {t('budgets.page.budget.structure.element.action.change_currency')}
-        </DropdownMenuItem>
-        {/* a savings row lives in its own section and never in a folder (the
-            server refuses one with budget.savings_folder_not_allowed) */}
-        {el.type !== BudgetElementType.SAVINGS ? (
-          <DropdownMenuItem onSelect={() => ctx.onMoveToFolder(el)}>
-            {t('budgets.page.plan.menu.move_to_folder')}
-          </DropdownMenuItem>
-        ) : null}
-        {isEnvelopeType(el.type) ? (
-          <>
-            <DropdownMenuItem onSelect={() => ctx.onEditEnvelope(el)}>{t('common.button.edit.label')}</DropdownMenuItem>
-            {ctx.canDeleteEnvelopes ? (
-              <DropdownMenuItem variant="destructive" onSelect={() => ctx.onDeleteEnvelope(el)}>
-                {t('common.button.delete.label')}
-              </DropdownMenuItem>
-            ) : null}
-          </>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
-// Side-filtered folder picker: an income element may only land in an income or
-// neutral folder. The server enforces this too (CodeBudgetFolderSideMixed); the
-// filter keeps the user from ever seeing that error.
-function MoveToFolderDialog({
-  target,
-  folders,
-  folderSideMap,
-  onClose,
-  onPick,
-}: {
-  target: PlanElementDto | null
-  folders: BudgetFolderDto[]
-  folderSideMap: Map<Id, FolderSide>
-  onClose: () => void
-  onPick: (folderId: Id | null) => void
-}) {
-  const { t } = useTranslation()
-  if (!target) {
-    return null
-  }
-  const side: 'income' | 'expense' = isIncomeType(target.type) ? 'income' : 'expense'
-  const targets = folders.filter((f) => {
-    const s = folderSideMap.get(f.id) ?? 'neutral'
-    return s === side || s === 'neutral'
-  })
-  return (
-    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.page.plan.menu.move_to_folder')}>
-      <ul className="flex max-h-72 flex-col overflow-y-auto scrollbar-slim">
-        {targets.map((f) => (
-          <li key={f.id}>
-            <button
-              type="button"
-              className="w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover"
-              onClick={() => onPick(f.id)}
-            >
-              {f.name}
-            </button>
-          </li>
-        ))}
-        <li>
-          <button type="button" className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover" onClick={() => onPick(null)}>
-            {t('budgets.page.plan.menu.no_folder')}
-          </button>
-        </li>
-      </ul>
-    </ResponsiveDialog>
-  )
-}
-
-// Rows nest inside their folder section, and the dragged row travels under the
-// pointer (its own rect always wins a pointer test) — so ignore the active row,
-// prefer whatever OTHER row the pointer is inside, and fall back to sections
-// (folder headers, or the loose-area container droppable for an empty band).
-const preferRowCollisions: CollisionDetection = (args) => {
-  const collisions = pointerWithin(args)
-  const candidates = (collisions.length > 0 ? collisions : rectIntersection(args)).filter((c) => c.id !== args.active.id)
-  const row = candidates.find((c) => !String(c.id).startsWith('pfolder:') && !String(c.id).startsWith('bfolder:'))
-  return row ? [row] : candidates
-}
-
-// The grip is the activation handle; the whole row travels with the transform.
-// items-start is required because an unfolded element renders its children inside
-// this same wrapper — centering would drag the grip down to the middle of the whole
-// expanded block. So the grip gets its own box matching the root row's height
-// (py-1.5, mirroring ElementRow) and centers inside that, rather than carrying a
-// hand-tuned top margin that silently drifts whenever row padding changes.
-function PlanSortableRow({ id, name, children }: { id: string; name: string; children: ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
-  return (
-    <div
-      ref={setNodeRef}
-      data-plan-sortable={id}
-      style={{ transform: DndCSS.Transform.toString(transform), transition }}
-      className={isDragging ? 'opacity-60' : undefined}
-    >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-1">
-        <button
-          type="button"
-          aria-label={`move ${name}`}
-          className="row-start-1 flex h-full cursor-grab touch-none items-center text-muted-foreground"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="size-4" />
-        </button>
-        <div className="row-start-1 min-w-0">{children}</div>
-      </div>
-    </div>
-  )
-}
-
-// The folder is a sortable item itself; its grip lives in the header rendered by
-// FolderRows, so the handle props travel via context rather than another prop hop.
-const PlanFolderHandleContext = createContext<SortableHandleProps | null>(null)
-
-function PlanFolderGrip({ name }: { name: string }) {
-  const handle = useContext(PlanFolderHandleContext)
-  if (!handle) {
-    return null
-  }
-  return (
-    <button
-      type="button"
-      aria-label={`move folder ${name}`}
-      className="cursor-grab touch-none text-muted-foreground"
-      {...handle.attributes}
-      {...(handle.listeners ?? {})}
-    >
-      <GripVertical className="size-4" />
-    </button>
-  )
-}
-
-function PlanSortableFolder({ section, children }: { section: PlanFolderSection; children: ReactNode }) {
-  const sortable = useSortable({ id: `pfolder:${section.folder.id}` })
-  return (
-    <div
-      ref={sortable.setNodeRef}
-      style={{ transform: DndCSS.Transform.toString(sortable.transform), transition: sortable.transition }}
-      className={sortable.isDragging ? 'opacity-60' : undefined}
-    >
-      <PlanFolderHandleContext.Provider value={{ attributes: sortable.attributes, listeners: sortable.listeners }}>
-        {children}
-      </PlanFolderHandleContext.Provider>
-    </div>
-  )
-}
-
-// A child is a read-only breakdown of its parent's actuals: it carries no limit and
-// is not selectable (no aria-selected, no click/keyboard target) — only rows a limit
-// can be set on take the highlight. The indent lives INSIDE the fixed-width name
-// cell: padding on the row itself would eat into the 1fr month tracks and shift the
-// child's figures out from under the parent's.
-const ChildRow = memo(function ChildRow({
-  child,
-  parentCurrency,
-  ctx,
-}: {
-  child: PlanChildDto
-  parentCurrency: CurrencyDto | undefined
-  ctx: GridCtx
-}) {
-  const { t } = useTranslation()
-  const displayName = elementDisplayName(child.id, child.name, t)
-  const rk = `${child.id}:${child.type}`
-  return (
-    <div
-      role="row"
-      data-row-id={rk}
-      className="plan-row grid items-stretch gap-1 px-2 py-1 text-xs text-muted-foreground"
-      style={{ gridTemplateColumns: ctx.gridCols }}
-    >
-      <span role="gridcell" className="flex h-full min-w-0 items-center gap-1.5 truncate pl-7" title={displayName}>
-        <EntityIcon name={child.icon} className="text-base" />
-        <span className="min-w-0 flex-1 truncate">{displayName}</span>
-      </span>
-      {ctx.visibleMonths.map((m, i) => {
-        const idx = ctx.monthIndex(m)
-        const cell = idx >= 0 ? child.cells[idx] : undefined
-        const actualText = renderActual(cell?.actual, m, ctx.cur, parentCurrency)
-        return (
-          <div
-            key={m}
-            role="gridcell"
-            aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthLabel(m), actual: actualText, planned: '—' })}
-            data-month={m}
-            data-col={i}
-            data-testid={`plan-cell-${child.id}:${i}`}
-            className="flex items-center justify-end px-2 py-1"
-          >
-            <span data-testid="cell-actual">{actualText}</span>
-          </div>
-        )
-      })}
-      <span />
-    </div>
-  )
-})
-
-const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
-  const { t } = useTranslation()
-  const el = row.element
-  const unfolded = useBudgetPeriodStore((s) => !!s.unfoldedElements[el.id])
-  const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
-  const currency = ctx.currencies.find((c) => c.id === el.currencyId)
-  const displayName = elementDisplayName(el.id, el.name, t)
-  const isUncategorized = el.id === UNCATEGORIZED_ID
-  const expandable = el.children.length > 0
-  const Chevron = unfolded ? ChevronDown : ChevronRight
-  const rk = `${el.id}:${el.type}`
-  const nameSelected = ctx.selection?.rowKey === rk && ctx.selection.col === -1
-  // The fill handle also shows on the month cell under the mouse, so a value can be
-  // dragged right without first clicking the cell to select it. Row-local state, so a
-  // hover re-renders this row only, never the grid.
-  const [hoverCol, setHoverCol] = useState<number | null>(null)
-
-  const name = (
     <>
-      <EntityIcon name={el.icon} className="text-lg text-muted-foreground" />
-      <span className="truncate text-sm" title={displayName}>
-        {displayName}
-      </span>
-    </>
-  )
-
-  return (
-    <div data-row-id={rk} className="border-b border-border/60">
-      <div
-        role="row"
-        className="plan-row grid items-stretch gap-1 px-2 py-1.5"
-        style={{ gridTemplateColumns: ctx.gridCols }}
-      >
-        <div
-          role="gridcell"
-          id={cellDomId(rk, -1)}
-          aria-selected={nameSelected}
-          className={`flex h-full min-w-0 items-center gap-1${selectedClass(nameSelected)}`}
-          onClick={(e) => ctx.select(rk, -1, e)}
-        >
-          {/* the name is a selection target only; just the chevron (or ArrowRight/
-              ArrowLeft on the highlighted name cell) folds the breakdown, so a click
-              meant to highlight the row never springs its children open */}
-          <span className="flex min-w-0 flex-1 items-center gap-1.5">
-            {expandable ? (
-              <button
-                type="button"
-                className="flex shrink-0 items-center"
-                aria-expanded={unfolded}
-                title={t(unfolded ? 'common.button.collapse.label' : 'common.button.expand.label')}
-                onClick={() => toggleElement(el.id)}
-              >
-                <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
-              </button>
-            ) : (
-              <span className="w-3.5 shrink-0" />
-            )}
-            {name}
-          </span>
-        </div>
-        {ctx.visibleMonths.map((m, i) => {
-          const idx = ctx.monthIndex(m)
-          const cell = idx >= 0 ? el.cells[idx] : undefined
-          const editable = isEditableCell(el, m, idx, ctx.meta, ctx.userId)
-          const overspend = isOverspent(el.type, cell)
-          const underspend = isUnderspent(el.type, cell, m, ctx.cur)
-          const plannedValue = cell && cell.planned !== '' ? cell.planned : '0'
-          const plannedText = cell && cell.planned !== '' ? moneyFormat(cell.planned, currency, { showCurrency: false, useNativePrecision: false }) : '—'
-          const actualText = renderActual(cell?.actual, m, ctx.cur, currency)
-          const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
-          const fillSource = ctx.fill.active?.rowKey === rk && ctx.fill.active.startCol === i
-          const filled = ctx.fill.active?.rowKey === rk && i > ctx.fill.active.startCol && i <= ctx.fill.active.targetCol
-          // an unset cell still shows (and edits as) 0, so it is draggable too —
-          // gating on a set limit would hide the handle on every 0.00 cell. The
-          // in-flight drag's source keeps its handle mounted even after the pointer
-          // has left the cell: the handle holds the pointer capture, and unmounting
-          // it would drop the pointerup that commits the fill.
-          const showFillHandle =
-            (selected || hoverCol === i || fillSource) && editable && !!cell && !ctx.isCompact && ctx.visibleMonths.length > 1
-          const cellComments = ctx.commentsByCell.get(commentCellKey(el.id, m)) ?? []
-          const commentCount = cellComments.length
-          const target = { el, month: m, monthIndex: idx }
-          const cellNode = (
-            <div
-              {...{ [COMMENT_ANCHOR_ATTR]: '' }}
-              role="gridcell"
-              id={cellDomId(rk, i)}
-              aria-selected={selected}
-              aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthLabel(m), actual: actualText, planned: plannedText })}
-              data-month={m}
-              data-col={i}
-              data-testid={`plan-cell-${el.id}:${i}`}
-              className={`group/cell relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
-              onClick={(e) => {
-                ctx.select(rk, i, e)
-                // touch: the whole cell opens the item sheet; the marker stops its own click
-                if (ctx.isCompact && !ctx.editMode && !isUncategorized && idx >= 0) {
-                  ctx.openSheet(target)
-                }
-              }}
-              onMouseEnter={() => setHoverCol(i)}
-              onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
-            >
-              <span
-                data-testid="cell-actual"
-                className={`text-xs ${overspend ? 'text-destructive' : underspend ? 'text-income' : 'text-muted-foreground'}`}
-              >
-                {actualText}
-              </span>
-              <span data-testid="cell-planned" className="text-sm">
-                {ctx.isCompact ? (
-                  editable ? moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false }) : plannedText
-                ) : editable ? (
-                  <LimitEditor
-                    id={`${el.id}-${m}`}
-                    name={displayName}
-                    value={plannedValue}
-                    currency={currency}
-                    onCommit={(amount) => ctx.commit(el.id, m, idx, amount)}
-                  />
-                ) : !isUncategorized ? (
-                  // a non-editable cell (guest role, archived element, month outside the budget) still opens its thread, so a guest can start one
-                  <button
-                    type="button"
-                    className="w-full text-right underline-offset-2 hover:underline"
-                    aria-label={`comments ${displayName}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      ctx.openComments(target, { anchor: commentAnchorOf(e.currentTarget) })
-                    }}
-                  >
-                    {plannedText}
-                  </button>
-                ) : (
-                  plannedText
-                )}
-              </span>
-              {el.type === BudgetElementType.SAVINGS && cell?.closingBalance !== undefined ? (
-                <span
-                  data-testid="cell-closing"
-                  className="text-[10px] tabular-nums text-muted-foreground"
-                  title={t('budgets.page.savings.balance_hint')}
-                >
-                  {moneyFormat(cell.closingBalance, currency, { showCurrency: false, useNativePrecision: false })}
-                </span>
-              ) : null}
-              {(commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
-                <CommentMarker count={commentCount} onOpen={(anchor) => ctx.openComments(target, { anchor })} />
-              ) : null}
-              {showFillHandle ? (
-                <span
-                  data-testid="fill-handle"
-                  role="button"
-                  aria-label={t('budgets.page.plan.fill.handle_aria')}
-                  className="absolute -right-0.5 -bottom-0.5 z-10 size-2 touch-none cursor-crosshair rounded-[1px] border border-background bg-ring"
-                  onPointerDown={(e) => ctx.fill.start(rk, el, i, e)}
-                  onPointerMove={(e) => ctx.fill.move(e)}
-                  onPointerUp={() => ctx.fill.end()}
-                  onPointerCancel={() => ctx.fill.cancel()}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : null}
-            </div>
-          )
-          return (
-            <CellShell
-              key={m}
-              comments={isUncategorized ? [] : cellComments}
-              previewDisabled={ctx.commentsOpen || ctx.editMode}
-              shortcutDisabled={ctx.editMode}
-              onOpenComments={isUncategorized ? undefined : (anchor) => ctx.openComments(target, { anchor })}
-            >
-              {cellNode}
-            </CellShell>
-          )
-        })}
-        {/* trailing track: currency, then the actions menu in edit mode — the budget
-            table's geometry. Uncategorized has neither but still occupies the track. */}
-        <div className="flex items-center justify-end gap-1">
-          <span className="w-6 text-center text-xs text-muted-foreground">
-            {isUncategorized ? null : currency?.symbol}
-          </span>
-          {ctx.editMode && !isUncategorized ? <RowMenu el={el} ctx={ctx} /> : null}
-        </div>
-      </div>
-      {expandable && unfolded ? (
-        <div>
-          {el.children.map((child) => (
-            <ChildRow key={child.id} child={child} parentCurrency={currency} ctx={ctx} />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  )
-})
-
-// One sortable list per bucket (a folder's members, or a band's loose rows).
-// Outside edit mode this is a plain map, so the read-only sheet keeps its exact
-// DOM. The wrapper always sits OUTSIDE the row's own [data-row-id] element, so
-// selection, keyboard navigation and the fill handle are untouched by it.
-function PlanRowList({ rows, ctx }: { rows: PlanRow[]; ctx: GridCtx }) {
-  const { t } = useTranslation()
-  if (!ctx.editMode) {
-    return (
-      <>
-        {rows.map((r) => (
-          <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
-        ))}
-      </>
-    )
-  }
-  return (
-    <SortableContext items={rows.filter(isDraggableRow).map((r) => r.element.id)} strategy={verticalListSortingStrategy}>
       {rows.map((r) =>
-        isDraggableRow(r) ? (
-          <PlanSortableRow key={rowKey(r)} id={r.element.id} name={elementDisplayName(r.element.id, r.element.name, t)}>
+        ctx.drag && isDraggableRow(r) ? (
+          <DragRow key={rowKey(r)} id={r.element.id} indicator={indicator?.kind === 'row' && indicator.id === r.element.id ? indicator.edge : undefined}>
             <ElementRow row={r} ctx={ctx} />
-          </PlanSortableRow>
+          </DragRow>
         ) : (
           <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
         ),
       )}
-    </SortableContext>
+    </>
   )
 }
 
-// A band's loose rows have no bordered wrapper the way a folder does (FolderRows
-// supplies one), so an empty loose list leaves no droppable surface at all —
-// a row could never leave a folder unless it happened to land exactly on another
-// loose row. This container droppable gives that empty space a drop target,
-// mirroring BudgetPage's per-bucket `bfolder:<key>` droppable so the existing
-// `bfolder:null` branch in moveElementInArrangement (elementMove.ts) becomes reachable.
-function LooseRowsContainer({ rows, ctx }: { rows: PlanRow[]; ctx: GridCtx }) {
-  const { setNodeRef } = useDroppable({ id: 'bfolder:null' })
-  return (
-    <div ref={setNodeRef} data-testid="plan-loose-drop" className="min-h-2">
-      <PlanRowList rows={rows} ctx={ctx} />
-    </div>
-  )
-}
+const draggableIds = (rows: PlanRow[]): string[] => rows.filter(isDraggableRow).map((r) => r.element.id)
 
 // Uncategorized is a synthetic bucket with no stored position, and an archived row
 // is out of the ordering entirely — neither can be dropped anywhere meaningful.
 const isDraggableRow = (r: PlanRow): boolean => r.element.id !== UNCATEGORIZED_ID && r.element.isArchived === 0
 
-function HiddenRowsNotice({ count, onShow }: { count: number; onShow: () => void }) {
-  const { t } = useTranslation()
-  if (count <= 0) {
-    return null
-  }
-  return (
-    <span className="flex shrink-0 items-center gap-1 text-[11px] font-normal normal-case tracking-normal text-muted-foreground">
-      {t('budgets.page.plan.density.hidden', { count })}
-      <button type="button" className="underline-offset-2 hover:underline" onClick={onShow}>
-        {t('budgets.page.plan.density.show')}
-      </button>
-    </span>
-  )
-}
-
-function SectionHeader({
-  label,
+// A folder-like group of rows: a real folder, or the No folder group that names a
+// section's folder-less rows once the section has folders. Its line folds the rows
+// (`foldKey` is the group's fold key, shared with the Budget view) and is a row of
+// the grid the keyboard selection can land on.
+function FolderGroup({
   foldKey,
-  folded,
-  onToggleFold,
-  hiddenCount,
-  onShow,
-}: {
-  label: string
-  foldKey: string
-  folded: boolean
-  onToggleFold: (key: string) => void
-  hiddenCount: number
-  onShow: () => void
-}) {
-  const { t } = useTranslation()
-  const Chevron = folded ? ChevronRight : ChevronDown
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-x-2 px-2 pt-2 pb-1">
-      <button
-        type="button"
-        className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-        aria-expanded={!folded}
-        title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
-        onClick={() => onToggleFold(foldKey)}
-      >
-        <Chevron className="size-3.5 shrink-0" />
-        {label}
-      </button>
-      <span className="flex items-center gap-1.5">
-        <HiddenRowsNotice count={hiddenCount} onShow={onShow} />
-      </span>
-    </div>
-  )
-}
-
-// A folder with zero members (neutral, per folderSides) still renders — a header and,
-// when expanded, the same empty-folder hint the budget page shows: a folder only
-// disappears if it doesn't exist, not because it currently has no side. section.rows is
-// always the FULL unfiltered member list here (PlanSheet always calls
-// bucketPlanRows(plan, false)), so an empty list means genuinely no members, not
-// "everything hidden by the density toggle".
-function FolderRows({
-  section,
+  name,
   ctx,
-  hideEmpty,
+  sums,
   folded,
-  collapsed,
-  revealed,
   onToggleFold,
-  onReveal,
+  handle,
+  menu,
+  empty,
+  children,
 }: {
-  section: PlanFolderSection
+  foldKey: string
+  name: string
   ctx: GridCtx
-  hideEmpty: boolean
+  /** one per visible month; null for a group with no rows */
+  sums: ReactNode[] | null
   folded: boolean
-  /** a folder drag is in flight: hide every folder's rows so the headers reorder as
-   *  compact blocks. Distinct from `folded`, which is the user's own fold state and
-   *  still drives the chevron and aria-expanded. */
-  collapsed: boolean
-  revealed: boolean
   onToggleFold: (key: string) => void
-  onReveal: () => void
+  handle?: ReactNode
+  menu?: MenuAction[]
+  /** unfolded and holding no rows: the empty-folder hint shows instead of them */
+  empty: boolean
+  children: ReactNode
 }) {
   const { t } = useTranslation()
-  const visibleRows = collapsed ? [] : visibleSectionRows(section.rows, folded, hideEmpty, revealed)
-  const hiddenCount = !folded && hideEmpty && !revealed ? section.rows.filter((r) => r.hidden).length : 0
-  const Chevron = folded ? ChevronRight : ChevronDown
-  const rk = folderRowKey(section.folder.id)
-  const selected = ctx.selection?.rowKey === rk
   return (
-    <div className="mb-1 rounded-md border p-1.5" data-testid={`plan-folder-${section.folder.id}`}>
-      {/* the whole header row is the fold target, not just the name — its own controls
-          (the drag grip, the hidden-rows "Show", the actions menu and its portalled
-          items, whose clicks re-dispatch through this tree) keep their action and
-          don't fold. A fold click also selects the header, so the arrow keys pick up
-          from here (ArrowLeft/ArrowRight fold/unfold, Up/Down walk the rows). */}
-      <div
-        role="row"
-        className="flex cursor-pointer flex-wrap items-center justify-between gap-x-2 pb-1"
-        onClick={(e) => {
-          if ((e.target as HTMLElement).closest(CLICK_ESCAPE_SELECTOR)) {
-            return
-          }
-          ctx.select(rk, -1, e)
-          onToggleFold(section.folder.id)
-        }}
-      >
-        <span
-          role="gridcell"
-          id={cellDomId(rk, -1)}
-          aria-selected={selected}
-          className={`flex min-w-0 items-center gap-1${selectedClass(selected)}`}
-        >
-          {ctx.editMode ? <PlanFolderGrip name={section.folder.name} /> : null}
-          <button
-            type="button"
-            className="flex min-w-0 items-center gap-1.5 truncate px-1.5 text-sm font-medium"
-            aria-expanded={!folded}
-            title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
-            onClick={(e) => {
-              ctx.select(rk, -1, e)
-              onToggleFold(section.folder.id)
-            }}
-          >
-            <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="truncate">{section.folder.name}</span>
-          </button>
-        </span>
-        <span className="flex items-center gap-2">
-          <HiddenRowsNotice count={hiddenCount} onShow={onReveal} />
-          {ctx.editMode ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`budget folder actions ${section.folder.name}`}>
-                  <MoreVertical className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => ctx.onRenameFolder(section.folder)}>{t('common.button.edit.label')}</DropdownMenuItem>
-                {/* same rule as the budget view: only a member-less folder is deletable here —
-                    the server would drop a populated one and strand its members */}
-                {section.rows.length === 0 ? (
-                  <DropdownMenuItem variant="destructive" onSelect={() => ctx.onDeleteFolder(section.folder)}>
-                    {t('budgets.page.budget.structure.action.delete_folder')}
-                  </DropdownMenuItem>
-                ) : null}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-        </span>
+    <div data-testid={`plan-folder-${foldKey}`}>
+      {/* a click anywhere on the line folds it; the keyboard cursor never stops here */}
+      <div role="row" data-plan-line="" className="border-b border-border/60">
+        <FolderLine
+          name={name}
+          folded={folded}
+          onToggle={() => onToggleFold(foldKey)}
+          sums={sums}
+          handle={handle}
+          menu={menu}
+          actionsColumn={false}
+          nameCell={{ role: 'rowheader' }}
+          sumKey={foldKey}
+        />
       </div>
-      {!folded && !collapsed && section.rows.length === 0 ? (
-        <p className="px-2 py-1 text-xs text-muted-foreground">{t('budgets.page.budget.structure.empty_folder.note')}</p>
+      {empty ? (
+        // stacked over blank month cells, so the selected month's tint runs through it
+        <div className="grid">
+          <div className={`${PLAN_LINE} min-h-7 [grid-area:1/1]`}>
+            <span className={PLAN_NAME_COL} />
+            <FigureCells cells={ctx.visibleMonths.map(() => null)} />
+          </div>
+          {/* the text sits on the page colour so the month lines stop behind it */}
+          <p className={`${ROW_INDENT['in-folder']} self-center px-2 py-1 text-xs text-muted-foreground [grid-area:1/1]`}>
+            <span className="relative bg-background pr-1">{t('budgets.page.budget.structure.empty_folder.note')}</span>
+          </p>
+        </div>
       ) : (
-        <PlanRowList rows={visibleRows} ctx={ctx} />
+        children
       )}
     </div>
   )
 }
 
-/** the totals lines that drill down to a transaction list: the click opens the
- *  month's list of transfers that crossed the budget boundary. */
-type TotalsLink = 'transfers'
-
-interface TotalsRowSpec {
-  key: 'income' | 'expenses' | 'transfers' | 'savings'
-  labelKey: string
-  value: (t: PlanMonthTotals) => string
-  link?: TotalsLink
-  /** a signed line: negatives render destructive, like the Balance row */
-  signed?: boolean
-}
-
-// Uncategorized is NOT a totals line: it is an element row inside the income and
-// expense bands (see the uncategorized rows those sections render), and its actual
-// is already carried by the Income/Expenses lines here. Net is gone too — the
-// Balance row below chains on effectiveNet, so it says the same thing one row down.
-const TOTALS_ROWS: TotalsRowSpec[] = [
-  { key: 'income', labelKey: 'budgets.page.plan.totals.income', value: (t) => t.effectiveIncome },
-  { key: 'expenses', labelKey: 'budgets.page.plan.totals.expenses', value: (t) => t.effectiveExpense },
-  { key: 'transfers', labelKey: 'budgets.page.plan.totals.transfers', value: (t) => t.transfersNet, link: 'transfers', signed: true },
-]
-
-// only listed while the budget has savings rows, so a budget without them keeps
-// today's totals block exactly
-const SAVINGS_TOTALS_ROW: TotalsRowSpec = { key: 'savings', labelKey: 'budgets.page.plan.totals.savings', value: (t) => t.effectiveSavings }
-
-function PlanTotals({
-  visibleMonths,
-  monthIndex,
-  gridCols,
-  totals,
-  currency,
-  showSavings,
-  onLinkClick,
+// A folder with zero members (neutral, per folderSides) still renders — its line and,
+// when expanded, the same empty-folder hint the budget view shows: a folder only
+// disappears if it doesn't exist, not because it currently has no side.
+function FolderRows({
+  section,
+  ctx,
+  sums,
+  folded,
+  collapsed,
+  onToggleFold,
+  menu,
+  indicator,
 }: {
-  visibleMonths: string[]
-  monthIndex: (m: string) => number
-  gridCols: string
-  totals: PlanMonthTotals[]
-  currency: CurrencyDto | undefined
-  showSavings: boolean
-  onLinkClick: (link: TotalsLink, month: string) => void
+  section: PlanFolderSection
+  ctx: GridCtx
+  /** one per visible month; null for a folder with no rows */
+  sums: ReactNode[] | null
+  folded: boolean
+  /** a folder drag is in flight: hide every folder's rows so the lines reorder as
+   *  compact blocks. Distinct from `folded`, which is the user's own fold state and
+   *  still drives the chevron and aria-expanded. */
+  collapsed: boolean
+  onToggleFold: (key: string) => void
+  menu?: MenuAction[]
+  indicator: DropIndicator | null
 }) {
-  const { t } = useTranslation()
-  const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
-  const specs = showSavings ? [...TOTALS_ROWS, SAVINGS_TOTALS_ROW] : TOTALS_ROWS
+  const visibleRows = collapsed || folded ? [] : section.rows
   return (
-    <div role="rowgroup" className="mt-2 flex flex-col border-t" data-testid="plan-totals">
-      {specs.map((spec) => (
-        <Fragment key={spec.key}>
-          <div role="row" className="grid items-center gap-1 px-2 py-1" style={{ gridTemplateColumns: gridCols }}>
-            <span className="truncate text-xs font-medium text-muted-foreground">{t(spec.labelKey)}</span>
-            {visibleMonths.map((m, i) => {
-              const idx = monthIndex(m)
-              const row = idx >= 0 ? totals[idx] : undefined
-              const value = row ? spec.value(row) : undefined
-              const negative = spec.signed && value !== undefined && cmp(value, '0') < 0
-              const tone = negative ? 'text-destructive' : ''
-              // a zero has nothing to list, so it stays plain text — except a
-              // transfers net that only cancels out (in == out != 0) still has rows
-              const linkable =
-                spec.link && row && value !== undefined
-                  ? spec.link === 'transfers'
-                    ? !(isZero(row.transfersIn) && isZero(row.transfersOut))
-                    : !isZero(value)
-                  : false
-              const title =
-                spec.link === 'transfers' && row
-                  ? `${t('budgets.page.plan.totals.transfers_tooltip', { in: fmt(row.transfersIn), out: fmt(row.transfersOut) })}. ${t('budgets.page.plan.totals.show_transactions')}`
-                  : t('budgets.page.plan.totals.show_transactions')
-              return (
-                <div key={m} data-col={i} className="flex items-center justify-end px-2 py-1">
-                  {linkable ? (
-                    <button
-                      type="button"
-                      title={title}
-                      aria-label={`transactions ${t(spec.labelKey)} ${m}`}
-                      data-testid={`plan-totals-${spec.key}-link-${i}`}
-                      className={`text-sm tabular-nums underline-offset-2 hover:underline ${tone}`}
-                      onClick={() => onLinkClick(spec.link!, m)}
-                    >
-                      {fmt(value!)}
-                    </button>
-                  ) : (
-                    <span className={`text-sm ${tone}`} data-testid={`plan-totals-${spec.key}-${i}`}>
-                      {value !== undefined ? fmt(value) : '—'}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-            <span />
-          </div>
-        </Fragment>
-      ))}
-    </div>
-  )
-}
-
-function PlanBalanceLine({
-  label,
-  testIdPrefix,
-  values,
-  visibleMonths,
-  monthIndex,
-  gridCols,
-  currency,
-  cur,
-}: {
-  label: string
-  testIdPrefix: string
-  values: string[]
-  visibleMonths: string[]
-  monthIndex: (m: string) => number
-  gridCols: string
-  currency: CurrencyDto | undefined
-  cur: string
-}) {
-  return (
-    <div role="row" className="grid items-center gap-1 px-2 py-1.5" style={{ gridTemplateColumns: gridCols }}>
-      <span className="truncate text-xs font-semibold">{label}</span>
-      {visibleMonths.map((m, i) => {
-        const idx = monthIndex(m)
-        const value = idx >= 0 ? values[idx] : undefined
-        const negative = value !== undefined && cmp(value, '0') < 0
-        return (
-          <div
-            key={m}
-            data-col={i}
-            data-testid={`${testIdPrefix}-${i}`}
-            className={`px-2 py-1 text-right text-sm ${m === cur ? 'font-semibold' : ''} ${negative ? 'text-destructive' : ''}`}
-          >
-            {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
-          </div>
-        )
-      })}
-      <span />
-    </div>
-  )
-}
-
-// With savings rows the combined balance splits in two: Balance becomes the
-// everyday part and Savings balance the rest, so the pair always sums to the
-// single Balance a budget without savings shows.
-function PlanBalanceRow({
-  visibleMonths,
-  monthIndex,
-  gridCols,
-  balance,
-  savingsBalance,
-  currency,
-  cur,
-}: {
-  visibleMonths: string[]
-  monthIndex: (m: string) => number
-  gridCols: string
-  balance: string[]
-  savingsBalance: string[] | null
-  currency: CurrencyDto | undefined
-  cur: string
-}) {
-  const { t } = useTranslation()
-  const shared = { visibleMonths, monthIndex, gridCols, currency, cur }
-  return (
-    <div
-      role="rowgroup"
-      className="sticky bottom-0 z-10 border-t bg-background"
-      data-testid="plan-balance-row"
+    <FolderGroup
+      foldKey={section.folder.id}
+      name={section.folder.name}
+      ctx={ctx}
+      sums={sums}
+      folded={folded}
+      onToggleFold={onToggleFold}
+      handle={ctx.drag ? <FolderGrip name={section.folder.name} /> : null}
+      menu={menu}
+      empty={!folded && !collapsed && section.rows.length === 0}
     >
-      <PlanBalanceLine label={t('budgets.page.plan.totals.balance')} testIdPrefix="plan-balance" values={balance} {...shared} />
-      {savingsBalance ? (
-        <PlanBalanceLine
-          label={t('budgets.page.plan.totals.savings_balance')}
-          testIdPrefix="plan-savings-balance"
-          values={savingsBalance}
-          {...shared}
-        />
-      ) : null}
-    </div>
+      <PlanRowList rows={visibleRows} ctx={ctx} indicator={indicator} />
+    </FolderGroup>
   )
 }
 
-
-// Same flattening the renderer walks (folders -> loose, income then neutral folders
-// then expense, then archived), so Up/Down can never reach a row that isn't on
-// screen. A folder contributes its header (a selectable row of its own, so it can be
-// folded/unfolded by keyboard) followed by its visible members. Only root element
-// rows — the ones a limit can be set on — are in the order: an expanded envelope's
+// Same flattening the renderer walks (folders -> loose, income then savings then
+// neutral folders then expense, then archived), so Up/Down can never reach a row that isn't on
+// screen. Section and folder lines are no stops; a folder contributes its visible
+// members only. Only root element rows — the ones a limit can be set on — are in the order: an expanded envelope's
 // children are read-only breakdown lines and are stepped over.
-type FlatRow = { kind: 'element'; rowKey: string; el: PlanElementDto } | { kind: 'folder'; rowKey: string; folderId: Id }
+type FlatRow = { kind: 'element'; rowKey: string; el: PlanElementDto }
 
-function buildFlatRows(
-  rows: PlanRows,
-  savingsRows: PlanRow[],
-  hideEmpty: boolean,
-  revealedSections: Set<string>,
-  folded: (key: string) => boolean,
-): FlatRow[] {
+// The open in-cell editor, with what its commit needs captured when it opened: the
+// window can move before the commit lands (Tab at the last column pages it), and the
+// write must go to the month that was being edited.
+interface CellEditState extends PlanCellEdit {
+  elementId: Id
+  monthIndex: number
+  /** the plan as it stood when editing began; committing it unchanged writes nothing */
+  planned: string
+}
+
+const unsetPlan = (planned: string): boolean => planned === '' || isZero(planned)
+
+// The Budget view's fold keys for a section's No folder group, so a fold carries over
+const NO_FOLDER_KEY: Record<'income' | 'expense', string> = { income: '__income__no_folder__', expense: '__no_folder__' }
+
+/** a section names its folder-less rows only next to real folders, as the Budget view
+ *  does; while one of its rows drags, an empty No folder shows too: the drop target
+ *  for taking a row out of its folder or envelope */
+const hasNoFolderLine = (band: PlanRows['income'], rowDragging: boolean): boolean =>
+  band.folders.length > 0 && (band.loose.length > 0 || rowDragging)
+
+/** the section a drag runs in: each has its own DndContext */
+type DragSide = 'income' | 'savings' | 'neutral' | 'expense'
+
+interface DragState {
+  /** a row or category drags in this section */
+  rowIn: DragSide | null
+  /** a folder drags in this section: its folders show their lines only */
+  folderIn: DragSide | null
+}
+
+function buildFlatRows(rows: PlanRows, savingsRows: PlanRow[], folded: (key: string) => boolean, drag: DragState): FlatRow[] {
   const flatRows: FlatRow[] = []
   const pushRow = (r: PlanRow) => {
     flatRows.push({ kind: 'element', rowKey: rowKey(r), el: r.element })
   }
-  const pushFolder = (f: PlanFolderSection) => {
-    flatRows.push({ kind: 'folder', rowKey: folderRowKey(f.folder.id), folderId: f.folder.id })
-    visibleSectionRows(f.rows, folded(f.folder.id), hideEmpty, revealedSections.has(f.folder.id)).forEach(pushRow)
-  }
-  const incomeFolded = folded('income')
-  if (!incomeFolded) {
-    rows.income.folders.forEach(pushFolder)
-    visibleSectionRows(rows.income.loose, incomeFolded, hideEmpty, revealedSections.has('income')).forEach(pushRow)
-    if (rows.income.uncategorized) {
-      pushRow(rows.income.uncategorized)
+  // section and folder lines are not stops: the cursor walks rows, and a folded
+  // group's rows are skipped
+  const pushGroup = (foldKey: string, groupRows: PlanRow[], side: DragSide) => {
+    if (!folded(foldKey) && drag.folderIn !== side) {
+      groupRows.forEach(pushRow)
     }
   }
-  rows.neutral.forEach(pushFolder)
-  const expenseFolded = folded('expense')
-  if (!expenseFolded) {
-    rows.expense.folders.forEach(pushFolder)
-    visibleSectionRows(rows.expense.loose, expenseFolded, hideEmpty, revealedSections.has('expense')).forEach(pushRow)
-    if (rows.expense.uncategorized) {
-      pushRow(rows.expense.uncategorized)
+  const pushSide = (side: 'income' | 'expense') => {
+    const band = rows[side]
+    band.folders.forEach((f) => pushGroup(f.folder.id, f.rows, side))
+    if (hasNoFolderLine(band, drag.rowIn === side)) {
+      pushGroup(NO_FOLDER_KEY[side], band.loose, side)
+    } else {
+      band.loose.forEach(pushRow)
     }
+    if (band.uncategorized) {
+      pushRow(band.uncategorized)
+    }
+  }
+  if (!folded('income')) {
+    pushSide('income')
   }
   if (!folded('savings')) {
     savingsRows.forEach(pushRow)
+  }
+  rows.neutral.forEach((f) => pushGroup(f.folder.id, f.rows, 'neutral'))
+  if (!folded('expense')) {
+    pushSide('expense')
   }
   if (rows.archived.length > 0 && !folded('archived')) {
     rows.archived.forEach(pushRow)
@@ -1123,90 +364,45 @@ function buildFlatRows(
   return flatRows
 }
 
-// Each band gets its own DndContext, and that is what enforces the two hard
-// constraints: an element's side comes from its type and a folder's from its
-// members, so neither may cross the divider. A drag started in one band simply
-// has no droppable in the other — the invalid drop cannot be expressed, rather
-// than being rejected after the fact (the server would answer
-// CodeBudgetFolderSideMixed for elements, and order-folders persists position
-// only, so a cross-band folder move would silently snap back on reload).
-function PlanBand({
-  editMode,
-  sensors,
-  folderIds,
-  onDragStart,
-  onDragEnd,
-  onDragCancel,
-  children,
-}: {
-  editMode: boolean
-  sensors: ReturnType<typeof useSensors>
-  folderIds: string[]
-  onDragStart: (event: DragStartEvent) => void
-  onDragEnd: (event: DragEndEvent) => void
-  onDragCancel: () => void
-  children: ReactNode
-}) {
-  if (!editMode) {
-    return <>{children}</>
-  }
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={preferRowCollisions}
-      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onDragCancel={onDragCancel}
-    >
-      <SortableContext items={folderIds.map((id) => `pfolder:${id}`)} strategy={verticalListSortingStrategy}>
-        {children}
-      </SortableContext>
-    </DndContext>
-  )
-}
-
-export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetProps) {
+export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings, viewSwitch }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
   const [sheetCellTarget, setSheetCellTarget] = useState<PlanLimitTarget | null>(null)
   const openSheet = useCallback((target: PlanLimitTarget) => setSheetCellTarget(target), [])
+  // a dropped order, held until the refetched plan replaces it so nothing snaps back
   const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
-  const [draggingFolder, setDraggingFolder] = useState(false)
-  const [moveFolderTarget, setMoveFolderTarget] = useState<PlanElementDto | null>(null)
-  const [currencyTarget, setCurrencyTarget] = useState<PlanElementDto | null>(null)
-  const [createFolderOpen, setCreateFolderOpen] = useState(false)
-  const [envelopeTarget, setEnvelopeTarget] = useState<PlanElementDto | null>(null)
-  const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<PlanElementDto | null>(null)
-  const [categoryTarget, setCategoryTarget] = useState<Pick<CategoryDto, 'id' | 'name' | 'type' | 'icon'> | null>(null)
-  const [tagTarget, setTagTarget] = useState<TagDialogItem | null>(null)
-  const [renameFolderTarget, setRenameFolderTarget] = useState<BudgetFolderDto | null>(null)
-  const [deleteFolderTarget, setDeleteFolderTarget] = useState<BudgetFolderDto | null>(null)
+  // a category on its way into or out of an envelope: hidden until the refetched
+  // plan shows it in its new place
+  const [pendingMemberId, setPendingMemberId] = useState<string | null>(null)
+  // the row or category being dragged, the folder being dragged, and the section the
+  // drag runs in
+  const [dragActiveId, setDragActiveId] = useState<string | null>(null)
+  const [draggingFolderId, setDraggingFolderId] = useState<Id | null>(null)
+  const [dragSide, setDragSide] = useState<DragSide | null>(null)
+  // where the dragged row or category would land: the insertion line
+  const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null)
+  const dragState: DragState = useMemo(
+    () => ({ rowIn: dragActiveId !== null ? dragSide : null, folderIn: draggingFolderId !== null ? dragSide : null }),
+    [dragActiveId, draggingFolderId, dragSide],
+  )
   // the open comment thread: anchored to its cell on desktop/tablet, a sheet on a phone
   const [commentsDialogTarget, setCommentsDialogTarget] = useState<(PlanLimitTarget & { anchor: HTMLElement | null }) | null>(null)
   const commentsOpen = commentsDialogTarget !== null
-  // A modal opened from the keyboard (Enter on the name cell) has no trigger for
-  // Radix to hand focus back to, so on close focus would fall to <body> and the
+  // A modal opened from the grid (an actual or a Transfers figure) has no trigger
+  // Radix can hand focus back to — the keyboard has none, and a figure button
+  // re-renders away — so on close focus would fall to <body> and the
   // arrow keys go dead. Remember that the grid opened it and reclaim focus once it
   // closes; mouse-opened dialogs (row menu) leave focus alone as before.
   const editorFromGrid = useRef(false)
   const moveElement = useMoveElement()
   const orderFolders = useMoveBudgetFolder()
-  const changeCurrency = useChangeElementCurrency()
-  const createFolder = useCreateBudgetFolder()
-  const updateEnvelope = useUpdateEnvelope()
-  const deleteEnvelope = useDeleteEnvelope()
-  const updateCategory = useUpdateCategory()
-  const updateFolder = useUpdateBudgetFolder()
-  const deleteFolder = useDeleteBudgetFolder()
+  const moveIntoEnvelope = useMoveIntoEnvelope()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
-  const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
-  const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
   // the totals drill-down: which bucket, and which column's month
   const [transactionsTarget, setTransactionsTarget] = useState<{ target: BudgetTransactionsTarget; month: string } | null>(null)
   const openTotalsTransactions = useCallback(
-    (_link: TotalsLink, month: string) => {
+    (month: string) => {
       const target: BudgetTransactionsTarget = {
         id: TRANSFERS_TARGET_ID,
         type: 'transfers',
@@ -1214,6 +410,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         icon: 'sync_alt',
         currencyId: null,
       }
+      editorFromGrid.current = true
       setTransactionsTarget({ target, month })
     },
     [t],
@@ -1243,32 +440,50 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     observerRef.current = ro
   }, [])
   useEffect(() => () => observerRef.current?.disconnect(), [])
-  const editorOpen = envelopeTarget !== null || categoryTarget !== null || tagTarget !== null || commentsDialogTarget !== null
-  useEffect(() => {
-    if (!editorOpen && editorFromGrid.current) {
-      editorFromGrid.current = false
-      containerRef.current?.focus()
-    }
-  }, [editorOpen])
   // ResizeObserver never fires in jsdom, so width stays 0 there — the same
   // floor a real narrow viewport would collapse to (planVisibleCount<3 -> 1).
-  const visible = width > 0 ? planVisibleCount(width, editMode) : 3
+  // the name column's width: the one being dragged, else the remembered one. Months
+  // re-fit to the remembered width only, so they don't come and go mid-drag.
+  const storedNameWidth = useBudgetPeriodStore((s) => s.planNameWidth)
+  const setPlanNameWidth = useBudgetPeriodStore((s) => s.setPlanNameWidth)
+  const [dragNameWidth, setDragNameWidth] = useState<number | null>(null)
+  const nameResize = useRef<{ startX: number; startWidth: number } | null>(null)
+  const committedNameWidth = storedNameWidth ?? PLAN_NAME_COL_PX
+  const nameWidth = dragNameWidth ?? committedNameWidth
+  const commitNameWidth = (px: number | null) => {
+    setPlanNameWidth(px === null ? null : clampPlanNameWidth(px))
+    trackEvent(METRICS.BUDGET_PLAN_RESIZE_NAME_COLUMN)
+  }
+  const visible = width > 0 ? planVisibleCount(width, committedNameWidth) : 3
 
   const startedAt = budget.meta.startedAt
-  const persisted = useBudgetPeriodStore((s) => s.planFirstMonth)
-  const setPlanFirstMonth = useBudgetPeriodStore((s) => s.setPlanFirstMonth)
-  const hideEmpty = useBudgetPeriodStore((s) => s.planHideEmpty)
+  const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
+  const stepPeriod = useBudgetPeriodStore((s) => s.stepPeriod)
   const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
   const folded = useCallback((key: string): boolean => !!planFolds[key], [planFolds])
-  const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
-  const unfoldedElements = useBudgetPeriodStore((s) => s.unfoldedElements)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
+  // Desktop: every selected cell once a drag, Shift+click or Ctrl/⌘+click takes in
+  // more than the active one — empty while one cell is selected. It is only read,
+  // never written through: typing, Delete, paste and fill act on the active cell.
+  const [picked, setPickedCells] = useState<PlanCellRef[]>([])
+  const pickedRef = useRef<PlanCellRef[]>([])
+  const setPicked = useCallback((next: PlanCellRef[]) => {
+    const multi = next.length > 1 ? next : []
+    if (pickedRef.current.length === 0 && multi.length > 0) {
+      trackEvent(METRICS.BUDGET_PLAN_SELECT_CELLS)
+    }
+    pickedRef.current = multi
+    setPickedCells(multi)
+  }, [])
+  const dragSelectFrom = useRef<PlanCellRef | null>(null)
+  const [dragSelecting, setDragSelecting] = useState(false)
   const [fillDrag, setFillDrag] = useState<FillDrag | null>(null)
+  const [editing, setEditing] = useState<CellEditState | null>(null)
 
   // Keyboard navigation moves the selection without moving the scroller, so the
   // cursor walks off screen. Scroll the minimum needed to bring it back, measuring
-  // against the sticky balance row that floats over the scroller's bottom edge.
+  // against the sticky month header and balance row that float over the scroller's edges.
   useEffect(() => {
     const scroller = containerRef.current
     if (!selection || !scroller) {
@@ -1280,26 +495,45 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     }
     const view = scroller.getBoundingClientRect()
     const box = cell.getBoundingClientRect()
+    const header = scroller.querySelector<HTMLElement>('[data-testid="plan-month-header"]')
     const footer = scroller.querySelector<HTMLElement>('[data-testid="plan-balance-row"]')
+    const topEdge = header ? header.getBoundingClientRect().bottom : view.top
     const bottomEdge = footer ? footer.getBoundingClientRect().top : view.bottom
-    if (box.top < view.top) {
-      scroller.scrollTop -= view.top - box.top
+    if (box.top < topEdge) {
+      scroller.scrollTop -= topEdge - box.top
     } else if (box.bottom > bottomEdge) {
       scroller.scrollTop += box.bottom - bottomEdge
     }
   }, [selection])
-  const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt, budget.meta.endedAt)
+  const firstMonth = planWindow(selectedDate, visible, startedAt, budget.meta.endedAt)
   const atStart = firstMonth <= startedAt.slice(0, 7) + '-01'
+  const atEnd = !!budget.meta.endedAt && addMonths(firstMonth, visible - 1) >= budget.meta.endedAt.slice(0, 7) + '-01'
+  // The window is derived from the selected month, and a clamped window (at the start or
+  // end month) does not follow it one to one; pick the selected month that moves the
+  // window itself by one, so the cursor's column lands on the neighbouring month.
+  const shiftWindow = (delta: number) => {
+    const first = addMonths(firstMonth, delta)
+    stepPeriod(monthDiff(selectedDate, visible > 1 ? addMonths(first, 1) : first))
+  }
 
   const { data: plan, isPending, isError, refetch, planKey, fetchFrom } = useBudgetPlan(budget.meta.id, firstMonth, visible)
   const setLimit = usePlanSetLimit(planKey)
   const fillCells = useFillPlannedCells(planKey)
+  const menus = useBudgetLineMenus({ budget, plan, userId, onOpenSettings })
+  const editorOpen = menus.editorOpen || commentsDialogTarget !== null || planLimitTarget !== null || transactionsTarget !== null
+  useEffect(() => {
+    if (!editorOpen && editorFromGrid.current) {
+      editorFromGrid.current = false
+      containerRef.current?.focus()
+    }
+  }, [editorOpen])
   // the plan's OWN window, so both caches cover exactly the same months
   const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(budget.meta.id, fetchFrom, planFetchWindow(firstMonth, visible).months)
 
-  // The optimistic drop order is released only when genuinely fresh plan data arrives:
-  // a refetch yields a new object, so keying on identity hands over in one frame with
-  // no window where the stale server order is rendered.
+  // The optimistic drop (an order, or a category hidden on its way into or out of an
+  // envelope) is released only when genuinely fresh plan data arrives: a refetch yields
+  // a new object, so keying on identity hands over in one frame with no window where
+  // the stale server order is rendered.
   const arrangedFrom = useRef<BudgetPlanDto | null | undefined>(undefined)
   useEffect(() => {
     if (arrangedFrom.current === undefined) {
@@ -1308,23 +542,25 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     if (plan !== arrangedFrom.current) {
       arrangedFrom.current = undefined
       setDragArrangement(null)
+      setPendingMemberId(null)
     }
   }, [plan])
 
   // clicking a cell must land keyboard focus on the grid too, or the arrow keys that
   // follow a click are dead until the user tabs in manually (F2). A cell click also
-  // bubbles from any interactive descendant it contains (the LimitEditor popover
-  // trigger, the row-actions dropdown trigger, the expand chevron) — grabbing grid
+  // bubbles from any interactive descendant it contains (the actual's transactions
+  // link, the row's ⋮ menu trigger, the expand chevron) — grabbing grid
   // focus THEN would yank focus straight back out of the thing that click just opened,
   // so that path is skipped; those controls manage their own focus already, and the
   // grid regains it naturally once they close.
   const select = useCallback((rk: string, col: number, e?: { target: EventTarget | null }) => {
     setSelection({ rowKey: rk, col })
+    setPicked([])
     const target = e?.target as HTMLElement | null | undefined
     if (!target?.closest(CLICK_ESCAPE_SELECTOR)) {
       containerRef.current?.focus()
     }
-  }, [])
+  }, [setPicked])
 
   const commit = useCallback(
     (elementId: Id, month: string, monthIndex: number, amount: string | null) =>
@@ -1333,6 +569,25 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   )
 
   const visibleMonths = useMemo(() => Array.from({ length: visible }, (_, i) => addMonths(firstMonth, i)), [visible, firstMonth])
+  // a stored month outside the budget (before its start, after its end) has no
+  // column to tint
+  // the picked month only anchors the window; the grid marks the current month instead
+  const selectedCol = visibleMonths.indexOf(selectedDate)
+  const cur = currentMonth()
+  // An editor whose month left the window (a resize, the strip) closes rather than
+  // reappearing, stale, when that month scrolls back in. Leaving its cell by click or
+  // key has already committed it.
+  useEffect(() => {
+    if (editing && !visibleMonths.includes(editing.month)) {
+      setEditing(null)
+    }
+  }, [editing, visibleMonths])
+  // a multi-selection names columns, which page away under it; a touch layout has none
+  useEffect(() => {
+    setPicked([])
+  }, [visibleMonths, isCompact, setPicked])
+  // the selected cell's month column, marked down the whole grid
+  const crosshairCol = selection ? selection.col : -1
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
   // The uncategorized row's synthetic id names no real element the server would
   // accept, so it gets no comment entry point at all — guarded here too since the
@@ -1353,55 +608,36 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     [visibleMonths],
   )
   const openTransactions = useCallback(
-    (el: PlanElementDto, month: string) =>
+    (el: PlanElementDto, month: string) => {
+      editorFromGrid.current = true
       setTransactionsTarget({
         target: { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId },
         month,
-      }),
+      })
+    },
     [t],
   )
-  const cur = currentMonth()
   // same wording as the budget view's period strip
   const monthLabel = useMemo(() => {
     const label = periodLabeler(i18n.language)
     return (m: string) => label(monthDate(m))
   }, [i18n.language])
-  // A trailing track closes every row with the element's currency and, in edit mode,
-  // its actions menu — the budget table's geometry. Every grid consumer (rows, month
-  // header, totals, balance) shares this string, so they gain the column together and
-  // stay aligned.
-  const tailPx = PLAN_CURRENCY_COL_PX + (editMode ? PLAN_ACTIONS_COL_PX : 0)
-  const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr)) ${tailPx}px`
-  const canEdit = canEditBudget(budget.meta, userId)
-  const { data: accounts = [] } = useAccounts()
-  const openAccountModal = useUiStore((s) => s.openAccountModal)
-  const sheetEdit = sheetCellTarget ? elementEditAccess(sheetCellTarget.el, userId, canEdit && budget.meta.isArchived === 0, accounts) : null
-  // the sheet's pencil: the element's own edit dialog replaces the sheet
-  const editFromSheet = (el: PlanElementDto) => {
-    setSheetCellTarget(null)
-    if (isEnvelopeType(el.type)) {
-      setEnvelopeTarget(el)
-    } else if (el.type === BudgetElementType.SAVINGS) {
-      const account = accounts.find((a) => a.id === el.id)
-      if (account) {
-        openAccountModal({ account })
-      }
-    } else if (el.type === BudgetElementType.TAG) {
-      setTagTarget({ id: el.id, name: el.name, kind: 'tag', icon: el.icon })
-    } else {
-      setCategoryTarget({ id: el.id, name: el.name, icon: el.icon, type: isIncomeType(el.type) ? 'income' : 'expense' })
-    }
-  }
-  const canDeleteEnvelopes = canDeleteEnvelope(budget.meta, userId)
-  const folderNameValidator = (value: string): string | null => {
-    if (!isNotEmpty(value)) {
-      return t('budgets.form.budget.folder_name.validation.required_field')
-    }
-    if (!isValidBudgetFolderName(value)) {
-      return t('budgets.form.budget.folder_name.validation.invalid_name')
-    }
-    return null
-  }
+  const layout = useMemo(
+    () => ({ kind: 'plan' as const, cols: visible, selectedCol: -1, crosshairCol, months: visibleMonths, monthLabels: visibleMonths.map(monthLabel) }),
+    [visible, crosshairCol, visibleMonths, monthLabel],
+  )
+  const sheetPlanTarget = sheetCellTarget ? { kind: 'plan' as const, cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null
+  const sheetEdit = sheetPlanTarget ? menus.editAccess(sheetPlanTarget) : null
+  // With a mouse every line's ⋮ menu shows on hover; a touch screen has no hover, so
+  // there they show on every line while edit mode is on, and not at all without it.
+  const lineControls: LineControls | null = isCompact ? (editMode ? 'always' : null) : 'hover'
+  const hoverMenus = lineControls !== null
+  // grips show with the menus, for whoever may arrange the budget; an archived
+  // budget is read-only whatever the role
+  const dragEnabled = hoverMenus && budget.meta.isArchived === 0 && canConfigureBudget(budget.meta, userId)
+  const selectedIndex = monthIndex(selectedDate)
+  const rowMenu = hoverMenus ? (el: PlanElementDto) => menus.planRowMenu(el, selectedIndex) : undefined
+  const childMenu = hoverMenus ? menus.envelopeChildMenu : undefined
 
   const fillStart = useCallback(
     (rk: string, el: PlanElementDto, col: number, e: ReactPointerEvent<HTMLElement>) => {
@@ -1409,9 +645,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       e.currentTarget.setPointerCapture(e.pointerId)
       e.preventDefault()
       // no stopPropagation here: the native pointerdown must still reach Radix's
-      // document-level DismissableLayer listener, so an open LimitEditor popover
-      // on this cell dismisses through the fill drag, same as any other outside
-      // click. Cell-selection clicks are guarded separately by the handle's own
+      // document-level DismissableLayer listener, so an open popover or menu
+      // dismisses through the fill drag, same as any other outside click. Cell-selection clicks are guarded separately by the handle's own
       // onClick stopPropagation below.
       const month = visibleMonths[col]
       const idx = month !== undefined ? monthIndex(month) : -1
@@ -1454,18 +689,24 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
 
   const fillCancel = useCallback(() => setFillDrag(null), [])
 
-  // always the unfiltered structure (per-row `hidden` flags, nothing dropped) — hideEmpty
-  // is applied per SECTION at render time so each header's reveal is independent
   const rows = useMemo(() => {
     if (!plan) {
       return null
     }
-    if (!dragArrangement) {
-      return bucketPlanRows(plan, false)
+    if (!dragArrangement && !pendingMemberId) {
+      return bucketPlanRows(plan)
     }
-    const structure = { ...plan.structure, elements: placeElements(plan.structure.elements, dragArrangement) }
-    return bucketPlanRows({ ...plan, structure }, false)
-  }, [plan, dragArrangement])
+    let elements = plan.structure.elements
+    if (pendingMemberId) {
+      elements = elements
+        .filter((el) => el.id !== pendingMemberId)
+        .map((el) => (el.children.some((c) => c.id === pendingMemberId) ? { ...el, children: el.children.filter((c) => c.id !== pendingMemberId) } : el))
+    }
+    if (dragArrangement) {
+      elements = placeElements(elements, dragArrangement)
+    }
+    return bucketPlanRows({ ...plan, structure: { ...plan.structure, elements } })
+  }, [plan, dragArrangement, pendingMemberId])
 
   // Live savings rows by position, then any deleted account's rows: those stay in
   // this section as read-only history rather than joining the Archived band. A
@@ -1482,7 +723,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     return [
       ...placed.filter((el) => el.isArchived === 0).sort(byPosition),
       ...placed.filter((el) => el.isArchived !== 0).sort(byPosition),
-    ].map((element) => ({ element, hidden: false }))
+    ].map((element) => ({ element }))
   }, [plan, dragArrangement])
 
   // Rows that earn their place per VISIBLE window, not per fetched cells (the fetch
@@ -1535,34 +776,175 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     [balance, savingsBalance],
   )
   const flatRows = useMemo(
-    () => (shownRows ? buildFlatRows(shownRows, savingsRows, hideEmpty, revealedSections, folded) : []),
-    [shownRows, savingsRows, hideEmpty, revealedSections, folded],
+    () => (shownRows ? buildFlatRows(shownRows, savingsRows, folded, dragState) : []),
+    [shownRows, savingsRows, folded, dragState],
   )
-  const folderSideMap = useMemo(() => (plan ? folderSides(plan) : new Map<Id, FolderSide>()), [plan])
 
-  const ctx: GridCtx | null = useMemo(() => {
+  // Touch keeps the item sheet (and its amount dialog); a read-only cell never opens an editor.
+  const startEdit = useCallback(
+    (rk: string, col: number, opts: { replace: boolean; text?: string }) => {
+      const entry = flatRows.find((r) => r.rowKey === rk)
+      const month = visibleMonths[col]
+      if (isCompact || entry?.kind !== 'element' || month === undefined) {
+        return
+      }
+      const idx = monthIndex(month)
+      if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
+        return
+      }
+      const planned = entry.el.cells[idx]?.planned ?? ''
+      const initial = opts.replace ? (opts.text ?? '') : unsetPlan(planned) ? '' : normalizeNumber(planned)
+      setSelection({ rowKey: rk, col })
+      setPicked([])
+      // a second double-click inside an open editor must not reset what was typed
+      setEditing((cur) =>
+        cur && cur.rowKey === rk && cur.month === month
+          ? cur
+          : { rowKey: rk, col, month, initial, replace: opts.replace, elementId: entry.el.id, monthIndex: idx, planned },
+      )
+    },
+    [flatRows, visibleMonths, isCompact, monthIndex, budget.meta, userId, setPicked],
+  )
+  // The commit/cancel bodies move the selection with the same rules as the arrow keys,
+  // which live below the loading guard; the grid context gets stable forwarders.
+  const editActions = useRef<{ finish: (raw: string, move: CellMove) => void; cancel: () => void } | null>(null)
+  const finishEdit = useCallback((raw: string, move: CellMove) => editActions.current?.finish(raw, move), [])
+  const cancelEdit = useCallback(() => editActions.current?.cancel(), [])
+  // Per-month sums of every section and folder line, keyed by fold key. Memoized
+  // like the totals: they convert every cell, and the arrow keys re-render the grid.
+  const groupSums = useMemo(() => {
+    const sums = new Map<string, GroupSums>()
+    if (!shownRows || !ex) {
+      return sums
+    }
+    const sumOf = (rows: PlanRow[]) => planGroupSums(rows.map((r) => r.element), visibleMonths, monthIndex, ex)
+    for (const side of ['income', 'expense'] as const) {
+      const band = shownRows[side]
+      for (const f of band.folders) {
+        sums.set(f.folder.id, sumOf(f.rows))
+      }
+      sums.set(NO_FOLDER_KEY[side], sumOf(band.loose))
+      sums.set(side, sumOf([...band.folders.flatMap((f) => f.rows), ...band.loose, ...(band.uncategorized ? [band.uncategorized] : [])]))
+    }
+    sums.set('savings', planGroupSums(savingsRows.map((r) => r.element), visibleMonths, monthIndex, ex, 'balance'))
+    sums.set('archived', sumOf(shownRows.archived))
+    return sums
+  }, [shownRows, savingsRows, visibleMonths, monthIndex, ex])
+
+  const rowOrder = useMemo(() => flatRows.map((r) => r.rowKey), [flatRows])
+  // Excel's model: Shift+click spans the rectangle from the active cell, which stays
+  // active; Ctrl/⌘+click adds a cell (it becomes the active one) or takes one out.
+  const pick = useCallback(
+    (rk: string, col: number, mode: 'range' | 'toggle') => {
+      if (isCompact) {
+        return
+      }
+      containerRef.current?.focus()
+      const cell = { rowKey: rk, col }
+      const anchor = selection && rowOrder.includes(selection.rowKey) ? selection : null
+      if (!anchor) {
+        setSelection(cell)
+        setPicked([])
+        return
+      }
+      if (mode === 'range') {
+        setPicked(planCellRange(rowOrder, anchor, cell))
+        return
+      }
+      const base = picked.length > 0 ? picked : [anchor]
+      const same = (c: PlanCellRef) => c.rowKey === rk && c.col === col
+      if (!base.some(same)) {
+        setSelection(cell)
+        setPicked([...base, cell])
+        return
+      }
+      const next = base.filter((c) => !same(c))
+      if (same(anchor) && next.length > 0) {
+        setSelection(next[next.length - 1])
+      }
+      setPicked(next)
+    },
+    [isCompact, selection, rowOrder, picked, setPicked],
+  )
+  // A plain press on a month cell arms the drag; it starts selecting only once the
+  // pointer reaches another cell, so a click stays a click. The release can land
+  // anywhere, so the window hears it.
+  const dragSelectStart = useCallback((rk: string, col: number) => {
+    dragSelectFrom.current = { rowKey: rk, col }
+    const end = () => {
+      dragSelectFrom.current = null
+      setDragSelecting(false)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+    }
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+  }, [])
+  const dragSelectOver = useCallback(
+    (rk: string, col: number, buttons: number) => {
+      const from = dragSelectFrom.current
+      if (!from) {
+        return
+      }
+      // released outside the window: no pointerup ever reached it
+      if (buttons === 0) {
+        dragSelectFrom.current = null
+        setDragSelecting(false)
+        return
+      }
+      setDragSelecting(true)
+      window.getSelection()?.removeAllRanges()
+      setSelection(from)
+      setPicked(planCellRange(rowOrder, from, { rowKey: rk, col }))
+      containerRef.current?.focus()
+    },
+    [rowOrder, setPicked],
+  )
+  // the picked cells still on screen: a fold can hide a row of them
+  const shownPicked = useMemo(() => picked.filter((c) => c.col < visible && rowOrder.includes(c.rowKey)), [picked, visible, rowOrder])
+  const pickedSet = useMemo(
+    () => (shownPicked.length > 1 ? new Set(shownPicked.map((c) => pickedKey(c.rowKey, c.col))) : null),
+    [shownPicked],
+  )
+  const selectionSum = useMemo(() => {
+    if (!ex || shownPicked.length < 2) {
+      return null
+    }
+    const els = new Map(flatRows.map((r) => [r.rowKey, r.el]))
+    const cells = shownPicked.flatMap((c) => {
+      const el = els.get(c.rowKey)
+      const month = visibleMonths[c.col]
+      return el && month !== undefined ? [{ el, month }] : []
+    })
+    return planSelectionSum(cells, monthIndex, ex, cur)
+  }, [ex, shownPicked, flatRows, visibleMonths, monthIndex, cur])
+
+  const gridCtx: GridCtx | null = useMemo(() => {
     if (!plan) {
       return null
     }
     return {
       visibleMonths,
       monthIndex,
-      cur,
+      selected: cur,
+      selectedCol: -1,
+      crosshairCol,
       currencies,
-      gridCols,
+      baseCurrencyId: budget.meta.currencyId,
       meta: budget.meta,
       userId,
       isCompact,
       monthLabel,
-      commit,
       openSheet,
+      openTransactions,
       commentsByCell,
-      commentsTruncated,
       openComments,
       commentsOpen,
-      canEdit,
       selection,
       select,
+      picked: pickedSet,
+      pick,
+      dragSelect: { active: dragSelecting, start: dragSelectStart, over: dragSelectOver },
       fill: {
         active: fillDrag ? { rowKey: fillDrag.rowKey, startCol: fillDrag.startCol, targetCol: fillDrag.targetCol } : null,
         start: fillStart,
@@ -1571,42 +953,53 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         cancel: fillCancel,
       },
       editMode,
-      onChangeCurrency: setCurrencyTarget,
-      onMoveToFolder: setMoveFolderTarget,
-      onEditEnvelope: setEnvelopeTarget,
-      onDeleteEnvelope: setDeleteEnvelopeTarget,
-      canDeleteEnvelopes,
-      onRenameFolder: setRenameFolderTarget,
-      onDeleteFolder: setDeleteFolderTarget,
+      drag: dragEnabled,
+      dragActiveId,
+      editing,
+      startEdit,
+      finishEdit,
+      cancelEdit,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     plan,
     visibleMonths,
     monthIndex,
+    selectedDate,
     cur,
+    crosshairCol,
     currencies,
-    gridCols,
     budget.meta,
     userId,
     isCompact,
     monthLabel,
-    commit,
     commentsByCell,
-    commentsTruncated,
     openComments,
+    openTransactions,
     commentsOpen,
-    canEdit,
     selection,
     select,
+    pickedSet,
+    pick,
+    dragSelecting,
+    dragSelectStart,
+    dragSelectOver,
     fillDrag,
     fillStart,
     fillMove,
     fillEnd,
     fillCancel,
     editMode,
-    canDeleteEnvelopes,
+    dragEnabled,
+    dragActiveId,
+    editing,
+    startEdit,
+    finishEdit,
+    cancelEdit,
   ])
+  // The ⋮ menus read live rights, categories and tags, so they are rebuilt on every
+  // render rather than memoized; moving the selection re-renders the rows anyway.
+  const ctx: GridCtx | null = gridCtx && { ...gridCtx, rowMenu, childMenu }
 
   if (!plan || !shownRows || !ctx || !ex) {
     if (isError) {
@@ -1629,90 +1022,249 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const planCurrency = currencies.find((c) => c.id === plan.meta.currencyId)
   const dialogCell = planLimitTarget ? planLimitTarget.el.cells[planLimitTarget.monthIndex] : undefined
 
-  // per-section hide-empty: a row belongs to exactly one bucket — a folder, or its
-  // side's loose rows — so each bucket's count/reveal is independent of the others
-  const sectionHiddenCount = (sectionRows: PlanRow[], revealed: boolean) =>
-    hideEmpty && !revealed ? sectionRows.filter((r) => r.hidden).length : 0
-
   const incomeFolded = folded('income')
-  const incomeRevealed = revealedSections.has('income')
-  const incomeLoose = visibleSectionRows(shownRows.income.loose, incomeFolded, hideEmpty, incomeRevealed)
-  const incomeHiddenCount = incomeFolded ? 0 : sectionHiddenCount(shownRows.income.loose, incomeRevealed)
-
   const expenseFolded = folded('expense')
-  const expenseRevealed = revealedSections.has('expense')
-  const expenseLoose = visibleSectionRows(shownRows.expense.loose, expenseFolded, hideEmpty, expenseRevealed)
-  const expenseHiddenCount = expenseFolded ? 0 : sectionHiddenCount(shownRows.expense.loose, expenseRevealed)
+  const noFolderLine = (side: 'income' | 'expense'): boolean => hasNoFolderLine(shownRows[side], dragState.rowIn === side)
+  // the folder-less rows on screen: none while their section, or their No folder line,
+  // is folded, nor while a folder of their section drags
+  const looseShown = (side: 'income' | 'expense', sectionFolded: boolean): PlanRow[] =>
+    sectionFolded || dragState.folderIn === side || (noFolderLine(side) && folded(NO_FOLDER_KEY[side])) ? [] : shownRows[side].loose
+  const incomeLoose = looseShown('income', incomeFolded)
+  const expenseLoose = looseShown('expense', expenseFolded)
 
   const savingsFolded = folded('savings')
   const savingsLive = savingsRows.filter(isDraggableRow)
   const savingsDeleted = savingsRows.filter((r) => !isDraggableRow(r))
 
+  const fmtBudget = (v: string) => moneyFormat(v, planCurrency, { showCurrency: false, useNativePrecision: false })
+  const sumCells = (sums: GroupSums | undefined, balance = false): ReactNode[] =>
+    visibleMonths.map((m, i) => (
+      <SumCell key={m} index={i} sum={sums && monthIndex(m) >= 0 ? sums[i] : null} month={m} ctx={ctx} fmt={fmtBudget} balance={balance} />
+    ))
+
+  const folderMenu = (f: PlanFolderSection, side: BudgetFolderSide) =>
+    hoverMenus ? menus.folderActionsFor({ id: f.folder.id, name: f.folder.name }, f.rows.length === 0, side) : undefined
+
+  // the drop lands in this folder (null: the folder-less rows), whose rows are not shown
+  const folderIndicator = (folderId: Id | null): boolean => dropIndicator?.kind === 'folder' && (dropIndicator.folderId ?? null) === folderId
+
+  // A folder's line and rows: sortable among the section's folders and a drop target
+  // for rows while drag is on.
+  const folderSection = (f: PlanFolderSection, side: DragSide, menu: MenuAction[] | undefined) => {
+    const collapsed = dragState.folderIn === side
+    const isFolded = folded(f.folder.id)
+    const node = (
+      <FolderRows
+        section={f}
+        ctx={ctx}
+        sums={f.rows.length > 0 ? sumCells(groupSums.get(f.folder.id)) : null}
+        folded={isFolded}
+        collapsed={collapsed}
+        onToggleFold={togglePlanFold}
+        menu={menu}
+        indicator={dropIndicator}
+      />
+    )
+    return dragEnabled ? (
+      <DragFolder
+        key={f.folder.id}
+        sortableId={f.folder.id}
+        dropId={`bfolder:${f.folder.id}`}
+        rowIds={collapsed || isFolded ? [] : draggableIds(f.rows)}
+        indicator={folderIndicator(f.folder.id)}
+        folderDragging={draggingFolderId !== null}
+      >
+        {node}
+      </DragFolder>
+    ) : (
+      <Fragment key={f.folder.id}>{node}</Fragment>
+    )
+  }
+
+  // a section's folder-less rows: under a No folder line next to real folders, at
+  // that line's step on their own otherwise
+  const looseGroup = (side: 'income' | 'expense', rows: PlanRow[]) => {
+    const list = <PlanRowList rows={rows} ctx={ctx} indicator={dropIndicator} />
+    const key = NO_FOLDER_KEY[side]
+    const all = shownRows[side].loose
+    const node = !noFolderLine(side) ? (
+      <RowLevelContext.Provider value="top">{list}</RowLevelContext.Provider>
+    ) : (
+      <FolderGroup
+        foldKey={key}
+        name={t('budgets.page.plan.menu.no_folder')}
+        ctx={ctx}
+        sums={all.length > 0 ? sumCells(groupSums.get(key)) : null}
+        folded={folded(key)}
+        onToggleFold={togglePlanFold}
+        menu={hoverMenus ? menus.folderActionsFor(null, false, side) : undefined}
+        empty={all.length === 0 && !folded(key) && dragState.folderIn !== side}
+      >
+        {list}
+      </FolderGroup>
+    )
+    return dragEnabled ? (
+      <DragFolder
+        sortableId={null}
+        dropId="bfolder:null"
+        rowIds={draggableIds(rows)}
+        indicator={folderIndicator(null)}
+        folderDragging={draggingFolderId !== null}
+      >
+        {node}
+      </DragFolder>
+    ) : (
+      node
+    )
+  }
+
   // The band's element buckets as the arrangement elementMove.ts operates on:
   // one container per folder plus the loose rows. Uncategorized and archived
-  // rows are excluded — they carry no position the server would honour.
-  //
-  // Mirrors the RENDER-side filtering exactly (FolderRows' visibleSectionRows call
-  // per folder, and the incomeLoose/expenseLoose above for the loose bucket): only
-  // rows actually on screen can be under the pointer during a drag, so afterId must
-  // be read from that same filtered set — anchoring to a hideEmpty-hidden or
-  // folded-away row would silently place the moved element after something the
-  // user never saw.
+  // rows are excluded — they carry no position the server would honour. A folded
+  // folder keeps all its members: none of them can be under the pointer, and a drop
+  // on the folder itself appends after the last one, as in the Budget view.
   function bandArrangement(side: 'income' | 'expense'): ElementContainer[] {
     const band = shownRows![side]
-    const loose = side === 'income' ? incomeLoose : expenseLoose
     return [
-      ...band.folders.map((f) => ({
-        folderId: f.folder.id as Id | null,
-        ids: visibleSectionRows(f.rows, folded(f.folder.id), hideEmpty, revealedSections.has(f.folder.id))
-          .filter(isDraggableRow)
-          .map((r) => r.element.id),
-      })),
-      { folderId: null as Id | null, ids: loose.filter(isDraggableRow).map((r) => r.element.id) },
+      ...band.folders.map((f) => ({ folderId: f.folder.id as Id | null, ids: draggableIds(f.rows) })),
+      { folderId: null as Id | null, ids: draggableIds(band.loose) },
     ]
   }
 
-  function handleBandDragStart(event: DragStartEvent) {
-    setDraggingFolder(String(event.active.id).startsWith('pfolder:'))
+  // The envelope each category sits in. A category may go into any other live
+  // envelope of its own side; the section's own DndContext keeps the other side's
+  // envelopes out of reach, and this keeps the rule explicit.
+  const elementById = new Map(plan.structure.elements.map((el) => [el.id, el]))
+  const envelopeOfCategory = new Map(
+    plan.structure.elements.flatMap((el) => (isEnvelopeType(el.type) ? el.children.map((c) => [c.id, el.id] as const) : [])),
+  )
+  const sideOf = (el: PlanElementDto): 'income' | 'expense' => (isIncomeType(el.type) ? 'income' : 'expense')
+  const CATEGORY_TYPE = { income: BudgetElementType.INCOME_CATEGORY, expense: BudgetElementType.CATEGORY } as const
+  const isCategoryOf = (side: 'income' | 'expense', id: string): boolean => {
+    const envelope = elementById.get(envelopeOfCategory.get(id) ?? '')
+    return envelope ? sideOf(envelope) === side : elementById.get(id)?.type === CATEGORY_TYPE[side]
+  }
+  const canEnterEnvelope = (side: 'income' | 'expense') => (activeId: string, envelopeId: string): boolean => {
+    const envelope = elementById.get(envelopeId)
+    return (
+      !!envelope &&
+      isEnvelopeType(envelope.type) &&
+      envelope.isArchived === 0 &&
+      sideOf(envelope) === side &&
+      isCategoryOf(side, activeId) &&
+      envelopeOfCategory.get(activeId) !== envelopeId
+    )
+  }
+  const folderIds = new Set(plan.structure.folders.map((f) => f.id))
+
+  const resetDrag = () => {
+    setDragActiveId(null)
+    setDraggingFolderId(null)
+    setDragSide(null)
+    setDropIndicator(null)
   }
 
-  function handleBandDragEnd(side: 'income' | 'expense' | 'neutral', event: DragEndEvent) {
-    setDraggingFolder(false)
-    const { active, over } = event
-    if (!over || active.id === over.id) {
+  // Folder-ness is read off the dragged id rather than the drag state, which a drop
+  // in the same tick as its start would not see yet.
+  function handleDragStart(side: DragSide, { active }: DragStartEvent) {
+    const activeId = String(active.id)
+    setDragSide(side)
+    if (folderIds.has(activeId)) {
+      setDraggingFolderId(activeId)
       return
     }
-    const activeId = String(active.id)
-    const overId = String(over.id)
+    setDragActiveId(activeId)
+  }
 
-    if (activeId.startsWith('pfolder:')) {
+  // No DOM re-ordering happens DURING the drag: rows stay put, a floating copy
+  // follows the pointer and the insertion line marks where the drop lands.
+  // Everything applies once, on drop — mutating the row order mid-drag shifts
+  // layout under the pointer and feedback-loops the drag-over → re-measure cycle.
+  function handleDragOver(side: 'income' | 'expense', { active, over }: DragOverEvent) {
+    const activeId = String(active.id)
+    const overId = over ? String(over.id) : null
+    const fromEnvelope = envelopeOfCategory.get(activeId)
+    if (folderIds.has(activeId) || !overId || overId === activeId || overId === fromEnvelope) {
+      setDropIndicator(null)
+      return
+    }
+    setDropIndicator(
+      dropIndicatorFor(bandArrangement(side), activeId, overId, {
+        fromEnvelope: fromEnvelope !== undefined,
+        isFolded: (folderId) => (folderId === null ? noFolderLine(side) && folded(NO_FOLDER_KEY[side]) : folded(folderId)),
+      }),
+    )
+  }
+
+  function handleDragEnd(side: 'income' | 'expense' | 'neutral', { active, over }: DragEndEvent) {
+    resetDrag()
+    const activeId = String(active.id)
+    const overId = over ? String(over.id) : null
+    if (folderIds.has(activeId)) {
       // order-folders takes one global sequence, so the anchor is read from the
-      // full position-sorted folder list, not just this band's slice.
-      const draggedId = activeId.slice('pfolder:'.length)
-      const targetId = overId.startsWith('pfolder:') ? overId.slice('pfolder:'.length) : null
-      const folderIds = [...plan!.structure.folders].sort((a, b) => a.position - b.position).map((f) => f.id)
-      const from = folderIds.indexOf(draggedId)
-      const to = targetId ? folderIds.indexOf(targetId) : -1
+      // full position-sorted folder list, not just this section's slice.
+      const ordered = [...plan!.structure.folders].sort((a, b) => a.position - b.position).map((f) => f.id)
+      const from = ordered.indexOf(activeId)
+      const to = overId ? ordered.indexOf(overId.replace(/^bfolder:/, '')) : -1
       if (from === -1 || to === -1 || from === to) {
         return
       }
-      const reordered = arrayMove(folderIds, from, to)
-      orderFolders.mutate({ budgetId: budget.meta.id, id: draggedId, afterId: afterIdFromDrop(reordered, draggedId) })
+      const reordered = arrayMove(ordered, from, to)
+      orderFolders.mutate({ budgetId: budget.meta.id, id: activeId, afterId: afterIdFromDrop(reordered, activeId) })
       return
     }
-    if (side === 'neutral') {
-      // the neutral band holds only header-only folders — no rows to move
+    // the neutral section holds only header-only folders: no rows to move
+    if (side === 'neutral' || !overId || overId === activeId) {
       return
     }
+    const envelopeId = envelopeOfDrop(overId)
+    if (envelopeId !== null) {
+      if (canEnterEnvelope(side)(activeId, envelopeId)) {
+        holdMember(activeId)
+        moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id: activeId, envelopeId }, { onError: releaseHold })
+      }
+      return
+    }
+    const fromEnvelope = envelopeOfCategory.get(activeId)
+    if (fromEnvelope) {
+      // dropped back on its own envelope: it stays where it is
+      const item = overId === fromEnvelope ? null : placeFromEnvelope(bandArrangement(side), activeId, overId)
+      if (item) {
+        holdMember(activeId)
+        moveElement.mutate({ budgetId: budget.meta.id, item }, { onError: releaseHold })
+      }
+      return
+    }
+    commitElementMove(bandArrangement(side), activeId, overId)
+  }
 
-    // a row dropped on a folder header lands in that folder, appended
-    const target = overId.startsWith('pfolder:') ? `bfolder:${overId.slice('pfolder:'.length)}` : overId
-    commitElementMove(bandArrangement(side), activeId, target)
+  function holdMember(id: string) {
+    arrangedFrom.current = plan
+    setPendingMemberId(id)
+  }
+
+  // A failed move drops every held preview, not just its own: arrangedFrom is shared,
+  // so a hold left behind would never be released by the next plan.
+  function releaseHold() {
+    arrangedFrom.current = undefined
+    setDragArrangement(null)
+    setPendingMemberId(null)
+  }
+
+  function handleSavingsDragOver({ active, over }: DragOverEvent) {
+    const ids = savingsLive.map((r) => r.element.id)
+    const overId = over ? String(over.id) : null
+    if (!overId || overId === String(active.id) || !ids.includes(overId)) {
+      setDropIndicator(null)
+      return
+    }
+    setDropIndicator(dropIndicatorFor([{ folderId: null, ids }], String(active.id), overId, { fromEnvelope: false, isFolded: () => false }))
   }
 
   // The savings band is one folder-less list: the only valid target is another
   // live savings row, so the move always carries folderId null.
   function handleSavingsDragEnd(event: DragEndEvent) {
+    resetDrag()
     const { active, over } = event
     if (!over || active.id === over.id) {
       return
@@ -1740,61 +1292,66 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     setDragArrangement(moved)
     moveElement.mutate(
       { budgetId: budget.meta.id, item },
-      {
-        onError: () => {
-          arrangedFrom.current = undefined
-          setDragArrangement(null)
-        },
-      },
+      { onError: releaseHold },
     )
   }
 
-  // Enter on the highlighted name cell opens the element's own edit dialog (the one
-  // the row menu / settings pages use), gated by the right the backend enforces on
-  // the matching update endpoint: budget role for an envelope (owner|admin|user),
-  // row ownership for a category or tag — update-category/update-tag answer anyone
-  // but the owner with NotFound, so a shared row must not offer the dialog at all.
-  function openElementEditor(entry: Extract<FlatRow, { kind: 'element' }>) {
-    const target = entry.el
-    // a savings row is an account, edited from the accounts screen, not here
-    if (target.id === UNCATEGORIZED_ID || target.type === BudgetElementType.SAVINGS) {
-      return
+  // the floating copy of what is being dragged: a row, or a category from an envelope
+  const draggedItem = (() => {
+    if (!dragActiveId) {
+      return null
     }
-    // no right to edit: say why instead of silently ignoring the keystroke; a fixed
-    // toast id so hammering Enter does not stack copies
-    if (isEnvelopeType(target.type)) {
-      if (canEdit) {
-        editorFromGrid.current = true
-        setEnvelopeTarget(entry.el)
-      } else {
-        toast.error(t('budgets.page.plan.edit.no_access_envelope'), { id: 'plan-edit-no-access' })
+    for (const el of [...plan.structure.elements, ...savingsRows.map((r) => r.element)]) {
+      if (el.id === dragActiveId) {
+        return { icon: el.icon, name: elementDisplayName(el.id, el.name, t) }
       }
-      return
+      const child = el.children.find((c) => c.id === dragActiveId)
+      if (child) {
+        return { icon: child.icon, name: elementDisplayName(child.id, child.name, t) }
+      }
     }
-    if (!userId || target.ownerUserId !== userId) {
-      toast.error(
-        target.type === BudgetElementType.TAG ? t('budgets.page.plan.edit.no_access_tag') : t('budgets.page.plan.edit.no_access_category'),
-        { id: 'plan-edit-no-access' },
-      )
-      return
-    }
-    editorFromGrid.current = true
-    if (target.type === BudgetElementType.TAG) {
-      setTagTarget({ id: target.id, name: target.name, kind: 'tag', icon: target.icon })
-      return
-    }
-    setCategoryTarget({ id: target.id, name: target.name, icon: target.icon, type: isIncomeType(target.type) ? 'income' : 'expense' })
-  }
+    return null
+  })()
+
+  // One DndContext per section, and that is what enforces the two hard constraints:
+  // an element's side comes from its type and a folder's from its members, so neither
+  // may cross the divider. A drag started in one section has no droppable in another —
+  // the invalid drop cannot be expressed, rather than being rejected after the fact
+  // (the server would answer CodeBudgetFolderSideMixed for elements, and order-folders
+  // persists position only, so a cross-section folder move would silently snap back).
+  const sectionDnd = (
+    side: DragSide,
+    collisionDetection: CollisionDetection,
+    sortableFolderIds: string[],
+    handlers: { onDragOver?: (e: DragOverEvent) => void; onDragEnd: (e: DragEndEvent) => void },
+    children: ReactNode,
+  ) =>
+    dragEnabled ? (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collisionDetection}
+        // rows collapse on drag start, so drop-zone rects must re-measure mid-drag and
+        // the grabbed node re-anchors to the pointer
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        modifiers={[centerRowOnPointer]}
+        onDragStart={(e) => handleDragStart(side, e)}
+        onDragOver={handlers.onDragOver}
+        onDragEnd={handlers.onDragEnd}
+        onDragCancel={resetDrag}
+      >
+        <SortableContext items={sortableFolderIds} strategy={verticalListSortingStrategy}>
+          {children}
+        </SortableContext>
+        {/* no drop animation: the moved row shows in its new place instead */}
+        <DragOverlay dropAnimation={null} modifiers={[besidePointer]}>
+          {draggedItem ? <DragGhost icon={draggedItem.icon} name={draggedItem.name} /> : null}
+        </DragOverlay>
+      </DndContext>
+    ) : (
+      children
+    )
 
   function handleEnter(entry: FlatRow, col: number) {
-    if (entry.kind === 'folder') {
-      togglePlanFold(entry.folderId)
-      return
-    }
-    if (col === -1) {
-      openElementEditor(entry)
-      return
-    }
     const month = visibleMonths[col]
     if (month === undefined) {
       return
@@ -1808,22 +1365,13 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       }
       return
     }
-    if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
-      return
-    }
-    const trigger = containerRef.current?.querySelector<HTMLButtonElement>(
-      `[data-testid="plan-cell-${entry.el.id}:${col}"] [aria-label^="limit "]`,
-    )
-    trigger?.focus()
-    trigger?.click()
+    startEdit(entry.rowKey, col, { replace: false })
   }
 
-  // The element row under the roving selection (null for none / a folder row), and
-  // that row's month cell as the clipboard and keyboard-fill actions need it (null on
-  // the name cell too).
+  // The element row under the roving selection (null for none), and that row's month
+  // cell as the clipboard and keyboard-fill actions need it.
   function selectedElementRow(): (FlatRow & { kind: 'element' }) | null {
-    const entry = selection ? flatRows.find((r) => r.rowKey === selection.rowKey) : undefined
-    return entry?.kind === 'element' ? entry : null
+    return (selection && flatRows.find((r) => r.rowKey === selection.rowKey)) || null
   }
 
   function selectedMonthCell(): { entry: FlatRow & { kind: 'element' }; col: number; month: string; idx: number } | null {
@@ -1852,7 +1400,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       return
     }
     const cell = selectedMonthCell()
-    const text = selection.col === -1 ? entry.el.name : cell ? sourceAmount(cell.entry.el, cell.idx) : null
+    const text = cell ? sourceAmount(cell.entry.el, cell.idx) : null
     if (text === null) {
       return
     }
@@ -1888,7 +1436,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   // Shift+ArrowRight on an editable month cell arms a keyboard fill covering the next
   // column (clamped to the visible window — what is highlighted is what gets written,
   // same as the pointer drag); the source cell stays selected. Non-editable sources
-  // and the name cell arm nothing.
+  // arm nothing.
   function startKeyboardFill() {
     const cell = selectedMonthCell()
     if (!cell || !isEditableCell(cell.entry.el, cell.month, cell.idx, budget.meta, userId)) {
@@ -1923,7 +1471,105 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     }
   }
 
+  // The arrow keys' walk, shared with the in-cell editor's Enter/Tab/↑/↓. At the
+  // window's edges ← from the first month and → from the last page the window by a
+  // month (clamped at the budget's start and end); the column stays put.
+  function moveSelection(from: PlanSelection, dir: CellMove) {
+    const idx = flatRows.findIndex((r) => r.rowKey === from.rowKey)
+    switch (dir) {
+      case 'up':
+        if (idx > 0) {
+          select(flatRows[idx - 1].rowKey, from.col)
+        }
+        break
+      case 'down':
+        if (idx >= 0 && idx < flatRows.length - 1) {
+          select(flatRows[idx + 1].rowKey, from.col)
+        }
+        break
+      case 'left':
+        if (from.col === 0) {
+          if (!atStart) {
+            shiftWindow(-1)
+          }
+          select(from.rowKey, 0)
+        } else {
+          select(from.rowKey, from.col - 1)
+        }
+        break
+      case 'right':
+        if (from.col >= visible - 1) {
+          if (!atEnd) {
+            shiftWindow(1)
+          }
+          select(from.rowKey, visible - 1)
+        } else {
+          select(from.rowKey, from.col + 1)
+        }
+        break
+      case 'none':
+        break
+    }
+  }
+
+  editActions.current = {
+    // The write targets the month captured when editing began, and is sent before the
+    // move: a Tab at the last column pages the window, and the column then names the
+    // next month.
+    finish: (raw, move) => {
+      const ed = editing
+      setEditing(null)
+      if (!ed) {
+        return
+      }
+      const parsed = limitAmountFromInput(raw)
+      const before = unsetPlan(ed.planned) ? null : ed.planned
+      const changed = parsed.ok && (before === null || parsed.amount === null ? before !== parsed.amount : cmp(before, parsed.amount) !== 0)
+      if (parsed.ok && changed) {
+        // the optimistic patch indexes the plan as it is now; -1 (the month is no
+        // longer in it) patches nothing and the server write still goes by period
+        commit(ed.elementId, ed.month, monthIndex(ed.month), parsed.amount)
+      }
+      // a click elsewhere ('none') leaves focus and the selection to that click
+      if (move !== 'none') {
+        containerRef.current?.focus()
+        moveSelection({ rowKey: ed.rowKey, col: ed.col }, move)
+      }
+    },
+    cancel: () => {
+      setEditing(null)
+      // Esc hands focus back to the grid; a blur has already sent it somewhere else
+      if (containerRef.current?.contains(document.activeElement)) {
+        containerRef.current.focus()
+      }
+    },
+  }
+
+  function clearSelectedCell() {
+    const cell = selectedMonthCell()
+    if (isCompact || !cell || !isEditableCell(cell.entry.el, cell.month, cell.idx, budget.meta, userId)) {
+      return
+    }
+    if (unsetPlan(cell.entry.el.cells[cell.idx]?.planned ?? '')) {
+      return
+    }
+    // per-call mutate callbacks only fire for the latest call, so a second clear made
+    // before the first lands would swallow the first's event; the promise is per call.
+    // A failure is already handled by the mutation, which rolls the cell back.
+    setLimit
+      .mutateAsync({ budgetId: budget.meta.id, elementId: cell.entry.el.id, period: cell.month, amount: null, monthIndex: cell.idx })
+      .then(() => trackEvent(METRICS.BUDGET_PLAN_CLEAR_CELL))
+      .catch(() => {})
+  }
+
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    // a control already handled it (a ⋮ trigger opens its menu on Enter or ArrowDown)
+    if (e.defaultPrevented) {
+      return
+    }
+    if ((e.target as HTMLElement).closest(CONTROL_SELECTOR) && !GRID_KEYS_ON_CONTROL.includes(e.key)) {
+      return
+    }
     if (fillDrag) {
       if (e.key === 'Escape') {
         setFillDrag(null)
@@ -1948,15 +1594,20 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     // Radix portals render popover/dialog/drawer/dropdown-menu content outside the
     // grid's DOM subtree, but React re-dispatches the event through the component
     // tree, so it still reaches this handler. Without this guard, typing in the
-    // LimitEditor popover, any dialog, or an open row-actions menu gets its
-    // Arrow/Enter keys hijacked by grid navigation (Enter closing the popover
-    // without committing, ArrowLeft not moving the caret, ArrowDown moving the grid
-    // selection instead of the menu highlight).
+    // in-cell editor, a dialog, or an open row menu gets its Arrow/Enter keys
+    // hijacked by grid navigation (Enter closing the dialog without committing,
+    // ArrowLeft not moving the caret, ArrowDown moving the grid selection instead of
+    // the menu highlight).
     const target = e.target as HTMLElement
     if (target.closest(KEYDOWN_ESCAPE_SELECTOR)) {
       return
     }
     if (flatRows.length === 0) {
+      return
+    }
+    if (e.key === 'Escape' && picked.length > 0) {
+      e.preventDefault()
+      setPicked([])
       return
     }
     const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
@@ -1968,7 +1619,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       return
     }
     // Shift+Arrow left/right belongs to the keyboard fill: swallowed even when nothing
-    // arms (name cell, non-editable source) so the selection never jumps under a held
+    // arms (a non-editable source) so the selection never jumps under a held
     // Shift. Shift+ArrowLeft with no fill armed is a no-op — the fill only grows right.
     if (e.shiftKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
       e.preventDefault()
@@ -1986,101 +1637,47 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       }
       return
     }
-    const idx = flatRows.findIndex((r) => r.rowKey === selection.rowKey)
-    const entry = flatRows[idx]
-    // Left/Right on a highlighted folder header fold/unfold it and never move the
-    // selection or page the window — a header has no month cells to walk. Enter and
-    // Space toggle it too (Enter has no edit action on a folder outside its menu).
-    if (entry.kind === 'folder') {
-      const isFolded = folded(entry.folderId)
-      switch (e.key) {
-        case 'ArrowUp':
-          e.preventDefault()
-          if (idx > 0) {
-            select(flatRows[idx - 1].rowKey, selection.col)
-          }
-          break
-        case 'ArrowDown':
-          e.preventDefault()
-          if (idx < flatRows.length - 1) {
-            select(flatRows[idx + 1].rowKey, selection.col)
-          }
-          break
-        case 'ArrowLeft':
-          e.preventDefault()
-          if (!isFolded) {
-            togglePlanFold(entry.folderId)
-          }
-          break
-        case 'ArrowRight':
-          e.preventDefault()
-          if (isFolded) {
-            togglePlanFold(entry.folderId)
-          }
-          break
-        case 'Enter':
-        case ' ':
-          e.preventDefault()
-          togglePlanFold(entry.folderId)
-          break
-        default:
-          break
-      }
+    const entry = flatRows.find((r) => r.rowKey === selection.rowKey)
+    if (!entry) {
       return
     }
-    // On a highlighted name cell of a row with children, Left/Right fold/unfold the
-    // breakdown first: ArrowRight expands a collapsed row (and only then walks into
-    // the months), ArrowLeft collapses an expanded one (and only then pages the window).
-    const expandable = entry.el.children.length > 0
-    const unfolded = !!unfoldedElements[entry.el.id]
+    // A month cell edits like a spreadsheet: typing replaces the value, F2 edits it,
+    // Delete/Backspace clears it. Touch keeps the item sheet even with a hardware
+    // keyboard, and read-only cells take none of it (startEdit and clearSelectedCell
+    // both check).
+    if (!isCompact && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (/^[0-9.,-]$/.test(e.key)) {
+        e.preventDefault()
+        startEdit(entry.rowKey, selection.col, { replace: true, text: e.key })
+        return
+      }
+      if (e.key === 'F2' && !e.shiftKey) {
+        e.preventDefault()
+        startEdit(entry.rowKey, selection.col, { replace: false })
+        return
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault()
+        clearSelectedCell()
+        return
+      }
+    }
     switch (e.key) {
       case 'ArrowUp':
         e.preventDefault()
-        if (idx > 0) {
-          select(flatRows[idx - 1].rowKey, selection.col)
-        }
+        moveSelection(selection, 'up')
         break
       case 'ArrowDown':
         e.preventDefault()
-        if (idx < flatRows.length - 1) {
-          select(flatRows[idx + 1].rowKey, selection.col)
-        }
+        moveSelection(selection, 'down')
         break
       case 'ArrowLeft':
         e.preventDefault()
-        if (selection.col === -1) {
-          if (expandable && unfolded) {
-            toggleElement(entry.el.id)
-            break
-          }
-          // -1 is the leftmost reachable column, so ArrowLeft here shifts the window
-          // instead of going nowhere — keeps the name cell reachable while the window
-          // can still be paged from it. Clamped at the budget start, same as the prev
-          // nav button (F8).
-          if (!atStart) {
-            setPlanFirstMonth(addMonths(firstMonth, -1))
-          }
-          select(selection.rowKey, -1)
-        } else if (selection.col === 0) {
-          select(selection.rowKey, -1)
-        } else {
-          select(selection.rowKey, selection.col - 1)
-        }
+        moveSelection(selection, 'left')
         break
       case 'ArrowRight':
         e.preventDefault()
-        if (selection.col === -1) {
-          if (expandable && !unfolded) {
-            toggleElement(entry.el.id)
-            break
-          }
-          select(selection.rowKey, 0)
-        } else if (selection.col >= visible - 1) {
-          setPlanFirstMonth(addMonths(firstMonth, 1))
-          select(selection.rowKey, visible - 1)
-        } else {
-          select(selection.rowKey, selection.col + 1)
-        }
+        moveSelection(selection, 'right')
         break
       case 'Enter':
         e.preventDefault()
@@ -2093,16 +1690,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         }
         handleEnter(entry, selection.col)
         break
-      case ' ':
-        // Space on the name cell folds/unfolds the element's children (Enter is the
-        // edit shortcut); preventDefault so the scroller does not page down.
-        if (selection.col === -1) {
-          e.preventDefault()
-          if (expandable) {
-            toggleElement(entry.el.id)
-          }
-        }
-        break
       default:
         break
     }
@@ -2110,51 +1697,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {editMode ? (
-        <div className="flex items-center gap-2 px-2 pb-1">
-          <Button type="button" variant="secondary" size="sm" onClick={() => setCreateFolderOpen(true)}>
-            {t('budgets.page.budget.structure.action.create_folder')}
-          </Button>
-        </div>
-      ) : null}
-      <div role="rowgroup">
-        <div role="row" className="grid items-center bg-background" style={{ gridTemplateColumns: gridCols }}>
-          <div className="flex items-center gap-1 px-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={t('budgets.page.plan.nav.prev')}
-              disabled={atStart}
-              onClick={() => setPlanFirstMonth(addMonths(firstMonth, -1))}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={t('budgets.page.plan.nav.next')}
-              onClick={() => setPlanFirstMonth(addMonths(firstMonth, 1))}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-          {visibleMonths.map((m, i) => (
-            <div
-              key={m}
-              role="columnheader"
-              data-month={m}
-              data-col={i}
-              className={`px-2 py-1 text-right text-xs uppercase tracking-wide ${m === cur ? 'font-bold text-foreground' : 'text-muted-foreground'}`}
-            >
-              {monthLabel(m)}
-            </div>
-          ))}
-          <span />
-        </div>
-      </div>
-
       <div
         ref={attachContainer}
         role="grid"
@@ -2165,217 +1707,273 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         onCopy={handleCopy}
         onPaste={handlePaste}
         aria-activedescendant={selection ? selectionDomId(selection) : undefined}
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+        aria-multiselectable={isCompact ? undefined : true}
+        className={`relative flex min-h-0 flex-1 flex-col overflow-y-auto${dragSelecting ? ' select-none' : ''}`}
+        style={{ '--plan-name-col': `${nameWidth}px` } as CSSProperties}
         data-testid="plan-sheet"
       >
-        <section
-          role="rowgroup"
-          data-testid="plan-section-income"
-          className="plan-band-income flex flex-col px-1 py-1"
-        >
-          <SectionHeader
-            label={t('budgets.page.plan.section.income')}
+        <LineLayoutContext.Provider value={layout}>
+        {/* a touch screen outside edit mode has no menus or grips to hide, and no hover:
+            what controls it has (the sums' Σ) show at once */}
+        <LineControlsContext.Provider value={lineControls ?? (isCompact ? 'always' : 'hover')}>
+        {/* The month row labels the columns; ‹ › move the window a month at a time. */}
+        {/* the Budget view's month row in the same place and size (its 44px plus the
+            rule, the switch flush with the page edge, size-8 arrows), so switching
+            views moves nothing but the months */}
+        <div role="row" data-testid="plan-month-header" className={`sticky top-0 z-20 ${PLAN_LINE} min-h-[45px] border-b bg-background`}>
+          <span className={`${PLAN_NAME_COL} relative`}>
+            <span className="-ml-2 flex items-center gap-1">
+              {viewSwitch}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                aria-label={t('budgets.page.budget.nav.prev')}
+                disabled={atStart}
+                onClick={() => shiftWindow(-1)}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                aria-label={t('budgets.page.budget.nav.next')}
+                disabled={atEnd}
+                onClick={() => shiftWindow(1)}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </span>
+            {/* the name column's edge: drag (or ← →) to resize, double-click to reset */}
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={t('budgets.page.plan.name_column.resize')}
+              aria-valuemin={PLAN_NAME_COL_MIN_PX}
+              aria-valuemax={PLAN_NAME_COL_MAX_PX}
+              aria-valuenow={nameWidth}
+              title={t('budgets.page.plan.name_column.resize_hint')}
+              tabIndex={0}
+              data-testid="plan-name-resize"
+              className="absolute top-0 -right-1.5 z-10 h-full w-3 cursor-col-resize touch-none rounded-sm hover:bg-ring/30 focus-visible:bg-ring/40 focus-visible:outline-none"
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture?.(e.pointerId)
+                e.preventDefault()
+                nameResize.current = { startX: e.clientX, startWidth: nameWidth }
+              }}
+              onPointerMove={(e) => {
+                const drag = nameResize.current
+                if (drag) {
+                  setDragNameWidth(clampPlanNameWidth(drag.startWidth + e.clientX - drag.startX))
+                }
+              }}
+              onPointerUp={(e) => {
+                const drag = nameResize.current
+                if (drag) {
+                  nameResize.current = null
+                  setDragNameWidth(null)
+                  commitNameWidth(drag.startWidth + e.clientX - drag.startX)
+                }
+              }}
+              onPointerCancel={() => {
+                nameResize.current = null
+                setDragNameWidth(null)
+              }}
+              onDoubleClick={() => commitNameWidth(null)}
+              onKeyDown={(e) => {
+                // the grid's arrows move the selection; here they belong to the edge
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  commitNameWidth(nameWidth + (e.key === 'ArrowRight' ? 16 : -16))
+                }
+              }}
+            />
+          </span>
+          {visibleMonths.map((m, i) => {
+            const selected = i === selectedCol
+            const current = m === cur
+            return (
+              <div
+                key={m}
+                role="columnheader"
+                data-month={m}
+                data-col={i}
+                data-selected-col={selected ? 'true' : undefined}
+                data-crosshair={i === crosshairCol ? 'col' : undefined}
+                aria-current={current ? 'date' : undefined}
+                className={`${PLAN_FIGURE_COL}${i === crosshairCol ? ` ${PLAN_CROSSHAIR}` : ''} p-0!`}
+              >
+                <span
+                  data-month-label=""
+                  className={`block w-full px-2 py-2 text-right text-sm uppercase tracking-wide ${current ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+                >
+                  {monthLabel(m)}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+        {/* Sections sit flush, split by a rule, so the crosshair's column runs
+            unbroken from the month header down to the Balance line. */}
+        <section role="rowgroup" data-testid="plan-section-income" className="plan-band plan-band-income flex flex-col">
+          <MonthSectionHeader
             foldKey="income"
-            folded={incomeFolded}
-            onToggleFold={togglePlanFold}
-            hiddenCount={incomeHiddenCount}
-            onShow={() => revealSection('income')}
+            sumsOnDemand
+            testId="plan-section-line-income"
+            label={t('budgets.page.plan.section.income')}
+            headings={[]}
+            sums={sumCells(groupSums.get('income'))}
+            actionsColumn={false}
+            menu={hoverMenus ? menus.sectionMenu('income') : undefined}
           />
-          {!incomeFolded ? (
-            <PlanBand
-              editMode={editMode}
-              sensors={sensors}
-              folderIds={shownRows.income.folders.map((f) => f.folder.id)}
-              onDragStart={handleBandDragStart}
-              onDragEnd={(e) => handleBandDragEnd('income', e)}
-              onDragCancel={() => setDraggingFolder(false)}
-            >
-              {shownRows.income.folders.map((f) => {
-                const section = (
-                  <FolderRows
-                    section={f}
-                    ctx={ctx}
-                    hideEmpty={hideEmpty}
-                    folded={folded(f.folder.id)}
-                    collapsed={draggingFolder}
-                    revealed={revealedSections.has(f.folder.id)}
-                    onToggleFold={togglePlanFold}
-                    onReveal={() => revealSection(f.folder.id)}
-                  />
-                )
-                return editMode ? (
-                  <PlanSortableFolder key={f.folder.id} section={f}>
-                    {section}
-                  </PlanSortableFolder>
-                ) : (
-                  <Fragment key={f.folder.id}>{section}</Fragment>
-                )
-              })}
-              {editMode ? <LooseRowsContainer rows={incomeLoose} ctx={ctx} /> : <PlanRowList rows={incomeLoose} ctx={ctx} />}
-              {shownRows.income.uncategorized ? (
-                <ElementRow key={rowKey(shownRows.income.uncategorized)} row={shownRows.income.uncategorized} ctx={ctx} />
-              ) : null}
-            </PlanBand>
-          ) : null}
+          {!incomeFolded
+            ? sectionDnd(
+                'income',
+                envelopeCollisions(canEnterEnvelope('income')),
+                shownRows.income.folders.map((f) => f.folder.id),
+                { onDragOver: (e) => handleDragOver('income', e), onDragEnd: (e) => handleDragEnd('income', e) },
+                <>
+                  {shownRows.income.folders.map((f) => folderSection(f, 'income', folderMenu(f, 'income')))}
+                  {looseGroup('income', incomeLoose)}
+                  <RowLevelContext.Provider value="top">
+                    {shownRows.income.uncategorized ? (
+                      <ElementRow key={rowKey(shownRows.income.uncategorized)} row={shownRows.income.uncategorized} ctx={ctx} />
+                    ) : null}
+                  </RowLevelContext.Provider>
+                </>,
+              )
+            : null}
         </section>
+
+        {hasSavings ? (
+          // Its own drag context: a savings row reorders among savings rows only and
+          // can never reach a folder, which the server refuses for it anyway.
+          <section role="rowgroup" data-testid="plan-section-savings" className={`plan-band plan-band-savings flex flex-col ${PLAN_SECTION_RULE}`}>
+            <MonthSectionHeader
+              foldKey="savings"
+              sumsOnDemand
+              testId="plan-section-line-savings"
+              label={t('budgets.page.plan.section.savings')}
+              headings={[]}
+              sums={sumCells(groupSums.get('savings'), true)}
+              actionsColumn={false}
+              menu={hoverMenus ? menus.savingsSectionMenu : undefined}
+            />
+            {!savingsFolded ? (
+              <RowLevelContext.Provider value="top">
+                {sectionDnd(
+                  'savings',
+                  preferRowCollisions,
+                  [],
+                  { onDragOver: handleSavingsDragOver, onDragEnd: handleSavingsDragEnd },
+                  dragEnabled ? (
+                    <DragFolder sortableId={null} dropId="bfolder:null" rowIds={draggableIds(savingsLive)}>
+                      <PlanRowList rows={savingsLive} ctx={ctx} indicator={dropIndicator} />
+                    </DragFolder>
+                  ) : (
+                    <PlanRowList rows={savingsLive} ctx={ctx} indicator={null} />
+                  ),
+                )}
+                {savingsDeleted.map((r) => (
+                  <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
+                ))}
+              </RowLevelContext.Provider>
+            ) : null}
+          </section>
+        ) : null}
 
         {shownRows.neutral.length > 0 ? (
           // Member-less folders belong to neither side yet, so they sit between the
           // bands rather than defaulting into one. Their own drag context keeps folder
           // reordering available; rows reach them via "Move to folder…" (a neutral
           // folder is offered to both sides there), never by a cross-band drag.
-          <section role="rowgroup" data-testid="plan-section-neutral" className="plan-band-neutral mt-6 flex flex-col px-1 py-1">
-            <PlanBand
-              editMode={editMode}
-              sensors={sensors}
-              folderIds={shownRows.neutral.map((f) => f.folder.id)}
-              onDragStart={handleBandDragStart}
-              onDragEnd={(e) => handleBandDragEnd('neutral', e)}
-              onDragCancel={() => setDraggingFolder(false)}
-            >
-              {shownRows.neutral.map((f) => {
-                const section = (
-                  <FolderRows
-                    section={f}
-                    ctx={ctx}
-                    hideEmpty={hideEmpty}
-                    folded={folded(f.folder.id)}
-                    collapsed={draggingFolder}
-                    revealed={revealedSections.has(f.folder.id)}
-                    onToggleFold={togglePlanFold}
-                    onReveal={() => revealSection(f.folder.id)}
-                  />
-                )
-                return editMode ? (
-                  <PlanSortableFolder key={f.folder.id} section={f}>
-                    {section}
-                  </PlanSortableFolder>
-                ) : (
-                  <Fragment key={f.folder.id}>{section}</Fragment>
-                )
-              })}
-            </PlanBand>
+          <section role="rowgroup" data-testid="plan-section-neutral" className={`plan-band plan-band-neutral flex flex-col ${PLAN_SECTION_RULE}`}>
+            {sectionDnd(
+              'neutral',
+              preferRowCollisions,
+              shownRows.neutral.map((f) => f.folder.id),
+              { onDragEnd: (e) => handleDragEnd('neutral', e) },
+              shownRows.neutral.map((f) => folderSection(f, 'neutral', folderMenu(f, f.folder.side ?? 'expense'))),
+            )}
           </section>
         ) : null}
 
-        <section
-          role="rowgroup"
-          data-testid="plan-section-expense"
-          className="plan-band-expense mt-6 flex flex-col px-1 py-1"
-        >
-          <SectionHeader
-            label={t('budgets.page.plan.section.expenses')}
+        <section role="rowgroup" data-testid="plan-section-expense" className={`plan-band plan-band-expense flex flex-col ${PLAN_SECTION_RULE}`}>
+          <MonthSectionHeader
             foldKey="expense"
-            folded={expenseFolded}
-            onToggleFold={togglePlanFold}
-            hiddenCount={expenseHiddenCount}
-            onShow={() => revealSection('expense')}
+            sumsOnDemand
+            testId="plan-section-line-expense"
+            label={t('budgets.page.plan.section.expenses')}
+            headings={[]}
+            sums={sumCells(groupSums.get('expense'))}
+            actionsColumn={false}
+            menu={hoverMenus ? menus.sectionMenu('expense') : undefined}
           />
-          {!expenseFolded ? (
-            <PlanBand
-              editMode={editMode}
-              sensors={sensors}
-              folderIds={shownRows.expense.folders.map((f) => f.folder.id)}
-              onDragStart={handleBandDragStart}
-              onDragEnd={(e) => handleBandDragEnd('expense', e)}
-              onDragCancel={() => setDraggingFolder(false)}
-            >
-              {shownRows.expense.folders.map((f) => {
-                const section = (
-                  <FolderRows
-                    section={f}
-                    ctx={ctx}
-                    hideEmpty={hideEmpty}
-                    folded={folded(f.folder.id)}
-                    collapsed={draggingFolder}
-                    revealed={revealedSections.has(f.folder.id)}
-                    onToggleFold={togglePlanFold}
-                    onReveal={() => revealSection(f.folder.id)}
-                  />
-                )
-                return editMode ? (
-                  <PlanSortableFolder key={f.folder.id} section={f}>
-                    {section}
-                  </PlanSortableFolder>
-                ) : (
-                  <Fragment key={f.folder.id}>{section}</Fragment>
-                )
-              })}
-              {editMode ? <LooseRowsContainer rows={expenseLoose} ctx={ctx} /> : <PlanRowList rows={expenseLoose} ctx={ctx} />}
-              {shownRows.expense.uncategorized ? (
-                <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
-              ) : null}
-            </PlanBand>
-          ) : null}
+          {!expenseFolded
+            ? sectionDnd(
+                'expense',
+                envelopeCollisions(canEnterEnvelope('expense')),
+                shownRows.expense.folders.map((f) => f.folder.id),
+                { onDragOver: (e) => handleDragOver('expense', e), onDragEnd: (e) => handleDragEnd('expense', e) },
+                <>
+                  {shownRows.expense.folders.map((f) => folderSection(f, 'expense', folderMenu(f, 'expense')))}
+                  {looseGroup('expense', expenseLoose)}
+                  <RowLevelContext.Provider value="top">
+                    {shownRows.expense.uncategorized ? (
+                      <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
+                    ) : null}
+                  </RowLevelContext.Provider>
+                </>,
+              )
+            : null}
         </section>
 
-        {hasSavings ? (
-          // Its own drag context: a savings row reorders among savings rows only and
-          // can never reach a folder, which the server refuses for it anyway.
-          <section role="rowgroup" data-testid="plan-section-savings" className="plan-band-savings mt-6 flex flex-col px-1 py-1">
-            <SectionHeader
-              label={t('budgets.page.plan.section.savings')}
-              foldKey="savings"
-              folded={savingsFolded}
-              onToggleFold={togglePlanFold}
-              hiddenCount={0}
-              onShow={() => {}}
+        {shownRows.archived.length > 0 ? (
+          <section role="rowgroup" data-testid="plan-section-archived" className={`plan-band plan-band-archived flex flex-col ${PLAN_SECTION_RULE}`}>
+            <MonthSectionHeader
+              foldKey="archived"
+              sumsOnDemand
+              testId="plan-section-line-archived"
+              label={t('budgets.page.plan.section.archived')}
+              headings={[]}
+              sums={sumCells(groupSums.get('archived'))}
+              actionsColumn={false}
             />
-            {!savingsFolded ? (
-              <>
-                <PlanBand
-                  editMode={editMode}
-                  sensors={sensors}
-                  folderIds={[]}
-                  onDragStart={handleBandDragStart}
-                  onDragEnd={handleSavingsDragEnd}
-                  onDragCancel={() => setDraggingFolder(false)}
-                >
-                  <PlanRowList rows={savingsLive} ctx={ctx} />
-                </PlanBand>
-                {savingsDeleted.map((r) => (
+            {!folded('archived') ? (
+              <RowLevelContext.Provider value="top">
+                {shownRows.archived.map((r) => (
                   <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
                 ))}
-              </>
+              </RowLevelContext.Provider>
             ) : null}
-          </section>
-        ) : null}
-
-        {shownRows.archived.length > 0 ? (
-          <section role="rowgroup" data-testid="plan-section-archived" className="plan-band-archived flex flex-col gap-1 px-1 py-1">
-            <SectionHeader
-              label={t('budgets.page.plan.section.archived')}
-              foldKey="archived"
-              folded={folded('archived')}
-              onToggleFold={togglePlanFold}
-              hiddenCount={0}
-              onShow={() => {}}
-            />
-            {!folded('archived')
-              ? shownRows.archived.map((r) => <ElementRow key={rowKey(r)} row={r} ctx={ctx} />)
-              : null}
           </section>
         ) : null}
 
         <PlanTotals
           visibleMonths={visibleMonths}
           monthIndex={monthIndex}
-          gridCols={gridCols}
-          totals={totals}
           currency={planCurrency}
+          totals={totals}
           showSavings={hasSavings}
-          onLinkClick={openTotalsTransactions}
+          savingsBalance={savingsBalance}
+          onTransfersClick={openTotalsTransactions}
         />
 
-        <PlanBalanceRow
-          visibleMonths={visibleMonths}
-          monthIndex={monthIndex}
-          gridCols={gridCols}
-          balance={everydayBalance}
-          savingsBalance={savingsBalance}
-          currency={planCurrency}
-          cur={cur}
-        />
+        <PlanBalanceRow visibleMonths={visibleMonths} monthIndex={monthIndex} currency={planCurrency} balance={everydayBalance} />
+        </LineControlsContext.Provider>
+        </LineLayoutContext.Provider>
+        {selectionSum ? (
+          <PlanSelectionHint
+            sum={selectionSum}
+            cellIds={shownPicked.map((c) => cellDomId(c.rowKey, c.col))}
+            currency={planCurrency}
+            containerRef={containerRef}
+          />
+        ) : null}
       </div>
 
       {/* the totals drill-down lists the CLICKED column's month, not the budget page's period */}
@@ -2406,7 +2004,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       />
 
       <ElementSheet
-        target={sheetCellTarget ? { kind: 'plan', cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null}
+        target={sheetPlanTarget}
         month={sheetCellTarget?.month ?? ''}
         baseCurrencyId={budget.meta.currencyId}
         currencies={currencies}
@@ -2435,7 +2033,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
               }
             : undefined
         }
-        onEdit={sheetCellTarget && sheetEdit !== null ? () => editFromSheet(sheetCellTarget.el) : undefined}
+        onEdit={
+          sheetPlanTarget && sheetEdit !== null
+            ? () => {
+                // the element's own edit dialog replaces the sheet
+                setSheetCellTarget(null)
+                menus.editFromSheet(sheetPlanTarget)
+              }
+            : undefined
+        }
         canEdit={sheetEdit === true}
       />
 
@@ -2454,142 +2060,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         truncated={commentsTruncated}
       />
 
-      <MoveToFolderDialog
-        target={moveFolderTarget}
-        folders={plan.structure.folders}
-        folderSideMap={folderSideMap}
-        onClose={() => setMoveFolderTarget(null)}
-        onPick={(folderId) => {
-          if (moveFolderTarget) {
-            moveElement.mutate({
-              budgetId: budget.meta.id,
-              item: { id: moveFolderTarget.id, folderId, position: 0, afterId: null },
-            })
-          }
-          setMoveFolderTarget(null)
-        }}
-      />
-
-      {currencyTarget ? (
-        <CurrencyPickerDialog
-          open
-          title={t('budgets.modal.change_element_currency_form.header')}
-          value={currencyTarget.currencyId ?? budget.meta.currencyId}
-          onClose={() => setCurrencyTarget(null)}
-          onPick={(currencyId) => {
-            changeCurrency.mutate(
-              { budgetId: budget.meta.id, elementId: currencyTarget.id, currencyId },
-              { onSuccess: () => setCurrencyTarget(null) },
-            )
-          }}
-        />
-      ) : null}
-
-      <PlanCreateFolderDialog
-        open={createFolderOpen}
-        elements={plan.structure.elements}
-        onClose={() => setCreateFolderOpen(false)}
-        onSubmit={({ name, memberIds }) => {
-          const id = uuidv7()
-          createFolder.mutate(
-            { budgetId: budget.meta.id, id, name },
-            {
-              onSuccess: () => {
-                for (const memberId of memberIds) {
-                  moveElement.mutate({ budgetId: budget.meta.id, item: { id: memberId, folderId: id, position: 0, afterId: null } })
-                }
-                setCreateFolderOpen(false)
-              },
-            },
-          )
-        }}
-      />
-
-      <PromptDialog
-        open={renameFolderTarget !== null}
-        onClose={() => setRenameFolderTarget(null)}
-        onSubmit={(name) => {
-          if (renameFolderTarget) {
-            updateFolder.mutate({ budgetId: budget.meta.id, id: renameFolderTarget.id, name }, { onSuccess: () => setRenameFolderTarget(null) })
-          }
-        }}
-        title={t('budgets.modal.update_folder_form.header')}
-        inputLabel={t('budgets.form.budget.folder_name.label')}
-        initialValue={renameFolderTarget?.name ?? ''}
-        validate={folderNameValidator}
-        submitLabel={t('common.button.update.label')}
-        cancelLabel={t('common.button.cancel.label')}
-      />
-
-      <ConfirmDialog
-        open={deleteFolderTarget !== null}
-        onClose={() => setDeleteFolderTarget(null)}
-        onConfirm={() => {
-          if (deleteFolderTarget) {
-            deleteFolder.mutate({ budgetId: budget.meta.id, id: deleteFolderTarget.id }, { onSettled: () => setDeleteFolderTarget(null) })
-          }
-        }}
-        title={t('budgets.modal.delete_folder.header')}
-        question={t('budgets.modal.delete_folder.question', { name: deleteFolderTarget?.name ?? '' })}
-        confirmLabel={t('common.button.delete.label')}
-        cancelLabel={t('common.button.cancel.label')}
-        destructive
-      />
-
-      <EnvelopeDialog
-        open={envelopeTarget !== null}
-        envelope={envelopeTarget}
-        budgetCurrencyId={budget.meta.currencyId}
-        side={envelopeTarget && isIncomeType(envelopeTarget.type) ? 'income' : 'expense'}
-        onClose={() => setEnvelopeTarget(null)}
-        onSubmit={(form) => {
-          if (envelopeTarget) {
-            updateEnvelope.mutate(
-              {
-                budgetId: budget.meta.id,
-                id: envelopeTarget.id,
-                name: form.name,
-                icon: form.icon,
-                currencyId: form.currencyId,
-                isArchived: form.isArchived,
-                categories: form.categories,
-              },
-              { onSuccess: () => setEnvelopeTarget(null) },
-            )
-          }
-        }}
-      />
-
-      <CategoryDialog
-        open={categoryTarget !== null}
-        category={categoryTarget}
-        onClose={() => setCategoryTarget(null)}
-        onSubmit={(form) => {
-          if (categoryTarget) {
-            updateCategory.mutate(
-              { id: categoryTarget.id, name: form.name, icon: form.icon },
-              { onSuccess: () => setCategoryTarget(null) },
-            )
-          }
-        }}
-      />
-
-      <TagDialog open={tagTarget !== null} item={tagTarget} onClose={() => setTagTarget(null)} />
-
-      <ConfirmDialog
-        open={deleteEnvelopeTarget !== null}
-        onClose={() => setDeleteEnvelopeTarget(null)}
-        onConfirm={() => {
-          if (deleteEnvelopeTarget) {
-            deleteEnvelope.mutate({ budgetId: budget.meta.id, id: deleteEnvelopeTarget.id }, { onSettled: () => setDeleteEnvelopeTarget(null) })
-          }
-        }}
-        title={t('budgets.modal.delete_envelope.header')}
-        question={t('budgets.modal.delete_envelope.question')}
-        confirmLabel={t('common.button.delete.label')}
-        cancelLabel={t('common.button.cancel.label')}
-        destructive
-      />
+      {menus.dialogs}
     </div>
   )
 }

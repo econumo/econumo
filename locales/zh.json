@@ -16,8 +16,7 @@
       "onboarding": "快速入门",
       "create_account": "添加账户",
       "collapse_menu": "收起菜单",
-      "expand_menu": "展开菜单",
-      "sharing_requests": "共享请求"
+      "expand_menu": "展开菜单"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,38 @@
     "make_recurring": "设为定期交易",
     "not_posted": "未入账"
   },
+  "inbox": {
+    "title": "收件箱",
+    "open": "收件箱，{count} 项待处理",
+    "empty": "没有新通知",
+    "sections": {
+      "due": "计划交易",
+      "sharing": "共享",
+      "sync": "同步问题",
+      "failed": "导入失败",
+      "to_review": "待审核",
+      "skipped": "已跳过（{count}）"
+    },
+    "due": {
+      "overdue": "已逾期 · {date}",
+      "today": "今天"
+    },
+    "sharing": {
+      "invited_you": "{name} 邀请了您",
+      "account": "账户",
+      "budget": "预算",
+      "choose_folder": "为此账户选择文件夹",
+      "general_folder_hint": "General（将自动创建）",
+      "decline_question": "拒绝“{name}”的访问权限吗？"
+    },
+    "sync": {
+      "failed": "{source} 同步失败",
+      "partial": "{source} 同步完成但有错误",
+      "when": "上次尝试时间：{date}"
+    }
+  },
   "imports": {
     "badge": "已导入",
-    "banner": {
-      "text": "{count} 笔导入的交易等待审核 | {count} 笔导入的交易等待审核",
-      "cta": "审核"
-    },
     "data_page": {
       "menu_item": "导入与导出",
       "header": "导入与导出",
@@ -650,15 +675,11 @@
       }
     },
     "queue": {
-      "header": "导入队列",
-      "empty": "没有需要审核的内容。",
       "card_amount": "卡片金额：{amount} {currency}",
-      "queued": "等待审核",
-      "skipped": "已跳过",
-      "failed": "需要处理",
       "reason": {
         "unmapped": "卡片未映射",
         "account_deleted": "账户已删除",
+        "no_access": "无权访问该账户",
         "no_rate": "没有 {currency} 的汇率"
       },
       "import": "导入",
@@ -873,7 +894,7 @@
       "settings": {
         "profile": {
           "menu_item": "个人资料",
-          "header": "个人资料",
+          "header": "个人设置",
           "groups": {
             "personal_details": "个人信息",
             "preferences": "偏好设置",
@@ -1151,7 +1172,7 @@
         "header": "新建预算"
       },
       "update_budget_form": {
-        "header": "编辑预算"
+        "header": "预算设置"
       },
       "create_folder_form": {
         "header": "新建文件夹"
@@ -1296,20 +1317,19 @@
         "settings": {
           "button": "配置",
           "menu": {
-            "edit": "预算详情",
+            "edit": "预算设置",
             "edit_structure": "编辑结构",
-            "edit_structure_done": "完成编辑",
-            "budget_list": "打开预算列表"
+            "edit_structure_done": "完成编辑"
           }
         },
         "structure": {
-          "no_folder": "默认文件夹",
           "in_archive": "已归档",
           "carry_over_hint": "以前月份结转",
           "tab": {
             "budgeted": "预算",
             "spent": "已支出",
-            "available": "可用"
+            "available": "可用",
+            "to_receive": "待收"
           },
           "action": {
             "create_folder": "创建文件夹",
@@ -1317,6 +1337,9 @@
           },
           "empty_folder": {
             "note": "此文件夹为空。请将分类、标签或信封移动到这里，或创建一个新信封。"
+          },
+          "empty_envelope": {
+            "note": "此信封为空。将分类拖到这里，或通过“编辑”选择分类。"
           },
           "element": {
             "action": {
@@ -1343,6 +1366,16 @@
         }
       },
       "plan": {
+        "sums": {
+          "show_month": "显示 {name} 在 {month} 的合计",
+          "hide_month": "隐藏 {name} 在 {month} 的合计",
+          "show": "显示 {name} 的合计",
+          "hide": "隐藏 {name} 的合计"
+        },
+        "name_column": {
+          "resize": "调整名称列宽度",
+          "resize_hint": "拖动调整宽度，双击恢复默认"
+        },
         "toggle": {
           "budget": "预算",
           "plan": "计划"
@@ -1353,12 +1386,9 @@
           "savings": "储蓄",
           "archived": "已归档"
         },
-        "nav": {
-          "prev": "更早的月份",
-          "next": "更晚的月份"
-        },
         "cell": {
-          "aria": "{name}，{month}：实际 {actual}，计划 {planned}"
+          "aria": "{name}，{month}：实际 {actual}，计划 {planned}",
+          "edit_aria": "{name} 的计划，{month}"
         },
         "fill": {
           "handle_aria": "将预算复制到后续月份"
@@ -1370,7 +1400,7 @@
         "totals": {
           "income": "收入",
           "expenses": "支出",
-          "transfers": "转账",
+          "transfers": "预算外转账",
           "transfers_tooltip": "转入 {in} · 转出 {out}",
           "show_transactions": "显示交易",
           "net": "净额",
@@ -1378,14 +1408,11 @@
           "savings": "储蓄",
           "savings_balance": "储蓄总额"
         },
-        "density": {
-          "hide_empty": "隐藏空行",
-          "hidden": "已隐藏 {count} 项",
-          "show": "显示"
-        },
         "menu": {
           "move_to_folder": "移动到文件夹…",
-          "no_folder": "无文件夹"
+          "no_folder": "无文件夹",
+          "no_access": "无权限",
+          "not_empty": "非空"
         },
         "edit": {
           "no_access_envelope": "无法编辑此信封——您在此预算中的角色为只读。",
@@ -1397,7 +1424,7 @@
           "disclosure": "评论（{count}）",
           "comment_label": "评论",
           "marker_aria": "{count} 条评论",
-          "composer_placeholder": "为本月添加备注",
+          "composer_placeholder": "添加备注",
           "post": "发布",
           "edit": "编辑",
           "delete": "删除",
@@ -1410,13 +1437,18 @@
           "truncated": "仅显示最新的 2000 条评论。",
           "add": "添加评论",
           "more": "还有 {count} 条"
+        },
+        "selection": {
+          "count": "{count} 个单元格",
+          "planned": "计划",
+          "actual": "实际"
         }
       },
       "savings": {
         "title": "储蓄",
         "planned": "计划",
         "saved": "已储蓄",
-        "balance_hint": "月末余额。当前及之后的月份包含尚未存入的计划储蓄。"
+        "balance_hint": "月末余额。"
       },
       "phone": {
         "row_aria": "{name}，预算 {budget}，已支出 {spent}",
@@ -1482,6 +1514,12 @@
         "confirm": "合并",
         "warning": "“{name}”的所有交易将被移动，并删除“{name}”。",
         "envelope_info": "如果两者位于不同的信封中，请先更新预算，以免丢失已计划的金额，因为合并时限额会相加。"
+      },
+      "archive": {
+        "action": "归档"
+      },
+      "unarchive": {
+        "action": "取消归档"
       }
     },
     "categories": {
@@ -1767,17 +1805,25 @@
           "required_field": "必填项"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "共享请求",
-      "empty": "没有待处理的请求",
-      "invited_you": "{name} 邀请了您",
-      "account": "账户",
-      "budget": "预算",
-      "choose_folder": "为此账户选择文件夹",
-      "general_folder_hint": "General（将自动创建）",
-      "decline_question": "拒绝“{name}”的访问权限吗？"
     }
+  },
+  "search": {
+    "title": "搜索",
+    "placeholder": "搜索交易、账户、分类…",
+    "groups": {
+      "accounts": "账户",
+      "categories": "分类",
+      "payees": "收款人",
+      "tags": "标签",
+      "labels": "统计标签",
+      "transactions": "交易"
+    },
+    "show_all": "显示全部 ({count})",
+    "hidden_folder": "隐藏的文件夹",
+    "back": "返回",
+    "nothing_found": "未找到任何内容",
+    "open": "搜索",
+    "open_tooltip": "搜索 ({shortcut})"
   },
   "subscription": {
     "banner": {
@@ -1877,7 +1923,8 @@
       "transaction_filter_required": "校验未通过。",
       "envelope_side_mixed": "信封中不能同时包含收入和支出分类。",
       "folder_side_mixed": "文件夹中不能同时包含收入和支出。",
-      "savings_folder_not_allowed": "储蓄不能放入文件夹。",
+      "envelope_member_not_category": "只能将分类添加到信封中",
+      "savings_folder_not_allowed": "储蓄账户不能放入文件夹",
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
       "savings_account_not_member": "储蓄账户必须是您在此预算中的账户",
       "savings_removal_unconfirmed": "这将删除你在此预算中关闭或移除的储蓄账户的计划金额和评论；请确认以继续",

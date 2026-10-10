@@ -12,10 +12,12 @@ import (
 )
 
 // AccountReader is the slice of the account feature the pipeline needs:
-// ownership (link-account), dormancy (a deleted account queues instead of
-// failing), and the currency to convert into.
+// write access (link-account, and an account the user lost access to queues
+// instead of failing), dormancy (a deleted account queues too), and the
+// currency to convert into.
 type AccountReader interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
+	HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 	AccountDeleted(ctx context.Context, accountID vo.Id) (bool, error)
 	AccountCurrencyCode(ctx context.Context, accountID vo.Id) (string, error)
 }

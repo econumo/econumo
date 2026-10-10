@@ -274,6 +274,11 @@ navigation (single-pane vs sidebar).
       folders.
 - [ ] Drag-and-drop an account within a folder and across folders (desktop);
       order persists after reload.
+- [ ] 📱 Settings → Accounts with small folders (1–3 accounts each and one
+      empty folder): drag an account a row within its folder, then on into the
+      neighbouring folder and hold it on the boundary — the row settles
+      without the "Unexpected Application Error" (React #185) screen; dropping
+      into the empty folder works; order persists after reload.
 - [ ] Delete an account with transactions → confirm dialog; account disappears;
       its balance is zeroed by an automatic "Balance adjustment (account
       deleted)" correction; a budget that included it keeps the history
@@ -297,6 +302,16 @@ navigation (single-pane vs sidebar).
       global add button: date picker, amount (formula), category & payee
       selects with **create-on-type** inline creation, tags & labels chips,
       description.
+- [ ] 📱 Category / payee / tag pickers find an item when a letter is skipped
+      ("grcries" → Groceries); a prefix match is listed before a match later
+      in the name; typing a new name that only resembles an existing one still
+      offers "Add «name»".
+- [ ] 📱 Account / From / To pickers (transaction and recurring dialogs) find
+      an account by name with a skipped letter ("eurstsh" → Euro Stash), and
+      typing digits of a balance (e.g. "2000") matches no account. The same
+      skip-tolerant, closest-first search works in the currency picker (by
+      name, code or symbol), the envelope category picker, the budget accounts
+      field and the Merge dialog.
 - [ ] Cross-currency transfer (USD account → EUR account) asks for both
       amounts; both accounts' balances update by their respective amounts.
 - [ ] Same-currency transfer: single amount; swap from/to button works.
@@ -331,9 +346,30 @@ navigation (single-pane vs sidebar).
 
 ## 5a. Imports — Apple Wallet
 
+Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
+`ECONUMO_IMPORT_SIMPLEFIN=true`.
+
+- [ ] Both import providers off (`ECONUMO_IMPORT_APPLE_WALLET` and
+      `ECONUMO_IMPORT_SIMPLEFIN` unset) 📱: Settings → Data shows only
+      "Import & export"; no Apple Wallet, SimpleFIN or Import rules rows.
+      Import & export lists only the CSV import/export rows (no "Sync bank
+      connections", "Import rules" or "Import history").
+      `/settings/apple-wallet`, `/settings/simplefin`, `/settings/import-rules`
+      and `/imports/runs` show the not-found page. The Inbox shows only sharing
+      invites (or "All caught up") and no request to `/api/v1/import/*` is made
+      anywhere in the app (Network tab); a direct call to any import endpoint
+      returns 404.
+- [ ] Only SimpleFIN on 📱: Settings → Data shows SimpleFIN and Import rules but
+      no Apple Wallet; `/settings/apple-wallet` shows the not-found page; an
+      Apple Wallet source left from before is absent from the Inbox, and the
+      ingest endpoint returns 404.
+- [ ] Only Apple Wallet on 📱: Settings → Data shows Apple Wallet and Import
+      rules but no SimpleFIN; `/settings/simplefin` shows the not-found page and
+      "Sync bank connections" never appears.
+
 - [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
       import/export rows; dialogs open as before) and "Apple Wallet" (its own page:
-      setup, cards, "Import queue" link; back returns to Settings).
+      setup, cards, "Inbox" link; back returns to Settings).
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source); the section flips to
       "Connected" with a seven-step checklist (Install econumo-wallet-v1, Install
@@ -366,8 +402,8 @@ navigation (single-pane vs sidebar).
 - [ ] Step 4 📱 iOS only: "Run econumo-wallet-v1" opens
       `shortcuts://run-shortcut?name=econumo-wallet-v1`; after allowing the
       prompts on the phone, "Check" ticks step 4 (folded to its title) and the
-      `account is required` row disappears from the queue's "Needs attention"
-      list; "Check" with nothing received reports "Nothing received yet…" and
+      `account is required` row disappears from the Inbox's Failed imports
+      section; "Check" with nothing received reports "Nothing received yet…" and
       leaves the box unticked.
 - [ ] Step 5 text walks through Automation → + → Wallet → cards & categories →
       Run After Confirmation → econumo-wallet-v1; step 6 text says to tap Run
@@ -386,29 +422,72 @@ navigation (single-pane vs sidebar).
       `full` PAT / session token is accepted too; an `ingest` PAT on any other route
       is 401.
 - [ ] Same payload twice → `duplicate`, no second row; a body without `account`
-      or with a bad currency → `status: failed`, row in "Needs attention" with the
-      error text and the raw payload; Retry re-parses (toast with the outcome),
-      Discard removes it.
-- [ ] Map card → account (owned accounts only in the picker; shared accounts
-      absent): the queue replays — toast "N imported, N matched, N skipped";
+      or with a bad currency → `status: failed`, row in the Inbox's Failed
+      imports section with the error text and the raw payload; Retry re-parses
+      (toast with the outcome), Discard removes it.
+- [ ] Map card → account (the picker lists my accounts plus accounts shared
+      with me as admin or user; guest-only shares are absent): the queue replays — toast "N imported, N matched, N skipped";
       imported transactions appear on the account with the glyph; a same-amount
       hand-entered transaction within ±3 days is adopted (no duplicate) and shows
       the provenance card.
+- [ ] A card mapped to an account shared with me imports its taps onto that
+      account without categories, payees, tags or labels (my import rules
+      don't apply there; the owner's categories do), and applying a classify
+      rule leaves those rows untouched. When the owner revokes the share, new
+      taps queue in the Inbox with "No access to the account" until the card
+      is remapped.
 - [ ] A new card whose first taps were all in a foreign currency (USD taps →
       CAD account) maps without error; its queued taps import converted at the
       day's rate (a tap with no stored rate stays queued), and the provenance
       line keeps the original "… USD" amount. An ignored card offers
       "Map instead"; "Unmap" (confirmation) returns the card to unmapped and
       new taps queue again.
-- [ ] Review banner 📱: with queued rows, every page except the queue shows
-      "N imported transactions are waiting for review" + "Review"; the banner
-      disappears when the queue empties.
-- [ ] Queue page 📱: rows grouped by card, unmapped cards carry "Map to account"
-      (→ Apple Wallet page) and "Ignore"; tapping a row opens the add-transaction
-      dialog prefilled (account, amount, merchant as description, posted date);
-      saving posts `import-queued-event` — the row leaves the queue and the
-      transaction is created with the glyph; Skip moves a row to "Skipped",
-      Restore brings it back.
+- [ ] Inbox button 📱: the sidebar top row shows the logo + version label
+      (linking Home) on the left and a Search button and an Inbox button on
+      the right — no avatar or user name in the sidebar; the Inbox button is
+      visible with nothing pending (no badge) and shows the pending count
+      (99+ above 99); in the collapsed desktop rail the order is the Econumo
+      mark (linking Home), Search, Inbox, onboarding (when incomplete),
+      Budget.
+- [ ] Inbox count 📱: the badge equals due recurring templates + pending invites +
+      sources whose last sync failed/partially failed + failed imports + queued
+      imports; skipped rows are not counted.
+- [ ] Inbox page 📱: sections appear in order Due, To review, Sync problems,
+      Failed imports, Skipped (collapsed), Sharing; empty sections are hidden; with
+      nothing pending it reads "All caught up".
+- [ ] Inbox clears itself 📱: accepting/declining an invite, importing/skipping
+      every queued row, and a successful re-sync each remove the item and lower
+      the badge without a reload.
+- [ ] Inbox Due section 📱: every recurring template whose next payment is today
+      or earlier, on an account I own or that is shared with me with write
+      access (whoever created it), is listed oldest first; each row names its
+      account and schedule and reads "Today" or "Overdue · <date>" (red).
+      Templates due tomorrow or later, and ones on a read-only shared account,
+      are not listed.
+- [ ] Inbox Due actions 📱: tapping a row opens the recurring preview; Post
+      creates the transaction dated today, Skip moves the schedule on — either
+      removes the row and lowers the badge without a reload; tapping the schedule
+      row opens the edit form.
+- [ ] Inbox Due on a joint account: with A and B both having write access to a
+      shared account, a due template there shows in both Inboxes; after A posts
+      it, it is gone from B's Inbox after B reloads.
+- [ ] Import data fails to load 📱: the Inbox shows an error with Retry, keeps
+      any rows it already had, and never reads "All caught up".
+- [ ] Sync problem 📱: a SimpleFIN sync that fails shows "<source> sync failed",
+      the time and the error in the Inbox; tapping it opens the SimpleFIN
+      settings page; a per-account failure names the card.
+- [ ] Remap is not a sync problem 📱: mapping an Apple Wallet card in a
+      currency with no stored rate leaves its taps under To review and adds
+      nothing to Sync problems or the badge beyond those rows.
+- [ ] No banners for attention items 📱: only the subscription banner and the
+      server-version notice ever appear above the app; pending imports never
+      show a top banner.
+- [ ] Inbox's To review section 📱: rows grouped by card, unmapped cards carry
+      "Map to account" (→ Apple Wallet page) and "Ignore"; tapping a row opens
+      the add-transaction dialog prefilled (account, amount, merchant as
+      description, posted date); saving posts `import-queued-event` — the row
+      leaves the Inbox and the transaction is created with the glyph; Skip moves
+      a row to the Inbox's collapsed Skipped section, Restore brings it back.
 - [ ] A second tap with the same amount on the same card within ±3 days of a
       hand-entered transaction of that amount is adopted (no duplicate); a tap
       already linked from this source is never adopted twice.
@@ -470,9 +549,9 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] A hand-entered transaction with the exact same amount as an incoming
       bridge row, dated within a few days of it, is adopted (matched count)
       rather than duplicated.
-- [ ] Unmapped bridge account with transactions: sync queues them (queue page
-      shows them with "Card not mapped" reason); mapping the account replays
-      the queue.
+- [ ] Unmapped bridge account with transactions: sync queues them (the Inbox's
+      To review section shows them with "Card not mapped" reason); mapping the
+      account replays the queue.
 - [ ] Per-account failure (one linked account's transaction write errors
       mid-sync while another account succeeds — not triggered by a missing
       rate or a deleted account, both of which queue their events instead):
@@ -486,8 +565,7 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       than the unreachable one, so the user reconnects instead of retrying.
 - [ ] A run where some bridge rows cannot be parsed reports "Completed with
       errors" with a non-zero failed count and no success toast (never a clean
-      "Completed"); the rows are listed on the queue page's needs-attention
-      list.
+      "Completed"); the rows are listed in the Inbox's Failed imports section.
 - [ ] Run detail names each row's bank account the way the run summary does
       (the bank's own account name, falling back to the bridge id) — never a
       bare `ACT-…` id when the source's accounts are known. 📱
@@ -604,6 +682,68 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Creating from within the transaction dialog (create-on-type) lands the
       item in the settings list too.
 
+## 7a. Global search
+
+Hotkey-only entry (no on-screen button yet), so no 📱 markers: run on desktop,
+and on tablet/phone only with a hardware keyboard.
+
+- [ ] `Ctrl+K` (Windows/Linux) / `⌘K` (macOS) opens search from any page; the
+      input is focused and empty on every open. While another dialog (e.g. Add
+      transaction) is open the shortcut does nothing; pressed while search is
+      open it stays in search and does not trigger the browser's own shortcut.
+      Works with a Cyrillic keyboard layout active.
+- [ ] Layout: on desktop the palette is a wide centered dialog (~670px); on a
+      phone-width viewport it is a full-screen sheet.
+- [ ] Empty query lists recent transactions across all accounts, newest first,
+      grouped by day; each row names its account with the account icon on the
+      right, under the amount; transfers read "From → To" (both icons) with no
+      +/− sign; a long account name truncates without squeezing the title.
+- [ ] Future-dated transactions (dated tomorrow or later) are not in the
+      empty-query list; typing a query that matches one, or drilling into its
+      category/payee/tag/label, does show it (dimmed).
+- [ ] With at least one connection, every transaction row shows its author's
+      avatar on the row icon (even on accounts that are not shared); with no
+      connections there are no avatars. The account page keeps its own rule
+      (avatars only on shared accounts).
+- [ ] Typing filters accounts, your own categories, payees, tags, labels and
+      transactions; a skipped letter still matches ("grcries" finds
+      "Groceries"); amounts match the digits as typed or as displayed
+      ("12.50" and "1,250.00" find those rows; "1250" does not find 12.50 —
+      no skipped digits).
+- [ ] Accounts in a hidden folder and shared accounts appear; a hidden-folder
+      account shows an eye-off icon after its folder name ("Hidden folder" on
+      hover); selecting one opens the account page and closes search; `⋯` shows
+      Edit / Access (admin only) / Delete (owner) or Decline (shared account).
+- [ ] Opening a hidden-folder account from search shows its transactions (they
+      load on opening; their transactions are not part of search results), and
+      adding, editing or deleting one there updates the list.
+- [ ] Deleting or declining an account from its result `⋯` keeps search open
+      and the row disappears from the list.
+- [ ] Access control from an account result `⋯` opens the sharing dialog over the
+      search; changes save and closing it returns to the search.
+- [ ] Connected users' classifications never appear; archived ones appear
+      after the active ones, dimmed with the archived badge, and `⋯` offers
+      Unarchive.
+- [ ] A classification result `⋯` → Edit opens its form over the search and
+      the renamed item shows in the results; Archive moves it after the active
+      ones (dimmed, badged); Merge into another item drops it from the results
+      and its transactions now carry the target.
+- [ ] Selecting a category/payee/tag/label shows only its transactions; typing
+      narrows within it; Back (button, or Backspace on an empty input) returns
+      to the results with the previous query restored; deleting or merging it
+      from the header `⋯` returns to the results. An item with no
+      transactions shows "Nothing found".
+- [ ] A result group with more than 5 matches shows "Show all (N)", which
+      expands the whole group.
+- [ ] Selecting a transaction opens its preview; Edit opens the form (search
+      closes); Delete removes it and the list updates.
+- [ ] Keyboard: ↑/↓ move the highlight, Enter opens the highlighted row, Esc
+      closes search.
+- [ ] 📱 On a phone the search field reads "Search" with a ✕ to its right, and
+      a full-width Close button sits at the bottom; each closes the search, the
+      ✕ stays reachable while the on-screen keyboard is up, and the list
+      scrolls between the field and the Close button.
+
 ## 8. Currencies
 
 - [ ] "My currencies" vs "Global currencies" tabs; enable/disable one currency;
@@ -624,6 +764,143 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Budget table: budgeted / spent / available columns; expanding an element
       shows details; totals row; uncategorized and labels sections appear with
       info notes when relevant.
+- [ ] 📱 Section order: the Reporting tags folder is the last expense section,
+      below Uncategorized and Archived (desktop: right above the Total row;
+      phone: right above the Total card), and still shows when neither of those
+      has anything to show.
+- [ ] "Budget" / "Plan" (desktop and tablet) are plain words at the start
+      of the month row, the current one underlined and bold. Switching between
+      /budget and /plan moves neither the two words nor the ‹ › arrows by a
+      pixel (same row height and place in both views): `Budget · Plan │ ‹ › month
+      strip` on /budget, and on /plan at the start of the Plan grid's own
+      month row (above the names). They swap between the two; the page header
+      carries no view switch.
+- [ ] 📱 The main menu's "Budget & Plan" link opens the view last opened on
+      this device (/budget or /plan), also after a reload, with the month
+      last shown there. The selected month is shared by both views: pick a
+      month in the strip on /budget (or page with ‹ › on /plan), switch
+      Budget ↔ Plan (and back), and the same month is still selected.
+- [ ] Budget view (desktop and tablet) uses the phone's order: Income
+      (Planned · Received · To receive), Savings (Planned · Saved · Balance, only with
+      savings accounts), Expenses (Budget · Spent · Available: folders, No
+      folder, Uncategorized, Archived, Reporting tags), then the Total row
+      and the lines Income, Expenses, "Transfers outside budget" (only when not zero),
+      Savings, Total savings and Balance at month end. Each section header
+      folds its section; a folded header shows the section's sums in its
+      columns, and the fold survives a reload. Budget and Plan fold on their
+      own: folding a section, folder or envelope in one view leaves the same
+      line in the other view as it was (and back). A future month shows "—" for
+      received, saved and the Income / Expenses / Savings lines.
+- [ ] Budget view, Income: grouped as in the Plan grid — each income
+      folder as a thin line with its Planned / Received sums (in the budget
+      currency), then the folder-less rows (under "No folder" when
+      folders exist), the income Uncategorized row on its own (only in a
+      month it received something), and an Archived line for archived income
+      with money this month. An income envelope unfolds to its categories,
+      each with its received amount (opens its transactions); the unfold
+      does not carry over to the Plan grid.
+- [ ] Budget view, Income "To receive": each income row shows what it is
+      still expected to bring this month, Planned − Received, and 0 once it
+      has received its plan or more (never negative); a row with no plan, and
+      income Uncategorized, show "—". A folder line and the folded Income line sum their rows'
+      figures, so one overpaid source does not hide another still unpaid.
+- [ ] Budget view dashes: an income row with no plan shows a muted "—"
+      under To receive, whatever it received; an expense row with nothing
+      budgeted, nothing spent and nothing left from earlier months shows a
+      muted "—" under Available (money left from earlier months keeps its
+      figure). Folder and section lines follow the same rule. Every dash on
+      the page is a light, half-strength grey (lighter than the muted
+      figures), also in the totals lines. The planned/budget
+      amount itself still reads 0.00, as the cell to edit.
+- [ ] Budget view look (desktop and tablet): no boxes — thin rules
+      separate Income, Savings and Expenses, folders are a softer grey line
+      with their sums, rows sit indented under them, and every heading, sum
+      and amount shares one set of right-aligned columns. The budget
+      currency's code shows once, above Income; there is no per-row currency
+      symbol, and a row in another currency carries a small code tag next
+      to its name. An expense row's Available is a pill: green while it is
+      zero or more, red once it is negative ("—" when there is nothing to
+      show). Spent turns red only on an overspent row (spent more than its
+      budget and earlier months do not cover it). Folder and total sums stay
+      plain figures, red only when the folder as a whole overspent. Every
+      figure, dash and heading in the last column lines up with the digits
+      inside the pills. A future month shows "—" for Spent. The table
+      spans the full width. The page title is in normal case.
+- [ ] Budget view ⋮ menus: on a desktop (mouse) they show on hover and while
+      open, with no mode to switch on; on a tablet or phone they show on every
+      line only while Configure → Edit structure is on ("Done editing" turns
+      them off again; with it off the view has no ⋮ and no grips):
+      - an expense or income category/tag row: Edit (name, icon; greyed out
+        as "Edit (no access)" for a category or tag another user owns),
+        Change currency, Move to folder…, then the category's or tag's own
+        Archive (Unarchive on an archived row), Merge into… (own items of the
+        same kind and type) and Delete (with a confirmation), each greyed out
+        as "(no access)" when another user owns it; an envelope adds Delete
+        (owner/admin); an archived row keeps Edit and Delete (envelope);
+        Uncategorized (expense or income) has no menu. An archived category
+        moves to Archived at once, a merged or deleted one disappears, its
+        figures folded into the target (merge) — also after a reload;
+      - a category inside an unfolded envelope: Edit, Archive, Merge into…,
+        Delete, the same way;
+      - a savings row: Edit (the account) only, no Change currency, in both
+        the Budget view and the Plan grid; a reporting tag: Edit ("Edit (no
+        access)" for another user's tag);
+      - a folder line: New envelope, New category, Edit (rename), Delete
+        folder (greyed out as "Delete folder (not empty)" while the folder has
+        items); the "No folder" line (Income or Expenses): New envelope, New
+        category;
+      - the Expenses and Income lines: Create folder, New envelope, New
+        category; the Savings line: New account, Savings accounts (opens the
+        budget's settings).
+      New category asks for a name and icon only (the type is the section's)
+      and the category shows at once at the top of the folder the menu
+      belongs to (or No folder). New account opens the account dialog; the
+      new account shows as a savings row of this budget.
+      Regression: an income folder must stay under Income after a reload,
+      also after New envelope created an envelope in it.
+      A guest (or anyone on an archived budget) gets no structure actions:
+      only Edit, Archive, Merge into… and Delete where they own the item. No menu offers Show transactions:
+      a row's transactions open from its Spent / Received / Saved figure.
+- [ ] Budget view, Create folder from the Income line: the new folder shows
+      at once under Income, empty ("This folder is empty…", a muted dash in
+      each figure column instead of zeros, on the phone too), and not under
+      Expenses; an income row's Move to folder… offers it (and never an
+      expense folder), and the folder stays under Income, empty, also after a
+      reload, and in the Plan grid's Income section. Create folder from the
+      Expenses line makes an expense folder the same way. An expense row's
+      Move to folder… offers only expense folders. A folder's side never
+      changes: an item of the other side cannot go into it, not even while
+      it is empty (dragging across sections is not possible, and the server
+      refuses it with "A folder cannot contain both income and expenses").
+- [ ] Budget view lines highlight on hover like rows (pointer cursor): the
+      Income, Savings and Expenses lines, folder lines, and Reporting tags. A
+      click anywhere on such a line folds it, its sums included; in Edit
+      structure the grip and the folder's "⋮" menu (and the menu's
+      items) keep their own action and do not fold.
+- [ ] Budget view nesting (desktop and tablet): a row inside a folder sits a
+      half step in from the folder line, its chevron just right of the folder's (an
+      envelope or tag in "No folder" reads as inside it, not beside it); an
+      envelope's categories sit one step further in. Rows with no folder line
+      above them (Uncategorized, every row when there are no folders, savings)
+      sit at the folder line's step. Drag grips and insertion lines follow the
+      same steps.
+- [ ] Budget view Uncategorized (desktop and tablet, expense and income): the
+      line reads like a folder line, not a row: the folder line's step,
+      height, small muted text and no icon, its name lined up with the folder
+      names above it; Budget/Planned and Available/To receive show "—".
+- [ ] 📱 Phone budget Uncategorized (expense card and inside Income): the line
+      reads like a folder header, not a row: small muted text, no icon, no
+      bar, its name lined up with the folder names; Budget/Planned shows "—";
+      a tap on the figures still opens the item sheet.
+- [ ] Budget view folders fold (desktop and tablet): a folder's line, "No
+      folder" and "Archived" hide their rows on a click and keep the line with
+      its sums; income folders inside Income fold the same way. Folds survive
+      a reload and are shared with the Plan grid and the phone.
+- [ ] Budget view: the income and savings Planned amounts edit inline on a
+      desktop (popover) and open the item sheet on a tablet; Received and
+      Saved open the transactions dialog (except income Uncategorized);
+      Balance, Total savings and the Income line match the Plan grid's
+      figures for the same month.
 - [ ] Element visibility rule: a category/tag/envelope with **either** spending
       or a limit (incl. carried over) is visible; with neither it is not.
 - [ ] Set a limit via the inline editor on a budgeted amount (desktop) or the
@@ -638,26 +915,245 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       Months past the end month are not offered (the active month stays
       visible even if the stored selection is outside); scrolling never
       extends past the end month.
-- [ ] Period strip desktop arrows (‹ ›, left of the strip, hidden on mobile
-      where the strip scrolls by touch): they PAN the strip only — the
-      selected month and the table below never change; panning to either
-      edge keeps extending the window (past months included).
+- [ ] Period strip desktop arrows on /budget (‹ ›, left of the strip, hidden
+      on mobile where the strip scrolls by touch): they PAN the strip only —
+      the selected month and the table below never change; panning to either
+      edge keeps extending the window (past months included). /plan on
+      desktop and tablet has no strip (see "Plan grid header and window").
 - [ ] 📱 The budget header shows no currency chips on /budget or /plan, and
       no "Spending progress" widget appears anywhere on the page.
-- [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
-      per-element menu (change currency, move to folder, edit envelope, delete
-      envelope), delete folder; leaving the mode persists the layout.
-- [ ] Envelopes: create via the "+" button on a folder header in Edit
-      structure mode (name, currency, categories multi-select);
+- [ ] 📱 The budget header's Configure button (⚙, "CONFIGURE" from sm up)
+      is the only control there besides the title. On a desktop, in the Budget
+      view and the Plan grid alike, it opens the "Budget settings" dialog
+      straight away. On a tablet or phone it opens a small sheet with two options:
+      "Budget settings" and "Edit structure" (an option the user may not use
+      reads "(no access)", greyed out); nothing else (no budgets list, no
+      Hide empty rows). A guest on the desktop (Budget view or Plan grid) sees no
+      Configure button.
+- [ ] 📱 **Edit structure** on a tablet or phone (Configure → Edit
+      structure, "Done editing" to leave): the Budget view shows Income,
+      Savings and Expenses with a ⋮ menu and a drag grip on every line (on a
+      phone this replaces the month view, on /budget and /plan alike), and
+      everything the desktop ⋮ menus offer works the same. On a tablet the Plan
+      grid (/plan) has the same mode, reached the same way, with the same ⋮
+      menus and grips as the Budget view. On a desktop neither view has such a
+      mode: the ⋮ menus and grips come with the pointer (hover).
+- [ ] Budget view drag and drop (for anyone who may configure the budget):
+      on a desktop hovering a row shows a grip in its left indent; on a
+      tablet or phone every row shows one while Edit structure is on; dragging moves the row within its
+      folder or into another folder of the same section (an expense row
+      never into Income, an income row never into Expenses); a folder line's
+      grip reorders folders within the section; savings rows reorder among
+      themselves only, a deleted account's row has no grip; income
+      Uncategorized and archived rows have none. The dropped order shows at
+      once and survives a reload. Guests and archived budgets show no grips.
+- [ ] Budget view, categories and envelopes by drag (Expenses and Income
+      alike, desktop and tablet/phone Edit structure): an unfolded envelope's
+      categories carry grips. While dragging, the item stays dimmed in place,
+      a copy (icon and name) follows right beside the cursor, an empty "No
+      folder" shows after the folders as a drop target (Income and Expenses,
+      when it has nothing in it), and one insertion line with a
+      dot at its start marks where it lands: a line starting where rows start
+      means a place in a folder (before/after a row, or under the header of an
+      empty or folded folder), a line starting where an envelope's categories
+      start, under its list, means into that envelope. This holds for rows and
+      envelopes moved between folders too. A category dragged out onto a row or
+      folder leaves the envelope and lands there; dropped among another
+      unfolded envelope's categories it moves into that envelope; a top-level
+      category dropped there joins it the same way. A folded envelope takes a
+      category dropped on the middle of its row (the row gets a ring and the
+      category-level line shows under it); near the row's top or bottom edge
+      the drop places the category next to the envelope instead. An
+      empty envelope unfolds to "This envelope is empty…" and takes a drop.
+      The moved category disappears from its old place at once and shows in
+      the new one after the refresh, also after a reload. An income category
+      never goes into an expense envelope (no ring), nor the other way; an
+      envelope or a tag never goes into an envelope; dropping a category back
+      on its own envelope changes nothing; archived envelopes take no drops
+      and their categories have no grips.
+- [ ] Envelopes: create via New envelope in a folder's or section's ⋮ menu on
+      the Budget view (name, currency, categories multi-select). Under Income
+      it makes an income envelope: the picker lists only income categories,
+      the envelope shows under Income (Planned / Received / To receive) and in
+      the Plan grid's Income section, and it takes one plan for all its
+      categories;
       transactions of member categories aggregate under the envelope; edit
       membership; delete envelope returns categories to top level.
 - [ ] Tag on a transaction: spending counts toward the **tag** element, not the
       category (tagged-spend accounting rule).
-- [ ] **Plan sheet** 📱: spreadsheet grid renders months; inline edit of a
-      planned amount; keyboard cell navigation (arrows), Excel-style
-      fill-right by drag handle (desktop) and Shift+Arrow; month window
-      scrolling; hide-empty-rows toggle; transfers/balance totals rows show
-      tooltips.
+- [ ] 📱 **Plan grid header and window** (desktop and tablet): there is
+      ONE row of months — the grid's sticky month row, no strip above it. It
+      starts with `Budget · Plan ‹ ›` over the names, then the month names
+      over their columns, also while the page scrolls. The month names are
+      plain labels (a click does nothing); the CURRENT calendar month's name
+      is bold, and no column is tinted. The window starts one month before the
+      month selected in the Budget view. ‹ › move the window by one month,
+      disabled at the budget's first and last month. Switching Budget ↔ Plan
+      keeps the month. No horizontal scroll.
+- [ ] Plan crosshair: selecting a month cell (click or arrows) lightly
+      highlights its whole row and its whole month column — the month
+      header, section/folder lines, every row and the totals; moving the
+      selection moves both. Clicking a name
+      or a folder line highlights nothing new (the previous selection stays).
+- [ ] Plan keyboard stops, desktop: the keyboard cursor lives only in month
+      cells. A name is never selected (by click or keys) and a click on it
+      does nothing — only its chevron folds the row's breakdown, and editing
+      the element is the row ⋮ menu's Edit (Enter, Space, ← / → and Ctrl/⌘+C
+      on the grid never open a dialog, fold a row or copy a name). Section
+      and folder lines (including "No folder") are no stops either: ↑ / ↓ go
+      row to row in the same month, stepping over them and over the rows of
+      a folded folder or section; a click on a folder line folds it and
+      selects nothing; the arrows never fold or unfold anything.
+- [ ] Plan name column width, desktop: drag the edge between the names and
+      the first month in the month row (it highlights on hover): the name
+      column follows the pointer between about 160 and 480px; on release the
+      months re-fit (a wider name column can mean one month fewer). The
+      width survives a reload and applies to every budget on this device.
+      With the edge focused, ← / → resize it in small steps without moving
+      the grid's selection; a double-click resets it to the default width.
+- [ ] 📱 Plan window at the edges: with the budget's start month selected
+      the grid has no history column and starts at the start month; a budget
+      with an end month stops at its end month (no columns after it); when
+      only one month fits (a narrow window) the single column is the selected
+      month. Resizing the window adds/drops future columns without
+      changing the selected month; at about 1280px 4–5 months show and the
+      history month's `actual · plan` is neither clipped nor wrapped onto a
+      second line. Every month up to the current one always shows its
+      actual; should a column ever run short of room, only the actual is cut
+      short, never the plan figure.
+- [ ] 📱 Plan rows are one line, in the Budget view's row height and indents
+      (folder → row → envelope category), icon and name, and hairlines between
+      rows; where one section ends and the next begins there is a single rule,
+      never a double one. Matching vertical hairlines separate the name column
+      and every month column, from the month header down to the Balance line,
+      like a spreadsheet (an empty folder's note covers them under its text;
+      the Budget view has no vertical lines). Every month cell has one fixed
+      layout: the small actual (or "—", or a savings balance) at the cell's
+      LEFT edge, the plan at its RIGHT edge, no dot between — and editing
+      swaps only the plan for the editor, so nothing moves when editing
+      starts or ends, with or without an actual. Below, `actual · plan` means
+      that pair. A month up to the CURRENT calendar month reads `actual · plan`
+      (smaller, muted actual, then the plan figure), whichever month is
+      selected; later months show the plan alone. An unplanned month shows a blank plan (never 0.00) and no "·";
+      a planned month with no actual yet shows `— · 55` (a muted dash, not a
+      link); a month with neither an actual nor a plan is blank, never
+      `0.00`. A plan set to 0 likewise stays blank (no `— · 0.00`) while the
+      month's actual or savings balance is zero or not shown (later months);
+      next to a non-zero actual/balance it reads `12 · 0.00`. Income: received · planned;
+      savings: balance · planned (see the Savings section item); expenses:
+      spent · budget. No bold anywhere in
+      the grid. There is no `$` column and no per-cell balance line; a row in
+      another currency shows its currency code next to its name. Names are
+      readable at the full name column width.
+- [ ] 📱 Plan actual colours: the actual is red only on an expense row that is
+      over its plan, or has spending with nothing planned, in any month up to
+      the current one (an expense row under plan is plain grey, never
+      green); income and savings actuals are never red or green.
+- [ ] 📱 Plan section and folder lines (Income, Savings, Expenses, folders, "No
+      folder", Archived) use the Budget view's thin-line style, with no boxes
+      and no bold. Sections (Savings, Expenses, Archived, the totals) open
+      with a heavier rule than the rows' hairlines. A section or folder line
+      shows NO figures by default, folded or open (an empty folder no dashes
+      either). Its sums, when shown, use the same `actual · plan` form (`— · 55`
+      when nothing happened yet against a plan), on one line. Hovering a line
+      shows a Σ button before
+      its ⋮ (on a tablet Σ shows without hover); Σ shows that line's sums
+      and stays visible, pressed, until pressed again — only that line, and
+      the choice survives a reload (per device). Hovering one month cell of
+      an open line shows a Σ in that cell: clicking it shows that month's sum
+      only (click the sum to hide it again; also remembered per device). A section/folder line sums
+      every row listed under it (the Archived line shows its rows' actuals,
+      with no plan). A section with folders groups its loose rows under a "No
+      folder" line. A click on a line folds it; folds are shared with the
+      Budget view and the phone and survive a reload.
+- [ ] 📱 Plan totals, in order (as in the Budget view): Income, Expenses,
+      "Transfers outside budget" (money moved between the budget's accounts and others;
+      only when not zero; a negative one is not red), Savings (only with savings
+      accounts),
+      Total savings (only with savings accounts), then a sticky Balance at the
+      bottom (no bold on the current month; a negative balance is red). Past
+      and current months show actuals, future months the projection.
+- [ ] Plan totals, desktop: hovering the "Transfers outside budget" and Balance lines
+      shows their tooltips; clicking a past or current month's "Transfers outside budget"
+      figure opens that
+      month's transfers. Hovering a cut-short actual shows its full value.
+- [ ] Plan cell editing, desktop (mouse): clicking a cell selects it (ring)
+      and the arrow keys move the selection between month cells (never onto
+      a name or a section/folder line).
+      - the editor takes only the plan's part of the cell: the month's actual
+        (on a savings row, its balance) stays in view on the left while the
+        plan is edited;
+      - typing a digit, `-`, `.` or `,` edits the cell in place, replacing
+        the value with what was typed;
+      - F2, Enter or a double-click edit the current value, caret at the end;
+      - while editing: Enter commits and moves down to the next row (over any
+        folder line); Tab / Shift+Tab commit and move right / left (Shift+Tab
+        on the first month commits, then pages the window back like ←);
+        ↑ / ↓ commit and move; ← / → move the caret; Esc
+        cancels (the value is unchanged); clicking another cell commits;
+      - a formula works (`=100*3`); an invalid formula keeps the editor open
+        with the validation message, and an unchanged value sends nothing;
+      - the value shows at once and survives a reload; an IME composition's
+        Enter and switching to another window never commit an edit.
+- [ ] Plan clear and read-only cells, desktop: Delete / Backspace on a
+      selected cell clears the plan (the cell goes blank and the plan is gone
+      after a reload). A read-only cell (guest, archived element, before the
+      budget start, archived budget) can be selected but never opens an
+      editor: typing, F2, Enter, double-click and Delete do nothing there.
+      Ctrl/⌘+C / V (single cell), the fill handle and Shift+→ fill, and
+      Shift+Enter / Shift+F2 comments work as before; Enter on a read-only
+      cell opens no dialog and shows no toast.
+- [ ] Plan multi-cell sum, desktop: dragging across month cells, or
+      Shift+clicking a cell, selects the rectangle from the selected cell
+      (which keeps its ring; the others tint); Ctrl/⌘+click adds or removes
+      one cell. With two or more selected, a floating hint under the
+      selection's bottom-right corner (above it near the Balance row) reads
+      "N cells · Plan … · Actual …" in the budget currency: a foreign-currency
+      row converts at each month's rate, actuals count only up to the current
+      month, and a savings row adds what was saved, not its balance. The hint
+      scrolls with the cells. Esc, a plain click, an arrow key, opening the
+      editor or paging the months goes back to one cell. Typing, F2, Delete,
+      paste and fill still act on the ringed cell only. Dragging from the fill
+      handle still fills, and dragging a row by its grip still moves it.
+- [ ] 📱 Plan multi-cell sum on a tablet: Shift/Ctrl+tap and drags select
+      nothing extra and show no hint.
+- [ ] Plan edge paging, desktop: → on the last column moves the selected
+      month forward by one; ← on the first month column moves it back by one
+      (the selection stays in the first column). The window and the month row
+      move together, so the next (or previous) month appears (at a clamp at
+      the start or end of the budget the selected month may jump by two so
+      the window still moves by exactly one month); at the budget's first and
+      last month it stops.
+- [ ] Plan keys on a focused control, desktop: with a cell selected, Tab to a
+      row's ⋮ (or open and Esc-close its menu so focus returns to it) and press
+      Enter or ↓: only the menu opens — no in-cell editor, no edit dialog.
+      Enter or Space on a focused fold chevron folds/unfolds the row, and a
+      digit typed there opens no editor.
+- [ ] 📱 Plan actuals open transactions: clicking a past or current month's
+      actual figure (desktop; on a tablet the item sheet's "Transactions")
+      opens that row's transactions for that month, as clicking Spent /
+      Received / Saved does in the Budget view — except for income
+      Uncategorized, which has none; the clicked cell becomes the selection.
+      Desktop: close the list (Esc or ×) and type a digit right away — the
+      selected cell opens its editor and the arrow keys move, with no extra
+      click (same after an "Transfers outside budget" figure's list).
+- [ ] Plan hover and structure, desktop: the hovered row highlights and the
+      hovered cell gets a light outline; the ⋮ menu and a drag grip appear
+      only on hover (the ⋮ takes no room otherwise and overlays the end of
+      the name only while it shows). The menus offer the same actions as in
+      the Budget view, with the same "(no access)" / "(not empty)" reasons:
+      section, folder, "No folder", row, envelope category and savings (Edit
+      only); dragging rows, folders and an envelope's categories works as in
+      the Budget view, including a category into and out of an envelope; a
+      drop on a folded folder lands last in it. Guests and archived budgets
+      show no grips.
+- [ ] 📱 Plan grid on a tablet: tapping a cell opens the item sheet; typing,
+      Delete, F2 and Enter never edit in place, and there is no fill handle.
+      Configure offers Budget settings / Edit structure (see Configure above);
+      with Edit structure on, ⋮ menus and grips show on every line.
+- [ ] There is no "Hide empty rows" option (all rows show) and the Plan grid
+      has no desktop Edit structure mode, no boxed folders and no Configure
+      chooser on a desktop.
 - [ ] 📱 **Budget settings — Accounts and Savings accounts pickers**: the
       create and edit budget dialogs show Name, Currency, then two picker rows
       (styled like Currency): "Accounts" (the included accounts' names, and
@@ -703,37 +1199,61 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       then delete it (e.g. in June). The deletion writes a correction that
       zeroes its balance from the deletion month on, so view a Plan window
       that ends BEFORE the deletion month and has no activity on the account
-      (e.g. one over March): the account drops out of the Plan sheet's
+      (e.g. one over March): the account drops out of the Plan grid's
       Savings section and the phone month view's Savings rows entirely (no
       row), yet
       its balance still counts as Total savings, not everyday Balance — the
       split still sums to the Balance.
-- [ ] 📱 **Plan sheet — Savings section**: with a savings account in the
-      budget, a "Savings" section appears below Expenses and above Archived,
+- [ ] 📱 **Plan grid — Savings section**: with a savings account in the
+      budget, a "Savings" section appears right below Income and above the
+      expense folders,
       one row per savings account in their saved order; a budget without
-      savings accounts shows no such section.
+      savings accounts shows no such section. Each savings cell shows the
+      balance at its LEFT edge and the plan at its right (no dot between; a
+      muted "—" where nothing is planned), in EVERY month, so balances line
+      up down the column. The balance is the account's balance at the month's
+      end (not what was saved that month) — the booked balance for past
+      months, the projected one from the current month on (the balance so far
+      plus the plans still to come; without a plan it stays flat). A past or
+      current month's balance opens that month's transactions; a later one
+      is plain text, its tooltip saying it is a balance. The Savings line's Σ
+      sums the balances the same way.
 - [ ] 📱 Fold the Savings header: its rows hide, and stay hidden after a
       reload; unfold brings them back.
-- [ ] Plan sheet keyboard: ArrowDown from the last expense row lands on the
-      first savings row, and from the last savings row on the first archived
-      row; with Savings folded it skips straight to Archived.
-- [ ] 📱 Edit a savings row's planned amount (popover on desktop; on a tablet
-      or phone the item sheet's "Set budget"): the new value shows at once and
-      survives a reload.
+- [ ] Plan grid keyboard: ArrowDown from the last income row lands on the
+      first savings row, and from the last savings row on the first expense
+      row (past the Expenses and folder lines, which are no stops); with
+      Savings folded it skips straight to the expenses.
+- [ ] 📱 Plan a savings top-up (e.g. 6,000) in every month of the next year,
+      then pick a month several months past the current one (the strip on
+      /budget, the month row or ‹ › on /plan, or → past the grid's last
+      column on a desktop): the Total
+      savings and Balance lines read the same as they did when that month
+      was in an earlier window (they still count the current month's unmet
+      plan), and keep growing by the top-up through the last planned month.
+- [ ] 📱 Edit a savings row's planned amount (in place on a desktop; on a
+      tablet or phone the item sheet's "Set plan"): the new value shows at once
+      and survives a reload.
 - [ ] Fill-right a savings planned amount (drag handle and Shift+Arrow): every
       covered month gets the value.
-- [ ] 📱 Edit structure mode: savings rows reorder by drag among themselves
-      only (the order survives a reload); a savings row cannot be dropped
-      into a folder or the Income/Expenses area, and its row menu has no
-      "Move to folder…" (Change currency is still there).
+- [ ] 📱 Savings rows (desktop hover grips; tablet/phone Edit structure)
+      reorder by drag among themselves only (the order survives a reload); a
+      savings row cannot be dropped into a folder or the Income/Expenses
+      area, and its ⋮ menu is Edit only (no "Move to folder…", no "Change
+      currency"), in the Budget view and the Plan grid alike.
 - [ ] 📱 A deleted savings account stays in the Savings section, read-only (no
-      amount editor, no drag grip), only while it still has a plan or actual
-      activity in the visible period; once neither remains it drops out.
+      amount editor, no drag grip), only in months where it had activity; a
+      plan alone does not keep it. Delete a savings account with plans set
+      for past months without transactions and for months ahead: in those
+      months (Budget and Plan views) the row is gone and the Total's planned
+      figure leaves its plan out, while a month with transactions still shows
+      the row with its plan. Activity that nets to zero within a month (money
+      in, then the same amount out) does not count as activity.
 - [ ] An everyday→savings transfer counts toward "Saved" (the savings row's
       Actual, and the monthly block's Saved column); a savings↔savings
       transfer and a transfer with an account that is not a budget member do
       not move it either way.
-- [ ] 📱 Totals: a "Savings" line appears below Transfers (actual for past
+- [ ] 📱 Totals: a "Savings" line appears below "Transfers outside budget" (actual for past
       months, the larger of actual and planned for the current and future
       months); without savings accounts the line is absent.
 - [ ] 📱 Balance split: the sticky area shows "Balance" (everyday accounts) and
@@ -750,7 +1270,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       balance is 20 lower, and the everyday Balance is the same as before the
       transfer.
 - [ ] 📱 A past month where a savings account saved less than planned: the
-      cell does NOT take the green under-plan style an expense row gets.
+      cell does NOT take a green under-plan style, and is never red (the Plan
+      grid shows no green anywhere; only an over-plan expense reads red).
 - [ ] 📱 Edit a savings account's balance (the correction transaction), then
       switch to the Plan view in the same tab: the Total savings updates
       without a manual reload.
@@ -768,32 +1289,31 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 A savings cell carries comment threads like any other cell: the
       corner marker shows on a commented cell, and Shift+Enter (desktop) or a
       tap on the marker opens its thread.
-- [ ] 📱 Each savings cell shows, under the planned amount, the account's
-      balance at the END of that month (hover: "Balance at the end of the
-      month…"), in the row's currency: a past month shows the actual booked
-      balance; the current month shows the balance so far plus the plan not
+- [ ] 📱 A savings account's balance at the END of a month (the tablet or
+      phone item sheet's Balance; the Plan grid's savings cell shows none, its
+      balances live on the Total savings line), in the row's currency: a past
+      month shows the actual booked balance; the current month shows the balance so far plus the plan not
       yet met (planned 200, saved 50: 150 higher than booked); a future month
       adds its own unmet plan on top (planned 200 more: 350 higher). A month
-      saved over plan adds nothing. It matches the "Balance at month end" of
-      that account's item sheet on a phone for the same month. Expense and
-      income cells carry no such line.
+      saved over plan adds nothing. Total savings
+      is the sum of these across the savings accounts; the same figure reads in
+      the item sheet on a phone for the same month. Expense and income cells
+      carry no such line.
 - [ ] 📱 Save into a TFSA all year, then transfer the lot to an RRSP (both
       savings accounts in the budget): that month the TFSA row's Saved / Actual
       drops by the amount and the RRSP row's rises by it, the Savings line and
-      the Total savings are unchanged, and from that month on the TFSA row's
-      balance is that much lower and the RRSP row's that much higher.
-- [ ] **Budget view (desktop and tablet) shows no savings**: with a savings
-      account in the budget, no Savings block appears and the Total row counts
-      the expense categories only (its Budget, Spent and Available match the
-      folders' sums). Savings are planned and tracked in the Plan view and, on
-      a phone, in the month view.
+      the Total savings are unchanged, and from that month on the TFSA's
+      balance (item sheet) is that much lower and the RRSP's that much higher.
+- [ ] **Budget view Total row counts expenses only**: with a savings account
+      in the budget, the Savings section lists it, while the Total row's
+      Budget, Spent and Available still match the expense folders' sums.
 - [ ] 📱 Phone month view, Savings unfolded: one row per savings account with
       Planned and Saved (the row's item sheet adds Balance at month end); at
       320px and 375px, also in German, Polish and Ukrainian, a long account
       name truncates rather than pushing the amounts, and a five-digit amount
       such as 12,345.67 fits without overlapping its neighbour.
-- [ ] 📱 A savings account's Balance at month end (phone item sheet; the Plan
-      view's line under each savings cell) is its balance at the end of the
+- [ ] 📱 A savings account's Balance at month end (the tablet and phone item
+      sheet) is its balance at the end of the
       selected month: a past month
       shows the actual booked end-of-month balance; the current month shows
       the current balance plus the plan not yet met this month; a future month
@@ -801,13 +1321,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       more than planned in a month adds nothing (and does not cover another
       month's shortfall). A deleted savings account shows its booked balance.
 - [ ] 📱 Change a savings account's planned amount in the current month (Plan
-      view, or the phone item sheet): its Balance at month end moves by the
-      change at once; then open a later month — its Balance reflects the new
+      view, or the phone item sheet): its Balance at month end (item sheet) and
+      the Total savings move by the change at once; then open a later month — its Balance reflects the new
       plan too (no manual reload).
-- [ ] Plan view, Edit structure mode: savings rows show drag grips (a
-      deleted account's row has none) and reorder among themselves only; the
-      order survives a reload and is the order of the phone month view's
-      Savings rows.
+- [ ] Plan view: savings rows show a drag grip on hover on a desktop (and on
+      a tablet in Edit structure); a deleted account's row has none. They
+      reorder among themselves only; the order survives a reload and is the
+      order of the phone month view's Savings rows.
 - [ ] 📱 A commented savings cell in the Plan view carries the corner marker;
       clicking (tapping) it opens that cell's thread. A comment posted there
       shows in the phone month view's item sheet for that account and month.
@@ -836,15 +1356,15 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Desktop: rest the pointer on a commented cell: after a moment a card
       previews its latest two comments (plus "+N more"); it disappears when
       the pointer leaves (it stays while the pointer is on the card itself),
-      and never shows while the thread or the amount editor is open — not even
-      when the pointer drifts off the open amount editor and back over the
+      and never shows while the thread or the editor (the Plan grid's in-cell
+      editor) is open — not even
+      when the pointer drifts off the open editor and back over the
       cell. Tabbing onto a cell's amount shows no card.
 - [ ] Desktop: hover a cell with no comments (Budget view budgeted amount,
       Archive rows included; savings Planned cell; Plan view month cell): a
       faint grey triangle appears at its top-right, where the purple marker
       would be, and disappears when the pointer leaves. Clicking it opens the
-      empty thread in a popover beside the cell (the amount editor does not
-      open). A guest gets it too. It never appears on the uncategorized row,
+      empty thread in a popover beside the cell (no editor opens). A guest gets it too. It never appears on the uncategorized row,
       in edit-structure mode, on an archived budget or a month outside the
       budget's range, or on phones and tablets. Right-clicking a cell shows
       the browser's normal context menu.
@@ -857,7 +1377,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       "Comments (N)" / "Add comment", "Set budget", "Transactions"). "Set
       budget" replaces the sheet with the amount dialog (no comments in it);
       "Comments" replaces it with the thread. A savings row's sheet also has
-      "Transactions". A guest's sheet has no "Set budget". The Available pill is not a button; tapping Spent still lists
+      "Transactions". A guest's sheet has no "Set budget". The Available figure is not a button; tapping Spent still lists
       the transactions; the corner marker still opens the thread beside the cell.
 - [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
       the cell is selected and the item sheet opens for that element and
@@ -874,12 +1394,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       above the keyboard.
 - [ ] On the plan grid, select a cell and press Shift+F2 (or Shift+Enter):
       its thread opens in a popover beside the cell; Esc closes it and the
-      arrow keys keep moving the selection. Plain Enter on the same cell opens
-      the amount editor, which has no comments section.
+      arrow keys keep moving the selection. Plain Enter on the same cell edits
+      the amount in place, with no comments section.
 - [ ] On desktop, a non-editable cell (guest role, an archived element —
-      even on a budget you can edit — or a month outside the budget's range):
-      clicking its amount opens that cell's thread in a popover beside the
-      cell, so a thread can be started there too.
+      even on a budget you can edit — or a month outside the budget's range)
+      cannot be edited, but its comment thread still opens from the hover
+      corner (or Shift+Enter / Shift+F2) in a popover beside the cell, so a
+      thread can be started there too.
 - [ ] Double-click Post (or press Post then Cmd/Ctrl+Enter quickly): exactly
       one comment is created, and Post stays disabled until it lands.
 - [ ] Post a comment, then start typing the next one before the first lands:
@@ -898,7 +1419,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Rates loaded by `currency:update-rates` (or the in-process updater) are
       applied, on SQLite AND PostgreSQL: an expense from a foreign-currency
       account in a budget-currency category counts in the category's spent at
-      the converted amount (not 1:1), in both the table and the plan sheet, and
+      the converted amount (not 1:1), in both the table and the Plan grid, and
       `get-budget` `currencyRates` lists the global rates, not only custom ones.
 - [ ] Transaction dated exactly 00:00 on the 1st of the budget month (e.g. a
       date-only CSV import row), on SQLite AND PostgreSQL: it counts ONCE, in
@@ -916,22 +1437,45 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 On a phone (< 640 px, the iOS home-screen PWA included) `/budget` and
       `/plan` show the same single month view: header with the budget name in
       normal case, the month strip, and no Budget/Plan switch in the settings
-      menu. At the top, one card under a "USD · Planned · Actual" heading
-      (the budget's currency code at the left) holds an
-      "Income" line (planned, received) and a "Savings" line (planned,
-      saved, in the budget currency); below it, after a wider gap,
+      menu. At the top, under a "USD · Planned · Actual" heading (the
+      budget's currency code at the left), two cards: one with the "Income"
+      line (planned, received), one with the "Savings" line (planned, saved,
+      in the budget currency). Both section lines are darker and slightly
+      larger than the folder lines inside them (regular weight, not bold), so
+      Savings never reads as one more income folder. Below them, after a wider gap,
       "Expenses · Budget · Spent" heads the expense folders.
 - [ ] 📱 The Income and Savings lines start folded; tapping one unfolds its
-      rows inside the same card, and the fold state survives a month switch
+      rows inside its own card, and the fold state survives a month switch
       and a reload.
+- [ ] 📱 Income unfolded is grouped as in the Plan grid: each income folder
+      opens with a line naming it and its Planned / Received sums, followed
+      by its rows; then the folder-less rows (under "No folder" when income
+      folders exist, with no line otherwise), the income Uncategorized row
+      (only in a month it received something), and "Archived" for archived
+      income with money this month. Tapping an income envelope's name unfolds
+      its categories, each with its received amount, which opens that
+      category's transactions.
+- [ ] 📱 Phone folders fold: tapping a folder's line (an expense folder,
+      "No folder", "Archived", or an income folder inside the Income card)
+      hides its rows and keeps the line with its sums, the chevron pointing
+      right; tapping again brings the rows back. Folders start open, and a
+      fold survives a month switch and a reload. Uncategorized has no line and
+      never folds.
 - [ ] 📱 Each expense row shows Budget and Spent with no currency symbol and a
       thin bar under the row. Spent and the bar turn red only when the month
       spent more than its budget and money left from earlier months does not
       cover it; otherwise they stay gray. The bar measures spending against
-      the budget plus what earlier months left. A row with a 0.00 budget (and
-      nothing left from earlier months) still shows the empty light-gray track,
-      like a row with nothing spent. A future month shows `—` for
-      Spent, with no bar and no colour.
+      the budget plus what earlier months left; a red row always shows a full
+      red bar, including spending on a 0.00 budget with nothing left from
+      earlier months. A row with a 0.00 budget and nothing spent still shows
+      the empty light-gray track. A future month shows `—` for
+      Spent, the empty track, and no colour.
+- [ ] 📱 Income and savings rows (unfolded) show the same thin bar,
+      measuring Actual against Planned. It stays gray until the plan is met
+      and turns green once received/saved reaches the planned amount; the
+      figures themselves never change colour. A row with no plan, or a
+      savings withdrawal, shows the empty track; so does every row in a future
+      month, even one whose plan is already met.
 - [ ] 📱 What earlier months left shows read-only right before the budget, so
       the two read as one figure, e.g. "530.00 + 700.00" — on phone rows and in the Budget table (desktop and
       tablet, with a "Left from earlier months" tooltip); only the budget is
@@ -999,7 +1543,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       empty read-only thread shows none.
 - [ ] 📱 The Totals card lists, in order: Budget ("left + budget", with
       "… available" under it, red when negative; expenses only), Income
-      (received), Expenses (spent), Transfers (only when money
+      (received), Expenses (spent), "Transfers outside budget" (only when money
       crossed the budget boundary that month), Savings (saved, only with
       savings accounts), Total savings (with savings accounts), Balance at
       month end. A future month shows "—" for received, spent and saved. Balance and Total savings match
@@ -1009,11 +1553,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 Tapping an item's name never opens a sheet: on an envelope/tag with
       children it folds/unfolds them (chevron in place of the icon), on any
       other row — expense, income, savings, a child, a reporting tag — it does
-      nothing. Tapping a child's or a reporting tag's Spent opens its
-      transactions directly.
-- [ ] 📱 "Edit structure" on a phone shows the route's structure editor — the
-      budget table on /budget, the plan grid in edit mode on /plan (drag to
-      reorder, folder menus); "Done" returns to the month view.
+      nothing. Tapping a child's Spent opens its transactions directly.
+- [ ] 📱 Tapping a reporting tag's Spent opens its sheet ("kid-A · July"):
+      Spent only, no comments, no "Set budget", and "Transactions", which
+      lists that tag's transactions for the month. The pencil opens the
+      reporting tag's own edit dialog (kind locked) in place of the sheet; it
+      is greyed out for a reporting tag that belongs to another user. A rename
+      shows on the row at once.
 
 ## 10. Budget lifecycle & list
 
@@ -1056,7 +1602,7 @@ User C sees none of it.
 
 **Account sharing**
 - [ ] A shares an account with B (`guest`, then upgrade to `user`, `admin`):
-      B gets a sharing-request badge; the requests dialog lists the invite
+      B's Inbox badge increments; the Inbox Sharing section lists the invite
       with folder selection; Accept places the account in the chosen folder
       and A's categories/payees/tags resolve on B's side immediately (no
       "Uncategorized" rows, no stale caches).
@@ -1065,6 +1611,10 @@ User C sees none of it.
       controls anywhere — row menu, preview, FAB); `user` can write
       transactions; `admin` can also edit the account. Verify on desktop
       dropdowns AND mobile bottom sheets.
+- [ ] B as `admin` ("Full control") renames the shared account and changes
+      its balance: Save succeeds (no "Access denied"), A sees the new name,
+      and the balance correction lists B as its author. Saving with a custom
+      currency only B holds is refused ("Currency is not available").
 - [ ] Shared account shows the owner's avatar/mark in B's sidebar; A sees B's
       avatar on the account's shared stack.
 - [ ] B sees A's categories/payees/tags via the shared account and can use
@@ -1075,8 +1625,8 @@ User C sees none of it.
 
 **Budget sharing**
 - [ ] A shares a budget with B (reader and admin roles): B accepts via the
-      requests dialog; accepted budget becomes B's default; B sees elements,
-      figures, and A's shared accounts inside the budget.
+      Inbox Sharing section; accepted budget becomes B's default; B sees
+      elements, figures, and A's shared accounts inside the budget.
 - [ ] Budget roles: reader cannot change limits/structure (entry points
       disabled, not just failing); admin can set limits and edit structure.
 - [ ] A participant leaving (decline after accept / revoke) removes their
@@ -1306,7 +1856,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       `--build-arg ECONUMO_VERSION=v0.0.1`; the runtime variable no longer
       moves this, it only relabels the UI).
 - [ ] Version label: with `ECONUMO_VERSION=demo-42` set at RUNTIME, the
-      sidebar footer and the settings version row both read `demo-42`, while
+      sidebar header and the settings version row both read `demo-42`, while
       the update notice above still compares the real binary version (so a
       current build shows no update prompt).
 - [ ] Readonly/trial gating (cloud only, `ECONUMO_TRIAL` set): expired user
@@ -1324,6 +1874,14 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
 
 - [ ] Navigation: `/` shows the sidebar-as-home; entering any page shows a
       back-button header; back always returns to the logical origin.
+- [ ] Sidebar top row 📱: the colour logo (yellow mark, same as the login screen) + version label link Home; no avatar or
+      user name appears anywhere in the sidebar. The Search button opens
+      global search (its tooltip shows the Ctrl/⌘+K shortcut) and Inbox opens
+      the Inbox. The sidebar footer has a Settings button (at least 44px
+      tall) that carries the update dot when an update is available, and a
+      Sync button with at least a 44x44 tap area. On the Settings page, the
+      header card leads to Personal settings (name, email, the "Personal
+      settings" hint) and has a separate Log out button.
 - [ ] Every dialog used in the suites above renders as a bottom-sheet drawer
       (short content: previews, action lists, confirms) or a full-screen sheet
       (long forms, e.g. Add transaction) on mobile (<640px), and a centered
@@ -1333,7 +1891,8 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       recurring, sessions, tokens, budgets).
 - [ ] Long lists scroll smoothly; sidebar scroll position is remembered when
       navigating back.
-- [ ] Plan sheet is usable on tablet (fill handle desktop-only is expected).
+- [ ] Plan grid is usable on tablet (taps open the item sheet; the fill handle
+      and in-place cell editing are desktop-only, as expected).
 - [ ] Toolbar buttons collapse labels to icons without overflow; no horizontal
       page scrolling anywhere.
 

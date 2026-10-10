@@ -72,6 +72,21 @@ it('creates an account with a UUIDv7 op id and numeric balance; correction lands
   )
 })
 
+it('a caller that asked to hear about the new account gets it once it is created', async () => {
+  const createdAccount = { ...fixtureAccounts[0], id: 'a-created', name: 'Rainy day', balance: '0' }
+  server.use(
+    http.post('*/api/v1/account/create-account', () => HttpResponse.json({ success: true, message: '', data: { item: createdAccount, transaction: null } })),
+  )
+  const onCreated = vi.fn()
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openAccountModal({ folderId: null, onCreated })
+  await screen.findByText('New account')
+  await user.type(screen.getByLabelText('Name'), 'Rainy day')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'a-created' })))
+})
+
 it('shows the exact validation messages', async () => {
   const user = userEvent.setup()
   renderDialog()

@@ -44,6 +44,7 @@ func (fakeAccounts) AccountOwner(_ context.Context, id vo.Id) (vo.Id, error) {
 	}
 	return vo.Id{}, errs.NewNotFound("Account not found")
 }
+func (fakeAccounts) HasWriteGrant(context.Context, vo.Id, vo.Id) (bool, error)  { return false, nil }
 func (fakeAccounts) AccountDeleted(context.Context, vo.Id) (bool, error)        { return false, nil }
 func (fakeAccounts) AccountCurrencyCode(context.Context, vo.Id) (string, error) { return "USD", nil }
 
@@ -232,7 +233,7 @@ func newHarness(t *testing.T) *harness {
 	svc.RegisterProvider(model.ImportProviderSimpleFIN, provider)
 
 	mux := http.NewServeMux()
-	handlerimports.RegisterAPI(handlerimports.NewHandlers(svc), authstub.Authenticator{})(mux)
+	handlerimports.RegisterAPI(handlerimports.NewHandlers(svc), authstub.Authenticator{}, handlerimports.Providers{AppleWallet: true, SimpleFIN: true})(mux)
 	srv := httptest.NewServer(middleware.Chain(middleware.RequestID, middleware.AccessLog)(mux))
 	t.Cleanup(srv.Close)
 	return &harness{srv: srv, txns: txns, entities: entities, f: f, provider: provider}

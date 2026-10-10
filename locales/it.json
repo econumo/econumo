@@ -16,8 +16,7 @@
       "onboarding": "Per iniziare",
       "create_account": "Aggiungi conto",
       "collapse_menu": "Comprimi il menu",
-      "expand_menu": "Espandi il menu",
-      "sharing_requests": "Richieste di condivisione"
+      "expand_menu": "Espandi il menu"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,38 @@
     "make_recurring": "Rendi ricorrente",
     "not_posted": "Non registrata"
   },
+  "inbox": {
+    "title": "Posta in arrivo",
+    "open": "Posta in arrivo, {count} in attesa",
+    "empty": "Nessuna nuova notifica",
+    "sections": {
+      "due": "Transazioni programmate",
+      "sharing": "Condivisioni",
+      "sync": "Problemi di sincronizzazione",
+      "failed": "Importazioni non riuscite",
+      "to_review": "Da rivedere",
+      "skipped": "Saltati ({count})"
+    },
+    "due": {
+      "overdue": "Scaduto · {date}",
+      "today": "Oggi"
+    },
+    "sharing": {
+      "invited_you": "{name} ti ha invitato",
+      "account": "Conto",
+      "budget": "Budget",
+      "choose_folder": "Scegli una cartella per questo conto",
+      "general_folder_hint": "General (verrà creata)",
+      "decline_question": "Rifiutare l'accesso a «{name}»?"
+    },
+    "sync": {
+      "failed": "Sincronizzazione di {source} non riuscita",
+      "partial": "{source} sincronizzato con errori",
+      "when": "Ultimo tentativo {date}"
+    }
+  },
   "imports": {
     "badge": "Importata",
-    "banner": {
-      "text": "{count} transazione importata in attesa di revisione | {count} transazioni importate in attesa di revisione",
-      "cta": "Rivedi"
-    },
     "data_page": {
       "menu_item": "Importa ed esporta",
       "header": "Importa ed esporta",
@@ -650,15 +675,11 @@
       }
     },
     "queue": {
-      "header": "Coda di importazione",
-      "empty": "Niente da rivedere.",
       "card_amount": "Importo della carta: {amount} {currency}",
-      "queued": "In attesa di revisione",
-      "skipped": "Saltate",
-      "failed": "Richiedono attenzione",
       "reason": {
         "unmapped": "Carta non associata",
         "account_deleted": "Conto eliminato",
+        "no_access": "Nessun accesso al conto",
         "no_rate": "Nessun tasso di cambio per {currency}"
       },
       "import": "Importa",
@@ -873,7 +894,7 @@
       "settings": {
         "profile": {
           "menu_item": "Profilo",
-          "header": "Profilo",
+          "header": "Impostazioni personali",
           "groups": {
             "personal_details": "Dati personali",
             "preferences": "Preferenze",
@@ -1151,7 +1172,7 @@
         "header": "Nuovo budget"
       },
       "update_budget_form": {
-        "header": "Modifica budget"
+        "header": "Impostazioni del budget"
       },
       "create_folder_form": {
         "header": "Nuova cartella"
@@ -1296,20 +1317,19 @@
         "settings": {
           "button": "Configura",
           "menu": {
-            "edit": "Dettagli del budget",
+            "edit": "Impostazioni del budget",
             "edit_structure": "Modifica la struttura",
-            "edit_structure_done": "Fine",
-            "budget_list": "Apri l'elenco dei budget"
+            "edit_structure_done": "Fine"
           }
         },
         "structure": {
-          "no_folder": "Cartella predefinita",
           "in_archive": "In archivio",
           "carry_over_hint": "Rimasto dai mesi precedenti",
           "tab": {
             "budgeted": "Budget",
             "spent": "Speso",
-            "available": "Disponibile"
+            "available": "Disponibile",
+            "to_receive": "Da ricevere"
           },
           "action": {
             "create_folder": "Crea cartella",
@@ -1317,6 +1337,9 @@
           },
           "empty_folder": {
             "note": "Questa cartella è vuota. Sposta qui una categoria, un tag o una busta, oppure crea una nuova busta."
+          },
+          "empty_envelope": {
+            "note": "Questa busta è vuota. Trascina qui una categoria o scegli le categorie con Modifica."
           },
           "element": {
             "action": {
@@ -1343,6 +1366,16 @@
         }
       },
       "plan": {
+        "sums": {
+          "show_month": "Mostra il totale di {name} a {month}",
+          "hide_month": "Nascondi il totale di {name} a {month}",
+          "show": "Mostra i totali di {name}",
+          "hide": "Nascondi i totali di {name}"
+        },
+        "name_column": {
+          "resize": "Ridimensiona la colonna dei nomi",
+          "resize_hint": "Trascina per ridimensionare, doppio clic per ripristinare"
+        },
         "toggle": {
           "budget": "Budget",
           "plan": "Piano"
@@ -1353,12 +1386,9 @@
           "savings": "Risparmi",
           "archived": "In archivio"
         },
-        "nav": {
-          "prev": "Mesi precedenti",
-          "next": "Mesi successivi"
-        },
         "cell": {
-          "aria": "{name}, {month}: effettivo {actual}, pianificato {planned}"
+          "aria": "{name}, {month}: effettivo {actual}, pianificato {planned}",
+          "edit_aria": "Piano per {name}, {month}"
         },
         "fill": {
           "handle_aria": "Copia il budget nei mesi successivi"
@@ -1370,7 +1400,7 @@
         "totals": {
           "income": "Entrate",
           "expenses": "Uscite",
-          "transfers": "Trasferimenti",
+          "transfers": "Trasferimenti fuori budget",
           "transfers_tooltip": "Entrate {in} · Uscite {out}",
           "show_transactions": "Mostra le transazioni",
           "net": "Netto",
@@ -1378,14 +1408,11 @@
           "savings": "Risparmi",
           "savings_balance": "Risparmi totali"
         },
-        "density": {
-          "hide_empty": "Nascondi righe vuote",
-          "hidden": "{count} nascoste",
-          "show": "Mostra"
-        },
         "menu": {
           "move_to_folder": "Sposta nella cartella…",
-          "no_folder": "Nessuna cartella"
+          "no_folder": "Nessuna cartella",
+          "no_access": "nessun accesso",
+          "not_empty": "non vuota"
         },
         "edit": {
           "no_access_envelope": "Non puoi modificare questa busta: il tuo ruolo in questo budget è di sola lettura.",
@@ -1397,7 +1424,7 @@
           "disclosure": "Commenti ({count})",
           "comment_label": "Commento",
           "marker_aria": "{count} commento | {count} commenti",
-          "composer_placeholder": "Aggiungi una nota per questo mese",
+          "composer_placeholder": "Aggiungi una nota",
           "post": "Pubblica",
           "edit": "Modifica",
           "delete": "Elimina",
@@ -1410,13 +1437,18 @@
           "truncated": "Vengono mostrati i 2000 commenti più recenti.",
           "add": "Aggiungi commento",
           "more": "+{count} altri"
+        },
+        "selection": {
+          "count": "{count} cella | {count} celle",
+          "planned": "Piano",
+          "actual": "Effettivo"
         }
       },
       "savings": {
         "title": "Risparmi",
         "planned": "Previsto",
         "saved": "Risparmiato",
-        "balance_hint": "Saldo a fine mese. Per il mese corrente e i successivi include i risparmi previsti ancora da versare."
+        "balance_hint": "Saldo a fine mese."
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, speso {spent}",
@@ -1482,6 +1514,12 @@
         "confirm": "Unisci",
         "warning": "Tutte le transazioni di «{name}» verranno spostate e «{name}» verrà eliminato.",
         "envelope_info": "Se i due si trovano in buste diverse, aggiorna prima il budget per non perdere gli importi pianificati, perché unendoli i limiti vengono sommati."
+      },
+      "archive": {
+        "action": "Archivia"
+      },
+      "unarchive": {
+        "action": "Ripristina"
       }
     },
     "categories": {
@@ -1767,17 +1805,25 @@
           "required_field": "Campo obbligatorio"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Richieste di condivisione",
-      "empty": "Nessuna richiesta in attesa",
-      "invited_you": "{name} ti ha invitato",
-      "account": "Conto",
-      "budget": "Budget",
-      "choose_folder": "Scegli una cartella per questo conto",
-      "general_folder_hint": "General (verrà creata)",
-      "decline_question": "Rifiutare l'accesso a «{name}»?"
     }
+  },
+  "search": {
+    "title": "Ricerca",
+    "placeholder": "Cerca transazioni, conti, categorie…",
+    "groups": {
+      "accounts": "Conti",
+      "categories": "Categorie",
+      "payees": "Beneficiari",
+      "tags": "Tag",
+      "labels": "Tag per i report",
+      "transactions": "Transazioni"
+    },
+    "show_all": "Mostra tutti ({count})",
+    "hidden_folder": "Cartella nascosta",
+    "back": "Indietro",
+    "nothing_found": "Nessun risultato",
+    "open": "Ricerca",
+    "open_tooltip": "Ricerca ({shortcut})"
   },
   "subscription": {
     "banner": {
@@ -1877,7 +1923,8 @@
       "transaction_filter_required": "Convalida non riuscita",
       "envelope_side_mixed": "Una busta non può contenere contemporaneamente categorie di entrata e di uscita",
       "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite",
-      "savings_folder_not_allowed": "I risparmi non possono essere inseriti in una cartella",
+      "envelope_member_not_category": "Solo una categoria può essere aggiunta a una busta",
+      "savings_folder_not_allowed": "I conti di risparmio non possono essere inseriti in una cartella",
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
       "savings_account_not_member": "I conti di risparmio devono essere tuoi conti in questo budget",
       "savings_removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti dei conti di risparmio che hai disattivato o rimosso da questo budget; conferma per continuare",

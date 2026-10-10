@@ -41,6 +41,7 @@ const (
 	CodeBudgetTransactionFilterRequired = "budget.transaction_filter_required"
 	CodeBudgetEnvelopeSideMixed         = "budget.envelope_side_mixed"
 	CodeBudgetFolderSideMixed           = "budget.folder_side_mixed"
+	CodeBudgetEnvelopeMemberNotCategory = "budget.envelope_member_not_category"
 	CodeBudgetSavingsFolderNotAllowed   = "budget.savings_folder_not_allowed"
 	CodeBudgetAccountNotRemovable       = "budget.account_not_removable"
 	CodeBudgetSavingsAccountNotMember   = "budget.savings_account_not_member"
@@ -174,6 +175,7 @@ var AllCodes = []string{
 	CodeBudgetTransactionFilterRequired,
 	CodeBudgetEnvelopeSideMixed,
 	CodeBudgetFolderSideMixed,
+	CodeBudgetEnvelopeMemberNotCategory,
 	CodeBudgetSavingsFolderNotAllowed,
 	CodeBudgetAccountNotRemovable,
 	CodeBudgetSavingsAccountNotMember,

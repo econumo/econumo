@@ -115,6 +115,7 @@ func (s *Service) parse(ctx context.Context, src *model.ImportSource, ev *model.
 // amount, or why it cannot go anywhere yet.
 type resolution struct {
 	accountID  vo.Id
+	owned      bool // false = a shared account: rule classifications don't apply
 	amount     string
 	status     string // "" = import; ImportIngestStatusQueued / ImportIngestStatusSkipped otherwise
 	skipRuleID *vo.Id // set with status=Skipped when a skip rule fired (nil = ignored card)
@@ -142,6 +143,13 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 	if deleted { // dormant link: keep the tap for when the user re-maps the card
 		return resolution{status: model.ImportIngestStatusQueued}, nil
 	}
+	owned, writable, err := s.writeAccess(ctx, src.UserID, *al.AccountID)
+	if err != nil {
+		return resolution{}, err
+	}
+	if !writable { // the owner revoked the share: dormant like a deleted account
+		return resolution{status: model.ImportIngestStatusQueued}, nil
+	}
 	code, err := s.accounts.AccountCurrencyCode(ctx, *al.AccountID)
 	if err != nil {
 		return resolution{}, err
@@ -163,7 +171,7 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 	if id := rules.skip(ev); id != nil {
 		return resolution{status: model.ImportIngestStatusSkipped, skipRuleID: id}, nil
 	}
-	return resolution{accountID: *al.AccountID, amount: amount}, nil
+	return resolution{accountID: *al.AccountID, owned: owned, amount: amount}, nil
 }
 
 // applyEvent is stages 1-3 for a parsed event: the ledger check, the account
@@ -314,7 +322,13 @@ func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.I
 		}
 		return m.TransactionID, true, false, applied, nil
 	}
-	c := rules.classify(ev)
+	// Rules target the user's own categories, payees, tags and labels; a
+	// shared account's transactions take the owner's, so there the import
+	// lands unclassified rather than failing.
+	var c model.ImportClassification
+	if r.owned {
+		c = rules.classify(ev)
+	}
 	res, err := s.txns.CreateTransaction(ctx, src.UserID, model.CreateTransactionRequest{
 		Id: vo.NewId().String(), Type: ev.Type.Alias(), Amount: vo.NewFlexString(r.amount), AccountId: r.accountID.String(),
 		Date: at.Format(datetime.Layout), Description: optionalString(ev.Payee),

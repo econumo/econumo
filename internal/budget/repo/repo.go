@@ -200,7 +200,7 @@ func (r *Repo) GetFolder(ctx context.Context, id vo.Id) (*model.BudgetFolder, er
 
 func (r *Repo) SaveFolder(ctx context.Context, f *model.BudgetFolder) error {
 	return r.q.UpsertBudgetFolder(ctx, r.db(ctx), upFolderP{
-		ID: f.ID.String(), BudgetID: f.BudgetID.String(), Name: f.Name, SortKey: string(f.SortKey), CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt,
+		ID: f.ID.String(), BudgetID: f.BudgetID.String(), Name: f.Name, Side: string(f.Side), SortKey: string(f.SortKey), CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt,
 	})
 }
 
@@ -495,7 +495,7 @@ func hydrateFolder(row folderRow) (*model.BudgetFolder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.BudgetFolder{ID: id, BudgetID: budgetID, Name: row.Name, SortKey: sortkey.Key(row.SortKey), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.BudgetFolder{ID: id, BudgetID: budgetID, Name: row.Name, Side: model.FolderSide(row.Side), SortKey: sortkey.Key(row.SortKey), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateEnvelope(row envelopeRow) (*model.BudgetEnvelope, error) {

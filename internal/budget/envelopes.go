@@ -49,12 +49,18 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	if aerr := s.requireNotArchived(b); aerr != nil {
 		return nil, aerr
 	}
+	if folderID != nil && !b.hasFolder(*folderID) {
+		return nil, accessDenied()
+	}
 	if err := s.validateEnvelopeCategories(ctx, b, envType.IsIncomeSide(), req.Categories); err != nil {
 		return nil, err
 	}
-	if folderID != nil && sideMixed(b.elements, *folderID, envType) {
-		return nil, folderSideMixedErr()
+	if folderID != nil {
+		if err := b.placeInFolder(*folderID, envType); err != nil {
+			return nil, err
+		}
 	}
+	now := s.clock.Now()
 	// A new envelope element lands at the FRONT of its group. With sort keys that
 	// is a single write -- a key below the group's current first -- so no sibling
 	// is touched.
@@ -62,7 +68,6 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	if kerr != nil {
 		return nil, kerr
 	}
-	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if eerr := s.requireFreeEnvelopeID(txCtx, envelopeID); eerr != nil {
 			return eerr

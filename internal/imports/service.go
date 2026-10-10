@@ -26,10 +26,36 @@ type Service struct {
 	cfg       MatcherConfig
 	providers map[string]Provider
 	parsers   map[string]EventParser
+	disabled  map[string]bool
 }
 
 func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionWriter, lister TransactionLister, entities ClassificationLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {
 	return &Service{repo: repo, accounts: accounts, converter: converter, txns: txns, lister: lister, entities: entities, limiter: limiter, tx: tx, clk: clk, cfg: cfg, providers: map[string]Provider{}, parsers: map[string]EventParser{}}
+}
+
+// DisableProvider switches a provider off (ECONUMO_IMPORT_APPLE_WALLET /
+// ECONUMO_IMPORT_SIMPLEFIN): its sources can no longer be created, and sources
+// left from when it was on drop out of the source list and the queue.
+func (s *Service) DisableProvider(name string) {
+	if s.disabled == nil {
+		s.disabled = map[string]bool{}
+	}
+	s.disabled[name] = true
+}
+
+// enabledSources lists the caller's sources whose provider is switched on.
+func (s *Service) enabledSources(ctx context.Context, userID vo.Id) ([]model.ImportSource, error) {
+	sources, err := s.repo.ListSourcesByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := sources[:0]
+	for _, src := range sources {
+		if !s.disabled[src.Provider] {
+			out = append(out, src)
+		}
+	}
+	return out, nil
 }
 
 // SetCompleter enables suggest-rules; leaving it unset keeps the endpoint
@@ -214,9 +240,26 @@ func (s *Service) sourceResult(ctx context.Context, src *model.ImportSource) (*m
 			cards[i].LastSeenAt = l.ExternalPostedAt.Format(datetime.Layout)
 		}
 	}
+	runs, err := s.repo.ListRunsByUser(ctx, src.UserID, &src.ID, 1)
+	if err != nil {
+		return nil, err
+	}
+	var lastStatus, lastAt, lastErr, lastErrAccountId string
+	if len(runs) > 0 {
+		r := runs[0]
+		lastStatus, lastAt = r.Status, r.StartedAt.UTC().Format(datetime.Layout)
+		if r.FinishedAt != nil {
+			lastAt = r.FinishedAt.UTC().Format(datetime.Layout)
+		}
+		if len(r.Errors) > 0 {
+			lastErr = r.Errors[0].Message
+			lastErrAccountId = r.Errors[0].ExternalAccountId
+		}
+	}
 	return &model.ImportSourceResult{
 		Id: src.ID.String(), Provider: src.Provider, Name: src.Name, Status: src.Status,
 		CreatedAt: src.CreatedAt.Format(datetime.Layout), LastSyncedAt: optionalTime(src.LastSyncedAt),
+		LastRunStatus: lastStatus, LastRunAt: lastAt, LastRunError: lastErr, LastRunErrorAccountId: lastErrAccountId,
 		CredentialCiphertext: derefString(src.CredentialCiphertext), Cards: cards,
 	}, nil
 }

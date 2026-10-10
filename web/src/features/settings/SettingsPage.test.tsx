@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -26,9 +26,11 @@ function renderPage() {
   const router = createMemoryRouter(
     [
       { path: '/settings', element: <SettingsPage /> },
+      { path: '/settings/profile', element: <div>PROFILE PAGE</div> },
       { path: '/settings/budgets', element: <div>BUDGETS PAGE</div> },
       { path: '/settings/data', element: <div>DATA PAGE</div> },
       { path: '/settings/apple-wallet', element: <div>WALLET PAGE</div> },
+      { path: '/logout', element: <div>LOGOUT ROUTE</div> },
     ],
     { initialEntries: ['/settings'] },
   )
@@ -45,6 +47,7 @@ beforeEach(() => {
   window.econumoConfig = {}
   server.use(...coreHandlers())
   mockUpdate.value = null
+  mockViewport(false)
 })
 
 it('renders the menu rows with exact labels and navigates', async () => {
@@ -96,7 +99,24 @@ it('the Data group links to the Import & export page', async () => {
   expect(await screen.findByText('DATA PAGE')).toBeInTheDocument()
 })
 
+it('the Data group shows only Import & export while transaction import is off', async () => {
+  renderPage()
+  expect(await screen.findByText('Import & export')).toBeInTheDocument()
+  expect(screen.queryByText('Apple Wallet')).not.toBeInTheDocument()
+  expect(screen.queryByText('SimpleFIN')).not.toBeInTheDocument()
+  expect(screen.queryByText('Import rules')).not.toBeInTheDocument()
+})
+
+it('shows only the enabled provider, and Import rules while either is on', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
+  renderPage()
+  expect(await screen.findByText('SimpleFIN')).toBeInTheDocument()
+  expect(screen.getByText('Import rules')).toBeInTheDocument()
+  expect(screen.queryByText('Apple Wallet')).not.toBeInTheDocument()
+})
+
 it('the Data group links to the Apple Wallet page', async () => {
+  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
   const user = userEvent.setup()
   renderPage()
   await user.click(await screen.findByText('Apple Wallet'))
@@ -154,4 +174,22 @@ it('shows the read-only status hint', async () => {
   renderPage()
   expect(await screen.findByText('Billing')).toBeInTheDocument()
   expect(await screen.findByText(/^Expired$/)).toBeInTheDocument()
+})
+
+it('the header card links to the profile page and shows name, email and the Personal settings hint', async () => {
+  renderPage()
+  const link = await screen.findByRole('link', { name: /Ada/ })
+  expect(link).toHaveAttribute('href', '/settings/profile')
+  expect(within(link).getByText(fixtureUser.email)).toBeInTheDocument()
+  expect(within(link).getByText('Personal settings')).toBeInTheDocument()
+})
+
+it('the Log out button opens the confirm dialog and confirming navigates to the logout route', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Log out' }))
+  expect(await screen.findByText('Are you sure you want to log out?')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Stay' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Log out' }))
+  expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
 })

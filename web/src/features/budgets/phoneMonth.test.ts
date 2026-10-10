@@ -2,7 +2,7 @@ import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { fixtureWireBudget, fixtureWirePlan } from '@/test/fixtures'
 import type { BudgetPlanDto } from '@/api/dto/budget'
 import { cmp } from '@/lib/decimal'
-import { planCellFigures, planMonthFigures, sheetCell } from './phoneMonth'
+import { leftToReceive, planCellFigures, planMonthFigures, sheetCell } from './phoneMonth'
 
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
@@ -24,6 +24,52 @@ it('reads the income rows and totals of the selected month', () => {
   ])
   expect(cmp(f.income.planned, '2500')).toBe(0)
   expect(cmp(f.income.received, '400')).toBe(0)
+})
+
+// Freelance moved into an income folder, the way the Plan grid would show it
+function planWithIncomeFolder(): BudgetPlanDto {
+  const plan = usdPlan()
+  plan.structure.folders = [...plan.structure.folders, { id: 'bf-inc', name: 'Side gigs', position: 1 }]
+  plan.structure.elements = plan.structure.elements.map((el) => (el.id === 'cat-freelance' ? { ...el, folderId: 'bf-inc' } : el))
+  return plan
+}
+
+it('groups the income rows as the Plan grid does: folders with their sums, then the folder-less rows', () => {
+  const f = planMonthFigures(planWithIncomeFolder(), [usd, eur], '2026-07-01', past)!
+  expect(f.income.groups.map((g) => [g.kind, g.id, g.name, g.rows.map((r) => r.element.id)])).toEqual([
+    ['folder', 'bf-inc', 'Side gigs', ['cat-freelance']],
+    ['loose', '__no_folder__', null, ['ie1']],
+  ])
+  expect(cmp(f.income.groups[0].planned, '500')).toBe(0)
+  expect(cmp(f.income.groups[0].received, '400')).toBe(0)
+  expect(cmp(f.income.groups[1].planned, '2000')).toBe(0)
+  // the flat list keeps the same rows, folders first
+  expect(f.income.rows.map((r) => r.element.id)).toEqual(['cat-freelance', 'ie1'])
+  // June received income in no category: Uncategorized gets a group of its own
+  const june = planMonthFigures(planWithIncomeFolder(), [usd, eur], '2026-06-01', past)!
+  expect(june.income.groups.map((g) => g.kind)).toEqual(['folder', 'loose', 'uncategorized'])
+})
+
+it('an empty income folder still gets its group, and an empty expense-side folder does not', () => {
+  const p = usdPlan()
+  p.structure.folders = [...p.structure.folders, { id: 'bf-new', name: 'New income', position: 2, side: 'income' }, { id: 'bf-exp', name: 'Spare', position: 3, side: 'expense' }]
+  const f = planMonthFigures(p, [usd, eur], '2026-07-01', past)!
+  expect(f.income.groups.map((g) => [g.kind, g.id, g.rows.length])).toContainEqual(['folder', 'bf-new', 0])
+  expect(f.income.groups.map((g) => g.id)).not.toContain('bf-exp')
+})
+
+it('To receive is what a source still owes this month, never below zero', () => {
+  expect(cmp(leftToReceive('500', '400'), '100')).toBe(0)
+  expect(cmp(leftToReceive('500', '650'), '0')).toBe(0)
+  expect(cmp(leftToReceive('0', '300'), '0')).toBe(0)
+  // July: Salaries 2000 planned, nothing in; Freelance 500 planned, 400 in. An overpaid
+  // source would not offset them: each row floors at zero before the sums
+  const f = planMonthFigures(planWithIncomeFolder(), [usd, eur], '2026-07-01', past)!
+  expect(f.income.groups.map((g) => [g.id, Number(g.toReceive)])).toEqual([
+    ['bf-inc', 100],
+    ['__no_folder__', 2000],
+  ])
+  expect(cmp(f.income.toReceive, '2100')).toBe(0)
 })
 
 it('lists the income Uncategorized row only in a month it received something', () => {

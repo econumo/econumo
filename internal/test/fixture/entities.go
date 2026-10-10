@@ -619,6 +619,7 @@ type BudgetFolder struct {
 	Position int
 
 	SortKey string
+	Side    string // default "expense"
 }
 
 func (b *Builder) BudgetFolder(f BudgetFolder) string {
@@ -630,10 +631,13 @@ func (b *Builder) BudgetFolder(f BudgetFolder) string {
 	if f.SortKey == "" {
 		f.SortKey = sortKeyAt(f.Position)
 	}
+	if f.Side == "" {
+		f.Side = "expense"
+	}
 
 	now := b.now()
-	b.insert(`INSERT INTO budgets_folders (id, budget_id, name, sort_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		id, f.BudgetID, f.Name, f.SortKey, now, now)
+	b.insert(`INSERT INTO budgets_folders (id, budget_id, name, sort_key, side, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		id, f.BudgetID, f.Name, f.SortKey, f.Side, now, now)
 	return id
 }
 

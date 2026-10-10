@@ -5,31 +5,34 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import { add, sub } from '@/lib/decimal'
 import { fixtureWirePlan } from '@/test/fixtures'
 import {
-  PLAN_ACTIONS_COL_PX,
-  PLAN_CURRENCY_COL_PX,
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
   addMonths,
   balanceRow,
   bucketPlanRows,
-  clampFirstMonth,
   everydayBalanceRow,
   fillTargetCol,
   folderSides,
   formatPlanMonth,
   isOverspent,
-  isUnderspent,
   makePlanExchange,
   monthDate,
   monthDiff,
+  planCellRange,
+  planGroupSums,
   planHasSavingsData,
-  planInitialFirstMonth,
+  planSelectionSum,
   planMonthExchange,
   planTotals,
   planVisibleCount,
+  clampPlanNameWidth,
+  PLAN_NAME_COL_MIN_PX,
+  PLAN_NAME_COL_MAX_PX,
+  planWindow,
   projectSavingsClosings,
   savingsBalanceRow,
 } from './planMath'
+import type { MonthExchange } from './planMath'
 
 const usd: CurrencyDto = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur: CurrencyDto = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
@@ -112,46 +115,39 @@ describe('window math', () => {
 
   it('planVisibleCount: 3..12 fit, collapse below 3, cap at 12', () => {
     // Derived from the constants so widening a fixed column cannot silently drift.
-    // `fixed` is everything that is not a month: name + currency track + the row's
-    // px-2, plus the leading gap; `month` is a month column plus its own gap.
-    const fixed = PLAN_NAME_COL_PX + PLAN_CURRENCY_COL_PX + 16 + 4
-    const month = PLAN_MIN_MONTH_COL_PX + 4
+    // `fixed` is everything that is not a month: the name column plus the line's
+    // pl-2 + pr-2.5; month columns carry their own padding and no gap.
+    const fixed = PLAN_NAME_COL_PX + 18
+    const month = PLAN_MIN_MONTH_COL_PX
     expect(planVisibleCount(fixed + month * 2)).toBe(1) // only 2 fit -> mobile collapse
+    expect(planVisibleCount(fixed + month * 3 - 1)).toBe(1)
     expect(planVisibleCount(fixed + month * 3)).toBe(3)
     expect(planVisibleCount(fixed + month * 7 + 50)).toBe(7)
     expect(planVisibleCount(fixed + month * 40)).toBe(12)
-
-    // edit mode widens the tail by the actions slot; months must not be measured
-    // against space it takes, or they stretch and the window silently narrows
-    expect(planVisibleCount(fixed + month * 8, true)).toBe(7)
-    expect(planVisibleCount(fixed + PLAN_ACTIONS_COL_PX + month * 8, true)).toBe(8)
-    expect(planVisibleCount(fixed + month * 8)).toBe(8)
   })
 
-  it('planInitialFirstMonth anchors current month second, clamps at start, single-column starts current', () => {
-    const now = new Date(2026, 7, 15) // August 2026 -> currentMonth '2026-08-01'
-    const startedAt = '2026-01-01 00:00:00'
-    // no persisted value, multi-column -> current month minus one
-    expect(planInitialFirstMonth(null, startedAt, 3, now)).toBe('2026-07-01')
-    // persisted value after the start month is used as-is
-    expect(planInitialFirstMonth('2026-03-01', startedAt, 3, now)).toBe('2026-03-01')
-    // persisted value before the start month is clamped to the start
-    expect(planInitialFirstMonth('2025-11-01', startedAt, 5, now)).toBe('2026-01-01')
-    // single visible column with no persisted value starts at the current month
-    expect(planInitialFirstMonth(null, startedAt, 1, now)).toBe('2026-08-01')
+  it('planVisibleCount measures against the name column width it is given', () => {
+    const month = PLAN_MIN_MONTH_COL_PX
+    // a 400px name column leaves room for 3 months where the default leaves 5
+    expect(planVisibleCount(224 + 18 + month * 5)).toBe(5)
+    expect(planVisibleCount(224 + 18 + month * 5, 400)).toBe(3)
   })
 
-  it('clampFirstMonth never starts past the budget end month', () => {
-    expect(clampFirstMonth('2026-09-01', '2026-01-01 00:00:00', '2026-06-01 00:00:00')).toBe('2026-06-01')
-    // inside the range is untouched, and an absent end month is unbounded
-    expect(clampFirstMonth('2026-03-01', '2026-01-01 00:00:00', '2026-06-01 00:00:00')).toBe('2026-03-01')
-    expect(clampFirstMonth('2026-09-01', '2026-01-01 00:00:00', '')).toBe('2026-09-01')
+  it('clampPlanNameWidth keeps the name column between its bounds', () => {
+    expect(clampPlanNameWidth(100)).toBe(PLAN_NAME_COL_MIN_PX)
+    expect(clampPlanNameWidth(5000)).toBe(PLAN_NAME_COL_MAX_PX)
+    expect(clampPlanNameWidth(300.6)).toBe(301)
+    expect(PLAN_NAME_COL_MIN_PX).toBe(160)
+    expect(PLAN_NAME_COL_MAX_PX).toBe(480)
   })
 
-  it('clampFirstMonth never precedes the budget start month', () => {
-    expect(clampFirstMonth('2025-12-01', '2026-01-01 00:00:00')).toBe('2026-01-01')
-    expect(clampFirstMonth('2026-05-01', '2026-01-01 00:00:00')).toBe('2026-05-01')
-    expect(clampFirstMonth('2026-01-01', '2026-01-01 00:00:00')).toBe('2026-01-01')
+  it('planVisibleCount never packs months narrower than `actual · plan` needs', () => {
+    for (let w = 600; w <= 2600; w += 10) {
+      const n = planVisibleCount(w)
+      if (n > 1) {
+        expect((w - PLAN_NAME_COL_PX - 18) / n).toBeGreaterThanOrEqual(PLAN_MIN_MONTH_COL_PX)
+      }
+    }
   })
 })
 
@@ -171,14 +167,14 @@ describe('bucketPlanRows', () => {
       structure: { folders: [f1], elements: [incomeEnvelope, expenseCategory, incomeCategory, uncatIncome, uncatExpense] },
     })
 
-    const rows = bucketPlanRows(plan, false)
+    const rows = bucketPlanRows(plan)
 
-    expect(rows.income.folders).toEqual([{ folder: f1, rows: [{ element: incomeEnvelope, hidden: false }] }])
-    expect(rows.income.loose).toEqual([{ element: incomeCategory, hidden: false }])
-    expect(rows.income.uncategorized).toEqual({ element: uncatIncome, hidden: false })
+    expect(rows.income.folders).toEqual([{ folder: f1, rows: [{ element: incomeEnvelope }] }])
+    expect(rows.income.loose).toEqual([{ element: incomeCategory }])
+    expect(rows.income.uncategorized).toEqual({ element: uncatIncome })
     expect(rows.expense.folders).toEqual([])
-    expect(rows.expense.loose).toEqual([{ element: expenseCategory, hidden: false }])
-    expect(rows.expense.uncategorized).toEqual({ element: uncatExpense, hidden: false })
+    expect(rows.expense.loose).toEqual([{ element: expenseCategory }])
+    expect(rows.expense.uncategorized).toEqual({ element: uncatExpense })
   })
 
   it('neutral folders get their own bucket, in position order, joining neither side', () => {
@@ -186,7 +182,7 @@ describe('bucketPlanRows', () => {
     const f3: BudgetFolderDto = { id: 'f3', name: 'Another Empty', position: 1 }
     const plan = mkPlan({ structure: { folders: [f2, f3], elements: [] } })
 
-    const rows = bucketPlanRows(plan, false)
+    const rows = bucketPlanRows(plan)
 
     expect(rows.neutral).toEqual([
       { folder: f3, rows: [] },
@@ -196,55 +192,43 @@ describe('bucketPlanRows', () => {
     expect(rows.income.folders).toEqual([])
   })
 
-  it('hideEmpty removes all-empty rows and counts them per side; rows with any planned survive', () => {
-    const hidden = mkEl({
-      id: 'cat-hidden',
-      type: 1,
-      name: 'Hidden',
-      position: 0,
-      cells: [
-        { actual: '0', planned: '' },
-        { actual: '0', planned: '' },
-      ],
-    })
-    // planned '0' (not empty) in month 0 keeps this row visible even though nothing is spent
-    const surviving = mkEl({
-      id: 'cat-surviving',
-      type: 1,
-      name: 'Surviving',
-      position: 1,
-      cells: [
-        { actual: '0', planned: '0' },
-        { actual: '0', planned: '' },
-      ],
-    })
-    const plan = mkPlan({ structure: { folders: [], elements: [hidden, surviving] } })
-
-    const shown = bucketPlanRows(plan, false)
-    expect(shown.expense.loose).toEqual([
-      { element: hidden, hidden: true },
-      { element: surviving, hidden: false },
-    ])
-    expect(shown.expense.hiddenCount).toBe(1)
-
-    const filtered = bucketPlanRows(plan, true)
-    expect(filtered.expense.loose).toEqual([{ element: surviving, hidden: false }])
-    expect(filtered.expense.hiddenCount).toBe(1)
-  })
-
   it('archived rows leave the sections and sort by name', () => {
     const zebra = mkEl({ id: 'cat-zebra', type: 1, name: 'Zebra', isArchived: 1, position: 0, cells: [{ actual: '10', planned: '' }, { actual: '0', planned: '' }] })
     const apple = mkEl({ id: 'env-apple', type: 4, name: 'Apple', isArchived: 1, position: 1, cells: [{ actual: '20', planned: '' }, { actual: '0', planned: '' }] })
     const active = mkEl({ id: 'cat-active', type: 1, name: 'Active', position: 0, cells: [{ actual: '5', planned: '' }, { actual: '0', planned: '' }] })
     const plan = mkPlan({ structure: { folders: [], elements: [zebra, apple, active] } })
 
-    const rows = bucketPlanRows(plan, false)
+    const rows = bucketPlanRows(plan)
 
     expect(rows.archived.map((r) => r.element.id)).toEqual(['env-apple', 'cat-zebra'])
-    expect(rows.expense.loose).toEqual([{ element: active, hidden: false }])
+    expect(rows.expense.loose).toEqual([{ element: active }])
     expect(rows.income.loose).toEqual([])
     expect(rows.income.folders).toEqual([])
   })
+})
+
+it('planGroupSums adds every row\'s actual but only live rows\' plans, per month in budget currency', () => {
+  const el = (id: string, cells: { actual: string; planned: string }[], isArchived: 0 | 1 = 0) =>
+    ({ id, type: BudgetElementType.CATEGORY, name: id, icon: '', currencyId: 'usd', isArchived, folderId: null, position: 0, ownerUserId: null, cells, children: [] })
+  const months = ['2026-06-01', '2026-07-01']
+  const ex: MonthExchange = (_from, amount) => amount
+  const sums = planGroupSums(
+    [el('a', [{ actual: '10', planned: '20' }, { actual: '1', planned: '' }]), el('b', [{ actual: '5', planned: '5' }, { actual: '0', planned: '7' }]), el('z', [{ actual: '99', planned: '99' }, { actual: '99', planned: '99' }], 1)],
+    months,
+    (m) => months.indexOf(m),
+    ex,
+  )
+  // the archived row z adds its actual (a line is the sum of the rows under it), never its plan
+  expect(sums).toEqual([{ actual: '114', planned: '25' }, { actual: '100', planned: '7' }])
+})
+
+it('planGroupSums counts a deleted savings account\'s plan, as the Savings total does', () => {
+  const months = ['2026-06-01', '2026-07-01']
+  const ex: MonthExchange = (_from, amount) => amount
+  const live = mkEl({ id: 's1', type: BudgetElementType.SAVINGS, name: 'Fund', cells: [{ actual: '10', planned: '50' }, { actual: '0', planned: '50' }] })
+  const deleted = mkEl({ id: 's2', type: BudgetElementType.SAVINGS, name: 'Old', isArchived: 1, cells: [{ actual: '30', planned: '40' }, { actual: '0', planned: '' }] })
+  const sums = planGroupSums([live, deleted], months, (m) => months.indexOf(m), ex)
+  expect(sums).toEqual([{ actual: '40', planned: '90' }, { actual: '0', planned: '50' }])
 })
 
 describe('folderSides', () => {
@@ -687,10 +671,11 @@ describe('savings + net + balance split', () => {
       id: 'sav-archived',
       name: 'Closed Fund',
       isArchived: 1,
+      // a deleted account's plan arrives only for months it had activity
       cells: [
         { actual: '20', planned: '999' },
         { actual: '10', planned: '999' },
-        { actual: '0', planned: '999' },
+        { actual: '0', planned: '' },
       ],
     })
     return mkPlan({
@@ -703,21 +688,21 @@ describe('savings + net + balance split', () => {
     })
   }
 
-  it('planTotals: savingsActual/savingsPlanned convert EUR->USD per month; archived rows are excluded from savingsPlanned; effectiveSavings follows past=actual / current+future=max, archived always actual', () => {
+  it('planTotals: savingsActual/savingsPlanned convert EUR->USD per month; archived (deleted) rows count in savingsPlanned like the monthly Total; effectiveSavings follows past=actual / current+future=max, archived always actual', () => {
     const plan = buildPlan()
     const ex = makePlanExchange(plan, [usd, eur])
     const totals = planTotals(plan, ex, now)
 
     // month 0 (past): savingsA 100/2=50, archived 20/2=10 -> savingsActual 60
     expect(totals[0].savingsActual).toBe('60')
-    // savingsPlanned excludes the archived row's 999 plan: 150/2 = 75
-    expect(totals[0].savingsPlanned).toBe('75')
+    // savingsPlanned includes the archived row's plan: (150 + 999)/2 = 574.5
+    expect(totals[0].savingsPlanned).toBe('574.5')
     // effectiveSavings past = actual for both rows: 50 + 10 = 60
     expect(totals[0].effectiveSavings).toBe('60')
 
     // month 1 (current): savingsA 300/2=150, archived 10/2=5 -> savingsActual 155
     expect(totals[1].savingsActual).toBe('155')
-    expect(totals[1].savingsPlanned).toBe('200') // 400/2
+    expect(totals[1].savingsPlanned).toBe('699.5') // (400 + 999)/2
     // effectiveSavings: max(150,200)=200 + archived actual 5 = 205
     expect(totals[1].effectiveSavings).toBe('205')
 
@@ -739,8 +724,8 @@ describe('savings + net + balance split', () => {
     expect(totals[2].netActual).toBe('-200') // -200 - 0
 
     // netPlanned = income(0) - expensePlanned(200) - savingsPlanned
-    expect(totals[0].netPlanned).toBe('-275') // -200 - 75
-    expect(totals[1].netPlanned).toBe('-400') // -200 - 200
+    expect(totals[0].netPlanned).toBe('-774.5') // -200 - 574.5
+    expect(totals[1].netPlanned).toBe('-899.5') // -200 - 699.5
     expect(totals[2].netPlanned).toBe('-400') // -200 - 200
 
     const withoutSavings = mkPlan({ ...plan, structure: { ...plan.structure, savings: [] } })
@@ -1063,39 +1048,6 @@ describe('isOverspent', () => {
   })
 })
 
-describe('isUnderspent', () => {
-  const { CATEGORY, INCOME_CATEGORY } = BudgetElementType
-  const cur = '2026-08-01'
-
-  it('is true in a past month when the plan exceeds the actual', () => {
-    expect(isUnderspent(CATEGORY, { actual: '120', planned: '150' }, '2026-05-01', cur)).toBe(true)
-    expect(isUnderspent(CATEGORY, { actual: '0', planned: '150' }, '2026-07-01', cur)).toBe(true)
-  })
-
-  it('is false in the current and future months', () => {
-    expect(isUnderspent(CATEGORY, { actual: '120', planned: '150' }, '2026-08-01', cur)).toBe(false)
-    expect(isUnderspent(CATEGORY, { actual: '0', planned: '150' }, '2026-09-01', cur)).toBe(false)
-  })
-
-  it('needs a plan: unset counts as 0', () => {
-    expect(isUnderspent(CATEGORY, { actual: '0', planned: '' }, '2026-05-01', cur)).toBe(false)
-  })
-
-  it('is false at exactly the plan and when over it', () => {
-    expect(isUnderspent(CATEGORY, { actual: '150', planned: '150' }, '2026-05-01', cur)).toBe(false)
-    expect(isUnderspent(CATEGORY, { actual: '160', planned: '150' }, '2026-05-01', cur)).toBe(false)
-  })
-
-  it('never flags an income row or a missing cell', () => {
-    expect(isUnderspent(INCOME_CATEGORY, { actual: '100', planned: '2000' }, '2026-05-01', cur)).toBe(false)
-    expect(isUnderspent(CATEGORY, undefined, '2026-05-01', cur)).toBe(false)
-  })
-
-  it('never flags a savings row: saving less than planned is not a good outcome', () => {
-    expect(isUnderspent(BudgetElementType.SAVINGS, { actual: '0', planned: '500' }, '2026-05-01', cur)).toBe(false)
-  })
-})
-
 describe('projectSavingsClosings', () => {
   const months = ['2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01']
   const now = new Date(2026, 6, 15) // current month July
@@ -1145,4 +1097,123 @@ it('planMonthExchange converts at the given month\'s rates', () => {
   // the fixture's EUR rate moves from 0.90 (May) to 0.93 (Aug): the two months must differ
   expect(may('cur-eur', 'cur-usd', '100')).not.toBe(aug('cur-eur', 'cur-usd', '100'))
   expect(may('cur-usd', 'cur-usd', '100')).toBe('100')
+})
+
+describe('planWindow', () => {
+  it('puts the selected month in column 2 with one month of history', () => {
+    expect(planWindow('2026-10-01', 6, '2025-01-01')).toBe('2026-09-01')
+  })
+  it('shows only the selected month when one column fits', () => {
+    expect(planWindow('2026-10-01', 1, '2025-01-01')).toBe('2026-10-01')
+  })
+  it('starts at the start month when the history month is before it', () => {
+    expect(planWindow('2026-10-01', 6, '2026-10-15')).toBe('2026-10-01')
+  })
+  it('ends at the end month of an ended budget', () => {
+    // Oct selected, 6 columns, budget ends Dec: window Jul..Dec, Oct is column 3
+    expect(planWindow('2026-10-01', 6, '2025-01-01', '2026-12-01')).toBe('2026-07-01')
+  })
+  it('never starts before the start month even when the end pulls it back', () => {
+    expect(planWindow('2026-10-01', 6, '2026-09-01', '2026-11-01')).toBe('2026-09-01')
+  })
+})
+
+it('planGroupSums can sum savings balances instead of what was saved', () => {
+  const months = ['2026-06-01', '2026-07-01']
+  const ex: MonthExchange = (_from, amount) => amount
+  const a = mkEl({ id: 's1', type: BudgetElementType.SAVINGS, name: 'A', cells: [{ actual: '10', planned: '50', closingBalance: '1000' }, { actual: '0', planned: '50', closingBalance: '1050' }] })
+  const b = mkEl({ id: 's2', type: BudgetElementType.SAVINGS, name: 'B', cells: [{ actual: '5', planned: '', closingBalance: '200' }, { actual: '0', planned: '', closingBalance: '200' }] })
+  expect(planGroupSums([a, b], months, (m) => months.indexOf(m), ex, 'balance')).toEqual([
+    { actual: '1200', planned: '50' },
+    { actual: '1250', planned: '50' },
+  ])
+})
+
+describe('planCellRange', () => {
+  const rows = ['a', 'b', 'c', 'd']
+  it('covers every row and column between the two corners, whichever way they point', () => {
+    const fwd = planCellRange(rows, { rowKey: 'b', col: 1 }, { rowKey: 'c', col: 2 })
+    expect(fwd).toEqual([
+      { rowKey: 'b', col: 1 },
+      { rowKey: 'b', col: 2 },
+      { rowKey: 'c', col: 1 },
+      { rowKey: 'c', col: 2 },
+    ])
+    expect(planCellRange(rows, { rowKey: 'c', col: 2 }, { rowKey: 'b', col: 1 })).toEqual(fwd)
+  })
+  it('is the one cell when both corners are the same', () => {
+    expect(planCellRange(rows, { rowKey: 'd', col: 0 }, { rowKey: 'd', col: 0 })).toEqual([{ rowKey: 'd', col: 0 }])
+  })
+  it('is empty when a corner is no longer on screen', () => {
+    expect(planCellRange(rows, { rowKey: 'gone', col: 0 }, { rowKey: 'a', col: 1 })).toEqual([])
+  })
+})
+
+describe('planSelectionSum', () => {
+  const months = ['2026-06-01', '2026-07-01', '2026-08-01']
+  const monthIndex = (m: string) => months.indexOf(m)
+  // EUR doubles into the budget currency in June, triples in July: the month's own rate
+  const ex: MonthExchange = (from, amount, i) => (from === 'cur-eur' ? String(Number(amount) * (i + 2)) : amount)
+  const cells3 = (a: [string, string][]) => a.map(([actual, planned]) => ({ actual, planned }))
+
+  it('adds plans and actuals across rows and months in the budget currency', () => {
+    const food = mkEl({ id: 'f', type: BudgetElementType.CATEGORY, name: 'Food', cells: cells3([['10', '20'], ['5', ''], ['0', '0']]) })
+    const trip = mkEl({ id: 't', type: BudgetElementType.TAG, name: 'Trip', currencyId: 'cur-eur', cells: cells3([['1', '4'], ['2', '3'], ['0', '0']]) })
+    const sum = planSelectionSum(
+      [
+        { el: food, month: '2026-06-01' },
+        { el: food, month: '2026-07-01' },
+        { el: trip, month: '2026-06-01' },
+        { el: trip, month: '2026-07-01' },
+      ],
+      monthIndex,
+      ex,
+      '2026-07-01',
+    )
+    // plans 20 + 0 + 4×2 + 3×3, actuals 10 + 5 + 1×2 + 2×3
+    expect(sum).toEqual({ count: 4, planned: '37', actual: '23' })
+  })
+
+  it('leaves out actuals after the current month, as the grid does', () => {
+    const food = mkEl({ id: 'f', type: BudgetElementType.CATEGORY, name: 'Food', cells: cells3([['10', '20'], ['5', '1'], ['7', '2']]) })
+    const sum = planSelectionSum(
+      months.map((month) => ({ el: food, month })),
+      monthIndex,
+      ex,
+      '2026-07-01',
+    )
+    expect(sum).toEqual({ count: 3, planned: '23', actual: '15' })
+  })
+
+  it('adds what a savings account saved, not its month-end balance', () => {
+    const fund = mkEl({
+      id: 's',
+      type: BudgetElementType.SAVINGS,
+      name: 'Fund',
+      cells: [
+        { actual: '100', planned: '100', closingBalance: '1100' },
+        { actual: '50', planned: '100', closingBalance: '1150' },
+        { actual: '0', planned: '', closingBalance: '1150' },
+      ],
+    })
+    const sum = planSelectionSum(
+      [
+        { el: fund, month: '2026-06-01' },
+        { el: fund, month: '2026-07-01' },
+      ],
+      monthIndex,
+      ex,
+      '2026-07-01',
+    )
+    expect(sum).toEqual({ count: 2, planned: '200', actual: '150' })
+  })
+
+  it('counts a month the plan has no data for without adding anything', () => {
+    const food = mkEl({ id: 'f', type: BudgetElementType.CATEGORY, name: 'Food', cells: cells3([['10', '20'], ['5', ''], ['0', '0']]) })
+    expect(planSelectionSum([{ el: food, month: '2026-06-01' }, { el: food, month: '2026-12-01' }], monthIndex, ex, '2026-12-01')).toEqual({
+      count: 2,
+      planned: '20',
+      actual: '10',
+    })
+  })
 })

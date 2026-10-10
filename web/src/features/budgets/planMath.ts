@@ -43,38 +43,22 @@ export function formatPlanMonth(m: string, lang: string, now?: Date): string {
   return periodLabeler(lang, now)(monthDate(m))
 }
 
-export const PLAN_NAME_COL_PX = 210
-export const PLAN_MIN_MONTH_COL_PX = 110
-/** the trailing track closing every row: the currency symbol always, plus the actions
- *  menu in edit mode. Months must not be measured against space it occupies, or they
- *  stretch and the visible window silently narrows. */
-export const PLAN_CURRENCY_COL_PX = 24
-export const PLAN_ACTIONS_COL_PX = 32
+// the name column's default width; the user can drag it between the bounds below
+export const PLAN_NAME_COL_PX = 224
+export const PLAN_NAME_COL_MIN_PX = 160
+export const PLAN_NAME_COL_MAX_PX = 480
 
-/** the row's own chrome the grid template does not describe: px-2 either side, plus a
- *  gap-1 between every track. Ignoring it made the row wider than its container, which
- *  is what produced a horizontal scrollbar once the currency track was added. */
-const PLAN_ROW_PADDING_PX = 16
-const PLAN_TRACK_GAP_PX = 4
-
-export function planVisibleCount(containerWidthPx: number, editMode = false): number {
-  const tail = PLAN_CURRENCY_COL_PX + (editMode ? PLAN_ACTIONS_COL_PX : 0)
-  const fixed = PLAN_NAME_COL_PX + tail + PLAN_ROW_PADDING_PX
-  // n months means n + 2 tracks (name + months + tail), so n + 1 gaps
-  const perMonth = PLAN_MIN_MONTH_COL_PX + PLAN_TRACK_GAP_PX
-  const fit = Math.floor((containerWidthPx - fixed - PLAN_TRACK_GAP_PX) / perMonth)
-  return fit < 3 ? 1 : Math.min(fit, 12)
+export function clampPlanNameWidth(px: number): number {
+  return Math.min(PLAN_NAME_COL_MAX_PX, Math.max(PLAN_NAME_COL_MIN_PX, Math.round(px)))
 }
+// wide enough for `12,345.67 · 12,345.67` with the cell's padding
+export const PLAN_MIN_MONTH_COL_PX = 150
+/** PLAN_LINE's pl-2 + pr-2.5; its month cells carry their own padding and no gap */
+const PLAN_LINE_PADDING_PX = 18
 
-export function clampFirstMonth(firstMonth: string, startedAt: string, endedAt?: string): string {
-  const startMonth = `${startedAt.slice(0, 7)}-01`
-  let clamped = firstMonth < startMonth ? startMonth : firstMonth
-  // never open the window past the budget's last covered month
-  if (endedAt) {
-    const endMonth = `${endedAt.slice(0, 7)}-01`
-    if (clamped > endMonth) clamped = endMonth < startMonth ? startMonth : endMonth
-  }
-  return clamped
+export function planVisibleCount(containerWidthPx: number, nameWidthPx: number = PLAN_NAME_COL_PX): number {
+  const fit = Math.floor((containerWidthPx - nameWidthPx - PLAN_LINE_PADDING_PX) / PLAN_MIN_MONTH_COL_PX)
+  return fit < 3 ? 1 : Math.min(fit, 12)
 }
 
 /** Excel fill: the column the drag currently targets. Right-only — never
@@ -88,25 +72,36 @@ export function fillTargetCol(startCol: number, deltaX: number, colWidth: number
   return Math.min(Math.max(target, startCol), lastCol)
 }
 
-export function planInitialFirstMonth(persisted: string | null, startedAt: string, visible: number, now?: Date): string {
-  const base = persisted !== null ? persisted : visible === 1 ? currentMonth(now) : addMonths(currentMonth(now), -1)
-  return clampFirstMonth(base, startedAt)
+/** The Plan grid's first month: the selected month with one month of history before
+ *  it, then the future, kept inside the budget's start and end months. */
+export function planWindow(selected: string, visible: number, startedAt: string, endedAt?: string | null): string {
+  const start = `${startedAt.slice(0, 7)}-01`
+  let first = visible > 1 ? addMonths(selected, -1) : selected
+  if (endedAt) {
+    const lastFirst = addMonths(`${endedAt.slice(0, 7)}-01`, -(visible - 1))
+    if (first > lastFirst) {
+      first = lastFirst
+    }
+  }
+  if (first < start) {
+    first = start
+  }
+  return first
 }
 
 export interface PlanRow {
   element: PlanElementDto
-  hidden: boolean
 }
 export interface PlanFolderSection {
   folder: BudgetFolderDto
   rows: PlanRow[]
 }
 export interface PlanRows {
-  income: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null; hiddenCount: number }
+  income: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null }
   /** member-less folders: they belong to neither side yet, so they sit between the
    *  two bands (header-only) until a move gives them one */
   neutral: PlanFolderSection[]
-  expense: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null; hiddenCount: number }
+  expense: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null }
   archived: PlanRow[]
 }
 
@@ -141,17 +136,6 @@ export function projectSavingsClosings(s: PlanSavingsElementDto, months: string[
   return { ...s, cells }
 }
 
-const isRowHidden = (el: PlanElementDto): boolean => el.cells.every((c) => isZero(c.actual) && c.planned === '')
-
-// Shared by the folder section renderer and the keyboard grid's flat row list, so
-// which rows are on screen and which rows Up/Down can reach can never diverge.
-export function visibleSectionRows(rows: PlanRow[], folded: boolean, hideEmpty: boolean, revealed: boolean): PlanRow[] {
-  if (folded) {
-    return []
-  }
-  return hideEmpty && !revealed ? rows.filter((r) => !r.hidden) : rows
-}
-
 /** the overspend highlight: an expense actual past its plan, in ANY month — an
  *  unset plan reads as 0 everywhere else in the grid, so it counts as 0 here too */
 export function isOverspent(type: BudgetElementType, cell: PlanCellDto | undefined): boolean {
@@ -159,17 +143,6 @@ export function isOverspent(type: BudgetElementType, cell: PlanCellDto | undefin
     return false
   }
   return cmp(cell.actual, cell.planned === '' ? '0' : cell.planned) > 0
-}
-
-/** the underspend highlight: a PAST month whose plan the actual stayed under — the
- *  current and future months are still open, so being under plan there means nothing
- *  yet. Never true without a plan (unset = 0), and never on the income side. Never on
- *  a savings row either: saving less than planned is no win. */
-export function isUnderspent(type: BudgetElementType, cell: PlanCellDto | undefined, month: string, cur: string): boolean {
-  if (!cell || isIncomeType(type) || type === BudgetElementType.SAVINGS || month >= cur) {
-    return false
-  }
-  return cmp(cell.planned === '' ? '0' : cell.planned, cell.actual) > 0
 }
 
 type Side = 'income' | 'expense'
@@ -189,7 +162,9 @@ export function folderSides(plan: BudgetPlanDto): Map<Id, FolderSide> {
   for (const folder of plan.structure.folders) {
     const inFolder = members.filter((el) => el.folderId === folder.id)
     if (inFolder.length === 0) {
-      sides.set(folder.id, 'neutral')
+      // an empty folder keeps the side it was created in; only a server older than
+      // the stored side leaves it open to both
+      sides.set(folder.id, folder.side ?? 'neutral')
     } else {
       sides.set(folder.id, inFolder.some((el) => sideOf(el) === 'income') ? 'income' : 'expense')
     }
@@ -197,46 +172,41 @@ export function folderSides(plan: BudgetPlanDto): Map<Id, FolderSide> {
   return sides
 }
 
-export function bucketPlanRows(plan: BudgetPlanDto, hideEmpty: boolean): PlanRows {
+export function bucketPlanRows(plan: BudgetPlanDto): PlanRows {
   const folders = [...plan.structure.folders].sort((a, b) => a.position - b.position)
   const elements = plan.structure.elements
 
   const archived = elements
     .filter((el) => el.isArchived === 1)
-    .map((el) => ({ element: el, hidden: false }))
+    .map((element) => ({ element }))
     .sort((a, b) => compareNames(a.element.name, b.element.name))
 
   const active = elements.filter((el) => el.isArchived === 0 && el.id !== UNCATEGORIZED_ID)
   const uncategorized = elements.filter((el) => el.isArchived === 0 && el.id === UNCATEGORIZED_ID)
   const uncategorizedFor = (side: Side): PlanRow | null => {
     const el = uncategorized.find((e) => sideOf(e) === side)
-    return el ? { element: el, hidden: false } : null
+    return el ? { element: el } : null
   }
 
   const folderSide = folderSides(plan)
 
-  const toRow = (el: PlanElementDto): PlanRow => ({ element: el, hidden: isRowHidden(el) })
-  const keep = (rows: PlanRow[]): PlanRow[] => (hideEmpty ? rows.filter((r) => !r.hidden) : rows)
-  const countHidden = (rows: PlanRow[]): number => rows.filter((r) => r.hidden).length
+  const toRow = (element: PlanElementDto): PlanRow => ({ element })
 
-  const sectionsFor = (side: Side): { folders: PlanFolderSection[]; loose: PlanRow[]; hiddenCount: number } => {
-    let hiddenCount = 0
+  const sectionsFor = (side: Side): { folders: PlanFolderSection[]; loose: PlanRow[] } => {
     const folderSections = folders
       .filter((f) => folderSide.get(f.id) === side)
-      .map((folder) => {
-        const rows = active
+      .map((folder) => ({
+        folder,
+        rows: active
           .filter((el) => el.folderId === folder.id)
           .sort((a, b) => a.position - b.position)
-          .map(toRow)
-        hiddenCount += countHidden(rows)
-        return { folder, rows: keep(rows) }
-      })
-    const looseRows = active
+          .map(toRow),
+      }))
+    const loose = active
       .filter((el) => el.folderId === null && sideOf(el) === side)
       .sort((a, b) => a.position - b.position)
       .map(toRow)
-    hiddenCount += countHidden(looseRows)
-    return { folders: folderSections, loose: keep(looseRows), hiddenCount }
+    return { folders: folderSections, loose }
   }
 
   const income = sectionsFor('income')
@@ -356,7 +326,9 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
       const isPast = month < cur
       const effective = isPast ? actual : cmp(actual, planned) >= 0 ? actual : planned
       savingsActual = add(savingsActual, actual)
-      if (el.isArchived === 0) savingsPlanned = add(savingsPlanned, planned)
+      // a deleted account's plan arrives only for months it had activity, and
+      // counts there as in the monthly Total
+      savingsPlanned = add(savingsPlanned, planned)
       effSavings = add(effSavings, el.isArchived === 0 ? effective : actual)
     }
     // Net carries the boundary transfers so the Balance row (which chains on
@@ -386,6 +358,93 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
       effectiveSavings: effSavings,
     }
   })
+}
+
+/** A section's or folder's per-month sums in budget currency, so a line reads as the
+ *  sum of the rows listed under it. As in planTotals, every row's actual counts but
+ *  only a live row's plan: an archived row or deleted account plans nothing. */
+export function planGroupSums(
+  rows: PlanElementDto[],
+  months: string[],
+  monthIndex: (m: string) => number,
+  ex: MonthExchange,
+  /** 'balance': savings rows add their month-end balance in place of what was saved */
+  figure: 'actual' | 'balance' = 'actual',
+): { actual: string; planned: string }[] {
+  return months.map((m) => {
+    const i = monthIndex(m)
+    let actual = '0'
+    let planned = '0'
+    if (i >= 0) {
+      for (const el of rows) {
+        const cell = el.cells[i]
+        if (cell) {
+          const figureValue = figure === 'balance' && cell.closingBalance !== undefined ? cell.closingBalance : cell.actual
+          actual = add(actual, ex(el.currencyId, figureValue, i))
+          // a deleted savings account keeps its plan, as in the Savings total
+          if (el.isArchived === 0 || el.type === BudgetElementType.SAVINGS) {
+            planned = add(planned, ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i))
+          }
+        }
+      }
+    }
+    return { actual, planned }
+  })
+}
+
+export interface PlanCellRef {
+  rowKey: string
+  col: number
+}
+
+/** The rectangle two cells span over the grid's on-screen row order. A corner whose
+ *  row is no longer shown (folded, filtered) spans nothing. */
+export function planCellRange(rowOrder: string[], a: PlanCellRef, b: PlanCellRef): PlanCellRef[] {
+  const ra = rowOrder.indexOf(a.rowKey)
+  const rb = rowOrder.indexOf(b.rowKey)
+  if (ra < 0 || rb < 0) {
+    return []
+  }
+  const cells: PlanCellRef[] = []
+  for (let r = Math.min(ra, rb); r <= Math.max(ra, rb); r++) {
+    for (let c = Math.min(a.col, b.col); c <= Math.max(a.col, b.col); c++) {
+      cells.push({ rowKey: rowOrder[r], col: c })
+    }
+  }
+  return cells
+}
+
+export interface PlanSelectionSum {
+  count: number
+  planned: string
+  actual: string
+}
+
+/** What a multi-cell selection adds up to, in the budget currency at each month's own
+ *  rate. Actuals count up to `current` only, as the grid shows them; a savings row adds
+ *  what was saved, since its month-end balances added across months mean nothing. */
+export function planSelectionSum(
+  cells: { el: PlanElementDto; month: string }[],
+  monthIndex: (m: string) => number,
+  ex: MonthExchange,
+  current: string,
+): PlanSelectionSum {
+  let planned = '0'
+  let actual = '0'
+  for (const { el, month } of cells) {
+    const i = monthIndex(month)
+    const cell = i >= 0 ? el.cells[i] : undefined
+    if (!cell) {
+      continue
+    }
+    if (cell.planned !== '') {
+      planned = add(planned, ex(el.currencyId, cell.planned, i))
+    }
+    if (month <= current) {
+      actual = add(actual, ex(el.currencyId, cell.actual, i))
+    }
+  }
+  return { count: cells.length, planned, actual }
 }
 
 export function balanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: MonthExchange, now?: Date): string[] {

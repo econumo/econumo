@@ -74,9 +74,9 @@ function usePlanHandlers() {
   )
 }
 
-// The plan fixtures span May-Aug 2026 and read "today" off the system clock (the
-// default three-month window resolves to Jul/Aug/Sep, same as PlanSheet.test.tsx),
-// so the clock is pinned the same way here.
+// The plan fixtures span May-Aug 2026 and read "today" off the system clock, so the
+// clock is pinned to Aug 2026 and the selected month is August: a three-month window
+// of Jul/Aug/Sep.
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(2026, 7, 15, 12, 0, 0))
@@ -84,12 +84,11 @@ beforeEach(() => {
   window.econumoConfig = {}
   mockViewport()
   useBudgetPeriodStore.setState({
-    selectedDate: '2026-07-01',
+    selectedDate: '2026-08-01',
     unfoldedElements: {},
+    planUnfoldedElements: {},
     foldBudgetId: null,
-    planFirstMonth: null,
     planFolds: {},
-    planHideEmpty: false,
   })
 })
 
@@ -97,7 +96,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-it('opens the thread from the marker as a popover, and keeps the amount editor comment-free', async () => {
+it('opens the thread from the marker as a popover, and keeps the in-cell editor comment-free', async () => {
   usePlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -106,10 +105,14 @@ it('opens the thread from the marker as a popover, and keeps the amount editor c
   const cell = await screen.findByTestId('plan-cell-pe1:1')
   expect(within(cell).getByTestId('comment-marker')).toHaveAccessibleName('1 comment')
 
-  await user.click(within(cell).getByLabelText(/^limit /))
-  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  await user.click(cell)
+  await user.keyboard('{Enter}')
+  expect(await screen.findByRole('textbox', { name: 'Plan for Living, August' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
+  // the corner marker steps aside while the cell is being edited
+  expect(within(cell).queryByTestId('comment-marker')).toBeNull()
   await user.keyboard('{Escape}')
+  expect(screen.queryByRole('textbox')).toBeNull()
 
   await user.click(within(cell).getByTestId('comment-marker'))
   expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
@@ -165,7 +168,7 @@ it('opens the thread with Shift+Enter and leaves Enter editing the amount', asyn
   await user.keyboard('{Escape}')
 
   await user.keyboard('{Enter}')
-  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(await screen.findByRole('textbox', { name: 'Plan for Living, August' })).toBeInTheDocument()
 })
 
 it('does not steal focus from a later mouse-opened dialog after a keyboard-opened thread closes', async () => {
@@ -184,9 +187,7 @@ it('does not steal focus from a later mouse-opened dialog after a keyboard-opene
   // a later, unrelated mouse-opened dialog (the row menu's own Edit) must close
   // without the grid stealing focus back — the bug this guards against left
   // editorFromGrid stuck true from the Shift+Enter above
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
-  await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
+  await user.click(await screen.findByRole('button', { name: 'menu Living' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
   const dialog = await screen.findByRole('dialog', { name: 'Edit envelope' })
   await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
@@ -250,13 +251,14 @@ it('offers no add-comment corner on the uncategorized row', async () => {
 
 it('offers no add-comment corner in edit-structure mode', async () => {
   usePlanHandlers()
-  mockViewport()
+  // only a touch screen has an edit mode
+  mockTabletViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   renderPage('/plan')
 
   expect(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await user.click(await screen.findByRole('button', { name: 'Edit structure' }))
   await waitFor(() => expect(within(screen.getByTestId('plan-cell-pe1:0')).queryByTestId('comment-marker-add')).toBeNull())
 })
 
@@ -267,7 +269,9 @@ it('offers no add-comment corner on a month after the budget ends (its thread is
       HttpResponse.json({
         success: true,
         message: '',
-        data: { item: { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, endedAt: '2026-08-01 00:00:00' } } },
+        // a one-month budget: the window never runs past the end month unless the
+        // budget is shorter than the window, so Aug and Sep trail after July's end
+        data: { item: { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, startedAt: '2026-07-01 00:00:00', endedAt: '2026-07-01 00:00:00' } } },
       }),
     ),
     planHandler(),
@@ -294,7 +298,7 @@ it('a tablet tap on a plan cell opens the item sheet for that month', async () =
   expect(within(sheet).getByRole('button', { name: 'Comments (1)' })).toBeInTheDocument()
 })
 
-it('a tablet Enter on a selected plan cell opens the item sheet, not the amount dialog', async () => {
+it('a tablet Enter on a selected plan cell opens the item sheet, not an amount editor', async () => {
   usePlanHandlers()
   mockTabletViewport()
   const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
@@ -311,6 +315,7 @@ it('a tablet Enter on a selected plan cell opens the item sheet, not the amount 
   await user.keyboard('{Enter}')
   expect(await screen.findByTestId('element-sheet')).toBeInTheDocument()
   expect(screen.queryByLabelText('Budget')).toBeNull()
+  expect(screen.queryByRole('textbox', { name: /^Plan for/ })).toBeNull()
 })
 
 it('a tablet sheet’s Set budget opens the amount dialog with no comments in it', async () => {

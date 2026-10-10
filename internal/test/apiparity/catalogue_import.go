@@ -34,9 +34,13 @@ func init() {
 			// queued (reason no_rate).
 			{Label: "link-account-foreign-currency-card", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "eurocard", "accountId": OwnerAccount}},
-			// Guest-owned SharedAccount is shared with Owner but not OWNED by Owner: not mappable.
-			{Label: "err:link-account-not-owned", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
-				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet", "accountId": SharedAccount}},
+			// Guest-owned SharedAccount carries a user grant for Owner, so Owner may
+			// add transactions to it and may map a card onto it.
+			{Label: "link-account-shared-with-write-grant", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
+				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "family card", "accountId": SharedAccount}},
+			// An account Owner has no access to reads as missing.
+			{Label: "err:link-account-no-access", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
+				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet", "accountId": "a0000000-0000-0000-0000-0000000000ff"}},
 			// Mapping "wallet" converts its queued tap: Txn1's fixed 2024-04-01
 			// seed date is outside the matcher's window around ClockTime, so
 			// the run CREATES a transaction (run.importedCount 1) rather than
@@ -183,6 +187,8 @@ func init() {
 				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubAccessURL, "startDate": day(1), "endDate": start}},
 			{Label: "err:sync-source-down", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubDownURL, "startDate": start, "endDate": end}},
+			// The failed run surfaces on the source list (Inbox "Sync problems").
+			{Label: "get-source-list-after-failed-sync", Method: "GET", Path: "/api/v1/import/get-source-list", Auth: "owner"},
 			{Label: "err:sync-source-foreign", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "guest",
 				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubAccessURL, "startDate": start, "endDate": end}},
 			{Label: "err:readonly-sync-source", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "readonly",

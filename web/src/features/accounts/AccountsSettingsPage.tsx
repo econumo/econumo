@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { DndContext, DragOverlay, KeyboardSensor, MeasuringStrategy, PointerSensor, closestCenter, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -20,15 +19,11 @@ import { getItem, setItem } from '@/lib/storage'
 import { isNotEmpty, isValidFolderName } from '@/lib/validation'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useUiStore } from '@/app/uiStore'
-import { queryKeys } from '@/app/queryKeys'
 import { RouterPage } from '@/app/router-pages'
 import type { AccountDto } from '@/api/dto/account'
 import type { FolderDto } from '@/api/dto/folder'
 import { SettingsShell } from '@/features/settings/SettingsShell'
-import { AccessLevelDialog } from '@/features/connections/AccessLevelDialog'
-import { ShareAccessDialog } from '@/features/connections/ShareAccessDialog'
 import { ShareEntryList } from '@/features/connections/ShareEntryList'
-import type { ShareEntry } from '@/features/connections/shared'
 import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections/shared'
 import { useConnections } from '@/features/connections/queries'
 import { useUserData } from '@/features/user/queries'
@@ -42,30 +37,17 @@ import {
   useShowFolder,
   useMoveFolder,
   useMoveAccount,
-  useLeaveSharedAccount,
-  useDeleteAccount,
-  useGrantAccountAccess,
-  useRevokeAccountAccess,
 } from './queries'
+import { AccountActionsMenu } from './AccountActions'
+import { useAccountActions } from './useAccountActions'
 import type { FolderBucket } from './accountOrdering'
-import { bucketsFromAccounts, moveAccount, accountMoveFrom } from './accountOrdering'
+import { accountCollisions, bucketsFromAccounts, moveAccount, accountMoveFrom } from './accountOrdering'
 import { snapRowToPointer } from '@/lib/dnd'
 
 const COLLAPSED_FOLDERS_KEY = 'settings.accounts.collapsedFolders'
 
 
-function AccountRow({
-  account,
-  isOwner,
-  showAccess,
-  onMenu,
-}: {
-  account: AccountDto
-  isOwner: boolean
-  showAccess: boolean
-  onMenu: (action: 'edit' | 'delete' | 'view' | 'access') => void
-}) {
-  const { t } = useTranslation()
+function AccountRow({ account, onPreview }: { account: AccountDto; onPreview: () => void }) {
   const isCompact = useIsCompact()
   const [menuOpen, setMenuOpen] = useState(false)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: account.id })
@@ -74,7 +56,7 @@ function AccountRow({
       {/* the whole row is the click target: compact opens the preview sheet, desktop the context menu */}
       <div
         className={`flex items-center gap-2 rounded-md px-1 py-1.5 ${isCompact ? 'active:bg-econumo-hover' : 'cursor-pointer hover:bg-econumo-hover'}`}
-        onClick={() => (isCompact ? onMenu('view') : setMenuOpen(true))}
+        onClick={() => (isCompact ? onPreview() : setMenuOpen(true))}
       >
         <button
           type="button"
@@ -108,31 +90,7 @@ function AccountRow({
           </span>
         ) : null}
         {!isCompact ? (
-          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={`account actions ${account.name}`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreVertical className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
-            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem onSelect={() => onMenu('edit')}>{t('common.button.edit.label')}</DropdownMenuItem>
-              {showAccess ? (
-                <DropdownMenuItem onSelect={() => onMenu('access')}>
-                  {t('settings.accounts.list_actions.access')}
-                </DropdownMenuItem>
-              ) : null}
-              <DropdownMenuItem variant="destructive" onSelect={() => onMenu('delete')}>
-                {t(isOwner ? 'common.button.delete.label' : 'common.button.decline.label')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <AccountActionsMenu account={account} open={menuOpen} onOpenChange={setMenuOpen} />
         ) : null}
       </div>
     </li>
@@ -280,8 +238,7 @@ export function AccountsSettingsPage() {
   const { data: user } = useUserData()
   const { data: connections = [] } = useConnections()
   const openAccountModal = useUiStore((s) => s.openAccountModal)
-  const grantAccountAccess = useGrantAccountAccess()
-  const revokeAccountAccess = useRevokeAccountAccess()
+  const previewActions = useAccountActions()
 
   const createFolder = useCreateFolder()
   const updateFolder = useUpdateFolder()
@@ -290,21 +247,13 @@ export function AccountsSettingsPage() {
   const showFolder = useShowFolder()
   const moveFolder = useMoveFolder()
   const moveAccountMutation = useMoveAccount()
-  const deleteAccount = useDeleteAccount()
-  const declineAccountAccess = useLeaveSharedAccount()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [renameTarget, setRenameTarget] = useState<FolderDto | null>(null)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<FolderDto | null>(null)
-  const [deleteAccountTarget, setDeleteAccountTarget] = useState<AccountDto | null>(null)
-  const [declineAccountTarget, setDeclineAccountTarget] = useState<AccountDto | null>(null)
   const [previewAccount, setPreviewAccount] = useState<AccountDto | null>(null)
-  const queryClient = useQueryClient()
-  const [accessAccountId, setAccessAccountId] = useState<string | null>(null)
-  const [levelTarget, setLevelTarget] = useState<{ accountId: string; entry: ShareEntry } | null>(null)
 
   // read the live cache copy so optimistic grant/revoke updates show immediately
-  const accessAccount = accessAccountId ? accounts.find((a) => a.id === accessAccountId) ?? null : null
   const previewLive = previewAccount ? accounts.find((a) => a.id === previewAccount.id) ?? previewAccount : null
 
   const previewEntries = user && previewLive ? buildShareEntries(connections, previewLive.sharedAccess, user.id, previewLive.owner.id) : []
@@ -444,7 +393,7 @@ export function AccountsSettingsPage() {
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={draggingFolderId ? closestCenter : accountCollisions(buckets)}
         // collapsing the folders on drag start reshuffles the layout, so the
         // droppable rects must be re-measured mid-drag, not cached from before
         measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
@@ -473,30 +422,7 @@ export function AccountsSettingsPage() {
               >
                 {bucketAccounts(folder.id)
                   .map((account) => (
-                    <AccountRow
-                      key={account.id}
-                      account={account}
-                      isOwner={account.owner.id === user?.id}
-                      showAccess={user ? hasAccountAdminAccess(account, user.id) : false}
-                      onMenu={(action) => {
-                        if (action === 'edit') {
-                          openAccountModal({ account })
-                        } else if (action === 'delete') {
-                          if (account.owner.id === user?.id) {
-                            setDeleteAccountTarget(account)
-                          } else {
-                            setDeclineAccountTarget(account)
-                          }
-                        } else if (action === 'access') {
-                          // grant state changes on the partner's device
-                          // (accept/decline) — refresh before showing it
-                          void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
-                          setAccessAccountId(account.id)
-                        } else {
-                          setPreviewAccount(account)
-                        }
-                      }}
-                    />
+                    <AccountRow key={account.id} account={account} onPreview={() => setPreviewAccount(account)} />
                   ))}
               </FolderSection>
             ))}
@@ -529,38 +455,7 @@ export function AccountsSettingsPage() {
         </DragOverlay>
       </DndContext>
 
-      <ShareAccessDialog
-        open={accessAccount !== null && levelTarget === null}
-        title={accessAccount?.name ?? ''}
-        kind="accounts"
-        entries={accessAccount && user ? buildShareEntries(connections, accessAccount.sharedAccess, user.id, accessAccount.owner.id) : []}
-        onPick={(entry) => {
-          if (entry.role !== 'owner' && accessAccountId) {
-            setLevelTarget({ accountId: accessAccountId, entry })
-          }
-        }}
-        onClose={() => setAccessAccountId(null)}
-      />
-
-      <AccessLevelDialog
-        open={levelTarget !== null}
-        kind="accounts"
-        user={levelTarget?.entry.user ?? null}
-        role={levelTarget?.entry.role ?? null}
-        onSelect={(role) => {
-          if (levelTarget) {
-            grantAccountAccess.mutate({ accountId: levelTarget.accountId, userId: levelTarget.entry.user.id, role })
-          }
-          setLevelTarget(null)
-        }}
-        onRevoke={() => {
-          if (levelTarget) {
-            revokeAccountAccess.mutate({ accountId: levelTarget.accountId, userId: levelTarget.entry.user.id })
-          }
-          setLevelTarget(null)
-        }}
-        onClose={() => setLevelTarget(null)}
-      />
+      {previewActions.dialogs}
 
       <PromptDialog
         open={createOpen}
@@ -609,35 +504,6 @@ export function AccountsSettingsPage() {
         destructive
       />
 
-      <ConfirmDialog
-        open={deleteAccountTarget !== null}
-        onClose={() => setDeleteAccountTarget(null)}
-        onConfirm={() => {
-          if (deleteAccountTarget) {
-            deleteAccount.mutate(deleteAccountTarget.id, { onSettled: () => setDeleteAccountTarget(null) })
-          }
-        }}
-        question={t('settings.accounts.delete_account_modal.question', { account: deleteAccountTarget?.name ?? '' })}
-        confirmLabel={t('common.button.delete.label')}
-        cancelLabel={t('common.button.cancel.label')}
-        destructive
-      />
-
-      <ConfirmDialog
-        open={declineAccountTarget !== null}
-        onClose={() => setDeclineAccountTarget(null)}
-        onConfirm={() => {
-          if (declineAccountTarget) {
-            declineAccountAccess.mutate(declineAccountTarget.id, { onSettled: () => setDeclineAccountTarget(null) })
-          }
-        }}
-        title={t('settings.accounts.decline_access_modal.title')}
-        question={t('settings.accounts.decline_access_modal.question', { account: declineAccountTarget?.name ?? '' })}
-        confirmLabel={t('common.button.decline.label')}
-        cancelLabel={t('common.button.cancel.label')}
-        destructive
-      />
-
       {previewLive ? (
         <ResponsiveDialog
           open
@@ -664,7 +530,7 @@ export function AccountsSettingsPage() {
                   entries={previewEntries}
                   onPick={(entry) => {
                     if (entry.role !== 'owner') {
-                      setLevelTarget({ accountId: previewLive.id, entry })
+                      previewActions.pickLevel(previewLive.id, entry)
                     }
                   }}
                 />
@@ -687,11 +553,7 @@ export function AccountsSettingsPage() {
               type="button"
               variant="destructive"
               onClick={() => {
-                if (previewLive.owner.id === user?.id) {
-                  setDeleteAccountTarget(previewLive)
-                } else {
-                  setDeclineAccountTarget(previewLive)
-                }
+                previewActions.remove(previewLive)
                 setPreviewAccount(null)
               }}
             >
@@ -700,7 +562,7 @@ export function AccountsSettingsPage() {
             <Button
               type="button"
               onClick={() => {
-                openAccountModal({ account: previewLive })
+                previewActions.edit(previewLive)
                 setPreviewAccount(null)
               }}
             >

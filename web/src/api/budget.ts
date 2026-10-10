@@ -5,6 +5,7 @@ import type {
   BudgetDto,
   BudgetElementDto,
   BudgetFolderDto,
+  BudgetFolderSide,
   BudgetMetaDto,
   BudgetPlanDto,
   BudgetTransactionDto,
@@ -137,7 +138,7 @@ export async function deleteEnvelope(budgetId: Id, id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/budget/delete-envelope'), { budgetId, id })
 }
 
-export async function createBudgetFolder(form: { budgetId: Id; id: Id; name: string }): Promise<BudgetFolderDto> {
+export async function createBudgetFolder(form: { budgetId: Id; id: Id; name: string; side: BudgetFolderSide }): Promise<BudgetFolderDto> {
   const response = await api.post<Envelope<{ item: BudgetFolderDto }>>(apiUrl('/api/v1/budget/create-folder'), form)
   return response.data.data.item
 }
@@ -157,6 +158,11 @@ export async function moveBudgetFolder(budgetId: Id, id: Id, afterId: Id | null)
 
 export async function moveElement(budgetId: Id, id: Id, folderId: Id | null, afterId: Id | null): Promise<void> {
   await api.post(apiUrl('/api/v1/budget/move-element'), { budgetId, id, folderId, afterId })
+}
+
+/** puts a category into an envelope, taking it out of any other envelope */
+export async function moveIntoEnvelope(budgetId: Id, id: Id, envelopeId: Id): Promise<void> {
+  await api.post(apiUrl('/api/v1/budget/move-element'), { budgetId, id, folderId: null, afterId: null, envelopeId })
 }
 
 export async function changeElementCurrency(form: { budgetId: Id; elementId: Id; currencyId: Id }): Promise<void> {
@@ -216,8 +222,12 @@ export async function declineAccess(budgetId: Id): Promise<void> {
 }
 
 // NOTE the wire quirk: the budget id travels under "id", not budgetId.
-export async function addAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
-  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/add-account'), { id: budgetId, accountId })
+export async function addAccount(budgetId: Id, accountId: Id, isSavings?: boolean): Promise<BudgetMetaDto> {
+  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/add-account'), {
+    id: budgetId,
+    accountId,
+    ...(isSavings !== undefined ? { isSavings } : {}),
+  })
   return response.data.data.item
 }
 

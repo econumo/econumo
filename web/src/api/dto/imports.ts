@@ -4,7 +4,7 @@ import type { CreateTransactionDto, TransactionDto, TransactionType } from './tr
 
 export type ImportProvider = 'apple-wallet' | 'simplefin'
 export type ImportCardState = 'mapped' | 'ignored' | 'unmapped'
-export type ImportQueueReason = 'unmapped' | 'account_deleted' | 'no_rate'
+export type ImportQueueReason = 'unmapped' | 'account_deleted' | 'no_access' | 'no_rate'
 export type IngestStatus = 'created' | 'queued' | 'skipped' | 'duplicate' | 'failed'
 export type ImportRunStatus = 'running' | 'completed' | 'partial' | 'failed'
 
@@ -29,6 +29,14 @@ export interface ImportSourceDto {
   createdAt: string
   /** "YYYY-MM-DD HH:mm:ss" of the last non-failed sync, '' before the first */
   lastSyncedAt: string
+  /** status of the newest run (sync, or a mapping change reprocessing queued taps); '' before the first run */
+  lastRunStatus: '' | ImportRunStatus
+  /** "YYYY-MM-DD HH:mm:ss": finish time of the newest run, its start while running; '' when none */
+  lastRunAt: string
+  /** first error message of the newest run; '' when none */
+  lastRunError: string
+  /** external account id of the first error; '' for a run-level error or no error */
+  lastRunErrorAccountId: string
   /** opaque to the server; '' for push providers */
   credentialCiphertext: string
   cards: ImportCardDto[]

@@ -204,7 +204,7 @@ func TestBudgetTools_BuildFlow(t *testing.T) {
 
 	createFolderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name:      "create_folder",
-		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills"},
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills", "side": "expense"},
 	})
 	if err != nil {
 		t.Fatalf("create_folder: transport error: %v", err)
@@ -219,6 +219,42 @@ func TestBudgetTools_BuildFlow(t *testing.T) {
 	elementFolderID, _ := folderItem["id"].(string)
 	if elementFolderID == "" {
 		t.Fatalf("create_folder: empty folder id: %#v", folderItem)
+	}
+	if folderItem["side"] != "expense" {
+		t.Fatalf("create_folder: side = %#v, want expense", folderItem["side"])
+	}
+
+	noSideRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Sideless"},
+	})
+	if err == nil && !noSideRes.IsError {
+		t.Fatalf("create_folder without side must fail: %#v", noSideRes)
+	}
+	emptySideRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Sideless", "side": ""},
+	})
+	if err != nil || !emptySideRes.IsError {
+		t.Fatalf("create_folder side=\"\" must be a tool error: %v %#v", err, emptySideRes)
+	}
+
+	incomeFolderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Earnings", "side": "income"},
+	})
+	if err != nil || incomeFolderRes.IsError {
+		t.Fatalf("create_folder side=income: %v %#v", err, incomeFolderRes)
+	}
+	if item, _ := structured(t, incomeFolderRes)["item"].(map[string]any); item["side"] != "income" {
+		t.Fatalf("create_folder side=income: item = %#v", item)
+	}
+	badSideRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Nowhere", "side": "savings"},
+	})
+	if err != nil || !badSideRes.IsError {
+		t.Fatalf("create_folder side=savings must be a tool error: %v %#v", err, badSideRes)
 	}
 
 	createEnvelopeRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
@@ -430,7 +466,7 @@ func TestMoveElementTool(t *testing.T) {
 
 	folderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name:      "create_folder",
-		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills"},
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills", "side": "expense"},
 	})
 	if err != nil || folderRes.IsError {
 		t.Fatalf("create_folder: %v %#v", err, folderRes)
@@ -500,7 +536,7 @@ func TestMoveElementTool_AbsentElementID_DoesNotClaimSuccess(t *testing.T) {
 
 	folderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name:      "create_folder",
-		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills"},
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills", "side": "expense"},
 	})
 	if err != nil || folderRes.IsError {
 		t.Fatalf("create_folder: %v %#v", err, folderRes)

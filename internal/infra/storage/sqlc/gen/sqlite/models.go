@@ -140,6 +140,7 @@ type BudgetsFolder struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	SortKey   string
+	Side      string
 }
 
 type Category struct {
