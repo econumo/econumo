@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureOwner } from '@/test/fixtures'
+import { formatDateTime } from '@/lib/datetime'
 import { InboxButton } from './InboxButton'
 import { InboxPage } from './InboxPage'
 
@@ -272,4 +273,98 @@ it('shows only the Sharing section when there is a pending invite and no imports
   expect(screen.queryByText('Failed imports')).toBeNull()
   expect(screen.queryByText('Sync problems')).toBeNull()
   expect(screen.queryByText('All caught up')).toBeNull()
+})
+
+const daysFromNow = (days: number) => formatDateTime(new Date(Date.now() + days * 24 * 3600 * 1000))
+const dueTemplate = (over: Record<string, unknown> = {}) => ({
+  id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+  amount: '9.99', categoryId: 'cat-food', payeeId: null, tagId: null, labelIds: [], description: 'Streaming',
+  schedule: 'monthly', nextPaymentAt: daysFromNow(-5), ...over,
+})
+
+it('puts Due first, marking overdue templates and today\'s apart', async () => {
+  const today = new Date()
+  today.setHours(9, 0, 0, 0)
+  server.use(...coreHandlers({
+    budgets: [pendingBudget],
+    recurring: [dueTemplate(), dueTemplate({ id: 'r-today', nextPaymentAt: formatDateTime(today) })],
+  }))
+  renderInbox()
+  const overdue = await screen.findByTestId('due-r1')
+  expect(overdue).toHaveTextContent('Overdue')
+  expect(overdue).toHaveTextContent('Cash')
+  expect(screen.getByTestId('due-r-today')).toHaveTextContent('Today')
+  expect(screen.getByTestId('due-r-today')).not.toHaveTextContent('Overdue')
+  await screen.findByText('Partner invited you')
+  const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+  expect(headings).toEqual(['Due', 'Sharing'])
+})
+
+it('posting a due template from the Inbox drops it and lowers the badge', async () => {
+  let posted: Record<string, unknown> | null = null
+  server.use(
+    ...coreHandlers({ recurring: [dueTemplate()], transactions: [] }),
+    http.post('*/api/v1/recurring/post-recurring-transaction', async ({ request }) => {
+      posted = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: {
+          item: {
+            id: 't-new', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+            amount: '9.99', amountRecipient: null, categoryId: 'cat-food', description: 'Streaming',
+            payeeId: null, tagId: null, date: daysFromNow(0), recurringId: 'r1',
+          },
+          accounts: fixtureAccounts,
+          nextPaymentAt: daysFromNow(25),
+        },
+      })
+    }),
+  )
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const router = createMemoryRouter(
+    [{ element: <div><InboxButton variant="row" /><Outlet /></div>, children: [{ path: '/inbox', element: <InboxPage /> }] }],
+    { initialEntries: ['/inbox'] },
+  )
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  await waitFor(() => expect(screen.getByTestId('inbox-badge')).toHaveTextContent('1'))
+
+  const user = userEvent.setup()
+  await user.click(await screen.findByTestId('due-r1'))
+  await user.click(await screen.findByRole('button', { name: 'Post' }))
+
+  await waitFor(() => expect(posted).toMatchObject({ recurringId: 'r1', amount: '9.99', accountId: 'a1' }))
+  await waitFor(() => expect(screen.queryByTestId('due-r1')).toBeNull())
+  expect(screen.queryByTestId('inbox-badge')).toBeNull()
+  expect(await screen.findByText('All caught up')).toBeInTheDocument()
+})
+
+it('skipping a due template from the Inbox drops it', async () => {
+  server.use(
+    ...coreHandlers({ recurring: [dueTemplate()] }),
+    http.post('*/api/v1/recurring/skip-recurring-transaction', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: dueTemplate({ nextPaymentAt: daysFromNow(25) }) } })),
+  )
+  renderInbox()
+  const user = userEvent.setup()
+  await user.click(await screen.findByTestId('due-r1'))
+  await user.click(await screen.findByRole('button', { name: 'Skip' }))
+  await waitFor(() => expect(screen.queryByTestId('due-r1')).toBeNull())
+})
+
+it('does not list a due template on an account shared with me read-only', async () => {
+  const readOnly = {
+    ...fixtureAccounts[0], id: 'a-ro', name: 'Their cash', owner: pendingOwner,
+    sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'guest', isAccepted: 1 }],
+  }
+  server.use(...coreHandlers({
+    accounts: [...fixtureAccounts, readOnly],
+    recurring: [dueTemplate({ id: 'r-ro', accountId: 'a-ro', ownerUserId: 'u2' })],
+  }))
+  renderInbox()
+  expect(await screen.findByText('All caught up')).toBeInTheDocument()
+  expect(screen.queryByTestId('due-r-ro')).toBeNull()
 })

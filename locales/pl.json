@@ -473,11 +473,16 @@
     "open": "Skrzynka: do przejrzenia {count}",
     "empty": "Wszystko na bieżąco",
     "sections": {
+      "due": "Do zaksięgowania",
       "sharing": "Udostępnianie",
       "sync": "Problemy z synchronizacją",
       "failed": "Nieudane importy",
       "to_review": "Do przejrzenia",
       "skipped": "Pominięte ({count})"
+    },
+    "due": {
+      "overdue": "Zaległe · {date}",
+      "today": "Dzisiaj"
     },
     "sharing": {
       "invited_you": "{name} zaprasza Cię",

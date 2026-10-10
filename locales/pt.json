@@ -473,11 +473,16 @@
     "open": "Caixa de entrada: {count} por rever",
     "empty": "Tudo em dia",
     "sections": {
+      "due": "Pendentes",
       "sharing": "Partilhas",
       "sync": "Problemas de sincronização",
       "failed": "Importações falhadas",
       "to_review": "Para rever",
       "skipped": "Ignorados ({count})"
+    },
+    "due": {
+      "overdue": "Em atraso · {date}",
+      "today": "Hoje"
     },
     "sharing": {
       "invited_you": "Convite de {name}",

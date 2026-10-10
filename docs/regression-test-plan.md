@@ -428,15 +428,28 @@ navigation (single-pane vs sidebar).
       (99+ above 99); in the collapsed desktop rail the order is the Econumo
       mark (linking Home), Search, Inbox, onboarding (when incomplete),
       Budget.
-- [ ] Inbox count 📱: the badge equals pending invites + sources whose last sync
-      failed/partially failed + failed imports + queued imports; skipped rows are
-      not counted.
-- [ ] Inbox page 📱: sections appear in order Sharing, Sync problems, Failed
+- [ ] Inbox count 📱: the badge equals due recurring templates + pending invites +
+      sources whose last sync failed/partially failed + failed imports + queued
+      imports; skipped rows are not counted.
+- [ ] Inbox page 📱: sections appear in order Due, Sharing, Sync problems, Failed
       imports, To review, Skipped (collapsed); empty sections are hidden; with
       nothing pending it reads "All caught up".
 - [ ] Inbox clears itself 📱: accepting/declining an invite, importing/skipping
       every queued row, and a successful re-sync each remove the item and lower
       the badge without a reload.
+- [ ] Inbox Due section 📱: every recurring template whose next payment is today
+      or earlier, on an account I own or that is shared with me with write
+      access (whoever created it), is listed oldest first; each row names its
+      account and schedule and reads "Today" or "Overdue · <date>" (red).
+      Templates due tomorrow or later, and ones on a read-only shared account,
+      are not listed.
+- [ ] Inbox Due actions 📱: tapping a row opens the recurring preview; Post
+      creates the transaction dated today, Skip moves the schedule on — either
+      removes the row and lowers the badge without a reload; tapping the schedule
+      row opens the edit form.
+- [ ] Inbox Due on a joint account: with A and B both having write access to a
+      shared account, a due template there shows in both Inboxes; after A posts
+      it, it is gone from B's Inbox after B reloads.
 - [ ] Import data fails to load 📱: the Inbox shows an error with Retry, keeps
       any rows it already had, and never reads "All caught up".
 - [ ] Sync problem 📱: a SimpleFIN sync that fails shows "<source> sync failed",

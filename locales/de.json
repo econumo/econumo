@@ -473,11 +473,16 @@
     "open": "Posteingang, {count} ausstehend",
     "empty": "Alles erledigt",
     "sections": {
+      "due": "Fällig",
       "sharing": "Freigaben",
       "sync": "Synchronisierungsprobleme",
       "failed": "Fehlgeschlagene Importe",
       "to_review": "Zu prüfen",
       "skipped": "Übersprungen ({count})"
+    },
+    "due": {
+      "overdue": "Überfällig · {date}",
+      "today": "Heute"
     },
     "sharing": {
       "invited_you": "{name} hat Sie eingeladen",
