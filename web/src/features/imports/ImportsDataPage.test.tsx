@@ -30,7 +30,7 @@ function renderPage(overrides: Parameters<typeof coreHandlers>[0] = {}) {
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = {}
+  window.econumoConfig = { TRANSACTION_IMPORT: true }
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
@@ -62,4 +62,21 @@ it('Sync all navigates to SimpleFIN settings when the device key is locked', asy
   renderPage({ importSources: [simplefinSource], importCredentialKey: wrappedKey })
   await user.click(await screen.findByText('Sync bank connections'))
   expect(await screen.findByText('SIMPLEFIN PAGE')).toBeInTheDocument()
+})
+
+it('with transaction import off: only the CSV rows, and no import endpoint is called', async () => {
+  window.econumoConfig = {}
+  const importCalls: string[] = []
+  const record = ({ request }: { request: Request }) => {
+    if (request.url.includes('/api/v1/import/')) importCalls.push(request.url)
+  }
+  server.events.on('request:start', record)
+  onTestFinished(() => server.events.removeListener('request:start', record))
+  renderPage({ importSources: [simplefinSource] })
+  expect(await screen.findByText('Import CSV')).toBeInTheDocument()
+  expect(screen.getByText('Export CSV')).toBeInTheDocument()
+  expect(screen.queryByText('Sync bank connections')).toBeNull()
+  expect(screen.queryByText('Import rules')).toBeNull()
+  expect(screen.queryByText('Import history')).toBeNull()
+  expect(importCalls).toEqual([])
 })

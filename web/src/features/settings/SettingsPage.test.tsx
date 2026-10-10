@@ -99,7 +99,16 @@ it('the Data group links to the Import & export page', async () => {
   expect(await screen.findByText('DATA PAGE')).toBeInTheDocument()
 })
 
+it('the Data group shows only Import & export while transaction import is off', async () => {
+  renderPage()
+  expect(await screen.findByText('Import & export')).toBeInTheDocument()
+  expect(screen.queryByText('Apple Wallet')).not.toBeInTheDocument()
+  expect(screen.queryByText('SimpleFIN')).not.toBeInTheDocument()
+  expect(screen.queryByText('Import rules')).not.toBeInTheDocument()
+})
+
 it('the Data group links to the Apple Wallet page', async () => {
+  window.econumoConfig = { TRANSACTION_IMPORT: true }
   const user = userEvent.setup()
   renderPage()
   await user.click(await screen.findByText('Apple Wallet'))

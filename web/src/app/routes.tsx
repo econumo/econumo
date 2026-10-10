@@ -35,6 +35,7 @@ import { ImportRunPage } from '@/features/imports/ImportRunPage'
 import { ImportRulesPage } from '@/features/imports/ImportRulesPage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { BudgetPage } from '@/features/budgets/BudgetPage'
+import { isTransactionImportEnabled } from '@/lib/config'
 
 export function createRouter() {
   return createBrowserRouter([
@@ -78,12 +79,16 @@ export function createRouter() {
                 { path: '/settings/budgets', element: <BudgetsPage /> },
                 { path: '/settings/recurring', element: <RecurringSettingsPage /> },
                 { path: '/settings/data', element: <ImportsDataPage /> },
-                { path: '/settings/apple-wallet', element: <AppleWalletPage /> },
-                { path: '/settings/simplefin', element: <SimpleFINPage /> },
-                { path: '/settings/import-rules', element: <ImportRulesPage /> },
                 { path: '/inbox', element: <InboxPage /> },
-                { path: '/imports/runs', element: <ImportRunListPage /> },
-                { path: '/imports/runs/:id', element: <ImportRunPage /> },
+                ...(isTransactionImportEnabled()
+                  ? [
+                      { path: '/settings/apple-wallet', element: <AppleWalletPage /> },
+                      { path: '/settings/simplefin', element: <SimpleFINPage /> },
+                      { path: '/settings/import-rules', element: <ImportRulesPage /> },
+                      { path: '/imports/runs', element: <ImportRunListPage /> },
+                      { path: '/imports/runs/:id', element: <ImportRunPage /> },
+                    ]
+                  : []),
               ],
             },
           ],

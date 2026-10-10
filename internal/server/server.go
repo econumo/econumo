@@ -420,6 +420,14 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
 
+	// Disabled means unrouted: every /api/v1/import path 404s, ingest-scoped
+	// PATs included, so no import write can land while the switch is off
+	// (Compose skips the nil).
+	var importsAPI router.RegisterAPI
+	if cfg.TransactionImport {
+		importsAPI = handlerimports.RegisterAPI(importsHandlers, authn)
+	}
+
 	registerAPI := router.Compose(
 		handleruser.RegisterAPI(userHandlers, authn),
 		handleroauth.RegisterAPI(oauthHandlers, authn),
@@ -433,7 +441,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		handlerrecurring.RegisterAPI(recurringHandlers, authn),
 		handlerconnection.RegisterAPI(connectionHandlers, authn),
 		handlerbudget.RegisterAPI(budgetHandlers, authn),
-		handlerimports.RegisterAPI(importsHandlers, authn),
+		importsAPI,
 		handlersystem.RegisterAPI(systemHandlers, authn),
 		apidoc.RegisterAPI(),
 	)

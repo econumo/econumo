@@ -713,6 +713,7 @@ it('a queued import in a foreign currency opens with an empty amount and shows t
 })
 
 it('editing an imported transaction prompts for a rule only when the classification diverges from what the import applied', async () => {
+  window.econumoConfig = { TRANSACTION_IMPORT: true }
   const seen = captureUpdate()
   const importLink = {
     id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
@@ -749,6 +750,7 @@ it('editing an imported transaction prompts for a rule only when the classificat
 // save against that stale snapshot alone re-opened the prompt on every later
 // save of the same transaction — offering to create a SECOND identical rule.
 it('re-saving an already corrected import does not prompt again, but a further correction does', async () => {
+  window.econumoConfig = { TRANSACTION_IMPORT: true }
   const seen = captureUpdate()
   const importLink = {
     id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',

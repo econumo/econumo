@@ -33,7 +33,7 @@ const f = (eventId: string) => ({ eventId, sourceId: 's1', receivedAt: '2026-08-
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = {}
+  window.econumoConfig = { TRANSACTION_IMPORT: true }
 })
 
 it.each([
@@ -113,4 +113,22 @@ it('retryImports refetches both the queue and the source list', async () => {
   result.current.retryImports()
   await waitFor(() => expect(queueCalls).toBeGreaterThan(queueCallsBefore))
   await waitFor(() => expect(sourceCalls).toBeGreaterThan(sourceCallsBefore))
+})
+
+it('with transaction import off: loads on invites alone and never calls an import endpoint', async () => {
+  window.econumoConfig = {}
+  const wrapper = makeWrapper()
+  const importCalls: string[] = []
+  const record = ({ request }: { request: Request }) => {
+    if (request.url.includes('/api/v1/import/')) importCalls.push(request.url)
+  }
+  server.events.on('request:start', record)
+  onTestFinished(() => server.events.removeListener('request:start', record))
+  server.use(...coreHandlers({ accounts: [pendingAccount] }))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  expect(result.current.isLoaded).toBe(true)
+  await waitFor(() => expect(result.current.invites).toHaveLength(1))
+  expect(result.current.count).toBe(1)
+  expect(result.current.importsError).toBe(false)
+  expect(importCalls).toEqual([])
 })

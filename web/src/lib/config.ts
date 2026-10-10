@@ -17,6 +17,7 @@ export interface EconumoConfig {
   VERSION_LABEL?: string
   INSTANCE_ID?: string
   AI_ENABLED?: boolean
+  TRANSACTION_IMPORT?: boolean
   BILLING_URL?: string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
@@ -143,6 +144,13 @@ export function getBillingUrl(): string {
 
 export function isAiEnabled(): boolean {
   return window.econumoConfig?.AI_ENABLED === true
+}
+
+// Apple Wallet, SimpleFIN and import rules (ECONUMO_TRANSACTION_IMPORT). Off
+// unless the server says otherwise: the server does not mount the import
+// routes then, so every import surface stays hidden and never fetches.
+export function isTransactionImportEnabled(): boolean {
+  return window.econumoConfig?.TRANSACTION_IMPORT === true
 }
 
 export function isCustomApiAllowed(): boolean {

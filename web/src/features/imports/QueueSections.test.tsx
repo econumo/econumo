@@ -43,7 +43,7 @@ function renderSections(importQueue: unknown) {
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = {}
+  window.econumoConfig = { TRANSACTION_IMPORT: true }
   useUiStore.setState({ transactionModal: null })
   vi.mocked(toast.error).mockClear()
   vi.mocked(toast.success).mockClear()

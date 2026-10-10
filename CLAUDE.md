@@ -623,6 +623,15 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
+- `ECONUMO_TRANSACTION_IMPORT` — the transaction-import feature: Apple Wallet, SimpleFIN and
+  import rules (strict boolean, default `false`; malformed fails at boot). Off, `server.BuildAPI`
+  does not mount `internal/imports/api` at all, so every `/api/v1/import/*` route 404s (ingest-scoped
+  PATs included) while already-stored import data stays untouched; the SPA reads the served
+  `TRANSACTION_IMPORT` key and hides the Apple Wallet / SimpleFIN / Import rules settings pages,
+  their routes, the Data page's sync/rules/history rows and the Inbox's import sections, and
+  never fetches an import endpoint. CSV import/export is not part of it and is always on. Every
+  `ECONUMO_IMPORT_*`/`ECONUMO_AI_DSN` setting below only matters while it is on. The apiparity
+  harness turns it on so the catalogue keeps covering the import routes.
 - `ECONUMO_IMPORT_MATCH_DAYS` / `ECONUMO_IMPORT_TIP_DAYS` / `ECONUMO_IMPORT_TIP_TOLERANCE` /
   `ECONUMO_IMPORT_TOKEN_MIN_LENGTH` — transaction-import matcher thresholds (defaults 3 / 5 / 20 / 3;
   ranges 0–31 days, 0–31 days, 0–100 percent, 1–16 chars). Strict parse: malformed or out-of-range
@@ -687,7 +696,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN` and `BILLING_URL` are always present (server truth).
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL` and `TRANSACTION_IMPORT` are always
+  present (server truth).
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
   `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,

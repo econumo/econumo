@@ -346,6 +346,18 @@ navigation (single-pane vs sidebar).
 
 ## 5a. Imports — Apple Wallet
 
+Preconditions for §5a–5c: `ECONUMO_TRANSACTION_IMPORT=true`.
+
+- [ ] Transaction import off (`ECONUMO_TRANSACTION_IMPORT` unset) 📱: Settings →
+      Data shows only "Import & export"; no Apple Wallet, SimpleFIN or Import
+      rules rows. Import & export lists only the CSV import/export rows (no
+      "Sync bank connections", "Import rules" or "Import history").
+      `/settings/apple-wallet`, `/settings/simplefin`, `/settings/import-rules`
+      and `/imports/runs` show the not-found page. The Inbox shows only sharing
+      invites (or "All caught up") and no request to `/api/v1/import/*` is made
+      anywhere in the app (Network tab); a direct call to any import endpoint
+      returns 404.
+
 - [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
       import/export rows; dialogs open as before) and "Apple Wallet" (its own page:
       setup, cards, "Inbox" link; back returns to Settings).

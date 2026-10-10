@@ -611,6 +611,32 @@ func TestLoad_ImportAllowPrivateHosts(t *testing.T) {
 	}
 }
 
+func TestLoad_TransactionImport(t *testing.T) {
+	t.Setenv("PORT", "8080")
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.TransactionImport {
+		t.Error("transaction import must be off by default")
+	}
+
+	t.Setenv("ECONUMO_TRANSACTION_IMPORT", "true")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.TransactionImport {
+		t.Error("TransactionImport should be true")
+	}
+
+	t.Setenv("ECONUMO_TRANSACTION_IMPORT", "yes please")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_TRANSACTION_IMPORT must fail at boot")
+	}
+}
+
 func TestLoad_ImportMatcherBounds(t *testing.T) {
 	cases := []struct {
 		key, val string

@@ -16,6 +16,7 @@ window.econumoConfig = {
   INSTANCE_ID: '',
   BILLING_URL: '',
   AI_ENABLED: false,
+  TRANSACTION_IMPORT: false,
   ALLOW_CUSTOM_API: true,
   VERSION: null,
   VERSION_LABEL: null,

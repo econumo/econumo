@@ -125,6 +125,8 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		RateLimitIngest:          60,
 		RateLimitClaimSetupToken: 5,
 		RateLimitSync:            10,
+		// The import routes are off by default; the catalogue covers them.
+		TransactionImport: true,
 		// Production matcher defaults so the seeded queued tap adopts Txn1 by
 		// the same rules a real instance applies.
 		ImportMatchDays:       3,

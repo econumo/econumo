@@ -32,7 +32,7 @@ function renderPage(data: Record<string, unknown>) {
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = {}
+  window.econumoConfig = { TRANSACTION_IMPORT: true }
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))

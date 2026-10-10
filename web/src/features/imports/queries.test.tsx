@@ -42,7 +42,7 @@ function makeWrapper() {
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = {}
+  window.econumoConfig = { TRANSACTION_IMPORT: true }
   server.use(...coreHandlers())
   trackEventMock.mockClear()
 })

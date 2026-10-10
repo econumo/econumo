@@ -1,6 +1,7 @@
 import type { ImportFailedEventDto, ImportQueuedEventDto, ImportSourceDto } from '@/api/dto/imports'
 import { usePendingInvites, type PendingInvite } from '@/features/connections/pendingInvites'
 import { useImportQueue, useImportSources } from '@/features/imports/queries'
+import { isTransactionImportEnabled } from '@/lib/config'
 
 export interface Inbox {
   invites: PendingInvite[]
@@ -35,6 +36,9 @@ export function useInbox(): Inbox {
   const { invites } = usePendingInvites()
   const queue = useImportQueue()
   const sources = useImportSources()
+  // With transaction import off both queries stay disabled (never resolve),
+  // so they must not hold the Inbox in its loading state.
+  const importsOn = isTransactionImportEnabled()
   const syncProblems = (sources.data ?? []).filter(isSyncProblem)
   const queued = queue.data?.queued ?? []
   const skipped = queue.data?.skipped ?? []
@@ -46,7 +50,7 @@ export function useInbox(): Inbox {
     queued,
     skipped,
     count: invites.length + syncProblems.length + failed.length + queued.length,
-    isLoaded: (queue.data !== undefined || queue.isError) && (sources.data !== undefined || sources.isError),
+    isLoaded: !importsOn || ((queue.data !== undefined || queue.isError) && (sources.data !== undefined || sources.isError)),
     importsError: queue.isError || sources.isError,
     retryImports: () => {
       void queue.refetch()
