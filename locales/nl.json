@@ -1432,6 +1432,11 @@
           "truncated": "De laatste 2000 opmerkingen worden weergegeven.",
           "add": "Opmerking toevoegen",
           "more": "+{count} meer"
+        },
+        "selection": {
+          "count": "{count} cel | {count} cellen",
+          "planned": "Plan",
+          "actual": "Werkelijk"
         }
       },
       "savings": {

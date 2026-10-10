@@ -1432,6 +1432,11 @@
           "truncated": "A mostrar os 2000 comentários mais recentes.",
           "add": "Adicionar comentário",
           "more": "+{count} mais"
+        },
+        "selection": {
+          "count": "{count} célula | {count} células",
+          "planned": "Plano",
+          "actual": "Real"
         }
       },
       "savings": {

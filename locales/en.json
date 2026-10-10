@@ -1432,6 +1432,11 @@
           "truncated": "Showing the latest 2000 comments.",
           "add": "Add comment",
           "more": "+{count} more"
+        },
+        "selection": {
+          "count": "{count} cell | {count} cells",
+          "planned": "Plan",
+          "actual": "Actual"
         }
       },
       "savings": {

@@ -46,6 +46,8 @@ export const cellDomId = (rk: string, col: number): string => `plan-cell-${rk.re
 const SELECTED_RING = ' ring-2 ring-ring rounded-sm'
 export const selectedClass = (selected: boolean): string => (selected ? SELECTED_RING : '')
 
+export const pickedKey = (rk: string, col: number): string => `${rk}|${col}`
+
 // an unset cell reads as 0 everywhere else in the grid, so copying/filling from it
 // carries an explicit 0 rather than an empty limit
 export function sourceAmount(el: PlanElementDto, monthIndex: number): string {
@@ -112,6 +114,17 @@ export interface GridCtx {
   commentsOpen: boolean
   selection: PlanSelection | null
   select: (rowKey: string, col: number, e?: { target: EventTarget | null }) => void
+  /** desktop: every selected cell (pickedKey) once more than one is; null for one */
+  picked: Set<string> | null
+  /** desktop: Shift+click spans the rectangle from the active cell, Ctrl/⌘+click
+   *  adds or removes one cell */
+  pick: (rowKey: string, col: number, mode: 'range' | 'toggle') => void
+  /** desktop: a mouse drag over the month cells selects the rectangle it spans */
+  dragSelect: {
+    active: boolean
+    start: (rowKey: string, col: number) => void
+    over: (rowKey: string, col: number, buttons: number) => void
+  }
   fill: {
     active: { rowKey: string; startCol: number; targetCol: number } | null
     start: (rowKey: string, el: PlanElementDto, col: number, e: ReactPointerEvent<HTMLElement>) => void
@@ -316,6 +329,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
           const view = planCellView({ type: el.type, cell, month: m, selected: ctx.selected })
           const actual = view.actual
           const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
+          const picked = !!ctx.picked?.has(pickedKey(rk, i))
           const fillSource = ctx.fill.active?.rowKey === rk && ctx.fill.active.startCol === i
           const filled = ctx.fill.active?.rowKey === rk && i > ctx.fill.active.startCol && i <= ctx.fill.active.targetCol
           // an unset cell still edits as 0, so it is draggable too — gating on a set
@@ -335,7 +349,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
               {...{ [COMMENT_ANCHOR_ATTR]: '' }}
               role="gridcell"
               id={cellDomId(rk, i)}
-              aria-selected={selected}
+              aria-selected={selected || picked}
               aria-label={t('budgets.page.plan.cell.aria', {
                 name: displayName,
                 month: ctx.monthLabel(m),
@@ -346,8 +360,33 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
               data-crosshair={i === ctx.crosshairCol ? 'col' : undefined}
-              className={`group/cell relative ${figureClass(ctx, i)} py-1${editable ? ' cursor-pointer' : ''}${hoverCol === i ? ' outline outline-1 outline-border' : ''}${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
+              className={`group/cell relative ${figureClass(ctx, i)} py-1${editable ? ' cursor-pointer' : ''}${hoverCol === i ? ' outline outline-1 outline-border' : ''}${selectedClass(selected)}${picked ? ' bg-ring/10' : ''}${filled ? ' fill-covered bg-ring/15' : ''}`}
+              onMouseDown={(e) => {
+                // Shift+click would otherwise also select the page's text in between;
+                // an open editor keeps the press, so its blur still commits it
+                if (!ctx.isCompact && e.shiftKey && !ctx.editing) {
+                  e.preventDefault()
+                }
+              }}
+              onPointerDown={(e) => {
+                if (
+                  !ctx.isCompact &&
+                  e.button === 0 &&
+                  e.pointerType !== 'touch' &&
+                  !e.shiftKey &&
+                  !e.ctrlKey &&
+                  !e.metaKey &&
+                  !(e.target as HTMLElement).closest('button, [role="button"], input')
+                ) {
+                  ctx.dragSelect.start(rk, i)
+                }
+              }}
+              onPointerEnter={(e) => ctx.dragSelect.over(rk, i, e.buttons)}
               onClick={(e) => {
+                if (!ctx.isCompact && (e.shiftKey || e.ctrlKey || e.metaKey)) {
+                  ctx.pick(rk, i, e.shiftKey ? 'range' : 'toggle')
+                  return
+                }
                 ctx.select(rk, i, e)
                 // touch: the whole cell opens the item sheet; the marker stops its own click
                 if (ctx.isCompact && !ctx.editMode && !isUncategorized && idx >= 0) {
@@ -442,7 +481,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
             <CellShell
               key={m}
               comments={isUncategorized ? [] : cellComments}
-              previewDisabled={ctx.commentsOpen || ctx.editMode || !!editing}
+              previewDisabled={ctx.commentsOpen || ctx.editMode || !!editing || ctx.dragSelect.active}
               shortcutDisabled={ctx.editMode}
               onOpenComments={isUncategorized ? undefined : (anchor) => ctx.openComments(target, { anchor })}
             >

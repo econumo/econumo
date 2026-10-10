@@ -101,6 +101,7 @@ export const METRICS = {
   BUDGET_PLAN_RESIZE_NAME_COLUMN: 'appBudgetPlanResizeNameColumn',
   BUDGET_PLAN_TOGGLE_SUMS: 'appBudgetPlanToggleSums',
   BUDGET_PLAN_CLEAR_CELL: 'appBudgetPlanClearCell',
+  BUDGET_PLAN_SELECT_CELLS: 'appBudgetPlanSelectCells',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
   BUDGET_TRANSACTIONS_OPEN: 'appBudgetTransactionsOpen',
   BUDGET_UPDATE_COMMENT: 'appBudgetUpdateComment',
