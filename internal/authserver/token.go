@@ -137,11 +137,12 @@ func tokenResponse(access, refresh string) model.TokenResponse {
 }
 
 // housekeepingDue elects at most one caller per HousekeepingInterval; the
-// first call after start always wins.
+// first call after start always wins, and a clock stepped backwards counts as
+// due so the throttle cannot stall until the old time is reached again.
 func (s *Service) housekeepingDue(now time.Time) bool {
 	s.hkMu.Lock()
 	defer s.hkMu.Unlock()
-	if !s.hkLast.IsZero() && now.Sub(s.hkLast) < HousekeepingInterval {
+	if !s.hkLast.IsZero() && !now.Before(s.hkLast) && now.Sub(s.hkLast) < HousekeepingInterval {
 		return false
 	}
 	s.hkLast = now

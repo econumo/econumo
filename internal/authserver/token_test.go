@@ -434,6 +434,21 @@ func TestHousekeepingDue_RaceFree(t *testing.T) {
 	}
 }
 
+func TestHousekeepingDue_ClockStepBackwards(t *testing.T) {
+	s, _, clock, _ := newTestService(t)
+	if !s.housekeepingDue(clock.Now()) {
+		t.Fatal("first call must run")
+	}
+	clock.Advance(-time.Hour)
+	if !s.housekeepingDue(clock.Now()) {
+		t.Fatal("a clock stepped backwards must count as due")
+	}
+	clock.Advance(time.Minute)
+	if s.housekeepingDue(clock.Now()) {
+		t.Fatal("the throttle must restart from the stepped-back time")
+	}
+}
+
 func TestRefresh_RevokedByReclaim(t *testing.T) {
 	s, _, _, user := newTestService(t)
 	cid, code := approve(t, s, user)

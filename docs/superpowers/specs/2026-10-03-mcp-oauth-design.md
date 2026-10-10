@@ -87,7 +87,7 @@ New migration (sqlite + pgsql; `.sql` files ASCII-only).
 | `created_at`, `expires_at` DATETIME | 2-minute lifetime |
 
 Consumed with a row-counted `DELETE ... WHERE code_hash = ?`: zero rows = already
-used / never existed. Expired rows are purged opportunistically on exchange.
+used / never existed. Expired rows are purged after successful code exchanges and refreshes, at most once every 10 minutes.
 
 **`oauth_grants`**
 

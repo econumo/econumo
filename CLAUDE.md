@@ -323,16 +323,17 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
 - Access tokens are `access_tokens` rows of kind `oauth` / scope `mcp` (`eco_oat_…`, fixed
   1 h, linked to their grant by `grant_id`), admitted only on `/mcp` — anywhere else they
   get the frozen 401. Turning OAuth off also stops admitting already-issued OAuth access
-  tokens on `/mcp` (the chain passes `AllowMCPScope: authSrv.Enabled()`). Refresh tokens rotate on every use; a grant idles out 90 days after
-  its last refresh. Every rotated-away hash is kept in
-  `oauth_refresh_tokens_spent` for as long as the grant row lives. Replaying the token rotated
-  away most recently, within 60 s, is refused with `invalid_grant` and leaves the grant alone
-  (two processes sharing credentials); a replay of any older spent token at any age, or of the
-  latest one after 60 s, is treated as theft and revokes the grant and its tokens. A
-  successful code exchange revokes the user's other grants for the same client (re-authorizing replaces the
-  connection). After successful code exchanges and refreshes, at most once every 10 minutes
-  per process, it purges, best-effort and outside the transaction, expired codes and grants
-  and `oauth` access tokens revoked/expired more than 30 days ago.
+  tokens on `/mcp` (the chain passes `AllowMCPScope: authSrv.Enabled()`). Refresh tokens
+  rotate on every use; a grant idles out 90 days after its last refresh. Every rotated-away
+  hash is kept in `oauth_refresh_tokens_spent` for as long as the grant row lives. Replaying
+  the token rotated away most recently, within 60 s, is refused with `invalid_grant` and
+  leaves the grant alone (two processes sharing credentials); a replay of any older spent
+  token at any age, or of the latest one after 60 s, is treated as theft and revokes the
+  grant and its tokens. A successful code exchange revokes the user's other grants for the
+  same client (re-authorizing replaces the connection). After successful code exchanges and
+  refreshes, at most once every 10 minutes per process, it purges, best-effort and outside
+  the transaction, expired codes and grants and `oauth` access tokens revoked/expired more
+  than 30 days ago.
 - Revocation: `revoke-connected-app` takes the user row lock first. The reclaim
   (`reset-password`, CLI `user:change-password`) and `user:deactivate` revoke every grant and
   every `oauth` token in their own transaction (through the user feature's
