@@ -98,7 +98,7 @@ test('without a served MCP address the empty state says it is unavailable and of
   window.econumoConfig = { MCP_URL: '' }
   vi.mocked(getConnectedApps).mockResolvedValue([])
   renderPage()
-  expect(await screen.findByText(/isn't available on this server/)).toBeInTheDocument()
+  expect(await screen.findByText(/with no path/)).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /copy/i })).not.toBeInTheDocument()
   expect(screen.queryByText(/\/mcp/)).not.toBeInTheDocument()
   expect(screen.queryByText(/add a custom connector/)).not.toBeInTheDocument()

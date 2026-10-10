@@ -1875,7 +1875,7 @@
       "description": "App come Claude o Codex a cui hai consentito di usare i tuoi dati Econumo. Revocare un'app la disconnette subito.",
       "empty": "Nessuna app è ancora connessa.",
       "howTo": "In Claude o Codex, aggiungi un connettore personalizzato o un server MCP con questo indirizzo e accedi quando richiesto.",
-      "unavailable": "Il collegamento di app di IA non è disponibile su questo server. L'amministratore deve impostare ECONUMO_URL su un indirizzo https.",
+      "unavailable": "Il collegamento di app di IA non è disponibile su questo server. L'amministratore deve impostare ECONUMO_URL sull'indirizzo https del server, senza percorso.",
       "copy": "Copia",
       "copied": "Copiato",
       "revoke": "Revoca",

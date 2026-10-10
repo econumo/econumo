@@ -1824,7 +1824,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       (OAuth off), Settings > Profile has no Connected apps row; opening
       `/settings/profile/connected-apps` directly shows "Connecting AI apps
       isn't available on this server. The administrator needs to set
-      ECONUMO_URL to an https address." with no address and no Copy button, and
+      ECONUMO_URL to the server's https address, with no path." with no address and no Copy button, and
       any apps connected earlier are still listed with Revoke.
 - [ ] 📱 Settings > Profile > Connected apps lists each approved app with its
       name, "Sends you back to <host>" (or "Runs on this computer" for a
