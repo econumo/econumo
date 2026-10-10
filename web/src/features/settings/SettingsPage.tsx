@@ -100,7 +100,7 @@ export function SettingsPage() {
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-sm font-medium">{user.name}</span>
                   <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-                  <span className="truncate text-xs font-medium text-primary">{t('user.page.settings.profile.header')}</span>
+                  <span className="truncate text-xs font-medium text-muted-foreground">{t('user.page.settings.profile.header')}</span>
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </Link>
