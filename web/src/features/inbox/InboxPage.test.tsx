@@ -57,7 +57,7 @@ beforeEach(() => {
   }))
 })
 
-it('renders the sections in a fixed order: Sync problems, Failed imports, To review, Skipped', async () => {
+it('renders the sections in a fixed order: To review, Sync problems, Failed imports, Skipped', async () => {
   server.use(...coreHandlers({
     importSources: [syncProblemSource()],
     importQueue: { queued: [queued()], skipped: [queued({ linkId: 'l2' })], failed: [failedEvent] },
@@ -65,7 +65,7 @@ it('renders the sections in a fixed order: Sync problems, Failed imports, To rev
   renderInbox()
   await screen.findByText('Bank sync failed')
   const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-  expect(headings).toEqual(['Sync problems', 'Failed imports', 'To review', 'Skipped (1)'])
+  expect(headings).toEqual(['To review', 'Sync problems', 'Failed imports', 'Skipped (1)'])
 })
 
 it('does not render empty sections', async () => {
@@ -208,7 +208,7 @@ it('a partial sync problem is worded differently', async () => {
   expect(await screen.findByText('Bank synced with errors')).toBeInTheDocument()
 })
 
-it('puts Sharing before To review, and accepting a budget invite drops it, navigates to the budget page, and lowers the Inbox count', async () => {
+it('puts Sharing last, after To review, and accepting a budget invite drops it, navigates to the budget page, and lowers the Inbox count', async () => {
   let budgetListCalls = 0
   server.use(...coreHandlers({ importQueue: { queued: [queued()], skipped: [], failed: [] } }))
   server.use(
@@ -253,8 +253,7 @@ it('puts Sharing before To review, and accepting a budget invite drops it, navig
   await screen.findByText('Blue Bottle')
   await screen.findByText('Partner invited you')
   const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-  expect(headings.indexOf('Sharing')).toBeGreaterThanOrEqual(0)
-  expect(headings.indexOf('Sharing')).toBeLessThan(headings.indexOf('To review'))
+  expect(headings).toEqual(['To review', 'Sharing'])
   await waitFor(() => expect(screen.getByTestId('inbox-badge')).toHaveTextContent('2'))
 
   const user = userEvent.setup()
@@ -282,12 +281,13 @@ const dueTemplate = (over: Record<string, unknown> = {}) => ({
   schedule: 'monthly', nextPaymentAt: daysFromNow(-5), ...over,
 })
 
-it('puts Due first, marking overdue templates and today\'s apart', async () => {
+it('puts Due first and Sharing last, marking overdue templates and today\'s apart', async () => {
   const today = new Date()
   today.setHours(9, 0, 0, 0)
   server.use(...coreHandlers({
     budgets: [pendingBudget],
     recurring: [dueTemplate(), dueTemplate({ id: 'r-today', nextPaymentAt: formatDateTime(today) })],
+    importQueue: { queued: [queued()], skipped: [], failed: [] },
   }))
   renderInbox()
   const overdue = await screen.findByTestId('due-r1')
@@ -297,7 +297,7 @@ it('puts Due first, marking overdue templates and today\'s apart', async () => {
   expect(screen.getByTestId('due-r-today')).not.toHaveTextContent('Overdue')
   await screen.findByText('Partner invited you')
   const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-  expect(headings).toEqual(['Due', 'Sharing'])
+  expect(headings).toEqual(['Due', 'To review', 'Sharing'])
 })
 
 it('posting a due template from the Inbox drops it and lowers the badge', async () => {

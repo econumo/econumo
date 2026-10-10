@@ -431,8 +431,8 @@ navigation (single-pane vs sidebar).
 - [ ] Inbox count 📱: the badge equals due recurring templates + pending invites +
       sources whose last sync failed/partially failed + failed imports + queued
       imports; skipped rows are not counted.
-- [ ] Inbox page 📱: sections appear in order Due, Sharing, Sync problems, Failed
-      imports, To review, Skipped (collapsed); empty sections are hidden; with
+- [ ] Inbox page 📱: sections appear in order Due, To review, Sync problems,
+      Failed imports, Skipped (collapsed), Sharing; empty sections are hidden; with
       nothing pending it reads "All caught up".
 - [ ] Inbox clears itself 📱: accepting/declining an invite, importing/skipping
       every queued row, and a successful re-sync each remove the item and lower
