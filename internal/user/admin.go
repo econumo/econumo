@@ -121,7 +121,7 @@ func (s *Service) AdminActivate(ctx context.Context, email string) error {
 }
 
 // AdminDeactivate marks the user inactive, looked up by email, and revokes
-// EVERY credential (sessions AND personal tokens) — this is why per-request
+// EVERY credential (sessions, personal tokens and MCP OAuth grants) — this is why per-request
 // authentication needs no is_active join: a deactivated user simply has no
 // live tokens left. The revoke runs INSIDE the same transaction as the
 // deactivation, and the credentials generation is bumped alongside it: a
@@ -139,7 +139,10 @@ func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
 		if err := s.repo.BumpCredentialsGeneration(ctx, u.ID); err != nil {
 			return err
 		}
-		return s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal)
+		if err := s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal, model.TokenKindOAuth); err != nil {
+			return err
+		}
+		return s.revokeMCPGrants(ctx, u.ID)
 	})
 	return err
 }

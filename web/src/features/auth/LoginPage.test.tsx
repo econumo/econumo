@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -5,18 +6,20 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { useServerConfig } from '@/lib/appConfig'
+import { rememberPostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { LoginPage } from './LoginPage'
 
-function renderLogin(path = '/login') {
+function renderLogin(path = '/login', strict = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   const router = createMemoryRouter([{ path: '/login', element: <LoginPage /> }], { initialEntries: [path] })
-  render(
+  const tree = (
     <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}>
       <RouterProvider router={router} />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   )
+  render(strict ? <StrictMode>{tree}</StrictMode> : tree)
 }
 
 beforeEach(() => {
@@ -334,4 +337,36 @@ describe('in the native app', () => {
     expect(await screen.findByRole('button', { name: 'Continue with Authentik' })).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByLabelText('Password')).not.toBeInTheDocument())
   })
+})
+
+it('returns to the remembered consent page after signing in', async () => {
+  const assign = vi.fn()
+  Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+  sessionStorage.clear()
+  rememberPostLoginRedirect('/oauth/authorize?client_id=a&state=b')
+  server.use(
+    http.post('*/api/v1/user/login-user', () =>
+      HttpResponse.json({
+        user: { id: 'u1', name: 'Ada', email: 'a@b', avatar: '', options: [], currency: 'USD', reportPeriod: 'month' },
+        token: 'jwt',
+      }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderLogin()
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  await user.type(screen.getByLabelText('Password'), 'secret12')
+  await user.click(screen.getByRole('button', { name: /sign in/i }))
+  await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/oauth/authorize?client_id=a&state=b'))
+})
+
+it('an already signed-in visitor is sent to the remembered consent page exactly once, even under StrictMode', async () => {
+  const assign = vi.fn()
+  Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+  sessionStorage.clear()
+  localStorage.setItem('token', 'jwt')
+  rememberPostLoginRedirect('/oauth/authorize?client_id=a&state=b')
+  renderLogin('/login', true)
+  await vi.waitFor(() => expect(assign).toHaveBeenCalled())
+  expect(assign.mock.calls).toEqual([['/oauth/authorize?client_id=a&state=b']])
 })

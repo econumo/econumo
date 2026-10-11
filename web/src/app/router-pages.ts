@@ -15,6 +15,7 @@ export const RouterPage = {
   SETTINGS_CHANGE_EMAIL: '/settings/profile/change-email',
   SETTINGS_SESSIONS: '/settings/profile/sessions',
   SETTINGS_TOKENS: '/settings/profile/tokens',
+  SETTINGS_CONNECTED_APPS: '/settings/profile/connected-apps',
   SETTINGS_LINKED_ACCOUNTS: '/settings/profile/linked-accounts',
   SETTINGS_ACCOUNTS: '/settings/accounts',
   SETTINGS_CATEGORIES: '/settings/categories',

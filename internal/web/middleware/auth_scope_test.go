@@ -55,3 +55,47 @@ func TestAuth_ScopeGate(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthWith_MCPScopeNeedsAllowMCPScope(t *testing.T) {
+	cases := []struct {
+		name  string
+		scope model.TokenScope
+		path  string
+		allow bool
+		want  int
+	}{
+		{"mcp token on /mcp, not allowed", model.TokenScopeMCP, "/mcp", false, http.StatusUnauthorized},
+		{"mcp token on /mcp, allowed", model.TokenScopeMCP, "/mcp", true, http.StatusOK},
+		{"mcp token off /mcp, allowed", model.TokenScopeMCP, "/api/v1/user/get-user-data", true, http.StatusUnauthorized},
+		{"full token on /mcp, not allowed", model.TokenScopeFull, "/mcp", false, http.StatusOK},
+		{"full token on /mcp, allowed", model.TokenScopeFull, "/mcp", true, http.StatusOK},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var ran bool
+			h := middleware.AuthWith(scopedAuthn{scope: tc.scope}, middleware.AuthOptions{AllowMCPScope: tc.allow})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { ran = true }))
+			req := httptest.NewRequest(http.MethodPost, tc.path, nil)
+			req.Header.Set("Authorization", "Bearer x")
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			if rec.Code != tc.want || (tc.want == http.StatusOK) != ran {
+				t.Fatalf("status = %d (ran %v), want %d; body %s", rec.Code, ran, tc.want, rec.Body.String())
+			}
+			if tc.want == http.StatusUnauthorized && !strings.Contains(rec.Body.String(), `"message":"Invalid access token"`) {
+				t.Fatalf("401 body must carry the frozen message, got %s", rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestAuthWith_RefusedMCPTokenCarriesChallenge(t *testing.T) {
+	const challenge = `Bearer resource_metadata="https://x.test/.well-known/oauth-protected-resource/mcp"`
+	h := middleware.AuthWith(scopedAuthn{scope: model.TokenScopeMCP}, middleware.AuthOptions{Challenge: challenge})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+	req.Header.Set("Authorization", "Bearer x")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized || rec.Header().Get("WWW-Authenticate") != challenge {
+		t.Fatalf("%d %q", rec.Code, rec.Header().Get("WWW-Authenticate"))
+	}
+}

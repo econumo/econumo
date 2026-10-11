@@ -1,5 +1,5 @@
 import { AxiosError, type AxiosResponse } from 'axios'
-import { createAppQueryClient } from './queryPersist'
+import { createAppQueryClient, createPersistOptions } from './queryPersist'
 
 function defaultRetry(): (failureCount: number, error: unknown) => boolean {
   const retry = createAppQueryClient().getDefaultOptions().queries?.retry
@@ -30,4 +30,11 @@ it('keeps the three-attempt default for non-axios errors', () => {
   const plainError = new Error('boom')
   expect(retry(2, plainError)).toBe(true)
   expect(retry(3, plainError)).toBe(false)
+})
+
+it('never persists an authorization request', () => {
+  const should = createPersistOptions().dehydrateOptions.shouldDehydrateQuery
+  expect(should({ queryKey: ['authserver', 'authorization-request', {}], state: { status: 'success' } })).toBe(false)
+  expect(should({ queryKey: ['accounts'], state: { status: 'success' } })).toBe(true)
+  expect(should({ queryKey: ['accounts'], state: { status: 'error' } })).toBe(false)
 })

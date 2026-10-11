@@ -108,6 +108,9 @@ Everything else — self-hosting (multi-currency, backups, CLI commands,
 debugging), the API, MCP, and the user guide — lives in the
 **[Econumo documentation](https://econumo.com/docs)**.
 
+To connect Claude or Codex to your instance over MCP with a browser sign-in,
+see **[docs/mcp-setup.md](docs/mcp-setup.md)**.
+
 ### Contact
 
 - For release announcements, please check [GitHub Releases](https://github.com/econumo/econumo/releases) or [Econumo Website](https://econumo.com/tags/release/).

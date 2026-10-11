@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { LanguageDialog } from '@/components/LanguageDialog'
-import { getLocaleOptions } from '@/lib/config'
+import { getLocaleOptions, mcpUrl } from '@/lib/config'
+import { useServerConfig } from '@/lib/appConfig'
 import i18n from '@/app/i18n'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
@@ -46,6 +47,8 @@ export function ProfilePage() {
   const savedTimer = useRef<number | null>(null)
   const hasPassword = user?.hasPassword !== false
   const passwordLogin = usePasswordLoginAvailable()
+  useServerConfig((s) => s.revision)
+  const connectedAppsAvailable = mcpUrl() !== ''
 
   useEffect(() => {
     if (user) {
@@ -220,6 +223,15 @@ export function ProfilePage() {
           {t('user.page.settings.profile.tokens.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
+        {connectedAppsAvailable ? (
+          <Link
+            to={RouterPage.SETTINGS_CONNECTED_APPS}
+            className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+          >
+            {t('authserver.apps.menuItem')}
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </Link>
+        ) : null}
       </div>
 
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">

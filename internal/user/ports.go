@@ -102,6 +102,15 @@ type OAuthReclaimer interface {
 	ReclaimAccount(ctx context.Context, userID vo.Id, provenEmail string) (identities, grants int64, err error)
 }
 
+// MCPGrantRevoker is the MCP OAuth server's side of an account reclaim or
+// deactivation: it ends every authorization grant the user gave an MCP client
+// (grant rows and their refresh tokens), reporting how many it revoked. The
+// grants' access tokens are revoked by the user feature itself. nil disables
+// the step (builds without the OAuth server, tests).
+type MCPGrantRevoker interface {
+	RevokeAllForUser(ctx context.Context, userID vo.Id) (int64, error)
+}
+
 // IdentityEmailLister is the oauth feature's list of addresses the user's
 // linked providers vouched for. The change-email NOTICE is copied to them so a
 // change requested without the owner's knowledge is noticeable even when their

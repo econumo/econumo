@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -5,9 +6,10 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { useServerConfig } from '@/lib/appConfig'
+import { rememberPostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { RegistrationPage } from './RegistrationPage'
 
-function renderPage() {
+function renderPage(strict = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
@@ -18,11 +20,12 @@ function renderPage() {
     ],
     { initialEntries: ['/register'] },
   )
-  render(
+  const tree = (
     <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}>
       <RouterProvider router={router} />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   )
+  render(strict ? <StrictMode>{tree}</StrictMode> : tree)
 }
 
 beforeEach(() => {
@@ -179,4 +182,15 @@ it('leaves for the login page when the app learns registration is off', async ()
   } finally {
     delete (window as { Capacitor?: unknown }).Capacitor
   }
+})
+
+it('an already signed-in visitor is sent to the remembered consent page exactly once, even under StrictMode', async () => {
+  const assign = vi.fn()
+  Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+  sessionStorage.clear()
+  localStorage.setItem('token', 'jwt')
+  rememberPostLoginRedirect('/oauth/authorize?client_id=a&state=b')
+  renderPage(true)
+  await vi.waitFor(() => expect(assign).toHaveBeenCalled())
+  expect(assign.mock.calls).toEqual([['/oauth/authorize?client_id=a&state=b']])
 })

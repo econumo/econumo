@@ -36,7 +36,7 @@ JOIN users u ON u.id = t.user_id
 WHERE t.token_hash = ?;
 
 -- name: GetAccessTokenByID :one
-SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id
 FROM access_tokens
 WHERE id = ?;
 
@@ -56,7 +56,7 @@ UPDATE access_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL;
 UPDATE access_tokens SET revoked_at = ? WHERE user_id = ? AND kind = ? AND revoked_at IS NULL AND id <> ?;
 
 -- name: ListAccessTokensByUser :many
-SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id
 FROM access_tokens
 WHERE user_id = ? AND kind = ?
 ORDER BY created_at, id;
@@ -68,3 +68,21 @@ DELETE FROM access_tokens WHERE id = ?;
 DELETE FROM access_tokens
 WHERE (revoked_at IS NOT NULL AND revoked_at < ?)
    OR (expires_at IS NOT NULL AND expires_at < ?);
+
+-- name: InsertOAuthAccessTokenIfGeneration :execrows
+-- Same generation fence as InsertAccessTokenIfGeneration, for tokens minted
+-- by the MCP OAuth server; grant_id lets a grant revoke drop them all.
+INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id)
+SELECT ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, NULL, NULL, ?
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?);
+
+-- name: RevokeAccessTokensByGrant :exec
+UPDATE access_tokens SET revoked_at = ? WHERE grant_id = ? AND revoked_at IS NULL;
+
+-- name: DeleteDeadOAuthAccessTokens :execrows
+-- The OAuth server's housekeeping purge: oauth tokens live an hour, so they
+-- pile up far faster than sessions and are swept set-based, not per user.
+DELETE FROM access_tokens
+WHERE kind = 'oauth'
+  AND ((revoked_at IS NOT NULL AND revoked_at < ?)
+    OR (expires_at IS NOT NULL AND expires_at < ?));

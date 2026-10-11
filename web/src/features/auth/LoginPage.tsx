@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
@@ -13,6 +13,7 @@ import * as config from '@/lib/config'
 import { isNativeApp } from '@/lib/platform'
 import { useServerConfigFor } from '@/lib/appConfig'
 import { isForbidden, retryAfterSeconds } from '@/lib/apiError'
+import { takePostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl } from '@/lib/validation'
 import { CustomServerSection } from './CustomServerSection'
@@ -79,9 +80,12 @@ export function LoginPage() {
     setValue('selfHosted', next)
   }
 
+  // StrictMode runs the effect twice, and the second take would find the entry consumed.
+  const signedInRedirect = useRef(false)
   useEffect(() => {
-    if (getToken()) {
-      window.location.assign('/')
+    if (getToken() && !signedInRedirect.current) {
+      signedInRedirect.current = true
+      window.location.assign(takePostLoginRedirect())
     }
   }, [])
 
@@ -92,7 +96,7 @@ export function LoginPage() {
         setFailOpen(true)
         return
       }
-      window.location.assign('/')
+      window.location.assign(takePostLoginRedirect())
     } catch (err) {
       // 403 = correct credentials, unverified email: the server just sent (or
       // reused) a code — collect it instead of showing the generic failure.

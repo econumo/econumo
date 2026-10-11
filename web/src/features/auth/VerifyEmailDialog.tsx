@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { apiErrorMessage, retryAfterSeconds } from '@/lib/apiError'
 import { isNotEmpty, isValidRecoveryCode } from '@/lib/validation'
+import { takePostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { useConfirmEmail, useLogin, useResendVerification } from './queries'
 
 interface VerifyEmailForm {
@@ -58,7 +59,7 @@ export function VerifyEmailDialog({ open, onClose, username, password, cooldownS
       // The code proved ownership; the silent re-login uses the credentials
       // still held by the login form, so the user lands in the app in one step.
       await login.mutateAsync({ username, password })
-      window.location.assign('/')
+      window.location.assign(takePostLoginRedirect())
     } catch (err) {
       setServerError(apiErrorMessage(err))
     }

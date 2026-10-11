@@ -43,8 +43,20 @@ func (accessTokenSqliteQuerier) DeleteDeadAccessTokens(ctx context.Context, db b
 	return sqlitegen.New(db).DeleteDeadAccessTokens(ctx, p)
 }
 
+func (accessTokenSqliteQuerier) DeleteDeadOAuthAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadOAuthTokParams) (int64, error) {
+	return sqlitegen.New(db).DeleteDeadOAuthAccessTokens(ctx, p)
+}
+
 func (accessTokenSqliteQuerier) InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error) {
 	return sqlitegen.New(db).InsertAccessTokenIfGeneration(ctx, p)
+}
+
+func (accessTokenSqliteQuerier) InsertOAuthAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertOAuthTokenIfGenParams) (int64, error) {
+	return sqlitegen.New(db).InsertOAuthAccessTokenIfGeneration(ctx, p)
+}
+
+func (accessTokenSqliteQuerier) RevokeAccessTokensByGrant(ctx context.Context, db backend.DBTX, p revokeTokensByGrantParams) error {
+	return sqlitegen.New(db).RevokeAccessTokensByGrant(ctx, p)
 }
 
 func (accessTokenSqliteQuerier) InsertAccessTokenIfPresenterLive(ctx context.Context, db backend.DBTX, p insertTokenIfPresenterLiveParams) (int64, error) {

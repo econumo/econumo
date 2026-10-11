@@ -1853,6 +1853,40 @@
       "readonly": "Acceso de solo lectura: los cambios están desactivados"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "Conectar una aplicación a Econumo",
+      "wantsAccess": "quiere acceder a tu cuenta de Econumo.",
+      "redirect": "Después de permitirlo, serás enviado a {host}.",
+      "loopback": "Después de permitirlo, volverás a una aplicación en este ordenador.",
+      "fullAccess": "Podrá leer y modificar todos tus datos de Econumo.",
+      "signedInAs": "Sesión iniciada como {email}",
+      "switchAccount": "¿No eres tú? Cambiar de cuenta",
+      "allow": "Permitir",
+      "deny": "Denegar",
+      "invalidTitle": "Esta aplicación envió una solicitud no válida",
+      "invalidBody": "Econumo no puede conectarla. Vuelve a la aplicación e inténtalo de nuevo.",
+      "returnToHost": "Volver a {host}",
+      "returnToApp": "Volver a la aplicación",
+      "readonly": "Tu cuenta es de solo lectura, por lo que no se pueden conectar aplicaciones."
+    },
+    "apps": {
+      "title": "Aplicaciones conectadas",
+      "description": "Aplicaciones como Claude o Codex a las que has permitido usar tus datos de Econumo. Al revocar una aplicación, se cierra su sesión de inmediato.",
+      "empty": "Todavía no hay aplicaciones conectadas.",
+      "howTo": "En Claude o Codex, añade un conector personalizado o servidor MCP con esta dirección e inicia sesión cuando se te pida.",
+      "unavailable": "Conectar aplicaciones de IA no está disponible en este servidor. El administrador debe establecer ECONUMO_URL con la dirección https del servidor, sin ruta.",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "revoke": "Revocar",
+      "revokeConfirm": "{name} perderá el acceso a tus datos de Econumo.",
+      "connected": "Conectada el {date}",
+      "lastUsed": "Último uso {when}",
+      "loopback": "Se ejecuta en este ordenador",
+      "returnsTo": "Te devuelve a {host}",
+      "menuItem": "Aplicaciones conectadas"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Este valor no debe estar vacío.",
@@ -1947,6 +1981,12 @@
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",
       "cannot_be_merged": "Las etiquetas seleccionadas no se pueden combinar.",
       "list_empty": "La lista de etiquetas está vacía."
+    },
+    "authserver": {
+      "disabled": "La conexión de aplicaciones no está disponible en este servidor.",
+      "client_not_found": "El registro de esta aplicación ha caducado o es desconocido. Quita Econumo de la aplicación y vuelve a añadirlo.",
+      "redirect_uri_mismatch": "Este enlace de inicio de sesión no es válido para esta aplicación. Inicia la conexión de nuevo desde la aplicación.",
+      "grant_not_found": "Aplicación conectada no encontrada."
     },
     "oauth": {
       "provider_not_configured": "El proveedor de inicio de sesión no está configurado",

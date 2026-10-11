@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
@@ -11,6 +11,7 @@ import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { isNativeApp } from '@/lib/platform'
 import { useServerConfigFor } from '@/lib/appConfig'
+import { takePostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl, isValidName, isValidPassword } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
@@ -73,9 +74,14 @@ export function RegistrationPage() {
     setValue('selfHosted', next)
   }
 
+  // StrictMode runs the effect twice, and the second take would find the entry consumed.
+  const signedInRedirect = useRef(false)
   useEffect(() => {
     if (getToken()) {
-      window.location.assign('/')
+      if (!signedInRedirect.current) {
+        signedInRedirect.current = true
+        window.location.assign(takePostLoginRedirect())
+      }
       return
     }
     // the Sign-up tab is already disabled, but the URL still resolves —

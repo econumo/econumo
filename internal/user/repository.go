@@ -130,6 +130,14 @@ type AccessTokens interface {
 	// for the same race-closing reason as InsertIfGeneration.
 	InsertIfPresenterLive(ctx context.Context, t *model.AccessToken, presentingTokenID vo.Id) (int64, error)
 
+	// InsertOAuthIfGeneration is InsertIfGeneration for a token minted by the
+	// MCP OAuth server: the row also carries the grant it belongs to, so
+	// RevokeByGrant can drop every token of a grant at once.
+	InsertOAuthIfGeneration(ctx context.Context, t *model.AccessToken, generation int64) (int64, error)
+
+	// RevokeByGrant revokes every unrevoked token minted for the grant.
+	RevokeByGrant(ctx context.Context, grantID vo.Id, now time.Time) error
+
 	// GetByHash resolves the sha256 hex of a presented bearer token — the hot
 	// path behind every authenticated request — joining the owning user's
 	// stored access level and expiry in the same round trip so Authenticate
@@ -171,6 +179,9 @@ type AccessTokens interface {
 	// revocation happened before cutoff, returning the number deleted. Backed
 	// by the revoked_at/expires_at indexes so it stays cheap on large tables.
 	DeleteDead(ctx context.Context, cutoff time.Time) (int64, error)
+
+	// DeleteDeadOAuth is DeleteDead restricted to oauth tokens.
+	DeleteDeadOAuth(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
 // PasswordRequests persists password-reset codes (users_password_requests) for

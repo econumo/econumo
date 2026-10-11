@@ -1,0 +1,27 @@
+== get-connected-app-list GET /api/v1/authserver/get-connected-app-list [owner] -> 200
+{"success":true,"message":"","data":[{"id":"e2000000-0000-0000-0000-000000000001","clientName":"Claude","redirectHost":"claude.ai","isLoopback":false,"createdAt":"<datetime>","lastUsedAt":"<datetime>"}]}
+
+== get-connected-app-list-guest-empty GET /api/v1/authserver/get-connected-app-list [guest] -> 200
+{"success":true,"message":"","data":[]}
+
+== err:revoke-connected-app-blank POST /api/v1/authserver/revoke-connected-app [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+
+== err:revoke-connected-app-invalid-id POST /api/v1/authserver/revoke-connected-app [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value is not a valid UUID."]}}
+
+== err:revoke-connected-app-foreign POST /api/v1/authserver/revoke-connected-app [guest] -> 400
+{"success":false,"message":"Connected app not found.","code":400,"errors":{}}
+
+== err:revoke-connected-app-readonly-reaches-the-handler POST /api/v1/authserver/revoke-connected-app [readonly] -> 400
+{"success":false,"message":"Connected app not found.","code":400,"errors":{}}
+
+== revoke-connected-app POST /api/v1/authserver/revoke-connected-app [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== err:revoke-connected-app-again POST /api/v1/authserver/revoke-connected-app [owner] -> 400
+{"success":false,"message":"Connected app not found.","code":400,"errors":{}}
+
+== get-connected-app-list-after GET /api/v1/authserver/get-connected-app-list [owner] -> 200
+{"success":true,"message":"","data":[]}
+

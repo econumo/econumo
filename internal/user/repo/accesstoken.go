@@ -26,13 +26,18 @@ type (
 	revokeUserAccessTokensParams     = sqlitegen.RevokeUserAccessTokensParams
 	listAccessTokensParams           = sqlitegen.ListAccessTokensByUserParams
 	deleteDeadAccessTokParams        = sqlitegen.DeleteDeadAccessTokensParams
+	deleteDeadOAuthTokParams         = sqlitegen.DeleteDeadOAuthAccessTokensParams
 	insertTokenIfGenParams           = sqlitegen.InsertAccessTokenIfGenerationParams
 	insertTokenIfPresenterLiveParams = sqlitegen.InsertAccessTokenIfPresenterLiveParams
+	insertOAuthTokenIfGenParams      = sqlitegen.InsertOAuthAccessTokenIfGenerationParams
+	revokeTokensByGrantParams        = sqlitegen.RevokeAccessTokensByGrantParams
 )
 
 type accessTokenQuerier interface {
 	InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error)
 	InsertAccessTokenIfPresenterLive(ctx context.Context, db backend.DBTX, p insertTokenIfPresenterLiveParams) (int64, error)
+	InsertOAuthAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertOAuthTokenIfGenParams) (int64, error)
+	RevokeAccessTokensByGrant(ctx context.Context, db backend.DBTX, p revokeTokensByGrantParams) error
 	GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error)
 	GetAccessTokenByID(ctx context.Context, db backend.DBTX, id string) (accessTokenRow, error)
 	TouchAccessToken(ctx context.Context, db backend.DBTX, p touchAccessTokenParams) (int64, error)
@@ -41,6 +46,7 @@ type accessTokenQuerier interface {
 	ListAccessTokensByUser(ctx context.Context, db backend.DBTX, p listAccessTokensParams) ([]accessTokenRow, error)
 	DeleteAccessToken(ctx context.Context, db backend.DBTX, id string) error
 	DeleteDeadAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadAccessTokParams) (int64, error)
+	DeleteDeadOAuthAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadOAuthTokParams) (int64, error)
 }
 
 type AccessTokenRepo struct {
@@ -89,6 +95,25 @@ func (r *AccessTokenRepo) InsertIfPresenterLive(ctx context.Context, t *model.Ac
 		Provider: t.Provider, IDToken: t.IDToken,
 		ID_2: presentingTokenID.String(), UserID_2: t.UserID.String(),
 	})
+}
+
+func (r *AccessTokenRepo) InsertOAuthIfGeneration(ctx context.Context, t *model.AccessToken, generation int64) (int64, error) {
+	if t.Kind != model.TokenKindOAuth || t.Scope != model.TokenScopeMCP || t.GrantID == nil {
+		return 0, fmt.Errorf("access token %s: not a well-formed oauth token", t.ID)
+	}
+	grantID := t.GrantID.String()
+	return r.q.InsertOAuthAccessTokenIfGeneration(ctx, r.db(ctx), insertOAuthTokenIfGenParams{
+		ID: t.ID.String(), UserID: t.UserID.String(), Kind: t.Kind, TokenHash: t.TokenHash,
+		Scope: string(t.Scope), Name: t.Name,
+		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt,
+		GrantID: &grantID,
+		ID_2:    t.UserID.String(), CredentialsGeneration: generation,
+	})
+}
+
+func (r *AccessTokenRepo) RevokeByGrant(ctx context.Context, grantID vo.Id, now time.Time) error {
+	g := grantID.String()
+	return r.q.RevokeAccessTokensByGrant(ctx, r.db(ctx), revokeTokensByGrantParams{RevokedAt: &now, GrantID: &g})
 }
 
 func (r *AccessTokenRepo) GetByHash(ctx context.Context, hash string) (*model.AccessToken, model.AccessLevel, *time.Time, error) {
@@ -184,6 +209,10 @@ func (r *AccessTokenRepo) DeleteDead(ctx context.Context, cutoff time.Time) (int
 	return r.q.DeleteDeadAccessTokens(ctx, r.db(ctx), deleteDeadAccessTokParams{RevokedAt: &cutoff, ExpiresAt: &cutoff})
 }
 
+func (r *AccessTokenRepo) DeleteDeadOAuth(ctx context.Context, cutoff time.Time) (int64, error) {
+	return r.q.DeleteDeadOAuthAccessTokens(ctx, r.db(ctx), deleteDeadOAuthTokParams{RevokedAt: &cutoff, ExpiresAt: &cutoff})
+}
+
 func accessTokenFromRow(row accessTokenRow) (*model.AccessToken, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
@@ -193,11 +222,19 @@ func accessTokenFromRow(row accessTokenRow) (*model.AccessToken, error) {
 	if err != nil {
 		return nil, err
 	}
+	var grantID *vo.Id
+	if row.GrantID != nil {
+		g, gerr := vo.ParseId(*row.GrantID)
+		if gerr != nil {
+			return nil, gerr
+		}
+		grantID = &g
+	}
 	return &model.AccessToken{
 		ID: id, UserID: uid, Kind: row.Kind, TokenHash: row.TokenHash,
 		Scope: model.TokenScope(row.Scope), Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
-		Provider: row.Provider, IDToken: row.IDToken,
+		Provider: row.Provider, IDToken: row.IDToken, GrantID: grantID,
 	}, nil
 }

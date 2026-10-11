@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { evalConfigScript, fetchServerConfig, useServerConfig } from './appConfig'
 
 beforeEach(() => {
-  window.econumoConfig = { ALLOW_REGISTRATION: true, INSTANCE_ID: '', BILLING_URL: '' }
+  window.econumoConfig = { ALLOW_REGISTRATION: true, INSTANCE_ID: '', BILLING_URL: '', MCP_URL: '' }
   useServerConfig.setState({ serverVersion: null, minAppVersion: null, configHost: null })
 })
 
@@ -13,7 +13,7 @@ afterEach(() => {
 // The current server (internal/web/router builds the complete map,
 // internal/web/spa writes it verbatim) emits the whole document as a single
 // assignment.
-const SERVED = `window.econumoConfig = {"ALLOW_REGISTRATION":false,"PASSWORD_LOGIN":false,"INSTANCE_ID":"a3f19c02b7d4","VERSION":"v1.4.2","MIN_APP_VERSION":"v1.1.0","BILLING_URL":"https://x"};
+const SERVED = `window.econumoConfig = {"ALLOW_REGISTRATION":false,"PASSWORD_LOGIN":false,"INSTANCE_ID":"a3f19c02b7d4","VERSION":"v1.4.2","MIN_APP_VERSION":"v1.1.0","BILLING_URL":"https://x","MCP_URL":"https://x/mcp"};
 `
 
 // The app can be pointed at any user-chosen backend, including one running an
@@ -54,6 +54,7 @@ it('merges only the allowlist and stores the version handshake separately', asyn
   expect(window.econumoConfig.PASSWORD_LOGIN).toBe(false)
   expect(window.econumoConfig.INSTANCE_ID).toBe('a3f19c02b7d4')
   expect(window.econumoConfig.BILLING_URL).toBe('') // not on the allowlist
+  expect(window.econumoConfig.MCP_URL).toBe('https://x/mcp')
   expect(window.econumoConfig.VERSION).toBeUndefined() // never merged
   expect('MIN_APP_VERSION' in window.econumoConfig).toBe(false) // never merged
   expect(useServerConfig.getState().serverVersion).toBe('v1.4.2')
@@ -77,13 +78,13 @@ function servedConfig(values: Record<string, unknown>) {
 // A server switch must never leave the previous server's settings in force:
 // they describe a different instance.
 it('drops the previous server config when switching servers', async () => {
-  window.econumoConfig = { ALLOW_REGISTRATION: true, PASSWORD_LOGIN: true, INSTANCE_ID: '' }
+  window.econumoConfig = { ALLOW_REGISTRATION: true, PASSWORD_LOGIN: true, INSTANCE_ID: '', MCP_URL: '' }
   localStorage.setItem('selfHosted', 'true')
   window.Capacitor = { isNativePlatform: () => true }
   try {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       if (url.startsWith('https://a.example.test')) {
-        return servedConfig({ PASSWORD_LOGIN: false, ALLOW_REGISTRATION: false, INSTANCE_ID: 'aaa', VERSION: 'v1.0.0' })
+        return servedConfig({ PASSWORD_LOGIN: false, ALLOW_REGISTRATION: false, INSTANCE_ID: 'aaa', MCP_URL: 'https://a.example.test/mcp', VERSION: 'v1.0.0' })
       }
       throw new Error('unreachable')
     }))
@@ -97,6 +98,7 @@ it('drops the previous server config when switching servers', async () => {
     expect(window.econumoConfig.PASSWORD_LOGIN).toBe(true)
     expect(window.econumoConfig.ALLOW_REGISTRATION).toBe(true)
     expect(window.econumoConfig.INSTANCE_ID).toBe('')
+    expect(window.econumoConfig.MCP_URL).toBe('')
     expect(useServerConfig.getState().serverVersion).toBeNull()
     expect(useServerConfig.getState().revision).toBeGreaterThan(revision)
   } finally {

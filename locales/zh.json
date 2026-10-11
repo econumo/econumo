@@ -1853,6 +1853,40 @@
       "readonly": "只读访问权限——已禁用修改"
     }
   },
+  "authserver": {
+    "consent": {
+      "title": "将应用连接到 Econumo",
+      "wantsAccess": "请求访问您的 Econumo 账户。",
+      "redirect": "允许后，您将被转到 {host}。",
+      "loopback": "允许后，您将返回此电脑上的应用。",
+      "fullAccess": "它将能够读取并更改您所有的 Econumo 数据。",
+      "signedInAs": "当前登录账户：{email}",
+      "switchAccount": "不是您？切换账户",
+      "allow": "允许",
+      "deny": "拒绝",
+      "invalidTitle": "该应用发送了无效的请求",
+      "invalidBody": "Econumo 无法连接该应用。请返回应用后重试。",
+      "returnToHost": "返回 {host}",
+      "returnToApp": "返回应用",
+      "readonly": "您的账户为只读，因此无法连接应用。"
+    },
+    "apps": {
+      "title": "已连接的应用",
+      "description": "您已允许访问 Econumo 数据的应用，例如 Claude 或 Codex。撤销某个应用后，它会立即退出登录。",
+      "empty": "尚未连接任何应用。",
+      "howTo": "在 Claude 或 Codex 中，使用此地址添加自定义连接器或 MCP 服务器，并在提示时登录。",
+      "unavailable": "此服务器不支持连接 AI 应用。管理员需要将 ECONUMO_URL 设置为服务器的 https 地址（不含路径）。",
+      "copy": "复制",
+      "copied": "已复制",
+      "revoke": "撤销",
+      "revokeConfirm": "{name} 将无法再访问您的 Econumo 数据。",
+      "connected": "连接于 {date}",
+      "lastUsed": "上次使用 {when}",
+      "loopback": "在这台电脑上运行",
+      "returnsTo": "会将您带回 {host}",
+      "menuItem": "已连接的应用"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "此值不能为空。",
@@ -1947,6 +1981,12 @@
       "name_length": "标签名称需为 {min}-{max} 个字符。",
       "cannot_be_merged": "无法合并所选标签。",
       "list_empty": "标签列表为空。"
+    },
+    "authserver": {
+      "disabled": "此服务器不支持连接应用。",
+      "client_not_found": "此应用的注册已过期或无法识别。请在应用中移除 Econumo，然后重新添加。",
+      "redirect_uri_mismatch": "此登录链接对该应用无效。请从应用中重新开始连接。",
+      "grant_not_found": "未找到已连接的应用。"
     },
     "oauth": {
       "provider_not_configured": "登录提供方未配置",
