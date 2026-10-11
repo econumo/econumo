@@ -43,8 +43,8 @@ jobs:
             # ("compile: version ... does not match go tool version ...").
             GOTOOLCHAIN: local
         steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-go@v5
+            - uses: actions/checkout@v7
+            - uses: actions/setup-go@v7
               with:
                   go-version-file: go.mod
                   cache-dependency-path: go.sum
@@ -76,14 +76,14 @@ jobs:
                   go tool cover -html=coverage.out -o coverage.html
             - name: Upload coverage profile
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: coverage
                   path: coverage.out
                   if-no-files-found: ignore
             - name: Upload HTML coverage report
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: coverage-html
                   path: coverage.html
@@ -115,8 +115,8 @@ jobs:
                     --health-timeout 5s
                     --health-retries 10
         steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-go@v5
+            - uses: actions/checkout@v7
+            - uses: actions/setup-go@v7
               with:
                   go-version-file: go.mod
                   cache-dependency-path: go.sum
