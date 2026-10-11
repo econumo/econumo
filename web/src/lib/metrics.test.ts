@@ -139,7 +139,7 @@ describe('analyticsEventName', () => {
     ['appPageView', 'page_view'],
     ['appTransactionCreate', 'transaction_create'],
     ['appUIModalTransactionOpen', 'ui_modal_transaction_open'],
-    ['appApiAccountOrderList', 'api_account_order_list'],
+    ['appAccountOrderList', 'account_order_list'],
     ['appBudgetTransferEnvelopeBudget', 'budget_transfer_envelope_budget'],
   ])('%s -> %s', (metric, expected) => {
     expect(analyticsEventName(metric)).toBe(expected)
