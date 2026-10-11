@@ -56,7 +56,7 @@ jobs:
       tags: ${{ steps.set.outputs.tags }}
     steps:
       - name: Checkout source branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.branch }}
           fetch-depth: 0
@@ -151,24 +151,24 @@ jobs:
       packages: write
     steps:
       - name: Checkout tagged ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.create-tag.outputs.version }}
 
       # No QEMU: both build stages run on $BUILDPLATFORM (Go cross-compiles,
       # the SPA is platform-independent) and the distroless stage only COPYs.
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deployment/docker/Dockerfile
@@ -187,12 +187,12 @@ jobs:
       contents: read
     steps:
       - name: Checkout tagged ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.create-tag.outputs.version }}
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
 
@@ -208,7 +208,7 @@ jobs:
           pnpm run build
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
@@ -226,7 +226,7 @@ jobs:
           cd release-out && sha256sum econumo-linux-amd64 econumo-linux-arm64 > SHA256SUMS
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-binaries
           path: release-out/
@@ -257,13 +257,13 @@ jobs:
       contents: write
     steps:
       - name: Checkout tagged ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ needs.create-tag.outputs.version }}
 
       - name: Set node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           registry-url: https://registry.npmjs.org/
           node-version: lts/*
@@ -300,8 +300,10 @@ jobs:
               ;;
           esac
 
+      # download-artifact@v8 pairs with upload-artifact@v7: the two no longer
+      # share major numbers, both sit on the same artifacts backend.
       - name: Download release binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-binaries
           path: release-out
