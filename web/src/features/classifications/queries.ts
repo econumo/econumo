@@ -87,6 +87,16 @@ type EntityDto = CategoryDto | PayeeDto | TagDto | LabelDto
 function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
   const queryClient = useQueryClient()
   const key = queryKeys[kind]
+  // A merge or delete drops a budget element (and re-points or cascades its
+  // limits, transactions and comments). The Plan view reads its own queries,
+  // separate from the Budget view's, so every one of them must refetch or the
+  // Plan keeps the gone row until a manual sync.
+  const invalidateBudgetViews = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetComments })
+  }
   return {
     replaceItem: (id: Id, patch: Partial<EntityDto>) => {
       queryClient.setQueryData<EntityDto[]>(key, (prev) => (prev ?? []).map((i) => (i.id === id ? { ...i, ...patch } : i)))
@@ -114,13 +124,14 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
         (prev ?? []).map((r) => (r[txField] === id ? { ...r, [txField]: null } : r)),
       )
       if (touchesBudget) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+        invalidateBudgetViews()
       }
     },
     // A merge RE-POINTS rows at the target rather than nulling them, which is
-    // what separates it from remove() above. The budget is always invalidated:
-    // the source's per-period limits were folded into the target's, so a cached
-    // budget would still show the pre-merge numbers and read as data loss.
+    // what separates it from remove() above. The budget views are always
+    // invalidated: the source's per-period limits were folded into the target's,
+    // so a cached budget or plan would still show the pre-merge numbers and read
+    // as data loss.
     merge: (sourceId: Id, targetId: Id, txField: 'categoryId' | 'payeeId' | 'tagId') => {
       queryClient.setQueryData<EntityDto[]>(key, (prev) => (prev ?? []).filter((i) => i.id !== sourceId))
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
@@ -129,7 +140,7 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) =>
         (prev ?? []).map((r) => (r[txField] === sourceId ? { ...r, [txField]: targetId } : r)),
       )
-      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      invalidateBudgetViews()
     },
     // Labels are many-to-many, so a merge rewrites the id sets: a row already
     // carrying both must end up with ONE target id, not a duplicate.
@@ -142,7 +153,7 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) =>
         (prev ?? []).map((r) => ({ ...r, labelIds: swap(r.labelIds ?? []) })),
       )
-      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      invalidateBudgetViews()
     },
     replaceAll: (items: EntityDto[]) => queryClient.setQueryData(key, items),
     // Reorder the cached list to an explicit id order and re-stamp dense

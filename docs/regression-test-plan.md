@@ -861,6 +861,13 @@ and on tablet/phone only with a hardware keyboard.
       A guest (or anyone on an archived budget) gets no structure actions:
       only Edit, Archive, Merge into… and Delete where they own the item. No menu offers Show transactions:
       a row's transactions open from its Spent / Received / Saved figure.
+- [ ] Plan grid (/plan) ⋮ menu: Merge into… a category or tag that has plans
+      → the source row disappears and the target's planned and actual
+      figures include the source's AT ONCE, without the sync button or a
+      reload; the same for Delete (the row disappears at once). Switch to
+      the Budget view afterwards: it shows the merged figures too.
+      Regression: the Plan grid kept the merged row until the sync button
+      was pressed.
 - [ ] Budget view, Create folder from the Income line: the new folder shows
       at once under Income, empty ("This folder is empty…", a muted dash in
       each figure column instead of zeros, on the phone too), and not under
