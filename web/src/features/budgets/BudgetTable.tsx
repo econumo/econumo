@@ -709,21 +709,25 @@ export function BudgetTotals({
   const danger = overBudget(totals, future)
   return (
     <>
-      <div className={`hidden ${LINE} min-h-10 border-t border-foreground/20 py-1.5 text-[15px] sm:flex`} data-testid="budget-totals">
-        <span className={NAME_COL}>
-          <span className="truncate">{t('budgets.page.budget.structure.total.name')}</span>
-        </span>
-        <span className={FIRST_COL}>
-          {!isZero(totals.carry) ? <CarryLeadIn carry={totals.carry} text={`${moneyFormat(totals.carry, budgetCurrency, opts)} +`} testId="totals-carry" /> : null}
-          <span className="shrink-0">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
-        </span>
-        <span className={`${SECOND_COL} ${danger ? 'text-expense' : 'text-muted-foreground'}`}>
-          {future ? <Dash /> : moneyFormat(totals.spent, budgetCurrency, opts)}
-        </span>
-        <span className={`${THIRD_COL} ${danger ? 'text-expense' : ''}`} data-testid="totals-available">
-          {nothingToShow(totals) ? <Dash /> : moneyFormat(totals.available, budgetCurrency, opts)}
-        </span>
-        {actionsColumn ? <ActionsSpacer /> : null}
+      {/* the rule sits on a wrapper: on the line itself the hover's rounded corners
+          would bend it */}
+      <div className="hidden border-t border-foreground/20 sm:block">
+        <div className={`${LINE} min-h-10 rounded-md py-1.5 text-[15px] hover:bg-accent/50`} data-testid="budget-totals">
+          <span className={NAME_COL}>
+            <span className="truncate">{t('budgets.page.budget.structure.total.name')}</span>
+          </span>
+          <span className={FIRST_COL}>
+            {!isZero(totals.carry) ? <CarryLeadIn carry={totals.carry} text={`${moneyFormat(totals.carry, budgetCurrency, opts)} +`} testId="totals-carry" /> : null}
+            <span className="shrink-0">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
+          </span>
+          <span className={`${SECOND_COL} ${danger ? 'text-expense' : 'text-muted-foreground'}`}>
+            {future ? <Dash /> : moneyFormat(totals.spent, budgetCurrency, opts)}
+          </span>
+          <span className={`${THIRD_COL} ${danger ? 'text-expense' : ''}`} data-testid="totals-available">
+            {nothingToShow(totals) ? <Dash /> : moneyFormat(totals.available, budgetCurrency, opts)}
+          </span>
+          {actionsColumn ? <ActionsSpacer /> : null}
+        </div>
       </div>
 
       {/* the phone table hides the budget column, so the totals unfold into

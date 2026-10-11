@@ -355,7 +355,8 @@ export function FolderLine({
 }
 
 /** A totals line: its label in the name column, one value per column. The Budget
- *  view has a single value, in the last column. */
+ *  view has a single value, in the last column. It tints under the pointer like
+ *  the rows above it, so a figure is easy to follow across the line. */
 export function TotalLine({
   testId,
   label,
@@ -375,7 +376,7 @@ export function TotalLine({
   const plan = useLineLayout().kind === 'plan'
   const isNegative = (i: number) => (Array.isArray(negative) ? !!negative[i] : negative)
   return (
-    <div className={plan ? `${PLAN_LINE} min-h-8` : `${LINE} min-h-8 py-0.5`} data-testid={testId}>
+    <div className={plan ? `${PLAN_LINE} min-h-8 hover:bg-accent/50` : `${LINE} min-h-8 rounded-md py-0.5 hover:bg-accent/50`} data-testid={testId}>
       <span className={`${plan ? PLAN_NAME_COL : NAME_COL} text-sm ${strong ? '' : 'text-muted-foreground'}`}>
         <span className="truncate">{label}</span>
       </span>
