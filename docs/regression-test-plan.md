@@ -1083,6 +1083,9 @@ and on tablet/phone only with a hardware keyboard.
       - the editor takes only the plan's part of the cell: the month's actual
         (on a savings row, its balance) stays in view on the left while the
         plan is edited;
+      - the editor draws no box or ring of its own: the cell's selection ring
+        is the only border while editing, and the figure stays exactly where
+        the read-only plan was (no shift when editing starts or ends);
       - typing a digit, `-`, `.` or `,` edits the cell in place, replacing
         the value with what was typed;
       - F2, Enter or a double-click edit the current value, caret at the end;
