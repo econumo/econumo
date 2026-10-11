@@ -156,3 +156,26 @@ it('surfaces a server rejection instead of silently staying open', async () => {
   expect(await screen.findByText('Tag already exists.')).toBeInTheDocument()
   expect(onClose).not.toHaveBeenCalled()
 })
+
+it('a fixed kind hides the choice and creates that kind, handing the new row to onCreated', async () => {
+  let tagBody: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/tag/create-tag', async ({ request }) => {
+      tagBody = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { item: { id: 'tag-new', ownerUserId: 'u1', name: 'Wedding', icon: 'tag', position: 1, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' } },
+      })
+    }),
+  )
+  const onCreated = vi.fn()
+  const user = userEvent.setup()
+  const { onClose } = renderDialog({ fixedKind: 'tag', onCreated })
+  expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
+  expect(screen.getByTestId('kind-icon')).toHaveTextContent('tag')
+  await user.type(screen.getByLabelText('Name'), 'Wedding')
+  await user.click(screen.getByRole('button', { name: 'Create' }))
+  await waitFor(() => expect(onCreated).toHaveBeenCalledWith('tag', expect.objectContaining({ id: 'tag-new' })))
+  expect(tagBody!.name).toBe('Wedding')
+  expect(onClose).toHaveBeenCalled()
+})

@@ -7,6 +7,7 @@ import type { TagDto } from '@/api/dto/tag'
 import type { Id } from '@/api/types'
 import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { MergeDialog } from '@/features/classifications/MergeDialog'
+import { TagDialog } from '@/features/classifications/TagDialog'
 import {
   useArchiveCategory,
   useArchiveTag,
@@ -35,8 +36,9 @@ type Pending = { kind: 'category'; item: CategoryDto } | { kind: 'tag'; item: Ta
 /**
  * The budget's ⋮ menus manage the categories and tags behind their lines the way
  * the Categories and Tags pages do: archive or unarchive, merge, delete, and create
- * a category right where it is wanted. Categories and tags are personal, so only
- * their owner may change them; for anyone else the actions show greyed out.
+ * a category or a budget tag right where it is wanted. Categories and tags are
+ * personal, so only their owner may change them; for anyone else the actions show
+ * greyed out.
  */
 export function useClassificationMenu(budgetId: Id) {
   const { t } = useTranslation()
@@ -56,6 +58,8 @@ export function useClassificationMenu(budgetId: Id) {
   const [merging, setMerging] = useState<Pending | null>(null)
   const [deleting, setDeleting] = useState<Pending | null>(null)
   const [creating, setCreating] = useState<{ type: CategoryType; folderId: Id | null } | null>(null)
+  // the folder (null: No folder) a new budget tag is placed in; undefined while closed
+  const [creatingTagIn, setCreatingTagIn] = useState<Id | null | undefined>(undefined)
 
   const resolve = (ref: ClassificationRef): Pending | null => {
     if (ref.kind === 'category') {
@@ -97,6 +101,12 @@ export function useClassificationMenu(budgetId: Id) {
   const newCategoryAction = (type: CategoryType, folderId: Id | null): MenuAction => ({
     label: t('classifications.categories.modals.create.header'),
     onSelect: () => setCreating({ type, folderId }),
+  })
+
+  /** New tag: a budget tag (tags are expense-only), placed like New category */
+  const newTagAction = (folderId: Id | null): MenuAction => ({
+    label: t('classifications.tags.modals.create.header'),
+    onSelect: () => setCreatingTagIn(folderId),
   })
 
   const mergeCandidates = (): (CategoryDto | TagDto)[] => {
@@ -167,8 +177,16 @@ export function useClassificationMenu(budgetId: Id) {
           )
         }}
       />
+      <TagDialog
+        open={creatingTagIn !== undefined}
+        fixedKind="tag"
+        onClose={() => setCreatingTagIn(undefined)}
+        onCreated={(_kind, item) => {
+          moveElement.mutate({ budgetId, item: { id: item.id, folderId: creatingTagIn ?? null, position: 0, afterId: null } })
+        }}
+      />
     </>
   )
 
-  return { actionsFor, newCategoryAction, dialogs }
+  return { actionsFor, newCategoryAction, newTagAction, dialogs }
 }

@@ -31,13 +31,15 @@ interface TagDialogProps {
   /** creating on behalf of a caller who will attach the row to something (a
    *  transaction, a recurring template) rather than just adding it to a list */
   onCreated?: (kind: ClassificationKind, item: { id: string }) => void
+  /** create only this kind, with no budget/reporting choice */
+  fixedKind?: ClassificationKind
 }
 
-export function TagDialog({ open, item, onClose, accountId, ownerUserId, onCreated }: TagDialogProps) {
+export function TagDialog({ open, item, onClose, accountId, ownerUserId, onCreated, fixedKind }: TagDialogProps) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const isNew = !item
-  const [kind, setKind] = useState<ClassificationKind>(CLASSIFICATION_KINDS[0])
+  const [kind, setKind] = useState<ClassificationKind>(fixedKind ?? CLASSIFICATION_KINDS[0])
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -48,11 +50,11 @@ export function TagDialog({ open, item, onClose, accountId, ownerUserId, onCreat
 
   useEffect(() => {
     if (open) {
-      setKind(item?.kind ?? CLASSIFICATION_KINDS[0])
+      setKind(item?.kind ?? fixedKind ?? CLASSIFICATION_KINDS[0])
       setName(item?.name ?? '')
       setError(null)
     }
-  }, [open, item])
+  }, [open, item, fixedKind])
 
   const title = isNew
     ? kind === 'tag'
@@ -114,7 +116,7 @@ export function TagDialog({ open, item, onClose, accountId, ownerUserId, onCreat
                 edit: the row's own stored icon (no picker here to change it). */}
             <EntityIcon name={isNew ? DEFAULT_ICON[kind] : (item?.icon ?? DEFAULT_ICON[kind])} className="text-2xl text-muted-foreground" />
           </div>
-          {isNew ? (
+          {isNew && fixedKind ? null : isNew ? (
             <div className="flex flex-col gap-1.5" role="radiogroup">
               {CLASSIFICATION_KINDS.map((option) => (
                 <button

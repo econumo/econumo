@@ -2633,6 +2633,60 @@ it('a section ⋮ menu creates a folder on that section\'s side', async () => {
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New folder' })).not.toBeInTheDocument())
 })
 
+it('a folder ⋮ menu creates a budget tag in that folder; income folders never offer one', async () => {
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const planWithFolders: BudgetPlanDto = {
+    ...plan,
+    structure: {
+      ...plan.structure,
+      folders: [...plan.structure.folders, { id: 'bf-bonus', name: 'Bonuses Folder', position: 1 }],
+      elements: plan.structure.elements.map((el) => (el.id === 'ie1' ? { ...el, folderId: 'bf-bonus' } : el)),
+    },
+  }
+  const paths: string[] = []
+  let tagBody: unknown
+  let moveBody: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithFolders),
+    http.post('*/api/v1/tag/create-tag', async ({ request }) => {
+      paths.push('create-tag')
+      tagBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: { item: { id: 'tag-new', ownerUserId: 'u1', name: 'Wedding', position: 9, icon: 'tag', isArchived: 0, createdAt: '', updatedAt: '' } } })
+    }),
+    http.post('*/api/v1/budget/move-element', async ({ request }) => {
+      paths.push('move-element')
+      moveBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+
+  await user.click(await screen.findByRole('button', { name: 'menu Bonuses Folder' }))
+  expect(await screen.findByRole('menuitem', { name: 'New category' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'New tag' })).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await user.click(within(screen.getByTestId('plan-section-line-income')).getByRole('button', { name: 'menu Income' }))
+  expect(await screen.findByRole('menuitem', { name: 'New category' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'New tag' })).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+
+  await user.click(await screen.findByRole('button', { name: 'menu Essentials' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'New tag' }))
+  const dialog = await screen.findByRole('dialog', { name: 'New tag' })
+  expect(within(dialog).queryByRole('radiogroup')).not.toBeInTheDocument()
+  await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Wedding')
+  await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+  await waitFor(() => expect(paths).toEqual(['create-tag', 'move-element']))
+  expect(tagBody).toMatchObject({ name: 'Wedding' })
+  expect(moveBody).toEqual({ budgetId: 'b1', id: 'tag-new', folderId: 'bf1', afterId: null })
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New tag' })).not.toBeInTheDocument())
+})
+
 it('tablet: drag handles show only in Edit structure', async () => {
   usePlanHandlers()
   mockCompactViewport()
