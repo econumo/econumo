@@ -228,6 +228,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
                 (() => {
                   const tx = row.tx!
                   const currency = currencies.find((c) => c.id === tx.currencyId)
+                  const classification = [tx.category?.name, tx.payee?.name].filter(Boolean).join(' · ')
                   return (
                     <button
                       key={row.key}
@@ -239,12 +240,24 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
                     >
                       <EntityIcon name={tx.category?.icon || element.icon} className="text-base text-muted-foreground" />
                       <span className="flex min-w-0 flex-1 flex-col text-left">
-                        <span className="truncate">{tx.description || tx.category?.name || displayName}</span>
-                        {tx.description && (tx.category || tx.payee) ? (
-                          <span className="truncate text-xs text-muted-foreground">
-                            {[tx.category?.name, tx.payee?.name].filter(Boolean).join(' · ')}
+                        {tx.description ? (
+                          <>
+                            <span className="truncate">{tx.description}</span>
+                            {classification ? (
+                              <span className="truncate text-xs text-muted-foreground">{classification}</span>
+                            ) : null}
+                          </>
+                        ) : (
+                          // no note: category and payee share the one line
+                          <span className="truncate">
+                            {tx.category?.name || (tx.payee ? null : displayName)}
+                            {tx.payee ? (
+                              <span className="text-muted-foreground">
+                                {tx.category ? ` · ${tx.payee.name}` : tx.payee.name}
+                              </span>
+                            ) : null}
                           </span>
-                        ) : null}
+                        )}
                       </span>
                       <span className="tabular-nums text-muted-foreground">
                         {/* spend is negative; money arriving (direction 'in') is positive */}

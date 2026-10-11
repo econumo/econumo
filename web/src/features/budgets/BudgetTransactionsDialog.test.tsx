@@ -28,7 +28,7 @@ const wireItems = [
   {
     // a partner's transaction the user cannot see in the plain list -> read-only row
     id: 'tx-foreign', author: fixtureOwner, currencyId: 'cur-usd', amount: '5', description: 'partner spend',
-    category: { id: 'cat-food', name: 'Food', icon: 'restaurant' }, payee: null, tag: null,
+    category: { id: 'cat-food', name: 'Food', icon: 'restaurant' }, payee: { id: 'payee-1', name: 'Corner Shop' }, tag: null,
     spentAt: '2026-07-02 10:00:00',
   },
 ]
@@ -66,12 +66,31 @@ it('every row opens the preview; a foreign transaction shows disabled Edit/Delet
   expect(own).toHaveTextContent('coffee beans')
   const foreign = screen.getByTestId('budget-tx-tx-foreign')
   expect(foreign.tagName).toBe('BUTTON')
+  expect(foreign).toHaveTextContent('partner spendFood · Corner Shop')
   await user.click(foreign)
   const edit = await screen.findByRole('button', { name: 'Edit' })
   expect(edit).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled()
   // synthesized preview still carries the wire details (list row + preview card)
   expect(screen.getAllByText('partner spend').length).toBeGreaterThan(1)
+})
+
+it('a row without a note shows its category and payee on one line', async () => {
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { items: [{
+          id: 'tx-plain', author: fixtureOwner, currencyId: 'cur-usd', amount: '7.48', description: '',
+          category: { id: 'cat-food', name: 'Food', icon: 'restaurant' }, payee: { id: 'payee-1', name: 'Corner Shop' },
+          tag: null, labelIds: [], spentAt: '2026-07-02 10:00:00',
+        }] },
+      }),
+    ),
+  )
+  renderDialog()
+  const row = await screen.findByTestId('budget-tx-tx-plain')
+  expect(row).toHaveTextContent('Food · Corner Shop')
 })
 
 it('clicking a transaction opens the preview; Edit hands off to the transaction modal', async () => {
