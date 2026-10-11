@@ -5,12 +5,11 @@ import { Link, useLocation, useSearchParams } from 'react-router'
 import { authorizationRequestFromSearch } from '@/api/authserver'
 import type { AuthorizationRequestResultDto } from '@/api/dto/authserver'
 import { CoinLoader } from '@/components/CoinLoader'
-import { LanguageBadge } from '@/components/LanguageBadge'
 import { Button } from '@/components/ui/button'
 import { apiErrorMessage } from '@/lib/apiError'
 import { RouterPage } from '@/app/router-pages'
 import { useUserData } from '@/features/user/queries'
-import logo from '@/assets/econumo.svg'
+import { AuthFrame } from '@/app/layouts/AuthFrame'
 import { clearPostLoginRedirect, rememberPostLoginRedirect } from './postLoginRedirect'
 import {
   InvalidRedirectError,
@@ -21,19 +20,17 @@ import {
 } from './queries'
 
 function Shell({ children }: { children: ReactNode }) {
-  const { t } = useTranslation()
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-econumo-card p-4 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1rem)]">
-      <div className="relative">
-        <img src={logo} width={194} height={20} alt={t('common.econumo.label')} />
-        <div className="absolute top-1/2 left-full ml-2 -translate-y-1/2">
-          <LanguageBadge />
-        </div>
-      </div>
-      <div className="flex w-full max-w-md flex-col gap-5 rounded-xl border bg-background p-6 shadow-sm">{children}</div>
-    </div>
+    <AuthFrame>
+      <div className="flex flex-col gap-5">{children}</div>
+    </AuthFrame>
   )
 }
+
+// Same weights as the sign-in form: the brand yellow for the action, gray for
+// the way out, both full width and tall enough to hit on a phone.
+const primaryButton = 'h-11 w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85'
+const secondaryButton = 'h-11 w-full'
 
 const ARM_DELAY_MS = 500
 
@@ -104,7 +101,7 @@ function useInteractionArmed() {
 function AllowButton({ disabled, onClick, children }: { disabled: boolean; onClick: () => void; children: ReactNode }) {
   const armed = useInteractionArmed()
   return (
-    <Button disabled={disabled || !armed} onClick={onClick}>
+    <Button className={primaryButton} disabled={disabled || !armed} onClick={onClick}>
       {children}
     </Button>
   )
@@ -170,7 +167,9 @@ export function ConsentPage() {
         <h1 className="text-lg font-semibold">{t('authserver.consent.invalidTitle')}</h1>
         <p className="text-sm text-muted-foreground">{t('authserver.consent.invalidBody')}</p>
         {target && isSafeRedirectUrl(target) && (
-          <Button onClick={() => window.location.assign(target)}>{returnLabel(t, result)}</Button>
+          <Button className={primaryButton} onClick={() => window.location.assign(target)}>
+            {returnLabel(t, result)}
+          </Button>
         )}
       </Shell>
     )
@@ -183,7 +182,7 @@ export function ConsentPage() {
         <h1 className="text-lg font-semibold">{result.clientName}</h1>
         <p className="text-sm text-muted-foreground">{t('authserver.consent.readonly')}</p>
         {decline.error && <p className="text-sm text-destructive">{apiErrorMessage(decline.error)}</p>}
-        <Button disabled={decline.isPending} onClick={() => decline.mutate(req)}>
+        <Button className={primaryButton} disabled={decline.isPending} onClick={() => decline.mutate(req)}>
           {t('authserver.consent.returnToApp')}
         </Button>
       </Shell>
@@ -209,21 +208,21 @@ export function ConsentPage() {
         </p>
       </div>
       {failure && <p className="text-sm text-destructive">{apiErrorMessage(failure)}</p>}
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button variant="outline" disabled={busy} onClick={() => decline.mutate(req)}>
-          {t('authserver.consent.deny')}
-        </Button>
+      <div className="flex flex-col gap-3">
         <AllowButton disabled={busy} onClick={() => approve.mutate(req)}>
           {t('authserver.consent.allow')}
         </AllowButton>
+        <Button variant="secondary" className={secondaryButton} disabled={busy} onClick={() => decline.mutate(req)}>
+          {t('authserver.consent.deny')}
+        </Button>
       </div>
       {user && (
-        <p className="text-xs text-muted-foreground">
-          {t('authserver.consent.signedInAs', { email: user.email })}{' '}
-          <Link to={RouterPage.LOGOUT} className="underline">
+        <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+          <p className="break-words">{t('authserver.consent.signedInAs', { email: user.email })}</p>
+          <Link to={RouterPage.LOGOUT} className="w-fit underline hover:text-foreground">
             {t('authserver.consent.switchAccount')}
           </Link>
-        </p>
+        </div>
       )}
     </Shell>
   )
