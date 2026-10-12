@@ -382,7 +382,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       Wallet" centered at the bottom.
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source); the page shows
-      "Connected" and an open "Setup guide" ("0 of 7 done") with a seven-step checklist (Install econumo-wallet-v1, Install
+      "Connected · No taps yet" directly followed by an open "Setup guide"
+      ("0 of 7 done"), with no card sections until the first tap, and a seven-step checklist (Install econumo-wallet-v1, Install
       econumo-setup-v1, Configure the Shortcuts, Run econumo-wallet-v1 once,
       Create the automation, Make the first payment with the iPhone unlocked,
       Switch the automation to Run Immediately), every box unticked; "Disconnect Apple Wallet" (confirmation) removes the source, its

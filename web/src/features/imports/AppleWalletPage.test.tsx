@@ -69,3 +69,12 @@ it('no inbox row when nothing from this source is waiting', async () => {
   expect(await screen.findByText('Connected')).toBeInTheDocument()
   expect(screen.queryByRole('link', { name: /Review in Inbox/ })).toBeNull()
 })
+
+it('before the first card the open setup guide follows the status, with no empty card list', async () => {
+  server.use(...coreHandlers({ importSources: [{ ...wireSource, cards: [] }] }))
+  renderPage()
+  expect(await screen.findByText('No taps yet')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Setup guide/ })).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.queryByRole('heading', { name: 'Cards' })).toBeNull()
+  expect(screen.queryByText(/No cards yet/)).toBeNull()
+})

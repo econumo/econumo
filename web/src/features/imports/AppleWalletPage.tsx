@@ -51,7 +51,8 @@ export function AppleWalletPage() {
         {wallet ? (
           <>
             <WalletStatus source={wallet} />
-            <ImportCards source={wallet} footnote={t('imports.apple_wallet.same_named_cards')} />
+            {/* until the first tap arrives setup is the only thing to do, and the card list would be empty */}
+            {wallet.cards.length > 0 ? <ImportCards source={wallet} footnote={t('imports.apple_wallet.same_named_cards')} /> : null}
             <AppleWalletSetup key={wallet.id} source={wallet} />
             <AppleWalletDisconnect source={wallet} />
           </>
