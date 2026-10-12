@@ -12872,6 +12872,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.SharedAccess"
                     }
                 },
+                "transactionsRevision": {
+                    "description": "TransactionsRevision counts the committed changes to the account's\ntransactions; clients re-download an account's transactions when it moves.",
+                    "type": "integer"
+                },
                 "type": {
                     "type": "integer"
                 }

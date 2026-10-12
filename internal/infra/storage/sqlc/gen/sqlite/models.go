@@ -26,15 +26,16 @@ type AccessToken struct {
 }
 
 type Account struct {
-	ID         string
-	CurrencyID string
-	UserID     string
-	Name       string
-	Type       int16
-	Icon       string
-	IsDeleted  bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID                   string
+	CurrencyID           string
+	UserID               string
+	Name                 string
+	Type                 int16
+	Icon                 string
+	IsDeleted            bool
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	TransactionsRevision int64
 }
 
 type AccountsAccess struct {

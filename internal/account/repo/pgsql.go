@@ -47,6 +47,10 @@ func (pgsqlQuerier) CountAvailableAccounts(ctx context.Context, db backend.DBTX,
 	return pgsqlgen.New(db).CountAvailableAccounts(ctx, userID)
 }
 
+func (pgsqlQuerier) GetAccountTransactionsRevision(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	return pgsqlgen.New(db).GetAccountTransactionsRevision(ctx, id)
+}
+
 func (pgsqlQuerier) UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error {
 	return pgsqlgen.New(db).UpsertAccount(ctx, pgsqlgen.UpsertAccountParams(p))
 }

@@ -161,8 +161,9 @@ type envelope struct {
 }
 
 type accountItem struct {
-	ID    string `json:"id"`
-	Owner struct {
+	ID                   string `json:"id"`
+	TransactionsRevision *int64 `json:"transactionsRevision"`
+	Owner                struct {
 		ID     string `json:"id"`
 		Avatar string `json:"avatar"`
 		Name   string `json:"name"`

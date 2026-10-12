@@ -108,6 +108,7 @@ type Querier interface {
 	// the sqlite variant for documentation.
 	GetAccountByID(ctx context.Context, id string) (Account, error)
 	GetAccountOption(ctx context.Context, arg GetAccountOptionParams) (AccountsOption, error)
+	GetAccountTransactionsRevision(ctx context.Context, id string) (int64, error)
 	// Period-averaged rate per currency for a base currency over [start, end).
 	GetAverageCurrencyRates(ctx context.Context, arg GetAverageCurrencyRatesParams) ([]GetAverageCurrencyRatesRow, error)
 	GetBudgetAccess(ctx context.Context, arg GetBudgetAccessParams) (BudgetsAccess, error)

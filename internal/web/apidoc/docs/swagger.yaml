@@ -144,6 +144,11 @@ definitions:
         items:
           $ref: '#/definitions/model.SharedAccess'
         type: array
+      transactionsRevision:
+        description: |-
+          TransactionsRevision counts the committed changes to the account's
+          transactions; clients re-download an account's transactions when it moves.
+        type: integer
       type:
         type: integer
     type: object

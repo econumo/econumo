@@ -2,19 +2,19 @@
 -- the sqlite variant for documentation.
 
 -- name: GetAccountByID :one
-SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at
+SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at, transactions_revision
 FROM accounts
 WHERE id = $1;
 
 -- name: ListDeletedAccounts :many
-SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at
+SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at, transactions_revision
 FROM accounts WHERE is_deleted = TRUE ORDER BY id;
 
 -- name: ListAvailableAccounts :many
 -- Available accounts: own OR ACCEPTED shared via accounts_access, not deleted
 -- (see the sqlite variant, incl. the pending-grant and ORDER BY rationale). $1
 -- is reused for both sides so the param stays single.
-SELECT DISTINCT a.id, a.currency_id, a.user_id, a.name, a.type, a.icon, a.is_deleted, a.created_at, a.updated_at
+SELECT DISTINCT a.id, a.currency_id, a.user_id, a.name, a.type, a.icon, a.is_deleted, a.created_at, a.updated_at, a.transactions_revision
 FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
 WHERE a.is_deleted = false AND (a.user_id = $1 OR (aa.user_id = $1 AND aa.is_accepted = true))
@@ -27,6 +27,9 @@ SELECT COUNT(*) FROM (
     LEFT JOIN accounts_access aa ON aa.account_id = a.id
     WHERE a.is_deleted = false AND (a.user_id = $1 OR (aa.user_id = $1 AND aa.is_accepted = true))
 ) t;
+
+-- name: GetAccountTransactionsRevision :one
+SELECT transactions_revision FROM accounts WHERE id = $1;
 
 -- name: UpsertAccount :exec
 INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at)

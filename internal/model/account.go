@@ -48,6 +48,9 @@ type Account struct {
 	IsDeleted  bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	// TransactionsRevision is read-only: it moves only through the revision
+	// bumper, never through Save.
+	TransactionsRevision int64
 }
 
 // NewAccount constructs a freshly-created account (always CREDIT_CARD). The

@@ -40,6 +40,10 @@ func (sqliteQuerier) CountAvailableAccounts(ctx context.Context, db backend.DBTX
 	return sqlitegen.New(db).CountAvailableAccounts(ctx, sqlitegen.CountAvailableAccountsParams{UserID: userID, UserID_2: userID})
 }
 
+func (sqliteQuerier) GetAccountTransactionsRevision(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	return sqlitegen.New(db).GetAccountTransactionsRevision(ctx, id)
+}
+
 func (sqliteQuerier) UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error {
 	return sqlitegen.New(db).UpsertAccount(ctx, p)
 }

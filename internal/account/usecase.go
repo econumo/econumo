@@ -165,6 +165,8 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *mo
 		Type:         int(acct.Type.Int16()),
 		Icon:         acct.Icon,
 		SharedAccess: shared,
+
+		TransactionsRevision: acct.TransactionsRevision,
 	}, nil
 }
 

@@ -20,6 +20,10 @@ type AccountStore interface {
 
 	GetByID(ctx context.Context, id vo.Id) (*model.Account, error)
 
+	// TransactionsRevision reads the current revision on its own, for results
+	// built from an aggregate loaded before the write that bumped it.
+	TransactionsRevision(ctx context.Context, id vo.Id) (int64, error)
+
 	// ListAvailable returns the user's non-deleted accounts.
 	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
 

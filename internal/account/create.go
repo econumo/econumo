@@ -153,6 +153,11 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req model.Cre
 	if err != nil {
 		return nil, err
 	}
+	// created predates the correction written in the tx, so its revision is stale.
+	item.TransactionsRevision, err = s.accounts.TransactionsRevision(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	idx, err := s.accountIndex(ctx, userID, created.ID)
 	if err != nil {
 		return nil, err

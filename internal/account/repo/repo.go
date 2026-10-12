@@ -49,6 +49,7 @@ type querier interface {
 	ListAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) ([]accountRow, error)
 	ListDeletedAccounts(ctx context.Context, db backend.DBTX) ([]accountRow, error)
 	CountAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) (int64, error)
+	GetAccountTransactionsRevision(ctx context.Context, db backend.DBTX, id string) (int64, error)
 	UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error
 	GetAccountOption(ctx context.Context, db backend.DBTX, p getOptionP) (optionRow, error)
 	ListAccountOptionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
@@ -100,6 +101,15 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Account, error) {
 		return nil, err
 	}
 	return hydrateAccount(row)
+}
+
+// TransactionsRevision reads the account's current revision.
+func (r *Repo) TransactionsRevision(ctx context.Context, id vo.Id) (int64, error) {
+	rev, err := r.q.GetAccountTransactionsRevision(ctx, r.db(ctx), id.String())
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, errs.NewNotFound("Account not found")
+	}
+	return rev, err
 }
 
 // ListAvailable returns the user's non-deleted accounts.
@@ -240,6 +250,7 @@ func hydrateAccount(row accountRow) (*model.Account, error) {
 		ID: id, UserID: userID, CurrencyID: currencyID, Name: row.Name,
 		Type: model.AccountType(row.Type), Icon: row.Icon, IsDeleted: row.IsDeleted,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		TransactionsRevision: row.TransactionsRevision,
 	}, nil
 }
 

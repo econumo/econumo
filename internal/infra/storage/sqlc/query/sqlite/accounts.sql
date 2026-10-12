@@ -4,12 +4,12 @@
 -- transactions table (see account_balance.sql).
 
 -- name: GetAccountByID :one
-SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at
+SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at, transactions_revision
 FROM accounts
 WHERE id = ?;
 
 -- name: ListDeletedAccounts :many
-SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at
+SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at, transactions_revision
 FROM accounts WHERE is_deleted = 1 ORDER BY id;
 
 -- name: ListAvailableAccounts :many
@@ -21,7 +21,7 @@ FROM accounts WHERE is_deleted = 1 ORDER BY id;
 -- return the same row order: get-account-list serves this order (reversed)
 -- directly, and an unordered DISTINCT differs between SQLite and PostgreSQL
 -- query plans.
-SELECT DISTINCT a.id, a.currency_id, a.user_id, a.name, a.type, a.icon, a.is_deleted, a.created_at, a.updated_at
+SELECT DISTINCT a.id, a.currency_id, a.user_id, a.name, a.type, a.icon, a.is_deleted, a.created_at, a.updated_at, a.transactions_revision
 FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
 WHERE a.is_deleted = 0 AND (a.user_id = ? OR (aa.user_id = ? AND aa.is_accepted = 1))
@@ -34,6 +34,9 @@ SELECT COUNT(*) FROM (
     LEFT JOIN accounts_access aa ON aa.account_id = a.id
     WHERE a.is_deleted = 0 AND (a.user_id = ? OR (aa.user_id = ? AND aa.is_accepted = 1))
 ) t;
+
+-- name: GetAccountTransactionsRevision :one
+SELECT transactions_revision FROM accounts WHERE id = ?;
 
 -- name: UpsertAccount :exec
 INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at)

@@ -158,6 +158,7 @@ type Querier interface {
 	// transactions table (see account_balance.sql).
 	GetAccountByID(ctx context.Context, id string) (Account, error)
 	GetAccountOption(ctx context.Context, arg GetAccountOptionParams) (AccountsOption, error)
+	GetAccountTransactionsRevision(ctx context.Context, id string) (int64, error)
 	// Period-averaged rate per currency for a base currency over [start, end).
 	// published_at is a DATE (stored TEXT); bounds are 'Y-m-d' strings. Matches
 	// CurrencyRateRepository::getAverage. AVG is cast to TEXT and normalized in Go
