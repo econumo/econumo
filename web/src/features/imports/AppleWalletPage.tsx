@@ -27,15 +27,16 @@ function WalletStatus({ source }: { source: ImportSourceDto }) {
           </div>
         </div>
       </div>
-      {waiting > 0 ? (
-        <Link to={RouterPage.INBOX} className="flex items-center justify-between gap-2 rounded-b-lg border-t border-background px-4 py-3 hover:bg-econumo-hover">
-          <span>{t('imports.apple_wallet.status.review')}</span>
-          <span className="flex items-center gap-2 text-muted-foreground">
-            {waiting}
-            <ChevronRight className="size-4" />
-          </span>
-        </Link>
-      ) : null}
+      <Link
+        to={RouterPage.SETTINGS_APPLE_WALLET_INBOX}
+        className="flex items-center justify-between gap-2 rounded-b-lg border-t border-background px-4 py-3 hover:bg-econumo-hover"
+      >
+        <span>{t('inbox.title')}</span>
+        <span className="flex items-center gap-2 text-muted-foreground">
+          {waiting > 0 ? waiting : null}
+          <ChevronRight className="size-4" />
+        </span>
+      </Link>
     </div>
   )
 }

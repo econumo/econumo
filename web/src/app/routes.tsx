@@ -27,6 +27,7 @@ import { BudgetsPage } from '@/features/budgets/BudgetsPage'
 import { ConnectionsPage } from '@/features/connections/ConnectionsPage'
 import { RecurringSettingsPage } from '@/features/recurring/RecurringSettingsPage'
 import { ImportsDataPage } from '@/features/imports/ImportsDataPage'
+import { AppleWalletInboxPage } from '@/features/imports/AppleWalletInboxPage'
 import { AppleWalletPage } from '@/features/imports/AppleWalletPage'
 import { SimpleFINPage } from '@/features/imports/SimpleFINPage'
 import { InboxPage } from '@/features/inbox/InboxPage'
@@ -84,7 +85,12 @@ export function createRouter() {
                 { path: '/settings/recurring', element: <RecurringSettingsPage /> },
                 { path: '/settings/data', element: <ImportsDataPage /> },
                 { path: '/inbox', element: <InboxPage /> },
-                ...(isAppleWalletImportEnabled() ? [{ path: '/settings/apple-wallet', element: <AppleWalletPage /> }] : []),
+                ...(isAppleWalletImportEnabled()
+                  ? [
+                      { path: '/settings/apple-wallet', element: <AppleWalletPage /> },
+                      { path: '/settings/apple-wallet/inbox', element: <AppleWalletInboxPage /> },
+                    ]
+                  : []),
                 ...(isSimpleFINImportEnabled() ? [{ path: '/settings/simplefin', element: <SimpleFINPage /> }] : []),
                 ...(isTransactionImportEnabled()
                   ? [

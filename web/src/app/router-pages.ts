@@ -27,6 +27,7 @@ export const RouterPage = {
   SETTINGS_RECURRING: '/settings/recurring',
   SETTINGS_DATA: '/settings/data',
   SETTINGS_APPLE_WALLET: '/settings/apple-wallet',
+  SETTINGS_APPLE_WALLET_INBOX: '/settings/apple-wallet/inbox',
   SETTINGS_SIMPLEFIN: '/settings/simplefin',
   SETTINGS_IMPORT_RULES: '/settings/import-rules',
   INBOX: '/inbox',

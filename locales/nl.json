@@ -521,8 +521,7 @@
       },
       "status": {
         "last_tap": "Laatste betaling {when}",
-        "no_taps": "Nog geen betalingen",
-        "review": "Controleren in Postvak IN"
+        "no_taps": "Nog geen betalingen"
       },
       "setup": {
         "header": "Installatie",

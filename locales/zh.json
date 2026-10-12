@@ -521,8 +521,7 @@
       },
       "status": {
         "last_tap": "最近一笔付款：{when}",
-        "no_taps": "暂无付款",
-        "review": "在收件箱中处理"
+        "no_taps": "暂无付款"
       },
       "setup": {
         "header": "设置",

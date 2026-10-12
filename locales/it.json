@@ -521,8 +521,7 @@
       },
       "status": {
         "last_tap": "Ultimo pagamento {when}",
-        "no_taps": "Ancora nessun pagamento",
-        "review": "Rivedi nella posta in arrivo"
+        "no_taps": "Ancora nessun pagamento"
       },
       "setup": {
         "header": "Configurazione",

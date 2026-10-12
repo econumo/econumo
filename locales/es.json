@@ -521,8 +521,7 @@
       },
       "status": {
         "last_tap": "Último pago {when}",
-        "no_taps": "Aún no hay pagos",
-        "review": "Revisar en la bandeja de entrada"
+        "no_taps": "Aún no hay pagos"
       },
       "setup": {
         "header": "Configuración",

@@ -521,8 +521,7 @@
       },
       "status": {
         "last_tap": "Dernier paiement {when}",
-        "no_taps": "Aucun paiement pour l’instant",
-        "review": "Vérifier dans la boîte de réception"
+        "no_taps": "Aucun paiement pour l’instant"
       },
       "setup": {
         "header": "Configuration",

@@ -521,8 +521,7 @@
       },
       "status": {
         "last_tap": "Last tap {when}",
-        "no_taps": "No taps yet",
-        "review": "Review in Inbox"
+        "no_taps": "No taps yet"
       },
       "setup": {
         "header": "Setup",

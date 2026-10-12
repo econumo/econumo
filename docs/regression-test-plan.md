@@ -371,9 +371,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       import/export rows; dialogs open as before) and "Apple Wallet" (its own page;
       back returns to Settings).
 - [ ] Apple Wallet page layout once connected 📱: a status card on top
-      ("Connected" + "Last tap …" as relative time, or "No taps yet"), with a
-      "Review in Inbox" row carrying the count of this source's queued and
-      failed rows (absent when that count is 0); then "Needs mapping"
+      ("Connected" + "Last tap …" as relative time, or "No taps yet"), with an
+      "Inbox" row (always shown) carrying the count of this source's queued and
+      failed rows (no number when that count is 0); then "Needs mapping"
       (unmapped cards outlined in purple with a purple card tile, "N to review
       · <when>", Map and Ignore buttons), then "Cards" (mapped cards with the
       account's icon tile, "<card> → <account>", "N taps · <when>", Remap and
@@ -381,6 +381,13 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       and a Map button), the same-name footnote,
       a "Setup" section with one "Setup guide" row, and "Disconnect Apple
       Wallet" centered at the bottom.
+- [ ] Apple Wallet inbox 📱: the status card's "Inbox" row opens
+      `/settings/apple-wallet/inbox` (desktop crumbs Settings › Apple Wallet,
+      phone back returns to the Apple Wallet page). It shows To review (grouped
+      by card, Map to account / Ignore in place), Failed imports and the folded
+      Skipped section for Apple Wallet rows only — SimpleFIN rows stay out —
+      and "All caught up" when none are waiting; the main Inbox still lists
+      every source.
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source); the page shows
       "Connected · No taps yet" directly followed by an open "Setup guide"

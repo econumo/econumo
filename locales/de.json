@@ -521,8 +521,7 @@
       },
       "status": {
         "last_tap": "Letzte Zahlung {when}",
-        "no_taps": "Noch keine Zahlungen",
-        "review": "Im Posteingang prüfen"
+        "no_taps": "Noch keine Zahlungen"
       },
       "setup": {
         "header": "Einrichtung",

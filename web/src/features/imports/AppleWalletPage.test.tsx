@@ -36,7 +36,7 @@ it('offers Apple Wallet setup when no source exists', async () => {
   expect(await screen.findByRole('heading', { name: 'Apple Wallet' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Set up Apple Wallet' })).toBeInTheDocument()
   expect(screen.queryByText('Cards')).not.toBeInTheDocument()
-  expect(screen.queryByRole('link', { name: /Review in Inbox/ })).toBeNull()
+  expect(screen.queryByRole('link', { name: /^Inbox/ })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Disconnect Apple Wallet' })).toBeNull()
 })
 
@@ -53,21 +53,21 @@ it('shows the connected state and the card list when a source exists', async () 
   expect(screen.getByRole('button', { name: 'Disconnect Apple Wallet' })).toBeInTheDocument()
 })
 
-it('links to the inbox with the count of this source\'s rows waiting there', async () => {
+it('links to its own inbox with the count of this source\'s rows waiting there', async () => {
   const row = { linkId: 'l1', sourceId: 's1', externalAccountId: 'wallet', accountId: '', payee: 'Blue Bottle', amount: '5', currency: 'USD', type: 'expense', postedAt: '2026-08-20 17:42:03', reason: 'unmapped' }
   const failed = { eventId: 'e1', sourceId: 's1', receivedAt: '2026-08-21 08:00:00', error: 'bad', payload: '{}' }
   server.use(...coreHandlers({ importSources: [wireSource], importQueue: { queued: [row, { ...row, linkId: 'l2' }, { ...row, linkId: 'l3', sourceId: 'other' }], skipped: [], failed: [failed] } }))
   renderPage()
-  const link = await screen.findByRole('link', { name: /Review in Inbox/ })
-  expect(link).toHaveAttribute('href', '/inbox')
-  expect(link).toHaveTextContent('3')
+  const link = await screen.findByRole('link', { name: /^Inbox/ })
+  expect(link).toHaveAttribute('href', '/settings/apple-wallet/inbox')
+  expect(link).toHaveTextContent('Inbox3')
 })
 
-it('no inbox row when nothing from this source is waiting', async () => {
+it('the inbox row carries no count when nothing from this source is waiting', async () => {
   server.use(...coreHandlers({ importSources: [wireSource], importQueue: { queued: [], skipped: [], failed: [] } }))
   renderPage()
   expect(await screen.findByText('Connected')).toBeInTheDocument()
-  expect(screen.queryByRole('link', { name: /Review in Inbox/ })).toBeNull()
+  expect(screen.getByRole('link', { name: /^Inbox/ })).toHaveTextContent(/^Inbox$/)
 })
 
 it('before the first card the open setup guide follows the status, with no empty card list', async () => {

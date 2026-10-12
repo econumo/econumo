@@ -521,8 +521,7 @@
       },
       "status": {
         "last_tap": "Ostatnia płatność {when}",
-        "no_taps": "Brak płatności",
-        "review": "Przejrzyj w skrzynce odbiorczej"
+        "no_taps": "Brak płatności"
       },
       "setup": {
         "header": "Konfiguracja",
