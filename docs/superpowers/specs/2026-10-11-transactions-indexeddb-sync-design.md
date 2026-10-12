@@ -116,29 +116,41 @@ more than one; the client then simply downloads the account again.
 
 ### 4. Endpoint — `GET /api/v1/transaction/get-account-transaction-list`
 
-- Query: `accountId` (required, UUID).
-- Access: `checkViewAccess` (owned or accepted share, not deleted; hidden
-  folders allowed) — the same rule as today's `get-transaction-list?accountId=`.
-- Reads the account's `transactions_revision` **before** the rows, so a write
-  landing in between yields an older revision with newer rows (one redundant
-  download later, never stale data).
-- Rows: `ListByAccount` (`account_id = ? OR account_recipient_id = ?`, ordered
-  `spent_at DESC, id`), labels and `isImported` as today.
+- Query: `accountIds` — comma-separated UUIDs, 1 to 50 of them. Comma-separated
+  rather than repeated `accountIds[]=` because the API has no array-param
+  precedent and this sidesteps axios/Go serialisation differences; 50 ids keep
+  the URL under ~2 KB. Stays a `GET` (reads only; the API reserves `POST` for
+  writes). Empty, malformed, or more than 50 ids → 400.
+- Access: the caller's `AvailableAccountIDs` (owned or accepted share, not
+  deleted; hidden folders allowed) — the same rule as today's
+  `get-transaction-list?accountId=`. Requested ids outside that set are
+  **omitted** from the response, never a 403: an account can disappear between
+  the client reading the accounts list and calling this endpoint (a share
+  revoked in that moment), and the client treats "requested but absent from
+  `revisions`" as gone.
+- Reads all the requested accounts' `transactions_revision` values in one
+  query **before** the rows, so a write landing in between yields an older
+  revision with newer rows (one redundant download later, never stale data).
+- Rows: `ListByAccountIDs` over the accessible ids (`account_id IN (...) OR
+  account_recipient_id IN (...)`, ordered `spent_at DESC, id`), labels and
+  `isImported` as today. Each row appears once, so a transfer between two
+  requested accounts is not sent twice.
 - Response `data`:
   ```json
   {
-    "accountId": "…",
-    "revision": 42,
+    "revisions": { "<accountId>": 42, "<accountId>": 7 },
     "items": [ { …TransactionResult fields…, "authorId": "…" } ],
     "authors": [ { "id": "…", "name": "…", "avatar": "face:fuchsia" } ]
   }
   ```
   Items are today's `TransactionResult` with `authorId` instead of the
-  embedded `author`; `authors` lists each distinct author once (sorted by id
-  for stable goldens).
-- Handler via `endpoint.HandleNoBody`-style query-param read (hand-written like
-  the other query-param reads), swag annotations, route in
-  `internal/transaction/api/routes.go`. No MCP tool.
+  embedded `author`; `authors` lists each distinct author once for the whole
+  response (sorted by id for stable goldens).
+- Hand-written handler (query-param read, like the other query-param reads),
+  swag annotations, route in `internal/transaction/api/routes.go`. No MCP tool.
+- Once shipped it is frozen like every route (installed app bundles call it);
+  later changes are additive only (e.g. an optional `sinceRevision` for
+  row-level deltas).
 
 ### 5. Backend tests
 
@@ -158,8 +170,9 @@ more than one; the client then simply downloads the account again.
   forces a scenario for every route, a new route that writes transactions
   without bumping fails CI.
 - **apiparity**: scenarios + goldens for `get-account-transaction-list`
-  (owner, shared reader, hidden-folder account, foreign account → 403, missing
-  id). Account-carrying goldens change by the new `transactionsRevision` field —
+  (owner, shared reader, hidden-folder account, a transfer between two
+  requested accounts appearing once, a foreign id omitted from `revisions`,
+  empty / malformed / 51 ids → 400). Account-carrying goldens change by the new `transactionsRevision` field —
   inspect that diff.
 - `enginecompare` covers the new endpoint; swagger regenerated (`make swagger`).
 
@@ -171,7 +184,8 @@ more than one; the client then simply downloads the account again.
   - `importKeys` — the SimpleFIN data key (out-of-line key `dataKey`, value
     `StoredKey`), moved from `econumo-import`.
   - `accountTransactions` — keyPath `accountId`; value
-    `{ accountId, revision, items: StoredTransaction[], authors: UserDto[] }`.
+    `{ accountId, revision, items: StoredTransaction[], authors: UserDto[] }`
+    (`authors` = the response's authors referenced by this bucket's rows).
   - `meta` — out-of-line key `state`; value `{ buster, userId }`.
 - `db.ts` owns `open` / `onupgradeneeded` / `onversionchange` (close the
   connection so another tab's upgrade is never blocked) / a small promise
@@ -198,12 +212,16 @@ more than one; the client then simply downloads the account again.
 1. `fetchQuery` the accounts, folders and user queries (deduped with any
    fetch already in flight). If any account lacks `transactionsRevision`
    (older server), return `getTransactionList()` as today and stop.
-2. Load buckets. For every account in the list (hidden-folder accounts
-   included): if there is no bucket, its revision differs, or this run is a
-   full reload, download it with `get-account-transaction-list` (at most 4
-   requests in flight).
-3. Delete buckets whose account is no longer in the list (share revoked,
-   account deleted, account left).
+2. Load buckets. Collect every account in the list (hidden-folder accounts
+   included) that has no bucket, whose revision differs, or — on a full
+   reload — all of them, and download them with `get-account-transaction-list`
+   in chunks of 50 ids (chunks requested one after another). Each response
+   rebuilds the buckets of its `revisions` keys: a row belongs to account A's
+   bucket when its `accountId` or `accountRecipientId` is A (a transfer whose
+   two accounts were fetched in different chunks lands in both buckets).
+3. Delete buckets whose account is no longer in the accounts list (share
+   revoked, account deleted, account left) or was requested but is absent from
+   `revisions`.
 4. Persist downloaded buckets, then assemble: rows from buckets of accounts
    **not** in a folder with `isVisible: 0` (today's `VisibleAccountIDs` rule), deduplicated
    by id (a transfer between two visible accounts sits in both buckets), each
@@ -298,7 +316,8 @@ Two keys under `settings.sync` in all 11 catalogues: `full_reload`,
 - `transactionStore`: buster/userId mismatch wipes; failure turns it into a
   no-op with one warning.
 - Sync `queryFn`: missing bucket → download; equal revision → no request;
-  changed revision → download; removed account → bucket deleted; hidden-folder
+  changed revision → download; several stale accounts → one request, 51 →
+  two chunks; removed account, or one absent from `revisions` → bucket deleted; hidden-folder
   bucket stored but excluded from the list; transfer between two visible
   accounts appears once; authors filled in; older server → legacy
   `get-transaction-list`, nothing stored; full reload downloads every account.
