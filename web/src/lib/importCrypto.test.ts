@@ -1,4 +1,5 @@
 import { IDBFactory } from 'fake-indexeddb'
+import { resetDbForTests } from './db'
 import {
   KDF_ITERATIONS, KeyLockedError, WrongPassphraseError,
   changePassphrase, createKey, decryptCredential, encryptCredential, forgetKey, loadStoredKey, unlockKey,
@@ -7,6 +8,7 @@ import {
 beforeEach(() => {
   // a fresh IndexedDB per test; the module opens the db lazily on every call
   globalThis.indexedDB = new IDBFactory()
+  resetDbForTests()
 })
 
 it('createKey stores a non-extractable key and returns a wrapped key with the documented kdf', async () => {
