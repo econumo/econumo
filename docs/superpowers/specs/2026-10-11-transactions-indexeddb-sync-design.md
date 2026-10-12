@@ -70,21 +70,29 @@ so it travels with `get-account-list` and every response that already carries
 accounts (transaction and account mutations). Additive field; old clients
 ignore it. `data:import-sqlite` copies it like any other column.
 
-### 2. Bump helper — `internal/infra/txrevision`
+### 2. Bump helper — `internal/infra/txrevision` + a before-commit hook
 
-Engine-agnostic; takes the same DB executor the calling repo method runs its
-own writes on, so the bump joins that DB transaction:
-
-- `BumpAccounts(ctx, q, accountIDs ...string)` — dedupes the ids, skips empty
-  ones, one `UPDATE accounts SET transactions_revision = transactions_revision + 1 WHERE id IN (...)`.
-- `BumpWhere(ctx, q, cond string, args ...any)` — bumps every account that is
-  the `account_id` or `account_recipient_id` of a transaction matching `cond`
-  (`UPDATE accounts ... WHERE id IN (SELECT account_id FROM transactions WHERE <cond> UNION SELECT account_recipient_id FROM transactions WHERE <cond> AND account_recipient_id IS NOT NULL)`).
-  Callers pass fixed condition strings only (no user input in `cond`); values
-  go through `args` and `Rebind`.
-
-It is infrastructure, so every feature may import it without breaking the
-dependency rule.
+- `backend.TxManager` gains a generic per-transaction hook: a repo can attach
+  a value to the active top-level transaction and register a function that
+  runs **once, inside the transaction, right before the outermost COMMIT**
+  (savepoints share it). Outside any transaction the hook runs immediately.
+- `txrevision.Bumper` (built per repo from `driver` + `*backend.TxManager`):
+  - `Bump(ctx, accountIDs ...string)` adds the ids to the transaction's
+    pending set.
+  - `BumpWhere(ctx, cond string, args ...any)` first selects the
+    `account_id`/`account_recipient_id` of transactions matching `cond`, then
+    `Bump`s them. Callers pass fixed condition strings only; values go through
+    `args`.
+  - At commit the pending set is flushed: one
+    `UPDATE accounts SET transactions_revision = transactions_revision + 1 WHERE id = ?`
+    per account, **in sorted id order** (a consistent lock order, so two
+    PostgreSQL transactions bumping overlapping accounts cannot deadlock).
+- Consequence: **each account moves by exactly 1 per committed DB
+  transaction**, however many writes touched it. Every request that writes
+  transactions runs in one `WithTx`, so that is exactly +1 per request. A
+  savepoint rolled back after a `Bump` leaves its ids pending — an extra bump
+  is harmless.
+- Infrastructure package, so every feature may import it.
 
 ### 3. Bump sites (inside the repository method, same DB transaction)
 
@@ -108,13 +116,17 @@ Visibility changes (share accept/revoke, account delete, folder hide/show,
 leaving a shared account) need **no** bump: the client derives them from the
 accounts list itself.
 
-**Exactly +1 per account per single-transaction request.** The client's local
-shortcut (below) trusts a response revision only when it is exactly the stored
-revision + 1. So create / update / delete / link of one transaction, and
-recurring post, bump each affected account exactly once: `Save` writes labels
-through an internal non-bumping path and bumps once at the end with the
-deduplicated account set. Bulk paths (merges, deletes, imports) may bump by
-more than one; the client then simply downloads the account again.
+**Exactly +1 per account per request** follows from the commit-time flush
+(§2): the client's local shortcut trusts a response revision only when it is
+exactly the stored revision + 1. Account create/update responses re-read the
+revision after the correction row is written (the account row loaded at the
+start of the request predates the bump), and the transaction/recurring
+responses build `accounts` after their `WithTx` returns, so they carry the
+committed value. Import link writes that set or clear `transaction_id`
+(`InsertLink`, `UpdateLink`) bump the linked transaction's accounts, because
+`isImported` is "any link row points at this transaction". The `user` repo
+bumps only when `name` or `avatar` actually changes (it compares with the
+stored row), so routine saves (login, options) never cause downloads.
 
 ### 4. Endpoint — `GET /api/v1/transaction/get-account-transaction-list`
 
@@ -217,8 +229,11 @@ more than one; the client then simply downloads the account again.
 ### 8. Sync — the new `queryFn` for `['transactions']`
 
 1. `fetchQuery` the accounts and user queries (deduped with any fetch already
-   in flight). If any account lacks `transactionsRevision` (older server),
-   return `getTransactionList()` as today and stop.
+   in flight), and drop accounts with a share invite still pending for this
+   user (the same `isPendingForMe` filter `useAccounts` applies — the server
+   would omit them, and they would otherwise be re-requested on every sync).
+   If any account lacks `transactionsRevision` (older server), return
+   `getTransactionList()` as today and stop.
 2. Load buckets. Collect the accounts that have no bucket or whose revision
    differs. Download them with one `get-account-transaction-list` request:
    with `accountIds` listing them, or with **no** `accountIds` when it is a
