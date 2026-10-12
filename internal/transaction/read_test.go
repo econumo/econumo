@@ -115,3 +115,24 @@ func mustID(t *testing.T, s string) vo.Id {
 	}
 	return id
 }
+
+// A provided accountIds that names no usable id (only possible when Validate
+// was skipped) narrows to nothing; it must never widen to every account.
+func TestGetAccountTransactionList_ProvidedButUnparsableIdsReturnNothing(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	acct := f.Account(fixture.Account{UserID: userID})
+	f.Transaction(fixture.Transaction{UserID: userID, AccountID: acct})
+
+	svc := newReadService(t, db)
+	res, err := svc.GetAccountTransactionList(context.Background(), mustID(t, userID), model.AccountTransactionListRequest{
+		AccountIds: "not-a-uuid", Provided: true,
+	})
+	if err != nil {
+		t.Fatalf("GetAccountTransactionList: %v", err)
+	}
+	if len(res.Items) != 0 || len(res.Revisions) != 0 {
+		t.Fatalf("items = %d, revisions = %v, want none", len(res.Items), res.Revisions)
+	}
+}

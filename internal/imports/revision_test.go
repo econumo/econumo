@@ -46,6 +46,26 @@ func TestRevision_ImportingAQueuedEvent_BumpsTheNewTransactionsAccount(t *testin
 	h.f.RequireRevisionsMoved(before, acct1)
 }
 
+func TestRevision_ImportingAQueuedEvent_ReportsTheCommittedRevision(t *testing.T) {
+	h := setup(t)
+	uA := vo.MustParseId(userA)
+	ctx := context.Background()
+	ingest(t, h, tap)
+	q, _ := h.svc.GetQueue(ctx, uA)
+
+	res, err := h.svc.ImportQueuedEvent(ctx, uA, model.ImportQueuedEventRequest{LinkId: q.Queued[0].LinkId, Transaction: model.CreateTransactionRequest{
+		Id: vo.NewId().String(), Type: "expense", Amount: vo.NewFlexString("4.75"), AccountId: acct1, Date: "2026-08-20 10:42:03",
+	}})
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+
+	want := h.f.Revisions(acct1)[acct1]
+	if len(res.Accounts) != 1 || res.Accounts[0].TransactionsRevision != want {
+		t.Fatalf("accounts = %+v, want acct1 at the committed revision %d", res.Accounts, want)
+	}
+}
+
 func TestRevision_DeletingASource_BumpsEveryAccountWithAnImportedTransaction(t *testing.T) {
 	h := setup(t)
 	acct2 := h.f.Account(fixture.Account{UserID: userA, CurrencyID: usdID, Name: "Second"})

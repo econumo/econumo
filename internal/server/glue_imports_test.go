@@ -26,6 +26,9 @@ func (s stubAccounts) AccountDeleted(context.Context, vo.Id) (bool, error) { ret
 func (s stubAccounts) AccountCurrency(context.Context, vo.Id) (vo.Id, error) {
 	return s.currency, s.err
 }
+func (s stubAccounts) AccountListForUser(context.Context, vo.Id) ([]model.AccountResult, error) {
+	return nil, s.err
+}
 
 type stubCurrencyByID struct {
 	views map[string]currencyrepo.CurrencyView

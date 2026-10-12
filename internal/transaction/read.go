@@ -137,7 +137,8 @@ func (s *Service) GetAccountTransactionList(ctx context.Context, userID vo.Id, r
 		return nil, err
 	}
 	target := available
-	if requested := req.IDs(); requested != nil {
+	if req.Provided {
+		requested := req.IDs()
 		allowed := make(map[string]bool, len(available))
 		for _, id := range available {
 			allowed[id.String()] = true

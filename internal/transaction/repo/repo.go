@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -96,6 +97,16 @@ func (r *Repo) Save(ctx context.Context, t *model.Transaction) error {
 	if err := r.rev.BumpWhere(ctx, "id = ?", t.ID.String()); err != nil {
 		return err
 	}
+	return r.write(ctx, t)
+}
+
+// saveNew is Save for an id from NextIdentity: no such row exists yet, so
+// there are no previous accounts to look up. A CSV import writes thousands.
+func (r *Repo) saveNew(ctx context.Context, t *model.Transaction) error {
+	return r.write(ctx, t)
+}
+
+func (r *Repo) write(ctx context.Context, t *model.Transaction) error {
 	if err := r.q.UpsertTransaction(ctx, r.db(ctx), upsertParams{
 		ID:                 t.ID.String(),
 		UserID:             t.UserID.String(),
@@ -119,15 +130,57 @@ func (r *Repo) Save(ctx context.Context, t *model.Transaction) error {
 	if t.AccountRecipID != nil {
 		recipient = t.AccountRecipID.String()
 	}
-	return r.rev.Bump(ctx, t.AccountID.String(), recipient)
+	if err := r.rev.Bump(ctx, t.AccountID.String(), recipient); err != nil {
+		return err
+	}
+	r.markBumped(ctx, t.ID.String())
+	return nil
+}
+
+type bumpedRowsKey struct{}
+
+type rowSet struct {
+	mu  sync.Mutex
+	ids map[string]struct{}
+}
+
+// Rows whose current accounts are already queued for this DB transaction's
+// revision bump, so a later write to the same row need not read it again.
+func (r *Repo) bumpedRows(ctx context.Context) *rowSet {
+	v, inTx := r.tx.TxValue(ctx, bumpedRowsKey{}, func() any { return &rowSet{ids: map[string]struct{}{}} })
+	if !inTx {
+		return nil
+	}
+	return v.(*rowSet)
+}
+
+func (r *Repo) markBumped(ctx context.Context, id string) {
+	if set := r.bumpedRows(ctx); set != nil {
+		set.mu.Lock()
+		set.ids[id] = struct{}{}
+		set.mu.Unlock()
+	}
+}
+
+func (r *Repo) isBumped(ctx context.Context, id string) bool {
+	set := r.bumpedRows(ctx)
+	if set == nil {
+		return false
+	}
+	set.mu.Lock()
+	defer set.mu.Unlock()
+	_, ok := set.ids[id]
+	return ok
 }
 
 // ReplaceLabels rewrites a transaction's label links. The caller runs this
 // inside the same tx as Save, so the delete-then-insert is atomic and a
 // re-save is idempotent (never duplicates a pair).
 func (r *Repo) ReplaceLabels(ctx context.Context, transactionID vo.Id, labelIDs []vo.Id) error {
-	if err := r.rev.BumpWhere(ctx, "id = ?", transactionID.String()); err != nil {
-		return err
+	if !r.isBumped(ctx, transactionID.String()) {
+		if err := r.rev.BumpWhere(ctx, "id = ?", transactionID.String()); err != nil {
+			return err
+		}
 	}
 	db := r.db(ctx)
 	if err := r.q.DeleteTransactionLabels(ctx, db, transactionID.String()); err != nil {
