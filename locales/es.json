@@ -580,7 +580,7 @@
         "waiting": "{count} por revisar",
         "map": "Asignar a una cuenta",
         "mapped_to": "asignada a",
-        "actions": "Acciones de {card}",
+        "remap": "Reasignar",
         "ignore": "Ignorar",
         "unlink": "Desasignar",
         "unlink_modal": {
@@ -639,7 +639,7 @@
         "waiting": "{count} por revisar",
         "map": "Asignar a una cuenta",
         "mapped_to": "asignada a",
-        "actions": "Acciones de {card}",
+        "remap": "Reasignar",
         "ignore": "Ignorar",
         "unlink": "Desasignar",
         "unlink_modal": {

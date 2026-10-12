@@ -580,7 +580,7 @@
         "waiting": "do przejrzenia: {count}",
         "map": "Przypisz do konta",
         "mapped_to": "przypisana do",
-        "actions": "Akcje: {card}",
+        "remap": "Przypisz ponownie",
         "ignore": "Ignoruj",
         "unlink": "Odłącz",
         "unlink_modal": {
@@ -639,7 +639,7 @@
         "waiting": "do przejrzenia: {count}",
         "map": "Przypisz do konta",
         "mapped_to": "przypisana do",
-        "actions": "Akcje: {card}",
+        "remap": "Przypisz ponownie",
         "ignore": "Ignoruj",
         "unlink": "Odłącz",
         "unlink_modal": {

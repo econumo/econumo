@@ -580,7 +580,7 @@
         "waiting": "{count} te controleren",
         "map": "Koppelen aan rekening",
         "mapped_to": "gekoppeld aan",
-        "actions": "Acties voor {card}",
+        "remap": "Opnieuw koppelen",
         "ignore": "Negeren",
         "unlink": "Ontkoppelen",
         "unlink_modal": {
@@ -639,7 +639,7 @@
         "waiting": "{count} te controleren",
         "map": "Koppelen aan rekening",
         "mapped_to": "gekoppeld aan",
-        "actions": "Acties voor {card}",
+        "remap": "Opnieuw koppelen",
         "ignore": "Negeren",
         "unlink": "Ontkoppelen",
         "unlink_modal": {

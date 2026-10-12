@@ -49,6 +49,9 @@ func init() {
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet", "accountId": OwnerAccount}},
 			{Label: "err:link-account-again", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet", "accountId": OwnerAccount}},
+			// A mapped card linked to another writable account is remapped.
+			{Label: "link-account-remap", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
+				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet", "accountId": SharedAccount}},
 			{Label: "get-queued-event-list-after-link", Method: "GET", Path: "/api/v1/import/get-queued-event-list", Auth: "owner"},
 			// Txn1 itself was never touched by the conversion (it created a new
 			// row instead), so its provenance list is empty.

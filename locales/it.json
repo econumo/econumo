@@ -580,7 +580,7 @@
         "waiting": "{count} da rivedere",
         "map": "Associa a un conto",
         "mapped_to": "associata a",
-        "actions": "Azioni per {card}",
+        "remap": "Riassocia",
         "ignore": "Ignora",
         "unlink": "Dissocia",
         "unlink_modal": {
@@ -639,7 +639,7 @@
         "waiting": "{count} da rivedere",
         "map": "Associa a un conto",
         "mapped_to": "associata a",
-        "actions": "Azioni per {card}",
+        "remap": "Riassocia",
         "ignore": "Ignora",
         "unlink": "Dissocia",
         "unlink_modal": {

@@ -580,7 +580,7 @@
         "waiting": "{count} 笔待处理",
         "map": "映射到账户",
         "mapped_to": "映射到",
-        "actions": "{card} 的操作",
+        "remap": "重新映射",
         "ignore": "忽略",
         "unlink": "取消映射",
         "unlink_modal": {
@@ -639,7 +639,7 @@
         "waiting": "{count} 笔待处理",
         "map": "映射到账户",
         "mapped_to": "映射到",
-        "actions": "{card} 的操作",
+        "remap": "重新映射",
         "ignore": "忽略",
         "unlink": "取消映射",
         "unlink_modal": {

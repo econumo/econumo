@@ -580,7 +580,7 @@
         "waiting": "{count} to review",
         "map": "Map to account",
         "mapped_to": "mapped to",
-        "actions": "{card} actions",
+        "remap": "Remap",
         "ignore": "Ignore",
         "unlink": "Unmap",
         "unlink_modal": {
@@ -639,7 +639,7 @@
         "waiting": "{count} to review",
         "map": "Map to account",
         "mapped_to": "mapped to",
-        "actions": "{card} actions",
+        "remap": "Remap",
         "ignore": "Ignore",
         "unlink": "Unmap",
         "unlink_modal": {

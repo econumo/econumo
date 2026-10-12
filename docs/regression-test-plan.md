@@ -374,10 +374,11 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       ("Connected" + "Last tap …" as relative time, or "No taps yet"), with a
       "Review in Inbox" row carrying the count of this source's queued and
       failed rows (absent when that count is 0); then "Needs mapping"
-      (unmapped cards: "N to review · <when>", a Map button, a ⋮ menu with
-      Ignore), then "Cards" (mapped as "<card> → <account icon> <account>" with
-      "N taps · <when>" and a ⋮ menu with Unmap; ignored cards greyed with
-      "Ignored · …" and a ⋮ menu with Map to account), the same-name footnote,
+      (unmapped cards outlined in purple with a purple card tile, "N to review
+      · <when>", Map and Ignore buttons), then "Cards" (mapped cards with the
+      account's icon tile, "<card> → <account>", "N taps · <when>", Remap and
+      Unmap buttons; ignored cards greyed with an eye-off tile, "Ignored · …"
+      and a Map button), the same-name footnote,
       a "Setup" section with one "Setup guide" row, and "Disconnect Apple
       Wallet" centered at the bottom.
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
@@ -450,9 +451,15 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
 - [ ] A new card whose first taps were all in a foreign currency (USD taps →
       CAD account) maps without error; its queued taps import converted at the
       day's rate (a tap with no stored rate stays queued), and the provenance
-      line keeps the original "… USD" amount. An ignored card's ⋮ menu offers
-      "Map to account"; a mapped card's ⋮ → "Unmap" (confirmation) returns the
-      card to "Needs mapping" and new taps queue again.
+      line keeps the original "… USD" amount. An ignored card's Map maps it;
+      a mapped card's "Unmap" (confirmation) returns the card to "Needs
+      mapping" and new taps queue again.
+- [ ] Remap 📱: a mapped card's "Remap" opens the picker preselected on its
+      current account with Map disabled until another account is picked; after
+      Map the row shows the new account, the next tap lands there, already
+      imported transactions stay on the old account, and no toast appears
+      when nothing was queued. A card whose account was deleted (taps queued
+      as "Account deleted") imports those queued taps on remap.
 - [ ] Inbox button 📱: the sidebar top row shows the logo + version label
       (linking Home) on the left and a Search button and an Inbox button on
       the right — no avatar or user name in the sidebar; the Inbox button is

@@ -580,7 +580,7 @@
         "waiting": "{count} zu prüfen",
         "map": "Konto zuordnen",
         "mapped_to": "zugeordnet zu",
-        "actions": "Aktionen für {card}",
+        "remap": "Neu zuordnen",
         "ignore": "Ignorieren",
         "unlink": "Zuordnung aufheben",
         "unlink_modal": {
@@ -639,7 +639,7 @@
         "waiting": "{count} zu prüfen",
         "map": "Konto zuordnen",
         "mapped_to": "zugeordnet zu",
-        "actions": "Aktionen für {card}",
+        "remap": "Neu zuordnen",
         "ignore": "Ignorieren",
         "unlink": "Zuordnung aufheben",
         "unlink_modal": {
