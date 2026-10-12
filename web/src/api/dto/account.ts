@@ -26,6 +26,8 @@ export interface AccountDto {
   type: AccountType
   icon: string
   sharedAccess: AccountAccessDto[]
+  /** moves by 1 per committed change to the account's transactions; absent on older servers */
+  transactionsRevision?: number
 }
 
 export interface AccountItemDto {

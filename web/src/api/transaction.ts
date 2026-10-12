@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { CreateTransactionDto, TransactionDto, TransactionItemDto } from './dto/transaction'
+import type { AccountTransactionListDto, CreateTransactionDto, TransactionDto, TransactionItemDto } from './dto/transaction'
 
 interface Envelope<T> {
   data: T
@@ -11,6 +11,13 @@ export async function getTransactionList(accountId?: Id): Promise<TransactionDto
     params: accountId ? { accountId } : undefined,
   })
   return response.data.data.items
+}
+
+export async function getAccountTransactionList(accountIds?: Id[]): Promise<AccountTransactionListDto> {
+  const response = await api.get<Envelope<AccountTransactionListDto>>(apiUrl('/api/v1/transaction/get-account-transaction-list'), {
+    params: accountIds ? { accountIds: accountIds.join(',') } : undefined,
+  })
+  return response.data.data
 }
 
 export async function createTransaction(form: CreateTransactionDto): Promise<TransactionItemDto> {

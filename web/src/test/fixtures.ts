@@ -34,19 +34,19 @@ export const fixtureFolders = [
 export const fixtureAccounts = [
   {
     id: 'a1', owner: fixtureOwner, folderId: 'f1', name: 'Cash', position: 0,
-    currency: fixtureUsd, balance: '100.5', type: 1, icon: 'wallet', sharedAccess: [],
+    currency: fixtureUsd, balance: '100.5', type: 1, icon: 'wallet', sharedAccess: [], transactionsRevision: 1,
   },
   {
     id: 'a2', owner: fixtureOwner, folderId: 'f2', name: 'Bank', position: 1,
-    currency: fixtureUsd, balance: '2000', type: 1, icon: 'account_balance', sharedAccess: [],
+    currency: fixtureUsd, balance: '2000', type: 1, icon: 'account_balance', sharedAccess: [], transactionsRevision: 1,
   },
   {
     id: 'a3', owner: fixtureOwner, folderId: 'f2', name: 'Euro Stash', position: 2,
-    currency: fixtureEur, balance: '90', type: 1, icon: 'savings', sharedAccess: [],
+    currency: fixtureEur, balance: '90', type: 1, icon: 'savings', sharedAccess: [], transactionsRevision: 1,
   },
   {
     id: 'a-hidden', owner: fixtureOwner, folderId: 'f-hidden', name: 'Under the mattress', position: 3,
-    currency: fixtureUsd, balance: '5', type: 1, icon: 'bed', sharedAccess: [],
+    currency: fixtureUsd, balance: '5', type: 1, icon: 'bed', sharedAccess: [], transactionsRevision: 1,
   },
 ]
 
@@ -348,6 +348,21 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/account/get-account-list', () => envelope({ items: data.accounts })),
     http.get('*/api/v1/account/get-folder-list', () => envelope({ items: data.folders })),
     http.get('*/api/v1/transaction/get-transaction-list', () => envelope({ items: data.transactions })),
+    http.get('*/api/v1/transaction/get-account-transaction-list', ({ request }) => {
+      const accounts = data.accounts as { id: string }[]
+      const asked = new URL(request.url).searchParams.get('accountIds')
+      const ids = (asked ? asked.split(',') : accounts.map((a) => a.id)).filter((id) => accounts.some((a) => a.id === id))
+      const wanted = new Set(ids)
+      const rows = (data.transactions as { accountId: string; accountRecipientId: string | null; author: { id: string } }[]).filter(
+        (t) => wanted.has(t.accountId) || (t.accountRecipientId !== null && wanted.has(t.accountRecipientId)),
+      )
+      const authors = new Map(rows.map((t) => [t.author.id, t.author]))
+      return envelope({
+        revisions: Object.fromEntries(ids.map((id) => [id, 1])),
+        items: rows.map(({ author, ...rest }) => ({ ...rest, authorId: author.id })),
+        authors: [...authors.values()],
+      })
+    }),
     http.get('*/api/v1/category/get-category-list', () => envelope({ items: data.categories })),
     http.get('*/api/v1/payee/get-payee-list', () => envelope({ items: data.payees })),
     http.get('*/api/v1/tag/get-tag-list', () => envelope({ items: data.tags })),
