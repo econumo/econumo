@@ -62,6 +62,41 @@ it('a new app version wipes the buckets', async () => {
   expect((await loadBuckets('u1')).size).toBe(1)
 })
 
+it('a write before the first load by another user does not leak the previous user\'s buckets', async () => {
+  await loadBuckets('u1')
+  await putBuckets('u1', [bucket('a')])
+  await putBuckets('u2', [bucket('b')])
+  const loaded = await loadBuckets('u2')
+  expect([...loaded.keys()]).toEqual(['b'])
+})
+
+it('a write before the first load after an upgrade drops the old build\'s buckets', async () => {
+  await loadBuckets('u1')
+  await putBuckets('u1', [bucket('a')])
+  window.econumoConfig = { VERSION: '1.1.0' }
+  await putBuckets('u1', [bucket('b')])
+  expect([...(await loadBuckets('u1')).keys()]).toEqual(['b'])
+})
+
+it('a write before any load is kept by the next load for the same user', async () => {
+  await putBuckets('u1', [bucket('a')])
+  expect([...(await loadBuckets('u1')).keys()]).toEqual(['a'])
+})
+
+it('clearTransactions still clears after the store disabled itself', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  await loadBuckets('u1')
+  await putBuckets('u1', [bucket('a')])
+  const realOpen = globalThis.indexedDB.open.bind(globalThis.indexedDB)
+  globalThis.indexedDB.open = () => { throw new Error('x') }
+  await loadBuckets('u1')  // disables the store
+  globalThis.indexedDB.open = realOpen
+  resetDbForTests()
+  await clearTransactions()
+  resetTransactionStoreForTests()
+  expect((await loadBuckets('u1')).size).toBe(0)
+})
+
 it('clearTransactions keeps the SimpleFIN key', async () => {
   await dbRequest(STORE_IMPORT_KEYS, 'readwrite', (s) => s.put({ key: 'k', tag: 't' }, 'dataKey'))
   await loadBuckets('u1')

@@ -82,6 +82,38 @@ it('a failing migration is swallowed with one warning and the database still ope
   warn.mockRestore()
 })
 
+it('a failing put into importKeys leaves econumo-import intact', async () => {
+  await seedLegacy({ key: await newKey(), tag: 't' })
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const realPut = IDBObjectStore.prototype.put
+  const put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore['put']>) {
+    if (this.name === STORE_IMPORT_KEYS) throw new Error('quota')
+    return realPut.apply(this, args)
+  })
+  await openDb()
+  put.mockRestore()
+  expect(warn).toHaveBeenCalledTimes(1)
+  warn.mockRestore()
+  expect(await dbNames()).toContain('econumo-import')
+  expect(await loadStoredKey()).toBeNull()
+})
+
+it('a synchronous throw inside dbTransaction aborts the requests already queued', async () => {
+  await expect(dbTransaction([STORE_META], 'readwrite', (t) => {
+    t.objectStore(STORE_META).put({ a: 1 }, 'state')
+    throw new Error('clone')
+  })).rejects.toThrow('clone')
+  expect(await dbRequest(STORE_META, 'readonly', (s) => s.get('state'))).toBeUndefined()
+})
+
+it('a stale handle closing does not drop the cache of a newer connection', async () => {
+  const first = await openDb()
+  resetDbForTests()
+  const second = await openDb()
+  first.onclose?.(new Event('close'))
+  expect(await openDb()).toBe(second)
+})
+
 it('dbTransaction resolves on commit and rejects on abort', async () => {
   await dbTransaction([STORE_META], 'readwrite', (t) => { t.objectStore(STORE_META).put({ a: 1 }, 'state') })
   expect(await dbRequest(STORE_META, 'readonly', (s) => s.get('state'))).toEqual({ a: 1 })

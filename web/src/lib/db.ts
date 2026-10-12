@@ -9,6 +9,7 @@ const LEGACY_STORE = 'keys'
 const DATA_KEY_RECORD = 'dataKey'
 
 let cached: Promise<IDBDatabase> | null = null
+let current: IDBDatabase | null = null
 
 function upgrade(db: IDBDatabase): void {
   db.createObjectStore(STORE_IMPORT_KEYS)
@@ -23,8 +24,15 @@ function openRaw(): Promise<IDBDatabase> {
     req.onsuccess = () => {
       const db = req.result
       // Another tab upgrading (or deleting) the database must never wait on this connection.
-      db.onversionchange = () => { db.close(); cached = null }
-      db.onclose = () => { cached = null }
+      const drop = () => {
+        if (current === db) {
+          current = null
+          cached = null
+        }
+      }
+      current = db
+      db.onversionchange = () => { db.close(); drop() }
+      db.onclose = drop
       resolve(db)
     }
     req.onerror = () => reject(req.error)
@@ -65,8 +73,14 @@ async function migrateLegacyKey(db: IDBDatabase): Promise<void> {
       const store = t.objectStore(STORE_IMPORT_KEYS)
       const existing = store.get(DATA_KEY_RECORD)
       existing.onsuccess = () => {
-        if (existing.result === undefined) {
+        if (existing.result !== undefined) {
+          return
+        }
+        try {
           store.put(record, DATA_KEY_RECORD)
+        } catch (e) {
+          t.abort()
+          reject(e)
         }
       }
       t.oncomplete = () => resolve()
@@ -106,10 +120,15 @@ export function openDb(): Promise<IDBDatabase> {
 export function dbRequest<T>(store: string, mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   return openDb().then((db) => new Promise<T>((resolve, reject) => {
     const t = db.transaction(store, mode)
-    const req = run(t.objectStore(store))
-    t.oncomplete = () => resolve(req.result)
     t.onerror = () => reject(t.error)
     t.onabort = () => reject(t.error)
+    try {
+      const req = run(t.objectStore(store))
+      t.oncomplete = () => resolve(req.result)
+    } catch (e) {
+      t.abort()
+      reject(e)
+    }
   }))
 }
 
@@ -119,13 +138,20 @@ export function dbTransaction(stores: string[], mode: IDBTransactionMode, run: (
     t.oncomplete = () => resolve()
     t.onerror = () => reject(t.error)
     t.onabort = () => reject(t.error)
-    run(t)
+    try {
+      run(t)
+    } catch (e) {
+      // an uncaught throw would otherwise let the requests already queued commit
+      t.abort()
+      reject(e)
+    }
   }))
 }
 
 export function resetDbForTests(): void {
   const previous = cached
   cached = null
+  current = null
   migrated = false
   previous?.then((db) => db.close(), () => {})
 }

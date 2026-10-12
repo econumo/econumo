@@ -30,8 +30,8 @@ export function storeBuster(): string {
 let disabled = false
 let warned = false
 
-async function guarded<T>(fallback: T, run: () => Promise<T>): Promise<T> {
-  if (disabled) {
+async function guarded<T>(fallback: T, run: () => Promise<T>, force = false): Promise<T> {
+  if (disabled && !force) {
     return fallback
   }
   try {
@@ -82,11 +82,21 @@ export function putBuckets(userId: string, buckets: Bucket[]): Promise<void> {
     return Promise.resolve()
   }
   return guarded(undefined, () => dbTransaction([STORE_ACCOUNT_TRANSACTIONS, STORE_META], 'readwrite', (t) => {
+    const meta = t.objectStore(STORE_META)
     const store = t.objectStore(STORE_ACCOUNT_TRANSACTIONS)
-    for (const bucket of buckets) {
-      store.put(bucket)
+    const wanted = currentMeta(userId)
+    const read = meta.get(META_KEY)
+    read.onsuccess = () => {
+      const stored = read.result as Meta | undefined
+      // a write before the first load must not adopt buckets another user or an older build left behind
+      if (stored?.buster !== wanted.buster || stored.userId !== wanted.userId) {
+        store.clear()
+        meta.put(wanted, META_KEY)
+      }
+      for (const bucket of buckets) {
+        store.put(bucket)
+      }
     }
-    t.objectStore(STORE_META).put(currentMeta(userId), META_KEY)
   }))
 }
 
@@ -102,11 +112,12 @@ export function deleteBuckets(accountIds: string[]): Promise<void> {
   }))
 }
 
+// Attempted even while the store is disabled: a logout must not leave data on disk.
 export function clearTransactions(): Promise<void> {
   return guarded(undefined, () => dbTransaction([STORE_ACCOUNT_TRANSACTIONS, STORE_META], 'readwrite', (t) => {
     t.objectStore(STORE_ACCOUNT_TRANSACTIONS).clear()
     t.objectStore(STORE_META).clear()
-  }))
+  }), true)
 }
 
 export function resetTransactionStoreForTests(): void {
