@@ -23,6 +23,8 @@ beforeEach(() => {
   calls = []
   legacyCalls = 0
   resetRevisions()
+  // the analytics auth-method probe fired once the user data lands
+  server.use(http.get('*/api/v1/oauth/get-identity-list', () => HttpResponse.json({ success: true, message: '', data: [] })))
   server.events.on('request:start', ({ request }) => {
     const url = new URL(request.url)
     if (url.pathname.endsWith('/get-account-transaction-list')) {
@@ -141,7 +143,9 @@ it('an own write at +2 downloads that account', async () => {
 
 it('a balance correction at exactly +1 needs no download', async () => {
   const { result } = await booted()
-  const correction = { ...created, id: 't-corr', type: 'income' as const, description: '' }
+  // the wire correction carries none of the list's provenance fields
+  const { labelIds: _l, recurringId: _r, isImported: _i, ...base } = created
+  const correction = { ...base, id: 't-corr', type: 'income' as const, description: '' }
   const a1 = withRevisions({ a1: 2 }).find((a) => a.id === 'a1')!
   act(() => result.current.accountEffects({ item: { ...a1, balance: '200' }, transaction: correction }))
   await waitFor(async () => {
@@ -149,7 +153,75 @@ it('a balance correction at exactly +1 needs no download', async () => {
     expect(stored.revision).toBe(2)
     expect(stored.items.map((t) => t.id)).toContain('t-corr')
   }, { timeout: 2000 })
+  const row = (await loadBuckets('u1')).get('a1')!.items.find((t) => t.id === 't-corr')!
+  expect(row.labelIds).toEqual([])
+  expect(row.recurringId).toBeNull()
+  expect(row.isImported).toBe(0)
   expect(calls).toEqual([null])
+})
+
+it('an update that moves a row to another account rewrites both buckets under their new revisions', async () => {
+  const { result } = await booted()
+  const moved = { ...fixtureTransactions[0], accountId: 'a2', labelIds: [], recurringId: null, isImported: 0 } as TransactionDto
+  act(() => result.current.apply({ item: moved, accounts: withRevisions({ a1: 2, a2: 2 }) }, 'update'))
+  await waitFor(async () => {
+    const stored = await loadBuckets('u1')
+    expect(stored.get('a1')!.revision).toBe(2)
+    expect(stored.get('a1')!.items.map((t) => t.id)).toEqual(['t2'])
+    expect(stored.get('a2')!.revision).toBe(2)
+    expect(stored.get('a2')!.items.map((t) => t.id)).toEqual(['t1'])
+  }, { timeout: 2000 })
+  expect(calls).toEqual([null])
+})
+
+it('a write during the first load on an older server reloads instead of becoming the whole list', async () => {
+  const legacy = wireAccounts.map(({ transactionsRevision: _r, ...a }) => a)
+  let release: () => void = () => {}
+  const gate = new Promise<void>((r) => { release = r })
+  let first = true
+  server.use(
+    http.get('*/api/v1/transaction/get-transaction-list', async () => {
+      if (first) {
+        first = false
+        await gate
+      }
+      return undefined
+    }),
+    ...coreHandlers({ accounts: legacy, transactions: [created, ...fixtureTransactions] }),
+  )
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  uninstalls.push(installTransactionTracking(queryClient))
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  const { result } = renderHook(() => {
+    const { data } = useTransactions()
+    return { data, apply: useApplyTransactionItem() }
+  }, { wrapper })
+  await waitFor(() => expect(legacyCalls).toBe(1))
+  act(() => result.current.apply({ item: created, accounts: legacy as AccountDto[] }, 'add'))
+  release()
+  await waitFor(() => expect(result.current.data?.map((t) => t.id).sort()).toEqual(['t-new', 't1', 't2']))
+  expect(legacyCalls).toBe(2)
+})
+
+it('a full reload cancelled by a local write runs again', async () => {
+  const { queryClient, result } = await booted()
+  let release: () => void = () => {}
+  const gate = new Promise<void>((r) => { release = r })
+  server.use(http.get('*/api/v1/transaction/get-account-transaction-list', async () => {
+    await gate
+    return undefined
+  }))
+  requestFullReload()
+  void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
+  await waitFor(() => expect(calls).toEqual([null, null]))
+  act(() => result.current.apply({ item: created, accounts: withRevisions({ a1: 2 }) }, 'add'))
+  release()
+  await waitFor(() => expect(calls).toEqual([null, null, null]))
+  await waitFor(() => expect(result.current.list.isFetching).toBe(false))
+  await settle()
+  expect(calls).toEqual([null, null, null])
 })
 
 it('noteOwnWrite ignores accounts it was not told were touched', async () => {

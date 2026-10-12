@@ -33,5 +33,8 @@ export interface AccountDto {
 export interface AccountItemDto {
   item: AccountDto
   /** opening-balance / correction transaction, when the backend wrote one */
-  transaction: TransactionDto | null
+  transaction: CorrectionDto | null
 }
+
+/** The correction's wire shape lacks the list's provenance fields; a correction never has any. */
+export type CorrectionDto = Omit<TransactionDto, 'labelIds' | 'recurringId' | 'isImported'>

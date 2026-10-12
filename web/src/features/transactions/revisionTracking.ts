@@ -193,6 +193,21 @@ export function noteOwnWrite(accounts: AccountDto[], touchedAccountIds: (string 
   }
 }
 
+/**
+ * Call before patching the transactions list for a write this client made.
+ * Cancels a sync that read the rows before the write. Returns false when there
+ * is no list yet (the first load was in flight): patching would turn the one
+ * row into the whole list, so a fresh load is started instead.
+ */
+export function beginLocalWrite(queryClient: QueryClient): boolean {
+  void queryClient.cancelQueries({ queryKey: queryKeys.transactions })
+  if (queryClient.getQueryData(queryKeys.transactions) !== undefined) {
+    return true
+  }
+  void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
+  return false
+}
+
 export function requestFullReload(): void {
   fullReload = true
 }
@@ -225,12 +240,17 @@ export async function transactionsQueryFn(
   opts: { full: boolean; signal?: AbortSignal },
 ): Promise<TransactionDto[]> {
   // A cancelled run (a local write, or a newer sync) must neither download nor
-  // land; one cancelled before its download hands a full reload on to its successor.
+  // land. A cancelled full reload is re-run: a newer sync started before this
+  // one noticed, so it did not see the request.
   const superseded = () => {
-    if (opts.signal?.aborted && opts.full) {
-      fullReload = true
+    if (!opts.signal?.aborted) {
+      return false
     }
-    return opts.signal?.aborted === true
+    if (opts.full) {
+      fullReload = true
+      void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
+    }
+    return true
   }
   const user = await queryClient.fetchQuery({ queryKey: queryKeys.user, queryFn: getUserData, staleTime: TEN_MINUTES })
   const raw = await queryClient.fetchQuery({ queryKey: queryKeys.accounts, queryFn: accountApi.getAccountList, staleTime: TEN_MINUTES })

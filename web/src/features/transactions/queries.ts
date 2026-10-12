@@ -3,7 +3,7 @@ import * as transactionApi from '@/api/transaction'
 import type { TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { consumeFullReload, noteOwnWrite, transactionsQueryFn } from './revisionTracking'
+import { beginLocalWrite, consumeFullReload, noteOwnWrite, transactionsQueryFn } from './revisionTracking'
 
 const byDateDesc = (items: TransactionDto[]) => [...items].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 
@@ -18,31 +18,27 @@ export function useTransactions() {
   })
 }
 
-interface ApplyOptions {
-  /** false when the cached item is known to differ from what the server stored */
-  exact?: boolean
-}
-
 export function useApplyTransactionItem() {
   const queryClient = useQueryClient()
-  return (result: TransactionItemDto, mode: 'add' | 'update' | 'delete', opts: ApplyOptions = {}) => {
-    // a sync already in flight read the rows before this write; it re-runs if a revision still differs
-    void queryClient.cancelQueries({ queryKey: queryKeys.transactions })
-    const replaced = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)?.find((t) => t.id === result.item.id)
-    if (opts.exact !== false) {
+  return (result: TransactionItemDto, mode: 'add' | 'update' | 'delete') => {
+    const patch = beginLocalWrite(queryClient)
+    if (patch) {
+      const replaced = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)?.find((t) => t.id === result.item.id)
       noteOwnWrite(result.accounts, [result.item.accountId, result.item.accountRecipientId, replaced?.accountId, replaced?.accountRecipientId])
     }
     queryClient.setQueryData(queryKeys.accounts, result.accounts)
-    queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => {
-      const items = prev ?? []
-      if (mode === 'add') {
-        return [result.item, ...items]
-      }
-      if (mode === 'update') {
-        return items.map((t) => (t.id === result.item.id ? result.item : t))
-      }
-      return items.filter((t) => t.id !== result.item.id)
-    })
+    if (patch) {
+      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => {
+        const items = prev ?? []
+        if (mode === 'add') {
+          return [result.item, ...items]
+        }
+        if (mode === 'update') {
+          return items.map((t) => (t.id === result.item.id ? result.item : t))
+        }
+        return items.filter((t) => t.id !== result.item.id)
+      })
+    }
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })

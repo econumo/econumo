@@ -4,7 +4,7 @@ import type { CreateRecurringDto, PostRecurringPayload, RecurringDto } from '@/a
 import type { Id } from '@/api/types'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
-import { noteOwnWrite } from '@/features/transactions/revisionTracking'
+import { beginLocalWrite, noteOwnWrite } from '@/features/transactions/revisionTracking'
 
 export function useRecurring() {
   return useQuery({
@@ -78,10 +78,14 @@ export function usePostRecurring() {
   return useMutation({
     mutationFn: (payload: PostRecurringPayload) => recurringApi.postRecurring(payload),
     onSuccess: (result, payload) => {
-      void queryClient.cancelQueries({ queryKey: queryKeys.transactions })
-      noteOwnWrite(result.accounts, [result.item.accountId, result.item.accountRecipientId])
+      const patch = beginLocalWrite(queryClient)
+      if (patch) {
+        noteOwnWrite(result.accounts, [result.item.accountId, result.item.accountRecipientId])
+      }
       queryClient.setQueryData(queryKeys.accounts, result.accounts)
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => [result.item, ...(prev ?? [])])
+      if (patch) {
+        queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => [result.item, ...(prev ?? [])])
+      }
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) =>
         (prev ?? []).map((r) => (r.id === payload.recurringId ? { ...r, nextPaymentAt: result.nextPaymentAt } : r)),
       )

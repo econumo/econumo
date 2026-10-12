@@ -9,7 +9,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { applyMove } from '@/lib/ordering'
 import { isPendingForMe } from '@/features/connections/shared'
 import { useUserData } from '@/features/user/queries'
-import { noteOwnWrite } from '@/features/transactions/revisionTracking'
+import { beginLocalWrite, noteOwnWrite } from '@/features/transactions/revisionTracking'
 
 export function useAccounts() {
   const { data: user } = useUserData()
@@ -50,13 +50,17 @@ export function useAccountItemEffects() {
   const queryClient = useQueryClient()
   return (result: AccountItemDto, opts: { checkFirstFolder?: boolean } = {}) => {
     // only a correction proves the revision moved because of this write
-    if (result.transaction) {
-      void queryClient.cancelQueries({ queryKey: queryKeys.transactions })
+    const patch = result.transaction !== null && beginLocalWrite(queryClient)
+    if (patch) {
       noteOwnWrite([result.item], [result.item.id])
     }
     queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) => upsert(prev, result.item))
     if (result.transaction) {
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => [result.transaction as TransactionDto, ...(prev ?? [])])
+      if (patch) {
+        // stored under the new revision, so it must match the list's row exactly
+        const row: TransactionDto = { labelIds: [], recurringId: null, isImported: 0, ...result.transaction }
+        queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => [row, ...(prev ?? [])])
+      }
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     }
