@@ -512,6 +512,16 @@
       "menu_item": "Apple Wallet",
       "intro": "Leg Apple Pay-betalingen automatisch vast met een iPhone-opdracht. Elke betaling wordt naar Econumo gestuurd; je koppelt elke kaart één keer aan een rekening.",
       "connect": "Apple Wallet instellen",
+      "connect_intro": {
+        "needs_title": "Je hebt nodig",
+        "needs": {
+          "iphone": "Een iPhone met Apple Pay",
+          "shortcuts": "De Opdrachten-app — die zit in iOS",
+          "time": "Ongeveer 5 minuten"
+        },
+        "steps_title": "Zo werkt het",
+        "privacy": "Per betaling ontvangt Econumo de kaartnaam, winkel, het bedrag en de valuta — nooit kaartnummers."
+      },
       "connected": "Verbonden",
       "disconnect": "Verbinding verbreken",
       "disconnect_full": "Apple Wallet loskoppelen",
@@ -521,7 +531,9 @@
       },
       "status": {
         "last_tap": "Laatste betaling {when}",
-        "no_taps": "Nog geen betalingen"
+        "no_taps": "Nog geen betalingen",
+        "setting_up": "Bezig met instellen",
+        "step": "Stap {n} van {total}: {title}"
       },
       "setup": {
         "header": "Installatie",
@@ -529,27 +541,23 @@
         "progress": "{done} van {total} klaar"
       },
       "steps": {
-        "hint_desktop": "Open deze pagina op je iPhone om de stappen daar uit te voeren. Op dit apparaat kun je de opdrachten downloaden en stappen handmatig afvinken.",
-        "install_wallet": {
-          "title": "econumo-wallet-v1 installeren",
-          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’."
-        },
-        "install_setup": {
-          "title": "econumo-setup-v1 installeren",
-          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’."
+        "hint_desktop": "Open deze pagina op je iPhone om de stappen daar te volgen. Op dit apparaat kun je de opdrachten downloaden en stappen als klaar markeren.",
+        "install": {
+          "title": "Opdrachten installeren",
+          "text": "Open elk bestand op je iPhone en tik op ‘Voeg opdracht toe’."
         },
         "configure": {
-          "title": "Opdrachten configureren",
+          "title": "Opdrachten met Econumo verbinden",
           "text": "Maakt een toegangstoken voor de opdracht en geeft die samen met het serveradres door aan econumo-setup-v1.",
-          "button": "Configureren op deze iPhone",
+          "button": "Toegangstoken maken",
+          "open": "{name} openen",
           "manual": "Handmatig configureren"
         },
         "test": {
-          "title": "econumo-wallet-v1 één keer uitvoeren",
+          "title": "De Wallet-opdracht één keer uitvoeren",
           "text": "Voer hem handmatig uit en tik bij elke melding op ‘Altijd toestaan’ — zo krijgt de automatisering de rechten die ze later nodig heeft. Er wordt niets aangemaakt; Econumo registreert alleen dat de opdracht is aangekomen.",
-          "button": "econumo-wallet-v1 uitvoeren",
-          "check": "Controleren",
-          "none": "Nog niets ontvangen. Voer de opdracht uit, sta de meldingen toe en controleer opnieuw."
+          "button": "{name} uitvoeren",
+          "waiting": "Wachten tot de opdracht Econumo bereikt…"
         },
         "automate": {
           "title": "Automatisering aanmaken",
@@ -558,13 +566,15 @@
         "payment": {
           "title": "Eerste betaling met ontgrendelde iPhone",
           "text": "Betaal één keer met Apple Pay terwijl de iPhone ontgrendeld is. Tik op ‘Voer uit’ als de automatisering erom vraagt en daarna op ‘Altijd toestaan’ als Opdrachten toegang tot Wallet vraagt.",
-          "check": "Controleren",
-          "none": "Nog geen betaling ontvangen. Betaal één keer met ontgrendelde iPhone en controleer opnieuw."
+          "waiting": "Wachten op de eerste betaling…"
         },
         "immediate": {
           "title": "Zet de automatisering op ‘Voer direct uit’",
           "text": "Open in de Opdrachten-app de automatisering en verander ‘Voer uit na bevestiging’ in ‘Voer direct uit’. Vanaf dan worden betalingen zonder vraag geïmporteerd, ook vanaf het toegangsscherm."
         },
+        "done": "Klaar",
+        "mark_done": "Markeren als klaar",
+        "undo": "Markeren als niet klaar",
         "complete": "Installatie voltooid"
       },
       "same_named_cards": "Kaarten met dezelfde naam in Wallet komen hier als één kaart binnen.",

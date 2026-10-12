@@ -512,6 +512,16 @@
       "menu_item": "Apple Wallet",
       "intro": "Log Apple Pay taps automatically with an iPhone Shortcut. Each tap is sent to Econumo; you map every card to an account once.",
       "connect": "Set up Apple Wallet",
+      "connect_intro": {
+        "needs_title": "You will need",
+        "needs": {
+          "iphone": "An iPhone with Apple Pay",
+          "shortcuts": "The Shortcuts app — it comes with iOS",
+          "time": "About 5 minutes"
+        },
+        "steps_title": "How it works",
+        "privacy": "For each payment Econumo receives the card name, merchant, amount and currency — never card numbers."
+      },
       "connected": "Connected",
       "disconnect": "Disconnect",
       "disconnect_full": "Disconnect Apple Wallet",
@@ -521,7 +531,9 @@
       },
       "status": {
         "last_tap": "Last tap {when}",
-        "no_taps": "No taps yet"
+        "no_taps": "No taps yet",
+        "setting_up": "Setting up",
+        "step": "Step {n} of {total}: {title}"
       },
       "setup": {
         "header": "Setup",
@@ -529,27 +541,23 @@
         "progress": "{done} of {total} done"
       },
       "steps": {
-        "hint_desktop": "Open this page on your iPhone to run the steps there. On this device you can download the Shortcuts and tick steps off by hand.",
-        "install_wallet": {
-          "title": "Install econumo-wallet-v1",
-          "text": "Open the file on your iPhone and tap Add Shortcut."
-        },
-        "install_setup": {
-          "title": "Install econumo-setup-v1",
-          "text": "Open the file on your iPhone and tap Add Shortcut."
+        "hint_desktop": "Open this page on your iPhone to follow the steps there. On this device you can download the Shortcuts and mark steps as done.",
+        "install": {
+          "title": "Install the Shortcuts",
+          "text": "Open each file on your iPhone and tap Add Shortcut."
         },
         "configure": {
-          "title": "Configure the Shortcuts",
+          "title": "Connect the Shortcuts to Econumo",
           "text": "Creates an access token for the Shortcut and hands it to econumo-setup-v1 together with the server address.",
-          "button": "Configure on this iPhone",
+          "button": "Create access token",
+          "open": "Open {name}",
           "manual": "Configure manually"
         },
         "test": {
-          "title": "Run econumo-wallet-v1 once",
+          "title": "Run the wallet Shortcut once",
           "text": "Run it by hand and tap Always Allow on every prompt — this grants the permissions the automation needs later. Nothing is created; Econumo only records that the Shortcut reached it.",
-          "button": "Run econumo-wallet-v1",
-          "check": "Check",
-          "none": "Nothing received yet. Run the Shortcut, allow the prompts and check again."
+          "button": "Run {name}",
+          "waiting": "Waiting for the Shortcut to reach Econumo…"
         },
         "automate": {
           "title": "Create the automation",
@@ -558,13 +566,15 @@
         "payment": {
           "title": "Make the first payment with the iPhone unlocked",
           "text": "Pay with Apple Pay once while the iPhone is unlocked. Tap Run when the automation asks, then tap Always Allow when Shortcuts asks for Wallet access.",
-          "check": "Check",
-          "none": "No payment received yet. Pay once with the iPhone unlocked and check again."
+          "waiting": "Waiting for the first payment…"
         },
         "immediate": {
           "title": "Switch the automation to Run Immediately",
           "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt, from the lock screen too."
         },
+        "done": "Done",
+        "mark_done": "Mark as done",
+        "undo": "Mark as not done",
         "complete": "Setup complete"
       },
       "same_named_cards": "Cards that share a name in Wallet arrive here as one card.",

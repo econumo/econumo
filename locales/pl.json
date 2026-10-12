@@ -512,6 +512,16 @@
       "menu_item": "Apple Wallet",
       "intro": "Zapisuj płatności Apple Pay automatycznie za pomocą skrótu na iPhonie. Każda płatność trafia do Econumo; każdą kartę przypisujesz do konta tylko raz.",
       "connect": "Skonfiguruj Apple Wallet",
+      "connect_intro": {
+        "needs_title": "Potrzebujesz",
+        "needs": {
+          "iphone": "iPhone’a z Apple Pay",
+          "shortcuts": "Aplikacji Skróty — jest w iOS",
+          "time": "Około 5 minut"
+        },
+        "steps_title": "Jak to działa",
+        "privacy": "Przy każdej płatności Econumo otrzymuje nazwę karty, sprzedawcę, kwotę i walutę — nigdy numerów kart."
+      },
       "connected": "Połączono",
       "disconnect": "Rozłącz",
       "disconnect_full": "Rozłącz Apple Wallet",
@@ -521,7 +531,9 @@
       },
       "status": {
         "last_tap": "Ostatnia płatność {when}",
-        "no_taps": "Brak płatności"
+        "no_taps": "Brak płatności",
+        "setting_up": "Konfiguracja",
+        "step": "Krok {n} z {total}: {title}"
       },
       "setup": {
         "header": "Konfiguracja",
@@ -529,27 +541,23 @@
         "progress": "Gotowe {done} z {total}"
       },
       "steps": {
-        "hint_desktop": "Otwórz tę stronę na iPhonie, aby wykonać kroki tam. Na tym urządzeniu możesz pobrać skróty i odhaczać kroki ręcznie.",
-        "install_wallet": {
-          "title": "Zainstaluj econumo-wallet-v1",
-          "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”."
-        },
-        "install_setup": {
-          "title": "Zainstaluj econumo-setup-v1",
-          "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”."
+        "hint_desktop": "Otwórz tę stronę na iPhonie, aby wykonać kroki tam. Na tym urządzeniu możesz pobrać skróty i oznaczać kroki jako gotowe.",
+        "install": {
+          "title": "Zainstaluj skróty",
+          "text": "Otwórz każdy plik na iPhonie i stuknij „Dodaj skrót”."
         },
         "configure": {
-          "title": "Skonfiguruj skróty",
+          "title": "Połącz skróty z Econumo",
           "text": "Tworzy token dostępu dla skrótu i przekazuje go do econumo-setup-v1 razem z adresem serwera.",
-          "button": "Skonfiguruj na tym iPhonie",
+          "button": "Utwórz token dostępu",
+          "open": "Otwórz {name}",
           "manual": "Skonfiguruj ręcznie"
         },
         "test": {
-          "title": "Uruchom econumo-wallet-v1 raz",
+          "title": "Uruchom raz skrót Wallet",
           "text": "Uruchom go ręcznie i przy każdym pytaniu stuknij „Zawsze zezwalaj” — to nadaje uprawnienia, których automatyzacja będzie potrzebować. Nic nie jest tworzone; Econumo tylko odnotowuje, że skrót dotarł.",
-          "button": "Uruchom econumo-wallet-v1",
-          "check": "Sprawdź",
-          "none": "Nic jeszcze nie odebrano. Uruchom skrót, zezwól na pytania i sprawdź ponownie."
+          "button": "Uruchom {name}",
+          "waiting": "Czekam, aż skrót dotrze do Econumo…"
         },
         "automate": {
           "title": "Utwórz automatyzację",
@@ -558,13 +566,15 @@
         "payment": {
           "title": "Pierwsza płatność z odblokowanym iPhonem",
           "text": "Zapłać raz przez Apple Pay przy odblokowanym iPhonie. Stuknij „Uruchom”, gdy automatyzacja o to poprosi, a potem „Zawsze zezwalaj”, gdy Skróty poproszą o dostęp do Wallet.",
-          "check": "Sprawdź",
-          "none": "Nie odebrano jeszcze płatności. Zapłać raz z odblokowanym iPhonem i sprawdź ponownie."
+          "waiting": "Czekam na pierwszą płatność…"
         },
         "immediate": {
           "title": "Przełącz automatyzację na „Uruchom natychmiast”",
           "text": "W aplikacji Skróty otwórz automatyzację i zmień „Uruchom po potwierdzeniu” na „Uruchom natychmiast”. Od tej pory płatności są importowane bez pytania, także z ekranu blokady."
         },
+        "done": "Gotowe",
+        "mark_done": "Oznacz jako gotowe",
+        "undo": "Oznacz jako niegotowe",
         "complete": "Konfiguracja zakończona"
       },
       "same_named_cards": "Karty o tej samej nazwie w Wallet trafiają tu jako jedna karta.",

@@ -512,6 +512,16 @@
       "menu_item": "Apple Wallet",
       "intro": "Erfasse Apple-Pay-Zahlungen automatisch mit einem iPhone-Kurzbefehl. Jede Zahlung wird an Econumo gesendet; jede Karte ordnest du einmal einem Konto zu.",
       "connect": "Apple Wallet einrichten",
+      "connect_intro": {
+        "needs_title": "Du brauchst",
+        "needs": {
+          "iphone": "Ein iPhone mit Apple Pay",
+          "shortcuts": "Die App Kurzbefehle – sie ist in iOS enthalten",
+          "time": "Etwa 5 Minuten"
+        },
+        "steps_title": "So funktioniert es",
+        "privacy": "Pro Zahlung erhält Econumo Kartenname, Händler, Betrag und Währung – niemals Kartennummern."
+      },
       "connected": "Verbunden",
       "disconnect": "Trennen",
       "disconnect_full": "Apple Wallet trennen",
@@ -521,7 +531,9 @@
       },
       "status": {
         "last_tap": "Letzte Zahlung {when}",
-        "no_taps": "Noch keine Zahlungen"
+        "no_taps": "Noch keine Zahlungen",
+        "setting_up": "Einrichtung läuft",
+        "step": "Schritt {n} von {total}: {title}"
       },
       "setup": {
         "header": "Einrichtung",
@@ -529,27 +541,23 @@
         "progress": "{done} von {total} erledigt"
       },
       "steps": {
-        "hint_desktop": "Öffne diese Seite auf deinem iPhone, um die Schritte dort auszuführen. Auf diesem Gerät kannst du die Kurzbefehle laden und Schritte von Hand abhaken.",
-        "install_wallet": {
-          "title": "econumo-wallet-v1 installieren",
-          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
-        },
-        "install_setup": {
-          "title": "econumo-setup-v1 installieren",
-          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
+        "hint_desktop": "Öffne diese Seite auf deinem iPhone, um die Schritte dort zu befolgen. Auf diesem Gerät kannst du die Kurzbefehle laden und Schritte als erledigt markieren.",
+        "install": {
+          "title": "Kurzbefehle installieren",
+          "text": "Öffne jede Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
         },
         "configure": {
-          "title": "Kurzbefehle konfigurieren",
+          "title": "Kurzbefehle mit Econumo verbinden",
           "text": "Erstellt ein Zugriffstoken für den Kurzbefehl und übergibt es zusammen mit der Serveradresse an econumo-setup-v1.",
-          "button": "Auf diesem iPhone konfigurieren",
+          "button": "Zugriffstoken erstellen",
+          "open": "{name} öffnen",
           "manual": "Manuell konfigurieren"
         },
         "test": {
-          "title": "econumo-wallet-v1 einmal ausführen",
+          "title": "Den Wallet-Kurzbefehl einmal ausführen",
           "text": "Führe ihn von Hand aus und tippe bei jeder Abfrage auf „Immer erlauben“ — das erteilt die Berechtigungen, die die Automation später braucht. Es wird nichts angelegt; Econumo merkt sich nur, dass der Kurzbefehl angekommen ist.",
-          "button": "econumo-wallet-v1 ausführen",
-          "check": "Prüfen",
-          "none": "Noch nichts empfangen. Führe den Kurzbefehl aus, erlaube die Abfragen und prüfe erneut."
+          "button": "{name} ausführen",
+          "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …"
         },
         "automate": {
           "title": "Automation anlegen",
@@ -558,13 +566,15 @@
         "payment": {
           "title": "Erste Zahlung mit entsperrtem iPhone",
           "text": "Zahle einmal mit Apple Pay, während das iPhone entsperrt ist. Tippe auf „Ausführen“, wenn die Automation nachfragt, und dann auf „Immer erlauben“, wenn Kurzbefehle Zugriff auf Wallet verlangt.",
-          "check": "Prüfen",
-          "none": "Noch keine Zahlung empfangen. Zahle einmal mit entsperrtem iPhone und prüfe erneut."
+          "waiting": "Warte auf die erste Zahlung …"
         },
         "immediate": {
           "title": "Automation auf „Sofort ausführen“ umstellen",
           "text": "Öffne in der Kurzbefehle-App die Automation und ändere „Nach Bestätigung ausführen“ auf „Sofort ausführen“. Ab dann werden Zahlungen ohne Rückfrage importiert, auch vom Sperrbildschirm aus."
         },
+        "done": "Erledigt",
+        "mark_done": "Als erledigt markieren",
+        "undo": "Als nicht erledigt markieren",
         "complete": "Einrichtung abgeschlossen"
       },
       "same_named_cards": "Karten mit gleichem Namen in Wallet erscheinen hier als eine Karte.",

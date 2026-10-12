@@ -512,6 +512,16 @@
       "menu_item": "Apple Wallet",
       "intro": "Registe pagamentos Apple Pay automaticamente com um atalho do iPhone. Cada pagamento é enviado ao Econumo; associa cada cartão a uma conta uma única vez.",
       "connect": "Configurar Apple Wallet",
+      "connect_intro": {
+        "needs_title": "Vai precisar de",
+        "needs": {
+          "iphone": "Um iPhone com Apple Pay",
+          "shortcuts": "A app Atalhos — vem com o iOS",
+          "time": "Cerca de 5 minutos"
+        },
+        "steps_title": "Como funciona",
+        "privacy": "Por cada pagamento o Econumo recebe o nome do cartão, o comerciante, o montante e a moeda — nunca números de cartão."
+      },
       "connected": "Ligado",
       "disconnect": "Desligar",
       "disconnect_full": "Desligar o Apple Wallet",
@@ -521,7 +531,9 @@
       },
       "status": {
         "last_tap": "Último pagamento {when}",
-        "no_taps": "Ainda sem pagamentos"
+        "no_taps": "Ainda sem pagamentos",
+        "setting_up": "A configurar",
+        "step": "Passo {n} de {total}: {title}"
       },
       "setup": {
         "header": "Configuração",
@@ -529,27 +541,23 @@
         "progress": "{done} de {total} concluídos"
       },
       "steps": {
-        "hint_desktop": "Abra esta página no seu iPhone para executar os passos lá. Neste dispositivo pode transferir os atalhos e marcar os passos manualmente.",
-        "install_wallet": {
-          "title": "Instalar econumo-wallet-v1",
-          "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho»."
-        },
-        "install_setup": {
-          "title": "Instalar econumo-setup-v1",
-          "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho»."
+        "hint_desktop": "Abra esta página no seu iPhone para seguir os passos lá. Neste dispositivo pode transferir os atalhos e marcar os passos como concluídos.",
+        "install": {
+          "title": "Instalar os atalhos",
+          "text": "Abra cada ficheiro no seu iPhone e toque em «Adicionar atalho»."
         },
         "configure": {
-          "title": "Configurar os atalhos",
+          "title": "Ligar os atalhos ao Econumo",
           "text": "Cria um token de acesso para o atalho e entrega-o a econumo-setup-v1 juntamente com o endereço do servidor.",
-          "button": "Configurar neste iPhone",
+          "button": "Criar token de acesso",
+          "open": "Abrir {name}",
           "manual": "Configurar manualmente"
         },
         "test": {
-          "title": "Executar econumo-wallet-v1 uma vez",
+          "title": "Executar uma vez o atalho da Wallet",
           "text": "Execute-o manualmente e toque em «Permitir sempre» em cada pedido — isso concede as permissões de que a automatização vai precisar. Nada é criado; o Econumo apenas regista que o atalho chegou.",
-          "button": "Executar econumo-wallet-v1",
-          "check": "Verificar",
-          "none": "Ainda nada recebido. Execute o atalho, aceite os pedidos e verifique novamente."
+          "button": "Executar {name}",
+          "waiting": "À espera de que o atalho chegue ao Econumo…"
         },
         "automate": {
           "title": "Criar a automatização",
@@ -558,13 +566,15 @@
         "payment": {
           "title": "Fazer o primeiro pagamento com o iPhone desbloqueado",
           "text": "Pague uma vez com Apple Pay com o iPhone desbloqueado. Toque em «Executar» quando a automatização pedir e depois em «Permitir sempre» quando os Atalhos pedirem acesso à Wallet.",
-          "check": "Verificar",
-          "none": "Ainda nenhum pagamento recebido. Pague uma vez com o iPhone desbloqueado e verifique novamente."
+          "waiting": "À espera do primeiro pagamento…"
         },
         "immediate": {
           "title": "Mudar a automatização para «Executar imediatamente»",
           "text": "Na app Atalhos, abra a automatização e mude «Executar após confirmação» para «Executar imediatamente». A partir daí os pagamentos são importados sem perguntar, também a partir do ecrã bloqueado."
         },
+        "done": "Concluído",
+        "mark_done": "Marcar como concluído",
+        "undo": "Marcar como não concluído",
         "complete": "Configuração concluída"
       },
       "same_named_cards": "Cartões com o mesmo nome no Wallet chegam aqui como um único cartão.",
