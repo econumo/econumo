@@ -372,19 +372,24 @@ database, `econumo` (`web/src/lib/db.ts`), holds three stores: `importKeys` (the
 data key, migrated once from the old `econumo-import` database), `accountTransactions`
 (one row per account: its `transactionsRevision` and transactions) and `meta` (`buster`,
 `userId`). `web/src/lib/transactionStore.ts` is the only reader/writer: waits that hold boot
-or auth time out after 1.5 s, background writes are never awaited, errors never surface
-(a broken IndexedDB degrades to a plain network load), and a clear (logout, a login that
-changes the user, a buster change) bumps an epoch that fences any in-flight sync so it cannot
-write the previous user's data back. The query-cache restore seeds `['transactions']` from
-IndexedDB inside `restoreClient`. That key's `queryFn` is the revision-driven sync
-(`web/src/features/transactions/{sync.ts,revisionTracking.ts}`): it asks
-`get-account-transaction-list` for the revisions, downloads only accounts whose revision
-changed (hidden-folder accounts included, pending share invites skipped) and merges them
-into the store; against a server that predates the endpoint it falls back to
-`get-transaction-list` (hidden-folder account pages then show no transactions). The user's own
-edits are recorded locally without a download when the response revision is exactly +1 of
-the stored one. The sync button (`ApplicationLayout`, via `useLongPress`): a tap is an incremental refresh; holding it >= 600 ms
-or Shift+click is a full reload (every account re-downloaded, toast,
+or auth time out after 1.5 s, background writes are never awaited, and errors never surface
+(a broken IndexedDB degrades to a plain network load). `clearTransactions` (called by
+`clearPersistedQueryCache` on every login and logout, and by a full reload) bumps an epoch
+that fences any in-flight sync so it cannot write the previous user's data back; a stored
+`buster`/`userId` that no longer matches wipes the store on load without an epoch bump. The
+query-cache restore seeds `['transactions']` from IndexedDB inside `restoreClient`. That
+key's `queryFn` is the revision-driven sync
+(`web/src/features/transactions/{sync.ts,revisionTracking.ts}`): it compares the stored
+revisions with the `transactionsRevision` of `get-account-list` and calls
+`get-account-transaction-list` with `accountIds` naming only the stale accounts (no request
+when none are stale; `accountIds` omitted, i.e. all accounts, when the store is empty, on a
+full reload or with more than 200 stale), then merges the result into the store.
+Hidden-folder accounts are included and pending share invites skipped; against a server
+whose accounts carry no revisions it falls back to `get-transaction-list` (hidden-folder
+account pages then show no transactions). The user's own edits are recorded locally without
+a download when the response revision is exactly +1 of the stored one. The sync button
+(`ApplicationLayout`, via `useLongPress`): a tap is an incremental refresh; holding it
+>= 600 ms or Shift+click is a full reload (every account re-downloaded, toast,
 `METRICS.DATA_FULL_RELOAD`).
 
 **Product analytics rule:** every new user-facing feature/action MUST fire an

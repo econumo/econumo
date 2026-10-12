@@ -1903,9 +1903,10 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       turns it amber with a tooltip; recovery clears it. App restores from the
       persisted cache on reload without a boot-loader flash.
 - [ ] Sync button tap = incremental refresh: after an edit made on another
-      device, one tap shows it, and the network log lists `get-account-transaction-list`
-      downloading only the changed account's transactions (the unchanged accounts appear
-      with their revision only, no items).
+      device, one tap shows it, and the network log shows a single
+      `get-account-transaction-list` request whose `accountIds` names only the
+      changed account (a tap with nothing changed sends no such request; a first
+      load or a full reload omits `accountIds` and downloads every account).
 - [ ] 📱 Sync button hold (about 0.6 s) or Shift+click on desktop = full
       reload: every account's transactions are downloaded again, a toast
       confirms the reload, and a short tap does not trigger it.
