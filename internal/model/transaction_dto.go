@@ -211,6 +211,92 @@ type GetTransactionListResult struct {
 	Items []TransactionResult `json:"items"`
 }
 
+// MaxAccountTransactionListIds caps get-account-transaction-list's accountIds:
+// a few hundred UUIDs reach common proxy request-line limits.
+const MaxAccountTransactionListIds = 200
+
+// AccountTransactionListRequest is the get-account-transaction-list query.
+// AccountIds is the raw comma-separated value; Provided tells an absent
+// parameter (every accessible account) from an empty one (400).
+type AccountTransactionListRequest struct {
+	AccountIds string
+	Provided   bool
+}
+
+// Validate rejects a provided-but-blank value, a non-UUID entry and more than
+// MaxAccountTransactionListIds entries, all on the accountIds field.
+func (r AccountTransactionListRequest) Validate() error {
+	if !r.Provided {
+		return nil
+	}
+	if strings.Trim(r.AccountIds, ", \t") == "" {
+		return accountIdsError("This value should not be blank.", errs.CodeIsBlank)
+	}
+	parts := strings.Split(r.AccountIds, ",")
+	if len(parts) > MaxAccountTransactionListIds {
+		return accountIdsError("This value is too long.", errs.CodeTooLong)
+	}
+	for _, p := range parts {
+		if _, err := vo.ParseId(strings.TrimSpace(p)); err != nil {
+			return accountIdsError("This value is not a valid UUID.", errs.CodeInvalidUUID)
+		}
+	}
+	return nil
+}
+
+func accountIdsError(msg, code string) error {
+	return errs.NewValidation("Form validation error", errs.FieldError{Key: "accountIds", Message: msg, Code: code})
+}
+
+// IDs returns the parsed, deduplicated ids in request order; nil when the
+// parameter is absent. Entries that do not parse are skipped (Validate rejects
+// them first on the HTTP path).
+func (r AccountTransactionListRequest) IDs() []vo.Id {
+	if !r.Provided {
+		return nil
+	}
+	seen := map[string]bool{}
+	var out []vo.Id
+	for _, p := range strings.Split(r.AccountIds, ",") {
+		id, err := vo.ParseId(strings.TrimSpace(p))
+		if err != nil || seen[id.String()] {
+			continue
+		}
+		seen[id.String()] = true
+		out = append(out, id)
+	}
+	return out
+}
+
+// AccountTransactionItem is a TransactionResult with the author as an id; the
+// distinct authors travel once in GetAccountTransactionListResult.Authors.
+type AccountTransactionItem struct {
+	Id                 string   `json:"id"`
+	AuthorId           string   `json:"authorId"`
+	Type               string   `json:"type"`
+	AccountId          string   `json:"accountId"`
+	AccountRecipientId *string  `json:"accountRecipientId"`
+	Amount             string   `json:"amount"`
+	AmountRecipient    *string  `json:"amountRecipient"`
+	CategoryId         *string  `json:"categoryId"`
+	Description        string   `json:"description"`
+	PayeeId            *string  `json:"payeeId"`
+	TagId              *string  `json:"tagId"`
+	Date               string   `json:"date"`
+	RecurringId        *string  `json:"recurringId"`
+	LabelIds           []string `json:"labelIds"`
+	IsImported         int      `json:"isImported"`
+}
+
+// GetAccountTransactionListResult is the response. Revisions holds only the
+// accounts the caller can access; a requested id missing from it is gone or
+// not theirs. Authors is sorted by id.
+type GetAccountTransactionListResult struct {
+	Revisions map[string]int64         `json:"revisions"`
+	Items     []AccountTransactionItem `json:"items"`
+	Authors   []UserResult             `json:"authors"`
+}
+
 // BulkUpdateTransactionsRequest is the MCP-only bulk_update_transactions
 // input: re-classify (set or clear category/payee/tag on) an explicit list of
 // transaction ids in one all-or-nothing call. There is no REST route for

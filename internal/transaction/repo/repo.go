@@ -204,6 +204,33 @@ func (r *Repo) labelsByTransactionIDsChunk(ctx context.Context, ids []vo.Id, out
 	return rows.Err()
 }
 
+// TransactionsRevisions is hand-built like ListByAccountIDs: a dynamic IN list.
+func (r *Repo) TransactionsRevisions(ctx context.Context, accountIDs []vo.Id) (map[string]int64, error) {
+	out := make(map[string]int64, len(accountIDs))
+	if len(accountIDs) == 0 {
+		return out, nil
+	}
+	args := make([]any, len(accountIDs))
+	for i, id := range accountIDs {
+		args[i] = id.String()
+	}
+	query := "SELECT id, transactions_revision FROM accounts WHERE id IN (" + placeholders(r.driver, 1, len(args)) + ")"
+	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var rev int64
+		if err := rows.Scan(&id, &rev); err != nil {
+			return nil, err
+		}
+		out[id] = rev
+	}
+	return out, rows.Err()
+}
+
 // ImportedTransactionIDs reads import_transaction_links, a table the imports
 // feature owns. This is the one place the transaction feature touches it —
 // SQL, not a Go import, so archtest cannot see the coupling; keep it here and

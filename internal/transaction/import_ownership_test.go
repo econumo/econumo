@@ -129,6 +129,9 @@ func (r *stubImportRepo) LabelsByTransactionIDs(ctx context.Context, ids []vo.Id
 func (r *stubImportRepo) ImportedTransactionIDs(ctx context.Context, ids []vo.Id) (map[string]bool, error) {
 	return nil, nil
 }
+func (r *stubImportRepo) TransactionsRevisions(ctx context.Context, ids []vo.Id) (map[string]int64, error) {
+	return nil, nil
+}
 
 type passthroughTx struct{}
 

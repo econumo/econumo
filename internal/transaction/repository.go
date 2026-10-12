@@ -38,6 +38,10 @@ type Repository interface {
 	// query.
 	ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter model.TransactionFilter) ([]*model.Transaction, error)
 
+	// TransactionsRevisions reads accounts.transactions_revision for the given
+	// accounts, keyed by account id. Accounts that do not exist are absent.
+	TransactionsRevisions(ctx context.Context, accountIDs []vo.Id) (map[string]int64, error)
+
 	// ReplaceLabels rewrites a transaction's label links; the caller runs this
 	// inside the same tx as Save so the classification and the row commit or
 	// roll back together.

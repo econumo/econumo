@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -121,6 +122,98 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		items = append(items, s.buildResult(t, author, labelsByTx[t.ID.String()], importedByTx[t.ID.String()]))
 	}
 	return &model.GetTransactionListResult{Items: items}, nil
+}
+
+// GetAccountTransactionList returns the transactions of the requested accounts
+// (every available one when none are named) together with each account's
+// transactions_revision. Requested accounts the caller cannot access are
+// dropped silently: one can vanish between the accounts read and this call.
+// Revisions are read before the rows, so a concurrent write yields an older
+// revision with newer rows, which costs a redundant download later, never a
+// stale cache.
+func (s *Service) GetAccountTransactionList(ctx context.Context, userID vo.Id, req model.AccountTransactionListRequest) (*model.GetAccountTransactionListResult, error) {
+	available, err := s.visible.AvailableAccountIDs(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	target := available
+	if requested := req.IDs(); requested != nil {
+		allowed := make(map[string]bool, len(available))
+		for _, id := range available {
+			allowed[id.String()] = true
+		}
+		target = make([]vo.Id, 0, len(requested))
+		for _, id := range requested {
+			if allowed[id.String()] {
+				target = append(target, id)
+			}
+		}
+	}
+	if len(target) == 0 {
+		return &model.GetAccountTransactionListResult{
+			Revisions: map[string]int64{},
+			Items:     []model.AccountTransactionItem{},
+			Authors:   []model.UserResult{},
+		}, nil
+	}
+
+	revisions, err := s.repo.TransactionsRevisions(ctx, target)
+	if err != nil {
+		return nil, err
+	}
+	txs, err := s.repo.ListByAccountIDs(ctx, target, model.TransactionFilter{})
+	if err != nil {
+		return nil, err
+	}
+	txIDs := make([]vo.Id, len(txs))
+	for i, t := range txs {
+		txIDs[i] = t.ID
+	}
+	labelsByTx, err := s.repo.LabelsByTransactionIDs(ctx, txIDs)
+	if err != nil {
+		return nil, err
+	}
+	importedByTx, err := s.repo.ImportedTransactionIDs(ctx, txIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	authors := make(map[string]model.UserResult)
+	items := make([]model.AccountTransactionItem, 0, len(txs))
+	for _, t := range txs {
+		uid := t.UserID.String()
+		if _, ok := authors[uid]; !ok {
+			av, err := s.users.GetOwner(ctx, uid)
+			if err != nil {
+				return nil, err
+			}
+			authors[uid] = model.UserResult{Id: av.ID, Avatar: av.Avatar, Name: av.Name}
+		}
+		res := s.buildResult(t, model.UserResult{}, labelsByTx[t.ID.String()], importedByTx[t.ID.String()])
+		items = append(items, model.AccountTransactionItem{
+			Id:                 res.Id,
+			AuthorId:           uid,
+			Type:               res.Type,
+			AccountId:          res.AccountId,
+			AccountRecipientId: res.AccountRecipientId,
+			Amount:             res.Amount,
+			AmountRecipient:    res.AmountRecipient,
+			CategoryId:         res.CategoryId,
+			Description:        res.Description,
+			PayeeId:            res.PayeeId,
+			TagId:              res.TagId,
+			Date:               res.Date,
+			RecurringId:        res.RecurringId,
+			LabelIds:           res.LabelIds,
+			IsImported:         res.IsImported,
+		})
+	}
+	authorList := make([]model.UserResult, 0, len(authors))
+	for _, a := range authors {
+		authorList = append(authorList, a)
+	}
+	sort.Slice(authorList, func(i, j int) bool { return authorList[i].Id < authorList[j].Id })
+	return &model.GetAccountTransactionListResult{Revisions: revisions, Items: items, Authors: authorList}, nil
 }
 
 // buildFilter parses the request's classification filter fields (MCP-only;

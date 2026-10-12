@@ -28,6 +28,23 @@ func init() {
 		}
 	}})
 
+	// account_transaction_list: the per-account batch read the client cache
+	// downloads from. A foreign id is dropped silently (never a 403); the
+	// parameter being present-but-empty or malformed is a 400.
+	register(Scenario{Name: "account_transaction_list", Calls: func() []Call {
+		const path = "/api/v1/transaction/get-account-transaction-list"
+		const unknownAccount = "a0000000-0000-0000-0000-0000000000ff"
+		return []Call{
+			{Label: "all-accessible", Method: "GET", Path: path, Auth: "owner"},
+			{Label: "one-account", Method: "GET", Path: path + "?accountIds=" + OwnerAccount, Auth: "owner"},
+			{Label: "owned-and-shared", Method: "GET", Path: path + "?accountIds=" + OwnerAccount + "," + SharedAccount, Auth: "owner"},
+			{Label: "foreign-id-omitted", Method: "GET", Path: path + "?accountIds=" + OwnerAccount + "," + unknownAccount, Auth: "owner"},
+			{Label: "other-users-account-only", Method: "GET", Path: path + "?accountIds=" + OwnerAccount, Auth: "guest"},
+			{Label: "err:empty-ids", Method: "GET", Path: path + "?accountIds=", Auth: "owner"},
+			{Label: "err:not-a-uuid", Method: "GET", Path: path + "?accountIds=nope", Auth: "owner"},
+		}
+	}})
+
 	// transaction_labels covers a POPULATED labelIds (not just the ubiquitous
 	// "[]" every other scenario shows): the create request lists LabelPersonal
 	// before LabelWork (its id sorts AFTER LabelWork's), so a correct response
