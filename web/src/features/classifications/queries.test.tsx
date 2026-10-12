@@ -8,7 +8,21 @@ import type { LabelDto } from '@/api/dto/label'
 import type { TagDto } from '@/api/dto/tag'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
-import { useArchiveLabel, useCreateLabel, useDeleteLabel, useLabels, useMoveLabel, useSortLabels, useUnarchiveLabel, useUpdateLabel } from './queries'
+import {
+  useArchiveLabel,
+  useCreateLabel,
+  useDeleteCategory,
+  useDeleteLabel,
+  useDeleteTag,
+  useLabels,
+  useMergeCategory,
+  useMergePayee,
+  useMergeTag,
+  useMoveLabel,
+  useSortLabels,
+  useUnarchiveLabel,
+  useUpdateLabel,
+} from './queries'
 import { trackEvent } from '@/lib/metrics'
 
 vi.mock('@/lib/metrics', async (importOriginal) => ({
@@ -177,4 +191,58 @@ it('deleting a label strips its id from cached transactions and templates', asyn
   expect(transactions.map((tx) => tx.labelIds)).toEqual([['l2'], ['l2']])
   expect(queryClient.getQueryData<RecurringDto[]>(queryKeys.recurring)![0].labelIds).toEqual([])
   expect(firedEvents('appLabelDelete')).toHaveLength(1)
+})
+
+// Every budget-derived cache a merge or delete reshapes. The Plan view reads
+// budgetPlan, a separate query from the Budget view's budget cache, so
+// invalidating only the latter left the Plan showing the merged row until a
+// manual sync.
+const budgetCaches = {
+  budget: [...queryKeys.budget, 'b1', '2026-10-01'],
+  budgetPlan: [...queryKeys.budgetPlan, 'b1', '2026-08-01', 7],
+  budgetTransactions: [...queryKeys.budgetTransactions, { budgetId: 'b1' }],
+  budgetComments: [...queryKeys.budgetComments, 'b1', '2026-08-01', 7],
+}
+
+function seedBudgetCaches(queryClient: QueryClient) {
+  for (const key of Object.values(budgetCaches)) {
+    queryClient.setQueryData(key, { seeded: true })
+  }
+}
+
+function invalidatedCaches(queryClient: QueryClient) {
+  return Object.fromEntries(Object.entries(budgetCaches).map(([name, key]) => [name, queryClient.getQueryState(key)?.isInvalidated]))
+}
+
+const allInvalidated = { budget: true, budgetPlan: true, budgetTransactions: true, budgetComments: true }
+
+it.each([
+  ['category', '*/api/v1/category/merge-category', useMergeCategory],
+  ['tag', '*/api/v1/tag/merge-tag', useMergeTag],
+  ['payee', '*/api/v1/payee/merge-payee', useMergePayee],
+] as const)('merging a %s refreshes the plan, budget, sheet transactions and comments', async (_kind, url, useMerge) => {
+  server.use(http.post(url, () => HttpResponse.json({ success: true, message: '', data: {} })))
+  const { queryClient, wrapper } = makeWrapper()
+  seedBudgetCaches(queryClient)
+
+  const { result } = renderHook(() => useMerge(), { wrapper })
+  result.current.mutate({ sourceId: 'src', targetId: 'dst' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+  expect(invalidatedCaches(queryClient)).toEqual(allInvalidated)
+})
+
+it.each([
+  ['category', '*/api/v1/category/delete-category', useDeleteCategory],
+  ['tag', '*/api/v1/tag/delete-tag', useDeleteTag],
+] as const)('deleting a %s refreshes the plan, budget, sheet transactions and comments', async (_kind, url, useDelete) => {
+  server.use(http.post(url, () => HttpResponse.json({ success: true, message: '', data: {} })))
+  const { queryClient, wrapper } = makeWrapper()
+  seedBudgetCaches(queryClient)
+
+  const { result } = renderHook(() => useDelete(), { wrapper })
+  result.current.mutate('src')
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+  expect(invalidatedCaches(queryClient)).toEqual(allInvalidated)
 })
