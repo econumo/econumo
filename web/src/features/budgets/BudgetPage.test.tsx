@@ -541,6 +541,30 @@ it('the Budget view follows the phone order: Income, Savings, Expenses, then the
   expect(screen.getByTestId('month-total-balance')).toBeInTheDocument()
 })
 
+it('the Budget view\'s Total and totals lines take the element rows\' hover tint', async () => {
+  const budget = budgetWithSavings()
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    planHandler(),
+  )
+  renderPage()
+  const row = await screen.findByTestId('month-savings-row-acc-s1')
+  const hoverOf = (el: HTMLElement) => el.className.split(' ').filter((c) => c.startsWith('hover:') || c === 'rounded-md')
+  const rowHover = hoverOf(row)
+  expect(rowHover).toEqual(['rounded-md', 'hover:bg-accent/50'])
+  const lines = [
+    screen.getByTestId('budget-totals'),
+    screen.getByTestId('month-total-income'),
+    screen.getByTestId('month-total-expenses'),
+    screen.getByTestId('month-total-savings'),
+    screen.getByTestId('month-total-balance'),
+  ]
+  for (const line of lines) {
+    expect(hoverOf(line)).toEqual(rowHover)
+  }
+})
+
 it('the Budget view groups income like the Plan grid: folders with sums, No folder, envelopes unfold to categories', async () => {
   const plan = JSON.parse(JSON.stringify(fixtureWirePlan))
   plan.structure.folders = [...plan.structure.folders, { id: 'bf-inc', name: 'Side gigs', position: 1 }]

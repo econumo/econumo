@@ -797,6 +797,20 @@ it('totals: Income, Expenses, Savings, Total savings, then a sticky Balance; Tra
   expect(within(screen.getByTestId('plan-balance-row')).getByTestId('plan-total-balance')).toBeInTheDocument()
 })
 
+it('totals lines, the sticky Balance included, take the element rows\' hover tint', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const rowHover = (screen.getByTestId('plan-cell-pe1:0').closest('[role="row"]') as HTMLElement).className.split(' ').filter((c) => c.startsWith('hover:'))
+  expect(rowHover).toEqual(['hover:bg-accent/50'])
+  const lines = [...within(screen.getByTestId('plan-totals')).getAllByTestId(/^plan-total-/), screen.getByTestId('plan-total-balance')]
+  expect(lines.length).toBeGreaterThan(3)
+  for (const line of lines) {
+    expect(line.className.split(' ').filter((c) => c.startsWith('hover:'))).toEqual(rowHover)
+  }
+})
+
 it('totals: no Transfers line when nothing crossed the boundary in the visible months', async () => {
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   server.use(

@@ -884,6 +884,11 @@ and on tablet/phone only with a hardware keyboard.
       click anywhere on such a line folds it, its sums included; in Edit
       structure the grip and the folder's "⋮" menu (and the menu's
       items) keep their own action and do not fold.
+- [ ] Budget view totals, desktop (mouse): hovering the Total row and each
+      totals line below it (Income, Expenses, Transfers outside budget,
+      Savings, Total savings, Balance at month end) tints it like a hovered
+      row; the rule above Total stays straight. On a touch screen no tint
+      sticks after a tap.
 - [ ] Budget view nesting (desktop and tablet): a row inside a folder sits a
       half step in from the folder line, its chevron just right of the folder's (an
       envelope or tag in "No folder" reads as inside it, not beside it); an
@@ -1087,6 +1092,10 @@ and on tablet/phone only with a hardware keyboard.
       shows their tooltips; clicking a past or current month's "Transfers outside budget"
       figure opens that
       month's transfers. Hovering a cut-short actual shows its full value.
+- [ ] Plan totals hover, desktop (mouse): hovering a totals line (Income,
+      Expenses, Transfers outside budget, Savings, Total savings) and the
+      sticky Balance line tints it like a hovered row, and the selected
+      cell's column highlight still runs through it.
 - [ ] Plan cell editing, desktop (mouse): clicking a cell selects it (ring)
       and the arrow keys move the selection between month cells (never onto
       a name or a section/folder line).
