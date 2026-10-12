@@ -35,6 +35,8 @@ accounts refresh.
 | Sync button long-press | Full reload: wipe stored transactions, download every account, invalidate everything. Toast confirms. Long-press, not double-tap, because impatient repeated tapping would otherwise trigger the most expensive action. |
 | Scheduled full refresh | None. Author name/avatar staleness is fixed at the source (`update-name`/`update-avatar` bump). |
 | IndexedDB failure | Not a separate mode: on any IDB error the sync keeps working in memory for the session and logs a warning. |
+| Hidden-folder accounts | Synced and included in the `['transactions']` list like every other account. Folder visibility no longer affects transactions; the separate `['accountTransactions', id]` query goes away. Global search therefore also finds (and its recent feed shows) hidden-folder transactions, consistent with it already listing hidden-folder accounts. |
+| Request size | No `accountIds` = every accessible account (first load, full reload). Incremental syncs list only the changed accounts. Server caps the list at 200 ids as input validation; the client never chunks — over 200 stale accounts it asks for all. |
 | Older servers | Accounts without `transactionsRevision` → the client uses today's full `get-transaction-list` path and stores nothing. |
 
 ## Background (current state)
@@ -116,11 +118,15 @@ more than one; the client then simply downloads the account again.
 
 ### 4. Endpoint — `GET /api/v1/transaction/get-account-transaction-list`
 
-- Query: `accountIds` — comma-separated UUIDs, 1 to 50 of them. Comma-separated
-  rather than repeated `accountIds[]=` because the API has no array-param
-  precedent and this sidesteps axios/Go serialisation differences; 50 ids keep
-  the URL under ~2 KB. Stays a `GET` (reads only; the API reserves `POST` for
-  writes). Empty, malformed, or more than 50 ids → 400.
+- Query: `accountIds` — optional, comma-separated UUIDs, at most 200.
+  **Absent = every account the caller can access** (first load, full reload),
+  so the URL never grows with the number of accounts. Comma-separated rather
+  than repeated `accountIds[]=` because the API has no array-param precedent
+  and this sidesteps axios/Go serialisation differences. The 200 cap is input
+  validation only: a few hundred UUIDs reach common proxy request-line limits
+  (nginx's default 8 KB ≈ 200 ids) and it keeps the `IN (...)` list bounded.
+  Stays a `GET` (reads only; the API reserves `POST` for writes). Present but
+  empty, malformed, or more than 200 ids → 400.
 - Access: the caller's `AvailableAccountIDs` (owned or accepted share, not
   deleted; hidden folders allowed) — the same rule as today's
   `get-transaction-list?accountId=`. Requested ids outside that set are
@@ -172,7 +178,8 @@ more than one; the client then simply downloads the account again.
 - **apiparity**: scenarios + goldens for `get-account-transaction-list`
   (owner, shared reader, hidden-folder account, a transfer between two
   requested accounts appearing once, a foreign id omitted from `revisions`,
-  empty / malformed / 51 ids → 400). Account-carrying goldens change by the new `transactionsRevision` field —
+  no `accountIds` returning every accessible account including hidden-folder
+  ones, empty / malformed / 201 ids → 400). Account-carrying goldens change by the new `transactionsRevision` field —
   inspect that diff.
 - `enginecompare` covers the new endpoint; swagger regenerated (`make swagger`).
 
@@ -209,37 +216,37 @@ more than one; the client then simply downloads the account again.
 
 ### 8. Sync — the new `queryFn` for `['transactions']`
 
-1. `fetchQuery` the accounts, folders and user queries (deduped with any
-   fetch already in flight). If any account lacks `transactionsRevision`
-   (older server), return `getTransactionList()` as today and stop.
-2. Load buckets. Collect every account in the list (hidden-folder accounts
-   included) that has no bucket, whose revision differs, or — on a full
-   reload — all of them, and download them with `get-account-transaction-list`
-   in chunks of 50 ids (chunks requested one after another). Each response
-   rebuilds the buckets of its `revisions` keys: a row belongs to account A's
-   bucket when its `accountId` or `accountRecipientId` is A (a transfer whose
-   two accounts were fetched in different chunks lands in both buckets).
+1. `fetchQuery` the accounts and user queries (deduped with any fetch already
+   in flight). If any account lacks `transactionsRevision` (older server),
+   return `getTransactionList()` as today and stop.
+2. Load buckets. Collect the accounts that have no bucket or whose revision
+   differs. Download them with one `get-account-transaction-list` request:
+   with `accountIds` listing them, or with **no** `accountIds` when it is a
+   full reload, there are no buckets yet, or more than 200 are stale. Nothing
+   stale → no request. The response rebuilds the buckets of its `revisions`
+   keys: a row belongs to account A's bucket when its `accountId` or
+   `accountRecipientId` is A.
 3. Delete buckets whose account is no longer in the accounts list (share
-   revoked, account deleted, account left) or was requested but is absent from
-   `revisions`.
-4. Persist downloaded buckets, then assemble: rows from buckets of accounts
-   **not** in a folder with `isVisible: 0` (today's `VisibleAccountIDs` rule), deduplicated
-   by id (a transfer between two visible accounts sits in both buckets), each
-   row's `author` filled from the bucket's `authors`. Sorting stays in
-   `select: byDateDesc`.
+   revoked, account deleted, account left) or was requested (explicitly, or
+   implicitly by an all-accounts request) but is absent from `revisions`.
+4. Persist the downloaded buckets, then assemble the list from **every**
+   bucket, hidden-folder accounts included, deduplicated by id (a transfer
+   between two accounts sits in both buckets), each row's `author` filled from
+   the bucket's `authors`. Sorting stays in `select: byDateDesc`.
 
 The `staleTime` stays 10 minutes; nothing else about the query's options
-changes. Hidden-folder account pages read their bucket through a small
-`useAccountBucket(accountId)` hook backed by the same sync, replacing the
-`['accountTransactions', id]` query (and fixing the up-to-10-minute gap after
-un-hiding a folder).
+changes. Because hidden-folder accounts are in the list, their account pages
+filter it like any other account page: `useAccountTransactionList` and the
+`['accountTransactions', id]` query (`gcTime: 0`) are removed, which also
+removes the up-to-10-minute gap after un-hiding a folder. Folder hide/show no
+longer touches transactions at all.
 
 ### 9. Transactions follow the accounts list
 
 A query-cache subscription watches `['accounts']`: when its data changes and
 any account's `transactionsRevision` differs from the stored bucket (or an
-account appeared/disappeared, or folder visibility changed), it invalidates
-`['transactions']`. So accepting a share, hiding/showing a folder, an accounts
+account appeared/disappeared), it invalidates `['transactions']`. So accepting
+a share, an accounts
 refetch on focus, or a mutation response all pull in exactly the changed
 accounts, without each call site having to remember to invalidate
 transactions.
@@ -268,7 +275,7 @@ transactions.
   (`shouldDehydrateQuery`).
 - The persister used by `PersistQueryClientProvider` is wrapped: after the
   localStorage restore, `restoreClient` loads the buckets and, when the
-  restored cache holds `user`, `accounts` and `folders` matching the store's
+  restored cache holds `user` and `accounts` matching the store's
   `userId`, seeds `['transactions']` with the assembled list (`updatedAt` =
   when it was saved). This runs inside the existing restore, so `isRestoring`
   still suppresses the boot loader and the app starts from local data.
@@ -316,13 +323,14 @@ Two keys under `settings.sync` in all 11 catalogues: `full_reload`,
 - `transactionStore`: buster/userId mismatch wipes; failure turns it into a
   no-op with one warning.
 - Sync `queryFn`: missing bucket → download; equal revision → no request;
-  changed revision → download; several stale accounts → one request, 51 →
-  two chunks; removed account, or one absent from `revisions` → bucket deleted; hidden-folder
-  bucket stored but excluded from the list; transfer between two visible
+  changed revision → download; several stale accounts → one request listing
+  them; 201 stale accounts, a first load and a full reload → one request with
+  no `accountIds`; removed account, or one absent from `revisions` → bucket
+  deleted; hidden-folder account's rows are in the list; transfer between two
   accounts appears once; authors filled in; older server → legacy
   `get-transaction-list`, nothing stored; full reload downloads every account.
-- Accounts subscription: a revision change, share accept and folder un-hide
-  each trigger a sync of exactly the affected accounts.
+- Accounts subscription: a revision change and a share accept each trigger a
+  sync of exactly the affected accounts; a folder hide/show triggers none.
 - +1 shortcut: no download at exactly +1; download at +2.
 - Write-through: a category-merge patch reaches IndexedDB.
 - Boot (`ApplicationLayout.test.tsx`): restored from IndexedDB with no boot
@@ -335,7 +343,8 @@ Two keys under `settings.sync` in all 11 catalogues: `full_reload`,
 - `docs/regression-test-plan.md`: offline reload still shows transactions
   📱; edit on device A appears on device B after refocus; a partner's edit on a
   shared account appears; accepting / revoking a share adds / removes that
-  account's history; un-hiding a folder shows its transactions immediately;
+  account's history; a hidden-folder account's page shows its transactions,
+  and global search finds them;
   logout → login as another user shows none of the previous data; sync tap
   refreshes; sync long-press 📱 / Shift+click reloads everything with a toast.
 - `CLAUDE.md`: the revision counter and the "bump inside the repository
