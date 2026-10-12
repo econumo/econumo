@@ -26,6 +26,7 @@ const (
 	opTxn       = "d0000000-0000-0000-0000-0000000000f1"
 	opRecurring = "e0000000-0000-0000-0000-0000000000f1"
 	opAccount   = "a0000000-0000-0000-0000-0000000000f1"
+	opAdoptee   = "d0000000-0000-0000-0000-0000000000f2"
 	ruleID      = "0192b1e4-0000-7000-8000-00000000f001"
 	txnDate     = "2024-04-04 10:00:00"
 )
@@ -45,6 +46,16 @@ func createExpense(extra map[string]any, into *string) ap.Call {
 		body[k] = v
 	}
 	return capture(post("create-transaction", "/api/v1/transaction/create-transaction", body), into)
+}
+
+// adoptee is a hand-entered expense the matcher will adopt for an Apple
+// Wallet tap of the same amount: it falls on the tap's day (ClockTime),
+// unlike Txn1, whose seed date is outside the match window.
+func adoptee(amount string, into *string) ap.Call {
+	return capture(post("create-adoptee", "/api/v1/transaction/create-transaction", map[string]any{
+		"id": opAdoptee, "accountId": ap.OwnerAccount, "type": "expense", "amount": amount,
+		"date": ap.ClockTime.Format("2006-01-02 15:04:05"), "description": "Shop",
+	}), into)
 }
 
 func scenarios() []scenario {
@@ -199,6 +210,47 @@ func scenarios() []scenario {
 				}
 			},
 			Want: []string{"POST /api/v1/import/apply-rule"},
+		},
+		{
+			// Txn2 carries a link from each seeded source, so only deleting the
+			// second one flips it back to hand-entered.
+			Name: "import_delete_sources",
+			Calls: func() []ap.Call {
+				return []ap.Call{
+					post("delete-phone-source", "/api/v1/import/delete-source", map[string]any{"id": ap.ImportSourcePhone}),
+					post("delete-bank-source", "/api/v1/import/delete-source", map[string]any{"id": ap.ImportSourceBank}),
+				}
+			},
+			Want: []string{"POST /api/v1/import/delete-source"},
+		},
+		{
+			// Mapping the card converts its queued 12.50 tap by adopting the
+			// existing transaction: the link gains a transaction id and nothing
+			// else in the request touches that transaction.
+			Name: "import_link_account_adopts",
+			Calls: func() []ap.Call {
+				var txn string
+				return []ap.Call{
+					adoptee("12.50", &txn),
+					post("link-account", "/api/v1/import/link-account", map[string]any{"sourceId": ap.ImportSourcePhone, "externalAccountId": "wallet", "accountId": ap.OwnerAccount}),
+				}
+			},
+			Want: []string{"POST /api/v1/import/link-account"},
+		},
+		{
+			// A push for a mapped card adopts the matching transaction, so the
+			// only write that touches it is the new link row.
+			Name: "import_ingest_adopts",
+			Calls: func() []ap.Call {
+				var txn string
+				return []ap.Call{
+					post("link-account", "/api/v1/import/link-account", map[string]any{"sourceId": ap.ImportSourcePhone, "externalAccountId": "wallet", "accountId": ap.OwnerAccount}),
+					adoptee("7.77", &txn),
+					{Label: "ingest-adopting", Method: "POST", Path: "/api/v1/import/ingest-apple-wallet-event", Auth: "ingest",
+						RawBody: []byte(`{"account":"wallet","payee":"Shop","amount":"7.77","currency":"USD","eventId":"tap-guard"}`), ContentType: "application/json"},
+				}
+			},
+			Want: []string{"POST /api/v1/import/ingest-apple-wallet-event"},
 		},
 	}
 }

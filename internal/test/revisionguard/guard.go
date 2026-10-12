@@ -26,24 +26,30 @@ import (
 // without a visible change is allowed.
 func Check(t *testing.T, newDB func(testing.TB) *dbtest.DB) {
 	t.Run("api", func(t *testing.T) {
+		t.Parallel()
 		for _, sc := range apiparity.Catalogue() {
 			t.Run(sc.Name, func(t *testing.T) {
+				t.Parallel()
 				h, _ := watch(t, newDB(t))
 				h.Replay(t, sc.Calls())
 			})
 		}
 	})
 	t.Run("mcp", func(t *testing.T) {
+		t.Parallel()
 		for _, sc := range mcpparity.Catalogue() {
 			t.Run(sc.Name, func(t *testing.T) {
+				t.Parallel()
 				h, _ := watch(t, newDB(t))
 				mcpparity.RunSteps(t, h, sc)
 			})
 		}
 	})
 	t.Run("guard", func(t *testing.T) {
+		t.Parallel()
 		for _, sc := range scenarios() {
 			t.Run(sc.Name, func(t *testing.T) {
+				t.Parallel()
 				h, changed := watch(t, newDB(t))
 				calls := sc.Calls()
 				statuses, bodies := h.Replay(t, calls)
