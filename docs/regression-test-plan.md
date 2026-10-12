@@ -908,6 +908,9 @@ and on tablet/phone only with a hardware keyboard.
       immediately and carries into the next period per rules.
 - [ ] Spent cell drilldown opens the transactions dialog (filtered list,
       preview, delete works and refreshes figures).
+- [ ] Transactions dialog rows: a row with a note shows the note, then
+      "Category · Payee" beneath it; a row without a note shows
+      "Category · Payee" on one line (payee muted), never the category alone.
 - [ ] Period strip: navigate previous/next months; figures change. Months
       BEFORE the budget start remain browsable as read-only history (dimmed,
       scrolling keeps extending into the past) and show that month's real
