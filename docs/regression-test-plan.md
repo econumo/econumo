@@ -1111,6 +1111,9 @@ and on tablet/phone only with a hardware keyboard.
       - the editor draws no box or ring of its own: the cell's selection ring
         is the only border while editing, and the figure stays exactly where
         the read-only plan was (no shift when editing starts or ends);
+      - no outline is ever drawn around the whole grid while a cell is
+        selected, including after Enter/Esc out of an editor or closing a
+        transactions list with Esc;
       - typing a digit, `-`, `.` or `,` edits the cell in place, replacing
         the value with what was typed;
       - F2, Enter or a double-click edit the current value, caret at the end;
