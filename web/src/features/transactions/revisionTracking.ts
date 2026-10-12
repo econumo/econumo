@@ -242,6 +242,10 @@ export function resetRevisions(): void {
   fullReload = false
 }
 
+function inBackground(write: Promise<void>): void {
+  write.catch((e: unknown) => console.warn('Could not store transactions', e))
+}
+
 export async function transactionsQueryFn(
   queryClient: QueryClient,
   opts: { full: boolean; signal?: AbortSignal },
@@ -274,8 +278,12 @@ export async function transactionsQueryFn(
     }
     return list
   }
-  // patches not yet written would otherwise be replaced by the older stored rows
-  await flushWriteThrough(queryClient)
+  // Writes are never awaited: a write that does not complete on some device
+  // must not hold the list. IndexedDB runs readwrite transactions on the same
+  // stores in the order they were created, so a load started after a write
+  // still sees it. Patches not yet written would otherwise be replaced by the
+  // older stored rows.
+  inBackground(flushWriteThrough(queryClient))
   // null: the store did not answer in time — download everything, persist nothing
   const stored = await tryLoadBuckets(user.id, at)
   if (superseded()) {
@@ -291,8 +299,8 @@ export async function transactionsQueryFn(
     return []
   }
   if (stored) {
-    await putBuckets(user.id, out.changed, at)
-    await deleteBuckets(out.removed, at)
+    inBackground(putBuckets(user.id, out.changed, at))
+    inBackground(deleteBuckets(out.removed, at))
   }
   if (opts.signal?.aborted) {
     return []

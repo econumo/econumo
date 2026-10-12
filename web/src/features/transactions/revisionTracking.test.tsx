@@ -383,3 +383,20 @@ it('a sync whose load does not answer in time downloads everything and writes no
     restore()
   }
 })
+
+it('a bucket write that never completes does not hold the first sync', async () => {
+  globalThis.indexedDB = new IDBFactory()
+  resetDbForTests()
+  resetTransactionStoreForTests()
+  // the load (the first readwrite transaction) answers; every write after it hangs
+  let loads = 0
+  const restore = delayTransactionCompletion(null, (_, mode) => mode === 'readwrite' && loads++ > 0)
+  try {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    expect(result.current.list.data!.map((t) => t.id)).toEqual(['t1', 't2'])
+    expect(calls).toEqual([null])
+  } finally {
+    restore()
+  }
+})
