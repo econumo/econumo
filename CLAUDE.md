@@ -371,19 +371,24 @@ Lint is oxlint, tests are vitest (`pnpm test`).
 database, `econumo` (`web/src/lib/db.ts`), holds three stores: `importKeys` (the SimpleFIN
 data key, migrated once from the old `econumo-import` database), `accountTransactions`
 (one row per account: its `transactionsRevision` and transactions) and `meta` (`buster`,
-`userId`). `web/src/lib/transactionStore.ts` is the only reader/writer: waits that hold boot
-or auth time out after 1.5 s, background writes are never awaited, and errors never surface
-(a broken IndexedDB degrades to a plain network load). `clearTransactions` (called by
+`userId`). `web/src/lib/transactionStore.ts` is the only reader/writer: loads are readonly
+(a readwrite transaction only to wipe another user's or build's data), waits that hold boot
+or auth time out after 1.5 s (a slow database is no failure and stays on), background writes
+are never awaited, and errors never surface (a broken IndexedDB turns the store off for the
+session; the sync keeps working in memory). `clearTransactions` (called by
 `clearPersistedQueryCache` on every login and logout, and by a full reload) bumps an epoch
 that fences any in-flight sync so it cannot write the previous user's data back; a stored
 `buster`/`userId` that no longer matches wipes the store on load without an epoch bump. The
 query-cache restore seeds `['transactions']` from IndexedDB inside `restoreClient`. That
 key's `queryFn` is the revision-driven sync
-(`web/src/features/transactions/{sync.ts,revisionTracking.ts}`): it compares the stored
+(`web/src/features/transactions/{sync.ts,revisionTracking.ts}`): it compares the bucket
 revisions with the `transactionsRevision` of `get-account-list` and calls
 `get-account-transaction-list` with `accountIds` naming only the stale accounts (no request
 when none are stale; `accountIds` omitted, i.e. all accounts, when the store is empty, on a
-full reload or with more than 200 stale), then merges the result into the store.
+full reload or with more than 200 stale), then writes the downloaded buckets to the store in
+the background. It reads IndexedDB only while the page holds no synced or restored list (first
+boot, after a login/logout); otherwise the buckets come from memory: the cached list regrouped
+by account under the revisions it was synced at.
 Hidden-folder accounts are included and pending share invites skipped; against a server
 whose accounts carry no revisions it falls back to `get-transaction-list` (hidden-folder
 account pages then show no transactions). The user's own edits are recorded locally without
@@ -996,7 +1001,8 @@ In the distroless image these run via the binary directly, e.g.
   of the accounts being downloaded (each with `authorId`) and `authors` the users they
   reference. Absent `accountIds` = every accessible account, hidden folders included; at most
   200 comma-separated ids; ids the caller cannot access are omitted from `revisions` (never an
-  error). `get-transaction-list` (the budget read, server-filtered per period) is unchanged.
+  error). `/api/v1/transaction/get-transaction-list` (the legacy full list, still used by MCP,
+  older clients and the SPA's fallback against a server without revisions) is unchanged.
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,

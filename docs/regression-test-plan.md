@@ -1659,9 +1659,9 @@ User C sees none of it.
       appears for B (lists, account page, global search) after the next sync
       without a reload.
 - [ ] A shared account where B has write access: B adds, edits or deletes a
-      transaction → A sees it after refocusing the app or tapping sync, with
-      B shown as the author; B changing their own name or avatar also reaches
-      A's transaction rows after a sync.
+      transaction → A sees it after tapping sync (or refocusing after 10
+      minutes), with B shown as the author; B changing their own name or
+      avatar also reaches A's transaction rows after a sync.
 - [ ] Owner deletes a shared account → it disappears for B too.
 
 **Budget sharing**
@@ -1916,8 +1916,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       synced transactions; the sync button shows its failure state instead of
       an empty list.
 - [ ] Cross-device edit: with the app open on devices A and B, edit or add a
-      transaction on A, then refocus B (or tap sync) — B shows the change
-      without a manual reload; only the touched account is re-downloaded.
+      transaction on A, then tap sync on B (or refocus B after 10 minutes) —
+      B shows the change without a manual reload; only the touched account
+      is re-downloaded.
 - [ ] Logout, then log in as another user in the same browser: none of the
       previous user's transactions, accounts or search results appear, even
       for an instant, and a reload keeps it that way (the local transaction

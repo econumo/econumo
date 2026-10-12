@@ -225,6 +225,10 @@ stored row), so routine saves (login, options) never cause downloads.
   `importKeys`).
 - Every IDB failure is caught, logged once (`console.warn`), and turns the
   store into a no-op for the rest of the session; callers never see an error.
+  Slowness is no failure: only the waits that hold boot or a sign-in/out (a
+  load, a clear) give up after 1.5 s, and the store stays on. Loads are
+  readonly; a readwrite transaction is opened only to wipe a mismatched
+  `meta`.
 
 ### 8. Sync — the new `queryFn` for `['transactions']`
 
@@ -234,7 +238,10 @@ stored row), so routine saves (login, options) never cause downloads.
    would omit them, and they would otherwise be re-requested on every sync).
    If any account lacks `transactionsRevision` (older server), return
    `getTransactionList()` as today and stop.
-2. Load buckets. Collect the accounts that have no bucket or whose revision
+2. Load buckets: from IndexedDB only while the page holds no synced or
+   restored list (first boot, after a login/logout); otherwise from memory
+   (the cached list regrouped by account under the revisions it was synced
+   at), so a sync never re-reads the whole store. Collect the accounts that have no bucket or whose revision
    differs. Download them with one `get-account-transaction-list` request:
    with `accountIds` listing them, or with **no** `accountIds` when it is a
    full reload, there are no buckets yet, or more than 200 are stale. Nothing
