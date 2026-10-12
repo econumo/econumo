@@ -14,6 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -55,6 +56,7 @@ type Repo struct {
 	tx     *backend.TxManager
 	q      querier
 	driver string
+	rev    *txrevision.Bumper
 }
 
 var _ domtransaction.Repository = (*Repo)(nil)
@@ -63,9 +65,9 @@ var _ domtransaction.Repository = (*Repo)(nil)
 func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
 	case "sqlite":
-		return &Repo{tx: tx, q: sqliteQuerier{}, driver: driver}
+		return &Repo{tx: tx, q: sqliteQuerier{}, driver: driver, rev: txrevision.New(driver, tx)}
 	case "postgresql":
-		return &Repo{tx: tx, q: pgsqlQuerier{}, driver: driver}
+		return &Repo{tx: tx, q: pgsqlQuerier{}, driver: driver, rev: txrevision.New(driver, tx)}
 	default:
 		panic("transactionrepo: unknown database driver " + driver)
 	}
@@ -88,9 +90,13 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error
 	return hydrate(row)
 }
 
-// Save upserts a transaction.
+// Save upserts a transaction. A re-save may move the row to other accounts, so
+// the accounts it sits on now are bumped before the write and the new ones after.
 func (r *Repo) Save(ctx context.Context, t *model.Transaction) error {
-	return r.q.UpsertTransaction(ctx, r.db(ctx), upsertParams{
+	if err := r.rev.BumpWhere(ctx, "id = ?", t.ID.String()); err != nil {
+		return err
+	}
+	if err := r.q.UpsertTransaction(ctx, r.db(ctx), upsertParams{
 		ID:                 t.ID.String(),
 		UserID:             t.UserID.String(),
 		AccountID:          t.AccountID.String(),
@@ -106,13 +112,23 @@ func (r *Repo) Save(ctx context.Context, t *model.Transaction) error {
 		Amount:             t.Amount,
 		AmountRecipient:    t.AmountRecipient,
 		RecurringID:        idPtr(t.RecurringID),
-	})
+	}); err != nil {
+		return err
+	}
+	recipient := ""
+	if t.AccountRecipID != nil {
+		recipient = t.AccountRecipID.String()
+	}
+	return r.rev.Bump(ctx, t.AccountID.String(), recipient)
 }
 
 // ReplaceLabels rewrites a transaction's label links. The caller runs this
 // inside the same tx as Save, so the delete-then-insert is atomic and a
 // re-save is idempotent (never duplicates a pair).
 func (r *Repo) ReplaceLabels(ctx context.Context, transactionID vo.Id, labelIDs []vo.Id) error {
+	if err := r.rev.BumpWhere(ctx, "id = ?", transactionID.String()); err != nil {
+		return err
+	}
 	db := r.db(ctx)
 	if err := r.q.DeleteTransactionLabels(ctx, db, transactionID.String()); err != nil {
 		return err
@@ -234,6 +250,9 @@ func (r *Repo) importedTransactionIDsChunk(ctx context.Context, ids []vo.Id, out
 // LinkRecurring stamps recurring_id on an existing transaction (Save never
 // touches the column, so an explicit link needs this dedicated write).
 func (r *Repo) LinkRecurring(ctx context.Context, id, recurringID vo.Id, now time.Time) error {
+	if err := r.rev.BumpWhere(ctx, "id = ?", id.String()); err != nil {
+		return err
+	}
 	rid := recurringID.String()
 	return r.q.LinkTransactionToRecurring(ctx, r.db(ctx), linkParams{
 		ID:          id.String(),
@@ -244,6 +263,9 @@ func (r *Repo) LinkRecurring(ctx context.Context, id, recurringID vo.Id, now tim
 
 // Delete removes a transaction by id.
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
+	if err := r.rev.BumpWhere(ctx, "id = ?", id.String()); err != nil {
+		return err
+	}
 	return r.q.DeleteTransaction(ctx, r.db(ctx), id.String())
 }
 

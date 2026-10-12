@@ -29,7 +29,10 @@ func TestAccountDTO_TransactionsRevisionMatchesColumn(t *testing.T) {
 	tok := h.token(t)
 
 	id, created := h.createAccount(t, acctID1, "Cash", "100")
-	requireRevision(t, "create item", created.TransactionsRevision, h.dbRevision(t, id))
+	requireRevision(t, "create item", created.TransactionsRevision, 1)
+	if got := h.dbRevision(t, id); got != 1 {
+		t.Fatalf("revision after create with an opening balance = %d, want 1", got)
+	}
 
 	if _, err := h.db.Exec(`UPDATE accounts SET transactions_revision = 7 WHERE id = ?`, id); err != nil {
 		t.Fatal(err)
@@ -50,5 +53,23 @@ func TestAccountDTO_TransactionsRevisionMatchesColumn(t *testing.T) {
 		t.Fatalf("update = %d, want 200; body: %s", status, env.raw)
 	}
 	updated := mustUnmarshal[accountItemWrapper](t, env.Data)
-	requireRevision(t, "update item", updated.Item.TransactionsRevision, h.dbRevision(t, id))
+	requireRevision(t, "update item", updated.Item.TransactionsRevision, 8)
+	if got := h.dbRevision(t, id); got != 8 {
+		t.Fatalf("revision after a balance change = %d, want 8 (7 + the correction)", got)
+	}
+}
+
+func TestAccountUpdate_WithoutBalanceChange_LeavesRevision(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	id, _ := h.createAccount(t, acctID1, "Cash", "100")
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/account/update-account", tok, map[string]any{
+		"id": id, "name": "Renamed", "balance": "100", "icon": "wallet",
+		"updatedAt": "2024-01-01 12:00:00",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("update = %d, want 200; body: %s", status, env.raw)
+	}
+	requireRevision(t, "update item", mustUnmarshal[accountItemWrapper](t, env.Data).Item.TransactionsRevision, 1)
 }

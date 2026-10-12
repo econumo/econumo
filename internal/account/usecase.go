@@ -156,16 +156,15 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *mo
 	}
 
 	return model.AccountResult{
-		Id:           acct.ID.String(),
-		Owner:        ownerRes,
-		FolderId:     folderID,
-		Name:         acct.Name,
-		Currency:     curRes,
-		Balance:      vo.NewDecimal(balance).String(),
-		Type:         int(acct.Type.Int16()),
-		Icon:         acct.Icon,
-		SharedAccess: shared,
-
+		Id:                   acct.ID.String(),
+		Owner:                ownerRes,
+		FolderId:             folderID,
+		Name:                 acct.Name,
+		Currency:             curRes,
+		Balance:              vo.NewDecimal(balance).String(),
+		Type:                 int(acct.Type.Int16()),
+		Icon:                 acct.Icon,
+		SharedAccess:         shared,
 		TransactionsRevision: acct.TransactionsRevision,
 	}, nil
 }
