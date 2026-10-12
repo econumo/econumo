@@ -541,27 +541,22 @@
         "progress": "{done} sur {total} terminées"
       },
       "steps": {
-        "hint_desktop": "Ouvrez cette page sur votre iPhone pour y suivre les étapes. Sur cet appareil, vous pouvez télécharger les raccourcis et marquer les étapes comme terminées.",
+        "hint_desktop": "Ouvrez cette page sur votre iPhone pour y suivre les étapes. Sur cet appareil, vous pouvez télécharger le raccourci et marquer les étapes comme terminées.",
         "install": {
-          "title": "Installer les raccourcis",
-          "text": "Ouvrez chaque fichier sur votre iPhone et touchez « Ajouter le raccourci »."
+          "title": "Installer le raccourci",
+          "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci »."
         },
         "configure": {
-          "title": "Relier les raccourcis à Econumo",
-          "text": "Crée un jeton d’accès pour le raccourci et le transmet à econumo-setup-v1 avec l’adresse du serveur.",
+          "title": "Relier le raccourci à Econumo",
+          "text": "Crée un jeton d’accès et ouvre econumo-wallet-v2 avec. Le raccourci enregistre l’adresse du serveur et le jeton, puis contacte Econumo. Touchez « Toujours autoriser » à chaque demande : l’automatisation aura besoin de ces autorisations.",
           "button": "Créer un jeton d’accès",
           "open": "Ouvrir {name}",
+          "waiting": "En attente du premier contact du raccourci avec Econumo…",
           "manual": "Configurer manuellement"
-        },
-        "test": {
-          "title": "Exécuter une fois le raccourci Wallet",
-          "text": "Lancez-le à la main et touchez « Toujours autoriser » à chaque demande : cela accorde les autorisations dont l’automatisation aura besoin. Rien n’est créé ; Econumo note seulement que le raccourci l’a atteint.",
-          "button": "Exécuter {name}",
-          "waiting": "En attente du premier contact du raccourci avec Econumo…"
         },
         "automate": {
           "title": "Créer l’automatisation",
-          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer (le plus sûr est de tout sélectionner) → Exécuter après confirmation → econumo-wallet-v1."
+          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer (le plus sûr est de tout sélectionner) → Exécuter après confirmation → econumo-wallet-v2."
         },
         "payment": {
           "title": "Effectuer le premier paiement avec l’iPhone déverrouillé",

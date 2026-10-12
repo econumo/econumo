@@ -541,27 +541,22 @@
         "progress": "{done} di {total} completati"
       },
       "steps": {
-        "hint_desktop": "Apri questa pagina sul tuo iPhone per seguire i passaggi lì. Su questo dispositivo puoi scaricare i comandi rapidi e segnare i passaggi come fatti.",
+        "hint_desktop": "Apri questa pagina sul tuo iPhone per seguire i passaggi lì. Su questo dispositivo puoi scaricare il comando rapido e segnare i passaggi come fatti.",
         "install": {
-          "title": "Installa i comandi rapidi",
-          "text": "Apri ogni file sul tuo iPhone e tocca «Aggiungi comando rapido»."
+          "title": "Installa il comando rapido",
+          "text": "Apri il file sul tuo iPhone e tocca «Aggiungi comando rapido»."
         },
         "configure": {
-          "title": "Collega i comandi rapidi a Econumo",
-          "text": "Crea un token di accesso per il comando rapido e lo passa a econumo-setup-v1 insieme all’indirizzo del server.",
+          "title": "Collega il comando rapido a Econumo",
+          "text": "Crea un token di accesso e apre econumo-wallet-v2 con esso. Il comando rapido salva l’indirizzo del server e il token, poi contatta Econumo. Tocca «Consenti sempre» a ogni richiesta: l’automazione avrà bisogno di questi permessi.",
           "button": "Crea token di accesso",
           "open": "Apri {name}",
+          "waiting": "In attesa che il comando rapido raggiunga Econumo…",
           "manual": "Configura manualmente"
-        },
-        "test": {
-          "title": "Esegui una volta il comando rapido di Wallet",
-          "text": "Eseguilo a mano e tocca «Consenti sempre» a ogni richiesta: così concedi i permessi che serviranno all’automazione. Non viene creato nulla; Econumo registra solo che il comando rapido è arrivato.",
-          "button": "Esegui {name}",
-          "waiting": "In attesa che il comando rapido raggiunga Econumo…"
         },
         "automate": {
           "title": "Crea l’automazione",
-          "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare (la scelta più sicura è tutte) → Esegui dopo conferma → econumo-wallet-v1."
+          "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare (la scelta più sicura è tutte) → Esegui dopo conferma → econumo-wallet-v2."
         },
         "payment": {
           "title": "Fai il primo pagamento con l’iPhone sbloccato",

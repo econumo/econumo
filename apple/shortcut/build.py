@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate and sign the Apple Wallet shortcuts.
+"""Generate and sign the Apple Wallet shortcut.
 
-Writes the unsigned XML plist source for both shortcuts next to this file and,
+Writes the unsigned XML plist source for the shortcut next to this file and,
 unless --no-sign is given, signs them with `shortcuts sign --mode anyone` into
 web/public/shortcuts/ — the served assets stay under web/, the builder does not.
 Signing needs macOS with Shortcuts.app signed into an Apple ID; generating the
@@ -22,7 +22,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-VERSION = 1
+VERSION = 2
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[1]
 PUBLIC = REPO_ROOT / "web" / "public" / "shortcuts"
@@ -140,6 +140,21 @@ def if_has_no_value(ref: dict, then: list) -> list:
     return [start, *then, end]
 
 
+def if_text_is(ref: dict, value: str, then: list) -> list:
+    """If <ref> is <value> (condition 4, text comparison) ... End If, no Otherwise."""
+    group = new_uuid()
+    start = action(
+        "conditional",
+        GroupingIdentifier=group,
+        WFControlFlowMode=0,
+        WFCondition=4,
+        WFConditionalActionString=value,
+        WFInput={"Type": "Variable", "Variable": attachment(ref)},
+    )
+    end = action("conditional", GroupingIdentifier=group, WFControlFlowMode=2)
+    return [start, *then, end]
+
+
 def notification(*body) -> dict:
     return action("notification", WFNotificationActionBody=text(*body))
 
@@ -148,12 +163,65 @@ def stop() -> dict:
     return action("exit")
 
 
-# ---- the two shortcuts ------------------------------------------------------
+# ---- the shortcut -----------------------------------------------------------
 
 
-def setup_actions() -> list:
+def read_config() -> tuple[list, dict, dict]:
+    """Get File + Dictionary + url + token: the actions, and the url / token refs."""
+    file_uuid, dict_uuid, url_uuid, token_uuid = (new_uuid() for _ in range(4))
+    file = output(file_uuid, "File")
+    actions = [
+        action(
+            "documentpicker.open",
+            UUID=file_uuid,
+            WFGetFilePath=CONFIG_FILE,
+            WFShowFilePicker=False,
+            WFFileErrorIfNotFound=False,
+        ),
+        *if_has_no_value(file, [notification(NOT_CONFIGURED), stop()]),
+        action("detect.dictionary", UUID=dict_uuid, WFInput=attachment(file)),
+        action(
+            "getvalueforkey",
+            UUID=url_uuid,
+            WFInput=attachment(output(dict_uuid, "Dictionary")),
+            WFDictionaryKey="url",
+            WFGetDictionaryValueType="Value",
+        ),
+        action(
+            "getvalueforkey",
+            UUID=token_uuid,
+            WFInput=attachment(output(dict_uuid, "Dictionary")),
+            WFDictionaryKey="token",
+            WFGetDictionaryValueType="Value",
+        ),
+    ]
+    return actions, output(url_uuid, "Dictionary Value"), output(token_uuid, "Dictionary Value")
+
+
+def post(url: dict, token: dict, body: dict) -> dict:
+    return action(
+        "downloadurl",
+        UUID=new_uuid(),
+        Advanced=True,
+        ShowHeaders=True,
+        WFURL=text(url, INGEST_PATH),
+        WFHTTPMethod="POST",
+        WFHTTPHeaders=dictionary({"Authorization": text("Bearer ", token)}),
+        WFHTTPBodyType="JSON",
+        WFJSONValues=dictionary(body),
+    )
+
+
+def setup_branch() -> list:
+    """Run from the SPA's deep link with {url, token} as text input: save the
+    configuration, then check in once so the run collects the server-host and
+    iCloud Drive grants the unattended automation needs later."""
     dict_uuid, url_uuid, renamed_uuid = new_uuid(), new_uuid(), new_uuid()
-    url = output(url_uuid, "Dictionary Value")
+    given_url = output(url_uuid, "Dictionary Value")
+    # Read the saved file back rather than reusing the input: the grants are
+    # tracked by data provenance, and the automation's request carries data
+    # from that file.
+    read, url, token = read_config()
     return [
         action("detect.dictionary", UUID=dict_uuid, WFInput=attachment(shortcut_input())),
         action(
@@ -164,7 +232,7 @@ def setup_actions() -> list:
             WFGetDictionaryValueType="Value",
         ),
         *if_has_no_value(
-            url,
+            given_url,
             [
                 action(
                     "alert",
@@ -189,40 +257,27 @@ def setup_actions() -> list:
             WFFileDestinationPath=CONFIG_FILE,
             WFSaveFileOverwrite=True,
         ),
+        *read,
+        # No card: the server stores it as failed with "account is required",
+        # which the SPA takes as proof of contact and discards.
+        post(url, token, {"check": text("setup")}),
         notification("Econumo configured for ", url),
+        stop(),
     ]
 
 
 def wallet_actions() -> list:
-    file_uuid, dict_uuid, url_uuid, token_uuid, date_uuid = (new_uuid() for _ in range(5))
-    file = output(file_uuid, "File")
-    url = output(url_uuid, "Dictionary Value")
-    token = output(token_uuid, "Dictionary Value")
+    type_uuid = new_uuid()
+    setup = setup_branch()
+    read, url, token = read_config()
+    date_uuid = new_uuid()
     amount = "WFCurrencyAmountContentItem"
     return [
-        action(
-            "documentpicker.open",
-            UUID=file_uuid,
-            WFGetFilePath=CONFIG_FILE,
-            WFShowFilePicker=False,
-            WFFileErrorIfNotFound=False,
-        ),
-        *if_has_no_value(file, [notification(NOT_CONFIGURED), stop()]),
-        action("detect.dictionary", UUID=dict_uuid, WFInput=attachment(file)),
-        action(
-            "getvalueforkey",
-            UUID=url_uuid,
-            WFInput=attachment(output(dict_uuid, "Dictionary")),
-            WFDictionaryKey="url",
-            WFGetDictionaryValueType="Value",
-        ),
-        action(
-            "getvalueforkey",
-            UUID=token_uuid,
-            WFInput=attachment(output(dict_uuid, "Dictionary")),
-            WFDictionaryKey="token",
-            WFGetDictionaryValueType="Value",
-        ),
+        # The setup deep link passes text; the Transaction automation passes a
+        # wallet transaction; a run by hand passes nothing.
+        action("getitemtype", UUID=type_uuid, WFInput=attachment(shortcut_input())),
+        *if_text_is(output(type_uuid, "Type"), "Text", setup),
+        *read,
         # The Transaction object carries no date; the automation fires within
         # seconds of the tap, so "now" on the device (with its offset) is it.
         action(
@@ -232,25 +287,17 @@ def wallet_actions() -> list:
             WFDateFormatStyle="ISO 8601",
             WFISO8601IncludeTime=True,
         ),
-        action(
-            "downloadurl",
-            UUID=new_uuid(),
-            Advanced=True,
-            ShowHeaders=True,
-            WFURL=text(url, INGEST_PATH),
-            WFHTTPMethod="POST",
-            WFHTTPHeaders=dictionary({"Authorization": text("Bearer ", token)}),
-            WFHTTPBodyType="JSON",
-            WFJSONValues=dictionary(
-                {
-                    "account": text(shortcut_input(prop("Card or Pass"))),
-                    "payee": text(shortcut_input(prop("Merchant"))),
-                    "amount": text(shortcut_input(coerce(amount), prop("Currency Amount"))),
-                    "currency": text(shortcut_input(coerce(amount), prop("Currency Code"))),
-                    "occurredAt": text(output(date_uuid, "Formatted Date")),
-                    "type": text("expense"),
-                }
-            ),
+        post(
+            url,
+            token,
+            {
+                "account": text(shortcut_input(prop("Card or Pass"))),
+                "payee": text(shortcut_input(prop("Merchant"))),
+                "amount": text(shortcut_input(coerce(amount), prop("Currency Amount"))),
+                "currency": text(shortcut_input(coerce(amount), prop("Currency Code"))),
+                "occurredAt": text(output(date_uuid, "Formatted Date")),
+                "type": text("expense"),
+            },
         ),
     ]
 
@@ -298,7 +345,6 @@ def workflow(name: str, actions: list, color: int) -> dict:
 # the deep link in the SPA and the automation instructions address it by
 # that name.
 SHORTCUTS = {
-    "econumo-setup": (setup_actions, 463140863),  # blue
     "econumo-wallet": (wallet_actions, 4292093695),  # green
 }
 

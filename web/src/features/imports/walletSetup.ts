@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ImportSourceDto } from '@/api/dto/imports'
-import { usePersonalTokens } from '@/features/settings/security'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { getItem, removeItem, setItem } from '@/lib/storage'
 import { useDiscardImportEvent, useImportQueue, useImportSources } from './queries'
 
-export const STEPS = ['install', 'configure', 'test', 'automate', 'payment', 'immediate'] as const
+export const STEPS = ['install', 'configure', 'automate', 'payment', 'immediate'] as const
 export type StepId = (typeof STEPS)[number]
 
-// What the server answers to a wallet shortcut run by hand: the Transaction
-// input is absent, so the body has no account. That failure IS the proof the
-// shortcut reached the server, and it is cleared from the queue once seen.
+// What the server answers to the shortcut's setup check-in (and to a run by
+// hand): the body has no account. That failure IS the proof the shortcut
+// reached the server, and it is cleared from the queue once seen.
 const NO_INPUT_ERROR = 'account is required'
 const POLL_MS = 4000
 
@@ -24,9 +23,13 @@ function readTicks(sourceId: string): StepId[] {
     return []
   }
   const ids = new Set(stored.filter((s): s is string => typeof s === 'string'))
-  // the two install steps of the first guide are one step now
+  // the two install steps of the first guide are one step now, and the
+  // run-once step became part of connecting
   if (ids.has('install_wallet') && ids.has('install_setup')) {
     ids.add('install')
+  }
+  if (ids.has('test')) {
+    ids.add('configure')
   }
   return STEPS.filter((s) => ids.has(s))
 }
@@ -43,13 +46,12 @@ export interface WalletSetup {
   current: StepId | null
   doneCount: number
   tick: (id: StepId, on: boolean) => void
-  /** the Shortcuts link minted on this page and not opened yet */
+  /** the Shortcuts link carrying the token minted on this page */
   configureLink: string | null
   setConfigureLink: (link: string | null) => void
 }
 
 export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
-  const tokens = usePersonalTokens()
   const queue = useImportQueue()
   const sources = useImportSources()
   const discardEvent = useDiscardImportEvent()
@@ -76,20 +78,18 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
   // the automation to Run Immediately happens after that payment and leaves
   // no trace on the server, so it stays a hand tick.
   const cardArrived = (source?.cards.length ?? 0) > 0
-  // A token minted here only counts once its Shortcuts link was opened.
-  const hasIngestToken = configureLink === null && (tokens.data ?? []).some((tok) => tok.scope === 'ingest')
-  const auto = (id: StepId) => (cardArrived && id !== 'immediate') || (id === 'configure' && hasIngestToken)
+  const auto = (id: StepId) => cardArrived && id !== 'immediate'
   const done = (id: StepId) => auto(id) || ticks.includes(id)
   const current = STEPS.find((id) => !done(id)) ?? null
 
-  // The test run and the first payment are confirmed by the server, so while
-  // either is the open step the page keeps asking — and asks again the moment
-  // the user switches back from the Shortcuts app.
+  // Connecting (the shortcut's check-in) and the first payment are confirmed
+  // by the server, so while either is the open step the page keeps asking —
+  // and asks again the moment the user switches back from the Shortcuts app.
   const { refetch: refetchQueue } = queue
   const { refetch: refetchSources } = sources
   const { mutate: discard } = discardEvent
   useEffect(() => {
-    if (!sourceId || (current !== 'test' && current !== 'payment')) {
+    if (!sourceId || (current !== 'configure' && current !== 'payment')) {
       return
     }
     let stopped = false
@@ -102,7 +102,7 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
         return
       }
       const tapped = (s.data ?? []).some((src) => src.id === sourceId && src.cards.length > 0)
-      if (current === 'test') {
+      if (current === 'configure') {
         const failed = (q.data?.failed ?? []).filter((e) => e.sourceId === sourceId)
         const queued = [...(q.data?.queued ?? []), ...(q.data?.skipped ?? [])].some((e) => e.sourceId === sourceId)
         for (const e of failed.filter((f) => f.error === NO_INPUT_ERROR)) {
@@ -110,8 +110,8 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
         }
         if (failed.length > 0 || queued || tapped) {
           stopped = true
-          trackEvent(METRICS.IMPORT_SHORTCUT_CHECK, { step: 'test', ok: true })
-          tick('test', true)
+          trackEvent(METRICS.IMPORT_SHORTCUT_CHECK, { step: 'configure', ok: true })
+          tick('configure', true)
         }
       } else if (tapped) {
         stopped = true

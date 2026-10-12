@@ -541,27 +541,22 @@
         "progress": "{done} de {total} concluídos"
       },
       "steps": {
-        "hint_desktop": "Abra esta página no seu iPhone para seguir os passos lá. Neste dispositivo pode transferir os atalhos e marcar os passos como concluídos.",
+        "hint_desktop": "Abra esta página no seu iPhone para seguir os passos lá. Neste dispositivo pode transferir o atalho e marcar os passos como concluídos.",
         "install": {
-          "title": "Instalar os atalhos",
-          "text": "Abra cada ficheiro no seu iPhone e toque em «Adicionar atalho»."
+          "title": "Instalar o atalho",
+          "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho»."
         },
         "configure": {
-          "title": "Ligar os atalhos ao Econumo",
-          "text": "Cria um token de acesso para o atalho e entrega-o a econumo-setup-v1 juntamente com o endereço do servidor.",
+          "title": "Ligar o atalho ao Econumo",
+          "text": "Cria um token de acesso e abre o econumo-wallet-v2 com ele. O atalho guarda o endereço do servidor e o token e depois contacta o Econumo. Toque em «Permitir sempre» em cada pedido — a automatização vai precisar destas permissões.",
           "button": "Criar token de acesso",
           "open": "Abrir {name}",
+          "waiting": "À espera de que o atalho chegue ao Econumo…",
           "manual": "Configurar manualmente"
-        },
-        "test": {
-          "title": "Executar uma vez o atalho da Wallet",
-          "text": "Execute-o manualmente e toque em «Permitir sempre» em cada pedido — isso concede as permissões de que a automatização vai precisar. Nada é criado; o Econumo apenas regista que o atalho chegou.",
-          "button": "Executar {name}",
-          "waiting": "À espera de que o atalho chegue ao Econumo…"
         },
         "automate": {
           "title": "Criar a automatização",
-          "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar (o mais seguro é escolher todos) → Executar após confirmação → econumo-wallet-v1."
+          "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar (o mais seguro é escolher todos) → Executar após confirmação → econumo-wallet-v2."
         },
         "payment": {
           "title": "Fazer o primeiro pagamento com o iPhone desbloqueado",

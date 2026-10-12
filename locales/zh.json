@@ -544,24 +544,19 @@
         "hint_desktop": "请在 iPhone 上打开此页面并在那里按步骤操作。在此设备上可以下载快捷指令并将步骤标记为完成。",
         "install": {
           "title": "安装快捷指令",
-          "text": "在 iPhone 上逐个打开文件并点按“添加快捷指令”。"
+          "text": "在 iPhone 上打开该文件并点按“添加快捷指令”。"
         },
         "configure": {
           "title": "将快捷指令连接到 Econumo",
-          "text": "为快捷指令创建访问令牌，并连同服务器地址一起交给 econumo-setup-v1。",
+          "text": "创建访问令牌并用它打开 econumo-wallet-v2。快捷指令会保存服务器地址和令牌，然后连接 Econumo。每次提示时都点按“始终允许”——自动化稍后需要这些权限。",
           "button": "创建访问令牌",
           "open": "打开 {name}",
+          "waiting": "正在等待快捷指令连接 Econumo…",
           "manual": "手动配置"
-        },
-        "test": {
-          "title": "运行一次 Wallet 快捷指令",
-          "text": "手动运行它，并在每个提示上点按“始终允许”——这会授予自动化之后需要的权限。不会创建任何内容；Econumo 只记录快捷指令已到达。",
-          "button": "运行 {name}",
-          "waiting": "正在等待快捷指令连接 Econumo…"
         },
         "automate": {
           "title": "创建自动化",
-          "text": "在“快捷指令”App 中：自动化 → + → 钱包 → 选择要导入的卡片和类别（建议全选） → 确认后运行 → econumo-wallet-v1。"
+          "text": "在“快捷指令”App 中：自动化 → + → 钱包 → 选择要导入的卡片和类别（建议全选） → 确认后运行 → econumo-wallet-v2。"
         },
         "payment": {
           "title": "在 iPhone 解锁状态下完成首次付款",

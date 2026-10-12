@@ -541,27 +541,22 @@
         "progress": "{done} of {total} done"
       },
       "steps": {
-        "hint_desktop": "Open this page on your iPhone to follow the steps there. On this device you can download the Shortcuts and mark steps as done.",
+        "hint_desktop": "Open this page on your iPhone to follow the steps there. On this device you can download the Shortcut and mark steps as done.",
         "install": {
-          "title": "Install the Shortcuts",
-          "text": "Open each file on your iPhone and tap Add Shortcut."
+          "title": "Install the Shortcut",
+          "text": "Open the file on your iPhone and tap Add Shortcut."
         },
         "configure": {
-          "title": "Connect the Shortcuts to Econumo",
-          "text": "Creates an access token for the Shortcut and hands it to econumo-setup-v1 together with the server address.",
+          "title": "Connect the Shortcut to Econumo",
+          "text": "Creates an access token and opens econumo-wallet-v2 with it. The Shortcut saves the server address and the token, then checks in with Econumo. Tap Always Allow on every prompt — the automation needs these permissions later.",
           "button": "Create access token",
           "open": "Open {name}",
+          "waiting": "Waiting for the Shortcut to reach Econumo…",
           "manual": "Configure manually"
-        },
-        "test": {
-          "title": "Run the wallet Shortcut once",
-          "text": "Run it by hand and tap Always Allow on every prompt — this grants the permissions the automation needs later. Nothing is created; Econumo only records that the Shortcut reached it.",
-          "button": "Run {name}",
-          "waiting": "Waiting for the Shortcut to reach Econumo…"
         },
         "automate": {
           "title": "Create the automation",
-          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import (all of them is the safe choice) → Run After Confirmation → econumo-wallet-v1."
+          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import (all of them is the safe choice) → Run After Confirmation → econumo-wallet-v2."
         },
         "payment": {
           "title": "Make the first payment with the iPhone unlocked",

@@ -372,16 +372,15 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       back returns to Settings).
 - [ ] Before connecting 📱: the Apple Wallet page explains the feature, lists
       what is needed (an iPhone with Apple Pay, the Shortcuts app, about 5
-      minutes), previews the six steps, says which payment fields Econumo
+      minutes), previews the five steps, says which payment fields Econumo
       receives (never card numbers) and offers "Set up Apple Wallet".
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source). Until the first tap the
-      status card reads "Setting up" with an amber dot and "Step N of 6:
+      status card reads "Setting up" with an amber dot and "Step N of 5:
       <step>", there is no Inbox row and no card section, and the setup guide
-      follows directly, open as a stepper: Install the Shortcuts, Connect the
-      Shortcuts to Econumo, Run the wallet Shortcut once, Create the
-      automation, Make the first payment with the iPhone unlocked, Switch the
-      automation to Run Immediately. "Disconnect Apple Wallet" (confirmation)
+      follows directly, open as a stepper: Install the Shortcut, Connect the
+      Shortcut to Econumo, Create the automation, Make the first payment with
+      the iPhone unlocked, Switch the automation to Run Immediately. "Disconnect Apple Wallet" (confirmation)
       removes the source, its cards, its queue and the hand ticks;
       already-imported transactions stay.
 - [ ] Stepper 📱: only the current step is open (numbered, purple ring); done
@@ -390,37 +389,39 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       instructions. Hand ticks ("Done", "Mark as done") survive a reload and
       are per source and per device (a reconnect starts over); a hand-ticked
       step offers "Mark as not done", a server-confirmed one does not. Ticks
-      from the old seven-step guide carry over (both install steps → step 1).
-- [ ] Step 1 downloads `econumo-wallet-v1.shortcut` and
-      `econumo-setup-v1.shortcut`, button labels in their exact lower-case
-      names, each in a new window (from the home-screen app the Safari sheet
-      closes back to the page, no relaunch needed) 📱.
+      from the older guides carry over (both install steps → step 1, the
+      run-once step → step 2).
+- [ ] Step 1 downloads `econumo-wallet-v2.shortcut` (button label in its
+      exact lower-case name) in a new window (from the home-screen app the
+      Safari sheet closes back to the page, no relaunch needed) 📱. The v1
+      files (`econumo-wallet-v1.shortcut`, `econumo-setup-v1.shortcut`) still
+      download from `/shortcuts/` for existing setups.
 - [ ] Step 2, iOS only 📱: "Create access token" mints an ingest PAT (visible
       under Profile → Tokens with scope `ingest`), then shows "Open
-      econumo-setup-v1", which opens the Shortcuts app with the Setup shortcut
-      prefilled in a new window — the app window stays on the page; the step
-      completes once that link was opened. A user who already holds an
-      `ingest` PAT sees step 2 done on load. "Configure manually" opens
-      `https://econumo.com/docs/user-guide/apple-wallet` in a new tab.
+      econumo-wallet-v2", which opens the Shortcuts app in a new window — the
+      app window stays on the page. The shortcut saves the configuration
+      (`econumo-wallet.json` in iCloud Drive › Shortcuts), asks for the server
+      host and iCloud Drive (Always Allow), and shows "Econumo configured
+      for …"; back in Econumo the step completes by itself within a few
+      seconds (at once when switching back to the app), with its
+      `account is required` check-in removed from the Failed imports section.
+      "Configure manually" opens `https://econumo.com/docs/user-guide/apple-wallet`
+      in a new tab; "Mark as done" completes the step by hand.
 - [ ] Step 2, iOS only 📱: "Create access token" with an `ingest` PAT minted
       meanwhile from another device (page rendered before it existed) revokes
       that token first and mints a fresh one — Profile → Tokens shows exactly
       one live `ingest` PAT afterwards; `full` PATs are untouched.
-- [ ] Desktop: an "Open this page on your iPhone…" hint sits above the steps,
-      "Create access token" and "Run econumo-wallet-v1" are absent; downloads,
-      "Configure manually" and the hand ticks still work.
-- [ ] Step 3 📱: iOS shows "Run econumo-wallet-v1" (opens
-      `shortcuts://run-shortcut?name=econumo-wallet-v1` in a new window); the
-      step shows "Waiting for the Shortcut to reach Econumo…" and completes by
-      itself within a few seconds of the run (and at once when switching back
-      to the app), with the `account is required` row removed from the Failed
-      imports section. "Mark as done" completes it by hand.
-- [ ] Step 4 text walks through Automation → + → Wallet → cards & categories →
-      Run After Confirmation → econumo-wallet-v1; step 5 text says to tap Run
-      when the automation asks and Always Allow for Wallet access, and waits
-      for the first payment the same way step 3 waits.
-- [ ] The first card arriving from Apple Pay completes steps 1–5 by itself,
-      regardless of hand ticks; step 6 (Switch the automation to Run
+- [ ] Desktop: an "Open this page on your iPhone…" hint sits above the steps
+      and "Create access token" is absent; the download, "Configure manually",
+      the waiting line and the hand ticks still work; running the configured
+      shortcut by hand on the phone completes step 2 here too.
+- [ ] Step 3 text walks through Automation → + → Wallet → cards & categories →
+      Run After Confirmation → econumo-wallet-v2; step 4 text says to tap Run
+      when the automation asks and Always Allow for Wallet access (host and
+      iCloud Drive are not asked again), and waits for the first payment the
+      same way step 2 waits.
+- [ ] The first card arriving from Apple Pay completes steps 1–4 by itself,
+      regardless of hand ticks; step 5 (Switch the automation to Run
       Immediately) stays a hand tick 📱.
 - [ ] Apple Wallet page layout once a tap has arrived 📱: a status card on top
       ("Connected" + "Last tap …" as relative time) with an "Inbox" row
@@ -431,7 +432,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       "<card> → <account>", "N taps · <when>", Remap and Unmap buttons;
       ignored cards greyed with an eye-off tile, "Ignored · …" and a Map
       button), the same-name footnote, a "Setup" section with one folded
-      "Setup guide" row ("N of 6 done", or "Setup complete") that opens the
+      "Setup guide" row ("N of 5 done", or "Setup complete") that opens the
       stepper, and "Disconnect Apple Wallet" centered at the bottom.
 - [ ] Apple Wallet inbox 📱: the status card's "Inbox" row opens
       `/settings/apple-wallet/inbox` (desktop crumbs Settings › Apple Wallet,

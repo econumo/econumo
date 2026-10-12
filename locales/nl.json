@@ -541,27 +541,22 @@
         "progress": "{done} van {total} klaar"
       },
       "steps": {
-        "hint_desktop": "Open deze pagina op je iPhone om de stappen daar te volgen. Op dit apparaat kun je de opdrachten downloaden en stappen als klaar markeren.",
+        "hint_desktop": "Open deze pagina op je iPhone om de stappen daar te volgen. Op dit apparaat kun je de opdracht downloaden en stappen als klaar markeren.",
         "install": {
-          "title": "Opdrachten installeren",
-          "text": "Open elk bestand op je iPhone en tik op ‘Voeg opdracht toe’."
+          "title": "Opdracht installeren",
+          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’."
         },
         "configure": {
-          "title": "Opdrachten met Econumo verbinden",
-          "text": "Maakt een toegangstoken voor de opdracht en geeft die samen met het serveradres door aan econumo-setup-v1.",
+          "title": "Opdracht met Econumo verbinden",
+          "text": "Maakt een toegangstoken en opent econumo-wallet-v2 daarmee. De opdracht bewaart het serveradres en het token en meldt zich daarna bij Econumo. Tik bij elke melding op ‘Altijd toestaan’ — de automatisering heeft deze rechten later nodig.",
           "button": "Toegangstoken maken",
           "open": "{name} openen",
+          "waiting": "Wachten tot de opdracht Econumo bereikt…",
           "manual": "Handmatig configureren"
-        },
-        "test": {
-          "title": "De Wallet-opdracht één keer uitvoeren",
-          "text": "Voer hem handmatig uit en tik bij elke melding op ‘Altijd toestaan’ — zo krijgt de automatisering de rechten die ze later nodig heeft. Er wordt niets aangemaakt; Econumo registreert alleen dat de opdracht is aangekomen.",
-          "button": "{name} uitvoeren",
-          "waiting": "Wachten tot de opdracht Econumo bereikt…"
         },
         "automate": {
           "title": "Automatisering aanmaken",
-          "text": "In de Opdrachten-app: Automatisering → + → Wallet → kies de kaarten en categorieën die je wilt importeren (alles kiezen is het veiligst) → Voer uit na bevestiging → econumo-wallet-v1."
+          "text": "In de Opdrachten-app: Automatisering → + → Wallet → kies de kaarten en categorieën die je wilt importeren (alles kiezen is het veiligst) → Voer uit na bevestiging → econumo-wallet-v2."
         },
         "payment": {
           "title": "Eerste betaling met ontgrendelde iPhone",

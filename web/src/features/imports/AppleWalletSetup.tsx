@@ -16,19 +16,16 @@ import { STEPS, forgetSetupTicks, type StepId, type WalletSetup } from './wallet
 
 // iOS names an installed shortcut after the file it was imported from, so
 // the served basename IS the name the deep link and the automation address.
-export const WALLET_SHORTCUT_NAME = 'econumo-wallet-v1'
-export const SETUP_SHORTCUT_NAME = 'econumo-setup-v1'
+export const WALLET_SHORTCUT_NAME = 'econumo-wallet-v2'
 export const WALLET_SHORTCUT_URL = `/shortcuts/${WALLET_SHORTCUT_NAME}.shortcut`
-export const SETUP_SHORTCUT_URL = `/shortcuts/${SETUP_SHORTCUT_NAME}.shortcut`
-export const WALLET_RUN_DEEP_LINK = `shortcuts://run-shortcut?name=${encodeURIComponent(WALLET_SHORTCUT_NAME)}`
 export const MANUAL_GUIDE_URL = `${getWebsiteUrl()}/docs/user-guide/apple-wallet`
 const INGEST_TOKEN_NAME = 'Apple Wallet'
 
-// The Setup shortcut takes one text input: JSON with the server URL and the
-// ingest token.
+// Run with text input, the shortcut configures itself: JSON with the server
+// URL and the ingest token.
 export function setupDeepLink(url: string, token: string): string {
   const input = encodeURIComponent(JSON.stringify({ url, token }))
-  return `shortcuts://run-shortcut?name=${encodeURIComponent(SETUP_SHORTCUT_NAME)}&input=text&text=${input}`
+  return `shortcuts://run-shortcut?name=${encodeURIComponent(WALLET_SHORTCUT_NAME)}&input=text&text=${input}`
 }
 
 // Everything the guide opens goes to a new window: from the home-screen
@@ -171,13 +168,9 @@ function Stepper({ setup }: { setup: WalletSetup }) {
         return (
           <>
             {text(id)}
-            <div className="flex flex-wrap gap-2">
-              {([[WALLET_SHORTCUT_NAME, WALLET_SHORTCUT_URL, 'wallet'], [SETUP_SHORTCUT_NAME, SETUP_SHORTCUT_URL, 'setup']] as const).map(([name, url, shortcut]) => (
-                <ExternalButton key={name} href={url} download onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut })}>
-                  <Download className="size-4" />{name}
-                </ExternalButton>
-              ))}
-            </div>
+            <ExternalButton href={WALLET_SHORTCUT_URL} download onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'wallet' })}>
+              <Download className="size-4" />{WALLET_SHORTCUT_NAME}
+            </ExternalButton>
             {isDone ? undo : doneButton(id)}
           </>
         )
@@ -186,9 +179,9 @@ function Stepper({ setup }: { setup: WalletSetup }) {
           <>
             {text(id)}
             <div className="flex flex-wrap items-center gap-3">
-              {ios && setup.configureLink ? (
-                <ExternalButton href={setup.configureLink} variant="default" onClick={() => setup.setConfigureLink(null)}>
-                  <ExternalLink className="size-4" />{t('imports.apple_wallet.steps.configure.open', { name: SETUP_SHORTCUT_NAME })}
+              {ios && !isDone && setup.configureLink ? (
+                <ExternalButton href={setup.configureLink} variant="default" onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_TEST)}>
+                  <ExternalLink className="size-4" />{t('imports.apple_wallet.steps.configure.open', { name: WALLET_SHORTCUT_NAME })}
                 </ExternalButton>
               ) : ios && !isDone ? (
                 <Button type="button" className="h-10" disabled={configuring} onClick={() => void createLink()}>
@@ -199,18 +192,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
                 {t('imports.apple_wallet.steps.configure.manual')}
               </a>
             </div>
-          </>
-        )
-      case 'test':
-        return (
-          <>
-            {text(id)}
-            {ios ? (
-              <ExternalButton href={WALLET_RUN_DEEP_LINK} variant={isDone ? 'outline' : 'default'} onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_TEST)}>
-                <ExternalLink className="size-4" />{t('imports.apple_wallet.steps.test.button', { name: WALLET_SHORTCUT_NAME })}
-              </ExternalButton>
-            ) : null}
-            {isDone ? undo : <><Waiting>{t('imports.apple_wallet.steps.test.waiting')}</Waiting>{markDone(id)}</>}
+            {isDone ? undo : <><Waiting>{t('imports.apple_wallet.steps.configure.waiting')}</Waiting>{markDone(id)}</>}
           </>
         )
       case 'payment':

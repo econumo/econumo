@@ -541,27 +541,22 @@
         "progress": "{done} von {total} erledigt"
       },
       "steps": {
-        "hint_desktop": "Öffne diese Seite auf deinem iPhone, um die Schritte dort zu befolgen. Auf diesem Gerät kannst du die Kurzbefehle laden und Schritte als erledigt markieren.",
+        "hint_desktop": "Öffne diese Seite auf deinem iPhone, um die Schritte dort zu befolgen. Auf diesem Gerät kannst du den Kurzbefehl laden und Schritte als erledigt markieren.",
         "install": {
-          "title": "Kurzbefehle installieren",
-          "text": "Öffne jede Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
+          "title": "Kurzbefehl installieren",
+          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
         },
         "configure": {
-          "title": "Kurzbefehle mit Econumo verbinden",
-          "text": "Erstellt ein Zugriffstoken für den Kurzbefehl und übergibt es zusammen mit der Serveradresse an econumo-setup-v1.",
+          "title": "Kurzbefehl mit Econumo verbinden",
+          "text": "Erstellt ein Zugriffstoken und öffnet damit econumo-wallet-v2. Der Kurzbefehl speichert Serveradresse und Token und meldet sich dann bei Econumo. Tippe bei jeder Abfrage auf „Immer erlauben“ — die Automation braucht diese Berechtigungen später.",
           "button": "Zugriffstoken erstellen",
           "open": "{name} öffnen",
+          "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …",
           "manual": "Manuell konfigurieren"
-        },
-        "test": {
-          "title": "Den Wallet-Kurzbefehl einmal ausführen",
-          "text": "Führe ihn von Hand aus und tippe bei jeder Abfrage auf „Immer erlauben“ — das erteilt die Berechtigungen, die die Automation später braucht. Es wird nichts angelegt; Econumo merkt sich nur, dass der Kurzbefehl angekommen ist.",
-          "button": "{name} ausführen",
-          "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …"
         },
         "automate": {
           "title": "Automation anlegen",
-          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen (am sichersten: alle) → Nach Bestätigung ausführen → econumo-wallet-v1."
+          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen (am sichersten: alle) → Nach Bestätigung ausführen → econumo-wallet-v2."
         },
         "payment": {
           "title": "Erste Zahlung mit entsperrtem iPhone",
