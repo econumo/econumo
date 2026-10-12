@@ -36,20 +36,36 @@ it('offers Apple Wallet setup when no source exists', async () => {
   expect(await screen.findByRole('heading', { name: 'Apple Wallet' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Set up Apple Wallet' })).toBeInTheDocument()
   expect(screen.queryByText('Cards')).not.toBeInTheDocument()
-  expect(screen.queryByRole('link', { name: 'Inbox' })).toBeNull()
+  expect(screen.queryByRole('link', { name: /Review in Inbox/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Disconnect Apple Wallet' })).toBeNull()
 })
 
 it('shows the connected state and the card list when a source exists', async () => {
   server.use(...coreHandlers({ importSources: [wireSource] }))
   renderPage()
   expect(await screen.findByText('Connected')).toBeInTheDocument()
+  expect(screen.getByText(/^Last tap /)).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Needs mapping' })).toBeInTheDocument()
   expect(screen.getByText('Apple Card')).toBeInTheDocument()
-  expect(screen.getByText('Unmapped · 2 queued')).toBeInTheDocument()
-  expect(screen.getByText('3 taps')).toBeInTheDocument()
+  expect(screen.getByText(/^2 to review/)).toBeInTheDocument()
+  // a card has arrived, so the setup guide is folded and Disconnect sits at the bottom
+  expect(screen.getByRole('button', { name: /Setup guide/ })).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.getByRole('button', { name: 'Disconnect Apple Wallet' })).toBeInTheDocument()
 })
 
-it('links to the inbox once a source is connected', async () => {
-  server.use(...coreHandlers({ importSources: [wireSource] }))
+it('links to the inbox with the count of this source\'s rows waiting there', async () => {
+  const row = { linkId: 'l1', sourceId: 's1', externalAccountId: 'wallet', accountId: '', payee: 'Blue Bottle', amount: '5', currency: 'USD', type: 'expense', postedAt: '2026-08-20 17:42:03', reason: 'unmapped' }
+  const failed = { eventId: 'e1', sourceId: 's1', receivedAt: '2026-08-21 08:00:00', error: 'bad', payload: '{}' }
+  server.use(...coreHandlers({ importSources: [wireSource], importQueue: { queued: [row, { ...row, linkId: 'l2' }, { ...row, linkId: 'l3', sourceId: 'other' }], skipped: [], failed: [failed] } }))
   renderPage()
-  expect(await screen.findByRole('link', { name: 'Inbox' })).toHaveAttribute('href', '/inbox')
+  const link = await screen.findByRole('link', { name: /Review in Inbox/ })
+  expect(link).toHaveAttribute('href', '/inbox')
+  expect(link).toHaveTextContent('3')
+})
+
+it('no inbox row when nothing from this source is waiting', async () => {
+  server.use(...coreHandlers({ importSources: [wireSource], importQueue: { queued: [], skipped: [], failed: [] } }))
+  renderPage()
+  expect(await screen.findByText('Connected')).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: /Review in Inbox/ })).toBeNull()
 })

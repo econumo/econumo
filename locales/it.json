@@ -514,9 +514,20 @@
       "connect": "Configura Apple Wallet",
       "connected": "Connesso",
       "disconnect": "Disconnetti",
+      "disconnect_full": "Disconnetti Apple Wallet",
       "disconnect_modal": {
         "title": "Disconnettere Apple Wallet?",
         "question": "Le associazioni delle carte e la coda di revisione di questa connessione verranno rimosse. Le transazioni già importate restano."
+      },
+      "status": {
+        "last_tap": "Ultimo pagamento {when}",
+        "no_taps": "Ancora nessun pagamento",
+        "review": "Rivedi nella posta in arrivo"
+      },
+      "setup": {
+        "header": "Configurazione",
+        "title": "Guida alla configurazione",
+        "progress": "{done} di {total} completati"
       },
       "steps": {
         "hint_desktop": "Apri questa pagina sul tuo iPhone per eseguire i passaggi lì. Su questo dispositivo puoi scaricare i comandi rapidi e spuntare i passaggi a mano.",
@@ -555,23 +566,21 @@
           "title": "Imposta l’automazione su «Esegui subito»",
           "text": "Nell’app Comandi rapidi apri l’automazione e cambia «Esegui dopo conferma» in «Esegui subito». Da quel momento i pagamenti vengono importati senza richieste, anche dalla schermata di blocco."
         },
-        "complete": "Configurazione completata",
-        "show": "Mostra passaggi",
-        "hide": "Nascondi passaggi"
+        "complete": "Configurazione completata"
       },
       "same_named_cards": "Le carte con lo stesso nome in Wallet arrivano qui come un'unica carta.",
       "cards": {
         "header": "Carte",
         "empty": "Ancora nessuna carta — il primo pagamento Apple Pay ne aggiungerà una.",
+        "needs_mapping": "Non associate",
         "state": {
-          "mapped": "Associata",
-          "ignored": "Ignorata",
-          "unmapped": "Non associata · {count} in coda"
+          "ignored": "Ignorata"
         },
         "taps": "{count} pagamento | {count} pagamenti",
-        "last_seen": "Ultimo utilizzo {date}",
+        "waiting": "{count} da rivedere",
         "map": "Associa a un conto",
-        "map_instead": "Associa invece",
+        "mapped_to": "associata a",
+        "actions": "Azioni per {card}",
         "ignore": "Ignora",
         "unlink": "Dissocia",
         "unlink_modal": {
@@ -622,15 +631,15 @@
       "accounts": {
         "header": "Conti",
         "empty": "Il bridge non ha ancora segnalato conti.",
+        "needs_mapping": "Non associate",
         "state": {
-          "mapped": "Associato",
-          "ignored": "Ignorato",
-          "unmapped": "Non associato · {count} in coda"
+          "ignored": "Ignorato"
         },
         "taps": "{count} transazione | {count} transazioni",
-        "last_seen": "Ultimo utilizzo {date}",
+        "waiting": "{count} da rivedere",
         "map": "Associa a un conto",
-        "map_instead": "Associa invece",
+        "mapped_to": "associata a",
+        "actions": "Azioni per {card}",
         "ignore": "Ignora",
         "unlink": "Dissocia",
         "unlink_modal": {

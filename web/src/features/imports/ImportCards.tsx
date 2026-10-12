@@ -1,17 +1,33 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ArrowRight, MoreVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ImportCardDto, ImportSourceDto } from '@/api/dto/imports'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { EntityIcon } from '@/components/EntityIcon'
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useAccounts } from '@/features/accounts/queries'
 import { apiErrorMessage } from '@/lib/apiError'
-import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { pluralPick } from '@/lib/plural'
 import { MapAccountDialog } from './MapAccountDialog'
 import { useIgnoreImportAccount, useUnlinkImportAccount } from './queries'
+import { relativeTime } from './relativeTime'
 
-export function ImportCards({ source, cards = source.cards, variant = 'card' }: { source: ImportSourceDto; cards?: ImportCardDto[]; variant?: 'card' | 'account' }) {
+function CardMenu({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="ghost" size="icon" className="shrink-0" aria-label={label}>
+          <MoreVertical className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">{children}</DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+export function ImportCards({ source, cards = source.cards, variant = 'card', footnote }: { source: ImportSourceDto; cards?: ImportCardDto[]; variant?: 'card' | 'account'; footnote?: ReactNode }) {
   const { t, i18n } = useTranslation()
   const ns = variant === 'account' ? 'imports.simplefin.accounts' : 'imports.apple_wallet.cards'
   const { data: accounts = [] } = useAccounts()
@@ -19,56 +35,94 @@ export function ImportCards({ source, cards = source.cards, variant = 'card' }: 
   const unlink = useUnlinkImportAccount()
   const [mapTarget, setMapTarget] = useState<ImportCardDto | null>(null)
   const [unlinkTarget, setUnlinkTarget] = useState<ImportCardDto | null>(null)
-  const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? ''
 
-  const stateLabel = (card: ImportCardDto) =>
-    card.state === 'mapped'
-      ? `${t(`${ns}.state.mapped`)} · ${accountName(card.accountId)}`
-      : card.state === 'ignored'
-        ? t(`${ns}.state.ignored`)
-        : t(`${ns}.state.unmapped`, { count: card.queuedCount })
+  const pending = cards.filter((c) => c.state === 'unmapped')
+  // mapped before ignored; Array#sort is stable, so each keeps the server order
+  const settled = cards.filter((c) => c.state !== 'unmapped').sort((a, b) => Number(a.state === 'ignored') - Number(b.state === 'ignored'))
+  const when = (card: ImportCardDto) => (card.lastSeenAt ? relativeTime(card.lastSeenAt, i18n.language) : '')
+  const details = (...parts: string[]) => parts.filter(Boolean).join(' · ')
+  const taps = (card: ImportCardDto) => pluralPick(t(`${ns}.taps`), card.tapCount, i18n.language)
+
+  const ignoreCard = (card: ImportCardDto) =>
+    ignore.mutate(
+      { sourceId: source.id, externalAccountId: card.externalAccountId, externalName: card.externalName },
+      { onError: (err) => toast.error(apiErrorMessage(err)) },
+    )
+
+  const row = (card: ImportCardDto, main: ReactNode, sub: string, actions: ReactNode) => (
+    <li key={card.externalAccountId} className="flex items-center gap-2 rounded-lg bg-econumo-card py-2.5 pl-4 pr-2 text-sm">
+      <div className="min-w-0 flex-1">
+        {main}
+        <div className="truncate text-xs text-muted-foreground">{sub}</div>
+      </div>
+      {actions}
+    </li>
+  )
+
+  const settledRow = (card: ImportCardDto) => {
+    const menuLabel = t(`${ns}.actions`, { card: card.externalName })
+    if (card.state === 'ignored') {
+      return row(
+        card,
+        <div className="truncate text-muted-foreground">{card.externalName}</div>,
+        details(t(`${ns}.state.ignored`), taps(card), when(card)),
+        <CardMenu label={menuLabel}>
+          <DropdownMenuItem onSelect={() => setMapTarget(card)}>{t(`${ns}.map`)}</DropdownMenuItem>
+        </CardMenu>,
+      )
+    }
+    const account = accounts.find((a) => a.id === card.accountId)
+    return row(
+      card,
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="truncate">{card.externalName}</span>
+        <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" aria-label={t(`${ns}.mapped_to`)} />
+        <EntityIcon name={account?.icon} className="shrink-0 text-base text-muted-foreground" />
+        <span className="truncate">{account?.name ?? ''}</span>
+      </div>,
+      details(taps(card), when(card)),
+      <CardMenu label={menuLabel}>
+        <DropdownMenuItem onSelect={() => setUnlinkTarget(card)}>{t(`${ns}.unlink`)}</DropdownMenuItem>
+      </CardMenu>,
+    )
+  }
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="px-1 pt-2 text-xs uppercase text-muted-foreground">{t(`${ns}.header`)}</p>
-      {cards.length === 0 ? (
-        <p className="rounded-lg bg-econumo-card px-4 py-3.5 text-sm text-muted-foreground">{t(`${ns}.empty`)}</p>
-      ) : (
-        cards.map((card) => (
-          <div key={card.externalAccountId} className="flex flex-col gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <div className="truncate font-medium">{card.externalName}</div>
-                <div className="text-xs text-muted-foreground">{stateLabel(card)}</div>
-              </div>
-              <div className="shrink-0 text-right text-xs text-muted-foreground">
-                {variant === 'card' ? <div>{pluralPick(t(`${ns}.taps`), card.tapCount, i18n.language)}</div> : null}
-                {card.lastSeenAt ? <div>{t(`${ns}.last_seen`, { date: formatDayHeading(dayKey(card.lastSeenAt), i18n.language) })}</div> : null}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {card.state === 'unmapped' ? (
+      {pending.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="px-1 pt-2 text-xs uppercase text-muted-foreground">{t(`${ns}.needs_mapping`)}</h2>
+          <ul className="flex flex-col gap-2">
+            {pending.map((card) =>
+              row(
+                card,
+                <div className="truncate">{card.externalName}</div>,
+                details(pluralPick(t(`${ns}.waiting`), card.queuedCount, i18n.language), when(card)),
                 <>
-                  <Button type="button" size="sm" onClick={() => setMapTarget(card)}>{t(`${ns}.map`)}</Button>
-                  <Button
-                    type="button" size="sm" variant="secondary" disabled={ignore.isPending}
-                    onClick={() => ignore.mutate(
-                      { sourceId: source.id, externalAccountId: card.externalAccountId, externalName: card.externalName },
-                      { onError: (err) => toast.error(apiErrorMessage(err)) },
-                    )}
-                  >
-                    {t(`${ns}.ignore`)}
+                  <Button type="button" size="sm" aria-label={`${t(`${ns}.map`)} ${card.externalName}`} onClick={() => setMapTarget(card)}>
+                    {t(`${ns}.map_modal.submit`)}
                   </Button>
-                </>
-              ) : card.state === 'ignored' ? (
-                <Button type="button" size="sm" variant="secondary" onClick={() => setMapTarget(card)}>{t(`${ns}.map_instead`)}</Button>
-              ) : (
-                <Button type="button" size="sm" variant="secondary" onClick={() => setUnlinkTarget(card)}>{t(`${ns}.unlink`)}</Button>
-              )}
-            </div>
-          </div>
-        ))
-      )}
+                  <CardMenu label={t(`${ns}.actions`, { card: card.externalName })}>
+                    <DropdownMenuItem disabled={ignore.isPending} onSelect={() => ignoreCard(card)}>{t(`${ns}.ignore`)}</DropdownMenuItem>
+                  </CardMenu>
+                </>,
+              ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {settled.length > 0 || pending.length === 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="px-1 pt-2 text-xs uppercase text-muted-foreground">{t(`${ns}.header`)}</h2>
+          {settled.length === 0 ? (
+            <p className="rounded-lg bg-econumo-card px-4 py-3.5 text-sm text-muted-foreground">{t(`${ns}.empty`)}</p>
+          ) : (
+            <ul className="flex flex-col gap-2">{settled.map(settledRow)}</ul>
+          )}
+        </section>
+      ) : null}
+
+      {footnote ? <p className="px-1 text-xs text-muted-foreground">{footnote}</p> : null}
 
       <MapAccountDialog sourceId={source.id} provider={source.provider} card={mapTarget} onClose={() => setMapTarget(null)} />
 

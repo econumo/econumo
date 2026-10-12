@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { toast } from 'sonner'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
-import { AppleWalletSetup, nav, setupDeepLink } from './AppleWalletSetup'
+import { AppleWalletDisconnect, AppleWalletSetup, nav, setupDeepLink } from './AppleWalletSetup'
 
 const mockIsIOS = vi.hoisted(() => ({ value: false }))
 vi.mock('@/lib/platform', () => ({ isIOS: () => mockIsIOS.value, isNativeApp: () => false }))
@@ -29,6 +29,7 @@ function renderSetup(src: typeof source | null, overrides: Record<string, unknow
   render(
     <QueryClientProvider client={queryClient}>
       <AppleWalletSetup source={src} />
+      {src ? <AppleWalletDisconnect source={src} /> : null}
     </QueryClientProvider>,
   )
 }
@@ -101,9 +102,8 @@ it('hand-ticked steps persist per source and are dropped on disconnect', async (
   expect(checkbox('Install econumo-wallet-v1')).not.toBeChecked()
   expect(screen.getByRole('link', { name: 'econumo-wallet-v1' })).toBeInTheDocument()
   await user.click(checkbox('Create the automation'))
-  await user.click(screen.getByRole('button', { name: 'Disconnect' }))
-  // the confirm dialog's own button carries the same label
-  await user.click((await screen.findAllByRole('button', { name: 'Disconnect' })).at(-1) as HTMLElement)
+  await user.click(screen.getByRole('button', { name: 'Disconnect Apple Wallet' }))
+  await user.click(await screen.findByRole('button', { name: 'Disconnect' }))
   await waitFor(() => expect(localStorage.getItem('appleWalletSetup:s1')).toBeNull())
 })
 
@@ -235,7 +235,10 @@ it('Check with an empty queue reports nothing received and leaves the step untic
 it('the first card from Apple Pay ticks every step up to the payment, whatever was ticked by hand; the Run Immediately switch stays a hand tick', async () => {
   const user = userEvent.setup()
   renderSetup({ ...source, cards: [card] })
-  expect(screen.queryByText('Setup complete')).not.toBeInTheDocument()
+  // a card has arrived, so the guide starts folded to its progress
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /Setup guide/ }))
+  expect(screen.getByRole('button', { name: /6 of 7 done/ })).toBeInTheDocument()
   for (const name of STEP_NAMES.slice(0, -1)) {
     expect(checkbox(name)).toBeChecked()
   }
@@ -244,7 +247,6 @@ it('the first card from Apple Pay ticks every step up to the payment, whatever w
   expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument()
   await user.click(checkbox('Switch the automation to Run Immediately'))
   expect(await screen.findByText('Setup complete')).toBeInTheDocument()
-  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
 })
 
 it('payment Check with no taps reports nothing received and leaves the step unticked', async () => {
@@ -255,17 +257,25 @@ it('payment Check with no taps reports nothing received and leaves the step unti
   expect(checkbox('Make the first payment with the iPhone unlocked')).not.toBeChecked()
 })
 
-it('collapses to "Setup complete" once every step is done, with a toggle to show the steps again', async () => {
+it('folds to "Setup complete" once every step is done; the header toggles the steps', async () => {
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install_wallet', 'install_setup', 'test', 'automate', 'immediate']))
   const user = userEvent.setup()
   renderSetup({ ...source, cards: [card] }, { personalTokens: [ingestToken] })
   expect(await screen.findByText('Setup complete')).toBeInTheDocument()
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Show steps' }))
+  const toggle = screen.getByRole('button', { name: /Setup guide/ })
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await user.click(toggle)
   expect(screen.getAllByRole('checkbox')).toHaveLength(7)
   // every step is done, so the list is titles only
   expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument()
   expect(screen.queryByRole('link', { name: 'Configure manually' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Hide steps' }))
+  await user.click(toggle)
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+})
+
+it('before the first card the guide is open and counts its progress', () => {
+  renderSetup(source)
+  expect(screen.getByRole('button', { name: /Setup guide/ })).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.getByText('0 of 7 done')).toBeInTheDocument()
 })

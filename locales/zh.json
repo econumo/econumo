@@ -514,9 +514,20 @@
       "connect": "设置 Apple Wallet",
       "connected": "已连接",
       "disconnect": "断开连接",
+      "disconnect_full": "断开 Apple Wallet",
       "disconnect_modal": {
         "title": "断开 Apple Wallet？",
         "question": "此连接的卡片映射和审核队列将被删除。已导入的交易会保留。"
+      },
+      "status": {
+        "last_tap": "最近一笔付款：{when}",
+        "no_taps": "暂无付款",
+        "review": "在收件箱中处理"
+      },
+      "setup": {
+        "header": "设置",
+        "title": "设置指南",
+        "progress": "已完成 {done}/{total}"
       },
       "steps": {
         "hint_desktop": "请在 iPhone 上打开此页面并在那里完成各步骤。在此设备上只能下载快捷指令并手动勾选步骤。",
@@ -555,23 +566,21 @@
           "title": "将自动化改为“立即运行”",
           "text": "在“快捷指令”App 中打开该自动化，把“确认后运行”改为“立即运行”。此后付款会自动导入，无需确认，锁定屏幕上也可以。"
         },
-        "complete": "设置完成",
-        "show": "显示步骤",
-        "hide": "隐藏步骤"
+        "complete": "设置完成"
       },
       "same_named_cards": "Wallet 中同名的卡片在这里会显示为一张卡。",
       "cards": {
         "header": "卡片",
         "empty": "还没有卡片 — 第一笔 Apple Pay 付款会添加一张。",
+        "needs_mapping": "未映射",
         "state": {
-          "mapped": "已映射",
-          "ignored": "已忽略",
-          "unmapped": "未映射 · {count} 笔排队中"
+          "ignored": "已忽略"
         },
         "taps": "{count} 笔付款 | {count} 笔付款",
-        "last_seen": "最近使用 {date}",
+        "waiting": "{count} 笔待处理",
         "map": "映射到账户",
-        "map_instead": "改为映射",
+        "mapped_to": "映射到",
+        "actions": "{card} 的操作",
         "ignore": "忽略",
         "unlink": "取消映射",
         "unlink_modal": {
@@ -622,15 +631,15 @@
       "accounts": {
         "header": "账户",
         "empty": "桥接尚未报告任何账户。",
+        "needs_mapping": "未映射",
         "state": {
-          "mapped": "已映射",
-          "ignored": "已忽略",
-          "unmapped": "未映射 · {count} 笔排队中"
+          "ignored": "已忽略"
         },
         "taps": "{count} 笔交易 | {count} 笔交易",
-        "last_seen": "最近使用 {date}",
+        "waiting": "{count} 笔待处理",
         "map": "映射到账户",
-        "map_instead": "改为映射",
+        "mapped_to": "映射到",
+        "actions": "{card} 的操作",
         "ignore": "忽略",
         "unlink": "取消映射",
         "unlink_modal": {

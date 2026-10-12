@@ -514,9 +514,20 @@
       "connect": "Configurer Apple Wallet",
       "connected": "Connecté",
       "disconnect": "Déconnecter",
+      "disconnect_full": "Déconnecter Apple Wallet",
       "disconnect_modal": {
         "title": "Déconnecter Apple Wallet ?",
         "question": "Les associations de cartes et la file de vérification de cette connexion seront supprimées. Les transactions déjà importées sont conservées."
+      },
+      "status": {
+        "last_tap": "Dernier paiement {when}",
+        "no_taps": "Aucun paiement pour l’instant",
+        "review": "Vérifier dans la boîte de réception"
+      },
+      "setup": {
+        "header": "Configuration",
+        "title": "Guide de configuration",
+        "progress": "{done} sur {total} terminées"
       },
       "steps": {
         "hint_desktop": "Ouvrez cette page sur votre iPhone pour y effectuer les étapes. Sur cet appareil, vous pouvez télécharger les raccourcis et cocher les étapes à la main.",
@@ -555,23 +566,21 @@
           "title": "Passer l’automatisation en « Exécuter immédiatement »",
           "text": "Dans l’app Raccourcis, ouvrez l’automatisation et remplacez « Exécuter après confirmation » par « Exécuter immédiatement ». Les paiements sont ensuite importés sans demande, même depuis l’écran verrouillé."
         },
-        "complete": "Configuration terminée",
-        "show": "Afficher les étapes",
-        "hide": "Masquer les étapes"
+        "complete": "Configuration terminée"
       },
       "same_named_cards": "Les cartes portant le même nom dans Wallet arrivent ici comme une seule carte.",
       "cards": {
         "header": "Cartes",
         "empty": "Pas encore de carte — le premier paiement Apple Pay en ajoutera une.",
+        "needs_mapping": "Non associées",
         "state": {
-          "mapped": "Associée",
-          "ignored": "Ignorée",
-          "unmapped": "Non associée · {count} en attente"
+          "ignored": "Ignorée"
         },
         "taps": "{count} paiement | {count} paiements",
-        "last_seen": "Vue pour la dernière fois {date}",
+        "waiting": "{count} à vérifier",
         "map": "Associer à un compte",
-        "map_instead": "Associer plutôt",
+        "mapped_to": "associée à",
+        "actions": "Actions pour {card}",
         "ignore": "Ignorer",
         "unlink": "Dissocier",
         "unlink_modal": {
@@ -622,15 +631,15 @@
       "accounts": {
         "header": "Comptes",
         "empty": "Aucun compte signalé par la passerelle pour le moment.",
+        "needs_mapping": "Non associées",
         "state": {
-          "mapped": "Associé",
-          "ignored": "Ignoré",
-          "unmapped": "Non associé · {count} en attente"
+          "ignored": "Ignoré"
         },
         "taps": "{count} transaction | {count} transactions",
-        "last_seen": "Vu pour la dernière fois {date}",
+        "waiting": "{count} à vérifier",
         "map": "Associer à un compte",
-        "map_instead": "Associer plutôt",
+        "mapped_to": "associée à",
+        "actions": "Actions pour {card}",
         "ignore": "Ignorer",
         "unlink": "Dissocier",
         "unlink_modal": {

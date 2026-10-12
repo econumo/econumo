@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ImportSourceDto } from '@/api/dto/imports'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -59,18 +60,18 @@ function readTicks(sourceId: string): StepId[] {
 export function AppleWalletSetup({ source }: { source: ImportSourceDto | null }) {
   const { t } = useTranslation()
   const createSource = useCreateImportSource()
-  const deleteSource = useDeleteImportSource()
   const createToken = useCreatePersonalToken()
   const revokeToken = useRevokePersonalToken()
   const discardEvent = useDiscardImportEvent()
   const sources = useImportSources()
   const queue = useImportQueue()
   const tokens = usePersonalTokens()
-  const [disconnectOpen, setDisconnectOpen] = useState(false)
   const [configured, setConfigured] = useState(false)
   const [configuring, setConfiguring] = useState(false)
   const configuringRef = useRef(false)
-  const [showSteps, setShowSteps] = useState(false)
+  // A card arriving proves the setup works, so from then on the guide starts
+  // folded to its progress row.
+  const [open, setOpen] = useState(() => !source || source.cards.length === 0)
   const [testMissing, setTestMissing] = useState(false)
   const [paymentMissing, setPaymentMissing] = useState(false)
   const [checking, setChecking] = useState(false)
@@ -186,7 +187,8 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
   const cardArrived = source.cards.length > 0
   const auto: Partial<Record<StepId, boolean>> = { configure: hasIngestToken }
   const done = (id: StepId) => (cardArrived && id !== 'immediate') || auto[id] === true || ticks.includes(id)
-  const allDone = STEPS.every(done)
+  const doneCount = STEPS.filter(done).length
+  const allDone = doneCount === STEPS.length
   const ios = isIOS()
 
   // A done step folds to its title: the tick is the feedback, and the
@@ -211,91 +213,102 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
   )
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg bg-econumo-card px-4 py-3.5 text-sm">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-medium">{t('imports.apple_wallet.connected')}</span>
-        <Button type="button" variant="ghost" size="sm" onClick={() => setDisconnectOpen(true)}>
-          {t('imports.apple_wallet.disconnect')}
-        </Button>
+    <section className="flex flex-col gap-2">
+      <h2 className="px-1 pt-2 text-xs uppercase text-muted-foreground">{t('imports.apple_wallet.setup.header')}</h2>
+      <div className="flex flex-col rounded-lg bg-econumo-card text-sm">
+        <button
+          type="button"
+          className={`flex items-center justify-between gap-2 px-4 py-3.5 text-left hover:bg-econumo-hover ${open ? 'rounded-t-lg' : 'rounded-lg'}`}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <span>{t('imports.apple_wallet.setup.title')}</span>
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            {allDone ? t('imports.apple_wallet.steps.complete') : t('imports.apple_wallet.setup.progress', { done: doneCount, total: STEPS.length })}
+            <ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </span>
+        </button>
+        {open ? (
+          <div className="flex flex-col gap-4 px-4 pb-4">
+            {ios ? null : <InfoBox>{t('imports.apple_wallet.steps.hint_desktop')}</InfoBox>}
+            <ol className="flex flex-col gap-4">
+              {step('install_wallet', (
+                <>
+                  <span className="text-muted-foreground">{t('imports.apple_wallet.steps.install_wallet.text')}</span>
+                  {download(WALLET_SHORTCUT_NAME, WALLET_SHORTCUT_URL, 'wallet')}
+                </>
+              ))}
+              {step('install_setup', (
+                <>
+                  <span className="text-muted-foreground">{t('imports.apple_wallet.steps.install_setup.text')}</span>
+                  {download(SETUP_SHORTCUT_NAME, SETUP_SHORTCUT_URL, 'setup')}
+                </>
+              ))}
+              {step('configure', (
+                <>
+                  <span className="text-muted-foreground">{t('imports.apple_wallet.steps.configure.text')}</span>
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    {ios ? (
+                      <Button type="button" className="h-11" disabled={configuring} onClick={() => void configureHere()}>
+                        {t('imports.apple_wallet.steps.configure.button')}
+                      </Button>
+                    ) : null}
+                    <a href={MANUAL_GUIDE_URL} target="_blank" rel="noopener" className="text-primary underline-offset-2 hover:underline">
+                      {t('imports.apple_wallet.steps.configure.manual')}
+                    </a>
+                  </div>
+                </>
+              ))}
+              {step('test', (
+                <>
+                  <span className="text-muted-foreground">{t('imports.apple_wallet.steps.test.text')}</span>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {ios ? (
+                      <Button type="button" className="h-11" onClick={runTest}>
+                        {t('imports.apple_wallet.steps.test.button')}
+                      </Button>
+                    ) : null}
+                    <Button type="button" variant="outline" className="h-11" disabled={checking} onClick={() => void checkTest()}>
+                      {t('imports.apple_wallet.steps.test.check')}
+                    </Button>
+                  </div>
+                  {testMissing ? <span className="text-muted-foreground">{t('imports.apple_wallet.steps.test.none')}</span> : null}
+                </>
+              ))}
+              {step('automate', (
+                <span className="text-muted-foreground">{t('imports.apple_wallet.steps.automate.text')}</span>
+              ))}
+              {step('payment', (
+                <>
+                  <span className="text-muted-foreground">{t('imports.apple_wallet.steps.payment.text')}</span>
+                  <div className="pt-1">
+                    <Button type="button" variant="outline" className="h-11" disabled={checking} onClick={() => void checkPayment()}>
+                      {t('imports.apple_wallet.steps.payment.check')}
+                    </Button>
+                  </div>
+                  {paymentMissing ? <span className="text-muted-foreground">{t('imports.apple_wallet.steps.payment.none')}</span> : null}
+                </>
+              ))}
+              {step('immediate', (
+                <span className="text-muted-foreground">{t('imports.apple_wallet.steps.immediate.text')}</span>
+              ))}
+            </ol>
+          </div>
+        ) : null}
       </div>
+    </section>
+  )
+}
 
-      {allDone ? (
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground">{t('imports.apple_wallet.steps.complete')}</span>
-          <Button type="button" variant="ghost" size="sm" onClick={() => setShowSteps((v) => !v)}>
-            {t(showSteps ? 'imports.apple_wallet.steps.hide' : 'imports.apple_wallet.steps.show')}
-          </Button>
-        </div>
-      ) : null}
-
-      {allDone && !showSteps ? null : (
-        <>
-          {ios ? null : <InfoBox>{t('imports.apple_wallet.steps.hint_desktop')}</InfoBox>}
-          <ol className="flex flex-col gap-4">
-            {step('install_wallet', (
-              <>
-                <span className="text-muted-foreground">{t('imports.apple_wallet.steps.install_wallet.text')}</span>
-                {download(WALLET_SHORTCUT_NAME, WALLET_SHORTCUT_URL, 'wallet')}
-              </>
-            ))}
-            {step('install_setup', (
-              <>
-                <span className="text-muted-foreground">{t('imports.apple_wallet.steps.install_setup.text')}</span>
-                {download(SETUP_SHORTCUT_NAME, SETUP_SHORTCUT_URL, 'setup')}
-              </>
-            ))}
-            {step('configure', (
-              <>
-                <span className="text-muted-foreground">{t('imports.apple_wallet.steps.configure.text')}</span>
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {ios ? (
-                    <Button type="button" className="h-11" disabled={configuring} onClick={() => void configureHere()}>
-                      {t('imports.apple_wallet.steps.configure.button')}
-                    </Button>
-                  ) : null}
-                  <a href={MANUAL_GUIDE_URL} target="_blank" rel="noopener" className="text-primary underline-offset-2 hover:underline">
-                    {t('imports.apple_wallet.steps.configure.manual')}
-                  </a>
-                </div>
-              </>
-            ))}
-            {step('test', (
-              <>
-                <span className="text-muted-foreground">{t('imports.apple_wallet.steps.test.text')}</span>
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  {ios ? (
-                    <Button type="button" className="h-11" onClick={runTest}>
-                      {t('imports.apple_wallet.steps.test.button')}
-                    </Button>
-                  ) : null}
-                  <Button type="button" variant="outline" className="h-11" disabled={checking} onClick={() => void checkTest()}>
-                    {t('imports.apple_wallet.steps.test.check')}
-                  </Button>
-                </div>
-                {testMissing ? <span className="text-muted-foreground">{t('imports.apple_wallet.steps.test.none')}</span> : null}
-              </>
-            ))}
-            {step('automate', (
-              <span className="text-muted-foreground">{t('imports.apple_wallet.steps.automate.text')}</span>
-            ))}
-            {step('payment', (
-              <>
-                <span className="text-muted-foreground">{t('imports.apple_wallet.steps.payment.text')}</span>
-                <div className="pt-1">
-                  <Button type="button" variant="outline" className="h-11" disabled={checking} onClick={() => void checkPayment()}>
-                    {t('imports.apple_wallet.steps.payment.check')}
-                  </Button>
-                </div>
-                {paymentMissing ? <span className="text-muted-foreground">{t('imports.apple_wallet.steps.payment.none')}</span> : null}
-              </>
-            ))}
-            {step('immediate', (
-              <span className="text-muted-foreground">{t('imports.apple_wallet.steps.immediate.text')}</span>
-            ))}
-          </ol>
-          <InfoBox>{t('imports.apple_wallet.same_named_cards')}</InfoBox>
-        </>
-      )}
+export function AppleWalletDisconnect({ source }: { source: ImportSourceDto }) {
+  const { t } = useTranslation()
+  const deleteSource = useDeleteImportSource()
+  const [disconnectOpen, setDisconnectOpen] = useState(false)
+  return (
+    <div className="flex justify-center pt-4">
+      <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDisconnectOpen(true)}>
+        {t('imports.apple_wallet.disconnect_full')}
+      </Button>
 
       <ConfirmDialog
         open={disconnectOpen}

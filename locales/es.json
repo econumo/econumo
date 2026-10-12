@@ -514,9 +514,20 @@
       "connect": "Configurar Apple Wallet",
       "connected": "Conectado",
       "disconnect": "Desconectar",
+      "disconnect_full": "Desconectar Apple Wallet",
       "disconnect_modal": {
         "title": "¿Desconectar Apple Wallet?",
         "question": "Se eliminarán las asignaciones de tarjetas y la cola de revisión de esta conexión. Las transacciones ya importadas se conservan."
+      },
+      "status": {
+        "last_tap": "Último pago {when}",
+        "no_taps": "Aún no hay pagos",
+        "review": "Revisar en la bandeja de entrada"
+      },
+      "setup": {
+        "header": "Configuración",
+        "title": "Guía de configuración",
+        "progress": "{done} de {total} hechos"
       },
       "steps": {
         "hint_desktop": "Abre esta página en tu iPhone para realizar los pasos allí. En este dispositivo puedes descargar los atajos y marcar los pasos a mano.",
@@ -555,23 +566,21 @@
           "title": "Cambiar la automatización a «Ejecutar inmediatamente»",
           "text": "En la app Atajos, abre la automatización y cambia «Ejecutar tras confirmar» por «Ejecutar inmediatamente». A partir de entonces los pagos se importan sin preguntar, también desde la pantalla bloqueada."
         },
-        "complete": "Configuración completada",
-        "show": "Mostrar pasos",
-        "hide": "Ocultar pasos"
+        "complete": "Configuración completada"
       },
       "same_named_cards": "Las tarjetas con el mismo nombre en Wallet llegan aquí como una sola tarjeta.",
       "cards": {
         "header": "Tarjetas",
         "empty": "Aún no hay tarjetas — el primer pago con Apple Pay añadirá una.",
+        "needs_mapping": "Sin asignar",
         "state": {
-          "mapped": "Asignada",
-          "ignored": "Ignorada",
-          "unmapped": "Sin asignar · {count} en cola"
+          "ignored": "Ignorada"
         },
         "taps": "{count} pago | {count} pagos",
-        "last_seen": "Visto por última vez {date}",
+        "waiting": "{count} por revisar",
         "map": "Asignar a una cuenta",
-        "map_instead": "Asignar en su lugar",
+        "mapped_to": "asignada a",
+        "actions": "Acciones de {card}",
         "ignore": "Ignorar",
         "unlink": "Desasignar",
         "unlink_modal": {
@@ -622,15 +631,15 @@
       "accounts": {
         "header": "Cuentas",
         "empty": "La pasarela aún no ha informado de ninguna cuenta.",
+        "needs_mapping": "Sin asignar",
         "state": {
-          "mapped": "Asignada",
-          "ignored": "Ignorada",
-          "unmapped": "Sin asignar · {count} en cola"
+          "ignored": "Ignorada"
         },
         "taps": "{count} transacción | {count} transacciones",
-        "last_seen": "Visto por última vez {date}",
+        "waiting": "{count} por revisar",
         "map": "Asignar a una cuenta",
-        "map_instead": "Asignar en su lugar",
+        "mapped_to": "asignada a",
+        "actions": "Acciones de {card}",
         "ignore": "Ignorar",
         "unlink": "Desasignar",
         "unlink_modal": {

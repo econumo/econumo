@@ -368,14 +368,24 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       "Sync bank connections" never appears.
 
 - [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
-      import/export rows; dialogs open as before) and "Apple Wallet" (its own page:
-      setup, cards, "Inbox" link; back returns to Settings).
+      import/export rows; dialogs open as before) and "Apple Wallet" (its own page;
+      back returns to Settings).
+- [ ] Apple Wallet page layout once connected 📱: a status card on top
+      ("Connected" + "Last tap …" as relative time, or "No taps yet"), with a
+      "Review in Inbox" row carrying the count of this source's queued and
+      failed rows (absent when that count is 0); then "Needs mapping"
+      (unmapped cards: "N to review · <when>", a Map button, a ⋮ menu with
+      Ignore), then "Cards" (mapped as "<card> → <account icon> <account>" with
+      "N taps · <when>" and a ⋮ menu with Unmap; ignored cards greyed with
+      "Ignored · …" and a ⋮ menu with Map to account), the same-name footnote,
+      a "Setup" section with one "Setup guide" row, and "Disconnect Apple
+      Wallet" centered at the bottom.
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
-      second device does not create a second source); the section flips to
-      "Connected" with a seven-step checklist (Install econumo-wallet-v1, Install
+      second device does not create a second source); the page shows
+      "Connected" and an open "Setup guide" ("0 of 7 done") with a seven-step checklist (Install econumo-wallet-v1, Install
       econumo-setup-v1, Configure the Shortcuts, Run econumo-wallet-v1 once,
       Create the automation, Make the first payment with the iPhone unlocked,
-      Switch the automation to Run Immediately), every box unticked; "Disconnect" (confirmation) removes the source, its
+      Switch the automation to Run Immediately), every box unticked; "Disconnect Apple Wallet" (confirmation) removes the source, its
       cards, its queue and the hand ticks; already-imported transactions stay.
 - [ ] Any step can be ticked/unticked by hand; ticks survive a reload and are
       per source (a reconnect starts with an empty list) 📱.
@@ -413,12 +423,12 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
 - [ ] The first card arriving from Apple Pay ticks steps 1–6 by itself,
       regardless of which were ticked by hand; step 7 (Switch the automation
       to Run Immediately) stays a hand tick and is the only open step left 📱.
-- [ ] With all seven steps done the list collapses to "Setup complete" + "Show
-      steps"; "Show steps" expands the ticked list (titles only), "Hide steps"
-      collapses it again 📱.
+- [ ] The "Setup guide" row shows "N of 7 done" ("Setup complete" with all
+      seven done) and toggles the checklist; it starts open while no card has
+      arrived and folded once one has 📱.
 - [ ] Ingest with an `ingest`-scoped PAT: `POST /api/v1/import/ingest-apple-wallet-event`
       → `status: queued` for an unmapped card; the card appears in the list as
-      "Unmapped · 1 queued", tap count and last-seen date update per event; a
+      a "Needs mapping" row reading "1 to review · now", count and time update per event; a
       `full` PAT / session token is accepted too; an `ingest` PAT on any other route
       is 401.
 - [ ] Same payload twice → `duplicate`, no second row; a body without `account`
@@ -439,9 +449,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
 - [ ] A new card whose first taps were all in a foreign currency (USD taps →
       CAD account) maps without error; its queued taps import converted at the
       day's rate (a tap with no stored rate stays queued), and the provenance
-      line keeps the original "… USD" amount. An ignored card offers
-      "Map instead"; "Unmap" (confirmation) returns the card to unmapped and
-      new taps queue again.
+      line keeps the original "… USD" amount. An ignored card's ⋮ menu offers
+      "Map to account"; a mapped card's ⋮ → "Unmap" (confirmation) returns the
+      card to "Needs mapping" and new taps queue again.
 - [ ] Inbox button 📱: the sidebar top row shows the logo + version label
       (linking Home) on the left and a Search button and an Inbox button on
       the right — no avatar or user name in the sidebar; the Inbox button is
@@ -508,8 +518,8 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Settings → SimpleFIN on a device with no key: the connect form asks for a
       setup token and a passphrase (+ repeat); a passphrase under 8 characters or
       a mismatch is rejected inline before any request. 📱
-- [ ] Connect: after "Connect" the page shows the bridge's accounts as Unmapped
-      rows, the source row reads "Never synced", and the network log shows
+- [ ] Connect: after "Connect" the page lists the bridge's accounts under "Needs mapping",
+      the source row reads "Never synced", and the network log shows
       `create-source` carrying `credentialCiphertext` starting `v1:` — the access
       URL appears in no request other than `list-external-accounts`/`sync-source`
       bodies.

@@ -514,9 +514,20 @@
       "connect": "Skonfiguruj Apple Wallet",
       "connected": "Połączono",
       "disconnect": "Rozłącz",
+      "disconnect_full": "Rozłącz Apple Wallet",
       "disconnect_modal": {
         "title": "Rozłączyć Apple Wallet?",
         "question": "Przypisania kart i kolejka do sprawdzenia tego połączenia zostaną usunięte. Zaimportowane już transakcje zostaną."
+      },
+      "status": {
+        "last_tap": "Ostatnia płatność {when}",
+        "no_taps": "Brak płatności",
+        "review": "Przejrzyj w skrzynce odbiorczej"
+      },
+      "setup": {
+        "header": "Konfiguracja",
+        "title": "Przewodnik konfiguracji",
+        "progress": "Gotowe {done} z {total}"
       },
       "steps": {
         "hint_desktop": "Otwórz tę stronę na iPhonie, aby wykonać kroki tam. Na tym urządzeniu możesz pobrać skróty i odhaczać kroki ręcznie.",
@@ -555,23 +566,21 @@
           "title": "Przełącz automatyzację na „Uruchom natychmiast”",
           "text": "W aplikacji Skróty otwórz automatyzację i zmień „Uruchom po potwierdzeniu” na „Uruchom natychmiast”. Od tej pory płatności są importowane bez pytania, także z ekranu blokady."
         },
-        "complete": "Konfiguracja zakończona",
-        "show": "Pokaż kroki",
-        "hide": "Ukryj kroki"
+        "complete": "Konfiguracja zakończona"
       },
       "same_named_cards": "Karty o tej samej nazwie w Wallet trafiają tu jako jedna karta.",
       "cards": {
         "header": "Karty",
         "empty": "Brak kart — pierwsza płatność Apple Pay doda kartę.",
+        "needs_mapping": "Nieprzypisane",
         "state": {
-          "mapped": "Przypisana",
-          "ignored": "Ignorowana",
-          "unmapped": "Nieprzypisana · w kolejce: {count}"
+          "ignored": "Ignorowana"
         },
         "taps": "{count} płatność | {count} płatności | {count} płatności",
-        "last_seen": "Ostatnio {date}",
+        "waiting": "do przejrzenia: {count}",
         "map": "Przypisz do konta",
-        "map_instead": "Przypisz mimo to",
+        "mapped_to": "przypisana do",
+        "actions": "Akcje: {card}",
         "ignore": "Ignoruj",
         "unlink": "Odłącz",
         "unlink_modal": {
@@ -622,15 +631,15 @@
       "accounts": {
         "header": "Konta",
         "empty": "Mostek nie zgłosił jeszcze żadnych kont.",
+        "needs_mapping": "Nieprzypisane",
         "state": {
-          "mapped": "Przypisane",
-          "ignored": "Ignorowane",
-          "unmapped": "Nieprzypisane · w kolejce: {count}"
+          "ignored": "Ignorowane"
         },
         "taps": "{count} transakcja | {count} transakcje | {count} transakcji",
-        "last_seen": "Ostatnio {date}",
+        "waiting": "do przejrzenia: {count}",
         "map": "Przypisz do konta",
-        "map_instead": "Przypisz mimo to",
+        "mapped_to": "przypisana do",
+        "actions": "Akcje: {card}",
         "ignore": "Ignoruj",
         "unlink": "Odłącz",
         "unlink_modal": {

@@ -514,9 +514,20 @@
       "connect": "Configurar Apple Wallet",
       "connected": "Ligado",
       "disconnect": "Desligar",
+      "disconnect_full": "Desligar o Apple Wallet",
       "disconnect_modal": {
         "title": "Desligar o Apple Wallet?",
         "question": "As associações de cartões e a fila de revisão desta ligação serão removidas. As transações já importadas mantêm-se."
+      },
+      "status": {
+        "last_tap": "Último pagamento {when}",
+        "no_taps": "Ainda sem pagamentos",
+        "review": "Rever na caixa de entrada"
+      },
+      "setup": {
+        "header": "Configuração",
+        "title": "Guia de configuração",
+        "progress": "{done} de {total} concluídos"
       },
       "steps": {
         "hint_desktop": "Abra esta página no seu iPhone para executar os passos lá. Neste dispositivo pode transferir os atalhos e marcar os passos manualmente.",
@@ -555,23 +566,21 @@
           "title": "Mudar a automatização para «Executar imediatamente»",
           "text": "Na app Atalhos, abra a automatização e mude «Executar após confirmação» para «Executar imediatamente». A partir daí os pagamentos são importados sem perguntar, também a partir do ecrã bloqueado."
         },
-        "complete": "Configuração concluída",
-        "show": "Mostrar passos",
-        "hide": "Ocultar passos"
+        "complete": "Configuração concluída"
       },
       "same_named_cards": "Cartões com o mesmo nome no Wallet chegam aqui como um único cartão.",
       "cards": {
         "header": "Cartões",
         "empty": "Ainda sem cartões — o primeiro pagamento Apple Pay adiciona um.",
+        "needs_mapping": "Sem associação",
         "state": {
-          "mapped": "Associado",
-          "ignored": "Ignorado",
-          "unmapped": "Sem associação · {count} em fila"
+          "ignored": "Ignorado"
         },
         "taps": "{count} pagamento | {count} pagamentos",
-        "last_seen": "Visto pela última vez {date}",
+        "waiting": "{count} por rever",
         "map": "Associar a uma conta",
-        "map_instead": "Associar em vez disso",
+        "mapped_to": "associado a",
+        "actions": "Ações de {card}",
         "ignore": "Ignorar",
         "unlink": "Desassociar",
         "unlink_modal": {
@@ -622,15 +631,15 @@
       "accounts": {
         "header": "Contas",
         "empty": "A ponte ainda não reportou contas.",
+        "needs_mapping": "Sem associação",
         "state": {
-          "mapped": "Associada",
-          "ignored": "Ignorada",
-          "unmapped": "Sem associação · {count} em fila"
+          "ignored": "Ignorada"
         },
         "taps": "{count} transação | {count} transações",
-        "last_seen": "Visto pela última vez {date}",
+        "waiting": "{count} por rever",
         "map": "Associar a uma conta",
-        "map_instead": "Associar em vez disso",
+        "mapped_to": "associado a",
+        "actions": "Ações de {card}",
         "ignore": "Ignorar",
         "unlink": "Desassociar",
         "unlink_modal": {

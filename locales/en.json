@@ -514,9 +514,20 @@
       "connect": "Set up Apple Wallet",
       "connected": "Connected",
       "disconnect": "Disconnect",
+      "disconnect_full": "Disconnect Apple Wallet",
       "disconnect_modal": {
         "title": "Disconnect Apple Wallet?",
         "question": "Card mappings and the review queue of this connection will be removed. Transactions you already imported stay."
+      },
+      "status": {
+        "last_tap": "Last tap {when}",
+        "no_taps": "No taps yet",
+        "review": "Review in Inbox"
+      },
+      "setup": {
+        "header": "Setup",
+        "title": "Setup guide",
+        "progress": "{done} of {total} done"
       },
       "steps": {
         "hint_desktop": "Open this page on your iPhone to run the steps there. On this device you can download the Shortcuts and tick steps off by hand.",
@@ -555,23 +566,21 @@
           "title": "Switch the automation to Run Immediately",
           "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt, from the lock screen too."
         },
-        "complete": "Setup complete",
-        "show": "Show steps",
-        "hide": "Hide steps"
+        "complete": "Setup complete"
       },
       "same_named_cards": "Cards that share a name in Wallet arrive here as one card.",
       "cards": {
         "header": "Cards",
         "empty": "No cards yet — the first Apple Pay tap adds one.",
+        "needs_mapping": "Needs mapping",
         "state": {
-          "mapped": "Mapped",
-          "ignored": "Ignored",
-          "unmapped": "Unmapped · {count} queued"
+          "ignored": "Ignored"
         },
         "taps": "{count} tap | {count} taps",
-        "last_seen": "Last seen {date}",
+        "waiting": "{count} to review",
         "map": "Map to account",
-        "map_instead": "Map instead",
+        "mapped_to": "mapped to",
+        "actions": "{card} actions",
         "ignore": "Ignore",
         "unlink": "Unmap",
         "unlink_modal": {
@@ -622,15 +631,15 @@
       "accounts": {
         "header": "Accounts",
         "empty": "No accounts reported by the bridge yet.",
+        "needs_mapping": "Needs mapping",
         "state": {
-          "mapped": "Mapped",
-          "ignored": "Ignored",
-          "unmapped": "Unmapped · {count} queued"
+          "ignored": "Ignored"
         },
         "taps": "{count} transaction | {count} transactions",
-        "last_seen": "Last seen {date}",
+        "waiting": "{count} to review",
         "map": "Map to account",
-        "map_instead": "Map instead",
+        "mapped_to": "mapped to",
+        "actions": "{card} actions",
         "ignore": "Ignore",
         "unlink": "Unmap",
         "unlink_modal": {
