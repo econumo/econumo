@@ -367,6 +367,26 @@ build arg of the same name sets it per image build, default `dev`) — that one
 IS a real version, used by the mobile app where no server config is present.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
+**Transactions are not in the localStorage query cache; they live in IndexedDB.** One
+database, `econumo` (`web/src/lib/db.ts`), holds three stores: `importKeys` (the SimpleFIN
+data key, migrated once from the old `econumo-import` database), `accountTransactions`
+(one row per account: its `transactionsRevision` and transactions) and `meta` (`buster`,
+`userId`). `web/src/lib/transactionStore.ts` is the only reader/writer: waits that hold boot
+or auth time out after 1.5 s, background writes are never awaited, errors never surface
+(a broken IndexedDB degrades to a plain network load), and a clear (logout, a login that
+changes the user, a buster change) bumps an epoch that fences any in-flight sync so it cannot
+write the previous user's data back. The query-cache restore seeds `['transactions']` from
+IndexedDB inside `restoreClient`. That key's `queryFn` is the revision-driven sync
+(`web/src/features/transactions/{sync.ts,revisionTracking.ts}`): it asks
+`get-account-transaction-list` for the revisions, downloads only accounts whose revision
+changed (hidden-folder accounts included, pending share invites skipped) and merges them
+into the store; against a server that predates the endpoint it falls back to
+`get-transaction-list` (hidden-folder account pages then show no transactions). The user's own
+edits are recorded locally without a download when the response revision is exactly +1 of
+the stored one. The sync button (`ApplicationLayout`, via `useLongPress`): a tap is an incremental refresh; holding it >= 600 ms
+or Shift+click is a full reload (every account re-downloaded, toast,
+`METRICS.DATA_FULL_RELOAD`).
+
 **Product analytics rule:** every new user-facing feature/action MUST fire an
 analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen
 `app`-prefixed camelCase names; the collector's snake_case name derives
@@ -505,6 +525,13 @@ Tests live alongside the Go code:
   `-tags enginecompare`, against both engines. Regenerate goldens with
   `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then INSPECT the diff — same rule
   as `apiparity`.
+- `internal/test/revisionguard/` — guards the per-account `transactions_revision` counter
+  (see "Transaction revisions" below): replays the `apiparity` and `mcpparity` catalogues plus
+  guard-only scenarios against the real `server.BuildAPI` handler and fails when any account's
+  transaction fingerprint (rows, labels, author/recurring links, the display names and avatars
+  of the authors) changes without its revision moving. Smoke on sqlite; under
+  `-tags enginecompare` also on PostgreSQL. A new write path that touches an account's
+  transactions fails here until it bumps.
 - `internal/infra/oidc/oidctest` — an in-process fake OpenID provider (discovery, authorize,
   token, JWKS, userinfo, end-session) used to drive the real `internal/oauth` callback through
   `httptest`, so provider-flow tests exercise actual protocol code rather than stubbing it out.
@@ -857,6 +884,23 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   `limitPeriodArg`) even though a bound `time.Time` now yields the same bytes:
   that is deliberate belt-and-braces so those comparisons never depend on a
   DSN parameter, not a sign that the driver still needs it.
+- **Transaction revisions.** `accounts.transactions_revision` is a per-account counter the
+  SPA's transaction sync compares to know which accounts to re-download. It moves by exactly
+  +1 per committed DB transaction that changes anything the account's downloaded transaction
+  list carries (rows, label links, recurring links, the classification ids on rows, an
+  author's name or avatar), however many rows or writes that took. The bump lives INSIDE the repository method that
+  does the write, through `internal/infra/txrevision` (`Bumper.Bump(ctx, accountIDs...)`;
+  `BumpWhere(ctx, cond, args...)` selects the affected accounts from `transactions`, so it
+  runs BEFORE the matching rows change or are deleted). Bumps are collected per DB
+  transaction (`backend.TxManager.BeforeCommit` / `TxValue`) and flushed once just before
+  COMMIT as one UPDATE per account in sorted id order (a stable lock order, so concurrent
+  writers cannot deadlock on it); outside a transaction they apply immediately. Sites:
+  the transaction repo (`Save`, `ReplaceLabels`, `LinkRecurring`, `Delete`), account
+  `SaveCorrection`, category/payee/tag merge and delete, label merge and delete, recurring
+  delete, imports `InsertLink` / `UpdateLink` (only when its `transaction_id` changes) /
+  `DeleteSource`, and the user `Save` when the name or avatar changes. The account DTO
+  carries it as `transactionsRevision` (additive). `internal/test/revisionguard` enforces
+  the rule (see Testing).
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
 - Keep `.sql` query files ASCII-only, including comments — a multibyte character (an em dash,
@@ -941,6 +985,13 @@ In the distroless image these run via the binary directly, e.g.
   AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs. One exception:
   `/api/v1/import/list-external-accounts` is a POST *read*, because the bridge access URL
   travels in the body — it must never reach a query string (logs, history, referrers).
+- **Transaction sync read:** `GET /api/v1/transaction/get-account-transaction-list?accountIds=a,b`
+  serves the SPA's per-account transaction store: `{revisions, items, authors}` where `revisions`
+  maps each requested account id to its `transactionsRevision`, `items` are the transactions
+  of the accounts being downloaded (each with `authorId`) and `authors` the users they
+  reference. Absent `accountIds` = every accessible account, hidden folders included; at most
+  200 comma-separated ids; ids the caller cannot access are omitted from `revisions` (never an
+  error). `get-transaction-list` (the budget read, server-filtered per period) is unchanged.
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
@@ -1245,7 +1296,7 @@ data unreadable. Most are also asserted by the test suite.
   through `claim-setup-token` (the server returns the access URL and keeps nothing), encrypts
   it in the browser with a passphrase-wrapped data key (`web/src/lib/importCrypto.ts`; the
   wrapped key lives in `import_credential_keys`, one row per user; the unwrapped key stays
-  non-extractable in IndexedDB), and stores only the ciphertext on the source. Every
+  non-extractable in the `importKeys` store of the `econumo` IndexedDB), and stores only the ciphertext on the source. Every
   `list-external-accounts`/`sync-source` call carries the plaintext access URL in the body —
   "at rest zero-knowledge, in flight trusted" — and it is never persisted, logged, or
   formatted into an error. A sync is one `import_runs` row; per-account failures leave the

@@ -268,7 +268,8 @@ navigation (single-pane vs sidebar).
       custom currency in Settings → Currencies first (name, code, symbol,
       rate); that is the normal manual path.
 - [ ] Folders: create, rename, collapse/expand, hide/show (hidden folder
-      disappears from sidebar but its accounts stay reachable via settings),
+      disappears from sidebar but its accounts stay reachable via settings and
+      keep their transactions),
       delete — deleting a folder MOVES its accounts into the general folder
       (nothing is lost); the general folder itself offers no Delete; reorder
       folders.
@@ -714,9 +715,10 @@ and on tablet/phone only with a hardware keyboard.
       account shows an eye-off icon after its folder name ("Hidden folder" on
       hover); selecting one opens the account page and closes search; `⋯` shows
       Edit / Access (admin only) / Delete (owner) or Decline (shared account).
-- [ ] Opening a hidden-folder account from search shows its transactions (they
-      load on opening; their transactions are not part of search results), and
-      adding, editing or deleting one there updates the list.
+- [ ] A hidden-folder account's page shows its transactions straight away
+      (they are downloaded with every other account, not on opening), global
+      search finds those transactions too, and adding, editing or deleting one
+      there updates the list.
 - [ ] Deleting or declining an account from its result `⋯` keeps search open
       and the row disappears from the list.
 - [ ] Access control from an account result `⋯` opens the sharing dialog over the
@@ -1651,7 +1653,15 @@ User C sees none of it.
 - [ ] B sees A's categories/payees/tags via the shared account and can use
       them on transactions in that account; B cannot edit A's classifications.
 - [ ] A revokes access → the account disappears from B's sidebar immediately
-      (or on next sync); B's own data untouched.
+      (or on next sync) and its transactions disappear from B's lists and
+      global search; B's own data untouched.
+- [ ] B accepts an account share → the account's whole transaction history
+      appears for B (lists, account page, global search) after the next sync
+      without a reload.
+- [ ] A shared account where B has write access: B adds, edits or deletes a
+      transaction → A sees it after refocusing the app or tapping sync, with
+      B shown as the author; B changing their own name or avatar also reaches
+      A's transaction rows after a sync.
 - [ ] Owner deletes a shared account → it disappears for B too.
 
 **Budget sharing**
@@ -1892,6 +1902,25 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Sync button: spins during refetch; failure (kill the server briefly)
       turns it amber with a tooltip; recovery clears it. App restores from the
       persisted cache on reload without a boot-loader flash.
+- [ ] Sync button tap = incremental refresh: after an edit made on another
+      device, one tap shows it, and the network log lists `get-account-transaction-list`
+      downloading only the changed account's transactions (the unchanged accounts appear
+      with their revision only, no items).
+- [ ] 📱 Sync button hold (about 0.6 s) or Shift+click on desktop = full
+      reload: every account's transactions are downloaded again, a toast
+      confirms the reload, and a short tap does not trigger it.
+- [ ] 📱 Transactions survive a reload while the server is unreachable: load
+      the app, stop the server (or go offline), reload — the account pages,
+      the transaction lists and global search still show the previously
+      synced transactions; the sync button shows its failure state instead of
+      an empty list.
+- [ ] Cross-device edit: with the app open on devices A and B, edit or add a
+      transaction on A, then refocus B (or tap sync) — B shows the change
+      without a manual reload; only the touched account is re-downloaded.
+- [ ] Logout, then log in as another user in the same browser: none of the
+      previous user's transactions, accounts or search results appear, even
+      for an instant, and a reload keeps it that way (the local transaction
+      store is cleared on logout and on a login that changes the user).
 - [ ] Update notices (environment-dependent — needs `ECONUMO_CHECK_UPDATES`
       and reachability of econumo.com): with a newer release available, the
       dismissible sidebar notice and the settings "update available" row
