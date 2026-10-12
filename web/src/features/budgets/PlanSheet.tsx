@@ -1708,7 +1708,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         onPaste={handlePaste}
         aria-activedescendant={selection ? selectionDomId(selection) : undefined}
         aria-multiselectable={isCompact ? undefined : true}
-        className={`relative flex min-h-0 flex-1 flex-col overflow-y-auto${dragSelecting ? ' select-none' : ''}`}
+        // the selected cell's ring is the focus indicator; the browser's outline
+        // around the whole grid (drawn when focus returns from a cell editor by
+        // keyboard) would be a second one. Kept while nothing is selected, so
+        // tabbing into the grid still shows where focus went.
+        className={`relative flex min-h-0 flex-1 flex-col overflow-y-auto${selection ? ' outline-none' : ''}${dragSelecting ? ' select-none' : ''}`}
         style={{ '--plan-name-col': `${nameWidth}px` } as CSSProperties}
         data-testid="plan-sheet"
       >

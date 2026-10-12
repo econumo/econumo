@@ -216,6 +216,18 @@ it('clicking an actual selects its cell, so the keyboard picks up there once the
   expect(await screen.findByRole('textbox', { name: /living/i })).toHaveValue('7')
 })
 
+it('the grid draws no focus outline of its own once a cell is selected', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  const grid = await screen.findByTestId('plan-sheet')
+  // nothing selected: tabbing in must still show where focus went
+  expect(grid).not.toHaveClass('outline-none')
+  await user.click(screen.getByTestId('plan-cell-cat-food:0'))
+  expect(grid).toHaveClass('outline-none')
+})
+
 it('the grid takes focus back when the Transfers list closes', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
