@@ -1,0 +1,75 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import type { ImportCardDto, ImportProvider } from '@/api/dto/imports'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { Button } from '@/components/ui/button'
+import { useAccounts } from '@/features/accounts/queries'
+import { canWriteToAccount } from '@/features/connections/shared'
+import { useUserData } from '@/features/user/queries'
+import { apiErrorMessage } from '@/lib/apiError'
+import { useLinkImportAccount } from './queries'
+
+export function MapAccountDialog({ sourceId, provider, card, onClose }: { sourceId: string; provider: ImportProvider | undefined; card: ImportCardDto | null; onClose: () => void }) {
+  const { t } = useTranslation()
+  const ns = provider === 'simplefin' ? 'imports.simplefin.accounts' : 'imports.apple_wallet.cards'
+  const { data: accounts = [] } = useAccounts()
+  const { data: user } = useUserData()
+  const link = useLinkImportAccount()
+  const [accountId, setAccountId] = useState('')
+  // link-account takes any account I can add transactions to (mine, or shared
+  // with me as admin/user), so the picker lists exactly those. Within that,
+  // accounts already in the card's currency come first (Array#sort is stable,
+  // so ties keep their original account-list order).
+  const writableAccounts = accounts.filter((a) => canWriteToAccount(a, user?.id))
+  const pickerAccounts = card
+    ? [...writableAccounts].sort((a, b) => Number(b.currency.code === card.externalCurrency) - Number(a.currency.code === card.externalCurrency))
+    : writableAccounts
+
+  const close = () => {
+    setAccountId('')
+    onClose()
+  }
+
+  const submit = () => {
+    if (!card || !accountId) {
+      return
+    }
+    link.mutate(
+      { sourceId, externalAccountId: card.externalAccountId, accountId, externalName: card.externalName },
+      {
+        onSuccess: (result) => {
+          close()
+          if (result.run) {
+            toast.success(t(`${ns}.mapped_toast`, {
+              imported: result.run.importedCount, matched: result.run.matchedCount, skipped: result.run.skippedCount,
+            }))
+          }
+        },
+        onError: (err) => toast.error(apiErrorMessage(err)),
+      },
+    )
+  }
+
+  return (
+    <ResponsiveDialog
+      open={card !== null}
+      onOpenChange={(o) => !o && close()}
+      title={t(`${ns}.map_modal.header`, { card: card?.externalName ?? '' })}
+    >
+      <div className="flex flex-col gap-3">
+        <label className="text-xs uppercase text-muted-foreground" htmlFor="import-map-account">{t(`${ns}.map_modal.account`)}</label>
+        <select id="import-map-account" className="h-11 w-full rounded-md border bg-transparent px-2 text-sm" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+          <option value="" />
+          {pickerAccounts.map((a) => (
+            <option key={a.id} value={a.id}>{a.name}</option>
+          ))}
+        </select>
+        <div className={dialogActionsClass}>
+          <Button type="button" variant="secondary" onClick={close}>{t('common.button.cancel.label')}</Button>
+          <Button type="button" disabled={!accountId || link.isPending} onClick={submit}>{t(`${ns}.map_modal.submit`)}</Button>
+        </div>
+      </div>
+    </ResponsiveDialog>
+  )
+}

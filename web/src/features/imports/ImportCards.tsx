@@ -3,58 +3,23 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { ImportCardDto, ImportSourceDto } from '@/api/dto/imports'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
 import { useAccounts } from '@/features/accounts/queries'
-import { canWriteToAccount } from '@/features/connections/shared'
-import { useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { pluralPick } from '@/lib/plural'
-import { useIgnoreImportAccount, useLinkImportAccount, useUnlinkImportAccount } from './queries'
+import { MapAccountDialog } from './MapAccountDialog'
+import { useIgnoreImportAccount, useUnlinkImportAccount } from './queries'
 
 export function ImportCards({ source, cards = source.cards, variant = 'card' }: { source: ImportSourceDto; cards?: ImportCardDto[]; variant?: 'card' | 'account' }) {
   const { t, i18n } = useTranslation()
   const ns = variant === 'account' ? 'imports.simplefin.accounts' : 'imports.apple_wallet.cards'
   const { data: accounts = [] } = useAccounts()
-  const { data: user } = useUserData()
-  const link = useLinkImportAccount()
   const ignore = useIgnoreImportAccount()
   const unlink = useUnlinkImportAccount()
   const [mapTarget, setMapTarget] = useState<ImportCardDto | null>(null)
   const [unlinkTarget, setUnlinkTarget] = useState<ImportCardDto | null>(null)
-  const [accountId, setAccountId] = useState('')
-  // link-account takes any account I can add transactions to (mine, or shared
-  // with me as admin/user), so the picker lists exactly those. Within that,
-  // accounts already in the card's currency come first (Array#sort is stable,
-  // so ties keep their original account-list order).
-  const writableAccounts = accounts.filter((a) => canWriteToAccount(a, user?.id))
-  const pickerAccounts = mapTarget
-    ? [...writableAccounts].sort((a, b) => Number(b.currency.code === mapTarget.externalCurrency) - Number(a.currency.code === mapTarget.externalCurrency))
-    : writableAccounts
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? ''
-
-  const submitMap = () => {
-    if (!mapTarget || !accountId) {
-      return
-    }
-    const card = mapTarget
-    link.mutate(
-      { sourceId: source.id, externalAccountId: card.externalAccountId, accountId, externalName: card.externalName },
-      {
-        onSuccess: (result) => {
-          setMapTarget(null)
-          setAccountId('')
-          if (result.run) {
-            toast.success(t(`${ns}.mapped_toast`, {
-              imported: result.run.importedCount, matched: result.run.matchedCount, skipped: result.run.skippedCount,
-            }))
-          }
-        },
-        onError: (err) => toast.error(apiErrorMessage(err)),
-      },
-    )
-  }
 
   const stateLabel = (card: ImportCardDto) =>
     card.state === 'mapped'
@@ -105,25 +70,7 @@ export function ImportCards({ source, cards = source.cards, variant = 'card' }: 
         ))
       )}
 
-      <ResponsiveDialog
-        open={mapTarget !== null}
-        onOpenChange={(o) => !o && setMapTarget(null)}
-        title={t(`${ns}.map_modal.header`, { card: mapTarget?.externalName ?? '' })}
-      >
-        <div className="flex flex-col gap-3">
-          <label className="text-xs uppercase text-muted-foreground" htmlFor="import-map-account">{t(`${ns}.map_modal.account`)}</label>
-          <select id="import-map-account" className="h-11 w-full rounded-md border bg-transparent px-2 text-sm" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-            <option value="" />
-            {pickerAccounts.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
-          <div className={dialogActionsClass}>
-            <Button type="button" variant="secondary" onClick={() => setMapTarget(null)}>{t('common.button.cancel.label')}</Button>
-            <Button type="button" disabled={!accountId || link.isPending} onClick={submitMap}>{t(`${ns}.map_modal.submit`)}</Button>
-          </div>
-        </div>
-      </ResponsiveDialog>
+      <MapAccountDialog sourceId={source.id} provider={source.provider} card={mapTarget} onClose={() => setMapTarget(null)} />
 
       <ConfirmDialog
         open={unlinkTarget !== null}

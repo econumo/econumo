@@ -483,7 +483,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       server-version notice ever appear above the app; pending imports never
       show a top banner.
 - [ ] Inbox's To review section 📱: rows grouped by card, unmapped cards carry
-      "Map to account" (→ Apple Wallet page) and "Ignore"; tapping a row opens
+      "Map to account" and "Ignore"; Map to account opens the account picker
+      in place (no navigation) and mapping moves the card's queued rows out of
+      the Inbox; tapping a row opens
       the add-transaction dialog prefilled (account, amount, merchant as
       description, posted date); saving posts `import-queued-event` — the row
       leaves the Inbox and the transaction is created with the glyph; Skip moves
