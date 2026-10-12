@@ -122,6 +122,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  server.events.removeAllListeners()
   uninstalls.splice(0).forEach((u) => u())
   vi.restoreAllMocks()
 })
@@ -309,7 +310,6 @@ it('a reload with unchanged revisions downloads no transactions and writes no bu
   await waitFor(() => expect(queryClient.isFetching()).toBe(0))
   // past the write-through debounce
   await new Promise((r) => setTimeout(r, 700))
-  server.events.removeAllListeners()
   expect(downloads).toEqual([])
   expect(put.mock.contexts.filter((store) => (store as IDBObjectStore).name === STORE_ACCOUNT_TRANSACTIONS)).toEqual([])
 })

@@ -5,7 +5,10 @@ import type { ReactNode } from 'react'
 import type { AccountDto } from '@/api/dto/account'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys } from '@/app/queryKeys'
-import { loadBuckets } from '@/lib/transactionStore'
+import { IDBFactory } from 'fake-indexeddb'
+import { loadBuckets, resetTransactionStoreForTests } from '@/lib/transactionStore'
+import { STORE_ACCOUNT_TRANSACTIONS, STORE_META, dbRequest, resetDbForTests } from '@/lib/db'
+import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
 import { useAccountItemEffects } from '@/features/accounts/queries'
@@ -326,4 +329,31 @@ it('a full reload request downloads every account once', async () => {
   await act(() => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }))
   await act(() => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }))
   expect(calls).toEqual([null, null])
+})
+
+it('a sync that lands after a clear leaves nothing on disk', async () => {
+  globalThis.indexedDB = new IDBFactory()
+  resetDbForTests()
+  resetTransactionStoreForTests()
+  let release!: () => void
+  const gate = new Promise<void>((r) => { release = r })
+  const ctx = setup()
+  server.use(http.get('*/api/v1/transaction/get-account-transaction-list', async () => {
+    await gate
+    return HttpResponse.json({
+      success: true, message: '',
+      data: {
+        revisions: Object.fromEntries(wireAccounts.map((a) => [a.id, a.transactionsRevision])),
+        items: fixtureTransactions.map(({ author, ...rest }) => ({ ...rest, authorId: author.id })),
+        authors: [fixtureOwner],
+      },
+    })
+  }))
+  await waitFor(() => expect(calls).toEqual([null]))
+  await clearPersistedQueryCache()
+  release()
+  await waitFor(() => expect(ctx.result.current.list.isFetching).toBe(false))
+  await settle()
+  expect(await dbRequest(STORE_ACCOUNT_TRANSACTIONS, 'readonly', (st) => st.count())).toBe(0)
+  expect(await dbRequest(STORE_META, 'readonly', (st) => st.count())).toBe(0)
 })

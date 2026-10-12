@@ -148,4 +148,20 @@ describe('restoring the stored transactions', () => {
       uninstall()
     }
   })
+
+  it('a stalled IndexedDB neither holds the restore nor the clear', async () => {
+    globalThis.indexedDB = { open: () => ({}) } as unknown as IDBFactory
+    resetDbForTests()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+      const restored = await createPersistOptions().persister.restoreClient()
+      expect(restored?.clientState.queries.map((q) => q.queryKey)).toEqual([['user'], ['accounts']])
+      await clearPersistedQueryCache()
+      expect(localStorage.getItem(QUERY_CACHE_KEY)).toBeNull()
+      expect(warn).toHaveBeenCalledTimes(1)
+    } finally {
+      warn.mockRestore()
+    }
+  }, 10_000)
 })

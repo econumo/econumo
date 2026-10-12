@@ -7,7 +7,7 @@ import type { TransactionDto } from '@/api/dto/transaction'
 import type { CurrentUserDto, UserDto } from '@/api/dto/user'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { isPendingForMe } from '@/features/connections/shared'
-import { deleteBuckets, loadBuckets, putBuckets, type Bucket } from '@/lib/transactionStore'
+import { deleteBuckets, loadBuckets, putBuckets, storeEpoch, type Bucket } from '@/lib/transactionStore'
 import { assemble, hasRevisions, syncBuckets } from './sync'
 
 const WRITE_THROUGH_DELAY_MS = 500
@@ -259,6 +259,8 @@ export async function transactionsQueryFn(
     }
     return true
   }
+  // a clear (logout, login) while this runs makes every store call below a no-op
+  const at = storeEpoch()
   const user = await queryClient.fetchQuery({ queryKey: queryKeys.user, queryFn: getUserData, staleTime: TEN_MINUTES })
   const raw = await queryClient.fetchQuery({ queryKey: queryKeys.accounts, queryFn: accountApi.getAccountList, staleTime: TEN_MINUTES })
   if (superseded()) {
@@ -274,7 +276,7 @@ export async function transactionsQueryFn(
   }
   // patches not yet written would otherwise be replaced by the older stored rows
   await flushWriteThrough(queryClient)
-  const stored = await loadBuckets(user.id)
+  const stored = await loadBuckets(user.id, at)
   if (superseded()) {
     return []
   }
@@ -282,8 +284,8 @@ export async function transactionsQueryFn(
   if (superseded()) {
     return []
   }
-  await putBuckets(user.id, out.changed)
-  await deleteBuckets(out.removed)
+  await putBuckets(user.id, out.changed, at)
+  await deleteBuckets(out.removed, at)
   if (opts.signal?.aborted) {
     return []
   }

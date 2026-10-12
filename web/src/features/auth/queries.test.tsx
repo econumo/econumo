@@ -32,6 +32,26 @@ it('stores the token after a successful login', async () => {
   expect(getToken()).toBe('fresh-jwt')
 })
 
+it('a login drops the previous user\'s cached data before storing the token', async () => {
+  server.use(
+    http.post('*/api/v1/user/login-user', () =>
+      HttpResponse.json({
+        user: { id: 'u2', name: 'Bo', email: 'b@b', avatar: '', options: [], currency: 'USD', reportPeriod: 'month' },
+        token: 'fresh-jwt',
+      }),
+    ),
+  )
+  const qc = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+  qc.setQueryData(['accounts'], [{ id: 'a1', name: 'previous user account' }])
+  const { result } = renderHook(() => useLogin(), {
+    wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>,
+  })
+  result.current.mutate({ username: 'b@b', password: 'pw' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(qc.getQueryData(['accounts'])).toBeUndefined()
+  expect(getToken()).toBe('fresh-jwt')
+})
+
 it('does not store a token on failed login', async () => {
   server.use(
     http.post('*/api/v1/user/login-user', () =>

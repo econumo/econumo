@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import * as userApi from '@/api/user'
 import { refreshAuthMethodFlags } from '@/api/oauth'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
@@ -6,12 +6,16 @@ import { setToken } from '@/lib/storage'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
 export function useLogin() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ username, password }: { username: string; password: string }) => userApi.login(username, password),
     onSuccess: async (data) => {
-      // the new session may belong to a different user — never restore the
-      // previous user's persisted finances
+      // The new session may belong to a different user: neither the persisted
+      // finances nor the ones still in memory (no reload since a 401 sent the
+      // previous user here) may reach them. Same order as the oauth exchange.
+      await queryClient.cancelQueries()
       await clearPersistedQueryCache()
+      queryClient.clear()
       setToken(data.token)
       // After the token is stored, never before: the probe is fired without
       // awaiting, so an unauthenticated 401 would reach the response
