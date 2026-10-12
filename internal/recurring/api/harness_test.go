@@ -67,6 +67,7 @@ const (
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
+	tdb *dbtest.DB
 }
 
 func newHarness(t *testing.T) *harness {
@@ -146,7 +147,7 @@ func newHarness(t *testing.T) *harness {
 	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: registerAPI})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, db: db}
+	return &harness{srv: srv, db: db, tdb: tdb}
 }
 
 func (h *harness) token(t *testing.T) string {

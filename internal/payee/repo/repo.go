@@ -11,6 +11,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
 	dompayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -35,8 +36,9 @@ type querier interface {
 }
 
 type Repo struct {
-	tx *backend.TxManager
-	q  querier
+	tx  *backend.TxManager
+	q   querier
+	rev *txrevision.Bumper
 }
 
 var _ dompayee.Repository = (*Repo)(nil)
@@ -53,11 +55,11 @@ func NewRepo(driver string, tx *backend.TxManager) *Repo {
 }
 
 func NewSQLiteRepo(tx *backend.TxManager) *Repo {
-	return &Repo{tx: tx, q: sqliteQuerier{}}
+	return &Repo{tx: tx, q: sqliteQuerier{}, rev: txrevision.New("sqlite", tx)}
 }
 
 func NewPgsqlRepo(tx *backend.TxManager) *Repo {
-	return &Repo{tx: tx, q: pgsqlQuerier{}}
+	return &Repo{tx: tx, q: pgsqlQuerier{}, rev: txrevision.New("postgresql", tx)}
 }
 
 func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
@@ -105,12 +107,18 @@ func (r *Repo) Save(ctx context.Context, p *model.Payee) error {
 }
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
+	if err := r.rev.BumpWhere(ctx, "payee_id = ?", id.String()); err != nil {
+		return err
+	}
 	return r.q.DeletePayee(ctx, r.db(ctx), id.String())
 }
 
 // ReassignTransactions points every transaction on oldID at newID.
 func (r *Repo) ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error {
 	newStr, oldStr := newID.String(), oldID.String()
+	if err := r.rev.BumpWhere(ctx, "payee_id = ?", oldStr); err != nil {
+		return err
+	}
 	return r.q.ReassignPayeeTransactions(ctx, r.db(ctx), reassignTxParams{PayeeID: &newStr, PayeeID_2: &oldStr})
 }
 

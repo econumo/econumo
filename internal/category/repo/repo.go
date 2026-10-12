@@ -11,6 +11,7 @@ import (
 	domcategory "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/sortkey"
@@ -40,8 +41,9 @@ type querier interface {
 }
 
 type Repo struct {
-	tx *backend.TxManager
-	q  querier
+	tx  *backend.TxManager
+	q   querier
+	rev *txrevision.Bumper
 }
 
 var _ domcategory.Repository = (*Repo)(nil)
@@ -58,11 +60,11 @@ func NewRepo(driver string, tx *backend.TxManager) *Repo {
 }
 
 func NewSQLiteRepo(tx *backend.TxManager) *Repo {
-	return &Repo{tx: tx, q: sqliteQuerier{}}
+	return &Repo{tx: tx, q: sqliteQuerier{}, rev: txrevision.New("sqlite", tx)}
 }
 
 func NewPgsqlRepo(tx *backend.TxManager) *Repo {
-	return &Repo{tx: tx, q: pgsqlQuerier{}}
+	return &Repo{tx: tx, q: pgsqlQuerier{}, rev: txrevision.New("postgresql", tx)}
 }
 
 func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
@@ -112,6 +114,9 @@ func (r *Repo) Save(ctx context.Context, c *model.Category) error {
 }
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
+	if err := r.rev.BumpWhere(ctx, "category_id = ?", id.String()); err != nil {
+		return err
+	}
 	return r.q.DeleteCategory(ctx, r.db(ctx), id.String())
 }
 
@@ -119,6 +124,9 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 func (r *Repo) ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error {
 	newStr := newID.String()
 	oldStr := oldID.String()
+	if err := r.rev.BumpWhere(ctx, "category_id = ?", oldStr); err != nil {
+		return err
+	}
 	return r.q.ReassignCategoryTransactions(ctx, r.db(ctx), reassignParams{
 		CategoryID:   &newStr,
 		CategoryID_2: &oldStr,

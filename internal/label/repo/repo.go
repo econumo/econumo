@@ -11,6 +11,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txrevision"
 	domlabel "github.com/econumo/econumo/internal/label"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -39,8 +40,9 @@ type querier interface {
 }
 
 type Repo struct {
-	tx *backend.TxManager
-	q  querier
+	tx  *backend.TxManager
+	q   querier
+	rev *txrevision.Bumper
 }
 
 var _ domlabel.Repository = (*Repo)(nil)
@@ -57,11 +59,11 @@ func NewRepo(driver string, tx *backend.TxManager) *Repo {
 }
 
 func NewSQLiteRepo(tx *backend.TxManager) *Repo {
-	return &Repo{tx: tx, q: sqliteQuerier{}}
+	return &Repo{tx: tx, q: sqliteQuerier{}, rev: txrevision.New("sqlite", tx)}
 }
 
 func NewPgsqlRepo(tx *backend.TxManager) *Repo {
-	return &Repo{tx: tx, q: pgsqlQuerier{}}
+	return &Repo{tx: tx, q: pgsqlQuerier{}, rev: txrevision.New("postgresql", tx)}
 }
 
 func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
@@ -110,6 +112,9 @@ func (r *Repo) Save(ctx context.Context, l *model.Label) error {
 }
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
+	if err := r.rev.BumpWhere(ctx, "id IN (SELECT transaction_id FROM transactions_labels WHERE label_id = ?)", id.String()); err != nil {
+		return err
+	}
 	return r.q.DeleteLabel(ctx, r.db(ctx), id.String())
 }
 
@@ -131,6 +136,9 @@ func hydrate(row labelRow) (*model.Label, error) {
 // holding both labels keeps one row, not two. The old rows themselves cascade
 // away when the label is deleted.
 func (r *Repo) ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error {
+	if err := r.rev.BumpWhere(ctx, "id IN (SELECT transaction_id FROM transactions_labels WHERE label_id = ?)", oldID.String()); err != nil {
+		return err
+	}
 	return r.q.ReassignTransactionLabels(ctx, r.db(ctx), reassignTxParams{LabelID: newID.String(), LabelID_2: oldID.String()})
 }
 
