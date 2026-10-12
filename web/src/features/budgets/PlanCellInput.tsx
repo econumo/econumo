@@ -93,7 +93,9 @@ export function PlanCellInput({
             onCancel()
           }
         }}
-        className="w-full rounded-sm bg-background px-1 text-right text-[15px] tabular-nums outline-none ring-2 ring-ring"
+        // no box of its own: the cell's selection ring is the editor's only frame, and
+        // with no padding the typed figure sits exactly where the read-only plan did
+        className="w-full bg-transparent p-0 text-right text-[15px] tabular-nums outline-none"
       />
       {invalid ? (
         <span role="alert" className="absolute top-full right-0 z-30 mt-0.5 whitespace-nowrap rounded bg-background px-1 text-xs text-expense shadow">
