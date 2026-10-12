@@ -1,7 +1,7 @@
 import type { UserDto } from '@/api/dto/user'
 import type { StoredTransaction } from '@/api/dto/transaction'
 import { getVersion } from '@/lib/config'
-import { STORE_ACCOUNT_TRANSACTIONS, STORE_META, dbTransaction } from '@/lib/db'
+import { STORE_ACCOUNT_TRANSACTIONS, STORE_META, dbTransaction, openDb } from '@/lib/db'
 
 export interface Bucket {
   accountId: string
@@ -26,9 +26,11 @@ export function storeBuster(): string {
 
 // Any IndexedDB failure (private mode, quota, a blocked upgrade) turns the
 // store off for the rest of the session: sync then simply downloads
-// everything, which is the behaviour without a store at all. An operation
-// that never settles counts as a failure: the boot restore and the logout
-// wait on this store, and IndexedDB can stall without ever reporting an error.
+// everything, which is the behaviour without a store at all. IndexedDB can
+// also stall without ever reporting an error: a database that does not open in
+// time counts as failed. On an open database only the waits that hold the boot
+// or a sign-in/out (a load, a clear) give up after the limit, and a slow one
+// is no failure: writing a large account can take longer on a phone.
 export const STORE_TIMEOUT_MS = 1500
 
 let disabled = false
@@ -46,9 +48,11 @@ function isStale(at: number | undefined): boolean {
   return at !== undefined && at !== epoch
 }
 
-function withTimeout<T>(run: Promise<T>): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('IndexedDB did not answer in time')), STORE_TIMEOUT_MS)
+const TIMED_OUT = Symbol('timed out')
+
+function within<T>(run: Promise<T>): Promise<T | typeof TIMED_OUT> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => resolve(TIMED_OUT), STORE_TIMEOUT_MS)
     run.then(
       (value) => { clearTimeout(timer); resolve(value) },
       (e: unknown) => { clearTimeout(timer); reject(e) },
@@ -61,7 +65,10 @@ async function guarded<T>(fallback: T, run: () => Promise<T>, force = false): Pr
     return fallback
   }
   try {
-    return await withTimeout(run())
+    if ((await within(openDb())) === TIMED_OUT) {
+      throw new Error('IndexedDB did not open in time')
+    }
+    return await run()
   } catch (e) {
     disabled = true
     if (!warned) {
@@ -76,12 +83,20 @@ function currentMeta(userId: string): Meta {
   return { buster: storeBuster(), userId }
 }
 
-/** `at`: the storeEpoch() its caller started from; a clear since then makes this a no-op. */
-export function loadBuckets(userId: string, at?: number): Promise<Map<string, Bucket>> {
+export async function loadBuckets(userId: string, at?: number): Promise<Map<string, Bucket>> {
+  return (await tryLoadBuckets(userId, at)) ?? new Map()
+}
+
+/**
+ * Null when the store did not answer in time: what is on disk is then unknown,
+ * so nothing may be written from this view. `at`: the storeEpoch() its caller
+ * started from; a clear since then makes this a no-op.
+ */
+export async function tryLoadBuckets(userId: string, at?: number): Promise<Map<string, Bucket> | null> {
   if (isStale(at)) {
-    return Promise.resolve(new Map())
+    return new Map()
   }
-  return guarded(new Map<string, Bucket>(), async () => {
+  const result = await within(guarded(new Map<string, Bucket>(), async () => {
     const buckets = new Map<string, Bucket>()
     await dbTransaction([STORE_ACCOUNT_TRANSACTIONS, STORE_META], 'readwrite', (t) => {
       if (isStale(at)) {
@@ -107,7 +122,8 @@ export function loadBuckets(userId: string, at?: number): Promise<Map<string, Bu
       }
     })
     return buckets
-  })
+  }))
+  return result === TIMED_OUT ? null : result
 }
 
 export function putBuckets(userId: string, buckets: Bucket[], at?: number): Promise<void> {
@@ -153,12 +169,13 @@ export function deleteBuckets(accountIds: string[], at?: number): Promise<void> 
 }
 
 // Attempted even while the store is disabled: a logout must not leave data on disk.
-export function clearTransactions(): Promise<void> {
+// After the time limit the caller (logout, sign-in) goes on; the clear keeps running.
+export async function clearTransactions(): Promise<void> {
   epoch++
-  return guarded(undefined, () => dbTransaction([STORE_ACCOUNT_TRANSACTIONS, STORE_META], 'readwrite', (t) => {
+  await within(guarded(undefined, () => dbTransaction([STORE_ACCOUNT_TRANSACTIONS, STORE_META], 'readwrite', (t) => {
     t.objectStore(STORE_ACCOUNT_TRANSACTIONS).clear()
     t.objectStore(STORE_META).clear()
-  }), true)
+  }), true))
 }
 
 export function resetTransactionStoreForTests(): void {

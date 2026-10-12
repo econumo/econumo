@@ -9,6 +9,7 @@ import { IDBFactory } from 'fake-indexeddb'
 import { loadBuckets, resetTransactionStoreForTests } from '@/lib/transactionStore'
 import { STORE_ACCOUNT_TRANSACTIONS, STORE_META, dbRequest, resetDbForTests } from '@/lib/db'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
+import { delayTransactionCompletion } from '@/test/idbDelay'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
 import { useAccountItemEffects } from '@/features/accounts/queries'
@@ -356,4 +357,29 @@ it('a sync that lands after a clear leaves nothing on disk', async () => {
   await settle()
   expect(await dbRequest(STORE_ACCOUNT_TRANSACTIONS, 'readonly', (st) => st.count())).toBe(0)
   expect(await dbRequest(STORE_META, 'readonly', (st) => st.count())).toBe(0)
+})
+
+it('a sync whose load does not answer in time downloads everything and writes nothing', async () => {
+  globalThis.indexedDB = new IDBFactory()
+  resetDbForTests()
+  resetTransactionStoreForTests()
+  // only the first store transaction (the load) hangs
+  let first = true
+  const restore = delayTransactionCompletion(null, (_, mode) => {
+    if (mode !== 'readwrite' || !first) {
+      return false
+    }
+    first = false
+    return true
+  })
+  try {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true), { timeout: 4000 })
+    expect(calls).toEqual([null])
+    expect(result.current.list.data!.map((t) => t.id)).toEqual(['t1', 't2'])
+    await settle()
+    expect(await dbRequest(STORE_ACCOUNT_TRANSACTIONS, 'readonly', (st) => st.count())).toBe(0)
+  } finally {
+    restore()
+  }
 })

@@ -1,7 +1,8 @@
 import { IDBFactory } from 'fake-indexeddb'
 import type { StoredTransaction } from '@/api/dto/transaction'
 import { STORE_IMPORT_KEYS, dbRequest, resetDbForTests } from './db'
-import { clearTransactions, deleteBuckets, loadBuckets, putBuckets, resetTransactionStoreForTests, storeBuster, type Bucket } from './transactionStore'
+import { delayTransactionCompletion } from '@/test/idbDelay'
+import { STORE_TIMEOUT_MS, clearTransactions, deleteBuckets, loadBuckets, putBuckets, resetTransactionStoreForTests, storeBuster, tryLoadBuckets, type Bucket } from './transactionStore'
 
 const tx = (id: string, accountId: string): StoredTransaction => ({
   id, type: 'expense', accountId, accountRecipientId: null, amount: '1', amountRecipient: null,
@@ -22,6 +23,7 @@ beforeEach(() => {
 
 afterEach(() => {
   window.econumoConfig = {}
+  vi.useRealTimers()
   vi.restoreAllMocks()
 })
 
@@ -115,4 +117,46 @@ it('an unusable IndexedDB makes the store a silent no-op with a single warning',
   await expect(clearTransactions()).resolves.toBeUndefined()
   expect((await loadBuckets('u1')).size).toBe(0)
   expect(warn).toHaveBeenCalledTimes(1)
+})
+
+it('a slow write still completes and leaves the store on', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  await loadBuckets('u1')
+  const restore = delayTransactionCompletion(STORE_TIMEOUT_MS + 1000, (_, mode) => mode === 'readwrite')
+  try {
+    await putBuckets('u1', [bucket('a')])
+  } finally {
+    restore()
+  }
+  expect((await loadBuckets('u1')).get('a')).toEqual(bucket('a'))
+  expect(warn).not.toHaveBeenCalled()
+}, 10_000)
+
+it('a load that does not answer in time gives up without turning the store off', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  await putBuckets('u1', [bucket('a')])
+  const restore = delayTransactionCompletion(null)
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  const load = tryLoadBuckets('u1')
+  await vi.advanceTimersByTimeAsync(STORE_TIMEOUT_MS + 100)
+  expect(await load).toBeNull()
+  vi.useRealTimers()
+  restore()
+  expect((await loadBuckets('u1')).get('a')).toEqual(bucket('a'))
+  expect(warn).not.toHaveBeenCalled()
+})
+
+it('a clear that does not answer in time lets its caller go on', async () => {
+  await putBuckets('u1', [bucket('a')])
+  const restore = delayTransactionCompletion(null)
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  let done = false
+  const clear = clearTransactions().then(() => { done = true })
+  await vi.advanceTimersByTimeAsync(STORE_TIMEOUT_MS + 100)
+  await clear
+  expect(done).toBe(true)
+  vi.useRealTimers()
+  restore()
+  // the clear itself still ran
+  expect((await loadBuckets('u1')).size).toBe(0)
 })

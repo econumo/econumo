@@ -3,6 +3,7 @@ import { hashKey, QueryClient } from '@tanstack/react-query'
 import { IDBFactory } from 'fake-indexeddb'
 import { fixtureAccounts, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { installTransactionTracking, resetRevisions } from '@/features/transactions/revisionTracking'
+import { delayTransactionCompletion } from '@/test/idbDelay'
 import { createAppQueryClient } from './appQueryClient'
 import { resetDbForTests } from './db'
 import { QUERY_CACHE_KEY, clearPersistedQueryCache, createPersistOptions } from './queryPersist'
@@ -163,5 +164,18 @@ describe('restoring the stored transactions', () => {
     } finally {
       warn.mockRestore()
     }
+  }, 10_000)
+
+  it('a restore whose load does not answer in time goes on without transactions', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    const restore = delayTransactionCompletion(null)
+    try {
+      expect(await restoredTransactions()).toBeUndefined()
+    } finally {
+      restore()
+    }
+    // the store stayed on: the next boot seeds again
+    expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
   }, 10_000)
 })
