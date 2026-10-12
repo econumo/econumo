@@ -72,6 +72,8 @@ func (m *TxManager) TxValue(ctx context.Context, key any, init func() any) (any,
 // transaction right before the outermost COMMIT, so its writes commit
 // atomically with it and an error turns the commit into a rollback. It
 // reports false when no transaction is active and the caller must act now.
+// Rolling back a savepoint does not unregister hooks, so a hook may still fire
+// for work that was undone; for revision bumps that only over-counts, safely.
 func (m *TxManager) BeforeCommit(ctx context.Context, key any, fn func(ctx context.Context) error) bool {
 	st, ok := dbtxFromCtx(ctx)
 	if !ok {

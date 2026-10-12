@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
@@ -35,11 +37,14 @@ func TestBeforeCommit_RunsInRegistrationOrderInsideTx(t *testing.T) {
 	db := dbtest.New(t)
 	m := db.TX
 	var order []string
+	var seen int
 	err := m.WithTx(context.Background(), func(ctx context.Context) error {
+		if _, err := m.Querier(ctx).ExecContext(ctx, db.Rebind("INSERT INTO currencies (id, code, symbol, fraction_digits, created_at) VALUES (?, 'ZZY', 'z', 2, '2024-01-01 00:00:00')"), uuid.NewString()); err != nil {
+			return err
+		}
 		m.BeforeCommit(ctx, "a", func(ctx context.Context) error {
 			order = append(order, "a")
-			_, err := m.Querier(ctx).ExecContext(ctx, "SELECT 1")
-			return err
+			return m.Querier(ctx).QueryRowContext(ctx, "SELECT COUNT(*) FROM currencies WHERE code = 'ZZY'").Scan(&seen)
 		})
 		m.BeforeCommit(ctx, "b", func(context.Context) error { order = append(order, "b"); return nil })
 		return nil
@@ -47,14 +52,18 @@ func TestBeforeCommit_RunsInRegistrationOrderInsideTx(t *testing.T) {
 	if err != nil || len(order) != 2 || order[0] != "a" || order[1] != "b" {
 		t.Fatalf("err=%v order=%v", err, order)
 	}
+	if seen != 1 {
+		t.Fatalf("hook did not run inside the tx: saw %d uncommitted rows", seen)
+	}
 }
 
 func TestBeforeCommit_ErrorRollsBack(t *testing.T) {
 	db := dbtest.New(t)
 	m := db.TX
 	boom := errors.New("boom")
+	id := uuid.NewString()
 	err := m.WithTx(context.Background(), func(ctx context.Context) error {
-		if _, err := m.Querier(ctx).ExecContext(ctx, db.Rebind("INSERT INTO currencies (id, code, symbol, fraction_digits, created_at) VALUES (?, 'ZZZ', 'z', 2, '2024-01-01 00:00:00')"), "cur-x"); err != nil {
+		if _, err := m.Querier(ctx).ExecContext(ctx, db.Rebind("INSERT INTO currencies (id, code, symbol, fraction_digits, created_at) VALUES (?, 'ZZZ', 'z', 2, '2024-01-01 00:00:00')"), id); err != nil {
 			return err
 		}
 		m.BeforeCommit(ctx, "k", func(context.Context) error { return boom })
@@ -64,7 +73,7 @@ func TestBeforeCommit_ErrorRollsBack(t *testing.T) {
 		t.Fatalf("err=%v, want boom", err)
 	}
 	var n int
-	if err := db.Raw.QueryRow("SELECT COUNT(*) FROM currencies WHERE id = 'cur-x'").Scan(&n); err != nil {
+	if err := db.Raw.QueryRow(db.Rebind("SELECT COUNT(*) FROM currencies WHERE id = ?"), id).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 0 {
