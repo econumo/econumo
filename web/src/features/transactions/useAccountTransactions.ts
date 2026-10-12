@@ -9,10 +9,10 @@ import type { TransactionDto } from '@/api/dto/transaction'
 import type { UserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { dayKey, formatDate, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
-import { useAccounts, useFolders } from '@/features/accounts/queries'
+import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { useRecurring } from '@/features/recurring/queries'
-import { useAccountTransactionList, useTransactions } from './queries'
+import { useTransactions } from './queries'
 
 export interface ViewTransaction extends Omit<TransactionDto, 'author'> {
   author?: UserDto
@@ -121,15 +121,10 @@ export function groupByDay(placed: { tx: ViewTransaction; groupDay: string }[]):
 }
 
 export function useAccountTransactions(accountId: Id | undefined, search: string): DailyListEntry[] {
-  const { data: allTransactions } = useTransactions()
+  const { data: transactions } = useTransactions()
   const lookups = useTransactionLookups()
   const { accounts, categories, payees, tags, labels } = lookups
   const { data: recurring } = useRecurring()
-  const { data: folders } = useFolders()
-  const folderId = accounts?.find((a) => a.id === accountId)?.folderId
-  const inHiddenFolder = !!folderId && folders?.find((f) => f.id === folderId)?.isVisible === 0
-  const { data: ownList } = useAccountTransactionList(accountId, inHiddenFolder)
-  const transactions = inHiddenFolder ? ownList : allTransactions
 
   return useMemo(() => {
     if (!transactions || !accountId) {

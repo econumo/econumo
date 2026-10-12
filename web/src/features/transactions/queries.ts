@@ -3,35 +3,35 @@ import * as transactionApi from '@/api/transaction'
 import type { TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { consumeFullReload, noteOwnWrite, transactionsQueryFn } from './revisionTracking'
 
 const byDateDesc = (items: TransactionDto[]) => [...items].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 
 export function useTransactions() {
+  const queryClient = useQueryClient()
   return useQuery({
     queryKey: queryKeys.transactions,
-    queryFn: () => transactionApi.getTransactionList(),
+    queryFn: ({ signal }) => transactionsQueryFn(queryClient, { full: consumeFullReload(), signal }),
     staleTime: TEN_MINUTES,
-    // the multi-account backend query has no ORDER BY; date desc is applied here
+    // the list is assembled from per-account buckets in no particular order
     select: byDateDesc,
   })
 }
 
-// The app-wide list leaves out accounts in hidden folders. Such an account is
-// still reachable (global search), so its page loads its own list while open
-// and drops it on leave instead of growing the shared cache.
-export function useAccountTransactionList(accountId: string | undefined, enabled: boolean) {
-  return useQuery({
-    queryKey: queryKeys.accountTransactions(accountId ?? ''),
-    queryFn: () => transactionApi.getTransactionList(accountId),
-    enabled: enabled && !!accountId,
-    gcTime: 0,
-    select: byDateDesc,
-  })
+interface ApplyOptions {
+  /** false when the cached item is known to differ from what the server stored */
+  exact?: boolean
 }
 
 export function useApplyTransactionItem() {
   const queryClient = useQueryClient()
-  return (result: TransactionItemDto, mode: 'add' | 'update' | 'delete') => {
+  return (result: TransactionItemDto, mode: 'add' | 'update' | 'delete', opts: ApplyOptions = {}) => {
+    // a sync already in flight read the rows before this write; it re-runs if a revision still differs
+    void queryClient.cancelQueries({ queryKey: queryKeys.transactions })
+    const replaced = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)?.find((t) => t.id === result.item.id)
+    if (opts.exact !== false) {
+      noteOwnWrite(result.accounts, [result.item.accountId, result.item.accountRecipientId, replaced?.accountId, replaced?.accountRecipientId])
+    }
     queryClient.setQueryData(queryKeys.accounts, result.accounts)
     queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => {
       const items = prev ?? []
@@ -43,7 +43,6 @@ export function useApplyTransactionItem() {
       }
       return items.filter((t) => t.id !== result.item.id)
     })
-    void queryClient.invalidateQueries({ queryKey: ['accountTransactions'] })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })

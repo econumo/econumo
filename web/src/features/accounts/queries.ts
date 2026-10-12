@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import * as accountApi from '@/api/account'
 import type { AccountDto, AccountItemDto, AccountRole } from '@/api/dto/account'
 import type { FolderDto } from '@/api/dto/folder'
@@ -9,6 +9,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { applyMove } from '@/lib/ordering'
 import { isPendingForMe } from '@/features/connections/shared'
 import { useUserData } from '@/features/user/queries'
+import { noteOwnWrite } from '@/features/transactions/revisionTracking'
 
 export function useAccounts() {
   const { data: user } = useUserData()
@@ -48,6 +49,11 @@ function upsert<T extends { id: string }>(list: T[] | undefined, item: T): T[] {
 export function useAccountItemEffects() {
   const queryClient = useQueryClient()
   return (result: AccountItemDto, opts: { checkFirstFolder?: boolean } = {}) => {
+    // only a correction proves the revision moved because of this write
+    if (result.transaction) {
+      void queryClient.cancelQueries({ queryKey: queryKeys.transactions })
+      noteOwnWrite([result.item], [result.item.id])
+    }
     queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) => upsert(prev, result.item))
     if (result.transaction) {
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => [result.transaction as TransactionDto, ...(prev ?? [])])
@@ -85,22 +91,28 @@ export function useUpdateAccount() {
   })
 }
 
+// The cached rows are written through to IndexedDB under unchanged revisions,
+// so this patch must leave exactly what the server lists.
+function dropAccount(queryClient: QueryClient, id: Id): void {
+  const remaining = (queryClient.getQueryData<AccountDto[]>(queryKeys.accounts) ?? []).filter((a) => a.id !== id)
+  queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, remaining)
+  const survives = new Set(remaining.map((a) => a.id))
+  queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
+    (prev ?? []).filter((t) => survives.has(t.accountId) || (t.accountRecipientId !== null && survives.has(t.accountRecipientId))),
+  )
+}
+
 export function useDeleteAccount() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: accountApi.deleteAccount,
     onSuccess: (_result, id) => {
-      const remaining = (queryClient.getQueryData<AccountDto[]>(queryKeys.accounts) ?? []).filter((a) => a.id !== id)
-      queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, remaining)
       // Deleting an account is a soft delete that leaves its transactions in
       // place, and the server still lists a transfer whose OTHER leg is a
       // surviving account (the money did move). Dropping those here would only
       // hide them until the next refetch, so mirror the server: a transaction
       // goes only when neither of its accounts is left.
-      const survives = new Set(remaining.map((a) => a.id))
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
-        (prev ?? []).filter((t) => survives.has(t.accountId) || (t.accountRecipientId !== null && survives.has(t.accountRecipientId))),
-      )
+      dropAccount(queryClient, id)
       // deleting an account writes a "Balance adjustment (account deleted)"
       // correction and may drop it from a budget's membership, so both the
       // budget queries and the transaction list need a real refetch beyond
@@ -122,10 +134,8 @@ export function useLeaveSharedAccount() {
   return useMutation({
     mutationFn: accountApi.deleteAccount,
     onSuccess: (_result, id) => {
-      queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) => (prev ?? []).filter((a) => a.id !== id))
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
-        (prev ?? []).filter((t) => t.accountId !== id && t.accountRecipientId !== id),
-      )
+      // a transfer with one of my own accounts stays listed there, as on the server
+      dropAccount(queryClient, id)
       trackEvent(METRICS.ACCOUNT_DECLINE_ACCESS)
     },
   })

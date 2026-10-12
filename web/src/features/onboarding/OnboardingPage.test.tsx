@@ -51,7 +51,8 @@ it('renders the welcome heading and all six steps with completion marks', async 
   expect(screen.getByText('Create your budget')).toBeInTheDocument()
   // fixtures have accounts+categories+transactions+tags+budgets, no connections
   await waitFor(() => expect(screen.getByTestId('step-accounts')).toHaveAttribute('data-done', 'true'))
-  expect(screen.getByTestId('step-transactions')).toHaveAttribute('data-done', 'true')
+  // the transactions sync reads the accounts list first, so it lands after it
+  await waitFor(() => expect(screen.getByTestId('step-transactions')).toHaveAttribute('data-done', 'true'))
   expect(screen.getByTestId('step-classifications')).toHaveAttribute('data-done', 'true')
   expect(screen.getByTestId('step-connections')).toHaveAttribute('data-done', 'false')
   expect(screen.getByTestId('step-budget')).toHaveAttribute('data-done', 'true')

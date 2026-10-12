@@ -110,10 +110,11 @@ export function useImportQueuedEvent() {
   return useMutation({
     mutationFn: (payload: ImportQueuedEventPayload) => importsApi.importQueuedEvent(payload),
     onSuccess: (result, payload) => {
-      apply(result, 'add')
       // the wire item carries isImported: 0 (the import link flips it after
       // the result is built), so the optimistic cache entry is stale until
-      // the next refetch — invalidate rather than trust the returned badge.
+      // the next refetch — invalidate rather than trust the returned badge,
+      // and never record the revision as matching what was patched in.
+      apply(result, 'add', { exact: false })
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       queryClient.setQueryData<ImportQueueDto>(queryKeys.importQueue, (prev) =>
         prev ? { ...prev, queued: prev.queued.filter((q) => q.linkId !== payload.linkId) } : prev)

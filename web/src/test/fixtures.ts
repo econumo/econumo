@@ -349,7 +349,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/account/get-folder-list', () => envelope({ items: data.folders })),
     http.get('*/api/v1/transaction/get-transaction-list', () => envelope({ items: data.transactions })),
     http.get('*/api/v1/transaction/get-account-transaction-list', ({ request }) => {
-      const accounts = data.accounts as { id: string }[]
+      const accounts = data.accounts as { id: string; transactionsRevision?: number }[]
       const asked = new URL(request.url).searchParams.get('accountIds')
       const ids = (asked ? asked.split(',') : accounts.map((a) => a.id)).filter((id) => accounts.some((a) => a.id === id))
       const wanted = new Set(ids)
@@ -358,7 +358,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
       )
       const authors = new Map(rows.map((t) => [t.author.id, t.author]))
       return envelope({
-        revisions: Object.fromEntries(ids.map((id) => [id, 1])),
+        revisions: Object.fromEntries(ids.map((id) => [id, accounts.find((a) => a.id === id)?.transactionsRevision ?? 0])),
         items: rows.map(({ author, ...rest }) => ({ ...rest, authorId: author.id })),
         authors: [...authors.values()],
       })
