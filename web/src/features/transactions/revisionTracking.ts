@@ -74,8 +74,8 @@ function groupByAccount(rows: TransactionDto[]): Map<string, TransactionDto[]> {
   return out
 }
 
-function sameRows(a: TransactionDto[] | undefined, b: TransactionDto[]): boolean {
-  return !!a && a.length === b.length && a.every((row, i) => row === b[i])
+function sameRows(a: TransactionDto[], b: TransactionDto[]): boolean {
+  return a.length === b.length && a.every((row, i) => row === b[i])
 }
 
 function toBucket(accountId: string, revision: number, rows: TransactionDto[]): Bucket {
@@ -107,7 +107,8 @@ function flushWriteThrough(queryClient: QueryClient): Promise<void> {
   // only accounts with a stored bucket: anything else is downloaded by the next sync
   for (const [accountId, revision] of revisions) {
     const rows = grouped.get(accountId) ?? []
-    if (!marked.has(accountId) && sameRows(baseline.get(accountId), rows)) {
+    // an account with no rows has no baseline entry either
+    if (!marked.has(accountId) && sameRows(baseline.get(accountId) ?? [], rows)) {
       continue
     }
     changed.push(toBucket(accountId, revision, rows))
@@ -218,8 +219,14 @@ export function consumeFullReload(): boolean {
   return full
 }
 
-export function seedRevisions(buckets: Map<string, Bucket>): void {
+/**
+ * Adopts restored buckets. `rows` must be the very list the restored query
+ * holds: the write-through tells changed rows by identity, and a restore into
+ * a query a component already created raises no event this module sees.
+ */
+export function seedRevisions(buckets: Map<string, Bucket>, rows: TransactionDto[]): void {
   revisions = new Map([...buckets].map(([id, b]) => [id, b.revision]))
+  baseline = groupByAccount(rows)
 }
 
 export function resetRevisions(): void {

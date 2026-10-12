@@ -2,12 +2,19 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { http, HttpResponse } from 'msw'
+import { IDBFactory } from 'fake-indexeddb'
+import { delay, http, HttpResponse } from 'msw'
+import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
-import { QUERY_CACHE_KEY, refreshRestoredQueries } from '@/lib/queryPersist'
+import { coreHandlers, fixtureAccounts, fixtureTransactions, fixtureUser } from '@/test/fixtures'
+import { QUERY_CACHE_KEY, clearPersistedQueryCache, createPersistOptions, refreshRestoredQueries } from '@/lib/queryPersist'
+import { STORE_ACCOUNT_TRANSACTIONS, resetDbForTests } from '@/lib/db'
+import { loadBuckets, putBuckets, resetTransactionStoreForTests } from '@/lib/transactionStore'
+import { queryKeys } from '@/app/queryKeys'
+import type { TransactionDto } from '@/api/dto/transaction'
+import { useTransactions } from '@/features/transactions/queries'
+import { installTransactionTracking, resetRevisions } from '@/features/transactions/revisionTracking'
 import { econumoPackage } from '@/lib/package'
 import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useSidebarStore, useUiStore } from '@/app/uiStore'
@@ -49,27 +56,60 @@ function renderShell(path: string) {
   )
 }
 
-function renderShellPersisted() {
+function TransactionProbe() {
+  const { data } = useTransactions()
+  return <ul>{data?.map((t) => <li key={t.id}>{t.description || t.id}</li>)}</ul>
+}
+
+const uninstalls: (() => void)[] = []
+
+function renderShellPersisted(home: ReactNode = <div>HOME CONTENT</div>) {
   const router = createMemoryRouter(
-    [{ element: <ApplicationLayout />, children: [{ path: '/', element: <div>HOME CONTENT</div> }] }],
+    [{ element: <ApplicationLayout />, children: [{ path: '/', element: home }] }],
     { initialEntries: ['/'] },
   )
-  const persister = createSyncStoragePersister({ storage: localStorage, key: QUERY_CACHE_KEY, throttleTime: 0 })
   // a fresh QueryClient per call = a page reload (in-memory cache is gone)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
+  uninstalls.push(installTransactionTracking(queryClient))
+  const view = render(
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister }}
+      persistOptions={createPersistOptions()}
       onSuccess={() => refreshRestoredQueries(queryClient)}
     >
       <RouterProvider router={router} />
     </PersistQueryClientProvider>,
   )
+  return { ...view, queryClient }
+}
+
+// the persister throttles its writes by a second
+const PERSIST_WAIT = { timeout: 3000 }
+
+function persistedQueryKeys(): unknown[][] {
+  const raw = localStorage.getItem(QUERY_CACHE_KEY)
+  return raw ? (JSON.parse(raw) as { clientState: { queries: { queryKey: unknown[] }[] } }).clientState.queries.map((q) => q.queryKey) : []
+}
+
+// boot #1 on a cold cache: everything downloads, the snapshot and the buckets are written
+async function coldBoot() {
+  const first = renderShellPersisted(<TransactionProbe />)
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  await waitFor(() => expect(persistedQueryKeys()).toContainEqual(['accounts']), PERSIST_WAIT)
+  await waitFor(() => expect(persistedQueryKeys()).toContainEqual(['user']), PERSIST_WAIT)
+  await waitFor(async () => expect((await loadBuckets(fixtureUser.id)).size).toBe(fixtureAccounts.length))
+  first.unmount()
+  uninstalls.splice(0).forEach((u) => u())
+  // a reload starts with an empty module state
+  resetRevisions()
 }
 
 beforeEach(() => {
   localStorage.clear()
+  globalThis.indexedDB = new IDBFactory()
+  resetDbForTests()
+  resetTransactionStoreForTests()
+  resetRevisions()
   window.econumoConfig = {}
   server.use(...coreHandlers())
   mockUpdate.value = null
@@ -79,6 +119,11 @@ beforeEach(() => {
   useSidebarStore.setState({ collapsed: false })
   useUiStore.setState({ searchOpen: false })
   useBudgetPeriodStore.setState({ lastMode: 'budget' })
+})
+
+afterEach(() => {
+  uninstalls.splice(0).forEach((u) => u())
+  vi.restoreAllMocks()
 })
 
 it('the Budget & Plan link opens the budget view last opened on this device', async () => {
@@ -220,6 +265,120 @@ it('a reload with a persisted cache skips the boot loader and refreshes in the b
   expect(await screen.findByText('Cash')).toBeInTheDocument()
   expect(screen.queryByText('Loading your data')).not.toBeInTheDocument()
   await waitFor(() => expect(accountFetches).toBeGreaterThan(coldBootFetches))
+})
+
+it('a reload starts from the stored transactions, before any response arrives', async () => {
+  mockViewport(false)
+  await coldBoot()
+
+  // boot #2: the backend never answers — the restored snapshot and the buckets carry the page
+  server.use(http.all('*/api/*', async () => {
+    await delay('infinite')
+    return HttpResponse.error()
+  }))
+  renderShellPersisted(<TransactionProbe />)
+  expect(screen.queryByText('Loading your data')).not.toBeInTheDocument()
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  expect(screen.getByText('Cash')).toBeInTheDocument()
+  expect(screen.queryByText('Loading your data')).not.toBeInTheDocument()
+})
+
+it('a reload with unchanged revisions downloads no transactions and writes no bucket', async () => {
+  mockViewport(false)
+  await coldBoot()
+
+  const downloads: string[] = []
+  server.events.on('request:start', ({ request }) => {
+    const path = new URL(request.url).pathname
+    if (path.includes('/api/v1/transaction/')) {
+      downloads.push(path)
+    }
+  })
+  const put = vi.spyOn(IDBObjectStore.prototype, 'put')
+  let accountFetches = 0
+  server.use(
+    http.get('*/api/v1/account/get-account-list', () => {
+      accountFetches++
+      return HttpResponse.json({ success: true, message: '', data: { items: fixtureAccounts } })
+    }),
+  )
+  const { queryClient } = renderShellPersisted(<TransactionProbe />)
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  // the background refresh ran its sync to the end
+  await waitFor(() => expect(accountFetches).toBeGreaterThan(0))
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+  // past the write-through debounce
+  await new Promise((r) => setTimeout(r, 700))
+  server.events.removeAllListeners()
+  expect(downloads).toEqual([])
+  expect(put.mock.contexts.filter((store) => (store as IDBObjectStore).name === STORE_ACCOUNT_TRANSACTIONS)).toEqual([])
+})
+
+it('a local edit right after a reload writes only the touched account', async () => {
+  mockViewport(false)
+  server.use(...coreHandlers({
+    transactions: [...fixtureTransactions, { ...fixtureTransactions[0], id: 't-bank', accountId: 'a2', description: 'bank fee' }],
+  }))
+  await coldBoot()
+
+  server.use(http.all('*/api/*', async () => {
+    await delay('infinite')
+    return HttpResponse.error()
+  }))
+  const { queryClient } = renderShellPersisted(<TransactionProbe />)
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  const put = vi.spyOn(IDBObjectStore.prototype, 'put')
+  queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
+    prev?.map((t) => (t.id === 't1' ? { ...t, description: 'tea leaves' } : t)))
+  expect(await screen.findByText('tea leaves')).toBeInTheDocument()
+  await waitFor(() => expect(put).toHaveBeenCalled(), { timeout: 2000 })
+  const written = put.mock.calls
+    .filter((_, i) => (put.mock.contexts[i] as IDBObjectStore).name === STORE_ACCOUNT_TRANSACTIONS)
+    .map(([bucket]) => (bucket as { accountId: string }).accountId)
+  expect(written).toEqual(['a1'])
+})
+
+it('never keeps transactions in the localStorage snapshot', async () => {
+  mockViewport(false)
+  renderShellPersisted(<TransactionProbe />)
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  await waitFor(() => expect(persistedQueryKeys()).toContainEqual(['accounts']), PERSIST_WAIT)
+  await waitFor(() => expect(persistedQueryKeys()).toContainEqual(['user']), PERSIST_WAIT)
+  expect(persistedQueryKeys()).not.toContainEqual(queryKeys.transactions)
+})
+
+it('a snapshot of another user never shows the stored transactions', async () => {
+  mockViewport(false)
+  await coldBoot()
+
+  // the snapshot now belongs to u2 (a 401 sent u1 to the login page, u2 signed in without a clear)
+  const raw = JSON.parse(localStorage.getItem(QUERY_CACHE_KEY)!) as { clientState: { queries: { queryKey: unknown[]; state: { data: unknown } }[] } }
+  for (const q of raw.clientState.queries) {
+    if (q.queryKey[0] === 'user') {
+      q.state.data = { ...fixtureUser, id: 'u2' }
+    }
+  }
+  localStorage.setItem(QUERY_CACHE_KEY, JSON.stringify(raw))
+  server.use(http.all('*/api/*', async () => {
+    await delay('infinite')
+    return HttpResponse.error()
+  }))
+  const { queryClient } = renderShellPersisted(<TransactionProbe />)
+  // nothing to start from: the first boot's loader waits for the download
+  expect(await screen.findByText('Loading your data')).toBeInTheDocument()
+  expect(queryClient.getQueryData(queryKeys.transactions)).toBeUndefined()
+  expect(screen.queryByText('coffee beans')).not.toBeInTheDocument()
+})
+
+it('clearPersistedQueryCache empties the stored transactions and the snapshot', async () => {
+  localStorage.setItem(QUERY_CACHE_KEY, '{}')
+  await putBuckets(fixtureUser.id, [{ accountId: 'a1', revision: 1, items: [], authors: [] }])
+  expect((await loadBuckets(fixtureUser.id)).size).toBe(1)
+
+  await clearPersistedQueryCache()
+
+  expect(localStorage.getItem(QUERY_CACHE_KEY)).toBeNull()
+  expect((await loadBuckets(fixtureUser.id)).size).toBe(0)
 })
 
 it('the boot loader grows a logout escape after three seconds when the backend is unreachable', async () => {

@@ -8,10 +8,10 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 export function useLogin() {
   return useMutation({
     mutationFn: ({ username, password }: { username: string; password: string }) => userApi.login(username, password),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       // the new session may belong to a different user — never restore the
       // previous user's persisted finances
-      clearPersistedQueryCache()
+      await clearPersistedQueryCache()
       setToken(data.token)
       // After the token is stored, never before: the probe is fired without
       // awaiting, so an unauthenticated 401 would reach the response

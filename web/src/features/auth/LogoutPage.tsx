@@ -29,7 +29,7 @@ export function LogoutPage() {
         // must run after the logout event above, so it still carries the outgoing identity
         resetAnalyticsIdentity()
         removeToken()
-        clearPersistedQueryCache()
+        await clearPersistedQueryCache()
         // The IdP redirect is web-only: an IdP logout page in the app's browser
         // sheet leaves the user with no clean way back. A provider that
         // publishes no end-session endpoint (Google, Apple) yields no url, so
@@ -40,7 +40,7 @@ export function LogoutPage() {
         }
       } else {
         removeToken()
-        clearPersistedQueryCache()
+        await clearPersistedQueryCache()
       }
       window.location.assign(RouterPage.LOGIN)
     }

@@ -1,4 +1,4 @@
-import { createAppQueryClient } from '@/lib/queryPersist'
+import { createAppQueryClient } from '@/lib/appQueryClient'
 import { setAnalyticsQueryClient } from '@/lib/analyticsProfile'
 import { installTransactionTracking } from '@/features/transactions/revisionTracking'
 
