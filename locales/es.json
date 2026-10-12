@@ -559,8 +559,8 @@
           "text": "En la app Atajos: Automatización → + → Wallet → elige las tarjetas y categorías que quieres importar (lo más seguro es elegir todas) → Ejecutar tras confirmar → econumo-wallet-v2."
         },
         "payment": {
-          "title": "Hacer el primer pago con el iPhone desbloqueado",
-          "text": "Paga una vez con Apple Pay con el iPhone desbloqueado. Toca «Ejecutar» cuando la automatización lo pida y luego «Permitir siempre» cuando Atajos pida acceso a Wallet.",
+          "title": "Hacer el primer pago",
+          "text": "Paga una vez con Apple Pay; el iPhone puede seguir bloqueado. Toca «Ejecutar» cuando la automatización lo pida y luego «Permitir siempre» en cada aviso.",
           "waiting": "Esperando el primer pago…"
         },
         "immediate": {

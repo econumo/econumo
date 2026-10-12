@@ -559,8 +559,8 @@
           "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen (am sichersten: alle) → Nach Bestätigung ausführen → econumo-wallet-v2."
         },
         "payment": {
-          "title": "Erste Zahlung mit entsperrtem iPhone",
-          "text": "Zahle einmal mit Apple Pay, während das iPhone entsperrt ist. Tippe auf „Ausführen“, wenn die Automation nachfragt, und dann auf „Immer erlauben“, wenn Kurzbefehle Zugriff auf Wallet verlangt.",
+          "title": "Erste Zahlung tätigen",
+          "text": "Zahle einmal mit Apple Pay — das iPhone darf gesperrt bleiben. Tippe auf „Ausführen“, wenn die Automation nachfragt, und dann bei jeder Abfrage auf „Immer erlauben“.",
           "waiting": "Warte auf die erste Zahlung …"
         },
         "immediate": {

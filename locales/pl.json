@@ -559,8 +559,8 @@
           "text": "W aplikacji Skróty: Automatyzacja → + → Wallet → wybierz karty i kategorie do importu (najbezpieczniej wybrać wszystkie) → Uruchom po potwierdzeniu → econumo-wallet-v2."
         },
         "payment": {
-          "title": "Pierwsza płatność z odblokowanym iPhonem",
-          "text": "Zapłać raz przez Apple Pay przy odblokowanym iPhonie. Stuknij „Uruchom”, gdy automatyzacja o to poprosi, a potem „Zawsze zezwalaj”, gdy Skróty poproszą o dostęp do Wallet.",
+          "title": "Wykonaj pierwszą płatność",
+          "text": "Zapłać raz przez Apple Pay — iPhone może pozostać zablokowany. Stuknij „Uruchom”, gdy automatyzacja o to poprosi, a potem przy każdym pytaniu „Zawsze zezwalaj”.",
           "waiting": "Czekam na pierwszą płatność…"
         },
         "immediate": {

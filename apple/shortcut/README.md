@@ -197,11 +197,14 @@ changes server-side; the literal is just another external account name.
 ## Privacy grants — why the setup run checks in
 
 iOS grants a shortcut's privacy permissions **per shortcut** and tracks them
-by data provenance, and it can only collect a grant while the phone is
-unlocked. Apple Pay taps arrive on the lock screen, so an automation that
-still lacks a grant fails with *"This shortcut requires privacy permissions
-that cannot be granted while your device is locked"* — nothing is posted and
-nothing is logged server-side. `econumo-wallet-v2` needs three grants:
+by data provenance, and an unattended run cannot collect one. An automation
+set to Run Immediately that still lacks a grant fails on the lock screen with
+*"This shortcut requires privacy permissions that cannot be granted while
+your device is locked"* — nothing is posted and nothing is logged
+server-side. Run After Confirmation is what makes the first payment work: the
+payment raises a prompt to run the shortcut, and answering it lets iOS ask
+for the missing grants, even if the phone was locked when the user paid.
+`econumo-wallet-v2` needs three grants:
 
 1. **Access to the server host** — asked the first time `Get Contents of
    URL` contacts `{url}`.
@@ -215,10 +218,12 @@ The setup run collects 1 and 2: it is started by hand from the SPA (the
 phone is unlocked), and its check-in request uses `url` and `token` read
 back from the saved file — the same provenance as the automation's request —
 so "Always Allow" there covers the automation too. Grant 3 waits for the
-first Apple Pay payment, which the guide asks for **with the phone
-unlocked** ("Always Allow" on 3). If iOS still asks for 1 or 2 at that
-payment, the provenance assumption did not hold on that iOS version; the
-payment step collects them anyway, so setup still completes.
+first Apple Pay payment: the automation is created with **Run After
+Confirmation**, so the user taps Run on the payment's prompt and answers
+"Always Allow" (on 3) — the phone may stay locked until then. If iOS still
+asks for 1 or 2 at that payment, the provenance assumption did not hold on
+that iOS version; the same prompt collects them, so setup still completes.
+Only after that does the guide switch the automation to Run Immediately.
 
 The check-in has no `account` and is stored as a failed event with the
 literal error `account is required` (`internal/imports/applewallet/parser.go`);
@@ -245,7 +250,8 @@ date output are only proven by this pass.
    SPA ticks itself within a few seconds of switching back.
 3. Create the automation: Shortcuts → Automation → `+` → **Transaction** →
    any card, any type → **Run After Confirmation** → `econumo-wallet-v2`.
-4. Make an Apple Pay purchase **with the phone unlocked**, tap Run, answer
+4. Make an Apple Pay purchase (the phone may be locked), tap Run on the
+   automation's prompt, answer
    Always Allow to the Wallet prompt (note whether host / iCloud Drive are
    asked again — they should not be), and watch the event appear on the
    Econumo queue page or as an imported transaction. Check the stored

@@ -559,8 +559,8 @@
           "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare (la scelta più sicura è tutte) → Esegui dopo conferma → econumo-wallet-v2."
         },
         "payment": {
-          "title": "Fai il primo pagamento con l’iPhone sbloccato",
-          "text": "Paga una volta con Apple Pay con l’iPhone sbloccato. Tocca «Esegui» quando l’automazione lo chiede, poi «Consenti sempre» quando Comandi rapidi chiede l’accesso a Wallet.",
+          "title": "Fai il primo pagamento",
+          "text": "Paga una volta con Apple Pay: l’iPhone può restare bloccato. Tocca «Esegui» quando l’automazione lo chiede, poi «Consenti sempre» a ogni richiesta.",
           "waiting": "In attesa del primo pagamento…"
         },
         "immediate": {

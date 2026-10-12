@@ -559,8 +559,8 @@
           "text": "In de Opdrachten-app: Automatisering → + → Wallet → kies de kaarten en categorieën die je wilt importeren (alles kiezen is het veiligst) → Voer uit na bevestiging → econumo-wallet-v2."
         },
         "payment": {
-          "title": "Eerste betaling met ontgrendelde iPhone",
-          "text": "Betaal één keer met Apple Pay terwijl de iPhone ontgrendeld is. Tik op ‘Voer uit’ als de automatisering erom vraagt en daarna op ‘Altijd toestaan’ als Opdrachten toegang tot Wallet vraagt.",
+          "title": "Eerste betaling doen",
+          "text": "Betaal één keer met Apple Pay — de iPhone mag vergrendeld blijven. Tik op ‘Voer uit’ als de automatisering erom vraagt en daarna bij elke melding op ‘Altijd toestaan’.",
           "waiting": "Wachten op de eerste betaling…"
         },
         "immediate": {

@@ -559,8 +559,8 @@
           "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer (le plus sûr est de tout sélectionner) → Exécuter après confirmation → econumo-wallet-v2."
         },
         "payment": {
-          "title": "Effectuer le premier paiement avec l’iPhone déverrouillé",
-          "text": "Payez une fois avec Apple Pay, iPhone déverrouillé. Touchez « Exécuter » quand l’automatisation le demande, puis « Toujours autoriser » quand Raccourcis demande l’accès à Wallet.",
+          "title": "Effectuer le premier paiement",
+          "text": "Payez une fois avec Apple Pay — l’iPhone peut rester verrouillé. Touchez « Exécuter » quand l’automatisation le demande, puis « Toujours autoriser » à chaque demande.",
           "waiting": "En attente du premier paiement…"
         },
         "immediate": {

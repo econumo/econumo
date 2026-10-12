@@ -559,8 +559,8 @@
           "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import (all of them is the safe choice) → Run After Confirmation → econumo-wallet-v2."
         },
         "payment": {
-          "title": "Make the first payment with the iPhone unlocked",
-          "text": "Pay with Apple Pay once while the iPhone is unlocked. Tap Run when the automation asks, then tap Always Allow when Shortcuts asks for Wallet access.",
+          "title": "Make the first payment",
+          "text": "Pay with Apple Pay once — the iPhone can stay locked. When the automation asks, tap Run, then tap Always Allow on every prompt.",
           "waiting": "Waiting for the first payment…"
         },
         "immediate": {

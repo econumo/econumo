@@ -559,8 +559,8 @@
           "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar (o mais seguro é escolher todos) → Executar após confirmação → econumo-wallet-v2."
         },
         "payment": {
-          "title": "Fazer o primeiro pagamento com o iPhone desbloqueado",
-          "text": "Pague uma vez com Apple Pay com o iPhone desbloqueado. Toque em «Executar» quando a automatização pedir e depois em «Permitir sempre» quando os Atalhos pedirem acesso à Wallet.",
+          "title": "Fazer o primeiro pagamento",
+          "text": "Pague uma vez com Apple Pay — o iPhone pode ficar bloqueado. Toque em «Executar» quando a automatização pedir e depois em «Permitir sempre» em cada pedido.",
           "waiting": "À espera do primeiro pagamento…"
         },
         "immediate": {

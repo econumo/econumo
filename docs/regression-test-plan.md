@@ -379,8 +379,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       status card reads "Setting up" with an amber dot and "Step N of 5:
       <step>", there is no Inbox row and no card section, and the setup guide
       follows directly, open as a stepper: Install the Shortcut, Connect the
-      Shortcut to Econumo, Create the automation, Make the first payment with
-      the iPhone unlocked, Switch the automation to Run Immediately. "Disconnect Apple Wallet" (confirmation)
+      Shortcut to Econumo, Create the automation, Make the first payment,
+      Switch the automation to Run Immediately. "Disconnect Apple Wallet" (confirmation)
       removes the source, its cards, its queue and the hand ticks;
       already-imported transactions stay.
 - [ ] Stepper 📱: only the current step is open (numbered, purple ring); done
@@ -416,10 +416,12 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       the waiting line and the hand ticks still work; running the configured
       shortcut by hand on the phone completes step 2 here too.
 - [ ] Step 3 text walks through Automation → + → Wallet → cards & categories →
-      Run After Confirmation → econumo-wallet-v2; step 4 text says to tap Run
-      when the automation asks and Always Allow for Wallet access (host and
-      iCloud Drive are not asked again), and waits for the first payment the
-      same way step 2 waits.
+      Run After Confirmation → econumo-wallet-v2; step 4 text says the iPhone
+      can stay locked, to tap Run when the automation asks and Always Allow on
+      every prompt (on device: only Wallet access is asked — host and iCloud
+      Drive were granted in step 2), and waits for the first payment the same
+      way step 2 waits. A payment made with the phone locked imports once Run
+      and Always Allow are answered.
 - [ ] The first card arriving from Apple Pay completes steps 1–4 by itself,
       regardless of hand ticks; step 5 (Switch the automation to Run
       Immediately) stays a hand tick 📱.

@@ -234,7 +234,7 @@ it('the first card completes every step up to the payment and folds the guide; R
   expect(toggle).toHaveAttribute('aria-expanded', 'false')
   expect(toggle).toHaveTextContent('4 of 5 done')
   await user.click(toggle)
-  expect(stateOf('Make the first payment with the iPhone unlocked')).toBe('done')
+  expect(stateOf('Make the first payment')).toBe('done')
   expect(stateOf('Switch the automation to Run Immediately')).toBe('current')
   // server-confirmed steps cannot be undone by hand
   await user.click(screen.getByRole('button', { name: 'Install the Shortcut' }))
