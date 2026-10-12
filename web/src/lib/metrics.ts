@@ -147,6 +147,7 @@ export const METRICS = {
   IMPORT_RULE_CREATE: 'appImportRuleCreate',
   IMPORT_RULE_APPLY: 'appImportRuleApply',
   IMPORT_RULES_SUGGEST: 'appImportRulesSuggest',
+  DATA_FULL_RELOAD: 'appDataFullReload',
   INBOX_OPEN: 'appInboxOpen',
   GLOBAL_SEARCH_OPEN: 'appGlobalSearchOpen',
   GLOBAL_SEARCH_SELECT: 'appGlobalSearchSelect',

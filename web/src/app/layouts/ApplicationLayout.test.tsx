@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
@@ -19,7 +19,13 @@ import { econumoPackage } from '@/lib/package'
 import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { ApplicationLayout } from './ApplicationLayout'
+
+vi.mock('@/lib/metrics', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/metrics')>()),
+  trackEvent: vi.fn(),
+}))
 
 const mockUpdate = vi.hoisted(() => ({ value: null as AvailableUpdate | null }))
 vi.mock('@/hooks/useAvailableUpdate', () => ({
@@ -113,6 +119,7 @@ beforeEach(() => {
   window.econumoConfig = {}
   server.use(...coreHandlers())
   mockUpdate.value = null
+  vi.mocked(trackEvent).mockClear()
   // the sidebar-collapsed flag and the search dialog live in module-level
   // zustand stores, so they survive across tests in this file independent of
   // localStorage.clear()
@@ -379,6 +386,88 @@ it('clearPersistedQueryCache empties the stored transactions and the snapshot', 
 
   expect(localStorage.getItem(QUERY_CACHE_KEY)).toBeNull()
   expect((await loadBuckets(fixtureUser.id)).size).toBe(0)
+})
+
+describe('the sync button', () => {
+  // the sidebar-collapsed flag is global: the rail renders its own copy of the button
+  const transactionRequests = () => {
+    const seen: URL[] = []
+    server.events.on('request:start', ({ request }) => {
+      const url = new URL(request.url)
+      if (url.pathname.endsWith('/transaction/get-account-transaction-list')) {
+        seen.push(url)
+      }
+    })
+    return seen
+  }
+
+  async function bootWarm() {
+    mockViewport(false)
+    server.use(http.get('*/api/v1/oauth/get-identity-list', () => HttpResponse.json({ success: true, message: '', data: [] })))
+    await coldBoot()
+    const seen = transactionRequests()
+    const view = renderShellPersisted(<TransactionProbe />)
+    expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+    await waitFor(() => expect(view.queryClient.isFetching()).toBe(0))
+    seen.length = 0
+    return { ...view, seen }
+  }
+
+  it('a tap refreshes without downloading transactions whose revisions are unchanged', async () => {
+    const { queryClient, seen } = await bootWarm()
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    fireEvent.click(screen.getByRole('button', { name: 'sync' }))
+    expect(invalidate).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+    expect(seen).toEqual([])
+    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD)
+  })
+
+  it('a long press says so, counts the action and downloads every account again', async () => {
+    const { queryClient, seen } = await bootWarm()
+    const sync = screen.getByRole('button', { name: 'sync' })
+    expect(sync).toHaveAttribute('title', expect.stringContaining('Hold to reload everything'))
+
+    fireEvent.pointerDown(sync)
+    expect(await screen.findByText('Reloading all data from the server…', {}, { timeout: 2000 })).toBeInTheDocument()
+    fireEvent.pointerUp(sync)
+    fireEvent.click(sync)
+
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD)
+    await waitFor(() => expect(seen.length).toBeGreaterThan(0))
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+    expect(seen.every((url) => !url.searchParams.has('accountIds'))).toBe(true)
+    // the release after the long press was not also a plain tap
+    expect(trackEvent).toHaveBeenCalledTimes(1)
+  })
+
+  it('Shift+click reloads everything too', async () => {
+    const { seen } = await bootWarm()
+    fireEvent.click(screen.getByRole('button', { name: 'sync' }), { shiftKey: true })
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD)
+    await waitFor(() => expect(seen.length).toBeGreaterThan(0))
+    expect(seen.every((url) => !url.searchParams.has('accountIds'))).toBe(true)
+  })
+
+  it('the icon-rail button reloads everything too', async () => {
+    const { seen } = await bootWarm()
+    useSidebarStore.setState({ collapsed: true })
+    await waitFor(() => expect(screen.queryByText('Cash')).not.toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'sync' }), { shiftKey: true })
+    await waitFor(() => expect(seen.length).toBeGreaterThan(0))
+    expect(seen.every((url) => !url.searchParams.has('accountIds'))).toBe(true)
+  })
+
+  it('a second long press right after the first still ends in one consistent reload', async () => {
+    const { queryClient, seen } = await bootWarm()
+    const sync = screen.getByRole('button', { name: 'sync' })
+    fireEvent.click(sync, { shiftKey: true })
+    fireEvent.click(sync, { shiftKey: true })
+    await waitFor(() => expect(seen.length).toBeGreaterThan(0))
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+    expect(seen.every((url) => !url.searchParams.has('accountIds'))).toBe(true)
+    expect(screen.getAllByText('Reloading all data from the server…')).toHaveLength(1)
+  })
 })
 
 it('the boot loader grows a logout escape after three seconds when the backend is unreachable', async () => {

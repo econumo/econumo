@@ -285,7 +285,9 @@
     },
     "sync": {
       "menu_item": "Volledige synchronisatie",
-      "failing": "Geen verbinding met de server — opnieuw proberen"
+      "failing": "Geen verbinding met de server — opnieuw proberen",
+      "full_reload": "Alle gegevens worden opnieuw van de server geladen…",
+      "hold_hint": "Houd ingedrukt om alles opnieuw te laden"
     },
     "accounts": {
       "menu_item": "Rekeningen",

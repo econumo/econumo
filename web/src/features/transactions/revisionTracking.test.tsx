@@ -228,6 +228,26 @@ it('a full reload cancelled by a local write runs again', async () => {
   expect(calls).toEqual([null, null, null])
 })
 
+it('two full reloads requested back to back settle after one more download instead of cancelling each other forever', async () => {
+  const { queryClient } = await booted()
+  let release: () => void = () => {}
+  const gate = new Promise<void>((r) => { release = r })
+  server.use(http.get('*/api/v1/transaction/get-account-transaction-list', async () => {
+    await gate
+    return undefined
+  }))
+  requestFullReload()
+  void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
+  await waitFor(() => expect(calls).toEqual([null, null]))
+  requestFullReload()
+  void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
+  await waitFor(() => expect(calls).toEqual([null, null, null]))
+  release()
+  await waitFor(() => expect(queryClient.isFetching({ queryKey: queryKeys.transactions })).toBe(0))
+  await settle()
+  expect(calls).toEqual([null, null, null])
+})
+
 it('noteOwnWrite ignores accounts it was not told were touched', async () => {
   const { queryClient } = await booted()
   noteOwnWrite(withRevisions({ a1: 2, a2: 2 }), ['a1'])

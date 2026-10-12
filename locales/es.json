@@ -285,7 +285,9 @@
     },
     "sync": {
       "menu_item": "Sincronización completa",
-      "failing": "No se puede conectar con el servidor: reintentando"
+      "failing": "No se puede conectar con el servidor: reintentando",
+      "full_reload": "Recargando todos los datos desde el servidor…",
+      "hold_hint": "Mantén pulsado para recargarlo todo"
     },
     "accounts": {
       "menu_item": "Cuentas",

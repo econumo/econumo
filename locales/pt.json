@@ -285,7 +285,9 @@
     },
     "sync": {
       "menu_item": "Sincronização completa",
-      "failing": "Não é possível contactar o servidor — a tentar novamente"
+      "failing": "Não é possível contactar o servidor — a tentar novamente",
+      "full_reload": "A recarregar todos os dados do servidor…",
+      "hold_hint": "Mantenha premido para recarregar tudo"
     },
     "accounts": {
       "menu_item": "Contas",

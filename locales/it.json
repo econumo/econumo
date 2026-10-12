@@ -285,7 +285,9 @@
     },
     "sync": {
       "menu_item": "Sincronizzazione completa",
-      "failing": "Impossibile raggiungere il server — nuovo tentativo in corso"
+      "failing": "Impossibile raggiungere il server — nuovo tentativo in corso",
+      "full_reload": "Ricaricamento di tutti i dati dal server…",
+      "hold_hint": "Tieni premuto per ricaricare tutto"
     },
     "accounts": {
       "menu_item": "Conti",

@@ -285,7 +285,9 @@
     },
     "sync": {
       "menu_item": "Synchronisation complète",
-      "failing": "Serveur injoignable — nouvelle tentative"
+      "failing": "Serveur injoignable — nouvelle tentative",
+      "full_reload": "Rechargement de toutes les données depuis le serveur…",
+      "hold_hint": "Maintenez pour tout recharger"
     },
     "accounts": {
       "menu_item": "Comptes",

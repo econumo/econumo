@@ -285,7 +285,9 @@
     },
     "sync": {
       "menu_item": "Pełna synchronizacja",
-      "failing": "Brak połączenia z serwerem — ponawianie próby"
+      "failing": "Brak połączenia z serwerem — ponawianie próby",
+      "full_reload": "Ponowne pobieranie wszystkich danych z serwera…",
+      "hold_hint": "Przytrzymaj, aby przeładować wszystko"
     },
     "accounts": {
       "menu_item": "Konta",

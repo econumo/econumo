@@ -285,7 +285,9 @@
     },
     "sync": {
       "menu_item": "完整同步",
-      "failing": "无法连接到服务器——正在重试"
+      "failing": "无法连接到服务器——正在重试",
+      "full_reload": "正在从服务器重新加载所有数据…",
+      "hold_hint": "长按可重新加载全部内容"
     },
     "accounts": {
       "menu_item": "账户",

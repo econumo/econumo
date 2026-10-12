@@ -285,7 +285,9 @@
     },
     "sync": {
       "menu_item": "Full sync",
-      "failing": "Can't reach the server — retrying"
+      "failing": "Can't reach the server — retrying",
+      "full_reload": "Reloading all data from the server…",
+      "hold_hint": "Hold to reload everything"
     },
     "accounts": {
       "menu_item": "Accounts",

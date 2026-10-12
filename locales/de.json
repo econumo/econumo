@@ -285,7 +285,9 @@
     },
     "sync": {
       "menu_item": "Vollständige Synchronisierung",
-      "failing": "Server nicht erreichbar — wird erneut versucht"
+      "failing": "Server nicht erreichbar — wird erneut versucht",
+      "full_reload": "Alle Daten werden neu vom Server geladen …",
+      "hold_hint": "Gedrückt halten, um alles neu zu laden"
     },
     "accounts": {
       "menu_item": "Konten",

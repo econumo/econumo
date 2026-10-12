@@ -31,6 +31,9 @@ let writeTimer: ReturnType<typeof setTimeout> | null = null
 // cache: a result that is cancelled or overwritten must not move the revisions.
 let landing: Landing | null = null
 let fullReload = false
+// Sequence number of the newest run, and of the newest run that was a full reload.
+let runSeq = 0
+let fullSeq = 0
 
 function isKey(key: readonly unknown[], wanted: readonly unknown[]): boolean {
   return key.length === wanted.length && key[0] === wanted[0]
@@ -250,14 +253,20 @@ export async function transactionsQueryFn(
   queryClient: QueryClient,
   opts: { full: boolean; signal?: AbortSignal },
 ): Promise<TransactionDto[]> {
+  const seq = ++runSeq
+  if (opts.full) {
+    fullSeq = seq
+  }
   // A cancelled run (a local write, or a newer sync) must neither download nor
   // land. A cancelled full reload is re-run: a newer sync started before this
-  // one noticed, so it did not see the request.
+  // one noticed, so it did not see the request. A newer full run already is
+  // that re-run; queueing another would make two full runs cancel each other
+  // for good.
   const superseded = () => {
     if (!opts.signal?.aborted) {
       return false
     }
-    if (opts.full) {
+    if (opts.full && fullSeq === seq) {
       fullReload = true
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
     }
