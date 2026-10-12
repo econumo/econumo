@@ -1,20 +1,21 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, hydrate } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import type { AccountDto } from '@/api/dto/account'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys } from '@/app/queryKeys'
 import { IDBFactory } from 'fake-indexeddb'
-import { loadBuckets, resetTransactionStoreForTests } from '@/lib/transactionStore'
+import { STORE_TIMEOUT_MS, loadBuckets, putBuckets, resetTransactionStoreForTests, type Bucket } from '@/lib/transactionStore'
 import { STORE_ACCOUNT_TRANSACTIONS, STORE_META, dbRequest, resetDbForTests } from '@/lib/db'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
-import { delayTransactionCompletion } from '@/test/idbDelay'
+import { delayOpen, delayTransactionCompletion } from '@/test/idbDelay'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
-import { useAccountItemEffects } from '@/features/accounts/queries'
+import { useAcceptAccountAccess, useAccountItemEffects } from '@/features/accounts/queries'
 import { useApplyTransactionItem, useTransactions } from './queries'
-import { installTransactionTracking, noteOwnWrite, requestFullReload, resetRevisions } from './revisionTracking'
+import { installTransactionTracking, noteOwnWrite, requestFullReload, resetRevisions, seedRevisions } from './revisionTracking'
+import { assemble } from './sync'
 
 // accountIds of every get-account-transaction-list request (null = all accounts)
 let calls: (string | null)[] = []
@@ -69,7 +70,12 @@ function setup(overrides: Partial<Record<string, unknown>> = {}) {
   // read during render, so the tracked-props observer re-renders on every change
   const { result } = renderHook(() => {
     const { data, isSuccess, isFetching } = useTransactions()
-    return { list: { data, isSuccess, isFetching }, apply: useApplyTransactionItem(), accountEffects: useAccountItemEffects() }
+    return {
+      list: { data, isSuccess, isFetching },
+      apply: useApplyTransactionItem(),
+      accountEffects: useAccountItemEffects(),
+      accept: useAcceptAccountAccess(),
+    }
   }, { wrapper })
   return { queryClient, result }
 }
@@ -312,6 +318,11 @@ it('a sync starts from unsaved local patches, not from the older stored rows', a
   await waitFor(() => expect(result.current.list.isFetching).toBe(false))
   expect(result.current.list.data!.find((t) => t.id === 't1')!.description).toBe('patched')
   expect(calls).toEqual([null])
+  await waitFor(async () => {
+    const a1 = (await loadBuckets('u1')).get('a1')!
+    expect(a1.items.find((t) => t.id === 't1')!.description).toBe('patched')
+    expect(a1.revision).toBe(1)
+  })
 })
 
 it('includes the rows of a hidden-folder account', async () => {
@@ -379,38 +390,160 @@ it('a sync that lands after a clear leaves nothing on disk', async () => {
   expect(await dbRequest(STORE_META, 'readonly', (st) => st.count())).toBe(0)
 })
 
-it('a sync whose load does not answer in time downloads everything and writes nothing', async () => {
-  globalThis.indexedDB = new IDBFactory()
-  resetDbForTests()
-  resetTransactionStoreForTests()
-  // only the first store transaction (the load) hangs
-  let first = true
-  const restore = delayTransactionCompletion(null, (_, mode) => {
-    if (mode !== 'readwrite' || !first) {
-      return false
-    }
-    first = false
-    return true
-  })
+it('a sync whose load does not answer in time downloads everything', async () => {
+  // only the load hangs
+  const restore = delayTransactionCompletion(null, (_, mode) => mode === 'readonly')
   try {
     const { result } = setup()
     await waitFor(() => expect(result.current.list.isSuccess).toBe(true), { timeout: 4000 })
     expect(calls).toEqual([null])
     expect(result.current.list.data!.map((t) => t.id)).toEqual(['t1', 't2'])
-    await settle()
-    expect(await dbRequest(STORE_ACCOUNT_TRANSACTIONS, 'readonly', (st) => st.count())).toBe(0)
   } finally {
     restore()
   }
 })
 
+it('a database that opens slowly at boot still gets incremental syncs, and the downloads reach it', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const restore = delayOpen(STORE_TIMEOUT_MS + 300)
+  try {
+    const { queryClient, result } = setup()
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true), { timeout: 4000 })
+    expect(calls).toEqual([null])
+    const moved = { ...fixtureTransactions[0], id: 't-a2', accountId: 'a2' }
+    server.use(...coreHandlers({ accounts: withRevisions({ a2: 3 }), transactions: [...fixtureTransactions, moved] }))
+    await act(() => queryClient.refetchQueries({ queryKey: queryKeys.accounts }))
+    await waitFor(() => expect(result.current.list.data!.map((t) => t.id)).toContain('t-a2'))
+    expect(calls).toEqual([null, 'a2'])
+  } finally {
+    restore()
+  }
+  await waitFor(async () => {
+    const stored = await loadBuckets('u1')
+    expect([...stored.keys()].sort()).toEqual(['a-hidden', 'a1', 'a2', 'a3'])
+    expect(stored.get('a2')!.revision).toBe(3)
+    expect(stored.get('a2')!.items.map((t) => t.id)).toContain('t-a2')
+  }, { timeout: 4000 })
+  expect(warn).not.toHaveBeenCalled()
+  warn.mockRestore()
+}, 10_000)
+
+it('a broken IndexedDB still gets incremental syncs from memory', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  globalThis.indexedDB.open = () => { throw new Error('x') }
+  try {
+    const { queryClient, result } = await booted()
+    expect(calls).toEqual([null])
+    const moved = { ...fixtureTransactions[0], id: 't-a2', accountId: 'a2' }
+    server.use(...coreHandlers({ accounts: withRevisions({ a2: 3 }), transactions: [...fixtureTransactions, moved] }))
+    await act(() => queryClient.refetchQueries({ queryKey: queryKeys.accounts }))
+    await waitFor(() => expect(result.current.list.data!.map((t) => t.id)).toContain('t-a2'))
+    await settle()
+    expect(calls).toEqual([null, 'a2'])
+    expect(result.current.list.data!.map((t) => t.id).sort()).toEqual(['t-a2', 't1', 't2'])
+  } finally {
+    warn.mockRestore()
+  }
+})
+
+it('a sync with the list in memory reads nothing from IndexedDB', async () => {
+  const { queryClient } = await booted()
+  await settle()
+  const spy = vi.spyOn(IDBDatabase.prototype, 'transaction')
+  try {
+    await act(() => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }))
+    await settle()
+    expect(spy).not.toHaveBeenCalled()
+  } finally {
+    spy.mockRestore()
+  }
+  expect(calls).toEqual([null])
+})
+
+it('the refresh after a seeded restore works from the seeded list, without reading IndexedDB again', async () => {
+  const buckets = new Map<string, Bucket>(wireAccounts.map((a) => {
+    const rows = fixtureTransactions.filter((t) => t.accountId === a.id)
+    const bucket = {
+      accountId: a.id, revision: a.transactionsRevision!,
+      items: rows.map(({ author, ...rest }) => ({ ...rest, authorId: author.id })),
+      authors: rows.length ? [fixtureOwner] : [],
+    } as Bucket
+    return [a.id, bucket]
+  }))
+  await putBuckets('u1', [...buckets.values()])
+  server.use(...coreHandlers())
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  uninstalls.push(installTransactionTracking(queryClient))
+  const rows = assemble(buckets)
+  seedRevisions(buckets, rows)
+  hydrate(queryClient, {
+    mutations: [],
+    queries: [{ queryKey: queryKeys.transactions, queryHash: JSON.stringify(queryKeys.transactions), state: {
+      data: rows, dataUpdateCount: 1, dataUpdatedAt: Date.now(), error: null, errorUpdateCount: 0, errorUpdatedAt: 0,
+      fetchFailureCount: 0, fetchFailureReason: null, fetchMeta: null, isInvalidated: false, status: 'success', fetchStatus: 'idle',
+    } }],
+  })
+  const spy = vi.spyOn(IDBDatabase.prototype, 'transaction')
+  try {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(() => useTransactions().isFetching, { wrapper })
+    await act(() => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }))
+    await waitFor(() => expect(result.current).toBe(false))
+    await settle()
+    expect(spy).not.toHaveBeenCalled()
+  } finally {
+    spy.mockRestore()
+  }
+  expect(calls).toEqual([])
+})
+
+it('accepting a share downloads exactly that account', async () => {
+  const pending = {
+    ...wireAccounts[1], id: 'a-pending', transactionsRevision: 4, owner: { id: 'u2', name: 'Bob', avatar: 'face:sky' },
+    sharedAccess: [{ user: fixtureOwner, role: 'user', isAccepted: 0 }],
+  }
+  const { result } = await booted({ accounts: [...wireAccounts, pending] })
+  expect(calls).toEqual([null])
+  const shared = { ...fixtureTransactions[0], id: 't-shared', accountId: 'a-pending' }
+  server.use(
+    ...coreHandlers({
+      accounts: [...wireAccounts, { ...pending, sharedAccess: [{ user: fixtureOwner, role: 'user', isAccepted: 1 }] }],
+      transactions: [...fixtureTransactions, shared],
+    }),
+    http.post('*/api/v1/account/accept-access', () => HttpResponse.json({ success: true, message: '', data: {} })),
+  )
+  await act(() => result.current.accept.mutateAsync({ accountId: 'a-pending' }))
+  await waitFor(() => expect(result.current.list.data!.map((t) => t.id)).toContain('t-shared'))
+  await waitFor(() => expect(result.current.list.isFetching).toBe(false))
+  await settle()
+  expect(calls).toEqual([null, 'a-pending'])
+})
+
+it('a sync cancelled by a local write aborts its download', async () => {
+  const { result, queryClient } = await booted()
+  let signal: AbortSignal | undefined
+  let release: () => void = () => {}
+  const gate = new Promise<void>((r) => { release = r })
+  server.use(...coreHandlers({ accounts: withRevisions({ a2: 2 }) }))
+  server.use(
+    http.get('*/api/v1/transaction/get-account-transaction-list', async ({ request }) => {
+      signal ??= request.signal
+      await gate
+      return undefined
+    }),
+  )
+  await act(() => queryClient.refetchQueries({ queryKey: queryKeys.accounts }))
+  await waitFor(() => expect(signal).toBeDefined())
+  act(() => result.current.apply({ item: created, accounts: withRevisions({ a1: 2, a2: 2 }) }, 'add'))
+  await waitFor(() => expect(signal!.aborted).toBe(true))
+  release()
+})
+
 it('a bucket write that never completes does not hold the first sync', async () => {
-  globalThis.indexedDB = new IDBFactory()
-  resetDbForTests()
-  resetTransactionStoreForTests()
-  // the load (the first readwrite transaction) answers; every write after it hangs
-  let loads = 0
-  const restore = delayTransactionCompletion(null, (_, mode) => mode === 'readwrite' && loads++ > 0)
+  // the load only reads; every write hangs
+  const restore = delayTransactionCompletion(null, (_, mode) => mode === 'readwrite')
   try {
     const { result } = setup()
     await waitFor(() => expect(result.current.list.isSuccess).toBe(true))

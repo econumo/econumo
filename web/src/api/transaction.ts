@@ -13,9 +13,10 @@ export async function getTransactionList(accountId?: Id): Promise<TransactionDto
   return response.data.data.items
 }
 
-export async function getAccountTransactionList(accountIds?: Id[]): Promise<AccountTransactionListDto> {
+export async function getAccountTransactionList(accountIds?: Id[], signal?: AbortSignal): Promise<AccountTransactionListDto> {
   const response = await api.get<Envelope<AccountTransactionListDto>>(apiUrl('/api/v1/transaction/get-account-transaction-list'), {
     params: accountIds ? { accountIds: accountIds.join(',') } : undefined,
+    signal,
   })
   return response.data.data
 }

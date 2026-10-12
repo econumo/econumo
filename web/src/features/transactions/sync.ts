@@ -1,5 +1,5 @@
 import type { AccountDto } from '@/api/dto/account'
-import type { AccountTransactionListDto, TransactionDto } from '@/api/dto/transaction'
+import type { AccountTransactionListDto, StoredTransaction, TransactionDto } from '@/api/dto/transaction'
 import type { Bucket } from '@/lib/transactionStore'
 
 // The server rejects more ids than this in one request.
@@ -38,14 +38,21 @@ export async function syncBuckets(input: SyncInput): Promise<SyncOutput> {
   const removed = new Set([...input.stored.keys()].filter((id) => !ids.has(id)))
   const changed: Bucket[] = []
   if (res) {
+    const rows = new Map<string, StoredTransaction[]>(requested.map((id) => [id, []]))
+    for (const t of res.items) {
+      rows.get(t.accountId)?.push(t)
+      // A transfer belongs to both its accounts' buckets.
+      if (t.accountRecipientId && t.accountRecipientId !== t.accountId) {
+        rows.get(t.accountRecipientId)?.push(t)
+      }
+    }
     for (const id of requested) {
       const revision = res.revisions[id]
       if (revision === undefined) {
         removed.add(id)
         continue
       }
-      // A transfer belongs to both its accounts' buckets.
-      const items = res.items.filter((t) => t.accountId === id || t.accountRecipientId === id)
+      const items = rows.get(id)!
       const authorIds = new Set(items.map((t) => t.authorId))
       changed.push({
         accountId: id,

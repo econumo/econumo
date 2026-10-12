@@ -161,4 +161,18 @@ describe('getAccountTransactionList', () => {
     await transactionApi.getAccountTransactionList()
     expect(has).toBe(false)
   })
+
+  it('an aborted signal cancels the download', async () => {
+    let requests = 0
+    server.use(
+      http.get('*/api/v1/transaction/get-account-transaction-list', () => {
+        requests++
+        return HttpResponse.json({ success: true, message: '', data: body })
+      }),
+    )
+    const controller = new AbortController()
+    controller.abort()
+    await expect(transactionApi.getAccountTransactionList(['a1'], controller.signal)).rejects.toThrow()
+    expect(requests).toBe(0)
+  })
 })

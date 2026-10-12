@@ -8,18 +8,22 @@ import type { CurrentUserDto, UserDto } from '@/api/dto/user'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { isPendingForMe } from '@/features/connections/shared'
 import { deleteBuckets, putBuckets, storeEpoch, tryLoadBuckets, type Bucket } from '@/lib/transactionStore'
-import { assemble, hasRevisions, syncBuckets } from './sync'
+import { assemble, hasRevisions, syncBuckets, type SyncOutput } from './sync'
 
 const WRITE_THROUGH_DELAY_MS = 500
 
 interface Landing {
   /** the raw accounts list the sync compared against */
   accounts: AccountDto[]
-  revisions: Map<string, number>
+  /** null: an older server, nothing was synced by revision */
+  revisions: Map<string, number> | null
 }
 
 // Revision of every stored bucket as this page knows it.
 let revisions = new Map<string, number>()
+// The revisions and the cached list describe every bucket (a sync landed or a
+// restore seeded them), so a sync starts from memory instead of IndexedDB.
+let inMemory = false
 // Accounts whose bucket revision moved through noteOwnWrite and must be written.
 const marked = new Set<string>()
 // The rows each bucket held when it was last synced or written; a row object
@@ -143,7 +147,8 @@ function onTransactionsData(queryClient: QueryClient, data: TransactionDto[] | u
   if (!outcome) {
     return
   }
-  revisions = outcome.revisions
+  revisions = outcome.revisions ?? new Map()
+  inMemory = outcome.revisions !== null
   marked.clear()
   // the accounts moved while the sync ran (a local write, a refetch): compare again
   const current = queryClient.getQueryData<AccountDto[]>(queryKeys.accounts)
@@ -230,6 +235,7 @@ export function consumeFullReload(): boolean {
 export function seedRevisions(buckets: Map<string, Bucket>, rows: TransactionDto[]): void {
   revisions = new Map([...buckets].map(([id, b]) => [id, b.revision]))
   baseline = groupByAccount(rows)
+  inMemory = true
 }
 
 export function resetRevisions(): void {
@@ -238,11 +244,25 @@ export function resetRevisions(): void {
     writeTimer = null
   }
   revisions = new Map()
+  inMemory = false
   marked.clear()
   baseline = new Map()
   dirty = false
   landing = null
   fullReload = false
+}
+
+// Every bucket the page holds: the cached list regrouped under the revisions
+// it was synced at, local patches included. Null without a landed or seeded
+// list (first boot, after a reset, a garbage-collected query); the sync then
+// reads IndexedDB.
+function bucketsInMemory(queryClient: QueryClient): Map<string, Bucket> | null {
+  const data = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)
+  if (!inMemory || !data) {
+    return null
+  }
+  const grouped = groupByAccount(data)
+  return new Map([...revisions].map(([id, revision]) => [id, toBucket(id, revision, grouped.get(id) ?? [])]))
 }
 
 function inBackground(write: Promise<void>): void {
@@ -282,38 +302,49 @@ export async function transactionsQueryFn(
   const accounts = raw.filter((a) => !isPendingForMe(a, user.id))
   if (!hasRevisions(accounts)) {
     const list = await transactionApi.getTransactionList()
-    if (!opts.signal?.aborted) {
-      landing = { accounts: raw, revisions: new Map() }
+    if (!opts.signal?.aborted && storeEpoch() === at) {
+      landing = { accounts: raw, revisions: null }
     }
     return list
   }
   // Writes are never awaited: a write that does not complete on some device
-  // must not hold the list. IndexedDB runs readwrite transactions on the same
-  // stores in the order they were created, so a load started after a write
-  // still sees it. Patches not yet written would otherwise be replaced by the
-  // older stored rows.
+  // must not hold the list. IndexedDB runs transactions on the same stores in
+  // the order they were created, so a load started after a write still sees
+  // it. Unsaved patches would otherwise be lost to the next boot.
   inBackground(flushWriteThrough(queryClient))
-  // null: the store did not answer in time — download everything, persist nothing
-  const stored = await tryLoadBuckets(user.id, at)
+  // Reading the whole store on every sync would deserialize every bucket each
+  // time; after the first sync (or a seeded restore) the page has them all.
+  // null from the store: it did not answer in time — download everything.
+  const stored = bucketsInMemory(queryClient) ?? (await tryLoadBuckets(user.id, at))
   if (superseded()) {
     return []
   }
-  const out = await syncBuckets({
-    accounts,
-    stored: stored ?? new Map(),
-    full: opts.full,
-    fetch: (ids) => transactionApi.getAccountTransactionList(ids),
-  })
+  let out: SyncOutput
+  try {
+    out = await syncBuckets({
+      accounts,
+      stored: stored ?? new Map(),
+      full: opts.full,
+      fetch: (ids) => transactionApi.getAccountTransactionList(ids, opts.signal),
+    })
+  } catch (e) {
+    // the cancel aborted the download itself
+    if (superseded()) {
+      return []
+    }
+    throw e
+  }
   if (superseded()) {
     return []
   }
-  if (stored) {
-    inBackground(putBuckets(user.id, out.changed, at))
-    inBackground(deleteBuckets(out.removed, at))
-  }
+  inBackground(putBuckets(user.id, out.changed, at))
+  inBackground(deleteBuckets(out.removed, at))
   if (opts.signal?.aborted) {
     return []
   }
-  landing = { accounts: raw, revisions: new Map([...out.buckets].map(([id, b]) => [id, b.revision])) }
+  // after a clear (logout, login) nothing of this run may become the page's state
+  if (storeEpoch() === at) {
+    landing = { accounts: raw, revisions: new Map([...out.buckets].map(([id, b]) => [id, b.revision])) }
+  }
   return assemble(out.buckets)
 }

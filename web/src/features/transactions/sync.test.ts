@@ -126,6 +126,20 @@ describe('syncBuckets', () => {
     expect(assemble(out.buckets).map((t) => t.id).sort()).toEqual(['only-b', 'tr'])
   })
 
+  it('files a row only under the requested accounts it touches, once each', async () => {
+    const fetch = vi.fn().mockResolvedValue(reply({ a: 2 }, [tx('self', 'a', 'a'), tx('out', 'a', 'x'), tx('in', 'y', 'a')]))
+    const out = await syncBuckets({
+      accounts: [account('a', 2), account('b', 1)],
+      stored: stored(bucket('b', 1, [tx('kept', 'b')])),
+      full: false,
+      fetch,
+    })
+    expect(out.buckets.get('a')?.items.map((t) => t.id)).toEqual(['self', 'out', 'in'])
+    expect(out.buckets.get('b')?.items.map((t) => t.id)).toEqual(['kept'])
+    expect(out.buckets.has('x')).toBe(false)
+    expect(out.buckets.has('y')).toBe(false)
+  })
+
   it('keeps only the authors a bucket references', async () => {
     const bob = { id: 'u2', name: 'Bob', avatar: '' }
     const fetch = vi.fn().mockResolvedValue({

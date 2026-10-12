@@ -30,3 +30,24 @@ export function delayTransactionCompletion(
   })
   return () => spy.mockRestore()
 }
+
+// Holds back the `success` of every indexedDB.open by `ms`, as a slow device
+// would. Returns a restore function.
+export function delayOpen(ms: number): () => void {
+  const factory = globalThis.indexedDB
+  const real = factory.open
+  factory.open = function (this: IDBFactory, ...args: Parameters<IDBFactory['open']>) {
+    const req = real.apply(this, args)
+    let handler: ((this: IDBRequest, ev: Event) => unknown) | null = null
+    Object.defineProperty(req, 'onsuccess', {
+      configurable: true,
+      get: () => null,
+      set: (fn: typeof handler) => { handler = fn },
+    })
+    req.addEventListener('success', (ev) => {
+      setTimeout(() => handler?.call(req, ev), ms)
+    })
+    return req
+  }
+  return () => { factory.open = real }
+}

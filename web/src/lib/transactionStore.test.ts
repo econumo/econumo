@@ -1,7 +1,7 @@
 import { IDBFactory } from 'fake-indexeddb'
 import type { StoredTransaction } from '@/api/dto/transaction'
-import { STORE_IMPORT_KEYS, dbRequest, resetDbForTests } from './db'
-import { delayTransactionCompletion } from '@/test/idbDelay'
+import { STORE_ACCOUNT_TRANSACTIONS, STORE_IMPORT_KEYS, dbRequest, resetDbForTests } from './db'
+import { delayOpen, delayTransactionCompletion } from '@/test/idbDelay'
 import { STORE_TIMEOUT_MS, clearTransactions, deleteBuckets, loadBuckets, putBuckets, resetTransactionStoreForTests, storeBuster, tryLoadBuckets, type Bucket } from './transactionStore'
 
 const tx = (id: string, accountId: string): StoredTransaction => ({
@@ -142,7 +142,9 @@ it('a load that does not answer in time gives up without turning the store off',
   expect(await load).toBeNull()
   vi.useRealTimers()
   restore()
-  expect((await loadBuckets('u1')).get('a')).toEqual(bucket('a'))
+  // still on: a write lands
+  await putBuckets('u1', [bucket('b')])
+  expect(await dbRequest(STORE_ACCOUNT_TRANSACTIONS, 'readonly', (s) => s.getAllKeys())).toEqual(['a', 'b'])
   expect(warn).not.toHaveBeenCalled()
 })
 
@@ -160,3 +162,54 @@ it('a clear that does not answer in time lets its caller go on', async () => {
   // the clear itself still ran
   expect((await loadBuckets('u1')).size).toBe(0)
 })
+
+it('a load for the same user and build only reads', async () => {
+  await putBuckets('u1', [bucket('a')])
+  const spy = vi.spyOn(IDBDatabase.prototype, 'transaction')
+  expect([...(await loadBuckets('u1')).keys()]).toEqual(['a'])
+  expect(spy.mock.calls.map((c) => c[1])).toEqual(['readonly'])
+})
+
+it('a database that opens after the limit is no failure: the load gives up, the store stays on', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const restore = delayOpen(STORE_TIMEOUT_MS + 300)
+  try {
+    expect(await tryLoadBuckets('u1')).toBeNull()
+    await putBuckets('u1', [bucket('a')])
+  } finally {
+    restore()
+  }
+  expect((await loadBuckets('u1')).get('a')).toEqual(bucket('a'))
+  expect(warn).not.toHaveBeenCalled()
+}, 10_000)
+
+it('while a load that ran out of time is still pending, the next one does not wait again', async () => {
+  await putBuckets('u1', [bucket('a')])
+  const restore = delayTransactionCompletion(STORE_TIMEOUT_MS + 300, (_, mode) => mode === 'readonly')
+  try {
+    expect(await tryLoadBuckets('u1')).toBeNull()
+    const started = Date.now()
+    expect(await tryLoadBuckets('u1')).toBeNull()
+    expect(Date.now() - started).toBeLessThan(STORE_TIMEOUT_MS / 3)
+  } finally {
+    restore()
+  }
+  // the first load answers in the end; after that a load reads again
+  await new Promise((r) => setTimeout(r, 600))
+  expect((await loadBuckets('u1')).get('a')).toEqual(bucket('a'))
+}, 10_000)
+
+it('a clear held up by a slow open lets its caller go on and still runs once the database opens', async () => {
+  await putBuckets('u1', [bucket('a')])
+  // drop the open connection, so the clear has to open the database again
+  resetDbForTests()
+  const restore = delayOpen(STORE_TIMEOUT_MS + 300)
+  try {
+    const started = Date.now()
+    await clearTransactions()
+    expect(Date.now() - started).toBeLessThan(STORE_TIMEOUT_MS + 250)
+  } finally {
+    restore()
+  }
+  expect(await dbRequest(STORE_ACCOUNT_TRANSACTIONS, 'readonly', (s) => s.count())).toBe(0)
+}, 10_000)

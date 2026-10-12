@@ -1,7 +1,7 @@
 import type { UserDto } from '@/api/dto/user'
 import type { StoredTransaction } from '@/api/dto/transaction'
 import { getVersion } from '@/lib/config'
-import { STORE_ACCOUNT_TRANSACTIONS, STORE_META, dbTransaction, openDb } from '@/lib/db'
+import { STORE_ACCOUNT_TRANSACTIONS, STORE_META, dbTransaction } from '@/lib/db'
 
 export interface Bucket {
   accountId: string
@@ -25,12 +25,11 @@ export function storeBuster(): string {
 }
 
 // Any IndexedDB failure (private mode, quota, a blocked upgrade) turns the
-// store off for the rest of the session: sync then simply downloads
-// everything, which is the behaviour without a store at all. IndexedDB can
-// also stall without ever reporting an error: a database that does not open in
-// time counts as failed. On an open database only the waits that hold the boot
-// or a sign-in/out (a load, a clear) give up after the limit, and a slow one
-// is no failure: writing a large account can take longer on a phone.
+// store off for the rest of the session; the sync then keeps working from the
+// list it holds in memory. IndexedDB can also stall without ever reporting an
+// error, so the waits that hold the boot or a sign-in/out (a load, a clear)
+// give up after the limit. Giving up is no failure: a database that opens or
+// reads slowly stays on, and the writes queued behind it still land.
 export const STORE_TIMEOUT_MS = 1500
 
 let disabled = false
@@ -39,6 +38,9 @@ let warned = false
 // a logout or a login (another user) are dropped instead of restoring the
 // previous user's data.
 let epoch = 0
+// A load that ran out of time is still queued in the database; a second one
+// would only wait out another full limit behind it.
+let stalled = false
 
 export function storeEpoch(): number {
   return epoch
@@ -65,15 +67,12 @@ async function guarded<T>(fallback: T, run: () => Promise<T>, force = false): Pr
     return fallback
   }
   try {
-    if ((await within(openDb())) === TIMED_OUT) {
-      throw new Error('IndexedDB did not open in time')
-    }
     return await run()
   } catch (e) {
     disabled = true
     if (!warned) {
       warned = true
-      console.warn('Transaction store unavailable; transactions will be downloaded in full', e)
+      console.warn('Transaction store unavailable; transactions are kept in memory only', e)
     }
     return fallback
   }
@@ -83,47 +82,80 @@ function currentMeta(userId: string): Meta {
   return { buster: storeBuster(), userId }
 }
 
+function isOwnedBy(stored: Meta | undefined, userId: string): boolean {
+  const wanted = currentMeta(userId)
+  return stored?.buster === wanted.buster && stored.userId === wanted.userId
+}
+
+// Inside a readwrite transaction: drops whatever another user or an older
+// build left behind, then runs `next`.
+function adopt(t: IDBTransaction, userId: string, next: (store: IDBObjectStore) => void = () => {}): void {
+  const meta = t.objectStore(STORE_META)
+  const store = t.objectStore(STORE_ACCOUNT_TRANSACTIONS)
+  const read = meta.get(META_KEY)
+  read.onsuccess = () => {
+    if (!isOwnedBy(read.result as Meta | undefined, userId)) {
+      store.clear()
+      meta.put(currentMeta(userId), META_KEY)
+    }
+    next(store)
+  }
+}
+
 export async function loadBuckets(userId: string, at?: number): Promise<Map<string, Bucket>> {
   return (await tryLoadBuckets(userId, at)) ?? new Map()
 }
 
+async function readBuckets(userId: string, at: number | undefined): Promise<Map<string, Bucket>> {
+  const buckets = new Map<string, Bucket>()
+  let foreign = false
+  // readonly: loads never queue behind each other, only behind writes
+  await dbTransaction([STORE_ACCOUNT_TRANSACTIONS, STORE_META], 'readonly', (t) => {
+    if (isStale(at)) {
+      return
+    }
+    const read = t.objectStore(STORE_META).get(META_KEY)
+    read.onsuccess = () => {
+      if (!isOwnedBy(read.result as Meta | undefined, userId)) {
+        foreign = true
+        return
+      }
+      const all = t.objectStore(STORE_ACCOUNT_TRANSACTIONS).getAll()
+      all.onsuccess = () => {
+        for (const bucket of all.result as Bucket[]) {
+          buckets.set(bucket.accountId, bucket)
+        }
+      }
+    }
+  })
+  if (foreign && !isStale(at)) {
+    // Not awaited: a write the caller starts later is created after this one
+    // and runs after it.
+    void guarded(undefined, () => dbTransaction([STORE_ACCOUNT_TRANSACTIONS, STORE_META], 'readwrite', (t) => adopt(t, userId)))
+  }
+  return buckets
+}
+
 /**
- * Null when the store did not answer in time: what is on disk is then unknown,
- * so nothing may be written from this view. `at`: the storeEpoch() its caller
- * started from; a clear since then makes this a no-op.
+ * Null when the store did not answer in time: what is on disk is then
+ * unknown. `at`: the storeEpoch() its caller started from; a clear since then
+ * makes this a no-op.
  */
 export async function tryLoadBuckets(userId: string, at?: number): Promise<Map<string, Bucket> | null> {
   if (isStale(at)) {
     return new Map()
   }
-  const result = await within(guarded(new Map<string, Bucket>(), async () => {
-    const buckets = new Map<string, Bucket>()
-    await dbTransaction([STORE_ACCOUNT_TRANSACTIONS, STORE_META], 'readwrite', (t) => {
-      if (isStale(at)) {
-        return
-      }
-      const meta = t.objectStore(STORE_META)
-      const store = t.objectStore(STORE_ACCOUNT_TRANSACTIONS)
-      const wanted = currentMeta(userId)
-      const read = meta.get(META_KEY)
-      read.onsuccess = () => {
-        const stored = read.result as Meta | undefined
-        if (stored?.buster === wanted.buster && stored.userId === wanted.userId) {
-          const all = store.getAll()
-          all.onsuccess = () => {
-            for (const bucket of all.result as Bucket[]) {
-              buckets.set(bucket.accountId, bucket)
-            }
-          }
-          return
-        }
-        store.clear()
-        meta.put(wanted, META_KEY)
-      }
-    })
-    return buckets
-  }))
-  return result === TIMED_OUT ? null : result
+  if (stalled) {
+    return null
+  }
+  const load = guarded(new Map<string, Bucket>(), () => readBuckets(userId, at))
+  const result = await within(load)
+  if (result !== TIMED_OUT) {
+    return result
+  }
+  stalled = true
+  void load.then(() => { stalled = false })
+  return null
 }
 
 export function putBuckets(userId: string, buckets: Bucket[], at?: number): Promise<void> {
@@ -135,21 +167,12 @@ export function putBuckets(userId: string, buckets: Bucket[], at?: number): Prom
     if (isStale(at)) {
       return
     }
-    const meta = t.objectStore(STORE_META)
-    const store = t.objectStore(STORE_ACCOUNT_TRANSACTIONS)
-    const wanted = currentMeta(userId)
-    const read = meta.get(META_KEY)
-    read.onsuccess = () => {
-      const stored = read.result as Meta | undefined
-      // a write before the first load must not adopt buckets another user or an older build left behind
-      if (stored?.buster !== wanted.buster || stored.userId !== wanted.userId) {
-        store.clear()
-        meta.put(wanted, META_KEY)
-      }
+    // a write before the first load must not adopt buckets another user or an older build left behind
+    adopt(t, userId, (store) => {
       for (const bucket of buckets) {
         store.put(bucket)
       }
-    }
+    })
   }))
 }
 
@@ -169,7 +192,8 @@ export function deleteBuckets(accountIds: string[], at?: number): Promise<void> 
 }
 
 // Attempted even while the store is disabled: a logout must not leave data on disk.
-// After the time limit the caller (logout, sign-in) goes on; the clear keeps running.
+// After the time limit the caller (logout, sign-in) goes on; the clear still
+// runs once the database opens, before any write started after it.
 export async function clearTransactions(): Promise<void> {
   epoch++
   await within(guarded(undefined, () => dbTransaction([STORE_ACCOUNT_TRANSACTIONS, STORE_META], 'readwrite', (t) => {
@@ -181,4 +205,5 @@ export async function clearTransactions(): Promise<void> {
 export function resetTransactionStoreForTests(): void {
   disabled = false
   warned = false
+  stalled = false
 }

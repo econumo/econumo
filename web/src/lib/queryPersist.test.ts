@@ -7,7 +7,7 @@ import { delayTransactionCompletion } from '@/test/idbDelay'
 import { createAppQueryClient } from './appQueryClient'
 import { resetDbForTests } from './db'
 import { QUERY_CACHE_KEY, clearPersistedQueryCache, createPersistOptions } from './queryPersist'
-import { loadBuckets, putBuckets, resetTransactionStoreForTests, type Bucket } from './transactionStore'
+import { STORE_TIMEOUT_MS, loadBuckets, putBuckets, resetTransactionStoreForTests, type Bucket } from './transactionStore'
 
 function defaultRetry(): (failureCount: number, error: unknown) => boolean {
   const retry = createAppQueryClient().getDefaultOptions().queries?.retry
@@ -105,6 +105,13 @@ describe('restoring the stored transactions', () => {
     }
   })
 
+  it('drops the stored buckets of accounts the snapshot no longer lists', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('gone', ['t3'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
+    await vi.waitFor(async () => expect([...(await loadBuckets(fixtureUser.id)).keys()]).toEqual(['a1']))
+  })
+
   it('leaves out an account whose share invite is still pending', async () => {
     const pending = {
       ...fixtureAccounts[0], id: 'a-invite', owner: { id: 'u9', name: 'Bo', avatar: 'face:emerald' },
@@ -160,7 +167,8 @@ describe('restoring the stored transactions', () => {
       expect(restored?.clientState.queries.map((q) => q.queryKey)).toEqual([['user'], ['accounts']])
       await clearPersistedQueryCache()
       expect(localStorage.getItem(QUERY_CACHE_KEY)).toBeNull()
-      expect(warn).toHaveBeenCalledTimes(1)
+      // a stall is no failure: the store stays on in case the database answers later
+      expect(warn).not.toHaveBeenCalled()
     } finally {
       warn.mockRestore()
     }
@@ -169,13 +177,14 @@ describe('restoring the stored transactions', () => {
   it('a restore whose load does not answer in time goes on without transactions', async () => {
     await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
     snapshot({ user: fixtureUser, accounts: fixtureAccounts })
-    const restore = delayTransactionCompletion(null)
+    const restore = delayTransactionCompletion(STORE_TIMEOUT_MS + 300)
     try {
       expect(await restoredTransactions()).toBeUndefined()
     } finally {
       restore()
     }
-    // the store stayed on: the next boot seeds again
+    await new Promise((r) => setTimeout(r, 600))
+    // the store stayed on: once the slow load is done, a restore seeds again
     expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
   }, 10_000)
 })

@@ -10,7 +10,7 @@ import { resetRevisions, seedRevisions } from '@/features/transactions/revisionT
 import { assemble, hasRevisions } from '@/features/transactions/sync'
 import { CACHE_MAX_AGE_MS } from './appQueryClient'
 import { getVersion } from './config'
-import { clearTransactions, loadBuckets, type Bucket } from './transactionStore'
+import { clearTransactions, deleteBuckets, loadBuckets, type Bucket } from './transactionStore'
 
 // Vue parity: the Quasar app keeps every store in localStorage, so a page
 // reload starts from cached data and refreshes in the background instead of
@@ -47,6 +47,10 @@ async function withStoredTransactions(snapshot: PersistedClient): Promise<Persis
   if (buckets.size === 0) {
     return snapshot
   }
+  // The sync works from what is seeded here and never sees the rest of the
+  // store, so a bucket of an account that is gone (a share revoked, an account
+  // deleted) would stay on disk.
+  void deleteBuckets([...stored.keys()].filter((id) => !buckets.has(id)))
   const rows = assemble(buckets)
   seedRevisions(buckets, rows)
   const state: QueryState<TransactionDto[], Error> = {
