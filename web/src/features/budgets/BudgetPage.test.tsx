@@ -794,13 +794,19 @@ describe('managing categories, tags and accounts from the ⋮ menus', () => {
     const record = (path: string) =>
       http.post(`*${path}`, async ({ request }) => {
         calls.push({ path, body: (await request.json()) as Record<string, unknown> })
-        return HttpResponse.json({ success: true, message: '', data: path.endsWith('create-category') ? { item: { id: 'cat-new', ownerUserId: 'u1', name: 'Gym', position: 9, type: 'expense', icon: 'x', isArchived: 0, createdAt: '', updatedAt: '' } } : {} })
+        const data = path.endsWith('create-category')
+          ? { item: { id: 'cat-new', ownerUserId: 'u1', name: 'Gym', position: 9, type: 'expense', icon: 'x', isArchived: 0, createdAt: '', updatedAt: '' } }
+          : path.endsWith('create-tag')
+            ? { item: { id: 'tag-new', ownerUserId: 'u1', name: 'Wedding', position: 9, icon: 'tag', isArchived: 0, createdAt: '', updatedAt: '' } }
+            : {}
+        return HttpResponse.json({ success: true, message: '', data })
       })
     server.use(
       ...coreHandlers({ user: userWithBudget }),
       http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
       planHandler(fixtureWirePlan),
       record('/api/v1/category/create-category'),
+      record('/api/v1/tag/create-tag'),
       record('/api/v1/category/archive-category'),
       record('/api/v1/category/delete-category'),
       record('/api/v1/budget/move-element'),
@@ -822,6 +828,56 @@ describe('managing categories, tags and accounts from the ⋮ menus', () => {
     await waitFor(() => expect(calls.map((c) => c.path)).toEqual(['/api/v1/category/create-category', '/api/v1/budget/move-element']))
     expect(calls[0].body).toMatchObject({ name: 'Gym', type: 'expense' })
     expect(calls[1].body).toMatchObject({ budgetId: 'b1', id: 'cat-new', folderId: 'bf1', afterId: null })
+  })
+
+  it('New tag in a folder creates a budget tag there', async () => {
+    const calls = setup()
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(within(await screen.findByTestId('budget-folder-Essentials')).getByRole('button', { name: 'menu Essentials' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'New tag' }))
+    // a budget line can only be a budget tag: no budget/reporting choice
+    const dialog = await screen.findByRole('dialog', { name: 'New tag' })
+    expect(within(dialog).queryByRole('radiogroup')).toBeNull()
+    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Wedding')
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+    await waitFor(() => expect(calls.map((c) => c.path)).toEqual(['/api/v1/tag/create-tag', '/api/v1/budget/move-element']))
+    expect(calls[0].body).toMatchObject({ name: 'Wedding' })
+    expect(calls[1].body).toMatchObject({ budgetId: 'b1', id: 'tag-new', folderId: 'bf1', afterId: null })
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.TAG_CREATE)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New tag' })).toBeNull())
+  })
+
+  it('New tag from the Expenses section and No folder lands outside any folder', async () => {
+    const calls = setup()
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(within(await screen.findByTestId('column-headers')).getByRole('button', { name: 'menu Expenses' }))
+    expect((await screen.findAllByRole('menuitem')).map((i) => i.textContent)).toEqual(['Create folder', 'New envelope', 'New category', 'New tag'])
+    await user.click(screen.getByRole('menuitem', { name: 'New tag' }))
+    const dialog = await screen.findByRole('dialog', { name: 'New tag' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Wedding')
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+    await waitFor(() => expect(calls.map((c) => c.path)).toEqual(['/api/v1/tag/create-tag', '/api/v1/budget/move-element']))
+    expect(calls[1].body).toMatchObject({ budgetId: 'b1', id: 'tag-new', folderId: null, afterId: null })
+  })
+
+  it('a tag name the server refuses keeps the dialog open with its message, and places nothing', async () => {
+    const calls = setup()
+    server.use(
+      http.post('*/api/v1/tag/create-tag', () =>
+        HttpResponse.json({ success: false, message: 'Tag already exists', code: 400, errors: {} }, { status: 400 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(within(await screen.findByTestId('budget-folder-Essentials')).getByRole('button', { name: 'menu Essentials' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'New tag' }))
+    const dialog = await screen.findByRole('dialog', { name: 'New tag' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Wedding')
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+    expect(await within(dialog).findByText('Tag already exists')).toBeInTheDocument()
+    expect(calls.map((c) => c.path)).not.toContain('/api/v1/budget/move-element')
   })
 
   it('Archive and Delete act on the category behind the row', async () => {

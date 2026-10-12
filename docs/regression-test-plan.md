@@ -845,16 +845,22 @@ and on tablet/phone only with a hardware keyboard.
       - a savings row: Edit (the account) only, no Change currency, in both
         the Budget view and the Plan grid; a reporting tag: Edit ("Edit (no
         access)" for another user's tag);
-      - a folder line: New envelope, New category, Edit (rename), Delete
-        folder (greyed out as "Delete folder (not empty)" while the folder has
-        items); the "No folder" line (Income or Expenses): New envelope, New
-        category;
+      - a folder line: New envelope, New category, New tag (expense folders
+        only), Edit (rename), Delete folder (greyed out as "Delete folder (not
+        empty)" while the folder has items); the "No folder" line (Income or
+        Expenses): New envelope, New category, plus New tag under Expenses;
       - the Expenses and Income lines: Create folder, New envelope, New
-        category; the Savings line: New account, Savings accounts (opens the
-        budget's settings).
+        category, plus New tag on Expenses; the Savings line: New account,
+        Savings accounts (opens the budget's settings). No Income menu (line,
+        folder or No folder) offers New tag.
       New category asks for a name and icon only (the type is the section's)
       and the category shows at once at the top of the folder the menu
-      belongs to (or No folder). New account opens the account dialog; the
+      belongs to (or No folder). New tag asks for a name only, with no
+      Budget/Reporting choice (it always makes a budget tag), and the tag
+      shows at once at the top of the folder the menu belongs to (or No
+      folder), in the Budget view and the Plan grid alike, and appears on the
+      Tags page under Budget tags; a name a reporting tag already holds is
+      refused in the dialog, which stays open. New account opens the account dialog; the
       new account shows as a savings row of this budget.
       Regression: an income folder must stay under Income after a reload,
       also after New envelope created an envelope in it.

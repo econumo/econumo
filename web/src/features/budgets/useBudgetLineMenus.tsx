@@ -240,16 +240,21 @@ export function useBudgetLineMenus({
     label: t('budgets.modal.create_envelope_form.header'),
     onSelect: () => setEnvelopeDialog({ open: true, envelope: null, folderId, side }),
   })
+  // New category, plus New tag on the expense side: tags are never income
+  const classificationCreateActions = (side: BudgetFolderSide, folderId: Id | null): MenuAction[] => [
+    classificationMenu.newCategoryAction(side, folderId),
+    ...(side === 'expense' ? [classificationMenu.newTagAction(folderId)] : []),
+  ]
   const folderActionsFor = (folder: { id: Id; name: string } | null, empty: boolean, side: BudgetFolderSide): MenuAction[] | undefined => {
     if (!configure) {
       return undefined
     }
     if (!folder) {
-      return [newEnvelopeAction(null, side), classificationMenu.newCategoryAction(side, null)]
+      return [newEnvelopeAction(null, side), ...classificationCreateActions(side, null)]
     }
     return [
       newEnvelopeAction(folder.id, side),
-      classificationMenu.newCategoryAction(side, folder.id),
+      ...classificationCreateActions(side, folder.id),
       { label: t('common.button.edit.label'), onSelect: () => setRenameFolder({ id: folder.id, name: folder.name }) },
       {
         label: t('budgets.page.budget.structure.action.delete_folder'),
@@ -265,7 +270,7 @@ export function useBudgetLineMenus({
       ? [
           { label: t('budgets.page.budget.structure.action.create_folder'), onSelect: () => setCreateFolderSide(side) },
           newEnvelopeAction(null, side),
-          classificationMenu.newCategoryAction(side, null),
+          ...classificationCreateActions(side, null),
         ]
       : undefined
   const savingsSectionMenu: MenuAction[] | undefined =
