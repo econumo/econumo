@@ -13,6 +13,7 @@ import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { UserCard } from '@/components/UserCard'
 import { apiFieldErrors } from '@/lib/apiError'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -176,7 +177,10 @@ export function ProfilePage() {
       <button
         type="button"
         className="mt-2 flex w-full max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
-        onClick={() => setAnalyticsOpen(true)}
+        onClick={() => {
+          trackEvent(METRICS.USER_ANALYTICS_SETTINGS_OPEN)
+          setAnalyticsOpen(true)
+        }}
       >
         {t('user.page.settings.profile.analytics.menu_item')}
         <ChevronRight className="size-4 text-muted-foreground" />

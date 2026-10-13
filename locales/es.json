@@ -991,7 +991,7 @@
           },
           "analytics": {
             "menu_item": "Estadísticas de uso",
-            "label": "Compartir estadísticas de uso",
+            "label": "Ayudar a mejorar Econumo",
             "description": "Las estadísticas de uso nos muestran qué funciones se usan y qué mejorar a continuación.",
             "promise": "Nunca compartimos ni vendemos tus datos. Los datos financieros y la información personal —nombre, correo electrónico— nunca se envían."
           }

@@ -1691,9 +1691,10 @@ User C sees none of it.
 - [ ] Usage statistics 📱 (Settings → Profile → Preferences, the row after
       Language): the page shows only a plain row with a chevron — no status,
       no switch and no explanation text on the page itself. Tapping it opens
-      a dialog (a bottom sheet on a phone) explaining why statistics help and
-      that data is never shared or sold, with the "Share usage statistics"
-      switch showing the current state. Switching it off persists across a
+      a dialog (a bottom sheet on a phone) that leads with the privacy promise
+      (data is never shared or sold; finances, name and email are never sent),
+      then why statistics help, with the "Help improve Econumo" switch
+      showing the current state. Switching it off persists across a
       reload; log out and back in — the switch still reads off; a read-only
       user (lapsed trial) can still flip it, unlike other writes on that
       account. There is no Privacy group on the Profile page any more.

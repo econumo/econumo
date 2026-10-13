@@ -12,9 +12,10 @@ export function AnalyticsDialog({ open, onClose, enabled, onChange }: {
   return (
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('user.page.settings.profile.analytics.menu_item')}>
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-          <p>{t('user.page.settings.profile.analytics.description')}</p>
+        {/* the privacy promise leads: worry about the data, not the feature, is what makes people switch off */}
+        <div className="flex flex-col gap-2 text-sm">
           <p>{t('user.page.settings.profile.analytics.promise')}</p>
+          <p className="text-muted-foreground">{t('user.page.settings.profile.analytics.description')}</p>
         </div>
         <div className="flex items-center justify-between gap-4 rounded-lg bg-econumo-card px-4 py-3.5">
           <label htmlFor="profile-analytics" className="text-sm">
