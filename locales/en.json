@@ -286,12 +286,12 @@
     "sync": {
       "menu_item": "Full sync",
       "failing": "Can't reach the server — retrying",
-      "full_reload": "Reloading all data from the server…",
-      "hold_hint": "Hold to reload everything",
-      "full_reload_offline": "You're offline. Reload all data when you're back online."
+      "full_reload": "Clearing the cache and reloading…",
+      "hold_hint": "Hold to clear the cache and reload",
+      "full_reload_offline": "You're offline. Clear the cache and reload when you're back online."
     },
     "data": {
-      "reload_all": "Reload all data from server"
+      "reload_all": "Clear cache and reload"
     },
     "accounts": {
       "menu_item": "Accounts",

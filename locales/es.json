@@ -286,12 +286,12 @@
     "sync": {
       "menu_item": "Sincronización completa",
       "failing": "No se puede conectar con el servidor: reintentando",
-      "full_reload": "Recargando todos los datos desde el servidor…",
-      "hold_hint": "Mantén pulsado para recargarlo todo",
-      "full_reload_offline": "Estás sin conexión. Vuelve a cargar todos los datos cuando vuelvas a estar en línea."
+      "full_reload": "Borrando la caché y recargando…",
+      "hold_hint": "Mantén pulsado para borrar la caché y recargar",
+      "full_reload_offline": "Estás sin conexión. Borra la caché y recarga cuando vuelvas a estar en línea."
     },
     "data": {
-      "reload_all": "Recargar todos los datos del servidor"
+      "reload_all": "Borrar la caché y recargar"
     },
     "accounts": {
       "menu_item": "Cuentas",

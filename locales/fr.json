@@ -286,12 +286,12 @@
     "sync": {
       "menu_item": "Synchronisation complète",
       "failing": "Serveur injoignable — nouvelle tentative",
-      "full_reload": "Rechargement de toutes les données depuis le serveur…",
-      "hold_hint": "Maintenez pour tout recharger",
-      "full_reload_offline": "Vous êtes hors ligne. Rechargez toutes les données une fois de nouveau en ligne."
+      "full_reload": "Vidage du cache et rechargement…",
+      "hold_hint": "Maintenez pour vider le cache et recharger",
+      "full_reload_offline": "Vous êtes hors ligne. Videz le cache et rechargez une fois de nouveau en ligne."
     },
     "data": {
-      "reload_all": "Recharger toutes les données depuis le serveur"
+      "reload_all": "Vider le cache et recharger"
     },
     "accounts": {
       "menu_item": "Comptes",

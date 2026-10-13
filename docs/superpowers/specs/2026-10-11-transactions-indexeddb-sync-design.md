@@ -32,7 +32,7 @@ accounts refresh.
 | Client storage | One IndexedDB database, `econumo`. Stores: `importKeys` (the SimpleFIN data key, migrated from `econumo-import`), `accountTransactions`, `meta`. |
 | What stays in localStorage | Token, `backendHost`, UI prefs, analytics opt-out, and the TanStack query cache minus `['transactions']`. |
 | Sync button tap | Unchanged call (`invalidateQueries()`); the transactions sync now downloads only accounts whose revision changed. |
-| Sync button long-press | Full reload: wipe stored transactions, download every account, invalidate everything. Toast confirms. Long-press, not double-tap, because impatient repeated tapping would otherwise trigger the most expensive action. The same action is the last row of the Data group on the Settings page ("Reload all data from server"). |
+| Sync button long-press | Full reload: wipe stored transactions, download every account, invalidate everything. Toast confirms. Long-press, not double-tap, because impatient repeated tapping would otherwise trigger the most expensive action. The same action is the last row of the Data group on the Settings page ("Clear cache and reload"). |
 | Scheduled full refresh | None. Author name/avatar staleness is fixed at the source (`update-name`/`update-avatar` bump). |
 | IndexedDB failure | Not a separate mode: on any IDB error the sync keeps working in memory for the session and logs a warning. |
 | Hidden-folder accounts | Synced and included in the `['transactions']` list like every other account. Folder visibility no longer affects transactions; the separate `['accountTransactions', id]` query goes away. Global search therefore also finds (and its recent feed shows) hidden-folder transactions, consistent with it already listing hidden-folder accounts. |
@@ -359,7 +359,7 @@ Both sidebar variants in `ApplicationLayout.tsx`:
   transactions.
 - **Long-press** (pointer held ≥ 600 ms; mouse or touch, pointer events):
   `clearTransactions()`, mark the next sync as a full reload, `invalidateQueries()`,
-  toast `settings.sync.full_reload` ("Reloading all data from the server…").
+  toast `settings.sync.full_reload` ("Clearing the cache and reloading…").
   The click that follows the long-press is suppressed; `pointerleave` /
   `pointercancel` abort the timer; `-webkit-touch-callout: none` and
   `user-select: none` stop the iOS callout. `Shift`+click does the same, for
@@ -369,7 +369,7 @@ Both sidebar variants in `ApplicationLayout.tsx`:
 - The same full reload (one `useFullReload()` hook,
   `web/src/features/transactions/useFullReload.ts`) is the **last row of
   the Data group on the Settings hub page** (`/settings`, `SettingsPage`; not
-  inside Import & export): "Reload all data from server" (`settings.data.reload_all`),
+  inside Import & export): "Clear cache and reload" (`settings.data.reload_all`),
   no hint, with a refresh icon instead of the navigation chevron (it spins while the
   reload runs) so it reads as an action. No confirmation:
   it only downloads again. The hook ignores a second trigger (from either
@@ -425,7 +425,7 @@ Three keys under `settings.sync` in all 11 catalogues: `full_reload`,
   for a snapshot of another user, or from another build's store.
 - Sync button: tap → incremental; long-press and Shift+click → full reload,
   toast, metric (`source: 'sync_button'`); a short press does not trigger the
-  full reload. "Reload all data" is the last row of the Settings page's Data group and does the
+  full reload. "Clear cache and reload" is the last row of the Settings page's Data group and does the
   same (`source: 'settings'`).
 
 ## Docs
@@ -439,7 +439,7 @@ Three keys under `settings.sync` in all 11 catalogues: `full_reload`,
   refreshes; sync long-press 📱 / Shift+click reloads everything with a toast;
   an offline start more than 24 h after the last visit still shows
   transactions 📱; an interrupted first load resumes; Settings page →
-  Data group → Reload all data.
+  Data group → Clear cache and reload.
 - `CLAUDE.md`: the revision counter and the "bump inside the repository
   method" rule with the guard suite; the `econumo` IndexedDB layout; the new
   endpoint in the transaction feature.

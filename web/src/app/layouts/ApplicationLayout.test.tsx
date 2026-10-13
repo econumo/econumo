@@ -483,10 +483,10 @@ describe('the sync button', () => {
   it('a long press says so, counts the action and downloads every account again', async () => {
     const { queryClient, seen } = await bootWarm()
     const sync = screen.getByRole('button', { name: 'sync' })
-    expect(sync).toHaveAttribute('title', expect.stringContaining('Hold to reload everything'))
+    expect(sync).toHaveAttribute('title', expect.stringContaining('Hold to clear the cache and reload'))
 
     fireEvent.pointerDown(sync)
-    expect(await screen.findByText('Reloading all data from the server…', {}, { timeout: 2000 })).toBeInTheDocument()
+    expect(await screen.findByText('Clearing the cache and reloading…', {}, { timeout: 2000 })).toBeInTheDocument()
     fireEvent.pointerUp(sync)
     fireEvent.click(sync)
 
@@ -523,7 +523,7 @@ describe('the sync button', () => {
     await waitFor(() => expect(seen.length).toBeGreaterThan(0))
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
     await waitFor(() => everyAccountOnItsOwn(seen))
-    expect(screen.getAllByText('Reloading all data from the server…')).toHaveLength(1)
+    expect(screen.getAllByText('Clearing the cache and reloading…')).toHaveLength(1)
     // the second press landed while the first reload ran
     expect(trackEvent).toHaveBeenCalledTimes(1)
   })

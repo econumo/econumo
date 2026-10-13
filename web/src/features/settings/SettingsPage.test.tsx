@@ -214,11 +214,11 @@ it('the Log out button opens the confirm dialog and confirming navigates to the 
   expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
 })
 
-describe('Reload all data', () => {
+describe('Clear cache and reload', () => {
   it('is the last row of the Data group, below the import rows', async () => {
     window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
     renderPage()
-    const row = await screen.findByRole('button', { name: 'Reload all data from server' })
+    const row = await screen.findByRole('button', { name: 'Clear cache and reload' })
     const group = row.closest('nav')!
     expect(group.lastElementChild).toBe(row)
     expect(within(group).getByText('Import rules')).toBeInTheDocument()
@@ -226,7 +226,7 @@ describe('Reload all data', () => {
 
   it('is the last row of the Data group with transaction import off too', async () => {
     renderPage()
-    const row = await screen.findByRole('button', { name: /Reload all data/ })
+    const row = await screen.findByRole('button', { name: 'Clear cache and reload' })
     expect(row.closest('nav')!.lastElementChild).toBe(row)
   })
 
@@ -244,8 +244,8 @@ describe('Reload all data', () => {
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
     asked.length = 0
 
-    await user.click(screen.getByRole('button', { name: /Reload all data/ }))
-    expect(await screen.findByText('Reloading all data from the server…')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Clear cache and reload' }))
+    expect(await screen.findByText('Clearing the cache and reloading…')).toBeInTheDocument()
     // the download starts only after the store is cleared, so nothing may be fetching yet
     await waitFor(() => expect(asked).toEqual(fixtureAccounts.map((a) => a.id)))
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
@@ -264,7 +264,7 @@ describe('Reload all data', () => {
       await gate
       return undefined
     }))
-    const row = screen.getByRole('button', { name: /Reload all data/ })
+    const row = screen.getByRole('button', { name: 'Clear cache and reload' })
     await user.click(row)
     await waitFor(() => expect(row).toBeDisabled())
     release()
@@ -279,7 +279,7 @@ describe('Reload all data', () => {
     server.use(http.get('*/api/v1/account/get-account-list', () => new Promise<Response>(() => {})))
     void queryClient.invalidateQueries()
     await waitFor(() => expect(queryClient.isFetching({ queryKey: queryKeys.transactions })).toBe(1))
-    expect(screen.getByRole('button', { name: /Reload all data/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Clear cache and reload' })).toBeEnabled()
   })
 
   it('is enabled again once the reload fails, while it keeps retrying', async () => {
@@ -289,7 +289,7 @@ describe('Reload all data', () => {
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
     server.use(http.get('*/api/v1/transaction/get-account-transaction-list', () =>
       HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status: 500 })))
-    const row = screen.getByRole('button', { name: /Reload all data/ })
+    const row = screen.getByRole('button', { name: 'Clear cache and reload' })
     await user.click(row)
     await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.fetchFailureCount).toBe(1))
     await waitFor(() => expect(row).toBeEnabled())
@@ -306,14 +306,14 @@ describe('Reload all data', () => {
       await gate
       return undefined
     }))
-    const row = screen.getByRole('button', { name: /Reload all data/ })
+    const row = screen.getByRole('button', { name: 'Clear cache and reload' })
     // two presses before the row can re-render as disabled
     row.click()
     row.click()
     release()
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
     expect(trackEvent).toHaveBeenCalledTimes(1)
-    expect(screen.getAllByText('Reloading all data from the server…')).toHaveLength(1)
+    expect(screen.getAllByText('Clearing the cache and reloading…')).toHaveLength(1)
   })
 
   it('offline, keeps the stored data and says to try again online', async () => {
@@ -331,13 +331,13 @@ describe('Reload all data', () => {
     const offline = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
     onTestFinished(() => offline.mockRestore())
 
-    await user.click(screen.getByRole('button', { name: /Reload all data/ }))
-    expect(await screen.findByText("You're offline. Reload all data when you're back online.")).toBeInTheDocument()
-    expect(screen.queryByText('Reloading all data from the server…')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Clear cache and reload' }))
+    expect(await screen.findByText("You're offline. Clear the cache and reload when you're back online.")).toBeInTheDocument()
+    expect(screen.queryByText('Clearing the cache and reloading…')).not.toBeInTheDocument()
     expect(trackEvent).not.toHaveBeenCalled()
     expect((await loadBuckets('u1')).size).toBe(fixtureAccounts.length)
     expect(asked).toEqual([])
-    expect(screen.getByRole('button', { name: /Reload all data/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Clear cache and reload' })).toBeEnabled()
   })
 
   it('unlocks when the connection drops during the reload and the download pauses', async () => {
@@ -347,7 +347,7 @@ describe('Reload all data', () => {
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
     onlineManager.setOnline(false)
     onTestFinished(() => onlineManager.setOnline(true))
-    const row = screen.getByRole('button', { name: /Reload all data/ })
+    const row = screen.getByRole('button', { name: 'Clear cache and reload' })
     await user.click(row)
     await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.fetchStatus).toBe('paused'))
     await waitFor(() => expect(row).toBeEnabled())

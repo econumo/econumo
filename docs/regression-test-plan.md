@@ -371,7 +371,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
 - [ ] Settings → Data group has two rows 📱: "Import & export" (the CSV
       import/export rows, then the import rows; dialogs open as before) and
       "Apple Wallet" (its own page: setup, cards, "Inbox" link; back returns to
-      Settings), followed by "Reload all data" as the group's last row on the
+      Settings), followed by "Clear cache and reload" as the group's last row on the
       Settings page itself (not inside Import & export).
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source); the section flips to
@@ -1923,7 +1923,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       and open it — accounts and transactions show at once, with no "Loading
       your data" screen; going online refreshes them in the background.
 - [ ] A full reload interrupted part-way (go offline during the downloads
-      of "Reload all data") resumes once back online: only the accounts not
+      of "Clear cache and reload") resumes once back online: only the accounts not
       yet downloaded are requested, and after the next offline reload every
       account still shows its transactions.
 - [ ] Log in as B in a browser where A was signed in before (no logout):
@@ -1933,7 +1933,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       `get-account-transaction-list` requests have finished, then go online
       again (or reload) — the requests that follow name only the accounts
       that had not arrived yet, one account per request.
-- [ ] 📱 Settings page → Data group → "Reload all data from server" (the group's
+- [ ] 📱 Settings page → Data group → "Clear cache and reload" (the group's
       last row, after Import & export and the import rows; not on the Import &
       export page; no hint; a refresh icon instead of the arrow, spinning while it
       runs): no confirmation, the "Reloading all data
@@ -1941,7 +1941,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       request per account), and the row is disabled until the download
       finishes (or first fails); pressing it or holding the sync button again
       meanwhile starts nothing new. Offline, it (and the sync-button hold)
-      only shows "You're offline. Reload all data when you're back online."
+      only shows "You're offline. Clear the cache and reload when you're back online."
       and an offline reload afterwards still shows every transaction.
 - [ ] Cross-device edit: with the app open on devices A and B, edit or add a
       transaction on A, then tap sync on B (or refocus B after 10 minutes) —

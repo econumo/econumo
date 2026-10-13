@@ -286,12 +286,12 @@
     "sync": {
       "menu_item": "Vollständige Synchronisierung",
       "failing": "Server nicht erreichbar — wird erneut versucht",
-      "full_reload": "Alle Daten werden neu vom Server geladen …",
-      "hold_hint": "Gedrückt halten, um alles neu zu laden",
-      "full_reload_offline": "Sie sind offline. Laden Sie alle Daten neu, sobald Sie wieder online sind."
+      "full_reload": "Cache wird geleert und neu geladen…",
+      "hold_hint": "Gedrückt halten, um den Cache zu leeren und neu zu laden",
+      "full_reload_offline": "Sie sind offline. Leeren Sie den Cache und laden Sie neu, sobald Sie wieder online sind."
     },
     "data": {
-      "reload_all": "Alle Daten vom Server neu laden"
+      "reload_all": "Cache leeren und neu laden"
     },
     "accounts": {
       "menu_item": "Konten",
