@@ -61,6 +61,7 @@ describe('restoring the stored transactions', () => {
     resetTransactionStoreForTests()
     resetRevisions()
     localStorage.setItem('token', 'eco_ses_test')
+    localStorage.setItem('sessionUserId', fixtureUser.id)
   })
 
   afterEach(() => resetRevisions())
@@ -180,6 +181,21 @@ describe('restoring the stored transactions', () => {
     snapshot({ user: fixtureUser, accounts: fixtureAccounts })
     expect(await restoredTransactions()).toBeUndefined()
     localStorage.removeItem(QUERY_CACHE_KEY)
+    expect(await createPersistOptions().persister.restoreClient()).toBeUndefined()
+  })
+
+  it('seeds nothing when the store belongs to another user than the session', async () => {
+    // A's data is still on disk: B's sign-in clear never got through a stalled IndexedDB
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    localStorage.setItem('sessionUserId', 'u-b')
+    expect(await createPersistOptions().persister.restoreClient()).toBeUndefined()
+    snapshot({ accounts: fixtureAccounts })
+    expect(await restoredTransactions()).toBeUndefined()
+  })
+
+  it('seeds nothing while the session\'s user is unknown', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    localStorage.removeItem('sessionUserId')
     expect(await createPersistOptions().persister.restoreClient()).toBeUndefined()
   })
 

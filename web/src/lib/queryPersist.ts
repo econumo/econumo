@@ -10,7 +10,7 @@ import { resetRevisions, seedRevisions } from '@/features/transactions/revisionT
 import { assemble, hasRevisions } from '@/features/transactions/sync'
 import { CACHE_MAX_AGE_MS } from './appQueryClient'
 import { getVersion } from './config'
-import { hasToken } from './storage'
+import { getSessionUserId, hasToken } from './storage'
 import { clearTransactions, deleteBuckets, tryLoadStored } from './transactionStore'
 
 // Vue parity: the Quasar app keeps every store in localStorage, so a page
@@ -29,12 +29,16 @@ interface Seed {
 }
 
 // `snapshot`: the restored cache of this release, fresh or expired, if any.
-// The store's meta names its owner, so it seeds without the snapshot too.
-async function loadSeed(snapshot: PersistedClient | undefined): Promise<Seed | null> {
+// `owner`: the user the session token was issued to; the store's meta must
+// name the same one, so it seeds without the snapshot too.
+async function loadSeed(snapshot: PersistedClient | undefined, owner: string): Promise<Seed | null> {
   const user = snapshot && snapshotData<CurrentUserDto>(snapshot, queryKeys.user)
   const raw = snapshot && snapshotData<AccountDto[]>(snapshot, queryKeys.accounts)
+  if (user && user.id !== owner) {
+    return null
+  }
   const stored = await tryLoadStored()
-  if (!stored || (user && user.id !== stored.userId)) {
+  if (!stored || stored.userId !== owner) {
     return null
   }
   let buckets = stored.buckets
@@ -104,12 +108,13 @@ function withTransactionRestore(inner: Persister, maxAge: number, buster: string
     restoreClient: async () => {
       const snapshot = await inner.restoreClient()
       // signed out: the next sign-in clears the store anyway
-      if (!hasToken()) {
+      const owner = hasToken() ? getSessionUserId() : null
+      if (!owner) {
         return snapshot
       }
       // a snapshot of another release must contribute nothing: response shapes may differ
       const usable = snapshot?.timestamp && snapshot.buster === buster ? snapshot : undefined
-      const seed = await loadSeed(usable)
+      const seed = await loadSeed(usable, owner)
       if (!seed) {
         return snapshot
       }

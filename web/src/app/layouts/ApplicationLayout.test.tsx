@@ -76,6 +76,7 @@ function renderShellPersisted(home: ReactNode = <div>HOME CONTENT</div>) {
   )
   // the restore seeds transactions only for a signed-in session
   localStorage.setItem('token', 'eco_ses_test')
+  localStorage.setItem('sessionUserId', fixtureUser.id)
   // a fresh QueryClient per call = a page reload (in-memory cache is gone)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   uninstalls.push(installTransactionTracking(queryClient))
@@ -523,6 +524,8 @@ describe('the sync button', () => {
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
     await waitFor(() => everyAccountOnItsOwn(seen))
     expect(screen.getAllByText('Reloading all data from the server…')).toHaveLength(1)
+    // the second press landed while the first reload ran
+    expect(trackEvent).toHaveBeenCalledTimes(1)
   })
 })
 

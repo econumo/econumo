@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { analyticsAllowed } from '@/lib/analyticsPreference'
+import { getSessionUserId, removeToken, setToken } from '@/lib/storage'
 import * as userApi from './user'
 
 const user = {
@@ -62,6 +63,18 @@ it('getUserData unwraps data.user', async () => {
     ),
   )
   await expect(userApi.getUserData()).resolves.toEqual(user)
+})
+
+it('getUserData records the user of a session signed in before the session user was kept', async () => {
+  server.use(
+    http.get('*/api/v1/user/get-user-data', () =>
+      HttpResponse.json({ success: true, message: '', data: { user } }),
+    ),
+  )
+  setToken('eco_ses_old')
+  await userApi.getUserData()
+  expect(getSessionUserId()).toBe(user.id)
+  removeToken()
 })
 
 it('completeOnboarding returns the refreshed user', async () => {

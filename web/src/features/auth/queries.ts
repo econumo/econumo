@@ -16,7 +16,7 @@ export function useLogin() {
       await queryClient.cancelQueries()
       await clearPersistedQueryCache()
       queryClient.clear()
-      setToken(data.token)
+      setToken(data.token, data.user.id)
       // After the token is stored, never before: the probe is fired without
       // awaiting, so an unauthenticated 401 would reach the response
       // interceptor and be read as an expired session.

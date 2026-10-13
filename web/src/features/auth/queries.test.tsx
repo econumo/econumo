@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { getToken } from '@/lib/storage'
+import { getSessionUserId, getToken } from '@/lib/storage'
 import { useConfirmEmail, useLogin, useResendVerification } from './queries'
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -30,6 +30,7 @@ it('stores the token after a successful login', async () => {
   result.current.mutate({ username: 'a@b', password: 'pw' })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(getToken()).toBe('fresh-jwt')
+  expect(getSessionUserId()).toBe('u1')
 })
 
 it('a login drops the previous user\'s cached data before storing the token', async () => {

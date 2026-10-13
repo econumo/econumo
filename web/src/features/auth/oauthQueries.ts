@@ -163,7 +163,7 @@ export function useExchangeHandoff() {
       await queryClient.cancelQueries()
       await clearPersistedQueryCache()
       queryClient.clear()
-      setToken(data.token)
+      setToken(data.token, data.user.id)
       // After the token is stored, for the same reason as the password login
       // (see useLogin): an unawaited probe must not 401 its way into a logout.
       oauthApi.refreshAuthMethodFlags()
