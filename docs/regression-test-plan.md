@@ -369,9 +369,10 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       "Sync bank connections" never appears.
 
 - [ ] Settings → Data group has two rows 📱: "Import & export" (the CSV
-      import/export rows, then the import rows, then "Reload all data" last;
-      dialogs open as before) and "Apple Wallet" (its own page:
-      setup, cards, "Inbox" link; back returns to Settings).
+      import/export rows, then the import rows; dialogs open as before) and
+      "Apple Wallet" (its own page: setup, cards, "Inbox" link; back returns to
+      Settings), followed by "Reload all data" as the group's last row on the
+      Settings page itself (not inside Import & export).
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source); the section flips to
       "Connected" with a seven-step checklist (Install econumo-wallet-v1, Install
@@ -1932,8 +1933,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       `get-account-transaction-list` requests have finished, then go online
       again (or reload) — the requests that follow name only the accounts
       that had not arrived yet, one account per request.
-- [ ] 📱 Settings → Data → Import & export → "Reload all data" (last row, with
-      the hint "Downloads everything from the server again. Use it if
+- [ ] 📱 Settings page → Data group → "Reload all data" (the group's last row,
+      after Import & export and the import rows; not on the Import & export
+      page; with the hint "Downloads everything from the server again. Use it if
       something looks out of date."): no confirmation, the "Reloading all data
       from the server…" toast appears, every account is downloaded again (one
       request per account), and the row is disabled until the download

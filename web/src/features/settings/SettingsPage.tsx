@@ -14,6 +14,7 @@ import { RouterPage } from '@/app/router-pages'
 import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { useUserData, useAccessState } from '@/features/user/queries'
 import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
+import { useFullReload, useFullReloadPending } from '@/features/transactions/useFullReload'
 import { SEMVER } from '@/lib/version'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
@@ -28,14 +29,18 @@ function MenuGroup({ label, children }: { label: string; children: React.ReactNo
 // Vue renders the hub as light-gray card rows in a narrow column
 function MenuRow({
   label,
+  hint,
   to,
   onClick,
+  disabled,
   trailing,
   accent,
 }: {
   label: string
+  hint?: string
   to?: string
   onClick?: () => void
+  disabled?: boolean
   trailing?: React.ReactNode
   // 'hover' tints the row on hover only; 'rest' keeps the accent visible at rest
   accent?: 'hover' | 'rest'
@@ -50,15 +55,22 @@ function MenuRow({
             : 'bg-econumo-card hover:bg-econumo-hover'
       }`}
     >
-      <span>{label}</span>
-      {trailing ?? <ChevronRight className="size-4 text-muted-foreground" />}
+      {hint ? (
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span>{label}</span>
+          <span className="text-xs text-muted-foreground">{hint}</span>
+        </span>
+      ) : (
+        <span>{label}</span>
+      )}
+      {trailing ?? <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
     </span>
   )
   if (to) {
     return <Link to={to}>{inner}</Link>
   }
   return (
-    <button type="button" className="w-full text-left" onClick={onClick}>
+    <button type="button" className="w-full text-left disabled:opacity-60" onClick={onClick} disabled={disabled}>
       {inner}
     </button>
   )
@@ -74,6 +86,8 @@ export function SettingsPage() {
   const access = useAccessState()
   const portal = useOpenBillingPortal()
   const [logoutOpen, setLogoutOpen] = useState(false)
+  const fullReload = useFullReload()
+  const reloading = useFullReloadPending()
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -162,6 +176,12 @@ export function SettingsPage() {
             {isAppleWalletImportEnabled() ? <MenuRow label={t('imports.apple_wallet.menu_item')} to={RouterPage.SETTINGS_APPLE_WALLET} /> : null}
             {isSimpleFINImportEnabled() ? <MenuRow label={t('imports.simplefin.menu_item')} to={RouterPage.SETTINGS_SIMPLEFIN} /> : null}
             {isTransactionImportEnabled() ? <MenuRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} /> : null}
+            <MenuRow
+              label={t('settings.data.reload_all')}
+              hint={t('settings.data.reload_all_hint')}
+              onClick={() => void fullReload('settings')}
+              disabled={reloading}
+            />
           </MenuGroup>
 
         </div>
