@@ -905,7 +905,8 @@
             "personal_details": "Особисті дані",
             "preferences": "Уподобання",
             "security": "Безпека",
-            "privacy": "Конфіденційність"
+            "privacy": "Конфіденційність",
+            "device": "Цей пристрій"
           },
           "currency": {
             "label": "Валюта"

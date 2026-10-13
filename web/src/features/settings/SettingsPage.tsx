@@ -1,4 +1,4 @@
-import { ChevronRight, RefreshCw } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -14,7 +14,6 @@ import { RouterPage } from '@/app/router-pages'
 import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { useUserData, useAccessState } from '@/features/user/queries'
 import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
-import { useFullReload, useFullReloadPending } from '@/features/transactions/useFullReload'
 import { SEMVER } from '@/lib/version'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
@@ -31,14 +30,12 @@ function MenuRow({
   label,
   to,
   onClick,
-  disabled,
   trailing,
   accent,
 }: {
   label: string
   to?: string
   onClick?: () => void
-  disabled?: boolean
   trailing?: React.ReactNode
   // 'hover' tints the row on hover only; 'rest' keeps the accent visible at rest
   accent?: 'hover' | 'rest'
@@ -54,14 +51,14 @@ function MenuRow({
       }`}
     >
       <span>{label}</span>
-      {trailing ?? <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
+      {trailing ?? <ChevronRight className="size-4 text-muted-foreground" />}
     </span>
   )
   if (to) {
     return <Link to={to}>{inner}</Link>
   }
   return (
-    <button type="button" className="w-full text-left disabled:opacity-60" onClick={onClick} disabled={disabled}>
+    <button type="button" className="w-full text-left" onClick={onClick}>
       {inner}
     </button>
   )
@@ -77,8 +74,6 @@ export function SettingsPage() {
   const access = useAccessState()
   const portal = useOpenBillingPortal()
   const [logoutOpen, setLogoutOpen] = useState(false)
-  const fullReload = useFullReload()
-  const reloading = useFullReloadPending()
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -167,12 +162,6 @@ export function SettingsPage() {
             {isAppleWalletImportEnabled() ? <MenuRow label={t('imports.apple_wallet.menu_item')} to={RouterPage.SETTINGS_APPLE_WALLET} /> : null}
             {isSimpleFINImportEnabled() ? <MenuRow label={t('imports.simplefin.menu_item')} to={RouterPage.SETTINGS_SIMPLEFIN} /> : null}
             {isTransactionImportEnabled() ? <MenuRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} /> : null}
-            <MenuRow
-              label={t('settings.data.reload_all')}
-              trailing={<RefreshCw className={`size-4 shrink-0 text-muted-foreground ${reloading ? 'animate-spin' : ''}`} />}
-              onClick={() => void fullReload('settings')}
-              disabled={reloading}
-            />
           </MenuGroup>
 
         </div>

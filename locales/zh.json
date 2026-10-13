@@ -905,7 +905,8 @@
             "personal_details": "个人信息",
             "preferences": "偏好设置",
             "security": "安全",
-            "privacy": "隐私"
+            "privacy": "隐私",
+            "device": "此设备"
           },
           "currency": {
             "label": "货币"

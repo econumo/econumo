@@ -1,16 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
-import { http, HttpResponse } from 'msw'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
-import { queryKeys } from '@/app/queryKeys'
-import { Toaster } from '@/components/ui/sonner'
-import { useTransactions } from '@/features/transactions/queries'
-import { resetRevisions } from '@/features/transactions/revisionTracking'
-import { METRICS, trackEvent } from '@/lib/metrics'
-import { loadBuckets } from '@/lib/transactionStore'
+import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { SettingsPage } from './SettingsPage'
 
@@ -18,17 +11,6 @@ const mockUpdate = vi.hoisted(() => ({ value: null as AvailableUpdate | null }))
 vi.mock('@/hooks/useAvailableUpdate', () => ({
   useAvailableUpdate: () => mockUpdate.value,
 }))
-
-vi.mock('@/lib/metrics', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/metrics')>()),
-  trackEvent: vi.fn(),
-}))
-
-// the application shell keeps the transactions list mounted on every page
-function TransactionsMounted() {
-  useTransactions()
-  return null
-}
 
 function mockViewport(compact: boolean) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -39,11 +21,11 @@ function mockViewport(compact: boolean) {
   }))
 }
 
-function renderPage(retry: boolean | number = false) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry, retryDelay: 60_000 }, mutations: { retry: false } } })
+function renderPage() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
     [
-      { path: '/settings', element: <><SettingsPage /><TransactionsMounted /><Toaster /></> },
+      { path: '/settings', element: <SettingsPage /> },
       { path: '/settings/profile', element: <div>PROFILE PAGE</div> },
       { path: '/settings/budgets', element: <div>BUDGETS PAGE</div> },
       { path: '/settings/data', element: <div>DATA PAGE</div> },
@@ -61,8 +43,6 @@ function renderPage(retry: boolean | number = false) {
 }
 
 beforeEach(() => {
-  resetRevisions()
-  vi.mocked(trackEvent).mockClear()
   localStorage.clear()
   window.econumoConfig = {}
   server.use(...coreHandlers())
@@ -212,144 +192,4 @@ it('the Log out button opens the confirm dialog and confirming navigates to the 
   expect(screen.getByRole('button', { name: 'Stay' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Log out' }))
   expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
-})
-
-describe('Clear cache and reload', () => {
-  it('is the last row of the Data group, below the import rows', async () => {
-    window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
-    renderPage()
-    const row = await screen.findByRole('button', { name: 'Clear cache and reload' })
-    const group = row.closest('nav')!
-    expect(group.lastElementChild).toBe(row)
-    expect(within(group).getByText('Import rules')).toBeInTheDocument()
-  })
-
-  it('is the last row of the Data group with transaction import off too', async () => {
-    renderPage()
-    const row = await screen.findByRole('button', { name: 'Clear cache and reload' })
-    expect(row.closest('nav')!.lastElementChild).toBe(row)
-  })
-
-  it('downloads every account again, one per request, says so and counts it', async () => {
-    const user = userEvent.setup()
-    const asked: (string | null)[] = []
-    const record = ({ request }: { request: Request }) => {
-      const url = new URL(request.url)
-      if (url.pathname.endsWith('/get-account-transaction-list')) asked.push(url.searchParams.get('accountIds'))
-    }
-    server.events.on('request:start', record)
-    onTestFinished(() => server.events.removeListener('request:start', record))
-    const queryClient = renderPage()
-    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
-    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    asked.length = 0
-
-    await user.click(screen.getByRole('button', { name: 'Clear cache and reload' }))
-    expect(await screen.findByText('Clearing the cache and reloading…')).toBeInTheDocument()
-    // the download starts only after the store is cleared, so nothing may be fetching yet
-    await waitFor(() => expect(asked).toEqual(fixtureAccounts.map((a) => a.id)))
-    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    expect(trackEvent).toHaveBeenCalledTimes(1)
-    expect(trackEvent).toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD, { source: 'settings' })
-  })
-
-  it('cannot be pressed again while its reload runs', async () => {
-    const user = userEvent.setup()
-    let release: () => void = () => {}
-    const gate = new Promise<void>((r) => { release = r })
-    const queryClient = renderPage()
-    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
-    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    server.use(http.get('*/api/v1/transaction/get-account-transaction-list', async () => {
-      await gate
-      return undefined
-    }))
-    const row = screen.getByRole('button', { name: 'Clear cache and reload' })
-    await user.click(row)
-    await waitFor(() => expect(row).toBeDisabled())
-    release()
-    await waitFor(() => expect(row).toBeEnabled())
-    expect(trackEvent).toHaveBeenCalledTimes(1)
-  })
-
-  it('stays usable while an ordinary refresh hangs', async () => {
-    const queryClient = renderPage()
-    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
-    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    server.use(http.get('*/api/v1/account/get-account-list', () => new Promise<Response>(() => {})))
-    void queryClient.invalidateQueries()
-    await waitFor(() => expect(queryClient.isFetching({ queryKey: queryKeys.transactions })).toBe(1))
-    expect(screen.getByRole('button', { name: 'Clear cache and reload' })).toBeEnabled()
-  })
-
-  it('is enabled again once the reload fails, while it keeps retrying', async () => {
-    const user = userEvent.setup()
-    const queryClient = renderPage(true)
-    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
-    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    server.use(http.get('*/api/v1/transaction/get-account-transaction-list', () =>
-      HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status: 500 })))
-    const row = screen.getByRole('button', { name: 'Clear cache and reload' })
-    await user.click(row)
-    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.fetchFailureCount).toBe(1))
-    await waitFor(() => expect(row).toBeEnabled())
-    expect(queryClient.isFetching({ queryKey: queryKeys.transactions })).toBe(1)
-  })
-
-  it('a second press during the reload counts nothing and reloads nothing more', async () => {
-    let release: () => void = () => {}
-    const gate = new Promise<void>((r) => { release = r })
-    const queryClient = renderPage()
-    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
-    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    server.use(http.get('*/api/v1/transaction/get-account-transaction-list', async () => {
-      await gate
-      return undefined
-    }))
-    const row = screen.getByRole('button', { name: 'Clear cache and reload' })
-    // two presses before the row can re-render as disabled
-    row.click()
-    row.click()
-    release()
-    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    expect(trackEvent).toHaveBeenCalledTimes(1)
-    expect(screen.getAllByText('Clearing the cache and reloading…')).toHaveLength(1)
-  })
-
-  it('offline, keeps the stored data and says to try again online', async () => {
-    const user = userEvent.setup()
-    const queryClient = renderPage()
-    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
-    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    await waitFor(async () => expect((await loadBuckets('u1')).size).toBe(fixtureAccounts.length))
-    const asked: string[] = []
-    const record = ({ request }: { request: Request }) => {
-      if (request.url.includes('/get-account-transaction-list')) asked.push(request.url)
-    }
-    server.events.on('request:start', record)
-    onTestFinished(() => server.events.removeListener('request:start', record))
-    const offline = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
-    onTestFinished(() => offline.mockRestore())
-
-    await user.click(screen.getByRole('button', { name: 'Clear cache and reload' }))
-    expect(await screen.findByText("You're offline. Clear the cache and reload when you're back online.")).toBeInTheDocument()
-    expect(screen.queryByText('Clearing the cache and reloading…')).not.toBeInTheDocument()
-    expect(trackEvent).not.toHaveBeenCalled()
-    expect((await loadBuckets('u1')).size).toBe(fixtureAccounts.length)
-    expect(asked).toEqual([])
-    expect(screen.getByRole('button', { name: 'Clear cache and reload' })).toBeEnabled()
-  })
-
-  it('unlocks when the connection drops during the reload and the download pauses', async () => {
-    const user = userEvent.setup()
-    const queryClient = renderPage()
-    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
-    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    onlineManager.setOnline(false)
-    onTestFinished(() => onlineManager.setOnline(true))
-    const row = screen.getByRole('button', { name: 'Clear cache and reload' })
-    await user.click(row)
-    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.fetchStatus).toBe('paused'))
-    await waitFor(() => expect(row).toBeEnabled())
-  })
 })
