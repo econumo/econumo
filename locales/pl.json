@@ -898,8 +898,7 @@
           "groups": {
             "personal_details": "Dane osobowe",
             "preferences": "Preferencje",
-            "security": "Bezpieczeństwo",
-            "privacy": "Prywatność"
+            "security": "Bezpieczeństwo"
           },
           "currency": {
             "label": "Waluta"
@@ -991,8 +990,10 @@
             "last_sign_in_method_hint": "To Twoja jedyna metoda logowania, więc nie można jej odłączyć."
           },
           "analytics": {
+            "menu_item": "Statystyki użytkowania",
             "label": "Udostępniaj statystyki użytkowania",
-            "description": "Pomaga nam ulepszać Econumo.\nDane finansowe i informacje osobiste — imię, e-mail — nigdy nie są wysyłane."
+            "description": "Statystyki użytkowania pokazują nam, które funkcje są używane i co warto ulepszyć.",
+            "promise": "Nigdy nie udostępniamy ani nie sprzedajemy Twoich danych. Dane finansowe i informacje osobiste — imię, e-mail — nigdy nie są wysyłane."
           }
         }
       }

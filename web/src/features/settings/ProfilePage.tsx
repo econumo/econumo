@@ -3,7 +3,6 @@ import { Check, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { LanguageDialog } from '@/components/LanguageDialog'
 import { getLocaleOptions, mcpUrl } from '@/lib/config'
@@ -22,6 +21,7 @@ import { useUserData, useUpdateName, useUpdateCurrency, useUpdateAnalytics, user
 import { RecoveryDialog } from '@/features/auth/RecoveryDialog'
 import { usePasswordLoginAvailable } from '@/features/auth/oauthQueries'
 import { SettingsShell } from './SettingsShell'
+import { AnalyticsDialog } from './AnalyticsDialog'
 
 
 export function ProfilePage() {
@@ -41,6 +41,7 @@ export function ProfilePage() {
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [savedVisible, setSavedVisible] = useState(false)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
@@ -172,6 +173,14 @@ export function ProfilePage() {
           <ChevronRight className="size-4" />
         </span>
       </button>
+      <button
+        type="button"
+        className="mt-2 flex w-full max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        onClick={() => setAnalyticsOpen(true)}
+      >
+        {t('user.page.settings.profile.analytics.menu_item')}
+        <ChevronRight className="size-4 text-muted-foreground" />
+      </button>
 
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
         {t('user.page.settings.profile.groups.security')}
@@ -234,23 +243,6 @@ export function ProfilePage() {
         ) : null}
       </div>
 
-      <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-        {t('user.page.settings.profile.groups.privacy')}
-      </p>
-      <div className="flex max-w-md items-center justify-between gap-4 rounded-lg bg-econumo-card px-4 py-3.5">
-        <label htmlFor="profile-analytics" className="text-sm">
-          {t('user.page.settings.profile.analytics.label')}
-          <span className="mt-0.5 block whitespace-pre-line text-xs text-muted-foreground">
-            {t('user.page.settings.profile.analytics.description')}
-          </span>
-        </label>
-        <Switch
-          id="profile-analytics"
-          checked={analyticsOn}
-          onCheckedChange={(checked) => updateAnalytics.mutate(checked)}
-        />
-      </div>
-
       <CurrencyPickerDialog
         open={currencyOpen}
         title={t('user.page.settings.profile.currency.label')}
@@ -265,6 +257,13 @@ export function ProfilePage() {
       />
 
       <LanguageDialog open={languageOpen} onClose={() => setLanguageOpen(false)} />
+
+      <AnalyticsDialog
+        open={analyticsOpen}
+        onClose={() => setAnalyticsOpen(false)}
+        enabled={analyticsOn}
+        onChange={(checked) => updateAnalytics.mutate(checked)}
+      />
 
       <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />
 

@@ -898,8 +898,7 @@
           "groups": {
             "personal_details": "Persoonlijke gegevens",
             "preferences": "Voorkeuren",
-            "security": "Beveiliging",
-            "privacy": "Privacy"
+            "security": "Beveiliging"
           },
           "currency": {
             "label": "Valuta"
@@ -991,8 +990,10 @@
             "last_sign_in_method_hint": "Dit is je enige inlogmethode, dus deze kan niet worden ontkoppeld."
           },
           "analytics": {
+            "menu_item": "Gebruiksstatistieken",
             "label": "Gebruiksstatistieken delen",
-            "description": "Helpt ons Econumo te verbeteren.\nFinanciële gegevens en persoonlijke informatie — naam, e-mail — worden nooit verzonden."
+            "description": "Gebruiksstatistieken laten ons zien welke functies worden gebruikt en wat we hierna moeten verbeteren.",
+            "promise": "We delen of verkopen uw gegevens nooit. Financiële gegevens en persoonlijke informatie — naam, e-mail — worden nooit verzonden."
           }
         }
       }

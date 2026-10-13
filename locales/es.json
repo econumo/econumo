@@ -898,8 +898,7 @@
           "groups": {
             "personal_details": "Datos personales",
             "preferences": "Preferencias",
-            "security": "Seguridad",
-            "privacy": "Privacidad"
+            "security": "Seguridad"
           },
           "currency": {
             "label": "Moneda"
@@ -991,8 +990,10 @@
             "last_sign_in_method_hint": "Este es tu único método de inicio de sesión, por lo que no se puede desvincular."
           },
           "analytics": {
+            "menu_item": "Estadísticas de uso",
             "label": "Compartir estadísticas de uso",
-            "description": "Nos ayuda a mejorar Econumo.\nLos datos financieros y la información personal —nombre, correo electrónico— nunca se envían."
+            "description": "Las estadísticas de uso nos muestran qué funciones se usan y qué mejorar a continuación.",
+            "promise": "Nunca compartimos ni vendemos tus datos. Los datos financieros y la información personal —nombre, correo electrónico— nunca se envían."
           }
         }
       }

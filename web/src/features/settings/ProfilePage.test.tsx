@@ -218,12 +218,18 @@ it('toggles the analytics preference', async () => {
   )
   const user = userEvent.setup()
   renderPage()
-  const toggle = await screen.findByRole('switch', { name: /share usage statistics/i })
+  // the page shows only a plain row, no status; the switch and its explanation live in a dialog
+  expect(screen.queryByRole('switch', { name: /share usage statistics/i })).not.toBeInTheDocument()
+  await user.click(await screen.findByRole('button', { name: 'Usage statistics' }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText(/never share or sell your data/i)).toBeInTheDocument()
+  const toggle = within(dialog).getByRole('switch', { name: /share usage statistics/i })
   expect(toggle).toBeChecked()
 
   await user.click(toggle)
 
   await waitFor(() => expect(body).toEqual({ enabled: false }))
+  await waitFor(() => expect(toggle).not.toBeChecked())
 })
 
 it('logout confirm has the exact copy and navigates', async () => {

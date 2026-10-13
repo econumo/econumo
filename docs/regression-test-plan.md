@@ -1688,17 +1688,19 @@ User C sees none of it.
       token revealed exactly once with copy button; API call with the PAT
       works (e.g. `GET /api/v1/user/get-user-data`); revoked PAT stops working;
       list shows last-used/expiry.
-- [ ] Analytics toggle (Settings → Profile → Privacy, the last group on the
-      page): switching it off persists across a reload; log out and back in —
-      the toggle still reads off; a read-only user (lapsed trial) can still
-      flip it, unlike other writes on that account.
+- [ ] Usage statistics 📱 (Settings → Profile → Preferences, the row after
+      Language): the page shows only a plain row with a chevron — no status,
+      no switch and no explanation text on the page itself. Tapping it opens
+      a dialog (a bottom sheet on a phone) explaining why statistics help and
+      that data is never shared or sold, with the "Share usage statistics"
+      switch showing the current state. Switching it off persists across a
+      reload; log out and back in — the switch still reads off; a read-only
+      user (lapsed trial) can still flip it, unlike other writes on that
+      account. There is no Privacy group on the Profile page any more.
 - [ ] Create a personal token with scope "full" — it works everywhere; an
       "ingest" token (created via "Configure on this iPhone" or the API) is
       rejected with 401 on every non-import route and accepted on
       `import/ingest-apple-wallet-event`.
-      flip it, unlike other writes on that account. Its description renders on
-      TWO lines (the reassurance about financial and personal data starts a new
-      line), in every UI language.
 - [ ] Analytics reach the collector for signed-in sessions only (DevTools →
       Network, filter `t.econumo.com`): the login/register pages load neither
       `twillingate.js` nor send any request; after login the SDK script loads
