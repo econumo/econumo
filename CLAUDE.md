@@ -371,23 +371,30 @@ Lint is oxlint, tests are vitest (`pnpm test`).
 database, `econumo` (`web/src/lib/db.ts`), holds three stores: `importKeys` (the SimpleFIN
 data key, migrated once from the old `econumo-import` database), `accountTransactions`
 (one row per account: its `transactionsRevision` and transactions) and `meta` (`buster`,
-`userId`). `web/src/lib/transactionStore.ts` is the only reader/writer: loads are readonly
-(a readwrite transaction only to wipe another user's or build's data), waits that hold boot
+`userId`, `savedAt`). `web/src/lib/transactionStore.ts` is the only reader/writer: loads
+are readonly (a readwrite transaction only to wipe another user's or build's data), waits that hold boot
 or auth time out after 1.5 s (a slow database is no failure and stays on), background writes
 are never awaited, and errors never surface (a broken IndexedDB turns the store off for the
 session; the sync keeps working in memory). `clearTransactions` (called by
 `clearPersistedQueryCache` on every login and logout, and by a full reload) bumps an epoch
 that fences any in-flight sync so it cannot write the previous user's data back; a stored
 `buster`/`userId` that no longer matches wipes the store on load without an epoch bump. The
-query-cache restore seeds `['transactions']` from IndexedDB inside `restoreClient`. That
+query-cache restore seeds `['transactions']` from IndexedDB inside `restoreClient` whenever
+a session token exists, independent of the localStorage snapshot: `meta.userId` is the owner
+(a snapshot `user` must match it), `meta.buster` must be this build's, and without the
+snapshot's accounts every stored bucket is shown until the refresh sync corrects the set. A
+snapshot of this release past its 24 h `maxAge` is kept (re-stamped) when the store seeds, so
+an offline start after a day away shows data instead of the boot loader. That
 key's `queryFn` is the revision-driven sync
 (`web/src/features/transactions/{sync.ts,revisionTracking.ts}`): it compares the bucket
 revisions with the `transactionsRevision` of `get-account-list` and calls
 `get-account-transaction-list` with `accountIds` naming only the stale accounts (no request
-when none are stale; `accountIds` omitted, i.e. all accounts, when the store is empty, on a
-full reload or with more than 200 stale), then writes the downloaded buckets to the store in
-the background. It reads IndexedDB only while the page holds no synced or restored list (first
-boot, after a login/logout); otherwise the buckets come from memory: the cached list regrouped
+when none are stale). Downloading everything (empty store, full reload, more than 200 stale)
+goes account by account instead: one request per account, at most two in flight, each
+bucket written to the store in the background as it arrives, so an interrupted first load
+resumes with only the missing accounts; the list lands once every account is in. It reads
+IndexedDB only while the page holds no synced or restored list (first boot, after a
+login/logout); otherwise the buckets come from memory: the cached list regrouped
 by account under the revisions it was synced at.
 Hidden-folder accounts are included and pending share invites skipped; against a server
 whose accounts carry no revisions it falls back to `get-transaction-list` (hidden-folder
@@ -395,7 +402,10 @@ account pages then show no transactions). The user's own edits are recorded loca
 a download when the response revision is exactly +1 of the stored one. The sync button
 (`ApplicationLayout`, via `useLongPress`): a tap is an incremental refresh; holding it
 >= 600 ms or Shift+click is a full reload (every account re-downloaded, toast,
-`METRICS.DATA_FULL_RELOAD`).
+`METRICS.DATA_FULL_RELOAD` with `source: 'sync_button'`). The same full reload
+(`useFullReload`, `web/src/features/transactions/useFullReload.ts`) is the last row of
+Settings → Data → Import & export, "Reload all data" (`source: 'settings'`; no confirmation,
+disabled while the transactions load).
 
 **Product analytics rule:** every new user-facing feature/action MUST fire an
 analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen

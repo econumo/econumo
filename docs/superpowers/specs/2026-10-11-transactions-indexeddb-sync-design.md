@@ -32,11 +32,11 @@ accounts refresh.
 | Client storage | One IndexedDB database, `econumo`. Stores: `importKeys` (the SimpleFIN data key, migrated from `econumo-import`), `accountTransactions`, `meta`. |
 | What stays in localStorage | Token, `backendHost`, UI prefs, analytics opt-out, and the TanStack query cache minus `['transactions']`. |
 | Sync button tap | Unchanged call (`invalidateQueries()`); the transactions sync now downloads only accounts whose revision changed. |
-| Sync button long-press | Full reload: wipe stored transactions, download every account, invalidate everything. Toast confirms. Long-press, not double-tap, because impatient repeated tapping would otherwise trigger the most expensive action. |
+| Sync button long-press | Full reload: wipe stored transactions, download every account, invalidate everything. Toast confirms. Long-press, not double-tap, because impatient repeated tapping would otherwise trigger the most expensive action. The same action is the last row of Settings → Data → Import & export ("Reload all data"). |
 | Scheduled full refresh | None. Author name/avatar staleness is fixed at the source (`update-name`/`update-avatar` bump). |
 | IndexedDB failure | Not a separate mode: on any IDB error the sync keeps working in memory for the session and logs a warning. |
 | Hidden-folder accounts | Synced and included in the `['transactions']` list like every other account. Folder visibility no longer affects transactions; the separate `['accountTransactions', id]` query goes away. Global search therefore also finds (and its recent feed shows) hidden-folder transactions, consistent with it already listing hidden-folder accounts. |
-| Request size | No `accountIds` = every accessible account (first load, full reload). Incremental syncs list only the changed accounts. Server caps the list at 200 ids as input validation; the client never chunks — over 200 stale accounts it asks for all. |
+| Request size | Downloading everything (first load, full reload, more than 200 stale accounts) goes account by account: one request per account, at most two in flight, each stored on arrival, so an interrupted first load resumes. Incremental syncs list the changed accounts in one request. Server caps the list at 200 ids as input validation; no `accountIds` (every accessible account) stays supported but the client no longer sends it. |
 | Older servers | Accounts without `transactionsRevision` → the client uses today's full `get-transaction-list` path and stores nothing. |
 
 ## Background (current state)
@@ -205,7 +205,9 @@ stored row), so routine saves (login, options) never cause downloads.
   - `accountTransactions` — keyPath `accountId`; value
     `{ accountId, revision, items: StoredTransaction[], authors: UserDto[] }`
     (`authors` = the response's authors referenced by this bucket's rows).
-  - `meta` — out-of-line key `state`; value `{ buster, userId }`.
+  - `meta` — out-of-line key `state`; value `{ buster, userId, savedAt }`
+    (`savedAt`: when buckets were last written, the seeded list's
+    `dataUpdatedAt`; additive, a missing one reads as unknown).
 - `db.ts` owns `open` / `onupgradeneeded` / `onversionchange` (close the
   connection so another tab's upgrade is never blocked) / a small promise
   `tx()` helper. One cached connection per page.
@@ -222,7 +224,9 @@ stored row), so routine saves (login, options) never cause downloads.
   `FORMAT_VERSION` covers `dev` builds whose version string does not change.
 - `loadBuckets()`, `putBuckets(buckets)`, `deleteBuckets(ids)`,
   `clearTransactions()` (wipes `accountTransactions` + `meta`, leaves
-  `importKeys`).
+  `importKeys`), and `tryLoadStored()` for the boot restore: this build's
+  buckets with the `userId` and `savedAt` from `meta`, read-only (another
+  build's data reads as nothing and is wiped by the next sync).
 - Every IDB failure is caught, logged once (`console.warn`), and turns the
   store into a no-op for the rest of the session; callers never see an error.
   Slowness is no failure: only the waits that hold boot or a sign-in/out (a
@@ -242,16 +246,29 @@ stored row), so routine saves (login, options) never cause downloads.
    restored list (first boot, after a login/logout); otherwise from memory
    (the cached list regrouped by account under the revisions it was synced
    at), so a sync never re-reads the whole store. Collect the accounts that have no bucket or whose revision
-   differs. Download them with one `get-account-transaction-list` request:
-   with `accountIds` listing them, or with **no** `accountIds` when it is a
-   full reload, there are no buckets yet, or more than 200 are stale. Nothing
-   stale → no request. The response rebuilds the buckets of its `revisions`
-   keys: a row belongs to account A's bucket when its `accountId` or
-   `accountRecipientId` is A.
+   differs (every account on a full reload). Nothing stale → no request.
+   - **Downloading everything** (a full reload, no buckets yet, or more than
+     200 stale) goes **account by account**: one
+     `get-account-transaction-list?accountIds=<id>` per stale account, at most
+     two in flight, started in the accounts list order. Each account's bucket
+     is built from its own response (its revision included) and stored as soon
+     as it arrives (a background write, epoch-fenced, never awaited). The list
+     lands only once every account is in. A failed request fails the sync
+     (the usual retry policy) without starting further requests, while the one
+     in flight still lands and is stored; a cancel starts no further request.
+     So an interrupted first load resumes: the next sync finds the finished
+     accounts at their current revision and downloads only the rest.
+   - **Otherwise** (an incremental refresh of up to 200 accounts) one request
+     with `accountIds` listing them.
+
+   A response rebuilds the buckets of the accounts it was asked for: a row
+   belongs to account A's bucket when its `accountId` or `accountRecipientId`
+   is A.
 3. Delete buckets whose account is no longer in the accounts list (share
    revoked, account deleted, account left) or was requested (explicitly, or
    implicitly by an all-accounts request) but is absent from `revisions`.
-4. Persist the downloaded buckets, then assemble the list from **every**
+4. Persist the downloaded buckets (account by account as they arrive, or
+   the one request's at once), then assemble the list from **every**
    bucket, hidden-folder accounts included, deduplicated by id (a transfer
    between two accounts sits in both buckets), each row's `author` filled from
    the bucket's `authors`. Sorting stays in `select: byDateDesc`.
@@ -296,13 +313,29 @@ transactions.
 - `['transactions']` is excluded from the localStorage persister
   (`shouldDehydrateQuery`).
 - The persister used by `PersistQueryClientProvider` is wrapped: after the
-  localStorage restore, `restoreClient` loads the buckets and, when the
-  restored cache holds `user` and `accounts` matching the store's
-  `userId`, seeds `['transactions']` with the assembled list (`updatedAt` =
-  when it was saved). This runs inside the existing restore, so `isRestoring`
-  still suppresses the boot loader and the app starts from local data.
-- `refreshRestoredQueries` then invalidates as today; the transactions sync
-  downloads only accounts whose revision moved.
+  localStorage restore, `restoreClient` seeds `['transactions']` from
+  IndexedDB **whenever a session token exists**, whether or not there is a
+  snapshot and however old it is. This runs inside the existing restore, so
+  `isRestoring` still suppresses the boot loader, and the load keeps the
+  1.5 s limit.
+  - Owner: the store's `meta.userId`. Every login and logout wipes the store,
+    so `meta` names the session's user; a snapshot that holds `user` must
+    match it or nothing is seeded. No token, nothing seeded.
+  - Build: `meta.buster` must be the current one (a release wipes, as before).
+  - Accounts: when the snapshot holds `accounts`, only their buckets (pending
+    invites skipped, buckets of accounts no longer listed deleted); without
+    them every stored bucket is shown and the sync that follows corrects the
+    set (gone accounts dropped, new ones downloaded). A snapshot whose
+    accounts carry no revisions (an older server) seeds nothing.
+  - Snapshot age: a snapshot of this release older than the 24 h `maxAge` is
+    kept, re-stamped, when the store seeds; without its accounts and the rest
+    the boot loader would cover the seeded list on an offline start after a
+    day away. A snapshot of another release is dropped and the seeded list
+    is restored alone. `updatedAt` = the snapshot's time for a fresh
+    snapshot, else `meta.savedAt`.
+- `refreshRestoredQueries` then invalidates as today (also when the seeded
+  list is the only restored query); the transactions sync fetches the
+  accounts itself and downloads only accounts whose revision moved.
 
 ### 12. Sync button
 
@@ -319,6 +352,14 @@ Both sidebar variants in `ApplicationLayout.tsx`:
   keyboard and desktop users.
 - Tooltip gains a second line `settings.sync.hold_hint` ("Hold to reload
   everything").
+- The same full reload (one `useFullReload()` hook,
+  `web/src/features/transactions/useFullReload.ts`) is the **last row of
+  Settings → Data → Import & export** (`/settings/data`,
+  `ImportsDataPage`): "Reload all data" (`settings.data.reload_all`) with the
+  muted hint `settings.data.reload_all_hint` ("Downloads everything from the
+  server again. Use it if something looks out of date."). No confirmation:
+  it only downloads again. The row is disabled while the transactions load,
+  so it cannot be triggered twice.
 
 ### 13. Logout / login
 
@@ -329,14 +370,15 @@ skip it (a 401 that sends the user to the login page).
 
 ## Analytics
 
-New key `DATA_FULL_RELOAD: 'appDataFullReload'` in `METRICS`, fired when the
-long-press (or Shift+click) full reload starts. The plain tap fires nothing
-(unchanged).
+New key `DATA_FULL_RELOAD: 'appDataFullReload'` in `METRICS`, fired when a
+full reload starts, with `{ source: 'sync_button' }` (long press or
+Shift+click) or `{ source: 'settings' }` (the Import & export page). The plain tap
+fires nothing (unchanged).
 
 ## i18n
 
 Two keys under `settings.sync` in all 11 catalogues: `full_reload`,
-`hold_hint`.
+`hold_hint`; two under `settings.data`: `reload_all`, `reload_all_hint`.
 
 ## Testing (frontend, vitest + `fake-indexeddb` dev dependency)
 
@@ -346,8 +388,10 @@ Two keys under `settings.sync` in all 11 catalogues: `full_reload`,
   no-op with one warning.
 - Sync `queryFn`: missing bucket → download; equal revision → no request;
   changed revision → download; several stale accounts → one request listing
-  them; 201 stale accounts, a first load and a full reload → one request with
-  no `accountIds`; removed account, or one absent from `revisions` → bucket
+  them; 201 stale accounts, a first load and a full reload → one request per
+  account, at most two in flight, each stored on arrival; a failure keeps
+  what arrived and the next sync downloads only the rest; a cancel starts no
+  further request; removed account, or one absent from `revisions` → bucket
   deleted; hidden-folder account's rows are in the list; transfer between two
   accounts appears once; authors filled in; older server → legacy
   `get-transaction-list`, nothing stored; full reload downloads every account.
@@ -356,9 +400,13 @@ Two keys under `settings.sync` in all 11 catalogues: `full_reload`,
 - +1 shortcut: no download at exactly +1; download at +2.
 - Write-through: a category-merge patch reaches IndexedDB.
 - Boot (`ApplicationLayout.test.tsx`): restored from IndexedDB with no boot
-  loader; no stale transactions after a user switch.
+  loader, also with a snapshot older than 24 h and with none at all; no
+  stale transactions after a user switch; nothing seeded without a token,
+  for a snapshot of another user, or from another build's store.
 - Sync button: tap → incremental; long-press and Shift+click → full reload,
-  toast, metric; a short press does not trigger the full reload.
+  toast, metric (`source: 'sync_button'`); a short press does not trigger the
+  full reload. "Reload all data" is the last row of Import & export and does the
+  same (`source: 'settings'`).
 
 ## Docs
 
@@ -368,7 +416,10 @@ Two keys under `settings.sync` in all 11 catalogues: `full_reload`,
   account's history; a hidden-folder account's page shows its transactions,
   and global search finds them;
   logout → login as another user shows none of the previous data; sync tap
-  refreshes; sync long-press 📱 / Shift+click reloads everything with a toast.
+  refreshes; sync long-press 📱 / Shift+click reloads everything with a toast;
+  an offline start more than 24 h after the last visit still shows
+  transactions 📱; an interrupted first load resumes; Settings → Data →
+  Import & export → Reload all data.
 - `CLAUDE.md`: the revision counter and the "bump inside the repository
   method" rule with the guard suite; the `econumo` IndexedDB layout; the new
   endpoint in the transaction feature.

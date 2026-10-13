@@ -353,8 +353,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
 - [ ] Both import providers off (`ECONUMO_IMPORT_APPLE_WALLET` and
       `ECONUMO_IMPORT_SIMPLEFIN` unset) 📱: Settings → Data shows only
       "Import & export"; no Apple Wallet, SimpleFIN or Import rules rows.
-      Import & export lists only the CSV import/export rows (no "Sync bank
-      connections", "Import rules" or "Import history").
+      Import & export lists only the CSV import/export rows and "Reload all
+      data" (no "Sync bank connections", "Import rules" or "Import history").
       `/settings/apple-wallet`, `/settings/simplefin`, `/settings/import-rules`
       and `/imports/runs` show the not-found page. The Inbox shows only sharing
       invites (or "All caught up") and no request to `/api/v1/import/*` is made
@@ -368,8 +368,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       rules but no SimpleFIN; `/settings/simplefin` shows the not-found page and
       "Sync bank connections" never appears.
 
-- [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
-      import/export rows; dialogs open as before) and "Apple Wallet" (its own page:
+- [ ] Settings → Data group has two rows 📱: "Import & export" (the CSV
+      import/export rows, then the import rows, then "Reload all data" last;
+      dialogs open as before) and "Apple Wallet" (its own page:
       setup, cards, "Inbox" link; back returns to Settings).
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source); the section flips to
@@ -1906,7 +1907,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the
       changed account (a tap with nothing changed sends no such request; a first
-      load or a full reload omits `accountIds` and downloads every account).
+      load or a full reload downloads every account, one request per account
+      with a single id in `accountIds`, at most two at a time).
 - [ ] 📱 Sync button hold (about 0.6 s) or Shift+click on desktop = full
       reload: every account's transactions are downloaded again, a toast
       confirms the reload, and a short tap does not trigger it.
@@ -1915,6 +1917,21 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       the transaction lists and global search still show the previously
       synced transactions; the sync button shows its failure state instead of
       an empty list.
+- [ ] 📱 Offline start more than 24 h after the last visit: use the app, close
+      it, wait over a day (or set the device clock forward 25 h), go offline
+      and open it — accounts and transactions show at once, with no "Loading
+      your data" screen; going online refreshes them in the background.
+- [ ] Interrupted first load resumes: on a fresh browser profile (or after a
+      full reload), throttle the network and go offline once a few
+      `get-account-transaction-list` requests have finished, then go online
+      again (or reload) — the requests that follow name only the accounts
+      that had not arrived yet.
+- [ ] 📱 Settings → Data → Import & export → "Reload all data" (last row, with
+      the hint "Downloads everything from the server again. Use it if
+      something looks out of date."): no confirmation, the "Reloading all data
+      from the server…" toast appears, every account is downloaded again (one
+      request per account), and the row is disabled until the download
+      finishes.
 - [ ] Cross-device edit: with the app open on devices A and B, edit or add a
       transaction on A, then tap sync on B (or refocus B after 10 minutes) —
       B shows the change without a manual reload; only the touched account
