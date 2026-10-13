@@ -573,6 +573,7 @@
         "complete": "Installatie voltooid"
       },
       "same_named_cards": "Kaarten met dezelfde naam in Wallet komen hier als één kaart binnen.",
+      "video": "Bekijk de instructievideo:",
       "cards": {
         "header": "Kaarten",
         "empty": "Nog geen kaarten — de eerste Apple Pay-betaling voegt er een toe.",

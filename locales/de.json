@@ -573,6 +573,7 @@
         "complete": "Einrichtung abgeschlossen"
       },
       "same_named_cards": "Karten mit gleichem Namen in Wallet erscheinen hier als eine Karte.",
+      "video": "Einrichtungsvideo ansehen:",
       "cards": {
         "header": "Karten",
         "empty": "Noch keine Karten — die erste Apple-Pay-Zahlung fügt eine hinzu.",

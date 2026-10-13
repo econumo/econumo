@@ -573,6 +573,7 @@
         "complete": "Configuration terminée"
       },
       "same_named_cards": "Les cartes portant le même nom dans Wallet arrivent ici comme une seule carte.",
+      "video": "Voir la vidéo de configuration :",
       "cards": {
         "header": "Cartes",
         "empty": "Pas encore de carte — le premier paiement Apple Pay en ajoutera une.",

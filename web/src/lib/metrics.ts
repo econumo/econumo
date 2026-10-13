@@ -144,6 +144,7 @@ export const METRICS = {
   IMPORT_SHORTCUT_TEST: 'appImportShortcutTest',
   IMPORT_SHORTCUT_CHECK: 'appImportShortcutCheck',
   IMPORT_SETUP_STEP: 'appImportSetupStep',
+  IMPORT_SETUP_VIDEO: 'appImportSetupVideo',
   IMPORT_SYNC: 'appImportSync',
   IMPORT_RULE_CREATE: 'appImportRuleCreate',
   IMPORT_RULE_APPLY: 'appImportRuleApply',

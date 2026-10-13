@@ -70,6 +70,8 @@ it('before connecting it explains what is needed and previews the steps; connect
   renderSetup(null)
   expect(screen.getByText('An iPhone with Apple Pay')).toBeInTheDocument()
   expect(screen.getByText(/never card numbers/)).toBeInTheDocument()
+  // no videos are configured yet, so the link stays hidden
+  expect(screen.queryByText(/Watch the setup video/)).not.toBeInTheDocument()
   const preview = screen.getByRole('heading', { name: 'How it works' }).parentElement as HTMLElement
   expect(within(preview).getAllByRole('listitem')).toHaveLength(5)
   await user.click(screen.getByRole('button', { name: 'Set up Apple Wallet' }))

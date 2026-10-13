@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, Download, ExternalLink, Loader2 } from 'lucide-react'
+import { Check, ChevronDown, CirclePlay, Download, ExternalLink, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ImportSourceDto } from '@/api/dto/imports'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -12,6 +12,7 @@ import { backendHost, getWebsiteUrl } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { isIOS } from '@/lib/platform'
 import { useCreateImportSource, useDeleteImportSource } from './queries'
+import { SETUP_VIDEOS } from './setupVideos'
 import { STEPS, forgetSetupTicks, type StepId, type WalletSetup } from './walletSetup'
 
 // iOS names an installed shortcut after the file it was imported from, so
@@ -49,6 +50,24 @@ function ExternalButton({ href, onClick, variant = 'outline', download = false, 
   )
 }
 
+function SetupVideos() {
+  const { t } = useTranslation()
+  if (SETUP_VIDEOS.length === 0) {
+    return null
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+      <span className="flex items-center gap-2 text-muted-foreground"><CirclePlay className="size-4 text-econumo-purple" />{t('imports.apple_wallet.video')}</span>
+      {SETUP_VIDEOS.map((v) => (
+        <a key={v.label} href={v.url} target="_blank" rel="noopener" className="text-primary underline-offset-2 hover:underline"
+          onClick={() => trackEvent(METRICS.IMPORT_SETUP_VIDEO, { version: v.label })}>
+          {v.label}
+        </a>
+      ))}
+    </div>
+  )
+}
+
 export function AppleWalletConnect() {
   const { t } = useTranslation()
   const createSource = useCreateImportSource()
@@ -71,6 +90,7 @@ export function AppleWalletConnect() {
           ))}
         </ol>
       </div>
+      <SetupVideos />
       <p className="text-xs text-muted-foreground">{t('imports.apple_wallet.connect_intro.privacy')}</p>
       <Button type="button" className="h-11" disabled={createSource.isPending} onClick={() => createSource.mutate({ provider: 'apple-wallet', name: 'iPhone' })}>
         {t('imports.apple_wallet.connect')}
@@ -215,6 +235,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
   return (
     <div className="flex flex-col gap-1">
       {ios ? null : <InfoBox>{t('imports.apple_wallet.steps.hint_desktop')}</InfoBox>}
+      <SetupVideos />
       <ol className="flex flex-col">
         {STEPS.map((id, i) => {
           const isOpen = open === id

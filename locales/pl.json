@@ -573,6 +573,7 @@
         "complete": "Konfiguracja zakończona"
       },
       "same_named_cards": "Karty o tej samej nazwie w Wallet trafiają tu jako jedna karta.",
+      "video": "Obejrzyj film o konfiguracji:",
       "cards": {
         "header": "Karty",
         "empty": "Brak kart — pierwsza płatność Apple Pay doda kartę.",
