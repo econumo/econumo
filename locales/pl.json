@@ -291,8 +291,7 @@
       "full_reload_offline": "Jesteś offline. Wczytaj ponownie wszystkie dane, gdy wrócisz do sieci."
     },
     "data": {
-      "reload_all": "Wczytaj ponownie wszystkie dane",
-      "reload_all_hint": "Pobiera wszystko ponownie z serwera. Użyj tej opcji, jeśli coś wygląda na nieaktualne."
+      "reload_all": "Wczytaj ponownie wszystkie dane z serwera"
     },
     "accounts": {
       "menu_item": "Konta",

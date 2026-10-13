@@ -215,11 +215,10 @@ it('the Log out button opens the confirm dialog and confirming navigates to the 
 })
 
 describe('Reload all data', () => {
-  it('is the last row of the Data group, with its hint, below the import rows', async () => {
+  it('is the last row of the Data group, below the import rows', async () => {
     window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
     renderPage()
-    const row = await screen.findByRole('button', { name: /Reload all data/ })
-    expect(row).toHaveTextContent('Downloads everything from the server again. Use it if something looks out of date.')
+    const row = await screen.findByRole('button', { name: 'Reload all data from server' })
     const group = row.closest('nav')!
     expect(group.lastElementChild).toBe(row)
     expect(within(group).getByText('Import rules')).toBeInTheDocument()
@@ -247,8 +246,9 @@ describe('Reload all data', () => {
 
     await user.click(screen.getByRole('button', { name: /Reload all data/ }))
     expect(await screen.findByText('Reloading all data from the server…')).toBeInTheDocument()
+    // the download starts only after the store is cleared, so nothing may be fetching yet
+    await waitFor(() => expect(asked).toEqual(fixtureAccounts.map((a) => a.id)))
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    expect(asked).toEqual(fixtureAccounts.map((a) => a.id))
     expect(trackEvent).toHaveBeenCalledTimes(1)
     expect(trackEvent).toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD, { source: 'settings' })
   })

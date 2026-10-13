@@ -291,8 +291,7 @@
       "full_reload_offline": "Sie sind offline. Laden Sie alle Daten neu, sobald Sie wieder online sind."
     },
     "data": {
-      "reload_all": "Alle Daten neu laden",
-      "reload_all_hint": "Lädt alles erneut vom Server herunter. Nutzen Sie dies, wenn etwas veraltet wirkt."
+      "reload_all": "Alle Daten vom Server neu laden"
     },
     "accounts": {
       "menu_item": "Konten",

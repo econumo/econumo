@@ -291,8 +291,7 @@
       "full_reload_offline": "Estás sin conexión. Vuelve a cargar todos los datos cuando vuelvas a estar en línea."
     },
     "data": {
-      "reload_all": "Recargar todos los datos",
-      "reload_all_hint": "Vuelve a descargar todo desde el servidor. Úsalo si algo parece desactualizado."
+      "reload_all": "Recargar todos los datos del servidor"
     },
     "accounts": {
       "menu_item": "Cuentas",

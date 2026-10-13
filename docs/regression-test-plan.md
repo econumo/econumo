@@ -1933,10 +1933,10 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       `get-account-transaction-list` requests have finished, then go online
       again (or reload) — the requests that follow name only the accounts
       that had not arrived yet, one account per request.
-- [ ] 📱 Settings page → Data group → "Reload all data" (the group's last row,
-      after Import & export and the import rows; not on the Import & export
-      page; with the hint "Downloads everything from the server again. Use it if
-      something looks out of date."): no confirmation, the "Reloading all data
+- [ ] 📱 Settings page → Data group → "Reload all data from server" (the group's
+      last row, after Import & export and the import rows; not on the Import &
+      export page; no hint; a refresh icon instead of the arrow, spinning while it
+      runs): no confirmation, the "Reloading all data
       from the server…" toast appears, every account is downloaded again (one
       request per account), and the row is disabled until the download
       finishes (or first fails); pressing it or holding the sync button again

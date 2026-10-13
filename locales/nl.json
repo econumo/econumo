@@ -291,8 +291,7 @@
       "full_reload_offline": "Je bent offline. Laad alle gegevens opnieuw zodra je weer online bent."
     },
     "data": {
-      "reload_all": "Alle gegevens opnieuw laden",
-      "reload_all_hint": "Downloadt alles opnieuw van de server. Gebruik dit als iets verouderd lijkt."
+      "reload_all": "Alle gegevens opnieuw van de server laden"
     },
     "accounts": {
       "menu_item": "Rekeningen",

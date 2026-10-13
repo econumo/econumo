@@ -291,8 +291,7 @@
       "full_reload_offline": "您当前处于离线状态。请在恢复联网后重新加载所有数据。"
     },
     "data": {
-      "reload_all": "重新加载所有数据",
-      "reload_all_hint": "从服务器重新下载全部数据。如果有内容看起来不是最新的，请使用此功能。"
+      "reload_all": "从服务器重新加载所有数据"
     },
     "accounts": {
       "menu_item": "账户",

@@ -291,8 +291,7 @@
       "full_reload_offline": "You're offline. Reload all data when you're back online."
     },
     "data": {
-      "reload_all": "Reload all data",
-      "reload_all_hint": "Downloads everything from the server again. Use it if something looks out of date."
+      "reload_all": "Reload all data from server"
     },
     "accounts": {
       "menu_item": "Accounts",

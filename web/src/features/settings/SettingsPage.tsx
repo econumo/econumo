@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -29,7 +29,6 @@ function MenuGroup({ label, children }: { label: string; children: React.ReactNo
 // Vue renders the hub as light-gray card rows in a narrow column
 function MenuRow({
   label,
-  hint,
   to,
   onClick,
   disabled,
@@ -37,7 +36,6 @@ function MenuRow({
   accent,
 }: {
   label: string
-  hint?: string
   to?: string
   onClick?: () => void
   disabled?: boolean
@@ -55,14 +53,7 @@ function MenuRow({
             : 'bg-econumo-card hover:bg-econumo-hover'
       }`}
     >
-      {hint ? (
-        <span className="flex min-w-0 flex-col gap-0.5">
-          <span>{label}</span>
-          <span className="text-xs text-muted-foreground">{hint}</span>
-        </span>
-      ) : (
-        <span>{label}</span>
-      )}
+      <span>{label}</span>
       {trailing ?? <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
     </span>
   )
@@ -178,7 +169,7 @@ export function SettingsPage() {
             {isTransactionImportEnabled() ? <MenuRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} /> : null}
             <MenuRow
               label={t('settings.data.reload_all')}
-              hint={t('settings.data.reload_all_hint')}
+              trailing={<RefreshCw className={`size-4 shrink-0 text-muted-foreground ${reloading ? 'animate-spin' : ''}`} />}
               onClick={() => void fullReload('settings')}
               disabled={reloading}
             />

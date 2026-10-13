@@ -291,8 +291,7 @@
       "full_reload_offline": "Está offline. Recarregue todos os dados quando voltar a estar online."
     },
     "data": {
-      "reload_all": "Recarregar todos os dados",
-      "reload_all_hint": "Transfere tudo novamente do servidor. Use esta opção se algo parecer desatualizado."
+      "reload_all": "Recarregar todos os dados do servidor"
     },
     "accounts": {
       "menu_item": "Contas",

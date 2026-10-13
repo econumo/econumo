@@ -409,7 +409,7 @@ a download when the response revision is exactly +1 of the stored one. The sync 
 >= 600 ms or Shift+click is a full reload (every account re-downloaded, toast,
 `METRICS.DATA_FULL_RELOAD` with `source: 'sync_button'`). The same full reload
 (`useFullReload`, `web/src/features/transactions/useFullReload.ts`) is the last row of
-the Settings page's Data group (not inside Import & export), "Reload all data" (`source: 'settings'`; no confirmation).
+the Settings page's Data group (not inside Import & export), "Reload all data from server" (`source: 'settings'`; no confirmation).
 The hook ignores a second trigger while its reload runs (until the download lands or fails
 once, or pauses offline), and the row is disabled for that time. Offline it clears nothing,
 only toasting `settings.sync.full_reload_offline`.

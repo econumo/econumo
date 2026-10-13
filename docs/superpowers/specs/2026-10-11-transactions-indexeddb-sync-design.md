@@ -32,7 +32,7 @@ accounts refresh.
 | Client storage | One IndexedDB database, `econumo`. Stores: `importKeys` (the SimpleFIN data key, migrated from `econumo-import`), `accountTransactions`, `meta`. |
 | What stays in localStorage | Token, `backendHost`, UI prefs, analytics opt-out, and the TanStack query cache minus `['transactions']`. |
 | Sync button tap | Unchanged call (`invalidateQueries()`); the transactions sync now downloads only accounts whose revision changed. |
-| Sync button long-press | Full reload: wipe stored transactions, download every account, invalidate everything. Toast confirms. Long-press, not double-tap, because impatient repeated tapping would otherwise trigger the most expensive action. The same action is the last row of the Data group on the Settings page ("Reload all data"). |
+| Sync button long-press | Full reload: wipe stored transactions, download every account, invalidate everything. Toast confirms. Long-press, not double-tap, because impatient repeated tapping would otherwise trigger the most expensive action. The same action is the last row of the Data group on the Settings page ("Reload all data from server"). |
 | Scheduled full refresh | None. Author name/avatar staleness is fixed at the source (`update-name`/`update-avatar` bump). |
 | IndexedDB failure | Not a separate mode: on any IDB error the sync keeps working in memory for the session and logs a warning. |
 | Hidden-folder accounts | Synced and included in the `['transactions']` list like every other account. Folder visibility no longer affects transactions; the separate `['accountTransactions', id]` query goes away. Global search therefore also finds (and its recent feed shows) hidden-folder transactions, consistent with it already listing hidden-folder accounts. |
@@ -369,9 +369,9 @@ Both sidebar variants in `ApplicationLayout.tsx`:
 - The same full reload (one `useFullReload()` hook,
   `web/src/features/transactions/useFullReload.ts`) is the **last row of
   the Data group on the Settings hub page** (`/settings`, `SettingsPage`; not
-  inside Import & export): "Reload all data" (`settings.data.reload_all`) with the
-  muted hint `settings.data.reload_all_hint` ("Downloads everything from the
-  server again. Use it if something looks out of date."). No confirmation:
+  inside Import & export): "Reload all data from server" (`settings.data.reload_all`),
+  no hint, with a refresh icon instead of the navigation chevron (it spins while the
+  reload runs) so it reads as an action. No confirmation:
   it only downloads again. The hook ignores a second trigger (from either
   place) while its reload runs, and the row is disabled for that time: until
   the transactions download lands, fails once or pauses for a lost
@@ -396,7 +396,7 @@ fires nothing (unchanged).
 ## i18n
 
 Three keys under `settings.sync` in all 11 catalogues: `full_reload`,
-`hold_hint`, `full_reload_offline`; two under `settings.data`: `reload_all`, `reload_all_hint`.
+`hold_hint`, `full_reload_offline`; one under `settings.data`: `reload_all`.
 
 ## Testing (frontend, vitest + `fake-indexeddb` dev dependency)
 
