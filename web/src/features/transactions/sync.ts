@@ -60,10 +60,10 @@ function toBuckets(res: AccountTransactionListDto, requested: string[]): Downloa
 // so the next sync has less left to download.
 async function downloadEach(ids: string[], input: SyncInput): Promise<Download> {
   const out: Download = { changed: [], gone: [] }
+  const failures: unknown[] = []
   let next = 0
-  let failure: { error: unknown } | null = null
   const worker = async () => {
-    while (!failure && !input.signal?.aborted && next < ids.length) {
+    while (failures.length === 0 && !input.signal?.aborted && next < ids.length) {
       const id = ids[next++]
       try {
         const part = toBuckets(await input.fetch([id]), [id])
@@ -71,13 +71,13 @@ async function downloadEach(ids: string[], input: SyncInput): Promise<Download> 
         out.gone.push(...part.gone)
         input.persist?.(part.changed)
       } catch (error) {
-        failure ??= { error }
+        failures.push(error)
       }
     }
   }
   await Promise.all(Array.from({ length: Math.min(PARALLEL, ids.length) }, worker))
-  if (failure) {
-    throw (failure as { error: unknown }).error
+  if (failures.length > 0) {
+    throw failures[0]
   }
   if (input.signal?.aborted) {
     throw new DOMException('The sync was cancelled', 'AbortError')

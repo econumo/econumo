@@ -6,7 +6,7 @@ import type { AccountDto } from '@/api/dto/account'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys } from '@/app/queryKeys'
 import { IDBFactory } from 'fake-indexeddb'
-import { STORE_TIMEOUT_MS, loadBuckets, putBuckets, resetTransactionStoreForTests, type Bucket } from '@/lib/transactionStore'
+import { STORE_TIMEOUT_MS, clearTransactions, loadBuckets, putBuckets, resetTransactionStoreForTests, type Bucket } from '@/lib/transactionStore'
 import { STORE_ACCOUNT_TRANSACTIONS, STORE_META, dbRequest, resetDbForTests } from '@/lib/db'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { delayOpen, delayTransactionCompletion } from '@/test/idbDelay'
@@ -147,6 +147,31 @@ it('after a partial first load, the next sync downloads each missing account on 
   expect(calls).toEqual(['a3', 'a-hidden'])
   expect(result.current.list.data!.map((t) => t.id)).toEqual(['t1', 't2'])
   await waitFor(async () => expect([...(await loadBuckets('u1')).keys()].sort()).toEqual(['a-hidden', 'a1', 'a2', 'a3']))
+})
+
+it('a full reload that fails part-way resumes from what arrived, not from the old list', async () => {
+  const three = wireAccounts.filter((a) => a.id !== 'a-hidden')
+  const { queryClient, result } = await booted({ accounts: three })
+  expect(calls).toEqual(['a1', 'a2', 'a3'])
+  let failA3 = true
+  server.use(http.get('*/api/v1/transaction/get-account-transaction-list', ({ request }) => {
+    if (failA3 && new URL(request.url).searchParams.get('accountIds') === 'a3') {
+      failA3 = false
+      return HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status: 500 })
+    }
+    return undefined
+  }))
+  await clearTransactions()
+  requestFullReload()
+  await act(() => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }))
+  await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('error'))
+  expect(calls).toEqual(['a1', 'a2', 'a3', 'a1', 'a2', 'a3'])
+  // the retry
+  await act(() => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }))
+  await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
+  expect(calls).toEqual(['a1', 'a2', 'a3', 'a1', 'a2', 'a3', 'a3'])
+  expect(result.current.list.data!.map((t) => t.id)).toEqual(['t1', 't2'])
+  await waitFor(async () => expect([...(await loadBuckets('u1')).keys()].sort()).toEqual(['a1', 'a2', 'a3']))
 })
 
 it('cancelling the first load starts no further account download', async () => {

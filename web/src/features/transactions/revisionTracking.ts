@@ -103,6 +103,11 @@ function flushWriteThrough(queryClient: QueryClient): Promise<void> {
     return Promise.resolve()
   }
   dirty = false
+  // during a full reload the cached rows are what is being replaced
+  if (!inMemory) {
+    marked.clear()
+    return Promise.resolve()
+  }
   const data = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)
   const userId = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)?.id
   if (!data || !userId) {
@@ -217,8 +222,12 @@ export function beginLocalWrite(queryClient: QueryClient): boolean {
   return false
 }
 
+// The sync stops trusting the cached list: a retry after a failed reload
+// reads the store, which holds what arrived, and downloads only the rest.
 export function requestFullReload(): void {
   fullReload = true
+  inMemory = false
+  landing = null
 }
 
 export function consumeFullReload(): boolean {
