@@ -905,8 +905,7 @@
             "personal_details": "Datos personales",
             "preferences": "Preferencias",
             "security": "Seguridad",
-            "privacy": "Privacidad",
-            "device": "Este dispositivo"
+            "privacy": "Privacidad"
           },
           "currency": {
             "label": "Moneda"

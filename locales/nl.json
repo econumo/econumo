@@ -905,8 +905,7 @@
             "personal_details": "Persoonlijke gegevens",
             "preferences": "Voorkeuren",
             "security": "Beveiliging",
-            "privacy": "Privacy",
-            "device": "Dit apparaat"
+            "privacy": "Privacy"
           },
           "currency": {
             "label": "Valuta"

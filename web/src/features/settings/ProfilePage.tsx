@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, RefreshCw } from 'lucide-react'
+import { Check, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Input } from '@/components/ui/input'
@@ -21,7 +21,6 @@ import { UserOptions } from '@/api/dto/user'
 import { useUserData, useUpdateName, useUpdateCurrency, useUpdateAnalytics, userCurrencyId, userOption } from '@/features/user/queries'
 import { RecoveryDialog } from '@/features/auth/RecoveryDialog'
 import { usePasswordLoginAvailable } from '@/features/auth/oauthQueries'
-import { useFullReload, useFullReloadPending } from '@/features/transactions/useFullReload'
 import { SettingsShell } from './SettingsShell'
 
 
@@ -50,8 +49,6 @@ export function ProfilePage() {
   const passwordLogin = usePasswordLoginAvailable()
   useServerConfig((s) => s.revision)
   const connectedAppsAvailable = mcpUrl() !== ''
-  const fullReload = useFullReload()
-  const reloading = useFullReloadPending()
 
   useEffect(() => {
     if (user) {
@@ -252,21 +249,6 @@ export function ProfilePage() {
           checked={analyticsOn}
           onCheckedChange={(checked) => updateAnalytics.mutate(checked)}
         />
-      </div>
-
-      <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-        {t('user.page.settings.profile.groups.device')}
-      </p>
-      <div className="flex max-w-md flex-col gap-2">
-        <button
-          type="button"
-          className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover disabled:opacity-60"
-          onClick={() => void fullReload('settings')}
-          disabled={reloading}
-        >
-          {t('settings.data.reload_all')}
-          <RefreshCw className={`size-4 shrink-0 text-muted-foreground ${reloading ? 'animate-spin' : ''}`} />
-        </button>
       </div>
 
       <CurrencyPickerDialog
