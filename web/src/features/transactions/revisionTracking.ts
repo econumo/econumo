@@ -326,6 +326,13 @@ export async function transactionsQueryFn(
       stored: stored ?? new Map(),
       full: opts.full,
       fetch: (ids) => transactionApi.getAccountTransactionList(ids, opts.signal),
+      // stored as each arrives, so a failed or interrupted download keeps what it got
+      persist: (buckets) => {
+        if (!opts.signal?.aborted) {
+          inBackground(putBuckets(user.id, buckets, at))
+        }
+      },
+      signal: opts.signal,
     })
   } catch (e) {
     // the cancel aborted the download itself
@@ -337,7 +344,6 @@ export async function transactionsQueryFn(
   if (superseded()) {
     return []
   }
-  inBackground(putBuckets(user.id, out.changed, at))
   inBackground(deleteBuckets(out.removed, at))
   if (opts.signal?.aborted) {
     return []

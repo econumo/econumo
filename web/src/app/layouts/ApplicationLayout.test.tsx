@@ -450,6 +450,13 @@ describe('the sync button', () => {
     return seen
   }
 
+  // a full reload downloads every account, one per request
+  const everyAccountOnItsOwn = (seen: URL[]) => {
+    const asked = seen.map((url) => url.searchParams.get('accountIds') ?? '')
+    expect(asked.every((ids) => ids !== '' && !ids.includes(','))).toBe(true)
+    expect(new Set(asked)).toEqual(new Set(fixtureAccounts.map((a) => a.id)))
+  }
+
   async function bootWarm() {
     mockViewport(false)
     server.use(http.get('*/api/v1/oauth/get-identity-list', () => HttpResponse.json({ success: true, message: '', data: [] })))
@@ -485,7 +492,7 @@ describe('the sync button', () => {
     expect(trackEvent).toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD)
     await waitFor(() => expect(seen.length).toBeGreaterThan(0))
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    expect(seen.every((url) => !url.searchParams.has('accountIds'))).toBe(true)
+    await waitFor(() => everyAccountOnItsOwn(seen))
     // the release after the long press was not also a plain tap
     expect(trackEvent).toHaveBeenCalledTimes(1)
   })
@@ -495,7 +502,7 @@ describe('the sync button', () => {
     fireEvent.click(screen.getByRole('button', { name: 'sync' }), { shiftKey: true })
     expect(trackEvent).toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD)
     await waitFor(() => expect(seen.length).toBeGreaterThan(0))
-    expect(seen.every((url) => !url.searchParams.has('accountIds'))).toBe(true)
+    await waitFor(() => everyAccountOnItsOwn(seen))
   })
 
   it('the icon-rail button reloads everything too', async () => {
@@ -504,7 +511,7 @@ describe('the sync button', () => {
     await waitFor(() => expect(screen.queryByText('Cash')).not.toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'sync' }), { shiftKey: true })
     await waitFor(() => expect(seen.length).toBeGreaterThan(0))
-    expect(seen.every((url) => !url.searchParams.has('accountIds'))).toBe(true)
+    await waitFor(() => everyAccountOnItsOwn(seen))
   })
 
   it('a second long press right after the first still ends in one consistent reload', async () => {
@@ -514,7 +521,7 @@ describe('the sync button', () => {
     fireEvent.click(sync, { shiftKey: true })
     await waitFor(() => expect(seen.length).toBeGreaterThan(0))
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    expect(seen.every((url) => !url.searchParams.has('accountIds'))).toBe(true)
+    await waitFor(() => everyAccountOnItsOwn(seen))
     expect(screen.getAllByText('Reloading all data from the server…')).toHaveLength(1)
   })
 })
