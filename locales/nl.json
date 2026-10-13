@@ -992,8 +992,8 @@
           "analytics": {
             "menu_item": "Gebruiksstatistieken",
             "label": "Help Econumo verbeteren",
-            "description": "Gebruiksstatistieken laten ons zien welke functies het populairst zijn en wat we moeten verbeteren.",
-            "promise": "We delen of verkopen uw gegevens niet. Uw financiële gegevens en persoonlijke informatie worden niet gebruikt."
+            "description": "Gebruiksstatistieken laten ons zien welke functies van de app het populairst zijn en wat we moeten verbeteren.",
+            "promise": "Uw financiële en persoonlijke gegevens blijven privé — we delen ze met niemand."
           }
         }
       }

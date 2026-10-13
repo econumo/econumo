@@ -1692,8 +1692,8 @@ User C sees none of it.
       Language): the page shows only a plain row with a chevron — no status,
       no switch and no explanation text on the page itself. Tapping it opens
       a dialog (a bottom sheet on a phone) that leads with the privacy promise
-      (data is not shared or sold; financial data and personal information are
-      not used),
+      (financial and personal data stays private and is not shared with
+      anyone),
       then why statistics help, with the "Help improve Econumo" switch
       showing the current state. Switching it off persists across a
       reload; log out and back in — the switch still reads off; a read-only

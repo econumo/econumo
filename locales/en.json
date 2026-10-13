@@ -992,8 +992,8 @@
           "analytics": {
             "menu_item": "Usage statistics",
             "label": "Help improve Econumo",
-            "description": "Usage statistics show us which features are most popular and what to improve.",
-            "promise": "We don't share or sell your data. Your financial data and personal information are not used."
+            "description": "Usage statistics show us which features of the app are most popular and what to improve.",
+            "promise": "Your financial and personal data stays private — we don't share it with anyone."
           }
         }
       }

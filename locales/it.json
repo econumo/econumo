@@ -992,8 +992,8 @@
           "analytics": {
             "menu_item": "Statistiche di utilizzo",
             "label": "Aiuta a migliorare Econumo",
-            "description": "Le statistiche di utilizzo ci mostrano quali funzioni sono le più usate e cosa migliorare.",
-            "promise": "Non condividiamo né vendiamo i tuoi dati. I tuoi dati finanziari e le tue informazioni personali non vengono utilizzati."
+            "description": "Le statistiche di utilizzo ci mostrano quali funzioni dell'app sono le più usate e cosa migliorare.",
+            "promise": "I tuoi dati finanziari e personali restano privati — non li condividiamo con nessuno."
           }
         }
       }
