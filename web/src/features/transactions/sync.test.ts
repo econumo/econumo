@@ -159,6 +159,46 @@ describe('syncBuckets', () => {
     expect(fetch.mock.calls.map(([ids]) => ids![0])).toEqual(['a', 'b'])
   })
 
+  it('after a partial first load, downloads each missing account on its own', async () => {
+    const fetch = vi.fn((ids?: string[]) => Promise.resolve(reply({ [ids![0]]: 1 })))
+    const out = await syncBuckets({
+      accounts: ['a', 'b', 'c', 'd'].map((id) => account(id, 1)),
+      stored: stored(bucket('a', 1), bucket('b', 1)),
+      full: false,
+      fetch,
+    })
+    expect(fetch.mock.calls).toEqual([[['c']], [['d']]])
+    expect([...out.buckets.keys()].sort()).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  it('batches the changed accounts and downloads the missing ones on their own', async () => {
+    const persisted: string[][] = []
+    const fetch = vi.fn((ids?: string[]) => Promise.resolve(reply(Object.fromEntries(ids!.map((id) => [id, 2])))))
+    const out = await syncBuckets({
+      accounts: ['a', 'b', 'c', 'd'].map((id) => account(id, 2)),
+      stored: stored(bucket('a', 1), bucket('b', 1)),
+      full: false,
+      fetch,
+      persist: (buckets) => persisted.push(buckets.map((x) => x.accountId)),
+    })
+    expect(fetch.mock.calls).toEqual([[['a', 'b']], [['c']], [['d']]])
+    expect(persisted).toEqual([['a', 'b'], ['c'], ['d']])
+    expect([...out.buckets.values()].every((x) => x.revision === 2)).toBe(true)
+  })
+
+  it('downloads changed accounts on their own when more than MAX_IDS of them changed', async () => {
+    const ids = Array.from({ length: MAX_IDS + 1 }, (_, i) => `a${i}`)
+    const fetch = vi.fn((asked?: string[]) => Promise.resolve(reply({ [asked![0]]: 2 })))
+    await syncBuckets({
+      accounts: ids.map((id) => account(id, 2)),
+      stored: stored(...ids.map((id) => bucket(id, 1))),
+      full: false,
+      fetch,
+    })
+    expect(fetch).toHaveBeenCalledTimes(MAX_IDS + 1)
+    expect(fetch.mock.calls.every(([asked]) => asked!.length === 1)).toBe(true)
+  })
+
   it('a few stale accounts with a filled store still go in one request, persisted once', async () => {
     const persisted: Bucket[][] = []
     const fetch = vi.fn().mockResolvedValue(reply({ a: 2, b: 2 }))

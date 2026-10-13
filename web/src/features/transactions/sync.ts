@@ -90,16 +90,23 @@ export async function syncBuckets(input: SyncInput): Promise<SyncOutput> {
   const ids = [...revisions.keys()]
   const stale = input.full ? ids : ids.filter((id) => input.stored.get(id)?.revision !== revisions.get(id))
 
-  let download: Download = { changed: [], gone: [] }
-  if (stale.length > 0) {
-    // Downloading everything goes account by account, each stored on arrival,
-    // so an interrupted cold load resumes; a refresh of a few is one request.
-    if (input.full || input.stored.size === 0 || stale.length > MAX_IDS) {
-      download = await downloadEach(stale, input)
-    } else {
-      download = toBuckets(await input.fetch(stale), stale)
-      input.persist?.(download.changed)
-    }
+  // A whole account history (no bucket yet, or a full reload) goes one per
+  // request, stored on arrival, so an interrupted load resumes; changed
+  // buckets go in one request unless more than MAX_IDS changed.
+  const changed = input.full ? [] : stale.filter((id) => input.stored.has(id))
+  const batched = changed.length > MAX_IDS ? [] : changed
+  const each = batched.length === 0 ? stale : stale.filter((id) => !input.stored.has(id))
+  const download: Download = { changed: [], gone: [] }
+  if (batched.length > 0) {
+    const part = toBuckets(await input.fetch(batched), batched)
+    input.persist?.(part.changed)
+    download.changed.push(...part.changed)
+    download.gone.push(...part.gone)
+  }
+  if (each.length > 0) {
+    const part = await downloadEach(each, input)
+    download.changed.push(...part.changed)
+    download.gone.push(...part.gone)
   }
 
   const removed = new Set([...input.stored.keys()].filter((id) => !revisions.has(id)))

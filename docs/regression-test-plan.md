@@ -1925,7 +1925,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       full reload), throttle the network and go offline once a few
       `get-account-transaction-list` requests have finished, then go online
       again (or reload) — the requests that follow name only the accounts
-      that had not arrived yet.
+      that had not arrived yet, one account per request.
 - [ ] 📱 Settings → Data → Import & export → "Reload all data" (last row, with
       the hint "Downloads everything from the server again. Use it if
       something looks out of date."): no confirmation, the "Reloading all data

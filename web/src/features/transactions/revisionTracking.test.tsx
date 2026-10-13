@@ -133,6 +133,22 @@ it('a first load that fails part-way keeps what arrived, and the next sync downl
   await waitFor(async () => expect([...(await loadBuckets('u1')).keys()].sort()).toEqual(['a1', 'a2', 'a3']))
 })
 
+it('after a partial first load, the next sync downloads each missing account on its own', async () => {
+  const buckets = wireAccounts.filter((a) => a.id === 'a1' || a.id === 'a2').map((a) => {
+    const rows = fixtureTransactions.filter((t) => t.accountId === a.id)
+    return {
+      accountId: a.id, revision: a.transactionsRevision!,
+      items: rows.map(({ author, ...rest }) => ({ ...rest, authorId: author.id })),
+      authors: rows.length ? [fixtureOwner] : [],
+    } as Bucket
+  })
+  await putBuckets('u1', buckets)
+  const { result } = await booted()
+  expect(calls).toEqual(['a3', 'a-hidden'])
+  expect(result.current.list.data!.map((t) => t.id)).toEqual(['t1', 't2'])
+  await waitFor(async () => expect([...(await loadBuckets('u1')).keys()].sort()).toEqual(['a-hidden', 'a1', 'a2', 'a3']))
+})
+
 it('cancelling the first load starts no further account download', async () => {
   let release: () => void = () => {}
   const gate = new Promise<void>((r) => { release = r })

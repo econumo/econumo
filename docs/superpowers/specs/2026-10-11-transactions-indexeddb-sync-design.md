@@ -36,7 +36,7 @@ accounts refresh.
 | Scheduled full refresh | None. Author name/avatar staleness is fixed at the source (`update-name`/`update-avatar` bump). |
 | IndexedDB failure | Not a separate mode: on any IDB error the sync keeps working in memory for the session and logs a warning. |
 | Hidden-folder accounts | Synced and included in the `['transactions']` list like every other account. Folder visibility no longer affects transactions; the separate `['accountTransactions', id]` query goes away. Global search therefore also finds (and its recent feed shows) hidden-folder transactions, consistent with it already listing hidden-folder accounts. |
-| Request size | Downloading everything (first load, full reload, more than 200 stale accounts) goes account by account: one request per account, at most two in flight, each stored on arrival, so an interrupted first load resumes. Incremental syncs list the changed accounts in one request. Server caps the list at 200 ids as input validation; no `accountIds` (every accessible account) stays supported but the client no longer sends it. |
+| Request size | An account with no stored bucket (first load, resumed load, new account) and every account on a full reload goes account by account: one request per account, at most two in flight, each stored on arrival, so an interrupted first load resumes. Accounts whose stored revision changed go in one request (account by account over 200). Server caps the list at 200 ids as input validation; no `accountIds` (every accessible account) stays supported but the client no longer sends it. |
 | Older servers | Accounts without `transactionsRevision` → the client uses today's full `get-transaction-list` path and stores nothing. |
 
 ## Background (current state)
@@ -247,19 +247,22 @@ stored row), so routine saves (login, options) never cause downloads.
    (the cached list regrouped by account under the revisions it was synced
    at), so a sync never re-reads the whole store. Collect the accounts that have no bucket or whose revision
    differs (every account on a full reload). Nothing stale → no request.
-   - **Downloading everything** (a full reload, no buckets yet, or more than
-     200 stale) goes **account by account**: one
-     `get-account-transaction-list?accountIds=<id>` per stale account, at most
-     two in flight, started in the accounts list order. Each account's bucket
-     is built from its own response (its revision included) and stored as soon
-     as it arrives (a background write, epoch-fenced, never awaited). The list
-     lands only once every account is in. A failed request fails the sync
-     (the usual retry policy) without starting further requests, while the one
-     in flight still lands and is stored; a cancel starts no further request.
-     So an interrupted first load resumes: the next sync finds the finished
-     accounts at their current revision and downloads only the rest.
-   - **Otherwise** (an incremental refresh of up to 200 accounts) one request
-     with `accountIds` listing them.
+   - **Accounts with no stored bucket** (a first load, a resumed one, a newly
+     shared or created account) and **every account on a full reload** go
+     **account by account**: one `get-account-transaction-list?accountIds=<id>`
+     per account, at most two in flight, started in the accounts list order.
+     Each account's bucket is built from its own response (its revision
+     included) and stored as soon as it arrives (a background write,
+     epoch-fenced, never awaited). A failed request fails the sync (the usual
+     retry policy) without starting further requests, while the one in flight
+     still lands and is stored; a cancel starts no further request. So an
+     interrupted first load resumes: the next sync finds the finished accounts
+     at their current revision and downloads each missing one on its own.
+   - **Accounts with a bucket whose revision changed** go in one request with
+     `accountIds` listing them; more than 200 of them go account by account
+     too. When both kinds are stale, the batch runs first, then the
+     per-account downloads.
+   - The list lands only once every account is in.
 
    A response rebuilds the buckets of the accounts it was asked for: a row
    belongs to account A's bucket when its `accountId` or `accountRecipientId`
@@ -388,9 +391,11 @@ Two keys under `settings.sync` in all 11 catalogues: `full_reload`,
   no-op with one warning.
 - Sync `queryFn`: missing bucket → download; equal revision → no request;
   changed revision → download; several stale accounts → one request listing
-  them; 201 stale accounts, a first load and a full reload → one request per
-  account, at most two in flight, each stored on arrival; a failure keeps
-  what arrived and the next sync downloads only the rest; a cancel starts no
+  them; 201 changed accounts, a first load, the missing accounts of a
+  resumed load and a full reload → one request per account, at most two in
+  flight, each stored on arrival; changed and missing accounts in one sync →
+  one batch plus one request per missing account; a failure keeps what
+  arrived and the next sync downloads only the rest, one by one; a cancel starts no
   further request; removed account, or one absent from `revisions` → bucket
   deleted; hidden-folder account's rows are in the list; transfer between two
   accounts appears once; authors filled in; older server → legacy

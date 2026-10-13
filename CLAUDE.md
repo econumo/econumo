@@ -389,10 +389,11 @@ key's `queryFn` is the revision-driven sync
 (`web/src/features/transactions/{sync.ts,revisionTracking.ts}`): it compares the bucket
 revisions with the `transactionsRevision` of `get-account-list` and calls
 `get-account-transaction-list` with `accountIds` naming only the stale accounts (no request
-when none are stale). Downloading everything (empty store, full reload, more than 200 stale)
-goes account by account instead: one request per account, at most two in flight, each
-bucket written to the store in the background as it arrives, so an interrupted first load
-resumes with only the missing accounts; the list lands once every account is in. It reads
+when none are stale) for accounts whose stored revision changed (over 200 of them go one by
+one). An account with no stored bucket (first load, resumed load, new account) and every
+account on a full reload go account by account: one request per account, at most two in
+flight, each bucket written to the store in the background as it arrives, so an interrupted
+first load resumes with only the missing accounts; the list lands once every account is in. It reads
 IndexedDB only while the page holds no synced or restored list (first boot, after a
 login/logout); otherwise the buckets come from memory: the cached list regrouped
 by account under the revisions it was synced at.
