@@ -898,8 +898,7 @@
           "groups": {
             "personal_details": "Persoonlijke gegevens",
             "preferences": "Voorkeuren",
-            "security": "Beveiliging",
-            "privacy": "Privacy"
+            "security": "Beveiliging"
           },
           "currency": {
             "label": "Valuta"
@@ -991,8 +990,10 @@
             "last_sign_in_method_hint": "Dit is je enige inlogmethode, dus deze kan niet worden ontkoppeld."
           },
           "analytics": {
-            "label": "Gebruiksstatistieken delen",
-            "description": "Helpt ons Econumo te verbeteren.\nFinanciële gegevens en persoonlijke informatie — naam, e-mail — worden nooit verzonden."
+            "menu_item": "Gebruiksstatistieken",
+            "label": "Help Econumo verbeteren",
+            "description": "Gebruiksstatistieken laten ons zien welke functies van de app het populairst zijn en wat we moeten verbeteren.",
+            "promise": "Uw financiële en persoonlijke gegevens blijven privé en komen niet in de statistieken terecht."
           }
         }
       }

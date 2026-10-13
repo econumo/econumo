@@ -898,8 +898,7 @@
           "groups": {
             "personal_details": "Dados pessoais",
             "preferences": "Preferências",
-            "security": "Segurança",
-            "privacy": "Privacidade"
+            "security": "Segurança"
           },
           "currency": {
             "label": "Moeda"
@@ -991,8 +990,10 @@
             "last_sign_in_method_hint": "Este é o seu único método de início de sessão, por isso não pode ser desvinculado."
           },
           "analytics": {
-            "label": "Partilhar estatísticas de utilização",
-            "description": "Ajuda-nos a melhorar o Econumo.\nOs dados financeiros e as informações pessoais — nome, email — nunca são enviados."
+            "menu_item": "Estatísticas de utilização",
+            "label": "Ajudar a melhorar o Econumo",
+            "description": "As estatísticas de utilização mostram-nos que funcionalidades da aplicação são as mais populares e o que melhorar.",
+            "promise": "Os seus dados financeiros e pessoais continuam privados e não entram nas estatísticas."
           }
         }
       }

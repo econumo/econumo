@@ -898,8 +898,7 @@
           "groups": {
             "personal_details": "Persönliche Angaben",
             "preferences": "Voreinstellungen",
-            "security": "Sicherheit",
-            "privacy": "Datenschutz"
+            "security": "Sicherheit"
           },
           "currency": {
             "label": "Währung"
@@ -991,8 +990,10 @@
             "last_sign_in_method_hint": "Dies ist Ihre einzige Anmeldemethode und kann daher nicht entfernt werden."
           },
           "analytics": {
-            "label": "Nutzungsstatistiken teilen",
-            "description": "Hilft uns, Econumo zu verbessern.\nFinanzdaten und persönliche Angaben – Name, E-Mail – werden nie gesendet."
+            "menu_item": "Nutzungsstatistiken",
+            "label": "Helfen, Econumo zu verbessern",
+            "description": "Nutzungsstatistiken zeigen uns, welche Funktionen der App am beliebtesten sind und was wir verbessern sollten.",
+            "promise": "Ihre finanziellen und persönlichen Daten bleiben privat und fließen nicht in die Statistik ein."
           }
         }
       }

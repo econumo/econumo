@@ -898,8 +898,7 @@
           "groups": {
             "personal_details": "个人信息",
             "preferences": "偏好设置",
-            "security": "安全",
-            "privacy": "隐私"
+            "security": "安全"
           },
           "currency": {
             "label": "货币"
@@ -991,8 +990,10 @@
             "last_sign_in_method_hint": "这是您唯一的登录方式，因此无法解除关联。"
           },
           "analytics": {
-            "label": "分享使用统计",
-            "description": "帮助我们改进 Econumo。\n财务数据和个人信息（姓名、邮箱）绝不会被发送。"
+            "menu_item": "使用统计",
+            "label": "帮助改进 Econumo",
+            "description": "使用统计让我们了解应用中哪些功能最受欢迎，以及需要改进什么。",
+            "promise": "您的财务和个人数据始终保密，不会被纳入统计。"
           }
         }
       }
