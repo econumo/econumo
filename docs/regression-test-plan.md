@@ -1921,6 +1921,12 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       it, wait over a day (or set the device clock forward 25 h), go offline
       and open it — accounts and transactions show at once, with no "Loading
       your data" screen; going online refreshes them in the background.
+- [ ] A full reload interrupted part-way (go offline during the downloads
+      of "Reload all data") resumes once back online: only the accounts not
+      yet downloaded are requested, and after the next offline reload every
+      account still shows its transactions.
+- [ ] Log in as B in a browser where A was signed in before (no logout):
+      after a reload, none of A's transactions appear, even offline.
 - [ ] Interrupted first load resumes: on a fresh browser profile (or after a
       full reload), throttle the network and go offline once a few
       `get-account-transaction-list` requests have finished, then go online
@@ -1931,7 +1937,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       something looks out of date."): no confirmation, the "Reloading all data
       from the server…" toast appears, every account is downloaded again (one
       request per account), and the row is disabled until the download
-      finishes.
+      finishes (or first fails); pressing it or holding the sync button again
+      meanwhile starts nothing new.
 - [ ] Cross-device edit: with the app open on devices A and B, edit or add a
       transaction on A, then tap sync on B (or refocus B after 10 minutes) —
       B shows the change without a manual reload; only the touched account

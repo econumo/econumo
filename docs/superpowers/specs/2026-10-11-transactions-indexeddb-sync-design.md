@@ -263,13 +263,18 @@ stored row), so routine saves (login, options) never cause downloads.
      too. When both kinds are stale, the batch runs first, then the
      per-account downloads.
    - The list lands only once every account is in.
+   - A full reload also drops the page's in-memory state (the cached list
+     stays on screen but no longer counts as synced, and local patches are no
+     longer written through), so a sync after a failed reload, the automatic
+     retry included, reads the store, which holds what arrived, and downloads
+     only the missing accounts, one by one.
 
    A response rebuilds the buckets of the accounts it was asked for: a row
    belongs to account A's bucket when its `accountId` or `accountRecipientId`
    is A.
 3. Delete buckets whose account is no longer in the accounts list (share
-   revoked, account deleted, account left) or was requested (explicitly, or
-   implicitly by an all-accounts request) but is absent from `revisions`.
+   revoked, account deleted, account left) or was requested but is absent
+   from its response's `revisions`.
 4. Persist the downloaded buckets (account by account as they arrive, or
    the one request's at once), then assemble the list from **every**
    bucket, hidden-folder accounts included, deduplicated by id (a transfer
@@ -321,9 +326,15 @@ transactions.
   snapshot and however old it is. This runs inside the existing restore, so
   `isRestoring` still suppresses the boot loader, and the load keeps the
   1.5 s limit.
-  - Owner: the store's `meta.userId`. Every login and logout wipes the store,
-    so `meta` names the session's user; a snapshot that holds `user` must
-    match it or nothing is seeded. No token, nothing seeded.
+  - Owner: the session's user, stored next to the token (`sessionUserId`,
+    written by `setToken` at the password login and the oauth exchange, both
+    of which return the user, removed with the token, mirrored to native
+    Preferences like it; a session signed in before it existed gets it from
+    its first `get-user-data`, never overwritten). `meta.userId` must equal
+    it, and so must a snapshot `user`; no token or no session user, nothing
+    seeded. The clear at login is not enough on its own: it gives up after
+    1.5 s, and on a stalled database the queued clear is lost on reload, so
+    the previous user's buckets may still be on disk.
   - Build: `meta.buster` must be the current one (a release wipes, as before).
   - Accounts: when the snapshot holds `accounts`, only their buckets (pending
     invites skipped, buckets of accounts no longer listed deleted); without
@@ -361,8 +372,10 @@ Both sidebar variants in `ApplicationLayout.tsx`:
   `ImportsDataPage`): "Reload all data" (`settings.data.reload_all`) with the
   muted hint `settings.data.reload_all_hint` ("Downloads everything from the
   server again. Use it if something looks out of date."). No confirmation:
-  it only downloads again. The row is disabled while the transactions load,
-  so it cannot be triggered twice.
+  it only downloads again. The hook ignores a second trigger (from either
+  place) while its reload runs, and the row is disabled for that time: until
+  the transactions download lands or fails once, so a server that keeps
+  retrying never locks it.
 
 ### 13. Logout / login
 

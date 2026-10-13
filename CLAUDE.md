@@ -380,8 +380,11 @@ session; the sync keeps working in memory). `clearTransactions` (called by
 that fences any in-flight sync so it cannot write the previous user's data back; a stored
 `buster`/`userId` that no longer matches wipes the store on load without an epoch bump. The
 query-cache restore seeds `['transactions']` from IndexedDB inside `restoreClient` whenever
-a session token exists, independent of the localStorage snapshot: `meta.userId` is the owner
-(a snapshot `user` must match it), `meta.buster` must be this build's, and without the
+a session token exists, independent of the localStorage snapshot: `meta.userId` must be the
+session's user (`sessionUserId`, stored by `setToken` at login/oauth exchange next to the token,
+filled in once from `get-user-data` for older sessions; a snapshot `user` must match it too;
+the login clear can time out, so the store alone does not prove its owner), `meta.buster`
+must be this build's, and without the
 snapshot's accounts every stored bucket is shown until the refresh sync corrects the set. A
 snapshot of this release past its 24 h `maxAge` is kept (re-stamped) when the store seeds, so
 an offline start after a day away shows data instead of the boot loader. That
@@ -393,7 +396,8 @@ when none are stale) for accounts whose stored revision changed (over 200 of the
 one). An account with no stored bucket (first load, resumed load, new account) and every
 account on a full reload go account by account: one request per account, at most two in
 flight, each bucket written to the store in the background as it arrives, so an interrupted
-first load resumes with only the missing accounts; the list lands once every account is in. It reads
+first load resumes with only the missing accounts; the list lands once every account is in.
+A full reload drops the in-memory state, so a retry after it fails resumes from the store. It reads
 IndexedDB only while the page holds no synced or restored list (first boot, after a
 login/logout); otherwise the buckets come from memory: the cached list regrouped
 by account under the revisions it was synced at.
@@ -405,8 +409,9 @@ a download when the response revision is exactly +1 of the stored one. The sync 
 >= 600 ms or Shift+click is a full reload (every account re-downloaded, toast,
 `METRICS.DATA_FULL_RELOAD` with `source: 'sync_button'`). The same full reload
 (`useFullReload`, `web/src/features/transactions/useFullReload.ts`) is the last row of
-Settings → Data → Import & export, "Reload all data" (`source: 'settings'`; no confirmation,
-disabled while the transactions load).
+Settings → Data → Import & export, "Reload all data" (`source: 'settings'`; no confirmation).
+The hook ignores a second trigger while its reload runs (until the download lands or fails
+once), and the row is disabled for that time.
 
 **Product analytics rule:** every new user-facing feature/action MUST fire an
 analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen
