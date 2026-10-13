@@ -39,7 +39,7 @@
 Backend
 - `internal/infra/storage/backend/tx.go` — add before-commit hook + per-tx values.
 - `internal/infra/txrevision/txrevision.go` (+ `_test.go`) — `Bumper`.
-- `internal/infra/storage/migrations/{sqlite,pgsql}/20261011000000.sql` — column.
+- `internal/infra/storage/migrations/{sqlite,pgsql}/20260816000001.sql` — column.
 - `internal/infra/storage/sqlc/query/{sqlite,pgsql}/accounts.sql` — select the column; new `GetAccountTransactionsRevisions`-style read lives in the transaction repo (hand-built IN list).
 - `internal/model/account.go`, `internal/model/account_dto.go` — field.
 - `internal/account/{repo/repo.go,usecase.go,create.go,update.go}` — hydrate/DTO/fresh revision.
@@ -79,15 +79,15 @@ The migration that creates `accounts.transactions_revision` is part of this task
 
 - [ ] **Step 1: Add the migration files**
 
-`internal/infra/storage/migrations/sqlite/20261011000000.sql`:
+`internal/infra/storage/migrations/sqlite/20260816000001.sql`:
 ```sql
 ALTER TABLE accounts ADD COLUMN transactions_revision INTEGER DEFAULT 0 NOT NULL;
 ```
-`internal/infra/storage/migrations/pgsql/20261011000000.sql`:
+`internal/infra/storage/migrations/pgsql/20260816000001.sql`:
 ```sql
 ALTER TABLE accounts ADD COLUMN transactions_revision BIGINT NOT NULL DEFAULT 0;
 ```
-(Check that `20261011000000` is greater than the newest existing file, `20261004000000`.)
+(Version `20260816000001` sorts before the `20260817000001` command step `migration:zero-deleted-accounts`, which reads accounts through the repo — the column must exist by then, on fresh installs and old upgrades alike.)
 
 - [ ] **Step 2: Write failing TxManager hook tests**
 
