@@ -289,6 +289,10 @@
       "full_reload": "Recargando todos los datos desde el servidor…",
       "hold_hint": "Mantén pulsado para recargarlo todo"
     },
+    "data": {
+      "reload_all": "Recargar todos los datos",
+      "reload_all_hint": "Vuelve a descargar todo desde el servidor. Úsalo si algo parece desactualizado."
+    },
     "accounts": {
       "menu_item": "Cuentas",
       "header": "Cuentas",

@@ -289,6 +289,10 @@
       "full_reload": "Alle Daten werden neu vom Server geladen …",
       "hold_hint": "Gedrückt halten, um alles neu zu laden"
     },
+    "data": {
+      "reload_all": "Alle Daten neu laden",
+      "reload_all_hint": "Lädt alles erneut vom Server herunter. Nutzen Sie dies, wenn etwas veraltet wirkt."
+    },
     "accounts": {
       "menu_item": "Konten",
       "header": "Konten",

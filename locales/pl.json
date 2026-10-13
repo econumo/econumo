@@ -289,6 +289,10 @@
       "full_reload": "Ponowne pobieranie wszystkich danych z serwera…",
       "hold_hint": "Przytrzymaj, aby przeładować wszystko"
     },
+    "data": {
+      "reload_all": "Wczytaj ponownie wszystkie dane",
+      "reload_all_hint": "Pobiera wszystko ponownie z serwera. Użyj tej opcji, jeśli coś wygląda na nieaktualne."
+    },
     "accounts": {
       "menu_item": "Konta",
       "header": "Konta",

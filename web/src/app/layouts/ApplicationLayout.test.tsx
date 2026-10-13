@@ -489,7 +489,7 @@ describe('the sync button', () => {
     fireEvent.pointerUp(sync)
     fireEvent.click(sync)
 
-    expect(trackEvent).toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD)
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD, { source: 'sync_button' })
     await waitFor(() => expect(seen.length).toBeGreaterThan(0))
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
     await waitFor(() => everyAccountOnItsOwn(seen))
@@ -500,7 +500,7 @@ describe('the sync button', () => {
   it('Shift+click reloads everything too', async () => {
     const { seen } = await bootWarm()
     fireEvent.click(screen.getByRole('button', { name: 'sync' }), { shiftKey: true })
-    expect(trackEvent).toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD)
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD, { source: 'sync_button' })
     await waitFor(() => expect(seen.length).toBeGreaterThan(0))
     await waitFor(() => everyAccountOnItsOwn(seen))
   })

@@ -289,6 +289,10 @@
       "full_reload": "Alle gegevens worden opnieuw van de server geladen…",
       "hold_hint": "Houd ingedrukt om alles opnieuw te laden"
     },
+    "data": {
+      "reload_all": "Alle gegevens opnieuw laden",
+      "reload_all_hint": "Downloadt alles opnieuw van de server. Gebruik dit als iets verouderd lijkt."
+    },
     "accounts": {
       "menu_item": "Rekeningen",
       "header": "Rekeningen",

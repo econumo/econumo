@@ -2,13 +2,16 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
+import { useIsFetching } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { queryKeys } from '@/app/queryKeys'
 import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
 import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
+import { useFullReload } from '@/features/transactions/useFullReload'
 import { apiErrorMessage } from '@/lib/apiError'
 import { isTransactionImportEnabled } from '@/lib/config'
 import { decryptCredential } from '@/lib/importCrypto'
@@ -16,11 +19,14 @@ import { syncStartDate } from './syncWindow'
 import { useImportKey } from './useImportKey'
 import { useImportSources, useSyncImportSource } from './queries'
 
-function ActionRow({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
+function ActionRow({ label, hint, onClick, disabled }: { label: string; hint?: string; onClick: () => void; disabled?: boolean }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} className="flex w-full items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover disabled:opacity-60">
-      <span>{label}</span>
-      <ChevronRight className="size-4 text-muted-foreground" />
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span>{label}</span>
+        {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
     </button>
   )
 }
@@ -90,6 +96,21 @@ function TransactionImportRows() {
   )
 }
 
+// No confirmation: it only downloads again, nothing is lost.
+function ReloadAllRow() {
+  const { t } = useTranslation()
+  const fullReload = useFullReload()
+  const loading = useIsFetching({ queryKey: queryKeys.transactions }) > 0
+  return (
+    <ActionRow
+      label={t('settings.data.reload_all')}
+      hint={t('settings.data.reload_all_hint')}
+      onClick={() => void fullReload('settings')}
+      disabled={loading}
+    />
+  )
+}
+
 export function ImportsDataPage() {
   const { t } = useTranslation()
   const [exportOpen, setExportOpen] = useState(false)
@@ -105,6 +126,7 @@ export function ImportsDataPage() {
         <ActionRow label={t('settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
         <ActionRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
         {isTransactionImportEnabled() ? <TransactionImportRows /> : null}
+        <ReloadAllRow />
       </div>
 
       <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />

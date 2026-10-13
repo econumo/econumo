@@ -289,6 +289,10 @@
       "full_reload": "Reloading all data from the server…",
       "hold_hint": "Hold to reload everything"
     },
+    "data": {
+      "reload_all": "Reload all data",
+      "reload_all_hint": "Downloads everything from the server again. Use it if something looks out of date."
+    },
     "accounts": {
       "menu_item": "Accounts",
       "header": "Accounts",

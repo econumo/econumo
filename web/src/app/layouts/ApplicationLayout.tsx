@@ -3,7 +3,6 @@ import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 // ?inline forces a data URI: the file sits right at vite's 4KB auto-inline
 // cutoff, and a separately shipped sidebar logo can 404 where an inlined one
 // still shows.
@@ -39,9 +38,7 @@ import { useCurrencies, useCurrencyRates } from '@/features/currencies/queries'
 import { useUserData, isOnboardingCompleted } from '@/features/user/queries'
 import { useBudgets } from '@/features/budgets/queries'
 import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
-import { requestFullReload } from '@/features/transactions/revisionTracking'
-import { clearTransactions } from '@/lib/transactionStore'
-import { METRICS, trackEvent } from '@/lib/metrics'
+import { useFullReload } from '@/features/transactions/useFullReload'
 import { recordPathname } from '@/lib/navigation'
 
 function useIsFullyLoaded() {
@@ -117,17 +114,10 @@ export function ApplicationLayout() {
   const lastSyncAt = useLastSyncAt()
   const syncFailing = useSyncFailing()
   const syncTitle = `${t(syncFailing ? 'settings.sync.failing' : 'settings.sync.menu_item')} — ${lastSyncAt}\n${t('settings.sync.hold_hint')}`
-  // the flag goes up after the clear so the sync that starts below finds it set
-  const fullReload = useCallback(async () => {
-    trackEvent(METRICS.DATA_FULL_RELOAD)
-    toast(t('settings.sync.full_reload'), { id: 'full-reload' })
-    await clearTransactions()
-    requestFullReload()
-    void queryClient.invalidateQueries()
-  }, [queryClient, t])
+  const fullReload = useFullReload()
   const syncPress = useLongPress({
     onClick: () => void queryClient.invalidateQueries(),
-    onLongPress: () => void fullReload(),
+    onLongPress: () => void fullReload('sync_button'),
   })
   // constant geometry (-m/p cancel out) so the amber circle appears without
   // nudging the icon

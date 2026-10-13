@@ -289,6 +289,10 @@
       "full_reload": "正在从服务器重新加载所有数据…",
       "hold_hint": "长按可重新加载全部内容"
     },
+    "data": {
+      "reload_all": "重新加载所有数据",
+      "reload_all_hint": "从服务器重新下载全部数据。如果有内容看起来不是最新的，请使用此功能。"
+    },
     "accounts": {
       "menu_item": "账户",
       "header": "账户",
