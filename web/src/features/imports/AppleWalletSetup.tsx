@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import type { ImportSourceDto } from '@/api/dto/imports'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
+import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
 import { useCreatePersonalToken, usePersonalTokens, useRevokePersonalToken } from '@/features/settings/security'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -12,7 +13,7 @@ import { backendHost, getWebsiteUrl } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { isIOS } from '@/lib/platform'
 import { useCreateImportSource, useDeleteImportSource } from './queries'
-import { SETUP_VIDEOS } from './setupVideos'
+import { SETUP_VIDEOS, embedUrl, youtubeId, type SetupVideo } from './setupVideos'
 import { STEPS, forgetSetupTicks, type StepId, type WalletSetup } from './walletSetup'
 
 // iOS names an installed shortcut after the file it was imported from, so
@@ -52,18 +53,43 @@ function ExternalButton({ href, onClick, variant = 'outline', download = false, 
 
 function SetupVideos() {
   const { t } = useTranslation()
+  const [playing, setPlaying] = useState<SetupVideo | null>(null)
   if (SETUP_VIDEOS.length === 0) {
     return null
   }
+  const id = playing ? youtubeId(playing.url) : null
+  const linkClass = 'text-primary underline-offset-2 hover:underline'
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
       <span className="flex items-center gap-2 text-muted-foreground"><CirclePlay className="size-4 text-econumo-purple" />{t('imports.apple_wallet.video')}</span>
-      {SETUP_VIDEOS.map((v) => (
-        <a key={v.label} href={v.url} target="_blank" rel="noopener" className="text-primary underline-offset-2 hover:underline"
-          onClick={() => trackEvent(METRICS.IMPORT_SETUP_VIDEO, { version: v.label })}>
-          {v.label}
-        </a>
-      ))}
+      {SETUP_VIDEOS.map((v) => {
+        const track = () => trackEvent(METRICS.IMPORT_SETUP_VIDEO, { version: v.label })
+        // a link the player cannot take still opens, just on YouTube itself
+        return youtubeId(v.url) ? (
+          <button key={v.label} type="button" className={linkClass} onClick={() => { track(); setPlaying(v) }}>{v.label}</button>
+        ) : (
+          <a key={v.label} href={v.url} target="_blank" rel="noopener" className={linkClass} onClick={track}>{v.label}</a>
+        )
+      })}
+      <ResponsiveDialog
+        open={playing !== null}
+        onOpenChange={(o) => !o && setPlaying(null)}
+        title={`${t('imports.apple_wallet.video_title')} · ${playing?.label ?? ''}`}
+      >
+        {playing && id ? (
+          <div className="flex flex-col items-center gap-3">
+            {/* phone screen recordings are portrait */}
+            <iframe
+              src={embedUrl(id)}
+              title={`${t('imports.apple_wallet.video_title')} · ${playing.label}`}
+              className="aspect-[9/16] h-[min(60vh,640px)] max-w-full rounded-lg bg-black"
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
+            />
+            <a href={playing.url} target="_blank" rel="noopener" className={linkClass}>{t('imports.apple_wallet.video_youtube')}</a>
+          </div>
+        ) : null}
+      </ResponsiveDialog>
     </div>
   )
 }

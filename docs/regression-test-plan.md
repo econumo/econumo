@@ -375,8 +375,12 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       minutes), previews the five steps, says which payment fields Econumo
       receives (never card numbers) and offers "Set up Apple Wallet". When
       setup videos are configured (`SETUP_VIDEOS`), "Watch the setup video:"
-      lists one link per iOS version, here and above the steps, each opening
-      in a new window; with none configured the line is absent.
+      lists one entry per iOS version, here and above the steps; tapping one
+      opens a dialog ("Setup video · <version>") playing the YouTube video
+      in a portrait player inside the page, with "Open on YouTube" (new
+      window) under it — on a phone both fit on screen. No request to
+      YouTube is made before a video is opened; a non-YouTube link opens in
+      a new window instead. With none configured the line is absent.
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source). Until the first tap the
       status card reads "Setting up" with an amber dot and "Step N of 5:

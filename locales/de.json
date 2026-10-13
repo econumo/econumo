@@ -574,6 +574,8 @@
       },
       "same_named_cards": "Karten mit gleichem Namen in Wallet erscheinen hier als eine Karte.",
       "video": "Einrichtungsvideo ansehen:",
+      "video_title": "Einrichtungsvideo",
+      "video_youtube": "Auf YouTube öffnen",
       "cards": {
         "header": "Karten",
         "empty": "Noch keine Karten — die erste Apple-Pay-Zahlung fügt eine hinzu.",

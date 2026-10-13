@@ -574,6 +574,8 @@
       },
       "same_named_cards": "Kaarten met dezelfde naam in Wallet komen hier als één kaart binnen.",
       "video": "Bekijk de instructievideo:",
+      "video_title": "Instructievideo",
+      "video_youtube": "Openen op YouTube",
       "cards": {
         "header": "Kaarten",
         "empty": "Nog geen kaarten — de eerste Apple Pay-betaling voegt er een toe.",

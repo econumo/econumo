@@ -574,6 +574,8 @@
       },
       "same_named_cards": "Cards that share a name in Wallet arrive here as one card.",
       "video": "Watch the setup video:",
+      "video_title": "Setup video",
+      "video_youtube": "Open on YouTube",
       "cards": {
         "header": "Cards",
         "empty": "No cards yet — the first Apple Pay tap adds one.",
