@@ -83,7 +83,7 @@ function renderShellPersisted(home: ReactNode = <div>HOME CONTENT</div>) {
   const view = render(
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={createPersistOptions()}
+      persistOptions={createPersistOptions({ throttleTime: 0 })}
       onSuccess={() => refreshRestoredQueries(queryClient)}
     >
       <RouterProvider router={router} />

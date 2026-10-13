@@ -136,12 +136,14 @@ function withTransactionRestore(inner: Persister, maxAge: number, buster: string
   }
 }
 
-export function createPersistOptions() {
+// throttleTime: tests pass 0 — the persister's 1 s default equals waitFor's
+// default timeout, so asserting on the written snapshot would race it.
+export function createPersistOptions({ throttleTime }: { throttleTime?: number } = {}) {
   // a release may change response shapes; never restore across versions
   const buster = getVersion()
   return {
     persister: withTransactionRestore(
-      createSyncStoragePersister({ storage: window.localStorage, key: QUERY_CACHE_KEY }),
+      createSyncStoragePersister({ storage: window.localStorage, key: QUERY_CACHE_KEY, throttleTime }),
       CACHE_MAX_AGE_MS,
       buster,
     ),
