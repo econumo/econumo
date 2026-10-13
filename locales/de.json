@@ -992,8 +992,8 @@
           "analytics": {
             "menu_item": "Nutzungsstatistiken",
             "label": "Helfen, Econumo zu verbessern",
-            "description": "Nutzungsstatistiken zeigen uns, welche Funktionen genutzt werden und was wir als Nächstes verbessern sollten.",
-            "promise": "Wir geben Ihre Daten niemals weiter und verkaufen sie nicht. Finanzdaten und persönliche Angaben – Name, E-Mail – werden nie gesendet."
+            "description": "Nutzungsstatistiken zeigen uns, welche Funktionen am beliebtesten sind und was wir verbessern sollten.",
+            "promise": "Wir geben Ihre Daten nicht weiter und verkaufen sie nicht. Ihre Finanzdaten und persönlichen Angaben werden nicht verwendet."
           }
         }
       }

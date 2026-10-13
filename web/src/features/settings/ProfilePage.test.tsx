@@ -222,7 +222,7 @@ it('toggles the analytics preference', async () => {
   expect(screen.queryByRole('switch', { name: /help improve econumo/i })).not.toBeInTheDocument()
   await user.click(await screen.findByRole('button', { name: 'Usage statistics' }))
   const dialog = await screen.findByRole('dialog')
-  expect(within(dialog).getByText(/never share or sell your data/i)).toBeInTheDocument()
+  expect(within(dialog).getByText(/don't share or sell your data/i)).toBeInTheDocument()
   const toggle = within(dialog).getByRole('switch', { name: /help improve econumo/i })
   expect(toggle).toBeChecked()
 
