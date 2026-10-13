@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { http } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
@@ -30,9 +30,9 @@ const simplefinSource = {
 }
 const wrappedKey = { wrappedDataKey: 'wrapped', kdf: 'pbkdf2', updatedAt: '2026-09-01 00:00:00' }
 
-function renderPage(overrides: Parameters<typeof coreHandlers>[0] = {}) {
+function renderPage(overrides: Parameters<typeof coreHandlers>[0] = {}, retry: boolean | number = false) {
   server.use(...coreHandlers(overrides))
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry, retryDelay: 60_000 }, mutations: { retry: false } } })
   const router = createMemoryRouter(
     [
       { path: '/settings/data', element: <><ImportsDataPage /><TransactionsMounted /><Toaster /></> },
@@ -133,7 +133,7 @@ describe('Reload all data', () => {
     expect(trackEvent).toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD, { source: 'settings' })
   })
 
-  it('cannot be pressed again while the transactions are loading', async () => {
+  it('cannot be pressed again while its reload runs', async () => {
     const user = userEvent.setup()
     let release: () => void = () => {}
     const gate = new Promise<void>((r) => { release = r })
@@ -150,5 +150,49 @@ describe('Reload all data', () => {
     release()
     await waitFor(() => expect(row).toBeEnabled())
     expect(trackEvent).toHaveBeenCalledTimes(1)
+  })
+
+  it('stays usable while an ordinary refresh hangs', async () => {
+    const queryClient = renderPage()
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+    server.use(http.get('*/api/v1/account/get-account-list', () => new Promise<Response>(() => {})))
+    void queryClient.invalidateQueries()
+    await waitFor(() => expect(queryClient.isFetching({ queryKey: queryKeys.transactions })).toBe(1))
+    expect(screen.getByRole('button', { name: /Reload all data/ })).toBeEnabled()
+  })
+
+  it('is enabled again once the reload fails, while it keeps retrying', async () => {
+    const user = userEvent.setup()
+    const queryClient = renderPage({}, true)
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+    server.use(http.get('*/api/v1/transaction/get-account-transaction-list', () =>
+      HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status: 500 })))
+    const row = screen.getByRole('button', { name: /Reload all data/ })
+    await user.click(row)
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.fetchFailureCount).toBe(1))
+    await waitFor(() => expect(row).toBeEnabled())
+    expect(queryClient.isFetching({ queryKey: queryKeys.transactions })).toBe(1)
+  })
+
+  it('a second press during the reload counts nothing and reloads nothing more', async () => {
+    let release: () => void = () => {}
+    const gate = new Promise<void>((r) => { release = r })
+    const queryClient = renderPage()
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+    server.use(http.get('*/api/v1/transaction/get-account-transaction-list', async () => {
+      await gate
+      return undefined
+    }))
+    const row = screen.getByRole('button', { name: /Reload all data/ })
+    // two presses before the row can re-render as disabled
+    row.click()
+    row.click()
+    release()
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+    expect(trackEvent).toHaveBeenCalledTimes(1)
+    expect(screen.getAllByText('Reloading all data from the server…')).toHaveLength(1)
   })
 })

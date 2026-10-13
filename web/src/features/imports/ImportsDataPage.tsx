@@ -2,16 +2,14 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
-import { useIsFetching } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { queryKeys } from '@/app/queryKeys'
 import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
 import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
-import { useFullReload } from '@/features/transactions/useFullReload'
+import { useFullReload, useFullReloadPending } from '@/features/transactions/useFullReload'
 import { apiErrorMessage } from '@/lib/apiError'
 import { isTransactionImportEnabled } from '@/lib/config'
 import { decryptCredential } from '@/lib/importCrypto'
@@ -100,13 +98,13 @@ function TransactionImportRows() {
 function ReloadAllRow() {
   const { t } = useTranslation()
   const fullReload = useFullReload()
-  const loading = useIsFetching({ queryKey: queryKeys.transactions }) > 0
+  const running = useFullReloadPending()
   return (
     <ActionRow
       label={t('settings.data.reload_all')}
       hint={t('settings.data.reload_all_hint')}
       onClick={() => void fullReload('settings')}
-      disabled={loading}
+      disabled={running}
     />
   )
 }
