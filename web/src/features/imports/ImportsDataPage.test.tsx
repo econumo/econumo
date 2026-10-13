@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { server } from '@/test/msw'
@@ -10,6 +10,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { useTransactions } from '@/features/transactions/queries'
 import { resetRevisions } from '@/features/transactions/revisionTracking'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { loadBuckets } from '@/lib/transactionStore'
 import { ImportsDataPage } from './ImportsDataPage'
 
 vi.mock('@/hooks/useIsCompact', () => ({ useIsCompact: () => false }))
@@ -194,5 +195,42 @@ describe('Reload all data', () => {
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
     expect(trackEvent).toHaveBeenCalledTimes(1)
     expect(screen.getAllByText('Reloading all data from the server…')).toHaveLength(1)
+  })
+
+  it('offline, keeps the stored data and says to try again online', async () => {
+    const user = userEvent.setup()
+    const queryClient = renderPage()
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+    await waitFor(async () => expect((await loadBuckets('u1')).size).toBe(fixtureAccounts.length))
+    const asked: string[] = []
+    const record = ({ request }: { request: Request }) => {
+      if (request.url.includes('/get-account-transaction-list')) asked.push(request.url)
+    }
+    server.events.on('request:start', record)
+    onTestFinished(() => server.events.removeListener('request:start', record))
+    const offline = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    onTestFinished(() => offline.mockRestore())
+
+    await user.click(screen.getByRole('button', { name: /Reload all data/ }))
+    expect(await screen.findByText("You're offline. Reload all data when you're back online.")).toBeInTheDocument()
+    expect(screen.queryByText('Reloading all data from the server…')).not.toBeInTheDocument()
+    expect(trackEvent).not.toHaveBeenCalled()
+    expect((await loadBuckets('u1')).size).toBe(fixtureAccounts.length)
+    expect(asked).toEqual([])
+    expect(screen.getByRole('button', { name: /Reload all data/ })).toBeEnabled()
+  })
+
+  it('unlocks when the connection drops during the reload and the download pauses', async () => {
+    const user = userEvent.setup()
+    const queryClient = renderPage()
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+    onlineManager.setOnline(false)
+    onTestFinished(() => onlineManager.setOnline(true))
+    const row = screen.getByRole('button', { name: /Reload all data/ })
+    await user.click(row)
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.fetchStatus).toBe('paused'))
+    await waitFor(() => expect(row).toBeEnabled())
   })
 })

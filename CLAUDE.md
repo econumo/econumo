@@ -411,7 +411,8 @@ a download when the response revision is exactly +1 of the stored one. The sync 
 (`useFullReload`, `web/src/features/transactions/useFullReload.ts`) is the last row of
 Settings → Data → Import & export, "Reload all data" (`source: 'settings'`; no confirmation).
 The hook ignores a second trigger while its reload runs (until the download lands or fails
-once), and the row is disabled for that time.
+once, or pauses offline), and the row is disabled for that time. Offline it clears nothing,
+only toasting `settings.sync.full_reload_offline`.
 
 **Product analytics rule:** every new user-facing feature/action MUST fire an
 analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen

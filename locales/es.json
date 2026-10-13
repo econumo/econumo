@@ -287,7 +287,8 @@
       "menu_item": "Sincronización completa",
       "failing": "No se puede conectar con el servidor: reintentando",
       "full_reload": "Recargando todos los datos desde el servidor…",
-      "hold_hint": "Mantén pulsado para recargarlo todo"
+      "hold_hint": "Mantén pulsado para recargarlo todo",
+      "full_reload_offline": "Estás sin conexión. Vuelve a cargar todos los datos cuando vuelvas a estar en línea."
     },
     "data": {
       "reload_all": "Recargar todos los datos",

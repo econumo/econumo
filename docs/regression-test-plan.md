@@ -1938,7 +1938,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       from the server…" toast appears, every account is downloaded again (one
       request per account), and the row is disabled until the download
       finishes (or first fails); pressing it or holding the sync button again
-      meanwhile starts nothing new.
+      meanwhile starts nothing new. Offline, it (and the sync-button hold)
+      only shows "You're offline. Reload all data when you're back online."
+      and an offline reload afterwards still shows every transaction.
 - [ ] Cross-device edit: with the app open on devices A and B, edit or add a
       transaction on A, then tap sync on B (or refocus B after 10 minutes) —
       B shows the change without a manual reload; only the touched account

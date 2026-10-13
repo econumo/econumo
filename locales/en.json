@@ -287,7 +287,8 @@
       "menu_item": "Full sync",
       "failing": "Can't reach the server — retrying",
       "full_reload": "Reloading all data from the server…",
-      "hold_hint": "Hold to reload everything"
+      "hold_hint": "Hold to reload everything",
+      "full_reload_offline": "You're offline. Reload all data when you're back online."
     },
     "data": {
       "reload_all": "Reload all data",

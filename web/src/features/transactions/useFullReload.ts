@@ -27,13 +27,13 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
-// The reload counts as running until the transactions download lands or
-// fails once: an unreachable server retries forever, and that must not keep
-// the action locked.
+// The reload counts as running until the transactions download lands, fails
+// once or pauses for a lost connection: an unreachable server retries
+// forever, and that must not keep the action locked.
 function settled(queryClient: QueryClient): Promise<void> {
   const done = () => {
     const state = queryClient.getQueryState(queryKeys.transactions)
-    return !state || state.fetchStatus === 'idle' || state.fetchFailureCount > 0
+    return !state || state.fetchStatus !== 'fetching' || state.fetchFailureCount > 0
   }
   return new Promise((resolve) => {
     if (done()) {
@@ -59,6 +59,12 @@ export function useFullReload(): (source: FullReloadSource) => Promise<void> {
   const { t } = useTranslation()
   return useCallback(async (source: FullReloadSource) => {
     if (pending.has(queryClient)) {
+      return
+    }
+    // The clear comes first and the download could not follow: an offline
+    // reload would leave nothing to start from.
+    if (navigator.onLine === false) {
+      toast(t('settings.sync.full_reload_offline'), { id: 'full-reload' })
       return
     }
     setPending(queryClient, true)

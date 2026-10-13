@@ -287,7 +287,8 @@
       "menu_item": "Synchronisation complète",
       "failing": "Serveur injoignable — nouvelle tentative",
       "full_reload": "Rechargement de toutes les données depuis le serveur…",
-      "hold_hint": "Maintenez pour tout recharger"
+      "hold_hint": "Maintenez pour tout recharger",
+      "full_reload_offline": "Vous êtes hors ligne. Rechargez toutes les données une fois de nouveau en ligne."
     },
     "data": {
       "reload_all": "Recharger toutes les données",

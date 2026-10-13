@@ -374,8 +374,10 @@ Both sidebar variants in `ApplicationLayout.tsx`:
   server again. Use it if something looks out of date."). No confirmation:
   it only downloads again. The hook ignores a second trigger (from either
   place) while its reload runs, and the row is disabled for that time: until
-  the transactions download lands or fails once, so a server that keeps
-  retrying never locks it.
+  the transactions download lands, fails once or pauses for a lost
+  connection, so a server that keeps retrying never locks it. Offline
+  (`navigator.onLine === false`) it clears nothing and fires no metric, only
+  the toast `settings.sync.full_reload_offline`.
 
 ### 13. Logout / login
 
@@ -393,8 +395,8 @@ fires nothing (unchanged).
 
 ## i18n
 
-Two keys under `settings.sync` in all 11 catalogues: `full_reload`,
-`hold_hint`; two under `settings.data`: `reload_all`, `reload_all_hint`.
+Three keys under `settings.sync` in all 11 catalogues: `full_reload`,
+`hold_hint`, `full_reload_offline`; two under `settings.data`: `reload_all`, `reload_all_hint`.
 
 ## Testing (frontend, vitest + `fake-indexeddb` dev dependency)
 

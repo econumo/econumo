@@ -287,7 +287,8 @@
       "menu_item": "Volledige synchronisatie",
       "failing": "Geen verbinding met de server — opnieuw proberen",
       "full_reload": "Alle gegevens worden opnieuw van de server geladen…",
-      "hold_hint": "Houd ingedrukt om alles opnieuw te laden"
+      "hold_hint": "Houd ingedrukt om alles opnieuw te laden",
+      "full_reload_offline": "Je bent offline. Laad alle gegevens opnieuw zodra je weer online bent."
     },
     "data": {
       "reload_all": "Alle gegevens opnieuw laden",

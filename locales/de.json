@@ -287,7 +287,8 @@
       "menu_item": "Vollständige Synchronisierung",
       "failing": "Server nicht erreichbar — wird erneut versucht",
       "full_reload": "Alle Daten werden neu vom Server geladen …",
-      "hold_hint": "Gedrückt halten, um alles neu zu laden"
+      "hold_hint": "Gedrückt halten, um alles neu zu laden",
+      "full_reload_offline": "Sie sind offline. Laden Sie alle Daten neu, sobald Sie wieder online sind."
     },
     "data": {
       "reload_all": "Alle Daten neu laden",
