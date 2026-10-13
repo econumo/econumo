@@ -2,7 +2,7 @@ import { IDBFactory } from 'fake-indexeddb'
 import type { StoredTransaction } from '@/api/dto/transaction'
 import { STORE_ACCOUNT_TRANSACTIONS, STORE_IMPORT_KEYS, dbRequest, resetDbForTests } from './db'
 import { delayOpen, delayTransactionCompletion } from '@/test/idbDelay'
-import { STORE_TIMEOUT_MS, clearTransactions, deleteBuckets, loadBuckets, putBuckets, resetTransactionStoreForTests, storeBuster, tryLoadBuckets, type Bucket } from './transactionStore'
+import { STORE_TIMEOUT_MS, clearTransactions, deleteBuckets, loadBuckets, putBuckets, resetTransactionStoreForTests, storeBuster, tryLoadBuckets, tryLoadStored, type Bucket } from './transactionStore'
 
 const tx = (id: string, accountId: string): StoredTransaction => ({
   id, type: 'expense', accountId, accountRecipientId: null, amount: '1', amountRecipient: null,
@@ -213,3 +213,45 @@ it('a clear held up by a slow open lets its caller go on and still runs once the
   }
   expect(await dbRequest(STORE_ACCOUNT_TRANSACTIONS, 'readonly', (s) => s.count())).toBe(0)
 }, 10_000)
+
+describe('tryLoadStored', () => {
+  it('returns the buckets with their owner and when they were last written', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(5_000)
+    await putBuckets('u1', [bucket('a'), bucket('b')])
+    vi.mocked(Date.now).mockReturnValue(9_000)
+    await putBuckets('u1', [bucket('b', 2)])
+    const stored = await tryLoadStored()
+    expect(stored?.userId).toBe('u1')
+    expect(stored?.savedAt).toBe(9_000)
+    expect([...stored!.buckets.keys()].sort()).toEqual(['a', 'b'])
+    expect(stored!.buckets.get('b')?.revision).toBe(2)
+  })
+
+  it('is null for an empty store and for another build\'s data, which it leaves alone', async () => {
+    expect(await tryLoadStored()).toBeNull()
+    await putBuckets('u1', [bucket('a')])
+    window.econumoConfig = { VERSION: '1.1.0' }
+    expect(await tryLoadStored()).toBeNull()
+    window.econumoConfig = { VERSION: '1.0.0' }
+    expect([...(await tryLoadStored())!.buckets.keys()]).toEqual(['a'])
+  })
+
+  it('tolerates the meta of a build that kept no write time', async () => {
+    await putBuckets('u1', [bucket('a')])
+    await dbRequest('meta', 'readwrite', (s) => s.put({ buster: storeBuster(), userId: 'u1' }, 'state'))
+    const stored = await tryLoadStored()
+    expect(stored?.savedAt).toBeUndefined()
+    expect(stored?.buckets.size).toBe(1)
+  })
+
+  it('gives up after the limit', async () => {
+    await putBuckets('u1', [bucket('a')])
+    const restore = delayTransactionCompletion(null)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const load = tryLoadStored()
+    await vi.advanceTimersByTimeAsync(STORE_TIMEOUT_MS + 100)
+    expect(await load).toBeNull()
+    vi.useRealTimers()
+    restore()
+  })
+})

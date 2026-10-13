@@ -13,6 +13,14 @@ export interface Bucket {
 interface Meta {
   buster: string
   userId: string
+  // absent in a store written before it was kept
+  savedAt?: number
+}
+
+export interface StoredTransactions {
+  userId: string
+  savedAt: number | undefined
+  buckets: Map<string, Bucket>
 }
 
 // Bump when the stored shape changes without a release (dev builds keep the
@@ -136,6 +144,21 @@ async function readBuckets(userId: string, at: number | undefined): Promise<Map<
   return buckets
 }
 
+// Null when the store did not answer in time.
+async function timedLoad<T>(fallback: T, read: () => Promise<T>): Promise<T | null> {
+  if (stalled) {
+    return null
+  }
+  const load = guarded(fallback, read)
+  const result = await within(load)
+  if (result !== TIMED_OUT) {
+    return result
+  }
+  stalled = true
+  void load.then(() => { stalled = false })
+  return null
+}
+
 /**
  * Null when the store did not answer in time: what is on disk is then
  * unknown. `at`: the storeEpoch() its caller started from; a clear since then
@@ -145,17 +168,36 @@ export async function tryLoadBuckets(userId: string, at?: number): Promise<Map<s
   if (isStale(at)) {
     return new Map()
   }
-  if (stalled) {
-    return null
-  }
-  const load = guarded(new Map<string, Bucket>(), () => readBuckets(userId, at))
-  const result = await within(load)
-  if (result !== TIMED_OUT) {
-    return result
-  }
-  stalled = true
-  void load.then(() => { stalled = false })
-  return null
+  return timedLoad(new Map<string, Bucket>(), () => readBuckets(userId, at))
+}
+
+async function readStored(): Promise<StoredTransactions | null> {
+  let out: StoredTransactions | null = null
+  await dbTransaction([STORE_ACCOUNT_TRANSACTIONS, STORE_META], 'readonly', (t) => {
+    const read = t.objectStore(STORE_META).get(META_KEY)
+    read.onsuccess = () => {
+      const meta = read.result as Meta | undefined
+      if (!meta || meta.buster !== storeBuster()) {
+        return
+      }
+      const all = t.objectStore(STORE_ACCOUNT_TRANSACTIONS).getAll()
+      all.onsuccess = () => {
+        const buckets = new Map((all.result as Bucket[]).map((b) => [b.accountId, b]))
+        out = { userId: meta.userId, savedAt: meta.savedAt, buckets }
+      }
+    }
+  })
+  return out
+}
+
+/**
+ * Whatever this build stored, for the boot restore, which knows no user yet:
+ * the caller checks the owner. Never wipes; another build's data reads as
+ * null and is dropped by the next sync. Null also when the store is empty or
+ * did not answer in time.
+ */
+export async function tryLoadStored(): Promise<StoredTransactions | null> {
+  return timedLoad<StoredTransactions | null>(null, readStored)
 }
 
 export function putBuckets(userId: string, buckets: Bucket[], at?: number): Promise<void> {
@@ -172,6 +214,7 @@ export function putBuckets(userId: string, buckets: Bucket[], at?: number): Prom
       for (const bucket of buckets) {
         store.put(bucket)
       }
+      t.objectStore(STORE_META).put({ ...currentMeta(userId), savedAt: Date.now() }, META_KEY)
     })
   }))
 }

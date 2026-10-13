@@ -10,7 +10,8 @@ import { resetRevisions, seedRevisions } from '@/features/transactions/revisionT
 import { assemble, hasRevisions } from '@/features/transactions/sync'
 import { CACHE_MAX_AGE_MS } from './appQueryClient'
 import { getVersion } from './config'
-import { clearTransactions, deleteBuckets, loadBuckets, type Bucket } from './transactionStore'
+import { hasToken } from './storage'
+import { clearTransactions, deleteBuckets, tryLoadStored } from './transactionStore'
 
 // Vue parity: the Quasar app keeps every store in localStorage, so a page
 // reload starts from cached data and refreshes in the background instead of
@@ -22,41 +23,57 @@ function snapshotData<T>(snapshot: PersistedClient, key: readonly unknown[]): T 
   return snapshot.clientState.queries.find((q) => q.queryHash === hash)?.state.data as T | undefined
 }
 
-// Transactions live in IndexedDB, not in the snapshot. Putting them back as a
-// restored query (rather than setQueryData after the restore) keeps the boot
-// loader suppressed, and lands as a restore, not as a local edit to write back.
-async function withStoredTransactions(snapshot: PersistedClient): Promise<PersistedClient> {
-  const user = snapshotData<CurrentUserDto>(snapshot, queryKeys.user)
-  const raw = snapshotData<AccountDto[]>(snapshot, queryKeys.accounts)
-  if (!user || !raw) {
-    return snapshot
+interface Seed {
+  rows: TransactionDto[]
+  savedAt: number | undefined
+}
+
+// `snapshot`: the restored cache of this release, fresh or expired, if any.
+// The store's meta names its owner, so it seeds without the snapshot too.
+async function loadSeed(snapshot: PersistedClient | undefined): Promise<Seed | null> {
+  const user = snapshot && snapshotData<CurrentUserDto>(snapshot, queryKeys.user)
+  const raw = snapshot && snapshotData<AccountDto[]>(snapshot, queryKeys.accounts)
+  const stored = await tryLoadStored()
+  if (!stored || (user && user.id !== stored.userId)) {
+    return null
   }
-  const accounts = raw.filter((a) => !isPendingForMe(a, user.id))
-  if (!hasRevisions(accounts)) {
-    return snapshot
-  }
-  // the store wipes itself when it belongs to someone else
-  const stored = await loadBuckets(user.id)
-  const buckets = new Map<string, Bucket>()
-  for (const a of accounts) {
-    const bucket = stored.get(a.id)
-    if (bucket) {
-      buckets.set(a.id, bucket)
+  let buckets = stored.buckets
+  if (raw) {
+    const accounts = raw.filter((a) => !isPendingForMe(a, stored.userId))
+    // an older server: nothing is synced by revision
+    if (!hasRevisions(accounts)) {
+      return null
     }
+    buckets = new Map()
+    for (const a of accounts) {
+      const bucket = stored.buckets.get(a.id)
+      if (bucket) {
+        buckets.set(a.id, bucket)
+      }
+    }
+    // The sync works from what is seeded here and never sees the rest of the
+    // store, so a bucket of an account that is gone (a share revoked, an account
+    // deleted) would stay on disk.
+    void deleteBuckets([...stored.buckets.keys()].filter((id) => !buckets.has(id)))
   }
+  // without the snapshot's accounts every stored bucket is shown; the sync
+  // that follows drops the accounts that are gone
   if (buckets.size === 0) {
-    return snapshot
+    return null
   }
-  // The sync works from what is seeded here and never sees the rest of the
-  // store, so a bucket of an account that is gone (a share revoked, an account
-  // deleted) would stay on disk.
-  void deleteBuckets([...stored.keys()].filter((id) => !buckets.has(id)))
   const rows = assemble(buckets)
   seedRevisions(buckets, rows)
+  return { rows, savedAt: stored.savedAt }
+}
+
+// Putting the transactions back as a restored query (rather than setQueryData
+// after the restore) keeps the boot loader suppressed, and lands as a restore,
+// not as a local edit to write back.
+function withTransactions(client: PersistedClient, rows: TransactionDto[], updatedAt: number): PersistedClient {
   const state: QueryState<TransactionDto[], Error> = {
     data: rows,
     dataUpdateCount: 1,
-    dataUpdatedAt: snapshot.timestamp,
+    dataUpdatedAt: updatedAt,
     error: null,
     errorUpdateCount: 0,
     errorUpdatedAt: 0,
@@ -69,11 +86,11 @@ async function withStoredTransactions(snapshot: PersistedClient): Promise<Persis
   }
   const hash = hashKey(queryKeys.transactions)
   return {
-    ...snapshot,
+    ...client,
     clientState: {
-      ...snapshot.clientState,
+      ...client.clientState,
       queries: [
-        ...snapshot.clientState.queries.filter((q) => q.queryHash !== hash),
+        ...client.clientState.queries.filter((q) => q.queryHash !== hash),
         { queryKey: queryKeys.transactions, queryHash: hash, state },
       ],
     },
@@ -86,11 +103,30 @@ function withTransactionRestore(inner: Persister, maxAge: number, buster: string
     removeClient: () => inner.removeClient(),
     restoreClient: async () => {
       const snapshot = await inner.restoreClient()
-      // a snapshot about to be discarded must not seed anything
-      if (!snapshot?.timestamp || Date.now() - snapshot.timestamp > maxAge || snapshot.buster !== buster) {
+      // signed out: the next sign-in clears the store anyway
+      if (!hasToken()) {
         return snapshot
       }
-      return withStoredTransactions(snapshot)
+      // a snapshot of another release must contribute nothing: response shapes may differ
+      const usable = snapshot?.timestamp && snapshot.buster === buster ? snapshot : undefined
+      const seed = await loadSeed(usable)
+      if (!seed) {
+        return snapshot
+      }
+      if (usable && Date.now() - usable.timestamp <= maxAge) {
+        return withTransactions(usable, seed.rows, usable.timestamp)
+      }
+      if (usable) {
+        // Past maxAge the provider would discard the snapshot, and without the
+        // accounts and the rest of it the boot loader would cover the seeded
+        // list (an offline start after a day away). Re-stamped, it is restored
+        // and then refreshed like any other.
+        return withTransactions({ ...usable, timestamp: Date.now() }, seed.rows, seed.savedAt ?? 0)
+      }
+      if (snapshot) {
+        await inner.removeClient()
+      }
+      return withTransactions({ buster, timestamp: Date.now(), clientState: { queries: [], mutations: [] } }, seed.rows, seed.savedAt ?? 0)
     },
   }
 }

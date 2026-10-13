@@ -60,6 +60,7 @@ describe('restoring the stored transactions', () => {
     resetDbForTests()
     resetTransactionStoreForTests()
     resetRevisions()
+    localStorage.setItem('token', 'eco_ses_test')
   })
 
   afterEach(() => resetRevisions())
@@ -122,17 +123,83 @@ describe('restoring the stored transactions', () => {
     expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
   })
 
-  it('seeds nothing without the user or the accounts in the snapshot', async () => {
-    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+  it('without the user in the snapshot, filters by its accounts for the store\'s owner', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('gone', ['t3'])])
     snapshot({ accounts: fixtureAccounts })
-    expect(await restoredTransactions()).toBeUndefined()
+    expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
+  })
+
+  it('without the accounts in the snapshot, shows every stored bucket', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('gone', ['t3'])])
     snapshot({ user: fixtureUser })
+    expect((await restoredTransactions())?.data.map((t) => t.id).sort()).toEqual(['t1', 't3'])
+  })
+
+  it('seeds from the store when the snapshot has expired, and keeps the snapshot', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts }, Date.now() - 25 * 60 * 60 * 1000)
+    const restored = await createPersistOptions().persister.restoreClient()
+    // the provider discards a snapshot older than maxAge; this one must survive it
+    expect(Date.now() - restored!.timestamp).toBeLessThan(createPersistOptions().maxAge)
+    expect(restored!.buster).toBe(createPersistOptions().buster)
+    expect(restored!.clientState.queries.map((q) => q.queryKey)).toEqual([['user'], ['accounts'], ['transactions']])
+    expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
+  })
+
+  it('seeds from the store alone when there is no snapshot', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(2_000_000)
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('a2', ['t2'])])
+    vi.mocked(Date.now).mockReturnValue(3_000_000)
+    try {
+      const restored = await createPersistOptions().persister.restoreClient()
+      expect(restored!.timestamp).toBe(3_000_000)
+      expect(restored!.buster).toBe(createPersistOptions().buster)
+      expect(restored!.clientState.queries.map((q) => q.queryKey)).toEqual([['transactions']])
+      const state = await restoredTransactions()
+      expect(state?.data.map((t) => t.id).sort()).toEqual(['t1', 't2'])
+      // when the buckets were last written
+      expect(state?.dataUpdatedAt).toBe(2_000_000)
+    } finally {
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('a snapshot of another release is dropped, and the store still seeds', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    const raw = JSON.parse(localStorage.getItem(QUERY_CACHE_KEY)!) as { buster: string }
+    localStorage.setItem(QUERY_CACHE_KEY, JSON.stringify({ ...raw, buster: 'older' }))
+    const restored = await createPersistOptions().persister.restoreClient()
+    expect(restored!.clientState.queries.map((q) => q.queryKey)).toEqual([['transactions']])
+    expect(localStorage.getItem(QUERY_CACHE_KEY)).toBeNull()
+  })
+
+  it('seeds nothing without a session token', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    localStorage.removeItem('token')
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    expect(await restoredTransactions()).toBeUndefined()
+    localStorage.removeItem(QUERY_CACHE_KEY)
+    expect(await createPersistOptions().persister.restoreClient()).toBeUndefined()
+  })
+
+  it('seeds nothing when the snapshot belongs to another user than the store', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: { ...fixtureUser, id: 'u2' }, accounts: fixtureAccounts })
     expect(await restoredTransactions()).toBeUndefined()
   })
 
-  it('seeds nothing into a snapshot that is about to be discarded', async () => {
+  it('seeds nothing from the store of another build', async () => {
     await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
-    snapshot({ user: fixtureUser, accounts: fixtureAccounts }, Date.now() - 25 * 60 * 60 * 1000)
+    window.econumoConfig = { VERSION: 'next' }
+    expect(await createPersistOptions().persister.restoreClient()).toBeUndefined()
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    expect(await restoredTransactions()).toBeUndefined()
+  })
+
+  it('seeds nothing when the snapshot accounts carry no revisions (an older server)', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts.map(({ transactionsRevision: _r, ...a }) => a) })
     expect(await restoredTransactions()).toBeUndefined()
   })
 

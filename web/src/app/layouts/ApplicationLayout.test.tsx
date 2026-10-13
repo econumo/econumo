@@ -74,6 +74,8 @@ function renderShellPersisted(home: ReactNode = <div>HOME CONTENT</div>) {
     [{ element: <ApplicationLayout />, children: [{ path: '/', element: home }] }],
     { initialEntries: ['/'] },
   )
+  // the restore seeds transactions only for a signed-in session
+  localStorage.setItem('token', 'eco_ses_test')
   // a fresh QueryClient per call = a page reload (in-memory cache is gone)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   uninstalls.push(installTransactionTracking(queryClient))
@@ -289,6 +291,53 @@ it('a reload starts from the stored transactions, before any response arrives', 
   expect(await screen.findByText('coffee beans')).toBeInTheDocument()
   expect(screen.getByText('Cash')).toBeInTheDocument()
   expect(screen.queryByText('Loading your data')).not.toBeInTheDocument()
+})
+
+it('an offline start more than a day after the last visit still starts from the stored data', async () => {
+  mockViewport(false)
+  await coldBoot()
+  const raw = JSON.parse(localStorage.getItem(QUERY_CACHE_KEY)!) as { timestamp: number }
+  localStorage.setItem(QUERY_CACHE_KEY, JSON.stringify({ ...raw, timestamp: Date.now() - 25 * 60 * 60 * 1000 }))
+
+  server.use(http.all('*/api/*', async () => {
+    await delay('infinite')
+    return HttpResponse.error()
+  }))
+  renderShellPersisted(<TransactionProbe />)
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  expect(screen.getByText('Cash')).toBeInTheDocument()
+  expect(screen.queryByText('Loading your data')).not.toBeInTheDocument()
+})
+
+it('a start without the snapshot shows the stored transactions and syncs only what moved', async () => {
+  mockViewport(false)
+  await coldBoot()
+  localStorage.removeItem(QUERY_CACHE_KEY)
+
+  const downloads: (string | null)[] = []
+  server.events.on('request:start', ({ request }) => {
+    const url = new URL(request.url)
+    if (url.pathname.endsWith('/get-account-transaction-list')) {
+      downloads.push(url.searchParams.get('accountIds'))
+    }
+  })
+  let release: () => void = () => {}
+  const gate = new Promise<void>((r) => { release = r })
+  const moved = fixtureAccounts.map((a) => (a.id === 'a2' ? { ...a, transactionsRevision: 2 } : a))
+  server.use(
+    http.get('*/api/v1/account/get-account-list', async () => {
+      await gate
+      return HttpResponse.json({ success: true, message: '', data: { items: moved } })
+    }),
+    ...coreHandlers({ accounts: moved, transactions: [...fixtureTransactions, { ...fixtureTransactions[0], id: 't-bank', accountId: 'a2', description: 'bank fee' }] }),
+  )
+  const { queryClient } = renderShellPersisted(<TransactionProbe />)
+  // from the store, before the accounts answer
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  release()
+  expect(await screen.findByText('bank fee')).toBeInTheDocument()
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+  expect(downloads).toEqual(['a2'])
 })
 
 it('a reload with unchanged revisions downloads no transactions and writes no bucket', async () => {
