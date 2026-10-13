@@ -993,7 +993,7 @@
             "menu_item": "Estadísticas de uso",
             "label": "Ayudar a mejorar Econumo",
             "description": "Las estadísticas de uso nos muestran qué funciones de la aplicación son las más populares y qué conviene mejorar.",
-            "promise": "Tus datos financieros y personales siguen siendo privados: no los compartimos con nadie."
+            "promise": "Tus datos financieros y personales siguen siendo privados y no se incluyen en las estadísticas."
           }
         }
       }

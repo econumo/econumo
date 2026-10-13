@@ -993,7 +993,7 @@
             "menu_item": "Nutzungsstatistiken",
             "label": "Helfen, Econumo zu verbessern",
             "description": "Nutzungsstatistiken zeigen uns, welche Funktionen der App am beliebtesten sind und was wir verbessern sollten.",
-            "promise": "Ihre finanziellen und persönlichen Daten bleiben privat – wir geben sie an niemanden weiter."
+            "promise": "Ihre finanziellen und persönlichen Daten bleiben privat und fließen nicht in die Statistik ein."
           }
         }
       }
