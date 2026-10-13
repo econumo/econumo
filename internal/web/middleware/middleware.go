@@ -4,6 +4,9 @@
 //
 //	requestid -> accesslog -> recover -> cors -> timezone -> language -> [auth]
 //
+// The router wraps the whole tree, SPA included, in SecurityHeaders and then
+// Compress, outside every per-group chain.
+//
 // The token-authentication middleware is intentionally NOT implemented here: it
 // is security-sensitive and is built as part of the user module (Phase 2),
 // where it will verify the RS256 token and stash the user id into the request

@@ -1012,6 +1012,10 @@ In the distroless image these run via the binary directly, e.g.
   AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs. One exception:
   `/api/v1/import/list-external-accounts` is a POST *read*, because the bridge access URL
   travels in the body — it must never reach a query string (logs, history, referrers).
+- **Compression:** every response (API, MCP, OAuth and the SPA files) is gzipped when the
+  client sends `Accept-Encoding: gzip` (`middleware.Compress`, wrapping the whole tree in
+  `internal/web/router`), except bodies under 1 KB, already-compressed types, `HEAD` and
+  `Range` requests. The JSON bytes are unchanged; a transaction list shrinks about 10x.
 - **Transaction sync read:** `GET /api/v1/transaction/get-account-transaction-list?accountIds=a,b`
   serves the SPA's per-account transaction store: `{revisions, items, authors}` where `revisions`
   maps each requested account id to its `transactionsRevision`, `items` are the transactions
