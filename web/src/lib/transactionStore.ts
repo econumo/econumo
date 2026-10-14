@@ -234,6 +234,31 @@ export function deleteBuckets(accountIds: string[], at?: number): Promise<void> 
   }))
 }
 
+// The revision of a bucket a full reload has not replaced yet. No server
+// revision is negative, so the sync downloads it again, and its rows stay
+// readable (offline too) until that download succeeds.
+export const RELOAD_REVISION = -1
+
+/**
+ * Marks every stored bucket for a fresh download, keeping its rows: a full
+ * reload whose downloads fail must not leave the device with nothing. Moves
+ * the epoch like a clear, so a sync already running cannot write a bucket over
+ * a mark. Gives up waiting after the time limit, like a clear.
+ */
+export async function markForReload(): Promise<void> {
+  epoch++
+  await within(guarded(undefined, () => dbTransaction([STORE_ACCOUNT_TRANSACTIONS], 'readwrite', (t) => {
+    const cursor = t.objectStore(STORE_ACCOUNT_TRANSACTIONS).openCursor()
+    cursor.onsuccess = () => {
+      const at = cursor.result
+      if (at) {
+        at.update({ ...(at.value as Bucket), revision: RELOAD_REVISION })
+        at.continue()
+      }
+    }
+  })))
+}
+
 // Attempted even while the store is disabled: a logout must not leave data on disk.
 // After the time limit the caller (logout, sign-in) goes on; the clear still
 // runs once the database opens, before any write started after it.

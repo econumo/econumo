@@ -1,6 +1,6 @@
 import type { AccountDto } from '@/api/dto/account'
 import type { AccountTransactionListDto, StoredTransaction } from '@/api/dto/transaction'
-import type { Bucket } from '@/lib/transactionStore'
+import { RELOAD_REVISION, type Bucket } from '@/lib/transactionStore'
 import { MAX_IDS, assemble, hasRevisions, syncBuckets } from './sync'
 
 const ada = { id: 'u1', name: 'Ada', avatar: 'face:emerald' }
@@ -184,6 +184,17 @@ describe('syncBuckets', () => {
     expect(fetch.mock.calls).toEqual([[['a', 'b']], [['c']], [['d']]])
     expect(persisted).toEqual([['a', 'b'], ['c'], ['d']])
     expect([...out.buckets.values()].every((x) => x.revision === 2)).toBe(true)
+  })
+
+  it('downloads a bucket marked for a full reload on its own, like a missing one', async () => {
+    const fetch = vi.fn((ids?: string[]) => Promise.resolve(reply(Object.fromEntries(ids!.map((id) => [id, 2])))))
+    await syncBuckets({
+      accounts: ['a', 'b', 'c'].map((id) => account(id, 2)),
+      stored: stored(bucket('a', 1), bucket('b', RELOAD_REVISION, [tx('t-b', 'b')]), bucket('c', 2)),
+      full: false,
+      fetch,
+    })
+    expect(fetch.mock.calls).toEqual([[['a']], [['b']]])
   })
 
   it('downloads changed accounts on their own when more than MAX_IDS of them changed', async () => {

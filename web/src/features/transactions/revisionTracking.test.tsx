@@ -6,7 +6,7 @@ import type { AccountDto } from '@/api/dto/account'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys } from '@/app/queryKeys'
 import { IDBFactory } from 'fake-indexeddb'
-import { STORE_TIMEOUT_MS, clearTransactions, loadBuckets, putBuckets, resetTransactionStoreForTests, type Bucket } from '@/lib/transactionStore'
+import { RELOAD_REVISION, STORE_TIMEOUT_MS, loadBuckets, markForReload, putBuckets, resetTransactionStoreForTests, type Bucket } from '@/lib/transactionStore'
 import { STORE_ACCOUNT_TRANSACTIONS, STORE_META, dbRequest, resetDbForTests } from '@/lib/db'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { delayOpen, delayTransactionCompletion } from '@/test/idbDelay'
@@ -14,7 +14,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
 import { useAcceptAccountAccess, useAccountItemEffects } from '@/features/accounts/queries'
 import { useApplyTransactionItem, useTransactions } from './queries'
-import { installTransactionTracking, noteOwnWrite, requestFullReload, resetRevisions, seedRevisions } from './revisionTracking'
+import { installTransactionTracking, noteOwnWrite, patchTransactions, requestFullReload, resetRevisions, seedRevisions } from './revisionTracking'
 import { assemble } from './sync'
 
 // accountIds of every get-account-transaction-list request (null = all accounts)
@@ -149,7 +149,7 @@ it('after a partial first load, the next sync downloads each missing account on 
   await waitFor(async () => expect([...(await loadBuckets('u1')).keys()].sort()).toEqual(['a-hidden', 'a1', 'a2', 'a3']))
 })
 
-it('a full reload that fails part-way resumes from what arrived, not from the old list', async () => {
+it('a full reload that fails part-way keeps the old rows on disk and resumes from what arrived', async () => {
   const three = wireAccounts.filter((a) => a.id !== 'a-hidden')
   const { queryClient, result } = await booted({ accounts: three })
   expect(calls).toEqual(['a1', 'a2', 'a3'])
@@ -161,11 +161,17 @@ it('a full reload that fails part-way resumes from what arrived, not from the ol
     }
     return undefined
   }))
-  await clearTransactions()
   requestFullReload()
+  await markForReload()
   await act(() => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }))
   await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('error'))
   expect(calls).toEqual(['a1', 'a2', 'a3', 'a1', 'a2', 'a3'])
+  // the server was unreachable for a3: its stored rows survive, still marked
+  await waitFor(async () => {
+    const a3 = (await loadBuckets('u1')).get('a3')!
+    expect(a3.revision).toBe(RELOAD_REVISION)
+    expect((await loadBuckets('u1')).get('a1')!.revision).toBe(1)
+  })
   // the retry
   await act(() => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }))
   await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
@@ -378,6 +384,38 @@ it('an in-flight sync cancelled by a local write does not undo it', async () => 
   }, { timeout: 2000 })
   // the cancelled request and the re-run; a1 is never downloaded
   expect(calls).toEqual([...COLD, 'a2', 'a2'])
+})
+
+it('a patch for a write without transactions in its response survives a sync in flight, which runs again', async () => {
+  const { queryClient, result } = await booted()
+  let release: () => void = () => {}
+  const gate = new Promise<void>((r) => { release = r })
+  const a2Row = { ...fixtureTransactions[0], id: 't-a2', accountId: 'a2' }
+  server.use(...coreHandlers({ accounts: withRevisions({ a2: 2 }), transactions: [...fixtureTransactions, a2Row] }))
+  server.use(http.get('*/api/v1/transaction/get-account-transaction-list', async () => {
+    await gate
+    return undefined
+  }))
+  await act(() => queryClient.refetchQueries({ queryKey: queryKeys.accounts }))
+  await waitFor(() => expect(calls).toEqual([...COLD, 'a2']))
+  // e.g. a category delete: the sync above read t1 before it
+  act(() => patchTransactions(queryClient, (rows) => rows.map((t) => (t.id === 't1' ? { ...t, categoryId: null } : t))))
+  release()
+  await waitFor(() => expect(result.current.list.data!.map((t) => t.id)).toContain('t-a2'))
+  expect(result.current.list.data!.find((t) => t.id === 't1')!.categoryId).toBeNull()
+  // the cancelled request and the re-run
+  expect(calls).toEqual([...COLD, 'a2', 'a2'])
+  await waitFor(async () => {
+    const stored = await loadBuckets('u1')
+    expect(stored.get('a1')!.items.find((t) => t.id === 't1')!.categoryId).toBeNull()
+    expect(stored.get('a2')!.revision).toBe(2)
+  }, { timeout: 2000 })
+})
+
+it('patchTransactions without a list patches nothing and leaves no empty list behind', async () => {
+  const queryClient = new QueryClient()
+  patchTransactions(queryClient, (rows) => rows.map((t) => ({ ...t, categoryId: null })))
+  expect(queryClient.getQueryData(queryKeys.transactions)).toBeUndefined()
 })
 
 it('a local patch reaches IndexedDB after 500 ms, keeping the stored revision', async () => {

@@ -1,6 +1,6 @@
 import type { AccountDto } from '@/api/dto/account'
 import type { AccountTransactionListDto, StoredTransaction, TransactionDto } from '@/api/dto/transaction'
-import type { Bucket } from '@/lib/transactionStore'
+import { RELOAD_REVISION, type Bucket } from '@/lib/transactionStore'
 
 // The server rejects more ids than this in one request.
 export const MAX_IDS = 200
@@ -90,12 +90,14 @@ export async function syncBuckets(input: SyncInput): Promise<SyncOutput> {
   const ids = [...revisions.keys()]
   const stale = input.full ? ids : ids.filter((id) => input.stored.get(id)?.revision !== revisions.get(id))
 
-  // A whole account history (no bucket yet, or a full reload) goes one per
-  // request, stored on arrival, so an interrupted load resumes; changed
-  // buckets go in one request unless more than MAX_IDS changed.
-  const changed = input.full ? [] : stale.filter((id) => input.stored.has(id))
+  // A whole account history (no bucket yet, one a full reload marked, or a
+  // full reload) goes one per request, stored on arrival, so an interrupted
+  // load resumes; changed buckets go in one request unless more than MAX_IDS
+  // changed.
+  const whole = (id: string) => (input.stored.get(id)?.revision ?? RELOAD_REVISION) === RELOAD_REVISION
+  const changed = input.full ? [] : stale.filter((id) => !whole(id))
   const batched = changed.length > MAX_IDS ? [] : changed
-  const each = batched.length === 0 ? stale : stale.filter((id) => !input.stored.has(id))
+  const each = batched.length === 0 ? stale : stale.filter(whole)
   const download: Download = { changed: [], gone: [] }
   if (batched.length > 0) {
     const part = toBuckets(await input.fetch(batched), batched)

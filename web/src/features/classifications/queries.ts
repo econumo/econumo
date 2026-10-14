@@ -9,9 +9,9 @@ import type { LabelDto } from '@/api/dto/label'
 import type { PayeeDto } from '@/api/dto/payee'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TagDto } from '@/api/dto/tag'
-import type { TransactionDto } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { patchTransactions } from '@/features/transactions/revisionTracking'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
 const byPosition = <T extends { position: number }>(items: T[]) => [...items].sort((a, b) => a.position - b.position)
@@ -114,9 +114,7 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
     },
     remove: (id: Id, txField: 'categoryId' | 'payeeId' | 'tagId') => {
       queryClient.setQueryData<EntityDto[]>(key, (prev) => (prev ?? []).filter((i) => i.id !== id))
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
-        (prev ?? []).map((t) => (t[txField] === id ? { ...t, [txField]: null } : t)),
-      )
+      patchTransactions(queryClient, (rows) => rows.map((t) => (t[txField] === id ? { ...t, [txField]: null } : t)))
       // The delete cascades ON DELETE SET NULL onto recurring templates too;
       // a stale id left in this cache would ride the next template edit (a
       // full-state replace) and be rejected as an unavailable item.
@@ -134,9 +132,7 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
     // as data loss.
     merge: (sourceId: Id, targetId: Id, txField: 'categoryId' | 'payeeId' | 'tagId') => {
       queryClient.setQueryData<EntityDto[]>(key, (prev) => (prev ?? []).filter((i) => i.id !== sourceId))
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
-        (prev ?? []).map((t) => (t[txField] === sourceId ? { ...t, [txField]: targetId } : t)),
-      )
+      patchTransactions(queryClient, (rows) => rows.map((t) => (t[txField] === sourceId ? { ...t, [txField]: targetId } : t)))
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) =>
         (prev ?? []).map((r) => (r[txField] === sourceId ? { ...r, [txField]: targetId } : r)),
       )
@@ -147,9 +143,7 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
     mergeLabel: (sourceId: Id, targetId: Id) => {
       queryClient.setQueryData<EntityDto[]>(key, (prev) => (prev ?? []).filter((i) => i.id !== sourceId))
       const swap = (ids: Id[]) => (ids.includes(sourceId) ? [...new Set(ids.map((id) => (id === sourceId ? targetId : id)))] : ids)
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
-        (prev ?? []).map((t) => ({ ...t, labelIds: swap(t.labelIds ?? []) })),
-      )
+      patchTransactions(queryClient, (rows) => rows.map((t) => ({ ...t, labelIds: swap(t.labelIds ?? []) })))
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) =>
         (prev ?? []).map((r) => ({ ...r, labelIds: swap(r.labelIds ?? []) })),
       )
@@ -493,7 +487,7 @@ export function useDeleteLabel() {
     mutationFn: (id: Id) => labelApi.deleteLabel(id),
     onSuccess: (_r, id) => {
       queryClient.setQueryData<LabelDto[]>(queryKeys.labels, (prev) => (prev ?? []).filter((l) => l.id !== id))
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => withoutLabel(prev, id))
+      patchTransactions(queryClient, (rows) => withoutLabel(rows, id))
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) => withoutLabel(prev, id))
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       trackEvent(METRICS.LABEL_DELETE)

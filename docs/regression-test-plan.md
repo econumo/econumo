@@ -1926,6 +1926,15 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       of "Clear cache and reload") resumes once back online: only the accounts not
       yet downloaded are requested, and after the next offline reload every
       account still shows its transactions.
+- [ ] "Clear cache and reload" while the server is unreachable but the
+      device is online (stop the server, or block its host): the reload fails,
+      and after going offline and reloading the page every account still
+      shows its transactions. Once the server is back, the next sync downloads
+      every account again, one request per account.
+- [ ] While a sync is downloading (throttle the network, then edit a
+      transaction on another device so an account is re-downloaded), delete a
+      category used by transactions of a different account: once the download
+      lands those transactions still show no category, also after a page reload.
 - [ ] Log in as B in a browser where A was signed in before (no logout):
       after a reload, none of A's transactions appear, even offline.
 - [ ] Interrupted first load resumes: on a fresh browser profile (or after a

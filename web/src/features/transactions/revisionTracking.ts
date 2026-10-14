@@ -222,8 +222,29 @@ export function beginLocalWrite(queryClient: QueryClient): boolean {
   return false
 }
 
+/**
+ * Patches the cached list for a write whose response carries no transactions
+ * (a classification merged or deleted, a recurring template linked or
+ * deleted). A sync in flight read the rows before the write and would put
+ * them back when it lands, so it is cancelled first and run again on the
+ * patched list once the cancel settles. Without a list nothing is patched.
+ */
+export function patchTransactions(queryClient: QueryClient, update: (rows: TransactionDto[]) => TransactionDto[]): void {
+  const cancelled = queryClient.isFetching({ queryKey: queryKeys.transactions }) > 0
+    ? queryClient.cancelQueries({ queryKey: queryKeys.transactions })
+    : null
+  const rows = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)
+  if (rows !== undefined) {
+    queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, update(rows))
+  }
+  if (cancelled) {
+    void cancelled.then(() => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }))
+  }
+}
+
 // The sync stops trusting the cached list: a retry after a failed reload
-// reads the store, which holds what arrived, and downloads only the rest.
+// reads the store, which holds what arrived and the marked rest, and downloads
+// only the marked buckets.
 export function requestFullReload(): void {
   fullReload = true
   inMemory = false

@@ -296,6 +296,24 @@ describe('Clear cache and reload', () => {
     expect(queryClient.isFetching({ queryKey: queryKeys.transactions })).toBe(1)
   })
 
+  it('keeps every stored transaction when the server cannot be reached', async () => {
+    const user = userEvent.setup()
+    const queryClient = renderPage()
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+    await waitFor(async () => expect((await loadBuckets('u1')).size).toBe(fixtureAccounts.length))
+    const before = await loadBuckets('u1')
+    // online as far as the browser knows, but every download fails
+    server.use(http.get('*/api/v1/transaction/get-account-transaction-list', () => HttpResponse.error()))
+    await user.click(screen.getByRole('button', { name: 'Clear cache and reload' }))
+    await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('error'))
+    const after = await loadBuckets('u1')
+    expect([...after.keys()].sort()).toEqual([...before.keys()].sort())
+    for (const [id, bucket] of before) {
+      expect(after.get(id)!.items).toEqual(bucket.items)
+    }
+  })
+
   it('a second press during the reload counts nothing and reloads nothing more', async () => {
     let release: () => void = () => {}
     const gate = new Promise<void>((r) => { release = r })

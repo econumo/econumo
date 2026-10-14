@@ -376,8 +376,11 @@ are readonly (a readwrite transaction only to wipe another user's or build's dat
 or auth time out after 1.5 s (a slow database is no failure and stays on), background writes
 are never awaited, and errors never surface (a broken IndexedDB turns the store off for the
 session; the sync keeps working in memory). `clearTransactions` (called by
-`clearPersistedQueryCache` on every login and logout, and by a full reload) bumps an epoch
-that fences any in-flight sync so it cannot write the previous user's data back; a stored
+`clearPersistedQueryCache` on every login and logout) bumps an epoch
+that fences any in-flight sync so it cannot write the previous user's data back. A full reload
+never clears: `markForReload` sets every stored bucket's revision to `RELOAD_REVISION` (-1)
+and keeps its rows, behind the same epoch fence, so a reload whose downloads fail (a server
+unreachable while the browser reports online) still leaves the history readable offline. A stored
 `buster`/`userId` that no longer matches wipes the store on load without an epoch bump. The
 query-cache restore seeds `['transactions']` from IndexedDB inside `restoreClient` whenever
 a session token exists, independent of the localStorage snapshot: `meta.userId` must be the
@@ -393,14 +396,18 @@ key's `queryFn` is the revision-driven sync
 revisions with the `transactionsRevision` of `get-account-list` and calls
 `get-account-transaction-list` with `accountIds` naming only the stale accounts (no request
 when none are stale) for accounts whose stored revision changed (over 200 of them go one by
-one). An account with no stored bucket (first load, resumed load, new account) and every
-account on a full reload go account by account: one request per account, at most two in
+one). An account with no stored bucket (first load, resumed load, new account), a bucket marked
+for reload and every account on a full reload go account by account: one request per account, at most two in
 flight, each bucket written to the store in the background as it arrives, so an interrupted
 first load resumes with only the missing accounts; the list lands once every account is in.
-A full reload drops the in-memory state, so a retry after it fails resumes from the store. It reads
+A full reload drops the in-memory state, so a retry after it fails resumes from the store,
+downloading only the buckets still marked. It reads
 IndexedDB only while the page holds no synced or restored list (first boot, after a
 login/logout); otherwise the buckets come from memory: the cached list regrouped
-by account under the revisions it was synced at.
+by account under the revisions it was synced at. A write whose response carries no
+transactions (a classification merged or deleted, a recurring template linked or deleted)
+patches the list through `patchTransactions`, which cancels a sync in flight (it read the
+rows before the write and would put them back) and runs it again on the patched list.
 Hidden-folder accounts are included and pending share invites skipped; against a server
 whose accounts carry no revisions it falls back to `get-transaction-list` (hidden-folder
 account pages then show no transactions). The user's own edits are recorded locally without

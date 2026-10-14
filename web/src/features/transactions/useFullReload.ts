@@ -3,7 +3,7 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { queryKeys } from '@/app/queryKeys'
-import { clearTransactions } from '@/lib/transactionStore'
+import { markForReload } from '@/lib/transactionStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { requestFullReload } from './revisionTracking'
 
@@ -61,8 +61,7 @@ export function useFullReload(): (source: FullReloadSource) => Promise<void> {
     if (pending.has(queryClient)) {
       return
     }
-    // The clear comes first and the download could not follow: an offline
-    // reload would leave nothing to start from.
+    // nothing could be downloaded; say so instead of a reload that only waits
     if (navigator.onLine === false) {
       toast(t('settings.sync.full_reload_offline'), { id: 'full-reload' })
       return
@@ -71,9 +70,12 @@ export function useFullReload(): (source: FullReloadSource) => Promise<void> {
     try {
       trackEvent(METRICS.DATA_FULL_RELOAD, { source })
       toast(t('settings.sync.full_reload'), { id: 'full-reload' })
-      // the flag goes up after the clear so the sync that starts below finds it set
-      await clearTransactions()
+      // The stored rows stay until their replacement arrives: the server can be
+      // unreachable while the browser reports online, and a failed reload must
+      // leave them readable offline. The in-memory state goes first, so no
+      // write-through of the rows being replaced lands after the mark.
       requestFullReload()
+      await markForReload()
       void queryClient.invalidateQueries()
       await settled(queryClient)
     } finally {

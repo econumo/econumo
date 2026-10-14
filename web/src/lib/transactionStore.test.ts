@@ -2,7 +2,7 @@ import { IDBFactory } from 'fake-indexeddb'
 import type { StoredTransaction } from '@/api/dto/transaction'
 import { STORE_ACCOUNT_TRANSACTIONS, STORE_IMPORT_KEYS, dbRequest, resetDbForTests } from './db'
 import { delayOpen, delayTransactionCompletion } from '@/test/idbDelay'
-import { STORE_TIMEOUT_MS, clearTransactions, deleteBuckets, loadBuckets, putBuckets, resetTransactionStoreForTests, storeBuster, tryLoadBuckets, tryLoadStored, type Bucket } from './transactionStore'
+import { RELOAD_REVISION, STORE_TIMEOUT_MS, clearTransactions, deleteBuckets, loadBuckets, markForReload, putBuckets, resetTransactionStoreForTests, storeBuster, storeEpoch, tryLoadBuckets, tryLoadStored, type Bucket } from './transactionStore'
 
 const tx = (id: string, accountId: string): StoredTransaction => ({
   id, type: 'expense', accountId, accountRecipientId: null, amount: '1', amountRecipient: null,
@@ -83,6 +83,22 @@ it('a write before the first load after an upgrade drops the old build\'s bucket
 it('a write before any load is kept by the next load for the same user', async () => {
   await putBuckets('u1', [bucket('a')])
   expect([...(await loadBuckets('u1')).keys()]).toEqual(['a'])
+})
+
+it('markForReload keeps every bucket\'s rows and marks it for download', async () => {
+  await putBuckets('u1', [bucket('a', 3), bucket('b', 5)])
+  await markForReload()
+  const loaded = await loadBuckets('u1')
+  expect(loaded.get('a')).toEqual({ ...bucket('a'), revision: RELOAD_REVISION })
+  expect(loaded.get('b')).toEqual({ ...bucket('b'), revision: RELOAD_REVISION })
+})
+
+it('a write a sync started before markForReload does not replace a mark', async () => {
+  await putBuckets('u1', [bucket('a', 3)])
+  const at = storeEpoch()
+  await markForReload()
+  await putBuckets('u1', [bucket('a', 4)], at)
+  expect((await loadBuckets('u1')).get('a')?.revision).toBe(RELOAD_REVISION)
 })
 
 it('clearTransactions still clears after the store disabled itself', async () => {
