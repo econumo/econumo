@@ -21,12 +21,15 @@ export interface StoredTransactions {
   userId: string
   savedAt: number | undefined
   buckets: Map<string, Bucket>
+  // the query-cache snapshot kept beside the buckets (see putSnapshot)
+  snapshot: unknown
 }
 
 // Bump when the stored shape changes without a release (dev builds keep the
 // same version string).
 export const FORMAT_VERSION = 1
 const META_KEY = 'state'
+const SNAPSHOT_KEY = 'snapshot'
 
 export function storeBuster(): string {
   return `${FORMAT_VERSION}:${getVersion()}`
@@ -104,6 +107,7 @@ function adopt(t: IDBTransaction, userId: string, next: (store: IDBObjectStore) 
   read.onsuccess = () => {
     if (!isOwnedBy(read.result as Meta | undefined, userId)) {
       store.clear()
+      meta.delete(SNAPSHOT_KEY)
       meta.put(currentMeta(userId), META_KEY)
     }
     next(store)
@@ -180,10 +184,11 @@ async function readStored(): Promise<StoredTransactions | null> {
       if (!meta || meta.buster !== storeBuster()) {
         return
       }
+      const snapshot = t.objectStore(STORE_META).get(SNAPSHOT_KEY)
       const all = t.objectStore(STORE_ACCOUNT_TRANSACTIONS).getAll()
       all.onsuccess = () => {
         const buckets = new Map((all.result as Bucket[]).map((b) => [b.accountId, b]))
-        out = { userId: meta.userId, savedAt: meta.savedAt, buckets }
+        out = { userId: meta.userId, savedAt: meta.savedAt, buckets, snapshot: snapshot.result }
       }
     }
   })
@@ -215,6 +220,26 @@ export function putBuckets(userId: string, buckets: Bucket[], at?: number): Prom
         store.put(bucket)
       }
       t.objectStore(STORE_META).put({ ...currentMeta(userId), savedAt: Date.now() }, META_KEY)
+    })
+  }))
+}
+
+/**
+ * Keeps a copy of the query-cache snapshot (the reference data: accounts,
+ * categories, the user...) next to the buckets. The boot restore falls back to
+ * it when the localStorage copy is gone, so stored transactions never sit
+ * behind a loader that an offline device cannot get past.
+ */
+export function putSnapshot(userId: string, snapshot: unknown, at?: number): Promise<void> {
+  if (isStale(at)) {
+    return Promise.resolve()
+  }
+  return guarded(undefined, () => dbTransaction([STORE_ACCOUNT_TRANSACTIONS, STORE_META], 'readwrite', (t) => {
+    if (isStale(at)) {
+      return
+    }
+    adopt(t, userId, () => {
+      t.objectStore(STORE_META).put(snapshot, SNAPSHOT_KEY)
     })
   }))
 }

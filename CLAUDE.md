@@ -371,7 +371,7 @@ Lint is oxlint, tests are vitest (`pnpm test`).
 database, `econumo` (`web/src/lib/db.ts`), holds three stores: `importKeys` (the SimpleFIN
 data key, migrated once from the old `econumo-import` database), `accountTransactions`
 (one row per account: its `transactionsRevision` and transactions) and `meta` (`buster`,
-`userId`, `savedAt`). `web/src/lib/transactionStore.ts` is the only reader/writer: loads
+`userId`, `savedAt`, plus a copy of the query-cache snapshot). `web/src/lib/transactionStore.ts` is the only reader/writer: loads
 are readonly (a readwrite transaction only to wipe another user's or build's data), waits that hold boot
 or auth time out after 1.5 s (a slow database is no failure and stays on), background writes
 are never awaited, and errors never surface (a broken IndexedDB turns the store off for the
@@ -390,7 +390,11 @@ the login clear can time out, so the store alone does not prove its owner), `met
 must be this build's, and without the
 snapshot's accounts every stored bucket is shown until the refresh sync corrects the set. A
 snapshot of this release past its 24 h `maxAge` is kept (re-stamped) when the store seeds, so
-an offline start after a day away shows data instead of the boot loader. That
+an offline start after a day away shows data instead of the boot loader. The persister also
+copies each snapshot into the store (`putSnapshot`, throttled like the localStorage write,
+fenced by the epoch, dropped with the buckets when another user writes); the restore uses
+that copy when localStorage holds no snapshot of this release, so a device that lost its
+localStorage but kept IndexedDB still starts offline. That
 key's `queryFn` is the revision-driven sync
 (`web/src/features/transactions/{sync.ts,revisionTracking.ts}`): it compares the bucket
 revisions with the `transactionsRevision` of `get-account-list` and calls

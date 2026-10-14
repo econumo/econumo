@@ -41,7 +41,10 @@ func Compress(next http.Handler) http.Handler {
 	})
 }
 
+// acceptsGzip applies RFC 9110 12.5.3: an explicit gzip entry decides, and a
+// wildcard only stands in when gzip is not listed, so "gzip;q=0, *" refuses.
 func acceptsGzip(header string) bool {
+	gzipQ, wildcardQ := -1.0, -1.0
 	for part := range strings.SplitSeq(header, ",") {
 		coding, params, _ := strings.Cut(part, ";")
 		coding = strings.ToLower(strings.TrimSpace(coding))
@@ -57,11 +60,16 @@ func acceptsGzip(header string) bool {
 				}
 			}
 		}
-		if q > 0 {
-			return true
+		if coding == "gzip" {
+			gzipQ = max(gzipQ, q)
+		} else {
+			wildcardQ = max(wildcardQ, q)
 		}
 	}
-	return false
+	if gzipQ >= 0 {
+		return gzipQ > 0
+	}
+	return wildcardQ > 0
 }
 
 func compressible(contentType string) bool {

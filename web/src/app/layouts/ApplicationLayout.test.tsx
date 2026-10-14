@@ -10,7 +10,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureTransactions, fixtureUser } from '@/test/fixtures'
 import { QUERY_CACHE_KEY, clearPersistedQueryCache, createPersistOptions, refreshRestoredQueries } from '@/lib/queryPersist'
 import { STORE_ACCOUNT_TRANSACTIONS, resetDbForTests } from '@/lib/db'
-import { loadBuckets, putBuckets, resetTransactionStoreForTests } from '@/lib/transactionStore'
+import { loadBuckets, putBuckets, resetTransactionStoreForTests, tryLoadStored } from '@/lib/transactionStore'
 import { queryKeys } from '@/app/queryKeys'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { useTransactions } from '@/features/transactions/queries'
@@ -310,6 +310,22 @@ it('an offline start more than a day after the last visit still starts from the 
   expect(screen.queryByText('Loading your data')).not.toBeInTheDocument()
 })
 
+it('an offline start without the localStorage snapshot starts from the copy in IndexedDB', async () => {
+  mockViewport(false)
+  await coldBoot()
+  await waitFor(async () => expect((await tryLoadStored())?.snapshot).toBeDefined())
+  localStorage.removeItem(QUERY_CACHE_KEY)
+
+  server.use(http.all('*/api/*', async () => {
+    await delay('infinite')
+    return HttpResponse.error()
+  }))
+  renderShellPersisted(<TransactionProbe />)
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  expect(screen.getByText('Cash')).toBeInTheDocument()
+  expect(screen.queryByText('Loading your data')).not.toBeInTheDocument()
+})
+
 it('a start without the snapshot shows the stored transactions and syncs only what moved', async () => {
   mockViewport(false)
   await coldBoot()
@@ -388,11 +404,12 @@ it('a local edit right after a reload writes only the touched account', async ()
   queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
     prev?.map((t) => (t.id === 't1' ? { ...t, description: 'tea leaves' } : t)))
   expect(await screen.findByText('tea leaves')).toBeInTheDocument()
-  await waitFor(() => expect(put).toHaveBeenCalled(), { timeout: 2000 })
-  const written = put.mock.calls
+  // the snapshot copy goes to the meta store; only bucket writes count here
+  const written = () => put.mock.calls
     .filter((_, i) => (put.mock.contexts[i] as IDBObjectStore).name === STORE_ACCOUNT_TRANSACTIONS)
     .map(([bucket]) => (bucket as { accountId: string }).accountId)
-  expect(written).toEqual(['a1'])
+  await waitFor(() => expect(written()).not.toEqual([]), { timeout: 2000 })
+  expect(written()).toEqual(['a1'])
 })
 
 it('never keeps transactions in the localStorage snapshot', async () => {

@@ -2,7 +2,7 @@ import { IDBFactory } from 'fake-indexeddb'
 import type { StoredTransaction } from '@/api/dto/transaction'
 import { STORE_ACCOUNT_TRANSACTIONS, STORE_IMPORT_KEYS, dbRequest, resetDbForTests } from './db'
 import { delayOpen, delayTransactionCompletion } from '@/test/idbDelay'
-import { RELOAD_REVISION, STORE_TIMEOUT_MS, clearTransactions, deleteBuckets, loadBuckets, markForReload, putBuckets, resetTransactionStoreForTests, storeBuster, storeEpoch, tryLoadBuckets, tryLoadStored, type Bucket } from './transactionStore'
+import { RELOAD_REVISION, STORE_TIMEOUT_MS, clearTransactions, deleteBuckets, loadBuckets, markForReload, putBuckets, putSnapshot, resetTransactionStoreForTests, storeBuster, storeEpoch, tryLoadBuckets, tryLoadStored, type Bucket } from './transactionStore'
 
 const tx = (id: string, accountId: string): StoredTransaction => ({
   id, type: 'expense', accountId, accountRecipientId: null, amount: '1', amountRecipient: null,
@@ -99,6 +99,32 @@ it('a write a sync started before markForReload does not replace a mark', async 
   await markForReload()
   await putBuckets('u1', [bucket('a', 4)], at)
   expect((await loadBuckets('u1')).get('a')?.revision).toBe(RELOAD_REVISION)
+})
+
+describe('the snapshot copy', () => {
+  const snap = { buster: 'b', timestamp: 1, clientState: { queries: [], mutations: [] } }
+
+  it('is read back with the buckets', async () => {
+    await putBuckets('u1', [bucket('a')])
+    await putSnapshot('u1', snap)
+    const stored = await tryLoadStored()
+    expect(stored?.snapshot).toEqual(snap)
+    expect([...stored!.buckets.keys()]).toEqual(['a'])
+  })
+
+  it('is gone after a clear, and a copy started before the clear is not written', async () => {
+    await putSnapshot('u1', snap)
+    const at = storeEpoch()
+    await clearTransactions()
+    await putSnapshot('u1', snap, at)
+    expect(await tryLoadStored()).toBeNull()
+  })
+
+  it('goes with the buckets when another user writes', async () => {
+    await putSnapshot('u1', snap)
+    await putBuckets('u2', [bucket('a')])
+    expect((await tryLoadStored())?.snapshot).toBeUndefined()
+  })
 })
 
 it('clearTransactions still clears after the store disabled itself', async () => {

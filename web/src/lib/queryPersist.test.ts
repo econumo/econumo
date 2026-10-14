@@ -1,3 +1,4 @@
+import { waitFor } from '@testing-library/react'
 import { AxiosError, type AxiosResponse } from 'axios'
 import { hashKey, QueryClient } from '@tanstack/react-query'
 import { IDBFactory } from 'fake-indexeddb'
@@ -7,7 +8,7 @@ import { delayTransactionCompletion } from '@/test/idbDelay'
 import { createAppQueryClient } from './appQueryClient'
 import { resetDbForTests } from './db'
 import { QUERY_CACHE_KEY, clearPersistedQueryCache, createPersistOptions } from './queryPersist'
-import { STORE_TIMEOUT_MS, loadBuckets, putBuckets, resetTransactionStoreForTests, type Bucket } from './transactionStore'
+import { STORE_TIMEOUT_MS, loadBuckets, putBuckets, putSnapshot, resetTransactionStoreForTests, tryLoadStored, type Bucket } from './transactionStore'
 
 function defaultRetry(): (failureCount: number, error: unknown) => boolean {
   const retry = createAppQueryClient().getDefaultOptions().queries?.retry
@@ -163,6 +164,35 @@ describe('restoring the stored transactions', () => {
     } finally {
       vi.restoreAllMocks()
     }
+  })
+
+  it('without a localStorage snapshot, restores the copy kept in IndexedDB', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('gone', ['t2'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    const copy = JSON.parse(localStorage.getItem(QUERY_CACHE_KEY)!) as unknown
+    await putSnapshot(fixtureUser.id, copy)
+    localStorage.removeItem(QUERY_CACHE_KEY)
+    const restored = await createPersistOptions().persister.restoreClient()
+    expect(restored!.clientState.queries.map((q) => q.queryKey)).toEqual([['user'], ['accounts'], ['transactions']])
+    // filtered by the copy's accounts, like a localStorage snapshot
+    expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
+  })
+
+  it('ignores an IndexedDB copy of another release', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    const copy = JSON.parse(localStorage.getItem(QUERY_CACHE_KEY)!) as Record<string, unknown>
+    await putSnapshot(fixtureUser.id, { ...copy, buster: 'older' })
+    localStorage.removeItem(QUERY_CACHE_KEY)
+    const restored = await createPersistOptions().persister.restoreClient()
+    expect(restored!.clientState.queries.map((q) => q.queryKey)).toEqual([['transactions']])
+  })
+
+  it('persisting also copies the snapshot into IndexedDB for the session\'s user', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    const client = { buster: createPersistOptions().buster, timestamp: 5, clientState: { queries: [], mutations: [] } }
+    await createPersistOptions({ throttleTime: 0 }).persister.persistClient(client)
+    await waitFor(async () => expect((await tryLoadStored())?.snapshot).toEqual(client))
   })
 
   it('a snapshot of another release is dropped, and the store still seeds', async () => {

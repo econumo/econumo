@@ -11,7 +11,7 @@ import { assemble, hasRevisions } from '@/features/transactions/sync'
 import { CACHE_MAX_AGE_MS } from './appQueryClient'
 import { getVersion } from './config'
 import { getSessionUserId, hasToken } from './storage'
-import { clearTransactions, deleteBuckets, tryLoadStored } from './transactionStore'
+import { clearTransactions, deleteBuckets, putSnapshot, storeEpoch, tryLoadStored, type StoredTransactions } from './transactionStore'
 
 // Vue parity: the Quasar app keeps every store in localStorage, so a page
 // reload starts from cached data and refreshes in the background instead of
@@ -31,13 +31,12 @@ interface Seed {
 // `snapshot`: the restored cache of this release, fresh or expired, if any.
 // `owner`: the user the session token was issued to; the store's meta must
 // name the same one, so it seeds without the snapshot too.
-async function loadSeed(snapshot: PersistedClient | undefined, owner: string): Promise<Seed | null> {
+function loadSeed(snapshot: PersistedClient | undefined, owner: string, stored: StoredTransactions | null): Seed | null {
   const user = snapshot && snapshotData<CurrentUserDto>(snapshot, queryKeys.user)
   const raw = snapshot && snapshotData<AccountDto[]>(snapshot, queryKeys.accounts)
   if (user && user.id !== owner) {
     return null
   }
-  const stored = await tryLoadStored()
   if (!stored || stored.userId !== owner) {
     return null
   }
@@ -101,20 +100,45 @@ function withTransactions(client: PersistedClient, rows: TransactionDto[], updat
   }
 }
 
-function withTransactionRestore(inner: Persister, maxAge: number, buster: string): Persister {
+function sessionOwner(): string | null {
+  return hasToken() ? getSessionUserId() : null
+}
+
+function withTransactionRestore(inner: Persister, maxAge: number, buster: string, throttleTime: number): Persister {
+  // The IndexedDB copy is written at most once per throttleTime: the provider
+  // hands over a snapshot on every cache change.
+  let latest: PersistedClient | null = null
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const copyToStore = () => {
+    timer = null
+    const client = latest
+    latest = null
+    const owner = sessionOwner()
+    if (client && owner) {
+      void putSnapshot(owner, client, storeEpoch())
+    }
+  }
   return {
-    persistClient: (client) => inner.persistClient(client),
+    persistClient: (client) => {
+      latest = client
+      timer ??= setTimeout(copyToStore, throttleTime)
+      return inner.persistClient(client)
+    },
     removeClient: () => inner.removeClient(),
     restoreClient: async () => {
       const snapshot = await inner.restoreClient()
       // signed out: the next sign-in clears the store anyway
-      const owner = hasToken() ? getSessionUserId() : null
+      const owner = sessionOwner()
       if (!owner) {
         return snapshot
       }
+      const stored = await tryLoadStored()
       // a snapshot of another release must contribute nothing: response shapes may differ
-      const usable = snapshot?.timestamp && snapshot.buster === buster ? snapshot : undefined
-      const seed = await loadSeed(usable, owner)
+      const ofThisRelease = (c: PersistedClient | undefined) => (c?.timestamp && c.buster === buster ? c : undefined)
+      // the copy beside the buckets stands in when localStorage lost its own
+      const usable = ofThisRelease(snapshot)
+        ?? (stored?.userId === owner ? ofThisRelease(stored.snapshot as PersistedClient | undefined) : undefined)
+      const seed = loadSeed(usable, owner, stored)
       if (!seed) {
         return snapshot
       }
@@ -138,7 +162,7 @@ function withTransactionRestore(inner: Persister, maxAge: number, buster: string
 
 // throttleTime: tests pass 0 — the persister's 1 s default equals waitFor's
 // default timeout, so asserting on the written snapshot would race it.
-export function createPersistOptions({ throttleTime }: { throttleTime?: number } = {}) {
+export function createPersistOptions({ throttleTime = 1000 }: { throttleTime?: number } = {}) {
   // a release may change response shapes; never restore across versions
   const buster = getVersion()
   return {
@@ -146,6 +170,7 @@ export function createPersistOptions({ throttleTime }: { throttleTime?: number }
       createSyncStoragePersister({ storage: window.localStorage, key: QUERY_CACHE_KEY, throttleTime }),
       CACHE_MAX_AGE_MS,
       buster,
+      throttleTime,
     ),
     maxAge: CACHE_MAX_AGE_MS,
     buster,

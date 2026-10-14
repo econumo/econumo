@@ -83,6 +83,7 @@ func TestCompress_PassesThrough(t *testing.T) {
 	}{
 		{"client without gzip", writeJSON(http.StatusOK, bigJSON), http.MethodGet, "", nil, bigJSON},
 		{"gzip refused with q=0", writeJSON(http.StatusOK, bigJSON), http.MethodGet, "gzip;q=0, identity", nil, bigJSON},
+		{"gzip refused despite a wildcard", writeJSON(http.StatusOK, bigJSON), http.MethodGet, "gzip;q=0, *;q=1", nil, bigJSON},
 		{"small body", writeJSON(http.StatusOK, `{"success":true}`), http.MethodGet, "gzip", nil, `{"success":true}`},
 		{"range request", writeJSON(http.StatusOK, bigJSON), http.MethodGet, "gzip", http.Header{"Range": {"bytes=0-10"}}, bigJSON},
 		{"already compressed type", func(w http.ResponseWriter, r *http.Request) {
@@ -185,6 +186,10 @@ func TestAcceptsGzip(t *testing.T) {
 		"br, identity":       false,
 		"x-gzip":             false,
 		"gzip;level=1;q=0.5": true,
+		"gzip;q=0, *;q=1":    false,
+		"*;q=1, gzip;q=0":    false,
+		"*;q=0, gzip":        true,
+		"br, *;q=0.5":        true,
 	} {
 		if got := acceptsGzip(header); got != want {
 			t.Errorf("acceptsGzip(%q)=%v want %v", header, got, want)

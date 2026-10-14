@@ -1922,6 +1922,10 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       it, wait over a day (or set the device clock forward 25 h), go offline
       and open it — accounts and transactions show at once, with no "Loading
       your data" screen; going online refreshes them in the background.
+- [ ] 📱 Offline start with localStorage cleared but IndexedDB kept (in
+      DevTools, Application → Local storage → delete only
+      `econumo.query-cache`, then go offline and reload): accounts and
+      transactions show, with no "Loading your data" screen.
 - [ ] A full reload interrupted part-way (go offline during the downloads
       of "Clear cache and reload") resumes once back online: only the accounts not
       yet downloaded are requested, and after the next offline reload every
