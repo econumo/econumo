@@ -617,7 +617,7 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
       row is disabled (not clickable, dimmed) while the syncs run. 📱
 - [ ] Import history is per provider; Settings → Data has no "Import history"
-      row (Import rules stays there) and `/imports/runs` is gone 📱.
+      row and `/imports/runs` is gone 📱.
 - [ ] SimpleFIN → "Import history" (`/settings/simplefin/history`; crumbs
       Settings › SimpleFIN) lists that source's sync runs newest first with
       status, counts and errors; a run opens its detail
@@ -675,7 +675,7 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       imported transaction and choose "Update rule" — the rule keeps its
       original labels and gains the new one (the label set is unioned, never
       replaced by the single added label).
-- [ ] Settings → Import & export → Import rules (also under Settings → Data):
+- [ ] Settings → Data → Import rules (not linked from Import & export):
       rules list in priority order, skip rules carry a red "Skip" badge and no
       targets; "Add rule" opens the editor with a live "Matches N imported
       transactions" count; Save/Edit/Delete round-trip; drag (or focus the

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
@@ -25,17 +25,8 @@ function ActionRow({ label, onClick, disabled }: { label: string; onClick: () =>
   )
 }
 
-function LinkRow({ label, to }: { label: string; to: string }) {
-  return (
-    <Link to={to} className="flex w-full items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover">
-      <span>{label}</span>
-      <ChevronRight className="size-4 text-muted-foreground" />
-    </Link>
-  )
-}
-
-// Pull sync and import rules: only with transaction import on. Each provider's
-// history lives on its own page.
+// Pull sync: only with transaction import on. Import rules sit in the
+// Settings menu and each provider's history on its own page.
 function TransactionImportRows() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -85,7 +76,6 @@ function TransactionImportRows() {
       {pullSources.length > 0 ? (
         <ActionRow label={syncing ? t('imports.simplefin.sync.running') : t('imports.data_page.sync_all')} onClick={() => void syncAll()} disabled={syncing} />
       ) : null}
-      <LinkRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} />
     </>
   )
 }
