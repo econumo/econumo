@@ -209,13 +209,13 @@ optional `Completer` (`internal/infra/ai`, an OpenAI-compatible chat client)
 for `suggest-rules` — `internal/imports` never imports `internal/infra/ai`;
 the concrete client is injected in `internal/server`. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
-`repo/`, and `api/` with 28 routes under `/api/v1/import/` (`create-source`,
+`repo/`, and `api/` with 29 routes under `/api/v1/import/` (`create-source`,
 `get-source-list`, `delete-source`, `link-account`, `ignore-account`,
 `unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
 `import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
 `discard-event`, `get-transaction-import-list`, `claim-setup-token`,
 `get-credential-key`, `set-credential-key`, `list-external-accounts`,
-`sync-source`, `get-run-list`, `get-run`, `get-rule-list`, `create-rule`,
+`sync-source`, `get-run-list`, `get-run`, `get-source-history`, `get-rule-list`, `create-rule`,
 `update-rule`, `delete-rule`, `preview-rule`, `apply-rule`, `suggest-rules`).
 The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
