@@ -548,7 +548,7 @@
         },
         "configure": {
           "title": "将快捷指令连接到 Econumo",
-          "text": "创建访问令牌并用它打开 econumo-wallet-v2。快捷指令会保存服务器地址和令牌，然后连接 Econumo。每次提示时都点按“始终允许”——自动化稍后需要这些权限。",
+          "text": "创建访问令牌并用它打开 econumo-apple-wallet-v2。快捷指令会保存服务器地址和令牌，然后连接 Econumo。每次提示时都点按“始终允许”——自动化稍后需要这些权限。",
           "button": "创建访问令牌",
           "open": "打开 {name}",
           "waiting": "正在等待快捷指令连接 Econumo…",
@@ -556,7 +556,7 @@
         },
         "automate": {
           "title": "创建自动化",
-          "text": "在“快捷指令”App 中：自动化 → + → 钱包 → 选择要导入的卡片和类别（建议全选） → 确认后运行 → econumo-wallet-v2。"
+          "text": "在“快捷指令”App 中：自动化 → + → 钱包 → 选择要导入的卡片和类别（建议全选） → 确认后运行 → econumo-apple-wallet-v2。"
         },
         "payment": {
           "title": "完成第一笔付款",

@@ -548,7 +548,7 @@
         },
         "configure": {
           "title": "Połącz skrót z Econumo",
-          "text": "Tworzy token dostępu i otwiera z nim econumo-wallet-v2. Skrót zapisuje adres serwera i token, a potem łączy się z Econumo. Przy każdym pytaniu stuknij „Zawsze zezwalaj” — automatyzacja będzie potrzebować tych uprawnień.",
+          "text": "Tworzy token dostępu i otwiera z nim econumo-apple-wallet-v2. Skrót zapisuje adres serwera i token, a potem łączy się z Econumo. Przy każdym pytaniu stuknij „Zawsze zezwalaj” — automatyzacja będzie potrzebować tych uprawnień.",
           "button": "Utwórz token dostępu",
           "open": "Otwórz {name}",
           "waiting": "Czekam, aż skrót dotrze do Econumo…",
@@ -556,7 +556,7 @@
         },
         "automate": {
           "title": "Utwórz automatyzację",
-          "text": "W aplikacji Skróty: Automatyzacja → + → Wallet → wybierz karty i kategorie do importu (najbezpieczniej wybrać wszystkie) → Uruchom po potwierdzeniu → econumo-wallet-v2."
+          "text": "W aplikacji Skróty: Automatyzacja → + → Wallet → wybierz karty i kategorie do importu (najbezpieczniej wybrać wszystkie) → Uruchom po potwierdzeniu → econumo-apple-wallet-v2."
         },
         "payment": {
           "title": "Wykonaj pierwszą płatność",
