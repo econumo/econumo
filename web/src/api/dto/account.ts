@@ -28,6 +28,8 @@ export interface AccountDto {
   sharedAccess: AccountAccessDto[]
   /** moves by 1 per committed change to the account's transactions; absent on older servers */
   transactionsRevision?: number
+  // how many rows get-account-transaction-list returns for it; absent from older servers
+  transactionsCount?: number
 }
 
 export interface AccountItemDto {

@@ -401,9 +401,12 @@ revisions with the `transactionsRevision` of `get-account-list` and calls
 `get-account-transaction-list` with `accountIds` naming only the stale accounts (no request
 when none are stale) for accounts whose stored revision changed (over 200 of them go one by
 one). An account with no stored bucket (first load, resumed load, new account), a bucket marked
-for reload and every account on a full reload go account by account: one request per account, at most two in
-flight, each bucket written to the store in the background as it arrives, so an interrupted
-first load resumes with only the missing accounts; the list lands once every account is in.
+for reload and every account on a full reload go in requests packed by size (`packDownloads`:
+by the account's `transactionsCount`, largest first, small accounts sharing a request of up to
+2,000 rows, an account that big or bigger alone; one request per account against a server
+without counts), at most two in flight, each request's buckets written to the store in the
+background as they arrive, so an interrupted first load resumes with only the missing
+accounts; the list lands once every account is in.
 A full reload drops the in-memory state, so a retry after it fails resumes from the store,
 downloading only the buckets still marked. It reads
 IndexedDB only while the page holds no synced or restored list (first boot, after a
@@ -937,7 +940,9 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   `SaveCorrection`, category/payee/tag merge and delete, label merge and delete, recurring
   delete, imports `InsertLink` / `UpdateLink` (only when its `transaction_id` changes) /
   `DeleteSource`, and the user `Save` when the name or avatar changes. The account DTO
-  carries it as `transactionsRevision` (additive). `internal/test/revisionguard` enforces
+  carries it as `transactionsRevision` (additive), next to `transactionsCount`, how many rows
+  `get-account-transaction-list` returns for the account (a size hint for packing downloads,
+  read from the transactions indexes alone, a transfer counted on both sides). `internal/test/revisionguard` enforces
   the rule (see Testing).
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).

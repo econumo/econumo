@@ -1,12 +1,12 @@
 import type { AccountDto } from '@/api/dto/account'
 import type { AccountTransactionListDto, StoredTransaction } from '@/api/dto/transaction'
 import { RELOAD_REVISION, type Bucket } from '@/lib/transactionStore'
-import { MAX_IDS, assemble, hasRevisions, syncBuckets } from './sync'
+import { BATCH_ROWS, MAX_IDS, assemble, hasRevisions, packDownloads, syncBuckets } from './sync'
 
 const ada = { id: 'u1', name: 'Ada', avatar: 'face:emerald' }
 
-function account(id: string, transactionsRevision?: number): AccountDto {
-  return { id, transactionsRevision } as AccountDto
+function account(id: string, transactionsRevision?: number, transactionsCount?: number): AccountDto {
+  return { id, transactionsRevision, transactionsCount } as AccountDto
 }
 
 function tx(id: string, accountId: string, accountRecipientId: string | null = null): StoredTransaction {
@@ -303,5 +303,53 @@ describe('hasRevisions', () => {
   it('is true only when every account carries a numeric revision', () => {
     expect(hasRevisions([account('a', 0), account('b', 4)])).toBe(true)
     expect(hasRevisions([account('a', 1), account('b')])).toBe(false)
+  })
+})
+
+describe('packDownloads', () => {
+  const sizes = (m: Record<string, number>) => (id: string) => m[id]
+
+  it('groups small accounts into one request and sends a large one alone', () => {
+    const out = packDownloads(['a', 'big', 'b', 'c', 'huge'], sizes({ a: 10, big: BATCH_ROWS, b: 400, c: 0, huge: BATCH_ROWS * 5 }))
+    expect(out).toEqual([['huge'], ['big'], ['a', 'b', 'c']])
+  })
+
+  it('starts a new request when the next account would pass BATCH_ROWS', () => {
+    const half = BATCH_ROWS / 2
+    const out = packDownloads(['a', 'b', 'c', 'd'], sizes({ a: half, b: half, c: half, d: 1 }))
+    expect(out).toEqual([['a', 'b'], ['c', 'd']])
+  })
+
+  it('fills the space a large account leaves before opening another request', () => {
+    const out = packDownloads(['x', 'y', 'z'], sizes({ x: BATCH_ROWS - 100, y: 1500, z: 90 }))
+    expect(out).toEqual([['x', 'z'], ['y']])
+  })
+
+  it('puts no more than MAX_IDS accounts in one request', () => {
+    const ids = Array.from({ length: MAX_IDS + 3 }, (_, i) => `a${i}`)
+    const out = packDownloads(ids, () => 0)
+    expect(out.map((b) => b.length)).toEqual([MAX_IDS, 3])
+  })
+
+  it('sends an account of unknown size alone, in the order given', () => {
+    const out = packDownloads(['u1', 'a', 'u2', 'b'], sizes({ a: 5, b: 5 }))
+    expect(out).toEqual([['u1'], ['u2'], ['a', 'b']])
+  })
+})
+
+describe('syncBuckets with account sizes', () => {
+  it('downloads the missing accounts in requests packed by size', async () => {
+    const fetch = vi.fn((ids?: string[]) => Promise.resolve(reply(Object.fromEntries(ids!.map((id) => [id, 1])))))
+    const persisted: string[][] = []
+    const out = await syncBuckets({
+      accounts: [account('a', 1, 3), account('big', 1, BATCH_ROWS), account('b', 1, 0)],
+      stored: new Map(),
+      full: false,
+      fetch,
+      persist: (buckets) => persisted.push(buckets.map((x) => x.accountId)),
+    })
+    expect(fetch.mock.calls).toEqual([[['big']], [['a', 'b']]])
+    expect(persisted.sort()).toEqual([['a', 'b'], ['big']])
+    expect([...out.buckets.keys()].sort()).toEqual(['a', 'b', 'big'])
   })
 })

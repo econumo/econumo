@@ -144,6 +144,11 @@ definitions:
         items:
           $ref: '#/definitions/model.SharedAccess'
         type: array
+      transactionsCount:
+        description: |-
+          TransactionsCount is how many rows get-account-transaction-list returns
+          for the account; clients group small accounts into one download by it.
+        type: integer
       transactionsRevision:
         description: |-
           TransactionsRevision counts the committed changes to the account's

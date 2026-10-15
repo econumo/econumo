@@ -112,6 +112,15 @@ it('the first sync downloads every account on its own, two at a time, and stores
   expect(stored.get('a1')!.revision).toBe(1)
 })
 
+it('with account sizes from the server, the first sync packs small accounts into one request', async () => {
+  const sized = wireAccounts.map((a) => ({ ...a, transactionsCount: a.id === 'a1' ? 2 : 0 }))
+  const { result } = setup({ accounts: sized })
+  await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+  expect(calls).toEqual(['a1,a2,a3,a-hidden'])
+  expect(result.current.list.data!.map((t) => t.id)).toEqual(['t1', 't2'])
+  await waitFor(async () => expect([...(await loadBuckets('u1')).keys()].sort()).toEqual(['a-hidden', 'a1', 'a2', 'a3']))
+})
+
 it('a first load that fails part-way keeps what arrived, and the next sync downloads only the rest', async () => {
   const three = wireAccounts.filter((a) => a.id !== 'a-hidden')
   let failA3 = true

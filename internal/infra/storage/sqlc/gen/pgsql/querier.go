@@ -108,6 +108,10 @@ type Querier interface {
 	// the sqlite variant for documentation.
 	GetAccountByID(ctx context.Context, id string) (Account, error)
 	GetAccountOption(ctx context.Context, arg GetAccountOptionParams) (AccountsOption, error)
+	// About how many rows get-account-transaction-list returns for the account
+	// (either side of a transfer; a self-transfer would count twice). A size hint
+	// for batching downloads, so both counts stay index-only.
+	GetAccountTransactionsCount(ctx context.Context, accountID string) (int64, error)
 	GetAccountTransactionsRevision(ctx context.Context, id string) (int64, error)
 	// Period-averaged rate per currency for a base currency over [start, end).
 	GetAverageCurrencyRates(ctx context.Context, arg GetAverageCurrencyRatesParams) ([]GetAverageCurrencyRatesRow, error)
@@ -313,6 +317,8 @@ type Querier interface {
 	// here yields the exact decimal - no precision-14 reformatting needed.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
+	// The same count for every AVAILABLE account (the balance query's set).
+	ListAccountTransactionsCountsForUser(ctx context.Context, userID string) ([]ListAccountTransactionsCountsForUserRow, error)
 	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted
 	// (see the sqlite variant, incl. the pending-grant and ORDER BY rationale). $1
 	// is reused for both sides so the param stays single.

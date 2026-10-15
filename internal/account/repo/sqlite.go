@@ -90,6 +90,28 @@ func (sqliteBalance) GetAccountBalance(ctx context.Context, db backend.DBTX, acc
 	return formatSQLiteBalance(f), nil
 }
 
+func (sqliteBalance) GetAccountTransactionsCount(ctx context.Context, db backend.DBTX, accountID string) (int64, error) {
+	return sqlitegen.New(db).GetAccountTransactionsCount(ctx, sqlitegen.GetAccountTransactionsCountParams{
+		AccountID:          accountID,
+		AccountRecipientID: &accountID,
+	})
+}
+
+func (sqliteBalance) ListAccountTransactionsCountsForUser(ctx context.Context, db backend.DBTX, userID string) (map[string]int64, error) {
+	rows, err := sqlitegen.New(db).ListAccountTransactionsCountsForUser(ctx, sqlitegen.ListAccountTransactionsCountsForUserParams{
+		UserID:   userID, // own
+		UserID_2: userID, // shared (accounts_access)
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]int64, len(rows))
+	for _, r := range rows {
+		out[r.AccountID] = r.TransactionsCount
+	}
+	return out, nil
+}
+
 func (sqliteBalance) ListAccountBalancesForUser(ctx context.Context, db backend.DBTX, userID string, before time.Time) ([]balanceResult, error) {
 	rows, err := sqlitegen.New(db).ListAccountBalancesForUser(ctx, sqlitegen.ListAccountBalancesForUserParams{
 		SpentAt:   before,

@@ -1908,8 +1908,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the
       changed account (a tap with nothing changed sends no such request; a first
-      load or a full reload downloads every account, one request per account
-      with a single id in `accountIds`, at most two at a time).
+      load or a full reload downloads every account in a few requests packed
+      by size: small accounts share one request, an account with 2,000 or more
+      transactions gets its own, at most two at a time).
 - [ ] 📱 Sync button hold (about 0.6 s) or Shift+click on desktop = full
       reload: every account's transactions are downloaded again, a toast
       confirms the reload, and a short tap does not trigger it.

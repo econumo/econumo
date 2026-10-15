@@ -93,6 +93,22 @@ func (pgsqlBalance) GetAccountBalance(ctx context.Context, db backend.DBTX, acco
 	})
 }
 
+func (pgsqlBalance) GetAccountTransactionsCount(ctx context.Context, db backend.DBTX, accountID string) (int64, error) {
+	return pgsqlgen.New(db).GetAccountTransactionsCount(ctx, accountID)
+}
+
+func (pgsqlBalance) ListAccountTransactionsCountsForUser(ctx context.Context, db backend.DBTX, userID string) (map[string]int64, error) {
+	rows, err := pgsqlgen.New(db).ListAccountTransactionsCountsForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]int64, len(rows))
+	for _, r := range rows {
+		out[r.AccountID] = r.TransactionsCount
+	}
+	return out, nil
+}
+
 func (pgsqlBalance) ListAccountBalancesForUser(ctx context.Context, db backend.DBTX, userID string, before time.Time) ([]balanceResult, error) {
 	// own + shared: sqlc.arg(user_id) is reused for both OR sides, so the param
 	// stays single. PostgreSQL's SUM(NUMERIC) is exact; the CAST AS TEXT balance

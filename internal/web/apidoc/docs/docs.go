@@ -12935,6 +12935,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.SharedAccess"
                     }
                 },
+                "transactionsCount": {
+                    "description": "TransactionsCount is how many rows get-account-transaction-list returns\nfor the account; clients group small accounts into one download by it.",
+                    "type": "integer"
+                },
                 "transactionsRevision": {
                     "description": "TransactionsRevision counts the committed changes to the account's\ntransactions; clients re-download an account's transactions when it moves.",
                     "type": "integer"

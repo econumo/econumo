@@ -64,6 +64,8 @@ type querier interface {
 type balanceQuerier interface {
 	GetAccountBalance(ctx context.Context, db backend.DBTX, accountID string, before time.Time) (string, error)
 	ListAccountBalancesForUser(ctx context.Context, db backend.DBTX, userID string, before time.Time) ([]balanceResult, error)
+	GetAccountTransactionsCount(ctx context.Context, db backend.DBTX, accountID string) (int64, error)
+	ListAccountTransactionsCountsForUser(ctx context.Context, db backend.DBTX, userID string) (map[string]int64, error)
 }
 
 // Repo implements account.Repository.
@@ -217,6 +219,18 @@ func (r *Repo) Balances(ctx context.Context, userID vo.Id, before time.Time) (ma
 		out[row.AccountID] = vo.NewDecimal(row.Balance).String()
 	}
 	return out, nil
+}
+
+// TransactionsCount returns how many transactions the account's transaction
+// list holds.
+func (r *Repo) TransactionsCount(ctx context.Context, accountID vo.Id) (int64, error) {
+	return r.b.GetAccountTransactionsCount(ctx, r.db(ctx), accountID.String())
+}
+
+// TransactionsCounts returns TransactionsCount for all the user's non-deleted
+// accounts, keyed by account id.
+func (r *Repo) TransactionsCounts(ctx context.Context, userID vo.Id) (map[string]int64, error) {
+	return r.b.ListAccountTransactionsCountsForUser(ctx, r.db(ctx), userID.String())
 }
 
 // SaveCorrection inserts a balance-correction transaction.
