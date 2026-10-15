@@ -754,7 +754,11 @@
         "payee": "Beneficiario",
         "tag": "Etiqueta de presupuesto",
         "labels": "Etiquetas de informes",
-        "match_count": "Coincide con {count} transacciones importadas"
+        "match_count": "Coincide con {count} transacciones importadas",
+        "when": "Cuando",
+        "then": "Entonces",
+        "value_placeholder": "Texto a buscar, p. ej. STARBUCKS",
+        "not_set": "Sin definir"
       },
       "page": {
         "menu_item": "Reglas de importación",

@@ -754,7 +754,11 @@
         "payee": "Payee",
         "tag": "Tag",
         "labels": "Labels",
-        "match_count": "Matches {count} imported transactions"
+        "match_count": "Matches {count} imported transactions",
+        "when": "When",
+        "then": "Then",
+        "value_placeholder": "Text to look for, e.g. STARBUCKS",
+        "not_set": "Not set"
       },
       "page": {
         "menu_item": "Import rules",

@@ -754,7 +754,11 @@
         "payee": "Beneficiario",
         "tag": "Tag di budget",
         "labels": "Tag per i report",
-        "match_count": "Corrisponde a {count} transazioni importate"
+        "match_count": "Corrisponde a {count} transazioni importate",
+        "when": "Quando",
+        "then": "Allora",
+        "value_placeholder": "Testo da cercare, ad es. STARBUCKS",
+        "not_set": "Non impostato"
       },
       "page": {
         "menu_item": "Regole di importazione",

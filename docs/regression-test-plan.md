@@ -677,9 +677,19 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       replaced by the single added label).
 - [ ] Settings → Data → Import rules (not linked from Import & export):
       rules list in priority order, skip rules carry a red "Skip" badge and no
-      targets; "Add rule" opens the editor with a live "Matches N imported
-      transactions" count; Save/Edit/Delete round-trip; drag (or focus the
-      grip, Space, arrow, Space) reorders and the order survives reload. 📱
+      targets; "Add rule" opens the editor; Save/Edit/Delete round-trip; drag
+      (or focus the grip, Space, arrow, Space) reorders and the order survives
+      reload. 📱
+- [ ] Rule editor layout: a "When" card reads as a sentence (Payee/Description
+      and contains/starts with/is exactly pills above the text, an "Aa" toggle
+      for case sensitivity), then "Then" with a Classify/Skip switch.
+      Classify shows the transaction dialog's own Category and Payee pickers
+      (type to search, "Not set" when empty) and the tag/label chips;
+      Skip replaces them with "Matching transactions are not imported". The
+      "Matches N imported transactions" count appears once the rule can be
+      saved (a classify rule needs something to set) — no 400 from
+      `preview-rule` while it cannot. The "Create an import rule" prompt uses
+      the same "When" card. 📱
 - [ ] A skip rule with prefix "PAYMENT THANK YOU" on description: the next
       sync/ingest of a matching row lands as `skipped` in the run summary and
       creates no transaction; a classify rule on payee sets category/payee/

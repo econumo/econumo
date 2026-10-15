@@ -754,7 +754,11 @@
         "payee": "Zahlungsempfänger",
         "tag": "Budget-Tag",
         "labels": "Auswertungs-Tags",
-        "match_count": "Trifft auf {count} importierte Transaktionen zu"
+        "match_count": "Trifft auf {count} importierte Transaktionen zu",
+        "when": "Wenn",
+        "then": "Dann",
+        "value_placeholder": "Gesuchter Text, z. B. STARBUCKS",
+        "not_set": "Nicht festgelegt"
       },
       "page": {
         "menu_item": "Importregeln",

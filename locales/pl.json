@@ -754,7 +754,11 @@
         "payee": "Odbiorca",
         "tag": "Tag budżetowy",
         "labels": "Tagi raportowe",
-        "match_count": "Pasuje do {count} zaimportowanych transakcji"
+        "match_count": "Pasuje do {count} zaimportowanych transakcji",
+        "when": "Gdy",
+        "then": "Wtedy",
+        "value_placeholder": "Szukany tekst, np. STARBUCKS",
+        "not_set": "Nie ustawiono"
       },
       "page": {
         "menu_item": "Reguły importu",

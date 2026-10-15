@@ -6,14 +6,12 @@ import { useUiStore } from '@/app/uiStore'
 import type { RulePromptParams } from '@/app/uiStore'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { suggestMatchValue } from '@/lib/importMatch'
 import { useApplyImportRule, useCreateImportRule, useImportRules, usePreviewImportRule, useUpdateImportRule } from './queries'
+import { RuleCondition } from './RuleCondition'
 import { describeMatch } from './ruleSummary'
 
 const PREVIEW_DEBOUNCE_MS = 300
@@ -207,23 +205,21 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
             {t('imports.rules.prompt.existing_rule', { rule: describeMatch(existing, t) })}
           </p>
         ) : (
-          <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-2 gap-2">
-              <NativeSelect aria-label={t('imports.rules.editor.field')} value={matchField} onChange={(e) => setMatchField(e.target.value as ImportRuleMatchField)}>
-                <NativeSelectOption value="external_payee">{t('imports.rules.field.external_payee')}</NativeSelectOption>
-                <NativeSelectOption value="description">{t('imports.rules.field.description')}</NativeSelectOption>
-              </NativeSelect>
-              <NativeSelect aria-label={t('imports.rules.editor.type')} value={matchType} onChange={(e) => setMatchType(e.target.value as ImportRuleMatchType)}>
-                <NativeSelectOption value="contains">{t('imports.rules.type.contains')}</NativeSelectOption>
-                <NativeSelectOption value="prefix">{t('imports.rules.type.prefix')}</NativeSelectOption>
-                <NativeSelectOption value="exact">{t('imports.rules.type.exact')}</NativeSelectOption>
-              </NativeSelect>
-            </div>
-            <Label htmlFor="rule-prompt-value" className="sr-only">{`${fieldLabel} ${typeLabel}`}</Label>
-            <Input id="rule-prompt-value" value={matchValue} onChange={(e) => setMatchValue(e.target.value)} autoComplete="off" />
-          </div>
+          <RuleCondition id="rule-prompt-value" matchField={matchField} matchType={matchType} matchValue={matchValue}
+            valueLabel={`${fieldLabel} ${typeLabel}`}
+            onChange={(p) => {
+              if (p.matchField) {
+                setMatchField(p.matchField)
+              }
+              if (p.matchType) {
+                setMatchType(p.matchType)
+              }
+              if (p.matchValue !== undefined) {
+                setMatchValue(p.matchValue)
+              }
+            }} />
         )}
-        <p className="text-sm text-muted-foreground" aria-live="polite">
+        <p className="px-1 text-xs text-muted-foreground" aria-live="polite">
           {preview.data === undefined || preview.isPending
             ? t('common.app.modal.loading.data_loading')
             : t('imports.rules.prompt.match_count', { count: matched })}

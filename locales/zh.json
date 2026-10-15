@@ -754,7 +754,11 @@
         "payee": "收款人",
         "tag": "预算标签",
         "labels": "统计标签",
-        "match_count": "匹配 {count} 笔已导入的交易"
+        "match_count": "匹配 {count} 笔已导入的交易",
+        "when": "当",
+        "then": "则",
+        "value_placeholder": "要查找的文本，例如 STARBUCKS",
+        "not_set": "未设置"
       },
       "page": {
         "menu_item": "导入规则",

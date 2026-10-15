@@ -754,7 +754,11 @@
         "payee": "Begunstigde",
         "tag": "Budgettag",
         "labels": "Rapportagetags",
-        "match_count": "Komt overeen met {count} geïmporteerde transacties"
+        "match_count": "Komt overeen met {count} geïmporteerde transacties",
+        "when": "Als",
+        "then": "Dan",
+        "value_placeholder": "Te zoeken tekst, bijv. STARBUCKS",
+        "not_set": "Niet ingesteld"
       },
       "page": {
         "menu_item": "Importregels",
