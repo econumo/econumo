@@ -548,7 +548,7 @@
         },
         "configure": {
           "title": "Kurzbefehl mit Econumo verbinden",
-          "text": "Erstellt ein Zugriffstoken und öffnet damit econumo-apple-wallet-v2. Der Kurzbefehl speichert Serveradresse und Token und meldet sich dann bei Econumo. Tippe bei jeder Abfrage auf „Immer erlauben“ — die Automation braucht diese Berechtigungen später.",
+          "text": "Erstellt ein Zugriffstoken und öffnet damit econumo-apple-wallet. Der Kurzbefehl speichert Serveradresse und Token und meldet sich dann bei Econumo. Tippe bei jeder Abfrage auf „Immer erlauben“ — die Automation braucht diese Berechtigungen später.",
           "button": "Zugriffstoken erstellen",
           "open": "{name} öffnen",
           "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …",
@@ -556,7 +556,7 @@
         },
         "automate": {
           "title": "Automation anlegen",
-          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen (am sichersten: alle) → Nach Bestätigung ausführen → econumo-apple-wallet-v2."
+          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen (am sichersten: alle) → Nach Bestätigung ausführen → econumo-apple-wallet."
         },
         "payment": {
           "title": "Erste Zahlung tätigen",

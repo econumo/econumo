@@ -1119,7 +1119,7 @@
 	<key>WFWorkflowMinimumClientVersionString</key>
 	<string>900</string>
 	<key>WFWorkflowName</key>
-	<string>econumo-apple-wallet-v2</string>
+	<string>econumo-apple-wallet</string>
 	<key>WFWorkflowOutputContentItemClasses</key>
 	<array/>
 	<key>WFWorkflowTypes</key>

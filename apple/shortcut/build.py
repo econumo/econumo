@@ -10,8 +10,9 @@ plists works anywhere with Python 3.
     python3 apple/shortcut/build.py            # plists + signed files
     python3 apple/shortcut/build.py --no-sign  # plists only
 
-Bump VERSION when the recipe changes; the served file names and the
-shortcut names (which iOS takes from the file name) carry it.
+The served file name is the shortcut name (iOS takes it from the file), and
+it carries no version: an updated recipe replaces the installed shortcut in
+place, so the deep link and the user's automation keep pointing at it.
 """
 
 import argparse
@@ -22,7 +23,6 @@ import tempfile
 import uuid
 from pathlib import Path
 
-VERSION = 2
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[1]
 PUBLIC = REPO_ROOT / "web" / "public" / "shortcuts"
@@ -349,17 +349,13 @@ SHORTCUTS = {
 }
 
 
-def shortcut_name(slug: str) -> str:
-    return f"{slug}-v{VERSION}"
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--no-sign", action="store_true", help="only write the plists")
     args = parser.parse_args()
 
     for slug, (build, color) in SHORTCUTS.items():
-        name = shortcut_name(slug)
+        name = slug
         scope(slug)
         source = HERE / f"{slug}.plist"
         with source.open("wb") as fh:

@@ -18,7 +18,7 @@ import { STEPS, forgetSetupTicks, type StepId, type WalletSetup } from './wallet
 
 // iOS names an installed shortcut after the file it was imported from, so
 // the served basename IS the name the deep link and the automation address.
-export const WALLET_SHORTCUT_NAME = 'econumo-apple-wallet-v2'
+export const WALLET_SHORTCUT_NAME = 'econumo-apple-wallet'
 export const WALLET_SHORTCUT_URL = `/shortcuts/${WALLET_SHORTCUT_NAME}.shortcut`
 export const MANUAL_GUIDE_URL = `${getWebsiteUrl()}/docs/user-guide/apple-wallet`
 const INGEST_TOKEN_NAME = 'Apple Wallet'

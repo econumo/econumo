@@ -548,7 +548,7 @@
         },
         "configure": {
           "title": "Relier le raccourci à Econumo",
-          "text": "Crée un jeton d’accès et ouvre econumo-apple-wallet-v2 avec. Le raccourci enregistre l’adresse du serveur et le jeton, puis contacte Econumo. Touchez « Toujours autoriser » à chaque demande : l’automatisation aura besoin de ces autorisations.",
+          "text": "Crée un jeton d’accès et ouvre econumo-apple-wallet avec. Le raccourci enregistre l’adresse du serveur et le jeton, puis contacte Econumo. Touchez « Toujours autoriser » à chaque demande : l’automatisation aura besoin de ces autorisations.",
           "button": "Créer un jeton d’accès",
           "open": "Ouvrir {name}",
           "waiting": "En attente du premier contact du raccourci avec Econumo…",
@@ -556,7 +556,7 @@
         },
         "automate": {
           "title": "Créer l’automatisation",
-          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer (le plus sûr est de tout sélectionner) → Exécuter après confirmation → econumo-apple-wallet-v2."
+          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer (le plus sûr est de tout sélectionner) → Exécuter après confirmation → econumo-apple-wallet."
         },
         "payment": {
           "title": "Effectuer le premier paiement",

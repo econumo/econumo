@@ -548,7 +548,7 @@
         },
         "configure": {
           "title": "Collega il comando rapido a Econumo",
-          "text": "Crea un token di accesso e apre econumo-apple-wallet-v2 con esso. Il comando rapido salva l’indirizzo del server e il token, poi contatta Econumo. Tocca «Consenti sempre» a ogni richiesta: l’automazione avrà bisogno di questi permessi.",
+          "text": "Crea un token di accesso e apre econumo-apple-wallet con esso. Il comando rapido salva l’indirizzo del server e il token, poi contatta Econumo. Tocca «Consenti sempre» a ogni richiesta: l’automazione avrà bisogno di questi permessi.",
           "button": "Crea token di accesso",
           "open": "Apri {name}",
           "waiting": "In attesa che il comando rapido raggiunga Econumo…",
@@ -556,7 +556,7 @@
         },
         "automate": {
           "title": "Crea l’automazione",
-          "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare (la scelta più sicura è tutte) → Esegui dopo conferma → econumo-apple-wallet-v2."
+          "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare (la scelta più sicura è tutte) → Esegui dopo conferma → econumo-apple-wallet."
         },
         "payment": {
           "title": "Fai il primo pagamento",

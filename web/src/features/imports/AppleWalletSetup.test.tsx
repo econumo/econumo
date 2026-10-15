@@ -56,7 +56,7 @@ beforeEach(() => {
 
 it('setupDeepLink encodes the JSON input for the Setup shortcut', () => {
   expect(setupDeepLink('https://eco.example', 'eco_pat_x')).toBe(
-    'shortcuts://run-shortcut?name=econumo-apple-wallet-v2&input=text&text=' + encodeURIComponent('{"url":"https://eco.example","token":"eco_pat_x"}'),
+    'shortcuts://run-shortcut?name=econumo-apple-wallet&input=text&text=' + encodeURIComponent('{"url":"https://eco.example","token":"eco_pat_x"}'),
   )
 })
 
@@ -84,8 +84,8 @@ it('opens on the first step only; its download opens in a new window and Done mo
   expect(stateOf('Install the Shortcut')).toBe('current')
   expect(screen.getByRole('button', { name: 'Install the Shortcut' })).toHaveAttribute('aria-expanded', 'true')
   expect(screen.getByRole('button', { name: 'Create the automation' })).toHaveAttribute('aria-expanded', 'false')
-  const link = screen.getByRole('link', { name: 'econumo-apple-wallet-v2' })
-  expect(link).toHaveAttribute('href', '/shortcuts/econumo-apple-wallet-v2.shortcut')
+  const link = screen.getByRole('link', { name: 'econumo-apple-wallet' })
+  expect(link).toHaveAttribute('href', '/shortcuts/econumo-apple-wallet.shortcut')
   expect(link).toHaveAttribute('target', '_blank')
   await user.click(screen.getByRole('button', { name: 'Done' }))
   expect(ticks()).toEqual(['install'])
@@ -129,11 +129,11 @@ it('iOS connect mints an ingest token, then offers the shortcut\'s setup link in
   )
   expect(screen.queryByText(/Open this page on your iPhone/)).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Create access token' }))
-  const link = await screen.findByRole('link', { name: 'Open econumo-apple-wallet-v2' })
+  const link = await screen.findByRole('link', { name: 'Open econumo-apple-wallet' })
   expect(body).toEqual({ name: 'Apple Wallet', scope: 'ingest', expiresAt: '' })
   expect(link).toHaveAttribute('target', '_blank')
   const href = link.getAttribute('href') ?? ''
-  expect(href.startsWith('shortcuts://run-shortcut?name=econumo-apple-wallet-v2&input=text&text=')).toBe(true)
+  expect(href.startsWith('shortcuts://run-shortcut?name=econumo-apple-wallet&input=text&text=')).toBe(true)
   expect(decodeURIComponent(href.split('text=')[1])).toContain('"token":"eco_pat_new"')
   // a minted token proves nothing yet: the step waits for the shortcut's check-in
   link.addEventListener('click', (e) => e.preventDefault())
@@ -186,7 +186,7 @@ it('a double tap on Create access token mints once', async () => {
   const first = user.click(btn)
   await user.click(btn)
   await first
-  await screen.findByRole('link', { name: 'Open econumo-apple-wallet-v2' })
+  await screen.findByRole('link', { name: 'Open econumo-apple-wallet' })
   expect(creates).toBe(1)
 })
 
@@ -200,7 +200,7 @@ it('iOS connect toasts the server error and leaves the step open when minting fa
   await user.click(screen.getByRole('button', { name: 'Create access token' }))
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Too many attempts. Try again later.'))
   expect(stateOf('Connect the Shortcut to Econumo')).toBe('current')
-  expect(screen.queryByRole('link', { name: 'Open econumo-apple-wallet-v2' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Open econumo-apple-wallet' })).not.toBeInTheDocument()
 })
 
 it('while the connect step is open the page watches for the shortcut: the "account is required" check-in is proof, discarded, and the step completes', async () => {
