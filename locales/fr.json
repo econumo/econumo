@@ -674,6 +674,7 @@
       "detail_header": "Import",
       "history_link": "Historique des imports",
       "empty": "Aucun import pour l'instant.",
+      "load_more": "Afficher plus",
       "rows_header": "Transactions",
       "rows_empty": "Cet import n'a touché aucune transaction.",
       "status": {
@@ -731,13 +732,14 @@
         "create_rule": "Créer la règle",
         "update_rule": "Mettre à jour la règle",
         "apply_question": "Appliquer cette règle aux {count} transactions correspondantes de cet import ?",
+        "apply_all_question": "Appliquer cette règle aux {count} transactions correspondantes de tous vos imports ?",
         "skipped_edited": "{count} ignorées (vous les avez modifiées)",
         "include_edited": "Mettre aussi à jour les {count} transactions que vous avez modifiées",
         "skip_apply": "Ignorer",
         "apply": "Appliquer",
         "applied_toast": "{count} transactions mises à jour",
-        "source_question": "Appliquer aussi à tous les imports de {source} ? {count} transactions correspondent.",
-        "apply_source": "Appliquer à tous les imports",
+        "all_question": "Appliquer aussi à tous vos imports ? {count} transactions correspondent.",
+        "apply_all": "Appliquer à tous les imports",
         "done": "Terminé"
       },
       "editor": {

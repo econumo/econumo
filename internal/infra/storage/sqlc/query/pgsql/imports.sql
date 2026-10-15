@@ -144,6 +144,14 @@ WHERE source_id = $1
 ORDER BY external_posted_at DESC, id
 ;
 
+-- name: ListImportTransactionLinksBySourcePage :many
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+FROM import_transaction_links
+WHERE source_id = $1
+ORDER BY external_posted_at DESC, id DESC
+LIMIT $2 OFFSET $3
+;
+
 -- name: DeleteQueuedImportTransactionLinksByExternalAccount :exec
 DELETE FROM import_transaction_links WHERE source_id = sqlc.arg(source_id) AND lower(external_account_id) = lower(sqlc.arg(external_account_id)) AND status = 'queued'
 ;

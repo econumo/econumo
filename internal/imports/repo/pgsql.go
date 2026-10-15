@@ -154,6 +154,19 @@ func (pgsqlQuerier) ListImportTransactionLinksBySource(ctx context.Context, db b
 	return out, nil
 }
 
+func (pgsqlQuerier) ListImportTransactionLinksBySourcePage(ctx context.Context, db backend.DBTX, p linksPageParams) ([]linkRow, error) {
+	// LIMIT/OFFSET bind int32 on pgsql (int64 on sqlite), so field by field
+	rows, err := pgsqlgen.New(db).ListImportTransactionLinksBySourcePage(ctx, pgsqlgen.ListImportTransactionLinksBySourcePageParams{SourceID: p.SourceID, Limit: int32(p.Limit), Offset: int32(p.Offset)})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]linkRow, len(rows))
+	for i, row := range rows {
+		out[i] = linkRow(row)
+	}
+	return out, nil
+}
+
 func (pgsqlQuerier) DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, db backend.DBTX, p purgeQueuedLinksParams) error {
 	return pgsqlgen.New(db).DeleteQueuedImportTransactionLinksByExternalAccount(ctx, pgsqlgen.DeleteQueuedImportTransactionLinksByExternalAccountParams(p))
 }

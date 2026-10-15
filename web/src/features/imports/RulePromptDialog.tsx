@@ -20,7 +20,9 @@ const PREVIEW_DEBOUNCE_MS = 300
 // mirrors model.MaxImportRuleLabels — the server rejects a longer set
 const MAX_RULE_LABELS = 10
 
-type Step = 'define' | 'apply' | 'source'
+const ALL_SCOPE: ImportRuleScopeDto = { scope: 'all', runId: '', scopeSourceId: '' }
+
+type Step = 'define' | 'apply' | 'all'
 
 export function RulePromptDialog() {
   const params = useUiStore((s) => s.rulePrompt)
@@ -86,13 +88,13 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
   }, [existing, matchField, matchType, matchValue, diff])
 
   const runScope: ImportRuleScopeDto = useMemo(
-    () => (link.runId ? { scope: 'run', runId: link.runId, scopeSourceId: link.sourceId } : { scope: 'source', runId: '', scopeSourceId: link.sourceId }),
+    () => (link.runId ? { scope: 'run', runId: link.runId, scopeSourceId: link.sourceId } : ALL_SCOPE),
     [link.runId, link.sourceId],
   )
-  const sourceScope: ImportRuleScopeDto = useMemo(() => ({ scope: 'source', runId: '', scopeSourceId: link.sourceId }), [link.sourceId])
+
 
   const preview = usePreviewImportRule()
-  const sourcePreview = usePreviewImportRule()
+  const allPreview = usePreviewImportRule()
   const create = useCreateImportRule()
   const update = useUpdateImportRule()
   const apply = useApplyImportRule()
@@ -140,10 +142,10 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
       const result = await apply.mutateAsync({ ruleId, scope, includeEdited })
       toast.success(t('imports.rules.prompt.applied_toast', { count: result.updated }))
       if (next && link.runId) {
-        // the source-wide apply is a separate, wider-reaching action — the
+        // applying to every import is a separate, wider-reaching action — the
         // run-scoped "include edited" choice must not silently carry over to it
         setIncludeEdited(false)
-        sourcePreview.mutate({ spec, scope: sourceScope })
+        allPreview.mutate({ spec, scope: ALL_SCOPE })
         setStep(next)
       } else {
         onDone()
@@ -154,7 +156,7 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
   }
 
   // Shown at whichever step is about to apply, scoped to THAT step's own
-  // already-edited count — the run-scoped and source-wide applies are
+  // already-edited count — the run-scoped and import-wide applies are
   // separate actions (state reset in applyTo), so each gets its own control.
   const includeEditedControl = (count: number) =>
     count > 0 ? (
@@ -171,28 +173,28 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
     if (step === 'apply') {
       return (
         <>
-          <p className="text-sm">{t('imports.rules.prompt.apply_question', { count: matched })}</p>
+          <p className="text-sm">{t(link.runId ? 'imports.rules.prompt.apply_question' : 'imports.rules.prompt.apply_all_question', { count: matched })}</p>
           {includeEditedControl(alreadyEdited)}
           <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.skip_apply')}</Button>
-            <Button type="button" disabled={apply.isPending} onClick={() => void applyTo(runScope, 'source')}>{t('imports.rules.prompt.apply')}</Button>
+            <Button type="button" disabled={apply.isPending} onClick={() => void applyTo(runScope, 'all')}>{t('imports.rules.prompt.apply')}</Button>
           </div>
         </>
       )
     }
-    if (step === 'source') {
-      const sourceLoading = sourcePreview.data === undefined || sourcePreview.isPending
+    if (step === 'all') {
+      const allLoading = allPreview.data === undefined || allPreview.isPending
       return (
         <>
           <p className="text-sm">
-            {sourceLoading
+            {allLoading
               ? t('common.app.modal.loading.data_loading')
-              : t('imports.rules.prompt.source_question', { source: link.sourceName, count: sourcePreview.data?.matched ?? 0 })}
+              : t('imports.rules.prompt.all_question', { count: allPreview.data?.matched ?? 0 })}
           </p>
-          {includeEditedControl(sourcePreview.data?.alreadyEdited ?? 0)}
+          {includeEditedControl(allPreview.data?.alreadyEdited ?? 0)}
           <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.done')}</Button>
-            <Button type="button" disabled={apply.isPending || sourcePreview.isPending} onClick={() => void applyTo(sourceScope, null)}>{t('imports.rules.prompt.apply_source')}</Button>
+            <Button type="button" disabled={apply.isPending || allPreview.isPending} onClick={() => void applyTo(ALL_SCOPE, null)}>{t('imports.rules.prompt.apply_all')}</Button>
           </div>
         </>
       )

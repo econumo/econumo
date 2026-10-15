@@ -61,6 +61,7 @@ it('links to its own inbox with the count of this source\'s rows waiting there',
   const link = await screen.findByRole('link', { name: /^Inbox/ })
   expect(link).toHaveAttribute('href', '/settings/apple-wallet/inbox')
   await waitFor(() => expect(link).toHaveTextContent('Inbox3'))
+  expect(screen.getByRole('link', { name: 'Import history' })).toHaveAttribute('href', '/settings/apple-wallet/history')
 })
 
 it('the inbox row carries no count when nothing from this source is waiting', async () => {

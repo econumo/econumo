@@ -1334,6 +1334,15 @@ definitions:
           $ref: '#/definitions/model.ImportRunLinkResult'
         type: array
     type: object
+  model.GetImportSourceHistoryResult:
+    properties:
+      hasMore:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/model.ImportRunLinkResult'
+        type: array
+    type: object
   model.GetImportSourceListResult:
     properties:
       items:
@@ -7005,6 +7014,52 @@ paths:
       security:
       - Bearer: []
       summary: List import runs
+      tags:
+      - Import
+  /api/v1/import/get-source-history:
+    get:
+      description: 'One source''s rows — for Apple Wallet, every tap received — newest
+        first, 50 per page; hasMore says whether a page follows at offset+50. Each
+        row carries its outcome: linked (an empty transactionId means the transaction
+        was deleted since), queued or skipped. Payloads that could not be parsed are
+        not rows; they are listed as failed by get-queued-event-list.'
+      parameters:
+      - description: Source id
+        in: query
+        name: sourceId
+        required: true
+        type: string
+      - description: Rows to skip
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportSourceHistoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List a source's imported rows
       tags:
       - Import
   /api/v1/import/get-source-list:

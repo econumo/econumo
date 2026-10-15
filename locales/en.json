@@ -674,6 +674,7 @@
       "detail_header": "Import run",
       "history_link": "Import history",
       "empty": "No imports yet.",
+      "load_more": "Show more",
       "rows_header": "Transactions",
       "rows_empty": "This run touched no transactions.",
       "status": {
@@ -731,13 +732,14 @@
         "create_rule": "Create rule",
         "update_rule": "Update rule",
         "apply_question": "Apply this rule to {count} matching transactions in this import?",
+        "apply_all_question": "Apply this rule to {count} matching transactions across your imports?",
         "skipped_edited": "{count} skipped (you've edited these)",
         "include_edited": "Also update the {count} transactions you edited",
         "skip_apply": "Skip",
         "apply": "Apply",
         "applied_toast": "Updated {count} transactions",
-        "source_question": "Also apply to all imports from {source}? {count} transactions match.",
-        "apply_source": "Apply to all imports",
+        "all_question": "Also apply to all your imports? {count} transactions match.",
+        "apply_all": "Apply to all imports",
         "done": "Done"
       },
       "editor": {

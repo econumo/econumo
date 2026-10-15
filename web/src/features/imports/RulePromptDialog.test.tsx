@@ -41,7 +41,7 @@ beforeEach(() => {
     http.post('*/api/v1/import/preview-rule', async ({ request }) => {
       const body = await request.json() as Record<string, unknown>
       ;(posted.preview ??= []).push(body)
-      const matched = body.scope === 'source' ? 9 : 5
+      const matched = body.scope === 'all' ? 9 : 5
       return HttpResponse.json({ success: true, message: '', data: { matched, alreadyEdited: 2 } })
     }),
     http.post('*/api/v1/import/create-rule', async ({ request }) => {
@@ -67,7 +67,7 @@ it('renders nothing without a pending prompt', () => {
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
-it('prefills a suggested match value, previews live, creates the rule, then applies to this import and offers the whole source', async () => {
+it('prefills a suggested match value, previews live, creates the rule, then applies to this import and offers every import', async () => {
   renderPrompt()
   useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
@@ -88,10 +88,10 @@ it('prefills a suggested match value, previews live, creates the rule, then appl
   await user.click(screen.getByRole('button', { name: 'Apply' }))
   await waitFor(() => expect(posted.apply![0]).toEqual({ ruleId: 'rule-new', scope: 'run', runId: 'r1', scopeSourceId: 's1', includeEdited: false }))
 
-  // clearly labelled second step: the whole source, with its own count
-  expect(await screen.findByText('Also apply to all imports from iPhone? 9 transactions match.')).toBeInTheDocument()
+  // clearly labelled second step: every import, whatever its provider, with its own count
+  expect(await screen.findByText('Also apply to all your imports? 9 transactions match.')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Apply to all imports' }))
-  await waitFor(() => expect(posted.apply![1]).toEqual({ ruleId: 'rule-new', scope: 'source', runId: '', scopeSourceId: 's1', includeEdited: false }))
+  await waitFor(() => expect(posted.apply![1]).toEqual({ ruleId: 'rule-new', scope: 'all', runId: '', scopeSourceId: '', includeEdited: false }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(useUiStore.getState().rulePrompt).toBeNull()
 })
@@ -141,19 +141,19 @@ it('a preview refresh failure after a successful create still advances to apply,
   expect(posted.create).toHaveLength(1)
 })
 
-it('a link scoped to the source from the start applies once and skips the second, source-wide step', async () => {
+it('a link with no run applies to every import at once and skips the second step', async () => {
   renderPrompt()
   useUiStore.getState().setRulePrompt({ link: link({ runId: '' }), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Create rule' }))
-  expect(await screen.findByText('Apply this rule to 9 matching transactions in this import?')).toBeInTheDocument()
+  expect(await screen.findByText('Apply this rule to 9 matching transactions across your imports?')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Apply' }))
-  await waitFor(() => expect(posted.apply![0]).toEqual({ ruleId: 'rule-new', scope: 'source', runId: '', scopeSourceId: 's1', includeEdited: false }))
+  await waitFor(() => expect(posted.apply![0]).toEqual({ ruleId: 'rule-new', scope: 'all', runId: '', scopeSourceId: '', includeEdited: false }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(useUiStore.getState().rulePrompt).toBeNull()
 })
 
-it('the include-edited choice does not carry over from the run-scoped apply to the source-wide apply', async () => {
+it('the include-edited choice does not carry over from the run-scoped apply to the apply on every import', async () => {
   renderPrompt()
   useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
@@ -162,10 +162,10 @@ it('the include-edited choice does not carry over from the run-scoped apply to t
   await user.click(screen.getByRole('button', { name: 'Apply' }))
   await waitFor(() => expect(posted.apply![0]).toMatchObject({ scope: 'run', includeEdited: true }))
 
-  await screen.findByText('Also apply to all imports from iPhone? 9 transactions match.')
+  await screen.findByText('Also apply to all your imports? 9 transactions match.')
   expect(screen.getByRole('checkbox', { name: 'Also update the 2 transactions you edited' })).not.toBeChecked()
   await user.click(screen.getByRole('button', { name: 'Apply to all imports' }))
-  await waitFor(() => expect(posted.apply![1]).toMatchObject({ scope: 'source', includeEdited: false }))
+  await waitFor(() => expect(posted.apply![1]).toMatchObject({ scope: 'all', includeEdited: false }))
 })
 
 // update-rule REPLACES the rule's whole label set while the prompt's diff

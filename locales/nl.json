@@ -674,6 +674,7 @@
       "detail_header": "Import",
       "history_link": "Importgeschiedenis",
       "empty": "Nog geen imports.",
+      "load_more": "Meer tonen",
       "rows_header": "Transacties",
       "rows_empty": "Deze import raakte geen transacties.",
       "status": {
@@ -731,13 +732,14 @@
         "create_rule": "Regel maken",
         "update_rule": "Regel bijwerken",
         "apply_question": "Deze regel toepassen op {count} overeenkomende transacties in deze import?",
+        "apply_all_question": "Deze regel toepassen op {count} overeenkomende transacties in al je imports?",
         "skipped_edited": "{count} overgeslagen (door jou bewerkt)",
         "include_edited": "Ook de {count} transacties bijwerken die je hebt bewerkt",
         "skip_apply": "Overslaan",
         "apply": "Toepassen",
         "applied_toast": "{count} transacties bijgewerkt",
-        "source_question": "Ook toepassen op alle imports van {source}? {count} transacties komen overeen.",
-        "apply_source": "Toepassen op alle imports",
+        "all_question": "Ook toepassen op al je imports? {count} transacties komen overeen.",
+        "apply_all": "Toepassen op alle imports",
         "done": "Klaar"
       },
       "editor": {

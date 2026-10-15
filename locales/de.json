@@ -674,6 +674,7 @@
       "detail_header": "Importlauf",
       "history_link": "Importverlauf",
       "empty": "Noch keine Importe.",
+      "load_more": "Mehr anzeigen",
       "rows_header": "Transaktionen",
       "rows_empty": "Dieser Lauf betraf keine Transaktionen.",
       "status": {
@@ -731,13 +732,14 @@
         "create_rule": "Regel erstellen",
         "update_rule": "Regel aktualisieren",
         "apply_question": "Diese Regel auf {count} passende Transaktionen in diesem Import anwenden?",
+        "apply_all_question": "Diese Regel auf {count} passende Transaktionen in all deinen Importen anwenden?",
         "skipped_edited": "{count} übersprungen (von dir bearbeitet)",
         "include_edited": "Auch die {count} von dir bearbeiteten Transaktionen aktualisieren",
         "skip_apply": "Überspringen",
         "apply": "Anwenden",
         "applied_toast": "{count} Transaktionen aktualisiert",
-        "source_question": "Auch auf alle Importe von {source} anwenden? {count} Transaktionen passen.",
-        "apply_source": "Auf alle Importe anwenden",
+        "all_question": "Auch auf alle deine Importe anwenden? {count} Transaktionen passen.",
+        "apply_all": "Auf alle Importe anwenden",
         "done": "Fertig"
       },
       "editor": {

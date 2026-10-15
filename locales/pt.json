@@ -674,6 +674,7 @@
       "detail_header": "Importação",
       "history_link": "Histórico de importações",
       "empty": "Ainda não há importações.",
+      "load_more": "Mostrar mais",
       "rows_header": "Transações",
       "rows_empty": "Esta importação não afetou nenhuma transação.",
       "status": {
@@ -731,13 +732,14 @@
         "create_rule": "Criar regra",
         "update_rule": "Atualizar regra",
         "apply_question": "Aplicar esta regra a {count} transações correspondentes nesta importação?",
+        "apply_all_question": "Aplicar esta regra a {count} transações correspondentes em todas as suas importações?",
         "skipped_edited": "{count} ignoradas (foram editadas por si)",
         "include_edited": "Atualizar também as {count} transações que editou",
         "skip_apply": "Ignorar",
         "apply": "Aplicar",
         "applied_toast": "{count} transações atualizadas",
-        "source_question": "Aplicar também a todas as importações de {source}? {count} transações correspondem.",
-        "apply_source": "Aplicar a todas as importações",
+        "all_question": "Aplicar também a todas as suas importações? {count} transações correspondem.",
+        "apply_all": "Aplicar a todas as importações",
         "done": "Concluído"
       },
       "editor": {

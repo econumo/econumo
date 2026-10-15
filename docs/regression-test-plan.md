@@ -353,9 +353,10 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       `ECONUMO_IMPORT_SIMPLEFIN` unset) 📱: Settings → Data shows only
       "Import & export"; no Apple Wallet, SimpleFIN or Import rules rows.
       Import & export lists only the CSV import/export rows (no "Sync bank
-      connections", "Import rules" or "Import history").
-      `/settings/apple-wallet`, `/settings/simplefin`, `/settings/import-rules`
-      and `/imports/runs` show the not-found page. The Inbox shows only sharing
+      connections" or "Import rules").
+      `/settings/apple-wallet`, `/settings/apple-wallet/history`,
+      `/settings/simplefin`, `/settings/simplefin/history` and
+      `/settings/import-rules` show the not-found page. The Inbox shows only sharing
       invites (or "All caught up") and no request to `/api/v1/import/*` is made
       anywhere in the app (Network tab); a direct call to any import endpoint
       returns 404.
@@ -615,10 +616,23 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       source; with one and a locked device it navigates to Settings →
       SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
       row is disabled (not clickable, dimmed) while the syncs run. 📱
-- [ ] Settings → Data → Import history lists runs newest first with status,
-      counts and errors; a run opens its detail; a transaction deleted after
-      import shows struck-through with "Deleted since"; queued rows read
-      "Waiting for review". Rows have no actions in this version. 📱
+- [ ] Import history is per provider; Settings → Data has no "Import history"
+      row (Import rules stays there) and `/imports/runs` is gone 📱.
+- [ ] SimpleFIN → "Import history" (`/settings/simplefin/history`; crumbs
+      Settings › SimpleFIN) lists that source's sync runs newest first with
+      status, counts and errors; a run opens its detail
+      (`/settings/simplefin/history/<id>`, back returns to the list); a
+      transaction deleted after import shows struck-through with "Deleted
+      since"; queued rows read "Waiting for review". Rows have no actions in
+      this version. 📱
+- [ ] Apple Wallet → status card → "Import history" (shown once a tap has
+      arrived; `/settings/apple-wallet/history`; crumbs Settings › Apple
+      Wallet) lists every tap newest first, grouped by day on the device's
+      clock: merchant, card name, local time, outcome (Imported / Deleted since
+      — struck through / Waiting for review / Skipped) and the amount in the
+      tap's currency. Taps whose payload could not be read are not listed (they
+      stay under the Inbox's Failed imports). With more than 50 taps "Show
+      more" loads the next 50 until none are left. 📱
 - [ ] Rate limits: the 6th `claim-setup-token` within 15 minutes and the 11th
       `sync-source` return 429 with the standard envelope.
 - [ ] Ingest-scoped PATs get 401 on every SimpleFIN endpoint; a read-only
@@ -647,9 +661,13 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       that import take the category; "N skipped (you've edited these)" names
       the edited ones and the "Also update the N transactions you edited"
       checkbox is off by default. Ticking it rewrites them too.
-- [ ] After applying to the run, the "Also apply to all imports from <source>?"
-      step shows its own count; "Apply to all imports" updates the older runs,
-      "Done" leaves them alone. "Not now" on the first step creates nothing.
+- [ ] After applying to the run, the "Also apply to all your imports?" step
+      shows its own count across every provider; "Apply to all imports" updates
+      the older imports from any source, "Done" leaves them alone. "Not now" on
+      the first step creates nothing. A transaction with no run (an Apple
+      Wallet tap imported straight away) gets one step: "Apply this rule to N
+      matching transactions across your imports?". Rules created from the
+      prompt or the Import rules page apply to imports from every provider.
 - [ ] A transaction that a rule classified (Import rules page shows the rule):
       changing its category offers "Update rule" (match shown read-only, no
       editor) rather than a second rule; the rule's targets change.

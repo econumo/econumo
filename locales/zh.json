@@ -674,6 +674,7 @@
       "detail_header": "导入记录",
       "history_link": "导入历史",
       "empty": "暂无导入记录。",
+      "load_more": "显示更多",
       "rows_header": "交易",
       "rows_empty": "此次导入未涉及任何交易。",
       "status": {
@@ -731,13 +732,14 @@
         "create_rule": "创建规则",
         "update_rule": "更新规则",
         "apply_question": "要将此规则应用于此次导入中匹配的 {count} 笔交易吗？",
+        "apply_all_question": "将此规则应用于你所有导入中 {count} 笔匹配的交易？",
         "skipped_edited": "已跳过 {count} 笔（已被编辑）",
         "include_edited": "同时更新已编辑的 {count} 笔交易",
         "skip_apply": "跳过",
         "apply": "应用",
         "applied_toast": "已更新 {count} 笔交易",
-        "source_question": "是否也应用于来自“{source}”的所有导入？匹配 {count} 笔交易。",
-        "apply_source": "应用于所有导入",
+        "all_question": "是否也应用于你的所有导入？匹配 {count} 笔交易。",
+        "apply_all": "应用于所有导入",
         "done": "完成"
       },
       "editor": {

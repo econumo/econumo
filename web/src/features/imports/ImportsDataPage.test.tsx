@@ -45,10 +45,12 @@ it('renders the CSV rows and opens the import dialog', async () => {
   expect(await screen.findByText('Maximum file size: 10 MB')).toBeInTheDocument()
 })
 
-it('holds no Apple Wallet section — that has its own page', async () => {
+it('holds no Apple Wallet section and no import history — each provider has its own pages; the rules stay here', async () => {
   renderPage()
   await screen.findByText('Import & export')
   expect(screen.queryByText('Apple Wallet')).not.toBeInTheDocument()
+  expect(screen.getByText('Import rules')).toBeInTheDocument()
+  expect(screen.queryByText('Import history')).not.toBeInTheDocument()
 })
 
 it('Sync all is hidden without a pull source and routes to SimpleFIN settings while the device is locked', async () => {

@@ -41,16 +41,25 @@ function WalletStatus({ source, setup }: { source: ImportSourceDto; setup: Walle
         </div>
       </div>
       {showInbox ? (
-        <Link
-          to={RouterPage.SETTINGS_APPLE_WALLET_INBOX}
-          className="flex items-center justify-between gap-2 rounded-b-lg border-t border-background px-4 py-3 hover:bg-econumo-hover"
-        >
-          <span>{t('inbox.title')}</span>
-          <span className="flex items-center gap-2 text-muted-foreground">
-            {waiting > 0 ? waiting : null}
-            <ChevronRight className="size-4" />
-          </span>
-        </Link>
+        <>
+          <Link
+            to={RouterPage.SETTINGS_APPLE_WALLET_INBOX}
+            className="flex items-center justify-between gap-2 border-t border-background px-4 py-3 hover:bg-econumo-hover"
+          >
+            <span>{t('inbox.title')}</span>
+            <span className="flex items-center gap-2 text-muted-foreground">
+              {waiting > 0 ? waiting : null}
+              <ChevronRight className="size-4" />
+            </span>
+          </Link>
+          <Link
+            to={RouterPage.SETTINGS_APPLE_WALLET_HISTORY}
+            className="flex items-center justify-between gap-2 rounded-b-lg border-t border-background px-4 py-3 hover:bg-econumo-hover"
+          >
+            <span>{t('imports.runs.history_link')}</span>
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </Link>
+        </>
       ) : null}
     </div>
   )

@@ -34,7 +34,8 @@ function LinkRow({ label, to }: { label: string; to: string }) {
   )
 }
 
-// Pull sync, import rules and run history: only with transaction import on.
+// Pull sync and import rules: only with transaction import on. Each provider's
+// history lives on its own page.
 function TransactionImportRows() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -85,7 +86,6 @@ function TransactionImportRows() {
         <ActionRow label={syncing ? t('imports.simplefin.sync.running') : t('imports.data_page.sync_all')} onClick={() => void syncAll()} disabled={syncing} />
       ) : null}
       <LinkRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} />
-      <LinkRow label={t('imports.data_page.history')} to={RouterPage.IMPORT_RUNS} />
     </>
   )
 }
