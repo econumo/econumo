@@ -49,6 +49,8 @@ type Repository interface {
 	GetLinkByExternalKey(ctx context.Context, sourceID vo.Id, externalAccountID, externalTransactionID string) (*model.ImportTransactionLink, error)
 	ListLinksByTransaction(ctx context.Context, transactionID vo.Id) ([]model.ImportTransactionLink, error)
 	ListLinksBySource(ctx context.Context, sourceID vo.Id) ([]model.ImportTransactionLink, error)
+	// ListLinksBySourcePage is the history page: newest tap first.
+	ListLinksBySourcePage(ctx context.Context, sourceID vo.Id, limit, offset int) ([]model.ImportTransactionLink, error)
 	ListLinksByRun(ctx context.Context, runID vo.Id) ([]model.ImportTransactionLink, error)
 	// DeleteQueuedLinksByExternalAccount purges only queued rows: seen rows
 	// (linked/skipped/tombstone) are the dedupe memory and must survive.

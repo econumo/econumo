@@ -27,10 +27,12 @@ import { BudgetsPage } from '@/features/budgets/BudgetsPage'
 import { ConnectionsPage } from '@/features/connections/ConnectionsPage'
 import { RecurringSettingsPage } from '@/features/recurring/RecurringSettingsPage'
 import { ImportsDataPage } from '@/features/imports/ImportsDataPage'
+import { AppleWalletHistoryPage } from '@/features/imports/AppleWalletHistoryPage'
+import { AppleWalletInboxPage } from '@/features/imports/AppleWalletInboxPage'
 import { AppleWalletPage } from '@/features/imports/AppleWalletPage'
+import { SimpleFINHistoryPage } from '@/features/imports/SimpleFINHistoryPage'
 import { SimpleFINPage } from '@/features/imports/SimpleFINPage'
 import { InboxPage } from '@/features/inbox/InboxPage'
-import { ImportRunListPage } from '@/features/imports/ImportRunListPage'
 import { ImportRunPage } from '@/features/imports/ImportRunPage'
 import { ImportRulesPage } from '@/features/imports/ImportRulesPage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
@@ -84,13 +86,23 @@ export function createRouter() {
                 { path: '/settings/recurring', element: <RecurringSettingsPage /> },
                 { path: '/settings/data', element: <ImportsDataPage /> },
                 { path: '/inbox', element: <InboxPage /> },
-                ...(isAppleWalletImportEnabled() ? [{ path: '/settings/apple-wallet', element: <AppleWalletPage /> }] : []),
-                ...(isSimpleFINImportEnabled() ? [{ path: '/settings/simplefin', element: <SimpleFINPage /> }] : []),
+                ...(isAppleWalletImportEnabled()
+                  ? [
+                      { path: '/settings/apple-wallet', element: <AppleWalletPage /> },
+                      { path: '/settings/apple-wallet/inbox', element: <AppleWalletInboxPage /> },
+                      { path: '/settings/apple-wallet/history', element: <AppleWalletHistoryPage /> },
+                    ]
+                  : []),
+                ...(isSimpleFINImportEnabled()
+                  ? [
+                      { path: '/settings/simplefin', element: <SimpleFINPage /> },
+                      { path: '/settings/simplefin/history', element: <SimpleFINHistoryPage /> },
+                      { path: '/settings/simplefin/history/:id', element: <ImportRunPage /> },
+                    ]
+                  : []),
                 ...(isTransactionImportEnabled()
                   ? [
                       { path: '/settings/import-rules', element: <ImportRulesPage /> },
-                      { path: '/imports/runs', element: <ImportRunListPage /> },
-                      { path: '/imports/runs/:id', element: <ImportRunPage /> },
                     ]
                   : []),
               ],

@@ -49,10 +49,18 @@ func init() {
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet", "accountId": OwnerAccount}},
 			{Label: "err:link-account-again", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet", "accountId": OwnerAccount}},
+			// A mapped card linked to another writable account is remapped.
+			{Label: "link-account-remap", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
+				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet", "accountId": SharedAccount}},
 			{Label: "get-queued-event-list-after-link", Method: "GET", Path: "/api/v1/import/get-queued-event-list", Auth: "owner"},
 			// Txn1 itself was never touched by the conversion (it created a new
 			// row instead), so its provenance list is empty.
 			{Label: "get-transaction-import-list-no-provenance", Method: "GET", Path: "/api/v1/import/get-transaction-import-list?transactionId=" + Txn1, Auth: "owner"},
+			// every row of the phone source, newest first, whatever its status
+			{Label: "get-source-history", Method: "GET", Path: "/api/v1/import/get-source-history?sourceId=" + ImportSourcePhone, Auth: "owner"},
+			{Label: "get-source-history-past-the-end", Method: "GET", Path: "/api/v1/import/get-source-history?sourceId=" + ImportSourcePhone + "&offset=50", Auth: "owner"},
+			{Label: "err:get-source-history-bad-offset", Method: "GET", Path: "/api/v1/import/get-source-history?sourceId=" + ImportSourcePhone + "&offset=-1", Auth: "owner"},
+			{Label: "err:get-source-history-foreign-source", Method: "GET", Path: "/api/v1/import/get-source-history?sourceId=" + ImportSourcePhone, Auth: "guest"},
 			{Label: "ignore-account", Method: "POST", Path: "/api/v1/import/ignore-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "eurocard"}},
 			// "map instead" over an ignored card is allowed.

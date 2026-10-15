@@ -15,6 +15,7 @@ import type {
   ImportRunDetailDto,
   ImportRunDto,
   ImportSourceDto,
+  ImportSourceHistoryDto,
   IngestEventDto,
   PreviewImportRuleDto,
   SyncImportSourceResultDto,
@@ -81,6 +82,11 @@ export async function getImportRunList(sourceId?: Id): Promise<ImportRunDto[]> {
 
 export async function getImportRun(id: Id): Promise<ImportRunDetailDto> {
   const response = await api.get<Envelope<ImportRunDetailDto>>(apiUrl('/api/v1/import/get-run'), { params: { id } })
+  return response.data.data
+}
+
+export async function getImportSourceHistory(sourceId: Id, offset: number): Promise<ImportSourceHistoryDto> {
+  const response = await api.get<Envelope<ImportSourceHistoryDto>>(apiUrl('/api/v1/import/get-source-history'), { params: { sourceId, offset } })
   return response.data.data
 }
 

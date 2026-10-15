@@ -363,6 +363,7 @@ type Querier interface {
 	ListImportSourcesByUser(ctx context.Context, userID string) ([]ImportSource, error)
 	ListImportTransactionLinksByRun(ctx context.Context, runID *string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksBySource(ctx context.Context, sourceID string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksBySourcePage(ctx context.Context, arg ListImportTransactionLinksBySourcePageParams) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksByTransaction(ctx context.Context, transactionID *string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksByUser(ctx context.Context, userID string) ([]ImportTransactionLink, error)
 	// Grants on accounts OWNED by this user (issued to others).

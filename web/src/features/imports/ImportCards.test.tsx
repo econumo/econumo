@@ -30,6 +30,7 @@ beforeEach(() => {
   }))
   server.use(...coreHandlers())
   vi.mocked(toast.error).mockClear()
+  vi.mocked(toast.success).mockClear()
 })
 
 it('map opens the account picker and posts link-account, then toasts the run counts', async () => {
@@ -43,13 +44,13 @@ it('map opens the account picker and posts link-account, then toasts the run cou
   }))
   const user = userEvent.setup()
   renderCards(source)
-  await user.click(await screen.findByRole('button', { name: 'Map to account' }))
+  await user.click(await screen.findByRole('button', { name: 'Map to account Apple Card' }))
   await user.selectOptions(await screen.findByLabelText('Account'), fixtureAccounts[0].id)
   await user.click(screen.getByRole('button', { name: 'Map' }))
   await waitFor(() => expect(body).toEqual({ sourceId: 's1', externalAccountId: 'wallet', accountId: fixtureAccounts[0].id, externalName: 'Apple Card' }))
 })
 
-it('ignore posts ignore-account; an ignored card offers "Map instead"', async () => {
+it('ignore posts ignore-account; an ignored card can still be mapped', async () => {
   let called = false
   server.use(http.post('*/api/v1/import/ignore-account', () => {
     called = true
@@ -57,10 +58,23 @@ it('ignore posts ignore-account; an ignored card offers "Map instead"', async ()
   }))
   const user = userEvent.setup()
   renderCards(source)
-  await user.click(await screen.findByRole('button', { name: 'Ignore' }))
+  await user.click(await screen.findByRole('button', { name: 'Ignore Apple Card' }))
   await waitFor(() => expect(called).toBe(true))
   renderCards({ ...source, cards: [{ ...unmapped, state: 'ignored' }] })
-  expect(screen.getByRole('button', { name: 'Map instead' })).toBeInTheDocument()
+  expect(screen.getByText(/^Ignored · 3 taps/)).toBeInTheDocument()
+  // the first render still shows the unmapped row, so the ignored one is the last match
+  const ignored = screen.getAllByRole('listitem').at(-1) as HTMLElement
+  expect(within(ignored).getByRole('button', { name: 'Map to account Apple Card' })).toBeInTheDocument()
+})
+
+it('unmapped cards are listed under Needs mapping with their review count, mapped ones under Cards', () => {
+  renderCards({ ...source, cards: [unmapped, { ...unmapped, externalAccountId: 'amex', externalName: 'Amex', state: 'mapped', accountId: fixtureAccounts[0].id, queuedCount: 0 }] })
+  const needs = screen.getByRole('heading', { name: 'Needs mapping' }).closest('section') as HTMLElement
+  const mapped = screen.getByRole('heading', { name: 'Cards' }).closest('section') as HTMLElement
+  expect(within(needs).getByText('Apple Card')).toBeInTheDocument()
+  expect(within(needs).getByText(/^2 to review/)).toBeInTheDocument()
+  expect(within(mapped).getByText('Amex')).toBeInTheDocument()
+  expect(within(mapped).queryByText('Apple Card')).not.toBeInTheDocument()
 })
 
 it('a failed ignore toasts the server error', async () => {
@@ -68,11 +82,11 @@ it('a failed ignore toasts the server error', async () => {
     HttpResponse.json({ success: false, message: 'Card not found.', code: 400, errors: {} }, { status: 400 })))
   const user = userEvent.setup()
   renderCards(source)
-  await user.click(await screen.findByRole('button', { name: 'Ignore' }))
+  await user.click(await screen.findByRole('button', { name: 'Ignore Apple Card' }))
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Card not found.'))
 })
 
-it('a mapped card shows the account name and unmaps after confirmation', async () => {
+it('a mapped card shows the account it feeds and unmaps after confirmation', async () => {
   let called = false
   server.use(http.post('*/api/v1/import/unlink-account', () => {
     called = true
@@ -80,9 +94,9 @@ it('a mapped card shows the account name and unmaps after confirmation', async (
   }))
   const user = userEvent.setup()
   renderCards({ ...source, cards: [{ ...unmapped, state: 'mapped', accountId: fixtureAccounts[0].id, queuedCount: 0 }] })
-  expect(await screen.findByText(`Mapped · ${fixtureAccounts[0].name}`)).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Unmap' }))
-  await user.click(await screen.findByRole('button', { name: 'Unmap' , hidden: false }))
+  expect(await screen.findByText(fixtureAccounts[0].name)).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Unmap Apple Card' }))
+  await user.click(await screen.findByRole('button', { name: 'Unmap' }))
   await waitFor(() => expect(called).toBe(true))
 })
 
@@ -90,7 +104,7 @@ it('the account picker lists accounts already in the card\'s currency first', as
   const eurCard = { ...unmapped, externalCurrency: 'EUR' }
   const user = userEvent.setup()
   renderCards({ ...source, cards: [eurCard] })
-  await user.click(await screen.findByRole('button', { name: 'Map to account' }))
+  await user.click(await screen.findByRole('button', { name: 'Map to account Apple Card' }))
   const select = await screen.findByLabelText('Account')
   const optionNames = within(select).getAllByRole('option').map((o) => o.textContent)
   expect(optionNames).toEqual(['', 'Euro Stash', 'Cash', 'Bank', 'Under the mattress'])
@@ -105,8 +119,30 @@ it('the picker lists accounts shared with me for writing, not guest-only ones', 
   server.use(...coreHandlers({ accounts: [...fixtureAccounts, shared('s-user', 'Family card', 'user'), shared('s-guest', 'Read only', 'guest')] }))
   const user = userEvent.setup()
   renderCards(source)
-  await user.click(await screen.findByRole('button', { name: 'Map to account' }))
+  await user.click(await screen.findByRole('button', { name: 'Map to account Apple Card' }))
   const picker = await screen.findByLabelText('Account')
   await waitFor(() => expect(within(picker).getByRole('option', { name: /Family card/ })).toBeInTheDocument())
   expect(within(picker).queryByRole('option', { name: /Read only/ })).not.toBeInTheDocument()
+})
+
+it('remap preselects the current account and posts link-account once another one is picked', async () => {
+  let body: unknown
+  server.use(http.post('*/api/v1/import/link-account', async ({ request }) => {
+    body = await request.json()
+    return HttpResponse.json({ success: true, message: '', data: {
+      item: { ...source, cards: [{ ...unmapped, state: 'mapped', accountId: fixtureAccounts[1].id, queuedCount: 0 }] },
+      run: { id: 'r1', status: 'completed', importedCount: 0, matchedCount: 0, skippedCount: 0, failedCount: 0 },
+    } })
+  }))
+  const user = userEvent.setup()
+  renderCards({ ...source, cards: [{ ...unmapped, state: 'mapped', accountId: fixtureAccounts[0].id, queuedCount: 0 }] })
+  await user.click(await screen.findByRole('button', { name: 'Remap Apple Card' }))
+  const select = await screen.findByLabelText('Account')
+  await waitFor(() => expect(select).toHaveValue(fixtureAccounts[0].id))
+  expect(screen.getByRole('button', { name: 'Map' })).toBeDisabled()
+  await user.selectOptions(select, fixtureAccounts[1].id)
+  await user.click(screen.getByRole('button', { name: 'Map' }))
+  await waitFor(() => expect(body).toEqual({ sourceId: 's1', externalAccountId: 'wallet', accountId: fixtureAccounts[1].id, externalName: 'Apple Card' }))
+  // nothing was queued, so no "0 imported" toast
+  expect(toast.success).not.toHaveBeenCalled()
 })

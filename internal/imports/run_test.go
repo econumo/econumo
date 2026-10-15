@@ -2,8 +2,10 @@ package imports_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -39,6 +41,32 @@ func TestGetRunListAndGetRun(t *testing.T) {
 	}
 	if _, err := h.svc.GetRun(ctx, vo.MustParseId(userA), "nope"); !isNotFound(err) {
 		t.Fatalf("bad id must be not found, got %v", err)
+	}
+}
+
+func TestGetSourceHistory_PagesNewestFirst(t *testing.T) {
+	h := setup(t)
+	ctx := context.Background()
+	// 52 taps a minute apart: one page of 50 plus a second of 2
+	for i := 0; i < imports.SourceHistoryPage+2; i++ {
+		ingest(t, h, fmt.Sprintf(`{"account":"Apple Card","payee":"Shop %02d","amount":"1","currency":"USD","occurredAt":"2026-08-20T10:%02d:00Z","eventId":"h-%d"}`, i, i, i))
+	}
+	first, err := h.svc.GetSourceHistory(ctx, vo.MustParseId(userA), source, 0)
+	if err != nil || len(first.Items) != imports.SourceHistoryPage || !first.HasMore {
+		t.Fatalf("first page = %d rows, hasMore %v, err %v", len(first.Items), first.HasMore, err)
+	}
+	if first.Items[0].ExternalPayee != "Shop 51" || first.Items[0].Status != model.ImportLinkStatusQueued {
+		t.Errorf("newest first: got %+v", first.Items[0])
+	}
+	second, err := h.svc.GetSourceHistory(ctx, vo.MustParseId(userA), source, imports.SourceHistoryPage)
+	if err != nil || len(second.Items) != 2 || second.HasMore || second.Items[1].ExternalPayee != "Shop 00" {
+		t.Fatalf("second page = %+v err %v", second, err)
+	}
+	if _, err := h.svc.GetSourceHistory(ctx, vo.MustParseId(userB), source, 0); !isNotFound(err) {
+		t.Fatalf("a foreign source must be not found, got %v", err)
+	}
+	if _, err := h.svc.GetSourceHistory(ctx, vo.MustParseId(userA), "", 0); !isNotFound(err) {
+		t.Fatalf("a blank source must be not found, got %v", err)
 	}
 }
 

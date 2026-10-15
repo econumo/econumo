@@ -10,7 +10,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// LinkAccount maps a card to an account and converts the card's queued taps.
+// LinkAccount maps a card to an account, or remaps a mapped one, and converts
+// the card's queued taps.
 func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkImportAccountRequest) (*model.UpdateImportAccountResult, error) {
 	var out *model.UpdateImportAccountResult
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
@@ -61,10 +62,12 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 		}
 		now := s.clk.Now().UTC()
 		if existing := findAccountLink(links, ext); existing != nil {
-			if existing.Mode == model.ImportAccountLinkModeImport {
+			// Remapping moves only future taps (and any still queued); rows already
+			// imported stay on the account they were written to.
+			if existing.Mode == model.ImportAccountLinkModeImport && existing.AccountID != nil && existing.AccountID.Equal(accountID) {
 				return &errs.ValidationError{Msg: "This card is already linked", MsgCode: errs.CodeImportAccountLinkExists}
 			}
-			existing.Mode = model.ImportAccountLinkModeImport // map-instead over an ignored card
+			existing.Mode = model.ImportAccountLinkModeImport // map-instead over an ignored card, or a remap
 			existing.AccountID = &accountID
 			existing.ExternalCurrency = optionalString(cardCode)
 			existing.UpdatedAt = now

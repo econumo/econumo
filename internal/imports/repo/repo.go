@@ -38,6 +38,7 @@ type (
 	upsertCredentialKeyParams = sqlitegen.UpsertImportCredentialKeyParams
 	runsByUserParams          = sqlitegen.ListImportRunsByUserParams
 	runsBySourceParams        = sqlitegen.ListImportRunsBySourceParams
+	linksPageParams           = sqlitegen.ListImportTransactionLinksBySourcePageParams
 	ruleRow                   = sqlitegen.ImportRule
 	insertRuleParams          = sqlitegen.InsertImportRuleParams
 	updateRuleParams          = sqlitegen.UpdateImportRuleParams
@@ -77,6 +78,7 @@ type querier interface {
 	GetImportTransactionLinkByID(ctx context.Context, db backend.DBTX, id string) (linkRow, error)
 	UpdateImportTransactionLink(ctx context.Context, db backend.DBTX, p updateLinkParams) error
 	ListImportTransactionLinksBySource(ctx context.Context, db backend.DBTX, sourceID string) ([]linkRow, error)
+	ListImportTransactionLinksBySourcePage(ctx context.Context, db backend.DBTX, p linksPageParams) ([]linkRow, error)
 	DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, db backend.DBTX, p purgeQueuedLinksParams) error
 
 	UpdateImportSource(ctx context.Context, db backend.DBTX, p updateSourceParams) error
@@ -528,6 +530,22 @@ func (r *Repo) UpdateLink(ctx context.Context, l *model.ImportTransactionLink) e
 
 func (r *Repo) ListLinksBySource(ctx context.Context, sourceID vo.Id) ([]model.ImportTransactionLink, error) {
 	rows, err := r.q.ListImportTransactionLinksBySource(ctx, r.db(ctx), sourceID.String())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.ImportTransactionLink, 0, len(rows))
+	for _, row := range rows {
+		l, err := linkFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *l)
+	}
+	return out, nil
+}
+
+func (r *Repo) ListLinksBySourcePage(ctx context.Context, sourceID vo.Id, limit, offset int) ([]model.ImportTransactionLink, error) {
+	rows, err := r.q.ListImportTransactionLinksBySourcePage(ctx, r.db(ctx), linksPageParams{SourceID: sourceID.String(), Limit: int64(limit), Offset: int64(offset)})
 	if err != nil {
 		return nil, err
 	}

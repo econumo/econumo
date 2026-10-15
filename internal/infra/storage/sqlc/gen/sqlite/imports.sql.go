@@ -1120,6 +1120,62 @@ func (q *Queries) ListImportTransactionLinksBySource(ctx context.Context, source
 	return items, nil
 }
 
+const listImportTransactionLinksBySourcePage = `-- name: ListImportTransactionLinksBySourcePage :many
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+FROM import_transaction_links
+WHERE source_id = ?
+ORDER BY external_posted_at DESC, id DESC
+LIMIT ? OFFSET ?
+`
+
+type ListImportTransactionLinksBySourcePageParams struct {
+	SourceID string
+	Limit    int64
+	Offset   int64
+}
+
+func (q *Queries) ListImportTransactionLinksBySourcePage(ctx context.Context, arg ListImportTransactionLinksBySourcePageParams) ([]ImportTransactionLink, error) {
+	rows, err := q.db.QueryContext(ctx, listImportTransactionLinksBySourcePage, arg.SourceID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportTransactionLink{}
+	for rows.Next() {
+		var i ImportTransactionLink
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceID,
+			&i.RunID,
+			&i.EventID,
+			&i.ExternalAccountID,
+			&i.ExternalTransactionID,
+			&i.TransactionID,
+			&i.Status,
+			&i.ExternalPayee,
+			&i.ExternalDescription,
+			&i.ExternalAmount,
+			&i.ExternalCurrency,
+			&i.ExternalPostedAt,
+			&i.AppliedCategoryID,
+			&i.AppliedPayeeID,
+			&i.AppliedTagID,
+			&i.AppliedRuleID,
+			&i.ImportedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listImportTransactionLinksByTransaction = `-- name: ListImportTransactionLinksByTransaction :many
 SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
 FROM import_transaction_links

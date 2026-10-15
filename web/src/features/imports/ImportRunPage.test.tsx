@@ -4,8 +4,8 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
-import { ImportRunListPage } from './ImportRunListPage'
 import { ImportRunPage } from './ImportRunPage'
+import { SimpleFINHistoryPage } from './SimpleFINHistoryPage'
 
 vi.mock('@/hooks/useIsCompact', () => ({ useIsCompact: () => false }))
 
@@ -14,6 +14,7 @@ const run = {
   importedCount: 1, matchedCount: 0, amountsUpdatedCount: 0, queuedCount: 1, skippedCount: 0, failedCount: 1,
   errors: [{ externalAccountId: 'ACT-SAV', message: 'unsupported currency' }], startedAt: '2026-09-07 10:00:00', finishedAt: '2026-09-07 10:00:02',
 }
+const bank = { id: 's2', provider: 'simplefin', name: 'Bank', status: 'active', createdAt: '2026-09-01 00:00:00', cards: [] }
 const links = [
   { id: 'l1', externalAccountId: 'ACT-CHK', externalTransactionId: 'chk-1', transactionId: 't1', status: 'linked', externalPayee: 'Blue Bottle', externalAmount: '-12.5', externalCurrency: 'USD', externalPostedAt: '2026-09-06 09:00:00' },
   { id: 'l2', externalAccountId: 'ACT-CHK', externalTransactionId: 'chk-2', transactionId: '', status: 'linked', externalPayee: 'Payroll', externalAmount: '2500', externalCurrency: 'USD', externalPostedAt: '2026-09-05 09:00:00' },
@@ -22,7 +23,7 @@ const links = [
 
 function renderAt(path: string) {
   server.use(
-    ...coreHandlers({ importRuns: [run] }),
+    ...coreHandlers({ importRuns: [run], importSources: [bank] }),
     http.get('*/api/v1/import/get-run', ({ request }) =>
       new URL(request.url).searchParams.get('id') === 'r1'
         ? HttpResponse.json({ success: true, message: '', data: { item: run, links } })
@@ -30,7 +31,7 @@ function renderAt(path: string) {
   )
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const router = createMemoryRouter(
-    [{ path: '/imports/runs', element: <ImportRunListPage /> }, { path: '/imports/runs/:id', element: <ImportRunPage /> }],
+    [{ path: '/settings/simplefin/history', element: <SimpleFINHistoryPage /> }, { path: '/settings/simplefin/history/:id', element: <ImportRunPage /> }],
     { initialEntries: [path] },
   )
   render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>)
@@ -38,19 +39,19 @@ function renderAt(path: string) {
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = {}
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
 })
 
-it('lists runs with status, counts and per-account errors, linking to the run', async () => {
-  renderAt('/imports/runs')
+it('SimpleFIN history lists its runs with status, counts and per-account errors, linking to the run', async () => {
+  renderAt('/settings/simplefin/history')
   expect(await screen.findByText('Completed with errors')).toBeInTheDocument()
   expect(screen.getByText(/1 imported · 0 matched/)).toBeInTheDocument()
   expect(screen.getByText(/ACT-SAV: unsupported currency/)).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: /Completed with errors/ })).toHaveAttribute('href', '/imports/runs/r1')
+  expect(screen.getByRole('link', { name: /Completed with errors/ })).toHaveAttribute('href', '/settings/simplefin/history/r1')
 })
 
 it('run detail shows imported, tombstone and queued rows read-only', async () => {
-  renderAt('/imports/runs/r1')
+  renderAt('/settings/simplefin/history/r1')
   expect(await screen.findByText('Blue Bottle')).toBeInTheDocument()
   expect(screen.getByText(/ACT-CHK · .* · Imported$/)).toBeInTheDocument()
   expect(screen.getByText('Payroll')).toHaveClass('line-through')
@@ -61,6 +62,6 @@ it('run detail shows imported, tombstone and queued rows read-only', async () =>
 })
 
 it('an unknown run id shows the server error', async () => {
-  renderAt('/imports/runs/nope')
+  renderAt('/settings/simplefin/history/nope')
   expect(await screen.findByRole('alert')).toHaveTextContent('Run not found')
 })

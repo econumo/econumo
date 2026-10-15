@@ -44,6 +44,9 @@ function renderSections(importQueue: unknown) {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
   useUiStore.setState({ transactionModal: null })
   vi.mocked(toast.error).mockClear()
   vi.mocked(toast.success).mockClear()
@@ -61,11 +64,21 @@ it('groups queued rows by card, formats amounts with moneyFormat, and opens the 
   expect(params?.importQueued).toEqual({ linkId: 'l1', type: 'expense', accountId: '', amount: '12.5', currency: 'USD', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' })
 })
 
-it('an unmapped card header links to the mapping page', async () => {
+it('an unmapped card header opens the map dialog in place and links the card', async () => {
+  let body: unknown
+  server.use(http.post('*/api/v1/import/link-account', async ({ request }) => {
+    body = await request.json()
+    return HttpResponse.json({ success: true, message: '', data: { item: { ...source, cards: [{ ...source.cards[0], state: 'mapped', accountId: 'acc-1' }] }, run: null } })
+  }))
   renderSections({ queued: [queued()], skipped: [], failed: [] })
   const user = userEvent.setup()
-  await user.click(await screen.findByRole('link', { name: 'Map to account' }))
-  expect(await screen.findByText('WALLET PAGE')).toBeInTheDocument()
+  await user.click(await screen.findByRole('button', { name: 'Map to account' }))
+  const select = await screen.findByLabelText('Account')
+  const option = select.querySelectorAll('option')[1] as HTMLOptionElement
+  await user.selectOptions(select, option.value)
+  await user.click(screen.getByRole('button', { name: 'Map' }))
+  await waitFor(() => expect(body).toEqual({ sourceId: 's1', externalAccountId: 'Apple Card', accountId: option.value, externalName: 'Apple Card' }))
+  expect(screen.queryByText('WALLET PAGE')).not.toBeInTheDocument()
 })
 
 it('skip posts skip-queued-event; a skipped row offers Restore, labelled with the card', async () => {

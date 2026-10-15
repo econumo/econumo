@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
-import type { ImportRunLinkDto } from '@/api/dto/imports'
 import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -8,16 +7,7 @@ import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { ImportRunSummary } from './ImportRunSummary'
 import { useImportRun, useImportSources } from './queries'
-
-// A linked row whose transaction is gone is a tombstone: the import happened,
-// the user deleted the result afterwards. It stays listed so the history is
-// honest, and so a future "allow re-import" action has something to act on.
-function rowStatus(link: ImportRunLinkDto): 'imported' | 'deleted' | 'queued' | 'skipped' {
-  if (link.status === 'linked') {
-    return link.transactionId ? 'imported' : 'deleted'
-  }
-  return link.status === 'queued' ? 'queued' : 'skipped'
-}
+import { rowStatus } from './runRows'
 
 export function ImportRunPage() {
   const { t, i18n } = useTranslation()
@@ -30,7 +20,15 @@ export function ImportRunPage() {
   const accountName = (externalAccountId: string) =>
     source?.cards.find((c) => c.externalAccountId === externalAccountId)?.externalName || externalAccountId
   return (
-    <SettingsShell title={t('imports.runs.detail_header')} backTo={RouterPage.IMPORT_RUNS}>
+    <SettingsShell
+      title={t('imports.runs.detail_header')}
+      backTo={RouterPage.SETTINGS_SIMPLEFIN_HISTORY}
+      crumbs={[
+        { label: t('settings.page.header_desktop'), to: RouterPage.SETTINGS },
+        { label: t('imports.simplefin.title'), to: RouterPage.SETTINGS_SIMPLEFIN },
+        { label: t('imports.runs.header'), to: RouterPage.SETTINGS_SIMPLEFIN_HISTORY },
+      ]}
+    >
       <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
         {detail.isPending ? <p className="text-sm text-muted-foreground">{t('common.app.modal.loading.data_loading')}</p> : null}
         {detail.isError ? <p role="alert" className="text-sm text-destructive">{apiErrorMessage(detail.error)}</p> : null}

@@ -512,66 +512,82 @@
       "menu_item": "Apple Wallet",
       "intro": "Registe pagamentos Apple Pay automaticamente com um atalho do iPhone. Cada pagamento é enviado ao Econumo; associa cada cartão a uma conta uma única vez.",
       "connect": "Configurar Apple Wallet",
+      "connect_intro": {
+        "needs_title": "Vai precisar de",
+        "needs": {
+          "iphone": "Um iPhone com Apple Pay",
+          "shortcuts": "A app Atalhos — vem com o iOS",
+          "time": "Cerca de 5 minutos"
+        },
+        "steps_title": "Como funciona",
+        "privacy": "Por cada pagamento o Econumo recebe o nome do cartão, o comerciante, o montante e a moeda — nunca números de cartão."
+      },
       "connected": "Ligado",
       "disconnect": "Desligar",
+      "disconnect_full": "Desligar o Apple Wallet",
       "disconnect_modal": {
         "title": "Desligar o Apple Wallet?",
         "question": "As associações de cartões e a fila de revisão desta ligação serão removidas. As transações já importadas mantêm-se."
       },
+      "status": {
+        "last_tap": "Último pagamento {when}",
+        "no_taps": "Ainda sem pagamentos",
+        "setting_up": "A configurar",
+        "step": "Passo {n} de {total}: {title}"
+      },
+      "setup": {
+        "header": "Configuração",
+        "title": "Guia de configuração",
+        "progress": "{done} de {total} concluídos"
+      },
       "steps": {
-        "hint_desktop": "Abra esta página no seu iPhone para executar os passos lá. Neste dispositivo pode transferir os atalhos e marcar os passos manualmente.",
-        "install_wallet": {
-          "title": "Instalar econumo-wallet-v1",
-          "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho»."
-        },
-        "install_setup": {
-          "title": "Instalar econumo-setup-v1",
+        "hint_desktop": "Abra esta página no seu iPhone para seguir os passos lá. Neste dispositivo pode transferir o atalho e marcar os passos como concluídos.",
+        "install": {
+          "title": "Instalar o atalho",
           "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho»."
         },
         "configure": {
-          "title": "Configurar os atalhos",
-          "text": "Cria um token de acesso para o atalho e entrega-o a econumo-setup-v1 juntamente com o endereço do servidor.",
-          "button": "Configurar neste iPhone",
+          "title": "Ligar o atalho ao Econumo",
+          "text": "Cria um token de acesso e abre o econumo-apple-wallet com ele. O atalho guarda o endereço do servidor e o token e depois contacta o Econumo. Toque em «Permitir sempre» em cada pedido — a automatização vai precisar destas permissões.",
+          "button": "Criar token de acesso",
+          "open": "Abrir {name}",
+          "waiting": "À espera de que o atalho chegue ao Econumo…",
           "manual": "Configurar manualmente"
-        },
-        "test": {
-          "title": "Executar econumo-wallet-v1 uma vez",
-          "text": "Execute-o manualmente e toque em «Permitir sempre» em cada pedido — isso concede as permissões de que a automatização vai precisar. Nada é criado; o Econumo apenas regista que o atalho chegou.",
-          "button": "Executar econumo-wallet-v1",
-          "check": "Verificar",
-          "none": "Ainda nada recebido. Execute o atalho, aceite os pedidos e verifique novamente."
         },
         "automate": {
           "title": "Criar a automatização",
-          "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar (o mais seguro é escolher todos) → Executar após confirmação → econumo-wallet-v1."
+          "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar (o mais seguro é escolher todos) → Executar após confirmação → econumo-apple-wallet."
         },
         "payment": {
-          "title": "Fazer o primeiro pagamento com o iPhone desbloqueado",
-          "text": "Pague uma vez com Apple Pay com o iPhone desbloqueado. Toque em «Executar» quando a automatização pedir e depois em «Permitir sempre» quando os Atalhos pedirem acesso à Wallet.",
-          "check": "Verificar",
-          "none": "Ainda nenhum pagamento recebido. Pague uma vez com o iPhone desbloqueado e verifique novamente."
+          "title": "Fazer o primeiro pagamento",
+          "text": "Pague uma vez com Apple Pay — o iPhone pode ficar bloqueado. Toque em «Executar» quando a automatização pedir e depois em «Permitir sempre» em cada pedido.",
+          "waiting": "À espera do primeiro pagamento…"
         },
         "immediate": {
           "title": "Mudar a automatização para «Executar imediatamente»",
           "text": "Na app Atalhos, abra a automatização e mude «Executar após confirmação» para «Executar imediatamente». A partir daí os pagamentos são importados sem perguntar, também a partir do ecrã bloqueado."
         },
-        "complete": "Configuração concluída",
-        "show": "Mostrar passos",
-        "hide": "Ocultar passos"
+        "done": "Concluído",
+        "mark_done": "Marcar como concluído",
+        "undo": "Marcar como não concluído",
+        "complete": "Configuração concluída"
       },
       "same_named_cards": "Cartões com o mesmo nome no Wallet chegam aqui como um único cartão.",
+      "video": "Ver o vídeo de configuração:",
+      "video_title": "Vídeo de configuração",
+      "video_youtube": "Abrir no YouTube",
       "cards": {
         "header": "Cartões",
         "empty": "Ainda sem cartões — o primeiro pagamento Apple Pay adiciona um.",
+        "needs_mapping": "Sem associação",
         "state": {
-          "mapped": "Associado",
-          "ignored": "Ignorado",
-          "unmapped": "Sem associação · {count} em fila"
+          "ignored": "Ignorado"
         },
         "taps": "{count} pagamento | {count} pagamentos",
-        "last_seen": "Visto pela última vez {date}",
+        "waiting": "{count} por rever",
         "map": "Associar a uma conta",
-        "map_instead": "Associar em vez disso",
+        "mapped_to": "associado a",
+        "remap": "Reassociar",
         "ignore": "Ignorar",
         "unlink": "Desassociar",
         "unlink_modal": {
@@ -622,15 +638,15 @@
       "accounts": {
         "header": "Contas",
         "empty": "A ponte ainda não reportou contas.",
+        "needs_mapping": "Sem associação",
         "state": {
-          "mapped": "Associada",
-          "ignored": "Ignorada",
-          "unmapped": "Sem associação · {count} em fila"
+          "ignored": "Ignorada"
         },
         "taps": "{count} transação | {count} transações",
-        "last_seen": "Visto pela última vez {date}",
+        "waiting": "{count} por rever",
         "map": "Associar a uma conta",
-        "map_instead": "Associar em vez disso",
+        "mapped_to": "associado a",
+        "remap": "Reassociar",
         "ignore": "Ignorar",
         "unlink": "Desassociar",
         "unlink_modal": {
@@ -658,6 +674,7 @@
       "detail_header": "Importação",
       "history_link": "Histórico de importações",
       "empty": "Ainda não há importações.",
+      "load_more": "Mostrar mais",
       "rows_header": "Transações",
       "rows_empty": "Esta importação não afetou nenhuma transação.",
       "status": {
@@ -715,13 +732,14 @@
         "create_rule": "Criar regra",
         "update_rule": "Atualizar regra",
         "apply_question": "Aplicar esta regra a {count} transações correspondentes nesta importação?",
+        "apply_all_question": "Aplicar esta regra a {count} transações correspondentes em todas as suas importações?",
         "skipped_edited": "{count} ignoradas (foram editadas por si)",
         "include_edited": "Atualizar também as {count} transações que editou",
         "skip_apply": "Ignorar",
         "apply": "Aplicar",
         "applied_toast": "{count} transações atualizadas",
-        "source_question": "Aplicar também a todas as importações de {source}? {count} transações correspondem.",
-        "apply_source": "Aplicar a todas as importações",
+        "all_question": "Aplicar também a todas as suas importações? {count} transações correspondem.",
+        "apply_all": "Aplicar a todas as importações",
         "done": "Concluído"
       },
       "editor": {
@@ -736,7 +754,11 @@
         "payee": "Beneficiário",
         "tag": "Etiqueta de orçamento",
         "labels": "Etiquetas de relatório",
-        "match_count": "Corresponde a {count} transações importadas"
+        "match_count": "Corresponde a {count} transações importadas",
+        "when": "Quando",
+        "then": "Então",
+        "value_placeholder": "Texto a procurar, p. ex. STARBUCKS",
+        "not_set": "Não definido"
       },
       "page": {
         "menu_item": "Regras de importação",

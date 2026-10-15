@@ -512,66 +512,82 @@
       "menu_item": "Apple Wallet",
       "intro": "Erfasse Apple-Pay-Zahlungen automatisch mit einem iPhone-Kurzbefehl. Jede Zahlung wird an Econumo gesendet; jede Karte ordnest du einmal einem Konto zu.",
       "connect": "Apple Wallet einrichten",
+      "connect_intro": {
+        "needs_title": "Du brauchst",
+        "needs": {
+          "iphone": "Ein iPhone mit Apple Pay",
+          "shortcuts": "Die App Kurzbefehle – sie ist in iOS enthalten",
+          "time": "Etwa 5 Minuten"
+        },
+        "steps_title": "So funktioniert es",
+        "privacy": "Pro Zahlung erhält Econumo Kartenname, Händler, Betrag und Währung – niemals Kartennummern."
+      },
       "connected": "Verbunden",
       "disconnect": "Trennen",
+      "disconnect_full": "Apple Wallet trennen",
       "disconnect_modal": {
         "title": "Apple Wallet trennen?",
         "question": "Kartenzuordnungen und die Prüfwarteschlange dieser Verbindung werden entfernt. Bereits importierte Transaktionen bleiben erhalten."
       },
+      "status": {
+        "last_tap": "Letzte Zahlung {when}",
+        "no_taps": "Noch keine Zahlungen",
+        "setting_up": "Einrichtung läuft",
+        "step": "Schritt {n} von {total}: {title}"
+      },
+      "setup": {
+        "header": "Einrichtung",
+        "title": "Einrichtungsanleitung",
+        "progress": "{done} von {total} erledigt"
+      },
       "steps": {
-        "hint_desktop": "Öffne diese Seite auf deinem iPhone, um die Schritte dort auszuführen. Auf diesem Gerät kannst du die Kurzbefehle laden und Schritte von Hand abhaken.",
-        "install_wallet": {
-          "title": "econumo-wallet-v1 installieren",
-          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
-        },
-        "install_setup": {
-          "title": "econumo-setup-v1 installieren",
+        "hint_desktop": "Öffne diese Seite auf deinem iPhone, um die Schritte dort zu befolgen. Auf diesem Gerät kannst du den Kurzbefehl laden und Schritte als erledigt markieren.",
+        "install": {
+          "title": "Kurzbefehl installieren",
           "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
         },
         "configure": {
-          "title": "Kurzbefehle konfigurieren",
-          "text": "Erstellt ein Zugriffstoken für den Kurzbefehl und übergibt es zusammen mit der Serveradresse an econumo-setup-v1.",
-          "button": "Auf diesem iPhone konfigurieren",
+          "title": "Kurzbefehl mit Econumo verbinden",
+          "text": "Erstellt ein Zugriffstoken und öffnet damit econumo-apple-wallet. Der Kurzbefehl speichert Serveradresse und Token und meldet sich dann bei Econumo. Tippe bei jeder Abfrage auf „Immer erlauben“ — die Automation braucht diese Berechtigungen später.",
+          "button": "Zugriffstoken erstellen",
+          "open": "{name} öffnen",
+          "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …",
           "manual": "Manuell konfigurieren"
-        },
-        "test": {
-          "title": "econumo-wallet-v1 einmal ausführen",
-          "text": "Führe ihn von Hand aus und tippe bei jeder Abfrage auf „Immer erlauben“ — das erteilt die Berechtigungen, die die Automation später braucht. Es wird nichts angelegt; Econumo merkt sich nur, dass der Kurzbefehl angekommen ist.",
-          "button": "econumo-wallet-v1 ausführen",
-          "check": "Prüfen",
-          "none": "Noch nichts empfangen. Führe den Kurzbefehl aus, erlaube die Abfragen und prüfe erneut."
         },
         "automate": {
           "title": "Automation anlegen",
-          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen (am sichersten: alle) → Nach Bestätigung ausführen → econumo-wallet-v1."
+          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen (am sichersten: alle) → Nach Bestätigung ausführen → econumo-apple-wallet."
         },
         "payment": {
-          "title": "Erste Zahlung mit entsperrtem iPhone",
-          "text": "Zahle einmal mit Apple Pay, während das iPhone entsperrt ist. Tippe auf „Ausführen“, wenn die Automation nachfragt, und dann auf „Immer erlauben“, wenn Kurzbefehle Zugriff auf Wallet verlangt.",
-          "check": "Prüfen",
-          "none": "Noch keine Zahlung empfangen. Zahle einmal mit entsperrtem iPhone und prüfe erneut."
+          "title": "Erste Zahlung tätigen",
+          "text": "Zahle einmal mit Apple Pay — das iPhone darf gesperrt bleiben. Tippe auf „Ausführen“, wenn die Automation nachfragt, und dann bei jeder Abfrage auf „Immer erlauben“.",
+          "waiting": "Warte auf die erste Zahlung …"
         },
         "immediate": {
           "title": "Automation auf „Sofort ausführen“ umstellen",
           "text": "Öffne in der Kurzbefehle-App die Automation und ändere „Nach Bestätigung ausführen“ auf „Sofort ausführen“. Ab dann werden Zahlungen ohne Rückfrage importiert, auch vom Sperrbildschirm aus."
         },
-        "complete": "Einrichtung abgeschlossen",
-        "show": "Schritte anzeigen",
-        "hide": "Schritte ausblenden"
+        "done": "Erledigt",
+        "mark_done": "Als erledigt markieren",
+        "undo": "Als nicht erledigt markieren",
+        "complete": "Einrichtung abgeschlossen"
       },
       "same_named_cards": "Karten mit gleichem Namen in Wallet erscheinen hier als eine Karte.",
+      "video": "Einrichtungsvideo ansehen:",
+      "video_title": "Einrichtungsvideo",
+      "video_youtube": "Auf YouTube öffnen",
       "cards": {
         "header": "Karten",
         "empty": "Noch keine Karten — die erste Apple-Pay-Zahlung fügt eine hinzu.",
+        "needs_mapping": "Nicht zugeordnet",
         "state": {
-          "mapped": "Zugeordnet",
-          "ignored": "Ignoriert",
-          "unmapped": "Nicht zugeordnet · {count} wartend"
+          "ignored": "Ignoriert"
         },
         "taps": "{count} Zahlung | {count} Zahlungen",
-        "last_seen": "Zuletzt gesehen {date}",
+        "waiting": "{count} zu prüfen",
         "map": "Konto zuordnen",
-        "map_instead": "Stattdessen zuordnen",
+        "mapped_to": "zugeordnet zu",
+        "remap": "Neu zuordnen",
         "ignore": "Ignorieren",
         "unlink": "Zuordnung aufheben",
         "unlink_modal": {
@@ -622,15 +638,15 @@
       "accounts": {
         "header": "Konten",
         "empty": "Die Bridge hat noch keine Konten gemeldet.",
+        "needs_mapping": "Nicht zugeordnet",
         "state": {
-          "mapped": "Zugeordnet",
-          "ignored": "Ignoriert",
-          "unmapped": "Nicht zugeordnet · {count} wartend"
+          "ignored": "Ignoriert"
         },
         "taps": "{count} Transaktion | {count} Transaktionen",
-        "last_seen": "Zuletzt gesehen {date}",
+        "waiting": "{count} zu prüfen",
         "map": "Konto zuordnen",
-        "map_instead": "Stattdessen zuordnen",
+        "mapped_to": "zugeordnet zu",
+        "remap": "Neu zuordnen",
         "ignore": "Ignorieren",
         "unlink": "Zuordnung aufheben",
         "unlink_modal": {
@@ -658,6 +674,7 @@
       "detail_header": "Importlauf",
       "history_link": "Importverlauf",
       "empty": "Noch keine Importe.",
+      "load_more": "Mehr anzeigen",
       "rows_header": "Transaktionen",
       "rows_empty": "Dieser Lauf betraf keine Transaktionen.",
       "status": {
@@ -715,13 +732,14 @@
         "create_rule": "Regel erstellen",
         "update_rule": "Regel aktualisieren",
         "apply_question": "Diese Regel auf {count} passende Transaktionen in diesem Import anwenden?",
+        "apply_all_question": "Diese Regel auf {count} passende Transaktionen in all deinen Importen anwenden?",
         "skipped_edited": "{count} übersprungen (von dir bearbeitet)",
         "include_edited": "Auch die {count} von dir bearbeiteten Transaktionen aktualisieren",
         "skip_apply": "Überspringen",
         "apply": "Anwenden",
         "applied_toast": "{count} Transaktionen aktualisiert",
-        "source_question": "Auch auf alle Importe von {source} anwenden? {count} Transaktionen passen.",
-        "apply_source": "Auf alle Importe anwenden",
+        "all_question": "Auch auf alle deine Importe anwenden? {count} Transaktionen passen.",
+        "apply_all": "Auf alle Importe anwenden",
         "done": "Fertig"
       },
       "editor": {
@@ -736,7 +754,11 @@
         "payee": "Zahlungsempfänger",
         "tag": "Budget-Tag",
         "labels": "Auswertungs-Tags",
-        "match_count": "Trifft auf {count} importierte Transaktionen zu"
+        "match_count": "Trifft auf {count} importierte Transaktionen zu",
+        "when": "Wenn",
+        "then": "Dann",
+        "value_placeholder": "Gesuchter Text, z. B. STARBUCKS",
+        "not_set": "Nicht festgelegt"
       },
       "page": {
         "menu_item": "Importregeln",

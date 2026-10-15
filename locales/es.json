@@ -512,66 +512,82 @@
       "menu_item": "Apple Wallet",
       "intro": "Registra los pagos con Apple Pay automáticamente con un atajo de iPhone. Cada pago se envía a Econumo; asignas cada tarjeta a una cuenta una sola vez.",
       "connect": "Configurar Apple Wallet",
+      "connect_intro": {
+        "needs_title": "Necesitarás",
+        "needs": {
+          "iphone": "Un iPhone con Apple Pay",
+          "shortcuts": "La app Atajos: viene con iOS",
+          "time": "Unos 5 minutos"
+        },
+        "steps_title": "Cómo funciona",
+        "privacy": "De cada pago Econumo recibe el nombre de la tarjeta, el comercio, el importe y la moneda; nunca números de tarjeta."
+      },
       "connected": "Conectado",
       "disconnect": "Desconectar",
+      "disconnect_full": "Desconectar Apple Wallet",
       "disconnect_modal": {
         "title": "¿Desconectar Apple Wallet?",
         "question": "Se eliminarán las asignaciones de tarjetas y la cola de revisión de esta conexión. Las transacciones ya importadas se conservan."
       },
+      "status": {
+        "last_tap": "Último pago {when}",
+        "no_taps": "Aún no hay pagos",
+        "setting_up": "Configurando",
+        "step": "Paso {n} de {total}: {title}"
+      },
+      "setup": {
+        "header": "Configuración",
+        "title": "Guía de configuración",
+        "progress": "{done} de {total} hechos"
+      },
       "steps": {
-        "hint_desktop": "Abre esta página en tu iPhone para realizar los pasos allí. En este dispositivo puedes descargar los atajos y marcar los pasos a mano.",
-        "install_wallet": {
-          "title": "Instalar econumo-wallet-v1",
-          "text": "Abre el archivo en tu iPhone y toca «Añadir atajo»."
-        },
-        "install_setup": {
-          "title": "Instalar econumo-setup-v1",
+        "hint_desktop": "Abre esta página en tu iPhone para seguir los pasos allí. En este dispositivo puedes descargar el atajo y marcar los pasos como hechos.",
+        "install": {
+          "title": "Instalar el atajo",
           "text": "Abre el archivo en tu iPhone y toca «Añadir atajo»."
         },
         "configure": {
-          "title": "Configurar los atajos",
-          "text": "Crea un token de acceso para el atajo y se lo entrega a econumo-setup-v1 junto con la dirección del servidor.",
-          "button": "Configurar en este iPhone",
+          "title": "Conectar el atajo con Econumo",
+          "text": "Crea un token de acceso y abre econumo-apple-wallet con él. El atajo guarda la dirección del servidor y el token y luego contacta con Econumo. Toca «Permitir siempre» en cada aviso: la automatización necesitará estos permisos más adelante.",
+          "button": "Crear token de acceso",
+          "open": "Abrir {name}",
+          "waiting": "Esperando a que el atajo llegue a Econumo…",
           "manual": "Configurar manualmente"
-        },
-        "test": {
-          "title": "Ejecutar econumo-wallet-v1 una vez",
-          "text": "Ejecútalo a mano y toca «Permitir siempre» en cada aviso: así se conceden los permisos que la automatización necesitará. No se crea nada; Econumo solo registra que el atajo ha llegado.",
-          "button": "Ejecutar econumo-wallet-v1",
-          "check": "Comprobar",
-          "none": "Aún no se ha recibido nada. Ejecuta el atajo, acepta los avisos y vuelve a comprobar."
         },
         "automate": {
           "title": "Crear la automatización",
-          "text": "En la app Atajos: Automatización → + → Wallet → elige las tarjetas y categorías que quieres importar (lo más seguro es elegir todas) → Ejecutar tras confirmar → econumo-wallet-v1."
+          "text": "En la app Atajos: Automatización → + → Wallet → elige las tarjetas y categorías que quieres importar (lo más seguro es elegir todas) → Ejecutar tras confirmar → econumo-apple-wallet."
         },
         "payment": {
-          "title": "Hacer el primer pago con el iPhone desbloqueado",
-          "text": "Paga una vez con Apple Pay con el iPhone desbloqueado. Toca «Ejecutar» cuando la automatización lo pida y luego «Permitir siempre» cuando Atajos pida acceso a Wallet.",
-          "check": "Comprobar",
-          "none": "Aún no se ha recibido ningún pago. Paga una vez con el iPhone desbloqueado y vuelve a comprobar."
+          "title": "Hacer el primer pago",
+          "text": "Paga una vez con Apple Pay; el iPhone puede seguir bloqueado. Toca «Ejecutar» cuando la automatización lo pida y luego «Permitir siempre» en cada aviso.",
+          "waiting": "Esperando el primer pago…"
         },
         "immediate": {
           "title": "Cambiar la automatización a «Ejecutar inmediatamente»",
           "text": "En la app Atajos, abre la automatización y cambia «Ejecutar tras confirmar» por «Ejecutar inmediatamente». A partir de entonces los pagos se importan sin preguntar, también desde la pantalla bloqueada."
         },
-        "complete": "Configuración completada",
-        "show": "Mostrar pasos",
-        "hide": "Ocultar pasos"
+        "done": "Hecho",
+        "mark_done": "Marcar como hecho",
+        "undo": "Marcar como no hecho",
+        "complete": "Configuración completada"
       },
       "same_named_cards": "Las tarjetas con el mismo nombre en Wallet llegan aquí como una sola tarjeta.",
+      "video": "Ver el vídeo de configuración:",
+      "video_title": "Vídeo de configuración",
+      "video_youtube": "Abrir en YouTube",
       "cards": {
         "header": "Tarjetas",
         "empty": "Aún no hay tarjetas — el primer pago con Apple Pay añadirá una.",
+        "needs_mapping": "Sin asignar",
         "state": {
-          "mapped": "Asignada",
-          "ignored": "Ignorada",
-          "unmapped": "Sin asignar · {count} en cola"
+          "ignored": "Ignorada"
         },
         "taps": "{count} pago | {count} pagos",
-        "last_seen": "Visto por última vez {date}",
+        "waiting": "{count} por revisar",
         "map": "Asignar a una cuenta",
-        "map_instead": "Asignar en su lugar",
+        "mapped_to": "asignada a",
+        "remap": "Reasignar",
         "ignore": "Ignorar",
         "unlink": "Desasignar",
         "unlink_modal": {
@@ -622,15 +638,15 @@
       "accounts": {
         "header": "Cuentas",
         "empty": "La pasarela aún no ha informado de ninguna cuenta.",
+        "needs_mapping": "Sin asignar",
         "state": {
-          "mapped": "Asignada",
-          "ignored": "Ignorada",
-          "unmapped": "Sin asignar · {count} en cola"
+          "ignored": "Ignorada"
         },
         "taps": "{count} transacción | {count} transacciones",
-        "last_seen": "Visto por última vez {date}",
+        "waiting": "{count} por revisar",
         "map": "Asignar a una cuenta",
-        "map_instead": "Asignar en su lugar",
+        "mapped_to": "asignada a",
+        "remap": "Reasignar",
         "ignore": "Ignorar",
         "unlink": "Desasignar",
         "unlink_modal": {
@@ -658,6 +674,7 @@
       "detail_header": "Importación",
       "history_link": "Historial de importaciones",
       "empty": "Aún no hay importaciones.",
+      "load_more": "Mostrar más",
       "rows_header": "Transacciones",
       "rows_empty": "Esta importación no afectó a ninguna transacción.",
       "status": {
@@ -715,13 +732,14 @@
         "create_rule": "Crear regla",
         "update_rule": "Actualizar regla",
         "apply_question": "¿Aplicar esta regla a las {count} transacciones coincidentes en esta importación?",
+        "apply_all_question": "¿Aplicar esta regla a {count} transacciones coincidentes de todas tus importaciones?",
         "skipped_edited": "{count} omitidas (las has editado)",
         "include_edited": "Actualizar también las {count} transacciones que editaste",
         "skip_apply": "Omitir",
         "apply": "Aplicar",
         "applied_toast": "Se actualizaron {count} transacciones",
-        "source_question": "¿Aplicar también a todas las importaciones de {source}? Coinciden {count} transacciones.",
-        "apply_source": "Aplicar a todas las importaciones",
+        "all_question": "¿Aplicar también a todas tus importaciones? Coinciden {count} transacciones.",
+        "apply_all": "Aplicar a todas las importaciones",
         "done": "Listo"
       },
       "editor": {
@@ -736,7 +754,11 @@
         "payee": "Beneficiario",
         "tag": "Etiqueta de presupuesto",
         "labels": "Etiquetas de informes",
-        "match_count": "Coincide con {count} transacciones importadas"
+        "match_count": "Coincide con {count} transacciones importadas",
+        "when": "Cuando",
+        "then": "Entonces",
+        "value_placeholder": "Texto a buscar, p. ej. STARBUCKS",
+        "not_set": "Sin definir"
       },
       "page": {
         "menu_item": "Reglas de importación",

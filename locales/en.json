@@ -512,66 +512,82 @@
       "menu_item": "Apple Wallet",
       "intro": "Log Apple Pay taps automatically with an iPhone Shortcut. Each tap is sent to Econumo; you map every card to an account once.",
       "connect": "Set up Apple Wallet",
+      "connect_intro": {
+        "needs_title": "You will need",
+        "needs": {
+          "iphone": "An iPhone with Apple Pay",
+          "shortcuts": "The Shortcuts app — it comes with iOS",
+          "time": "About 5 minutes"
+        },
+        "steps_title": "How it works",
+        "privacy": "For each payment Econumo receives the card name, merchant, amount and currency — never card numbers."
+      },
       "connected": "Connected",
       "disconnect": "Disconnect",
+      "disconnect_full": "Disconnect Apple Wallet",
       "disconnect_modal": {
         "title": "Disconnect Apple Wallet?",
         "question": "Card mappings and the review queue of this connection will be removed. Transactions you already imported stay."
       },
+      "status": {
+        "last_tap": "Last tap {when}",
+        "no_taps": "No taps yet",
+        "setting_up": "Setting up",
+        "step": "Step {n} of {total}: {title}"
+      },
+      "setup": {
+        "header": "Setup",
+        "title": "Setup guide",
+        "progress": "{done} of {total} done"
+      },
       "steps": {
-        "hint_desktop": "Open this page on your iPhone to run the steps there. On this device you can download the Shortcuts and tick steps off by hand.",
-        "install_wallet": {
-          "title": "Install econumo-wallet-v1",
-          "text": "Open the file on your iPhone and tap Add Shortcut."
-        },
-        "install_setup": {
-          "title": "Install econumo-setup-v1",
+        "hint_desktop": "Open this page on your iPhone to follow the steps there. On this device you can download the Shortcut and mark steps as done.",
+        "install": {
+          "title": "Install the Shortcut",
           "text": "Open the file on your iPhone and tap Add Shortcut."
         },
         "configure": {
-          "title": "Configure the Shortcuts",
-          "text": "Creates an access token for the Shortcut and hands it to econumo-setup-v1 together with the server address.",
-          "button": "Configure on this iPhone",
+          "title": "Connect the Shortcut to Econumo",
+          "text": "Creates an access token and opens econumo-apple-wallet with it. The Shortcut saves the server address and the token, then checks in with Econumo. Tap Always Allow on every prompt — the automation needs these permissions later.",
+          "button": "Create access token",
+          "open": "Open {name}",
+          "waiting": "Waiting for the Shortcut to reach Econumo…",
           "manual": "Configure manually"
-        },
-        "test": {
-          "title": "Run econumo-wallet-v1 once",
-          "text": "Run it by hand and tap Always Allow on every prompt — this grants the permissions the automation needs later. Nothing is created; Econumo only records that the Shortcut reached it.",
-          "button": "Run econumo-wallet-v1",
-          "check": "Check",
-          "none": "Nothing received yet. Run the Shortcut, allow the prompts and check again."
         },
         "automate": {
           "title": "Create the automation",
-          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import (all of them is the safe choice) → Run After Confirmation → econumo-wallet-v1."
+          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import (all of them is the safe choice) → Run After Confirmation → econumo-apple-wallet."
         },
         "payment": {
-          "title": "Make the first payment with the iPhone unlocked",
-          "text": "Pay with Apple Pay once while the iPhone is unlocked. Tap Run when the automation asks, then tap Always Allow when Shortcuts asks for Wallet access.",
-          "check": "Check",
-          "none": "No payment received yet. Pay once with the iPhone unlocked and check again."
+          "title": "Make the first payment",
+          "text": "Pay with Apple Pay once — the iPhone can stay locked. When the automation asks, tap Run, then tap Always Allow on every prompt.",
+          "waiting": "Waiting for the first payment…"
         },
         "immediate": {
           "title": "Switch the automation to Run Immediately",
           "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt, from the lock screen too."
         },
-        "complete": "Setup complete",
-        "show": "Show steps",
-        "hide": "Hide steps"
+        "done": "Done",
+        "mark_done": "Mark as done",
+        "undo": "Mark as not done",
+        "complete": "Setup complete"
       },
       "same_named_cards": "Cards that share a name in Wallet arrive here as one card.",
+      "video": "Watch the setup video:",
+      "video_title": "Setup video",
+      "video_youtube": "Open on YouTube",
       "cards": {
         "header": "Cards",
         "empty": "No cards yet — the first Apple Pay tap adds one.",
+        "needs_mapping": "Needs mapping",
         "state": {
-          "mapped": "Mapped",
-          "ignored": "Ignored",
-          "unmapped": "Unmapped · {count} queued"
+          "ignored": "Ignored"
         },
         "taps": "{count} tap | {count} taps",
-        "last_seen": "Last seen {date}",
+        "waiting": "{count} to review",
         "map": "Map to account",
-        "map_instead": "Map instead",
+        "mapped_to": "mapped to",
+        "remap": "Remap",
         "ignore": "Ignore",
         "unlink": "Unmap",
         "unlink_modal": {
@@ -622,15 +638,15 @@
       "accounts": {
         "header": "Accounts",
         "empty": "No accounts reported by the bridge yet.",
+        "needs_mapping": "Needs mapping",
         "state": {
-          "mapped": "Mapped",
-          "ignored": "Ignored",
-          "unmapped": "Unmapped · {count} queued"
+          "ignored": "Ignored"
         },
         "taps": "{count} transaction | {count} transactions",
-        "last_seen": "Last seen {date}",
+        "waiting": "{count} to review",
         "map": "Map to account",
-        "map_instead": "Map instead",
+        "mapped_to": "mapped to",
+        "remap": "Remap",
         "ignore": "Ignore",
         "unlink": "Unmap",
         "unlink_modal": {
@@ -658,6 +674,7 @@
       "detail_header": "Import run",
       "history_link": "Import history",
       "empty": "No imports yet.",
+      "load_more": "Show more",
       "rows_header": "Transactions",
       "rows_empty": "This run touched no transactions.",
       "status": {
@@ -715,13 +732,14 @@
         "create_rule": "Create rule",
         "update_rule": "Update rule",
         "apply_question": "Apply this rule to {count} matching transactions in this import?",
+        "apply_all_question": "Apply this rule to {count} matching transactions across your imports?",
         "skipped_edited": "{count} skipped (you've edited these)",
         "include_edited": "Also update the {count} transactions you edited",
         "skip_apply": "Skip",
         "apply": "Apply",
         "applied_toast": "Updated {count} transactions",
-        "source_question": "Also apply to all imports from {source}? {count} transactions match.",
-        "apply_source": "Apply to all imports",
+        "all_question": "Also apply to all your imports? {count} transactions match.",
+        "apply_all": "Apply to all imports",
         "done": "Done"
       },
       "editor": {
@@ -736,7 +754,11 @@
         "payee": "Payee",
         "tag": "Tag",
         "labels": "Labels",
-        "match_count": "Matches {count} imported transactions"
+        "match_count": "Matches {count} imported transactions",
+        "when": "When",
+        "then": "Then",
+        "value_placeholder": "Text to look for, e.g. STARBUCKS",
+        "not_set": "Not set"
       },
       "page": {
         "menu_item": "Import rules",

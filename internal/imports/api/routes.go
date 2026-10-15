@@ -34,6 +34,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, providers Pro
 		mux.Handle("GET /api/v1/import/get-transaction-import-list", auth(h.GetTransactionImportList))
 		mux.Handle("GET /api/v1/import/get-run-list", auth(h.GetRunList))
 		mux.Handle("GET /api/v1/import/get-run", auth(h.GetRun))
+		mux.Handle("GET /api/v1/import/get-source-history", auth(h.GetSourceHistory))
 		mux.Handle("GET /api/v1/import/get-rule-list", auth(h.GetRuleList))
 		mux.Handle("POST /api/v1/import/create-rule", auth(h.CreateRule))
 		mux.Handle("POST /api/v1/import/update-rule", auth(h.UpdateRule))

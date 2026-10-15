@@ -290,6 +290,11 @@ type ImportRunLinkResult struct {
 	ExternalPostedAt      string `json:"externalPostedAt"`
 }
 
+type GetImportSourceHistoryResult struct {
+	Items   []ImportRunLinkResult `json:"items"`
+	HasMore bool                  `json:"hasMore"`
+}
+
 type GetImportRunResult struct {
 	Item  ImportRunResult       `json:"item"`
 	Links []ImportRunLinkResult `json:"links"`
