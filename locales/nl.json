@@ -285,7 +285,13 @@
     },
     "sync": {
       "menu_item": "Volledige synchronisatie",
-      "failing": "Geen verbinding met de server — opnieuw proberen"
+      "failing": "Geen verbinding met de server — opnieuw proberen",
+      "full_reload": "Cache wissen en opnieuw laden…",
+      "hold_hint": "Houd ingedrukt om de cache te wissen en opnieuw te laden",
+      "full_reload_offline": "Je bent offline. Wis de cache en laad opnieuw zodra je weer online bent."
+    },
+    "data": {
+      "reload_all": "Cache wissen en opnieuw laden"
     },
     "accounts": {
       "menu_item": "Rekeningen",

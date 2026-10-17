@@ -298,5 +298,7 @@ func New(deps Deps) http.Handler {
 	// Browser-hardening headers wrap the WHOLE tree — including the SPA catch-all,
 	// which the per-subtree global chain deliberately skips — so the served HTML
 	// carries them too (framing/clickjacking protection matters most there).
-	return middleware.SecurityHeaders(root)
+	// Compression wraps the whole tree for the same reason: the SPA bundle
+	// gains from it as much as the API.
+	return middleware.SecurityHeaders(middleware.Compress(root))
 }

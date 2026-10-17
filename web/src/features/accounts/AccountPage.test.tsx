@@ -495,20 +495,13 @@ it('compact viewport: row click opens the preview dialog with details', async ()
 // still be able to delete them.
 it('a transfer with no recipient account still offers delete', async () => {
   mockViewport(false)
-  server.use(
-    http.get('*/api/v1/transaction/get-transaction-list', () =>
-      HttpResponse.json({
-        success: true, message: '',
-        data: {
-          items: [{
-            id: 't-broken', author: fixtureOwner, type: 'transfer', accountId: 'a1', accountRecipientId: null,
-            amount: '300', amountRecipient: '300', categoryId: null, description: '', payeeId: null, tagId: null,
-            labelIds: [], date: '2026-07-02 09:30:00',
-          }],
-        },
-      }),
-    ),
-  )
+  server.use(...coreHandlers({
+    transactions: [{
+      id: 't-broken', author: fixtureOwner, type: 'transfer', accountId: 'a1', accountRecipientId: null,
+      amount: '300', amountRecipient: '300', categoryId: null, description: '', payeeId: null, tagId: null,
+      labelIds: [], date: '2026-07-02 09:30:00',
+    }],
+  }))
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('tx-t-broken')

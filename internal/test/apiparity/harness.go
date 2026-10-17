@@ -77,6 +77,20 @@ type Harness struct {
 	db     *dbtest.DB
 	mail   *recordingMailer
 	minted map[string]string // userID -> raw session token minted by Token()
+
+	// Observe, when set, runs with phase "before" and "after" around every
+	// request this harness (or mcpparity on its behalf) sends, labelled
+	// "METHOD path". It lets a suite inspect the database per request without
+	// touching the replayed responses.
+	Observe func(t *testing.T, phase, label string)
+}
+
+// ObserveRequest invokes Observe if one is installed.
+func (h *Harness) ObserveRequest(t *testing.T, phase, label string) {
+	t.Helper()
+	if h.Observe != nil {
+		h.Observe(t, phase, label)
+	}
 }
 
 // NewHarness builds the full production API over the given (already-migrated)
@@ -251,11 +265,14 @@ func (h *Harness) do(t *testing.T, method, path, token string, body any, form ur
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
+	label := method + " " + path
+	h.ObserveRequest(t, "before", label)
 	resp, err := h.client.Do(req)
 	if err != nil {
 		t.Fatalf("do request: %v", err)
 	}
 	defer resp.Body.Close()
+	defer h.ObserveRequest(t, "after", label)
 	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
 		return resp.StatusCode, []byte("Location: " + resp.Header.Get("Location"))
 	}

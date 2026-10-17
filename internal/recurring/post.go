@@ -71,9 +71,13 @@ func (s *Service) PostRecurringTransaction(ctx context.Context, userID vo.Id, re
 	}); err != nil {
 		return nil, err
 	}
+	accounts, err := s.accounts.AccountListForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 	return &model.PostRecurringTransactionResult{
 		Item:          created.Item,
-		Accounts:      created.Accounts,
+		Accounts:      accounts,
 		NextPaymentAt: rt.NextPaymentAt.Format(datetime.Layout),
 	}, nil
 }

@@ -1,5 +1,14 @@
+import { waitFor } from '@testing-library/react'
 import { AxiosError, type AxiosResponse } from 'axios'
-import { createAppQueryClient, createPersistOptions } from './queryPersist'
+import { hashKey, QueryClient } from '@tanstack/react-query'
+import { IDBFactory } from 'fake-indexeddb'
+import { fixtureAccounts, fixtureOwner, fixtureUser } from '@/test/fixtures'
+import { installTransactionTracking, resetRevisions } from '@/features/transactions/revisionTracking'
+import { delayTransactionCompletion } from '@/test/idbDelay'
+import { createAppQueryClient } from './appQueryClient'
+import { resetDbForTests } from './db'
+import { QUERY_CACHE_KEY, clearPersistedQueryCache, createPersistOptions } from './queryPersist'
+import { STORE_TIMEOUT_MS, loadBuckets, putBuckets, putSnapshot, resetTransactionStoreForTests, tryLoadStored, type Bucket } from './transactionStore'
 
 function defaultRetry(): (failureCount: number, error: unknown) => boolean {
   const retry = createAppQueryClient().getDefaultOptions().queries?.retry
@@ -37,4 +46,258 @@ it('never persists an authorization request', () => {
   expect(should({ queryKey: ['authserver', 'authorization-request', {}], state: { status: 'success' } })).toBe(false)
   expect(should({ queryKey: ['accounts'], state: { status: 'success' } })).toBe(true)
   expect(should({ queryKey: ['accounts'], state: { status: 'error' } })).toBe(false)
+})
+
+it('never persists the transactions list: it lives in IndexedDB', () => {
+  const should = createPersistOptions().dehydrateOptions.shouldDehydrateQuery
+  expect(should({ queryKey: ['transactions'], state: { status: 'success' } })).toBe(false)
+})
+
+describe('restoring the stored transactions', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    window.econumoConfig = {}
+    globalThis.indexedDB = new IDBFactory()
+    resetDbForTests()
+    resetTransactionStoreForTests()
+    resetRevisions()
+    localStorage.setItem('token', 'eco_ses_test')
+    localStorage.setItem('sessionUserId', fixtureUser.id)
+  })
+
+  afterEach(() => resetRevisions())
+
+  const row = (id: string, accountId: string) => ({
+    id, type: 'expense', accountId, accountRecipientId: null, amount: '1', amountRecipient: '1',
+    categoryId: null, description: id, payeeId: null, tagId: null, labelIds: [], date: '2026-07-01 00:00:00',
+    recurringId: null, isImported: 0, authorId: fixtureOwner.id,
+  })
+  const bucket = (accountId: string, ids: string[]): Bucket =>
+    ({ accountId, revision: 1, items: ids.map((id) => row(id, accountId)), authors: [fixtureOwner] }) as Bucket
+
+  function snapshot(data: { user?: unknown; accounts?: unknown }, timestamp = Date.now()) {
+    const queries = Object.entries(data).map(([key, value]) => ({
+      queryKey: [key],
+      queryHash: hashKey([key]),
+      state: { data: value, dataUpdatedAt: timestamp, status: 'success' },
+    }))
+    localStorage.setItem(QUERY_CACHE_KEY, JSON.stringify({
+      buster: createPersistOptions().buster,
+      timestamp,
+      clientState: { queries, mutations: [] },
+    }))
+  }
+
+  async function restoredTransactions() {
+    const restored = await createPersistOptions().persister.restoreClient()
+    const query = restored?.clientState.queries.find((q) => q.queryHash === hashKey(['transactions']))
+    return query?.state as { data: { id: string }[]; dataUpdatedAt: number; status: string } | undefined
+  }
+
+  it('adds the buckets of the snapshot accounts as a restored query', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('a2', ['t2']), bucket('gone', ['t3'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts }, 1_000_000)
+    vi.spyOn(Date, 'now').mockReturnValue(1_000_500)
+    try {
+      const state = await restoredTransactions()
+      expect(state?.status).toBe('success')
+      expect(state?.dataUpdatedAt).toBe(1_000_000)
+      expect(state?.data.map((t) => t.id).sort()).toEqual(['t1', 't2'])
+    } finally {
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('drops the stored buckets of accounts the snapshot no longer lists', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('gone', ['t3'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
+    await vi.waitFor(async () => expect([...(await loadBuckets(fixtureUser.id)).keys()]).toEqual(['a1']))
+  })
+
+  it('leaves out an account whose share invite is still pending', async () => {
+    const pending = {
+      ...fixtureAccounts[0], id: 'a-invite', owner: { id: 'u9', name: 'Bo', avatar: 'face:emerald' },
+      sharedAccess: [{ user: { id: fixtureUser.id, name: 'Ada', avatar: 'face:emerald' }, role: 'user', isAccepted: 0 }],
+    }
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('a-invite', ['t9'])])
+    snapshot({ user: fixtureUser, accounts: [...fixtureAccounts, pending] })
+    expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
+  })
+
+  it('without the user in the snapshot, filters by its accounts for the store\'s owner', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('gone', ['t3'])])
+    snapshot({ accounts: fixtureAccounts })
+    expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
+  })
+
+  it('without the accounts in the snapshot, shows every stored bucket', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('gone', ['t3'])])
+    snapshot({ user: fixtureUser })
+    expect((await restoredTransactions())?.data.map((t) => t.id).sort()).toEqual(['t1', 't3'])
+  })
+
+  it('seeds from the store when the snapshot has expired, and keeps the snapshot', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts }, Date.now() - 25 * 60 * 60 * 1000)
+    const restored = await createPersistOptions().persister.restoreClient()
+    // the provider discards a snapshot older than maxAge; this one must survive it
+    expect(Date.now() - restored!.timestamp).toBeLessThan(createPersistOptions().maxAge)
+    expect(restored!.buster).toBe(createPersistOptions().buster)
+    expect(restored!.clientState.queries.map((q) => q.queryKey)).toEqual([['user'], ['accounts'], ['transactions']])
+    expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
+  })
+
+  it('seeds from the store alone when there is no snapshot', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(2_000_000)
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('a2', ['t2'])])
+    vi.mocked(Date.now).mockReturnValue(3_000_000)
+    try {
+      const restored = await createPersistOptions().persister.restoreClient()
+      expect(restored!.timestamp).toBe(3_000_000)
+      expect(restored!.buster).toBe(createPersistOptions().buster)
+      expect(restored!.clientState.queries.map((q) => q.queryKey)).toEqual([['transactions']])
+      const state = await restoredTransactions()
+      expect(state?.data.map((t) => t.id).sort()).toEqual(['t1', 't2'])
+      // when the buckets were last written
+      expect(state?.dataUpdatedAt).toBe(2_000_000)
+    } finally {
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('without a localStorage snapshot, restores the copy kept in IndexedDB', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1']), bucket('gone', ['t2'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    const copy = JSON.parse(localStorage.getItem(QUERY_CACHE_KEY)!) as unknown
+    await putSnapshot(fixtureUser.id, copy)
+    localStorage.removeItem(QUERY_CACHE_KEY)
+    const restored = await createPersistOptions().persister.restoreClient()
+    expect(restored!.clientState.queries.map((q) => q.queryKey)).toEqual([['user'], ['accounts'], ['transactions']])
+    // filtered by the copy's accounts, like a localStorage snapshot
+    expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
+  })
+
+  it('ignores an IndexedDB copy of another release', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    const copy = JSON.parse(localStorage.getItem(QUERY_CACHE_KEY)!) as Record<string, unknown>
+    await putSnapshot(fixtureUser.id, { ...copy, buster: 'older' })
+    localStorage.removeItem(QUERY_CACHE_KEY)
+    const restored = await createPersistOptions().persister.restoreClient()
+    expect(restored!.clientState.queries.map((q) => q.queryKey)).toEqual([['transactions']])
+  })
+
+  it('persisting also copies the snapshot into IndexedDB for the session\'s user', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    const client = { buster: createPersistOptions().buster, timestamp: 5, clientState: { queries: [], mutations: [] } }
+    await createPersistOptions({ throttleTime: 0 }).persister.persistClient(client)
+    await waitFor(async () => expect((await tryLoadStored())?.snapshot).toEqual(client))
+  })
+
+  it('a snapshot of another release is dropped, and the store still seeds', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    const raw = JSON.parse(localStorage.getItem(QUERY_CACHE_KEY)!) as { buster: string }
+    localStorage.setItem(QUERY_CACHE_KEY, JSON.stringify({ ...raw, buster: 'older' }))
+    const restored = await createPersistOptions().persister.restoreClient()
+    expect(restored!.clientState.queries.map((q) => q.queryKey)).toEqual([['transactions']])
+    expect(localStorage.getItem(QUERY_CACHE_KEY)).toBeNull()
+  })
+
+  it('seeds nothing without a session token', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    localStorage.removeItem('token')
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    expect(await restoredTransactions()).toBeUndefined()
+    localStorage.removeItem(QUERY_CACHE_KEY)
+    expect(await createPersistOptions().persister.restoreClient()).toBeUndefined()
+  })
+
+  it('seeds nothing when the store belongs to another user than the session', async () => {
+    // A's data is still on disk: B's sign-in clear never got through a stalled IndexedDB
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    localStorage.setItem('sessionUserId', 'u-b')
+    expect(await createPersistOptions().persister.restoreClient()).toBeUndefined()
+    snapshot({ accounts: fixtureAccounts })
+    expect(await restoredTransactions()).toBeUndefined()
+  })
+
+  it('seeds nothing while the session\'s user is unknown', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    localStorage.removeItem('sessionUserId')
+    expect(await createPersistOptions().persister.restoreClient()).toBeUndefined()
+  })
+
+  it('seeds nothing when the snapshot belongs to another user than the store', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: { ...fixtureUser, id: 'u2' }, accounts: fixtureAccounts })
+    expect(await restoredTransactions()).toBeUndefined()
+  })
+
+  it('seeds nothing from the store of another build', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    window.econumoConfig = { VERSION: 'next' }
+    expect(await createPersistOptions().persister.restoreClient()).toBeUndefined()
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    expect(await restoredTransactions()).toBeUndefined()
+  })
+
+  it('seeds nothing when the snapshot accounts carry no revisions (an older server)', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts.map(({ transactionsRevision: _r, ...a }) => a) })
+    expect(await restoredTransactions()).toBeUndefined()
+  })
+
+  it('a clear forgets the restored revisions, so the next user adopts none of them', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    expect(await restoredTransactions()).toBeDefined()
+
+    await clearPersistedQueryCache()
+
+    // u2 signs in on the same tab and edits before the first sync lands
+    const queryClient = new QueryClient()
+    const uninstall = installTransactionTracking(queryClient)
+    try {
+      queryClient.setQueryData(['user'], { ...fixtureUser, id: 'u2' })
+      queryClient.setQueryData(['transactions'], [])
+      queryClient.setQueryData(['transactions'], [{ ...row('t-u2', 'a1'), author: fixtureOwner }])
+      await new Promise((r) => setTimeout(r, 700))
+      expect((await loadBuckets('u2')).size).toBe(0)
+    } finally {
+      uninstall()
+    }
+  })
+
+  it('a stalled IndexedDB neither holds the restore nor the clear', async () => {
+    globalThis.indexedDB = { open: () => ({}) } as unknown as IDBFactory
+    resetDbForTests()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+      const restored = await createPersistOptions().persister.restoreClient()
+      expect(restored?.clientState.queries.map((q) => q.queryKey)).toEqual([['user'], ['accounts']])
+      await clearPersistedQueryCache()
+      expect(localStorage.getItem(QUERY_CACHE_KEY)).toBeNull()
+      // a stall is no failure: the store stays on in case the database answers later
+      expect(warn).not.toHaveBeenCalled()
+    } finally {
+      warn.mockRestore()
+    }
+  }, 10_000)
+
+  it('a restore whose load does not answer in time goes on without transactions', async () => {
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    const restore = delayTransactionCompletion(STORE_TIMEOUT_MS + 300)
+    try {
+      expect(await restoredTransactions()).toBeUndefined()
+    } finally {
+      restore()
+    }
+    await new Promise((r) => setTimeout(r, 600))
+    // the store stayed on: once the slow load is done, a restore seeds again
+    expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
+  }, 10_000)
 })

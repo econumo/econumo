@@ -47,6 +47,9 @@ func (fakeAccounts) AccountOwner(_ context.Context, id vo.Id) (vo.Id, error) {
 func (fakeAccounts) HasWriteGrant(context.Context, vo.Id, vo.Id) (bool, error)  { return false, nil }
 func (fakeAccounts) AccountDeleted(context.Context, vo.Id) (bool, error)        { return false, nil }
 func (fakeAccounts) AccountCurrencyCode(context.Context, vo.Id) (string, error) { return "USD", nil }
+func (fakeAccounts) AccountListForUser(context.Context, vo.Id) ([]model.AccountResult, error) {
+	return nil, nil
+}
 
 type fakeConverter struct{}
 

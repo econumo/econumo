@@ -285,7 +285,13 @@
     },
     "sync": {
       "menu_item": "Pełna synchronizacja",
-      "failing": "Brak połączenia z serwerem — ponawianie próby"
+      "failing": "Brak połączenia z serwerem — ponawianie próby",
+      "full_reload": "Czyszczenie pamięci podręcznej i ponowne wczytywanie…",
+      "hold_hint": "Przytrzymaj, aby wyczyścić pamięć podręczną i wczytać ponownie",
+      "full_reload_offline": "Jesteś offline. Wyczyść pamięć podręczną i wczytaj ponownie, gdy wrócisz do sieci."
+    },
+    "data": {
+      "reload_all": "Wyczyść pamięć podręczną i wczytaj ponownie"
     },
     "accounts": {
       "menu_item": "Konta",

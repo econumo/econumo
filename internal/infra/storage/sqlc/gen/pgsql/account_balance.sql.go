@@ -37,6 +37,23 @@ func (q *Queries) GetAccountBalance(ctx context.Context, arg GetAccountBalancePa
 	return balance, err
 }
 
+const getAccountTransactionsCount = `-- name: GetAccountTransactionsCount :one
+SELECT CAST(
+    (SELECT COUNT(*) FROM transactions t0 WHERE t0.account_id = $1)
+  + (SELECT COUNT(*) FROM transactions t1 WHERE t1.account_recipient_id = $1)
+AS BIGINT) as transactions_count
+`
+
+// About how many rows get-account-transaction-list returns for the account
+// (either side of a transfer; a self-transfer would count twice). A size hint
+// for batching downloads, so both counts stay index-only.
+func (q *Queries) GetAccountTransactionsCount(ctx context.Context, accountID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getAccountTransactionsCount, accountID)
+	var transactions_count int64
+	err := row.Scan(&transactions_count)
+	return transactions_count, err
+}
+
 const listAccountBalancesForUser = `-- name: ListAccountBalancesForUser :many
 SELECT
     a.id as account_id,
@@ -76,6 +93,48 @@ func (q *Queries) ListAccountBalancesForUser(ctx context.Context, arg ListAccoun
 	for rows.Next() {
 		var i ListAccountBalancesForUserRow
 		if err := rows.Scan(&i.AccountID, &i.Balance); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAccountTransactionsCountsForUser = `-- name: ListAccountTransactionsCountsForUser :many
+SELECT
+    a.id as account_id,
+    CAST(
+        (SELECT COUNT(*) FROM transactions t0 WHERE t0.account_id = a.id)
+      + (SELECT COUNT(*) FROM transactions t1 WHERE t1.account_recipient_id = a.id)
+    AS BIGINT) as transactions_count
+FROM accounts a
+LEFT JOIN accounts_access aa ON aa.account_id = a.id
+WHERE a.is_deleted = false AND (a.user_id = $1 OR (aa.user_id = $1 AND aa.is_accepted = true))
+GROUP BY a.id
+`
+
+type ListAccountTransactionsCountsForUserRow struct {
+	AccountID         string
+	TransactionsCount int64
+}
+
+// The same count for every AVAILABLE account (the balance query's set).
+func (q *Queries) ListAccountTransactionsCountsForUser(ctx context.Context, userID string) ([]ListAccountTransactionsCountsForUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAccountTransactionsCountsForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAccountTransactionsCountsForUserRow{}
+	for rows.Next() {
+		var i ListAccountTransactionsCountsForUserRow
+		if err := rows.Scan(&i.AccountID, &i.TransactionsCount); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

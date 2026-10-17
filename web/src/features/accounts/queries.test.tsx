@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
-import { useAcceptAccountAccess, useAccounts, useCreateAccount, useDeclineAccountAccess, useDeleteAccount, useFolders, useUpdateAccount } from './queries'
+import { useAcceptAccountAccess, useAccounts, useCreateAccount, useDeclineAccountAccess, useDeleteAccount, useFolders, useLeaveSharedAccount, useUpdateAccount } from './queries'
 
 const wireOwner = { id: 'u1', avatar: '', name: 'Ada' }
 const wireUser = { id: 'u1', name: 'Ada', email: 'ada@example.test', avatar: 'face:emerald', options: [] }
@@ -155,6 +155,31 @@ it('delete-account keeps a transfer whose other account survives, drops the rest
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
   expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.accounts)!.map((a) => a.id)).toEqual(['a-keep'])
+  expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.transactions)!.map((t) => t.id)).toEqual(['t-transfer'])
+})
+
+// The patched list is written through to IndexedDB under unchanged revisions,
+// so it must match what the server still lists for my own account.
+it('leaving a shared account keeps a transfer with one of my accounts', async () => {
+  server.use(
+    http.post('*/api/v1/account/delete-account', () =>
+      HttpResponse.json({ success: true, message: '', data: {} }),
+    ),
+  )
+  const shared = { ...wireAccount, id: 'a-shared', owner: wirePartner }
+  const transfer = {
+    ...wireCorrection, id: 't-transfer', type: 'transfer', accountId: 'a-shared', accountRecipientId: 'a-real',
+  }
+  const sharedExpense = { ...wireCorrection, id: 't-shared', type: 'expense', accountId: 'a-shared', accountRecipientId: null }
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.accounts, [wireAccount, shared])
+  queryClient.setQueryData(queryKeys.transactions, [transfer, sharedExpense])
+
+  const { result } = renderHook(() => useLeaveSharedAccount(), { wrapper })
+  result.current.mutate('a-shared')
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+  expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.accounts)!.map((a) => a.id)).toEqual(['a-real'])
   expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.transactions)!.map((t) => t.id)).toEqual(['t-transfer'])
 })
 

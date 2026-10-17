@@ -130,6 +130,7 @@ type Importer interface {
 	// CreateTag return.
 	CreateLabel(ctx context.Context, ownerID vo.Id, name string) (vo.Id, error)
 
-	// SaveTransaction persists a built transaction (no idempotency id).
+	// SaveTransaction persists a built transaction under a fresh NextIdentity
+	// id (no idempotency id): the row must not exist yet.
 	SaveTransaction(ctx context.Context, t *model.Transaction) error
 }

@@ -32,6 +32,12 @@ type AccountResult struct {
 	Type         int            `json:"type"`
 	Icon         string         `json:"icon"`
 	SharedAccess []SharedAccess `json:"sharedAccess"`
+	// TransactionsRevision counts the committed changes to the account's
+	// transactions; clients re-download an account's transactions when it moves.
+	TransactionsRevision int64 `json:"transactionsRevision"`
+	// TransactionsCount is how many rows get-account-transaction-list returns
+	// for the account; clients group small accounts into one download by it.
+	TransactionsCount int64 `json:"transactionsCount"`
 }
 
 // SharedAccess is one accounts_access grant on the account: the granted user

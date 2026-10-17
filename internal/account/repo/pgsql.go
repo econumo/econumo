@@ -47,6 +47,10 @@ func (pgsqlQuerier) CountAvailableAccounts(ctx context.Context, db backend.DBTX,
 	return pgsqlgen.New(db).CountAvailableAccounts(ctx, userID)
 }
 
+func (pgsqlQuerier) GetAccountTransactionsRevision(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	return pgsqlgen.New(db).GetAccountTransactionsRevision(ctx, id)
+}
+
 func (pgsqlQuerier) UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error {
 	return pgsqlgen.New(db).UpsertAccount(ctx, pgsqlgen.UpsertAccountParams(p))
 }
@@ -87,6 +91,22 @@ func (pgsqlBalance) GetAccountBalance(ctx context.Context, db backend.DBTX, acco
 		AccountID: accountID,
 		Before:    before,
 	})
+}
+
+func (pgsqlBalance) GetAccountTransactionsCount(ctx context.Context, db backend.DBTX, accountID string) (int64, error) {
+	return pgsqlgen.New(db).GetAccountTransactionsCount(ctx, accountID)
+}
+
+func (pgsqlBalance) ListAccountTransactionsCountsForUser(ctx context.Context, db backend.DBTX, userID string) (map[string]int64, error) {
+	rows, err := pgsqlgen.New(db).ListAccountTransactionsCountsForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]int64, len(rows))
+	for _, r := range rows {
+		out[r.AccountID] = r.TransactionsCount
+	}
+	return out, nil
 }
 
 func (pgsqlBalance) ListAccountBalancesForUser(ctx context.Context, db backend.DBTX, userID string, before time.Time) ([]balanceResult, error) {

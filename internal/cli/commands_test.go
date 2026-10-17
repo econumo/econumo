@@ -488,3 +488,26 @@ func TestMigrationNormalizeSQLiteDatetimes_CommandAndRunner(t *testing.T) {
 		t.Fatalf("runner: %v", err)
 	}
 }
+
+// TestFreshDatabaseMigratesWithCommandSteps boots an empty database the way
+// serve does: SQL files and migration:* command steps interleaved by version.
+// A command step runs against the schema of its own version, so any column
+// the repositories it calls select must already exist by then.
+func TestFreshDatabaseMigratesWithCommandSteps(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "db.sqlite")
+	t.Setenv("DATABASE_URL", "sqlite://"+dbPath)
+	ctx := context.Background()
+	c, err := newContainer(ctx)
+	if err != nil {
+		t.Fatalf("container: %v", err)
+	}
+	defer c.Close()
+	migs := migrations.SQLite()
+	runnerMigs := make([]migrate.Migration, len(migs))
+	for i, m := range migs {
+		runnerMigs[i] = migrate.Migration{Version: m.Version, SQL: m.SQL, Command: m.Command}
+	}
+	if err := migrate.Run(ctx, c.db, runnerMigs, migrate.WithCommandRunner(MigrationCommandRunner(c.cfg, c.db))); err != nil {
+		t.Fatalf("fresh boot migration: %v", err)
+	}
+}

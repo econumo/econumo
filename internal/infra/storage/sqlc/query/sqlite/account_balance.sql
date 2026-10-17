@@ -51,3 +51,26 @@ FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
 WHERE a.is_deleted = 0 AND (a.user_id = ? OR (aa.user_id = ? AND aa.is_accepted = 1))
 GROUP BY a.id;
+
+-- name: GetAccountTransactionsCount :one
+-- About how many rows get-account-transaction-list returns for the account
+-- (either side of a transfer; a self-transfer would count twice). A size hint
+-- for batching downloads, so both counts stay index-only. Args: account_id (x2).
+SELECT CAST(
+    (SELECT COUNT(*) FROM transactions t0 WHERE t0.account_id = ?)
+  + (SELECT COUNT(*) FROM transactions t1 WHERE t1.account_recipient_id = ?)
+AS INTEGER) as transactions_count;
+
+-- name: ListAccountTransactionsCountsForUser :many
+-- The same count for every AVAILABLE account (the balance query's set).
+-- Args: user_id (own), user_id (shared).
+SELECT
+    a.id as account_id,
+    CAST(
+        (SELECT COUNT(*) FROM transactions t0 WHERE t0.account_id = a.id)
+      + (SELECT COUNT(*) FROM transactions t1 WHERE t1.account_recipient_id = a.id)
+    AS INTEGER) as transactions_count
+FROM accounts a
+LEFT JOIN accounts_access aa ON aa.account_id = a.id
+WHERE a.is_deleted = 0 AND (a.user_id = ? OR (aa.user_id = ? AND aa.is_accepted = 1))
+GROUP BY a.id;

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { IDBFactory } from 'fake-indexeddb'
+import { resetDbForTests } from '@/lib/db'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
@@ -37,6 +38,7 @@ beforeEach(() => {
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   globalThis.indexedDB = new IDBFactory()
+  resetDbForTests()
 })
 
 it('first connect: creates a key, claims the token, and stores only ciphertext', async () => {
@@ -76,6 +78,7 @@ it('locked device: wrong passphrase is rejected, right one unlocks and lists bri
   const wrapped = await createKey('pw')
   const ciphertext = await encryptCredential(ACCESS_URL)
   globalThis.indexedDB = new IDBFactory()  // "another device": server has the key, this one does not
+  resetDbForTests()
   let listBody: unknown
   server.use(http.post('*/api/v1/import/list-external-accounts', async ({ request }) => {
     listBody = await request.json()
@@ -99,9 +102,11 @@ it('stale device: a key reset elsewhere asks for the new passphrase instead of a
   await createKey('old')  // this device unlocked under the previous passphrase
   const thisDevice = globalThis.indexedDB
   globalThis.indexedDB = new IDBFactory()
+  resetDbForTests()
   const replacement = await createKey('new')  // ...then another device reset the key
   const ciphertext = await encryptCredential(ACCESS_URL)
   globalThis.indexedDB = thisDevice
+  resetDbForTests()
   renderPage({ importSources: [source({ credentialCiphertext: ciphertext })], importCredentialKey: { ...replacement, updatedAt: '2026-09-08 10:00:00' } })
   expect(await screen.findByText(/passphrase was changed on another device/)).toBeInTheDocument()
   expect(screen.queryByPlaceholderText('aHR0cHM6Ly9…')).not.toBeInTheDocument()

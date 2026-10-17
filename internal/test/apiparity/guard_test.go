@@ -93,7 +93,8 @@ func registeredRoutes(t *testing.T) map[string]bool {
 	// the public callback onto an authenticated completion).
 	// 129 -> 133 on 2026-09-23: +4 budget cell comment routes (get-comment-list,
 	// create/update/delete-comment).
-	const minRoutes = 133
+	// 133 -> 134 on 2026-10-11: transaction/get-account-transaction-list.
+	const minRoutes = 134
 	if len(routes) < minRoutes {
 		t.Fatalf("route scan found only %d routes, want >= %d — a registration file moved outside handlerGlobs, or a route is no longer a literal \"METHOD /path\" string (see comment above)", len(routes), minRoutes)
 	}

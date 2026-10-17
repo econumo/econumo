@@ -9,11 +9,13 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -55,6 +57,7 @@ type Repo struct {
 	tx     *backend.TxManager
 	q      querier
 	driver string
+	rev    *txrevision.Bumper
 }
 
 var _ domtransaction.Repository = (*Repo)(nil)
@@ -63,9 +66,9 @@ var _ domtransaction.Repository = (*Repo)(nil)
 func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
 	case "sqlite":
-		return &Repo{tx: tx, q: sqliteQuerier{}, driver: driver}
+		return &Repo{tx: tx, q: sqliteQuerier{}, driver: driver, rev: txrevision.New(driver, tx)}
 	case "postgresql":
-		return &Repo{tx: tx, q: pgsqlQuerier{}, driver: driver}
+		return &Repo{tx: tx, q: pgsqlQuerier{}, driver: driver, rev: txrevision.New(driver, tx)}
 	default:
 		panic("transactionrepo: unknown database driver " + driver)
 	}
@@ -88,9 +91,23 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error
 	return hydrate(row)
 }
 
-// Save upserts a transaction.
+// Save upserts a transaction. A re-save may move the row to other accounts, so
+// the accounts it sits on now are bumped before the write and the new ones after.
 func (r *Repo) Save(ctx context.Context, t *model.Transaction) error {
-	return r.q.UpsertTransaction(ctx, r.db(ctx), upsertParams{
+	if err := r.rev.BumpWhere(ctx, "id = ?", t.ID.String()); err != nil {
+		return err
+	}
+	return r.write(ctx, t)
+}
+
+// saveNew is Save for an id from NextIdentity: no such row exists yet, so
+// there are no previous accounts to look up. A CSV import writes thousands.
+func (r *Repo) saveNew(ctx context.Context, t *model.Transaction) error {
+	return r.write(ctx, t)
+}
+
+func (r *Repo) write(ctx context.Context, t *model.Transaction) error {
+	if err := r.q.UpsertTransaction(ctx, r.db(ctx), upsertParams{
 		ID:                 t.ID.String(),
 		UserID:             t.UserID.String(),
 		AccountID:          t.AccountID.String(),
@@ -106,13 +123,65 @@ func (r *Repo) Save(ctx context.Context, t *model.Transaction) error {
 		Amount:             t.Amount,
 		AmountRecipient:    t.AmountRecipient,
 		RecurringID:        idPtr(t.RecurringID),
-	})
+	}); err != nil {
+		return err
+	}
+	recipient := ""
+	if t.AccountRecipID != nil {
+		recipient = t.AccountRecipID.String()
+	}
+	if err := r.rev.Bump(ctx, t.AccountID.String(), recipient); err != nil {
+		return err
+	}
+	r.markBumped(ctx, t.ID.String())
+	return nil
+}
+
+type bumpedRowsKey struct{}
+
+type rowSet struct {
+	mu  sync.Mutex
+	ids map[string]struct{}
+}
+
+// Rows whose current accounts are already queued for this DB transaction's
+// revision bump, so a later write to the same row need not read it again.
+func (r *Repo) bumpedRows(ctx context.Context) *rowSet {
+	v, inTx := r.tx.TxValue(ctx, bumpedRowsKey{}, func() any { return &rowSet{ids: map[string]struct{}{}} })
+	if !inTx {
+		return nil
+	}
+	return v.(*rowSet)
+}
+
+func (r *Repo) markBumped(ctx context.Context, id string) {
+	if set := r.bumpedRows(ctx); set != nil {
+		set.mu.Lock()
+		set.ids[id] = struct{}{}
+		set.mu.Unlock()
+	}
+}
+
+func (r *Repo) isBumped(ctx context.Context, id string) bool {
+	set := r.bumpedRows(ctx)
+	if set == nil {
+		return false
+	}
+	set.mu.Lock()
+	defer set.mu.Unlock()
+	_, ok := set.ids[id]
+	return ok
 }
 
 // ReplaceLabels rewrites a transaction's label links. The caller runs this
 // inside the same tx as Save, so the delete-then-insert is atomic and a
 // re-save is idempotent (never duplicates a pair).
 func (r *Repo) ReplaceLabels(ctx context.Context, transactionID vo.Id, labelIDs []vo.Id) error {
+	if !r.isBumped(ctx, transactionID.String()) {
+		if err := r.rev.BumpWhere(ctx, "id = ?", transactionID.String()); err != nil {
+			return err
+		}
+	}
 	db := r.db(ctx)
 	if err := r.q.DeleteTransactionLabels(ctx, db, transactionID.String()); err != nil {
 		return err
@@ -188,6 +257,33 @@ func (r *Repo) labelsByTransactionIDsChunk(ctx context.Context, ids []vo.Id, out
 	return rows.Err()
 }
 
+// TransactionsRevisions is hand-built like ListByAccountIDs: a dynamic IN list.
+func (r *Repo) TransactionsRevisions(ctx context.Context, accountIDs []vo.Id) (map[string]int64, error) {
+	out := make(map[string]int64, len(accountIDs))
+	if len(accountIDs) == 0 {
+		return out, nil
+	}
+	args := make([]any, len(accountIDs))
+	for i, id := range accountIDs {
+		args[i] = id.String()
+	}
+	query := "SELECT id, transactions_revision FROM accounts WHERE id IN (" + placeholders(r.driver, 1, len(args)) + ")"
+	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var rev int64
+		if err := rows.Scan(&id, &rev); err != nil {
+			return nil, err
+		}
+		out[id] = rev
+	}
+	return out, rows.Err()
+}
+
 // ImportedTransactionIDs reads import_transaction_links, a table the imports
 // feature owns. This is the one place the transaction feature touches it —
 // SQL, not a Go import, so archtest cannot see the coupling; keep it here and
@@ -234,6 +330,9 @@ func (r *Repo) importedTransactionIDsChunk(ctx context.Context, ids []vo.Id, out
 // LinkRecurring stamps recurring_id on an existing transaction (Save never
 // touches the column, so an explicit link needs this dedicated write).
 func (r *Repo) LinkRecurring(ctx context.Context, id, recurringID vo.Id, now time.Time) error {
+	if err := r.rev.BumpWhere(ctx, "id = ?", id.String()); err != nil {
+		return err
+	}
 	rid := recurringID.String()
 	return r.q.LinkTransactionToRecurring(ctx, r.db(ctx), linkParams{
 		ID:          id.String(),
@@ -244,6 +343,9 @@ func (r *Repo) LinkRecurring(ctx context.Context, id, recurringID vo.Id, now tim
 
 // Delete removes a transaction by id.
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
+	if err := r.rev.BumpWhere(ctx, "id = ?", id.String()); err != nil {
+		return err
+	}
 	return r.q.DeleteTransaction(ctx, r.db(ctx), id.String())
 }
 

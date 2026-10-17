@@ -13,6 +13,8 @@
 //   wrappedDataKey: v1:<b64 iv 12B>:<b64 AES-GCM(raw 32B data key)>
 //   credential:     v1:<b64 iv 12B>:<b64 AES-GCM(utf8 plaintext)>
 
+import { STORE_IMPORT_KEYS, dbRequest } from '@/lib/db'
+
 export interface WrappedKey {
   wrappedDataKey: string
   kdf: string
@@ -25,8 +27,6 @@ const MIN_KDF_ITERATIONS = 100_000
 const SALT_BYTES = 16
 const IV_BYTES = 12
 const KDF_ALG = 'PBKDF2-SHA256'
-const DB_NAME = 'econumo-import'
-const STORE = 'keys'
 const RECORD = 'dataKey'
 const VERSION_TAG = 'v1'
 
@@ -115,25 +115,6 @@ async function wrappingKey(passphrase: string, params: KdfParams): Promise<Crypt
   )
 }
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE)
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
-}
-
-function tx<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  return openDb().then((db) => new Promise<T>((resolve, reject) => {
-    const t = db.transaction(STORE, mode)
-    const req = run(t.objectStore(STORE))
-    t.oncomplete = () => { db.close(); resolve(req.result) }
-    t.onerror = () => { db.close(); reject(t.error) }
-    t.onabort = () => { db.close(); reject(t.error) }
-  }))
-}
-
 // The unwrapped key plus the wrapped form it was unlocked from. The tag is
 // how a device notices its key was superseded elsewhere: a passphrase reset
 // mints a new data key, and this device's stale copy would otherwise report
@@ -144,7 +125,7 @@ export interface StoredKey {
 }
 
 export async function loadStoredKey(): Promise<StoredKey | null> {
-  const value = await tx<StoredKey | CryptoKey | undefined>('readonly', (s) => s.get(RECORD) as IDBRequest<StoredKey | CryptoKey | undefined>)
+  const value = await dbRequest<StoredKey | CryptoKey | undefined>(STORE_IMPORT_KEYS, 'readonly', (s) => s.get(RECORD))
   if (value instanceof CryptoKey) {
     return { key: value, tag: '' }  // untagged record from before tags existed: forces one re-unlock
   }
@@ -153,11 +134,11 @@ export async function loadStoredKey(): Promise<StoredKey | null> {
 
 async function storeKey(key: CryptoKey, tag: string): Promise<void> {
   const record: StoredKey = { key, tag }
-  await tx('readwrite', (s) => s.put(record, RECORD))
+  await dbRequest(STORE_IMPORT_KEYS, 'readwrite', (s) => s.put(record, RECORD))
 }
 
 export async function forgetKey(): Promise<void> {
-  await tx('readwrite', (s) => s.delete(RECORD))
+  await dbRequest(STORE_IMPORT_KEYS, 'readwrite', (s) => s.delete(RECORD))
 }
 
 async function wrap(rawDataKey: ArrayBuffer, passphrase: string, params: KdfParams): Promise<WrappedKey> {

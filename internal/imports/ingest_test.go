@@ -37,7 +37,22 @@ func (c clock) Now() time.Time { return c.t }
 
 // fakeAccounts: acct1 (userA, USD, live), acctB (userB). deleted toggles
 // acct1; shared gives userA a write grant on acctB.
-type fakeAccounts struct{ deleted, shared bool }
+type fakeAccounts struct {
+	deleted, shared bool
+	db              *dbtest.DB
+}
+
+// AccountListForUser reports acct1 with its revision as the caller's
+// connection sees it: inside the pipeline's transaction that is the value
+// before the commit-time bump.
+func (f *fakeAccounts) AccountListForUser(ctx context.Context, _ vo.Id) ([]model.AccountResult, error) {
+	var rev int64
+	row := f.db.TX.Querier(ctx).QueryRowContext(ctx, f.db.Rebind(`SELECT transactions_revision FROM accounts WHERE id = ?`), acct1)
+	if err := row.Scan(&rev); err != nil {
+		return nil, err
+	}
+	return []model.AccountResult{{Id: acct1, TransactionsRevision: rev}}, nil
+}
 
 func (f *fakeAccounts) AccountOwner(_ context.Context, id vo.Id) (vo.Id, error) {
 	switch id.String() {
@@ -329,7 +344,7 @@ func setup(t *testing.T) *harness {
 	f.Account(fixture.Account{ID: acctB, UserID: userB, CurrencyID: usdID, Name: "Other"})
 	f.ImportSource(fixture.ImportSource{ID: source, UserID: userA, Name: "iPhone"})
 	repo := importsrepo.NewRepo(db.Engine, db.TX)
-	h := &harness{repo: repo, accounts: &fakeAccounts{}, conv: &fakeConverter{}, txns: &fakeTxns{db: db, builder: f}, entities: newFakeEntities(), lim: &limiter{}, f: f, db: db}
+	h := &harness{repo: repo, accounts: &fakeAccounts{db: db}, conv: &fakeConverter{}, txns: &fakeTxns{db: db, builder: f}, entities: newFakeEntities(), lim: &limiter{}, f: f, db: db}
 	h.svc = imports.NewService(repo, h.accounts, h.conv, h.txns, h.txns, h.entities, nil, db.TX, clock{now}, imports.DefaultMatcherConfig())
 	registerParsers(h.svc)
 	return h

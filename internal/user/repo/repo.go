@@ -11,6 +11,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -73,8 +74,9 @@ type querier interface {
 }
 
 type Repo struct {
-	tx *backend.TxManager
-	q  querier
+	tx  *backend.TxManager
+	q   querier
+	rev *txrevision.Bumper
 }
 
 var _ user.Repository = (*Repo)(nil)
@@ -91,11 +93,11 @@ func NewRepo(driver string, tx *backend.TxManager) *Repo {
 }
 
 func NewSQLiteRepo(tx *backend.TxManager) *Repo {
-	return &Repo{tx: tx, q: sqliteQuerier{}}
+	return &Repo{tx: tx, q: sqliteQuerier{}, rev: txrevision.New("sqlite", tx)}
 }
 
 func NewPgsqlRepo(tx *backend.TxManager) *Repo {
-	return &Repo{tx: tx, q: pgsqlQuerier{}}
+	return &Repo{tx: tx, q: pgsqlQuerier{}, rev: txrevision.New("postgresql", tx)}
 }
 
 func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
@@ -190,8 +192,21 @@ func (r *Repo) GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption
 
 // Save upserts the user row and all of its option rows. The caller runs this
 // inside TxManager.WithTx so the row + options commit atomically.
+//
+// Name and avatar ride on every transaction the user authored, so a change to
+// either moves the revision of each account holding such a transaction.
 func (r *Repo) Save(ctx context.Context, u *model.User) error {
 	db := r.db(ctx)
+	stored, err := r.q.GetUserByID(ctx, db, u.ID.String())
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+	case err != nil:
+		return err
+	case stored.Name != u.Name || stored.Avatar != u.Avatar:
+		if err := r.rev.BumpWhere(ctx, "user_id = ?", u.ID.String()); err != nil {
+			return err
+		}
+	}
 	if err := r.q.UpsertUser(ctx, db, userParams{
 		ID:            u.ID.String(),
 		Identifier:    u.ID.String(),

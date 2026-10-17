@@ -11,6 +11,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/sortkey"
@@ -35,8 +36,9 @@ type querier interface {
 }
 
 type Repo struct {
-	tx *backend.TxManager
-	q  querier
+	tx  *backend.TxManager
+	q   querier
+	rev *txrevision.Bumper
 }
 
 var _ domtag.Repository = (*Repo)(nil)
@@ -53,11 +55,11 @@ func NewRepo(driver string, tx *backend.TxManager) *Repo {
 }
 
 func NewSQLiteRepo(tx *backend.TxManager) *Repo {
-	return &Repo{tx: tx, q: sqliteQuerier{}}
+	return &Repo{tx: tx, q: sqliteQuerier{}, rev: txrevision.New("sqlite", tx)}
 }
 
 func NewPgsqlRepo(tx *backend.TxManager) *Repo {
-	return &Repo{tx: tx, q: pgsqlQuerier{}}
+	return &Repo{tx: tx, q: pgsqlQuerier{}, rev: txrevision.New("postgresql", tx)}
 }
 
 func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
@@ -106,6 +108,9 @@ func (r *Repo) Save(ctx context.Context, t *model.Tag) error {
 }
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
+	if err := r.rev.BumpWhere(ctx, "tag_id = ?", id.String()); err != nil {
+		return err
+	}
 	return r.q.DeleteTag(ctx, r.db(ctx), id.String())
 }
 
@@ -125,6 +130,9 @@ func hydrate(row tagRow) (*model.Tag, error) {
 // ReassignTransactions points every transaction on oldID at newID.
 func (r *Repo) ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error {
 	newStr, oldStr := newID.String(), oldID.String()
+	if err := r.rev.BumpWhere(ctx, "tag_id = ?", oldStr); err != nil {
+		return err
+	}
 	return r.q.ReassignTagTransactions(ctx, r.db(ctx), reassignTxParams{TagID: &newStr, TagID_2: &oldStr})
 }
 

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { getToken } from '@/lib/storage'
+import { getSessionUserId, getToken } from '@/lib/storage'
 import { useConfirmEmail, useLogin, useResendVerification } from './queries'
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -29,6 +29,27 @@ it('stores the token after a successful login', async () => {
   const { result } = renderHook(() => useLogin(), { wrapper })
   result.current.mutate({ username: 'a@b', password: 'pw' })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(getToken()).toBe('fresh-jwt')
+  expect(getSessionUserId()).toBe('u1')
+})
+
+it('a login drops the previous user\'s cached data before storing the token', async () => {
+  server.use(
+    http.post('*/api/v1/user/login-user', () =>
+      HttpResponse.json({
+        user: { id: 'u2', name: 'Bo', email: 'b@b', avatar: '', options: [], currency: 'USD', reportPeriod: 'month' },
+        token: 'fresh-jwt',
+      }),
+    ),
+  )
+  const qc = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+  qc.setQueryData(['accounts'], [{ id: 'a1', name: 'previous user account' }])
+  const { result } = renderHook(() => useLogin(), {
+    wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>,
+  })
+  result.current.mutate({ username: 'b@b', password: 'pw' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(qc.getQueryData(['accounts'])).toBeUndefined()
   expect(getToken()).toBe('fresh-jwt')
 })
 

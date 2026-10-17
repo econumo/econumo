@@ -95,6 +95,7 @@ it('useExchangeHandoff stores the token and clears the persisted cache', async (
   await result.current.mutateAsync({ code: 'code', flow: 'f1' })
   expect(body).toEqual({ code: 'code', flow: 'f1' })
   expect(localStorage.getItem('token')).toBe('eco_ses_new')
+  expect(localStorage.getItem('sessionUserId')).toBe('u1')
   expect(localStorage.getItem('econumo.query-cache')).toBeNull()
 })
 

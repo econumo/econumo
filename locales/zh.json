@@ -285,7 +285,13 @@
     },
     "sync": {
       "menu_item": "完整同步",
-      "failing": "无法连接到服务器——正在重试"
+      "failing": "无法连接到服务器——正在重试",
+      "full_reload": "正在清除缓存并重新加载…",
+      "hold_hint": "长按可清除缓存并重新加载",
+      "full_reload_offline": "您当前处于离线状态。请在恢复联网后清除缓存并重新加载。"
+    },
+    "data": {
+      "reload_all": "清除缓存并重新加载"
     },
     "accounts": {
       "menu_item": "账户",

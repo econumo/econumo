@@ -20,6 +20,10 @@ type AccountReader interface {
 	HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 	AccountDeleted(ctx context.Context, accountID vo.Id) (bool, error)
 	AccountCurrencyCode(ctx context.Context, accountID vo.Id) (string, error)
+	// AccountListForUser is read once a manual import has committed:
+	// transactions_revision moves at commit, so an account list built inside
+	// the transaction is one behind.
+	AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error)
 }
 
 // CurrencyConverter re-denominates amount (decimal text) from code `from`

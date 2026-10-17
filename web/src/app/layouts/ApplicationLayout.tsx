@@ -16,6 +16,7 @@ import { formatDateTime } from '@/lib/datetime'
 import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
+import { useLongPress } from '@/hooks/useLongPress'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
@@ -37,6 +38,7 @@ import { useCurrencies, useCurrencyRates } from '@/features/currencies/queries'
 import { useUserData, isOnboardingCompleted } from '@/features/user/queries'
 import { useBudgets } from '@/features/budgets/queries'
 import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
+import { useFullReload } from '@/features/transactions/useFullReload'
 import { recordPathname } from '@/lib/navigation'
 
 function useIsFullyLoaded() {
@@ -111,7 +113,12 @@ export function ApplicationLayout() {
   const isFetching = useIsFetching() > 0
   const lastSyncAt = useLastSyncAt()
   const syncFailing = useSyncFailing()
-  const syncTitle = `${t(syncFailing ? 'settings.sync.failing' : 'settings.sync.menu_item')} — ${lastSyncAt}`
+  const syncTitle = `${t(syncFailing ? 'settings.sync.failing' : 'settings.sync.menu_item')} — ${lastSyncAt}\n${t('settings.sync.hold_hint')}`
+  const fullReload = useFullReload()
+  const syncPress = useLongPress({
+    onClick: () => void queryClient.invalidateQueries(),
+    onLongPress: () => void fullReload('sync_button'),
+  })
   // constant geometry (-m/p cancel out) so the amber circle appears without
   // nudging the icon
   const syncClass = `-m-1.5 rounded-full p-1.5 ${
@@ -249,8 +256,8 @@ export function ApplicationLayout() {
                   type="button"
                   aria-label="sync"
                   title={syncTitle}
-                  className={syncClass}
-                  onClick={() => void queryClient.invalidateQueries()}
+                  className={`${syncClass} select-none [-webkit-touch-callout:none]`}
+                  {...syncPress}
                 >
                   <RefreshCw className={`size-5 ${isFetching ? 'animate-spin' : ''}`} />
                 </button>
@@ -269,8 +276,8 @@ export function ApplicationLayout() {
                   type="button"
                   aria-label="sync"
                   title={syncTitle}
-                  className={syncClassFull}
-                  onClick={() => void queryClient.invalidateQueries()}
+                  className={`${syncClassFull} select-none [-webkit-touch-callout:none]`}
+                  {...syncPress}
                 >
                   <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
                 </button>

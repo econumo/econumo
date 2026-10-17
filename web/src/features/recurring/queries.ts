@@ -4,6 +4,7 @@ import type { CreateRecurringDto, PostRecurringPayload, RecurringDto } from '@/a
 import type { Id } from '@/api/types'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { beginLocalWrite, noteOwnWrite, patchTransactions } from '@/features/transactions/revisionTracking'
 
 export function useRecurring() {
   return useQuery({
@@ -35,8 +36,8 @@ export function useCreateRecurring() {
       // template, so mirror that here and the recurring sign shows up on the
       // account list without a refetch
       if (form.sourceTransactionId) {
-        queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
-          prev?.map((tx) => (tx.id === form.sourceTransactionId ? { ...tx, recurringId: item.id } : tx)),
+        patchTransactions(queryClient, (rows) =>
+          rows.map((tx) => (tx.id === form.sourceTransactionId ? { ...tx, recurringId: item.id } : tx)),
         )
       }
     },
@@ -60,9 +61,7 @@ export function useDeleteRecurring() {
       // mirror the backend's ON DELETE SET NULL: posted transactions lose their
       // link too, so the recurring sign leaves the account list without a
       // refetch
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
-        prev?.map((tx) => (tx.recurringId === id ? { ...tx, recurringId: null } : tx)),
-      )
+      patchTransactions(queryClient, (rows) => rows.map((tx) => (tx.recurringId === id ? { ...tx, recurringId: null } : tx)))
     },
   })
 }
@@ -77,8 +76,14 @@ export function usePostRecurring() {
   return useMutation({
     mutationFn: (payload: PostRecurringPayload) => recurringApi.postRecurring(payload),
     onSuccess: (result, payload) => {
+      const patch = beginLocalWrite(queryClient)
+      if (patch) {
+        noteOwnWrite(result.accounts, [result.item.accountId, result.item.accountRecipientId])
+      }
       queryClient.setQueryData(queryKeys.accounts, result.accounts)
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => [result.item, ...(prev ?? [])])
+      if (patch) {
+        queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => [result.item, ...(prev ?? [])])
+      }
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) =>
         (prev ?? []).map((r) => (r.id === payload.recurringId ? { ...r, nextPaymentAt: result.nextPaymentAt } : r)),
       )

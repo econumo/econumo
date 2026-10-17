@@ -20,6 +20,10 @@ type AccountStore interface {
 
 	GetByID(ctx context.Context, id vo.Id) (*model.Account, error)
 
+	// TransactionsRevision reads the current revision on its own, for results
+	// built from an aggregate loaded before the write that bumped it.
+	TransactionsRevision(ctx context.Context, id vo.Id) (int64, error)
+
 	// ListAvailable returns the user's non-deleted accounts.
 	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
 
@@ -78,6 +82,14 @@ type BalanceReader interface {
 	// Balances returns balances for all the user's non-deleted accounts as of
 	// `before`, keyed by account id (normalized decimal strings).
 	Balances(ctx context.Context, userID vo.Id, before time.Time) (map[string]string, error)
+
+	// TransactionsCount returns how many rows the account's transaction list
+	// holds (either side of a transfer); clients size their downloads by it.
+	TransactionsCount(ctx context.Context, accountID vo.Id) (int64, error)
+
+	// TransactionsCounts returns TransactionsCount for all the user's
+	// non-deleted accounts, keyed by account id.
+	TransactionsCounts(ctx context.Context, userID vo.Id) (map[string]int64, error)
 }
 
 // Repository is the account aggregate's full persistence port — the composite

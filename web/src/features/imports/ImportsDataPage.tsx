@@ -20,7 +20,7 @@ function ActionRow({ label, onClick, disabled }: { label: string; onClick: () =>
   return (
     <button type="button" onClick={onClick} disabled={disabled} className="flex w-full items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover disabled:opacity-60">
       <span>{label}</span>
-      <ChevronRight className="size-4 text-muted-foreground" />
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
     </button>
   )
 }

@@ -285,7 +285,13 @@
     },
     "sync": {
       "menu_item": "Sincronizzazione completa",
-      "failing": "Impossibile raggiungere il server — nuovo tentativo in corso"
+      "failing": "Impossibile raggiungere il server — nuovo tentativo in corso",
+      "full_reload": "Svuotamento della cache e ricaricamento…",
+      "hold_hint": "Tieni premuto per svuotare la cache e ricaricare",
+      "full_reload_offline": "Sei offline. Svuota la cache e ricarica quando torni online."
+    },
+    "data": {
+      "reload_all": "Svuota la cache e ricarica"
     },
     "accounts": {
       "menu_item": "Conti",

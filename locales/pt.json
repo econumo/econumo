@@ -285,7 +285,13 @@
     },
     "sync": {
       "menu_item": "Sincronização completa",
-      "failing": "Não é possível contactar o servidor — a tentar novamente"
+      "failing": "Não é possível contactar o servidor — a tentar novamente",
+      "full_reload": "A limpar a cache e a recarregar…",
+      "hold_hint": "Mantenha premido para limpar a cache e recarregar",
+      "full_reload_offline": "Está offline. Limpe a cache e recarregue quando voltar a estar online."
+    },
+    "data": {
+      "reload_all": "Limpar a cache e recarregar"
     },
     "accounts": {
       "menu_item": "Contas",

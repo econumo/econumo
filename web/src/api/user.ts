@@ -8,6 +8,7 @@ import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
 import { setAnalyticsUser } from '@/lib/analytics'
 import { setAnalyticsAccessState } from '@/lib/metrics'
 import { rememberHasPassword } from '@/lib/analyticsAuthMethods'
+import { rememberSessionUser } from '@/lib/storage'
 import { refreshAuthMethodFlags } from './oauth'
 
 // login-user is the one endpoint that responds with a bare {token, user}
@@ -95,6 +96,7 @@ export async function updateDefaultBudget(budgetId: Id): Promise<CurrentUserDto>
 export async function getUserData(): Promise<CurrentUserDto> {
   const response = await api.get<CurrentUserResponseDto>(apiUrl('/api/v1/user/get-user-data'))
   const user = response.data.data.user
+  rememberSessionUser(user.id)
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   setAnalyticsUser(analyticsUserId(user.id))
   rememberHasPassword(user.hasPassword !== false)

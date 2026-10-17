@@ -134,3 +134,45 @@ it('importTransactionList posts multipart form data and unwraps the result', asy
     postSpy.mockRestore()
   }
 })
+
+describe('getAccountTransactionList', () => {
+  const body = { revisions: { a1: 2 }, items: [], authors: [] }
+
+  it('sends the account ids comma-joined', async () => {
+    let query: string | null = null
+    server.use(
+      http.get('*/api/v1/transaction/get-account-transaction-list', ({ request }) => {
+        query = new URL(request.url).searchParams.get('accountIds')
+        return HttpResponse.json({ success: true, message: '', data: body })
+      }),
+    )
+    expect(await transactionApi.getAccountTransactionList(['a1', 'a2'])).toEqual(body)
+    expect(query).toBe('a1,a2')
+  })
+
+  it('omits the param to ask for every accessible account', async () => {
+    let has = true
+    server.use(
+      http.get('*/api/v1/transaction/get-account-transaction-list', ({ request }) => {
+        has = new URL(request.url).searchParams.has('accountIds')
+        return HttpResponse.json({ success: true, message: '', data: body })
+      }),
+    )
+    await transactionApi.getAccountTransactionList()
+    expect(has).toBe(false)
+  })
+
+  it('an aborted signal cancels the download', async () => {
+    let requests = 0
+    server.use(
+      http.get('*/api/v1/transaction/get-account-transaction-list', () => {
+        requests++
+        return HttpResponse.json({ success: true, message: '', data: body })
+      }),
+    )
+    const controller = new AbortController()
+    controller.abort()
+    await expect(transactionApi.getAccountTransactionList(['a1'], controller.signal)).rejects.toThrow()
+    expect(requests).toBe(0)
+  })
+})

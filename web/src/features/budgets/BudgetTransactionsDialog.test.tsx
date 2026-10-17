@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -6,6 +6,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureOwner, fixtureWireBudget } from '@/test/fixtures'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID, type BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -35,11 +36,18 @@ const wireItems = [
 
 function renderDialog(element: BudgetTransactionsTarget = target) {
   const budget = coerceBudgetFixture(fixtureWireBudget)
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
+    <QueryClientProvider client={queryClient}>
       <BudgetTransactionsDialog budget={budget} element={element} onClose={() => {}} />
     </QueryClientProvider>,
   )
+  return queryClient
+}
+
+// a row is editable only once the plain transaction list (synced after the user and accounts) has it
+async function plainListLoaded(queryClient: QueryClient) {
+  await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.status).toBe('success'))
 }
 
 beforeEach(() => {
@@ -55,6 +63,8 @@ beforeEach(() => {
     http.get('*/api/v1/budget/get-transaction-list', () =>
       HttpResponse.json({ success: true, message: '', data: { items: wireItems } }),
     ),
+    // the analytics auth-method probe fired once the user data lands
+    http.get('*/api/v1/oauth/get-identity-list', () => HttpResponse.json({ success: true, message: '', data: [] })),
   )
 })
 
@@ -95,7 +105,7 @@ it('a row without a note shows its category and payee on one line', async () => 
 
 it('clicking a transaction opens the preview; Edit hands off to the transaction modal', async () => {
   const user = userEvent.setup()
-  renderDialog()
+  await plainListLoaded(renderDialog())
   await user.click(await screen.findByTestId('budget-tx-t1'))
   // preview hero shows the category and the editable footer
   const edit = await screen.findByRole('button', { name: 'Edit' })
@@ -112,7 +122,7 @@ it('delete flows through the confirm dialog', async () => {
     }),
   )
   const user = userEvent.setup()
-  renderDialog()
+  await plainListLoaded(renderDialog())
   await user.click(await screen.findByTestId('budget-tx-t1'))
   await user.click(await screen.findByRole('button', { name: 'Delete' }))
   // the confirm dialog takes over

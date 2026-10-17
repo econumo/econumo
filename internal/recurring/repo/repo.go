@@ -10,6 +10,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
 	domrecurring "github.com/econumo/econumo/internal/recurring"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -34,6 +35,7 @@ type Repo struct {
 	driver string
 	tx     *backend.TxManager
 	q      querier
+	rev    *txrevision.Bumper
 }
 
 var _ domrecurring.Repository = (*Repo)(nil)
@@ -41,9 +43,9 @@ var _ domrecurring.Repository = (*Repo)(nil)
 func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
 	case "sqlite":
-		return &Repo{driver: driver, tx: tx, q: sqliteQuerier{}}
+		return &Repo{driver: driver, tx: tx, q: sqliteQuerier{}, rev: txrevision.New(driver, tx)}
 	case "postgresql":
-		return &Repo{driver: driver, tx: tx, q: pgsqlQuerier{}}
+		return &Repo{driver: driver, tx: tx, q: pgsqlQuerier{}, rev: txrevision.New(driver, tx)}
 	}
 	panic(fmt.Sprintf("unknown database driver %q", driver))
 }
@@ -84,6 +86,9 @@ func (r *Repo) Save(ctx context.Context, rt *model.RecurringTransaction) error {
 }
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
+	if err := r.rev.BumpWhere(ctx, "recurring_id = ?", id.String()); err != nil {
+		return err
+	}
 	return r.q.DeleteRecurringTransaction(ctx, r.db(ctx), id.String())
 }
 

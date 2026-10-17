@@ -158,6 +158,11 @@ type Querier interface {
 	// transactions table (see account_balance.sql).
 	GetAccountByID(ctx context.Context, id string) (Account, error)
 	GetAccountOption(ctx context.Context, arg GetAccountOptionParams) (AccountsOption, error)
+	// About how many rows get-account-transaction-list returns for the account
+	// (either side of a transfer; a self-transfer would count twice). A size hint
+	// for batching downloads, so both counts stay index-only. Args: account_id (x2).
+	GetAccountTransactionsCount(ctx context.Context, arg GetAccountTransactionsCountParams) (int64, error)
+	GetAccountTransactionsRevision(ctx context.Context, id string) (int64, error)
 	// Period-averaged rate per currency for a base currency over [start, end).
 	// published_at is a DATE (stored TEXT); bounds are 'Y-m-d' strings. Matches
 	// CurrencyRateRepository::getAverage. AVG is cast to TEXT and normalized in Go
@@ -424,6 +429,9 @@ type Querier interface {
 	// row; the repo formats it to PHP's precision-14 string.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
+	// The same count for every AVAILABLE account (the balance query's set).
+	// Args: user_id (own), user_id (shared).
+	ListAccountTransactionsCountsForUser(ctx context.Context, arg ListAccountTransactionsCountsForUserParams) ([]ListAccountTransactionsCountsForUserRow, error)
 	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted.
 	// A pending (not yet accepted) grant confers no access here -- it only rides
 	// get-account-list as an inert entry appended separately (see

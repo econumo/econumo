@@ -161,5 +161,5 @@ func (l *ImportLookup) CreateLabel(ctx context.Context, ownerID vo.Id, name stri
 }
 
 func (l *ImportLookup) SaveTransaction(ctx context.Context, t *model.Transaction) error {
-	return l.transRepo.Save(ctx, t)
+	return l.transRepo.saveNew(ctx, t)
 }

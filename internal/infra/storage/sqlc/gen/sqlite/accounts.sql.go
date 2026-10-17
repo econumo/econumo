@@ -33,7 +33,7 @@ func (q *Queries) CountAvailableAccounts(ctx context.Context, arg CountAvailable
 
 const getAccountByID = `-- name: GetAccountByID :one
 
-SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at
+SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at, transactions_revision
 FROM accounts
 WHERE id = ?
 `
@@ -55,6 +55,7 @@ func (q *Queries) GetAccountByID(ctx context.Context, id string) (Account, error
 		&i.IsDeleted,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TransactionsRevision,
 	)
 	return i, err
 }
@@ -81,6 +82,17 @@ func (q *Queries) GetAccountOption(ctx context.Context, arg GetAccountOptionPara
 		&i.SortKey,
 	)
 	return i, err
+}
+
+const getAccountTransactionsRevision = `-- name: GetAccountTransactionsRevision :one
+SELECT transactions_revision FROM accounts WHERE id = ?
+`
+
+func (q *Queries) GetAccountTransactionsRevision(ctx context.Context, id string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getAccountTransactionsRevision, id)
+	var transactions_revision int64
+	err := row.Scan(&transactions_revision)
+	return transactions_revision, err
 }
 
 const listAccountOptionsByUser = `-- name: ListAccountOptionsByUser :many
@@ -119,7 +131,7 @@ func (q *Queries) ListAccountOptionsByUser(ctx context.Context, userID string) (
 }
 
 const listAvailableAccounts = `-- name: ListAvailableAccounts :many
-SELECT DISTINCT a.id, a.currency_id, a.user_id, a.name, a.type, a.icon, a.is_deleted, a.created_at, a.updated_at
+SELECT DISTINCT a.id, a.currency_id, a.user_id, a.name, a.type, a.icon, a.is_deleted, a.created_at, a.updated_at, a.transactions_revision
 FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
 WHERE a.is_deleted = 0 AND (a.user_id = ? OR (aa.user_id = ? AND aa.is_accepted = 1))
@@ -158,6 +170,7 @@ func (q *Queries) ListAvailableAccounts(ctx context.Context, arg ListAvailableAc
 			&i.IsDeleted,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.TransactionsRevision,
 		); err != nil {
 			return nil, err
 		}
@@ -173,7 +186,7 @@ func (q *Queries) ListAvailableAccounts(ctx context.Context, arg ListAvailableAc
 }
 
 const listDeletedAccounts = `-- name: ListDeletedAccounts :many
-SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at
+SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at, transactions_revision
 FROM accounts WHERE is_deleted = 1 ORDER BY id
 `
 
@@ -196,6 +209,7 @@ func (q *Queries) ListDeletedAccounts(ctx context.Context) ([]Account, error) {
 			&i.IsDeleted,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.TransactionsRevision,
 		); err != nil {
 			return nil, err
 		}

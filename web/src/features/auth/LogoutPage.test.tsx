@@ -5,6 +5,9 @@ import { server } from '@/test/msw'
 import { setToken } from '@/lib/storage'
 import { navigateTo } from '@/app/routerRef'
 import i18n from '@/app/i18n'
+import { IDBFactory } from 'fake-indexeddb'
+import { resetDbForTests } from '@/lib/db'
+import { resetTransactionStoreForTests } from '@/lib/transactionStore'
 import { LogoutPage } from './LogoutPage'
 
 // Tracks real call order (not just "was called") so a refactor that moves
@@ -88,6 +91,24 @@ it('calls logout, purges the token and redirects to /login', async () => {
   // identity reset has to land strictly between the tracked event and the
   // token removal that follows it.
   expect(order).toEqual(['trackEvent', 'resetAnalyticsIdentity', 'removeToken'])
+})
+
+it('still redirects to /login when IndexedDB never answers', async () => {
+  globalThis.indexedDB = { open: () => ({}) } as unknown as IDBFactory
+  resetDbForTests()
+  resetTransactionStoreForTests()
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  try {
+    server.use(http.post('*/api/v1/user/logout-user', () => HttpResponse.json({ success: true, message: '', data: {} })))
+    setToken('tok')
+    renderPage()
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'), { timeout: 4000 })
+  } finally {
+    vi.restoreAllMocks()
+    globalThis.indexedDB = new IDBFactory()
+    resetDbForTests()
+    resetTransactionStoreForTests()
+  }
 })
 
 it('navigates to the IdP end-session url when logout returns one', async () => {

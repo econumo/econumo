@@ -156,15 +156,16 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *mo
 	}
 
 	return model.AccountResult{
-		Id:           acct.ID.String(),
-		Owner:        ownerRes,
-		FolderId:     folderID,
-		Name:         acct.Name,
-		Currency:     curRes,
-		Balance:      vo.NewDecimal(balance).String(),
-		Type:         int(acct.Type.Int16()),
-		Icon:         acct.Icon,
-		SharedAccess: shared,
+		Id:                   acct.ID.String(),
+		Owner:                ownerRes,
+		FolderId:             folderID,
+		Name:                 acct.Name,
+		Currency:             curRes,
+		Balance:              vo.NewDecimal(balance).String(),
+		Type:                 int(acct.Type.Int16()),
+		Icon:                 acct.Icon,
+		SharedAccess:         shared,
+		TransactionsRevision: acct.TransactionsRevision,
 	}, nil
 }
 
@@ -253,6 +254,10 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 	if err != nil {
 		return nil, err
 	}
+	counts, err := s.balances.TransactionsCounts(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 	folders, err := s.sortedFolders(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -287,6 +292,7 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 		if berr != nil {
 			return nil, berr
 		}
+		item.TransactionsCount = counts[a.ID.String()]
 		// "position" on the wire is the dense 0-based index; the sort key that
 		// produced this order never leaves the server.
 		item.Position = len(items)
