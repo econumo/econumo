@@ -17,6 +17,7 @@ place, so the deep link and the user's automation keep pointing at it.
 
 import argparse
 import plistlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -366,14 +367,21 @@ def main() -> int:
             continue
         PUBLIC.mkdir(parents=True, exist_ok=True)
         signed = PUBLIC / f"{name}.shortcut"
-        # `shortcuts sign` refuses any input not named *.shortcut.
-        with tempfile.TemporaryDirectory() as tmp:
-            unsigned = Path(tmp) / signed.name
+        # `shortcuts sign` refuses any input not named *.shortcut, and fails
+        # ("The file doesn't exist") when the output path is already taken, so
+        # it signs into a fresh directory and the result replaces the old file.
+        # The directory sits next to this script: the signing service has been
+        # seen to refuse inputs under the system temp folder.
+        with tempfile.TemporaryDirectory(dir=HERE) as tmp:
+            unsigned = Path(tmp) / "unsigned" / signed.name
+            unsigned.parent.mkdir()
             unsigned.write_bytes(source.read_bytes())
+            fresh = Path(tmp) / signed.name
             subprocess.run(
-                ["shortcuts", "sign", "--mode", "anyone", "--input", str(unsigned), "--output", str(signed)],
+                ["shortcuts", "sign", "--mode", "anyone", "--input", str(unsigned), "--output", str(fresh)],
                 check=True,
             )
+            shutil.move(fresh, signed)
         print(f"signed {signed.relative_to(HERE.parent.parent)}")
     return 0
 
