@@ -3,9 +3,9 @@ import type { ImportRunLinkDto } from '@/api/dto/imports'
 import { InfoBox } from '@/components/InfoBox'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
+import { parseDateTime } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { rowStatus } from './runRows'
-import { parseUtcDateTime } from './relativeTime'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -25,7 +25,8 @@ export function ImportedTapDialog({ row, cardName, onCreate, onClose }: Imported
     return null
   }
   const status = rowStatus(row)
-  const posted = parseUtcDateTime(row.externalPostedAt)
+  // the phone's wall clock, shown as is (see relativeTime.ts)
+  const posted = parseDateTime(row.externalPostedAt)
   const when = `${posted.getFullYear()}-${pad(posted.getMonth() + 1)}-${pad(posted.getDate())} ${pad(posted.getHours())}:${pad(posted.getMinutes())}`
   const message =
     status === 'queued' ? t('imports.history.waiting')

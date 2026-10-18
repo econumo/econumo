@@ -13,22 +13,21 @@ import { enrichTransaction, useTransactionLookups, type ViewTransaction } from '
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
-import { formatDate, formatDayHeading } from '@/lib/datetime'
+import { formatDate, formatDayHeading, parseDateTime } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { ImportedTapDialog } from './ImportedTapDialog'
 import { rowStatus } from './runRows'
 import { useImportQueue, useImportSourceHistory, useImportSources } from './queries'
-import { parseUtcDateTime } from './relativeTime'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-// A tap's time is stored in UTC; the user reads it on their own clock.
+// A tap's time is the phone's wall clock (see relativeTime.ts), shown as is.
 function localDay(posted: string): string {
-  return formatDate(parseUtcDateTime(posted))
+  return formatDate(parseDateTime(posted))
 }
 
 function localTime(posted: string): string {
-  const d = parseUtcDateTime(posted)
+  const d = parseDateTime(posted)
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 

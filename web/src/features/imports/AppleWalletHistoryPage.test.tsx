@@ -35,11 +35,8 @@ function renderPage(pages: Record<string, { items: unknown[]; hasMore: boolean }
   return offsets
 }
 
-// taps are stored in UTC and shown on the reader's clock, whatever zone the suite runs in
-const localTime = (utc: string) => {
-  const d = new Date(utc.replace(' ', 'T') + 'Z')
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
+// a tap's time is the phone's wall clock and is shown exactly as stored
+const localTime = (stored: string) => stored.slice(11, 16)
 
 beforeEach(() => {
   localStorage.clear()

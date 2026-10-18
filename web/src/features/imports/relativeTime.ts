@@ -1,11 +1,11 @@
-// Import timestamps (a card's lastSeenAt) are UTC wall-clock datetimes, unlike
-// transaction dates, so they must not go through the local-time parseDateTime.
-export function parseUtcDateTime(s: string): Date {
-  return new Date(`${s.replace(' ', 'T')}Z`)
-}
+import { parseDateTime } from '@/lib/datetime'
 
+// A tap's time (externalPostedAt, and a card's lastSeenAt drawn from it) is
+// the phone's own wall clock as the Shortcut reported it, stored as is like a
+// transaction date, so it is read as local time: converting it from UTC would
+// shift every tap by the reader's offset.
 export function relativeTime(s: string, lang: string, now: Date = new Date()): string {
-  const then = parseUtcDateTime(s)
+  const then = parseDateTime(s)
   const seconds = (then.getTime() - now.getTime()) / 1000
   const abs = Math.abs(seconds)
   const rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' })
