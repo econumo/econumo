@@ -370,8 +370,12 @@ navigation (single-pane vs sidebar).
 Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
 `ECONUMO_IMPORT_SIMPLEFIN=true`.
 
-- [ ] Both import providers off (`ECONUMO_IMPORT_APPLE_WALLET` and
-      `ECONUMO_IMPORT_SIMPLEFIN` unset) 📱: Settings → Data shows only
+- [ ] With both provider environment variables unset, Apple Wallet and Import
+      rules are available by default; SimpleFIN stays hidden. The bundled mobile
+      config also defaults Apple Wallet on, but honors the selected backend's
+      explicit `IMPORT_APPLE_WALLET: false`, including after switching servers.
+- [ ] Both import providers off (`ECONUMO_IMPORT_APPLE_WALLET=false` and
+      `ECONUMO_IMPORT_SIMPLEFIN=false`) 📱: Settings → Data shows only
       "Import & export"; no Apple Wallet, SimpleFIN or Import rules rows.
       Import & export lists only the CSV import/export rows (no "Sync bank
       connections" or "Import rules").
@@ -697,7 +701,10 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       — struck through / Waiting for review / Skipped) and the amount in the
       tap's currency. Taps whose payload could not be read are not listed (they
       stay under the Inbox's Failed imports). With more than 50 taps "Show
-      more" loads the next 50 until none are left. 📱
+      more" loads the next 50 until none are left. A direct API request with
+      an offset above 2,147,483,647 (including 4,294,967,296) returns an empty
+      page on SQLite and PostgreSQL, without wrapping to the first page or
+      returning a server error. 📱
 - [ ] Tapping a history row 📱: an Imported row opens the regular transaction
       preview (Edit and Delete work as on the account page; tapped before the
       transactions have loaded, it opens once they have). A Skipped row (skip

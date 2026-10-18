@@ -155,8 +155,7 @@ func (pgsqlQuerier) ListImportTransactionLinksBySource(ctx context.Context, db b
 }
 
 func (pgsqlQuerier) ListImportTransactionLinksBySourcePage(ctx context.Context, db backend.DBTX, p linksPageParams) ([]linkRow, error) {
-	// LIMIT/OFFSET bind int32 on pgsql (int64 on sqlite), so field by field
-	rows, err := pgsqlgen.New(db).ListImportTransactionLinksBySourcePage(ctx, pgsqlgen.ListImportTransactionLinksBySourcePageParams{SourceID: p.SourceID, Limit: int32(p.Limit), Offset: int32(p.Offset)})
+	rows, err := pgsqlgen.New(db).ListImportTransactionLinksBySourcePage(ctx, pgsqlgen.ListImportTransactionLinksBySourcePageParams{SourceID: p.SourceID, Limit: p.Limit, Offset: p.Offset})
 	if err != nil {
 		return nil, err
 	}

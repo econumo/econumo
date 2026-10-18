@@ -149,7 +149,7 @@ SELECT id, source_id, run_id, event_id, external_account_id, external_transactio
 FROM import_transaction_links
 WHERE source_id = $1
 ORDER BY external_posted_at DESC, id DESC
-LIMIT $2 OFFSET $3
+LIMIT sqlc.arg('limit')::bigint OFFSET sqlc.arg('offset')::bigint
 ;
 
 -- name: DeleteQueuedImportTransactionLinksByExternalAccount :exec

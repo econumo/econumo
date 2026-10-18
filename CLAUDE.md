@@ -61,7 +61,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID` and `MCP_URL` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `IMPORT_APPLE_WALLET` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. The merge is per server: typing a
@@ -754,7 +754,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
 - `ECONUMO_IMPORT_APPLE_WALLET` / `ECONUMO_IMPORT_SIMPLEFIN` — the two transaction-import
-  providers (strict booleans, both default `false`; malformed fails at boot). A provider that is
+  providers (strict booleans, Apple Wallet defaults `true`, SimpleFIN `false`;
+  malformed fails at boot). A provider that is
   off loses its own routes (Apple Wallet: `ingest-apple-wallet-event`; SimpleFIN:
   `claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
   `sync-source`), `create-source` refuses it with `import.provider_unsupported`, and its existing

@@ -17,7 +17,7 @@ window.econumoConfig = {
   BILLING_URL: '',
   MCP_URL: '',
   AI_ENABLED: false,
-  IMPORT_APPLE_WALLET: false,
+  IMPORT_APPLE_WALLET: true,
   IMPORT_SIMPLEFIN: false,
   ALLOW_CUSTOM_API: true,
   VERSION: null,

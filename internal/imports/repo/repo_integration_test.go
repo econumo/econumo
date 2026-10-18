@@ -2,6 +2,8 @@ package repo_test
 
 import (
 	"context"
+	"math"
+	"strconv"
 	"testing"
 	"time"
 
@@ -154,6 +156,33 @@ func newLink(srcID string, extTx string, txID *vo.Id, status string) *model.Impo
 		ID: vo.NewId(), SourceID: vo.MustParseId(srcID), ExternalAccountID: "card-1", ExternalTransactionID: extTx,
 		TransactionID: txID, Status: status, ExternalPayee: "COFFEE SHOP", ExternalDescription: "coffee",
 		ExternalAmount: "4.50000000", ExternalPostedAt: fixedTime, ImportedAt: fixedTime,
+	}
+}
+
+func TestRepo_SourceHistoryLargeOffsetsDoNotWrap(t *testing.T) {
+	if strconv.IntSize < 64 {
+		t.Skip("offsets above int32 require a 64-bit int")
+	}
+	repo, _ := setup(t)
+	ctx := context.Background()
+	src := newSource("0c000000-0000-0000-0000-000000000001")
+	if err := repo.InsertSource(ctx, src); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.InsertLink(ctx, newLink(src.ID.String(), "ext-1", nil, model.ImportLinkStatusQueued)); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := repo.ListLinksBySourcePage(ctx, src.ID, 51, 0)
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("offset 0: got %d rows, %v; want 1 row", len(rows), err)
+	}
+	for _, offset := range []int64{math.MaxInt32, math.MaxInt32 + 1, 1 << 32, math.MaxInt64} {
+		t.Run(strconv.FormatInt(offset, 10), func(t *testing.T) {
+			rows, err := repo.ListLinksBySourcePage(ctx, src.ID, 51, int(offset))
+			if err != nil || len(rows) != 0 {
+				t.Fatalf("offset %d: got %d rows, %v; want an empty page", offset, len(rows), err)
+			}
+		})
 	}
 }
 
