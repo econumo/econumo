@@ -78,22 +78,6 @@ it('before connecting it explains what is needed and previews the steps; connect
   await waitFor(() => expect(body).toEqual({ provider: 'apple-wallet', name: 'iPhone' }))
 })
 
-// In an installed PWA a same-origin download would replace the app, so on an
-// iPhone the Shortcuts app imports the file itself; the file stays reachable.
-it('on an iPhone the install hands the shortcut to the Shortcuts app, with the file as a fallback', () => {
-  mockIsIOS.value = true
-  renderSetup(source)
-  const link = screen.getByRole('link', { name: 'econumo' })
-  expect(link).toHaveAttribute(
-    'href',
-    'shortcuts://import-shortcut?url=' + encodeURIComponent(window.location.origin + '/shortcuts/econumo.shortcut') + '&name=econumo',
-  )
-  expect(link).not.toHaveAttribute('download')
-  const file = screen.getByRole('link', { name: 'Download the file instead' })
-  expect(file).toHaveAttribute('href', '/shortcuts/econumo.shortcut')
-  expect(file).toHaveAttribute('target', '_blank')
-})
-
 it('opens on the first step only; its download opens in a new window and Done moves on', async () => {
   const user = userEvent.setup()
   renderSetup(source)

@@ -24,12 +24,13 @@ export const MANUAL_GUIDE_URL = `${getWebsiteUrl()}/docs/user-guide/apple-wallet
 const INGEST_TOKEN_NAME = 'Apple Wallet'
 
 // Inside an installed PWA iOS keeps every same-origin link in the app's own
-// window (a download replaces the app until it is relaunched), so on iOS the
-// shortcut is handed to the Shortcuts app by URL scheme, like the configure
-// link below: Shortcuts fetches the file itself and the PWA stays put.
-export function installDeepLink(origin: string): string {
-  return `shortcuts://import-shortcut?url=${encodeURIComponent(origin + WALLET_SHORTCUT_URL)}&name=${encodeURIComponent(WALLET_SHORTCUT_NAME)}`
-}
+// window (a download replaces the app until it is relaunched). An iCloud
+// shortcut link is another origin and Shortcuts opens it straight into "Add
+// Shortcut", so on iOS the install uses it when one is published (Share ->
+// Copy iCloud Link on the signed shortcut; re-copy it whenever the recipe
+// changes). Shortcuts' import-shortcut scheme accepts only iCloud links, so
+// the served file cannot be handed over that way. Empty = the file link.
+export const WALLET_SHORTCUT_ICLOUD_URL = ''
 
 // Run with text input, the shortcut configures itself: JSON with the server
 // URL and the ingest token.
@@ -222,9 +223,9 @@ function Stepper({ setup }: { setup: WalletSetup }) {
         return (
           <>
             {text(id)}
-            {ios ? (
+            {ios && WALLET_SHORTCUT_ICLOUD_URL ? (
               <>
-                <ExternalButton href={installDeepLink(window.location.origin)} onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'wallet', via: 'shortcuts' })}>
+                <ExternalButton href={WALLET_SHORTCUT_ICLOUD_URL} onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'wallet', via: 'icloud' })}>
                   <Download className="size-4" />{WALLET_SHORTCUT_NAME}
                 </ExternalButton>
                 <a href={WALLET_SHORTCUT_URL} target="_blank" rel="noopener" className="self-start text-sm text-econumo-link underline-offset-2 hover:underline"

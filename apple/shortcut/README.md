@@ -97,6 +97,17 @@ The server answers 200 whenever the event was stored, even if it could not
 be imported (`queued` / `skipped` / `failed` are visible in the web UI), so
 the shortcut has nothing to do with the response.
 
+## iCloud link (iPhone install)
+
+Inside the home-screen app iOS keeps same-origin links in the app's own
+window, so downloading the served file replaces the app until it is
+relaunched, and `shortcuts://import-shortcut` accepts only iCloud links. After
+signing, add the shortcut on a device, Share → Copy iCloud Link, and put the
+link in `WALLET_SHORTCUT_ICLOUD_URL` (`web/src/features/imports/AppleWalletSetup.tsx`):
+the iPhone install button then opens it and Shortcuts goes straight to "Add
+Shortcut". Re-copy the link whenever the recipe changes; an empty value falls
+back to the served file.
+
 ## Recipe: `econumo`
 
 "Show in Share Sheet" off. The shortcut branches on what it was given:

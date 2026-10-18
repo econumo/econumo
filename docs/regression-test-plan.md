@@ -422,12 +422,11 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       from the older guides carry over (both install steps → step 1, the
       run-once step → step 2).
 - [ ] Step 1 (button label in the shortcut's exact lower-case name,
-      `econumo`): on an iPhone it opens
-      `shortcuts://import-shortcut?url=<origin>/shortcuts/econumo.shortcut&name=econumo`,
-      so the Shortcuts app shows "Add Shortcut" and the home-screen app stays
-      where it was (no relaunch); "Download the file instead" opens the file
-      in a new window as a fallback. On a desktop the button downloads
-      `econumo.shortcut` in a new window 📱. The v1
+      `econumo`): on an iPhone, once `WALLET_SHORTCUT_ICLOUD_URL` is set, it
+      opens the iCloud link, Shortcuts shows "Add Shortcut" and the home-screen
+      app stays where it was (no relaunch); "Download the file instead" opens
+      the served file as a fallback. Without an iCloud link, and on a desktop,
+      the button downloads `econumo.shortcut` in a new window 📱. The v1
       files (`econumo-wallet-v1.shortcut`, `econumo-setup-v1.shortcut`) still
       download from `/shortcuts/` for existing setups.
 - [ ] Step 2, iOS only 📱: "Create access token" mints an ingest PAT (visible
