@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 // cutoff, and a separately shipped sidebar logo can 404 where an inlined one
 // still shows.
 import logo from '@/assets/econumo.svg?inline'
+import darkLogo from '@/assets/econumo-dark.svg?inline'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UpdateNotice } from '@/components/UpdateNotice'
@@ -122,11 +123,11 @@ export function ApplicationLayout() {
   // constant geometry (-m/p cancel out) so the amber circle appears without
   // nudging the icon
   const syncClass = `-m-1.5 rounded-full p-1.5 ${
-    syncFailing ? 'bg-amber-500/15 text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-foreground'
+    syncFailing ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200' : 'text-muted-foreground hover:text-foreground'
   }`
   // the full footer's tap area is already fixed at size-11, so no -m/p offset is needed
   const syncClassFull = `grid ${isCompact ? 'size-11' : 'size-9'} place-items-center rounded-full ${
-    syncFailing ? 'bg-amber-500/15 text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-foreground'
+    syncFailing ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200' : 'text-muted-foreground hover:text-foreground'
   }`
   const { collapsed, toggleCollapsed } = useSidebarStore()
   // compact unmounts the whole sidebar on navigation — going back must land
@@ -148,7 +149,8 @@ export function ApplicationLayout() {
           aria-label={appName}
           className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 py-1 hover:bg-accent"
         >
-          <img src={logo} width={165} height={17} alt="" />
+          <img src={logo} width={165} height={17} alt="" className="dark:hidden" />
+          <img src={darkLogo} width={165} height={17} alt="" className="hidden dark:block" />
           <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
         </Link>
         <button

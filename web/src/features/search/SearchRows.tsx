@@ -46,7 +46,7 @@ export function AccountResult({ account, folderName, folderHidden, onSelect }: {
   return (
     <CommandItem value={`account:${account.id}`} onSelect={onSelect} data-testid={`search-account-${account.id}`} className={NO_CHECK}>
       <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-econumo-card">
-        <EntityIcon name={account.icon} className="text-lg text-[#666666]" />
+        <EntityIcon name={account.icon} className="text-lg text-entity-icon" />
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate">{account.name}</span>

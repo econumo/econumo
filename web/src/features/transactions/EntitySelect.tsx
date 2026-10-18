@@ -151,10 +151,10 @@ export function EntitySelect({
               key={row.create ? '__create__' : row.value}
               value={row}
               disabled={row.disabled}
-              className={row.create ? 'text-econumo-magenta' : undefined}
+              className={row.create ? 'text-econumo-link' : undefined}
             >
               {row.create ? (
-                <Plus className="size-4 text-econumo-magenta" />
+                <Plus className="size-4 text-econumo-link" />
               ) : row.icon ? (
                 <EntityIcon name={row.icon} className="text-base text-muted-foreground" />
               ) : null}

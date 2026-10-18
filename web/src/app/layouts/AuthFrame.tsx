@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LanguageBadge } from '@/components/LanguageBadge'
 import logo from '@/assets/econumo.svg'
+import darkLogo from '@/assets/econumo-dark.svg'
 
 // The signed-out frame shared by the sign-in pages and the app-consent page, so
 // every page a visitor sees before (or instead of) the app has the same logo,
@@ -15,7 +16,8 @@ export function AuthFrame({ children }: { children: ReactNode }) {
       {/* the badge hangs off the logo's right edge (absolute) so the logo
           itself stays exactly page-centered */}
       <div className="relative">
-        <img src={logo} width={194} height={20} alt={t('common.econumo.label')} />
+        <img src={logo} width={194} height={20} alt={t('common.econumo.label')} className="dark:hidden" />
+        <img src={darkLogo} width={194} height={20} alt={t('common.econumo.label')} className="hidden dark:block" />
         <div className="absolute top-1/2 left-full ml-2 -translate-y-1/2">
           <LanguageBadge />
         </div>

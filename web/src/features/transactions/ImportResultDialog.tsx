@@ -20,9 +20,9 @@ export function ImportResultDialog({ open, result, onClose }: ImportResultDialog
 
   const outcome =
     result.failed === 0
-      ? { title: t('transactions.import_result.success_title'), Icon: CheckCircle2, tone: 'text-green-600' }
+      ? { title: t('transactions.import_result.success_title'), Icon: CheckCircle2, tone: 'text-income' }
       : result.imported > 0
-        ? { title: t('transactions.import_result.partial_success_title'), Icon: AlertTriangle, tone: 'text-amber-600' }
+        ? { title: t('transactions.import_result.partial_success_title'), Icon: AlertTriangle, tone: 'text-amber-700 dark:text-amber-300' }
         : { title: t('transactions.import_result.error_title'), Icon: XCircle, tone: 'text-destructive' }
 
   const formatRows = (rows: number[]): string => {

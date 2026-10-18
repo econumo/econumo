@@ -899,6 +899,13 @@
     "page": {
       "settings": {
         "profile": {
+          "theme": {
+            "label": "Motyw",
+            "system": "Systemowy",
+            "light": "Jasny",
+            "dark": "Ciemny",
+            "description": "Dotyczy tylko tego urządzenia. Motyw systemowy dopasowuje się do jego wyglądu."
+          },
           "menu_item": "Profil",
           "header": "Ustawienia osobiste",
           "groups": {

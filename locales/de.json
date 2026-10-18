@@ -899,6 +899,13 @@
     "page": {
       "settings": {
         "profile": {
+          "theme": {
+            "label": "Design",
+            "system": "System",
+            "light": "Hell",
+            "dark": "Dunkel",
+            "description": "Gilt nur auf diesem Gerät. Das Systemdesign folgt den Einstellungen deines Geräts."
+          },
           "menu_item": "Profil",
           "header": "Persönliche Einstellungen",
           "groups": {

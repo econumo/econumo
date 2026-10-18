@@ -198,7 +198,7 @@ export function ElementSheet({
               </p>
             )}
             {canComment ? (
-              <button type="button" className="shrink-0 text-sm font-medium text-primary hover:underline" onClick={onOpenComments}>
+              <button type="button" className="shrink-0 text-sm font-medium text-econumo-link hover:underline" onClick={onOpenComments}>
                 {comments.length > 0 ? t('budgets.page.plan.comments.disclosure', { count: comments.length }) : t('budgets.page.plan.comments.add')}
               </button>
             ) : null}

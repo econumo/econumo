@@ -196,7 +196,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       {/* hero: the category identity + the money, everything else is detail */}
       <div className="flex flex-col items-center gap-1 pb-4 pt-1 text-center">
         <span className="relative grid size-14 place-items-center rounded-full bg-econumo-card">
-          <EntityIcon name={heroIcon} className="text-3xl text-[#666666]" />
+          <EntityIcon name={heroIcon} className="text-3xl text-entity-icon" />
           {isShared && tx.author ? (
             // the tooltip is the only place the preview names the author (no Author row)
             <span title={tx.author.name} className="absolute -bottom-1 -right-1.5">

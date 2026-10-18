@@ -23,6 +23,9 @@ import { RecoveryDialog } from '@/features/auth/RecoveryDialog'
 import { usePasswordLoginAvailable } from '@/features/auth/oauthQueries'
 import { SettingsShell } from './SettingsShell'
 import { AnalyticsDialog } from './AnalyticsDialog'
+import { ThemeDialog } from './ThemeDialog'
+import { themePreference } from '@/lib/theme'
+import { useTheme } from 'next-themes'
 
 
 export function ProfilePage() {
@@ -30,6 +33,7 @@ export function ProfilePage() {
   const navigate = useNavigate()
   const { data: user } = useUserData()
   const updateName = useUpdateName()
+  const { theme } = useTheme()
 
   const { data: currencies } = useCurrencies()
   const updateCurrency = useUpdateCurrency()
@@ -42,6 +46,7 @@ export function ProfilePage() {
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
+  const [themeOpen, setThemeOpen] = useState(false)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [savedVisible, setSavedVisible] = useState(false)
@@ -104,7 +109,7 @@ export function ProfilePage() {
       {user ? (
         <div className="px-1 py-3">
           <UserCard user={user} size="lg" onAvatarClick={() => setAvatarOpen(true)} avatarLabel={t('user.avatar_picker.change')}>
-            <button type="button" className="self-start text-sm text-econumo-magenta underline hover:text-econumo-magenta-dark" onClick={() => setLogoutOpen(true)}>
+            <button type="button" className="self-start text-sm text-econumo-link underline hover:text-econumo-link" onClick={() => setLogoutOpen(true)}>
               {t('settings.page.logout')}
             </button>
           </UserCard>
@@ -171,6 +176,17 @@ export function ProfilePage() {
         {t('settings.language.menu_item')}
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
           {getLocaleOptions().find((o) => o.value === i18n.language)?.label ?? ''}
+          <ChevronRight className="size-4" />
+        </span>
+      </button>
+      <button
+        type="button"
+        className="mt-2 flex w-full max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        onClick={() => setThemeOpen(true)}
+      >
+        {t('user.page.settings.profile.theme.label')}
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          {t(`user.page.settings.profile.theme.${themePreference(theme)}`)}
           <ChevronRight className="size-4" />
         </span>
       </button>
@@ -261,6 +277,7 @@ export function ProfilePage() {
       />
 
       <LanguageDialog open={languageOpen} onClose={() => setLanguageOpen(false)} />
+      <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
 
       <AnalyticsDialog
         open={analyticsOpen}

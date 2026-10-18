@@ -9,10 +9,11 @@ import { queryKeys } from '@/app/queryKeys'
 import { recordPathname, resetNavTracking } from '@/lib/navigation'
 import i18n from '@/app/i18n'
 import { ProfilePage } from './ProfilePage'
+import { ThemeProvider } from '@/app/ThemeProvider'
 
 function mockViewport(compact = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: q.includes('1023') ? compact : false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    matches: q.includes('1023') ? compact : false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(),
   }))
 }
 
@@ -29,7 +30,7 @@ function renderWithHistory(initialEntries: string[], initialIndex: number) {
   )
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <ThemeProvider><RouterProvider router={router} /></ThemeProvider>
     </QueryClientProvider>,
   )
 }
@@ -46,7 +47,7 @@ function renderPage() {
   )
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <ThemeProvider><RouterProvider router={router} /></ThemeProvider>
     </QueryClientProvider>,
   )
   return queryClient
@@ -195,6 +196,46 @@ it('Language row opens a dialog to switch locale and closes on pick', async () =
   // restore for later tests in this file
   await i18n.changeLanguage('en')
   document.documentElement.lang = 'en'
+})
+
+it('defaults Theme to System and keeps the modal open while storing choices on this device', async () => {
+  const serverWrites = vi.fn()
+  server.use(http.post('*/api/v1/user/update-theme', async () => {
+    serverWrites()
+    return HttpResponse.json({}, { status: 500 })
+  }))
+  const user = userEvent.setup()
+  const cache = renderPage()
+  expect(await screen.findByRole('button', { name: /Theme/ })).toHaveTextContent('System')
+  expect(screen.queryByRole('radiogroup', { name: 'Theme' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /Theme/ }))
+  const dialog = await screen.findByRole('dialog', { name: 'Theme' })
+  for (const [label, value] of [['Dark', 'dark'], ['Light', 'light'], ['System', 'system']]) {
+    const option = within(dialog).getByRole('radio', { name: label })
+    await user.click(option)
+    expect(localStorage.getItem('econumo.theme')).toBe(value)
+    expect(dialog).toBeInTheDocument()
+    expect(option).toBeChecked()
+  }
+  expect(serverWrites).not.toHaveBeenCalled()
+  expect(cache.getQueryData<typeof fixtureUser>(queryKeys.user)?.options).toEqual(fixtureUser.options)
+  await user.click(within(dialog).getAllByRole('button', { name: 'Close' }).find((button) => button.dataset.slot === 'button')!)
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.getByRole('button', { name: /Theme/ })).toHaveTextContent('System')
+})
+
+it('shows the device theme independently of the user profile', async () => {
+  localStorage.setItem('econumo.theme', 'dark')
+  const user = userEvent.setup()
+  renderPage()
+  const themeRow = await screen.findByRole('button', { name: /Theme/ })
+  expect(themeRow).toHaveTextContent('Dark')
+  await user.click(themeRow)
+  expect(await screen.findByRole('radio', { name: 'Dark' })).toBeChecked()
+  await user.click(screen.getByRole('radio', { name: 'Light' }))
+  expect(localStorage.getItem('econumo.theme')).toBe('light')
+  expect(document.documentElement).toHaveClass('light')
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })
 
 it('clicking the avatar opens the avatar picker dialog', async () => {

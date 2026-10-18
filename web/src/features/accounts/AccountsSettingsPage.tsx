@@ -69,7 +69,7 @@ function AccountRow({ account, onPreview }: { account: AccountDto; onPreview: ()
           <GripVertical className="size-4" />
         </button>
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-econumo-card">
-          <EntityIcon name={account.icon} className="text-lg text-[#666666]" />
+          <EntityIcon name={account.icon} className="text-lg text-entity-icon" />
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm leading-tight" title={account.name}>
@@ -386,7 +386,7 @@ export function AccountsSettingsPage() {
       <InfoBox>{t('settings.accounts.info')}</InfoBox>
 
       {accounts.length === 0 ? (
-        <button type="button" className="px-1 py-2 text-sm text-primary underline" onClick={() => openAccountModal({ folderId: folders[0]?.id ?? null })}>
+        <button type="button" className="px-1 py-2 text-sm text-econumo-link underline" onClick={() => openAccountModal({ folderId: folders[0]?.id ?? null })}>
           {t('settings.accounts.list_empty_create')} {t('settings.accounts.list_empty_new_account')}
         </button>
       ) : null}

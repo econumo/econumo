@@ -135,8 +135,8 @@ export function PeriodStrip({ startedAt, endedAt = null, leading }: { startedAt:
             item.isActive
               ? 'font-bold text-foreground'
               : item.outsideBudget
-                ? 'text-[#E6E6E6] hover:text-muted-foreground'
-                : 'text-[#999999] hover:text-foreground'
+                ? 'text-muted-foreground/50 hover:text-muted-foreground'
+                : 'text-muted-foreground hover:text-foreground'
           }`}
           onClick={() => {
             // recenter the window on the new month so both directions stay deep
