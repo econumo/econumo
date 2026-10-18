@@ -307,6 +307,10 @@ navigation (single-pane vs sidebar).
       jump directly to a past or future month/year, then select a day. Browsing
       months/years leaves the transaction date unchanged until a day is selected;
       reopening the picker shows that selected month, and saving keeps the date.
+- [ ] 📱 On phones, the date opens in a bottom sheet with large day, month/year
+      and arrow targets. At 320px wide nothing overflows; Cancel, Escape or
+      dismissing the sheet preserves the date and form edits. Picking a day
+      returns to the transaction form with focus on the date button.
 - [ ] 📱 Category / payee / tag pickers find an item when a letter is skipped
       ("grcries" → Groceries); a prefix match is listed before a match later
       in the name; typing a new name that only resembles an existing one still

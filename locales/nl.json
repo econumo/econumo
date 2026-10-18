@@ -361,6 +361,9 @@
         "header": "Transactie bewerken"
       },
       "form": {
+        "date": {
+          "label": "Datum"
+        },
         "amount": {
           "label": "Bedrag",
           "validation": {

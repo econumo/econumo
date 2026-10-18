@@ -361,6 +361,9 @@
         "header": "Modifica transazione"
       },
       "form": {
+        "date": {
+          "label": "Data"
+        },
         "amount": {
           "label": "Importo",
           "validation": {

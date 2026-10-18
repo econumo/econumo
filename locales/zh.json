@@ -361,6 +361,9 @@
         "header": "编辑交易"
       },
       "form": {
+        "date": {
+          "label": "日期"
+        },
         "amount": {
           "label": "金额",
           "validation": {

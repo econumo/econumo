@@ -11,9 +11,9 @@ import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { TransactionDialog } from './TransactionDialog'
 
-function mockMatchMedia() {
+function mockMatchMedia(phone = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    matches: phone && q === '(max-width: 639px)', media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
 }
 
@@ -154,6 +154,52 @@ it('opens at an existing future transaction date and allows jumping further ahea
   await user.selectOptions(screen.getByRole('combobox', { name: 'Choose the Year' }), String(year + 1))
   await user.click(screen.getByRole('button', { name: new RegExp(`December 15th, ${year + 1}`) }))
   expect(screen.getByRole('button', { name: 'date' })).toHaveTextContent(`${year + 1}-12-15`)
+})
+
+it('on a phone, picks a past date in a bottom sheet and returns to the transaction form', async () => {
+  mockMatchMedia(true)
+  const user = userEvent.setup()
+  const year = String(new Date().getFullYear() - 5)
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '12.50')
+  const dateButton = screen.getByRole('button', { name: 'date' })
+  await user.click(dateButton)
+
+  expect(await screen.findByRole('dialog', { name: 'Date' })).toHaveAttribute('data-slot', 'drawer-content')
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Choose the Year' }), year)
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Choose the Month' }), '1')
+  await user.click(screen.getByRole('button', { name: new RegExp(`February 15th, ${year}`) }))
+
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Date' })).not.toBeInTheDocument())
+  expect(screen.getByRole('heading', { name: 'Add transaction' })).toBeInTheDocument()
+  expect(dateButton).toHaveTextContent(`${year}-02-15`)
+  expect(screen.getByLabelText('Amount')).toHaveValue('12.50')
+  await waitFor(() => expect(dateButton).toHaveFocus())
+})
+
+it('on a phone, Cancel and Escape dismiss only the date sheet without changing the date', async () => {
+  mockMatchMedia(true)
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  const dateButton = screen.getByRole('button', { name: 'date' })
+  const originalDate = dateButton.textContent
+  await user.click(dateButton)
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Choose the Year' }), String(new Date().getFullYear() - 5))
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Date' })).not.toBeInTheDocument())
+  expect(dateButton).toHaveTextContent(originalDate!)
+  await waitFor(() => expect(dateButton).toHaveFocus())
+
+  await user.click(dateButton)
+  expect(await screen.findByRole('dialog', { name: 'Date' })).toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Date' })).not.toBeInTheDocument())
+  expect(useUiStore.getState().transactionModal).not.toBeNull()
+  expect(dateButton).toHaveTextContent(originalDate!)
 })
 
 it('Tab from the amount goes to the next field, not the calculator keypad', async () => {

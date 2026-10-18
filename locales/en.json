@@ -361,6 +361,9 @@
         "header": "Edit transaction"
       },
       "form": {
+        "date": {
+          "label": "Date"
+        },
         "amount": {
           "label": "Amount",
           "validation": {
