@@ -213,3 +213,56 @@ it('reordering persists the new priorities', async () => {
     expect.objectContaining({ id: 'rule1', priority: 1 }),
   ]))
 })
+
+it('creates a category and a payee from the editor, the category of the chosen kind', async () => {
+  const created: Record<string, Record<string, unknown>> = {}
+  renderPage()
+  server.use(
+    http.post('*/api/v1/category/create-category', async ({ request }) => {
+      created.category = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: { id: 'cat-new', ownerUserId: 'u1', name: 'Bonus', position: 9, type: 'income', icon: '', isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' } } })
+    }),
+    http.post('*/api/v1/payee/create-payee', async ({ request }) => {
+      created.payee = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: { id: 'payee-new', ownerUserId: 'u1', name: 'ACME', position: 9, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' } } })
+    }),
+  )
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Add rule' }))
+  const dialog = await screen.findByRole('dialog')
+  await user.type(within(dialog).getByLabelText('Match value'), 'ACME PAYROLL')
+
+  // the picker shows one kind at a time; switching it offers the other kind's rows
+  await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+  expect(await screen.findByRole('option', { name: 'Food' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: 'Salary' })).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await user.click(within(dialog).getByRole('radio', { name: 'Income' }))
+  await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+  expect(await screen.findByRole('option', { name: 'Salary' })).toBeInTheDocument()
+  await user.keyboard('Bonus')
+  await user.click(await screen.findByText(/Add «Bonus»/))
+  await waitFor(() => expect(created.category).toMatchObject({ name: 'Bonus', type: 'income' }))
+  await waitFor(() => expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveValue('Bonus'))
+
+  await user.click(within(dialog).getByRole('combobox', { name: 'Payee' }))
+  await user.keyboard('ACME')
+  await user.click(await screen.findByText(/Add «ACME»/))
+  await waitFor(() => expect(created.payee).toMatchObject({ name: 'ACME' }))
+  await waitFor(() => expect(within(dialog).getByRole('combobox', { name: 'Payee' })).toHaveValue('ACME'))
+
+  await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(posted.create![0]).toMatchObject({ matchValue: 'ACME PAYROLL', categoryId: 'cat-new', payeeId: 'payee-new' }))
+})
+
+it('a read-only user cannot create classifications from the editor', async () => {
+  access.state = 'readonly'
+  renderPage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Add rule' }))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+  await user.keyboard('Bonus')
+  expect(screen.queryByText(/Add «Bonus»/)).not.toBeInTheDocument()
+  expect(within(dialog).queryByRole('button', { name: 'Add tag' })).not.toBeInTheDocument()
+})

@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import type { CategoryType } from '@/api/dto/category'
 import type { ImportRuleAction, ImportRuleDto, ImportRuleSpecDto } from '@/api/dto/imports'
 import { Button } from '@/components/ui/button'
 import { CardField } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
-import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
+import { TagDialog } from '@/features/classifications/TagDialog'
+import { useCategories, useCreateCategory, useCreatePayee, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { ClassificationChips } from '@/features/transactions/ClassificationChips'
 import { EntitySelect } from '@/features/transactions/EntitySelect'
 import { SelectCard } from '@/features/transactions/SelectCard'
 import { classificationChips, toggleClassification } from '@/features/transactions/useTransactionForm'
+import { useAccessState, useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
+import { isValidCategoryName, isValidPayeeName } from '@/lib/validation'
 import { RuleCondition } from './RuleCondition'
 import { ruleSpec } from './ruleSummary'
 import { useCreateImportRule, usePreviewImportRule, useUpdateImportRule } from './queries'
@@ -44,7 +49,22 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
   const { mutate: runPreview } = preview
   const create = useCreateImportRule()
   const update = useUpdateImportRule()
-
+  const createCategory = useCreateCategory()
+  const createPayee = useCreatePayee()
+  const { data: user } = useUserData()
+  const { state: accessState } = useAccessState()
+  const [addTagOpen, setAddTagOpen] = useState(false)
+  // A category is either kind, and a new one needs a kind before it exists,
+  // so the picker shows one kind at a time, starting from the rule's own.
+  const [categoryType, setCategoryType] = useState<CategoryType>(
+    () => categories.find((c) => c.id === spec.categoryId)?.type ?? 'expense',
+  )
+  // The server accepts only the caller's own classifications as rule targets
+  // (rules apply to the caller's imports), so rows shared in by a connection
+  // are not offered, and new rows are created for the caller.
+  const ownerId = user?.id
+  const own = <T extends { ownerUserId: string }>(rows: T[]) => rows.filter((r) => !ownerId || r.ownerUserId === ownerId)
+  const canCreate = accessState !== 'readonly'
 
   const patch = (p: Partial<ImportRuleSpecDto>) => setSpec((s) => ({ ...s, ...p }))
   const setAction = (action: ImportRuleAction) =>
@@ -75,7 +95,7 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
     return () => clearTimeout(handle)
   }, [open, canSave, spec, runPreview])
 
-  const chips = classificationChips(tags, labels, { tagId: spec.tagId || null, labelIds: spec.labelIds }, undefined)
+  const chips = classificationChips(tags, labels, { tagId: spec.tagId || null, labelIds: spec.labelIds }, ownerId)
   const matchCount = !canSave
     ? ''
     : preview.data
@@ -108,22 +128,51 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
           </div>
           {spec.action === 'classify' ? (
             <>
-              <SelectCard label={t('imports.rules.editor.category')}>
-                <EntitySelect aria-label={t('imports.rules.editor.category')} value={spec.categoryId || null} clearable placeholder={t('imports.rules.editor.not_set')}
-                  onChange={(id) => patch({ categoryId: id ?? '' })}
-                  options={categories.filter((c) => !c.isArchived || c.id === spec.categoryId).map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))} />
-              </SelectCard>
+              <div className="relative">
+                <SelectCard label={t('imports.rules.editor.category')}>
+                  <EntitySelect aria-label={t('imports.rules.editor.category')} value={spec.categoryId || null} clearable placeholder={t('imports.rules.editor.not_set')}
+                    onChange={(id) => patch({ categoryId: id ?? '' })}
+                    options={own(categories).filter((c) => c.id === spec.categoryId || (!c.isArchived && c.type === categoryType)).map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
+                    onCreate={canCreate ? (name) => createCategory.mutate(
+                      { name, type: categoryType, ownerUserId: ownerId },
+                      { onSuccess: (item) => patch({ categoryId: item.id }), onError: (err) => toast.error(apiErrorMessage(err)) },
+                    ) : undefined}
+                    createValidator={isValidCategoryName} />
+                </SelectCard>
+                <div className="absolute top-2 right-3 flex gap-0.5" role="radiogroup" aria-label={t('imports.rules.editor.category_type')}>
+                  {(['expense', 'income'] as const).map((type) => (
+                    <button key={type} type="button" role="radio" aria-checked={categoryType === type}
+                      className={`rounded px-1.5 py-0.5 text-[11px] transition-colors ${categoryType === type ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                      onClick={() => setCategoryType(type)}>
+                      {t(`transactions.modal.transaction_type.${type}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <SelectCard label={t('imports.rules.editor.payee')}>
                 <EntitySelect aria-label={t('imports.rules.editor.payee')} value={spec.payeeId || null} clearable placeholder={t('imports.rules.editor.not_set')}
                   onChange={(id) => patch({ payeeId: id ?? '' })}
-                  options={payees.filter((p) => !p.isArchived || p.id === spec.payeeId).map((p) => ({ value: p.id, label: p.name }))} />
+                  options={own(payees).filter((p) => !p.isArchived || p.id === spec.payeeId).map((p) => ({ value: p.id, label: p.name }))}
+                  onCreate={canCreate ? (name) => createPayee.mutate(
+                    { name, ownerUserId: ownerId },
+                    { onSuccess: (item) => patch({ payeeId: item.id }), onError: (err) => toast.error(apiErrorMessage(err)) },
+                  ) : undefined}
+                  createValidator={isValidPayeeName} />
               </SelectCard>
-              {chips.length > 0 ? (
+              {chips.length > 0 || canCreate ? (
                 <CardField label={t('accounts.page.preview_transaction_modal.tags.label')}>
-                  <ClassificationChips chips={chips} onToggle={(chip) => setSpec((s) => {
-                    const next = toggleClassification({ tagId: s.tagId || null, labelIds: s.labelIds }, chip.kind, chip.id)
-                    return { ...s, tagId: next.tagId ?? '', labelIds: next.labelIds }
-                  })} />
+                  <div className="flex items-center gap-2">
+                    <ClassificationChips chips={chips} onToggle={(chip) => setSpec((s) => {
+                      const next = toggleClassification({ tagId: s.tagId || null, labelIds: s.labelIds }, chip.kind, chip.id)
+                      return { ...s, tagId: next.tagId ?? '', labelIds: next.labelIds }
+                    })} />
+                    {canCreate ? (
+                      <button type="button" aria-label={t('classifications.tags.forms.tag.add_button')} title={t('common.button.add.label')}
+                        className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => setAddTagOpen(true)}>
+                        <Plus className="size-4" />
+                      </button>
+                    ) : null}
+                  </div>
                 </CardField>
               ) : null}
             </>
@@ -137,6 +186,10 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
           <Button type="button" disabled={!canSave || create.isPending || update.isPending} onClick={() => void save()}>{t('common.button.save.label')}</Button>
         </div>
       </div>
+      <TagDialog open={addTagOpen} onClose={() => setAddTagOpen(false)} ownerUserId={ownerId}
+        onCreated={(kind, item) => setSpec((s) => kind === 'tag'
+          ? { ...s, tagId: item.id }
+          : { ...s, labelIds: s.labelIds.includes(item.id) ? s.labelIds : [...s.labelIds, item.id] })} />
     </ResponsiveDialog>
   )
 }

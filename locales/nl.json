@@ -764,7 +764,8 @@
         "when": "Als",
         "then": "Dan",
         "value_placeholder": "Te zoeken tekst, bijv. STARBUCKS",
-        "not_set": "Niet ingesteld"
+        "not_set": "Niet ingesteld",
+        "category_type": "Categorietype"
       },
       "page": {
         "menu_item": "Importregels",

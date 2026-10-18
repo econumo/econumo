@@ -764,7 +764,8 @@
         "when": "Когда",
         "then": "Тогда",
         "value_placeholder": "Текст для поиска, напр. STARBUCKS",
-        "not_set": "Не задано"
+        "not_set": "Не задано",
+        "category_type": "Тип категории"
       },
       "page": {
         "menu_item": "Правила импорта",

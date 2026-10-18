@@ -764,7 +764,8 @@
         "when": "当",
         "then": "则",
         "value_placeholder": "要查找的文本，例如 STARBUCKS",
-        "not_set": "未设置"
+        "not_set": "未设置",
+        "category_type": "类别类型"
       },
       "page": {
         "menu_item": "导入规则",

@@ -693,7 +693,14 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       for case sensitivity), then "Then" with a Classify/Skip switch.
       Classify shows the transaction dialog's own Category and Payee pickers
       (type to search, "Not set" when empty) and the tag/label chips;
-      Skip replaces them with "Matching transactions are not imported". The
+      Skip replaces them with "Matching transactions are not imported".
+      As in the transaction dialog, typing a new name in Category or Payee
+      offers "Add «name»", which creates it and selects it, and the Tags "+"
+      creates a tag or label and ticks it. The Category card's Expense / Income
+      switch picks which kind the list shows and which kind a new category
+      gets. Only your own categories, payees, tags and labels are offered
+      (not ones shared in by a connection), and a read-only user gets no
+      "Add" row and no "+". The
       "Matches N imported transactions" count appears once the rule can be
       saved (a classify rule needs something to set) — no 400 from
       `preview-rule` while it cannot. The "Create an import rule" prompt uses

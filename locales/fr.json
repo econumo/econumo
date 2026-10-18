@@ -764,7 +764,8 @@
         "when": "Quand",
         "then": "Alors",
         "value_placeholder": "Texte à rechercher, p. ex. STARBUCKS",
-        "not_set": "Non défini"
+        "not_set": "Non défini",
+        "category_type": "Type de catégorie"
       },
       "page": {
         "menu_item": "Règles d'import",

@@ -764,7 +764,8 @@
         "when": "When",
         "then": "Then",
         "value_placeholder": "Text to look for, e.g. STARBUCKS",
-        "not_set": "Not set"
+        "not_set": "Not set",
+        "category_type": "Category type"
       },
       "page": {
         "menu_item": "Import rules",

@@ -764,7 +764,8 @@
         "when": "Коли",
         "then": "Тоді",
         "value_placeholder": "Текст для пошуку, напр. STARBUCKS",
-        "not_set": "Не задано"
+        "not_set": "Не задано",
+        "category_type": "Тип категорії"
       },
       "page": {
         "menu_item": "Правила імпорту",
