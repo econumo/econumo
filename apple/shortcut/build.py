@@ -329,6 +329,7 @@ def workflow(name: str, actions: list, color: int) -> dict:
         "WFWorkflowClientVersion": "2700.0.4",
         "WFWorkflowMinimumClientVersion": 900,
         "WFWorkflowMinimumClientVersionString": "900",
+        # 59395 (0xE803) is the dollar-sign glyph
         "WFWorkflowIcon": {"WFWorkflowIconGlyphNumber": 59395, "WFWorkflowIconStartColor": color},
         "WFWorkflowHasShortcutInputVariables": True,
         "WFWorkflowHasOutputFallback": False,
@@ -345,7 +346,7 @@ def workflow(name: str, actions: list, color: int) -> dict:
 # the deep link in the SPA and the automation instructions address it by
 # that name.
 SHORTCUTS = {
-    "econumo": (wallet_actions, 4292093695),  # green
+    "econumo": (wallet_actions, 4274264319),  # yellow (0xFEC418FF)
 }
 
 
