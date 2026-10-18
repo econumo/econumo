@@ -131,7 +131,13 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 	if err != nil {
 		return err
 	}
-	categoryByName := newNamedCache(categories)
+	// A category is looked up within its kind: a row resolves its name among
+	// the categories of its own sign, and a missing one is created with that
+	// kind, never reusing a same-named category of the other kind.
+	categoryByKind := map[bool]*nameCache{false: newNameCache(), true: newNameCache()}
+	for _, c := range categories {
+		categoryByKind[c.Income].put(c.Name, c)
+	}
 	payeeByName := newNamedCache(payees)
 	tagByName := newNamedCache(tags)
 	// labelCaches is keyed by owner id, seeded with the outer accountOwnerID's
@@ -215,7 +221,7 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 		rowNumber := i + 2
 		if rerr := s.importRow(ctx, userID, accountOwnerID, req, dualMode, row, rowNumber,
 			overrideAccount, overrideDate, overrideCategory, overridePayee, overrideTag, overrideLabelIDs, overrideDescription, labelsSeparator,
-			accountByName, categoryByName, payeeByName, tagByName, labelCaches, result); rerr != nil {
+			accountByName, categoryByKind, payeeByName, tagByName, labelCaches, result); rerr != nil {
 			// Row-level error: record + skip, continue.
 			addImportError(result, rerr.Error(), rowNumber)
 			result.Skipped++
@@ -235,7 +241,7 @@ func (s *Service) importRow(
 	overrideAccount *model.ImportAccount, overrideDate *time.Time,
 	overrideCategory, overridePayee, overrideTag *model.ImportNamed, overrideLabelIDs []vo.Id, overrideDescription *string,
 	labelsSeparator string,
-	accountByName *nameCache, categoryByName, payeeByName, tagByName *nameCache, labelCaches map[string]*nameCache, result *model.ImportResult,
+	accountByName *nameCache, categoryByKind map[bool]*nameCache, payeeByName, tagByName *nameCache, labelCaches map[string]*nameCache, result *model.ImportResult,
 ) error {
 	imp := s.importer
 
@@ -303,10 +309,14 @@ func (s *Service) importRow(
 	// category / payee / tag (override or find-or-create by mapped name).
 	var categoryID, payeeID, tagID *vo.Id
 	if overrideCategory != nil {
-		id, _ := vo.ParseId(overrideCategory.ID)
-		categoryID = &id
+		// one category for every row: the rows of the other kind import
+		// without it rather than carry a category that cannot classify them
+		if overrideCategory.Income == income {
+			id, _ := vo.ParseId(overrideCategory.ID)
+			categoryID = &id
+		}
 	} else if name := fieldValue(row, req.Mapping.Category); name != "" {
-		c, err := s.findOrCreateNamed(ctx, name, categoryByName, func(ctx context.Context) (model.ImportNamed, error) {
+		c, err := s.findOrCreateNamed(ctx, name, categoryByKind[income], func(ctx context.Context) (model.ImportNamed, error) {
 			return imp.CreateCategory(ctx, accountOwnerID, name, income)
 		})
 		if err != nil {

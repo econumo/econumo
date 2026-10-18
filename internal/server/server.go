@@ -439,7 +439,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	importsHandlers := handlerimports.NewHandlers(importsSvc)
 
 	recurringRepo := recurringrepo.NewRepo(cfg.DatabaseDriver, txm)
-	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, labelOwnership, txm, opGuard, clk)
+	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, labelOwnership, txImportCategories, txm, opGuard, clk)
 	recurringHandlers := handlerrecurring.NewHandlers(recurringSvc)
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)

@@ -102,7 +102,7 @@ func (s *Service) updateTransaction(ctx context.Context, userID vo.Id, req model
 		if nerr := s.normalizeTransferAmounts(ctx, &st); nerr != nil {
 			return nerr
 		}
-		if rerr := s.checkReferences(ctx, userID, &st, labelIDs); rerr != nil {
+		if rerr := s.checkReferences(ctx, userID, &st, labelIDs, t); rerr != nil {
 			return rerr
 		}
 		// §5a: an edit may REMOVE a deleted account from the transaction but not

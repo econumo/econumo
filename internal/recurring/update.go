@@ -44,6 +44,9 @@ func (s *Service) UpdateRecurringTransaction(ctx context.Context, userID vo.Id, 
 				return lerr
 			}
 			st.LabelIDs = ids
+			if cerr := s.checkCategoryKind(ctx, ownerID, st.Type, st.CategoryID, rt); cerr != nil {
+				return cerr
+			}
 		}
 		rt.Update(st, s.clock.Now())
 		updated = rt

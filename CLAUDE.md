@@ -1253,6 +1253,13 @@ data unreadable. Most are also asserted by the test suite.
 - **SQLite is the reference engine** — it's the default; PostgreSQL must match it byte-for-byte (enforced by the `enginecompare` suite).
 
 ### Notable behaviours
+- **Category type matches transaction type**: an income category classifies only income and
+  an expense category only expenses. `checkReferences` (create, update, bulk, recurring post,
+  MCP, imports) refuses a mismatch with the field error `categoryId` /
+  `transaction.category_type_mismatch`, except on an update that keeps the stored category
+  and type (rows written before the check stay editable); recurring templates are checked
+  the same way on save. CSV import resolves a category name within the row's sign (creating
+  one of that type when missing) and leaves a constant `categoryId` off rows of the other type.
 - **Budget element visibility**: a tag/envelope/category appears in `get-budget` when it has spending **or** a limit (current or carried-over) — so a tag with a limit but no transactions stays visible.
 - **Account balance day boundary**: "balance as of end of today" uses the **caller's** timezone (`X-Timezone` header), not the server's UTC day.
 - **Recurring transaction scheduling**: templates advance from the scheduled date with

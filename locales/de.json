@@ -2053,7 +2053,8 @@
       "item_not_available": "Diese Transaktion ist für diesen Vorgang nicht verfügbar.",
       "invalid_import_file": "Bitte laden Sie eine gültige CSV-Datei hoch",
       "too_many_labels": "Eine Transaktion kann höchstens 50 Auswertungs-Tags haben.",
-      "account_deleted": "Dieses Konto wurde gelöscht."
+      "account_deleted": "Dieses Konto wurde gelöscht.",
+      "category_type_mismatch": "Der Kategorietyp muss zum Transaktionstyp passen."
     },
     "user": {
       "report_period_invalid": "ReportPeriod ist ungültig",

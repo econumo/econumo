@@ -342,6 +342,18 @@ navigation (single-pane vs sidebar).
       correct signs and classifications.
 - [ ] Import with a broken row (bad date/amount) → partial result, failed rows
       detailed, good rows imported.
+- [ ] Category type guard: a category only goes on a transaction of its own
+      type. CSV: an income row (positive amount) whose category cell names an
+      expense category ("Food") gets a new income category "Food" (a second
+      "Food" under Income), never the expense one; with a constant
+      "Category" picked for every row, the rows of the other type import
+      without a category. API/MCP: `create-transaction` with an expense type
+      and an income category (or the reverse) returns 400 with
+      `errors.categoryId` = "The category type must match the transaction
+      type."; so does an update that switches the type but keeps the old
+      category, and so does creating/editing a recurring template that way. An
+      older transaction already stored with a mismatched category still saves
+      when only its notes/amount/date change.
 - [ ] **CSV export**: multi-select accounts, select-all/deselect-all; exported
       file contains the expected rows/columns and respects the account choice.
 

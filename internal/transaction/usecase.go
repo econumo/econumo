@@ -193,7 +193,12 @@ func notAvailableCode(msg string) string {
 //     follow the same ACCOUNT-OWNER-only rule as category/payee/tag above: a
 //     connected co-sharer classifies with the owner's labels exactly as they
 //     do with the owner's categories/tags/payees.
-func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st *model.NewState, rawLabelIDs []string) error {
+//
+// prev is the stored row on an update (nil on a create): an income category
+// may only classify income and an expense category only expenses, but a row
+// that already carries its category under the same type keeps it, so rows
+// written before this check stay editable.
+func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st *model.NewState, rawLabelIDs []string, prev *model.Transaction) error {
 	if st.AccountRecipID != nil {
 		if err := s.checkWriteAccess(ctx, userID, *st.AccountRecipID, "account.account.not_available"); err != nil {
 			return err
@@ -207,8 +212,18 @@ func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st *model.N
 		return &errs.ValidationError{Msg: "account.account.not_available", MsgCode: errs.CodeTransactionAccountNotAvailable}
 	}
 	if st.CategoryID != nil {
-		if err := s.requireAvailableEntity(ctx, ownerID, *st.CategoryID, s.importer.CategoriesByOwner); err != nil {
+		cat, err := findEntity(ctx, ownerID, *st.CategoryID, s.importer.CategoriesByOwner)
+		if err != nil {
 			return err
+		}
+		if cat == nil {
+			return &errs.ValidationError{Msg: "transaction.transaction.not_available", MsgCode: errs.CodeTransactionItemNotAvailable}
+		}
+		kept := prev != nil && prev.CategoryID != nil && *prev.CategoryID == *st.CategoryID && prev.Type == st.Type
+		if !kept && cat.Income != st.Type.IsIncome() {
+			return errs.NewValidation("Validation failed", errs.FieldError{
+				Key: "categoryId", Message: "The category type must match the transaction type.", Code: errs.CodeTransactionCategoryTypeMismatch,
+			})
 		}
 	}
 	if st.PayeeID != nil {
@@ -301,16 +316,23 @@ func (s *Service) requireAvailableEntity(ctx context.Context, accountOwnerID, id
 
 // ownsEntity reports whether id is among ownerID's owner-scoped entities.
 func ownsEntity(ctx context.Context, ownerID, id vo.Id, list func(context.Context, vo.Id) ([]model.ImportNamed, error)) (bool, error) {
+	it, err := findEntity(ctx, ownerID, id, list)
+	return it != nil, err
+}
+
+// findEntity returns id's row among ownerID's owner-scoped entities, nil when
+// it is not one of them.
+func findEntity(ctx context.Context, ownerID, id vo.Id, list func(context.Context, vo.Id) ([]model.ImportNamed, error)) (*model.ImportNamed, error) {
 	items, err := list(ctx, ownerID)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	for _, it := range items {
-		if it.ID == id.String() {
-			return true, nil
+	for i := range items {
+		if items[i].ID == id.String() {
+			return &items[i], nil
 		}
 	}
-	return false, nil
+	return nil, nil
 }
 
 // checkViewAccess verifies the user may VIEW the account's transactions: owner

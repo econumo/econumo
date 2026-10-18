@@ -53,6 +53,8 @@ const (
 	folderID   = "ffffffff-0000-0000-0000-00000000f01d"
 	accountID  = "aaaa1111-0000-0000-0000-0000000000a1"
 	catID      = "cccc2222-0000-0000-0000-0000000000c1"
+	// an income transaction takes an income category
+	incomeCatID = "cccc2222-0000-0000-0000-0000000000c3"
 
 	labelOwnerID = "33333333-3333-3333-3333-333333333333"
 	label1ID     = "dddd3333-0000-0000-0000-0000000000d1"
@@ -103,6 +105,7 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 	f.AccountInFolder(folderID, accountID)
 	f.AccountOption(accountID, seedUserID, 0)
 	f.Category(fixture.Category{ID: catID, UserID: seedUserID, Name: "Food", Type: 0, Icon: "local_offer"})
+	f.Category(fixture.Category{ID: incomeCatID, UserID: seedUserID, Name: "Salary", Type: 1, Icon: "payments"})
 	f.Label(fixture.Label{ID: label1ID, UserID: seedUserID, Name: "Label One"})
 	f.Label(fixture.Label{ID: label2ID, UserID: seedUserID, Name: "Label Two"})
 	// A different user's label, to verify labelIds are rejected across ownership.

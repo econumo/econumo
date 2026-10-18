@@ -94,11 +94,12 @@ const (
 	CodeTokenExpirationInFuture    = "token.expiration_in_future"
 	CodeTokenRetentionNegative     = "token.retention_negative"
 
-	CodeTransactionAccountNotAvailable = "transaction.account_not_available"
-	CodeTransactionItemNotAvailable    = "transaction.item_not_available"
-	CodeTransactionInvalidImportFile   = "transaction.invalid_import_file"
-	CodeTransactionTooManyLabels       = "transaction.too_many_labels"
-	CodeTransactionAccountDeleted      = "transaction.account_deleted"
+	CodeTransactionAccountNotAvailable  = "transaction.account_not_available"
+	CodeTransactionItemNotAvailable     = "transaction.item_not_available"
+	CodeTransactionInvalidImportFile    = "transaction.invalid_import_file"
+	CodeTransactionTooManyLabels        = "transaction.too_many_labels"
+	CodeTransactionAccountDeleted       = "transaction.account_deleted"
+	CodeTransactionCategoryTypeMismatch = "transaction.category_type_mismatch"
 
 	CodeUserReportPeriodInvalid       = "user.report_period_invalid"
 	CodeUserLanguageInvalid           = "user.language_invalid"
@@ -233,6 +234,7 @@ var AllCodes = []string{
 	CodeTransactionInvalidImportFile,
 	CodeTransactionTooManyLabels,
 	CodeTransactionAccountDeleted,
+	CodeTransactionCategoryTypeMismatch,
 
 	CodeUserReportPeriodInvalid,
 	CodeUserLanguageInvalid,

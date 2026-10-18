@@ -2053,7 +2053,8 @@
       "item_not_available": "This transaction is not available for this operation.",
       "invalid_import_file": "Please upload a valid CSV file",
       "too_many_labels": "A transaction can have at most 50 reporting tags.",
-      "account_deleted": "This account has been deleted"
+      "account_deleted": "This account has been deleted",
+      "category_type_mismatch": "The category type must match the transaction type."
     },
     "user": {
       "report_period_invalid": "ReportPeriod is incorrect",

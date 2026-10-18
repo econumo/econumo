@@ -51,6 +51,9 @@ func (s *Service) CreateRecurringTransaction(ctx context.Context, userID vo.Id, 
 				return lerr
 			}
 			st.LabelIDs = ids
+			if cerr := s.checkCategoryKind(ctx, ownerID, st.Type, st.CategoryID, nil); cerr != nil {
+				return cerr
+			}
 		}
 		created = model.NewRecurringTransaction(st)
 		if serr := s.repo.Save(ctx, created); serr != nil {

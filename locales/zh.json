@@ -2053,7 +2053,8 @@
       "item_not_available": "该交易不可用于此操作。",
       "invalid_import_file": "请上传有效的 CSV 文件。",
       "too_many_labels": "一笔交易最多可以有 50 个统计标签。",
-      "account_deleted": "该账户已删除。"
+      "account_deleted": "该账户已删除。",
+      "category_type_mismatch": "类别类型必须与交易类型一致。"
     },
     "user": {
       "report_period_invalid": "报表周期不正确。",
