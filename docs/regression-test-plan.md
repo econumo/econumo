@@ -430,7 +430,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       files (`econumo-wallet-v1.shortcut`, `econumo-setup-v1.shortcut`) are
       no longer served (not found), while an already installed v1 automation
       still imports.
-- [ ] Step 2, iOS only 📱: "Connect Apple Wallet" mints an ingest PAT (visible
+- [ ] Step 2, iOS only 📱: "Connect Shortcut" mints an ingest PAT (visible
       under Profile → Tokens with scope `ingest`), then shows "Open
       econumo", which opens the Shortcuts app in a new window — the
       app window stays on the page. The shortcut saves the configuration
@@ -441,18 +441,18 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       `account is required` check-in removed from the Failed imports section.
       "Configure manually" opens `https://econumo.com/docs/user-guide/apple-wallet`
       in a new tab; "Mark as done" completes the step by hand.
-- [ ] Step 2 once done, iOS 📱: the step still offers "Connect Apple Wallet"
+- [ ] Step 2 once done, iOS 📱: the step still offers "Connect Shortcut"
       (outline style) with the note "Connecting again replaces the token the
       Shortcut uses now…"; tapping it revokes the old ingest token, mints a new
       one and shows "Open econumo" (note hidden); payments stop importing
       until the Shortcut has run with the new token, then resume. The step
       stays done throughout.
-- [ ] Step 2, iOS only 📱: "Connect Apple Wallet" with an `ingest` PAT minted
+- [ ] Step 2, iOS only 📱: "Connect Shortcut" with an `ingest` PAT minted
       meanwhile from another device (page rendered before it existed) revokes
       that token first and mints a fresh one — Profile → Tokens shows exactly
       one live `ingest` PAT afterwards; `full` PATs are untouched.
 - [ ] Desktop: an "Open this page on your iPhone…" hint sits above the steps
-      and "Connect Apple Wallet" is absent; the download, "Configure manually",
+      and "Connect Shortcut" is absent; the download, "Configure manually",
       the waiting line and the hand ticks still work; running the configured
       shortcut by hand on the phone completes step 2 here too.
 - [ ] Step 3 text walks through Automation → + → Wallet → cards & categories →
