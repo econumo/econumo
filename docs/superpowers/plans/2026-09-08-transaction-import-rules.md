@@ -1,5 +1,10 @@
 # Transaction Import — Stage 4 (Rules) Implementation Plan
 
+> **Update (2026-10-18):** Bulk AI rule suggestion generation has been removed.
+> The AI client, provider configuration, and integration remain available for future features.
+> Rule creation after editing imported transactions and manual rule management remain supported.
+> Suggestion-generation sections below describe the historical design.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add import rules — per-user classify/skip patterns that fire inside the import pipeline, a "make this a rule?" prompt after editing an imported transaction, a rules management page, preview/apply against existing imports, and optional LLM rule suggestions.

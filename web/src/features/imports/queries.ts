@@ -322,10 +322,3 @@ export function useApplyImportRule() {
     },
   })
 }
-
-export function useSuggestImportRules() {
-  return useMutation({
-    mutationFn: (scope: ImportRuleScopeDto) => importsApi.suggestImportRules(scope),
-    onSuccess: (items) => trackEvent(METRICS.IMPORT_RULES_SUGGEST, { count: items.length }),
-  })
-}

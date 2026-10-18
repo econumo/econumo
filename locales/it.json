@@ -777,13 +777,6 @@
         "delete_title": "Eliminare questa regola?",
         "delete_confirm": "Elimina regola",
         "skip_hint": "Le transazioni corrispondenti non vengono importate"
-      },
-      "suggest": {
-        "button": "Suggerisci regole",
-        "running": "Sto pensando…",
-        "heading": "Regole suggerite",
-        "accept": "Accetta",
-        "discard": "Scarta"
       }
     },
     "history": {
@@ -2017,9 +2010,7 @@
       "provider_unavailable": "Impossibile raggiungere il bridge bancario. Riprova tra qualche minuto.",
       "sync_range_invalid": "L'intervallo di date non è valido: la data di inizio non deve essere successiva a quella di fine e l'intervallo non deve superare i 400 giorni.",
       "access_url_invalid": "La credenziale bancaria salvata non è un URL di accesso valido. Ricollega SimpleFIN con un nuovo token di configurazione.",
-      "rule_skip_not_applicable": "Una regola di esclusione non può essere applicata a transazioni esistenti",
-      "ai_disabled": "I suggerimenti IA non sono abilitati su questo server",
-      "ai_unavailable": "Il servizio IA non è disponibile. Riprova più tardi."
+      "rule_skip_not_applicable": "Una regola di esclusione non può essere applicata a transazioni esistenti"
     },
     "label": {
       "name_length": "Il nome del tag deve contenere da {min} a {max} caratteri",

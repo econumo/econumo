@@ -83,6 +83,5 @@ const (
 	RateScopeIngest          = "ingest"
 	RateScopeClaimSetupToken = "import-claim"
 	RateScopeSync            = "import-sync"
-	RateScopeSuggestRules    = "import-suggest"
 	RateScopePreviewRule     = "import-preview"
 )

@@ -295,10 +295,4 @@ func init() {
 		}
 	}})
 
-	register(Scenario{Name: "import_rule_suggest_disabled_err", Calls: func() []Call {
-		return []Call{
-			// SuggestRules is a stub until Task 11: always the coded import.ai_disabled 400.
-			{Label: "err:suggest-rules-disabled", Method: "POST", Path: "/api/v1/import/suggest-rules", Auth: "owner", Body: map[string]any{"scope": "all"}},
-		}
-	}})
 }

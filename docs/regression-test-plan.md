@@ -767,8 +767,8 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       archive switch and no "Reorder list" (A–Z) button — order matters. The
       row's ⋮ menu (a sheet on a phone) offers Edit and Delete; Delete asks
       "Delete this rule?"; drag (or focus the grip, Space, arrow, Space)
-      reorders and the order survives reload. With AI on, "Suggest rules" sits
-      beside "Add rule" (in the toolbar under the search on a phone). 📱
+      reorders and the order survives reload. "Add rule" is available; there
+      is no bulk "Suggest rules" action, even with an AI provider configured. 📱
 - [ ] Rule editor layout: a "When" card reads as a sentence (Payee/Description
       and contains/starts with/is exactly pills above the text, an "Aa" toggle
       for case sensitivity), then "Then" with a Classify/Skip switch.
@@ -797,26 +797,13 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       target is an expense category neither counts nor changes income rows in
       its "Matches N" preview and its apply. With a category picked, the
       editor says "Only expense (income) transactions get this category".
-- [ ] `ECONUMO_AI_DSN` unset: no "Suggest rules" button; `suggest-rules` returns
-      400 `import.ai_disabled`. Set to a working OpenAI-compatible endpoint:
-      the button proposes rules with a reason and a live count each; Accept
-      creates the rule at the bottom of the list, Edit opens the editor
-      prefilled, Discard removes the row; a 4th click inside the window gets
-      429 with the standard envelope.
-- [ ] Set `ECONUMO_AI_DSN=anthropic://<api-key>@api.anthropic.com?model=claude-sonnet-4-6`:
-      "Suggest rules" proposes and accepts rules using Anthropic's native Messages API.
-      Repeat against an Anthropic-compatible gateway with a custom prefix (and a keyless
-      loopback gateway): requests use `<prefix>/messages`, `x-api-key` when configured,
-      and `anthropic-version`, with the system prompt outside the messages array.
-      Invalid credentials, malformed/empty replies, refusals, and exhausted output budgets
-      return 400 `import.ai_unavailable` without exposing the key or response body.
 - [ ] Typing in either rule editor fires `preview-rule` on a 300 ms debounce and
       it is capped per user (`ECONUMO_RATE_LIMIT_PREVIEW_RULE`, default 120 per
       window): set it to 1 and the second preview returns 429 with the standard
       envelope while the rest of the editor still works.
 - [ ] Ingest-scoped PATs get 401 on every rule endpoint; a read-only
       (trial-ended) user gets 402 on `create-rule`/`update-rule`/`delete-rule`/
-      `apply-rule`/`suggest-rules` and 402 on `preview-rule` as well, and 200
+      `apply-rule` and 402 on `preview-rule` as well, and 200
       on `get-rule-list`.
 
 ## 6. Recurring transactions

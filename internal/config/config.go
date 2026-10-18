@@ -102,7 +102,6 @@ type Config struct {
 	RateLimitIngest             int           // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
 	RateLimitClaimSetupToken    int           // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
 	RateLimitSync               int           // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
-	RateLimitSuggestRules       int           // ECONUMO_RATE_LIMIT_SUGGEST_RULES: AI rule suggestions per user (every call is a paid completion)
 	RateLimitPreviewRule        int           // ECONUMO_RATE_LIMIT_PREVIEW_RULE: rule previews per user (fired from a typing debounce; every request counts)
 	RateLimitWindow             time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
 	RateLimitGlobal             int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
@@ -117,8 +116,8 @@ type Config struct {
 
 	// AI — DERIVED from ECONUMO_AI_DSN; the scheme selects openai://,
 	// anthropic://, or econumo:// with host[:port][/prefix]?model=….
-	// Empty disables import-rule suggestions: suggest-rules answers a coded
-	// 400 and the SPA hides the action (AI_ENABLED in econumo-config.js).
+	// The client integration is retained for future AI features; AI_ENABLED
+	// advertises whether a provider is configured in econumo-config.js.
 	AIDSN      string
 	AIEnabled  bool
 	AIDialect  string // AIDialectOpenAI | AIDialectAnthropic | AIDialectEconumo, from the DSN scheme
@@ -402,7 +401,6 @@ func Load() (Config, error) {
 		{&c.RateLimitIngest, "ECONUMO_RATE_LIMIT_INGEST", 60},
 		{&c.RateLimitClaimSetupToken, "ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", 5},
 		{&c.RateLimitSync, "ECONUMO_RATE_LIMIT_SYNC", 10},
-		{&c.RateLimitSuggestRules, "ECONUMO_RATE_LIMIT_SUGGEST_RULES", 3},
 		{&c.RateLimitPreviewRule, "ECONUMO_RATE_LIMIT_PREVIEW_RULE", 120},
 		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
 	} {

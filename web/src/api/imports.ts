@@ -11,7 +11,6 @@ import type {
   ImportRuleDto,
   ImportRuleScopeDto,
   ImportRuleSpecDto,
-  ImportRuleSuggestionDto,
   ImportRunDetailDto,
   ImportRunDto,
   ImportSourceDto,
@@ -187,9 +186,4 @@ export async function previewImportRule(spec: ImportRuleSpecDto, scope: ImportRu
 export async function applyImportRule(ruleId: Id, scope: ImportRuleScopeDto, includeEdited: boolean): Promise<ApplyImportRuleDto> {
   const response = await api.post<Envelope<ApplyImportRuleDto>>(apiUrl('/api/v1/import/apply-rule'), { ruleId, ...scope, includeEdited })
   return response.data.data
-}
-
-export async function suggestImportRules(scope: ImportRuleScopeDto): Promise<ImportRuleSuggestionDto[]> {
-  const response = await api.post<Envelope<{ items: ImportRuleSuggestionDto[] }>>(apiUrl('/api/v1/import/suggest-rules'), scope)
-  return response.data.data.items
 }

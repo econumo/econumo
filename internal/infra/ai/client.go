@@ -1,6 +1,6 @@
 // Package ai supplies OpenAI-compatible chat completions and Anthropic
-// Messages behind import-rule suggestions. JSON is requested in the prompt
-// rather than through vendor-specific response formats or tools.
+// Messages for AI features. JSON can be requested in the prompt rather than
+// through vendor-specific response formats or tools.
 package ai
 
 import (
@@ -18,8 +18,7 @@ import (
 // maxResponseBytes bounds what a misbehaving endpoint can make us buffer.
 const maxResponseBytes = 1 << 20
 
-// Anthropic requires an explicit output budget. Allow room for the prompt's
-// maximum of 30 rules, including their classification ids and reasons.
+// Anthropic requires an explicit output budget.
 const anthropicMaxTokens = 8192
 
 type Config struct {

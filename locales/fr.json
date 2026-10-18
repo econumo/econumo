@@ -777,13 +777,6 @@
         "delete_title": "Supprimer cette règle ?",
         "delete_confirm": "Supprimer la règle",
         "skip_hint": "Les transactions correspondantes ne sont pas importées"
-      },
-      "suggest": {
-        "button": "Suggérer des règles",
-        "running": "Réflexion…",
-        "heading": "Règles suggérées",
-        "accept": "Accepter",
-        "discard": "Rejeter"
       }
     },
     "history": {
@@ -2017,9 +2010,7 @@
       "provider_unavailable": "Impossible de joindre la passerelle bancaire. Réessayez dans quelques minutes.",
       "sync_range_invalid": "La plage de dates n'est pas valide : le début ne doit pas être postérieur à la fin, et la plage ne doit pas dépasser 400 jours.",
       "access_url_invalid": "L'identifiant bancaire enregistré n'est pas une URL d'accès valide. Reconnectez SimpleFIN avec un nouveau jeton de configuration.",
-      "rule_skip_not_applicable": "Une règle d'exclusion ne peut pas être appliquée à des transactions existantes",
-      "ai_disabled": "Les suggestions IA ne sont pas activées sur ce serveur",
-      "ai_unavailable": "Le service d'IA n'est pas disponible. Réessayez plus tard."
+      "rule_skip_not_applicable": "Une règle d'exclusion ne peut pas être appliquée à des transactions existantes"
     },
     "label": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",

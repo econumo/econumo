@@ -58,8 +58,7 @@ func (s *Service) enabledSources(ctx context.Context, userID vo.Id) ([]model.Imp
 	return out, nil
 }
 
-// SetCompleter enables suggest-rules; leaving it unset keeps the endpoint
-// answering import.ai_disabled.
+// SetCompleter configures the AI client for import features.
 func (s *Service) SetCompleter(c Completer) { s.completer = c }
 
 // ownedSource resolves a source the caller owns; a foreign id reads as

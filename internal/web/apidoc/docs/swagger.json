@@ -7100,81 +7100,6 @@
                 }
             }
         },
-        "/api/v1/import/suggest-rules": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Returns AI-proposed rule specs for imports in scope. 400 import.ai_disabled when no AI provider is configured on this server.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Import"
-                ],
-                "summary": "Ask the configured AI for rule suggestions",
-                "parameters": [
-                    {
-                        "description": "Scope",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.SuggestImportRulesRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.SuggestImportRulesResult"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
-                        }
-                    },
-                    "402": {
-                        "description": "Payment Required",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseException"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/import/sync-source": {
             "post": {
                 "security": [
@@ -15268,51 +15193,6 @@
                 }
             }
         },
-        "model.ImportRuleSuggestion": {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string"
-                },
-                "categoryId": {
-                    "type": "string"
-                },
-                "isCaseSensitive": {
-                    "type": "boolean"
-                },
-                "labelIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "matchField": {
-                    "type": "string"
-                },
-                "matchType": {
-                    "type": "string"
-                },
-                "matchValue": {
-                    "type": "string"
-                },
-                "payeeId": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "integer"
-                },
-                "reason": {
-                    "type": "string"
-                },
-                "sourceId": {
-                    "description": "nil/\"\" = every source",
-                    "type": "string"
-                },
-                "tagId": {
-                    "type": "string"
-                }
-            }
-        },
         "model.ImportRunError": {
             "type": "object",
             "properties": {
@@ -16876,31 +16756,6 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.SavingsElementResult"
-                    }
-                }
-            }
-        },
-        "model.SuggestImportRulesRequest": {
-            "type": "object",
-            "properties": {
-                "runId": {
-                    "type": "string"
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "scopeSourceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.SuggestImportRulesResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.ImportRuleSuggestion"
                     }
                 }
             }

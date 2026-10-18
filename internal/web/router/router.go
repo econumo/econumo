@@ -246,8 +246,7 @@ func New(deps Deps) http.Handler {
 		versionLabel = deps.SPAVersionLabel
 	}
 	overrides := map[string]any{
-		// Whether ECONUMO_AI_DSN is configured: the SPA hides the "Suggest
-		// rules" action rather than offering a button that always 400s.
+		// Whether an AI provider is configured for the client integration.
 		"AI_ENABLED":         deps.Cfg.AIEnabled,
 		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
 		"PASSWORD_LOGIN":     !deps.Cfg.PasswordLoginDisabled,

@@ -2,8 +2,8 @@ import type { TFunction } from 'i18next'
 import type { ImportRuleSpecDto } from '@/api/dto/imports'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 
-// The wire spec only: a stored rule or a suggestion carries extra keys
-// (id/createdAt/updatedAt, reason) that must not be posted back.
+// The wire spec only: a stored rule carries extra keys
+// (id/createdAt/updatedAt) that must not be posted back.
 export function ruleSpec(r: ImportRuleSpecDto): ImportRuleSpecDto {
   const { sourceId, action, matchField, matchType, matchValue, isCaseSensitive, categoryId, payeeId, tagId, labelIds, priority } = r
   return { sourceId, action, matchField, matchType, matchValue, isCaseSensitive, categoryId, payeeId, tagId, labelIds, priority }

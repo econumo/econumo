@@ -177,7 +177,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   │                          client-supplied operation ids on create endpoints
 │   │   ├── auth/ ................ password hashing + AES email encryption
 │   │   ├── clock/ ................ time source abstraction
-│   │   ├── ai/ .................. OpenAI-compatible / Anthropic Messages client (rule suggestions); imports nothing internal
+│   │   ├── ai/ .................. OpenAI-compatible / Anthropic Messages client (AI integration); imports nothing internal
 │   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
 │   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
 │   │                              distinct from the repo-root web/, the React SPA): middleware, router,
@@ -204,19 +204,19 @@ root package holds no provider-specific code: each provider is a subpackage —
 (the bridge client + stored-row parser) — that plugs into the service's
 `EventParser` and `Provider` registries in `internal/server/server.go` (a new
 provider = one subpackage + one registration line). Rules (stage 4) live in
-the root package (`rules.go` matcher, `rule_*.go` use cases) and consult an
-optional `Completer` (`internal/infra/ai`, an OpenAI-compatible / Anthropic Messages client)
-for `suggest-rules` — `internal/imports` never imports `internal/infra/ai`;
-the concrete client is injected in `internal/server`. It has `repository.go`, `ports.go` (account /
+the root package (`rules.go` matcher, `rule_*.go` use cases). The optional
+`Completer` (`internal/infra/ai`, an OpenAI-compatible / Anthropic Messages client)
+and its injection in `internal/server` are retained for future AI features;
+bulk rule suggestions have been removed. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
-`repo/`, and `api/` with 29 routes under `/api/v1/import/` (`create-source`,
+`repo/`, and `api/` with 28 routes under `/api/v1/import/` (`create-source`,
 `get-source-list`, `delete-source`, `link-account`, `ignore-account`,
 `unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
 `import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
 `discard-event`, `get-transaction-import-list`, `claim-setup-token`,
 `get-credential-key`, `set-credential-key`, `list-external-accounts`,
 `sync-source`, `get-run-list`, `get-run`, `get-source-history`, `get-rule-list`, `create-rule`,
-`update-rule`, `delete-rule`, `preview-rule`, `apply-rule`, `suggest-rules`).
+`update-rule`, `delete-rule`, `preview-rule`, `apply-rule`).
 The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
 
@@ -781,17 +781,17 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   self-hosted bridge on a LAN needs it on. The check runs on the address the client dials,
   so behind an `HTTPS_PROXY` it inspects the proxy, not the bridge: a private proxy needs
   the guard lifted, and a public proxy resolves the bridge host itself, outside the guard.
-- `ECONUMO_AI_DSN` — `openai://<api-key>@<host>[:port][/prefix]?model=<model>` enables AI rule
-  suggestions (`suggest-rules`) against any OpenAI-compatible chat-completions endpoint; the key
-  is optional for local servers (`openai://localhost:11434?model=llama3.1`). Unset (default) =
-  disabled: the endpoint returns 400 `import.ai_disabled` and the SPA hides the action. A bad
-  scheme/missing host/missing `model` fails at boot.
+- `ECONUMO_AI_DSN` — `openai://<api-key>@<host>[:port][/prefix]?model=<model>` configures the
+  AI client integration retained for future features. Bulk import-rule suggestions are removed.
+  The key is optional for local servers (`openai://localhost:11434?model=llama3.1`).
+  Unset (default) leaves the provider disabled. A bad scheme/missing host/missing `model`
+  fails at boot.
   `anthropic://<api-key>@<host>[:port][/prefix]?model=<model>` uses Anthropic's native
   Messages API instead (e.g. `anthropic://<api-key>@api.anthropic.com?model=claude-sonnet-4-6`).
   It posts to `/messages` under the base prefix (default `/v1`), sends `x-api-key` and
   `anthropic-version: 2023-06-01`, and uses an 8192-token output budget. Custom prefixes,
   keyless local gateways, loopback HTTP, and `?insecure=true` work the same way as for OpenAI.
-  Text blocks are combined; incomplete or refused replies fail as `import.ai_unavailable`.
+  Text blocks are combined; incomplete or refused replies return an error.
   `econumo://<gateway-host>[:port][/prefix]?model=<model>` routes through an econumo AI gateway
   instead. It carries no key: each call's bearer is a 5-minute `econumo-ai:v1` token for the
   requesting user, signed with `ECONUMO_ADMIN_TOKEN` (required with this scheme; boot fails
@@ -816,7 +816,6 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_INGEST` — `import/ingest-apple-wallet-event` pushes per user per window (default `60`; every request counts).
   `ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN` — `import/claim-setup-token` calls per user per window (default `5`; every request counts).
   `ECONUMO_RATE_LIMIT_SYNC` — `import/sync-source` calls per user per window (default `10`; every request counts — a sync is a real bridge round trip).
-  `ECONUMO_RATE_LIMIT_SUGGEST_RULES` — `import/suggest-rules` calls per user per window (default `3`; every call counts — each is a paid completion).
   `ECONUMO_RATE_LIMIT_PREVIEW_RULE` — `import/preview-rule` calls per user per window (default `120`; every request counts — the rule editors fire it from a 300 ms typing debounce, and each call walks every matching link).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
   `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
@@ -856,8 +855,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
   `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,
-  always present, `true` iff `ECONUMO_AI_DSN` is set) drives whether the SPA
-  shows the "Suggest rules" action.
+  always present, `true` iff `ECONUMO_AI_DSN` is set) advertises the retained
+  AI provider configuration; bulk rule suggestions are removed.
   `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
   when empty, since the app's version-check treats a present-but-empty value
   differently from an absent one. The composition root resolves the FS
