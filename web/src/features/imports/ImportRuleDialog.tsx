@@ -68,6 +68,13 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
   // The server holds a rule's category off transactions of the other kind
   // (a refund never takes an expense category), so the editor says which kind.
   const selectedCategory = categories.find((c) => c.id === spec.categoryId)
+  // a category of the other type cannot stay picked once the list shows this one
+  const switchCategoryType = (type: CategoryType) => {
+    if (type !== categoryType) {
+      setCategoryType(type)
+      patch({ categoryId: '' })
+    }
+  }
 
   const patch = (p: Partial<ImportRuleSpecDto>) => setSpec((s) => ({ ...s, ...p }))
   const setAction = (action: ImportRuleAction) =>
@@ -135,7 +142,7 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
                 <SelectCard label={t('imports.rules.editor.category')}>
                   <EntitySelect aria-label={t('imports.rules.editor.category')} value={spec.categoryId || null} clearable placeholder={t('imports.rules.editor.not_set')}
                     onChange={(id) => patch({ categoryId: id ?? '' })}
-                    options={own(categories).filter((c) => c.id === spec.categoryId || (!c.isArchived && c.type === categoryType)).map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
+                    options={own(categories).filter((c) => c.type === categoryType && (!c.isArchived || c.id === spec.categoryId)).map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
                     onCreate={canCreate ? (name) => createCategory.mutate(
                       { name, type: categoryType, ownerUserId: ownerId },
                       { onSuccess: (item) => patch({ categoryId: item.id }), onError: (err) => toast.error(apiErrorMessage(err)) },
@@ -146,7 +153,7 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
                   {(['expense', 'income'] as const).map((type) => (
                     <button key={type} type="button" role="radio" aria-checked={categoryType === type}
                       className={`rounded px-1.5 py-0.5 text-[11px] transition-colors ${categoryType === type ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                      onClick={() => setCategoryType(type)}>
+                      onClick={() => switchCategoryType(type)}>
                       {t(`transactions.modal.transaction_type.${type}`)}
                     </button>
                   ))}

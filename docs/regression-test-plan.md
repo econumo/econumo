@@ -724,7 +724,7 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       offers "Add «name»", which creates it and selects it, and the Tags "+"
       creates a tag or label and ticks it. The Category card's Expense / Income
       switch picks which kind the list shows and which kind a new category
-      gets. Only your own categories, payees, tags and labels are offered
+      gets; switching it to the other kind clears a picked category. Only your own categories, payees, tags and labels are offered
       (not ones shared in by a connection), and a read-only user gets no
       "Add" row and no "+". The
       "Matches N imported transactions" count appears once the rule can be

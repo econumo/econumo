@@ -268,3 +268,21 @@ it('a read-only user cannot create classifications from the editor', async () =>
   expect(screen.queryByText(/Add «Bonus»/)).not.toBeInTheDocument()
   expect(within(dialog).queryByRole('button', { name: 'Add tag' })).not.toBeInTheDocument()
 })
+
+it('switching the category type clears the picked category', async () => {
+  renderPage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Add rule' }))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+  await user.click(await screen.findByRole('option', { name: 'Food' }))
+  expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveValue('Food')
+  await user.click(within(dialog).getByRole('radio', { name: 'Income' }))
+  expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveValue('')
+  expect(within(dialog).queryByText('Only expense transactions get this category')).not.toBeInTheDocument()
+  // re-selecting the current type keeps a pick
+  await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+  await user.click(await screen.findByRole('option', { name: 'Salary' }))
+  await user.click(within(dialog).getByRole('radio', { name: 'Income' }))
+  expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveValue('Salary')
+})
