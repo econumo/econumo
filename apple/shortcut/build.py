@@ -345,7 +345,7 @@ def workflow(name: str, actions: list, color: int) -> dict:
 # the deep link in the SPA and the automation instructions address it by
 # that name.
 SHORTCUTS = {
-    "econumo-apple-wallet": (wallet_actions, 4292093695),  # green
+    "econumo": (wallet_actions, 4292093695),  # green
 }
 
 

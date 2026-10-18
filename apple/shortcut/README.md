@@ -4,7 +4,7 @@ One signed shortcut ships as a static asset in `web/public/shortcuts/`:
 
 | Shortcut name = file name | Served as | Job |
 |---|---|---|
-| `econumo-apple-wallet` | `econumo-apple-wallet.shortcut` | Run with `{url, token}` text from the SPA's `shortcuts://run-shortcut` deep link: writes it to `econumo-wallet.json` in the iCloud Drive › Shortcuts folder and checks in with the server once. Run by the user's Transaction automation: reads that file and POSTs the tap to `ingest-apple-wallet-event`. |
+| `econumo` | `econumo.shortcut` | Run with `{url, token}` text from the SPA's `shortcuts://run-shortcut` deep link: writes it to `econumo-wallet.json` in the iCloud Drive › Shortcuts folder and checks in with the server once. Run by the user's Transaction automation: reads that file and POSTs the tap to `ingest-apple-wallet-event`. |
 
 The first release shipped the two jobs as two shortcuts, `econumo-setup-v1`
 and `econumo-wallet-v1`. Their signed files stay in `web/public/shortcuts/`
@@ -16,9 +16,9 @@ iOS names an imported shortcut after the file it came from and ignores the
 embedded `WFWorkflowName`, so the shortcut name IS the served basename
 (`build.py` uses the slug, with no version suffix). The name is part of the
 contract: the Settings → Apple Wallet page opens
-`shortcuts://run-shortcut?name=econumo-apple-wallet&input=text&text=…`, and the
+`shortcuts://run-shortcut?name=econumo&input=text&text=…`, and the
 setup instructions tell the user to point their automation at
-`econumo-apple-wallet` (`WALLET_SHORTCUT_NAME` in
+`econumo` (`WALLET_SHORTCUT_NAME` in
 `web/src/features/imports/AppleWalletSetup.tsx`, plus the
 `imports.apple_wallet.steps.*` catalogue strings). Renaming it means updating
 the SPA constant and the catalogues in the same commit, and users reinstalling
@@ -28,7 +28,7 @@ and repointing their automation.
 
 Nothing is built by hand. `build.py` (stdlib Python, no dependencies) holds
 the recipe as code, writes the unsigned XML plist source next to it
-(`econumo-apple-wallet.plist` — the reviewable artifact in diffs) and signs it into
+(`econumo.plist` — the reviewable artifact in diffs) and signs it into
 `web/public/shortcuts/`:
 
 ```
@@ -50,7 +50,7 @@ their automation and the SPA's deep link keep pointing at it. Keep a change
 compatible with the configuration file and the server contract below, so a
 phone that has not updated yet keeps working. Verify on a device that
 importing over an installed copy offers to replace it rather than adding
-`econumo-apple-wallet 2` beside it — a renamed copy would leave the
+`econumo 2` beside it — a renamed copy would leave the
 automation on the old one.
 
 The same recipe, reduced to the actions a user can type in, is the
@@ -97,7 +97,7 @@ The server answers 200 whenever the event was stored, even if it could not
 be imported (`queued` / `skipped` / `failed` are visible in the web UI), so
 the shortcut has nothing to do with the response.
 
-## Recipe: `econumo-apple-wallet`
+## Recipe: `econumo`
 
 "Show in Share Sheet" off. The shortcut branches on what it was given:
 the setup deep link passes **text**, the Transaction automation passes a
@@ -193,7 +193,7 @@ refund imports as an expense with a positive amount and needs a hand fix.
 
 Two cards with the same display name are indistinguishable to the server,
 because `account` is the card name. The user-side fix: duplicate
-`econumo-apple-wallet` (right-click → Duplicate), rename it (`econumo-apple-wallet
+`econumo` (right-click → Duplicate), rename it (`econumo
 Visa joint`), replace the `account` value with a typed literal, and point a
 Transaction automation filtered to that one card at the copy. Nothing
 changes server-side; the literal is just another external account name.
@@ -208,7 +208,7 @@ your device is locked"* — nothing is posted and nothing is logged
 server-side. Run After Confirmation is what makes the first payment work: the
 payment raises a prompt to run the shortcut, and answering it lets iOS ask
 for the missing grants, even if the phone was locked when the user paid.
-`econumo-apple-wallet` needs three grants:
+`econumo` needs three grants:
 
 1. **Access to the server host** — asked the first time `Get Contents of
    URL` contacts `{url}`.
@@ -241,19 +241,19 @@ The plist is generated from documented action formats; the type branch,
 the check-in, the Transaction property names, the coercion, and the ISO
 date output are only proven by this pass.
 
-1. Open the served `econumo-apple-wallet.shortcut` on an iPhone in Safari (or
+1. Open the served `econumo.shortcut` on an iPhone in Safari (or
    AirDrop it). The "Add Shortcut" sheet must appear without a "cannot be
    opened because it is not signed" error. After adding, the name in the
-   library is `econumo-apple-wallet`.
+   library is `econumo`.
 2. In Safari on the phone, open Econumo → Settings → Apple Wallet → step 2,
-   tap "Create access token", then "Open econumo-apple-wallet". Shortcuts
+   tap "Create access token", then "Open econumo". Shortcuts
    should run it, ask for the server host and iCloud Drive (answer **Always
    Allow**), and show "Econumo configured for …". Check `Files` → iCloud
    Drive → Shortcuts → `econumo-wallet.json`; the server log shows
    `ingest-apple-wallet-event … ingest_status=failed`, and the step in the
    SPA ticks itself within a few seconds of switching back.
 3. Create the automation: Shortcuts → Automation → `+` → **Transaction** →
-   any card, any type → **Run After Confirmation** → `econumo-apple-wallet`.
+   any card, any type → **Run After Confirmation** → `econumo`.
 4. Make an Apple Pay purchase (the phone may be locked), tap Run on the
    automation's prompt, answer
    Always Allow to the Wallet prompt (note whether host / iCloud Drive are

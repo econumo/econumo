@@ -554,7 +554,7 @@
         },
         "configure": {
           "title": "Conectar el atajo con Econumo",
-          "text": "Crea un token de acceso y abre econumo-apple-wallet con él. El atajo guarda la dirección del servidor y el token y luego contacta con Econumo. Toca «Permitir siempre» en cada aviso: la automatización necesitará estos permisos más adelante.",
+          "text": "Crea un token de acceso y abre econumo con él. El atajo guarda la dirección del servidor y el token y luego contacta con Econumo. Toca «Permitir siempre» en cada aviso: la automatización necesitará estos permisos más adelante.",
           "button": "Crear token de acceso",
           "open": "Abrir {name}",
           "waiting": "Esperando a que el atajo llegue a Econumo…",
@@ -562,7 +562,7 @@
         },
         "automate": {
           "title": "Crear la automatización",
-          "text": "En la app Atajos: Automatización → + → Wallet → elige las tarjetas y categorías que quieres importar (lo más seguro es elegir todas) → Ejecutar tras confirmar → econumo-apple-wallet."
+          "text": "En la app Atajos: Automatización → + → Wallet → elige las tarjetas y categorías que quieres importar (lo más seguro es elegir todas) → Ejecutar tras confirmar → econumo."
         },
         "payment": {
           "title": "Hacer el primer pago",

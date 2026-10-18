@@ -421,14 +421,14 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       step offers "Mark as not done", a server-confirmed one does not. Ticks
       from the older guides carry over (both install steps → step 1, the
       run-once step → step 2).
-- [ ] Step 1 downloads `econumo-apple-wallet.shortcut` (button label in its
+- [ ] Step 1 downloads `econumo.shortcut` (button label in its
       exact lower-case name) in a new window (from the home-screen app the
       Safari sheet closes back to the page, no relaunch needed) 📱. The v1
       files (`econumo-wallet-v1.shortcut`, `econumo-setup-v1.shortcut`) still
       download from `/shortcuts/` for existing setups.
 - [ ] Step 2, iOS only 📱: "Create access token" mints an ingest PAT (visible
       under Profile → Tokens with scope `ingest`), then shows "Open
-      econumo-apple-wallet", which opens the Shortcuts app in a new window — the
+      econumo", which opens the Shortcuts app in a new window — the
       app window stays on the page. The shortcut saves the configuration
       (`econumo-wallet.json` in iCloud Drive › Shortcuts), asks for the server
       host and iCloud Drive (Always Allow), and shows "Econumo configured
@@ -446,7 +446,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       the waiting line and the hand ticks still work; running the configured
       shortcut by hand on the phone completes step 2 here too.
 - [ ] Step 3 text walks through Automation → + → Wallet → cards & categories →
-      Run After Confirmation → econumo-apple-wallet; step 4 text says the iPhone
+      Run After Confirmation → econumo; step 4 text says the iPhone
       can stay locked, to tap Run when the automation asks and Always Allow on
       every prompt (on device: only Wallet access is asked — host and iCloud
       Drive were granted in step 2), and waits for the first payment the same

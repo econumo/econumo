@@ -554,7 +554,7 @@
         },
         "configure": {
           "title": "Connect the Shortcut to Econumo",
-          "text": "Creates an access token and opens econumo-apple-wallet with it. The Shortcut saves the server address and the token, then checks in with Econumo. Tap Always Allow on every prompt — the automation needs these permissions later.",
+          "text": "Creates an access token and opens the econumo Shortcut with it. The Shortcut saves the server address and the token, then checks in with Econumo. Tap Always Allow on every prompt — the automation needs these permissions later.",
           "button": "Create access token",
           "open": "Open {name}",
           "waiting": "Waiting for the Shortcut to reach Econumo…",
@@ -562,7 +562,7 @@
         },
         "automate": {
           "title": "Create the automation",
-          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import (all of them is the safe choice) → Run After Confirmation → econumo-apple-wallet."
+          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import (all of them is the safe choice) → Run After Confirmation → econumo."
         },
         "payment": {
           "title": "Make the first payment",
