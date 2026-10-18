@@ -556,7 +556,7 @@
         "configure": {
           "title": "Relier le raccourci à Econumo",
           "text": "Crée un jeton d’accès et ouvre econumo avec. Le raccourci enregistre l’adresse du serveur et le jeton, puis contacte Econumo. Touchez « Toujours autoriser » à chaque demande : l’automatisation aura besoin de ces autorisations.",
-          "button": "Connecter econumo",
+          "button": "Connecter Apple Wallet",
           "open": "Ouvrir {name}",
           "waiting": "En attente du premier contact du raccourci avec Econumo…",
           "manual": "Configurer manuellement",

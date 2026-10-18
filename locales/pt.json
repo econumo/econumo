@@ -556,7 +556,7 @@
         "configure": {
           "title": "Ligar o atalho ao Econumo",
           "text": "Cria um token de acesso e abre o econumo com ele. O atalho guarda o endereço do servidor e o token e depois contacta o Econumo. Toque em «Permitir sempre» em cada pedido — a automatização vai precisar destas permissões.",
-          "button": "Ligar o econumo",
+          "button": "Ligar o Apple Wallet",
           "open": "Abrir {name}",
           "waiting": "À espera de que o atalho chegue ao Econumo…",
           "manual": "Configurar manualmente",

@@ -556,7 +556,7 @@
         "configure": {
           "title": "Connect the Shortcut to Econumo",
           "text": "Creates an access token and opens the econumo Shortcut with it. The Shortcut saves the server address and the token, then checks in with Econumo. Tap Always Allow on every prompt — the automation needs these permissions later.",
-          "button": "Connect econumo",
+          "button": "Connect Apple Wallet",
           "open": "Open {name}",
           "waiting": "Waiting for the Shortcut to reach Econumo…",
           "manual": "Configure manually",

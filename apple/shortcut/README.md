@@ -267,7 +267,7 @@ date output are only proven by this pass.
    opened because it is not signed" error. After adding, the name in the
    library is `econumo`.
 2. In Safari on the phone, open Econumo → Settings → Apple Wallet → step 2,
-   tap "Connect econumo", then "Open econumo". Shortcuts
+   tap "Connect Apple Wallet", then "Open econumo". Shortcuts
    should run it, ask for the server host and iCloud Drive (answer **Always
    Allow**), and show "Econumo configured for …". Check `Files` → iCloud
    Drive → Shortcuts → `econumo-wallet.json`; the server log shows

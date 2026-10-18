@@ -556,7 +556,7 @@
         "configure": {
           "title": "Połącz skrót z Econumo",
           "text": "Tworzy token dostępu i otwiera z nim econumo. Skrót zapisuje adres serwera i token, a potem łączy się z Econumo. Przy każdym pytaniu stuknij „Zawsze zezwalaj” — automatyzacja będzie potrzebować tych uprawnień.",
-          "button": "Połącz econumo",
+          "button": "Połącz Apple Wallet",
           "open": "Otwórz {name}",
           "waiting": "Czekam, aż skrót dotrze do Econumo…",
           "manual": "Skonfiguruj ręcznie",
