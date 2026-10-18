@@ -708,7 +708,15 @@ func TestParseAIDSN(t *testing.T) {
 		{name: "econumo loopback", dsn: "econumo://localhost:8290?model=m", dialect: "econumo", endpoint: "http://localhost:8290/v1", model: "m"},
 		{name: "econumo refuses a key", dsn: "econumo://k@ai.example.com?model=m", wantErr: true},
 		{name: "econumo needs a model", dsn: "econumo://ai.example.com", wantErr: true},
-		{name: "unknown scheme", dsn: "anthropic://k@api.anthropic.com?model=m", wantErr: true},
+		{name: "anthropic with key", dsn: "anthropic://sk-ant-abc@api.anthropic.com?model=claude-sonnet-4-6", dialect: "anthropic", endpoint: "https://api.anthropic.com/v1", apiKey: "sk-ant-abc", model: "claude-sonnet-4-6"},
+		{name: "anthropic scheme is case-insensitive", dsn: "Anthropic://k@api.anthropic.com?model=m", dialect: "anthropic", endpoint: "https://api.anthropic.com/v1", apiKey: "k", model: "m"},
+		{name: "anthropic keyless loopback", dsn: "anthropic://localhost:8000?model=m", dialect: "anthropic", endpoint: "http://localhost:8000/v1", model: "m"},
+		{name: "anthropic ipv6 loopback", dsn: "anthropic://[::1]:8000?model=m", dialect: "anthropic", endpoint: "http://[::1]:8000/v1", model: "m"},
+		{name: "anthropic gateway prefix", dsn: "anthropic://k@gateway.example/anthropic/v1/?model=m", dialect: "anthropic", endpoint: "https://gateway.example/anthropic/v1", apiKey: "k", model: "m"},
+		{name: "anthropic insecure LAN", dsn: "anthropic://k@10.0.0.5:8080?model=m&insecure=true", dialect: "anthropic", endpoint: "http://10.0.0.5:8080/v1", apiKey: "k", model: "m"},
+		{name: "anthropic missing model", dsn: "anthropic://k@api.anthropic.com", wantErr: true},
+		{name: "anthropic missing host", dsn: "anthropic://k@?model=m", wantErr: true},
+		{name: "unknown scheme", dsn: "unsupported://k@api.example.com?model=m", wantErr: true},
 		{name: "missing model", dsn: "openai://k@api.openai.com", wantErr: true},
 		{name: "missing host", dsn: "openai://k@?model=m", wantErr: true},
 		{name: "not a url", dsn: "::nope", wantErr: true},
@@ -757,6 +765,7 @@ func TestLoad_AIDSNEconumoNeedsTheAdminToken(t *testing.T) {
 func TestParseAIDSN_ParseErrorsKeepSecretsOut(t *testing.T) {
 	for _, dsn := range []string{
 		"openai://sk-SECRET@api.openai.com:badport?model=m",
+		"anthropic://sk-ant-SECRET@api.anthropic.com:badport?model=m",
 		"econumo://k-SECRET@gateway.example:badport?model=m",
 	} {
 		_, _, _, _, err := parseAIDSN(dsn)
@@ -777,6 +786,14 @@ func TestLoad_AIDSN(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !c.AIEnabled || c.AIEndpoint != "https://api.openai.com/v1" || c.AIAPIKey != "sk-abc" || c.AIModel != "gpt-5-mini" {
+		t.Fatalf("ai config = %+v", c)
+	}
+	t.Setenv("ECONUMO_AI_DSN", "anthropic://sk-ant-abc@api.anthropic.com?model=claude-sonnet-4-6")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.AIEnabled || c.AIDialect != AIDialectAnthropic || c.AIEndpoint != "https://api.anthropic.com/v1" || c.AIAPIKey != "sk-ant-abc" || c.AIModel != "claude-sonnet-4-6" {
 		t.Fatalf("ai config = %+v", c)
 	}
 	t.Setenv("ECONUMO_AI_DSN", "")

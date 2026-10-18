@@ -1,7 +1,6 @@
-// Package ai is the OpenAI-compatible chat-completions client behind
-// import-rule suggestions. It speaks the lowest common denominator of the
-// API (model + messages + temperature, no response_format, no tools) so
-// the same client works against api.openai.com, Ollama, vLLM, and gateways.
+// Package ai supplies OpenAI-compatible chat completions and Anthropic
+// Messages behind import-rule suggestions. JSON is requested in the prompt
+// rather than through vendor-specific response formats or tools.
 package ai
 
 import (
@@ -19,7 +18,12 @@ import (
 // maxResponseBytes bounds what a misbehaving endpoint can make us buffer.
 const maxResponseBytes = 1 << 20
 
+// Anthropic requires an explicit output budget. Allow room for the prompt's
+// maximum of 30 rules, including their classification ids and reasons.
+const anthropicMaxTokens = 8192
+
 type Config struct {
+	Dialect  string // "anthropic" for Messages; empty, "openai", or "econumo" for chat completions
 	Endpoint string // base URL including the API prefix, e.g. https://api.openai.com/v1
 	APIKey   string // empty for keyless local servers
 	Model    string
@@ -35,7 +39,13 @@ type Client struct {
 }
 
 func New(cfg Config) *Client {
-	return &Client{cfg: cfg, http: &http.Client{Timeout: 90 * time.Second}}
+	hc := &http.Client{Timeout: 90 * time.Second}
+	if cfg.Dialect == "anthropic" {
+		// net/http does not strip x-api-key on cross-host redirects as it
+		// does Authorization. Keep this credential at the configured endpoint.
+		hc.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	}
+	return &Client{cfg: cfg, http: hc}
 }
 
 type message struct {
@@ -60,28 +70,56 @@ type response struct {
 	} `json:"choices"`
 }
 
+type anthropicRequest struct {
+	Model     string    `json:"model"`
+	MaxTokens int       `json:"max_tokens"`
+	System    string    `json:"system,omitempty"`
+	Messages  []message `json:"messages"`
+}
+
+type anthropicResponse struct {
+	Content []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
+	StopReason string `json:"stop_reason"`
+}
+
 // Complete sends one system+user exchange on behalf of userID and returns the
 // assistant text; userID only matters when Config.Sign is set.
 // Errors carry the HTTP status only: the response body may echo the prompt
 // (the user's payee strings) or the key, and errors end up in logs.
 func (c *Client) Complete(ctx context.Context, userID, system, user string) (string, error) {
-	body, err := json.Marshal(request{Model: c.cfg.Model, Messages: []message{{Role: "system", Content: system}, {Role: "user", Content: user}}})
+	path := "/chat/completions"
+	var payload any = request{Model: c.cfg.Model, Messages: []message{{Role: "system", Content: system}, {Role: "user", Content: user}}}
+	if c.cfg.Dialect == "anthropic" {
+		path = "/messages"
+		payload = anthropicRequest{Model: c.cfg.Model, MaxTokens: anthropicMaxTokens, System: system, Messages: []message{{Role: "user", Content: user}}}
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return "", err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(c.cfg.Endpoint, "/")+"/chat/completions", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(c.cfg.Endpoint, "/")+path, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	bearer := c.cfg.APIKey
-	if c.cfg.Sign != nil {
-		if bearer, err = c.cfg.Sign(userID); err != nil {
-			return "", fmt.Errorf("ai: signing the request: %w", err)
+	if c.cfg.Dialect == "anthropic" {
+		req.Header.Set("anthropic-version", "2023-06-01")
+		if c.cfg.APIKey != "" {
+			req.Header.Set("x-api-key", c.cfg.APIKey)
 		}
-	}
-	if bearer != "" {
-		req.Header.Set("Authorization", "Bearer "+bearer)
+	} else {
+		bearer := c.cfg.APIKey
+		if c.cfg.Sign != nil {
+			if bearer, err = c.cfg.Sign(userID); err != nil {
+				return "", fmt.Errorf("ai: signing the request: %w", err)
+			}
+		}
+		if bearer != "" {
+			req.Header.Set("Authorization", "Bearer "+bearer)
+		}
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -95,6 +133,9 @@ func (c *Client) Complete(ctx context.Context, userID, system, user string) (str
 	if resp.StatusCode/100 != 2 {
 		return "", fmt.Errorf("ai: completion endpoint returned HTTP %d", resp.StatusCode)
 	}
+	if c.cfg.Dialect == "anthropic" {
+		return parseAnthropicResponse(raw)
+	}
 	var out response
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return "", errors.New("ai: malformed completion response")
@@ -103,4 +144,28 @@ func (c *Client) Complete(ctx context.Context, userID, system, user string) (str
 		return "", errors.New("ai: completion returned no choices")
 	}
 	return out.Choices[0].Message.Content, nil
+}
+
+func parseAnthropicResponse(raw []byte) (string, error) {
+	var out anthropicResponse
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return "", errors.New("ai: malformed completion response")
+	}
+	switch out.StopReason {
+	case "", "end_turn", "stop_sequence":
+		// Some compatible gateways omit stop_reason.
+	default:
+		// A token limit, refusal, or tool request is not a finished suggestion.
+		return "", errors.New("ai: incomplete completion response")
+	}
+	var content strings.Builder
+	for _, block := range out.Content {
+		if block.Type == "text" {
+			content.WriteString(block.Text)
+		}
+	}
+	if strings.TrimSpace(content.String()) == "" {
+		return "", errors.New("ai: completion returned no text")
+	}
+	return content.String(), nil
 }

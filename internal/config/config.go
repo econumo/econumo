@@ -115,12 +115,13 @@ type Config struct {
 	MailFrom     string // from query param
 	MailReplyTo  string // reply_to query param
 
-	// AI — DERIVED from ECONUMO_AI_DSN (openai://<key>@host[:port][/prefix]?model=… or econumo://host[:port][/prefix]?model=…).
+	// AI — DERIVED from ECONUMO_AI_DSN; the scheme selects openai://,
+	// anthropic://, or econumo:// with host[:port][/prefix]?model=….
 	// Empty disables import-rule suggestions: suggest-rules answers a coded
 	// 400 and the SPA hides the action (AI_ENABLED in econumo-config.js).
 	AIDSN      string
 	AIEnabled  bool
-	AIDialect  string // AIDialectOpenAI | AIDialectEconumo, from the DSN scheme
+	AIDialect  string // AIDialectOpenAI | AIDialectAnthropic | AIDialectEconumo, from the DSN scheme
 	AIEndpoint string // https://host/v1 (plain http for loopback hosts or ?insecure=true)
 	AIAPIKey   string
 	AIModel    string
@@ -615,13 +616,14 @@ func parseMailerDSN(dsn string) (provider, apiKey, from, replyTo string, err err
 
 // AI dialects ECONUMO_AI_DSN's scheme selects.
 const (
-	AIDialectOpenAI  = "openai"  // static bearer key (or none) — any OpenAI-compatible server
-	AIDialectEconumo = "econumo" // an econumo AI gateway: per-user token signed with ECONUMO_ADMIN_TOKEN
+	AIDialectOpenAI    = "openai"    // static bearer key (or none) — any OpenAI-compatible server
+	AIDialectAnthropic = "anthropic" // static x-api-key (or none) — Anthropic Messages API
+	AIDialectEconumo   = "econumo"   // an econumo AI gateway: per-user token signed with ECONUMO_ADMIN_TOKEN
 )
 
-// parseAIDSN maps ECONUMO_AI_DSN to the chat-completions base endpoint the
+// parseAIDSN maps ECONUMO_AI_DSN to the AI API base endpoint the
 // way parseMailerDSN maps MAILER_DSN: the scheme picks the API dialect
-// (openai:// or econumo://), the userinfo is the key, the host is
+// (openai://, anthropic://, or econumo://), the userinfo is the key, the host is
 // the server, and the model is mandatory because no default is right for
 // both a hosted vendor and a local runtime.
 //
@@ -629,6 +631,7 @@ const (
 //	openai://<api-key>@api.openai.com?model=gpt-5-mini -> https://api.openai.com/v1, key, model
 //	openai://localhost:11434?model=llama3              -> http://localhost:11434/v1, keyless (loopback = plain http)
 //	openai://host/custom/v1?model=m&insecure=true      -> http://host/custom/v1 (insecure forces plain http elsewhere)
+//	anthropic://<api-key>@api.anthropic.com?model=m   -> https://api.anthropic.com/v1, key, model
 //	econumo://ai.example.com?model=m                   -> https://ai.example.com/v1, no key, signed per user
 func parseAIDSN(dsn string) (dialect, endpoint, apiKey, model string, err error) {
 	dsn = strings.TrimSpace(dsn)
@@ -645,8 +648,8 @@ func parseAIDSN(dsn string) (dialect, endpoint, apiKey, model string, err error)
 		return "", "", "", "", fmt.Errorf("ECONUMO_AI_DSN: %v", err)
 	}
 	dialect = strings.ToLower(u.Scheme)
-	if dialect != AIDialectOpenAI && dialect != AIDialectEconumo {
-		return "", "", "", "", fmt.Errorf("ECONUMO_AI_DSN: unsupported scheme %q (want openai:// or econumo://)", u.Scheme)
+	if dialect != AIDialectOpenAI && dialect != AIDialectAnthropic && dialect != AIDialectEconumo {
+		return "", "", "", "", fmt.Errorf("ECONUMO_AI_DSN: unsupported scheme %q (want openai://, anthropic://, or econumo://)", u.Scheme)
 	}
 	if u.Host == "" || u.Hostname() == "" {
 		return "", "", "", "", errors.New("ECONUMO_AI_DSN: host is required")

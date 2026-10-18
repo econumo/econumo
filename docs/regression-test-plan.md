@@ -803,6 +803,13 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       creates the rule at the bottom of the list, Edit opens the editor
       prefilled, Discard removes the row; a 4th click inside the window gets
       429 with the standard envelope.
+- [ ] Set `ECONUMO_AI_DSN=anthropic://<api-key>@api.anthropic.com?model=claude-sonnet-4-6`:
+      "Suggest rules" proposes and accepts rules using Anthropic's native Messages API.
+      Repeat against an Anthropic-compatible gateway with a custom prefix (and a keyless
+      loopback gateway): requests use `<prefix>/messages`, `x-api-key` when configured,
+      and `anthropic-version`, with the system prompt outside the messages array.
+      Invalid credentials, malformed/empty replies, refusals, and exhausted output budgets
+      return 400 `import.ai_unavailable` without exposing the key or response body.
 - [ ] Typing in either rule editor fires `preview-rule` on a 300 ms debounce and
       it is capped per user (`ECONUMO_RATE_LIMIT_PREVIEW_RULE`, default 120 per
       window): set it to 1 and the second preview returns 429 with the standard
