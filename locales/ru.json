@@ -765,7 +765,9 @@
         "then": "Тогда",
         "value_placeholder": "Текст для поиска, напр. STARBUCKS",
         "not_set": "Не задано",
-        "category_type": "Тип категории"
+        "category_type": "Тип категории",
+        "category_hint_expense": "Эту категорию получают только расходы",
+        "category_hint_income": "Эту категорию получают только доходы"
       },
       "page": {
         "menu_item": "Правила импорта",

@@ -25,6 +25,14 @@ func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.Previ
 	if err != nil {
 		return nil, err
 	}
+	var income map[vo.Id]bool
+	if r.Action != model.ImportRuleActionSkip {
+		own, err := s.ownedEntities(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		income = own.incomeCategories
+	}
 	links, err := s.scopedLinks(ctx, userID, req.Scope, req.RunId, req.ScopeSourceId)
 	if err != nil {
 		return nil, err
@@ -47,7 +55,7 @@ func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.Previ
 			if err != nil {
 				return nil, err
 			}
-			if !owned {
+			if !owned || !touches(r, income, live.Type) {
 				continue
 			}
 		}
@@ -100,7 +108,7 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 		if err != nil {
 			return nil, err
 		}
-		if !owned {
+		if !owned || !touches(rule, own.incomeCategories, live.Type) {
 			continue
 		}
 		if !req.IncludeEdited {
@@ -113,7 +121,7 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 				continue
 			}
 		}
-		next := applyTargets(rule, live)
+		next := applyTargets(rule, live, own.incomeCategories)
 		next.RuleID = &rule.ID
 		err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 			if _, err := s.txns.UpdateTransactionReplacingLabels(ctx, userID, updateRequest(live, next)); err != nil {
@@ -250,9 +258,9 @@ func sameIDs(a, b []vo.Id) bool {
 
 // applyTargets is what the transaction looks like after the rule: only the
 // fields the rule sets change; labels union, capped.
-func applyTargets(r *model.ImportRule, live *model.Transaction) model.ImportClassification {
+func applyTargets(r *model.ImportRule, live *model.Transaction, income map[vo.Id]bool) model.ImportClassification {
 	next := model.ImportClassification{CategoryID: live.CategoryID, PayeeID: live.PayeeID, TagID: live.TagID, LabelIDs: append([]vo.Id(nil), live.LabelIDs...)}
-	if r.TargetCategoryID != nil {
+	if r.TargetCategoryID != nil && categoryFits(*r.TargetCategoryID, income, live.Type) {
 		next.CategoryID = r.TargetCategoryID
 	}
 	if r.TargetPayeeID != nil {

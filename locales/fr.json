@@ -765,7 +765,9 @@
         "then": "Alors",
         "value_placeholder": "Texte à rechercher, p. ex. STARBUCKS",
         "not_set": "Non défini",
-        "category_type": "Type de catégorie"
+        "category_type": "Type de catégorie",
+        "category_hint_expense": "Seules les dépenses reçoivent cette catégorie",
+        "category_hint_income": "Seuls les revenus reçoivent cette catégorie"
       },
       "page": {
         "menu_item": "Règles d'import",

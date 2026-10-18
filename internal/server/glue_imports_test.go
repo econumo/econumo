@@ -285,3 +285,23 @@ func TestImportsTransactionWriter_UpdateVariants(t *testing.T) {
 		t.Errorf("calls = %v, want %v", svc.calls, want)
 	}
 }
+
+type stubCategoryLister []*model.Category
+
+func (s stubCategoryLister) ListByOwner(context.Context, vo.Id) ([]*model.Category, error) {
+	return s, nil
+}
+
+// The rules engine holds a rule's category off transactions of the other
+// kind, which it can only do if the listing says which categories are income.
+func TestTransactionImportCategories_MarksIncomeCategories(t *testing.T) {
+	owner := vo.NewId()
+	list := stubCategoryLister{
+		{ID: vo.NewId(), UserID: owner, Name: "Food", Type: model.TypeExpense},
+		{ID: vo.NewId(), UserID: owner, Name: "Salary", Type: model.TypeIncome},
+	}
+	got, err := NewTransactionImportCategories(nil, list).CategoriesByOwner(context.Background(), owner)
+	if err != nil || len(got) != 2 || got[0].Income || !got[1].Income {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+}

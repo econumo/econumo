@@ -765,7 +765,9 @@
         "then": "Wtedy",
         "value_placeholder": "Szukany tekst, np. STARBUCKS",
         "not_set": "Nie ustawiono",
-        "category_type": "Typ kategorii"
+        "category_type": "Typ kategorii",
+        "category_hint_expense": "Tę kategorię otrzymują tylko wydatki",
+        "category_hint_income": "Tę kategorię otrzymują tylko przychody"
       },
       "page": {
         "menu_item": "Reguły importu",

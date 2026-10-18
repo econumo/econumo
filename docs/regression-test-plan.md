@@ -715,6 +715,13 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       sync/ingest of a matching row lands as `skipped` in the run summary and
       creates no transaction; a classify rule on payee sets category/payee/
       tag/labels on newly imported rows only where the row had none.
+- [ ] A rule's category only reaches transactions of its own kind: with
+      "Amazon → Shopping (expense) + payee Amazon" above "Amazon → Refunds
+      (income)", an Amazon purchase gets Shopping and payee Amazon, an Amazon
+      refund (income) gets Refunds and still payee Amazon. A rule whose only
+      target is an expense category neither counts nor changes income rows in
+      its "Matches N" preview and its apply. With a category picked, the
+      editor says "Only expense (income) transactions get this category".
 - [ ] `ECONUMO_AI_DSN` unset: no "Suggest rules" button; `suggest-rules` returns
       400 `import.ai_disabled`. Set to a working OpenAI-compatible endpoint:
       the button proposes rules with a reason and a live count each; Accept

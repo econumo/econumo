@@ -765,7 +765,9 @@
         "then": "Тоді",
         "value_placeholder": "Текст для пошуку, напр. STARBUCKS",
         "not_set": "Не задано",
-        "category_type": "Тип категорії"
+        "category_type": "Тип категорії",
+        "category_hint_expense": "Цю категорію отримують лише витрати",
+        "category_hint_income": "Цю категорію отримують лише доходи"
       },
       "page": {
         "menu_item": "Правила імпорту",

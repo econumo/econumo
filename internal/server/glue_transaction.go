@@ -225,7 +225,7 @@ func (c *TransactionImportCategories) CategoriesByOwner(ctx context.Context, own
 	}
 	out := make([]model.ImportNamed, len(list))
 	for i, cat := range list {
-		out[i] = model.ImportNamed{ID: cat.ID.String(), Name: cat.Name, OwnerID: cat.UserID.String()}
+		out[i] = model.ImportNamed{ID: cat.ID.String(), Name: cat.Name, OwnerID: cat.UserID.String(), Income: cat.Type == model.TypeIncome}
 	}
 	return out, nil
 }
@@ -242,7 +242,7 @@ func (c *TransactionImportCategories) CreateCategory(ctx context.Context, ownerI
 	if err != nil {
 		return model.ImportNamed{}, err
 	}
-	return model.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
+	return model.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String(), Income: income}, nil
 }
 
 // transactionImportTagService is the tag-service create surface the importer

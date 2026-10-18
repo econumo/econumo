@@ -765,7 +765,9 @@
         "then": "Entonces",
         "value_placeholder": "Texto a buscar, p. ej. STARBUCKS",
         "not_set": "Sin definir",
-        "category_type": "Tipo de categoría"
+        "category_type": "Tipo de categoría",
+        "category_hint_expense": "Solo las transacciones de gasto reciben esta categoría",
+        "category_hint_income": "Solo las transacciones de ingreso reciben esta categoría"
       },
       "page": {
         "menu_item": "Reglas de importación",

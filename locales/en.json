@@ -765,7 +765,9 @@
         "then": "Then",
         "value_placeholder": "Text to look for, e.g. STARBUCKS",
         "not_set": "Not set",
-        "category_type": "Category type"
+        "category_type": "Category type",
+        "category_hint_expense": "Only expense transactions get this category",
+        "category_hint_income": "Only income transactions get this category"
       },
       "page": {
         "menu_item": "Import rules",

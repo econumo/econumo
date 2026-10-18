@@ -129,6 +129,7 @@ it('creates a rule from the editor with a live match count', async () => {
   expect(posted.preview).toBeUndefined()
   await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
   await user.click(await screen.findByRole('option', { name: 'Food' }))
+  expect(within(dialog).getByText('Only expense transactions get this category')).toBeInTheDocument()
   await user.click(within(dialog).getByRole('checkbox', { name: /health/ }))
   expect(await within(dialog).findByText('Matches 7 imported transactions')).toBeInTheDocument()
   expect(posted.preview!.at(-1)).toMatchObject({ matchValue: 'IKEA', scope: 'all', runId: '', scopeSourceId: '' })
@@ -244,6 +245,7 @@ it('creates a category and a payee from the editor, the category of the chosen k
   await user.click(await screen.findByText(/Add «Bonus»/))
   await waitFor(() => expect(created.category).toMatchObject({ name: 'Bonus', type: 'income' }))
   await waitFor(() => expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveValue('Bonus'))
+  expect(within(dialog).getByText('Only income transactions get this category')).toBeInTheDocument()
 
   await user.click(within(dialog).getByRole('combobox', { name: 'Payee' }))
   await user.keyboard('ACME')

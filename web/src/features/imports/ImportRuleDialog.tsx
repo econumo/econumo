@@ -65,6 +65,9 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
   const ownerId = user?.id
   const own = <T extends { ownerUserId: string }>(rows: T[]) => rows.filter((r) => !ownerId || r.ownerUserId === ownerId)
   const canCreate = accessState !== 'readonly'
+  // The server holds a rule's category off transactions of the other kind
+  // (a refund never takes an expense category), so the editor says which kind.
+  const selectedCategory = categories.find((c) => c.id === spec.categoryId)
 
   const patch = (p: Partial<ImportRuleSpecDto>) => setSpec((s) => ({ ...s, ...p }))
   const setAction = (action: ImportRuleAction) =>
@@ -148,6 +151,11 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
                     </button>
                   ))}
                 </div>
+                {selectedCategory ? (
+                  <p className="px-1 pt-1 text-xs text-muted-foreground">
+                    {t(selectedCategory.type === 'income' ? 'imports.rules.editor.category_hint_income' : 'imports.rules.editor.category_hint_expense')}
+                  </p>
+                ) : null}
               </div>
               <SelectCard label={t('imports.rules.editor.payee')}>
                 <EntitySelect aria-label={t('imports.rules.editor.payee')} value={spec.payeeId || null} clearable placeholder={t('imports.rules.editor.not_set')}

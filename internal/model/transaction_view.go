@@ -32,6 +32,8 @@ type ImportNamed struct {
 	ID      string
 	Name    string
 	OwnerID string
+	// Income is set on income categories (categories only).
+	Income bool
 }
 
 // ImportMapping maps logical fields to CSV column names. Empty string = unmapped.

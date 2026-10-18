@@ -765,7 +765,9 @@
         "then": "Dan",
         "value_placeholder": "Te zoeken tekst, bijv. STARBUCKS",
         "not_set": "Niet ingesteld",
-        "category_type": "Categorietype"
+        "category_type": "Categorietype",
+        "category_hint_expense": "Alleen uitgaven krijgen deze categorie",
+        "category_hint_income": "Alleen inkomsten krijgen deze categorie"
       },
       "page": {
         "menu_item": "Importregels",
