@@ -8,9 +8,12 @@ import { queryKeys } from '@/app/queryKeys'
 import type { ImportQueueDto, ImportRuleDto, ImportSourceDto } from '@/api/dto/imports'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { profileAttributes, setAnalyticsQueryClient } from '@/lib/analyticsProfile'
 import {
   useApplyImportRule,
   useCreateImportRule,
+  useCreateImportSource,
+  useDeleteImportSource,
   useImportCredentialKey,
   useImportQueuedEvent,
   useImportRules,
@@ -44,7 +47,31 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
   server.use(...coreHandlers())
-  trackEventMock.mockClear()
+  trackEventMock.mockReset()
+})
+
+afterEach(() => setAnalyticsQueryClient(null))
+
+it('connect and disconnect events see the updated apple-wallet user attribute', async () => {
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.importSources, [])
+  setAnalyticsQueryClient(queryClient)
+  const captured: unknown[] = []
+  trackEventMock.mockImplementation((metric, data) => { captured.push([metric, data, profileAttributes()['apple-wallet']]) })
+  server.use(
+    http.post('*/api/v1/import/create-source', () => HttpResponse.json({ success: true, data: { item: { ...wireSource, cards: [] } } })),
+    http.post('*/api/v1/import/delete-source', () => HttpResponse.json({ success: true, data: { items: [] } })),
+  )
+  const { result } = renderHook(() => ({ connect: useCreateImportSource(), disconnect: useDeleteImportSource() }), { wrapper })
+  await act(() => result.current.connect.mutateAsync({ provider: 'apple-wallet', name: 'iPhone' }))
+  await act(() => result.current.disconnect.mutateAsync('s1'))
+  expect(captured).toEqual([
+    [METRICS.IMPORT_SOURCE_CONNECT, { provider: 'apple-wallet' }, 'on'],
+    [METRICS.IMPORT_SOURCE_DISCONNECT, { provider: 'apple-wallet' }, 'off'],
+  ])
+  server.use(http.post('*/api/v1/import/delete-source', () => HttpResponse.json({ message: 'unavailable' }, { status: 500 })))
+  await act(async () => { await expect(result.current.disconnect.mutateAsync('s1')).rejects.toThrow() })
+  expect(captured).toHaveLength(2)
 })
 
 it('useImportSources fetches the source list with its cards', async () => {

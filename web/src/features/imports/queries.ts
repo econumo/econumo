@@ -47,9 +47,11 @@ export function useDeleteImportSource() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: importsApi.deleteImportSource,
-    onSuccess: (items) => {
+    onSuccess: (items, id) => {
+      const source = queryClient.getQueryData<ImportSourceDto[]>(queryKeys.importSources)?.find((item) => item.id === id)
       queryClient.setQueryData(queryKeys.importSources, items)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
+      trackEvent(METRICS.IMPORT_SOURCE_DISCONNECT, source ? { provider: source.provider } : {})
     },
   })
 }

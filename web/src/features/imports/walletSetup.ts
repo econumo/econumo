@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ImportSourceDto } from '@/api/dto/imports'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { getItem, removeItem, setItem } from '@/lib/storage'
@@ -82,6 +82,7 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
   // Ignore an old Run Immediately tick saved before a payment was received.
   const [ticks, setTicks] = useState<StepId[]>(() => (sourceId ? readTicks(sourceId).filter((id) => id !== 'immediate' || paymentArrived) : []))
   const [configureLink, setConfigureLink] = useState<string | null>(null)
+  const completionMethods = useRef<Partial<Record<StepId, 'manual' | 'automatic'>>>({})
 
   useEffect(() => {
     if (sourceId && !paymentArrived && readTicks(sourceId).includes('immediate')) {
@@ -91,10 +92,11 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
   }, [sourceId, paymentArrived, ticks])
 
   const tick = useCallback(
-    (id: StepId) => {
+    (id: StepId, method: 'manual' | 'automatic' = 'manual') => {
       if (!sourceId || id === 'payment' || (id === 'immediate' && !paymentArrived)) {
         return
       }
+      completionMethods.current[id] = method
       setTicks((prev) => {
         const next = STEPS.filter((s) => s === id || prev.includes(s))
         setItem(ticksKey(sourceId), next)
@@ -125,6 +127,8 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
     setResetPoint(next)
     setTicks([])
     setConfigureLink(null)
+    completionMethods.current = {}
+    trackEvent(METRICS.IMPORT_SETUP_RESTART, { provider: 'apple-wallet' })
   }
 
   // A parsed payment creates a ledger row counted in tapCount; failed events
@@ -135,6 +139,37 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
   const auto = (id: StepId) => paymentArrived && id !== 'immediate'
   const done = (id: StepId) => (id !== 'immediate' || paymentArrived) && (auto(id) || ticks.includes(id))
   const current = STEPS.find((id) => !done(id)) ?? null
+  const completed = STEPS.filter(done).join(',')
+  const progress = useRef({ sourceId, completed, current: undefined as StepId | null | undefined })
+  useEffect(() => {
+    if (!sourceId) {
+      return
+    }
+    const previous = progress.current
+    const previousSteps = previous.sourceId === sourceId ? previous.completed.split(',') : completed.split(',')
+    const completedSteps = completed ? completed.split(',') as StepId[] : []
+    const newlyCompleted = completedSteps.filter((id) => !previousSteps.includes(id))
+    // Seed the initial state without replaying historical completions. Only
+    // changes observed by this guide count; returning users report their
+    // current step again, so a resumed setup still has a progress signal.
+    progress.current = { sourceId, completed, current }
+    for (const id of newlyCompleted) {
+      trackEvent(METRICS.IMPORT_SETUP_STEP, {
+        provider: 'apple-wallet', step: id, step_number: STEPS.indexOf(id) + 1,
+        done: true, method: completionMethods.current[id] ?? 'automatic',
+        completed_count: completedSteps.length,
+      })
+    }
+    if (newlyCompleted.length > 0 && current === null) {
+      trackEvent(METRICS.IMPORT_SETUP_COMPLETE, { provider: 'apple-wallet', completed_count: STEPS.length })
+    }
+    if (current !== null && (previous.sourceId !== sourceId || previous.current !== current)) {
+      trackEvent(METRICS.IMPORT_SETUP_STEP_VIEW, {
+        provider: 'apple-wallet', step: current, step_number: STEPS.indexOf(current) + 1,
+        completed_count: completedSteps.length,
+      })
+    }
+  }, [sourceId, completed, current])
 
   // Connecting (the shortcut's check-in) and the first payment are confirmed
   // by the server, so while either is the open step the page keeps asking —
@@ -165,7 +200,7 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
         if (failed.length > 0 || queued || tapped) {
           stopped = true
           trackEvent(METRICS.IMPORT_SHORTCUT_CHECK, { step: 'configure', ok: true })
-          tick('configure')
+          tick('configure', 'automatic')
         }
       } else if (tapped) {
         stopped = true

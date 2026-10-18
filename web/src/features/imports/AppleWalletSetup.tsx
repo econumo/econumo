@@ -142,7 +142,6 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
   }
 
   const handTick = (id: StepId) => {
-    trackEvent(METRICS.IMPORT_SETUP_STEP, { step: id, done: true })
     setup.tick(id)
   }
 

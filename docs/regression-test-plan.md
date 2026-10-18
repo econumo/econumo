@@ -494,6 +494,22 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       `/settings/apple-wallet/inbox` is the not-found page, and
       Apple Wallet rows to review / failed / skipped appear in the main Inbox
       with every other source's.
+- [ ] Apple Wallet setup analytics 📱 (with usage statistics enabled):
+      `import_source_connect` with `provider: apple-wallet` starts the funnel.
+      Entering each active setup step sends `import_setup_step_view` with
+      `step`, `step_number` (1–5), and `completed_count`. Completing a step
+      sends `import_setup_step` with the same fields, `done: true` and
+      `method: manual` or `automatic`. Steps are `install`, `configure`,
+      `automate`, `payment`, `immediate`, in that order. Shortcut check-in and
+      the first non-failed payment count without clicking Done; failed payments
+      and attempts to finish step 5 before step 4 do not. A first payment can
+      confirm steps 1–4 at once. Finishing step 5 sends `import_setup_complete`.
+      Rerenders/polling do not duplicate milestones. Reopening the guide reports
+      the current step without replaying old completions. "Configure again"
+      sends `import_setup_restart` only after a successful reset and starts
+      tracking fresh progress. No source/card IDs, card names, merchant,
+      amount, currency or credentials appear in these events. Analytics opt-out
+      suppresses all of them through the usual analytics gate.
 - [ ] Ingest with an `ingest`-scoped PAT: `POST /api/v1/import/ingest-apple-wallet-event`
       → `status: queued` for an unmapped card; the card appears in the list as
       a "Needs mapping" row reading "1 to review · now", count and time update per event; a
@@ -1894,6 +1910,14 @@ User C sees none of it.
       archived budgets but not an unaccepted invite, `months_since_signup` is
       the whole months since registration (`0` in the first month), and no
       `accounts_hidden`, `*_archived` or `signup_month` key is sent.
+- [ ] The user attribute `apple-wallet` is `on` when an Apple Wallet source
+      exists (even before the first payment) and `off` when none exists or only
+      SimpleFIN exists. It is omitted until the source list has loaded. The
+      connection event already carries `on`; `import_source_disconnect` already
+      carries `off` after disconnecting Apple Wallet. A failed disconnect sends
+      no event and does not change the attribute. These facts ride every
+      subsequent event and page view, like the other profile attributes; logging
+      into another account uses that account's fresh source cache.
 - [ ] Auth-method flags say which sign-in methods the user HAS (same Network
       filter, in each event's `attributes`):
       `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each `on`
