@@ -14,6 +14,7 @@ import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDia
 import { calendarLocale } from '@/lib/calendarLocale'
 import { formatDate, parseDateTime, formatDateTime, dayKey } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { isNotEmpty, isValidDecimalNumber, isValidFormula, isValidNumber, isValidCategoryName, isValidPayeeName } from '@/lib/validation'
 import { tryNormalize } from '@/lib/decimal'
 import { useUiStore } from '@/app/uiStore'
@@ -234,6 +235,8 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }
 
   const dateOnly = dayKey(form.date)
+  const selectedDate = parseDateTime(dateOnly)
+  const currentYear = new Date().getFullYear()
   const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending || importQueued.isPending
   // posting a template creates an ordinary transaction (prefilled from it), so
   // it reads as the regular add dialog rather than a mode of its own
@@ -306,12 +309,17 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
             <PopoverContent className="w-auto p-0" align="end">
               <Calendar
                 mode="single"
+                captionLayout="dropdown"
+                defaultMonth={selectedDate}
+                startMonth={new Date(Math.min(currentYear - 100, selectedDate.getFullYear()), 0)}
+                endMonth={new Date(Math.max(currentYear + 100, selectedDate.getFullYear()), 11)}
                 weekStartsOn={1}
                 locale={calendarLocale(i18n.language)}
-                selected={parseDateTime(dateOnly)}
+                selected={selectedDate}
                 onSelect={(day) => {
                   if (day) {
                     patch({ date: `${formatDate(day)} 00:00:00` })
+                    trackEvent(METRICS.TRANSACTION_DATE_SELECT)
                     setDateOpen(false)
                   }
                 }}

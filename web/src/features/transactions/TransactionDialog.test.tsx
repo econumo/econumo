@@ -107,6 +107,55 @@ it('clicking anywhere on a select card (label/padding) opens the picker', async 
   expect(await screen.findByPlaceholderText('Search or enter a new name')).toBeInTheDocument()
 })
 
+it('jumps directly to a past year/month, keeps the chosen date on reopen, and submits it', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+    }),
+  )
+  const user = userEvent.setup()
+  const year = String(new Date().getFullYear() - 5)
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '5')
+
+  const dateButton = screen.getByRole('button', { name: 'date' })
+  const originalDate = dateButton.textContent
+  await user.click(dateButton)
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Choose the Year' }), year)
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Choose the Month' }), '1')
+  expect(dateButton).toHaveTextContent(originalDate!)
+  await user.click(screen.getByRole('button', { name: new RegExp(`February 15th, ${year}`) }))
+  expect(dateButton).toHaveTextContent(`${year}-02-15`)
+  expect(screen.queryByRole('combobox', { name: 'Choose the Year' })).not.toBeInTheDocument()
+
+  await user.click(dateButton)
+  expect(screen.getByRole('combobox', { name: 'Choose the Year' })).toHaveValue(year)
+  expect(screen.getByRole('combobox', { name: 'Choose the Month' })).toHaveValue('1')
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(body?.date).toBe(`${year}-02-15 00:00:00`))
+})
+
+it('opens at an existing future transaction date and allows jumping further ahead', async () => {
+  const user = userEvent.setup()
+  const year = new Date().getFullYear() + 2
+  renderDialog()
+  useUiStore.getState().openTransactionModal({
+    transaction: wireTxEcho({ date: `${year}-12-15 10:00:00` }) as unknown as TransactionDto,
+  })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await user.click(screen.getByRole('button', { name: 'date' }))
+  expect(screen.getByRole('combobox', { name: 'Choose the Year' })).toHaveValue(String(year))
+  expect(screen.getByRole('combobox', { name: 'Choose the Month' })).toHaveValue('11')
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Choose the Year' }), String(year + 1))
+  await user.click(screen.getByRole('button', { name: new RegExp(`December 15th, ${year + 1}`) }))
+  expect(screen.getByRole('button', { name: 'date' })).toHaveTextContent(`${year + 1}-12-15`)
+})
+
 it('Tab from the amount goes to the next field, not the calculator keypad', async () => {
   const user = userEvent.setup()
   renderDialog()
