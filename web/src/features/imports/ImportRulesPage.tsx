@@ -1,15 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { GripVertical } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ImportRuleDto, ImportRuleSpecDto, ImportRuleSuggestionDto } from '@/api/dto/imports'
-import { RouterPage } from '@/app/router-pages'
-import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { InfoBox } from '@/components/InfoBox'
-import { SortableList } from '@/components/SortableList'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { SettingsShell } from '@/features/settings/SettingsShell'
+import { ClassificationList, type ClassificationItem } from '@/features/classifications/ClassificationList'
+import { useCategories } from '@/features/classifications/queries'
 import { useAccessState } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { isAiEnabled } from '@/lib/config'
@@ -21,9 +17,14 @@ const ALL_SCOPE = { scope: 'all', runId: '', scopeSourceId: '' } as const
 
 type Editor = { kind: 'closed' } | { kind: 'create'; initial: ImportRuleSpecDto } | { kind: 'edit'; rule: ImportRuleDto }
 
+interface RuleItem extends ClassificationItem {
+  rule: ImportRuleDto
+}
+
 export function ImportRulesPage() {
   const { t } = useTranslation()
   const { data: rules = [], isPending } = useImportRules()
+  const { data: categories = [] } = useCategories()
   const names = useTargetNames()
   const update = useUpdateImportRule()
   const remove = useDeleteImportRule()
@@ -33,7 +34,6 @@ export function ImportRulesPage() {
   // the action disabled rather than let the click be the first they hear of it.
   const { state: accessState } = useAccessState()
   const [editor, setEditor] = useState<Editor>({ kind: 'closed' })
-  const [deleting, setDeleting] = useState<ImportRuleDto | null>(null)
   const [suggestions, setSuggestions] = useState<ImportRuleSuggestionDto[] | null>(null)
 
   // Priority is the list position; a drop rewrites only the rows that moved.
@@ -51,17 +51,10 @@ export function ImportRulesPage() {
     }
   }
 
-  const confirmDelete = async () => {
-    if (!deleting) {
-      return
-    }
-    try {
-      await remove.mutateAsync(deleting.id)
-    } catch (err) {
-      toast.error(apiErrorMessage(err))
-    } finally {
-      setDeleting(null)
-    }
+  const move = ({ id, afterId }: { id: string; afterId: string | null }) => {
+    const ids = rules.map((r) => r.id).filter((x) => x !== id)
+    ids.splice(afterId === null ? 0 : ids.indexOf(afterId) + 1, 0, id)
+    void reorder(ids)
   }
 
   const runSuggest = () => suggest.mutate(ALL_SCOPE, {
@@ -83,60 +76,64 @@ export function ImportRulesPage() {
       return next.length > 0 ? next : null
     })
 
+  // A classify rule wears its category's icon, as the category list does; a
+  // skip rule is marked as the one kind that drops rows.
+  const items: RuleItem[] = rules.map((r) => ({
+    id: r.id,
+    name: describeMatch(r, t),
+    position: r.priority,
+    isArchived: 0,
+    icon: r.action === 'skip' ? 'block' : categories.find((c) => c.id === r.categoryId)?.icon || 'bolt',
+    rule: r,
+  }))
+
   return (
-    <SettingsShell title={t('imports.rules.page.title')} backTo={RouterPage.SETTINGS_DATA}>
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-3">
-        <InfoBox>{t('imports.rules.page.intro')}</InfoBox>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" onClick={() => setEditor({ kind: 'create', initial: emptyRuleSpec(rules.length) })}>{t('imports.rules.page.add')}</Button>
-          {isAiEnabled() ? (
-            <Button type="button" variant="secondary" disabled={suggest.isPending || accessState === 'readonly'} onClick={runSuggest}>
-              {suggest.isPending ? t('imports.rules.suggest.running') : t('imports.rules.suggest.button')}
-            </Button>
-          ) : null}
-        </div>
-        {suggestions ? (
+    <>
+      <ClassificationList<RuleItem>
+        title={t('imports.rules.page.title')}
+        info={t('imports.rules.page.intro')}
+        createLabel={t('imports.rules.page.add')}
+        secondaryAction={isAiEnabled() ? (
+          <Button type="button" variant="ghost" size="sm" className="normal-case tracking-normal text-muted-foreground"
+            disabled={suggest.isPending || accessState === 'readonly'} onClick={runSuggest}>
+            <Sparkles className="size-4 text-econumo-purple" />
+            {suggest.isPending ? t('imports.rules.suggest.running') : t('imports.rules.suggest.button')}
+          </Button>
+        ) : undefined}
+        emptyText={isPending ? t('common.app.modal.loading.data_loading') : t('imports.rules.page.empty')}
+        deleteTitle={t('imports.rules.page.delete_title')}
+        archivedLabel=""
+        items={items}
+        analyticsType="import_rule"
+        showIcon
+        iconClassName={(item) => item.rule.action === 'skip' ? 'text-destructive' : 'text-muted-foreground'}
+        meta={(item) => (
+          <span className="truncate text-xs text-muted-foreground">
+            {item.rule.action === 'skip' ? t('imports.rules.page.skip_hint') : describeTargets(item.rule, names)}
+          </span>
+        )}
+        rowSwitch={() => null}
+        alert={suggestions ? (
           <section aria-label={t('imports.rules.suggest.heading')} className="flex flex-col gap-2 rounded-lg border p-3">
-            <h2 className="text-sm font-medium">{t('imports.rules.suggest.heading')}</h2>
+            <h2 className="text-sm">{t('imports.rules.suggest.heading')}</h2>
             {suggestions.map((s, i) => (
               <SuggestionRow key={i} suggestion={s} targets={describeTargets(s, names)}
                 onAccept={() => void accept(s)} onEdit={() => { setEditor({ kind: 'create', initial: { ...ruleSpec(s), priority: rules.length } }); discard(s) }} onDiscard={() => discard(s)} />
             ))}
           </section>
-        ) : null}
-        {isPending ? (
-          <p className="text-sm text-muted-foreground">{t('common.app.modal.loading.data_loading')}</p>
-        ) : rules.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('imports.rules.page.empty')}</p>
-        ) : (
-          <SortableList items={rules} onReorder={(ids) => void reorder(ids)} disabled={update.isPending} renderItem={(r, handle) => (
-            <div className="flex items-center gap-2 rounded-lg bg-econumo-card px-3 py-2.5 text-sm">
-              <button type="button" aria-label={t('imports.rules.page.reorder')} className="cursor-grab touch-none text-muted-foreground" {...handle.attributes} {...handle.listeners}>
-                <GripVertical className="size-4" />
-              </button>
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate">{describeMatch(r, t)}</span>
-                {r.action === 'skip'
-                  ? <span className="text-xs text-muted-foreground">{t('imports.rules.page.skip_hint')}</span>
-                  : <span className="truncate text-xs text-muted-foreground">{describeTargets(r, names)}</span>}
-              </div>
-              <Badge variant={r.action === 'skip' ? 'destructive' : 'secondary'}>{t(`imports.rules.action.${r.action}`)}</Badge>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setEditor({ kind: 'edit', rule: r })}>{t('imports.rules.page.edit')}</Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setDeleting(r)}>{t('imports.rules.page.delete')}</Button>
-            </div>
-          )} />
-        )}
-      </div>
+        ) : undefined}
+        onCreate={() => setEditor({ kind: 'create', initial: emptyRuleSpec(rules.length) })}
+        onEdit={(item) => setEditor({ kind: 'edit', rule: item.rule })}
+        onDelete={(id) => remove.mutate(id, { onError: (err) => toast.error(apiErrorMessage(err)) })}
+        onMove={update.isPending ? undefined : move}
+      />
       {editor.kind !== 'closed' ? (
         <ImportRuleDialog key={editor.kind === 'edit' ? editor.rule.id : 'create'} open
           rule={editor.kind === 'edit' ? editor.rule : undefined}
           initial={editor.kind === 'create' ? editor.initial : undefined}
           onClose={() => setEditor({ kind: 'closed' })} />
       ) : null}
-      <ConfirmDialog open={deleting !== null} onClose={() => setDeleting(null)} onConfirm={() => void confirmDelete()}
-        title={t('imports.rules.page.delete_title')} question={deleting ? describeMatch(deleting, t) : ''}
-        confirmLabel={t('imports.rules.page.delete_confirm')} cancelLabel={t('common.button.cancel.label')} destructive />
-    </SettingsShell>
+    </>
   )
 }
 

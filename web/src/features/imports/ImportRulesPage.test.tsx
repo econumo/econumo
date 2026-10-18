@@ -111,8 +111,11 @@ it('lists rules in priority order with skip rules marked and targets named', asy
   expect(within(rows[0]).getByText('Payee contains BLUE BOTTLE')).toBeInTheDocument()
   expect(within(rows[0]).getByText('Food · health')).toBeInTheDocument()
   expect(within(rows[1]).getByText('Description starts with PAYMENT THANK YOU')).toBeInTheDocument()
-  expect(within(rows[1]).getByText('Skip')).toBeInTheDocument()
+  expect(within(rows[1]).getByText('Matching transactions are not imported')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Suggest rules' })).not.toBeInTheDocument()
+  // rule order carries meaning: no A-Z sort, and no archive switch
+  expect(screen.queryByRole('button', { name: 'Reorder list' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('switch')).not.toBeInTheDocument()
 })
 
 it('creates a rule from the editor with a live match count', async () => {
@@ -152,7 +155,8 @@ it('edits and deletes a rule', async () => {
   renderPage()
   const user = userEvent.setup()
   const rows = await screen.findAllByRole('listitem')
-  await user.click(within(rows[0]).getByRole('button', { name: 'Edit' }))
+  await user.click(within(rows[0]).getByRole('button', { name: 'actions Payee contains BLUE BOTTLE' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
   const dialog = await screen.findByRole('dialog')
   const value = within(dialog).getByLabelText('Match value') as HTMLInputElement
   expect(value.value).toBe('BLUE BOTTLE')
@@ -161,8 +165,10 @@ it('edits and deletes a rule', async () => {
   await user.click(within(dialog).getByRole('button', { name: 'Save' }))
   await waitFor(() => expect(posted.update![0]).toMatchObject({ id: 'rule1', matchValue: 'BLUE BOTTLE COFFEE', priority: 0 }))
 
-  await user.click(within((await screen.findAllByRole('listitem'))[1]).getByRole('button', { name: 'Delete' }))
-  await user.click(await screen.findByRole('button', { name: 'Delete rule' }))
+  await user.click(within((await screen.findAllByRole('listitem'))[1]).getByRole('button', { name: 'actions Description starts with PAYMENT THANK YOU' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+  expect(await screen.findByText('Delete this rule?')).toBeInTheDocument()
+  await user.click(await screen.findByRole('button', { name: 'Delete' }))
   await waitFor(() => expect(posted.delete![0]).toEqual({ id: 'rule2' }))
   await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1))
 })

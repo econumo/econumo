@@ -677,11 +677,17 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       imported transaction and choose "Update rule" — the rule keeps its
       original labels and gains the new one (the label set is unioned, never
       replaced by the single added label).
-- [ ] Settings → Data → Import rules (not linked from Import & export):
-      rules list in priority order, skip rules carry a red "Skip" badge and no
-      targets; "Add rule" opens the editor; Save/Edit/Delete round-trip; drag
-      (or focus the grip, Space, arrow, Space) reorders and the order survives
-      reload. 📱
+- [ ] Settings → Data → Import rules (not linked from Import & export) looks
+      like the Categories page: "Add rule" above the info box on desktop (a "+"
+      in the header on a phone, plus a full-width search), back returns to
+      Settings. Rules list in priority order as plain rows: classify rules
+      show their category's icon and the targets under the match, skip rules a
+      red block icon and "Matching transactions are not imported". There is no
+      archive switch and no "Reorder list" (A–Z) button — order matters. The
+      row's ⋮ menu (a sheet on a phone) offers Edit and Delete; Delete asks
+      "Delete this rule?"; drag (or focus the grip, Space, arrow, Space)
+      reorders and the order survives reload. With AI on, "Suggest rules" sits
+      beside "Add rule" (in the toolbar under the search on a phone). 📱
 - [ ] Rule editor layout: a "When" card reads as a sentence (Payee/Description
       and contains/starts with/is exactly pills above the text, an "Aa" toggle
       for case sensitivity), then "Then" with a Classify/Skip switch.
