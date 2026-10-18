@@ -18,6 +18,7 @@ import (
 	domaccount "github.com/econumo/econumo/internal/account"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/sortkey"
@@ -49,6 +50,7 @@ type querier interface {
 	ListAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) ([]accountRow, error)
 	ListDeletedAccounts(ctx context.Context, db backend.DBTX) ([]accountRow, error)
 	CountAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) (int64, error)
+	GetAccountTransactionsRevision(ctx context.Context, db backend.DBTX, id string) (int64, error)
 	UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error
 	GetAccountOption(ctx context.Context, db backend.DBTX, p getOptionP) (optionRow, error)
 	ListAccountOptionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
@@ -62,13 +64,16 @@ type querier interface {
 type balanceQuerier interface {
 	GetAccountBalance(ctx context.Context, db backend.DBTX, accountID string, before time.Time) (string, error)
 	ListAccountBalancesForUser(ctx context.Context, db backend.DBTX, userID string, before time.Time) ([]balanceResult, error)
+	GetAccountTransactionsCount(ctx context.Context, db backend.DBTX, accountID string) (int64, error)
+	ListAccountTransactionsCountsForUser(ctx context.Context, db backend.DBTX, userID string) (map[string]int64, error)
 }
 
 // Repo implements account.Repository.
 type Repo struct {
-	tx *backend.TxManager
-	q  querier
-	b  balanceQuerier
+	tx  *backend.TxManager
+	q   querier
+	b   balanceQuerier
+	rev *txrevision.Bumper
 }
 
 var _ domaccount.Repository = (*Repo)(nil)
@@ -77,9 +82,9 @@ var _ domaccount.Repository = (*Repo)(nil)
 func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
 	case "sqlite":
-		return &Repo{tx: tx, q: sqliteQuerier{}, b: sqliteBalance{}}
+		return &Repo{tx: tx, q: sqliteQuerier{}, b: sqliteBalance{}, rev: txrevision.New(driver, tx)}
 	case "postgresql":
-		return &Repo{tx: tx, q: pgsqlQuerier{}, b: pgsqlBalance{}}
+		return &Repo{tx: tx, q: pgsqlQuerier{}, b: pgsqlBalance{}, rev: txrevision.New(driver, tx)}
 	default:
 		panic("accountrepo: unknown database driver " + driver)
 	}
@@ -100,6 +105,15 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Account, error) {
 		return nil, err
 	}
 	return hydrateAccount(row)
+}
+
+// TransactionsRevision reads the account's current revision.
+func (r *Repo) TransactionsRevision(ctx context.Context, id vo.Id) (int64, error) {
+	rev, err := r.q.GetAccountTransactionsRevision(ctx, r.db(ctx), id.String())
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, errs.NewNotFound("Account not found")
+	}
+	return rev, err
 }
 
 // ListAvailable returns the user's non-deleted accounts.
@@ -207,9 +221,21 @@ func (r *Repo) Balances(ctx context.Context, userID vo.Id, before time.Time) (ma
 	return out, nil
 }
 
+// TransactionsCount returns how many transactions the account's transaction
+// list holds.
+func (r *Repo) TransactionsCount(ctx context.Context, accountID vo.Id) (int64, error) {
+	return r.b.GetAccountTransactionsCount(ctx, r.db(ctx), accountID.String())
+}
+
+// TransactionsCounts returns TransactionsCount for all the user's non-deleted
+// accounts, keyed by account id.
+func (r *Repo) TransactionsCounts(ctx context.Context, userID vo.Id) (map[string]int64, error) {
+	return r.b.ListAccountTransactionsCountsForUser(ctx, r.db(ctx), userID.String())
+}
+
 // SaveCorrection inserts a balance-correction transaction.
 func (r *Repo) SaveCorrection(ctx context.Context, c model.AccountCorrection) error {
-	return r.q.InsertCorrectionTransaction(ctx, r.db(ctx), insertCorrectionP{
+	if err := r.q.InsertCorrectionTransaction(ctx, r.db(ctx), insertCorrectionP{
 		ID:          c.ID.String(),
 		UserID:      c.UserID.String(),
 		AccountID:   c.AccountID.String(),
@@ -219,7 +245,10 @@ func (r *Repo) SaveCorrection(ctx context.Context, c model.AccountCorrection) er
 		SpentAt:     c.SpentAt,
 		Type:        c.Type,
 		Amount:      c.Amount,
-	})
+	}); err != nil {
+		return err
+	}
+	return r.rev.Bump(ctx, c.AccountID.String())
 }
 
 // hydrateAccount reconstitutes an Account from a row.
@@ -240,6 +269,7 @@ func hydrateAccount(row accountRow) (*model.Account, error) {
 		ID: id, UserID: userID, CurrencyID: currencyID, Name: row.Name,
 		Type: model.AccountType(row.Type), Icon: row.Icon, IsDeleted: row.IsDeleted,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		TransactionsRevision: row.TransactionsRevision,
 	}, nil
 }
 

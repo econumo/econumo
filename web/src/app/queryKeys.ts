@@ -2,7 +2,6 @@ export const queryKeys = {
   accounts: ['accounts'] as const,
   folders: ['folders'] as const,
   transactions: ['transactions'] as const,
-  accountTransactions: (accountId: string) => ['accountTransactions', accountId] as const,
   categories: ['categories'] as const,
   payees: ['payees'] as const,
   tags: ['tags'] as const,

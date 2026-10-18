@@ -18,7 +18,10 @@ function renderPage(overrides: Parameters<typeof coreHandlers>[0] = {}) {
   server.use(...coreHandlers(overrides))
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
-    [{ path: '/settings/data', element: <ImportsDataPage /> }, { path: '/settings/simplefin', element: <div>SIMPLEFIN PAGE</div> }],
+    [
+      { path: '/settings/data', element: <ImportsDataPage /> },
+      { path: '/settings/simplefin', element: <div>SIMPLEFIN PAGE</div> },
+    ],
     { initialEntries: ['/settings/data'] },
   )
   render(

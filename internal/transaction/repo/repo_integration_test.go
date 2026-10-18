@@ -590,3 +590,22 @@ func TestTransactionRepo_ImportedTransactionIDs(t *testing.T) {
 		t.Fatalf("empty ids: %v, %v", empty, err)
 	}
 }
+
+func TestTransactionRepo_TransactionsRevisions(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE accounts SET transactions_revision = ? WHERE id = ?`), 42, acct1); err != nil {
+		t.Fatalf("set revision: %v", err)
+	}
+
+	got, err := repo.TransactionsRevisions(ctx, []vo.Id{vo.MustParseId(acct1), vo.MustParseId(acct2), vo.MustParseId(acctB)})
+	if err != nil {
+		t.Fatalf("TransactionsRevisions: %v", err)
+	}
+	if len(got) != 2 || got[acct1] != 42 || got[acct2] != 0 {
+		t.Fatalf("revisions = %v, want %s:42 %s:0 and no entry for the unknown account", got, acct1, acct2)
+	}
+	if none, err := repo.TransactionsRevisions(ctx, nil); err != nil || none == nil || len(none) != 0 {
+		t.Fatalf("empty input = %v, %v, want an empty non-nil map", none, err)
+	}
+}

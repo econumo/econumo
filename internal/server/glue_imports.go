@@ -18,6 +18,7 @@ type importsAccountSource interface {
 	AccountOwner(ctx context.Context, id vo.Id) (vo.Id, error)
 	AccountDeleted(ctx context.Context, id vo.Id) (bool, error)
 	AccountCurrency(ctx context.Context, id vo.Id) (vo.Id, error)
+	AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error)
 }
 
 type importsAccountGrants interface {
@@ -63,6 +64,10 @@ func (r *ImportsAccountReader) AccountCurrencyCode(ctx context.Context, id vo.Id
 		return "", err
 	}
 	return view.Code, nil
+}
+
+func (r *ImportsAccountReader) AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error) {
+	return r.accounts.AccountListForUser(ctx, userID)
 }
 
 var _ imports.AccountReader = (*ImportsAccountReader)(nil)

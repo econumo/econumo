@@ -144,7 +144,15 @@ func (s *Service) ImportQueuedEvent(ctx context.Context, userID vo.Id, req model
 		out = res
 		return nil
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+	accounts, err := s.accounts.AccountListForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out.Accounts = accounts
+	return out, nil
 }
 
 func parseOptionalIDField(raw *string) *vo.Id {

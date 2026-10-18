@@ -183,14 +183,30 @@ func TestPostRecurringTransaction_CreatesAndAdvances(t *testing.T) {
 		"recurringId": item.ID, "id": txOpID, "type": "expense", "amount": "42.50",
 		"accountId": accountID, "categoryId": catID, "date": "2026-08-31 00:00:00", "description": "rent",
 	}
+	revBefore := h.revision(t, accountID)
 	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/post-recurring-transaction", tok, body)
 	if status != http.StatusOK {
 		t.Fatalf("status=%d body=%s", status, env.raw)
 	}
 	res := mustUnmarshal[struct {
-		Item          struct{ ID, Amount, Date string } `json:"item"`
-		NextPaymentAt string                            `json:"nextPaymentAt"`
+		Item     struct{ ID, Amount, Date string } `json:"item"`
+		Accounts []struct {
+			ID                   string `json:"id"`
+			TransactionsRevision *int64 `json:"transactionsRevision"`
+		} `json:"accounts"`
+		NextPaymentAt string `json:"nextPaymentAt"`
 	}](t, env.Data)
+	if got := h.revision(t, accountID); got != revBefore+1 {
+		t.Fatalf("revision = %d, want %d", got, revBefore+1)
+	}
+	if len(res.Accounts) == 0 {
+		t.Fatalf("response carries no accounts: %s", env.raw)
+	}
+	for _, a := range res.Accounts {
+		if a.TransactionsRevision == nil || *a.TransactionsRevision != h.revision(t, a.ID) {
+			t.Errorf("account %s: response transactionsRevision = %v, DB = %d", a.ID, a.TransactionsRevision, h.revision(t, a.ID))
+		}
+	}
 	if res.Item.ID == "" || res.Item.Amount != "42.5" {
 		t.Fatalf("unexpected transaction: %+v", res.Item)
 	}

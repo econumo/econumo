@@ -26,10 +26,17 @@ export interface AccountDto {
   type: AccountType
   icon: string
   sharedAccess: AccountAccessDto[]
+  /** moves by 1 per committed change to the account's transactions; absent on older servers */
+  transactionsRevision?: number
+  // how many rows get-account-transaction-list returns for it; absent from older servers
+  transactionsCount?: number
 }
 
 export interface AccountItemDto {
   item: AccountDto
   /** opening-balance / correction transaction, when the backend wrote one */
-  transaction: TransactionDto | null
+  transaction: CorrectionDto | null
 }
+
+/** The correction's wire shape lacks the list's provenance fields; a correction never has any. */
+export type CorrectionDto = Omit<TransactionDto, 'labelIds' | 'recurringId' | 'isImported'>

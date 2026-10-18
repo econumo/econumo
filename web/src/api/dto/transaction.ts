@@ -32,6 +32,17 @@ export interface TransactionDto extends CreateTransactionDto {
   isImported: 0 | 1
 }
 
+/** A transaction as kept in IndexedDB: the author is stored as an id and
+ *  re-resolved from the bucket's `authors` when the list is assembled. */
+export type StoredTransaction = Omit<TransactionDto, 'author'> & { authorId: string }
+
+export interface AccountTransactionListDto {
+  /** account id -> revision; accounts the caller cannot access are absent */
+  revisions: Record<string, number>
+  items: StoredTransaction[]
+  authors: UserDto[]
+}
+
 // Prefill data for the transaction/recurring dialogs: accepts enriched view
 // rows (e.g. ViewTransaction) whose author lookup may not have resolved yet,
 // without requiring dialogs to fabricate one.

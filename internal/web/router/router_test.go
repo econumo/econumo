@@ -1,6 +1,7 @@
 package router_test
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"io"
@@ -528,5 +529,38 @@ func TestOAuthServer_UnmountedWhenNil(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("status=%d want 404", resp.StatusCode)
+	}
+}
+
+func TestResponsesAreGzipped(t *testing.T) {
+	body := `{"items":[` + strings.Repeat(`{"id":"0190a0e2-0000-7000-8000-000000000000"},`, 100) + `{}]}`
+	reg := func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api/v1/big", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, body)
+		})
+	}
+	srv := newServer(t, reg)
+	// srv.Client() asks for gzip and inflates on its own, hiding the header
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/big", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.Header.Get("Content-Encoding") != "gzip" {
+		t.Fatalf("Content-Encoding=%q want gzip", resp.Header.Get("Content-Encoding"))
+	}
+	if resp.Header.Get("X-Content-Type-Options") != "nosniff" || resp.Header.Get("X-Request-Id") == "" {
+		t.Fatalf("security/request-id headers missing on a compressed response")
+	}
+	zr, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		t.Fatalf("gzip reader: %v", err)
+	}
+	got, _ := io.ReadAll(zr)
+	if string(got) != body {
+		t.Fatalf("round trip mismatch")
 	}
 }

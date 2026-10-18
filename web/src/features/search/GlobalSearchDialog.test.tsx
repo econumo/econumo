@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureCategories, fixtureConnections, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
+import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { GlobalSearchDialog } from './GlobalSearchDialog'
@@ -18,8 +19,11 @@ function LocationProbe() {
   return <div data-testid="location">{useLocation().pathname}</div>
 }
 
-function renderDialog() {
+function renderDialog(restoredTransactions?: unknown[]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  if (restoredTransactions) {
+    queryClient.setQueryData(queryKeys.transactions, restoredTransactions)
+  }
   render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={['/']}>
@@ -136,7 +140,8 @@ it('selecting a classification narrows to its transactions and clears the input'
 
 it('typing gibberish shows Nothing found', async () => {
   const user = userEvent.setup()
-  renderDialog()
+  // the transactions sync itself waits for the user, so only a restored list can show first
+  renderDialog(fixtureTransactions)
   await screen.findByTestId('tx-t1')
   await user.type(input(), 'zzqqxx')
   expect(await screen.findByText('Nothing found')).toBeInTheDocument()
@@ -151,7 +156,8 @@ it('does not claim Nothing found while the user data is still loading', async ()
     }),
   )
   const user = userEvent.setup()
-  renderDialog()
+  // the transactions sync itself waits for the user, so only a restored list can show first
+  renderDialog(fixtureTransactions)
   await screen.findByTestId('tx-t1')
   await user.type(input(), 'zzqqxx')
   await waitFor(() => expect(txRows()).toHaveLength(0))

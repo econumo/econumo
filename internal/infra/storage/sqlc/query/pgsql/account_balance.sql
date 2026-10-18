@@ -29,3 +29,25 @@ FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
 WHERE a.is_deleted = false AND (a.user_id = sqlc.arg(user_id) OR (aa.user_id = sqlc.arg(user_id) AND aa.is_accepted = true))
 GROUP BY a.id;
+
+-- name: GetAccountTransactionsCount :one
+-- About how many rows get-account-transaction-list returns for the account
+-- (either side of a transfer; a self-transfer would count twice). A size hint
+-- for batching downloads, so both counts stay index-only.
+SELECT CAST(
+    (SELECT COUNT(*) FROM transactions t0 WHERE t0.account_id = sqlc.arg(account_id))
+  + (SELECT COUNT(*) FROM transactions t1 WHERE t1.account_recipient_id = sqlc.arg(account_id))
+AS BIGINT) as transactions_count;
+
+-- name: ListAccountTransactionsCountsForUser :many
+-- The same count for every AVAILABLE account (the balance query's set).
+SELECT
+    a.id as account_id,
+    CAST(
+        (SELECT COUNT(*) FROM transactions t0 WHERE t0.account_id = a.id)
+      + (SELECT COUNT(*) FROM transactions t1 WHERE t1.account_recipient_id = a.id)
+    AS BIGINT) as transactions_count
+FROM accounts a
+LEFT JOIN accounts_access aa ON aa.account_id = a.id
+WHERE a.is_deleted = false AND (a.user_id = sqlc.arg(user_id) OR (aa.user_id = sqlc.arg(user_id) AND aa.is_accepted = true))
+GROUP BY a.id;

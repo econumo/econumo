@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"sync/atomic"
 )
 
@@ -35,6 +36,58 @@ func (m *TxManager) DB() *sql.DB {
 type txState struct {
 	tx      *sql.Tx
 	savepct atomic.Int64
+
+	mu     sync.Mutex
+	values map[any]any
+	hooks  []txHook
+}
+
+type txHook struct {
+	key any
+	fn  func(ctx context.Context) error
+}
+
+// TxValue returns the value attached to the active transaction under key,
+// creating it with init on first use. Nested WithTx savepoints share it.
+// With no active transaction it returns (nil, false).
+func (m *TxManager) TxValue(ctx context.Context, key any, init func() any) (any, bool) {
+	st, ok := dbtxFromCtx(ctx)
+	if !ok {
+		return nil, false
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if st.values == nil {
+		st.values = map[any]any{}
+	}
+	v, found := st.values[key]
+	if !found {
+		v = init()
+		st.values[key] = v
+	}
+	return v, true
+}
+
+// BeforeCommit registers fn once per transaction per key; it runs inside the
+// transaction right before the outermost COMMIT, so its writes commit
+// atomically with it and an error turns the commit into a rollback. It
+// reports false when no transaction is active and the caller must act now.
+// Rolling back a savepoint does not unregister hooks, so a hook may still fire
+// for work that was undone; for revision bumps that only over-counts, safely.
+func (m *TxManager) BeforeCommit(ctx context.Context, key any, fn func(ctx context.Context) error) bool {
+	st, ok := dbtxFromCtx(ctx)
+	if !ok {
+		return false
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	for _, h := range st.hooks {
+		if h.key == key {
+			return true
+		}
+	}
+	st.hooks = append(st.hooks, txHook{key: key, fn: fn})
+	return true
 }
 
 type ctxKey struct{}
@@ -54,7 +107,8 @@ func dbtxFromCtx(ctx context.Context) (*txState, bool) {
 // ContextWithTx injects an externally-managed *sql.Tx as the active transaction
 // for ctx. This is the seam the test harness uses: it opens an outer tx, calls
 // ContextWithTx, runs the request through the router, and rolls the outer tx
-// back at the end. Any WithTx encountered downstream will see the active tx and
+// back at the end. Such a state never commits, so its BeforeCommit hooks never
+// run. Any WithTx encountered downstream will see the active tx and
 // nest via SAVEPOINT instead of opening its own BEGIN.
 func ContextWithTx(ctx context.Context, tx *sql.Tx) context.Context {
 	return ctxWithDBTX(ctx, &txState{tx: tx})
@@ -114,8 +168,18 @@ func (m *TxManager) top(ctx context.Context, fn func(ctx context.Context) error)
 		}
 	}()
 
-	err = fn(txCtx)
-	return err
+	if err = fn(txCtx); err != nil {
+		return err
+	}
+	st.mu.Lock()
+	hooks := append([]txHook(nil), st.hooks...)
+	st.mu.Unlock()
+	for _, h := range hooks {
+		if err = h.fn(txCtx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (m *TxManager) nested(ctx context.Context, st *txState, fn func(ctx context.Context) error) (err error) {

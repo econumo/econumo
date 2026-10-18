@@ -144,8 +144,53 @@ definitions:
         items:
           $ref: '#/definitions/model.SharedAccess'
         type: array
+      transactionsCount:
+        description: |-
+          TransactionsCount is how many rows get-account-transaction-list returns
+          for the account; clients group small accounts into one download by it.
+        type: integer
+      transactionsRevision:
+        description: |-
+          TransactionsRevision counts the committed changes to the account's
+          transactions; clients re-download an account's transactions when it moves.
+        type: integer
       type:
         type: integer
+    type: object
+  model.AccountTransactionItem:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      authorId:
+        type: string
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      isImported:
+        type: integer
+      labelIds:
+        items:
+          type: string
+        type: array
+      payeeId:
+        type: string
+      recurringId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
     type: object
   model.AddAccountRequest:
     properties:
@@ -1218,6 +1263,22 @@ definitions:
         items:
           $ref: '#/definitions/model.AccountResult'
         type: array
+    type: object
+  model.GetAccountTransactionListResult:
+    properties:
+      authors:
+        items:
+          $ref: '#/definitions/model.UserResult'
+        type: array
+      items:
+        items:
+          $ref: '#/definitions/model.AccountTransactionItem'
+        type: array
+      revisions:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
     type: object
   model.GetBudgetListResult:
     properties:
@@ -9715,6 +9776,46 @@ paths:
       security:
       - Bearer: []
       summary: Export the transaction list as CSV
+      tags:
+      - Transaction
+  /api/v1/transaction/get-account-transaction-list:
+    get:
+      description: Returns the transactions of the requested accounts (all accessible
+        accounts when accountIds is omitted) with each account's transactions revision.
+        Requested accounts the caller cannot access are omitted from the response.
+      parameters:
+      - description: Comma-separated account ids (max 200); omit for all accessible
+          accounts
+        in: query
+        name: accountIds
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetAccountTransactionListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get transactions per account with revisions
       tags:
       - Transaction
   /api/v1/transaction/get-transaction-list:

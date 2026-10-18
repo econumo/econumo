@@ -90,7 +90,7 @@ func runSteps(t *testing.T, h *apiparity.Harness, s Scenario) []stepResult {
 		if st.NoAuth {
 			token = ""
 		}
-		status, body := postMCP(t, h.URL(), token, rpcBody)
+		status, body := postMCP(t, h, token, rpcBody)
 		if len(st.MCPCapturePath) > 0 {
 			id := extractMCPID(t, body, st.MCPCapturePath)
 			if st.CaptureAs != "" {
@@ -114,9 +114,16 @@ func Run(t *testing.T, h *apiparity.Harness, s Scenario) []string {
 	return out
 }
 
-func postMCP(t *testing.T, baseURL, token, body string) (int, []byte) {
+// RunSteps replays a scenario's steps for callers outside this package that
+// only need the side effects (the revision guard), not the transcript.
+func RunSteps(t *testing.T, h *apiparity.Harness, s Scenario) {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodPost, baseURL+"/mcp", strings.NewReader(body))
+	runSteps(t, h, s)
+}
+
+func postMCP(t *testing.T, h *apiparity.Harness, token, body string) (int, []byte) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPost, h.URL()+"/mcp", strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,6 +132,8 @@ func postMCP(t *testing.T, baseURL, token, body string) (int, []byte) {
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
+	label := "POST /mcp " + rpcLabel(body)
+	h.ObserveRequest(t, "before", label)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -134,7 +143,27 @@ func postMCP(t *testing.T, baseURL, token, body string) (int, []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	h.ObserveRequest(t, "after", label)
 	return resp.StatusCode, raw
+}
+
+// rpcLabel names a JSON-RPC request by its method and, for tools/call and
+// prompts/get, the tool or prompt it targets, so an observer can tell the
+// /mcp requests of one scenario apart.
+func rpcLabel(body string) string {
+	var req struct {
+		Method string `json:"method"`
+		Params struct {
+			Name string `json:"name"`
+		} `json:"params"`
+	}
+	if err := json.Unmarshal([]byte(body), &req); err != nil {
+		return "?"
+	}
+	if req.Params.Name != "" {
+		return req.Method + " " + req.Params.Name
+	}
+	return req.Method
 }
 
 // extractItemID pulls "data.item.id" out of a create-endpoint response, like

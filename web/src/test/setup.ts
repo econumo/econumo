@@ -62,3 +62,14 @@ if (typeof globalThis.crypto?.subtle === 'undefined') {
 // Imported dynamically so the storage rebind above runs first (i18n reads the
 // persisted locale from localStorage at init).
 await import('@/app/i18n')
+
+// Transactions now persist to IndexedDB on every sync, so a test must not see
+// the buckets a previous test in the same file left behind.
+const { IDBFactory } = await import('fake-indexeddb')
+const { resetDbForTests } = await import('@/lib/db')
+const { resetTransactionStoreForTests } = await import('@/lib/transactionStore')
+beforeEach(() => {
+  globalThis.indexedDB = new IDBFactory()
+  resetDbForTests()
+  resetTransactionStoreForTests()
+})

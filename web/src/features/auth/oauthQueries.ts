@@ -161,9 +161,9 @@ export function useExchangeHandoff() {
       // previous user's profile and accounts live in memory, still inside
       // their staleTime — so cancel what is in flight and empty the cache too.
       await queryClient.cancelQueries()
-      clearPersistedQueryCache()
+      await clearPersistedQueryCache()
       queryClient.clear()
-      setToken(data.token)
+      setToken(data.token, data.user.id)
       // After the token is stored, for the same reason as the password login
       // (see useLogin): an unawaited probe must not 401 its way into a logout.
       oauthApi.refreshAuthMethodFlags()

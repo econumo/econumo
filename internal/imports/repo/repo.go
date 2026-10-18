@@ -9,6 +9,7 @@ import (
 	"github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -105,8 +106,9 @@ type querier interface {
 }
 
 type Repo struct {
-	tx *backend.TxManager
-	q  querier
+	tx  *backend.TxManager
+	q   querier
+	rev *txrevision.Bumper
 }
 
 var _ imports.Repository = (*Repo)(nil)
@@ -114,9 +116,9 @@ var _ imports.Repository = (*Repo)(nil)
 func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
 	case "sqlite":
-		return &Repo{tx: tx, q: sqliteQuerier{}}
+		return &Repo{tx: tx, q: sqliteQuerier{}, rev: txrevision.New(driver, tx)}
 	case "postgresql":
-		return &Repo{tx: tx, q: pgsqlQuerier{}}
+		return &Repo{tx: tx, q: pgsqlQuerier{}, rev: txrevision.New(driver, tx)}
 	default:
 		panic("importsrepo: unknown database driver " + driver)
 	}
@@ -319,6 +321,11 @@ func runFromRow(row runRow) (*model.ImportRun, error) {
 }
 
 func (r *Repo) InsertLink(ctx context.Context, l *model.ImportTransactionLink) error {
+	if l.TransactionID != nil {
+		if err := r.rev.BumpWhere(ctx, "id = ?", l.TransactionID.String()); err != nil {
+			return err
+		}
+	}
 	return r.q.InsertImportTransactionLink(ctx, r.db(ctx), insertLinkParams{
 		ID: l.ID.String(), SourceID: l.SourceID.String(), RunID: optionalID(l.RunID), EventID: optionalID(l.EventID),
 		ExternalAccountID: l.ExternalAccountID, ExternalTransactionID: l.ExternalTransactionID,
@@ -422,6 +429,9 @@ func (r *Repo) ListSourcesByUser(ctx context.Context, userID vo.Id) ([]model.Imp
 }
 
 func (r *Repo) DeleteSource(ctx context.Context, id vo.Id) error {
+	if err := r.rev.BumpWhere(ctx, "id IN (SELECT transaction_id FROM import_transaction_links WHERE source_id = ?)", id.String()); err != nil {
+		return err
+	}
 	return r.q.DeleteImportSource(ctx, r.db(ctx), id.String())
 }
 
@@ -519,7 +529,23 @@ func (r *Repo) GetLink(ctx context.Context, id vo.Id) (*model.ImportTransactionL
 	return linkFromRow(row)
 }
 
+// UpdateLink moves isImported only when the link points at another transaction.
 func (r *Repo) UpdateLink(ctx context.Context, l *model.ImportTransactionLink) error {
+	stored, err := r.q.GetImportTransactionLinkByID(ctx, r.db(ctx), l.ID.String())
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	newTx := optionalID(l.TransactionID)
+	if !sameID(stored.TransactionID, newTx) {
+		for _, id := range []*string{stored.TransactionID, newTx} {
+			if id == nil {
+				continue
+			}
+			if err := r.rev.BumpWhere(ctx, "id = ?", *id); err != nil {
+				return err
+			}
+		}
+	}
 	return r.q.UpdateImportTransactionLink(ctx, r.db(ctx), updateLinkParams{
 		RunID: optionalID(l.RunID), TransactionID: optionalID(l.TransactionID), Status: l.Status,
 		ExternalAmount: l.ExternalAmount, ExternalCurrency: l.ExternalCurrency,
@@ -629,4 +655,11 @@ func (r *Repo) ListLinksByRun(ctx context.Context, runID vo.Id) ([]model.ImportT
 		out = append(out, *l)
 	}
 	return out, nil
+}
+
+func sameID(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }

@@ -121,3 +121,34 @@ func TestCreateRecurringTransaction_FromMissingTransaction_Fails(t *testing.T) {
 		t.Fatalf("failed create must not leave a template behind; items=%+v", list.Items)
 	}
 }
+
+func (h *harness) revision(t *testing.T, accountID string) int64 {
+	t.Helper()
+	var rev int64
+	if err := h.db.QueryRow(`SELECT transactions_revision FROM accounts WHERE id = ?`, accountID).Scan(&rev); err != nil {
+		t.Fatalf("read transactions_revision: %v", err)
+	}
+	return rev
+}
+
+func TestCreateRecurringTransaction_FromTransaction_BumpsSourceAccountOnce(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	const opTx = "0197c400-0000-7000-8000-000000000007"
+	srcTxID := createSourceTransaction(t, h, tok, opTx, map[string]any{
+		"id": opTx, "type": "expense", "amount": "42.50",
+		"accountId": accountID, "categoryId": catID,
+		"date": "2026-07-31 10:00:00", "description": "rent",
+	})
+	before := h.revision(t, accountID)
+
+	req := createRecurringReq("0197c400-0000-7000-8000-000000000008", "expense", "42.50")
+	req["sourceTransactionId"] = srcTxID
+	if status, env := h.do(t, http.MethodPost, "/api/v1/recurring/create-recurring-transaction", tok, req); status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+
+	if got := h.revision(t, accountID); got != before+1 {
+		t.Fatalf("revision = %d, want %d (the link rewrites recurring_id on the source row)", got, before+1)
+	}
+}

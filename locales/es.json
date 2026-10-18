@@ -285,7 +285,13 @@
     },
     "sync": {
       "menu_item": "Sincronización completa",
-      "failing": "No se puede conectar con el servidor: reintentando"
+      "failing": "No se puede conectar con el servidor: reintentando",
+      "full_reload": "Borrando la caché y recargando…",
+      "hold_hint": "Mantén pulsado para borrar la caché y recargar",
+      "full_reload_offline": "Estás sin conexión. Borra la caché y recarga cuando vuelvas a estar en línea."
+    },
+    "data": {
+      "reload_all": "Borrar la caché y recargar"
     },
     "accounts": {
       "menu_item": "Cuentas",
@@ -920,8 +926,7 @@
           "groups": {
             "personal_details": "Datos personales",
             "preferences": "Preferencias",
-            "security": "Seguridad",
-            "privacy": "Privacidad"
+            "security": "Seguridad"
           },
           "currency": {
             "label": "Moneda"
@@ -1013,8 +1018,10 @@
             "last_sign_in_method_hint": "Este es tu único método de inicio de sesión, por lo que no se puede desvincular."
           },
           "analytics": {
-            "label": "Compartir estadísticas de uso",
-            "description": "Nos ayuda a mejorar Econumo.\nLos datos financieros y la información personal —nombre, correo electrónico— nunca se envían."
+            "menu_item": "Estadísticas de uso",
+            "label": "Ayudar a mejorar Econumo",
+            "description": "Las estadísticas de uso nos muestran qué funciones de la aplicación son las más populares y qué conviene mejorar.",
+            "promise": "Tus datos financieros y personales siguen siendo privados y no se incluyen en las estadísticas."
           }
         }
       }

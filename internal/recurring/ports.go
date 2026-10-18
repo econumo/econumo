@@ -11,6 +11,11 @@ import (
 // transaction services onto these at composition time.
 type AccountResolver interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
+
+	// AccountListForUser is read again once the post's transaction has committed:
+	// transactions_revision moves at commit, so the embed the create built inside
+	// it is one behind.
+	AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error)
 }
 
 type AccountGrants interface {

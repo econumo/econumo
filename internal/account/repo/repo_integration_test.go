@@ -270,3 +270,39 @@ func TestAccountRepo_UnknownTypeValue_RoundTrips(t *testing.T) {
 		t.Fatalf("Type after unchanged save = %d, want 0", got2.Type)
 	}
 }
+
+func TestAccountRepo_TransactionsRevision_ReadAndNeverWrittenBySave(t *testing.T) {
+	repo, db, f := newAccountRepo(t)
+	ctx := context.Background()
+	seedUser(t, f, userA, "A")
+	seedAccount(t, f, acctCash, userA, "Cash")
+	id := vo.MustParseId(acctCash)
+
+	if _, err := db.Raw.ExecContext(ctx, db.Rebind(`UPDATE accounts SET transactions_revision = ? WHERE id = ?`), 5, acctCash); err != nil {
+		t.Fatalf("seed revision: %v", err)
+	}
+	acc, err := repo.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if acc.TransactionsRevision != 5 {
+		t.Errorf("hydrated revision = %d, want 5", acc.TransactionsRevision)
+	}
+
+	acc.TransactionsRevision = 99
+	acc.UpdateName("Renamed", fixedTime)
+	if err := repo.Save(ctx, acc); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	rev, err := repo.TransactionsRevision(ctx, id)
+	if err != nil {
+		t.Fatalf("TransactionsRevision: %v", err)
+	}
+	if rev != 5 {
+		t.Errorf("revision after Save = %d, want 5 (Save must not write it)", rev)
+	}
+
+	if _, err := repo.TransactionsRevision(ctx, vo.NewId()); err == nil {
+		t.Error("unknown account: want not-found error")
+	}
+}

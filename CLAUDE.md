@@ -367,6 +367,67 @@ build arg of the same name sets it per image build, default `dev`) — that one
 IS a real version, used by the mobile app where no server config is present.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
+**Transactions are not in the localStorage query cache; they live in IndexedDB.** One
+database, `econumo` (`web/src/lib/db.ts`), holds three stores: `importKeys` (the SimpleFIN
+data key, migrated once from the old `econumo-import` database), `accountTransactions`
+(one row per account: its `transactionsRevision` and transactions) and `meta` (`buster`,
+`userId`, `savedAt`, plus a copy of the query-cache snapshot). `web/src/lib/transactionStore.ts` is the only reader/writer: loads
+are readonly (a readwrite transaction only to wipe another user's or build's data), waits that hold boot
+or auth time out after 1.5 s (a slow database is no failure and stays on), background writes
+are never awaited, and errors never surface (a broken IndexedDB turns the store off for the
+session; the sync keeps working in memory). `clearTransactions` (called by
+`clearPersistedQueryCache` on every login and logout) bumps an epoch
+that fences any in-flight sync so it cannot write the previous user's data back. A full reload
+never clears: `markForReload` sets every stored bucket's revision to `RELOAD_REVISION` (-1)
+and keeps its rows, behind the same epoch fence, so a reload whose downloads fail (a server
+unreachable while the browser reports online) still leaves the history readable offline. A stored
+`buster`/`userId` that no longer matches wipes the store on load without an epoch bump. The
+query-cache restore seeds `['transactions']` from IndexedDB inside `restoreClient` whenever
+a session token exists, independent of the localStorage snapshot: `meta.userId` must be the
+session's user (`sessionUserId`, stored by `setToken` at login/oauth exchange next to the token,
+filled in once from `get-user-data` for older sessions; a snapshot `user` must match it too;
+the login clear can time out, so the store alone does not prove its owner), `meta.buster`
+must be this build's, and without the
+snapshot's accounts every stored bucket is shown until the refresh sync corrects the set. A
+snapshot of this release past its 24 h `maxAge` is kept (re-stamped) when the store seeds, so
+an offline start after a day away shows data instead of the boot loader. The persister also
+copies each snapshot into the store (`putSnapshot`, throttled like the localStorage write,
+fenced by the epoch, dropped with the buckets when another user writes); the restore uses
+that copy when localStorage holds no snapshot of this release, so a device that lost its
+localStorage but kept IndexedDB still starts offline. That
+key's `queryFn` is the revision-driven sync
+(`web/src/features/transactions/{sync.ts,revisionTracking.ts}`): it compares the bucket
+revisions with the `transactionsRevision` of `get-account-list` and calls
+`get-account-transaction-list` with `accountIds` naming only the stale accounts (no request
+when none are stale) for accounts whose stored revision changed (over 200 of them go one by
+one). An account with no stored bucket (first load, resumed load, new account), a bucket marked
+for reload and every account on a full reload go in requests packed by size (`packDownloads`:
+by the account's `transactionsCount`, largest first, small accounts sharing a request of up to
+2,000 rows, an account that big or bigger alone; one request per account against a server
+without counts), at most two in flight, each request's buckets written to the store in the
+background as they arrive, so an interrupted first load resumes with only the missing
+accounts; the list lands once every account is in.
+A full reload drops the in-memory state, so a retry after it fails resumes from the store,
+downloading only the buckets still marked. It reads
+IndexedDB only while the page holds no synced or restored list (first boot, after a
+login/logout); otherwise the buckets come from memory: the cached list regrouped
+by account under the revisions it was synced at. A write whose response carries no
+transactions (a classification merged or deleted, a recurring template linked or deleted)
+patches the list through `patchTransactions`, which cancels a sync in flight (it read the
+rows before the write and would put them back) and runs it again on the patched list.
+Hidden-folder accounts are included and pending share invites skipped; against a server
+whose accounts carry no revisions it falls back to `get-transaction-list` (hidden-folder
+account pages then show no transactions). The user's own edits are recorded locally without
+a download when the response revision is exactly +1 of the stored one. The sync button
+(`ApplicationLayout`, via `useLongPress`): a tap is an incremental refresh; holding it
+>= 600 ms or Shift+click is a full reload (every account re-downloaded, toast,
+`METRICS.DATA_FULL_RELOAD` with `source: 'sync_button'`). The same full reload
+(`useFullReload`, `web/src/features/transactions/useFullReload.ts`) is the last row of
+the Settings page's Data group (not inside Import & export), "Clear cache and reload" (`source: 'settings'`; no confirmation).
+The hook ignores a second trigger while its reload runs (until the download lands or fails
+once, or pauses offline), and the row is disabled for that time. Offline it clears nothing,
+only toasting `settings.sync.full_reload_offline`.
+
 **Product analytics rule:** every new user-facing feature/action MUST fire an
 analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen
 `app`-prefixed camelCase names; the collector's snake_case name derives
@@ -505,6 +566,13 @@ Tests live alongside the Go code:
   `-tags enginecompare`, against both engines. Regenerate goldens with
   `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then INSPECT the diff — same rule
   as `apiparity`.
+- `internal/test/revisionguard/` — guards the per-account `transactions_revision` counter
+  (see "Transaction revisions" below): replays the `apiparity` and `mcpparity` catalogues plus
+  guard-only scenarios against the real `server.BuildAPI` handler and fails when any account's
+  transaction fingerprint (rows, labels, author/recurring links, the display names and avatars
+  of the authors) changes without its revision moving. Smoke on sqlite; under
+  `-tags enginecompare` also on PostgreSQL. A new write path that touches an account's
+  transactions fails here until it bumps.
 - `internal/infra/oidc/oidctest` — an in-process fake OpenID provider (discovery, authorize,
   token, JWKS, userinfo, end-session) used to drive the real `internal/oauth` callback through
   `httptest`, so provider-flow tests exercise actual protocol code rather than stubbing it out.
@@ -857,6 +925,25 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   `limitPeriodArg`) even though a bound `time.Time` now yields the same bytes:
   that is deliberate belt-and-braces so those comparisons never depend on a
   DSN parameter, not a sign that the driver still needs it.
+- **Transaction revisions.** `accounts.transactions_revision` is a per-account counter the
+  SPA's transaction sync compares to know which accounts to re-download. It moves by exactly
+  +1 per committed DB transaction that changes anything the account's downloaded transaction
+  list carries (rows, label links, recurring links, the classification ids on rows, an
+  author's name or avatar), however many rows or writes that took. The bump lives INSIDE the repository method that
+  does the write, through `internal/infra/txrevision` (`Bumper.Bump(ctx, accountIDs...)`;
+  `BumpWhere(ctx, cond, args...)` selects the affected accounts from `transactions`, so it
+  runs BEFORE the matching rows change or are deleted). Bumps are collected per DB
+  transaction (`backend.TxManager.BeforeCommit` / `TxValue`) and flushed once just before
+  COMMIT as one UPDATE per account in sorted id order (a stable lock order, so concurrent
+  writers cannot deadlock on it); outside a transaction they apply immediately. Sites:
+  the transaction repo (`Save`, `ReplaceLabels`, `LinkRecurring`, `Delete`), account
+  `SaveCorrection`, category/payee/tag merge and delete, label merge and delete, recurring
+  delete, imports `InsertLink` / `UpdateLink` (only when its `transaction_id` changes) /
+  `DeleteSource`, and the user `Save` when the name or avatar changes. The account DTO
+  carries it as `transactionsRevision` (additive), next to `transactionsCount`, how many rows
+  `get-account-transaction-list` returns for the account (a size hint for packing downloads,
+  read from the transactions indexes alone, a transfer counted on both sides). `internal/test/revisionguard` enforces
+  the rule (see Testing).
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
 - Keep `.sql` query files ASCII-only, including comments — a multibyte character (an em dash,
@@ -941,6 +1028,18 @@ In the distroless image these run via the binary directly, e.g.
   AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs. One exception:
   `/api/v1/import/list-external-accounts` is a POST *read*, because the bridge access URL
   travels in the body — it must never reach a query string (logs, history, referrers).
+- **Compression:** every response (API, MCP, OAuth and the SPA files) is gzipped when the
+  client sends `Accept-Encoding: gzip` (`middleware.Compress`, wrapping the whole tree in
+  `internal/web/router`), except bodies under 1 KB, already-compressed types, `HEAD` and
+  `Range` requests. The JSON bytes are unchanged; a transaction list shrinks about 10x.
+- **Transaction sync read:** `GET /api/v1/transaction/get-account-transaction-list?accountIds=a,b`
+  serves the SPA's per-account transaction store: `{revisions, items, authors}` where `revisions`
+  maps each requested account id to its `transactionsRevision`, `items` are the transactions
+  of the accounts being downloaded (each with `authorId`) and `authors` the users they
+  reference. Absent `accountIds` = every accessible account, hidden folders included; at most
+  200 comma-separated ids; ids the caller cannot access are omitted from `revisions` (never an
+  error). `/api/v1/transaction/get-transaction-list` (the legacy full list, still used by MCP,
+  older clients and the SPA's fallback against a server without revisions) is unchanged.
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
@@ -1245,7 +1344,7 @@ data unreadable. Most are also asserted by the test suite.
   through `claim-setup-token` (the server returns the access URL and keeps nothing), encrypts
   it in the browser with a passphrase-wrapped data key (`web/src/lib/importCrypto.ts`; the
   wrapped key lives in `import_credential_keys`, one row per user; the unwrapped key stays
-  non-extractable in IndexedDB), and stores only the ciphertext on the source. Every
+  non-extractable in the `importKeys` store of the `econumo` IndexedDB), and stores only the ciphertext on the source. Every
   `list-external-accounts`/`sync-source` call carries the plaintext access URL in the body —
   "at rest zero-knowledge, in flight trusted" — and it is never persisted, logged, or
   formatted into an error. A sync is one `import_runs` row; per-account failures leave the

@@ -7,10 +7,11 @@ interface PreferencesPlugin {
 }
 
 // WKWebView may evict localStorage under storage pressure; these are the keys
-// whose loss logs the user out or strands them on the wrong server. Values are
-// mirrored verbatim (storage.ts JSON-encodes non-token keys), so restore is a
+// whose loss logs the user out or strands them on the wrong server (and the
+// token's user, without which nothing is restored offline). Values are
+// mirrored verbatim (storage.ts JSON-encodes the other keys), so restore is a
 // straight copy back.
-const MIRRORED_KEYS: readonly string[] = ['token', 'backendHost', 'selfHosted', 'analyticsOptOut']
+const MIRRORED_KEYS: readonly string[] = ['token', 'sessionUserId', 'backendHost', 'selfHosted', 'analyticsOptOut']
 
 function prefs(): PreferencesPlugin | null {
   return nativePlugin<PreferencesPlugin>('Preferences')

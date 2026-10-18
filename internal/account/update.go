@@ -149,6 +149,15 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.Upd
 	if err != nil {
 		return nil, err
 	}
+	// updated predates the correction written in the tx, so its revision is stale.
+	item.TransactionsRevision, err = s.accounts.TransactionsRevision(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	item.TransactionsCount, err = s.balances.TransactionsCount(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	idx, err := s.accountIndex(ctx, userID, updated.ID)
 	if err != nil {
 		return nil, err

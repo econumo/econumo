@@ -268,7 +268,8 @@ navigation (single-pane vs sidebar).
       custom currency in Settings → Currencies first (name, code, symbol,
       rate); that is the normal manual path.
 - [ ] Folders: create, rename, collapse/expand, hide/show (hidden folder
-      disappears from sidebar but its accounts stay reachable via settings),
+      disappears from sidebar but its accounts stay reachable via settings and
+      keep their transactions),
       delete — deleting a folder MOVES its accounts into the general folder
       (nothing is lost); the general folder itself offers no Delete; reorder
       folders.
@@ -370,7 +371,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
 
 - [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
       import/export rows; dialogs open as before) and "Apple Wallet" (its own page;
-      back returns to Settings).
+      back returns to Settings), followed by "Clear cache and reload" as the
+      group's last row on the Settings page itself (not inside Import & export).
 - [ ] Before connecting 📱: the Apple Wallet page explains the feature, lists
       what is needed (an iPhone with Apple Pay, the Shortcuts app, about 5
       minutes), previews the five steps, says which payment fields Econumo
@@ -784,9 +786,10 @@ and on tablet/phone only with a hardware keyboard.
       account shows an eye-off icon after its folder name ("Hidden folder" on
       hover); selecting one opens the account page and closes search; `⋯` shows
       Edit / Access (admin only) / Delete (owner) or Decline (shared account).
-- [ ] Opening a hidden-folder account from search shows its transactions (they
-      load on opening; their transactions are not part of search results), and
-      adding, editing or deleting one there updates the list.
+- [ ] A hidden-folder account's page shows its transactions straight away
+      (they are downloaded with every other account, not on opening), global
+      search finds those transactions too, and adding, editing or deleting one
+      there updates the list.
 - [ ] Deleting or declining an account from its result `⋯` keeps search open
       and the row disappears from the list.
 - [ ] Access control from an account result `⋯` opens the sharing dialog over the
@@ -1721,7 +1724,15 @@ User C sees none of it.
 - [ ] B sees A's categories/payees/tags via the shared account and can use
       them on transactions in that account; B cannot edit A's classifications.
 - [ ] A revokes access → the account disappears from B's sidebar immediately
-      (or on next sync); B's own data untouched.
+      (or on next sync) and its transactions disappear from B's lists and
+      global search; B's own data untouched.
+- [ ] B accepts an account share → the account's whole transaction history
+      appears for B (lists, account page, global search) after the next sync
+      without a reload.
+- [ ] A shared account where B has write access: B adds, edits or deletes a
+      transaction → A sees it after tapping sync (or refocusing after 10
+      minutes), with B shown as the author; B changing their own name or
+      avatar also reaches A's transaction rows after a sync.
 - [ ] Owner deletes a shared account → it disappears for B too.
 
 **Budget sharing**
@@ -1758,17 +1769,21 @@ User C sees none of it.
       token revealed exactly once with copy button; API call with the PAT
       works (e.g. `GET /api/v1/user/get-user-data`); revoked PAT stops working;
       list shows last-used/expiry.
-- [ ] Analytics toggle (Settings → Profile → Privacy, the last group on the
-      page): switching it off persists across a reload; log out and back in —
-      the toggle still reads off; a read-only user (lapsed trial) can still
-      flip it, unlike other writes on that account.
+- [ ] Usage statistics 📱 (Settings → Profile → Preferences, the row after
+      Language): the page shows only a plain row with a chevron — no status,
+      no switch and no explanation text on the page itself. Tapping it opens
+      a dialog (a bottom sheet on a phone) that leads with the privacy promise
+      (financial and personal data stays private and is never included in
+      the statistics),
+      then why statistics help, with the "Help improve Econumo" switch
+      showing the current state. Switching it off persists across a
+      reload; log out and back in — the switch still reads off; a read-only
+      user (lapsed trial) can still flip it, unlike other writes on that
+      account. There is no Privacy group on the Profile page any more.
 - [ ] Create a personal token with scope "full" — it works everywhere; an
       "ingest" token (created via "Configure on this iPhone" or the API) is
       rejected with 401 on every non-import route and accepted on
       `import/ingest-apple-wallet-event`.
-      flip it, unlike other writes on that account. Its description renders on
-      TWO lines (the reassurance about financial and personal data starts a new
-      line), in every UI language.
 - [ ] Analytics reach the collector for signed-in sessions only (DevTools →
       Network, filter `t.econumo.com`): the login/register pages load neither
       `twillingate.js` nor send any request; after login the SDK script loads
@@ -1962,6 +1977,67 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Sync button: spins during refetch; failure (kill the server briefly)
       turns it amber with a tooltip; recovery clears it. App restores from the
       persisted cache on reload without a boot-loader flash.
+- [ ] Sync button tap = incremental refresh: after an edit made on another
+      device, one tap shows it, and the network log shows a single
+      `get-account-transaction-list` request whose `accountIds` names only the
+      changed account (a tap with nothing changed sends no such request; a first
+      load or a full reload downloads every account in a few requests packed
+      by size: small accounts share one request, an account with 2,000 or more
+      transactions gets its own, at most two at a time).
+- [ ] 📱 Sync button hold (about 0.6 s) or Shift+click on desktop = full
+      reload: every account's transactions are downloaded again, a toast
+      confirms the reload, and a short tap does not trigger it.
+- [ ] 📱 Transactions survive a reload while the server is unreachable: load
+      the app, stop the server (or go offline), reload — the account pages,
+      the transaction lists and global search still show the previously
+      synced transactions; the sync button shows its failure state instead of
+      an empty list.
+- [ ] 📱 Offline start more than 24 h after the last visit: use the app, close
+      it, wait over a day (or set the device clock forward 25 h), go offline
+      and open it — accounts and transactions show at once, with no "Loading
+      your data" screen; going online refreshes them in the background.
+- [ ] 📱 Offline start with localStorage cleared but IndexedDB kept (in
+      DevTools, Application → Local storage → delete only
+      `econumo.query-cache`, then go offline and reload): accounts and
+      transactions show, with no "Loading your data" screen.
+- [ ] A full reload interrupted part-way (go offline during the downloads
+      of "Clear cache and reload") resumes once back online: only the accounts not
+      yet downloaded are requested, and after the next offline reload every
+      account still shows its transactions.
+- [ ] "Clear cache and reload" while the server is unreachable but the
+      device is online (stop the server, or block its host): the reload fails,
+      and after going offline and reloading the page every account still
+      shows its transactions. Once the server is back, the next sync downloads
+      every account again, one request per account.
+- [ ] While a sync is downloading (throttle the network, then edit a
+      transaction on another device so an account is re-downloaded), delete a
+      category used by transactions of a different account: once the download
+      lands those transactions still show no category, also after a page reload.
+- [ ] Log in as B in a browser where A was signed in before (no logout):
+      after a reload, none of A's transactions appear, even offline.
+- [ ] Interrupted first load resumes: on a fresh browser profile (or after a
+      full reload), throttle the network and go offline once a few
+      `get-account-transaction-list` requests have finished, then go online
+      again (or reload) — the requests that follow name only the accounts
+      that had not arrived yet, one account per request.
+- [ ] 📱 Settings page → Data group → "Clear cache and reload" (the group's
+      last row, after Import & export and the import rows; not on the Import &
+      export page; no hint; a refresh icon instead of the arrow, spinning while it
+      runs): no confirmation, the "Reloading all data
+      from the server…" toast appears, every account is downloaded again (one
+      request per account), and the row is disabled until the download
+      finishes (or first fails); pressing it or holding the sync button again
+      meanwhile starts nothing new. Offline, it (and the sync-button hold)
+      only shows "You're offline. Clear the cache and reload when you're back online."
+      and an offline reload afterwards still shows every transaction.
+- [ ] Cross-device edit: with the app open on devices A and B, edit or add a
+      transaction on A, then tap sync on B (or refocus B after 10 minutes) —
+      B shows the change without a manual reload; only the touched account
+      is re-downloaded.
+- [ ] Logout, then log in as another user in the same browser: none of the
+      previous user's transactions, accounts or search results appear, even
+      for an instant, and a reload keeps it that way (the local transaction
+      store is cleared on logout and on a login that changes the user).
 - [ ] Update notices (environment-dependent — needs `ECONUMO_CHECK_UPDATES`
       and reachability of econumo.com): with a newer release available, the
       dismissible sidebar notice and the settings "update available" row
