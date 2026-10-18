@@ -89,10 +89,10 @@ it('renders the menu rows with exact labels and navigates', async () => {
   expect(await screen.findByText('BUDGETS PAGE')).toBeInTheDocument()
 })
 
-it('links the version label to the Econumo website for non-release builds', async () => {
+it('hides non-semver version text while linking to the Econumo website', async () => {
   window.econumoConfig = { VERSION: 'dev' }
   renderPage()
-  const label = await screen.findByText('Econumo dev')
+  const label = await screen.findByRole('link', { name: 'Econumo', exact: true })
   expect(label).toHaveAttribute('href', 'https://econumo.com')
 })
 

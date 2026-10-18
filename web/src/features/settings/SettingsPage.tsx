@@ -11,6 +11,7 @@ import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
+import { SEMVER } from '@/lib/version'
 import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { useUserData, useAccessState } from '@/features/user/queries'
 import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
@@ -184,7 +185,7 @@ export function SettingsPage() {
           rel="noreferrer"
           className="transition-colors hover:text-muted-foreground"
         >
-          Econumo {version}
+          Econumo{SEMVER.test(version) ? ` ${version}` : ''}
         </a>
         <span aria-hidden="true">·</span>
         <a
