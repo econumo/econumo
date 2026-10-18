@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { server } from '@/test/msw'
@@ -53,31 +53,21 @@ it('shows the connected state and the card list when a source exists', async () 
   expect(screen.getByRole('button', { name: 'Disconnect Apple Wallet' })).toBeInTheDocument()
 })
 
-it('links to its own inbox with the count of this source\'s rows waiting there', async () => {
-  const row = { linkId: 'l1', sourceId: 's1', externalAccountId: 'wallet', accountId: '', payee: 'Blue Bottle', amount: '5', currency: 'USD', type: 'expense', postedAt: '2026-08-20 17:42:03', reason: 'unmapped' }
-  const failed = { eventId: 'e1', sourceId: 's1', receivedAt: '2026-08-21 08:00:00', error: 'bad', payload: '{}' }
-  server.use(...coreHandlers({ importSources: [wireSource], importQueue: { queued: [row, { ...row, linkId: 'l2' }, { ...row, linkId: 'l3', sourceId: 'other' }], skipped: [], failed: [failed] } }))
-  renderPage()
-  const link = await screen.findByRole('link', { name: /^Inbox/ })
-  expect(link).toHaveAttribute('href', '/settings/apple-wallet/inbox')
-  await waitFor(() => expect(link).toHaveTextContent('Inbox3'))
-  expect(screen.getByRole('link', { name: 'Import history' })).toHaveAttribute('href', '/settings/apple-wallet/history')
-})
-
-it('the inbox row carries no count when nothing from this source is waiting', async () => {
+it('links to its import history, and no longer to an inbox of its own', async () => {
   server.use(...coreHandlers({ importSources: [wireSource], importQueue: { queued: [], skipped: [], failed: [] } }))
   renderPage()
   expect(await screen.findByText('Connected')).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: /^Inbox/ })).toHaveTextContent(/^Inbox$/)
+  expect(screen.getByRole('link', { name: 'Import history' })).toHaveAttribute('href', '/settings/apple-wallet/history')
+  expect(screen.queryByRole('link', { name: /Inbox/ })).toBeNull()
 })
 
-it('before the first tap the status names the current setup step and the open guide follows it, with no inbox or card list', async () => {
+it('before the first tap the status names the current setup step and the open guide follows it, with no history link or card list', async () => {
   server.use(...coreHandlers({ importSources: [{ ...wireSource, cards: [] }], importQueue: { queued: [], skipped: [], failed: [] } }))
   renderPage()
   expect(await screen.findByText('Setting up')).toBeInTheDocument()
   expect(screen.getByText('Step 1 of 5: Install the Shortcut')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Install the Shortcut' })).toHaveAttribute('aria-expanded', 'true')
   expect(screen.queryByRole('button', { name: /Setup guide/ })).toBeNull()
-  expect(screen.queryByRole('link', { name: /^Inbox/ })).toBeNull()
+  expect(screen.queryByRole('link', { name: 'Import history' })).toBeNull()
   expect(screen.queryByRole('heading', { name: 'Cards' })).toBeNull()
 })

@@ -6,21 +6,17 @@ import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { AppleWalletConnect, AppleWalletDisconnect, AppleWalletSetup } from './AppleWalletSetup'
 import { ImportCards } from './ImportCards'
-import { useImportQueue, useImportSources } from './queries'
+import { useImportSources } from './queries'
 import { relativeTime } from './relativeTime'
 import { STEPS, useWalletSetup, type WalletSetup } from './walletSetup'
 
 function WalletStatus({ source, setup }: { source: ImportSourceDto; setup: WalletSetup }) {
   const { t, i18n } = useTranslation()
-  const { data: queue } = useImportQueue()
-  const waiting =
-    (queue?.queued ?? []).filter((r) => r.sourceId === source.id).length + (queue?.failed ?? []).filter((e) => e.sourceId === source.id).length
   // lastSeenAt is a fixed-width UTC datetime, so the string max is the latest
   const lastTap = source.cards.reduce((max, c) => (c.lastSeenAt > max ? c.lastSeenAt : max), '')
   // Until the first tap arrives nothing is connected in any way that matters
   // to the user, so the status names the step they are on instead.
   const settingUp = !lastTap && setup.current !== null
-  const showInbox = lastTap !== '' || waiting > 0
   return (
     <div className="flex flex-col rounded-lg bg-econumo-card text-sm">
       <div className="flex items-center gap-3 px-4 py-3.5">
@@ -40,26 +36,16 @@ function WalletStatus({ source, setup }: { source: ImportSourceDto; setup: Walle
           </div>
         </div>
       </div>
-      {showInbox ? (
-        <>
-          <Link
-            to={RouterPage.SETTINGS_APPLE_WALLET_INBOX}
-            className="flex items-center justify-between gap-2 border-t border-background px-4 py-3 hover:bg-econumo-hover"
-          >
-            <span>{t('inbox.title')}</span>
-            <span className="flex items-center gap-2 text-muted-foreground">
-              {waiting > 0 ? waiting : null}
-              <ChevronRight className="size-4" />
-            </span>
-          </Link>
-          <Link
-            to={RouterPage.SETTINGS_APPLE_WALLET_HISTORY}
-            className="flex items-center justify-between gap-2 rounded-b-lg border-t border-background px-4 py-3 hover:bg-econumo-hover"
-          >
-            <span>{t('imports.runs.history_link')}</span>
-            <ChevronRight className="size-4 text-muted-foreground" />
-          </Link>
-        </>
+      {/* waiting taps are in the Inbox with every other provider's; history
+          has something to show once a tap has arrived */}
+      {lastTap ? (
+        <Link
+          to={RouterPage.SETTINGS_APPLE_WALLET_HISTORY}
+          className="flex items-center justify-between gap-2 rounded-b-lg border-t border-background px-4 py-3 hover:bg-econumo-hover"
+        >
+          <span>{t('imports.runs.history_link')}</span>
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
       ) : null}
     </div>
   )

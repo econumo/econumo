@@ -28,7 +28,6 @@ import { ConnectionsPage } from '@/features/connections/ConnectionsPage'
 import { RecurringSettingsPage } from '@/features/recurring/RecurringSettingsPage'
 import { ImportsDataPage } from '@/features/imports/ImportsDataPage'
 import { AppleWalletHistoryPage } from '@/features/imports/AppleWalletHistoryPage'
-import { AppleWalletInboxPage } from '@/features/imports/AppleWalletInboxPage'
 import { AppleWalletPage } from '@/features/imports/AppleWalletPage'
 import { SimpleFINHistoryPage } from '@/features/imports/SimpleFINHistoryPage'
 import { SimpleFINPage } from '@/features/imports/SimpleFINPage'
@@ -89,7 +88,6 @@ export function createRouter() {
                 ...(isAppleWalletImportEnabled()
                   ? [
                       { path: '/settings/apple-wallet', element: <AppleWalletPage /> },
-                      { path: '/settings/apple-wallet/inbox', element: <AppleWalletInboxPage /> },
                       { path: '/settings/apple-wallet/history', element: <AppleWalletHistoryPage /> },
                     ]
                   : []),

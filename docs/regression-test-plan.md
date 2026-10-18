@@ -407,7 +407,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source). Until the first tap the
       status card reads "Setting up" with an amber dot and "Step N of 5:
-      <step>", there is no Inbox row and no card section, and the setup guide
+      <step>", there is no "Import history" row and no card section, and the setup guide
       follows directly, open as a stepper: Install the Shortcut, Connect the
       Shortcut to Econumo, Create the automation, Make the first payment,
       Switch the automation to Run Immediately. "Disconnect Apple Wallet" (confirmation)
@@ -466,13 +466,10 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       button), the same-name footnote, a "Setup" section with one folded
       "Setup guide" row ("N of 5 done", or "Setup complete") that opens the
       stepper, and "Disconnect Apple Wallet" centered at the bottom.
-- [ ] Apple Wallet inbox 📱: the status card's "Inbox" row opens
-      `/settings/apple-wallet/inbox` (desktop crumbs Settings › Apple Wallet,
-      phone back returns to the Apple Wallet page). It shows To review (grouped
-      by card, Map to account / Ignore in place), Failed imports and the folded
-      Skipped section for Apple Wallet rows only — SimpleFIN rows stay out —
-      and "All caught up" when none are waiting; the main Inbox still lists
-      every source.
+- [ ] Apple Wallet has no inbox of its own 📱: the status card shows no
+      "Inbox" row, `/settings/apple-wallet/inbox` is the not-found page, and
+      Apple Wallet rows to review / failed / skipped appear in the main Inbox
+      with every other source's.
 - [ ] Ingest with an `ingest`-scoped PAT: `POST /api/v1/import/ingest-apple-wallet-event`
       → `status: queued` for an unmapped card; the card appears in the list as
       a "Needs mapping" row reading "1 to review · now", count and time update per event; a
