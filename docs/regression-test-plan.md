@@ -395,15 +395,10 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       group's last row on the Settings page itself (not inside Import & export).
 - [ ] Before connecting 📱: the Apple Wallet page explains the feature, lists
       what is needed (an iPhone with Apple Pay, the Shortcuts app, about 5
-      minutes), previews the five steps, says which payment fields Econumo
-      receives (never card numbers) and offers "Set up Apple Wallet". When
-      setup videos are configured (`SETUP_VIDEOS`), "Watch the setup video:"
-      lists one entry per iOS version, here and above the steps; tapping one
-      opens a dialog ("Setup video · <version>") playing the YouTube video
-      in a portrait player inside the page, with "Open on YouTube" (new
-      window) under it — on a phone both fit on screen. No request to
-      YouTube is made before a video is opened; a non-YouTube link opens in
-      a new window instead. With none configured the line is absent.
+      minutes), explains how payments reach Econumo, says which payment fields
+      Econumo receives and offers "Set up Apple Wallet". Neither this page nor
+      the setup checklist has video previews or an embedded player; videos
+      are available on the website through the "Setup instructions" link.
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source). Until the first tap there
       is no "Import history" row or card section. The setup guide appears

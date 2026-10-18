@@ -578,9 +578,6 @@
         "done": "完成"
       },
       "same_named_cards": "Wallet 中同名的卡片会显示为一张卡。",
-      "video": "观看设置视频：",
-      "video_title": "设置视频",
-      "video_youtube": "在 YouTube 上打开",
       "cards": {
         "header": "卡片",
         "empty": "还没有卡片 — 第一笔 Apple Pay 付款会添加一张。",

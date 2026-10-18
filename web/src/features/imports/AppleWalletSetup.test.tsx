@@ -78,8 +78,6 @@ it('before connecting it explains what is needed and how payments flow; connect 
   expect(limitationsItems).toHaveLength(2)
   expect(limitationsItems[0]).toHaveTextContent('Works only when you tap your iPhone to pay')
   expect(limitationsItems[1]).toHaveTextContent('Apple Pay payments on websites aren’t supported')
-  // no videos are configured yet, so the link stays hidden
-  expect(screen.queryByText(/Watch the setup video/)).not.toBeInTheDocument()
   const preview = screen.getByRole('heading', { name: 'How it works' }).parentElement as HTMLElement
   const flow = within(preview).getAllByRole('listitem')
   expect(flow).toHaveLength(4)

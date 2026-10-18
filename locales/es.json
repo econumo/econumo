@@ -578,9 +578,6 @@
         "done": "Hecho"
       },
       "same_named_cards": "Las tarjetas con el mismo nombre en Wallet se muestran como una sola tarjeta.",
-      "video": "Ver el vídeo de configuración:",
-      "video_title": "Vídeo de configuración",
-      "video_youtube": "Abrir en YouTube",
       "cards": {
         "header": "Tarjetas",
         "empty": "Aún no hay tarjetas — el primer pago con Apple Pay añadirá una.",
