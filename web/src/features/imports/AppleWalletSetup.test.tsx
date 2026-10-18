@@ -86,7 +86,7 @@ it('on an iPhone the install opens the iCloud link, with the file as a fallback'
   mockIsIOS.value = true
   renderSetup(source)
   const link = screen.getByRole('link', { name: 'econumo' })
-  expect(link).toHaveAttribute('href', 'https://www.icloud.com/shortcuts/d55921631d6d42078fc374420bdeb9a1')
+  expect(link).toHaveAttribute('href', 'https://www.icloud.com/shortcuts/6f67b418a2724055ba4b8d1ec859220e')
   expect(link).toHaveAttribute('target', '_blank')
   expect(link).not.toHaveAttribute('download')
   const file = screen.getByRole('link', { name: 'Download the file instead' })
