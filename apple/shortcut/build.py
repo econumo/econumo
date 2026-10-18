@@ -330,10 +330,11 @@ def workflow(name: str, actions: list, color: int) -> dict:
         "WFWorkflowClientVersion": "2700.0.4",
         "WFWorkflowMinimumClientVersion": 900,
         "WFWorkflowMinimumClientVersionString": "900",
-        # 62322 is the dollar sign, read from a Mac's Shortcuts.sqlite
-        # (ZSHORTCUTICON.ZGLYPHNUMBER) after picking it in the icon picker:
-        # glyph numbers are undocumented and older published tables are
-        # stale (59395 renders as Finder/Files today)
+        # 62322 is the dollar sign as today's icon picker stores it (read from
+        # a Mac's Shortcuts.sqlite, ZSHORTCUTICON.ZGLYPHNUMBER). The share
+        # preview (iCloud link, "Add Shortcut") shows the Files/Finder icon
+        # instead for any shortcut with a Get File action, whatever the glyph;
+        # the installed tile keeps the glyph and the colour.
         "WFWorkflowIcon": {"WFWorkflowIconGlyphNumber": 62322, "WFWorkflowIconStartColor": color},
         "WFWorkflowHasShortcutInputVariables": True,
         "WFWorkflowHasOutputFallback": False,

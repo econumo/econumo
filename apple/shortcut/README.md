@@ -107,6 +107,17 @@ the iPhone install button then opens it and Shortcuts goes straight to "Add
 Shortcut". Re-copy the link whenever the recipe changes; an empty value falls
 back to the served file.
 
+## Icon
+
+Yellow background with the dollar-sign glyph (`build.py`, `workflow()`). The
+share preview (iCloud link page, "Add Shortcut" sheet) shows the Files/Finder
+icon instead: Shortcuts does that for any shortcut containing a Get File
+action, and the wallet run must read `econumo-wallet.json` on every tap. The
+installed tile keeps the glyph. Glyph numbers are undocumented: pick the icon
+in Shortcuts on a Mac and read `ZSHORTCUTICON.ZGLYPHNUMBER` /
+`ZBACKGROUNDCOLORVALUE` from `~/Library/Shortcuts/Shortcuts.sqlite` (the
+terminal needs Full Disk Access).
+
 ## Recipe: `econumo`
 
 "Show in Share Sheet" off. The shortcut branches on what it was given:
