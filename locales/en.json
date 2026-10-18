@@ -449,10 +449,6 @@
         "select_all": "Select all",
         "deselect_all": "Deselect all"
       }
-    },
-    "category_removed": {
-      "expense": "Category “{name}” removed: an expense category can't classify income.",
-      "income": "Category “{name}” removed: an income category can't classify an expense."
     }
   },
   "recurring": {

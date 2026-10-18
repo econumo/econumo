@@ -50,20 +50,17 @@ func (q *Queries) GetRecurringTransactionByID(ctx context.Context, id string) (R
 }
 
 const listRecurringWithMismatchedCategory = `-- name: ListRecurringWithMismatchedCategory :many
-SELECT r.id, c.name AS category_name, c.type AS category_type, u.language AS owner_language
+SELECT r.id, c.name AS category_name, c.type AS category_type
 FROM recurring_transactions r
 JOIN categories c ON c.id = r.category_id
-JOIN accounts a ON a.id = r.account_id
-JOIN users u ON u.id = a.user_id
 WHERE r.type IN (0, 1) AND r.type <> c.type
 ORDER BY r.id
 `
 
 type ListRecurringWithMismatchedCategoryRow struct {
-	ID            string
-	CategoryName  string
-	CategoryType  int16
-	OwnerLanguage string
+	ID           string
+	CategoryName string
+	CategoryType int16
 }
 
 func (q *Queries) ListRecurringWithMismatchedCategory(ctx context.Context) ([]ListRecurringWithMismatchedCategoryRow, error) {
@@ -75,12 +72,7 @@ func (q *Queries) ListRecurringWithMismatchedCategory(ctx context.Context) ([]Li
 	items := []ListRecurringWithMismatchedCategoryRow{}
 	for rows.Next() {
 		var i ListRecurringWithMismatchedCategoryRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.CategoryName,
-			&i.CategoryType,
-			&i.OwnerLanguage,
-		); err != nil {
+		if err := rows.Scan(&i.ID, &i.CategoryName, &i.CategoryType); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

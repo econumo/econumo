@@ -546,8 +546,7 @@ type Querier interface {
 	// stable tie-break so row order is deterministic across engines.
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error)
 	// Income transactions carrying an expense category and the reverse, with the
-	// category's name and kind and the account owner's language (the
-	// category-type migration notes the removal in the owner's language).
+	// category's name and kind (the category-type migration notes the removal).
 	ListTransactionsWithMismatchedCategory(ctx context.Context) ([]ListTransactionsWithMismatchedCategoryRow, error)
 	ListUnrevokedOAuthGrants(ctx context.Context, userID string) ([]ListUnrevokedOAuthGrantsRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)

@@ -293,7 +293,7 @@ func TestRecurringRepo_ListMismatchedCategories(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := repo.ListMismatchedCategories(ctx)
-	if err != nil || len(got) != 1 || got[0].ID.String() != rtA || got[0].CategoryName != "Salary" || !got[0].CategoryIncome || got[0].OwnerLanguage != "en" {
+	if err != nil || len(got) != 1 || got[0].ID.String() != rtA || got[0].CategoryName != "Salary" || !got[0].CategoryIncome {
 		t.Fatalf("got %+v err %v", got, err)
 	}
 }

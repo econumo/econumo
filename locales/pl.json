@@ -449,10 +449,6 @@
         "select_all": "Zaznacz wszystkie",
         "deselect_all": "Odznacz wszystkie"
       }
-    },
-    "category_removed": {
-      "expense": "Usunięto kategorię „{name}”: kategoria wydatków nie może klasyfikować przychodu.",
-      "income": "Usunięto kategorię „{name}”: kategoria przychodów nie może klasyfikować wydatku."
     }
   },
   "recurring": {

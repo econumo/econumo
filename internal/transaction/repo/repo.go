@@ -657,7 +657,7 @@ func mismatches(rows []mismatchRow) ([]model.MismatchedCategory, error) {
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, model.MismatchedCategory{ID: id, CategoryName: row.CategoryName, CategoryIncome: row.CategoryType == int16(model.TypeIncome), OwnerLanguage: row.OwnerLanguage})
+		out = append(out, model.MismatchedCategory{ID: id, CategoryName: row.CategoryName, CategoryIncome: row.CategoryType == int16(model.TypeIncome)})
 	}
 	return out, nil
 }

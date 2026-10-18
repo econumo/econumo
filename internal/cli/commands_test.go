@@ -515,9 +515,9 @@ func TestFreshDatabaseMigratesWithCommandSteps(t *testing.T) {
 
 // TestMigrationRemoveMismatchedCategories drives the category-type cleanup end
 // to end: an income transaction on an expense category and an expense on an
-// income category lose the category and gain a note in the owner's language
-// (Russian here), a matching row and a transfer are untouched, a recurring
-// template is cleaned the same way, the account's transactions revision moves
+// income category lose the category and gain an English note (even for a
+// Russian-speaking owner with Cyrillic category names), a matching row and a
+// transfer are untouched, a recurring template is cleaned the same way, the account's transactions revision moves
 // so synced clients refetch, and a second run changes nothing.
 func TestMigrationRemoveMismatchedCategories(t *testing.T) {
 	cliEnv(t)
@@ -569,16 +569,16 @@ func TestMigrationRemoveMismatchedCategories(t *testing.T) {
 		}
 		return
 	}
-	if cat, desc := row("transactions", refund); cat.Valid || desc != "возврат\nКатегория «Еда» удалена: категория расходов не может относиться к доходу." {
+	if cat, desc := row("transactions", refund); cat.Valid || desc != "возврат\nCategory “Еда” removed: an expense category can't classify income." {
 		t.Errorf("income on an expense category: %v %q", cat, desc)
 	}
-	if cat, desc := row("transactions", spent); cat.Valid || desc != "Категория «Зарплата» удалена: категория доходов не может относиться к расходу." {
+	if cat, desc := row("transactions", spent); cat.Valid || desc != "Category “Зарплата” removed: an income category can't classify an expense." {
 		t.Errorf("expense on an income category: %v %q", cat, desc)
 	}
 	if cat, desc := row("transactions", ok); !cat.Valid || cat.String != food || desc != "обед" {
 		t.Errorf("a matching row is untouched: %v %q", cat, desc)
 	}
-	if cat, desc := row("recurring_transactions", rt); cat.Valid || desc != "Категория «Еда» удалена: категория расходов не может относиться к доходу." {
+	if cat, desc := row("recurring_transactions", rt); cat.Valid || desc != "Category “Еда” removed: an expense category can't classify income." {
 		t.Errorf("template: %v %q", cat, desc)
 	}
 	if after := revision(); after <= before {
@@ -589,7 +589,7 @@ func TestMigrationRemoveMismatchedCategories(t *testing.T) {
 	if code := Run([]string{"migration:remove-mismatched-categories"}); code != 0 {
 		t.Fatalf("second run exit code %d", code)
 	}
-	if _, desc := row("transactions", refund); strings.Count(desc, "удалена") != 1 {
+	if _, desc := row("transactions", refund); strings.Count(desc, "removed") != 1 {
 		t.Errorf("a second run must not note again: %q", desc)
 	}
 	if revision() != moved {

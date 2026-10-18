@@ -46,13 +46,10 @@ WHERE account_id = ? OR account_recipient_id = ?
 ORDER BY spent_at DESC, id;
 
 -- Income transactions carrying an expense category and the reverse, with the
--- category's name and kind and the account owner's language (the
--- category-type migration notes the removal in the owner's language).
+-- category's name and kind (the category-type migration notes the removal).
 -- name: ListTransactionsWithMismatchedCategory :many
-SELECT t.id, c.name AS category_name, c.type AS category_type, u.language AS owner_language
+SELECT t.id, c.name AS category_name, c.type AS category_type
 FROM transactions t
 JOIN categories c ON c.id = t.category_id
-JOIN accounts a ON a.id = t.account_id
-JOIN users u ON u.id = a.user_id
 WHERE t.type IN (0, 1) AND t.type <> c.type
 ORDER BY t.id;

@@ -449,10 +449,6 @@
         "select_all": "Alle auswählen",
         "deselect_all": "Alle abwählen"
       }
-    },
-    "category_removed": {
-      "expense": "Kategorie „{name}“ entfernt: Eine Ausgabenkategorie kann keine Einnahme einordnen.",
-      "income": "Kategorie „{name}“ entfernt: Eine Einnahmenkategorie kann keine Ausgabe einordnen."
     }
   },
   "recurring": {

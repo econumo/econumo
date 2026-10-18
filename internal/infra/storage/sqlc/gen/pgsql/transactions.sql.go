@@ -157,25 +157,21 @@ func (q *Queries) ListTransactionsByAccount(ctx context.Context, arg ListTransac
 }
 
 const listTransactionsWithMismatchedCategory = `-- name: ListTransactionsWithMismatchedCategory :many
-SELECT t.id, c.name AS category_name, c.type AS category_type, u.language AS owner_language
+SELECT t.id, c.name AS category_name, c.type AS category_type
 FROM transactions t
 JOIN categories c ON c.id = t.category_id
-JOIN accounts a ON a.id = t.account_id
-JOIN users u ON u.id = a.user_id
 WHERE t.type IN (0, 1) AND t.type <> c.type
 ORDER BY t.id
 `
 
 type ListTransactionsWithMismatchedCategoryRow struct {
-	ID            string
-	CategoryName  string
-	CategoryType  int16
-	OwnerLanguage string
+	ID           string
+	CategoryName string
+	CategoryType int16
 }
 
 // Income transactions carrying an expense category and the reverse, with the
-// category's name and kind and the account owner's language (the
-// category-type migration notes the removal in the owner's language).
+// category's name and kind (the category-type migration notes the removal).
 func (q *Queries) ListTransactionsWithMismatchedCategory(ctx context.Context) ([]ListTransactionsWithMismatchedCategoryRow, error) {
 	rows, err := q.db.QueryContext(ctx, listTransactionsWithMismatchedCategory)
 	if err != nil {
@@ -185,12 +181,7 @@ func (q *Queries) ListTransactionsWithMismatchedCategory(ctx context.Context) ([
 	items := []ListTransactionsWithMismatchedCategoryRow{}
 	for rows.Next() {
 		var i ListTransactionsWithMismatchedCategoryRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.CategoryName,
-			&i.CategoryType,
-			&i.OwnerLanguage,
-		); err != nil {
+		if err := rows.Scan(&i.ID, &i.CategoryName, &i.CategoryType); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

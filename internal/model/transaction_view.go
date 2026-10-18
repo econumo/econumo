@@ -92,7 +92,6 @@ type MismatchedCategory struct {
 	ID             vo.Id
 	CategoryName   string
 	CategoryIncome bool
-	OwnerLanguage  string
 }
 
 // MaxDescriptionLength is the transactions/recurring description column's

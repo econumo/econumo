@@ -2,16 +2,16 @@ package transaction
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/port"
 )
 
 // RemoveMismatchedCategories clears the category from every income
 // transaction carrying an expense category and every expense carrying an
-// income one, and notes the removal in the transaction's description, in the
-// account owner's language, so nothing is lost silently. Rows like these were
+// income one, and notes the removal in the transaction's description so
+// nothing is lost silently. Rows like these were
 // written before checkReferences refused them. A data migration (CLI
 // migration:remove-mismatched-categories), so it takes only what it touches.
 // Idempotent: a cleared row no longer matches.
@@ -42,11 +42,11 @@ func RemoveMismatchedCategories(ctx context.Context, repo Repository, tx port.Tx
 }
 
 // CategoryRemovedNote is the line the category-type migration appends to a
-// transaction or template whose category it removed.
+// transaction or template whose category it removed. English for every user:
+// it records a one-off data fix, not interface text.
 func CategoryRemovedNote(m model.MismatchedCategory) string {
-	key := "transactions.category_removed.expense"
 	if m.CategoryIncome {
-		key = "transactions.category_removed.income"
+		return fmt.Sprintf("Category “%s” removed: an income category can't classify an expense.", m.CategoryName)
 	}
-	return i18n.T(m.OwnerLanguage, key, map[string]any{"name": m.CategoryName})
+	return fmt.Sprintf("Category “%s” removed: an expense category can't classify income.", m.CategoryName)
 }

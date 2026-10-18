@@ -449,10 +449,6 @@
         "select_all": "Alles selecteren",
         "deselect_all": "Selectie opheffen"
       }
-    },
-    "category_removed": {
-      "expense": "Categorie ‘{name}’ verwijderd: een uitgavencategorie kan geen inkomsten indelen.",
-      "income": "Categorie ‘{name}’ verwijderd: een inkomstencategorie kan geen uitgave indelen."
     }
   },
   "recurring": {

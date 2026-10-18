@@ -1022,9 +1022,9 @@ migration step `20260915000001`.
 
 `migration:remove-mismatched-categories` clears the category from every income
 transaction/recurring template carrying an expense category and every expense carrying an
-income one (rows written before `checkReferences` refused the mismatch), and appends a
-note to the description in the account owner's language (`transactions.category_removed.*`,
-kept within the 255-character column by shortening the old text, never the note). Saves go
+income one (rows written before `checkReferences` refused the mismatch), and appends an
+English note to the description (kept within the 255-character column by shortening the
+old text, never the note). Saves go
 through the repositories, so the account's `transactions_revision` moves and synced clients
 refetch. Idempotent; invoked automatically at boot as migration step `20261017000000`.
 

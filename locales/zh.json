@@ -449,10 +449,6 @@
         "select_all": "全选",
         "deselect_all": "取消全选"
       }
-    },
-    "category_removed": {
-      "expense": "已移除类别“{name}”：支出类别不能用于收入。",
-      "income": "已移除类别“{name}”：收入类别不能用于支出。"
     }
   },
   "recurring": {

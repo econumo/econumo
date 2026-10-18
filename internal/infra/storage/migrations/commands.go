@@ -36,8 +36,8 @@ func init() {
 	// functions, columns are discovered from the live schema, and anything that
 	// does not parse is left as stored.
 	RegisterCommand("20260915000001", "migration:normalize-sqlite-datetimes")
-	// A command, not SQL: the removal is noted in each row's description in
-	// the account owner's language, and the account's transactions revision
+	// A command, not SQL: the removal is noted in each row's description
+	// (kept within the column width), and the account's transactions revision
 	// must move so synced clients pick the rows up.
 	RegisterCommand("20261017000000", "migration:remove-mismatched-categories")
 }
