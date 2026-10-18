@@ -554,7 +554,7 @@
           "file": "of downloaden"
         },
         "configure": {
-          "title": "Opdracht met Econumo verbinden",
+          "title": "Opdracht koppelen",
           "text": "Maakt een toegangstoken en opent econumo daarmee. De opdracht bewaart het serveradres en het token en meldt zich daarna bij Econumo. Tik bij elke melding op ‘Altijd toestaan’ — de automatisering heeft deze rechten later nodig.",
           "button": "Opdracht koppelen",
           "open": "Econumo koppelen",

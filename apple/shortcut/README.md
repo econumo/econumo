@@ -131,7 +131,7 @@ the setup deep link passes **text**, the Transaction automation passes a
    2. **Get Dictionary Value** — Get `Value` for `url` in `Dictionary`.
    3. **If** — `Dictionary Value` `does not have any value` (no Otherwise)
       1. **Show Alert** — title `Econumo`, message
-         `Invalid configuration. Open Settings → Apple Wallet in Econumo and tap Configure again.`,
+         `Invalid configuration. Open Settings → Apple Wallet in Econumo and tap “Connect the Shortcut” again.`,
          "Show Cancel Button" off.
       2. **Stop This Shortcut**
 
@@ -156,7 +156,7 @@ the setup deep link passes **text**, the Transaction automation passes a
 3. **Get File** — File Path: `econumo.json` (iCloud Drive ›
    Shortcuts); "Show Document Picker" off; "Error If Not Found": **off**.
 4. **If** — `File` `does not have any value` (no Otherwise)
-   1. **Show Notification** — `Econumo is not configured. Open Settings → Apple Wallet in Econumo and tap Configure.`
+   1. **Show Notification** — `Econumo is not configured. Open Settings → Apple Wallet in Econumo and tap “Connect the Shortcut”.`
    2. **Stop This Shortcut**
 
    **End If**
@@ -267,7 +267,7 @@ date output are only proven by this pass.
    opened because it is not signed" error. After adding, the name in the
    library is `econumo`.
 2. In Safari on the phone, open Econumo → Settings → Apple Wallet → step 2,
-   tap "Connect Shortcut", then "Link Econumo". Shortcuts
+   tap "Connect the Shortcut", then "Link Econumo". Shortcuts
    should run it, ask for the server host and iCloud Drive (answer **Always
    Allow**), and show "Econumo configured for …". Check `Files` → iCloud
    Drive → Shortcuts → `econumo.json`; the server log shows

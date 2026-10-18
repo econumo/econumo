@@ -554,7 +554,7 @@
           "file": "o scaricare"
         },
         "configure": {
-          "title": "Collega il comando rapido a Econumo",
+          "title": "Collega il comando rapido",
           "text": "Crea un token di accesso e apre econumo con esso. Il comando rapido salva l’indirizzo del server e il token, poi contatta Econumo. Tocca «Consenti sempre» a ogni richiesta: l’automazione avrà bisogno di questi permessi.",
           "button": "Collega il comando rapido",
           "open": "Associa Econumo",

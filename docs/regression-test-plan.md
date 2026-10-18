@@ -408,8 +408,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       second device does not create a second source). Until the first tap the
       status card reads "Setting up" with an amber dot and "Step N of 5:
       <step>", there is no "Import history" row and no card section, and the setup guide
-      follows directly, open as a stepper: Install the Shortcut, Connect the
-      Shortcut to Econumo, Create the automation, Make the first payment,
+      follows directly, open as a stepper: Install the Shortcut, Connect the Shortcut, Create the automation, Make the first payment,
       Switch the automation to Run Immediately. "Disconnect Apple Wallet" (confirmation)
       removes the source, its cards, its queue and the hand ticks;
       already-imported transactions stay.
@@ -430,7 +429,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       files (`econumo-wallet-v1.shortcut`, `econumo-setup-v1.shortcut`) are
       no longer served (not found), while an already installed v1 automation
       still imports.
-- [ ] Step 2, iOS only 📱: one tap on "Connect Shortcut" mints an ingest PAT
+- [ ] Step 2, iOS only 📱: one tap on "Connect the Shortcut" mints an ingest PAT
       (visible under Profile → Tokens with scope `ingest`) and opens the
       Shortcuts app with it right away — the app window stays on the page.
       If iOS does not switch (it may refuse an app hand-off that follows the
@@ -443,18 +442,18 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       `account is required` check-in removed from the Failed imports section.
       "Configure manually" opens `https://econumo.com/docs/user-guide/apple-wallet`
       in a new tab; "Mark as done" completes the step by hand.
-- [ ] Step 2 once done, iOS 📱: the step still offers "Connect Shortcut"
+- [ ] Step 2 once done, iOS 📱: the step still offers "Connect the Shortcut"
       (outline style) with the note "Connecting again replaces the token the
       Shortcut uses now…"; tapping it revokes the old ingest token, mints a new
       one and shows "Link Econumo" (note hidden); payments stop importing
       until the Shortcut has run with the new token, then resume. The step
       stays done throughout.
-- [ ] Step 2, iOS only 📱: "Connect Shortcut" with an `ingest` PAT minted
+- [ ] Step 2, iOS only 📱: "Connect the Shortcut" with an `ingest` PAT minted
       meanwhile from another device (page rendered before it existed) revokes
       that token first and mints a fresh one — Profile → Tokens shows exactly
       one live `ingest` PAT afterwards; `full` PATs are untouched.
 - [ ] Desktop: an "Open this page on your iPhone…" hint sits above the steps
-      and "Connect Shortcut" is absent; the download, "Configure manually",
+      and "Connect the Shortcut" is absent; the download, "Configure manually",
       the waiting line and the hand ticks still work; running the configured
       shortcut by hand on the phone completes step 2 here too.
 - [ ] Step 3 text walks through Automation → + → Wallet → cards & categories →

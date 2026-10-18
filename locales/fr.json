@@ -554,7 +554,7 @@
           "file": "ou télécharger"
         },
         "configure": {
-          "title": "Relier le raccourci à Econumo",
+          "title": "Connecter le raccourci",
           "text": "Crée un jeton d’accès et ouvre econumo avec. Le raccourci enregistre l’adresse du serveur et le jeton, puis contacte Econumo. Touchez « Toujours autoriser » à chaque demande : l’automatisation aura besoin de ces autorisations.",
           "button": "Connecter le raccourci",
           "open": "Lier Econumo",

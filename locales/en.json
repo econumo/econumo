@@ -554,9 +554,9 @@
           "file": "or download"
         },
         "configure": {
-          "title": "Connect the Shortcut to Econumo",
+          "title": "Connect the Shortcut",
           "text": "Creates an access token and opens the econumo Shortcut with it. The Shortcut saves the server address and the token, then checks in with Econumo. Tap Always Allow on every prompt — the automation needs these permissions later.",
-          "button": "Connect Shortcut",
+          "button": "Connect the Shortcut",
           "open": "Link Econumo",
           "waiting": "Waiting for the Shortcut to reach Econumo…",
           "manual": "Configure manually",

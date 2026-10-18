@@ -554,7 +554,7 @@
           "file": "ou transferir"
         },
         "configure": {
-          "title": "Ligar o atalho ao Econumo",
+          "title": "Ligar o atalho",
           "text": "Cria um token de acesso e abre o econumo com ele. O atalho guarda o endereço do servidor e o token e depois contacta o Econumo. Toque em «Permitir sempre» em cada pedido — a automatização vai precisar destas permissões.",
           "button": "Ligar o atalho",
           "open": "Associar o Econumo",

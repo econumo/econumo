@@ -554,7 +554,7 @@
           "file": "o descargar"
         },
         "configure": {
-          "title": "Conectar el atajo con Econumo",
+          "title": "Conectar el atajo",
           "text": "Crea un token de acceso y abre econumo con él. El atajo guarda la dirección del servidor y el token y luego contacta con Econumo. Toca «Permitir siempre» en cada aviso: la automatización necesitará estos permisos más adelante.",
           "button": "Conectar el atajo",
           "open": "Vincular Econumo",

@@ -554,7 +554,7 @@
           "file": "lub pobierz"
         },
         "configure": {
-          "title": "Połącz skrót z Econumo",
+          "title": "Połącz skrót",
           "text": "Tworzy token dostępu i otwiera z nim econumo. Skrót zapisuje adres serwera i token, a potem łączy się z Econumo. Przy każdym pytaniu stuknij „Zawsze zezwalaj” — automatyzacja będzie potrzebować tych uprawnień.",
           "button": "Połącz skrót",
           "open": "Powiąż Econumo",
