@@ -12,7 +12,6 @@ type Repository interface {
 	GetByID(ctx context.Context, id vo.Id) (*model.RecurringTransaction, error)
 	ListByAccountIDs(ctx context.Context, accountIDs []vo.Id) ([]*model.RecurringTransaction, error)
 	Save(ctx context.Context, rt *model.RecurringTransaction) error
-	ListMismatchedCategories(ctx context.Context) ([]model.MismatchedCategory, error)
 	Delete(ctx context.Context, id vo.Id) error
 
 	// ReplaceLabels rewrites a template's label links; the caller runs this

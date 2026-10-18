@@ -21,7 +21,6 @@ type (
 	rtRow             = sqlitegen.RecurringTransaction
 	upsertParams      = sqlitegen.UpsertRecurringTransactionParams
 	insertLabelParams = sqlitegen.InsertRecurringLabelParams
-	mismatchRow       = sqlitegen.ListRecurringWithMismatchedCategoryRow
 )
 
 type querier interface {
@@ -30,7 +29,6 @@ type querier interface {
 	DeleteRecurringTransaction(ctx context.Context, db backend.DBTX, id string) error
 	DeleteRecurringLabels(ctx context.Context, db backend.DBTX, recurringTransactionID string) error
 	InsertRecurringLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error
-	ListRecurringWithMismatchedCategory(ctx context.Context, db backend.DBTX) ([]mismatchRow, error)
 }
 
 type Repo struct {
@@ -271,22 +269,4 @@ func parseOpt(s *string) (*vo.Id, error) {
 		return nil, err
 	}
 	return &id, nil
-}
-
-// ListMismatchedCategories returns every income template carrying an expense
-// category and every expense template carrying an income one.
-func (r *Repo) ListMismatchedCategories(ctx context.Context) ([]model.MismatchedCategory, error) {
-	rows, err := r.q.ListRecurringWithMismatchedCategory(ctx, r.db(ctx))
-	if err != nil {
-		return nil, err
-	}
-	out := make([]model.MismatchedCategory, 0, len(rows))
-	for _, row := range rows {
-		id, err := vo.ParseId(row.ID)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, model.MismatchedCategory{ID: id, CategoryName: row.CategoryName, CategoryIncome: row.CategoryType == int16(model.TypeIncome)})
-	}
-	return out, nil
 }

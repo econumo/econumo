@@ -49,43 +49,6 @@ func (q *Queries) GetRecurringTransactionByID(ctx context.Context, id string) (R
 	return i, err
 }
 
-const listRecurringWithMismatchedCategory = `-- name: ListRecurringWithMismatchedCategory :many
-SELECT r.id, c.name AS category_name, c.type AS category_type
-FROM recurring_transactions r
-JOIN categories c ON c.id = r.category_id
-WHERE r.type IN (0, 1) AND r.type <> c.type
-ORDER BY r.id
-`
-
-type ListRecurringWithMismatchedCategoryRow struct {
-	ID           string
-	CategoryName string
-	CategoryType int16
-}
-
-func (q *Queries) ListRecurringWithMismatchedCategory(ctx context.Context) ([]ListRecurringWithMismatchedCategoryRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRecurringWithMismatchedCategory)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListRecurringWithMismatchedCategoryRow{}
-	for rows.Next() {
-		var i ListRecurringWithMismatchedCategoryRow
-		if err := rows.Scan(&i.ID, &i.CategoryName, &i.CategoryType); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const upsertRecurringTransaction = `-- name: UpsertRecurringTransaction :exec
 INSERT INTO recurring_transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id,
                                     type, amount, description, schedule, next_payment_at, scheduled_day, created_at, updated_at)

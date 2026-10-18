@@ -20,9 +20,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	appoauth "github.com/econumo/econumo/internal/oauth"
 	oauthrepo "github.com/econumo/econumo/internal/oauth/repo"
-	recurringrepo "github.com/econumo/econumo/internal/recurring/repo"
 	"github.com/econumo/econumo/internal/server"
-	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
 	appuser "github.com/econumo/econumo/internal/user"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
@@ -40,11 +38,6 @@ type container struct {
 	currency *appcurrency.WriteService
 	loader   *currencyrepo.Loader
 	account  *appaccount.Service
-	// the transaction and recurring repos back the category-type data
-	// migration, which needs no service around them
-	txm          *backend.TxManager
-	transactions *transactionrepo.Repo
-	recurring    *recurringrepo.Repo
 }
 
 // newContainer loads config, opens the database, and wires the container's
@@ -144,10 +137,6 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 		currency: currencySvc,
 		loader:   loader,
 		account:  accountSvc,
-
-		txm:          txm,
-		transactions: transactionrepo.NewRepo(cfg.DatabaseDriver, txm),
-		recurring:    recurringrepo.NewRepo(cfg.DatabaseDriver, txm),
 	}
 }
 

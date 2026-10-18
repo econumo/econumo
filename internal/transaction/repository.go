@@ -18,7 +18,6 @@ type Repository interface {
 	GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error)
 
 	Save(ctx context.Context, t *model.Transaction) error
-	ListMismatchedCategories(ctx context.Context) ([]model.MismatchedCategory, error)
 
 	// LinkRecurring stamps recurring_id on an existing transaction. A dedicated
 	// write because Save deliberately never updates the column (provenance must

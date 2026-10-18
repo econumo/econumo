@@ -977,7 +977,6 @@ data:import-sqlite [--force] <sqlite-path>
 migration:zero-deleted-accounts
 migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
-migration:remove-mismatched-categories
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -1019,14 +1018,6 @@ the live schema, skips `schema_migrations` (the instance id's anchor), parses
 each value with the exact driver layout and leaves anything unparseable as
 stored; idempotent, a no-op on PostgreSQL, and invoked automatically at boot as
 migration step `20260915000001`.
-
-`migration:remove-mismatched-categories` clears the category from every income
-transaction/recurring template carrying an expense category and every expense carrying an
-income one (rows written before `checkReferences` refused the mismatch), and appends an
-English note to the description (kept within the 255-character column by shortening the
-old text, never the note). Saves go
-through the repositories, so the account's `transactions_revision` moves and synced clients
-refetch. Idempotent; invoked automatically at boot as migration step `20261017000000`.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
@@ -1269,6 +1260,10 @@ data unreadable. Most are also asserted by the test suite.
   and type (rows written before the check stay editable); recurring templates are checked
   the same way on save. CSV import resolves a category name within the row's sign (creating
   one of that type when missing) and leaves a constant `categoryId` off rows of the other type.
+  Rows written before the check are cleaned by the SQL migration `20261017000000`: the
+  category is cleared and an English note appended to the description (the old text is
+  shortened, never the note, to fit the 255-character column), and the affected accounts'
+  `transactions_revision` moves so synced clients refetch.
 - **Budget element visibility**: a tag/envelope/category appears in `get-budget` when it has spending **or** a limit (current or carried-over) — so a tag with a limit but no transactions stays visible.
 - **Account balance day boundary**: "balance as of end of today" uses the **caller's** timezone (`X-Timezone` header), not the server's UTC day.
 - **Recurring transaction scheduling**: templates advance from the scheduled date with

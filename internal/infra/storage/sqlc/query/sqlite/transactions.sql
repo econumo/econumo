@@ -44,12 +44,3 @@ SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag
 FROM transactions
 WHERE account_id = ? OR account_recipient_id = ?
 ORDER BY spent_at DESC, id;
-
--- Income transactions carrying an expense category and the reverse, with the
--- category's name and kind (the category-type migration notes the removal).
--- name: ListTransactionsWithMismatchedCategory :many
-SELECT t.id, c.name AS category_name, c.type AS category_type
-FROM transactions t
-JOIN categories c ON c.id = t.category_id
-WHERE t.type IN (0, 1) AND t.type <> c.type
-ORDER BY t.id;

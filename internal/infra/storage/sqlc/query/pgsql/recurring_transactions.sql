@@ -24,10 +24,3 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- name: DeleteRecurringTransaction :exec
 DELETE FROM recurring_transactions WHERE id = $1;
-
--- name: ListRecurringWithMismatchedCategory :many
-SELECT r.id, c.name AS category_name, c.type AS category_type
-FROM recurring_transactions r
-JOIN categories c ON c.id = r.category_id
-WHERE r.type IN (0, 1) AND r.type <> c.type
-ORDER BY r.id;

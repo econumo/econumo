@@ -275,27 +275,3 @@ func TestRecurringRepo_LabelsByRecurringIDs_EmptyIDs(t *testing.T) {
 		t.Fatalf("empty ids should yield nil,nil (guards the IN() syntax error on PostgreSQL); got %v, %v", got, err)
 	}
 }
-
-func TestRecurringRepo_ListMismatchedCategories(t *testing.T) {
-	repo, f := newRepo(t)
-	ctx := context.Background()
-	seed(t, f)
-	food := f.Category(fixture.Category{UserID: userA, Name: "Food"})
-	salary := f.Category(fixture.Category{UserID: userA, Name: "Salary", Type: 1})
-	mismatched := template(rtA)
-	mismatched.CategoryID = ptr(vo.MustParseId(salary)) // an expense template on an income category
-	if err := repo.Save(ctx, mismatched); err != nil {
-		t.Fatal(err)
-	}
-	fine := template("0197c000-0000-7000-8000-0000000000e1")
-	fine.CategoryID = ptr(vo.MustParseId(food))
-	if err := repo.Save(ctx, fine); err != nil {
-		t.Fatal(err)
-	}
-	got, err := repo.ListMismatchedCategories(ctx)
-	if err != nil || len(got) != 1 || got[0].ID.String() != rtA || got[0].CategoryName != "Salary" || !got[0].CategoryIncome {
-		t.Fatalf("got %+v err %v", got, err)
-	}
-}
-
-func ptr[T any](v T) *T { return &v }

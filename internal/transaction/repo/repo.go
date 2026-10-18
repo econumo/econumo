@@ -29,7 +29,6 @@ type (
 	listAccParams     = sqlitegen.ListTransactionsByAccountParams
 	exportAcctRow     = sqlitegen.ListExportAccountsForUserRow
 	insertLabelParams = sqlitegen.InsertTransactionLabelParams
-	mismatchRow       = sqlitegen.ListTransactionsWithMismatchedCategoryRow
 )
 
 type querier interface {
@@ -41,7 +40,6 @@ type querier interface {
 	ListExportAccountsForUser(ctx context.Context, db backend.DBTX, userID string) ([]exportAcctRow, error)
 	DeleteTransactionLabels(ctx context.Context, db backend.DBTX, transactionID string) error
 	InsertTransactionLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error
-	ListTransactionsWithMismatchedCategory(ctx context.Context, db backend.DBTX) ([]mismatchRow, error)
 }
 
 // ExportAccountRow is one accessible account (own + shared) with its currency
@@ -580,9 +578,6 @@ func (sqliteQuerier) DeleteTransactionLabels(ctx context.Context, db backend.DBT
 func (sqliteQuerier) InsertTransactionLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error {
 	return sqlitegen.New(db).InsertTransactionLabel(ctx, p)
 }
-func (sqliteQuerier) ListTransactionsWithMismatchedCategory(ctx context.Context, db backend.DBTX) ([]mismatchRow, error) {
-	return sqlitegen.New(db).ListTransactionsWithMismatchedCategory(ctx)
-}
 
 type pgsqlQuerier struct{}
 
@@ -626,38 +621,4 @@ func (pgsqlQuerier) DeleteTransactionLabels(ctx context.Context, db backend.DBTX
 }
 func (pgsqlQuerier) InsertTransactionLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error {
 	return pgsqlgen.New(db).InsertTransactionLabel(ctx, pgsqlgen.InsertTransactionLabelParams(p))
-}
-
-func (pgsqlQuerier) ListTransactionsWithMismatchedCategory(ctx context.Context, db backend.DBTX) ([]mismatchRow, error) {
-	rows, err := pgsqlgen.New(db).ListTransactionsWithMismatchedCategory(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]mismatchRow, len(rows))
-	for i, v := range rows {
-		out[i] = mismatchRow(v)
-	}
-	return out, nil
-}
-
-// ListMismatchedCategories returns every income transaction carrying an
-// expense category and every expense carrying an income one.
-func (r *Repo) ListMismatchedCategories(ctx context.Context) ([]model.MismatchedCategory, error) {
-	rows, err := r.q.ListTransactionsWithMismatchedCategory(ctx, r.db(ctx))
-	if err != nil {
-		return nil, err
-	}
-	return mismatches(rows)
-}
-
-func mismatches(rows []mismatchRow) ([]model.MismatchedCategory, error) {
-	out := make([]model.MismatchedCategory, 0, len(rows))
-	for _, row := range rows {
-		id, err := vo.ParseId(row.ID)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, model.MismatchedCategory{ID: id, CategoryName: row.CategoryName, CategoryIncome: row.CategoryType == int16(model.TypeIncome)})
-	}
-	return out, nil
 }

@@ -30,7 +30,3 @@ func (sqliteQuerier) DeleteRecurringLabels(ctx context.Context, db backend.DBTX,
 func (sqliteQuerier) InsertRecurringLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error {
 	return sqlitegen.New(db).InsertRecurringLabel(ctx, p)
 }
-
-func (sqliteQuerier) ListRecurringWithMismatchedCategory(ctx context.Context, db backend.DBTX) ([]mismatchRow, error) {
-	return sqlitegen.New(db).ListRecurringWithMismatchedCategory(ctx)
-}

@@ -34,15 +34,3 @@ func (pgsqlQuerier) DeleteRecurringLabels(ctx context.Context, db backend.DBTX, 
 func (pgsqlQuerier) InsertRecurringLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error {
 	return pgsqlgen.New(db).InsertRecurringLabel(ctx, pgsqlgen.InsertRecurringLabelParams(p))
 }
-
-func (pgsqlQuerier) ListRecurringWithMismatchedCategory(ctx context.Context, db backend.DBTX) ([]mismatchRow, error) {
-	rows, err := pgsqlgen.New(db).ListRecurringWithMismatchedCategory(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]mismatchRow, len(rows))
-	for i, v := range rows {
-		out[i] = mismatchRow(v)
-	}
-	return out, nil
-}

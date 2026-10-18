@@ -361,8 +361,7 @@ navigation (single-pane vs sidebar).
       “Food” removed: an expense category can't classify income." (a long
       note is shortened with "…" so the line fits). Matching rows and
       transfers are unchanged; an open app shows the change after a sync
-      without "Clear cache and reload"; running
-      `econumo migration:remove-mismatched-categories` again changes nothing.
+      without "Clear cache and reload"; a restart changes nothing more.
 - [ ] **CSV export**: multi-select accounts, select-all/deselect-all; exported
       file contains the expected rows/columns and respects the account choice.
 
