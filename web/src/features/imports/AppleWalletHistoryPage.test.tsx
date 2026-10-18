@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
+import { useUiStore } from '@/app/uiStore'
 import { AppleWalletHistoryPage } from './AppleWalletHistoryPage'
 
 vi.mock('@/hooks/useIsCompact', () => ({ useIsCompact: () => false }))
@@ -18,10 +19,10 @@ const row = (id: string, over: Record<string, unknown>) => ({
   externalPayee: 'Shop', externalAmount: '5', externalCurrency: 'USD', externalPostedAt: '2026-08-21 12:00:00', ...over,
 })
 
-function renderPage(pages: Record<string, { items: unknown[]; hasMore: boolean }>) {
+function renderPage(pages: Record<string, { items: unknown[]; hasMore: boolean }>, data: Record<string, unknown> = {}) {
   const offsets: string[] = []
   server.use(
-    ...coreHandlers({ importSources: [wallet] }),
+    ...coreHandlers({ importSources: [wallet], ...data }),
     http.get('*/api/v1/import/get-source-history', ({ request }) => {
       const params = new URL(request.url).searchParams
       offsets.push(`${params.get('sourceId')}@${params.get('offset')}`)
@@ -43,6 +44,7 @@ const localTime = (utc: string) => {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = { IMPORT_APPLE_WALLET: true }
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({ matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
 })
 
 it('lists every tap by day with its card, time and outcome, and loads older taps on demand', async () => {
@@ -77,4 +79,39 @@ it('lists every tap by day with its card, time and outcome, and loads older taps
 it('says so when nothing has arrived yet', async () => {
   renderPage({ 0: { items: [], hasMore: false } })
   expect(await screen.findByText('No imports yet.')).toBeInTheDocument()
+})
+
+it('an imported tap opens the regular transaction preview', async () => {
+  renderPage({ 0: { items: [row('1', { externalPayee: 'Blue Bottle', transactionId: 't1' })], hasMore: false } })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: /Blue Bottle/ }))
+  // t1 is the fixture transaction "coffee beans"
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Edit/ })).toBeInTheDocument()
+})
+
+it('a skipped tap explains it was not added and offers to create the transaction', async () => {
+  useUiStore.setState({ transactionModal: null })
+  const skipped = { linkId: '4', sourceId: 's1', externalAccountId: 'amex gold', accountId: 'a1', payee: 'Parking', amount: '3', currency: 'USD', type: 'expense', postedAt: '2026-08-19 08:00:00', reason: 'unmapped' }
+  renderPage(
+    { 0: { items: [row('4', { externalPayee: 'Parking', status: 'skipped', transactionId: '', externalAmount: '3' })], hasMore: false } },
+    { importQueue: { queued: [], skipped: [skipped], failed: [] } },
+  )
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: /Parking/ }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText("This transaction wasn't added to Econumo.")).toBeInTheDocument()
+  expect(within(dialog).getByText('Amex Gold')).toBeInTheDocument()
+  expect(within(dialog).getByText('3 USD')).toBeInTheDocument()
+  await user.click(within(dialog).getByRole('button', { name: 'Create transaction' }))
+  expect(useUiStore.getState().transactionModal).toMatchObject({ importQueued: { linkId: '4', type: 'expense', accountId: 'a1', payee: 'Parking' } })
+})
+
+it('a tap whose transaction was deleted says so, with nothing to create', async () => {
+  renderPage({ 0: { items: [row('2', { externalPayee: 'Refunded', transactionId: '' })], hasMore: false } })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: /Refunded/ }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('This transaction was imported and deleted later.')).toBeInTheDocument()
+  expect(within(dialog).queryByRole('button', { name: 'Create transaction' })).toBeNull()
 })

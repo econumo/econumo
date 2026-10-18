@@ -796,6 +796,35 @@ func TestImportQueuedEvent_AfterUnskipDropsTheSkipRule(t *testing.T) {
 	}
 }
 
+// The import history offers "Create transaction" on a skipped row: it imports
+// straight from skipped, without an unskip first, and the skip rule goes.
+func TestImportQueuedEvent_ImportsASkippedRowDirectly(t *testing.T) {
+	h := setup(t)
+	ctx := context.Background()
+	uA := vo.MustParseId(userA)
+	h.mapCard(t, "Apple Card")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, Action: "skip", MatchField: "external_payee", MatchType: "contains", MatchValue: "blue bottle"})
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusSkipped {
+		t.Fatalf("status = %s", res.Status)
+	}
+	links, _ := h.repo.ListLinksBySource(ctx, vo.MustParseId(source))
+	linkID := links[0].ID
+	res, err := h.svc.ImportQueuedEvent(ctx, uA, model.ImportQueuedEventRequest{
+		LinkId:      linkID.String(),
+		Transaction: model.CreateTransactionRequest{Id: vo.NewId().String(), Type: "expense", Amount: vo.NewFlexString("4.75"), AccountId: acct1, Date: now.Format(datetime.Layout)},
+	})
+	if err != nil {
+		t.Fatalf("ImportQueuedEvent on a skipped row: %v", err)
+	}
+	link, _ := h.repo.GetLink(ctx, linkID)
+	if link.Status != model.ImportLinkStatusLinked || link.TransactionID == nil || link.TransactionID.String() != res.Item.Id || link.AppliedRuleID != nil {
+		t.Fatalf("link = %+v", link)
+	}
+	if q, _ := h.svc.GetQueue(ctx, uA); len(q.Skipped) != 0 {
+		t.Fatalf("the row leaves the skipped list: %+v", q.Skipped)
+	}
+}
+
 func TestImportQueuedEvent_RecordsLabels(t *testing.T) {
 	h := setup(t)
 	label := h.f.Label(fixture.Label{UserID: userA, Name: "Trip"})

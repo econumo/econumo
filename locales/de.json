@@ -789,6 +789,15 @@
         "accept": "Übernehmen",
         "discard": "Verwerfen"
       }
+    },
+    "history": {
+      "card": "Karte",
+      "date": "Datum",
+      "not_added": "Diese Transaktion wurde nicht zu Econumo hinzugefügt.",
+      "waiting": "Diese Transaktion wartet im Posteingang.",
+      "deleted": "Diese Transaktion wurde importiert und später gelöscht.",
+      "create": "Transaktion erstellen",
+      "unavailable": "Diese Transaktion wurde importiert, ist für dich aber nicht verfügbar."
     }
   },
   "user": {

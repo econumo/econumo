@@ -111,9 +111,13 @@ export function useImportQueuedEvent() {
     mutationFn: (payload: ImportQueuedEventPayload) => importsApi.importQueuedEvent(payload),
     onSuccess: (result, payload) => {
       apply(result, 'add')
+      // a skipped row can be imported too (from the import history)
       queryClient.setQueryData<ImportQueueDto>(queryKeys.importQueue, (prev) =>
-        prev ? { ...prev, queued: prev.queued.filter((q) => q.linkId !== payload.linkId) } : prev)
+        prev
+          ? { ...prev, queued: prev.queued.filter((q) => q.linkId !== payload.linkId), skipped: prev.skipped.filter((q) => q.linkId !== payload.linkId) }
+          : prev)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
+      void queryClient.invalidateQueries({ queryKey: ['importSourceHistory'] })
       trackEvent(METRICS.IMPORT_QUEUE_IMPORT)
     },
   })

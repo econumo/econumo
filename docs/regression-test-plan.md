@@ -658,6 +658,17 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       tap's currency. Taps whose payload could not be read are not listed (they
       stay under the Inbox's Failed imports). With more than 50 taps "Show
       more" loads the next 50 until none are left. 📱
+- [ ] Tapping a history row 📱: an Imported row opens the regular transaction
+      preview (Edit and Delete work as on the account page; tapped before the
+      transactions have loaded, it opens once they have). A Skipped row (skip
+      rule, ignored card or skipped by hand) opens a dialog with the merchant,
+      amount, card and local date/time, "This transaction wasn't added to
+      Econumo." and "Create transaction": the transaction form opens
+      prefilled (type, mapped account, amount, merchant), saving it links the
+      tap — the row reads Imported, it leaves the Inbox's Skipped list, and no
+      unskip happens if the form is cancelled. A Waiting row says it is waiting
+      in the Inbox and offers the same button; a Deleted-since row says it was
+      imported and deleted later, with no button.
 - [ ] Rate limits: the 6th `claim-setup-token` within 15 minutes and the 11th
       `sync-source` return 429 with the standard envelope.
 - [ ] Ingest-scoped PATs get 401 on every SimpleFIN endpoint; a read-only

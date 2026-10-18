@@ -27,7 +27,7 @@ func (h *Handlers) GetQueuedEventList(w http.ResponseWriter, r *http.Request) {
 // ImportQueuedEvent handles POST /api/v1/import/import-queued-event (auth).
 //
 // @Summary     Import one queued event by hand
-// @Description Creates the given transaction (same body as create-transaction, prefilled by the SPA from the queued event) and links the queued event to it.
+// @Description Creates the given transaction (same body as create-transaction, prefilled by the SPA from the queued event) and links the event to it. A skipped event (skip rule, ignored card, skipped by hand) can be imported the same way, overriding the skip for that one event.
 // @Tags        Import
 // @Accept      json
 // @Produce     json

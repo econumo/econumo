@@ -6508,7 +6508,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Creates the given transaction (same body as create-transaction, prefilled by the SPA from the queued event) and links the queued event to it.",
+                "description": "Creates the given transaction (same body as create-transaction, prefilled by the SPA from the queued event) and links the event to it. A skipped event (skip rule, ignored card, skipped by hand) can be imported the same way, overriding the skip for that one event.",
                 "consumes": [
                     "application/json"
                 ],

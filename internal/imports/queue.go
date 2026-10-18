@@ -107,7 +107,10 @@ func (s *Service) ImportQueuedEvent(ctx context.Context, userID vo.Id, req model
 		if err != nil {
 			return err
 		}
-		if link.Status != model.ImportLinkStatusQueued {
+		// A skipped row can be imported by hand too (the import history offers
+		// it): the user overrides the skip rule or the ignored card for this
+		// one transaction.
+		if link.Status != model.ImportLinkStatusQueued && link.Status != model.ImportLinkStatusSkipped {
 			return &errs.ValidationError{Msg: "This event is not queued", MsgCode: errs.CodeImportLinkNotQueued}
 		}
 		res, err := s.txns.CreateTransaction(ctx, userID, req.Transaction)

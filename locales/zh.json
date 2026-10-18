@@ -789,6 +789,15 @@
         "accept": "采纳",
         "discard": "丢弃"
       }
+    },
+    "history": {
+      "card": "卡片",
+      "date": "日期",
+      "not_added": "此交易未添加到 Econumo。",
+      "waiting": "此交易正在收件箱中等待处理。",
+      "deleted": "此交易已导入，之后被删除。",
+      "create": "创建交易",
+      "unavailable": "此交易已导入，但你无法查看。"
     }
   },
   "user": {

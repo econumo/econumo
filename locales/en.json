@@ -789,6 +789,15 @@
         "accept": "Accept",
         "discard": "Discard"
       }
+    },
+    "history": {
+      "card": "Card",
+      "date": "Date",
+      "not_added": "This transaction wasn't added to Econumo.",
+      "waiting": "This transaction is waiting in the Inbox.",
+      "deleted": "This transaction was imported and deleted later.",
+      "create": "Create transaction",
+      "unavailable": "This transaction was imported, but it isn't available to you."
     }
   },
   "user": {

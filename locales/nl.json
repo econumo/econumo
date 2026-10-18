@@ -789,6 +789,15 @@
         "accept": "Accepteren",
         "discard": "Verwerpen"
       }
+    },
+    "history": {
+      "card": "Kaart",
+      "date": "Datum",
+      "not_added": "Deze transactie is niet aan Econumo toegevoegd.",
+      "waiting": "Deze transactie wacht in de inbox.",
+      "deleted": "Deze transactie is geïmporteerd en later verwijderd.",
+      "create": "Transactie aanmaken",
+      "unavailable": "Deze transactie is geïmporteerd, maar is niet voor jou beschikbaar."
     }
   },
   "user": {

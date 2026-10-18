@@ -789,6 +789,15 @@
         "accept": "Accepter",
         "discard": "Rejeter"
       }
+    },
+    "history": {
+      "card": "Carte",
+      "date": "Date",
+      "not_added": "Cette transaction n'a pas été ajoutée à Econumo.",
+      "waiting": "Cette transaction attend dans la boîte de réception.",
+      "deleted": "Cette transaction a été importée puis supprimée.",
+      "create": "Créer la transaction",
+      "unavailable": "Cette transaction a été importée, mais elle ne vous est pas accessible."
     }
   },
   "user": {

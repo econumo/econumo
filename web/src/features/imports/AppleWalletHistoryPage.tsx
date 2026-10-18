@@ -1,13 +1,23 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ImportRunLinkDto } from '@/api/dto/imports'
 import { RouterPage } from '@/app/router-pages'
+import { useUiStore } from '@/app/uiStore'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
+import { canWriteToAccount } from '@/features/connections/shared'
 import { SettingsShell } from '@/features/settings/SettingsShell'
+import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
+import { useDeleteTransaction, useTransactions } from '@/features/transactions/queries'
+import { enrichTransaction, useTransactionLookups, type ViewTransaction } from '@/features/transactions/useAccountTransactions'
+import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
+import { useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { formatDate, formatDayHeading } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
+import { ImportedTapDialog } from './ImportedTapDialog'
 import { rowStatus } from './runRows'
-import { useImportSourceHistory, useImportSources } from './queries'
+import { useImportQueue, useImportSourceHistory, useImportSources } from './queries'
 import { parseUtcDateTime } from './relativeTime'
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -30,6 +40,51 @@ export function AppleWalletHistoryPage() {
   const rows = history.data?.pages.flatMap((p) => p.items) ?? []
   const cardName = (externalAccountId: string) =>
     wallet?.cards.find((c) => c.externalAccountId === externalAccountId)?.externalName || externalAccountId
+  const { data: transactions, isPending: transactionsLoading } = useTransactions()
+  const lookups = useTransactionLookups()
+  const { data: user } = useUserData()
+  const { data: queue } = useImportQueue()
+  const openTransactionModal = useUiStore((s) => s.openTransactionModal)
+  const deleteTransaction = useDeleteTransaction()
+  const [preview, setPreview] = useState<ViewTransaction | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
+  const [detail, setDetail] = useState<ImportRunLinkDto | null>(null)
+  // an imported tap tapped before the transaction list has loaded opens once it has
+  const [pending, setPending] = useState<ImportRunLinkDto | null>(null)
+
+  // An imported tap opens the same preview as any transaction; anything else
+  // (skipped, still waiting, deleted since) shows what was received.
+  const open = (row: ImportRunLinkDto) => {
+    if (row.transactionId && transactionsLoading) {
+      setPending(row)
+      return
+    }
+    const tx = row.transactionId ? transactions?.find((x) => x.id === row.transactionId) : undefined
+    if (tx) {
+      setPreview(enrichTransaction(tx, lookups))
+    } else {
+      setDetail(row)
+    }
+  }
+  useEffect(() => {
+    if (pending && !transactionsLoading) {
+      setPending(null)
+      open(pending)
+    }
+    // open reads the latest list; re-running on its identity would loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, transactionsLoading])
+  // queued and skipped rows are in the Inbox queue, which carries what the
+  // transaction form needs (type, mapped account); creating one links it
+  const queued = detail ? [...(queue?.queued ?? []), ...(queue?.skipped ?? [])].find((q) => q.linkId === detail.id) : undefined
+  const createFromDetail = queued
+    ? () => {
+        openTransactionModal({
+          importQueued: { linkId: queued.linkId, type: queued.type, accountId: queued.accountId, amount: queued.amount, currency: queued.currency, payee: queued.payee, date: queued.postedAt },
+        })
+        setDetail(null)
+      }
+    : undefined
 
   const days: [string, ImportRunLinkDto[]][] = []
   for (const row of rows) {
@@ -64,14 +119,16 @@ export function AppleWalletHistoryPage() {
               {items.map((row) => {
                 const status = rowStatus(row)
                 return (
-                  <li key={row.id} className="flex items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-3 text-sm">
-                    <div className="min-w-0">
-                      <div className={status === 'deleted' ? 'truncate text-muted-foreground line-through' : 'truncate'}>{row.externalPayee || row.externalTransactionId}</div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {cardName(row.externalAccountId)} · {localTime(row.externalPostedAt)} · {t(`imports.runs.row_status.${status}`)}
+                  <li key={row.id}>
+                    <button type="button" className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-3 text-left text-sm hover:bg-econumo-hover" onClick={() => open(row)}>
+                      <div className="min-w-0">
+                        <div className={status === 'deleted' ? 'truncate text-muted-foreground line-through' : 'truncate'}>{row.externalPayee || row.externalTransactionId}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {cardName(row.externalAccountId)} · {localTime(row.externalPostedAt)} · {t(`imports.runs.row_status.${status}`)}
+                        </div>
                       </div>
-                    </div>
-                    <div className="shrink-0 tabular-nums">{moneyFormat(row.externalAmount, null, { showCurrency: false, useNativePrecision: false })} {row.externalCurrency}</div>
+                      <div className="shrink-0 tabular-nums">{moneyFormat(row.externalAmount, null, { showCurrency: false, useNativePrecision: false })} {row.externalCurrency}</div>
+                    </button>
                   </li>
                 )
               })}
@@ -84,6 +141,37 @@ export function AppleWalletHistoryPage() {
           </Button>
         ) : null}
       </div>
+      {preview ? (
+        <ViewTransactionDialog
+          transaction={preview}
+          onClose={() => setPreview(null)}
+          onEdit={() => {
+            openTransactionModal({ transaction: preview })
+            setPreview(null)
+          }}
+          onDelete={() => setDeleteTarget(preview)}
+          canChange={canTouchTransaction(preview, !!preview.account && canWriteToAccount(preview.account, user?.id))}
+          isShared={(preview.account?.sharedAccess.length ?? 0) > 0}
+          dismissible={deleteTarget === null}
+        />
+      ) : null}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteTransaction.mutate(deleteTarget.id, {
+              onSuccess: () => setPreview(null),
+              onSettled: () => setDeleteTarget(null),
+            })
+          }
+        }}
+        question={t('accounts.page.delete_transaction_modal.question')}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
+        destructive
+      />
+      <ImportedTapDialog row={detail} cardName={detail ? cardName(detail.externalAccountId) : ''} onCreate={createFromDetail} onClose={() => setDetail(null)} />
     </SettingsShell>
   )
 }

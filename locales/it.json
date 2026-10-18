@@ -789,6 +789,15 @@
         "accept": "Accetta",
         "discard": "Scarta"
       }
+    },
+    "history": {
+      "card": "Carta",
+      "date": "Data",
+      "not_added": "Questa transazione non è stata aggiunta a Econumo.",
+      "waiting": "Questa transazione è in attesa nella posta in arrivo.",
+      "deleted": "Questa transazione è stata importata e poi eliminata.",
+      "create": "Crea transazione",
+      "unavailable": "Questa transazione è stata importata, ma non è disponibile per te."
     }
   },
   "user": {
