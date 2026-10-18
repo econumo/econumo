@@ -3245,6 +3245,20 @@ definitions:
       item:
         $ref: '#/definitions/model.TagResult'
     type: object
+  model.UpdateThemeRequest:
+    properties:
+      theme:
+        enum:
+        - system
+        - light
+        - dark
+        type: string
+    type: object
+  model.UpdateThemeResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
   model.UpdateTransactionRequest:
     properties:
       accountId:
@@ -11046,6 +11060,48 @@ paths:
       security:
       - Bearer: []
       summary: Update report period
+      tags:
+      - User
+  /api/v1/user/update-theme:
+    post:
+      consumes:
+      - application/json
+      description: Saves system, light, or dark appearance for the authenticated user
+        and returns the refreshed user. An absent preference defaults to system.
+      parameters:
+      - description: Theme preference
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateThemeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateThemeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update theme preference
       tags:
       - User
 securityDefinitions:

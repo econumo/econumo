@@ -127,7 +127,7 @@ export function BudgetsPage() {
           onClick={() => updateDefaultBudget.mutate(budget.id)}
         >
           <Bookmark
-            className={`size-4 ${isDefault ? "fill-current text-primary" : ""}`}
+            className={`size-4 ${isDefault ? "fill-current text-econumo-link" : ""}`}
           />
         </button>
         <span className="flex min-w-0 flex-1 flex-col">

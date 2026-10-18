@@ -197,6 +197,51 @@ it('Language row opens a dialog to switch locale and closes on pick', async () =
   document.documentElement.lang = 'en'
 })
 
+it('defaults Theme to System and keeps the modal open while saving all three choices', async () => {
+  const saved: string[] = []
+  server.use(http.post('*/api/v1/user/update-theme', async ({ request }) => {
+    const { theme } = await request.json() as { theme: string }
+    saved.push(theme)
+    return HttpResponse.json({ success: true, data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'theme', value: theme }] } } })
+  }))
+  const user = userEvent.setup()
+  const cache = renderPage()
+  expect(await screen.findByRole('button', { name: /Theme/ })).toHaveTextContent('System')
+  expect(screen.queryByRole('radiogroup', { name: 'Theme' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /Theme/ }))
+  const dialog = await screen.findByRole('dialog', { name: 'Theme' })
+  for (const [label, value] of [['Dark', 'dark'], ['Light', 'light'], ['System', 'system']]) {
+    const option = within(dialog).getByRole('radio', { name: label })
+    await waitFor(() => expect(option).toBeEnabled())
+    await user.click(option)
+    await waitFor(() => expect(saved.at(-1)).toBe(value))
+    await waitFor(() => expect(option).toBeEnabled())
+    expect(dialog).toBeInTheDocument()
+    expect(option).toBeChecked()
+    expect(cache.getQueryData<typeof fixtureUser>(queryKeys.user)?.options.find((o) => o.name === 'theme')?.value).toBe(value)
+  }
+  await user.click(within(dialog).getAllByRole('button', { name: 'Close' }).find((button) => button.dataset.slot === 'button')!)
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.getByRole('button', { name: /Theme/ })).toHaveTextContent('System')
+})
+
+it('restores the saved theme and shows an error when a change fails', async () => {
+  server.use(
+    ...coreHandlers({ user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'theme', value: 'dark' }] } }),
+    http.post('*/api/v1/user/update-theme', () => HttpResponse.json({ message: 'Unavailable' }, { status: 500 })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  const themeRow = await screen.findByRole('button', { name: /Theme/ })
+  await waitFor(() => expect(themeRow).toHaveTextContent('Dark'))
+  await user.click(themeRow)
+  const dark = await screen.findByRole('radio', { name: 'Dark' })
+  await waitFor(() => expect(dark).toBeChecked())
+  await user.click(screen.getByRole('radio', { name: 'Light' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not save your theme. Please try again.')
+  expect(dark).toBeChecked()
+})
+
 it('clicking the avatar opens the avatar picker dialog', async () => {
   const user = userEvent.setup()
   renderPage()

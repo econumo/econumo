@@ -59,7 +59,7 @@ function Step({
           href={guideHref}
           target="_blank"
           rel="noreferrer"
-          className="text-xs font-medium uppercase tracking-wide text-econumo-purple underline underline-offset-2"
+          className="text-xs font-medium uppercase tracking-wide text-econumo-purple dark:text-econumo-link underline underline-offset-2"
         >
           {guideText}
         </a>
@@ -98,7 +98,7 @@ export function OnboardingPage() {
   const isBudgetCreated = budgets.length > 0
 
   // Trans fills the children from the catalogue string's <tag>label</tag>
-  const settingsLink = (to: string) => <Link to={to} className="text-econumo-purple underline underline-offset-2" />
+  const settingsLink = (to: string) => <Link to={to} className="text-econumo-purple dark:text-econumo-link underline underline-offset-2" />
 
   const handleComplete = () => {
     completeOnboarding.mutate(undefined, { onSuccess: () => navigate(RouterPage.BUDGET) })
@@ -209,7 +209,7 @@ export function OnboardingPage() {
                     <button
                       type="button"
                       onClick={() => setAvatarOpen(true)}
-                      className="text-econumo-purple underline underline-offset-2"
+                      className="text-econumo-purple dark:text-econumo-link underline underline-offset-2"
                     />
                   ),
                 }}

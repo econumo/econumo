@@ -899,6 +899,14 @@
     "page": {
       "settings": {
         "profile": {
+          "theme": {
+            "label": "Design",
+            "system": "System",
+            "light": "Hell",
+            "dark": "Dunkel",
+            "description": "Das Systemdesign folgt den Einstellungen deines Geräts.",
+            "save_error": "Das Design konnte nicht gespeichert werden. Bitte versuche es erneut."
+          },
           "menu_item": "Profil",
           "header": "Persönliche Einstellungen",
           "groups": {

@@ -240,6 +240,25 @@ type UpdateAnalyticsResult struct {
 	User CurrentUserResult `json:"user"`
 }
 
+// UpdateThemeRequest selects the UI appearance. Missing preferences default
+// to system; an explicit write must be one of the three supported values.
+type UpdateThemeRequest struct {
+	Theme string `json:"theme" enums:"system,light,dark"`
+}
+
+func (r UpdateThemeRequest) Validate() error {
+	switch r.Theme {
+	case "system", "light", "dark":
+		return nil
+	default:
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "theme", Message: "Choose system, light, or dark.", Code: errs.CodeInvalidChoice})
+	}
+}
+
+type UpdateThemeResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
 // ---------------------------------------------------------------------------
 // update-password
 // ---------------------------------------------------------------------------

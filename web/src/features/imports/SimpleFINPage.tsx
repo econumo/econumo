@@ -138,7 +138,7 @@ export function SimpleFINPage() {
         </div>
         {lastRun ? <ImportRunSummary run={lastRun} accountName={accountName} to={RouterPage.IMPORT_RUN.replace(':id', lastRun.id)} /> : null}
         {source ? (
-          <Link to={`${RouterPage.IMPORT_RUNS}?sourceId=${source.id}`} className="px-1 text-sm text-primary hover:underline">{t('imports.runs.history_link')}</Link>
+          <Link to={`${RouterPage.IMPORT_RUNS}?sourceId=${source.id}`} className="px-1 text-sm text-econumo-link hover:underline">{t('imports.runs.history_link')}</Link>
         ) : null}
         {external.isError ? <p role="alert" className="text-sm text-destructive">{apiErrorMessage(external.error)}</p> : null}
         <ImportCards source={source} cards={cards} variant="account" />

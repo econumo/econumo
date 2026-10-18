@@ -899,6 +899,14 @@
     "page": {
       "settings": {
         "profile": {
+          "theme": {
+            "label": "Thema",
+            "system": "Systeem",
+            "light": "Licht",
+            "dark": "Donker",
+            "description": "Het systeemthema volgt de weergave van je apparaat.",
+            "save_error": "Het thema kon niet worden opgeslagen. Probeer het opnieuw."
+          },
           "menu_item": "Profiel",
           "header": "Persoonlijke instellingen",
           "groups": {

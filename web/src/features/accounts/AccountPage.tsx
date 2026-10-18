@@ -257,7 +257,7 @@ export function AccountPage() {
                 {account.name}
               </h1>
               <span className="grid size-8 place-items-center rounded-lg bg-econumo-card">
-                <EntityIcon name={account.icon} className="text-lg text-[#666666]" />
+                <EntityIcon name={account.icon} className="text-lg text-entity-icon" />
               </span>
               {sharedAvatars}
             </div>

@@ -899,6 +899,14 @@
     "page": {
       "settings": {
         "profile": {
+          "theme": {
+            "label": "Motyw",
+            "system": "Systemowy",
+            "light": "Jasny",
+            "dark": "Ciemny",
+            "description": "Motyw systemowy dopasowuje się do wyglądu urządzenia.",
+            "save_error": "Nie udało się zapisać motywu. Spróbuj ponownie."
+          },
           "menu_item": "Profil",
           "header": "Ustawienia osobiste",
           "groups": {

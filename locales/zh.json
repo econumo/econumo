@@ -899,6 +899,14 @@
     "page": {
       "settings": {
         "profile": {
+          "theme": {
+            "label": "主题",
+            "system": "跟随系统",
+            "light": "浅色",
+            "dark": "深色",
+            "description": "系统主题跟随设备的外观设置。",
+            "save_error": "无法保存主题，请重试。"
+          },
           "menu_item": "个人资料",
           "header": "个人设置",
           "groups": {

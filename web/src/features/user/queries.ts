@@ -10,6 +10,7 @@ import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
 import { getBillingUrl } from '@/lib/config'
 import { accessDaysLeft, deriveAccessState } from '@/lib/access'
 import type { AccessState } from '@/lib/access'
+import type { ThemePreference } from '@/lib/theme'
 
 export function useUserData() {
   return useQuery({ queryKey: queryKeys.user, queryFn: getUserData, staleTime: TEN_MINUTES })
@@ -150,6 +151,32 @@ export function useUpdateAnalytics() {
         trackEvent(METRICS.USER_UPDATE_ANALYTICS, { enabled })
       }
       return user
+    },
+    onSuccess: (user) => {
+      queryClient.setQueryData(queryKeys.user, user)
+    },
+  })
+}
+
+export function useUpdateTheme() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (theme: ThemePreference) => userApi.updateTheme(theme),
+    onMutate: async (theme) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.user })
+      const previous = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
+      if (previous) {
+        queryClient.setQueryData<CurrentUserDto>(queryKeys.user, {
+          ...previous,
+          options: [...previous.options.filter((o) => o.name !== UserOptions.THEME), { name: UserOptions.THEME, value: theme }],
+        })
+      }
+      return { previous }
+    },
+    onError: (_error, _theme, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.user, context.previous)
+      }
     },
     onSuccess: (user) => {
       queryClient.setQueryData(queryKeys.user, user)

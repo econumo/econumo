@@ -899,6 +899,14 @@
     "page": {
       "settings": {
         "profile": {
+          "theme": {
+            "label": "Theme",
+            "system": "System",
+            "light": "Light",
+            "dark": "Dark",
+            "description": "System follows your device’s appearance.",
+            "save_error": "Could not save your theme. Please try again."
+          },
           "menu_item": "Profile",
           "header": "Personal settings",
           "groups": {

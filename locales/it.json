@@ -899,6 +899,14 @@
     "page": {
       "settings": {
         "profile": {
+          "theme": {
+            "label": "Tema",
+            "system": "Sistema",
+            "light": "Chiaro",
+            "dark": "Scuro",
+            "description": "Il tema di sistema segue l’aspetto del dispositivo.",
+            "save_error": "Impossibile salvare il tema. Riprova."
+          },
           "menu_item": "Profilo",
           "header": "Impostazioni personali",
           "groups": {

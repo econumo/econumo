@@ -100,7 +100,7 @@ export function SidebarAccountTree({ collapsed = false }: { collapsed?: boolean 
               }`}
               onClick={() => navigate(RouterPage.ACCOUNT(account.id))}
             >
-              <EntityIcon name={account.icon} className={`text-lg ${selected ? 'text-white' : 'text-[#666666]'}`} />
+              <EntityIcon name={account.icon} className={`text-lg ${selected ? 'text-white' : 'text-entity-icon'}`} />
             </button>
           )
         })}
@@ -168,7 +168,7 @@ export function SidebarAccountTree({ collapsed = false }: { collapsed?: boolean 
                           }`}
                           onClick={() => navigate(RouterPage.ACCOUNT(account.id))}
                         >
-                          <EntityIcon name={account.icon} className={`text-2xl ${selected ? 'text-white' : 'text-[#666666]'}`} />
+                          <EntityIcon name={account.icon} className={`text-2xl ${selected ? 'text-white' : 'text-entity-icon'}`} />
                           <span className="mb-1 mt-2 min-h-8 w-full truncate text-sm" title={account.name}>
                             {account.name}
                           </span>
@@ -192,7 +192,7 @@ export function SidebarAccountTree({ collapsed = false }: { collapsed?: boolean 
                           <span
                             className={`grid size-9 shrink-0 place-items-center rounded-lg ${selected ? 'bg-white/20' : 'bg-econumo-card'}`}
                           >
-                            <EntityIcon name={account.icon} className={`text-lg ${selected ? 'text-white' : 'text-[#666666]'}`} />
+                            <EntityIcon name={account.icon} className={`text-lg ${selected ? 'text-white' : 'text-entity-icon'}`} />
                           </span>
                           <span className="flex min-w-0 flex-1 flex-col">
                             <span className="truncate text-sm leading-tight" title={account.name}>

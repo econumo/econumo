@@ -20,6 +20,20 @@
     <meta name="msapplication-TileColor" content="#2b5797" />
     <meta name="msapplication-config" content="/browserconfig.xml" />
     <meta name="theme-color" content="#ffffff" />
+    <style>html { background: #ffffff; } html.dark { background: #27282d; }</style>
+    <script>
+      // Paint the last appearance before CSS/React load. The signed-in user's
+      // database preference replaces this cache as soon as it is available.
+      (function () {
+        var preference = 'system';
+        try { preference = localStorage.getItem('econumo.theme') || 'system'; } catch (_) {}
+        if (/^\/(?:login|register)\/?$/.test(window.location.pathname)) preference = 'system';
+        var dark = preference === 'dark' || (preference !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.add(dark ? 'dark' : 'light');
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#27282d' : '#ffffff');
+      })();
+    </script>
     <script src="/econumo-config.js"></script>
     <script>
       (function (config) {

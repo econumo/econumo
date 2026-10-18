@@ -401,6 +401,17 @@ func init() {
 		}
 	}})
 
+	register(Scenario{Name: "theme_preferences", Calls: func() []Call {
+		return []Call{
+			{Label: "dark", Method: "POST", Path: "/api/v1/user/update-theme", Auth: "owner", Body: map[string]any{"theme": "dark"}},
+			{Label: "read-saved-theme", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "owner"},
+			{Label: "light", Method: "POST", Path: "/api/v1/user/update-theme", Auth: "owner", Body: map[string]any{"theme": "light"}},
+			{Label: "system", Method: "POST", Path: "/api/v1/user/update-theme", Auth: "owner", Body: map[string]any{"theme": "system"}},
+			{Label: "readonly-theme", Method: "POST", Path: "/api/v1/user/update-theme", Auth: "readonly", Body: map[string]any{"theme": "dark"}},
+			{Label: "err:invalid-theme", Method: "POST", Path: "/api/v1/user/update-theme", Auth: "owner", Body: map[string]any{"theme": "sepia"}},
+		}
+	}})
+
 	// The account module has no delete-folder route (only budget folders can be
 	// deleted); a folder's terminal lifecycle op is hide/show, both exercised
 	// here.

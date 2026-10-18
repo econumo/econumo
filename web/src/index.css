@@ -65,35 +65,37 @@
     --font-heading: var(--font-sans);
     --font-sans: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     /* econumo brand palette (web/src/css/quasar.variables.scss — frozen brand) */
-    --color-econumo-yellow: #FFC71F;
-    --color-econumo-yellow-text: #765910;
-    --color-econumo-magenta: #BD51CF;
-    --color-econumo-magenta-dark: #93489F;
-    --color-econumo-magenta-light: #F4CFFF;
-    --color-econumo-purple: #9C27B0;
-    --color-econumo-card: #F5F5F5;
-    --color-econumo-hover: #EBEBEB;
+    --color-econumo-yellow: var(--econumo-yellow);
+    --color-econumo-link: var(--econumo-link);
+    --color-entity-icon: var(--entity-icon);
+    --color-econumo-yellow-text: var(--econumo-yellow-text);
+    --color-econumo-magenta: var(--econumo-magenta);
+    --color-econumo-magenta-dark: var(--econumo-magenta-dark);
+    --color-econumo-magenta-light: var(--econumo-magenta-light);
+    --color-econumo-purple: var(--econumo-purple);
+    --color-econumo-card: var(--econumo-card);
+    --color-econumo-hover: var(--econumo-hover);
     /* avatar palette: muted, brand-harmonized pairs — a deep desaturated hue
        for the glyph on a pale tint of the same hue. Slugs are the frozen
        backend allowlist (internal/user/avatar.go); only these rendered
        values may change. amber = the brand yellow-text on pale brand gold;
        fuchsia = the brand magenta pair. */
-    --color-avatar-red: #A34F4A;
-    --color-avatar-red-tint: #F6E3E2;
-    --color-avatar-orange: #A2603A;
-    --color-avatar-orange-tint: #F7E7DC;
-    --color-avatar-amber: #765910;
-    --color-avatar-amber-tint: #FAEFD2;
-    --color-avatar-emerald: #567F3A;
-    --color-avatar-emerald-tint: #E9F0E0;
-    --color-avatar-teal: #3E7C72;
-    --color-avatar-teal-tint: #E1EFEC;
-    --color-avatar-sky: #4A7396;
-    --color-avatar-sky-tint: #E4EDF4;
-    --color-avatar-fuchsia: #93489F;
-    --color-avatar-fuchsia-tint: #F5E4F8;
-    --color-income: #4E8F26;
-    --color-expense: #D34949;
+    --color-avatar-red: var(--avatar-red);
+    --color-avatar-red-tint: var(--avatar-red-tint);
+    --color-avatar-orange: var(--avatar-orange);
+    --color-avatar-orange-tint: var(--avatar-orange-tint);
+    --color-avatar-amber: var(--avatar-amber);
+    --color-avatar-amber-tint: var(--avatar-amber-tint);
+    --color-avatar-emerald: var(--avatar-emerald);
+    --color-avatar-emerald-tint: var(--avatar-emerald-tint);
+    --color-avatar-teal: var(--avatar-teal);
+    --color-avatar-teal-tint: var(--avatar-teal-tint);
+    --color-avatar-sky: var(--avatar-sky);
+    --color-avatar-sky-tint: var(--avatar-sky-tint);
+    --color-avatar-fuchsia: var(--avatar-fuchsia);
+    --color-avatar-fuchsia-tint: var(--avatar-fuchsia-tint);
+    --color-income: var(--income);
+    --color-expense: var(--expense);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -135,6 +137,34 @@
 }
 
 :root {
+    color-scheme: light;
+    --econumo-yellow: #FFC71F;
+    --econumo-yellow-text: #765910;
+    --econumo-magenta: #BD51CF;
+    --econumo-magenta-dark: #93489F;
+    --econumo-purple: #9C27B0;
+    --econumo-link: #93489F;
+    --entity-icon: #666666;
+    --econumo-card: #F5F5F5;
+    --econumo-hover: #EBEBEB;
+    --econumo-magenta-light: #F4CFFF;
+    --avatar-red: #A34F4A;
+    --avatar-red-tint: #F6E3E2;
+    --avatar-orange: #A2603A;
+    --avatar-orange-tint: #F7E7DC;
+    --avatar-amber: #765910;
+    --avatar-amber-tint: #FAEFD2;
+    --avatar-emerald: #567F3A;
+    --avatar-emerald-tint: #E9F0E0;
+    --avatar-teal: #3E7C72;
+    --avatar-teal-tint: #E1EFEC;
+    --avatar-sky: #4A7396;
+    --avatar-sky-tint: #E4EDF4;
+    --avatar-fuchsia: #93489F;
+    --avatar-fuchsia-tint: #F5E4F8;
+    --income: #4E8F26;
+    --expense: #D34949;
+
     --background: oklch(1 0 0);
     --foreground: #333333;
     --card: oklch(1 0 0);
@@ -170,37 +200,66 @@
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    color-scheme: dark;
+    /* Graphite surfaces anchor richer orchid, gold, and financial accents.
+       Text and financial amounts remain clear on each surface level. */
+    --econumo-yellow: #E2B75A;
+    --econumo-yellow-text: #382B14;
+    --econumo-magenta: #A451B6;
+    --econumo-magenta-dark: #88449B;
+    --econumo-purple: #A451B6;
+    --background: #27282D;
+    --foreground: #E5E3E9;
+    --card: #313238;
+    --card-foreground: #E5E3E9;
+    --popover: #393A41;
+    --popover-foreground: #E5E3E9;
+    --primary: #A451B6;
+    --primary-foreground: #FFFFFF;
+    --secondary: #35363D;
+    --secondary-foreground: #E5E3E9;
+    --muted: #2E2F35;
+    --muted-foreground: #ADAAB5;
+    --accent: #413748;
+    --accent-foreground: #E8E1EB;
+    --destructive: #E09090;
+    --border: #46464F;
+    --input: #55545F;
+    --ring: #BD87CD;
+    --econumo-card: #313238;
+    --econumo-hover: #3B3C44;
+    --econumo-link: #CE9BDA;
+    --econumo-magenta-light: #5B3E66;
+    --entity-icon: #B6B2BE;
+    --income: #99C07A;
+    --expense: #E09090;
+    --avatar-red: #DEA098;
+    --avatar-red-tint: #422C2E;
+    --avatar-orange: #D8AC89;
+    --avatar-orange-tint: #423129;
+    --avatar-amber: #D8BA71;
+    --avatar-amber-tint: #3D3523;
+    --avatar-emerald: #AEC98C;
+    --avatar-emerald-tint: #2C382A;
+    --avatar-teal: #89BEAF;
+    --avatar-teal-tint: #263A37;
+    --avatar-sky: #96BADD;
+    --avatar-sky-tint: #2A3544;
+    --avatar-fuchsia: #CF9FDB;
+    --avatar-fuchsia-tint: #3C2C44;
+    --chart-1: #BF8ECE;
+    --chart-2: #99C07A;
+    --chart-3: #D8BA71;
+    --chart-4: #8FB6D2;
+    --chart-5: #E09090;
+    --sidebar: #2C2D33;
+    --sidebar-foreground: #E5E3E9;
+    --sidebar-primary: #A451B6;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #413748;
+    --sidebar-accent-foreground: #E8E1EB;
+    --sidebar-border: #46464F;
+    --sidebar-ring: #BD87CD;
 }
 
 @layer base {
@@ -232,7 +291,7 @@
   align-items: flex-end;
   gap: 0.25rem;
   padding-top: 1.5rem; /* headroom for the hop */
-  color: #333333; /* the frozen letter color of assets/econumo.svg */
+  color: var(--foreground);
 }
 
 .coin-loader-letters {
@@ -302,4 +361,63 @@
 .plan-band > :last-child > :last-child > [data-plan-line]:last-child,
 .plan-band > :last-child > :last-child > :last-child > [data-plan-line]:last-child {
   border-bottom: 0;
+}
+
+/* Tiny appearance previews intentionally retain their own palette, so all
+   three options can be compared in either active theme. */
+.theme-preview {
+  display: flex;
+  height: 4rem;
+  overflow: hidden;
+  border-radius: 0.375rem;
+  background: var(--preview-bg);
+  border: 1px solid var(--preview-border);
+  --preview-bg: #FFFFFF;
+  --preview-card: #F0EFF3;
+  --preview-border: #E4E2E8;
+  --preview-line: #C2BDC9;
+}
+.theme-preview-dark {
+  --preview-bg: #27282D;
+  --preview-card: #3B3C44;
+  --preview-border: #46464F;
+  --preview-line: #777481;
+}
+.theme-preview-system {
+  --preview-bg: linear-gradient(90deg, #FFFFFF 50%, #27282D 50%);
+  --preview-card: #8B889225;
+  --preview-line: #99929F;
+}
+.theme-preview-sidebar {
+  display: flex;
+  width: 25%;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 4px;
+  border-right: 1px solid var(--preview-border);
+}
+.theme-preview-sidebar > span {
+  height: 3px;
+  border-radius: 2px;
+  background: #B975CB;
+  opacity: 0.45;
+}
+.theme-preview-sidebar > span:first-child { opacity: 1; }
+.theme-preview-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 7px;
+}
+.theme-preview-content > span {
+  height: 9px;
+  border-radius: 2px;
+  background: var(--preview-card);
+}
+.theme-preview-content > span:first-child {
+  width: 55%;
+  height: 3px;
+  margin-bottom: 2px;
+  background: var(--preview-line);
 }

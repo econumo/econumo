@@ -93,7 +93,7 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote
       className={`flex w-full items-start gap-4 px-2 py-2 text-left ${(dimmed ?? (tx.isInFuture || Boolean(tx.recurring))) ? 'opacity-50' : ''}`}
     >
       <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-econumo-card">
-        <EntityIcon name={icon} className="text-xl text-[#666666]" />
+        <EntityIcon name={icon} className="text-xl text-entity-icon" />
         {showAuthor && tx.author ? (
           // the tooltip is the only place the row names the author
           <span title={tx.author.name} className="absolute -bottom-1 -right-2">

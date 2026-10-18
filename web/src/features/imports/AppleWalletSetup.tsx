@@ -253,7 +253,7 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
                       {t('imports.apple_wallet.steps.configure.button')}
                     </Button>
                   ) : null}
-                  <a href={MANUAL_GUIDE_URL} target="_blank" rel="noopener" className="text-primary underline-offset-2 hover:underline">
+                  <a href={MANUAL_GUIDE_URL} target="_blank" rel="noopener" className="text-econumo-link underline-offset-2 hover:underline">
                     {t('imports.apple_wallet.steps.configure.manual')}
                   </a>
                 </div>
