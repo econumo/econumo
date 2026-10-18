@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import * as importsApi from '@/api/imports'
 import type { Id } from '@/api/types'
@@ -47,9 +47,11 @@ export function useDeleteImportSource() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: importsApi.deleteImportSource,
-    onSuccess: (items) => {
+    onSuccess: (items, id) => {
+      const source = queryClient.getQueryData<ImportSourceDto[]>(queryKeys.importSources)?.find((item) => item.id === id)
       queryClient.setQueryData(queryKeys.importSources, items)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
+      trackEvent(METRICS.IMPORT_SOURCE_DISCONNECT, source ? { provider: source.provider } : {})
     },
   })
 }
@@ -111,9 +113,13 @@ export function useImportQueuedEvent() {
     mutationFn: (payload: ImportQueuedEventPayload) => importsApi.importQueuedEvent(payload),
     onSuccess: (result, payload) => {
       apply(result, 'add')
+      // a skipped row can be imported too (from the import history)
       queryClient.setQueryData<ImportQueueDto>(queryKeys.importQueue, (prev) =>
-        prev ? { ...prev, queued: prev.queued.filter((q) => q.linkId !== payload.linkId) } : prev)
+        prev
+          ? { ...prev, queued: prev.queued.filter((q) => q.linkId !== payload.linkId), skipped: prev.skipped.filter((q) => q.linkId !== payload.linkId) }
+          : prev)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
+      void queryClient.invalidateQueries({ queryKey: ['importSourceHistory'] })
       trackEvent(METRICS.IMPORT_QUEUE_IMPORT)
     },
   })
@@ -228,12 +234,30 @@ export function useSyncImportSource() {
   })
 }
 
-export function useImportRuns(sourceId = '') {
-  return useQuery({ queryKey: queryKeys.importRuns(sourceId), queryFn: () => importsApi.getImportRunList(sourceId || undefined), staleTime: TEN_MINUTES })
+// Runs are listed per source: each provider shows its own history.
+export function useImportRuns(sourceId: Id | undefined) {
+  return useQuery({
+    queryKey: queryKeys.importRuns(sourceId ?? ''),
+    queryFn: () => importsApi.getImportRunList(sourceId),
+    staleTime: TEN_MINUTES,
+    enabled: Boolean(sourceId),
+  })
 }
 
 export function useImportRun(id: Id) {
   return useQuery({ queryKey: queryKeys.importRun(id), queryFn: () => importsApi.getImportRun(id), staleTime: TEN_MINUTES })
+}
+
+// Taps keep arriving while the page is closed, so it refetches every time it
+// opens rather than trusting a cached copy.
+export function useImportSourceHistory(sourceId: Id | undefined) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.importSourceHistory(sourceId ?? ''),
+    queryFn: ({ pageParam }) => importsApi.getImportSourceHistory(sourceId ?? '', pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => (last.hasMore ? pages.reduce((n, p) => n + p.items.length, 0) : undefined),
+    enabled: Boolean(sourceId),
+  })
 }
 
 export function useImportRules() {

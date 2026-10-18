@@ -15,6 +15,9 @@ import { rememberAnalyticsPreference } from './analyticsPreference'
 import { authMethods, forgetAuthMethods, rememberHasPassword, rememberLinkedProviders } from './analyticsAuthMethods'
 import { backendHost, selfHosted } from './config'
 import { setToken } from './storage'
+import { QueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/app/queryKeys'
+import { setAnalyticsQueryClient } from './analyticsProfile'
 
 vi.mock('./analytics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./analytics')>()
@@ -28,6 +31,28 @@ beforeEach(() => {
   setToken('eco_ses_test')
   window.econumoConfig = {}
   window.history.replaceState({}, '', '/')
+})
+
+afterEach(() => setAnalyticsQueryClient(null))
+
+it('includes apple-wallet on/off on both product events and page views', () => {
+  const qc = new QueryClient()
+  setAnalyticsQueryClient(qc)
+  const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
+  qc.setQueryData(queryKeys.importSources, [{ provider: 'apple-wallet' }])
+  trackEvent(METRICS.IMPORT_SETUP_STEP, { provider: 'apple-wallet', step: 'install', done: true })
+  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ 'apple-wallet': 'on' }))
+  qc.setQueryData(queryKeys.importSources, [])
+  trackEvent(METRICS.PAGE_VIEW)
+  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ 'apple-wallet': 'off' }))
+})
+
+it('suppresses every setup funnel event when analytics is off', () => {
+  rememberAnalyticsPreference(false)
+  for (const metric of [METRICS.IMPORT_SETUP_STEP_VIEW, METRICS.IMPORT_SETUP_STEP, METRICS.IMPORT_SETUP_COMPLETE, METRICS.IMPORT_SETUP_RESTART, METRICS.IMPORT_SOURCE_DISCONNECT]) {
+    trackEvent(metric, { provider: 'apple-wallet' })
+  }
+  expect(capture).not.toHaveBeenCalled()
 })
 
 it('sends nothing when opted out', () => {

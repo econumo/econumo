@@ -84,6 +84,12 @@ export interface ImportRunDetailDto {
   links: ImportRunLinkDto[]
 }
 
+export interface ImportSourceHistoryDto {
+  /** newest first */
+  items: ImportRunLinkDto[]
+  hasMore: boolean
+}
+
 export interface ExternalAccountDto {
   externalAccountId: string
   externalName: string

@@ -18,13 +18,37 @@ type Service struct {
 	visible  VisibleAccounts
 	creator  TransactionCreator
 	labels   LabelOwnership
+	cats     CategoryLister
 	tx       port.TxRunner
 	ops      port.OperationGuard
 	clock    port.Clock
 }
 
-func NewService(repo Repository, accounts AccountResolver, grants AccountGrants, visible VisibleAccounts, creator TransactionCreator, labels LabelOwnership, tx port.TxRunner, ops port.OperationGuard, clock port.Clock) *Service {
-	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, creator: creator, labels: labels, tx: tx, ops: ops, clock: clock}
+func NewService(repo Repository, accounts AccountResolver, grants AccountGrants, visible VisibleAccounts, creator TransactionCreator, labels LabelOwnership, cats CategoryLister, tx port.TxRunner, ops port.OperationGuard, clock port.Clock) *Service {
+	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, creator: creator, labels: labels, cats: cats, tx: tx, ops: ops, clock: clock}
+}
+
+// checkCategoryKind refuses a category of the other kind (an income category
+// on an expense template or the reverse), the rule a posted transaction is
+// held to. prev is the stored template on an update: one that already carries
+// its category under the same type keeps it. Ownership is still checked when
+// the template is posted.
+func (s *Service) checkCategoryKind(ctx context.Context, ownerID vo.Id, typ model.TransactionType, categoryID *vo.Id, prev *model.RecurringTransaction) error {
+	if categoryID == nil || (prev != nil && prev.CategoryID != nil && *prev.CategoryID == *categoryID && prev.Type == typ) {
+		return nil
+	}
+	cats, err := s.cats.CategoriesByOwner(ctx, ownerID)
+	if err != nil {
+		return err
+	}
+	for _, c := range cats {
+		if c.ID == categoryID.String() && c.Income != typ.IsIncome() {
+			return errs.NewValidation("Validation failed", errs.FieldError{
+				Key: "categoryId", Message: "The category type must match the transaction type.", Code: errs.CodeTransactionCategoryTypeMismatch,
+			})
+		}
+	}
+	return nil
 }
 
 // Same matrix as transaction writes: owner or admin/user grant; guest denied.

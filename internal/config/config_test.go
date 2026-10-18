@@ -614,12 +614,23 @@ func TestLoad_ImportAllowPrivateHosts(t *testing.T) {
 func TestLoad_ImportProviders(t *testing.T) {
 	t.Setenv("PORT", "8080")
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_IMPORT_APPLE_WALLET", "")
+	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "")
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !cfg.ImportAppleWallet || cfg.ImportSimpleFIN || !cfg.TransactionImport() {
+		t.Error("Apple Wallet must default on and SimpleFIN off")
+	}
+
+	t.Setenv("ECONUMO_IMPORT_APPLE_WALLET", "false")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if cfg.ImportAppleWallet || cfg.ImportSimpleFIN || cfg.TransactionImport() {
-		t.Error("both import providers must be off by default")
+		t.Error("explicit false must disable Apple Wallet and shared import routes")
 	}
 
 	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "true")

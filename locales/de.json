@@ -516,68 +516,80 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Erfasse Apple-Pay-Zahlungen automatisch mit einem iPhone-Kurzbefehl. Jede Zahlung wird an Econumo gesendet; jede Karte ordnest du einmal einem Konto zu.",
+      "intro": "Erfasse Apple Pay-Transaktionen automatisch mit einem iPhone-Kurzbefehl",
+      "instructions": "Einrichtungsanleitung",
       "connect": "Apple Wallet einrichten",
-      "connected": "Verbunden",
+      "connect_intro": {
+        "needs_title": "Du brauchst",
+        "needs": {
+          "iphone": "Ein iPhone mit Apple Pay",
+          "shortcuts": "Die App Kurzbefehle – sie ist in iOS enthalten",
+          "time": "Etwa 5 Minuten"
+        },
+        "limitations_title": "Bekannte Einschränkungen",
+        "tap_only": "Funktioniert nur, wenn du dein iPhone zum Bezahlen ans Terminal hältst",
+        "online_not_imported": "Apple Pay-Zahlungen auf Websites werden nicht unterstützt",
+        "steps_title": "So funktioniert es",
+        "flow": {
+          "pay": "Bezahle mit Apple Pay",
+          "send": "Die Integration sendet Details direkt an Econumo",
+          "privacy": "Econumo erhält Kartenname, Händler, Betrag und Währung",
+          "record": "Econumo speichert die Transaktion"
+        }
+      },
       "disconnect": "Trennen",
+      "disconnect_full": "Apple Wallet trennen",
       "disconnect_modal": {
         "title": "Apple Wallet trennen?",
-        "question": "Kartenzuordnungen und die Prüfwarteschlange dieser Verbindung werden entfernt. Bereits importierte Transaktionen bleiben erhalten."
+        "question": "Die Apple Wallet-Integration wird aus Econumo entfernt. Bereits importierte Transaktionen bleiben erhalten."
+      },
+      "setup": {
+        "title": "Einrichtungsanleitung",
+        "reconfigure": "Erneut einrichten"
       },
       "steps": {
-        "hint_desktop": "Öffne diese Seite auf deinem iPhone, um die Schritte dort auszuführen. Auf diesem Gerät kannst du die Kurzbefehle laden und Schritte von Hand abhaken.",
-        "install_wallet": {
-          "title": "econumo-wallet-v1 installieren",
-          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
-        },
-        "install_setup": {
-          "title": "econumo-setup-v1 installieren",
-          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
+        "hint_desktop": "Öffne diese Seite auf deinem iPhone, um den Kurzbefehl herunterzuladen und abgeschlossene Schritte manuell zu markieren.",
+        "install": {
+          "title": "Kurzbefehl installieren",
+          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“.",
+          "file": "oder herunterladen"
         },
         "configure": {
-          "title": "Kurzbefehle konfigurieren",
-          "text": "Erstellt ein Zugriffstoken für den Kurzbefehl und übergibt es zusammen mit der Serveradresse an econumo-setup-v1.",
-          "button": "Auf diesem iPhone konfigurieren",
-          "manual": "Manuell konfigurieren"
-        },
-        "test": {
-          "title": "econumo-wallet-v1 einmal ausführen",
-          "text": "Führe ihn von Hand aus und tippe bei jeder Abfrage auf „Immer erlauben“ — das erteilt die Berechtigungen, die die Automation später braucht. Es wird nichts angelegt; Econumo merkt sich nur, dass der Kurzbefehl angekommen ist.",
-          "button": "econumo-wallet-v1 ausführen",
-          "check": "Prüfen",
-          "none": "Noch nichts empfangen. Führe den Kurzbefehl aus, erlaube die Abfragen und prüfe erneut."
+          "title": "Kurzbefehl verbinden",
+          "text": "Generiert ein API-Token. Der Kurzbefehl speichert Serveradresse und Token und verbindet sich dann mit Econumo. Tippe bei jeder Abfrage auf „Immer erlauben“ — die Automation braucht diese Berechtigungen später.",
+          "button": "Kurzbefehl verbinden",
+          "open": "Econumo verknüpfen",
+          "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …",
+          "again_note": "Erneutes Verbinden ersetzt das Token, das der Kurzbefehl gerade nutzt: Zahlungen werden erst wieder importiert, wenn du econumo mit dem neuen öffnest."
         },
         "automate": {
           "title": "Automation anlegen",
-          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen (am sichersten: alle) → Nach Bestätigung ausführen → econumo-wallet-v1."
+          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen → Nach Bestätigung ausführen → econumo."
         },
         "payment": {
-          "title": "Erste Zahlung mit entsperrtem iPhone",
-          "text": "Zahle einmal mit Apple Pay, während das iPhone entsperrt ist. Tippe auf „Ausführen“, wenn die Automation nachfragt, und dann auf „Immer erlauben“, wenn Kurzbefehle Zugriff auf Wallet verlangt.",
-          "check": "Prüfen",
-          "none": "Noch keine Zahlung empfangen. Zahle einmal mit entsperrtem iPhone und prüfe erneut."
+          "title": "Erste Zahlung tätigen",
+          "text": "Zahle einmal mit Apple Pay. Tippe auf „Ausführen“, wenn die Automation nachfragt, und dann bei jeder Abfrage auf „Immer erlauben“.",
+          "waiting": "Warte auf die erste Zahlung …"
         },
         "immediate": {
           "title": "Automation auf „Sofort ausführen“ umstellen",
-          "text": "Öffne in der Kurzbefehle-App die Automation und ändere „Nach Bestätigung ausführen“ auf „Sofort ausführen“. Ab dann werden Zahlungen ohne Rückfrage importiert, auch vom Sperrbildschirm aus."
+          "text": "Öffne in der Kurzbefehle-App die Automation und ändere „Nach Bestätigung ausführen“ auf „Sofort ausführen“. Ab dann werden Zahlungen ohne Rückfrage importiert."
         },
-        "complete": "Einrichtung abgeschlossen",
-        "show": "Schritte anzeigen",
-        "hide": "Schritte ausblenden"
+        "done": "Erledigt"
       },
-      "same_named_cards": "Karten mit gleichem Namen in Wallet erscheinen hier als eine Karte.",
+      "same_named_cards": "Karten mit gleichem Namen in Wallet werden als eine Karte angezeigt.",
       "cards": {
         "header": "Karten",
         "empty": "Noch keine Karten — die erste Apple-Pay-Zahlung fügt eine hinzu.",
+        "needs_mapping": "Nicht zugeordnet",
         "state": {
-          "mapped": "Zugeordnet",
-          "ignored": "Ignoriert",
-          "unmapped": "Nicht zugeordnet · {count} wartend"
+          "ignored": "Ignoriert"
         },
         "taps": "{count} Zahlung | {count} Zahlungen",
-        "last_seen": "Zuletzt gesehen {date}",
+        "waiting": "{count} zu prüfen",
         "map": "Konto zuordnen",
-        "map_instead": "Stattdessen zuordnen",
+        "mapped_to": "zugeordnet zu",
+        "remap": "Neu zuordnen",
         "ignore": "Ignorieren",
         "unlink": "Zuordnung aufheben",
         "unlink_modal": {
@@ -628,15 +640,15 @@
       "accounts": {
         "header": "Konten",
         "empty": "Die Bridge hat noch keine Konten gemeldet.",
+        "needs_mapping": "Nicht zugeordnet",
         "state": {
-          "mapped": "Zugeordnet",
-          "ignored": "Ignoriert",
-          "unmapped": "Nicht zugeordnet · {count} wartend"
+          "ignored": "Ignoriert"
         },
         "taps": "{count} Transaktion | {count} Transaktionen",
-        "last_seen": "Zuletzt gesehen {date}",
+        "waiting": "{count} zu prüfen",
         "map": "Konto zuordnen",
-        "map_instead": "Stattdessen zuordnen",
+        "mapped_to": "zugeordnet zu",
+        "remap": "Neu zuordnen",
         "ignore": "Ignorieren",
         "unlink": "Zuordnung aufheben",
         "unlink_modal": {
@@ -664,6 +676,7 @@
       "detail_header": "Importlauf",
       "history_link": "Importverlauf",
       "empty": "Noch keine Importe.",
+      "load_more": "Mehr anzeigen",
       "rows_header": "Transaktionen",
       "rows_empty": "Dieser Lauf betraf keine Transaktionen.",
       "status": {
@@ -721,13 +734,14 @@
         "create_rule": "Regel erstellen",
         "update_rule": "Regel aktualisieren",
         "apply_question": "Diese Regel auf {count} passende Transaktionen in diesem Import anwenden?",
+        "apply_all_question": "Diese Regel auf {count} passende Transaktionen in all deinen Importen anwenden?",
         "skipped_edited": "{count} übersprungen (von dir bearbeitet)",
         "include_edited": "Auch die {count} von dir bearbeiteten Transaktionen aktualisieren",
         "skip_apply": "Überspringen",
         "apply": "Anwenden",
         "applied_toast": "{count} Transaktionen aktualisiert",
-        "source_question": "Auch auf alle Importe von {source} anwenden? {count} Transaktionen passen.",
-        "apply_source": "Auf alle Importe anwenden",
+        "all_question": "Auch auf alle deine Importe anwenden? {count} Transaktionen passen.",
+        "apply_all": "Auf alle Importe anwenden",
         "done": "Fertig"
       },
       "editor": {
@@ -742,7 +756,14 @@
         "payee": "Zahlungsempfänger",
         "tag": "Budget-Tag",
         "labels": "Auswertungs-Tags",
-        "match_count": "Trifft auf {count} importierte Transaktionen zu"
+        "match_count": "Trifft auf {count} importierte Transaktionen zu",
+        "when": "Wenn",
+        "then": "Dann",
+        "value_placeholder": "Gesuchter Text, z. B. STARBUCKS",
+        "not_set": "Nicht festgelegt",
+        "category_type": "Kategorietyp",
+        "category_hint_expense": "Nur Ausgaben erhalten diese Kategorie",
+        "category_hint_income": "Nur Einnahmen erhalten diese Kategorie"
       },
       "page": {
         "menu_item": "Importregeln",
@@ -764,6 +785,15 @@
         "accept": "Übernehmen",
         "discard": "Verwerfen"
       }
+    },
+    "history": {
+      "card": "Karte",
+      "date": "Datum",
+      "not_added": "Diese Transaktion wurde nicht zu Econumo hinzugefügt.",
+      "waiting": "Diese Transaktion wartet im Posteingang.",
+      "deleted": "Diese Transaktion wurde importiert und später gelöscht.",
+      "create": "Transaktion erstellen",
+      "unavailable": "Diese Transaktion wurde importiert, ist für dich aber nicht verfügbar."
     }
   },
   "user": {
@@ -2035,7 +2065,8 @@
       "item_not_available": "Diese Transaktion ist für diesen Vorgang nicht verfügbar.",
       "invalid_import_file": "Bitte laden Sie eine gültige CSV-Datei hoch",
       "too_many_labels": "Eine Transaktion kann höchstens 50 Auswertungs-Tags haben.",
-      "account_deleted": "Dieses Konto wurde gelöscht."
+      "account_deleted": "Dieses Konto wurde gelöscht.",
+      "category_type_mismatch": "Der Kategorietyp muss zum Transaktionstyp passen."
     },
     "user": {
       "report_period_invalid": "ReportPeriod ist ungültig",

@@ -516,68 +516,80 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Leg Apple Pay-betalingen automatisch vast met een iPhone-opdracht. Elke betaling wordt naar Econumo gestuurd; je koppelt elke kaart één keer aan een rekening.",
+      "intro": "Registreer Apple Pay-transacties automatisch met een iPhone-opdracht",
+      "instructions": "Configuratiehandleiding",
       "connect": "Apple Wallet instellen",
-      "connected": "Verbonden",
+      "connect_intro": {
+        "needs_title": "Je hebt nodig",
+        "needs": {
+          "iphone": "Een iPhone met Apple Pay",
+          "shortcuts": "De Opdrachten-app — die zit in iOS",
+          "time": "Ongeveer 5 minuten"
+        },
+        "limitations_title": "Bekende beperkingen",
+        "tap_only": "Werkt alleen als je je iPhone tegen de betaalterminal houdt",
+        "online_not_imported": "Apple Pay-betalingen op websites worden niet ondersteund",
+        "steps_title": "Zo werkt het",
+        "flow": {
+          "pay": "Betaal met Apple Pay",
+          "send": "De integratie stuurt gegevens rechtstreeks naar Econumo",
+          "privacy": "Econumo ontvangt de kaartnaam, winkel, het bedrag en de valuta",
+          "record": "Econumo slaat de transactie op"
+        }
+      },
       "disconnect": "Verbinding verbreken",
+      "disconnect_full": "Apple Wallet loskoppelen",
       "disconnect_modal": {
         "title": "Apple Wallet loskoppelen?",
-        "question": "Kaartkoppelingen en de controlewachtrij van deze verbinding worden verwijderd. Al geïmporteerde transacties blijven staan."
+        "question": "De Apple Wallet-integratie wordt uit Econumo verwijderd. Eerder geïmporteerde transacties blijven behouden."
+      },
+      "setup": {
+        "title": "Installatiehandleiding",
+        "reconfigure": "Opnieuw instellen"
       },
       "steps": {
-        "hint_desktop": "Open deze pagina op je iPhone om de stappen daar uit te voeren. Op dit apparaat kun je de opdrachten downloaden en stappen handmatig afvinken.",
-        "install_wallet": {
-          "title": "econumo-wallet-v1 installeren",
-          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’."
-        },
-        "install_setup": {
-          "title": "econumo-setup-v1 installeren",
-          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’."
+        "hint_desktop": "Open deze pagina op je iPhone om de opdracht te downloaden en voltooide stappen handmatig te markeren.",
+        "install": {
+          "title": "Opdracht installeren",
+          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’.",
+          "file": "of downloaden"
         },
         "configure": {
-          "title": "Opdrachten configureren",
-          "text": "Maakt een toegangstoken voor de opdracht en geeft die samen met het serveradres door aan econumo-setup-v1.",
-          "button": "Configureren op deze iPhone",
-          "manual": "Handmatig configureren"
-        },
-        "test": {
-          "title": "econumo-wallet-v1 één keer uitvoeren",
-          "text": "Voer hem handmatig uit en tik bij elke melding op ‘Altijd toestaan’ — zo krijgt de automatisering de rechten die ze later nodig heeft. Er wordt niets aangemaakt; Econumo registreert alleen dat de opdracht is aangekomen.",
-          "button": "econumo-wallet-v1 uitvoeren",
-          "check": "Controleren",
-          "none": "Nog niets ontvangen. Voer de opdracht uit, sta de meldingen toe en controleer opnieuw."
+          "title": "Opdracht koppelen",
+          "text": "Genereert een API-token. De opdracht bewaart het serveradres en het token en maakt daarna verbinding met Econumo. Tik bij elke melding op ‘Altijd toestaan’ — de automatisering heeft deze rechten later nodig.",
+          "button": "Opdracht koppelen",
+          "open": "Econumo koppelen",
+          "waiting": "Wachten tot de opdracht Econumo bereikt…",
+          "again_note": "Opnieuw koppelen vervangt het token dat de opdracht nu gebruikt: betalingen worden pas weer geïmporteerd als je econumo met het nieuwe opent."
         },
         "automate": {
           "title": "Automatisering aanmaken",
-          "text": "In de Opdrachten-app: Automatisering → + → Wallet → kies de kaarten en categorieën die je wilt importeren (alles kiezen is het veiligst) → Voer uit na bevestiging → econumo-wallet-v1."
+          "text": "In de Opdrachten-app: Automatisering → + → Wallet → kies de kaarten en categorieën die je wilt importeren → Voer uit na bevestiging → econumo."
         },
         "payment": {
-          "title": "Eerste betaling met ontgrendelde iPhone",
-          "text": "Betaal één keer met Apple Pay terwijl de iPhone ontgrendeld is. Tik op ‘Voer uit’ als de automatisering erom vraagt en daarna op ‘Altijd toestaan’ als Opdrachten toegang tot Wallet vraagt.",
-          "check": "Controleren",
-          "none": "Nog geen betaling ontvangen. Betaal één keer met ontgrendelde iPhone en controleer opnieuw."
+          "title": "Eerste betaling doen",
+          "text": "Betaal één keer met Apple Pay. Tik op ‘Voer uit’ als de automatisering erom vraagt en daarna bij elke melding op ‘Altijd toestaan’.",
+          "waiting": "Wachten op de eerste betaling…"
         },
         "immediate": {
           "title": "Zet de automatisering op ‘Voer direct uit’",
-          "text": "Open in de Opdrachten-app de automatisering en verander ‘Voer uit na bevestiging’ in ‘Voer direct uit’. Vanaf dan worden betalingen zonder vraag geïmporteerd, ook vanaf het toegangsscherm."
+          "text": "Open in de Opdrachten-app de automatisering en verander ‘Voer uit na bevestiging’ in ‘Voer direct uit’. Vanaf dan worden betalingen zonder vraag geïmporteerd."
         },
-        "complete": "Installatie voltooid",
-        "show": "Stappen tonen",
-        "hide": "Stappen verbergen"
+        "done": "Klaar"
       },
-      "same_named_cards": "Kaarten met dezelfde naam in Wallet komen hier als één kaart binnen.",
+      "same_named_cards": "Kaarten met dezelfde naam in Wallet worden als één kaart weergegeven.",
       "cards": {
         "header": "Kaarten",
         "empty": "Nog geen kaarten — de eerste Apple Pay-betaling voegt er een toe.",
+        "needs_mapping": "Niet gekoppeld",
         "state": {
-          "mapped": "Gekoppeld",
-          "ignored": "Genegeerd",
-          "unmapped": "Niet gekoppeld · {count} in wachtrij"
+          "ignored": "Genegeerd"
         },
         "taps": "{count} betaling | {count} betalingen",
-        "last_seen": "Laatst gezien {date}",
+        "waiting": "{count} te controleren",
         "map": "Koppelen aan rekening",
-        "map_instead": "Toch koppelen",
+        "mapped_to": "gekoppeld aan",
+        "remap": "Opnieuw koppelen",
         "ignore": "Negeren",
         "unlink": "Ontkoppelen",
         "unlink_modal": {
@@ -628,15 +640,15 @@
       "accounts": {
         "header": "Rekeningen",
         "empty": "Nog geen rekeningen gemeld door de bridge.",
+        "needs_mapping": "Niet gekoppeld",
         "state": {
-          "mapped": "Gekoppeld",
-          "ignored": "Genegeerd",
-          "unmapped": "Niet gekoppeld · {count} in wachtrij"
+          "ignored": "Genegeerd"
         },
         "taps": "{count} transactie | {count} transacties",
-        "last_seen": "Laatst gezien {date}",
+        "waiting": "{count} te controleren",
         "map": "Koppelen aan rekening",
-        "map_instead": "Toch koppelen",
+        "mapped_to": "gekoppeld aan",
+        "remap": "Opnieuw koppelen",
         "ignore": "Negeren",
         "unlink": "Ontkoppelen",
         "unlink_modal": {
@@ -664,6 +676,7 @@
       "detail_header": "Import",
       "history_link": "Importgeschiedenis",
       "empty": "Nog geen imports.",
+      "load_more": "Meer tonen",
       "rows_header": "Transacties",
       "rows_empty": "Deze import raakte geen transacties.",
       "status": {
@@ -721,13 +734,14 @@
         "create_rule": "Regel maken",
         "update_rule": "Regel bijwerken",
         "apply_question": "Deze regel toepassen op {count} overeenkomende transacties in deze import?",
+        "apply_all_question": "Deze regel toepassen op {count} overeenkomende transacties in al je imports?",
         "skipped_edited": "{count} overgeslagen (door jou bewerkt)",
         "include_edited": "Ook de {count} transacties bijwerken die je hebt bewerkt",
         "skip_apply": "Overslaan",
         "apply": "Toepassen",
         "applied_toast": "{count} transacties bijgewerkt",
-        "source_question": "Ook toepassen op alle imports van {source}? {count} transacties komen overeen.",
-        "apply_source": "Toepassen op alle imports",
+        "all_question": "Ook toepassen op al je imports? {count} transacties komen overeen.",
+        "apply_all": "Toepassen op alle imports",
         "done": "Klaar"
       },
       "editor": {
@@ -742,7 +756,14 @@
         "payee": "Begunstigde",
         "tag": "Budgettag",
         "labels": "Rapportagetags",
-        "match_count": "Komt overeen met {count} geïmporteerde transacties"
+        "match_count": "Komt overeen met {count} geïmporteerde transacties",
+        "when": "Als",
+        "then": "Dan",
+        "value_placeholder": "Te zoeken tekst, bijv. STARBUCKS",
+        "not_set": "Niet ingesteld",
+        "category_type": "Categorietype",
+        "category_hint_expense": "Alleen uitgaven krijgen deze categorie",
+        "category_hint_income": "Alleen inkomsten krijgen deze categorie"
       },
       "page": {
         "menu_item": "Importregels",
@@ -764,6 +785,15 @@
         "accept": "Accepteren",
         "discard": "Verwerpen"
       }
+    },
+    "history": {
+      "card": "Kaart",
+      "date": "Datum",
+      "not_added": "Deze transactie is niet aan Econumo toegevoegd.",
+      "waiting": "Deze transactie wacht in de inbox.",
+      "deleted": "Deze transactie is geïmporteerd en later verwijderd.",
+      "create": "Transactie aanmaken",
+      "unavailable": "Deze transactie is geïmporteerd, maar is niet voor jou beschikbaar."
     }
   },
   "user": {
@@ -2035,7 +2065,8 @@
       "item_not_available": "Deze transactie is niet beschikbaar voor deze bewerking.",
       "invalid_import_file": "Upload een geldig CSV-bestand.",
       "too_many_labels": "Een transactie kan maximaal 50 rapportagetags hebben.",
-      "account_deleted": "Deze rekening is verwijderd."
+      "account_deleted": "Deze rekening is verwijderd.",
+      "category_type_mismatch": "Het categorietype moet overeenkomen met het transactietype."
     },
     "user": {
       "report_period_invalid": "De rapportageperiode is onjuist.",

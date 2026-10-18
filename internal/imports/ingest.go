@@ -115,13 +115,13 @@ func (s *Service) parse(ctx context.Context, src *model.ImportSource, ev *model.
 // amount, or why it cannot go anywhere yet.
 type resolution struct {
 	accountID  vo.Id
-	owned      bool // false = a shared account: rule classifications don't apply
+	rules      ruleSet // the account owner's rules (see ruleBook)
 	amount     string
 	status     string // "" = import; ImportIngestStatusQueued / ImportIngestStatusSkipped otherwise
 	skipRuleID *vo.Id // set with status=Skipped when a skip rule fired (nil = ignored card)
 }
 
-func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model.IngestEvent, rules ruleSet) (resolution, error) {
+func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model.IngestEvent, rules *ruleBook) (resolution, error) {
 	links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
 	if err != nil {
 		return resolution{}, err
@@ -143,12 +143,16 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 	if deleted { // dormant link: keep the tap for when the user re-maps the card
 		return resolution{status: model.ImportIngestStatusQueued}, nil
 	}
-	owned, writable, err := s.writeAccess(ctx, src.UserID, *al.AccountID)
+	owner, writable, err := s.writeAccess(ctx, src.UserID, *al.AccountID)
 	if err != nil {
 		return resolution{}, err
 	}
 	if !writable { // the owner revoked the share: dormant like a deleted account
 		return resolution{status: model.ImportIngestStatusQueued}, nil
+	}
+	rs, err := s.rulesFor(ctx, rules, owner)
+	if err != nil {
+		return resolution{}, err
 	}
 	code, err := s.accounts.AccountCurrencyCode(ctx, *al.AccountID)
 	if err != nil {
@@ -168,10 +172,10 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 	// A skip rule acts only on an event that could otherwise import: the
 	// card is mapped and the amount converted. Unmapped/no-rate events queue
 	// as before so the user still sees them.
-	if id := rules.skip(ev); id != nil {
+	if id := rs.skip(ev); id != nil {
 		return resolution{status: model.ImportIngestStatusSkipped, skipRuleID: id}, nil
 	}
-	return resolution{accountID: *al.AccountID, owned: owned, amount: amount}, nil
+	return resolution{accountID: *al.AccountID, rules: rs, amount: amount}, nil
 }
 
 // applyEvent is stages 1-3 for a parsed event: the ledger check, the account
@@ -180,7 +184,7 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 // sync run's id for a pull event; correctAmount lets a tip-adopt overwrite a
 // stale tap-time amount (a bank sync only — a push never rewrites a
 // hand-entered amount).
-func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent, runID *vo.Id, correctAmount bool, rules ruleSet) (status string, amountUpdated bool, err error) {
+func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent, runID *vo.Id, correctAmount bool, rules *ruleBook) (status string, amountUpdated bool, err error) {
 	// The ledger stores the card name in its original case (the queue page
 	// displays it), so the dedup lookup itself is case-insensitive on the
 	// card name at the query layer (GetLinkByExternalKey) rather than being
@@ -226,7 +230,7 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 		link.AppliedRuleID = r.skipRuleID
 		return r.status, false, s.repo.InsertLink(ctx, link)
 	}
-	txID, adopted, amountUpdated, applied, err := s.place(ctx, src, ev, r, correctAmount, rules)
+	txID, adopted, amountUpdated, applied, err := s.place(ctx, src, ev, r, correctAmount)
 	if err != nil {
 		return "", false, err
 	}
@@ -254,7 +258,7 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 // (see applyEvent). applied is the classification the transaction ends up
 // carrying: what the classify rules wrote on a create, what the adopted
 // transaction already had on an adopt.
-func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.IngestEvent, r resolution, correctAmount bool, rules ruleSet) (txID vo.Id, adopted bool, amountUpdated bool, applied model.ImportClassification, err error) {
+func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.IngestEvent, r resolution, correctAmount bool) (txID vo.Id, adopted bool, amountUpdated bool, applied model.ImportClassification, err error) {
 	at := wallClock(ev.PostedAt)
 	window := s.cfg.MatchDays
 	if s.cfg.TipDays > window {
@@ -322,13 +326,7 @@ func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.I
 		}
 		return m.TransactionID, true, false, applied, nil
 	}
-	// Rules target the user's own categories, payees, tags and labels; a
-	// shared account's transactions take the owner's, so there the import
-	// lands unclassified rather than failing.
-	var c model.ImportClassification
-	if r.owned {
-		c = rules.classify(ev)
-	}
+	c := r.rules.classify(ev)
 	res, err := s.txns.CreateTransaction(ctx, src.UserID, model.CreateTransactionRequest{
 		Id: vo.NewId().String(), Type: ev.Type.Alias(), Amount: vo.NewFlexString(r.amount), AccountId: r.accountID.String(),
 		Date: at.Format(datetime.Layout), Description: optionalString(ev.Payee),

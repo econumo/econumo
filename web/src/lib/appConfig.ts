@@ -11,7 +11,8 @@ import { isNativeApp } from './platform'
 // PASSWORD_LOGIN decides whether the login screen offers a password form at all.
 // MCP_URL is the selected backend's MCP address ('' when its OAuth server is
 // off), so Connected apps never shows another server's address.
-const MERGED_KEYS = ['ALLOW_REGISTRATION', 'PASSWORD_LOGIN', 'INSTANCE_ID', 'MCP_URL'] as const
+// Apple Wallet defaults on in the app, but a server can explicitly disable it.
+const MERGED_KEYS = ['ALLOW_REGISTRATION', 'PASSWORD_LOGIN', 'INSTANCE_ID', 'MCP_URL', 'IMPORT_APPLE_WALLET'] as const
 
 // Minimum server version the bundled app is compatible with; an older server
 // hard-blocks the app. The server's own floor arrives as MIN_APP_VERSION in

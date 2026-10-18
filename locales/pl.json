@@ -516,68 +516,80 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Zapisuj płatności Apple Pay automatycznie za pomocą skrótu na iPhonie. Każda płatność trafia do Econumo; każdą kartę przypisujesz do konta tylko raz.",
+      "intro": "Automatycznie zapisuj transakcje Apple Pay za pomocą skrótu na iPhonie",
+      "instructions": "Instrukcja konfiguracji",
       "connect": "Skonfiguruj Apple Wallet",
-      "connected": "Połączono",
+      "connect_intro": {
+        "needs_title": "Potrzebujesz",
+        "needs": {
+          "iphone": "iPhone’a z Apple Pay",
+          "shortcuts": "Aplikacji Skróty — jest w iOS",
+          "time": "Około 5 minut"
+        },
+        "limitations_title": "Znane ograniczenia",
+        "tap_only": "Działa tylko wtedy, gdy zbliżasz iPhone’a, aby zapłacić",
+        "online_not_imported": "Płatności Apple Pay na stronach internetowych nie są obsługiwane",
+        "steps_title": "Jak to działa",
+        "flow": {
+          "pay": "Zapłać za pomocą Apple Pay",
+          "send": "Integracja wysyła dane bezpośrednio do Econumo",
+          "privacy": "Econumo otrzymuje nazwę karty, sprzedawcę, kwotę i walutę",
+          "record": "Econumo zapisuje transakcję"
+        }
+      },
       "disconnect": "Rozłącz",
+      "disconnect_full": "Rozłącz Apple Wallet",
       "disconnect_modal": {
         "title": "Rozłączyć Apple Wallet?",
-        "question": "Przypisania kart i kolejka do sprawdzenia tego połączenia zostaną usunięte. Zaimportowane już transakcje zostaną."
+        "question": "Integracja z Apple Wallet zostanie usunięta z Econumo. Wcześniej zaimportowane transakcje pozostaną."
+      },
+      "setup": {
+        "title": "Przewodnik konfiguracji",
+        "reconfigure": "Skonfiguruj ponownie"
       },
       "steps": {
-        "hint_desktop": "Otwórz tę stronę na iPhonie, aby wykonać kroki tam. Na tym urządzeniu możesz pobrać skróty i odhaczać kroki ręcznie.",
-        "install_wallet": {
-          "title": "Zainstaluj econumo-wallet-v1",
-          "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”."
-        },
-        "install_setup": {
-          "title": "Zainstaluj econumo-setup-v1",
-          "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”."
+        "hint_desktop": "Otwórz tę stronę na iPhonie, aby pobrać skrót i ręcznie oznaczać ukończone kroki.",
+        "install": {
+          "title": "Zainstaluj skrót",
+          "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”.",
+          "file": "lub pobierz"
         },
         "configure": {
-          "title": "Skonfiguruj skróty",
-          "text": "Tworzy token dostępu dla skrótu i przekazuje go do econumo-setup-v1 razem z adresem serwera.",
-          "button": "Skonfiguruj na tym iPhonie",
-          "manual": "Skonfiguruj ręcznie"
-        },
-        "test": {
-          "title": "Uruchom econumo-wallet-v1 raz",
-          "text": "Uruchom go ręcznie i przy każdym pytaniu stuknij „Zawsze zezwalaj” — to nadaje uprawnienia, których automatyzacja będzie potrzebować. Nic nie jest tworzone; Econumo tylko odnotowuje, że skrót dotarł.",
-          "button": "Uruchom econumo-wallet-v1",
-          "check": "Sprawdź",
-          "none": "Nic jeszcze nie odebrano. Uruchom skrót, zezwól na pytania i sprawdź ponownie."
+          "title": "Połącz skrót",
+          "text": "Generuje token API. Skrót zapisuje adres serwera i token, a potem łączy się z Econumo. Przy każdym pytaniu stuknij „Zawsze zezwalaj” — automatyzacja będzie potrzebować tych uprawnień.",
+          "button": "Połącz skrót",
+          "open": "Powiąż Econumo",
+          "waiting": "Czekam, aż skrót dotrze do Econumo…",
+          "again_note": "Ponowne połączenie zastępuje token, którego skrót używa teraz: płatności nie będą importowane, dopóki nie otworzysz econumo z nowym."
         },
         "automate": {
           "title": "Utwórz automatyzację",
-          "text": "W aplikacji Skróty: Automatyzacja → + → Wallet → wybierz karty i kategorie do importu (najbezpieczniej wybrać wszystkie) → Uruchom po potwierdzeniu → econumo-wallet-v1."
+          "text": "W aplikacji Skróty: Automatyzacja → + → Wallet → wybierz karty i kategorie do importu → Uruchom po potwierdzeniu → econumo."
         },
         "payment": {
-          "title": "Pierwsza płatność z odblokowanym iPhonem",
-          "text": "Zapłać raz przez Apple Pay przy odblokowanym iPhonie. Stuknij „Uruchom”, gdy automatyzacja o to poprosi, a potem „Zawsze zezwalaj”, gdy Skróty poproszą o dostęp do Wallet.",
-          "check": "Sprawdź",
-          "none": "Nie odebrano jeszcze płatności. Zapłać raz z odblokowanym iPhonem i sprawdź ponownie."
+          "title": "Wykonaj pierwszą płatność",
+          "text": "Zapłać raz przez Apple Pay. Stuknij „Uruchom”, gdy automatyzacja o to poprosi, a potem przy każdym pytaniu „Zawsze zezwalaj”.",
+          "waiting": "Czekam na pierwszą płatność…"
         },
         "immediate": {
           "title": "Przełącz automatyzację na „Uruchom natychmiast”",
-          "text": "W aplikacji Skróty otwórz automatyzację i zmień „Uruchom po potwierdzeniu” na „Uruchom natychmiast”. Od tej pory płatności są importowane bez pytania, także z ekranu blokady."
+          "text": "W aplikacji Skróty otwórz automatyzację i zmień „Uruchom po potwierdzeniu” na „Uruchom natychmiast”. Od tej pory płatności są importowane bez pytania."
         },
-        "complete": "Konfiguracja zakończona",
-        "show": "Pokaż kroki",
-        "hide": "Ukryj kroki"
+        "done": "Gotowe"
       },
-      "same_named_cards": "Karty o tej samej nazwie w Wallet trafiają tu jako jedna karta.",
+      "same_named_cards": "Karty o tej samej nazwie w Wallet są wyświetlane jako jedna karta.",
       "cards": {
         "header": "Karty",
         "empty": "Brak kart — pierwsza płatność Apple Pay doda kartę.",
+        "needs_mapping": "Nieprzypisane",
         "state": {
-          "mapped": "Przypisana",
-          "ignored": "Ignorowana",
-          "unmapped": "Nieprzypisana · w kolejce: {count}"
+          "ignored": "Ignorowana"
         },
         "taps": "{count} płatność | {count} płatności | {count} płatności",
-        "last_seen": "Ostatnio {date}",
+        "waiting": "do przejrzenia: {count}",
         "map": "Przypisz do konta",
-        "map_instead": "Przypisz mimo to",
+        "mapped_to": "przypisana do",
+        "remap": "Przypisz ponownie",
         "ignore": "Ignoruj",
         "unlink": "Odłącz",
         "unlink_modal": {
@@ -628,15 +640,15 @@
       "accounts": {
         "header": "Konta",
         "empty": "Mostek nie zgłosił jeszcze żadnych kont.",
+        "needs_mapping": "Nieprzypisane",
         "state": {
-          "mapped": "Przypisane",
-          "ignored": "Ignorowane",
-          "unmapped": "Nieprzypisane · w kolejce: {count}"
+          "ignored": "Ignorowane"
         },
         "taps": "{count} transakcja | {count} transakcje | {count} transakcji",
-        "last_seen": "Ostatnio {date}",
+        "waiting": "do przejrzenia: {count}",
         "map": "Przypisz do konta",
-        "map_instead": "Przypisz mimo to",
+        "mapped_to": "przypisana do",
+        "remap": "Przypisz ponownie",
         "ignore": "Ignoruj",
         "unlink": "Odłącz",
         "unlink_modal": {
@@ -664,6 +676,7 @@
       "detail_header": "Import",
       "history_link": "Historia importów",
       "empty": "Brak importów.",
+      "load_more": "Pokaż więcej",
       "rows_header": "Transakcje",
       "rows_empty": "Ten import nie dotyczył żadnych transakcji.",
       "status": {
@@ -721,13 +734,14 @@
         "create_rule": "Utwórz regułę",
         "update_rule": "Zaktualizuj regułę",
         "apply_question": "Zastosować tę regułę do {count} pasujących transakcji w tym imporcie?",
+        "apply_all_question": "Zastosować tę regułę do pasujących transakcji we wszystkich importach ({count})?",
         "skipped_edited": "Pominięto {count} (zostały przez Ciebie edytowane)",
         "include_edited": "Zaktualizuj też {count} edytowanych przez Ciebie transakcji",
         "skip_apply": "Pomiń",
         "apply": "Zastosuj",
         "applied_toast": "Zaktualizowano {count} transakcji",
-        "source_question": "Zastosować też do wszystkich importów z {source}? Pasuje {count} transakcji.",
-        "apply_source": "Zastosuj do wszystkich importów",
+        "all_question": "Zastosować też do wszystkich importów? Pasuje {count} transakcji.",
+        "apply_all": "Zastosuj do wszystkich importów",
         "done": "Gotowe"
       },
       "editor": {
@@ -742,7 +756,14 @@
         "payee": "Odbiorca",
         "tag": "Tag budżetowy",
         "labels": "Tagi raportowe",
-        "match_count": "Pasuje do {count} zaimportowanych transakcji"
+        "match_count": "Pasuje do {count} zaimportowanych transakcji",
+        "when": "Gdy",
+        "then": "Wtedy",
+        "value_placeholder": "Szukany tekst, np. STARBUCKS",
+        "not_set": "Nie ustawiono",
+        "category_type": "Typ kategorii",
+        "category_hint_expense": "Tę kategorię otrzymują tylko wydatki",
+        "category_hint_income": "Tę kategorię otrzymują tylko przychody"
       },
       "page": {
         "menu_item": "Reguły importu",
@@ -764,6 +785,15 @@
         "accept": "Akceptuj",
         "discard": "Odrzuć"
       }
+    },
+    "history": {
+      "card": "Karta",
+      "date": "Data",
+      "not_added": "Ta transakcja nie została dodana do Econumo.",
+      "waiting": "Ta transakcja czeka w skrzynce odbiorczej.",
+      "deleted": "Ta transakcja została zaimportowana, a później usunięta.",
+      "create": "Utwórz transakcję",
+      "unavailable": "Ta transakcja została zaimportowana, ale nie jest dla Ciebie dostępna."
     }
   },
   "user": {
@@ -2035,7 +2065,8 @@
       "item_not_available": "Ta transakcja jest niedostępna dla tej operacji.",
       "invalid_import_file": "Prześlij prawidłowy plik CSV.",
       "too_many_labels": "Transakcja może mieć maksymalnie 50 tagów raportowych.",
-      "account_deleted": "To konto zostało usunięte."
+      "account_deleted": "To konto zostało usunięte.",
+      "category_type_mismatch": "Typ kategorii musi odpowiadać typowi transakcji."
     },
     "user": {
       "report_period_invalid": "Nieprawidłowy okres raportu.",

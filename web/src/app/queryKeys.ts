@@ -25,6 +25,7 @@ export const queryKeys = {
   transactionImports: (transactionId: string) => ['transactionImports', transactionId] as const,
   importRuns: (sourceId: string) => ['importRuns', sourceId] as const,
   importRun: (id: string) => ['importRun', id] as const,
+  importSourceHistory: (sourceId: string) => ['importSourceHistory', sourceId] as const,
   importCredentialKey: ['importCredentialKey'] as const,
   importExternalAccounts: (sourceId: string) => ['importExternalAccounts', sourceId] as const,
   importLocalKey: ['importLocalKey'] as const,

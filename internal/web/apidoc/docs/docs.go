@@ -6243,6 +6243,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/import/get-source-history": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "One source's rows — for Apple Wallet, every tap received — newest first, 50 per page; hasMore says whether a page follows at offset+50. Each row carries its outcome: linked (an empty transactionId means the transaction was deleted since), queued or skipped. Payloads that could not be parsed are not rows; they are listed as failed by get-queued-event-list.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "List a source's imported rows",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Source id",
+                        "name": "sourceId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Rows to skip",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetImportSourceHistoryResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/import/get-source-list": {
             "get": {
                 "security": [
@@ -6438,7 +6508,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Creates the given transaction (same body as create-transaction, prefilled by the SPA from the queued event) and links the queued event to it.",
+                "description": "Creates the given transaction (same body as create-transaction, prefilled by the SPA from the queued event) and links the event to it. A skipped event (skip rule, ignored card, skipped by hand) can be imported the same way, overriding the skip for that one event.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6594,7 +6664,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Maps an external account (card) of a source onto one of the caller's accounts and converts every queued event of that card in one run. A foreign-currency Apple Wallet tap converts at the day's rate; a bank account (SimpleFIN) whose currency differs from the account's is refused.",
+                "description": "Maps an external account (card) of a source onto one of the caller's accounts and converts every queued event of that card in one run. A card already mapped to another account is remapped: new and still-queued events go to the new account, already-imported transactions stay where they are; linking it to its current account again is refused. A foreign-currency Apple Wallet tap converts at the day's rate; a bank account (SimpleFIN) whose currency differs from the account's is refused.",
                 "consumes": [
                     "application/json"
                 ],
@@ -14809,6 +14879,20 @@ const docTemplate = `{
                     "$ref": "#/definitions/model.ImportRunResult"
                 },
                 "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ImportRunLinkResult"
+                    }
+                }
+            }
+        },
+        "model.GetImportSourceHistoryResult": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "items": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.ImportRunLinkResult"

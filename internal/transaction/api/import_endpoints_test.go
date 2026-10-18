@@ -620,3 +620,65 @@ func TestImport_RowMappedSharedAccount_LabelsOwnedByAccountOwner(t *testing.T) {
 		t.Fatalf("account owner's update-transaction echoing labelIds: status=%d want 200; body=%s", status2, env2.raw)
 	}
 }
+
+// A category name resolves within the row's kind: an income row naming the
+// expense category "Food" gets an income "Food" of its own, never the expense one.
+func TestImport_CategoryNameResolvesWithinTheRowsKind(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Category,Note,Payee\n" +
+		"Cash,2024-03-01,-42.50,Food,groceries,Market\n" +
+		"Cash,2024-03-02,5,Food,refund,Market\n" +
+		"Cash,2024-03-03,1000,salary,march pay,Employer\n"
+	status, env := h.doImport(t, tok, csv, importMapping, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+	if res := mustUnmarshal[importResult](t, env.Data); res.Imported != 3 {
+		t.Fatalf("imported=%d errors=%v", res.Imported, res.Errors)
+	}
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	byNote := map[string]txItem{}
+	for _, it := range mustUnmarshal[listResult](t, listEnv.Data).Items {
+		byNote[it.Description] = it
+	}
+	if c := byNote["groceries"].CategoryID; c == nil || *c != catID {
+		t.Errorf("expense row keeps the expense Food: %v", c)
+	}
+	if c := byNote["refund"].CategoryID; c == nil || *c == catID {
+		t.Errorf("income row must get an income Food, not the expense one: %v", c)
+	}
+	if c := byNote["march pay"].CategoryID; c == nil || *c != incomeCatID {
+		t.Errorf("income row finds the existing income category case-insensitively: %v", c)
+	}
+}
+
+// One category for every row: rows of the other kind import without it.
+func TestImport_CategoryOverrideSkipsRowsOfTheOtherKind(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Note\n" +
+		"Cash,2024-03-01,-10,spent\n" +
+		"Cash,2024-03-02,3,refund\n"
+	mapping := `{"account":"Account","date":"Date","amount":"Amount","description":"Note"}`
+	status, env := h.doImport(t, tok, csv, mapping, map[string]string{"categoryId": catID})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+	if res := mustUnmarshal[importResult](t, env.Data); res.Imported != 2 {
+		t.Fatalf("imported=%d errors=%v", res.Imported, res.Errors)
+	}
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	for _, it := range mustUnmarshal[listResult](t, listEnv.Data).Items {
+		switch it.Description {
+		case "spent":
+			if it.CategoryID == nil || *it.CategoryID != catID {
+				t.Errorf("expense row takes the expense override: %v", it.CategoryID)
+			}
+		case "refund":
+			if it.CategoryID != nil {
+				t.Errorf("income row must not take the expense override: %v", *it.CategoryID)
+			}
+		}
+	}
+}

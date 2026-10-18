@@ -1,8 +1,13 @@
 package api_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/econumo/econumo/internal/infra/storage/backend"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const txID1 = "bbbb1111-0000-7000-8000-000000000001"
@@ -35,7 +40,11 @@ type listResult struct {
 }
 
 func createReq(id, typ, amount string) map[string]any {
-	return map[string]any{"id": id, "type": typ, "amount": amount, "accountId": accountID, "categoryId": catID, "date": "2024-03-01 10:00:00", "description": "groceries"}
+	cat := catID
+	if typ == "income" {
+		cat = incomeCatID
+	}
+	return map[string]any{"id": id, "type": typ, "amount": amount, "accountId": accountID, "categoryId": cat, "date": "2024-03-01 10:00:00", "description": "groceries"}
 }
 
 func TestCreateTransaction_Success_EmbedsAuthorAndAccounts(t *testing.T) {
@@ -128,7 +137,7 @@ func TestUpdateTransaction_ChangesAmount(t *testing.T) {
 	created := mustUnmarshal[writeResult](t, cEnv.Data)
 	// update targets the server-minted entity id, not the create operation id.
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", tok, map[string]any{
-		"id": created.Item.ID, "type": "income", "amount": "100", "accountId": accountID, "categoryId": catID,
+		"id": created.Item.ID, "type": "income", "amount": "100", "accountId": accountID, "categoryId": incomeCatID,
 		"date": "2024-03-02 10:00:00", "description": "refund",
 	})
 	if status != http.StatusOK {
@@ -260,4 +269,62 @@ func TestCreateTransaction_UnknownCategoryStillRejected(t *testing.T) {
 		"date":       "2024-03-01 10:00:00", "description": "groceries",
 	})
 	assertValidationDenied(t, status, env, "This transaction is not available for this operation.")
+}
+
+func categoryError(env envelope) string {
+	var fields map[string][]string
+	_ = json.Unmarshal(env.Errors, &fields)
+	if len(fields["categoryId"]) == 0 {
+		return ""
+	}
+	return fields["categoryId"][0]
+}
+
+const categoryTypeMismatch = "The category type must match the transaction type."
+
+func TestCreateTransaction_CategoryOfTheOtherKind_400(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	expenseWithIncomeCat := createReq(txID1, "expense", "5")
+	expenseWithIncomeCat["categoryId"] = incomeCatID
+	st, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, expenseWithIncomeCat)
+	if st != http.StatusBadRequest || categoryError(env) != categoryTypeMismatch {
+		t.Fatalf("expense with an income category: %d %s", st, env.raw)
+	}
+	incomeWithExpenseCat := createReq(txID1, "income", "5")
+	incomeWithExpenseCat["categoryId"] = catID
+	st, env = h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, incomeWithExpenseCat)
+	if st != http.StatusBadRequest || categoryError(env) != categoryTypeMismatch {
+		t.Fatalf("income with an expense category: %d %s", st, env.raw)
+	}
+}
+
+func TestUpdateTransaction_TypeSwitchKeepingTheCategory_400(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	_, cEnv := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, createReq(txID1, "expense", "42.50"))
+	created := mustUnmarshal[writeResult](t, cEnv.Data)
+	st, env := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", tok, map[string]any{
+		"id": created.Item.ID, "type": "income", "amount": "42.50", "accountId": accountID, "categoryId": catID,
+		"date": "2024-03-01 10:00:00", "description": "groceries",
+	})
+	if st != http.StatusBadRequest || categoryError(env) != categoryTypeMismatch {
+		t.Fatalf("switching to income with the expense category: %d %s", st, env.raw)
+	}
+}
+
+// A row stored with a category of the other kind before the check existed
+// stays editable as long as the edit keeps that category and type.
+func TestUpdateTransaction_KeepsAnExistingMismatch(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite", TX: backend.NewTxManager(h.db)}).WithCrypto(testDataSalt)
+	legacy := f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: accountID, CategoryID: catID, Type: 1, Amount: "10", Description: "old"})
+	st, env := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", tok, map[string]any{
+		"id": legacy, "type": "income", "amount": "10", "accountId": accountID, "categoryId": catID,
+		"date": "2024-03-01 10:00:00", "description": "notes fixed",
+	})
+	if st != http.StatusOK {
+		t.Fatalf("a notes edit on a legacy row must pass: %d %s", st, env.raw)
+	}
 }

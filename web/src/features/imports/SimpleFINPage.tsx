@@ -30,7 +30,7 @@ export function SimpleFINPage() {
   const [reconnecting, setReconnecting] = useState(false)
   const [startDate, setStartDate] = useState('')
   const sync = useSyncImportSource()
-  const { data: runs = [] } = useImportRuns(source?.id ?? '')
+  const { data: runs = [] } = useImportRuns(source?.id)
   const external = useExternalAccounts(source?.id ?? '', accessUrl)
 
   // Decrypt the stored credential once the device key is available. The
@@ -136,9 +136,9 @@ export function SimpleFINPage() {
             {sync.isPending ? t('imports.simplefin.sync.running') : t('imports.simplefin.sync.button')}
           </Button>
         </div>
-        {lastRun ? <ImportRunSummary run={lastRun} accountName={accountName} to={RouterPage.IMPORT_RUN.replace(':id', lastRun.id)} /> : null}
+        {lastRun ? <ImportRunSummary run={lastRun} accountName={accountName} to={RouterPage.SETTINGS_SIMPLEFIN_RUN.replace(':id', lastRun.id)} /> : null}
         {source ? (
-          <Link to={`${RouterPage.IMPORT_RUNS}?sourceId=${source.id}`} className="px-1 text-sm text-econumo-link hover:underline">{t('imports.runs.history_link')}</Link>
+          <Link to={RouterPage.SETTINGS_SIMPLEFIN_HISTORY} className="px-1 text-sm text-econumo-link hover:underline">{t('imports.runs.history_link')}</Link>
         ) : null}
         {external.isError ? <p role="alert" className="text-sm text-destructive">{apiErrorMessage(external.error)}</p> : null}
         <ImportCards source={source} cards={cards} variant="account" />

@@ -183,3 +183,20 @@ it('is empty with no client', () => {
   setAnalyticsQueryClient(null)
   expect(profileAttributes()).toEqual({})
 })
+
+it('reports apple-wallet on/off from the source list and omits it while unknown', () => {
+  const qc = new QueryClient()
+  setAnalyticsQueryClient(qc)
+  expect(profileAttributes()).not.toHaveProperty('apple-wallet')
+  qc.setQueryData(queryKeys.importSources, [])
+  expect(profileAttributes()['apple-wallet']).toBe('off')
+  qc.setQueryData(queryKeys.importSources, [{ provider: 'simplefin' }])
+  expect(profileAttributes()['apple-wallet']).toBe('off')
+  // A connected integration counts even before its first payment.
+  qc.setQueryData(queryKeys.importSources, [{ provider: 'apple-wallet', cards: [] }, { provider: 'simplefin' }])
+  expect(profileAttributes()['apple-wallet']).toBe('on')
+  qc.setQueryData(queryKeys.importSources, [])
+  expect(profileAttributes()['apple-wallet']).toBe('off')
+  qc.clear()
+  expect(profileAttributes()).not.toHaveProperty('apple-wallet')
+})

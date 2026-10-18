@@ -232,7 +232,7 @@ func TestUpdateTransaction_SharedAccount_UserRole_Succeeds(t *testing.T) {
 	_, cEnv := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, sharedCreateReq(txID1, "10"))
 	created := mustUnmarshal[writeResult](t, cEnv.Data)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", tok, map[string]any{
-		"id": created.Item.ID, "type": "income", "amount": "20", "accountId": sharedAcctID, "categoryId": ownerCatID,
+		"id": created.Item.ID, "type": "expense", "amount": "20", "accountId": sharedAcctID, "categoryId": ownerCatID,
 		"date": "2024-03-02 10:00:00", "description": "edited",
 	})
 	if status != http.StatusOK {

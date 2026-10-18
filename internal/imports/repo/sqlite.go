@@ -139,6 +139,10 @@ func (sqliteQuerier) ListImportRunsByUser(ctx context.Context, db backend.DBTX, 
 	return out, nil
 }
 
+func (sqliteQuerier) ListImportTransactionLinksBySourcePage(ctx context.Context, db backend.DBTX, p linksPageParams) ([]linkRow, error) {
+	return sqlitegen.New(db).ListImportTransactionLinksBySourcePage(ctx, p)
+}
+
 func (sqliteQuerier) ListImportRunsBySource(ctx context.Context, db backend.DBTX, p runsBySourceParams) ([]runRow, error) {
 	rows, err := sqlitegen.New(db).ListImportRunsBySource(ctx, p)
 	if err != nil {
@@ -205,4 +209,8 @@ func (sqliteQuerier) ListImportLinkAppliedLabels(ctx context.Context, db backend
 
 func (sqliteQuerier) ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error) {
 	return sqlitegen.New(db).ListImportTransactionLinksByUser(ctx, userID)
+}
+
+func (sqliteQuerier) ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error) {
+	return sqlitegen.New(db).ListImportTransactionLinksIntoUserAccounts(ctx, userID)
 }

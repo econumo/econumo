@@ -516,68 +516,80 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Enregistrez automatiquement vos paiements Apple Pay avec un raccourci iPhone. Chaque paiement est envoyé à Econumo ; vous associez chaque carte à un compte une seule fois.",
+      "intro": "Enregistrez automatiquement les transactions Apple Pay avec un raccourci iPhone",
+      "instructions": "Instructions de configuration",
       "connect": "Configurer Apple Wallet",
-      "connected": "Connecté",
+      "connect_intro": {
+        "needs_title": "Il vous faut",
+        "needs": {
+          "iphone": "Un iPhone avec Apple Pay",
+          "shortcuts": "L’app Raccourcis — fournie avec iOS",
+          "time": "Environ 5 minutes"
+        },
+        "limitations_title": "Limites connues",
+        "tap_only": "Fonctionne uniquement quand vous approchez votre iPhone pour payer",
+        "online_not_imported": "Les paiements Apple Pay sur les sites web ne sont pas pris en charge",
+        "steps_title": "Comment ça marche",
+        "flow": {
+          "pay": "Payez avec Apple Pay",
+          "send": "L’intégration envoie les détails directement à Econumo",
+          "privacy": "Econumo reçoit le nom de la carte, le commerçant, le montant et la devise",
+          "record": "Econumo enregistre la transaction"
+        }
+      },
       "disconnect": "Déconnecter",
+      "disconnect_full": "Déconnecter Apple Wallet",
       "disconnect_modal": {
         "title": "Déconnecter Apple Wallet ?",
-        "question": "Les associations de cartes et la file de vérification de cette connexion seront supprimées. Les transactions déjà importées sont conservées."
+        "question": "L’intégration Apple Wallet sera supprimée d’Econumo. Les transactions déjà importées seront conservées."
+      },
+      "setup": {
+        "title": "Guide de configuration",
+        "reconfigure": "Configurer à nouveau"
       },
       "steps": {
-        "hint_desktop": "Ouvrez cette page sur votre iPhone pour y effectuer les étapes. Sur cet appareil, vous pouvez télécharger les raccourcis et cocher les étapes à la main.",
-        "install_wallet": {
-          "title": "Installer econumo-wallet-v1",
-          "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci »."
-        },
-        "install_setup": {
-          "title": "Installer econumo-setup-v1",
-          "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci »."
+        "hint_desktop": "Ouvrez cette page sur votre iPhone pour télécharger le raccourci et marquer manuellement les étapes terminées.",
+        "install": {
+          "title": "Installer le raccourci",
+          "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci ».",
+          "file": "ou télécharger"
         },
         "configure": {
-          "title": "Configurer les raccourcis",
-          "text": "Crée un jeton d’accès pour le raccourci et le transmet à econumo-setup-v1 avec l’adresse du serveur.",
-          "button": "Configurer sur cet iPhone",
-          "manual": "Configurer manuellement"
-        },
-        "test": {
-          "title": "Exécuter econumo-wallet-v1 une fois",
-          "text": "Lancez-le à la main et touchez « Toujours autoriser » à chaque demande : cela accorde les autorisations dont l’automatisation aura besoin. Rien n’est créé ; Econumo note seulement que le raccourci l’a atteint.",
-          "button": "Exécuter econumo-wallet-v1",
-          "check": "Vérifier",
-          "none": "Rien reçu pour l’instant. Lancez le raccourci, acceptez les demandes et vérifiez à nouveau."
+          "title": "Connecter le raccourci",
+          "text": "Génère un jeton API. Le raccourci enregistre l’adresse du serveur et le jeton, puis se connecte à Econumo. Touchez « Toujours autoriser » à chaque demande : l’automatisation aura besoin de ces autorisations.",
+          "button": "Connecter le raccourci",
+          "open": "Lier Econumo",
+          "waiting": "En attente du premier contact du raccourci avec Econumo…",
+          "again_note": "Reconnecter remplace le jeton qu’utilise le raccourci : les paiements ne sont plus importés tant que vous n’ouvrez pas econumo avec le nouveau."
         },
         "automate": {
           "title": "Créer l’automatisation",
-          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer (le plus sûr est de tout sélectionner) → Exécuter après confirmation → econumo-wallet-v1."
+          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer → Exécuter après confirmation → econumo."
         },
         "payment": {
-          "title": "Effectuer le premier paiement avec l’iPhone déverrouillé",
-          "text": "Payez une fois avec Apple Pay, iPhone déverrouillé. Touchez « Exécuter » quand l’automatisation le demande, puis « Toujours autoriser » quand Raccourcis demande l’accès à Wallet.",
-          "check": "Vérifier",
-          "none": "Aucun paiement reçu pour l’instant. Payez une fois avec l’iPhone déverrouillé et vérifiez à nouveau."
+          "title": "Effectuer le premier paiement",
+          "text": "Payez une fois avec Apple Pay. Touchez « Exécuter » quand l’automatisation le demande, puis « Toujours autoriser » à chaque demande.",
+          "waiting": "En attente du premier paiement…"
         },
         "immediate": {
           "title": "Passer l’automatisation en « Exécuter immédiatement »",
-          "text": "Dans l’app Raccourcis, ouvrez l’automatisation et remplacez « Exécuter après confirmation » par « Exécuter immédiatement ». Les paiements sont ensuite importés sans demande, même depuis l’écran verrouillé."
+          "text": "Dans l’app Raccourcis, ouvrez l’automatisation et remplacez « Exécuter après confirmation » par « Exécuter immédiatement ». Les paiements sont ensuite importés sans demande."
         },
-        "complete": "Configuration terminée",
-        "show": "Afficher les étapes",
-        "hide": "Masquer les étapes"
+        "done": "Terminé"
       },
-      "same_named_cards": "Les cartes portant le même nom dans Wallet arrivent ici comme une seule carte.",
+      "same_named_cards": "Les cartes portant le même nom dans Wallet sont affichées comme une seule carte.",
       "cards": {
         "header": "Cartes",
         "empty": "Pas encore de carte — le premier paiement Apple Pay en ajoutera une.",
+        "needs_mapping": "Non associées",
         "state": {
-          "mapped": "Associée",
-          "ignored": "Ignorée",
-          "unmapped": "Non associée · {count} en attente"
+          "ignored": "Ignorée"
         },
         "taps": "{count} paiement | {count} paiements",
-        "last_seen": "Vue pour la dernière fois {date}",
+        "waiting": "{count} à vérifier",
         "map": "Associer à un compte",
-        "map_instead": "Associer plutôt",
+        "mapped_to": "associée à",
+        "remap": "Réassocier",
         "ignore": "Ignorer",
         "unlink": "Dissocier",
         "unlink_modal": {
@@ -628,15 +640,15 @@
       "accounts": {
         "header": "Comptes",
         "empty": "Aucun compte signalé par la passerelle pour le moment.",
+        "needs_mapping": "Non associées",
         "state": {
-          "mapped": "Associé",
-          "ignored": "Ignoré",
-          "unmapped": "Non associé · {count} en attente"
+          "ignored": "Ignoré"
         },
         "taps": "{count} transaction | {count} transactions",
-        "last_seen": "Vu pour la dernière fois {date}",
+        "waiting": "{count} à vérifier",
         "map": "Associer à un compte",
-        "map_instead": "Associer plutôt",
+        "mapped_to": "associée à",
+        "remap": "Réassocier",
         "ignore": "Ignorer",
         "unlink": "Dissocier",
         "unlink_modal": {
@@ -664,6 +676,7 @@
       "detail_header": "Import",
       "history_link": "Historique des imports",
       "empty": "Aucun import pour l'instant.",
+      "load_more": "Afficher plus",
       "rows_header": "Transactions",
       "rows_empty": "Cet import n'a touché aucune transaction.",
       "status": {
@@ -721,13 +734,14 @@
         "create_rule": "Créer la règle",
         "update_rule": "Mettre à jour la règle",
         "apply_question": "Appliquer cette règle aux {count} transactions correspondantes de cet import ?",
+        "apply_all_question": "Appliquer cette règle aux {count} transactions correspondantes de tous vos imports ?",
         "skipped_edited": "{count} ignorées (vous les avez modifiées)",
         "include_edited": "Mettre aussi à jour les {count} transactions que vous avez modifiées",
         "skip_apply": "Ignorer",
         "apply": "Appliquer",
         "applied_toast": "{count} transactions mises à jour",
-        "source_question": "Appliquer aussi à tous les imports de {source} ? {count} transactions correspondent.",
-        "apply_source": "Appliquer à tous les imports",
+        "all_question": "Appliquer aussi à tous vos imports ? {count} transactions correspondent.",
+        "apply_all": "Appliquer à tous les imports",
         "done": "Terminé"
       },
       "editor": {
@@ -742,7 +756,14 @@
         "payee": "Bénéficiaire",
         "tag": "Tag budgétaire",
         "labels": "Tags de rapport",
-        "match_count": "Correspond à {count} transactions importées"
+        "match_count": "Correspond à {count} transactions importées",
+        "when": "Quand",
+        "then": "Alors",
+        "value_placeholder": "Texte à rechercher, p. ex. STARBUCKS",
+        "not_set": "Non défini",
+        "category_type": "Type de catégorie",
+        "category_hint_expense": "Seules les dépenses reçoivent cette catégorie",
+        "category_hint_income": "Seuls les revenus reçoivent cette catégorie"
       },
       "page": {
         "menu_item": "Règles d'import",
@@ -764,6 +785,15 @@
         "accept": "Accepter",
         "discard": "Rejeter"
       }
+    },
+    "history": {
+      "card": "Carte",
+      "date": "Date",
+      "not_added": "Cette transaction n'a pas été ajoutée à Econumo.",
+      "waiting": "Cette transaction attend dans la boîte de réception.",
+      "deleted": "Cette transaction a été importée puis supprimée.",
+      "create": "Créer la transaction",
+      "unavailable": "Cette transaction a été importée, mais elle ne vous est pas accessible."
     }
   },
   "user": {
@@ -2035,7 +2065,8 @@
       "item_not_available": "Cette transaction n’est pas disponible pour cette opération.",
       "invalid_import_file": "Veuillez importer un fichier CSV valide.",
       "too_many_labels": "Une transaction peut avoir au maximum 50 tags de rapport.",
-      "account_deleted": "Ce compte a été supprimé."
+      "account_deleted": "Ce compte a été supprimé.",
+      "category_type_mismatch": "Le type de catégorie doit correspondre au type de transaction."
     },
     "user": {
       "report_period_invalid": "La période du rapport est incorrecte.",

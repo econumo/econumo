@@ -135,7 +135,7 @@ func newHarness(t *testing.T) *harness {
 	)
 
 	recurringRepo := recurringrepo.NewRepo("sqlite", txm)
-	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, labelOwnership, txm, opGuard, clk)
+	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, labelOwnership, txImportCategories, txm, opGuard, clk)
 	handlers := handlerrecurring.NewHandlers(recurringSvc)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}

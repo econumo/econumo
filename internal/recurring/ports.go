@@ -43,3 +43,10 @@ type TransactionCreator interface {
 type LabelOwnership interface {
 	LabelOwners(ctx context.Context, ids []vo.Id) (map[string]vo.Id, error)
 }
+
+// CategoryLister lists an owner's categories with their kind, so a template
+// is refused a category of the other kind when it is saved rather than only
+// when it is posted.
+type CategoryLister interface {
+	CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+}

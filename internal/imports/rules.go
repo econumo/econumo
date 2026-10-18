@@ -48,7 +48,28 @@ func matchRule(r model.ImportRule, ev model.IngestEvent) bool {
 }
 
 // ruleSet is one user's rules, filtered to a source, ordered by priority.
-type ruleSet struct{ rules []model.ImportRule }
+// income marks the owner's income categories (see categoryFits).
+type ruleSet struct {
+	rules  []model.ImportRule
+	income map[vo.Id]bool
+}
+
+// categoryFits keeps a category off a transaction of the other kind: an
+// income category classifies income only and an expense category expenses
+// only, so a refund matching "AMAZON -> Shopping" is not filed as shopping.
+// The rule's payee, tag and labels still apply; only its category is held
+// back, which leaves the field to a lower rule whose category does fit.
+func categoryFits(cat vo.Id, income map[vo.Id]bool, typ model.TransactionType) bool {
+	return income[cat] == typ.IsIncome()
+}
+
+// touches reports whether a classify rule would set anything on a
+// transaction of this kind (a rule whose only target is a category of the
+// other kind sets nothing there).
+func touches(r *model.ImportRule, income map[vo.Id]bool, typ model.TransactionType) bool {
+	return (r.TargetCategoryID != nil && categoryFits(*r.TargetCategoryID, income, typ)) ||
+		r.TargetPayeeID != nil || r.TargetTagID != nil || len(r.LabelIDs) > 0
+}
 
 func newRuleSet(rules []model.ImportRule, sourceID vo.Id) ruleSet {
 	kept := make([]model.ImportRule, 0, len(rules))
@@ -94,7 +115,7 @@ func (rs ruleSet) classify(ev model.IngestEvent) model.ImportClassification {
 			continue
 		}
 		contributed := false
-		if out.CategoryID == nil && r.TargetCategoryID != nil {
+		if out.CategoryID == nil && r.TargetCategoryID != nil && categoryFits(*r.TargetCategoryID, rs.income, ev.Type) {
 			out.CategoryID, contributed = r.TargetCategoryID, true
 		}
 		if out.PayeeID == nil && r.TargetPayeeID != nil {
@@ -119,26 +140,56 @@ func (rs ruleSet) classify(ev model.IngestEvent) model.ImportClassification {
 	return out
 }
 
-// loadRules reads the owner's rules once per request. Targets and labels
-// are filtered against the owner's current vocabulary so an id deleted
-// after the rule was saved never reaches CreateTransaction (which would
-// reject the whole import for one stale category).
-func (s *Service) loadRules(ctx context.Context, src *model.ImportSource) (ruleSet, error) {
-	rules, err := s.repo.ListRulesByUser(ctx, src.UserID)
+// ruleBook answers whose rules an event meets: those of the user who owns
+// the account it lands in. On the source user's own accounts that is the
+// source user; on an account shared with them it is the account's owner,
+// because the transaction takes the owner's categories, payees, tags and
+// labels, and only the owner's rules name those. The owner decides what is
+// skipped there too. Each owner's rules are read once per request.
+type ruleBook struct {
+	src     *model.ImportSource
+	byOwner map[vo.Id]ruleSet
+}
+
+// loadRules primes the book with the source user's own rules, the ones
+// nearly every event meets, so a read failure fails the request up front
+// (before a sync has a run row to leave behind) rather than mid-way.
+func (s *Service) loadRules(ctx context.Context, src *model.ImportSource) (*ruleBook, error) {
+	b := &ruleBook{src: src, byOwner: map[vo.Id]ruleSet{}}
+	if _, err := s.rulesFor(ctx, b, src.UserID); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+// rulesFor reads an owner's rules, keeping the ones that apply to this
+// source (an owner's source-scoped rule never meets another user's source).
+// Targets and labels are filtered against the owner's current vocabulary so
+// an id deleted after the rule was saved never reaches CreateTransaction
+// (which would reject the whole import for one stale category).
+func (s *Service) rulesFor(ctx context.Context, b *ruleBook, owner vo.Id) (ruleSet, error) {
+	if rs, ok := b.byOwner[owner]; ok {
+		return rs, nil
+	}
+	rules, err := s.repo.ListRulesByUser(ctx, owner)
 	if err != nil {
 		return ruleSet{}, err
 	}
-	if len(rules) == 0 {
-		return ruleSet{}, nil
+	var income map[vo.Id]bool
+	if len(rules) > 0 {
+		own, err := s.ownedEntities(ctx, owner)
+		if err != nil {
+			return ruleSet{}, err
+		}
+		for i := range rules {
+			filterRuleTargets(&rules[i], own)
+		}
+		income = own.incomeCategories
 	}
-	own, err := s.ownedEntities(ctx, src.UserID)
-	if err != nil {
-		return ruleSet{}, err
-	}
-	for i := range rules {
-		filterRuleTargets(&rules[i], own)
-	}
-	return newRuleSet(rules, src.ID), nil
+	rs := newRuleSet(rules, b.src.ID)
+	rs.income = income
+	b.byOwner[owner] = rs
+	return rs, nil
 }
 
 // filterRuleTargets drops every target id the owner no longer has, so a
@@ -166,13 +217,21 @@ func filterRuleTargets(r *model.ImportRule, own ownedIDs) {
 // ownedIDs is the owner's vocabulary as id sets.
 type ownedIDs struct {
 	categories, payees, tags, labels map[vo.Id]bool
+	incomeCategories                 map[vo.Id]bool
 }
 
 func (s *Service) ownedEntities(ctx context.Context, userID vo.Id) (ownedIDs, error) {
 	var out ownedIDs
 	var err error
-	if out.categories, err = idSet(s.entities.CategoriesByOwner(ctx, userID)); err != nil {
+	cats, err := s.entities.CategoriesByOwner(ctx, userID)
+	if out.categories, err = idSet(cats, err); err != nil {
 		return out, err
+	}
+	out.incomeCategories = map[vo.Id]bool{}
+	for _, c := range cats {
+		if c.Income {
+			out.incomeCategories[vo.MustParseId(c.ID)] = true
+		}
 	}
 	if out.payees, err = idSet(s.entities.PayeesByOwner(ctx, userID)); err != nil {
 		return out, err

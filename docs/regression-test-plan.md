@@ -342,6 +342,26 @@ navigation (single-pane vs sidebar).
       correct signs and classifications.
 - [ ] Import with a broken row (bad date/amount) → partial result, failed rows
       detailed, good rows imported.
+- [ ] Category type guard: a category only goes on a transaction of its own
+      type. CSV: an income row (positive amount) whose category cell names an
+      expense category ("Food") gets a new income category "Food" (a second
+      "Food" under Income), never the expense one; with a constant
+      "Category" picked for every row, the rows of the other type import
+      without a category. API/MCP: `create-transaction` with an expense type
+      and an income category (or the reverse) returns 400 with
+      `errors.categoryId` = "The category type must match the transaction
+      type."; so does an update that switches the type but keeps the old
+      category, and so does creating/editing a recurring template that way. An
+      older transaction already stored with a mismatched category still saves
+      when only its notes/amount/date change.
+- [ ] Upgrade with mismatched data (an income transaction on an expense
+      category, an expense on an income category, the same on a recurring
+      template): after the first boot, those rows have no category and their
+      notes end with an English line (whatever the user's language), e.g. "Category
+      “Food” removed: an expense category can't classify income." (a long
+      note is shortened with "…" so the line fits). Matching rows and
+      transfers are unchanged; an open app shows the change after a sync
+      without "Clear cache and reload"; a restart changes nothing more.
 - [ ] **CSV export**: multi-select accounts, select-all/deselect-all; exported
       file contains the expected rows/columns and respects the account choice.
 
@@ -350,13 +370,18 @@ navigation (single-pane vs sidebar).
 Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
 `ECONUMO_IMPORT_SIMPLEFIN=true`.
 
-- [ ] Both import providers off (`ECONUMO_IMPORT_APPLE_WALLET` and
-      `ECONUMO_IMPORT_SIMPLEFIN` unset) 📱: Settings → Data shows only
+- [ ] With both provider environment variables unset, Apple Wallet and Import
+      rules are available by default; SimpleFIN stays hidden. The bundled mobile
+      config also defaults Apple Wallet on, but honors the selected backend's
+      explicit `IMPORT_APPLE_WALLET: false`, including after switching servers.
+- [ ] Both import providers off (`ECONUMO_IMPORT_APPLE_WALLET=false` and
+      `ECONUMO_IMPORT_SIMPLEFIN=false`) 📱: Settings → Data shows only
       "Import & export"; no Apple Wallet, SimpleFIN or Import rules rows.
-      Import & export lists only the CSV import/export rows and "Reload all
-      data" (no "Sync bank connections", "Import rules" or "Import history").
-      `/settings/apple-wallet`, `/settings/simplefin`, `/settings/import-rules`
-      and `/imports/runs` show the not-found page. The Inbox shows only sharing
+      Import & export lists only the CSV import/export rows (no "Sync bank
+      connections" or "Import rules").
+      `/settings/apple-wallet`, `/settings/apple-wallet/history`,
+      `/settings/simplefin`, `/settings/simplefin/history` and
+      `/settings/import-rules` show the not-found page. The Inbox shows only sharing
       invites (or "All caught up") and no request to `/api/v1/import/*` is made
       anywhere in the app (Network tab); a direct call to any import endpoint
       returns 404.
@@ -368,60 +393,130 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       rules but no SimpleFIN; `/settings/simplefin` shows the not-found page and
       "Sync bank connections" never appears.
 
-- [ ] Settings → Data group has two rows 📱: "Import & export" (the CSV
-      import/export rows, then the import rows; dialogs open as before) and
-      "Apple Wallet" (its own page: setup, cards, "Inbox" link; back returns to
-      Settings), followed by "Clear cache and reload" as the group's last row on the
-      Settings page itself (not inside Import & export).
+- [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
+      import/export rows; dialogs open as before) and "Apple Wallet" (its own page;
+      back returns to Settings), followed by "Clear cache and reload" as the
+      group's last row on the Settings page itself (not inside Import & export).
+- [ ] Before connecting 📱: the Apple Wallet page explains the feature, lists
+      what is needed (an iPhone with Apple Pay, the Shortcuts app, about 5
+      minutes), explains how payments reach Econumo, says which payment fields
+      Econumo receives and offers "Set up Apple Wallet". Neither this page nor
+      the setup checklist has video previews or an embedded player; videos
+      are available on the website through the "Setup instructions" link.
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
-      second device does not create a second source); the section flips to
-      "Connected" with a seven-step checklist (Install econumo-wallet-v1, Install
-      econumo-setup-v1, Configure the Shortcuts, Run econumo-wallet-v1 once,
-      Create the automation, Make the first payment with the iPhone unlocked,
-      Switch the automation to Run Immediately), every box unticked; "Disconnect" (confirmation) removes the source, its
-      cards, its queue and the hand ticks; already-imported transactions stay.
-- [ ] Any step can be ticked/unticked by hand; ticks survive a reload and are
-      per source (a reconnect starts with an empty list) 📱.
-- [ ] A ticked step (by hand or automatically) folds to its title only: its
-      text, download link, buttons and "Configure manually" link disappear;
-      unticking it by hand brings them back 📱.
-- [ ] Steps 1–2 links download `econumo-wallet-v1.shortcut` and
-      `econumo-setup-v1.shortcut` in a new window (from the home-screen app the
-      Safari sheet closes back to the page, no relaunch needed) 📱.
-- [ ] iOS only 📱: "Configure on this iPhone" mints an ingest PAT (visible under
-      Profile → Tokens with scope `ingest`), opens the Shortcuts app with the
-      Setup shortcut prefilled and ticks step 3 (folded to its title); a user
-      who already holds an `ingest` PAT sees step 3 ticked on load. "Configure
-      manually" opens `https://econumo.com/docs/user-guide/apple-wallet` in a
-      new tab (no in-app token/recipe panel).
-- [ ] iOS only 📱: Configure with an `ingest` PAT minted meanwhile from another
-      device (page rendered before it existed) revokes that token first and
-      mints a fresh one — Profile → Tokens shows exactly one live `ingest`
-      PAT afterwards; `full` PATs are untouched.
-- [ ] Desktop: an "Open this page on your iPhone…" hint sits above the list and
-      the iOS-only buttons ("Configure on this iPhone", "Run econumo-wallet-v1")
-      are absent; downloads, "Configure manually", both "Check" buttons and the
-      hand ticks still work.
-- [ ] Step 4 📱 iOS only: "Run econumo-wallet-v1" opens
-      `shortcuts://run-shortcut?name=econumo-wallet-v1`; after allowing the
-      prompts on the phone, "Check" ticks step 4 (folded to its title) and the
-      `account is required` row disappears from the Inbox's Failed imports
-      section; "Check" with nothing received reports "Nothing received yet…" and
-      leaves the box unticked.
-- [ ] Step 5 text walks through Automation → + → Wallet → cards & categories →
-      Run After Confirmation → econumo-wallet-v1; step 6 text says to tap Run
-      when the automation asks and Always Allow for Wallet access.
-- [ ] Step 6: with no cards on the source its "Check" reports "No payment
-      received yet…" and leaves the box unticked.
-- [ ] The first card arriving from Apple Pay ticks steps 1–6 by itself,
-      regardless of which were ticked by hand; step 7 (Switch the automation
-      to Run Immediately) stays a hand tick and is the only open step left 📱.
-- [ ] With all seven steps done the list collapses to "Setup complete" + "Show
-      steps"; "Show steps" expands the ticked list (titles only), "Hide steps"
-      collapses it again 📱.
+      second device does not create a second source). Until the first tap there
+      is no "Import history" row or card section. The setup guide appears
+      directly, without a status card, open as a stepper: Install the Shortcut, Connect the Shortcut, Create the automation, Make the first payment,
+      Switch the automation to Run Immediately. "Disconnect Apple Wallet" (confirmation)
+      removes the source, its cards, its queue and the hand ticks;
+      already-imported transactions stay.
+- [ ] Stepper 📱: only the current step is open (numbered, purple ring); done
+      steps show a purple check and later ones are greyed; when a step
+      completes the next one opens by itself. Any step's title toggles its
+      instructions. Hand ticks ("Done") survive a reload and
+      are per source and per device (a reconnect starts over). There are no
+      per-step undo buttons. Configure again clears the entire checklist and
+      its temporary setup link, opens step 1, and survives reloads. Old payments
+      and check-ins do not complete the new setup: a fresh payment is required
+      for step 4, and step 5 remains disabled until it arrives. Card mappings
+      and transactions remain intact; a failed refresh leaves progress unchanged. Ticks
+      from the older guides carry over (both install steps → step 1, the
+      run-once step → step 2).
+- [ ] Step 1 (button label in the shortcut's exact lower-case name,
+      `econumo`): on an iPhone, once `WALLET_SHORTCUT_ICLOUD_URL` is set, it
+      opens the iCloud link, Shortcuts shows "Add Shortcut" and the home-screen
+      app stays where it was (no relaunch); "Download the file instead" opens
+      the served file as a fallback. Without an iCloud link, and on a desktop,
+      the button downloads `econumo.shortcut` in a new window 📱. The v1
+      files (`econumo-wallet-v1.shortcut`, `econumo-setup-v1.shortcut`) are
+      no longer served (not found), while an already installed v1 automation
+      still imports.
+- [ ] Step 2, iOS only 📱: one tap on "Connect the Shortcut" mints an ingest PAT
+      (visible under Profile → Tokens with scope `ingest`) and opens the
+      Shortcuts app with it right away — the app window stays on the page.
+      If iOS does not switch (it may refuse an app hand-off that follows the
+      server round trip), the step shows "Link Econumo", which does the same
+      on a second tap. The shortcut saves the configuration
+      (`econumo.json` in iCloud Drive › Shortcuts), asks for the server
+      host and iCloud Drive (Always Allow), and shows "Econumo configured
+      for …"; back in Econumo the step completes by itself within a few
+      seconds (at once when switching back to the app), with its
+      `account is required` check-in removed from the Failed imports section.
+      "Done" completes the step by hand and matches the size and filled style
+      of step 1’s Done button. The setup guide’s "Setup instructions" link
+      opens `https://econumo.com/docs/user-guide/apple-wallet` in a new tab
+      throughout setup and after setup is complete.
+- [ ] Step 2 once done, iOS 📱: the step still offers "Connect the Shortcut"
+      (outline style) with the note "Connecting again replaces the token the
+      Shortcut uses now…"; tapping it revokes the old ingest token, mints a new
+      one and shows "Link Econumo" (note hidden); payments stop importing
+      until the Shortcut has run with the new token, then resume. The step
+      stays done throughout.
+- [ ] Step 2, iOS only 📱: "Connect the Shortcut" with an `ingest` PAT minted
+      meanwhile from another device (page rendered before it existed) revokes
+      that token first and mints a fresh one — Profile → Tokens shows exactly
+      one live `ingest` PAT afterwards; `full` PATs are untouched.
+- [ ] Desktop: an "Open this page on your iPhone…" hint sits above the steps,
+      including after setup is complete. "Setup instructions" sits directly
+      below the hint text. "Connect the Shortcut", the download, the instructions link,
+      the waiting line and the hand ticks still work; running the configured
+      shortcut by hand on the phone completes step 2 here too.
+- [ ] Step 3 text walks through Automation → + → Wallet → cards & categories →
+      Run After Confirmation → econumo; step 4 text says the iPhone
+      can stay locked, to tap Run when the automation asks and Always Allow on
+      every prompt (on device: only Wallet access is asked — host and iCloud
+      Drive were granted in step 2), and waits for the first payment the same
+      way step 2 waits. Step 4 has no manual completion or undo button; old
+      saved manual payment ticks are ignored. Failed events and mapped cards
+      with no received payments leave it waiting. A payment made with the phone locked imports once Run
+      and Always Allow are answered.
+- [ ] The first non-failed payment from Apple Pay completes steps 1–4 by itself
+      (imported, queued, or skipped all count),
+      regardless of hand ticks; step 5 (Switch the automation to Run
+      Immediately) stays a hand tick 📱. Its Done button is disabled until
+      step 4 completes; premature saved step-5 ticks are cleared. The button
+      becomes enabled as soon as the first non-failed payment arrives.
+- [ ] Apple Wallet page layout once a tap has arrived 📱: a standalone
+      "Import history" link, then "Needs mapping" (unmapped cards outlined in
+      purple with a purple card tile, "N to review · <when>", Map and Ignore
+      buttons), then "Cards" (mapped cards with the account's icon tile,
+      "<card> → <account>", "N taps · <when>", Remap and Unmap buttons;
+      ignored cards greyed with an eye-off tile, "Ignored · …" and a Map
+      button), the same-name footnote, the same setup card used before the
+      first payment (desktop hint with "Setup instructions" below its text,
+      "Configure again" aligned with the title at the top right), and "Disconnect Apple Wallet"
+      centered at the bottom. The card always has a "Setup guide" heading.
+      When expanded, a divider separates the header from the full-width hint;
+      the hint icon and text align with the checklist markers and titles.
+      While setup is incomplete, the checklist stays
+      open. Once all five steps are complete, the card starts collapsed as
+      "Setup guide" on the next visit. Expanding it shows the same hint, link,
+      reset action and checklist; it can be collapsed again. Completing the
+      checklist during the current visit keeps it open. "Configure again"
+      opens the reset checklist. There is no extra "Setup" heading.
+- [ ] Apple Wallet shows no "Connected / Last tap" status block or "Inbox" row 📱.
+      `/settings/apple-wallet/inbox` is the not-found page, and
+      Apple Wallet rows to review / failed / skipped appear in the main Inbox
+      with every other source's.
+- [ ] Apple Wallet setup analytics 📱 (with usage statistics enabled):
+      `import_source_connect` with `provider: apple-wallet` starts the funnel.
+      Entering each active setup step sends `import_setup_step_view` with
+      `step`, `step_number` (1–5), and `completed_count`. Completing a step
+      sends `import_setup_step` with the same fields, `done: true` and
+      `method: manual` or `automatic`. Steps are `install`, `configure`,
+      `automate`, `payment`, `immediate`, in that order. Shortcut check-in and
+      the first non-failed payment count without clicking Done; failed payments
+      and attempts to finish step 5 before step 4 do not. A first payment can
+      confirm steps 1–4 at once. Finishing step 5 sends `import_setup_complete`.
+      Rerenders/polling do not duplicate milestones. Reopening the guide reports
+      the current step without replaying old completions. "Configure again"
+      sends `import_setup_restart` only after a successful reset and starts
+      tracking fresh progress. No source/card IDs, card names, merchant,
+      amount, currency or credentials appear in these events. Analytics opt-out
+      suppresses all of them through the usual analytics gate.
 - [ ] Ingest with an `ingest`-scoped PAT: `POST /api/v1/import/ingest-apple-wallet-event`
       → `status: queued` for an unmapped card; the card appears in the list as
-      "Unmapped · 1 queued", tap count and last-seen date update per event; a
+      a "Needs mapping" row reading "1 to review · now", count and time update per event; a
       `full` PAT / session token is accepted too; an `ingest` PAT on any other route
       is 401.
 - [ ] Same payload twice → `duplicate`, no second row; a body without `account`
@@ -433,18 +528,30 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       imported transactions appear on the account with the glyph; a same-amount
       hand-entered transaction within ±3 days is adopted (no duplicate) and shows
       the provenance card.
-- [ ] A card mapped to an account shared with me imports its taps onto that
-      account without categories, payees, tags or labels (my import rules
-      don't apply there; the owner's categories do), and applying a classify
-      rule leaves those rows untouched. When the owner revokes the share, new
-      taps queue in the Inbox with "No access to the account" until the card
-      is remapped.
+- [ ] A card mapped to an account shared with me (two users, A shares "Joint"
+      with B as user): B's taps onto Joint are classified by A's import rules
+      with A's categories, payees, tags and labels, and A's skip rules skip
+      them; B's own rules (classify or skip) never apply there, and with no
+      matching rule of A's the tap imports unclassified. Mapping a card with
+      queued taps onto Joint replays them through A's rules too. B's Import
+      rules page lists only B's rules; editing an imported transaction on
+      Joint (changing its category) offers no "Create an import rule" prompt.
+      A creating a rule from the prompt and choosing "Apply to all imports"
+      also updates B's matching taps on Joint; B applying a rule leaves rows
+      on Joint untouched. When the owner revokes the share, new taps queue in
+      the Inbox with "No access to the account" until the card is remapped.
 - [ ] A new card whose first taps were all in a foreign currency (USD taps →
       CAD account) maps without error; its queued taps import converted at the
       day's rate (a tap with no stored rate stays queued), and the provenance
-      line keeps the original "… USD" amount. An ignored card offers
-      "Map instead"; "Unmap" (confirmation) returns the card to unmapped and
-      new taps queue again.
+      line keeps the original "… USD" amount. An ignored card's Map maps it;
+      a mapped card's "Unmap" (confirmation) returns the card to "Needs
+      mapping" and new taps queue again.
+- [ ] Remap 📱: a mapped card's "Remap" opens the picker preselected on its
+      current account with Map disabled until another account is picked; after
+      Map the row shows the new account, the next tap lands there, already
+      imported transactions stay on the old account, and no toast appears
+      when nothing was queued. A card whose account was deleted (taps queued
+      as "Account deleted") imports those queued taps on remap.
 - [ ] Inbox button 📱: the sidebar top row shows the logo + version label
       (linking Home) on the left and a Search button and an Inbox button on
       the right — no avatar or user name in the sidebar; the Inbox button is
@@ -486,7 +593,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       server-version notice ever appear above the app; pending imports never
       show a top banner.
 - [ ] Inbox's To review section 📱: rows grouped by card, unmapped cards carry
-      "Map to account" (→ Apple Wallet page) and "Ignore"; tapping a row opens
+      "Map to account" and "Ignore"; Map to account opens the account picker
+      in place (no navigation) and mapping moves the card's queued rows out of
+      the Inbox; tapping a row opens
       the add-transaction dialog prefilled (account, amount, merchant as
       description, posted date); saving posts `import-queued-event` — the row
       leaves the Inbox and the transaction is created with the glyph; Skip moves
@@ -509,8 +618,8 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Settings → SimpleFIN on a device with no key: the connect form asks for a
       setup token and a passphrase (+ repeat); a passphrase under 8 characters or
       a mismatch is rejected inline before any request. 📱
-- [ ] Connect: after "Connect" the page shows the bridge's accounts as Unmapped
-      rows, the source row reads "Never synced", and the network log shows
+- [ ] Connect: after "Connect" the page lists the bridge's accounts under "Needs mapping",
+      the source row reads "Never synced", and the network log shows
       `create-source` carrying `credentialCiphertext` starting `v1:` — the access
       URL appears in no request other than `list-external-accounts`/`sync-source`
       bodies.
@@ -576,10 +685,37 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       source; with one and a locked device it navigates to Settings →
       SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
       row is disabled (not clickable, dimmed) while the syncs run. 📱
-- [ ] Settings → Data → Import history lists runs newest first with status,
-      counts and errors; a run opens its detail; a transaction deleted after
-      import shows struck-through with "Deleted since"; queued rows read
-      "Waiting for review". Rows have no actions in this version. 📱
+- [ ] Import history is per provider; Settings → Data has no "Import history"
+      row and `/imports/runs` is gone 📱.
+- [ ] SimpleFIN → "Import history" (`/settings/simplefin/history`; crumbs
+      Settings › SimpleFIN) lists that source's sync runs newest first with
+      status, counts and errors; a run opens its detail
+      (`/settings/simplefin/history/<id>`, back returns to the list); a
+      transaction deleted after import shows struck-through with "Deleted
+      since"; queued rows read "Waiting for review". Rows have no actions in
+      this version. 📱
+- [ ] Apple Wallet → status card → "Import history" (shown once a tap has
+      arrived; `/settings/apple-wallet/history`; crumbs Settings › Apple
+      Wallet) lists every tap newest first, grouped by day on the device's
+      clock: merchant, card name, local time, outcome (Imported / Deleted since
+      — struck through / Waiting for review / Skipped) and the amount in the
+      tap's currency. Taps whose payload could not be read are not listed (they
+      stay under the Inbox's Failed imports). With more than 50 taps "Show
+      more" loads the next 50 until none are left. A direct API request with
+      an offset above 2,147,483,647 (including 4,294,967,296) returns an empty
+      page on SQLite and PostgreSQL, without wrapping to the first page or
+      returning a server error. 📱
+- [ ] Tapping a history row 📱: an Imported row opens the regular transaction
+      preview (Edit and Delete work as on the account page; tapped before the
+      transactions have loaded, it opens once they have). A Skipped row (skip
+      rule, ignored card or skipped by hand) opens a dialog with the merchant,
+      amount, card and local date/time, "This transaction wasn't added to
+      Econumo." and "Create transaction": the transaction form opens
+      prefilled (type, mapped account, amount, merchant), saving it links the
+      tap — the row reads Imported, it leaves the Inbox's Skipped list, and no
+      unskip happens if the form is cancelled. A Waiting row says it is waiting
+      in the Inbox and offers the same button; a Deleted-since row says it was
+      imported and deleted later, with no button.
 - [ ] Rate limits: the 6th `claim-setup-token` within 15 minutes and the 11th
       `sync-source` return 429 with the standard envelope.
 - [ ] Ingest-scoped PATs get 401 on every SimpleFIN endpoint; a read-only
@@ -608,9 +744,13 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       that import take the category; "N skipped (you've edited these)" names
       the edited ones and the "Also update the N transactions you edited"
       checkbox is off by default. Ticking it rewrites them too.
-- [ ] After applying to the run, the "Also apply to all imports from <source>?"
-      step shows its own count; "Apply to all imports" updates the older runs,
-      "Done" leaves them alone. "Not now" on the first step creates nothing.
+- [ ] After applying to the run, the "Also apply to all your imports?" step
+      shows its own count across every provider; "Apply to all imports" updates
+      the older imports from any source, "Done" leaves them alone. "Not now" on
+      the first step creates nothing. A transaction with no run (an Apple
+      Wallet tap imported straight away) gets one step: "Apply this rule to N
+      matching transactions across your imports?". Rules created from the
+      prompt or the Import rules page apply to imports from every provider.
 - [ ] A transaction that a rule classified (Import rules page shows the rule):
       changing its category offers "Update rule" (match shown read-only, no
       editor) rather than a second rule; the rule's targets change.
@@ -618,15 +758,45 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       imported transaction and choose "Update rule" — the rule keeps its
       original labels and gains the new one (the label set is unioned, never
       replaced by the single added label).
-- [ ] Settings → Import & export → Import rules (also under Settings → Data):
-      rules list in priority order, skip rules carry a red "Skip" badge and no
-      targets; "Add rule" opens the editor with a live "Matches N imported
-      transactions" count; Save/Edit/Delete round-trip; drag (or focus the
-      grip, Space, arrow, Space) reorders and the order survives reload. 📱
+- [ ] Settings → Data → Import rules (not linked from Import & export) looks
+      like the Categories page: "Add rule" above the info box on desktop (a "+"
+      in the header on a phone, plus a full-width search), back returns to
+      Settings. Rules list in priority order as plain rows: classify rules
+      show their category's icon and the targets under the match, skip rules a
+      red block icon and "Matching transactions are not imported". There is no
+      archive switch and no "Reorder list" (A–Z) button — order matters. The
+      row's ⋮ menu (a sheet on a phone) offers Edit and Delete; Delete asks
+      "Delete this rule?"; drag (or focus the grip, Space, arrow, Space)
+      reorders and the order survives reload. With AI on, "Suggest rules" sits
+      beside "Add rule" (in the toolbar under the search on a phone). 📱
+- [ ] Rule editor layout: a "When" card reads as a sentence (Payee/Description
+      and contains/starts with/is exactly pills above the text, an "Aa" toggle
+      for case sensitivity), then "Then" with a Classify/Skip switch.
+      Classify shows the transaction dialog's own Category and Payee pickers
+      (type to search, "Not set" when empty) and the tag/label chips;
+      Skip replaces them with "Matching transactions are not imported".
+      As in the transaction dialog, typing a new name in Category or Payee
+      offers "Add «name»", which creates it and selects it, and the Tags "+"
+      creates a tag or label and ticks it. The Category card's Expense / Income
+      switch picks which kind the list shows and which kind a new category
+      gets; switching it to the other kind clears a picked category. Only your own categories, payees, tags and labels are offered
+      (not ones shared in by a connection), and a read-only user gets no
+      "Add" row and no "+". The
+      "Matches N imported transactions" count appears once the rule can be
+      saved (a classify rule needs something to set) — no 400 from
+      `preview-rule` while it cannot. The "Create an import rule" prompt uses
+      the same "When" card. 📱
 - [ ] A skip rule with prefix "PAYMENT THANK YOU" on description: the next
       sync/ingest of a matching row lands as `skipped` in the run summary and
       creates no transaction; a classify rule on payee sets category/payee/
       tag/labels on newly imported rows only where the row had none.
+- [ ] A rule's category only reaches transactions of its own kind: with
+      "Amazon → Shopping (expense) + payee Amazon" above "Amazon → Refunds
+      (income)", an Amazon purchase gets Shopping and payee Amazon, an Amazon
+      refund (income) gets Refunds and still payee Amazon. A rule whose only
+      target is an expense category neither counts nor changes income rows in
+      its "Matches N" preview and its apply. With a category picked, the
+      editor says "Only expense (income) transactions get this category".
 - [ ] `ECONUMO_AI_DSN` unset: no "Suggest rules" button; `suggest-rules` returns
       400 `import.ai_disabled`. Set to a working OpenAI-compatible endpoint:
       the button proposes rules with a reason and a live count each; Accept
@@ -1747,6 +1917,14 @@ User C sees none of it.
       archived budgets but not an unaccepted invite, `months_since_signup` is
       the whole months since registration (`0` in the first month), and no
       `accounts_hidden`, `*_archived` or `signup_month` key is sent.
+- [ ] The user attribute `apple-wallet` is `on` when an Apple Wallet source
+      exists (even before the first payment) and `off` when none exists or only
+      SimpleFIN exists. It is omitted until the source list has loaded. The
+      connection event already carries `on`; `import_source_disconnect` already
+      carries `off` after disconnecting Apple Wallet. A failed disconnect sends
+      no event and does not change the attribute. These facts ride every
+      subsequent event and page view, like the other profile attributes; logging
+      into another account uses that account's fresh source cache.
 - [ ] Auth-method flags say which sign-in methods the user HAS (same Network
       filter, in each event's `attributes`):
       `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each `on`

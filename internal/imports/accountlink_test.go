@@ -47,6 +47,32 @@ func TestLinkAccount_RunsConversionOverQueuedTaps(t *testing.T) {
 	}
 }
 
+func TestLinkAccount_RemapMovesFutureTapsOnly(t *testing.T) {
+	h := setup(t)
+	h.accounts.shared = true // acctB is writable for userA
+	ctx := context.Background()
+	ingest(t, h, tap)
+	if _, err := h.svc.LinkAccount(ctx, vo.MustParseId(userA), model.LinkImportAccountRequest{SourceId: source, ExternalAccountId: "Apple Card", AccountId: acct1}); err != nil {
+		t.Fatalf("first link: %v", err)
+	}
+	res, err := h.svc.LinkAccount(ctx, vo.MustParseId(userA), model.LinkImportAccountRequest{SourceId: source, ExternalAccountId: "apple card", AccountId: acctB})
+	if err != nil {
+		t.Fatalf("remap: %v", err)
+	}
+	if c := cardByID(res, "Apple Card"); c.State != "mapped" || c.AccountId != acctB || c.TapCount != 1 {
+		t.Errorf("card after remap = %+v", c)
+	}
+	if len(h.txns.created) != 1 || h.txns.created[0].AccountId != acct1 {
+		t.Fatalf("the already imported tap must stay where it was written: %+v", h.txns.created)
+	}
+	if r := ingest(t, h, `{"account":"Apple Card","amount":"3","currency":"USD","eventId":"evt-3"}`); r.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("post-remap ingest = %+v", r)
+	}
+	if got := h.txns.created[len(h.txns.created)-1].AccountId; got != acctB {
+		t.Errorf("post-remap tap went to %s, want %s", got, acctB)
+	}
+}
+
 func TestLinkAccount_Rejections(t *testing.T) {
 	h := setup(t)
 	uA := vo.MustParseId(userA)
@@ -63,7 +89,7 @@ func TestLinkAccount_Rejections(t *testing.T) {
 		t.Errorf("deleted account = %v", err)
 	}
 	h.accounts.deleted = false
-	// duplicate (case-insensitive)
+	// the same account again (case-insensitive card name) is refused; another account would remap
 	if _, err := h.svc.LinkAccount(ctx, uA, model.LinkImportAccountRequest{SourceId: source, ExternalAccountId: "Apple Card", AccountId: acct1}); err != nil {
 		t.Fatalf("first link: %v", err)
 	}

@@ -144,6 +144,14 @@ WHERE source_id = $1
 ORDER BY external_posted_at DESC, id
 ;
 
+-- name: ListImportTransactionLinksBySourcePage :many
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+FROM import_transaction_links
+WHERE source_id = $1
+ORDER BY external_posted_at DESC, id DESC
+LIMIT sqlc.arg('limit')::bigint OFFSET sqlc.arg('offset')::bigint
+;
+
 -- name: DeleteQueuedImportTransactionLinksByExternalAccount :exec
 DELETE FROM import_transaction_links WHERE source_id = sqlc.arg(source_id) AND lower(external_account_id) = lower(sqlc.arg(external_account_id)) AND status = 'queued'
 ;
@@ -244,4 +252,16 @@ SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.externa
 FROM import_transaction_links l
 JOIN import_sources s ON s.id = l.source_id
 WHERE s.user_id = $1
+ORDER BY l.imported_at, l.id;
+
+-- Rows other users imported into accounts the user owns (a card mapped onto
+-- a shared account): the owner's rules classify them, so applying one of
+-- those rules reaches them too.
+-- name: ListImportTransactionLinksIntoUserAccounts :many
+SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at
+FROM import_transaction_links l
+JOIN import_sources s ON s.id = l.source_id
+JOIN transactions t ON t.id = l.transaction_id
+JOIN accounts a ON a.id = t.account_id
+WHERE a.user_id = $1 AND s.user_id <> a.user_id
 ORDER BY l.imported_at, l.id;

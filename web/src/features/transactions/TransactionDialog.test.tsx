@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureLabels, fixtureOwner, fixtureUsd } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureCategories, fixtureLabels, fixtureOwner, fixtureUsd } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import type { RecurringDto } from '@/api/dto/recurring'
@@ -743,6 +743,40 @@ it('editing an imported transaction prompts for a rule only when the classificat
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(useUiStore.getState().rulePrompt).not.toBeNull())
   expect(useUiStore.getState().rulePrompt).toEqual({ link: importLink, diff: { labelIds: ['label1'] } })
+})
+
+// An account shared with the user takes its owner's rules, which the user
+// cannot create or edit: a correction there must not offer a rule.
+it('editing an imported transaction on a shared account never prompts for a rule', async () => {
+  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+  const shared = {
+    id: 'a-sh', owner: partner, folderId: null, name: 'Joint', position: 9,
+    currency: fixtureUsd, balance: '50', type: 1, icon: 'wallet', transactionsRevision: 1,
+    sharedAccess: [{ user: fixtureOwner, role: 'user', isAccepted: 1 }],
+  }
+  const partnersCafe = { ...fixtureCategories[0], id: 'cat-cafe', ownerUserId: 'u2', name: 'Cafe' }
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, shared], categories: [...fixtureCategories, partnersCafe] }))
+  const seen = captureUpdate()
+  const importLink = {
+    id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
+    externalTransactionId: 'tap-1', externalPayee: 'BLUE BOTTLE COFFEE #142', externalDescription: '', externalAmount: '9.99',
+    externalCurrency: 'USD', externalPostedAt: '2026-07-03 10:00:00', status: 'created', importedAt: '2026-07-03 10:00:05',
+    appliedCategoryId: '', appliedPayeeId: '', appliedTagId: '', appliedLabelIds: [], appliedRuleId: '',
+  }
+  server.use(http.get('*/api/v1/import/get-transaction-import-list', () =>
+    HttpResponse.json({ success: true, message: '', data: { items: [importLink] } })))
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.setState({ rulePrompt: null })
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ id: 't-imported', isImported: 1, accountId: 'a-sh', categoryId: null }) as unknown as TransactionDto })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await user.click(screen.getByRole('combobox', { name: 'Category' }))
+  await user.click(await screen.findByRole('option', { name: 'Cafe' }))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(seen.body).toBeDefined())
+  expect(seen.body!.categoryId).toBe('cat-cafe')
+  expect(useUiStore.getState().rulePrompt).toBeNull()
 })
 
 // The row a rule was created from is "edited" by construction, so a default

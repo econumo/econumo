@@ -370,8 +370,13 @@ type Querier interface {
 	ListImportSourcesByUser(ctx context.Context, userID string) ([]ImportSource, error)
 	ListImportTransactionLinksByRun(ctx context.Context, runID *string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksBySource(ctx context.Context, sourceID string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksBySourcePage(ctx context.Context, arg ListImportTransactionLinksBySourcePageParams) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksByTransaction(ctx context.Context, transactionID *string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksByUser(ctx context.Context, userID string) ([]ImportTransactionLink, error)
+	// Rows other users imported into accounts the user owns (a card mapped onto
+	// a shared account): the owner's rules classify them, so applying one of
+	// those rules reaches them too.
+	ListImportTransactionLinksIntoUserAccounts(ctx context.Context, userID string) ([]ImportTransactionLink, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's labels ordered by sort key; used by move-label (load, place the

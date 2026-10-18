@@ -60,6 +60,10 @@ interface ClassificationListProps<T extends ClassificationItem> {
   /** page-level banner (e.g. a server refusal) rendered between info and the list */
   alert?: ReactNode
   createLabel: string
+  /** a second header action beside Create (e.g. an AI suggestion trigger) */
+  secondaryAction?: ReactNode
+  /** replaces the generic empty-list text */
+  emptyText?: string
   /** a function is needed when one list mixes item kinds with different nouns (e.g. tag vs label) */
   deleteTitle: string | ((item: T) => string)
   /** badge on archived rows; per-noun because languages inflect it per noun — a function is
@@ -97,10 +101,11 @@ interface ClassificationListProps<T extends ClassificationItem> {
   onEdit: (item: T) => void
   onDelete: (id: string) => void
   onToggleArchive?: (item: T) => void
-  /** absent = the list is not orderable: no drag grips, no reorder button */
+  /** absent = the list is not orderable: no drag grips */
   onMove?: (move: { id: string; afterId: string | null }) => void
   // Sorting A-Z reorders the WHOLE list, which no single relative move can
   // express, so it is a separate callback that replays the target order.
+  // Absent = no A-Z button (a list whose order carries meaning).
   onSort?: (orderedIds: string[]) => void
 }
 
@@ -110,6 +115,8 @@ export function ClassificationList<T extends ClassificationItem>({
   info,
   alert,
   createLabel,
+  secondaryAction,
+  emptyText,
   deleteTitle,
   archivedLabel,
   items,
@@ -236,7 +243,7 @@ export function ClassificationList<T extends ClassificationItem>({
     onMove({ id: movedId, afterId: anchorFor(rebuildFullOrder(orderedIds), movedId) })
   }
 
-  const orderable = onMove !== undefined && items.length > 1
+  const orderable = onMove !== undefined && onSort !== undefined && items.length > 1
   const reorderButton = (
     <Button
       type="button"
@@ -405,6 +412,7 @@ export function ClassificationList<T extends ClassificationItem>({
               <Plus className="size-4" />
               {createLabel}
             </Button>
+            {secondaryAction ?? null}
             <span className="ml-auto flex items-center gap-3">
               {orderable ? reorderButton : null}
               {filterControl}
@@ -419,9 +427,12 @@ export function ClassificationList<T extends ClassificationItem>({
         // compact toolbar: full-width search, then reorder on the left and the active-only filter on the right
         <div className="flex flex-col gap-2 pb-1">
           {searchField('')}
-          {orderable || filterControl ? (
-            <div className="flex items-center justify-between">
-              {orderable ? reorderButton : <span />}
+          {orderable || filterControl || secondaryAction ? (
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                {orderable ? reorderButton : null}
+                {secondaryAction ?? null}
+              </span>
               {filterControl}
             </div>
           ) : null}
@@ -429,7 +440,7 @@ export function ClassificationList<T extends ClassificationItem>({
       ) : null}
       {visible.length === 0 ? (
         <p className="px-1 py-2 text-sm text-muted-foreground">
-          {searching ? t('common.list.search_empty') : t('common.list.list_empty')}
+          {searching ? t('common.list.search_empty') : (emptyText ?? t('common.list.list_empty'))}
         </p>
       ) : (
         visibleSections.map((section) => {
@@ -511,7 +522,7 @@ export function ClassificationList<T extends ClassificationItem>({
         </div>
       </ResponsiveDialog>
 
-      {onMove ? (
+      {onMove && onSort ? (
         <SortDialog
           open={sortOpen}
           onClose={() => setSortOpen(false)}

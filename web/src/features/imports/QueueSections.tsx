@@ -1,16 +1,15 @@
-import type { ReactNode } from 'react'
-import { Link } from 'react-router'
+import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { toast } from 'sonner'
-import type { ImportFailedEventDto, ImportQueuedEventDto } from '@/api/dto/imports'
-import { RouterPage } from '@/app/router-pages'
+import type { ImportCardDto, ImportFailedEventDto, ImportQueuedEventDto } from '@/api/dto/imports'
 import { useUiStore } from '@/app/uiStore'
 import { Button } from '@/components/ui/button'
 import { useAccounts } from '@/features/accounts/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { formatDateTime, parseDateTime } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
+import { MapAccountDialog } from './MapAccountDialog'
 import { useDiscardImportEvent, useIgnoreImportAccount, useImportSources, useRetryImportEvent, useSkipQueuedEvent, useUnskipQueuedEvent } from './queries'
 
 function groupByCard(rows: ImportQueuedEventDto[]): Map<string, ImportQueuedEventDto[]> {
@@ -65,24 +64,32 @@ export function ToReviewSection({ queued }: { queued: ImportQueuedEventDto[] }) 
   const { data: accounts = [] } = useAccounts()
   const skip = useSkipQueuedEvent()
   const ignore = useIgnoreImportAccount()
+  const [mapTarget, setMapTarget] = useState<{ sourceId: string; card: ImportCardDto } | null>(null)
   const onError = (err: unknown) => toast.error(apiErrorMessage(err))
 
-  const cardState = (row: ImportQueuedEventDto) =>
-    sources.find((s) => s.id === row.sourceId)?.cards.find((c) => c.externalAccountId === row.externalAccountId)?.state ?? 'unmapped'
+  const sourceOf = (row: ImportQueuedEventDto) => sources.find((s) => s.id === row.sourceId)
+  const cardOf = (row: ImportQueuedEventDto): ImportCardDto =>
+    sourceOf(row)?.cards.find((c) => c.externalAccountId === row.externalAccountId) ?? {
+      externalAccountId: row.externalAccountId, externalName: row.externalAccountId, externalCurrency: row.currency,
+      state: 'unmapped', accountId: '', queuedCount: 0, tapCount: 0, lastSeenAt: '',
+    }
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? ''
 
   return (
     <div className="flex flex-col gap-2">
       {[...groupByCard(queued).entries()].map(([key, rows]) => {
         const first = rows[0]
-        const state = cardState(first)
+        const card = cardOf(first)
+        const state = card.state
         return (
           <div key={key} className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2 px-1 pt-2 text-sm">
               <span className="font-medium">{first.externalAccountId}</span>
               {state === 'unmapped' ? (
                 <span className="flex gap-3">
-                  <Link to={RouterPage.SETTINGS_APPLE_WALLET} className="text-econumo-link underline-offset-2 hover:underline">{t('imports.apple_wallet.cards.map')}</Link>
+                  <button type="button" className="text-econumo-link underline-offset-2 hover:underline" onClick={() => setMapTarget({ sourceId: first.sourceId, card })}>
+                    {t('imports.apple_wallet.cards.map')}
+                  </button>
                   <button type="button" className="text-muted-foreground underline-offset-2 hover:underline"
                     disabled={ignore.isPending && ignore.variables?.sourceId === first.sourceId && ignore.variables?.externalAccountId === first.externalAccountId}
                     onClick={() => ignore.mutate({ sourceId: first.sourceId, externalAccountId: first.externalAccountId }, { onError })}>
@@ -114,6 +121,12 @@ export function ToReviewSection({ queued }: { queued: ImportQueuedEventDto[] }) 
           </div>
         )
       })}
+      <MapAccountDialog
+        sourceId={mapTarget?.sourceId ?? ''}
+        provider={sources.find((s) => s.id === mapTarget?.sourceId)?.provider}
+        card={mapTarget?.card ?? null}
+        onClose={() => setMapTarget(null)}
+      />
     </div>
   )
 }

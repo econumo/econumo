@@ -24,9 +24,14 @@ export function nativePlugin<T>(name: string): T | null {
 }
 
 // iPadOS 13+ reports itself as a Mac; the touch-point probe tells them apart.
-// Used only to decide whether the "Configure on this iPhone" button (a
-// shortcuts:// deep link) can work — never for feature gating.
+// Used for iPhone-specific setup hints.
 export function isIOS(): boolean {
   const ua = navigator.userAgent
   return /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+// Hands a custom-scheme URL (shortcuts://…) to the OS by navigating the page.
+// A thin wrapper so callers can be tested; jsdom cannot navigate.
+export function openAppUrl(url: string): void {
+  window.location.href = url
 }

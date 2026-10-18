@@ -111,8 +111,11 @@ it('lists rules in priority order with skip rules marked and targets named', asy
   expect(within(rows[0]).getByText('Payee contains BLUE BOTTLE')).toBeInTheDocument()
   expect(within(rows[0]).getByText('Food · health')).toBeInTheDocument()
   expect(within(rows[1]).getByText('Description starts with PAYMENT THANK YOU')).toBeInTheDocument()
-  expect(within(rows[1]).getByText('Skip')).toBeInTheDocument()
+  expect(within(rows[1]).getByText('Matching transactions are not imported')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Suggest rules' })).not.toBeInTheDocument()
+  // rule order carries meaning: no A-Z sort, and no archive switch
+  expect(screen.queryByRole('button', { name: 'Reorder list' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('switch')).not.toBeInTheDocument()
 })
 
 it('creates a rule from the editor with a live match count', async () => {
@@ -121,8 +124,13 @@ it('creates a rule from the editor with a live match count', async () => {
   await user.click(await screen.findByRole('button', { name: 'Add rule' }))
   const dialog = await screen.findByRole('dialog')
   await user.type(within(dialog).getByLabelText('Match value'), 'IKEA')
-  await user.selectOptions(within(dialog).getByLabelText('Category'), 'cat-food')
-  await user.click(within(dialog).getByRole('checkbox', { name: 'health' }))
+  // a classify rule with nothing to set is not previewable yet
+  await new Promise((r) => setTimeout(r, 400))
+  expect(posted.preview).toBeUndefined()
+  await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+  await user.click(await screen.findByRole('option', { name: 'Food' }))
+  expect(within(dialog).getByText('Only expense transactions get this category')).toBeInTheDocument()
+  await user.click(within(dialog).getByRole('checkbox', { name: /health/ }))
   expect(await within(dialog).findByText('Matches 7 imported transactions')).toBeInTheDocument()
   expect(posted.preview!.at(-1)).toMatchObject({ matchValue: 'IKEA', scope: 'all', runId: '', scopeSourceId: '' })
   await user.click(within(dialog).getByRole('button', { name: 'Save' }))
@@ -135,18 +143,21 @@ it('a skip rule hides the targets and posts none', async () => {
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Add rule' }))
   const dialog = await screen.findByRole('dialog')
-  await user.selectOptions(within(dialog).getByLabelText('Action'), 'skip')
-  expect(within(dialog).queryByLabelText('Category')).not.toBeInTheDocument()
+  await user.click(within(dialog).getByRole('radio', { name: 'Skip' }))
+  expect(within(dialog).queryByRole('combobox', { name: 'Category' })).not.toBeInTheDocument()
   await user.type(within(dialog).getByLabelText('Match value'), 'TRANSFER')
+  await user.click(within(dialog).getByRole('button', { name: 'Case sensitive' }))
+  expect(within(dialog).getByRole('button', { name: 'Case sensitive' })).toHaveAttribute('aria-pressed', 'true')
   await user.click(within(dialog).getByRole('button', { name: 'Save' }))
-  await waitFor(() => expect(posted.create![0]).toMatchObject({ action: 'skip', matchValue: 'TRANSFER', categoryId: '', payeeId: '', tagId: '', labelIds: [] }))
+  await waitFor(() => expect(posted.create![0]).toMatchObject({ action: 'skip', matchValue: 'TRANSFER', isCaseSensitive: true, categoryId: '', payeeId: '', tagId: '', labelIds: [] }))
 })
 
 it('edits and deletes a rule', async () => {
   renderPage()
   const user = userEvent.setup()
   const rows = await screen.findAllByRole('listitem')
-  await user.click(within(rows[0]).getByRole('button', { name: 'Edit' }))
+  await user.click(within(rows[0]).getByRole('button', { name: 'actions Payee contains BLUE BOTTLE' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
   const dialog = await screen.findByRole('dialog')
   const value = within(dialog).getByLabelText('Match value') as HTMLInputElement
   expect(value.value).toBe('BLUE BOTTLE')
@@ -155,8 +166,10 @@ it('edits and deletes a rule', async () => {
   await user.click(within(dialog).getByRole('button', { name: 'Save' }))
   await waitFor(() => expect(posted.update![0]).toMatchObject({ id: 'rule1', matchValue: 'BLUE BOTTLE COFFEE', priority: 0 }))
 
-  await user.click(within((await screen.findAllByRole('listitem'))[1]).getByRole('button', { name: 'Delete' }))
-  await user.click(await screen.findByRole('button', { name: 'Delete rule' }))
+  await user.click(within((await screen.findAllByRole('listitem'))[1]).getByRole('button', { name: 'actions Description starts with PAYMENT THANK YOU' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+  expect(await screen.findByText('Delete this rule?')).toBeInTheDocument()
+  await user.click(await screen.findByRole('button', { name: 'Delete' }))
   await waitFor(() => expect(posted.delete![0]).toEqual({ id: 'rule2' }))
   await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1))
 })
@@ -200,4 +213,76 @@ it('reordering persists the new priorities', async () => {
     expect.objectContaining({ id: 'rule2', priority: 0 }),
     expect.objectContaining({ id: 'rule1', priority: 1 }),
   ]))
+})
+
+it('creates a category and a payee from the editor, the category of the chosen kind', async () => {
+  const created: Record<string, Record<string, unknown>> = {}
+  renderPage()
+  server.use(
+    http.post('*/api/v1/category/create-category', async ({ request }) => {
+      created.category = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: { id: 'cat-new', ownerUserId: 'u1', name: 'Bonus', position: 9, type: 'income', icon: '', isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' } } })
+    }),
+    http.post('*/api/v1/payee/create-payee', async ({ request }) => {
+      created.payee = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: { id: 'payee-new', ownerUserId: 'u1', name: 'ACME', position: 9, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' } } })
+    }),
+  )
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Add rule' }))
+  const dialog = await screen.findByRole('dialog')
+  await user.type(within(dialog).getByLabelText('Match value'), 'ACME PAYROLL')
+
+  // the picker shows one kind at a time; switching it offers the other kind's rows
+  await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+  expect(await screen.findByRole('option', { name: 'Food' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: 'Salary' })).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await user.click(within(dialog).getByRole('radio', { name: 'Income' }))
+  await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+  expect(await screen.findByRole('option', { name: 'Salary' })).toBeInTheDocument()
+  await user.keyboard('Bonus')
+  await user.click(await screen.findByText(/Add «Bonus»/))
+  await waitFor(() => expect(created.category).toMatchObject({ name: 'Bonus', type: 'income' }))
+  await waitFor(() => expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveValue('Bonus'))
+  expect(within(dialog).getByText('Only income transactions get this category')).toBeInTheDocument()
+
+  await user.click(within(dialog).getByRole('combobox', { name: 'Payee' }))
+  await user.keyboard('ACME')
+  await user.click(await screen.findByText(/Add «ACME»/))
+  await waitFor(() => expect(created.payee).toMatchObject({ name: 'ACME' }))
+  await waitFor(() => expect(within(dialog).getByRole('combobox', { name: 'Payee' })).toHaveValue('ACME'))
+
+  await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(posted.create![0]).toMatchObject({ matchValue: 'ACME PAYROLL', categoryId: 'cat-new', payeeId: 'payee-new' }))
+})
+
+it('a read-only user cannot create classifications from the editor', async () => {
+  access.state = 'readonly'
+  renderPage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Add rule' }))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+  await user.keyboard('Bonus')
+  expect(screen.queryByText(/Add «Bonus»/)).not.toBeInTheDocument()
+  expect(within(dialog).queryByRole('button', { name: 'Add tag' })).not.toBeInTheDocument()
+})
+
+it('switching the category type clears the picked category', async () => {
+  renderPage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Add rule' }))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+  await user.click(await screen.findByRole('option', { name: 'Food' }))
+  expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveValue('Food')
+  await user.click(within(dialog).getByRole('radio', { name: 'Income' }))
+  expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveValue('')
+  expect(within(dialog).queryByText('Only expense transactions get this category')).not.toBeInTheDocument()
+  // re-selecting the current type keeps a pick
+  await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+  await user.click(await screen.findByRole('option', { name: 'Salary' }))
+  await user.click(within(dialog).getByRole('radio', { name: 'Income' }))
+  expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveValue('Salary')
 })

@@ -114,7 +114,7 @@ func (s *Service) BulkUpdateTransactions(ctx context.Context, userID vo.Id, req 
 				st.TagID = newTagID
 			}
 
-			if rerr := s.checkReferences(ctx, userID, &st, nil); rerr != nil {
+			if rerr := s.checkReferences(ctx, userID, &st, nil, t); rerr != nil {
 				return rerr
 			}
 			t.Update(st, now)

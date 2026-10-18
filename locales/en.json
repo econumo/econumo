@@ -516,68 +516,80 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Log Apple Pay taps automatically with an iPhone Shortcut. Each tap is sent to Econumo; you map every card to an account once.",
+      "intro": "Automatically record Apple Pay transactions with an iPhone Shortcut",
+      "instructions": "Setup instructions",
       "connect": "Set up Apple Wallet",
-      "connected": "Connected",
+      "connect_intro": {
+        "needs_title": "You will need",
+        "needs": {
+          "iphone": "An iPhone with Apple Pay",
+          "shortcuts": "The Shortcuts app — it comes with iOS",
+          "time": "About 5 minutes"
+        },
+        "limitations_title": "Known limitations",
+        "tap_only": "Works only when you tap your iPhone to pay",
+        "online_not_imported": "Apple Pay payments on websites aren’t supported",
+        "steps_title": "How it works",
+        "flow": {
+          "pay": "Pay with Apple Pay",
+          "send": "Integration sends details directly to Econumo",
+          "privacy": "Econumo receives the card name, merchant, amount and currency",
+          "record": "Econumo saves the transaction"
+        }
+      },
       "disconnect": "Disconnect",
+      "disconnect_full": "Disconnect Apple Wallet",
       "disconnect_modal": {
         "title": "Disconnect Apple Wallet?",
-        "question": "Card mappings and the review queue of this connection will be removed. Transactions you already imported stay."
+        "question": "The Apple Wallet integration will be removed from Econumo. Previously imported transactions will remain."
+      },
+      "setup": {
+        "title": "Setup guide",
+        "reconfigure": "Configure again"
       },
       "steps": {
-        "hint_desktop": "Open this page on your iPhone to run the steps there. On this device you can download the Shortcuts and tick steps off by hand.",
-        "install_wallet": {
-          "title": "Install econumo-wallet-v1",
-          "text": "Open the file on your iPhone and tap Add Shortcut."
-        },
-        "install_setup": {
-          "title": "Install econumo-setup-v1",
-          "text": "Open the file on your iPhone and tap Add Shortcut."
+        "hint_desktop": "Open this page on your iPhone to download the Shortcut and mark completed steps manually.",
+        "install": {
+          "title": "Install the Shortcut",
+          "text": "Open the file on your iPhone and tap Add Shortcut.",
+          "file": "or download"
         },
         "configure": {
-          "title": "Configure the Shortcuts",
-          "text": "Creates an access token for the Shortcut and hands it to econumo-setup-v1 together with the server address.",
-          "button": "Configure on this iPhone",
-          "manual": "Configure manually"
-        },
-        "test": {
-          "title": "Run econumo-wallet-v1 once",
-          "text": "Run it by hand and tap Always Allow on every prompt — this grants the permissions the automation needs later. Nothing is created; Econumo only records that the Shortcut reached it.",
-          "button": "Run econumo-wallet-v1",
-          "check": "Check",
-          "none": "Nothing received yet. Run the Shortcut, allow the prompts and check again."
+          "title": "Connect the Shortcut",
+          "text": "Generates an API token. The Shortcut saves the server address and token, then connects to Econumo. Tap Always Allow on every prompt — the automation will need these permissions.",
+          "button": "Connect the Shortcut",
+          "open": "Link Econumo",
+          "waiting": "Waiting for the Shortcut to reach Econumo…",
+          "again_note": "Connecting again replaces the token the Shortcut uses now: payments stop importing until you open econumo with the new one."
         },
         "automate": {
           "title": "Create the automation",
-          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import (all of them is the safe choice) → Run After Confirmation → econumo-wallet-v1."
+          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import → Run After Confirmation → econumo."
         },
         "payment": {
-          "title": "Make the first payment with the iPhone unlocked",
-          "text": "Pay with Apple Pay once while the iPhone is unlocked. Tap Run when the automation asks, then tap Always Allow when Shortcuts asks for Wallet access.",
-          "check": "Check",
-          "none": "No payment received yet. Pay once with the iPhone unlocked and check again."
+          "title": "Make the first payment",
+          "text": "Pay with Apple Pay once. Tap Run when the automation asks, then tap Always Allow on every prompt.",
+          "waiting": "Waiting for the first payment…"
         },
         "immediate": {
           "title": "Switch the automation to Run Immediately",
-          "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt, from the lock screen too."
+          "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt."
         },
-        "complete": "Setup complete",
-        "show": "Show steps",
-        "hide": "Hide steps"
+        "done": "Done"
       },
-      "same_named_cards": "Cards that share a name in Wallet arrive here as one card.",
+      "same_named_cards": "Cards with the same name in Wallet appear as one card.",
       "cards": {
         "header": "Cards",
         "empty": "No cards yet — the first Apple Pay tap adds one.",
+        "needs_mapping": "Needs mapping",
         "state": {
-          "mapped": "Mapped",
-          "ignored": "Ignored",
-          "unmapped": "Unmapped · {count} queued"
+          "ignored": "Ignored"
         },
         "taps": "{count} tap | {count} taps",
-        "last_seen": "Last seen {date}",
+        "waiting": "{count} to review",
         "map": "Map to account",
-        "map_instead": "Map instead",
+        "mapped_to": "mapped to",
+        "remap": "Remap",
         "ignore": "Ignore",
         "unlink": "Unmap",
         "unlink_modal": {
@@ -628,15 +640,15 @@
       "accounts": {
         "header": "Accounts",
         "empty": "No accounts reported by the bridge yet.",
+        "needs_mapping": "Needs mapping",
         "state": {
-          "mapped": "Mapped",
-          "ignored": "Ignored",
-          "unmapped": "Unmapped · {count} queued"
+          "ignored": "Ignored"
         },
         "taps": "{count} transaction | {count} transactions",
-        "last_seen": "Last seen {date}",
+        "waiting": "{count} to review",
         "map": "Map to account",
-        "map_instead": "Map instead",
+        "mapped_to": "mapped to",
+        "remap": "Remap",
         "ignore": "Ignore",
         "unlink": "Unmap",
         "unlink_modal": {
@@ -664,6 +676,7 @@
       "detail_header": "Import run",
       "history_link": "Import history",
       "empty": "No imports yet.",
+      "load_more": "Show more",
       "rows_header": "Transactions",
       "rows_empty": "This run touched no transactions.",
       "status": {
@@ -721,13 +734,14 @@
         "create_rule": "Create rule",
         "update_rule": "Update rule",
         "apply_question": "Apply this rule to {count} matching transactions in this import?",
+        "apply_all_question": "Apply this rule to {count} matching transactions across your imports?",
         "skipped_edited": "{count} skipped (you've edited these)",
         "include_edited": "Also update the {count} transactions you edited",
         "skip_apply": "Skip",
         "apply": "Apply",
         "applied_toast": "Updated {count} transactions",
-        "source_question": "Also apply to all imports from {source}? {count} transactions match.",
-        "apply_source": "Apply to all imports",
+        "all_question": "Also apply to all your imports? {count} transactions match.",
+        "apply_all": "Apply to all imports",
         "done": "Done"
       },
       "editor": {
@@ -742,7 +756,14 @@
         "payee": "Payee",
         "tag": "Tag",
         "labels": "Labels",
-        "match_count": "Matches {count} imported transactions"
+        "match_count": "Matches {count} imported transactions",
+        "when": "When",
+        "then": "Then",
+        "value_placeholder": "Text to look for, e.g. STARBUCKS",
+        "not_set": "Not set",
+        "category_type": "Category type",
+        "category_hint_expense": "Only expense transactions get this category",
+        "category_hint_income": "Only income transactions get this category"
       },
       "page": {
         "menu_item": "Import rules",
@@ -764,6 +785,15 @@
         "accept": "Accept",
         "discard": "Discard"
       }
+    },
+    "history": {
+      "card": "Card",
+      "date": "Date",
+      "not_added": "This transaction wasn't added to Econumo.",
+      "waiting": "This transaction is waiting in the Inbox.",
+      "deleted": "This transaction was imported and deleted later.",
+      "create": "Create transaction",
+      "unavailable": "This transaction was imported, but it isn't available to you."
     }
   },
   "user": {
@@ -2035,7 +2065,8 @@
       "item_not_available": "This transaction is not available for this operation.",
       "invalid_import_file": "Please upload a valid CSV file",
       "too_many_labels": "A transaction can have at most 50 reporting tags.",
-      "account_deleted": "This account has been deleted"
+      "account_deleted": "This account has been deleted",
+      "category_type_mismatch": "The category type must match the transaction type."
     },
     "user": {
       "report_period_invalid": "ReportPeriod is incorrect",

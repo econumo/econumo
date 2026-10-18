@@ -164,7 +164,14 @@ func (r *Repo) ListLinkAppliedLabels(ctx context.Context, linkID vo.Id) ([]vo.Id
 }
 
 func (r *Repo) ListLinksByUser(ctx context.Context, userID vo.Id) ([]model.ImportTransactionLink, error) {
-	rows, err := r.q.ListImportTransactionLinksByUser(ctx, r.db(ctx), userID.String())
+	return r.links(r.q.ListImportTransactionLinksByUser(ctx, r.db(ctx), userID.String()))
+}
+
+func (r *Repo) ListLinksIntoUserAccounts(ctx context.Context, userID vo.Id) ([]model.ImportTransactionLink, error) {
+	return r.links(r.q.ListImportTransactionLinksIntoUserAccounts(ctx, r.db(ctx), userID.String()))
+}
+
+func (r *Repo) links(rows []linkRow, err error) ([]model.ImportTransactionLink, error) {
 	if err != nil {
 		return nil, err
 	}

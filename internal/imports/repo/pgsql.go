@@ -154,6 +154,18 @@ func (pgsqlQuerier) ListImportTransactionLinksBySource(ctx context.Context, db b
 	return out, nil
 }
 
+func (pgsqlQuerier) ListImportTransactionLinksBySourcePage(ctx context.Context, db backend.DBTX, p linksPageParams) ([]linkRow, error) {
+	rows, err := pgsqlgen.New(db).ListImportTransactionLinksBySourcePage(ctx, pgsqlgen.ListImportTransactionLinksBySourcePageParams{SourceID: p.SourceID, Limit: p.Limit, Offset: p.Offset})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]linkRow, len(rows))
+	for i, row := range rows {
+		out[i] = linkRow(row)
+	}
+	return out, nil
+}
+
 func (pgsqlQuerier) DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, db backend.DBTX, p purgeQueuedLinksParams) error {
 	return pgsqlgen.New(db).DeleteQueuedImportTransactionLinksByExternalAccount(ctx, pgsqlgen.DeleteQueuedImportTransactionLinksByExternalAccountParams(p))
 }
@@ -297,6 +309,18 @@ func (pgsqlQuerier) ListImportLinkAppliedLabels(ctx context.Context, db backend.
 
 func (pgsqlQuerier) ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error) {
 	rows, err := pgsqlgen.New(db).ListImportTransactionLinksByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]linkRow, len(rows))
+	for i, row := range rows {
+		out[i] = linkRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error) {
+	rows, err := pgsqlgen.New(db).ListImportTransactionLinksIntoUserAccounts(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

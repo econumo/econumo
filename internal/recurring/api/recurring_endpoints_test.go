@@ -274,3 +274,22 @@ func TestSkipRecurringTransaction_AdvancesWithoutTransaction(t *testing.T) {
 		t.Fatalf("nextPaymentAt = %q, want 2026-09-30 00:00:00", res.Item.NextPaymentAt)
 	}
 }
+
+// A template is held to the posted transaction's rule when it is saved: an
+// income template cannot carry the expense category, nor the reverse.
+func TestCreateRecurringTransaction_CategoryOfTheOtherKind_400(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	req := createRecurringReq("0197c100-0000-7000-8000-0000000000c9", "income", "100")
+	req["categoryId"] = catID // Food is an expense category
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/create-recurring-transaction", tok, req)
+	var fields map[string][]string
+	_ = json.Unmarshal(env.Errors, &fields)
+	if status != http.StatusBadRequest || len(fields["categoryId"]) == 0 || fields["categoryId"][0] != "The category type must match the transaction type." {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+	req["type"] = "expense"
+	if status, env := h.do(t, http.MethodPost, "/api/v1/recurring/create-recurring-transaction", tok, req); status != http.StatusOK {
+		t.Fatalf("an expense template takes the expense category: %d %s", status, env.raw)
+	}
+}

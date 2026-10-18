@@ -42,8 +42,8 @@ type Config struct {
 	CurrencyUpdateIntervalDays int  // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
 
 	// ImportAppleWallet / ImportSimpleFIN are ECONUMO_IMPORT_APPLE_WALLET /
-	// ECONUMO_IMPORT_SIMPLEFIN: the two transaction-import providers, both off
-	// by default while the feature matures. Import rules, the queue and run
+	// ECONUMO_IMPORT_SIMPLEFIN: Apple Wallet defaults on, SimpleFIN off.
+	// Import rules, the queue and run
 	// history exist only while at least one is on (TransactionImport). CSV
 	// import/export is not part of it and stays on.
 	ImportAppleWallet     bool
@@ -294,7 +294,7 @@ func Load() (Config, error) {
 		*p.dst = n
 	}
 
-	if c.ImportAppleWallet, err = getBoolStrict("ECONUMO_IMPORT_APPLE_WALLET", false); err != nil {
+	if c.ImportAppleWallet, err = getBoolStrict("ECONUMO_IMPORT_APPLE_WALLET", true); err != nil {
 		return Config{}, err
 	}
 	if c.ImportSimpleFIN, err = getBoolStrict("ECONUMO_IMPORT_SIMPLEFIN", false); err != nil {

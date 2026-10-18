@@ -516,68 +516,80 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "通过 iPhone 快捷指令自动记录 Apple Pay 付款。每笔付款都会发送到 Econumo；每张卡只需映射到账户一次。",
+      "intro": "使用 iPhone 快捷指令自动记录 Apple Pay 交易",
+      "instructions": "设置说明",
       "connect": "设置 Apple Wallet",
-      "connected": "已连接",
+      "connect_intro": {
+        "needs_title": "你需要",
+        "needs": {
+          "iphone": "一部支持 Apple Pay 的 iPhone",
+          "shortcuts": "“快捷指令”App——iOS 自带",
+          "time": "大约 5 分钟"
+        },
+        "limitations_title": "已知限制",
+        "tap_only": "仅在用 iPhone 轻触付款时有效",
+        "online_not_imported": "不支持网站上的 Apple Pay 付款",
+        "steps_title": "工作原理",
+        "flow": {
+          "pay": "使用 Apple Pay 付款",
+          "send": "集成将详情直接发送到 Econumo",
+          "privacy": "Econumo 接收卡片名称、商家、金额和币种",
+          "record": "Econumo 保存交易"
+        }
+      },
       "disconnect": "断开连接",
+      "disconnect_full": "断开 Apple Wallet",
       "disconnect_modal": {
         "title": "断开 Apple Wallet？",
-        "question": "此连接的卡片映射和审核队列将被删除。已导入的交易会保留。"
+        "question": "Apple Wallet 集成将从 Econumo 中移除。之前导入的交易会保留。"
+      },
+      "setup": {
+        "title": "设置指南",
+        "reconfigure": "重新配置"
       },
       "steps": {
-        "hint_desktop": "请在 iPhone 上打开此页面并在那里完成各步骤。在此设备上只能下载快捷指令并手动勾选步骤。",
-        "install_wallet": {
-          "title": "安装 econumo-wallet-v1",
-          "text": "在 iPhone 上打开该文件并点按“添加快捷指令”。"
-        },
-        "install_setup": {
-          "title": "安装 econumo-setup-v1",
-          "text": "在 iPhone 上打开该文件并点按“添加快捷指令”。"
+        "hint_desktop": "请在 iPhone 上打开此页面，下载快捷指令并手动标记已完成的步骤。",
+        "install": {
+          "title": "安装快捷指令",
+          "text": "在 iPhone 上打开该文件并点按“添加快捷指令”。",
+          "file": "或下载"
         },
         "configure": {
-          "title": "配置快捷指令",
-          "text": "为快捷指令创建访问令牌，并连同服务器地址一起交给 econumo-setup-v1。",
-          "button": "在此 iPhone 上配置",
-          "manual": "手动配置"
-        },
-        "test": {
-          "title": "运行一次 econumo-wallet-v1",
-          "text": "手动运行它，并在每个提示上点按“始终允许”——这会授予自动化之后需要的权限。不会创建任何内容；Econumo 只记录快捷指令已到达。",
-          "button": "运行 econumo-wallet-v1",
-          "check": "检查",
-          "none": "尚未收到任何内容。请运行快捷指令、允许提示后再检查。"
+          "title": "连接快捷指令",
+          "text": "生成 API 令牌。快捷指令会保存服务器地址和令牌，然后连接 Econumo。每次提示时都点按“始终允许”——自动化需要这些权限。",
+          "button": "连接快捷指令",
+          "open": "关联 Econumo",
+          "waiting": "正在等待快捷指令连接 Econumo…",
+          "again_note": "重新连接会替换快捷指令当前使用的令牌：在你用新令牌打开 econumo 之前，付款不会被导入。"
         },
         "automate": {
           "title": "创建自动化",
-          "text": "在“快捷指令”App 中：自动化 → + → 钱包 → 选择要导入的卡片和类别（建议全选） → 确认后运行 → econumo-wallet-v1。"
+          "text": "在“快捷指令”App 中：自动化 → + → 钱包 → 选择要导入的卡片和类别 → 确认后运行 → econumo。"
         },
         "payment": {
-          "title": "在 iPhone 解锁状态下完成首次付款",
-          "text": "在 iPhone 解锁时用 Apple Pay 付款一次。自动化询问时点按“运行”，当“快捷指令”请求访问钱包时点按“始终允许”。",
-          "check": "检查",
-          "none": "尚未收到付款。请在 iPhone 解锁状态下付款一次后再检查。"
+          "title": "完成第一笔付款",
+          "text": "用 Apple Pay 付款一次。自动化询问时点按“运行”，然后在每个提示上都点按“始终允许”。",
+          "waiting": "正在等待第一笔付款…"
         },
         "immediate": {
           "title": "将自动化改为“立即运行”",
-          "text": "在“快捷指令”App 中打开该自动化，把“确认后运行”改为“立即运行”。此后付款会自动导入，无需确认，锁定屏幕上也可以。"
+          "text": "在“快捷指令”App 中打开该自动化，把“确认后运行”改为“立即运行”。此后付款会自动导入，无需确认。"
         },
-        "complete": "设置完成",
-        "show": "显示步骤",
-        "hide": "隐藏步骤"
+        "done": "完成"
       },
-      "same_named_cards": "Wallet 中同名的卡片在这里会显示为一张卡。",
+      "same_named_cards": "Wallet 中同名的卡片会显示为一张卡。",
       "cards": {
         "header": "卡片",
         "empty": "还没有卡片 — 第一笔 Apple Pay 付款会添加一张。",
+        "needs_mapping": "未映射",
         "state": {
-          "mapped": "已映射",
-          "ignored": "已忽略",
-          "unmapped": "未映射 · {count} 笔排队中"
+          "ignored": "已忽略"
         },
         "taps": "{count} 笔付款 | {count} 笔付款",
-        "last_seen": "最近使用 {date}",
+        "waiting": "{count} 笔待处理",
         "map": "映射到账户",
-        "map_instead": "改为映射",
+        "mapped_to": "映射到",
+        "remap": "重新映射",
         "ignore": "忽略",
         "unlink": "取消映射",
         "unlink_modal": {
@@ -628,15 +640,15 @@
       "accounts": {
         "header": "账户",
         "empty": "桥接尚未报告任何账户。",
+        "needs_mapping": "未映射",
         "state": {
-          "mapped": "已映射",
-          "ignored": "已忽略",
-          "unmapped": "未映射 · {count} 笔排队中"
+          "ignored": "已忽略"
         },
         "taps": "{count} 笔交易 | {count} 笔交易",
-        "last_seen": "最近使用 {date}",
+        "waiting": "{count} 笔待处理",
         "map": "映射到账户",
-        "map_instead": "改为映射",
+        "mapped_to": "映射到",
+        "remap": "重新映射",
         "ignore": "忽略",
         "unlink": "取消映射",
         "unlink_modal": {
@@ -664,6 +676,7 @@
       "detail_header": "导入记录",
       "history_link": "导入历史",
       "empty": "暂无导入记录。",
+      "load_more": "显示更多",
       "rows_header": "交易",
       "rows_empty": "此次导入未涉及任何交易。",
       "status": {
@@ -721,13 +734,14 @@
         "create_rule": "创建规则",
         "update_rule": "更新规则",
         "apply_question": "要将此规则应用于此次导入中匹配的 {count} 笔交易吗？",
+        "apply_all_question": "将此规则应用于你所有导入中 {count} 笔匹配的交易？",
         "skipped_edited": "已跳过 {count} 笔（已被编辑）",
         "include_edited": "同时更新已编辑的 {count} 笔交易",
         "skip_apply": "跳过",
         "apply": "应用",
         "applied_toast": "已更新 {count} 笔交易",
-        "source_question": "是否也应用于来自“{source}”的所有导入？匹配 {count} 笔交易。",
-        "apply_source": "应用于所有导入",
+        "all_question": "是否也应用于你的所有导入？匹配 {count} 笔交易。",
+        "apply_all": "应用于所有导入",
         "done": "完成"
       },
       "editor": {
@@ -742,7 +756,14 @@
         "payee": "收款人",
         "tag": "预算标签",
         "labels": "统计标签",
-        "match_count": "匹配 {count} 笔已导入的交易"
+        "match_count": "匹配 {count} 笔已导入的交易",
+        "when": "当",
+        "then": "则",
+        "value_placeholder": "要查找的文本，例如 STARBUCKS",
+        "not_set": "未设置",
+        "category_type": "类别类型",
+        "category_hint_expense": "只有支出交易会使用此类别",
+        "category_hint_income": "只有收入交易会使用此类别"
       },
       "page": {
         "menu_item": "导入规则",
@@ -764,6 +785,15 @@
         "accept": "采纳",
         "discard": "丢弃"
       }
+    },
+    "history": {
+      "card": "卡片",
+      "date": "日期",
+      "not_added": "此交易未添加到 Econumo。",
+      "waiting": "此交易正在收件箱中等待处理。",
+      "deleted": "此交易已导入，之后被删除。",
+      "create": "创建交易",
+      "unavailable": "此交易已导入，但你无法查看。"
     }
   },
   "user": {
@@ -2035,7 +2065,8 @@
       "item_not_available": "该交易不可用于此操作。",
       "invalid_import_file": "请上传有效的 CSV 文件。",
       "too_many_labels": "一笔交易最多可以有 50 个统计标签。",
-      "account_deleted": "该账户已删除。"
+      "account_deleted": "该账户已删除。",
+      "category_type_mismatch": "类别类型必须与交易类型一致。"
     },
     "user": {
       "report_period_invalid": "报表周期不正确。",

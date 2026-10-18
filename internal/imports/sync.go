@@ -119,7 +119,7 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 // syncAccount stores and applies one account's rows in a single transaction.
 // A duplicate payload (same event already stored) is skipped silently, so a
 // re-run of an overlapping range is a no-op for rows already seen.
-func (s *Service) syncAccount(ctx context.Context, src *model.ImportSource, run *model.ImportRun, account model.ExternalAccount, rows []model.ExternalTransaction, rules ruleSet) error {
+func (s *Service) syncAccount(ctx context.Context, src *model.ImportSource, run *model.ImportRun, account model.ExternalAccount, rows []model.ExternalTransaction, rules *ruleBook) error {
 	snapshot := *run
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		for _, row := range rows {

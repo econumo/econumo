@@ -61,7 +61,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID` and `MCP_URL` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `IMPORT_APPLE_WALLET` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. The merge is per server: typing a
@@ -209,13 +209,13 @@ optional `Completer` (`internal/infra/ai`, an OpenAI-compatible chat client)
 for `suggest-rules` — `internal/imports` never imports `internal/infra/ai`;
 the concrete client is injected in `internal/server`. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
-`repo/`, and `api/` with 28 routes under `/api/v1/import/` (`create-source`,
+`repo/`, and `api/` with 29 routes under `/api/v1/import/` (`create-source`,
 `get-source-list`, `delete-source`, `link-account`, `ignore-account`,
 `unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
 `import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
 `discard-event`, `get-transaction-import-list`, `claim-setup-token`,
 `get-credential-key`, `set-credential-key`, `list-external-accounts`,
-`sync-source`, `get-run-list`, `get-run`, `get-rule-list`, `create-rule`,
+`sync-source`, `get-run-list`, `get-run`, `get-source-history`, `get-rule-list`, `create-rule`,
 `update-rule`, `delete-rule`, `preview-rule`, `apply-rule`, `suggest-rules`).
 The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
@@ -469,7 +469,9 @@ mandatory `Origin` header, which the collector does not record)),
 plus session-wide account-profile facts (`web/src/lib/analyticsProfile.ts`:
 total counts of connections, budgets, accounts, categories, payees, tags and
 labels — active, hidden and archived alike, unaccepted invites excluded — plus
-`signup_year` and `months_since_signup`), stamped onto
+`signup_year`, `months_since_signup` and `apple-wallet` (`on` when the cached
+source list contains an Apple Wallet integration, `off` otherwise; omitted
+until the source list loads)), stamped onto
 each event at capture time (the SDK has no custom batch attributes). A per-user
 `analytics` option (`users_options`, on by default) gates capture, is
 mirrored to `localStorage` for a synchronous boot-time check (`get-user-data`
@@ -752,7 +754,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
 - `ECONUMO_IMPORT_APPLE_WALLET` / `ECONUMO_IMPORT_SIMPLEFIN` — the two transaction-import
-  providers (strict booleans, both default `false`; malformed fails at boot). A provider that is
+  providers (strict booleans, Apple Wallet defaults `true`, SimpleFIN `false`;
+  malformed fails at boot). A provider that is
   off loses its own routes (Apple Wallet: `ingest-apple-wallet-event`; SimpleFIN:
   `claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
   `sync-source`), `create-source` refuses it with `import.provider_unsupported`, and its existing
@@ -1253,6 +1256,17 @@ data unreadable. Most are also asserted by the test suite.
 - **SQLite is the reference engine** — it's the default; PostgreSQL must match it byte-for-byte (enforced by the `enginecompare` suite).
 
 ### Notable behaviours
+- **Category type matches transaction type**: an income category classifies only income and
+  an expense category only expenses. `checkReferences` (create, update, bulk, recurring post,
+  MCP, imports) refuses a mismatch with the field error `categoryId` /
+  `transaction.category_type_mismatch`, except on an update that keeps the stored category
+  and type (rows written before the check stay editable); recurring templates are checked
+  the same way on save. CSV import resolves a category name within the row's sign (creating
+  one of that type when missing) and leaves a constant `categoryId` off rows of the other type.
+  Rows written before the check are cleaned by the SQL migration `20261017000000`: the
+  category is cleared and an English note appended to the description (the old text is
+  shortened, never the note, to fit the 255-character column), and the affected accounts'
+  `transactions_revision` moves so synced clients refetch.
 - **Budget element visibility**: a tag/envelope/category appears in `get-budget` when it has spending **or** a limit (current or carried-over) — so a tag with a limit but no transactions stays visible.
 - **Account balance day boundary**: "balance as of end of today" uses the **caller's** timezone (`X-Timezone` header), not the server's UTC day.
 - **Recurring transaction scheduling**: templates advance from the scheduled date with
@@ -1356,7 +1370,13 @@ data unreadable. Most are also asserted by the test suite.
   conversion and before matching and beat every classify rule; the ledger row snapshots what was
   applied (`applied*` on `get-transaction-import-list`) and the SPA diffs a later edit against it
   to offer a rule; `apply-rule` backfills existing imports by run/source/all, skipping edited
-  rows unless `includeEdited`.
+  rows unless `includeEdited`. A rule's category reaches only transactions of its own kind
+  (income category → income, expense → expense; `categoryFits`): on the other kind the
+  category is held back, the rule's payee/tag/labels still apply, and a lower rule may fill
+  the category; preview and apply skip rows the rule would not change. Rules belong to the account owner, not the importer: a card
+  mapped onto an account shared with its user is classified and skipped by the account
+  OWNER's rules (the transaction takes the owner's categories, payees, tags and labels), the
+  importer's own rules never apply there, and the owner's "all" apply reaches those rows.
 - **OAuth/OIDC auto-link and email verification**: a callback with a verified (or
   `ECONUMO_OIDC_TRUST_EMAIL`-trusted) email auto-links to an existing **passwordless**
   account by `lower(email)` (no matching identity yet) — no confirmation screen, since both

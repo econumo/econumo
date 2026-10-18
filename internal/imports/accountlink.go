@@ -10,7 +10,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// LinkAccount maps a card to an account and converts the card's queued taps.
+// LinkAccount maps a card to an account, or remaps a mapped one, and converts
+// the card's queued taps.
 func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkImportAccountRequest) (*model.UpdateImportAccountResult, error) {
 	var out *model.UpdateImportAccountResult
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
@@ -61,10 +62,12 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 		}
 		now := s.clk.Now().UTC()
 		if existing := findAccountLink(links, ext); existing != nil {
-			if existing.Mode == model.ImportAccountLinkModeImport {
+			// Remapping moves only future taps (and any still queued); rows already
+			// imported stay on the account they were written to.
+			if existing.Mode == model.ImportAccountLinkModeImport && existing.AccountID != nil && existing.AccountID.Equal(accountID) {
 				return &errs.ValidationError{Msg: "This card is already linked", MsgCode: errs.CodeImportAccountLinkExists}
 			}
-			existing.Mode = model.ImportAccountLinkModeImport // map-instead over an ignored card
+			existing.Mode = model.ImportAccountLinkModeImport // map-instead over an ignored card, or a remap
 			existing.AccountID = &accountID
 			existing.ExternalCurrency = optionalString(cardCode)
 			existing.UpdatedAt = now
@@ -96,19 +99,18 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 
 // writeAccess applies the transaction feature's write rule — the owner, or an
 // accepted admin/user grantee — so a card can go wherever its user could
-// enter the transaction by hand. owned tells the caller whether the user's
-// own classifications fit the account: on a shared account they must be the
-// owner's.
-func (s *Service) writeAccess(ctx context.Context, userID, accountID vo.Id) (owned, writable bool, err error) {
-	owner, err := s.accounts.AccountOwner(ctx, accountID)
+// enter the transaction by hand. owner is whose classifications (and so
+// whose rules) the account's transactions take.
+func (s *Service) writeAccess(ctx context.Context, userID, accountID vo.Id) (owner vo.Id, writable bool, err error) {
+	owner, err = s.accounts.AccountOwner(ctx, accountID)
 	if err != nil {
-		return false, false, err
+		return vo.Id{}, false, err
 	}
 	if owner.Equal(userID) {
-		return true, true, nil
+		return owner, true, nil
 	}
 	writable, err = s.accounts.HasWriteGrant(ctx, accountID, userID)
-	return false, writable, err
+	return owner, writable, err
 }
 
 // externalName prefers the bridge's display name over the opaque external
@@ -184,7 +186,7 @@ func (s *Service) convertQueued(ctx context.Context, src *model.ImportSource, ex
 		}
 		// A re-mapped card only ever adopts, never corrects — the same rule
 		// as a push retry (see applyEvent).
-		txID, adopted, _, applied, err := s.place(ctx, src, ev, r, false, rules)
+		txID, adopted, _, applied, err := s.place(ctx, src, ev, r, false)
 		if err != nil {
 			return nil, err
 		}

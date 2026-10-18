@@ -25,6 +25,14 @@ func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.Previ
 	if err != nil {
 		return nil, err
 	}
+	var income map[vo.Id]bool
+	if r.Action != model.ImportRuleActionSkip {
+		own, err := s.ownedEntities(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		income = own.incomeCategories
+	}
 	links, err := s.scopedLinks(ctx, userID, req.Scope, req.RunId, req.ScopeSourceId)
 	if err != nil {
 		return nil, err
@@ -47,7 +55,7 @@ func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.Previ
 			if err != nil {
 				return nil, err
 			}
-			if !owned {
+			if !owned || !touches(r, income, live.Type) {
 				continue
 			}
 		}
@@ -100,7 +108,7 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 		if err != nil {
 			return nil, err
 		}
-		if !owned {
+		if !owned || !touches(rule, own.incomeCategories, live.Type) {
 			continue
 		}
 		if !req.IncludeEdited {
@@ -113,7 +121,7 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 				continue
 			}
 		}
-		next := applyTargets(rule, live)
+		next := applyTargets(rule, live, own.incomeCategories)
 		next.RuleID = &rule.ID
 		err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 			if _, err := s.txns.UpdateTransactionReplacingLabels(ctx, userID, updateRequest(live, next)); err != nil {
@@ -139,7 +147,8 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 // queued or skipped row has nothing to rewrite and a preview must not count it.
 // ownsAccount gates applying a rule's targets: they are the user's own
 // categories, payees, tags and labels, which a shared account's transactions
-// cannot carry (they take the owner's), so those rows are left out.
+// cannot carry (they take the owner's, and the owner's rules), so those rows
+// are left out.
 func (s *Service) ownsAccount(ctx context.Context, userID, accountID vo.Id) (bool, error) {
 	owner, err := s.accounts.AccountOwner(ctx, accountID)
 	if isNotFoundErr(err) {
@@ -176,6 +185,13 @@ func (s *Service) scopedLinks(ctx context.Context, userID vo.Id, scope, runID, s
 		links, err = s.repo.ListLinksBySource(ctx, src.ID)
 	default:
 		links, err = s.repo.ListLinksByUser(ctx, userID)
+		if err == nil {
+			// the user's rules also classify what others import into the
+			// user's accounts (see ruleBook), so "all" reaches those rows
+			var into []model.ImportTransactionLink
+			into, err = s.repo.ListLinksIntoUserAccounts(ctx, userID)
+			links = append(links, into...)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -242,9 +258,9 @@ func sameIDs(a, b []vo.Id) bool {
 
 // applyTargets is what the transaction looks like after the rule: only the
 // fields the rule sets change; labels union, capped.
-func applyTargets(r *model.ImportRule, live *model.Transaction) model.ImportClassification {
+func applyTargets(r *model.ImportRule, live *model.Transaction, income map[vo.Id]bool) model.ImportClassification {
 	next := model.ImportClassification{CategoryID: live.CategoryID, PayeeID: live.PayeeID, TagID: live.TagID, LabelIDs: append([]vo.Id(nil), live.LabelIDs...)}
-	if r.TargetCategoryID != nil {
+	if r.TargetCategoryID != nil && categoryFits(*r.TargetCategoryID, income, live.Type) {
 		next.CategoryID = r.TargetCategoryID
 	}
 	if r.TargetPayeeID != nil {

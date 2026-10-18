@@ -6,6 +6,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/app/queryKeys'
 import type { AccountDto } from '@/api/dto/account'
 import type { BudgetMetaDto } from '@/api/dto/budget'
+import type { ImportSourceDto } from '@/api/dto/imports'
 import { isPendingForMe } from '@/features/connections/shared'
 
 let client: QueryClient | null = null
@@ -22,7 +23,10 @@ function list<T>(key: readonly unknown[]): T[] | undefined {
 // A count whose query has not loaded is omitted entirely (never sent as 0 —
 // that would read as a real measurement rather than "unknown"). Every count is
 // a total: active, hidden and archived items alike.
-function count(out: Record<string, number>, key: readonly unknown[], name: string): void {
+type ProfileCount = 'accounts' | 'budgets' | 'categories' | 'payees' | 'tags' | 'labels' | 'connections' | 'signup_year' | 'months_since_signup'
+type ProfileAttributes = Partial<Record<ProfileCount, number>> & { 'apple-wallet'?: 'on' | 'off' }
+
+function count(out: ProfileAttributes, key: readonly unknown[], name: ProfileCount): void {
   const rows = list<unknown>(key)
   if (rows) {
     out[name] = rows.length
@@ -46,8 +50,8 @@ function monthsSince(createdAt: string, now: Date): number | undefined {
   return Math.max(0, months)
 }
 
-export function profileAttributes(): Record<string, number> {
-  const out: Record<string, number> = {}
+export function profileAttributes(): ProfileAttributes {
+  const out: ProfileAttributes = {}
   if (!client) {
     return out
   }
@@ -82,6 +86,11 @@ export function profileAttributes(): Record<string, number> {
   count(out, queryKeys.tags, 'tags')
   count(out, queryKeys.labels, 'labels')
   count(out, queryKeys.connections, 'connections')
+
+  const sources = list<ImportSourceDto>(queryKeys.importSources)
+  if (sources) {
+    out['apple-wallet'] = sources.some((source) => source.provider === 'apple-wallet') ? 'on' : 'off'
+  }
 
   if (user?.createdAt) {
     // A cohort label, so it is read verbatim rather than parsed as a local
