@@ -517,6 +517,7 @@
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
       "intro": "Registra automaticamente le transazioni Apple Pay con un comando rapido per iPhone",
+      "instructions": "Istruzioni di configurazione",
       "connect": "Configura Apple Wallet",
       "connect_intro": {
         "needs_title": "Ti servirà",
@@ -543,9 +544,7 @@
         "question": "L’integrazione con Apple Wallet verrà rimossa da Econumo. Le transazioni già importate resteranno."
       },
       "setup": {
-        "header": "Configurazione",
         "title": "Guida alla configurazione",
-        "progress": "{done} di {total} completati",
         "reconfigure": "Configura di nuovo"
       },
       "steps": {
@@ -561,12 +560,11 @@
           "button": "Collega il comando rapido",
           "open": "Associa Econumo",
           "waiting": "In attesa che il comando rapido raggiunga Econumo…",
-          "manual": "Configura manualmente",
           "again_note": "Collegare di nuovo sostituisce il token che il comando rapido usa ora: i pagamenti non vengono importati finché non apri econumo con quello nuovo."
         },
         "automate": {
           "title": "Crea l’automazione",
-          "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare (la scelta più sicura è tutte) → Esegui dopo conferma → econumo."
+          "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare → Esegui dopo conferma → econumo."
         },
         "payment": {
           "title": "Fai il primo pagamento",
@@ -577,8 +575,7 @@
           "title": "Imposta l’automazione su «Esegui subito»",
           "text": "Nell’app Comandi rapidi apri l’automazione e cambia «Esegui dopo conferma» in «Esegui subito». Da quel momento i pagamenti vengono importati senza richieste."
         },
-        "done": "Fatto",
-        "complete": "Configurazione completata"
+        "done": "Fatto"
       },
       "same_named_cards": "Le carte con lo stesso nome in Wallet vengono mostrate come un’unica carta.",
       "video": "Guarda il video di configurazione:",

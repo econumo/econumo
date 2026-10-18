@@ -27,7 +27,7 @@ function ConnectedWallet({ wallet }: { wallet: ImportSourceDto }) {
       ) : null}
       {/* until the first tap arrives setup is the only thing to do, and the card list would be empty */}
       {hasCards ? <ImportCards source={wallet} footnote={t('imports.apple_wallet.same_named_cards')} /> : null}
-      <AppleWalletSetup setup={setup} collapsible={hasCards} />
+      <AppleWalletSetup setup={setup} />
       <AppleWalletDisconnect source={wallet} />
     </>
   )

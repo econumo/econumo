@@ -443,8 +443,10 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       for …"; back in Econumo the step completes by itself within a few
       seconds (at once when switching back to the app), with its
       `account is required` check-in removed from the Failed imports section.
-      "Configure manually" opens `https://econumo.com/docs/user-guide/apple-wallet`
-      in a new tab; "Done" completes the step by hand.
+      "Done" completes the step by hand and matches the size and filled style
+      of step 1’s Done button. The setup guide’s "Setup instructions" link
+      opens `https://econumo.com/docs/user-guide/apple-wallet` in a new tab
+      throughout setup and after setup is complete.
 - [ ] Step 2 once done, iOS 📱: the step still offers "Connect the Shortcut"
       (outline style) with the note "Connecting again replaces the token the
       Shortcut uses now…"; tapping it revokes the old ingest token, mints a new
@@ -455,8 +457,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       meanwhile from another device (page rendered before it existed) revokes
       that token first and mints a fresh one — Profile → Tokens shows exactly
       one live `ingest` PAT afterwards; `full` PATs are untouched.
-- [ ] Desktop: an "Open this page on your iPhone…" hint sits above the steps
-      and "Connect the Shortcut" is absent; the download, "Configure manually",
+- [ ] Desktop: an "Open this page on your iPhone…" hint sits above the steps,
+      including after setup is complete. "Setup instructions" sits directly
+      below the hint text. "Connect the Shortcut", the download, the instructions link,
       the waiting line and the hand ticks still work; running the configured
       shortcut by hand on the phone completes step 2 here too.
 - [ ] Step 3 text walks through Automation → + → Wallet → cards & categories →
@@ -480,9 +483,18 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       buttons), then "Cards" (mapped cards with the account's icon tile,
       "<card> → <account>", "N taps · <when>", Remap and Unmap buttons;
       ignored cards greyed with an eye-off tile, "Ignored · …" and a Map
-      button), the same-name footnote, a "Setup" section with one folded
-      "Setup guide" row ("N of 5 done", or "Setup complete") that opens the
-      stepper, and "Disconnect Apple Wallet" centered at the bottom.
+      button), the same-name footnote, the same setup card used before the
+      first payment (desktop hint with "Setup instructions" below its text,
+      "Configure again" aligned with the title at the top right), and "Disconnect Apple Wallet"
+      centered at the bottom. The card always has a "Setup guide" heading.
+      When expanded, a divider separates the header from the full-width hint;
+      the hint icon and text align with the checklist markers and titles.
+      While setup is incomplete, the checklist stays
+      open. Once all five steps are complete, the card starts collapsed as
+      "Setup guide" on the next visit. Expanding it shows the same hint, link,
+      reset action and checklist; it can be collapsed again. Completing the
+      checklist during the current visit keeps it open. "Configure again"
+      opens the reset checklist. There is no extra "Setup" heading.
 - [ ] Apple Wallet shows no "Connected / Last tap" status block or "Inbox" row 📱.
       `/settings/apple-wallet/inbox` is the not-found page, and
       Apple Wallet rows to review / failed / skipped appear in the main Inbox

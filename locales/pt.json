@@ -517,6 +517,7 @@
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
       "intro": "Registe automaticamente as transações Apple Pay com um atalho do iPhone",
+      "instructions": "Instruções de configuração",
       "connect": "Configurar Apple Wallet",
       "connect_intro": {
         "needs_title": "Vai precisar de",
@@ -543,9 +544,7 @@
         "question": "A integração com o Apple Wallet será removida do Econumo. As transações já importadas serão mantidas."
       },
       "setup": {
-        "header": "Configuração",
         "title": "Guia de configuração",
-        "progress": "{done} de {total} concluídos",
         "reconfigure": "Configurar novamente"
       },
       "steps": {
@@ -561,12 +560,11 @@
           "button": "Ligar o atalho",
           "open": "Associar o Econumo",
           "waiting": "À espera de que o atalho chegue ao Econumo…",
-          "manual": "Configurar manualmente",
           "again_note": "Ligar de novo substitui o token que o atalho usa agora: os pagamentos deixam de ser importados até abrir o econumo com o novo."
         },
         "automate": {
           "title": "Criar a automatização",
-          "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar (o mais seguro é escolher todos) → Executar após confirmação → econumo."
+          "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar → Executar após confirmação → econumo."
         },
         "payment": {
           "title": "Fazer o primeiro pagamento",
@@ -577,8 +575,7 @@
           "title": "Mudar a automatização para «Executar imediatamente»",
           "text": "Na app Atalhos, abra a automatização e mude «Executar após confirmação» para «Executar imediatamente». A partir daí os pagamentos são importados sem perguntar."
         },
-        "done": "Concluído",
-        "complete": "Configuração concluída"
+        "done": "Concluído"
       },
       "same_named_cards": "Cartões com o mesmo nome no Wallet são apresentados como um único cartão.",
       "video": "Ver o vídeo de configuração:",

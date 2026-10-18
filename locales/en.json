@@ -517,6 +517,7 @@
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
       "intro": "Automatically record Apple Pay transactions with an iPhone Shortcut",
+      "instructions": "Setup instructions",
       "connect": "Set up Apple Wallet",
       "connect_intro": {
         "needs_title": "You will need",
@@ -543,9 +544,7 @@
         "question": "The Apple Wallet integration will be removed from Econumo. Previously imported transactions will remain."
       },
       "setup": {
-        "header": "Setup",
         "title": "Setup guide",
-        "progress": "{done} of {total} done",
         "reconfigure": "Configure again"
       },
       "steps": {
@@ -561,12 +560,11 @@
           "button": "Connect the Shortcut",
           "open": "Link Econumo",
           "waiting": "Waiting for the Shortcut to reach Econumo…",
-          "manual": "Configure manually",
           "again_note": "Connecting again replaces the token the Shortcut uses now: payments stop importing until you open econumo with the new one."
         },
         "automate": {
           "title": "Create the automation",
-          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import (all of them is the safe choice) → Run After Confirmation → econumo."
+          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import → Run After Confirmation → econumo."
         },
         "payment": {
           "title": "Make the first payment",
@@ -577,8 +575,7 @@
           "title": "Switch the automation to Run Immediately",
           "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt."
         },
-        "done": "Done",
-        "complete": "Setup complete"
+        "done": "Done"
       },
       "same_named_cards": "Cards with the same name in Wallet appear as one card.",
       "video": "Watch the setup video:",

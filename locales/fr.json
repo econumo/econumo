@@ -517,6 +517,7 @@
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
       "intro": "Enregistrez automatiquement les transactions Apple Pay avec un raccourci iPhone",
+      "instructions": "Instructions de configuration",
       "connect": "Configurer Apple Wallet",
       "connect_intro": {
         "needs_title": "Il vous faut",
@@ -543,9 +544,7 @@
         "question": "L’intégration Apple Wallet sera supprimée d’Econumo. Les transactions déjà importées seront conservées."
       },
       "setup": {
-        "header": "Configuration",
         "title": "Guide de configuration",
-        "progress": "{done} sur {total} terminées",
         "reconfigure": "Configurer à nouveau"
       },
       "steps": {
@@ -561,12 +560,11 @@
           "button": "Connecter le raccourci",
           "open": "Lier Econumo",
           "waiting": "En attente du premier contact du raccourci avec Econumo…",
-          "manual": "Configurer manuellement",
           "again_note": "Reconnecter remplace le jeton qu’utilise le raccourci : les paiements ne sont plus importés tant que vous n’ouvrez pas econumo avec le nouveau."
         },
         "automate": {
           "title": "Créer l’automatisation",
-          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer (le plus sûr est de tout sélectionner) → Exécuter après confirmation → econumo."
+          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer → Exécuter après confirmation → econumo."
         },
         "payment": {
           "title": "Effectuer le premier paiement",
@@ -577,8 +575,7 @@
           "title": "Passer l’automatisation en « Exécuter immédiatement »",
           "text": "Dans l’app Raccourcis, ouvrez l’automatisation et remplacez « Exécuter après confirmation » par « Exécuter immédiatement ». Les paiements sont ensuite importés sans demande."
         },
-        "done": "Terminé",
-        "complete": "Configuration terminée"
+        "done": "Terminé"
       },
       "same_named_cards": "Les cartes portant le même nom dans Wallet sont affichées comme une seule carte.",
       "video": "Voir la vidéo de configuration :",

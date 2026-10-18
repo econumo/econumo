@@ -53,8 +53,8 @@ importing over an installed copy offers to replace it rather than adding
 automation on the old one.
 
 The same recipe, reduced to the actions a user can type in, is the
-illustrated guide that the SPA's *Configure manually* link opens
-(`MANUAL_GUIDE_URL` in `web/src/features/imports/AppleWalletSetup.tsx`,
+illustrated guide that the setup guide’s *Setup instructions* link opens
+(`WALLET_GUIDE_URL` in `web/src/features/imports/AppleWalletSetup.tsx`,
 `https://econumo.com/docs/user-guide/apple-wallet`); keep the URL, headers
 and field names in the two in sync.
 

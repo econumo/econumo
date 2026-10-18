@@ -25,7 +25,7 @@ function Harness({ src }: { src: ImportSourceDto }) {
   const setup = useWalletSetup(src)
   return (
     <>
-      <AppleWalletSetup setup={setup} collapsible={src.cards.length > 0} />
+      <AppleWalletSetup setup={setup} />
       <AppleWalletDisconnect source={src} />
     </>
   )
@@ -120,13 +120,11 @@ it('opens on the first step only; its install link opens in a new window and Don
   expect(stepToggle('Connect the Shortcut')).toHaveAttribute('aria-expanded', 'true')
 })
 
-it('desktop shows Connect the Shortcut alongside the iPhone hint and manual guide', () => {
+it('desktop shows Connect the Shortcut alongside the iPhone hint', () => {
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install']))
   renderSetup(source)
   expect(screen.getByText(/Open this page on your iPhone/)).toBeInTheDocument()
-  const guide = screen.getByRole('link', { name: 'Configure manually' })
-  expect(guide).toHaveAttribute('href', 'https://econumo.com/docs/user-guide/apple-wallet')
-  expect(guide).toHaveAttribute('target', '_blank')
+  expect(within(step('Connect the Shortcut')).queryByRole('link', { name: 'Configure manually' })).not.toBeInTheDocument()
   expect(connectButton()).toBeInTheDocument()
 })
 
@@ -328,11 +326,9 @@ it('ignores an old manual payment tick and keeps waiting when only failed events
   expect(payment.queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
 })
 
-it('a mapped card without a received payment does not complete step 4', async () => {
+it('a mapped card without a received payment does not complete step 4', () => {
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure', 'automate']))
-  const user = userEvent.setup()
   renderSetup({ ...source, cards: [{ ...card, state: 'mapped', accountId: 'a1', tapCount: 0, lastSeenAt: '' }] })
-  await user.click(screen.getByRole('button', { name: /Setup guide/ }))
   expect(stateOf('Make the first payment')).toBe('current')
   expect(screen.getByRole('status')).toHaveTextContent('Waiting for the first payment')
   expect(screen.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument()
@@ -356,10 +352,6 @@ it.each([false, true])('step 5 requires the first payment (previously marked don
 it.each(['mapped', 'unmapped', 'ignored'] as const)('the first payment on a %s card completes steps 1–4; Run Immediately stays a hand tick', async (state) => {
   const user = userEvent.setup()
   renderSetup({ ...source, cards: [{ ...card, state, accountId: state === 'mapped' ? 'a1' : '', queuedCount: state === 'unmapped' ? 1 : 0 }] })
-  const toggle = screen.getByRole('button', { name: /Setup guide/ })
-  expect(toggle).toHaveAttribute('aria-expanded', 'false')
-  expect(toggle).toHaveTextContent('4 of 5 done')
-  await user.click(toggle)
   expect(stateOf('Make the first payment')).toBe('done')
   expect(stateOf('Switch the automation to Run Immediately')).toBe('current')
   await user.click(stepToggle('Make the first payment'))
@@ -369,9 +361,37 @@ it.each(['mapped', 'unmapped', 'ignored'] as const)('the first payment on a %s c
   expect(screen.queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Switch the automation to Run Immediately' }))
   await user.click(screen.getByRole('button', { name: 'Done' }))
-  expect(toggle).toHaveTextContent('Setup complete')
-  expect(screen.queryByText(/Open this page on your iPhone/)).not.toBeInTheDocument()
+  expect(stateOf('Switch the automation to Run Immediately')).toBe('done')
+  expect(screen.getByText(/Open this page on your iPhone/)).toBeVisible()
+  expect(screen.getByText(/Open this page on your iPhone/).nextElementSibling).toContainElement(screen.getByRole('link', { name: 'Setup instructions' }))
   expect(screen.getByRole('button', { name: 'Configure again' })).toBeInTheDocument()
+})
+
+it.each([false, true])('completed setup starts collapsed and can be reopened (iOS: %s)', async (ios) => {
+  mockIsIOS.value = ios
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['immediate']))
+  const user = userEvent.setup()
+  renderSetup({ ...source, cards: [card] })
+  const toggle = screen.getByRole('button', { name: 'Setup guide' })
+  expect(screen.getByRole('heading', { name: 'Setup guide', level: 2 })).toContainElement(toggle)
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('link', { name: 'Setup instructions' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Install the Shortcut' })).not.toBeInTheDocument()
+
+  await user.click(toggle)
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.getByRole('link', { name: 'Setup instructions' })).toBeVisible()
+  expect(stateOf('Switch the automation to Run Immediately')).toBe('done')
+  expect(screen.queryByText(/Open this page on your iPhone/) !== null).toBe(!ios)
+
+  await user.click(toggle)
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await user.click(toggle)
+  await user.click(screen.getByRole('button', { name: 'Configure again' }))
+  await waitFor(() => expect(stateOf('Install the Shortcut')).toBe('current'))
+  expect(stepToggle('Install the Shortcut')).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.queryByRole('button', { name: 'Setup guide' })).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Setup guide', level: 2 })).toBeVisible()
 })
 
 it('disconnect drops the hand ticks', async () => {

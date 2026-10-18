@@ -517,6 +517,7 @@
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
       "intro": "Automatycznie zapisuj transakcje Apple Pay za pomocą skrótu na iPhonie",
+      "instructions": "Instrukcja konfiguracji",
       "connect": "Skonfiguruj Apple Wallet",
       "connect_intro": {
         "needs_title": "Potrzebujesz",
@@ -543,9 +544,7 @@
         "question": "Integracja z Apple Wallet zostanie usunięta z Econumo. Wcześniej zaimportowane transakcje pozostaną."
       },
       "setup": {
-        "header": "Konfiguracja",
         "title": "Przewodnik konfiguracji",
-        "progress": "Gotowe {done} z {total}",
         "reconfigure": "Skonfiguruj ponownie"
       },
       "steps": {
@@ -561,12 +560,11 @@
           "button": "Połącz skrót",
           "open": "Powiąż Econumo",
           "waiting": "Czekam, aż skrót dotrze do Econumo…",
-          "manual": "Skonfiguruj ręcznie",
           "again_note": "Ponowne połączenie zastępuje token, którego skrót używa teraz: płatności nie będą importowane, dopóki nie otworzysz econumo z nowym."
         },
         "automate": {
           "title": "Utwórz automatyzację",
-          "text": "W aplikacji Skróty: Automatyzacja → + → Wallet → wybierz karty i kategorie do importu (najbezpieczniej wybrać wszystkie) → Uruchom po potwierdzeniu → econumo."
+          "text": "W aplikacji Skróty: Automatyzacja → + → Wallet → wybierz karty i kategorie do importu → Uruchom po potwierdzeniu → econumo."
         },
         "payment": {
           "title": "Wykonaj pierwszą płatność",
@@ -577,8 +575,7 @@
           "title": "Przełącz automatyzację na „Uruchom natychmiast”",
           "text": "W aplikacji Skróty otwórz automatyzację i zmień „Uruchom po potwierdzeniu” na „Uruchom natychmiast”. Od tej pory płatności są importowane bez pytania."
         },
-        "done": "Gotowe",
-        "complete": "Konfiguracja zakończona"
+        "done": "Gotowe"
       },
       "same_named_cards": "Karty o tej samej nazwie w Wallet są wyświetlane jako jedna karta.",
       "video": "Obejrzyj film o konfiguracji:",

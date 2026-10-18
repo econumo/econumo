@@ -32,6 +32,25 @@ beforeEach(() => {
   }))
 })
 
+it.each([false, true])('uses the same setup card before and after receiving payments (payments received: %s)', async (hasPayments) => {
+  server.use(...coreHandlers({ importSources: [{ ...wireSource, cards: hasPayments ? wireSource.cards : [] }] }))
+  renderPage()
+  const instructions = await screen.findByRole('link', { name: 'Setup instructions' })
+  expect(instructions).toHaveAttribute('href', 'https://econumo.com/docs/user-guide/apple-wallet')
+  expect(instructions).toHaveAttribute('target', '_blank')
+  expect(screen.getAllByRole('link', { name: 'Setup instructions' })).toHaveLength(1)
+  const card = instructions.closest('.rounded-lg')!
+  const hint = screen.getByText(/Open this page on your iPhone/)
+  expect(hint).toBeVisible()
+  expect(hint.nextElementSibling).toContainElement(instructions)
+  expect(card).toContainElement(screen.getByRole('button', { name: 'Install the Shortcut' }))
+  expect(card).toContainElement(screen.getByRole('button', { name: 'Make the first payment' }))
+  expect(instructions).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Setup guide', level: 2 })).toBeVisible()
+  expect(screen.queryByRole('button', { name: /Setup guide/ })).toBeNull()
+  if (hasPayments) expect(card).toContainElement(screen.getByRole('button', { name: 'Configure again' }))
+})
+
 it('offers Apple Wallet setup when no source exists', async () => {
   server.use(...coreHandlers())
   renderPage()
@@ -50,8 +69,8 @@ it('shows the card list without the Connected / Last tap status block', async ()
   expect(screen.queryByText(/^Last tap /)).not.toBeInTheDocument()
   expect(screen.getByText('Apple Card')).toBeInTheDocument()
   expect(screen.getByText(/^2 to review/)).toBeInTheDocument()
-  // a card has arrived, so the setup guide is folded and Disconnect sits at the bottom
-  expect(screen.getByRole('button', { name: /Setup guide/ })).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.getByRole('button', { name: 'Install the Shortcut' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Make the first payment' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Disconnect Apple Wallet' })).toBeInTheDocument()
 })
 
@@ -123,25 +142,28 @@ it('Configure again persists a full reset, ignores previous events, and requires
     }),
   )
   const view = renderPage()
-  const guide = await screen.findByRole('button', { name: /Setup guide/ })
-  expect(guide).toHaveTextContent('Setup complete')
+  const immediateStep = () => screen.getByRole('button', { name: 'Switch the automation to Run Immediately' }).closest('li')
+  const guide = await screen.findByRole('button', { name: 'Setup guide' })
   expect(guide).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('button', { name: 'Install the Shortcut' })).not.toBeInTheDocument()
+  await user.click(guide)
+  expect(immediateStep()).toHaveAttribute('data-state', 'done')
   await user.click(screen.getByRole('button', { name: 'Configure again' }))
-  await waitFor(() => expect(guide).toHaveTextContent('0 of 5 done'))
-  expect(screen.getByRole('button', { name: 'Install the Shortcut' })).toHaveAttribute('aria-expanded', 'true')
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Install the Shortcut' })).toHaveAttribute('aria-expanded', 'true'))
+  expect(immediateStep()).toHaveAttribute('data-state', 'todo')
   expect(screen.getByRole('link', { name: 'Import history' })).toBeInTheDocument()
   expect(screen.getByText('Apple Card')).toBeInTheDocument()
 
   view.unmount()
   renderPage()
-  const reloadedGuide = await screen.findByRole('button', { name: /Setup guide/ })
-  expect(reloadedGuide).toHaveTextContent('0 of 5 done')
-  await user.click(reloadedGuide)
+  expect(await screen.findByRole('button', { name: 'Install the Shortcut' })).toHaveAttribute('aria-expanded', 'true')
+  expect(immediateStep()).toHaveAttribute('data-state', 'todo')
   const beforeConfigure = sourceRequests
   await user.click(screen.getByRole('button', { name: 'Done' }))
   await waitFor(() => expect(sourceRequests).toBeGreaterThan(beforeConfigure))
   await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Waiting for the Shortcut to reach Econumo'))
-  expect(reloadedGuide).toHaveTextContent('1 of 5 done')
+  expect(screen.getByRole('button', { name: 'Install the Shortcut' }).closest('li')).toHaveAttribute('data-state', 'done')
+  expect(screen.getByRole('button', { name: 'Create the automation' }).closest('li')).toHaveAttribute('data-state', 'todo')
 
   newCheck = true
   act(() => document.dispatchEvent(new Event('visibilitychange')))
@@ -154,7 +176,7 @@ it('Configure again persists a full reset, ignores previous events, and requires
   taps++
   act(() => document.dispatchEvent(new Event('visibilitychange')))
   await waitFor(() => expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled())
-  expect(reloadedGuide).toHaveTextContent('4 of 5 done')
+  expect(screen.getByRole('button', { name: 'Make the first payment' }).closest('li')).toHaveAttribute('data-state', 'done')
   await user.click(screen.getByRole('button', { name: 'Done' }))
-  expect(reloadedGuide).toHaveTextContent('Setup complete')
+  expect(immediateStep()).toHaveAttribute('data-state', 'done')
 })

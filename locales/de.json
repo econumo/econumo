@@ -517,6 +517,7 @@
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
       "intro": "Erfasse Apple Pay-Transaktionen automatisch mit einem iPhone-Kurzbefehl",
+      "instructions": "Einrichtungsanleitung",
       "connect": "Apple Wallet einrichten",
       "connect_intro": {
         "needs_title": "Du brauchst",
@@ -543,9 +544,7 @@
         "question": "Die Apple Wallet-Integration wird aus Econumo entfernt. Bereits importierte Transaktionen bleiben erhalten."
       },
       "setup": {
-        "header": "Einrichtung",
         "title": "Einrichtungsanleitung",
-        "progress": "{done} von {total} erledigt",
         "reconfigure": "Erneut einrichten"
       },
       "steps": {
@@ -561,12 +560,11 @@
           "button": "Kurzbefehl verbinden",
           "open": "Econumo verknüpfen",
           "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …",
-          "manual": "Manuell konfigurieren",
           "again_note": "Erneutes Verbinden ersetzt das Token, das der Kurzbefehl gerade nutzt: Zahlungen werden erst wieder importiert, wenn du econumo mit dem neuen öffnest."
         },
         "automate": {
           "title": "Automation anlegen",
-          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen (am sichersten: alle) → Nach Bestätigung ausführen → econumo."
+          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen → Nach Bestätigung ausführen → econumo."
         },
         "payment": {
           "title": "Erste Zahlung tätigen",
@@ -577,8 +575,7 @@
           "title": "Automation auf „Sofort ausführen“ umstellen",
           "text": "Öffne in der Kurzbefehle-App die Automation und ändere „Nach Bestätigung ausführen“ auf „Sofort ausführen“. Ab dann werden Zahlungen ohne Rückfrage importiert."
         },
-        "done": "Erledigt",
-        "complete": "Einrichtung abgeschlossen"
+        "done": "Erledigt"
       },
       "same_named_cards": "Karten mit gleichem Namen in Wallet werden als eine Karte angezeigt.",
       "video": "Einrichtungsvideo ansehen:",

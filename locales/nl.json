@@ -517,6 +517,7 @@
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
       "intro": "Registreer Apple Pay-transacties automatisch met een iPhone-opdracht",
+      "instructions": "Configuratiehandleiding",
       "connect": "Apple Wallet instellen",
       "connect_intro": {
         "needs_title": "Je hebt nodig",
@@ -543,9 +544,7 @@
         "question": "De Apple Wallet-integratie wordt uit Econumo verwijderd. Eerder geïmporteerde transacties blijven behouden."
       },
       "setup": {
-        "header": "Installatie",
         "title": "Installatiehandleiding",
-        "progress": "{done} van {total} klaar",
         "reconfigure": "Opnieuw instellen"
       },
       "steps": {
@@ -561,12 +560,11 @@
           "button": "Opdracht koppelen",
           "open": "Econumo koppelen",
           "waiting": "Wachten tot de opdracht Econumo bereikt…",
-          "manual": "Handmatig configureren",
           "again_note": "Opnieuw koppelen vervangt het token dat de opdracht nu gebruikt: betalingen worden pas weer geïmporteerd als je econumo met het nieuwe opent."
         },
         "automate": {
           "title": "Automatisering aanmaken",
-          "text": "In de Opdrachten-app: Automatisering → + → Wallet → kies de kaarten en categorieën die je wilt importeren (alles kiezen is het veiligst) → Voer uit na bevestiging → econumo."
+          "text": "In de Opdrachten-app: Automatisering → + → Wallet → kies de kaarten en categorieën die je wilt importeren → Voer uit na bevestiging → econumo."
         },
         "payment": {
           "title": "Eerste betaling doen",
@@ -577,8 +575,7 @@
           "title": "Zet de automatisering op ‘Voer direct uit’",
           "text": "Open in de Opdrachten-app de automatisering en verander ‘Voer uit na bevestiging’ in ‘Voer direct uit’. Vanaf dan worden betalingen zonder vraag geïmporteerd."
         },
-        "done": "Klaar",
-        "complete": "Installatie voltooid"
+        "done": "Klaar"
       },
       "same_named_cards": "Kaarten met dezelfde naam in Wallet worden als één kaart weergegeven.",
       "video": "Bekijk de instructievideo:",

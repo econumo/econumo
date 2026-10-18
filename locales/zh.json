@@ -517,6 +517,7 @@
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
       "intro": "使用 iPhone 快捷指令自动记录 Apple Pay 交易",
+      "instructions": "设置说明",
       "connect": "设置 Apple Wallet",
       "connect_intro": {
         "needs_title": "你需要",
@@ -543,9 +544,7 @@
         "question": "Apple Wallet 集成将从 Econumo 中移除。之前导入的交易会保留。"
       },
       "setup": {
-        "header": "设置",
         "title": "设置指南",
-        "progress": "已完成 {done}/{total}",
         "reconfigure": "重新配置"
       },
       "steps": {
@@ -561,12 +560,11 @@
           "button": "连接快捷指令",
           "open": "关联 Econumo",
           "waiting": "正在等待快捷指令连接 Econumo…",
-          "manual": "手动配置",
           "again_note": "重新连接会替换快捷指令当前使用的令牌：在你用新令牌打开 econumo 之前，付款不会被导入。"
         },
         "automate": {
           "title": "创建自动化",
-          "text": "在“快捷指令”App 中：自动化 → + → 钱包 → 选择要导入的卡片和类别（建议全选） → 确认后运行 → econumo。"
+          "text": "在“快捷指令”App 中：自动化 → + → 钱包 → 选择要导入的卡片和类别 → 确认后运行 → econumo。"
         },
         "payment": {
           "title": "完成第一笔付款",
@@ -577,8 +575,7 @@
           "title": "将自动化改为“立即运行”",
           "text": "在“快捷指令”App 中打开该自动化，把“确认后运行”改为“立即运行”。此后付款会自动导入，无需确认。"
         },
-        "done": "完成",
-        "complete": "设置完成"
+        "done": "完成"
       },
       "same_named_cards": "Wallet 中同名的卡片会显示为一张卡。",
       "video": "观看设置视频：",
