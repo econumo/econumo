@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, CirclePlay, Download, ExternalLink, Loader2 } from 'lucide-react'
+import { Check, ChevronDown, CirclePlay, Download, ExternalLink, Loader2, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ImportSourceDto } from '@/api/dto/imports'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -169,12 +169,16 @@ function Waiting({ children }: { children: ReactNode }) {
   )
 }
 
-function Stepper({ setup }: { setup: WalletSetup }) {
+function Stepper({ setup, configuring, setConfiguring, resetting }: {
+  setup: WalletSetup
+  configuring: boolean
+  setConfiguring: (value: boolean) => void
+  resetting: boolean
+}) {
   const { t } = useTranslation()
   const createToken = useCreatePersonalToken()
   const revokeToken = useRevokePersonalToken()
   const tokens = usePersonalTokens()
-  const [configuring, setConfiguring] = useState(false)
   const configuringRef = useRef(false)
   const ios = isIOS()
   // the open step follows the current one as steps complete
@@ -185,9 +189,9 @@ function Stepper({ setup }: { setup: WalletSetup }) {
     setOpen(setup.current)
   }
 
-  const handTick = (id: StepId, on: boolean) => {
-    trackEvent(METRICS.IMPORT_SETUP_STEP, { step: id, done: on })
-    setup.tick(id, on)
+  const handTick = (id: StepId) => {
+    trackEvent(METRICS.IMPORT_SETUP_STEP, { step: id, done: true })
+    setup.tick(id)
   }
 
   // The shortcut on the phone must be the only holder of a live ingest
@@ -228,17 +232,14 @@ function Stepper({ setup }: { setup: WalletSetup }) {
 
   const text = (id: StepId) => <p className="text-muted-foreground">{t(`imports.apple_wallet.steps.${id}.text`)}</p>
   const doneButton = (id: StepId) => (
-    <Button type="button" className="h-10 self-start" disabled={id === 'immediate' && !setup.done('payment')} onClick={() => handTick(id, true)}>{t('imports.apple_wallet.steps.done')}</Button>
+    <Button type="button" className="h-10 self-start" disabled={resetting || (id === 'immediate' && !setup.done('payment'))} onClick={() => handTick(id)}>{t('imports.apple_wallet.steps.done')}</Button>
   )
   const markDone = (id: StepId) => (
-    <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => handTick(id, true)}>{t('imports.apple_wallet.steps.mark_done')}</Button>
+    <Button type="button" variant="ghost" size="sm" className="self-start" disabled={resetting} onClick={() => handTick(id)}>{t('imports.apple_wallet.steps.done')}</Button>
   )
 
   const body = (id: StepId): ReactNode => {
     const isDone = setup.done(id)
-    const undo = isDone && setup.handTicked(id)
-      ? <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => handTick(id, false)}>{t('imports.apple_wallet.steps.undo')}</Button>
-      : null
     switch (id) {
       case 'install':
         return (
@@ -247,7 +248,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
             {WALLET_SHORTCUT_ICLOUD_URL ? (
               <div className="flex flex-wrap items-center gap-3">
                 <ExternalButton href={WALLET_SHORTCUT_ICLOUD_URL} onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'wallet', via: 'icloud' })}>
-                  <Download className="size-4" />{WALLET_SHORTCUT_NAME}
+                  <ExternalLink className="size-4" />{WALLET_SHORTCUT_NAME}
                 </ExternalButton>
                 <a href={WALLET_SHORTCUT_URL} target="_blank" rel="noopener" className="text-econumo-link underline-offset-2 hover:underline"
                   onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'wallet', via: 'file' })}>
@@ -259,7 +260,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
                 <Download className="size-4" />{WALLET_SHORTCUT_NAME}
               </ExternalButton>
             )}
-            {isDone ? undo : doneButton(id)}
+            {!isDone ? doneButton(id) : null}
           </>
         )
       case 'configure':
@@ -274,7 +275,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
                   <ExternalLink className="size-4" />{t('imports.apple_wallet.steps.configure.open')}
                 </ExternalButton>
               ) : (
-                <Button type="button" variant={isDone ? 'outline' : 'default'} className="h-10" disabled={configuring} onClick={() => void createLink()}>
+                <Button type="button" variant={isDone ? 'outline' : 'default'} className="h-10" disabled={configuring || resetting} onClick={() => void createLink()}>
                   {t('imports.apple_wallet.steps.configure.button')}
                 </Button>
               )}
@@ -284,7 +285,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
             </div>
             {/* connecting again revokes the token the Shortcut holds now */}
             {isDone && !setup.configureLink ? <p className="text-xs text-muted-foreground">{t('imports.apple_wallet.steps.configure.again_note')}</p> : null}
-            {isDone ? undo : <><Waiting>{t('imports.apple_wallet.steps.configure.waiting')}</Waiting>{markDone(id)}</>}
+            {!isDone ? <><Waiting>{t('imports.apple_wallet.steps.configure.waiting')}</Waiting>{markDone(id)}</> : null}
           </>
         )
       case 'payment':
@@ -298,7 +299,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
         return (
           <>
             {text(id)}
-            {isDone ? undo : doneButton(id)}
+            {!isDone ? doneButton(id) : null}
           </>
         )
     }
@@ -306,7 +307,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
 
   return (
     <div className="flex flex-col gap-1">
-      {ios ? null : <InfoBox>{t('imports.apple_wallet.steps.hint_desktop')}</InfoBox>}
+      {ios || setup.current === null ? null : <InfoBox>{t('imports.apple_wallet.steps.hint_desktop')}</InfoBox>}
       <SetupVideos />
       <ol className="flex flex-col">
         {STEPS.map((id, i) => {
@@ -331,18 +332,49 @@ export function AppleWalletSetup({ setup, collapsible }: { setup: WalletSetup; c
   const { t } = useTranslation()
   // Once taps are flowing the guide starts folded to its progress row.
   const [open, setOpen] = useState(!collapsible)
+  const [configuring, setConfiguring] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetVersion, setResetVersion] = useState(0)
   const allDone = setup.current === null
+
+  const reconfigure = async () => {
+    setResetting(true)
+    try {
+      await setup.reset()
+      setResetVersion((version) => version + 1)
+      setOpen(true)
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+    } finally {
+      setResetting(false)
+    }
+  }
+  const reconfigureButton = setup.doneCount > 0 || setup.configureLink ? (
+    <button
+      type="button"
+      className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-econumo-link disabled:opacity-50"
+      disabled={configuring || resetting}
+      onClick={() => void reconfigure()}
+    >
+      <RotateCcw className="size-3.5" />{t('imports.apple_wallet.setup.reconfigure')}
+    </button>
+  ) : null
+  const stepper = <Stepper key={resetVersion} setup={setup} configuring={configuring} setConfiguring={setConfiguring} resetting={resetting} />
 
   if (!collapsible) {
     return (
       <div className="rounded-lg bg-econumo-card px-4 py-3 text-sm">
-        <Stepper setup={setup} />
+        {reconfigureButton ? <div className="mb-2 flex justify-end">{reconfigureButton}</div> : null}
+        {stepper}
       </div>
     )
   }
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="px-1 pt-2 text-xs uppercase text-muted-foreground">{t('imports.apple_wallet.setup.header')}</h2>
+      <div className="flex items-center justify-between gap-3 px-1 pt-2">
+        <h2 className="text-xs uppercase text-muted-foreground">{t('imports.apple_wallet.setup.header')}</h2>
+        {reconfigureButton}
+      </div>
       <div className="flex flex-col rounded-lg bg-econumo-card text-sm">
         <button
           type="button"
@@ -356,7 +388,7 @@ export function AppleWalletSetup({ setup, collapsible }: { setup: WalletSetup; c
             <ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} />
           </span>
         </button>
-        {open ? <div className="px-4 pb-3"><Stepper setup={setup} /></div> : null}
+        {open ? <div className="px-4 pb-3">{stepper}</div> : null}
       </div>
     </section>
   )

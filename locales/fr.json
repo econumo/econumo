@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Enregistrez automatiquement les paiements Apple Pay avec un raccourci iPhone",
+      "intro": "Enregistrez automatiquement les transactions Apple Pay avec un raccourci iPhone",
       "connect": "Configurer Apple Wallet",
       "connect_intro": {
         "needs_title": "Il vous faut",
@@ -530,32 +530,26 @@
         "online_not_imported": "Les paiements Apple Pay sur les sites web ne sont pas pris en charge",
         "steps_title": "Comment ça marche",
         "flow": {
-          "pay": "Approchez votre iPhone pour payer",
+          "pay": "Payez avec Apple Pay",
           "send": "L’intégration envoie les détails directement à Econumo",
           "privacy": "Econumo reçoit le nom de la carte, le commerçant, le montant et la devise",
-          "record": "Econumo enregistre le paiement dans le compte lié à votre carte"
+          "record": "Econumo enregistre la transaction"
         }
       },
-      "connected": "Connecté",
       "disconnect": "Déconnecter",
       "disconnect_full": "Déconnecter Apple Wallet",
       "disconnect_modal": {
         "title": "Déconnecter Apple Wallet ?",
-        "question": "Les associations de cartes et la file de vérification de cette connexion seront supprimées. Les transactions déjà importées sont conservées."
-      },
-      "status": {
-        "last_tap": "Dernier paiement {when}",
-        "no_taps": "Aucun paiement pour l’instant",
-        "setting_up": "Configuration en cours",
-        "step": "Étape {n} sur {total} : {title}"
+        "question": "L’intégration Apple Wallet sera supprimée d’Econumo. Les transactions déjà importées seront conservées."
       },
       "setup": {
         "header": "Configuration",
         "title": "Guide de configuration",
-        "progress": "{done} sur {total} terminées"
+        "progress": "{done} sur {total} terminées",
+        "reconfigure": "Configurer à nouveau"
       },
       "steps": {
-        "hint_desktop": "Ouvrez cette page sur votre iPhone pour y suivre les étapes. Sur cet appareil, vous pouvez télécharger le raccourci et marquer les étapes comme terminées.",
+        "hint_desktop": "Ouvrez cette page sur votre iPhone pour télécharger le raccourci et marquer manuellement les étapes terminées.",
         "install": {
           "title": "Installer le raccourci",
           "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci ».",
@@ -563,7 +557,7 @@
         },
         "configure": {
           "title": "Connecter le raccourci",
-          "text": "Crée un jeton d’accès et ouvre econumo avec. Le raccourci enregistre l’adresse du serveur et le jeton, puis contacte Econumo. Touchez « Toujours autoriser » à chaque demande : l’automatisation aura besoin de ces autorisations.",
+          "text": "Génère un jeton API. Le raccourci enregistre l’adresse du serveur et le jeton, puis se connecte à Econumo. Touchez « Toujours autoriser » à chaque demande : l’automatisation aura besoin de ces autorisations.",
           "button": "Connecter le raccourci",
           "open": "Lier Econumo",
           "waiting": "En attente du premier contact du raccourci avec Econumo…",
@@ -576,19 +570,17 @@
         },
         "payment": {
           "title": "Effectuer le premier paiement",
-          "text": "Payez une fois avec Apple Pay — l’iPhone peut rester verrouillé. Touchez « Exécuter » quand l’automatisation le demande, puis « Toujours autoriser » à chaque demande.",
+          "text": "Payez une fois avec Apple Pay. Touchez « Exécuter » quand l’automatisation le demande, puis « Toujours autoriser » à chaque demande.",
           "waiting": "En attente du premier paiement…"
         },
         "immediate": {
           "title": "Passer l’automatisation en « Exécuter immédiatement »",
-          "text": "Dans l’app Raccourcis, ouvrez l’automatisation et remplacez « Exécuter après confirmation » par « Exécuter immédiatement ». Les paiements sont ensuite importés sans demande, même depuis l’écran verrouillé."
+          "text": "Dans l’app Raccourcis, ouvrez l’automatisation et remplacez « Exécuter après confirmation » par « Exécuter immédiatement ». Les paiements sont ensuite importés sans demande."
         },
         "done": "Terminé",
-        "mark_done": "Marquer comme terminé",
-        "undo": "Marquer comme non terminé",
         "complete": "Configuration terminée"
       },
-      "same_named_cards": "Les cartes portant le même nom dans Wallet arrivent ici comme une seule carte.",
+      "same_named_cards": "Les cartes portant le même nom dans Wallet sont affichées comme une seule carte.",
       "video": "Voir la vidéo de configuration :",
       "video_title": "Vidéo de configuration",
       "video_youtube": "Ouvrir sur YouTube",

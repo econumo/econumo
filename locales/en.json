@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Log Apple Pay taps automatically with an iPhone Shortcut",
+      "intro": "Automatically record Apple Pay transactions with an iPhone Shortcut",
       "connect": "Set up Apple Wallet",
       "connect_intro": {
         "needs_title": "You will need",
@@ -530,32 +530,26 @@
         "online_not_imported": "Apple Pay payments on websites aren’t supported",
         "steps_title": "How it works",
         "flow": {
-          "pay": "Tap your iPhone to pay",
+          "pay": "Pay with Apple Pay",
           "send": "Integration sends details directly to Econumo",
           "privacy": "Econumo receives the card name, merchant, amount and currency",
-          "record": "Econumo records the payment in the account linked to your card"
+          "record": "Econumo saves the transaction"
         }
       },
-      "connected": "Connected",
       "disconnect": "Disconnect",
       "disconnect_full": "Disconnect Apple Wallet",
       "disconnect_modal": {
         "title": "Disconnect Apple Wallet?",
-        "question": "Card mappings and the review queue of this connection will be removed. Transactions you already imported stay."
-      },
-      "status": {
-        "last_tap": "Last tap {when}",
-        "no_taps": "No taps yet",
-        "setting_up": "Setting up",
-        "step": "Step {n} of {total}: {title}"
+        "question": "The Apple Wallet integration will be removed from Econumo. Previously imported transactions will remain."
       },
       "setup": {
         "header": "Setup",
         "title": "Setup guide",
-        "progress": "{done} of {total} done"
+        "progress": "{done} of {total} done",
+        "reconfigure": "Configure again"
       },
       "steps": {
-        "hint_desktop": "Open this page on your iPhone to follow the steps there. On this device you can download the Shortcut and mark steps as done.",
+        "hint_desktop": "Open this page on your iPhone to download the Shortcut and mark completed steps manually.",
         "install": {
           "title": "Install the Shortcut",
           "text": "Open the file on your iPhone and tap Add Shortcut.",
@@ -563,7 +557,7 @@
         },
         "configure": {
           "title": "Connect the Shortcut",
-          "text": "Creates an access token and opens the econumo Shortcut with it. The Shortcut saves the server address and the token, then checks in with Econumo. Tap Always Allow on every prompt — the automation needs these permissions later.",
+          "text": "Generates an API token. The Shortcut saves the server address and token, then connects to Econumo. Tap Always Allow on every prompt — the automation will need these permissions.",
           "button": "Connect the Shortcut",
           "open": "Link Econumo",
           "waiting": "Waiting for the Shortcut to reach Econumo…",
@@ -576,19 +570,17 @@
         },
         "payment": {
           "title": "Make the first payment",
-          "text": "Pay with Apple Pay once — the iPhone can stay locked. When the automation asks, tap Run, then tap Always Allow on every prompt.",
+          "text": "Pay with Apple Pay once. Tap Run when the automation asks, then tap Always Allow on every prompt.",
           "waiting": "Waiting for the first payment…"
         },
         "immediate": {
           "title": "Switch the automation to Run Immediately",
-          "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt, from the lock screen too."
+          "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt."
         },
         "done": "Done",
-        "mark_done": "Mark as done",
-        "undo": "Mark as not done",
         "complete": "Setup complete"
       },
-      "same_named_cards": "Cards that share a name in Wallet arrive here as one card.",
+      "same_named_cards": "Cards with the same name in Wallet appear as one card.",
       "video": "Watch the setup video:",
       "video_title": "Setup video",
       "video_youtube": "Open on YouTube",

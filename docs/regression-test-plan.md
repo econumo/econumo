@@ -405,19 +405,22 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       YouTube is made before a video is opened; a non-YouTube link opens in
       a new window instead. With none configured the line is absent.
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
-      second device does not create a second source). Until the first tap the
-      status card reads "Setting up" with an amber dot and "Step N of 5:
-      <step>", there is no "Import history" row and no card section, and the setup guide
-      follows directly, open as a stepper: Install the Shortcut, Connect the Shortcut, Create the automation, Make the first payment,
+      second device does not create a second source). Until the first tap there
+      is no "Import history" row or card section. The setup guide appears
+      directly, without a status card, open as a stepper: Install the Shortcut, Connect the Shortcut, Create the automation, Make the first payment,
       Switch the automation to Run Immediately. "Disconnect Apple Wallet" (confirmation)
       removes the source, its cards, its queue and the hand ticks;
       already-imported transactions stay.
 - [ ] Stepper 📱: only the current step is open (numbered, purple ring); done
       steps show a purple check and later ones are greyed; when a step
       completes the next one opens by itself. Any step's title toggles its
-      instructions. Hand ticks ("Done", "Mark as done") survive a reload and
-      are per source and per device (a reconnect starts over); a hand-ticked
-      step offers "Mark as not done", a server-confirmed one does not. Ticks
+      instructions. Hand ticks ("Done") survive a reload and
+      are per source and per device (a reconnect starts over). There are no
+      per-step undo buttons. Configure again clears the entire checklist and
+      its temporary setup link, opens step 1, and survives reloads. Old payments
+      and check-ins do not complete the new setup: a fresh payment is required
+      for step 4, and step 5 remains disabled until it arrives. Card mappings
+      and transactions remain intact; a failed refresh leaves progress unchanged. Ticks
       from the older guides carry over (both install steps → step 1, the
       run-once step → step 2).
 - [ ] Step 1 (button label in the shortcut's exact lower-case name,
@@ -441,7 +444,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       seconds (at once when switching back to the app), with its
       `account is required` check-in removed from the Failed imports section.
       "Configure manually" opens `https://econumo.com/docs/user-guide/apple-wallet`
-      in a new tab; "Mark as done" completes the step by hand.
+      in a new tab; "Done" completes the step by hand.
 - [ ] Step 2 once done, iOS 📱: the step still offers "Connect the Shortcut"
       (outline style) with the note "Connecting again replaces the token the
       Shortcut uses now…"; tapping it revokes the old ingest token, mints a new
@@ -471,10 +474,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       Immediately) stays a hand tick 📱. Its Done button is disabled until
       step 4 completes; premature saved step-5 ticks are cleared. The button
       becomes enabled as soon as the first non-failed payment arrives.
-- [ ] Apple Wallet page layout once a tap has arrived 📱: a status card on top
-      ("Connected" + "Last tap …" as relative time) with an "Inbox" row
-      carrying the count of this source's queued and failed rows (no number
-      when that count is 0); then "Needs mapping" (unmapped cards outlined in
+- [ ] Apple Wallet page layout once a tap has arrived 📱: a standalone
+      "Import history" link, then "Needs mapping" (unmapped cards outlined in
       purple with a purple card tile, "N to review · <when>", Map and Ignore
       buttons), then "Cards" (mapped cards with the account's icon tile,
       "<card> → <account>", "N taps · <when>", Remap and Unmap buttons;
@@ -482,8 +483,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       button), the same-name footnote, a "Setup" section with one folded
       "Setup guide" row ("N of 5 done", or "Setup complete") that opens the
       stepper, and "Disconnect Apple Wallet" centered at the bottom.
-- [ ] Apple Wallet has no inbox of its own 📱: the status card shows no
-      "Inbox" row, `/settings/apple-wallet/inbox` is the not-found page, and
+- [ ] Apple Wallet shows no "Connected / Last tap" status block or "Inbox" row 📱.
+      `/settings/apple-wallet/inbox` is the not-found page, and
       Apple Wallet rows to review / failed / skipped appear in the main Inbox
       with every other source's.
 - [ ] Ingest with an `ingest`-scoped PAT: `POST /api/v1/import/ingest-apple-wallet-event`

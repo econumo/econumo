@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Automatycznie zapisuj płatności Apple Pay za pomocą skrótu na iPhonie",
+      "intro": "Automatycznie zapisuj transakcje Apple Pay za pomocą skrótu na iPhonie",
       "connect": "Skonfiguruj Apple Wallet",
       "connect_intro": {
         "needs_title": "Potrzebujesz",
@@ -530,32 +530,26 @@
         "online_not_imported": "Płatności Apple Pay na stronach internetowych nie są obsługiwane",
         "steps_title": "Jak to działa",
         "flow": {
-          "pay": "Zbliż iPhone’a, aby zapłacić",
+          "pay": "Zapłać za pomocą Apple Pay",
           "send": "Integracja wysyła dane bezpośrednio do Econumo",
           "privacy": "Econumo otrzymuje nazwę karty, sprzedawcę, kwotę i walutę",
-          "record": "Econumo zapisuje płatność na koncie powiązanym z Twoją kartą"
+          "record": "Econumo zapisuje transakcję"
         }
       },
-      "connected": "Połączono",
       "disconnect": "Rozłącz",
       "disconnect_full": "Rozłącz Apple Wallet",
       "disconnect_modal": {
         "title": "Rozłączyć Apple Wallet?",
-        "question": "Przypisania kart i kolejka do sprawdzenia tego połączenia zostaną usunięte. Zaimportowane już transakcje zostaną."
-      },
-      "status": {
-        "last_tap": "Ostatnia płatność {when}",
-        "no_taps": "Brak płatności",
-        "setting_up": "Konfiguracja",
-        "step": "Krok {n} z {total}: {title}"
+        "question": "Integracja z Apple Wallet zostanie usunięta z Econumo. Wcześniej zaimportowane transakcje pozostaną."
       },
       "setup": {
         "header": "Konfiguracja",
         "title": "Przewodnik konfiguracji",
-        "progress": "Gotowe {done} z {total}"
+        "progress": "Gotowe {done} z {total}",
+        "reconfigure": "Skonfiguruj ponownie"
       },
       "steps": {
-        "hint_desktop": "Otwórz tę stronę na iPhonie, aby wykonać kroki tam. Na tym urządzeniu możesz pobrać skrót i oznaczać kroki jako gotowe.",
+        "hint_desktop": "Otwórz tę stronę na iPhonie, aby pobrać skrót i ręcznie oznaczać ukończone kroki.",
         "install": {
           "title": "Zainstaluj skrót",
           "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”.",
@@ -563,7 +557,7 @@
         },
         "configure": {
           "title": "Połącz skrót",
-          "text": "Tworzy token dostępu i otwiera z nim econumo. Skrót zapisuje adres serwera i token, a potem łączy się z Econumo. Przy każdym pytaniu stuknij „Zawsze zezwalaj” — automatyzacja będzie potrzebować tych uprawnień.",
+          "text": "Generuje token API. Skrót zapisuje adres serwera i token, a potem łączy się z Econumo. Przy każdym pytaniu stuknij „Zawsze zezwalaj” — automatyzacja będzie potrzebować tych uprawnień.",
           "button": "Połącz skrót",
           "open": "Powiąż Econumo",
           "waiting": "Czekam, aż skrót dotrze do Econumo…",
@@ -576,19 +570,17 @@
         },
         "payment": {
           "title": "Wykonaj pierwszą płatność",
-          "text": "Zapłać raz przez Apple Pay — iPhone może pozostać zablokowany. Stuknij „Uruchom”, gdy automatyzacja o to poprosi, a potem przy każdym pytaniu „Zawsze zezwalaj”.",
+          "text": "Zapłać raz przez Apple Pay. Stuknij „Uruchom”, gdy automatyzacja o to poprosi, a potem przy każdym pytaniu „Zawsze zezwalaj”.",
           "waiting": "Czekam na pierwszą płatność…"
         },
         "immediate": {
           "title": "Przełącz automatyzację na „Uruchom natychmiast”",
-          "text": "W aplikacji Skróty otwórz automatyzację i zmień „Uruchom po potwierdzeniu” na „Uruchom natychmiast”. Od tej pory płatności są importowane bez pytania, także z ekranu blokady."
+          "text": "W aplikacji Skróty otwórz automatyzację i zmień „Uruchom po potwierdzeniu” na „Uruchom natychmiast”. Od tej pory płatności są importowane bez pytania."
         },
         "done": "Gotowe",
-        "mark_done": "Oznacz jako gotowe",
-        "undo": "Oznacz jako niegotowe",
         "complete": "Konfiguracja zakończona"
       },
-      "same_named_cards": "Karty o tej samej nazwie w Wallet trafiają tu jako jedna karta.",
+      "same_named_cards": "Karty o tej samej nazwie w Wallet są wyświetlane jako jedna karta.",
       "video": "Obejrzyj film o konfiguracji:",
       "video_title": "Film o konfiguracji",
       "video_youtube": "Otwórz w YouTube",

@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "使用 iPhone 快捷指令自动记录 Apple Pay 轻触付款",
+      "intro": "使用 iPhone 快捷指令自动记录 Apple Pay 交易",
       "connect": "设置 Apple Wallet",
       "connect_intro": {
         "needs_title": "你需要",
@@ -530,32 +530,26 @@
         "online_not_imported": "不支持网站上的 Apple Pay 付款",
         "steps_title": "工作原理",
         "flow": {
-          "pay": "用 iPhone 轻触付款",
+          "pay": "使用 Apple Pay 付款",
           "send": "集成将详情直接发送到 Econumo",
           "privacy": "Econumo 接收卡片名称、商家、金额和币种",
-          "record": "Econumo 将付款记录到与您的卡片关联的账户中"
+          "record": "Econumo 保存交易"
         }
       },
-      "connected": "已连接",
       "disconnect": "断开连接",
       "disconnect_full": "断开 Apple Wallet",
       "disconnect_modal": {
         "title": "断开 Apple Wallet？",
-        "question": "此连接的卡片映射和审核队列将被删除。已导入的交易会保留。"
-      },
-      "status": {
-        "last_tap": "最近一笔付款：{when}",
-        "no_taps": "暂无付款",
-        "setting_up": "正在设置",
-        "step": "第 {n}/{total} 步：{title}"
+        "question": "Apple Wallet 集成将从 Econumo 中移除。之前导入的交易会保留。"
       },
       "setup": {
         "header": "设置",
         "title": "设置指南",
-        "progress": "已完成 {done}/{total}"
+        "progress": "已完成 {done}/{total}",
+        "reconfigure": "重新配置"
       },
       "steps": {
-        "hint_desktop": "请在 iPhone 上打开此页面并在那里按步骤操作。在此设备上可以下载快捷指令并将步骤标记为完成。",
+        "hint_desktop": "请在 iPhone 上打开此页面，下载快捷指令并手动标记已完成的步骤。",
         "install": {
           "title": "安装快捷指令",
           "text": "在 iPhone 上打开该文件并点按“添加快捷指令”。",
@@ -563,7 +557,7 @@
         },
         "configure": {
           "title": "连接快捷指令",
-          "text": "创建访问令牌并用它打开 econumo。快捷指令会保存服务器地址和令牌，然后连接 Econumo。每次提示时都点按“始终允许”——自动化稍后需要这些权限。",
+          "text": "生成 API 令牌。快捷指令会保存服务器地址和令牌，然后连接 Econumo。每次提示时都点按“始终允许”——自动化需要这些权限。",
           "button": "连接快捷指令",
           "open": "关联 Econumo",
           "waiting": "正在等待快捷指令连接 Econumo…",
@@ -576,19 +570,17 @@
         },
         "payment": {
           "title": "完成第一笔付款",
-          "text": "用 Apple Pay 付款一次——iPhone 可以保持锁定。自动化询问时点按“运行”，然后在每个提示上都点按“始终允许”。",
+          "text": "用 Apple Pay 付款一次。自动化询问时点按“运行”，然后在每个提示上都点按“始终允许”。",
           "waiting": "正在等待第一笔付款…"
         },
         "immediate": {
           "title": "将自动化改为“立即运行”",
-          "text": "在“快捷指令”App 中打开该自动化，把“确认后运行”改为“立即运行”。此后付款会自动导入，无需确认，锁定屏幕上也可以。"
+          "text": "在“快捷指令”App 中打开该自动化，把“确认后运行”改为“立即运行”。此后付款会自动导入，无需确认。"
         },
         "done": "完成",
-        "mark_done": "标记为完成",
-        "undo": "标记为未完成",
         "complete": "设置完成"
       },
-      "same_named_cards": "Wallet 中同名的卡片在这里会显示为一张卡。",
+      "same_named_cards": "Wallet 中同名的卡片会显示为一张卡。",
       "video": "观看设置视频：",
       "video_title": "设置视频",
       "video_youtube": "在 YouTube 上打开",

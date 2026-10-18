@@ -83,10 +83,10 @@ it('before connecting it explains what is needed and how payments flow; connect 
   const preview = screen.getByRole('heading', { name: 'How it works' }).parentElement as HTMLElement
   const flow = within(preview).getAllByRole('listitem')
   expect(flow).toHaveLength(4)
-  expect(flow[0]).toHaveTextContent('Tap your iPhone to pay')
+  expect(flow[0]).toHaveTextContent('Pay with Apple Pay')
   expect(flow[1]).toHaveTextContent('Integration sends details directly to Econumo')
   expect(flow[2]).toHaveTextContent('Econumo receives the card name, merchant, amount and currency')
-  expect(flow[3]).toHaveTextContent('Econumo records the payment in the account linked to your card')
+  expect(flow[3]).toHaveTextContent('Econumo saves the transaction')
   await user.click(screen.getByRole('button', { name: 'Set up Apple Wallet' }))
   await waitFor(() => expect(body).toEqual({ provider: 'apple-wallet', name: 'iPhone' }))
 })
@@ -263,16 +263,59 @@ it('while the connect step is open the page watches for the shortcut: the "accou
   expect(stateOf('Create the automation')).toBe('current')
 })
 
-it('with nothing received the connect step keeps waiting and can be marked done by hand, then undone', async () => {
+it('Configure again clears manual progress and restarts the whole checklist', async () => {
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install']))
   const user = userEvent.setup()
   renderSetup(source)
   expect(await screen.findByRole('status')).toHaveTextContent('Waiting for the Shortcut to reach Econumo')
-  await user.click(screen.getByRole('button', { name: 'Mark as done' }))
+  await user.click(screen.getByRole('button', { name: 'Done' }))
   expect(stateOf('Connect the Shortcut')).toBe('done')
+  await user.click(screen.getByRole('button', { name: 'Configure again' }))
+  await waitFor(() => expect(stateOf('Install the Shortcut')).toBe('current'))
+  expect(stepToggle('Install the Shortcut')).toHaveAttribute('aria-expanded', 'true')
+  expect(stateOf('Connect the Shortcut')).toBe('todo')
+  expect(ticks()).toEqual([])
+  expect(screen.queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
+})
+
+it('Configure again clears the temporary setup link without minting or revoking tokens', async () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install']))
+  let creates = 0
+  let revokes = 0
+  server.use(
+    http.post('*/api/v1/user/create-personal-token', () => {
+      creates++
+      return HttpResponse.json({ success: true, message: '', data: minted })
+    }),
+    http.post('*/api/v1/user/revoke-personal-token', () => {
+      revokes++
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderSetup(source)
+  await user.click(connectButton())
+  expect(await screen.findByRole('link', { name: 'Link Econumo' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Configure again' }))
+  await waitFor(() => expect(stateOf('Install the Shortcut')).toBe('current'))
   await user.click(stepToggle('Connect the Shortcut'))
-  await user.click(screen.getByRole('button', { name: 'Mark as not done' }))
-  expect(stateOf('Connect the Shortcut')).toBe('current')
+  expect(screen.queryByRole('link', { name: 'Link Econumo' })).not.toBeInTheDocument()
+  expect(connectButton()).toBeInTheDocument()
+  expect(creates).toBe(1)
+  expect(revokes).toBe(0)
+})
+
+it('Configure again preserves progress if refreshing the connection fails', async () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure']))
+  const user = userEvent.setup()
+  renderSetup(source)
+  server.use(http.get('*/api/v1/import/get-source-list', () => HttpResponse.json({ success: false, message: 'Connection unavailable', errors: {} }, { status: 500 })))
+  await user.click(screen.getByRole('button', { name: 'Configure again' }))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Connection unavailable'))
+  expect(stateOf('Install the Shortcut')).toBe('done')
+  expect(stateOf('Connect the Shortcut')).toBe('done')
+  expect(stateOf('Create the automation')).toBe('current')
+  expect(ticks()).toEqual(['install', 'configure'])
 })
 
 it('ignores an old manual payment tick and keeps waiting when only failed events have arrived', async () => {
@@ -281,7 +324,6 @@ it('ignores an old manual payment tick and keeps waiting when only failed events
   expect(stateOf('Make the first payment')).toBe('current')
   expect(await screen.findByRole('status')).toHaveTextContent('Waiting for the first payment')
   const payment = within(step('Make the first payment'))
-  expect(payment.queryByRole('button', { name: 'Mark as done' })).not.toBeInTheDocument()
   expect(payment.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument()
   expect(payment.queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
 })
@@ -293,7 +335,7 @@ it('a mapped card without a received payment does not complete step 4', async ()
   await user.click(screen.getByRole('button', { name: /Setup guide/ }))
   expect(stateOf('Make the first payment')).toBe('current')
   expect(screen.getByRole('status')).toHaveTextContent('Waiting for the first payment')
-  expect(screen.queryByRole('button', { name: 'Mark as done' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument()
 })
 
 it.each([false, true])('step 5 requires the first payment (previously marked done: %s)', async (previouslyDone) => {
@@ -328,14 +370,18 @@ it.each(['mapped', 'unmapped', 'ignored'] as const)('the first payment on a %s c
   await user.click(screen.getByRole('button', { name: 'Switch the automation to Run Immediately' }))
   await user.click(screen.getByRole('button', { name: 'Done' }))
   expect(toggle).toHaveTextContent('Setup complete')
+  expect(screen.queryByText(/Open this page on your iPhone/)).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Configure again' })).toBeInTheDocument()
 })
 
 it('disconnect drops the hand ticks', async () => {
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install']))
+  localStorage.setItem('appleWalletSetupReset:s1', JSON.stringify({ tapCount: 0, failedEventIds: [], queuedLinkIds: [] }))
   server.use(http.post('*/api/v1/import/delete-source', () => HttpResponse.json({ success: true, message: '', data: {} })))
   const user = userEvent.setup()
   renderSetup(source)
   await user.click(screen.getByRole('button', { name: 'Disconnect Apple Wallet' }))
   await user.click(await screen.findByRole('button', { name: 'Disconnect' }))
   await waitFor(() => expect(localStorage.getItem('appleWalletSetup:s1')).toBeNull())
+  expect(localStorage.getItem('appleWalletSetupReset:s1')).toBeNull()
 })

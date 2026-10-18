@@ -16,6 +16,25 @@ const POLL_MS = 4000
 // Hand-ticked steps live per source in localStorage: the server knows nothing
 // about the phone-side steps, and a reconnect starts the list over.
 const ticksKey = (sourceId: string) => `appleWalletSetup:${sourceId}`
+const resetKey = (sourceId: string) => `appleWalletSetupReset:${sourceId}`
+
+interface ResetPoint {
+  tapCount: number
+  failedEventIds: string[]
+  queuedLinkIds: string[]
+}
+
+function readResetPoint(sourceId: string): ResetPoint | null {
+  const stored = getItem(resetKey(sourceId)) as Partial<ResetPoint> | null
+  if (!stored || !Number.isInteger(stored.tapCount) || (stored.tapCount ?? -1) < 0
+    || !Array.isArray(stored.failedEventIds) || !stored.failedEventIds.every((id) => typeof id === 'string')
+    || !Array.isArray(stored.queuedLinkIds) || !stored.queuedLinkIds.every((id) => typeof id === 'string')) {
+    return null
+  }
+  return stored as ResetPoint
+}
+
+const tapCount = (source: ImportSourceDto) => source.cards.reduce((total, card) => total + card.tapCount, 0)
 
 function readTicks(sourceId: string): StepId[] {
   const stored = getItem(ticksKey(sourceId))
@@ -37,16 +56,17 @@ function readTicks(sourceId: string): StepId[] {
 
 export function forgetSetupTicks(sourceId: string): void {
   removeItem(ticksKey(sourceId))
+  removeItem(resetKey(sourceId))
 }
 
 export interface WalletSetup {
   done: (id: StepId) => boolean
-  /** ticked by hand, so it can be unticked; server-confirmed steps cannot */
-  handTicked: (id: StepId) => boolean
   /** the first step not done yet, null once every step is */
   current: StepId | null
   doneCount: number
-  tick: (id: StepId, on: boolean) => void
+  tick: (id: StepId) => void
+  /** restart the checklist and wait for fresh server evidence */
+  reset: () => Promise<void>
   /** the Shortcuts link carrying the token minted on this page */
   configureLink: string | null
   setConfigureLink: (link: string | null) => void
@@ -57,7 +77,8 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
   const sources = useImportSources()
   const discardEvent = useDiscardImportEvent()
   const sourceId = source?.id ?? null
-  const paymentArrived = source?.cards.some((card) => card.tapCount > 0) ?? false
+  const [resetPoint, setResetPoint] = useState<ResetPoint | null>(() => sourceId ? readResetPoint(sourceId) : null)
+  const paymentArrived = source ? tapCount(source) > (resetPoint?.tapCount ?? 0) : false
   // Ignore an old Run Immediately tick saved before a payment was received.
   const [ticks, setTicks] = useState<StepId[]>(() => (sourceId ? readTicks(sourceId).filter((id) => id !== 'immediate' || paymentArrived) : []))
   const [configureLink, setConfigureLink] = useState<string | null>(null)
@@ -70,18 +91,41 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
   }, [sourceId, paymentArrived, ticks])
 
   const tick = useCallback(
-    (id: StepId, on: boolean) => {
-      if (!sourceId || id === 'payment' || (id === 'immediate' && on && !paymentArrived)) {
+    (id: StepId) => {
+      if (!sourceId || id === 'payment' || (id === 'immediate' && !paymentArrived)) {
         return
       }
       setTicks((prev) => {
-        const next = on ? STEPS.filter((s) => s === id || prev.includes(s)) : prev.filter((s) => s !== id)
+        const next = STEPS.filter((s) => s === id || prev.includes(s))
         setItem(ticksKey(sourceId), next)
         return next
       })
     },
     [sourceId, paymentArrived],
   )
+
+  const reset = async () => {
+    if (!sourceId) {
+      return
+    }
+    // Snapshot fresh server data so old payments/check-ins cannot immediately
+    // complete the restarted checklist. A failed refresh leaves it untouched.
+    const [latestSources, latestQueue] = await Promise.all([
+      sources.refetch({ throwOnError: true }),
+      queue.refetch({ throwOnError: true }),
+    ])
+    const latestSource = latestSources.data?.find((item) => item.id === sourceId)
+    const next: ResetPoint = {
+      tapCount: latestSource ? tapCount(latestSource) : 0,
+      failedEventIds: (latestQueue.data?.failed ?? []).filter((event) => event.sourceId === sourceId).map((event) => event.eventId),
+      queuedLinkIds: [...(latestQueue.data?.queued ?? []), ...(latestQueue.data?.skipped ?? [])].filter((event) => event.sourceId === sourceId).map((event) => event.linkId),
+    }
+    setItem(resetKey(sourceId), next)
+    setItem(ticksKey(sourceId), [])
+    setResetPoint(next)
+    setTicks([])
+    setConfigureLink(null)
+  }
 
   // A parsed payment creates a ledger row counted in tapCount; failed events
   // and card mappings without payments do not count. This proves every step
@@ -111,17 +155,17 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
       if (stopped) {
         return
       }
-      const tapped = (s.data ?? []).some((src) => src.id === sourceId && src.cards.some((card) => card.tapCount > 0))
+      const tapped = (s.data ?? []).some((src) => src.id === sourceId && tapCount(src) > (resetPoint?.tapCount ?? 0))
       if (current === 'configure') {
-        const failed = (q.data?.failed ?? []).filter((e) => e.sourceId === sourceId)
-        const queued = [...(q.data?.queued ?? []), ...(q.data?.skipped ?? [])].some((e) => e.sourceId === sourceId)
+        const failed = (q.data?.failed ?? []).filter((e) => e.sourceId === sourceId && !resetPoint?.failedEventIds.includes(e.eventId))
+        const queued = [...(q.data?.queued ?? []), ...(q.data?.skipped ?? [])].some((e) => e.sourceId === sourceId && !resetPoint?.queuedLinkIds.includes(e.linkId))
         for (const e of failed.filter((f) => f.error === NO_INPUT_ERROR)) {
           discard(e.eventId)
         }
         if (failed.length > 0 || queued || tapped) {
           stopped = true
           trackEvent(METRICS.IMPORT_SHORTCUT_CHECK, { step: 'configure', ok: true })
-          tick('configure', true)
+          tick('configure')
         }
       } else if (tapped) {
         stopped = true
@@ -137,14 +181,14 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [sourceId, current, refetchQueue, refetchSources, discard, tick])
+  }, [sourceId, current, refetchQueue, refetchSources, discard, tick, resetPoint])
 
   return {
     done,
-    handTicked: (id) => done(id) && ticks.includes(id) && !auto(id),
     current,
     doneCount: STEPS.filter(done).length,
     tick,
+    reset,
     configureLink,
     setConfigureLink,
   }

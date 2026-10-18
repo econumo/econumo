@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Registra automaticamente i pagamenti Apple Pay con un comando rapido per iPhone",
+      "intro": "Registra automaticamente le transazioni Apple Pay con un comando rapido per iPhone",
       "connect": "Configura Apple Wallet",
       "connect_intro": {
         "needs_title": "Ti servirà",
@@ -530,32 +530,26 @@
         "online_not_imported": "I pagamenti Apple Pay sui siti web non sono supportati",
         "steps_title": "Come funziona",
         "flow": {
-          "pay": "Avvicina l’iPhone per pagare",
+          "pay": "Paga con Apple Pay",
           "send": "L’integrazione invia i dettagli direttamente a Econumo",
           "privacy": "Econumo riceve il nome della carta, l’esercente, l’importo e la valuta",
-          "record": "Econumo registra il pagamento nel conto collegato alla tua carta"
+          "record": "Econumo salva la transazione"
         }
       },
-      "connected": "Connesso",
       "disconnect": "Disconnetti",
       "disconnect_full": "Disconnetti Apple Wallet",
       "disconnect_modal": {
         "title": "Disconnettere Apple Wallet?",
-        "question": "Le associazioni delle carte e la coda di revisione di questa connessione verranno rimosse. Le transazioni già importate restano."
-      },
-      "status": {
-        "last_tap": "Ultimo pagamento {when}",
-        "no_taps": "Ancora nessun pagamento",
-        "setting_up": "Configurazione in corso",
-        "step": "Passaggio {n} di {total}: {title}"
+        "question": "L’integrazione con Apple Wallet verrà rimossa da Econumo. Le transazioni già importate resteranno."
       },
       "setup": {
         "header": "Configurazione",
         "title": "Guida alla configurazione",
-        "progress": "{done} di {total} completati"
+        "progress": "{done} di {total} completati",
+        "reconfigure": "Configura di nuovo"
       },
       "steps": {
-        "hint_desktop": "Apri questa pagina sul tuo iPhone per seguire i passaggi lì. Su questo dispositivo puoi scaricare il comando rapido e segnare i passaggi come fatti.",
+        "hint_desktop": "Apri questa pagina sul tuo iPhone per scaricare il comando rapido e segnare manualmente i passaggi completati.",
         "install": {
           "title": "Installa il comando rapido",
           "text": "Apri il file sul tuo iPhone e tocca «Aggiungi comando rapido».",
@@ -563,7 +557,7 @@
         },
         "configure": {
           "title": "Collega il comando rapido",
-          "text": "Crea un token di accesso e apre econumo con esso. Il comando rapido salva l’indirizzo del server e il token, poi contatta Econumo. Tocca «Consenti sempre» a ogni richiesta: l’automazione avrà bisogno di questi permessi.",
+          "text": "Genera un token API. Il comando rapido salva l’indirizzo del server e il token, poi si collega a Econumo. Tocca «Consenti sempre» a ogni richiesta: l’automazione avrà bisogno di questi permessi.",
           "button": "Collega il comando rapido",
           "open": "Associa Econumo",
           "waiting": "In attesa che il comando rapido raggiunga Econumo…",
@@ -576,19 +570,17 @@
         },
         "payment": {
           "title": "Fai il primo pagamento",
-          "text": "Paga una volta con Apple Pay: l’iPhone può restare bloccato. Tocca «Esegui» quando l’automazione lo chiede, poi «Consenti sempre» a ogni richiesta.",
+          "text": "Paga una volta con Apple Pay. Tocca «Esegui» quando l’automazione lo chiede, poi «Consenti sempre» a ogni richiesta.",
           "waiting": "In attesa del primo pagamento…"
         },
         "immediate": {
           "title": "Imposta l’automazione su «Esegui subito»",
-          "text": "Nell’app Comandi rapidi apri l’automazione e cambia «Esegui dopo conferma» in «Esegui subito». Da quel momento i pagamenti vengono importati senza richieste, anche dalla schermata di blocco."
+          "text": "Nell’app Comandi rapidi apri l’automazione e cambia «Esegui dopo conferma» in «Esegui subito». Da quel momento i pagamenti vengono importati senza richieste."
         },
         "done": "Fatto",
-        "mark_done": "Segna come fatto",
-        "undo": "Segna come non fatto",
         "complete": "Configurazione completata"
       },
-      "same_named_cards": "Le carte con lo stesso nome in Wallet arrivano qui come un'unica carta.",
+      "same_named_cards": "Le carte con lo stesso nome in Wallet vengono mostrate come un’unica carta.",
       "video": "Guarda il video di configurazione:",
       "video_title": "Video di configurazione",
       "video_youtube": "Apri su YouTube",
