@@ -319,3 +319,15 @@ func (pgsqlQuerier) ListImportTransactionLinksByUser(ctx context.Context, db bac
 	}
 	return out, nil
 }
+
+func (pgsqlQuerier) ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error) {
+	rows, err := pgsqlgen.New(db).ListImportTransactionLinksIntoUserAccounts(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]linkRow, len(rows))
+	for i, row := range rows {
+		out[i] = linkRow(row)
+	}
+	return out, nil
+}

@@ -1356,7 +1356,10 @@ data unreadable. Most are also asserted by the test suite.
   conversion and before matching and beat every classify rule; the ledger row snapshots what was
   applied (`applied*` on `get-transaction-import-list`) and the SPA diffs a later edit against it
   to offer a rule; `apply-rule` backfills existing imports by run/source/all, skipping edited
-  rows unless `includeEdited`.
+  rows unless `includeEdited`. Rules belong to the account owner, not the importer: a card
+  mapped onto an account shared with its user is classified and skipped by the account
+  OWNER's rules (the transaction takes the owner's categories, payees, tags and labels), the
+  importer's own rules never apply there, and the owner's "all" apply reaches those rows.
 - **OAuth/OIDC auto-link and email verification**: a callback with a verified (or
   `ECONUMO_OIDC_TRUST_EMAIL`-trusted) email auto-links to an existing **passwordless**
   account by `lower(email)` (no matching identity yet) — no confirmation screen, since both

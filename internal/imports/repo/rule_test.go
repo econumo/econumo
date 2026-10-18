@@ -114,3 +114,27 @@ func TestLinkAppliedLabels_ReplaceAndList(t *testing.T) {
 		t.Fatalf("ListLinksByUser: %v %+v", err, all)
 	}
 }
+
+func TestListLinksIntoUserAccounts_OnlyOthersRowsOnTheUsersAccounts(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	owner := f.User(fixture.User{Email: "owner@example.test"})
+	other := f.User(fixture.User{Email: "other@example.test"})
+	ownersAcct := f.Account(fixture.Account{UserID: owner})
+	othersAcct := f.Account(fixture.Account{UserID: other})
+	ownerSrc := f.ImportSource(fixture.ImportSource{UserID: owner, Name: "owner phone"})
+	otherSrc := f.ImportSource(fixture.ImportSource{UserID: other, Name: "other phone"})
+	link := func(src, acct, ext string) string {
+		tx := f.Transaction(fixture.Transaction{UserID: other, AccountID: acct, Amount: "1"})
+		return f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: src, ExternalAccountID: "card", ExternalTransactionID: ext, TransactionID: tx, Status: model.ImportLinkStatusLinked, ExternalAmount: "1", ExternalPostedAt: time.Now()})
+	}
+	want := link(otherSrc, ownersAcct, "t1") // the connection's tap into the owner's account
+	link(ownerSrc, ownersAcct, "t2")         // the owner's own tap: ListLinksByUser covers it
+	link(otherSrc, othersAcct, "t3")         // the connection's tap into their own account
+	r := repo.NewRepo(db.Engine, db.TX)
+	got, err := r.ListLinksIntoUserAccounts(ctx, vo.MustParseId(owner))
+	if err != nil || len(got) != 1 || got[0].ID.String() != want {
+		t.Fatalf("got %+v err %v, want only %s", got, err, want)
+	}
+}

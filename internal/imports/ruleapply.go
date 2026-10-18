@@ -139,7 +139,8 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 // queued or skipped row has nothing to rewrite and a preview must not count it.
 // ownsAccount gates applying a rule's targets: they are the user's own
 // categories, payees, tags and labels, which a shared account's transactions
-// cannot carry (they take the owner's), so those rows are left out.
+// cannot carry (they take the owner's, and the owner's rules), so those rows
+// are left out.
 func (s *Service) ownsAccount(ctx context.Context, userID, accountID vo.Id) (bool, error) {
 	owner, err := s.accounts.AccountOwner(ctx, accountID)
 	if isNotFoundErr(err) {
@@ -176,6 +177,13 @@ func (s *Service) scopedLinks(ctx context.Context, userID vo.Id, scope, runID, s
 		links, err = s.repo.ListLinksBySource(ctx, src.ID)
 	default:
 		links, err = s.repo.ListLinksByUser(ctx, userID)
+		if err == nil {
+			// the user's rules also classify what others import into the
+			// user's accounts (see ruleBook), so "all" reaches those rows
+			var into []model.ImportTransactionLink
+			into, err = s.repo.ListLinksIntoUserAccounts(ctx, userID)
+			links = append(links, into...)
+		}
 	}
 	if err != nil {
 		return nil, err

@@ -119,26 +119,53 @@ func (rs ruleSet) classify(ev model.IngestEvent) model.ImportClassification {
 	return out
 }
 
-// loadRules reads the owner's rules once per request. Targets and labels
-// are filtered against the owner's current vocabulary so an id deleted
-// after the rule was saved never reaches CreateTransaction (which would
-// reject the whole import for one stale category).
-func (s *Service) loadRules(ctx context.Context, src *model.ImportSource) (ruleSet, error) {
-	rules, err := s.repo.ListRulesByUser(ctx, src.UserID)
+// ruleBook answers whose rules an event meets: those of the user who owns
+// the account it lands in. On the source user's own accounts that is the
+// source user; on an account shared with them it is the account's owner,
+// because the transaction takes the owner's categories, payees, tags and
+// labels, and only the owner's rules name those. The owner decides what is
+// skipped there too. Each owner's rules are read once per request.
+type ruleBook struct {
+	src     *model.ImportSource
+	byOwner map[vo.Id]ruleSet
+}
+
+// loadRules primes the book with the source user's own rules, the ones
+// nearly every event meets, so a read failure fails the request up front
+// (before a sync has a run row to leave behind) rather than mid-way.
+func (s *Service) loadRules(ctx context.Context, src *model.ImportSource) (*ruleBook, error) {
+	b := &ruleBook{src: src, byOwner: map[vo.Id]ruleSet{}}
+	if _, err := s.rulesFor(ctx, b, src.UserID); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+// rulesFor reads an owner's rules, keeping the ones that apply to this
+// source (an owner's source-scoped rule never meets another user's source).
+// Targets and labels are filtered against the owner's current vocabulary so
+// an id deleted after the rule was saved never reaches CreateTransaction
+// (which would reject the whole import for one stale category).
+func (s *Service) rulesFor(ctx context.Context, b *ruleBook, owner vo.Id) (ruleSet, error) {
+	if rs, ok := b.byOwner[owner]; ok {
+		return rs, nil
+	}
+	rules, err := s.repo.ListRulesByUser(ctx, owner)
 	if err != nil {
 		return ruleSet{}, err
 	}
-	if len(rules) == 0 {
-		return ruleSet{}, nil
+	if len(rules) > 0 {
+		own, err := s.ownedEntities(ctx, owner)
+		if err != nil {
+			return ruleSet{}, err
+		}
+		for i := range rules {
+			filterRuleTargets(&rules[i], own)
+		}
 	}
-	own, err := s.ownedEntities(ctx, src.UserID)
-	if err != nil {
-		return ruleSet{}, err
-	}
-	for i := range rules {
-		filterRuleTargets(&rules[i], own)
-	}
-	return newRuleSet(rules, src.ID), nil
+	rs := newRuleSet(rules, b.src.ID)
+	b.byOwner[owner] = rs
+	return rs, nil
 }
 
 // filterRuleTargets drops every target id the owner no longer has, so a

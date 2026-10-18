@@ -67,4 +67,5 @@ type Repository interface {
 	ListLinkAppliedLabels(ctx context.Context, linkID vo.Id) ([]vo.Id, error)
 	// scope=all for preview/apply
 	ListLinksByUser(ctx context.Context, userID vo.Id) ([]model.ImportTransactionLink, error)
+	ListLinksIntoUserAccounts(ctx context.Context, userID vo.Id) ([]model.ImportTransactionLink, error)
 }

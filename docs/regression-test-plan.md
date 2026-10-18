@@ -467,12 +467,18 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       imported transactions appear on the account with the glyph; a same-amount
       hand-entered transaction within ±3 days is adopted (no duplicate) and shows
       the provenance card.
-- [ ] A card mapped to an account shared with me imports its taps onto that
-      account without categories, payees, tags or labels (my import rules
-      don't apply there; the owner's categories do), and applying a classify
-      rule leaves those rows untouched. When the owner revokes the share, new
-      taps queue in the Inbox with "No access to the account" until the card
-      is remapped.
+- [ ] A card mapped to an account shared with me (two users, A shares "Joint"
+      with B as user): B's taps onto Joint are classified by A's import rules
+      with A's categories, payees, tags and labels, and A's skip rules skip
+      them; B's own rules (classify or skip) never apply there, and with no
+      matching rule of A's the tap imports unclassified. Mapping a card with
+      queued taps onto Joint replays them through A's rules too. B's Import
+      rules page lists only B's rules; editing an imported transaction on
+      Joint (changing its category) offers no "Create an import rule" prompt.
+      A creating a rule from the prompt and choosing "Apply to all imports"
+      also updates B's matching taps on Joint; B applying a rule leaves rows
+      on Joint untouched. When the owner revokes the share, new taps queue in
+      the Inbox with "No access to the account" until the card is remapped.
 - [ ] A new card whose first taps were all in a foreign currency (USD taps →
       CAD account) maps without error; its queued taps import converted at the
       day's rate (a tap with no stored rate stays queued), and the provenance

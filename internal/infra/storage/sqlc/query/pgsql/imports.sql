@@ -253,3 +253,15 @@ FROM import_transaction_links l
 JOIN import_sources s ON s.id = l.source_id
 WHERE s.user_id = $1
 ORDER BY l.imported_at, l.id;
+
+-- Rows other users imported into accounts the user owns (a card mapped onto
+-- a shared account): the owner's rules classify them, so applying one of
+-- those rules reaches them too.
+-- name: ListImportTransactionLinksIntoUserAccounts :many
+SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at
+FROM import_transaction_links l
+JOIN import_sources s ON s.id = l.source_id
+JOIN transactions t ON t.id = l.transaction_id
+JOIN accounts a ON a.id = t.account_id
+WHERE a.user_id = $1 AND s.user_id <> a.user_id
+ORDER BY l.imported_at, l.id;

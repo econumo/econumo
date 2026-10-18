@@ -210,3 +210,7 @@ func (sqliteQuerier) ListImportLinkAppliedLabels(ctx context.Context, db backend
 func (sqliteQuerier) ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error) {
 	return sqlitegen.New(db).ListImportTransactionLinksByUser(ctx, userID)
 }
+
+func (sqliteQuerier) ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error) {
+	return sqlitegen.New(db).ListImportTransactionLinksIntoUserAccounts(ctx, userID)
+}

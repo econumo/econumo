@@ -1275,6 +1275,61 @@ func (q *Queries) ListImportTransactionLinksByUser(ctx context.Context, userID s
 	return items, nil
 }
 
+const listImportTransactionLinksIntoUserAccounts = `-- name: ListImportTransactionLinksIntoUserAccounts :many
+SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at
+FROM import_transaction_links l
+JOIN import_sources s ON s.id = l.source_id
+JOIN transactions t ON t.id = l.transaction_id
+JOIN accounts a ON a.id = t.account_id
+WHERE a.user_id = $1 AND s.user_id <> a.user_id
+ORDER BY l.imported_at, l.id
+`
+
+// Rows other users imported into accounts the user owns (a card mapped onto
+// a shared account): the owner's rules classify them, so applying one of
+// those rules reaches them too.
+func (q *Queries) ListImportTransactionLinksIntoUserAccounts(ctx context.Context, userID string) ([]ImportTransactionLink, error) {
+	rows, err := q.db.QueryContext(ctx, listImportTransactionLinksIntoUserAccounts, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportTransactionLink{}
+	for rows.Next() {
+		var i ImportTransactionLink
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceID,
+			&i.RunID,
+			&i.EventID,
+			&i.ExternalAccountID,
+			&i.ExternalTransactionID,
+			&i.TransactionID,
+			&i.Status,
+			&i.ExternalPayee,
+			&i.ExternalDescription,
+			&i.ExternalAmount,
+			&i.ExternalCurrency,
+			&i.ExternalPostedAt,
+			&i.AppliedCategoryID,
+			&i.AppliedPayeeID,
+			&i.AppliedTagID,
+			&i.AppliedRuleID,
+			&i.ImportedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateImportAccountLink = `-- name: UpdateImportAccountLink :exec
 UPDATE import_account_links SET external_currency = $1, account_id = $2, mode = $3, updated_at = $4 WHERE id = $5
 `

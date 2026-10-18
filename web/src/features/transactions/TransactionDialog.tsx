@@ -217,7 +217,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         }
       } else {
         await updateTransaction.mutateAsync(payload)
-        const link = latestImportLink(importLinks)
+        // An account shared with the user takes its owner's rules, which the
+        // user cannot write: no prompt there.
+        const link = account?.owner.id === user?.id ? latestImportLink(importLinks) : undefined
         // params.transaction is the row as it was BEFORE this edit: only a
         // classification THIS save changed may prompt for a rule
         const diff = link ? ruleDiff(payload, link, params.transaction ?? null) : null

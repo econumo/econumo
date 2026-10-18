@@ -103,6 +103,7 @@ type querier interface {
 	InsertImportLinkAppliedLabel(ctx context.Context, db backend.DBTX, p insertLinkAppliedParams) error
 	ListImportLinkAppliedLabels(ctx context.Context, db backend.DBTX, linkID string) ([]linkAppliedLabelRow, error)
 	ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
+	ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
 }
 
 type Repo struct {
