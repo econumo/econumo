@@ -177,7 +177,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   │                          client-supplied operation ids on create endpoints
 │   │   ├── auth/ ................ password hashing + AES email encryption
 │   │   ├── clock/ ................ time source abstraction
-│   │   ├── ai/ .................. OpenAI-compatible chat-completions client (rule suggestions); imports nothing internal
+│   │   ├── ai/ .................. OpenAI-compatible / Anthropic Messages client (rule suggestions); imports nothing internal
 │   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
 │   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
 │   │                              distinct from the repo-root web/, the React SPA): middleware, router,
@@ -205,7 +205,7 @@ root package holds no provider-specific code: each provider is a subpackage —
 `EventParser` and `Provider` registries in `internal/server/server.go` (a new
 provider = one subpackage + one registration line). Rules (stage 4) live in
 the root package (`rules.go` matcher, `rule_*.go` use cases) and consult an
-optional `Completer` (`internal/infra/ai`, an OpenAI-compatible chat client)
+optional `Completer` (`internal/infra/ai`, an OpenAI-compatible / Anthropic Messages client)
 for `suggest-rules` — `internal/imports` never imports `internal/infra/ai`;
 the concrete client is injected in `internal/server`. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
@@ -786,6 +786,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   is optional for local servers (`openai://localhost:11434?model=llama3.1`). Unset (default) =
   disabled: the endpoint returns 400 `import.ai_disabled` and the SPA hides the action. A bad
   scheme/missing host/missing `model` fails at boot.
+  `anthropic://<api-key>@<host>[:port][/prefix]?model=<model>` uses Anthropic's native
+  Messages API instead (e.g. `anthropic://<api-key>@api.anthropic.com?model=claude-sonnet-4-6`).
+  It posts to `/messages` under the base prefix (default `/v1`), sends `x-api-key` and
+  `anthropic-version: 2023-06-01`, and uses an 8192-token output budget. Custom prefixes,
+  keyless local gateways, loopback HTTP, and `?insecure=true` work the same way as for OpenAI.
+  Text blocks are combined; incomplete or refused replies fail as `import.ai_unavailable`.
   `econumo://<gateway-host>[:port][/prefix]?model=<model>` routes through an econumo AI gateway
   instead. It carries no key: each call's bearer is a 5-minute `econumo-ai:v1` token for the
   requesting user, signed with `ECONUMO_ADMIN_TOKEN` (required with this scheme; boot fails

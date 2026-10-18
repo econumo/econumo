@@ -64,21 +64,126 @@ func TestComplete_KeylessSendsNoAuthorization(t *testing.T) {
 	}
 }
 
+func TestComplete_AnthropicPostsMessagesAndReturnsTextBlocks(t *testing.T) {
+	for _, tc := range []struct {
+		name, prefix, key, system string
+	}{
+		{"hosted", "/v1", "sk-ant-test", "SYS"},
+		{"gateway", "/custom/anthropic/v1/", "gateway-key", "SYS"},
+		{"keyless without system", "/v1", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost || r.URL.Path != strings.TrimRight(tc.prefix, "/")+"/messages" {
+					t.Errorf("request = %s %s", r.Method, r.URL.Path)
+				}
+				if r.Header.Get("x-api-key") != tc.key || r.Header.Get("Authorization") != "" {
+					t.Error("Anthropic must use x-api-key, without a bearer")
+				}
+				if tc.key == "" && len(r.Header.Values("x-api-key")) > 0 {
+					t.Error("keyless gateway must not receive an empty x-api-key header")
+				}
+				if r.Header.Get("anthropic-version") != "2023-06-01" || r.Header.Get("Content-Type") != "application/json" {
+					t.Errorf("headers = %v", r.Header)
+				}
+				var body map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Error(err)
+					return
+				}
+				if body["model"] != "claude-sonnet-4-6" || body["max_tokens"] != float64(8192) {
+					t.Errorf("model/budget = %v", body)
+				}
+				if tc.system != "" && body["system"] != tc.system {
+					t.Errorf("system = %v", body["system"])
+				}
+				if tc.system == "" && body["system"] != nil {
+					t.Error("empty system must be omitted")
+				}
+				msgs, _ := body["messages"].([]any)
+				if len(msgs) != 1 {
+					t.Errorf("messages = %v", msgs)
+				} else if msg, _ := msgs[0].(map[string]any); msg["role"] != "user" || msg["content"] != "USER" {
+					t.Errorf("user message = %v", msg)
+				}
+				for _, field := range []string{"temperature", "response_format", "tools", "stream"} {
+					if _, has := body[field]; has {
+						t.Errorf("unexpected %s", field)
+					}
+				}
+				_, _ = io.WriteString(w, `{"content":[{"type":"thinking","thinking":"private","text":"ignore"},{"type":"text","text":"{\"rules\":"},{"type":"text","text":"[]}"}],"stop_reason":"end_turn"}`)
+			}))
+			defer srv.Close()
+			c := New(Config{Dialect: "anthropic", Endpoint: srv.URL + tc.prefix, APIKey: tc.key, Model: "claude-sonnet-4-6"})
+			out, err := c.Complete(context.Background(), "user-1", tc.system, "USER")
+			if err != nil || out != `{"rules":[]}` {
+				t.Fatalf("content = %q, err = %v", out, err)
+			}
+		})
+	}
+}
+
+func TestComplete_AnthropicRejectsInvalidOrIncompleteReplies(t *testing.T) {
+	for _, body := range []string{
+		`not json sk-SECRET`,
+		`{"content":[]}`,
+		`{"choices":[{"message":{"content":"wrong API"}}]}`,
+		`{"content":[{"type":"thinking","thinking":"sk-SECRET"}]}`,
+		`{"content":[{"type":"text","text":"  "}]}`,
+		`{"content":[{"type":"text","text":42}]}`,
+		`{"content":[{"type":"text","text":"sk-SECRET"}],"stop_reason":"max_tokens"}`,
+		`{"content":[{"type":"text","text":"sk-SECRET"}],"stop_reason":"refusal"}`,
+		`{"content":[{"type":"text","text":"sk-SECRET"}],"stop_reason":"tool_use"}`,
+		`{"content":[{"type":"text","text":"sk-SECRET"}],"stop_reason":"pause_turn"}`,
+		`{"content":[{"type":"text","text":"sk-SECRET"}],"stop_reason":"model_context_window_exceeded"}`,
+	} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = io.WriteString(w, body)
+		}))
+		out, err := New(Config{Dialect: "anthropic", Endpoint: srv.URL, APIKey: "sk-SECRET", Model: "m"}).Complete(context.Background(), "u", "s", "u")
+		srv.Close()
+		if err == nil || out != "" {
+			t.Fatalf("body %q: content=%q err=%v", body, out, err)
+		}
+		if strings.Contains(err.Error(), "SECRET") {
+			t.Fatalf("error leaks response body or key: %v", err)
+		}
+	}
+}
+
+func TestComplete_AnthropicDoesNotForwardKeyOnRedirect(t *testing.T) {
+	forwarded := false
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		forwarded = true
+	}))
+	defer target.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusTemporaryRedirect)
+	}))
+	defer srv.Close()
+	_, err := New(Config{Dialect: "anthropic", Endpoint: srv.URL, APIKey: "sk-test", Model: "m"}).Complete(context.Background(), "u", "s", "u")
+	if forwarded || err == nil || !strings.Contains(err.Error(), "307") {
+		t.Fatalf("forwarded=%v err=%v", forwarded, err)
+	}
+}
+
 func TestComplete_ErrorsNeverCarryTheBodyOrKey(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = io.WriteString(w, `{"error":{"message":"bad key sk-test leaked"}}`)
 	}))
 	defer srv.Close()
-	_, err := New(Config{Endpoint: srv.URL, APIKey: "sk-test", Model: "m"}).Complete(context.Background(), "user-1", "s", "u")
-	if err == nil {
-		t.Fatal("expected an error on 401")
-	}
-	if strings.Contains(err.Error(), "sk-test") || strings.Contains(err.Error(), "leaked") {
-		t.Fatalf("error leaks response body or key: %v", err)
-	}
-	if !strings.Contains(err.Error(), "401") {
-		t.Fatalf("error should name the status: %v", err)
+	for _, dialect := range []string{"", "anthropic"} {
+		_, err := New(Config{Dialect: dialect, Endpoint: srv.URL, APIKey: "sk-test", Model: "m"}).Complete(context.Background(), "user-1", "s", "u")
+		if err == nil {
+			t.Fatal("expected an error on 401")
+		}
+		if strings.Contains(err.Error(), "sk-test") || strings.Contains(err.Error(), "leaked") {
+			t.Fatalf("error leaks response body or key: %v", err)
+		}
+		if !strings.Contains(err.Error(), "401") {
+			t.Fatalf("error should name the status: %v", err)
+		}
 	}
 }
 
