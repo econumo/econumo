@@ -3,6 +3,13 @@
 // except ImportResult which is the import-transaction-list response body).
 package model
 
+import (
+	"strings"
+	"unicode/utf8"
+
+	"github.com/econumo/econumo/internal/shared/vo"
+)
+
 // ExportAccount is one accessible account in the CSV export universe: id,
 // name, and currency code.
 type ExportAccount struct {
@@ -76,4 +83,44 @@ type ImportResult struct {
 	Imported int              `json:"imported"`
 	Skipped  int              `json:"skipped"`
 	Errors   map[string][]int `json:"errors"`
+}
+
+// MismatchedCategory is a transaction or recurring template whose category is
+// of the other kind (an expense category on income or the reverse), as the
+// category-type migration finds it.
+type MismatchedCategory struct {
+	ID             vo.Id
+	CategoryName   string
+	CategoryIncome bool
+	OwnerLanguage  string
+}
+
+// MaxDescriptionLength is the transactions/recurring description column's
+// width (VARCHAR(255) on PostgreSQL, which counts characters).
+const MaxDescriptionLength = 255
+
+// AppendNote adds note on its own line under desc, within max characters.
+// The note is kept whole: when both do not fit, desc is shortened (ending in
+// an ellipsis) to make room.
+func AppendNote(desc, note string, max int) string {
+	desc = strings.TrimRight(desc, " \t\r\n")
+	note = truncateRunes(note, max)
+	if desc == "" {
+		return note
+	}
+	room := max - utf8.RuneCountInString(note) - 1
+	if room <= 0 {
+		return note
+	}
+	if utf8.RuneCountInString(desc) > room {
+		desc = string([]rune(desc)[:room-1]) + "…"
+	}
+	return desc + "\n" + note
+}
+
+func truncateRunes(s string, max int) string {
+	if utf8.RuneCountInString(s) <= max {
+		return s
+	}
+	return string([]rune(s)[:max])
 }

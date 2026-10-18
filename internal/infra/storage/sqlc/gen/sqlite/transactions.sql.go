@@ -125,6 +125,54 @@ func (q *Queries) ListTransactionsByAccount(ctx context.Context, arg ListTransac
 	return items, nil
 }
 
+const listTransactionsWithMismatchedCategory = `-- name: ListTransactionsWithMismatchedCategory :many
+SELECT t.id, c.name AS category_name, c.type AS category_type, u.language AS owner_language
+FROM transactions t
+JOIN categories c ON c.id = t.category_id
+JOIN accounts a ON a.id = t.account_id
+JOIN users u ON u.id = a.user_id
+WHERE t.type IN (0, 1) AND t.type <> c.type
+ORDER BY t.id
+`
+
+type ListTransactionsWithMismatchedCategoryRow struct {
+	ID            string
+	CategoryName  string
+	CategoryType  int16
+	OwnerLanguage string
+}
+
+// Income transactions carrying an expense category and the reverse, with the
+// category's name and kind and the account owner's language (the
+// category-type migration notes the removal in the owner's language).
+func (q *Queries) ListTransactionsWithMismatchedCategory(ctx context.Context) ([]ListTransactionsWithMismatchedCategoryRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTransactionsWithMismatchedCategory)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTransactionsWithMismatchedCategoryRow{}
+	for rows.Next() {
+		var i ListTransactionsWithMismatchedCategoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CategoryName,
+			&i.CategoryType,
+			&i.OwnerLanguage,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertTransaction = `-- name: UpsertTransaction :exec
 INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

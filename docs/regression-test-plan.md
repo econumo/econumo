@@ -354,6 +354,15 @@ navigation (single-pane vs sidebar).
       category, and so does creating/editing a recurring template that way. An
       older transaction already stored with a mismatched category still saves
       when only its notes/amount/date change.
+- [ ] Upgrade with mismatched data (an income transaction on an expense
+      category, an expense on an income category, the same on a recurring
+      template): after the first boot, those rows have no category and their
+      notes end with a line in the account owner's language, e.g. "Category
+      “Food” removed: an expense category can't classify income." (a long
+      note is shortened with "…" so the line fits). Matching rows and
+      transfers are unchanged; an open app shows the change after a sync
+      without "Clear cache and reload"; running
+      `econumo migration:remove-mismatched-categories` again changes nothing.
 - [ ] **CSV export**: multi-select accounts, select-all/deselect-all; exported
       file contains the expected rows/columns and respects the account choice.
 

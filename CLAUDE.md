@@ -977,6 +977,7 @@ data:import-sqlite [--force] <sqlite-path>
 migration:zero-deleted-accounts
 migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
+migration:remove-mismatched-categories
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -1018,6 +1019,14 @@ the live schema, skips `schema_migrations` (the instance id's anchor), parses
 each value with the exact driver layout and leaves anything unparseable as
 stored; idempotent, a no-op on PostgreSQL, and invoked automatically at boot as
 migration step `20260915000001`.
+
+`migration:remove-mismatched-categories` clears the category from every income
+transaction/recurring template carrying an expense category and every expense carrying an
+income one (rows written before `checkReferences` refused the mismatch), and appends a
+note to the description in the account owner's language (`transactions.category_removed.*`,
+kept within the 255-character column by shortening the old text, never the note). Saves go
+through the repositories, so the account's `transactions_revision` moves and synced clients
+refetch. Idempotent; invoked automatically at boot as migration step `20261017000000`.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.

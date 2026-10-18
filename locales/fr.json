@@ -449,6 +449,10 @@
         "select_all": "Tout sélectionner",
         "deselect_all": "Tout désélectionner"
       }
+    },
+    "category_removed": {
+      "expense": "Catégorie « {name} » retirée : une catégorie de dépense ne peut pas classer un revenu.",
+      "income": "Catégorie « {name} » retirée : une catégorie de revenu ne peut pas classer une dépense."
     }
   },
   "recurring": {

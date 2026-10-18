@@ -538,12 +538,17 @@ type Querier interface {
 	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	ListRecurringWithMismatchedCategory(ctx context.Context) ([]ListRecurringWithMismatchedCategoryRow, error)
 	// The owner's tags ordered by sort key; used by move-tag (load,
 	// place the moved row, save it) and as the basis for the returned list.
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
 	// Transactions on an account (as source or recipient), newest first; id is the
 	// stable tie-break so row order is deterministic across engines.
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error)
+	// Income transactions carrying an expense category and the reverse, with the
+	// category's name and kind and the account owner's language (the
+	// category-type migration notes the removal in the owner's language).
+	ListTransactionsWithMismatchedCategory(ctx context.Context) ([]ListTransactionsWithMismatchedCategoryRow, error)
 	ListUnrevokedOAuthGrants(ctx context.Context, userID string) ([]ListUnrevokedOAuthGrantsRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	// Ordered by id so the backfill is deterministic across engines and reruns.

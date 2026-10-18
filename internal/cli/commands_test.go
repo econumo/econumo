@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite" // register the pure-Go sqlite driver for tests
@@ -509,5 +510,89 @@ func TestFreshDatabaseMigratesWithCommandSteps(t *testing.T) {
 	}
 	if err := migrate.Run(ctx, c.db, runnerMigs, migrate.WithCommandRunner(MigrationCommandRunner(c.cfg, c.db))); err != nil {
 		t.Fatalf("fresh boot migration: %v", err)
+	}
+}
+
+// TestMigrationRemoveMismatchedCategories drives the category-type cleanup end
+// to end: an income transaction on an expense category and an expense on an
+// income category lose the category and gain a note in the owner's language
+// (Russian here), a matching row and a transfer are untouched, a recurring
+// template is cleaned the same way, the account's transactions revision moves
+// so synced clients refetch, and a second run changes nothing.
+func TestMigrationRemoveMismatchedCategories(t *testing.T) {
+	cliEnv(t)
+	ctx := context.Background()
+	c, err := newContainer(ctx)
+	if err != nil {
+		t.Fatalf("container: %v", err)
+	}
+	defer c.Close()
+
+	userID, accountID, otherAccount := vo.NewId().String(), vo.NewId().String(), vo.NewId().String()
+	food, salary := vo.NewId().String(), vo.NewId().String()
+	refund, spent, ok, transfer, rt := vo.NewId().String(), vo.NewId().String(), vo.NewId().String(), vo.NewId().String(), vo.NewId().String()
+	mustExec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := c.db.ExecContext(ctx, q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	mustExec(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, language, created_at, updated_at) VALUES (?,?,?,'U','','x','','ru','2026-01-01 00:00:00','2026-01-01 00:00:00')`, userID, userID, userID+"@e.test")
+	for _, a := range []string{accountID, otherAccount} {
+		mustExec(`INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?,'dffc2a06-6f29-4704-8575-31709adee926',?,'A',2,'wallet',0,'2026-01-01 00:00:00','2026-01-01 00:00:00')`, a, userID)
+	}
+	mustExec(`INSERT INTO categories (id, user_id, name, type, icon, created_at, updated_at) VALUES (?,?,'Еда',0,'i','2026-01-01 00:00:00','2026-01-01 00:00:00')`, food, userID)
+	mustExec(`INSERT INTO categories (id, user_id, name, type, icon, created_at, updated_at) VALUES (?,?,'Зарплата',1,'i','2026-01-01 00:00:00','2026-01-01 00:00:00')`, salary, userID)
+	tx := func(id string, typ int, cat any, desc, recipient any) {
+		mustExec(`INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, description, type, amount, spent_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,5,'2026-01-10 00:00:00','2026-01-10 00:00:00','2026-01-10 00:00:00')`, id, userID, accountID, recipient, cat, desc, typ)
+	}
+	tx(refund, 1, food, "возврат", nil)
+	tx(spent, 0, salary, "", nil)
+	tx(ok, 0, food, "обед", nil)
+	tx(transfer, 2, nil, "", otherAccount)
+	mustExec(`INSERT INTO recurring_transactions (id, user_id, account_id, category_id, type, amount, description, schedule, next_payment_at, scheduled_day, created_at, updated_at) VALUES (?,?,?,?,1,5,'',  'monthly','2026-02-01 00:00:00',1,'2026-01-01 00:00:00','2026-01-01 00:00:00')`, rt, userID, accountID, food)
+	revision := func() int {
+		var r int
+		if err := c.db.QueryRowContext(ctx, `SELECT transactions_revision FROM accounts WHERE id = ?`, accountID).Scan(&r); err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+	before := revision()
+
+	if code := Run([]string{"migration:remove-mismatched-categories"}); code != 0 {
+		t.Fatalf("exit code %d", code)
+	}
+	row := func(table, id string) (cat sql.NullString, desc string) {
+		if err := c.db.QueryRowContext(ctx, `SELECT category_id, description FROM `+table+` WHERE id = ?`, id).Scan(&cat, &desc); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	if cat, desc := row("transactions", refund); cat.Valid || desc != "возврат\nКатегория «Еда» удалена: категория расходов не может относиться к доходу." {
+		t.Errorf("income on an expense category: %v %q", cat, desc)
+	}
+	if cat, desc := row("transactions", spent); cat.Valid || desc != "Категория «Зарплата» удалена: категория доходов не может относиться к расходу." {
+		t.Errorf("expense on an income category: %v %q", cat, desc)
+	}
+	if cat, desc := row("transactions", ok); !cat.Valid || cat.String != food || desc != "обед" {
+		t.Errorf("a matching row is untouched: %v %q", cat, desc)
+	}
+	if cat, desc := row("recurring_transactions", rt); cat.Valid || desc != "Категория «Еда» удалена: категория расходов не может относиться к доходу." {
+		t.Errorf("template: %v %q", cat, desc)
+	}
+	if after := revision(); after <= before {
+		t.Errorf("transactions revision must move: %d -> %d", before, after)
+	}
+
+	moved := revision()
+	if code := Run([]string{"migration:remove-mismatched-categories"}); code != 0 {
+		t.Fatalf("second run exit code %d", code)
+	}
+	if _, desc := row("transactions", refund); strings.Count(desc, "удалена") != 1 {
+		t.Errorf("a second run must not note again: %q", desc)
+	}
+	if revision() != moved {
+		t.Error("a second run must not touch any row")
 	}
 }

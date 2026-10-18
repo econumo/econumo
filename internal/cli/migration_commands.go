@@ -9,6 +9,8 @@ import (
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/sqlite"
+	apprecurring "github.com/econumo/econumo/internal/recurring"
+	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
 
 // migrationCommands are data migrations the boot runner invokes as command
@@ -55,6 +57,22 @@ func migrationCommands() []command {
 				}
 				fmt.Printf("normalized %d datetime value(s) across %d column(s); left %d unparseable value(s) unchanged\n",
 					report.Rewritten, report.Columns, report.Unparseable)
+				return nil
+			},
+		},
+		{
+			name:    "migration:remove-mismatched-categories",
+			summary: "clear an expense category from income (and an income category from expenses) on transactions and recurring templates, noting each removal in the description (idempotent)",
+			run: func(ctx context.Context, c *container, args []string) error {
+				n, err := apptransaction.RemoveMismatchedCategories(ctx, c.transactions, c.txm, c.clk)
+				if err != nil {
+					return err
+				}
+				m, err := apprecurring.RemoveMismatchedCategories(ctx, c.recurring, c.txm, c.clk, apptransaction.CategoryRemovedNote)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("removed the category from %d transaction(s) and %d recurring template(s)\n", n, m)
 				return nil
 			},
 		},

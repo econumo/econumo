@@ -109,6 +109,9 @@ func (r *stubImportRepo) GetByID(ctx context.Context, id vo.Id) (*model.Transact
 	return nil, nil
 }
 func (r *stubImportRepo) Save(ctx context.Context, t *model.Transaction) error { return nil }
+func (r *stubImportRepo) ListMismatchedCategories(context.Context) ([]model.MismatchedCategory, error) {
+	return nil, nil
+}
 func (r *stubImportRepo) LinkRecurring(ctx context.Context, id, recurringID vo.Id, now time.Time) error {
 	return nil
 }

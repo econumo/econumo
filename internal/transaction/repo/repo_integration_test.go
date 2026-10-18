@@ -609,3 +609,28 @@ func TestTransactionRepo_TransactionsRevisions(t *testing.T) {
 		t.Fatalf("empty input = %v, %v, want an empty non-nil map", none, err)
 	}
 }
+
+func TestListMismatchedCategories_BothKindsNotTransfers(t *testing.T) {
+	r, db := setup(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	food := f.Category(fixture.Category{UserID: userA, Name: "Food"})
+	salary := f.Category(fixture.Category{UserID: userA, Name: "Salary", Type: 1})
+	refund := f.Transaction(fixture.Transaction{UserID: userA, AccountID: acct1, CategoryID: food, Type: 1, Amount: "5"})
+	wrongExpense := f.Transaction(fixture.Transaction{UserID: userA, AccountID: acct1, CategoryID: salary, Type: 0, Amount: "5"})
+	f.Transaction(fixture.Transaction{UserID: userA, AccountID: acct1, CategoryID: food, Type: 0, Amount: "5"})
+	got, err := r.ListMismatchedCategories(ctx)
+	if err != nil || len(got) != 2 {
+		t.Fatalf("got %+v err %v", got, err)
+	}
+	byID := map[string]model.MismatchedCategory{}
+	for _, m := range got {
+		byID[m.ID.String()] = m
+	}
+	if m := byID[refund]; m.CategoryName != "Food" || m.CategoryIncome {
+		t.Errorf("income on Food: %+v", m)
+	}
+	if m := byID[wrongExpense]; m.CategoryName != "Salary" || !m.CategoryIncome {
+		t.Errorf("expense on Salary: %+v", m)
+	}
+}
