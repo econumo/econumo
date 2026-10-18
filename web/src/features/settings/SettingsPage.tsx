@@ -6,16 +6,16 @@ import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { UserAvatar } from '@/components/UserAvatar'
-import { getVersionLabel, backendHost, getWebsiteUrl, isAppleWalletImportEnabled, isSimpleFINImportEnabled, isTransactionImportEnabled } from '@/lib/config'
+import { getVersionLabel, backendHost, isAppleWalletImportEnabled, isSimpleFINImportEnabled, isTransactionImportEnabled } from '@/lib/config'
 import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
+import { SEMVER } from '@/lib/version'
 import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { useUserData, useAccessState } from '@/features/user/queries'
 import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
 import { useFullReload, useFullReloadPending } from '@/features/transactions/useFullReload'
-import { SEMVER } from '@/lib/version'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -179,18 +179,14 @@ export function SettingsPage() {
       </div>
 
       <footer className="flex items-center justify-center gap-2 py-1 text-xs text-muted-foreground/60">
-        {SEMVER.test(version) ? (
-          <a
-            href={`${getWebsiteUrl()}/releases/${version}/`}
-            target="_blank"
-            rel="noreferrer"
-            className="transition-colors hover:text-muted-foreground"
-          >
-            Econumo {version}
-          </a>
-        ) : (
-          <span>Econumo {version}</span>
-        )}
+        <a
+          href="https://econumo.com"
+          target="_blank"
+          rel="noreferrer"
+          className="transition-colors hover:text-muted-foreground"
+        >
+          Econumo{SEMVER.test(version) ? ` ${version}` : ''}
+        </a>
         <span aria-hidden="true">·</span>
         <a
           href={`${backendHost()}/api/doc`}

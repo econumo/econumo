@@ -89,18 +89,18 @@ it('renders the menu rows with exact labels and navigates', async () => {
   expect(await screen.findByText('BUDGETS PAGE')).toBeInTheDocument()
 })
 
-it('shows a plain version label for non-release builds', async () => {
+it('hides non-semver version text while linking to the Econumo website', async () => {
   window.econumoConfig = { VERSION: 'dev' }
   renderPage()
-  const label = await screen.findByText('Econumo dev')
-  expect(label.tagName).toBe('SPAN')
+  const label = await screen.findByRole('link', { name: 'Econumo' })
+  expect(label).toHaveAttribute('href', 'https://econumo.com')
 })
 
-it('links a semver version to its release notes page', async () => {
+it('links a semver version to the Econumo website', async () => {
   window.econumoConfig = { VERSION: 'v1.2.3' }
   renderPage()
   const label = await screen.findByText('Econumo v1.2.3')
-  expect(label).toHaveAttribute('href', 'https://econumo.com/releases/v1.2.3/')
+  expect(label).toHaveAttribute('href', 'https://econumo.com')
 })
 
 it('links to the API docs at the configured backend host', async () => {
