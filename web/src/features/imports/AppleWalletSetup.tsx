@@ -246,12 +246,14 @@ function Stepper({ setup }: { setup: WalletSetup }) {
           <>
             {text(id)}
             <div className="flex flex-wrap items-center gap-3">
-              {ios && !isDone && setup.configureLink ? (
+              {/* offered after the step is done too: a new iPhone, a revoked
+                  token or a reinstalled Shortcut all need the connect again */}
+              {ios && setup.configureLink ? (
                 <ExternalButton href={setup.configureLink} variant="default" onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_TEST)}>
                   <ExternalLink className="size-4" />{t('imports.apple_wallet.steps.configure.open', { name: WALLET_SHORTCUT_NAME })}
                 </ExternalButton>
-              ) : ios && !isDone ? (
-                <Button type="button" className="h-10" disabled={configuring} onClick={() => void createLink()}>
+              ) : ios ? (
+                <Button type="button" variant={isDone ? 'outline' : 'default'} className="h-10" disabled={configuring} onClick={() => void createLink()}>
                   {t('imports.apple_wallet.steps.configure.button')}
                 </Button>
               ) : null}
@@ -259,6 +261,8 @@ function Stepper({ setup }: { setup: WalletSetup }) {
                 {t('imports.apple_wallet.steps.configure.manual')}
               </a>
             </div>
+            {/* connecting again revokes the token the Shortcut holds now */}
+            {ios && isDone && !setup.configureLink ? <p className="text-xs text-muted-foreground">{t('imports.apple_wallet.steps.configure.again_note')}</p> : null}
             {isDone ? undo : <><Waiting>{t('imports.apple_wallet.steps.configure.waiting')}</Waiting>{markDone(id)}</>}
           </>
         )

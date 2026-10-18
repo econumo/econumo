@@ -185,6 +185,23 @@ it('iOS connect revokes the ingest tokens the server holds at tap time before mi
   expect(calls).toEqual(['revoke', 'create'])
 })
 
+// Connecting again is how a new iPhone, a revoked token or a reinstalled
+// Shortcut gets set up, so the button stays once the step is done.
+it('the connect step keeps its button after it is done, warning that a new token replaces the old one', async () => {
+  mockIsIOS.value = true
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure']))
+  server.use(http.post('*/api/v1/user/create-personal-token', () => HttpResponse.json({ success: true, message: '', data: minted })))
+  const user = userEvent.setup()
+  renderSetup(source)
+  await user.click(screen.getByRole('button', { name: 'Connect the Shortcut to Econumo' }))
+  expect(stateOf('Connect the Shortcut to Econumo')).toBe('done')
+  expect(screen.getByText(/Creating a new token replaces the one the Shortcut uses now/)).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Create access token' }))
+  expect(await screen.findByRole('link', { name: 'Open econumo' })).toBeInTheDocument()
+  expect(screen.queryByText(/Creating a new token replaces/)).not.toBeInTheDocument()
+  expect(stateOf('Connect the Shortcut to Econumo')).toBe('done')
+})
+
 it('a double tap on Create access token mints once', async () => {
   mockIsIOS.value = true
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install']))

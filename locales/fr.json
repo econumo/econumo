@@ -559,7 +559,8 @@
           "button": "Créer un jeton d’accès",
           "open": "Ouvrir {name}",
           "waiting": "En attente du premier contact du raccourci avec Econumo…",
-          "manual": "Configurer manuellement"
+          "manual": "Configurer manuellement",
+          "again_note": "Un nouveau jeton remplace celui qu’utilise le raccourci : les paiements ne sont plus importés tant que vous n’ouvrez pas econumo avec."
         },
         "automate": {
           "title": "Créer l’automatisation",

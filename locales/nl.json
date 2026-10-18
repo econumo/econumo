@@ -559,7 +559,8 @@
           "button": "Toegangstoken maken",
           "open": "{name} openen",
           "waiting": "Wachten tot de opdracht Econumo bereikt…",
-          "manual": "Handmatig configureren"
+          "manual": "Handmatig configureren",
+          "again_note": "Een nieuw token vervangt het token dat de opdracht nu gebruikt: betalingen worden pas weer geïmporteerd als je econumo ermee opent."
         },
         "automate": {
           "title": "Automatisering aanmaken",

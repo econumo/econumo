@@ -559,7 +559,8 @@
           "button": "Crear token de acceso",
           "open": "Abrir {name}",
           "waiting": "Esperando a que el atajo llegue a Econumo…",
-          "manual": "Configurar manualmente"
+          "manual": "Configurar manualmente",
+          "again_note": "Crear un token nuevo sustituye al que usa ahora el atajo: los pagos dejan de importarse hasta que abras econumo con él."
         },
         "automate": {
           "title": "Crear la automatización",

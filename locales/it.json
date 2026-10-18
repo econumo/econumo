@@ -559,7 +559,8 @@
           "button": "Crea token di accesso",
           "open": "Apri {name}",
           "waiting": "In attesa che il comando rapido raggiunga Econumo…",
-          "manual": "Configura manualmente"
+          "manual": "Configura manualmente",
+          "again_note": "Un nuovo token sostituisce quello che il comando rapido usa ora: i pagamenti non vengono importati finché non apri econumo con esso."
         },
         "automate": {
           "title": "Crea l’automazione",

@@ -559,7 +559,8 @@
           "button": "创建访问令牌",
           "open": "打开 {name}",
           "waiting": "正在等待快捷指令连接 Econumo…",
-          "manual": "手动配置"
+          "manual": "手动配置",
+          "again_note": "新令牌会替换快捷指令当前使用的令牌：在你用它打开 econumo 之前，付款不会被导入。"
         },
         "automate": {
           "title": "创建自动化",

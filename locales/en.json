@@ -559,7 +559,8 @@
           "button": "Create access token",
           "open": "Open {name}",
           "waiting": "Waiting for the Shortcut to reach Econumo…",
-          "manual": "Configure manually"
+          "manual": "Configure manually",
+          "again_note": "Creating a new token replaces the one the Shortcut uses now: payments stop importing until you open econumo with it."
         },
         "automate": {
           "title": "Create the automation",

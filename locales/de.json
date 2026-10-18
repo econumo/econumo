@@ -559,7 +559,8 @@
           "button": "Zugriffstoken erstellen",
           "open": "{name} öffnen",
           "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …",
-          "manual": "Manuell konfigurieren"
+          "manual": "Manuell konfigurieren",
+          "again_note": "Ein neues Token ersetzt das, das der Kurzbefehl gerade nutzt: Zahlungen werden erst wieder importiert, wenn du econumo damit öffnest."
         },
         "automate": {
           "title": "Automation anlegen",

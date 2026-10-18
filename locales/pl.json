@@ -559,7 +559,8 @@
           "button": "Utwórz token dostępu",
           "open": "Otwórz {name}",
           "waiting": "Czekam, aż skrót dotrze do Econumo…",
-          "manual": "Skonfiguruj ręcznie"
+          "manual": "Skonfiguruj ręcznie",
+          "again_note": "Nowy token zastępuje ten, którego skrót używa teraz: płatności nie będą importowane, dopóki nie otworzysz z nim econumo."
         },
         "automate": {
           "title": "Utwórz automatyzację",

@@ -441,6 +441,12 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       `account is required` check-in removed from the Failed imports section.
       "Configure manually" opens `https://econumo.com/docs/user-guide/apple-wallet`
       in a new tab; "Mark as done" completes the step by hand.
+- [ ] Step 2 once done, iOS 📱: the step still offers "Create access token"
+      (outline style) with the note "Creating a new token replaces the one the
+      Shortcut uses now…"; tapping it revokes the old ingest token, mints a new
+      one and shows "Open econumo" (note hidden); payments stop importing
+      until the Shortcut has run with the new token, then resume. The step
+      stays done throughout.
 - [ ] Step 2, iOS only 📱: "Create access token" with an `ingest` PAT minted
       meanwhile from another device (page rendered before it existed) revokes
       that token first and mints a fresh one — Profile → Tokens shows exactly
