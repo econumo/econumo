@@ -556,11 +556,11 @@
         "configure": {
           "title": "Collega il comando rapido a Econumo",
           "text": "Crea un token di accesso e apre econumo con esso. Il comando rapido salva l’indirizzo del server e il token, poi contatta Econumo. Tocca «Consenti sempre» a ogni richiesta: l’automazione avrà bisogno di questi permessi.",
-          "button": "Crea token di accesso",
+          "button": "Collega econumo",
           "open": "Apri {name}",
           "waiting": "In attesa che il comando rapido raggiunga Econumo…",
           "manual": "Configura manualmente",
-          "again_note": "Un nuovo token sostituisce quello che il comando rapido usa ora: i pagamenti non vengono importati finché non apri econumo con esso."
+          "again_note": "Collegare di nuovo sostituisce il token che il comando rapido usa ora: i pagamenti non vengono importati finché non apri econumo con quello nuovo."
         },
         "automate": {
           "title": "Crea l’automazione",

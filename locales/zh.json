@@ -556,11 +556,11 @@
         "configure": {
           "title": "将快捷指令连接到 Econumo",
           "text": "创建访问令牌并用它打开 econumo。快捷指令会保存服务器地址和令牌，然后连接 Econumo。每次提示时都点按“始终允许”——自动化稍后需要这些权限。",
-          "button": "创建访问令牌",
+          "button": "连接 econumo",
           "open": "打开 {name}",
           "waiting": "正在等待快捷指令连接 Econumo…",
           "manual": "手动配置",
-          "again_note": "新令牌会替换快捷指令当前使用的令牌：在你用它打开 econumo 之前，付款不会被导入。"
+          "again_note": "重新连接会替换快捷指令当前使用的令牌：在你用新令牌打开 econumo 之前，付款不会被导入。"
         },
         "automate": {
           "title": "创建自动化",

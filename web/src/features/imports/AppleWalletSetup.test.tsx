@@ -114,7 +114,7 @@ it('desktop shows the iPhone hint and the manual guide in a new window, but no i
   const guide = screen.getByRole('link', { name: 'Configure manually' })
   expect(guide).toHaveAttribute('href', 'https://econumo.com/docs/user-guide/apple-wallet')
   expect(guide).toHaveAttribute('target', '_blank')
-  expect(screen.queryByRole('button', { name: 'Create access token' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Connect econumo' })).not.toBeInTheDocument()
 })
 
 it('ticks from the first guide carry over: both install steps make the merged one done, the run-once step the connect one', () => {
@@ -141,7 +141,7 @@ it('iOS connect mints an ingest token, then offers the shortcut\'s setup link in
     http.get('*/api/v1/user/get-personal-token-list', () => HttpResponse.json({ success: true, message: '', data: body ? [ingestToken] : [] })),
   )
   expect(screen.queryByText(/Open this page on your iPhone/)).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Create access token' }))
+  await user.click(screen.getByRole('button', { name: 'Connect econumo' }))
   const link = await screen.findByRole('link', { name: 'Open econumo' })
   expect(body).toEqual({ name: 'Apple Wallet', scope: 'ingest', expiresAt: '' })
   expect(link).toHaveAttribute('target', '_blank')
@@ -179,7 +179,7 @@ it('iOS connect revokes the ingest tokens the server holds at tap time before mi
     listCalls++
     return HttpResponse.json({ success: true, message: '', data: listCalls === 1 ? [fullToken] : [ingestToken, fullToken] })
   }))
-  await user.click(screen.getByRole('button', { name: 'Create access token' }))
+  await user.click(screen.getByRole('button', { name: 'Connect econumo' }))
   await waitFor(() => expect(calls).toContain('create'))
   expect(revoked).toEqual(['p1'])
   expect(calls).toEqual(['revoke', 'create'])
@@ -195,14 +195,14 @@ it('the connect step keeps its button after it is done, warning that a new token
   renderSetup(source)
   await user.click(screen.getByRole('button', { name: 'Connect the Shortcut to Econumo' }))
   expect(stateOf('Connect the Shortcut to Econumo')).toBe('done')
-  expect(screen.getByText(/Creating a new token replaces the one the Shortcut uses now/)).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Create access token' }))
+  expect(screen.getByText(/Connecting again replaces the token the Shortcut uses now/)).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Connect econumo' }))
   expect(await screen.findByRole('link', { name: 'Open econumo' })).toBeInTheDocument()
-  expect(screen.queryByText(/Creating a new token replaces/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/Connecting again replaces/)).not.toBeInTheDocument()
   expect(stateOf('Connect the Shortcut to Econumo')).toBe('done')
 })
 
-it('a double tap on Create access token mints once', async () => {
+it('a double tap on Connect econumo mints once', async () => {
   mockIsIOS.value = true
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install']))
   let creates = 0
@@ -212,7 +212,7 @@ it('a double tap on Create access token mints once', async () => {
   }))
   const user = userEvent.setup()
   renderSetup(source)
-  const btn = screen.getByRole('button', { name: 'Create access token' })
+  const btn = screen.getByRole('button', { name: 'Connect econumo' })
   const first = user.click(btn)
   await user.click(btn)
   await first
@@ -227,7 +227,7 @@ it('iOS connect toasts the server error and leaves the step open when minting fa
     HttpResponse.json({ success: false, message: 'Too many attempts. Try again later.', code: 429, errors: {} }, { status: 429 })))
   const user = userEvent.setup()
   renderSetup(source)
-  await user.click(screen.getByRole('button', { name: 'Create access token' }))
+  await user.click(screen.getByRole('button', { name: 'Connect econumo' }))
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Too many attempts. Try again later.'))
   expect(stateOf('Connect the Shortcut to Econumo')).toBe('current')
   expect(screen.queryByRole('link', { name: 'Open econumo' })).not.toBeInTheDocument()

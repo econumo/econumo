@@ -556,11 +556,11 @@
         "configure": {
           "title": "Kurzbefehl mit Econumo verbinden",
           "text": "Erstellt ein Zugriffstoken und öffnet damit econumo. Der Kurzbefehl speichert Serveradresse und Token und meldet sich dann bei Econumo. Tippe bei jeder Abfrage auf „Immer erlauben“ — die Automation braucht diese Berechtigungen später.",
-          "button": "Zugriffstoken erstellen",
+          "button": "econumo verbinden",
           "open": "{name} öffnen",
           "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …",
           "manual": "Manuell konfigurieren",
-          "again_note": "Ein neues Token ersetzt das, das der Kurzbefehl gerade nutzt: Zahlungen werden erst wieder importiert, wenn du econumo damit öffnest."
+          "again_note": "Erneutes Verbinden ersetzt das Token, das der Kurzbefehl gerade nutzt: Zahlungen werden erst wieder importiert, wenn du econumo mit dem neuen öffnest."
         },
         "automate": {
           "title": "Automation anlegen",
