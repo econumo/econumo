@@ -7,10 +7,9 @@ One signed shortcut ships as a static asset in `web/public/shortcuts/`:
 | `econumo` | `econumo.shortcut` | Run with `{url, token}` text from the SPA's `shortcuts://run-shortcut` deep link: writes it to `econumo-wallet.json` in the iCloud Drive › Shortcuts folder and checks in with the server once. Run by the user's Transaction automation: reads that file and POSTs the tap to `ingest-apple-wallet-event`. |
 
 The first release shipped the two jobs as two shortcuts, `econumo-setup-v1`
-and `econumo-wallet-v1`. Their signed files stay in `web/public/shortcuts/`
-so existing setups keep a working download link, but nothing builds or links
-them any more; the server contract below is unchanged, so an automation on
-`econumo-wallet-v1` keeps working.
+and `econumo-wallet-v1`. Their files are no longer served; the server
+contract below is unchanged, so an already installed `econumo-wallet-v1`
+automation keeps working.
 
 iOS names an imported shortcut after the file it came from and ignores the
 embedded `WFWorkflowName`, so the shortcut name IS the served basename

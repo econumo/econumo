@@ -427,8 +427,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       app stays where it was (no relaunch); "Download the file instead" opens
       the served file as a fallback. Without an iCloud link, and on a desktop,
       the button downloads `econumo.shortcut` in a new window 📱. The v1
-      files (`econumo-wallet-v1.shortcut`, `econumo-setup-v1.shortcut`) still
-      download from `/shortcuts/` for existing setups.
+      files (`econumo-wallet-v1.shortcut`, `econumo-setup-v1.shortcut`) are
+      no longer served (not found), while an already installed v1 automation
+      still imports.
 - [ ] Step 2, iOS only 📱: "Create access token" mints an ingest PAT (visible
       under Profile → Tokens with scope `ingest`), then shows "Open
       econumo", which opens the Shortcuts app in a new window — the
