@@ -436,7 +436,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       If iOS does not switch (it may refuse an app hand-off that follows the
       server round trip), the step shows "Link Econumo", which does the same
       on a second tap. The shortcut saves the configuration
-      (`econumo-wallet.json` in iCloud Drive › Shortcuts), asks for the server
+      (`econumo.json` in iCloud Drive › Shortcuts), asks for the server
       host and iCloud Drive (Always Allow), and shows "Econumo configured
       for …"; back in Econumo the step completes by itself within a few
       seconds (at once when switching back to the app), with its

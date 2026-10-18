@@ -4,7 +4,7 @@ One signed shortcut ships as a static asset in `web/public/shortcuts/`:
 
 | Shortcut name = file name | Served as | Job |
 |---|---|---|
-| `econumo` | `econumo.shortcut` | Run with `{url, token}` text from the SPA's `shortcuts://run-shortcut` deep link: writes it to `econumo-wallet.json` in the iCloud Drive › Shortcuts folder and checks in with the server once. Run by the user's Transaction automation: reads that file and POSTs the tap to `ingest-apple-wallet-event`. |
+| `econumo` | `econumo.shortcut` | Run with `{url, token}` text from the SPA's `shortcuts://run-shortcut` deep link: writes it to `econumo.json` in the iCloud Drive › Shortcuts folder and checks in with the server once. Run by the user's Transaction automation: reads that file and POSTs the tap to `ingest-apple-wallet-event`. |
 
 The first release shipped the two jobs as two shortcuts, `econumo-setup-v1`
 and `econumo-wallet-v1`. Their files are no longer served; the server
@@ -62,7 +62,7 @@ Keep `build.py`, the plist and the signed file in the same commit.
 
 ## Contract with the server
 
-Configuration file `econumo-wallet.json` in the Shortcuts folder of iCloud
+Configuration file `econumo.json` in the Shortcuts folder of iCloud
 Drive (written by the setup run, read by every run — both `Save File` and `Get File`
 resolve paths relative to that folder, so the path in the recipe is the bare
 file name):
@@ -112,7 +112,7 @@ back to the served file.
 Yellow background with the dollar-sign glyph (`build.py`, `workflow()`). The
 share preview (iCloud link page, "Add Shortcut" sheet) shows the Files/Finder
 icon instead: Shortcuts does that for any shortcut containing a Get File
-action, and the wallet run must read `econumo-wallet.json` on every tap. The
+action, and the wallet run must read `econumo.json` on every tap. The
 installed tile keeps the glyph. Glyph numbers are undocumented: pick the icon
 in Shortcuts on a Mac and read `ZSHORTCUTICON.ZGLYPHNUMBER` /
 `ZBACKGROUNDCOLORVALUE` from `~/Library/Shortcuts/Shortcuts.sqlite` (the
@@ -136,10 +136,10 @@ the setup deep link passes **text**, the Transaction automation passes a
       2. **Stop This Shortcut**
 
       **End If**
-   4. **Set Name** — input: `Shortcut Input`, name `econumo-wallet.json`,
+   4. **Set Name** — input: `Shortcut Input`, name `econumo.json`,
       "Don't Include File Extension" off.
    5. **Save File** — input: `Renamed Item`; "Ask Where to Save": **off**;
-      Destination Path: `econumo-wallet.json` (inside iCloud Drive › Shortcuts);
+      Destination Path: `econumo.json` (inside iCloud Drive › Shortcuts);
       "Overwrite If File Exists": **on**.
    6. **Read the configuration** — steps 3–7 below, on the file just saved.
       Reading it back rather than reusing the input matters: iOS tracks the
@@ -153,7 +153,7 @@ the setup deep link passes **text**, the Transaction automation passes a
    9. **Stop This Shortcut**
 
    **End If**
-3. **Get File** — File Path: `econumo-wallet.json` (iCloud Drive ›
+3. **Get File** — File Path: `econumo.json` (iCloud Drive ›
    Shortcuts); "Show Document Picker" off; "Error If Not Found": **off**.
 4. **If** — `File` `does not have any value` (no Otherwise)
    1. **Show Notification** — `Econumo is not configured. Open Settings → Apple Wallet in Econumo and tap Configure.`
@@ -270,7 +270,7 @@ date output are only proven by this pass.
    tap "Connect Shortcut", then "Link Econumo". Shortcuts
    should run it, ask for the server host and iCloud Drive (answer **Always
    Allow**), and show "Econumo configured for …". Check `Files` → iCloud
-   Drive → Shortcuts → `econumo-wallet.json`; the server log shows
+   Drive → Shortcuts → `econumo.json`; the server log shows
    `ingest-apple-wallet-event … ingest_status=failed`, and the step in the
    SPA ticks itself within a few seconds of switching back.
 3. Create the automation: Shortcuts → Automation → `+` → **Transaction** →

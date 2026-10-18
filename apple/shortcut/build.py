@@ -28,7 +28,7 @@ HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[1]
 PUBLIC = REPO_ROOT / "web" / "public" / "shortcuts"
 
-CONFIG_FILE = "econumo-wallet.json"  # relative to iCloud Drive › Shortcuts
+CONFIG_FILE = "econumo.json"  # relative to iCloud Drive › Shortcuts
 INGEST_PATH = "/api/v1/import/ingest-apple-wallet-event"
 NOT_CONFIGURED = (
     "Econumo is not configured. Open Settings → Apple Wallet in Econumo and tap Configure."

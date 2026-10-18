@@ -201,7 +201,7 @@
 					<string>WFTextTokenAttachment</string>
 				</dict>
 				<key>WFName</key>
-				<string>econumo-wallet.json</string>
+				<string>econumo.json</string>
 			</dict>
 		</dict>
 		<dict>
@@ -212,7 +212,7 @@
 				<key>WFAskWhereToSave</key>
 				<false/>
 				<key>WFFileDestinationPath</key>
-				<string>econumo-wallet.json</string>
+				<string>econumo.json</string>
 				<key>WFInput</key>
 				<dict>
 					<key>Value</key>
@@ -241,7 +241,7 @@
 				<key>WFFileErrorIfNotFound</key>
 				<false/>
 				<key>WFGetFilePath</key>
-				<string>econumo-wallet.json</string>
+				<string>econumo.json</string>
 				<key>WFShowFilePicker</key>
 				<false/>
 			</dict>
@@ -566,7 +566,7 @@
 				<key>WFFileErrorIfNotFound</key>
 				<false/>
 				<key>WFGetFilePath</key>
-				<string>econumo-wallet.json</string>
+				<string>econumo.json</string>
 				<key>WFShowFilePicker</key>
 				<false/>
 			</dict>
