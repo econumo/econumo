@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "通过 iPhone 快捷指令自动记录 Apple Pay 付款。每笔付款都会发送到 Econumo；每张卡只需映射到账户一次。",
+      "intro": "使用 iPhone 快捷指令自动记录 Apple Pay 轻触付款",
       "connect": "设置 Apple Wallet",
       "connect_intro": {
         "needs_title": "你需要",
@@ -525,8 +525,16 @@
           "shortcuts": "“快捷指令”App——iOS 自带",
           "time": "大约 5 分钟"
         },
+        "limitations_title": "已知限制",
+        "tap_only": "仅在用 iPhone 轻触付款时有效",
+        "online_not_imported": "不支持网站上的 Apple Pay 付款",
         "steps_title": "工作原理",
-        "privacy": "对于每笔付款，Econumo 只接收卡片名称、商家、金额和币种——绝不接收卡号。"
+        "flow": {
+          "pay": "用 iPhone 轻触付款",
+          "send": "集成将详情直接发送到 Econumo",
+          "privacy": "Econumo 接收卡片名称、商家、金额和币种",
+          "record": "Econumo 将付款记录到与您的卡片关联的账户中"
+        }
       },
       "connected": "已连接",
       "disconnect": "断开连接",

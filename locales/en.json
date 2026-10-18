@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Log Apple Pay taps automatically with an iPhone Shortcut. Each tap is sent to Econumo; you map every card to an account once.",
+      "intro": "Log Apple Pay taps automatically with an iPhone Shortcut",
       "connect": "Set up Apple Wallet",
       "connect_intro": {
         "needs_title": "You will need",
@@ -525,8 +525,16 @@
           "shortcuts": "The Shortcuts app — it comes with iOS",
           "time": "About 5 minutes"
         },
+        "limitations_title": "Known limitations",
+        "tap_only": "Works only when you tap your iPhone to pay",
+        "online_not_imported": "Apple Pay payments on websites aren’t supported",
         "steps_title": "How it works",
-        "privacy": "For each payment Econumo receives the card name, merchant, amount and currency — never card numbers."
+        "flow": {
+          "pay": "Tap your iPhone to pay",
+          "send": "Integration sends details directly to Econumo",
+          "privacy": "Econumo receives the card name, merchant, amount and currency",
+          "record": "Econumo records the payment in the account linked to your card"
+        }
       },
       "connected": "Connected",
       "disconnect": "Disconnect",

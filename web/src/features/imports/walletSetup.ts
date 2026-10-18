@@ -31,7 +31,8 @@ function readTicks(sourceId: string): StepId[] {
   if (ids.has('test')) {
     ids.add('configure')
   }
-  return STEPS.filter((s) => ids.has(s))
+  // Old guides allowed a manual payment tick; only a received tap proves it.
+  return STEPS.filter((s) => s !== 'payment' && ids.has(s))
 }
 
 export function forgetSetupTicks(sourceId: string): void {
@@ -56,12 +57,21 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
   const sources = useImportSources()
   const discardEvent = useDiscardImportEvent()
   const sourceId = source?.id ?? null
-  const [ticks, setTicks] = useState<StepId[]>(() => (sourceId ? readTicks(sourceId) : []))
+  const paymentArrived = source?.cards.some((card) => card.tapCount > 0) ?? false
+  // Ignore an old Run Immediately tick saved before a payment was received.
+  const [ticks, setTicks] = useState<StepId[]>(() => (sourceId ? readTicks(sourceId).filter((id) => id !== 'immediate' || paymentArrived) : []))
   const [configureLink, setConfigureLink] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (sourceId && !paymentArrived && readTicks(sourceId).includes('immediate')) {
+      // Remove the invalid saved tick so a later reload cannot restore it.
+      setItem(ticksKey(sourceId), ticks.filter((id) => id !== 'immediate'))
+    }
+  }, [sourceId, paymentArrived, ticks])
 
   const tick = useCallback(
     (id: StepId, on: boolean) => {
-      if (!sourceId) {
+      if (!sourceId || id === 'payment' || (id === 'immediate' && on && !paymentArrived)) {
         return
       }
       setTicks((prev) => {
@@ -70,16 +80,16 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
         return next
       })
     },
-    [sourceId],
+    [sourceId, paymentArrived],
   )
 
-  // A card only ever appears through a real Apple Pay payment reaching the
-  // server, which proves every step up to the first payment worked. Switching
+  // A parsed payment creates a ledger row counted in tapCount; failed events
+  // and card mappings without payments do not count. This proves every step
+  // up to the first payment worked. Switching
   // the automation to Run Immediately happens after that payment and leaves
   // no trace on the server, so it stays a hand tick.
-  const cardArrived = (source?.cards.length ?? 0) > 0
-  const auto = (id: StepId) => cardArrived && id !== 'immediate'
-  const done = (id: StepId) => auto(id) || ticks.includes(id)
+  const auto = (id: StepId) => paymentArrived && id !== 'immediate'
+  const done = (id: StepId) => (id !== 'immediate' || paymentArrived) && (auto(id) || ticks.includes(id))
   const current = STEPS.find((id) => !done(id)) ?? null
 
   // Connecting (the shortcut's check-in) and the first payment are confirmed
@@ -101,7 +111,7 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
       if (stopped) {
         return
       }
-      const tapped = (s.data ?? []).some((src) => src.id === sourceId && src.cards.length > 0)
+      const tapped = (s.data ?? []).some((src) => src.id === sourceId && src.cards.some((card) => card.tapCount > 0))
       if (current === 'configure') {
         const failed = (q.data?.failed ?? []).filter((e) => e.sourceId === sourceId)
         const queued = [...(q.data?.queued ?? []), ...(q.data?.skipped ?? [])].some((e) => e.sourceId === sourceId)
@@ -131,7 +141,7 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
 
   return {
     done,
-    handTicked: (id) => ticks.includes(id) && !auto(id),
+    handTicked: (id) => done(id) && ticks.includes(id) && !auto(id),
     current,
     doneCount: STEPS.filter(done).length,
     tick,

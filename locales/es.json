@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Registra los pagos con Apple Pay automáticamente con un atajo de iPhone. Cada pago se envía a Econumo; asignas cada tarjeta a una cuenta una sola vez.",
+      "intro": "Registra automáticamente los pagos con Apple Pay mediante un atajo de iPhone",
       "connect": "Configurar Apple Wallet",
       "connect_intro": {
         "needs_title": "Necesitarás",
@@ -525,8 +525,16 @@
           "shortcuts": "La app Atajos: viene con iOS",
           "time": "Unos 5 minutos"
         },
+        "limitations_title": "Limitaciones conocidas",
+        "tap_only": "Solo funciona al acercar el iPhone para pagar",
+        "online_not_imported": "Los pagos con Apple Pay en sitios web no son compatibles",
         "steps_title": "Cómo funciona",
-        "privacy": "De cada pago Econumo recibe el nombre de la tarjeta, el comercio, el importe y la moneda; nunca números de tarjeta."
+        "flow": {
+          "pay": "Acerca el iPhone para pagar",
+          "send": "La integración envía los datos directamente a Econumo",
+          "privacy": "Econumo recibe el nombre de la tarjeta, el comercio, el importe y la moneda",
+          "record": "Econumo registra el pago en la cuenta vinculada a tu tarjeta"
+        }
       },
       "connected": "Conectado",
       "disconnect": "Desconectar",

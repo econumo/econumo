@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Enregistrez automatiquement vos paiements Apple Pay avec un raccourci iPhone. Chaque paiement est envoyé à Econumo ; vous associez chaque carte à un compte une seule fois.",
+      "intro": "Enregistrez automatiquement les paiements Apple Pay avec un raccourci iPhone",
       "connect": "Configurer Apple Wallet",
       "connect_intro": {
         "needs_title": "Il vous faut",
@@ -525,8 +525,16 @@
           "shortcuts": "L’app Raccourcis — fournie avec iOS",
           "time": "Environ 5 minutes"
         },
+        "limitations_title": "Limites connues",
+        "tap_only": "Fonctionne uniquement quand vous approchez votre iPhone pour payer",
+        "online_not_imported": "Les paiements Apple Pay sur les sites web ne sont pas pris en charge",
         "steps_title": "Comment ça marche",
-        "privacy": "Pour chaque paiement, Econumo reçoit le nom de la carte, le commerçant, le montant et la devise — jamais de numéro de carte."
+        "flow": {
+          "pay": "Approchez votre iPhone pour payer",
+          "send": "L’intégration envoie les détails directement à Econumo",
+          "privacy": "Econumo reçoit le nom de la carte, le commerçant, le montant et la devise",
+          "record": "Econumo enregistre le paiement dans le compte lié à votre carte"
+        }
       },
       "connected": "Connecté",
       "disconnect": "Déconnecter",

@@ -1,6 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
+import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { AppleWalletPage } from './AppleWalletPage'
@@ -70,4 +72,31 @@ it('before the first tap the status names the current setup step and the open gu
   expect(screen.queryByRole('button', { name: /Setup guide/ })).toBeNull()
   expect(screen.queryByRole('link', { name: 'Import history' })).toBeNull()
   expect(screen.queryByRole('heading', { name: 'Cards' })).toBeNull()
+})
+
+it('automatically completes step 4 when polling receives the first non-failed payment', async () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure', 'automate', 'immediate']))
+  const user = userEvent.setup()
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [{ eventId: 'e1', sourceId: 's1', receivedAt: '2026-08-20 17:40:00', error: 'amount must be a positive number', payload: '{}' }] } }))
+  let arrived = false
+  let sourceRequests = 0
+  server.use(http.get('*/api/v1/import/get-source-list', () => {
+    sourceRequests++
+    return HttpResponse.json({ success: true, message: '', data: { items: [{ ...wireSource, cards: arrived ? wireSource.cards : [] }] } })
+  }))
+  renderPage()
+  expect(await screen.findByText('Step 4 of 5: Make the first payment')).toBeInTheDocument()
+  await waitFor(() => expect(sourceRequests).toBeGreaterThan(1))
+  expect(screen.getByRole('button', { name: 'Make the first payment' }).closest('li')).toHaveAttribute('data-state', 'current')
+  expect(screen.getByRole('status')).toHaveTextContent('Waiting for the first payment')
+  expect(screen.queryByRole('button', { name: 'Mark as done' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Switch the automation to Run Immediately' }))
+  expect(screen.getByRole('button', { name: 'Done' })).toBeDisabled()
+
+  arrived = true
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Make the first payment' }).closest('li')).toHaveAttribute('data-state', 'done'))
+  expect(screen.getByRole('button', { name: 'Switch the automation to Run Immediately' }).closest('li')).toHaveAttribute('data-state', 'current')
+  expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled()
+  expect(screen.queryByText('Waiting for the first payment…')).not.toBeInTheDocument()
 })

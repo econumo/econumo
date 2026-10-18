@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Registra automaticamente i pagamenti Apple Pay con un comando rapido per iPhone. Ogni pagamento viene inviato a Econumo; associ ogni carta a un conto una sola volta.",
+      "intro": "Registra automaticamente i pagamenti Apple Pay con un comando rapido per iPhone",
       "connect": "Configura Apple Wallet",
       "connect_intro": {
         "needs_title": "Ti servirà",
@@ -525,8 +525,16 @@
           "shortcuts": "L’app Comandi rapidi, inclusa in iOS",
           "time": "Circa 5 minuti"
         },
+        "limitations_title": "Limitazioni note",
+        "tap_only": "Funziona solo quando avvicini l’iPhone per pagare",
+        "online_not_imported": "I pagamenti Apple Pay sui siti web non sono supportati",
         "steps_title": "Come funziona",
-        "privacy": "Per ogni pagamento Econumo riceve nome della carta, esercente, importo e valuta, mai i numeri di carta."
+        "flow": {
+          "pay": "Avvicina l’iPhone per pagare",
+          "send": "L’integrazione invia i dettagli direttamente a Econumo",
+          "privacy": "Econumo riceve il nome della carta, l’esercente, l’importo e la valuta",
+          "record": "Econumo registra il pagamento nel conto collegato alla tua carta"
+        }
       },
       "connected": "Connesso",
       "disconnect": "Disconnetti",

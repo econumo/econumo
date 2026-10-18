@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Leg Apple Pay-betalingen automatisch vast met een iPhone-opdracht. Elke betaling wordt naar Econumo gestuurd; je koppelt elke kaart één keer aan een rekening.",
+      "intro": "Registreer Apple Pay-betalingen automatisch met een iPhone-opdracht",
       "connect": "Apple Wallet instellen",
       "connect_intro": {
         "needs_title": "Je hebt nodig",
@@ -525,8 +525,16 @@
           "shortcuts": "De Opdrachten-app — die zit in iOS",
           "time": "Ongeveer 5 minuten"
         },
+        "limitations_title": "Bekende beperkingen",
+        "tap_only": "Werkt alleen als je je iPhone tegen de betaalterminal houdt",
+        "online_not_imported": "Apple Pay-betalingen op websites worden niet ondersteund",
         "steps_title": "Zo werkt het",
-        "privacy": "Per betaling ontvangt Econumo de kaartnaam, winkel, het bedrag en de valuta — nooit kaartnummers."
+        "flow": {
+          "pay": "Houd je iPhone tegen de betaalterminal om te betalen",
+          "send": "De integratie stuurt gegevens rechtstreeks naar Econumo",
+          "privacy": "Econumo ontvangt de kaartnaam, winkel, het bedrag en de valuta",
+          "record": "Econumo registreert de betaling op de rekening die aan je kaart is gekoppeld"
+        }
       },
       "connected": "Verbonden",
       "disconnect": "Verbinding verbreken",

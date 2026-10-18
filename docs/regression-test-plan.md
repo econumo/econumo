@@ -461,11 +461,16 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       can stay locked, to tap Run when the automation asks and Always Allow on
       every prompt (on device: only Wallet access is asked — host and iCloud
       Drive were granted in step 2), and waits for the first payment the same
-      way step 2 waits. A payment made with the phone locked imports once Run
+      way step 2 waits. Step 4 has no manual completion or undo button; old
+      saved manual payment ticks are ignored. Failed events and mapped cards
+      with no received payments leave it waiting. A payment made with the phone locked imports once Run
       and Always Allow are answered.
-- [ ] The first card arriving from Apple Pay completes steps 1–4 by itself,
+- [ ] The first non-failed payment from Apple Pay completes steps 1–4 by itself
+      (imported, queued, or skipped all count),
       regardless of hand ticks; step 5 (Switch the automation to Run
-      Immediately) stays a hand tick 📱.
+      Immediately) stays a hand tick 📱. Its Done button is disabled until
+      step 4 completes; premature saved step-5 ticks are cleared. The button
+      becomes enabled as soon as the first non-failed payment arrives.
 - [ ] Apple Wallet page layout once a tap has arrived 📱: a status card on top
       ("Connected" + "Last tap …" as relative time) with an "Inbox" row
       carrying the count of this source's queued and failed rows (no number

@@ -30,7 +30,7 @@ const INGEST_TOKEN_NAME = 'Apple Wallet'
 // Copy iCloud Link on the signed shortcut; re-copy it whenever the recipe
 // changes). Shortcuts' import-shortcut scheme accepts only iCloud links, so
 // the served file cannot be handed over that way. Empty = the file link.
-export const WALLET_SHORTCUT_ICLOUD_URL = 'https://www.icloud.com/shortcuts/6f67b418a2724055ba4b8d1ec859220e'
+export const WALLET_SHORTCUT_ICLOUD_URL = 'https://www.icloud.com/shortcuts/9a41df014a97408aaf4092a5bc69d228'
 
 // Run with text input, the shortcut configures itself: JSON with the server
 // URL and the ingest token.
@@ -118,15 +118,30 @@ export function AppleWalletConnect() {
         </ul>
       </div>
       <div className="flex flex-col gap-1.5">
+        <h2 className="text-xs uppercase text-muted-foreground">{t('imports.apple_wallet.connect_intro.limitations_title')}</h2>
+        <ul className="flex flex-col gap-1 text-muted-foreground">
+          {(['tap_only', 'online_not_imported'] as const).map((key) => (
+            <li key={key} className="flex gap-2">
+              <span aria-hidden="true" className="w-4 shrink-0 text-center">•</span>
+              <span>{t(`imports.apple_wallet.connect_intro.${key}`)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="flex flex-col gap-1.5">
         <h2 className="text-xs uppercase text-muted-foreground">{t('imports.apple_wallet.connect_intro.steps_title')}</h2>
-        <ol className="flex flex-col gap-1 text-muted-foreground">
-          {STEPS.map((id, i) => (
-            <li key={id} className="flex gap-2"><span className="w-4 shrink-0 text-right">{i + 1}.</span>{t(`imports.apple_wallet.steps.${id}.title`)}</li>
+        <ol className="flex flex-col gap-2 text-muted-foreground">
+          {(['pay', 'send', 'privacy', 'record'] as const).map((id, i) => (
+            <li key={id} className="flex gap-2">
+              <span className="w-4 shrink-0 text-right">{i + 1}.</span>
+              <div className="min-w-0">
+                <span>{t(`imports.apple_wallet.connect_intro.flow.${id}`)}</span>
+              </div>
+            </li>
           ))}
         </ol>
       </div>
       <SetupVideos />
-      <p className="text-xs text-muted-foreground">{t('imports.apple_wallet.connect_intro.privacy')}</p>
       <Button type="button" className="h-11" disabled={createSource.isPending} onClick={() => createSource.mutate({ provider: 'apple-wallet', name: 'iPhone' })}>
         {t('imports.apple_wallet.connect')}
       </Button>
@@ -213,7 +228,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
 
   const text = (id: StepId) => <p className="text-muted-foreground">{t(`imports.apple_wallet.steps.${id}.text`)}</p>
   const doneButton = (id: StepId) => (
-    <Button type="button" className="h-10 self-start" onClick={() => handTick(id, true)}>{t('imports.apple_wallet.steps.done')}</Button>
+    <Button type="button" className="h-10 self-start" disabled={id === 'immediate' && !setup.done('payment')} onClick={() => handTick(id, true)}>{t('imports.apple_wallet.steps.done')}</Button>
   )
   const markDone = (id: StepId) => (
     <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => handTick(id, true)}>{t('imports.apple_wallet.steps.mark_done')}</Button>
@@ -276,7 +291,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
         return (
           <>
             {text(id)}
-            {isDone ? undo : <><Waiting>{t('imports.apple_wallet.steps.payment.waiting')}</Waiting>{markDone(id)}</>}
+            {!isDone ? <Waiting>{t('imports.apple_wallet.steps.payment.waiting')}</Waiting> : null}
           </>
         )
       default:

@@ -64,7 +64,7 @@ it('setupDeepLink encodes the JSON input for the Setup shortcut', () => {
   )
 })
 
-it('before connecting it explains what is needed and previews the steps; connect posts create-source', async () => {
+it('before connecting it explains what is needed and how payments flow; connect posts create-source', async () => {
   let body: unknown
   server.use(http.post('*/api/v1/import/create-source', async ({ request }) => {
     body = await request.json()
@@ -73,11 +73,20 @@ it('before connecting it explains what is needed and previews the steps; connect
   const user = userEvent.setup()
   renderSetup(null)
   expect(screen.getByText('An iPhone with Apple Pay')).toBeInTheDocument()
-  expect(screen.getByText(/never card numbers/)).toBeInTheDocument()
+  const limitations = screen.getByRole('heading', { name: 'Known limitations' }).parentElement as HTMLElement
+  const limitationsItems = within(limitations).getAllByRole('listitem')
+  expect(limitationsItems).toHaveLength(2)
+  expect(limitationsItems[0]).toHaveTextContent('Works only when you tap your iPhone to pay')
+  expect(limitationsItems[1]).toHaveTextContent('Apple Pay payments on websites aren’t supported')
   // no videos are configured yet, so the link stays hidden
   expect(screen.queryByText(/Watch the setup video/)).not.toBeInTheDocument()
   const preview = screen.getByRole('heading', { name: 'How it works' }).parentElement as HTMLElement
-  expect(within(preview).getAllByRole('listitem')).toHaveLength(5)
+  const flow = within(preview).getAllByRole('listitem')
+  expect(flow).toHaveLength(4)
+  expect(flow[0]).toHaveTextContent('Tap your iPhone to pay')
+  expect(flow[1]).toHaveTextContent('Integration sends details directly to Econumo')
+  expect(flow[2]).toHaveTextContent('Econumo receives the card name, merchant, amount and currency')
+  expect(flow[3]).toHaveTextContent('Econumo records the payment in the account linked to your card')
   await user.click(screen.getByRole('button', { name: 'Set up Apple Wallet' }))
   await waitFor(() => expect(body).toEqual({ provider: 'apple-wallet', name: 'iPhone' }))
 })
@@ -87,7 +96,7 @@ it.each([['desktop', false], ['iOS', true]] as const)('%s install opens the iClo
   mockIsIOS.value = ios
   renderSetup(source)
   const link = screen.getByRole('link', { name: 'econumo' })
-  expect(link).toHaveAttribute('href', 'https://www.icloud.com/shortcuts/6f67b418a2724055ba4b8d1ec859220e')
+  expect(link).toHaveAttribute('href', 'https://www.icloud.com/shortcuts/9a41df014a97408aaf4092a5bc69d228')
   expect(link).toHaveAttribute('target', '_blank')
   expect(link).not.toHaveAttribute('download')
   const file = screen.getByRole('link', { name: 'or download' })
@@ -102,7 +111,7 @@ it('opens on the first step only; its install link opens in a new window and Don
   expect(screen.getByRole('button', { name: 'Install the Shortcut' })).toHaveAttribute('aria-expanded', 'true')
   expect(screen.getByRole('button', { name: 'Create the automation' })).toHaveAttribute('aria-expanded', 'false')
   const link = screen.getByRole('link', { name: 'econumo' })
-  expect(link).toHaveAttribute('href', 'https://www.icloud.com/shortcuts/6f67b418a2724055ba4b8d1ec859220e')
+  expect(link).toHaveAttribute('href', 'https://www.icloud.com/shortcuts/9a41df014a97408aaf4092a5bc69d228')
   expect(link).toHaveAttribute('target', '_blank')
   await user.click(screen.getByRole('button', { name: 'Done' }))
   expect(ticks()).toEqual(['install'])
@@ -266,15 +275,53 @@ it('with nothing received the connect step keeps waiting and can be marked done 
   expect(stateOf('Connect the Shortcut')).toBe('current')
 })
 
-it('the first card completes every step up to the payment and folds the guide; Run Immediately stays a hand tick', async () => {
+it('ignores an old manual payment tick and keeps waiting when only failed events have arrived', async () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure', 'automate', 'payment']))
+  renderSetup(source, { importQueue: { ...emptyQueue, failed: [noInputEvent, { ...noInputEvent, eventId: 'e2', error: 'amount must be a positive number' }] } })
+  expect(stateOf('Make the first payment')).toBe('current')
+  expect(await screen.findByRole('status')).toHaveTextContent('Waiting for the first payment')
+  const payment = within(step('Make the first payment'))
+  expect(payment.queryByRole('button', { name: 'Mark as done' })).not.toBeInTheDocument()
+  expect(payment.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument()
+  expect(payment.queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
+})
+
+it('a mapped card without a received payment does not complete step 4', async () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure', 'automate']))
   const user = userEvent.setup()
-  renderSetup({ ...source, cards: [card] })
+  renderSetup({ ...source, cards: [{ ...card, state: 'mapped', accountId: 'a1', tapCount: 0, lastSeenAt: '' }] })
+  await user.click(screen.getByRole('button', { name: /Setup guide/ }))
+  expect(stateOf('Make the first payment')).toBe('current')
+  expect(screen.getByRole('status')).toHaveTextContent('Waiting for the first payment')
+  expect(screen.queryByRole('button', { name: 'Mark as done' })).not.toBeInTheDocument()
+})
+
+it.each([false, true])('step 5 requires the first payment (previously marked done: %s)', async (previouslyDone) => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure', 'automate', ...(previouslyDone ? ['immediate'] : [])]))
+  const user = userEvent.setup()
+  renderSetup(source, { importQueue: { ...emptyQueue, failed: [noInputEvent] } })
+  expect(stateOf('Make the first payment')).toBe('current')
+  expect(stateOf('Switch the automation to Run Immediately')).toBe('todo')
+  await user.click(stepToggle('Switch the automation to Run Immediately'))
+  const done = within(step('Switch the automation to Run Immediately')).getByRole('button', { name: 'Done' })
+  expect(done).toBeDisabled()
+  await user.click(done)
+  expect(stateOf('Switch the automation to Run Immediately')).toBe('todo')
+  expect(screen.queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
+  expect(ticks()).not.toContain('immediate')
+})
+
+it.each(['mapped', 'unmapped', 'ignored'] as const)('the first payment on a %s card completes steps 1–4; Run Immediately stays a hand tick', async (state) => {
+  const user = userEvent.setup()
+  renderSetup({ ...source, cards: [{ ...card, state, accountId: state === 'mapped' ? 'a1' : '', queuedCount: state === 'unmapped' ? 1 : 0 }] })
   const toggle = screen.getByRole('button', { name: /Setup guide/ })
   expect(toggle).toHaveAttribute('aria-expanded', 'false')
   expect(toggle).toHaveTextContent('4 of 5 done')
   await user.click(toggle)
   expect(stateOf('Make the first payment')).toBe('done')
   expect(stateOf('Switch the automation to Run Immediately')).toBe('current')
+  await user.click(stepToggle('Make the first payment'))
+  expect(within(step('Make the first payment')).queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
   // server-confirmed steps cannot be undone by hand
   await user.click(screen.getByRole('button', { name: 'Install the Shortcut' }))
   expect(screen.queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()

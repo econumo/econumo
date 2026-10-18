@@ -516,7 +516,7 @@
     "apple_wallet": {
       "header": "Apple Wallet",
       "menu_item": "Apple Wallet",
-      "intro": "Erfasse Apple-Pay-Zahlungen automatisch mit einem iPhone-Kurzbefehl. Jede Zahlung wird an Econumo gesendet; jede Karte ordnest du einmal einem Konto zu.",
+      "intro": "Erfasse Apple Pay-Zahlungen automatisch mit einem iPhone-Kurzbefehl",
       "connect": "Apple Wallet einrichten",
       "connect_intro": {
         "needs_title": "Du brauchst",
@@ -525,8 +525,16 @@
           "shortcuts": "Die App Kurzbefehle – sie ist in iOS enthalten",
           "time": "Etwa 5 Minuten"
         },
+        "limitations_title": "Bekannte Einschränkungen",
+        "tap_only": "Funktioniert nur, wenn du dein iPhone zum Bezahlen ans Terminal hältst",
+        "online_not_imported": "Apple Pay-Zahlungen auf Websites werden nicht unterstützt",
         "steps_title": "So funktioniert es",
-        "privacy": "Pro Zahlung erhält Econumo Kartenname, Händler, Betrag und Währung – niemals Kartennummern."
+        "flow": {
+          "pay": "Halte dein iPhone zum Bezahlen ans Terminal",
+          "send": "Die Integration sendet Details direkt an Econumo",
+          "privacy": "Econumo erhält Kartenname, Händler, Betrag und Währung",
+          "record": "Econumo erfasst die Zahlung auf dem Konto, das mit deiner Karte verknüpft ist"
+        }
       },
       "connected": "Verbunden",
       "disconnect": "Trennen",
