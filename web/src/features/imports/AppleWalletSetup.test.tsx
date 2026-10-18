@@ -78,6 +78,19 @@ it('before connecting it explains what is needed and previews the steps; connect
   await waitFor(() => expect(body).toEqual({ provider: 'apple-wallet', name: 'iPhone' }))
 })
 
+// In an installed PWA a same-origin download would replace the app, so on an
+// iPhone the install opens the published iCloud link; the file stays reachable.
+it('on an iPhone the install opens the iCloud link, with the file as a fallback', () => {
+  mockIsIOS.value = true
+  renderSetup(source)
+  const link = screen.getByRole('link', { name: 'econumo' })
+  expect(link).toHaveAttribute('href', 'https://www.icloud.com/shortcuts/55565f20fb794a559e4e66cc1dc828bc')
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(link).not.toHaveAttribute('download')
+  const file = screen.getByRole('link', { name: 'Download the file instead' })
+  expect(file).toHaveAttribute('href', '/shortcuts/econumo.shortcut')
+})
+
 it('opens on the first step only; its download opens in a new window and Done moves on', async () => {
   const user = userEvent.setup()
   renderSetup(source)

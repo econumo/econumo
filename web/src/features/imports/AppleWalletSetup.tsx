@@ -30,7 +30,7 @@ const INGEST_TOKEN_NAME = 'Apple Wallet'
 // Copy iCloud Link on the signed shortcut; re-copy it whenever the recipe
 // changes). Shortcuts' import-shortcut scheme accepts only iCloud links, so
 // the served file cannot be handed over that way. Empty = the file link.
-export const WALLET_SHORTCUT_ICLOUD_URL = ''
+export const WALLET_SHORTCUT_ICLOUD_URL = 'https://www.icloud.com/shortcuts/55565f20fb794a559e4e66cc1dc828bc'
 
 // Run with text input, the shortcut configures itself: JSON with the server
 // URL and the ingest token.
