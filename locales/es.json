@@ -551,7 +551,7 @@
         "install": {
           "title": "Instalar el atajo",
           "text": "Abre el archivo en tu iPhone y toca «Añadir atajo».",
-          "file": "Descargar el archivo en su lugar"
+          "file": "o descargar"
         },
         "configure": {
           "title": "Conectar el atajo con Econumo",

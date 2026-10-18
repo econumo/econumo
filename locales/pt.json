@@ -551,7 +551,7 @@
         "install": {
           "title": "Instalar o atalho",
           "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho».",
-          "file": "Transferir o ficheiro em vez disso"
+          "file": "ou transferir"
         },
         "configure": {
           "title": "Ligar o atalho ao Econumo",

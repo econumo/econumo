@@ -551,7 +551,7 @@
         "install": {
           "title": "Zainstaluj skrót",
           "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”.",
-          "file": "Zamiast tego pobierz plik"
+          "file": "lub pobierz"
         },
         "configure": {
           "title": "Połącz skrót z Econumo",

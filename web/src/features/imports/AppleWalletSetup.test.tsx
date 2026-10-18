@@ -80,27 +80,27 @@ it('before connecting it explains what is needed and previews the steps; connect
   await waitFor(() => expect(body).toEqual({ provider: 'apple-wallet', name: 'iPhone' }))
 })
 
-// In an installed PWA a same-origin download would replace the app, so on an
-// iPhone the install opens the published iCloud link; the file stays reachable.
-it('on an iPhone the install opens the iCloud link, with the file as a fallback', () => {
-  mockIsIOS.value = true
+// Both platforms offer the published iCloud link and the downloadable file.
+it.each([['desktop', false], ['iOS', true]] as const)('%s install opens the iCloud link, with the file as a fallback', (_platform, ios) => {
+  mockIsIOS.value = ios
   renderSetup(source)
   const link = screen.getByRole('link', { name: 'econumo' })
   expect(link).toHaveAttribute('href', 'https://www.icloud.com/shortcuts/6f67b418a2724055ba4b8d1ec859220e')
   expect(link).toHaveAttribute('target', '_blank')
   expect(link).not.toHaveAttribute('download')
-  const file = screen.getByRole('link', { name: 'Download the file instead' })
+  const file = screen.getByRole('link', { name: 'or download' })
   expect(file).toHaveAttribute('href', '/shortcuts/econumo.shortcut')
+  expect(file).toHaveAttribute('target', '_blank')
 })
 
-it('opens on the first step only; its download opens in a new window and Done moves on', async () => {
+it('opens on the first step only; its install link opens in a new window and Done moves on', async () => {
   const user = userEvent.setup()
   renderSetup(source)
   expect(stateOf('Install the Shortcut')).toBe('current')
   expect(screen.getByRole('button', { name: 'Install the Shortcut' })).toHaveAttribute('aria-expanded', 'true')
   expect(screen.getByRole('button', { name: 'Create the automation' })).toHaveAttribute('aria-expanded', 'false')
   const link = screen.getByRole('link', { name: 'econumo' })
-  expect(link).toHaveAttribute('href', '/shortcuts/econumo.shortcut')
+  expect(link).toHaveAttribute('href', 'https://www.icloud.com/shortcuts/6f67b418a2724055ba4b8d1ec859220e')
   expect(link).toHaveAttribute('target', '_blank')
   await user.click(screen.getByRole('button', { name: 'Done' }))
   expect(ticks()).toEqual(['install'])
@@ -109,14 +109,14 @@ it('opens on the first step only; its download opens in a new window and Done mo
   expect(screen.getByRole('button', { name: 'Connect the Shortcut to Econumo' })).toHaveAttribute('aria-expanded', 'true')
 })
 
-it('desktop shows the iPhone hint and the manual guide in a new window, but no iOS-only actions', () => {
+it('desktop shows Connect Shortcut alongside the iPhone hint and manual guide', () => {
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install']))
   renderSetup(source)
   expect(screen.getByText(/Open this page on your iPhone/)).toBeInTheDocument()
   const guide = screen.getByRole('link', { name: 'Configure manually' })
   expect(guide).toHaveAttribute('href', 'https://econumo.com/docs/user-guide/apple-wallet')
   expect(guide).toHaveAttribute('target', '_blank')
-  expect(screen.queryByRole('button', { name: 'Connect Shortcut' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Connect Shortcut' })).toBeInTheDocument()
 })
 
 it('ticks from the first guide carry over: both install steps make the merged one done, the run-once step the connect one', () => {
@@ -127,8 +127,8 @@ it('ticks from the first guide carry over: both install steps make the merged on
   expect(stateOf('Create the automation')).toBe('done')
 })
 
-it('iOS connect mints an ingest token, then offers the shortcut\'s setup link in a new window', async () => {
-  mockIsIOS.value = true
+it.each([['desktop', false], ['iOS', true]] as const)('%s connect mints an ingest token, then offers the shortcut\'s setup link in a new window', async (_platform, ios) => {
+  mockIsIOS.value = ios
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install']))
   let body: unknown
   const user = userEvent.setup()
@@ -142,7 +142,7 @@ it('iOS connect mints an ingest token, then offers the shortcut\'s setup link in
     }),
     http.get('*/api/v1/user/get-personal-token-list', () => HttpResponse.json({ success: true, message: '', data: body ? [ingestToken] : [] })),
   )
-  expect(screen.queryByText(/Open this page on your iPhone/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/Open this page on your iPhone/) !== null).toBe(!ios)
   await user.click(screen.getByRole('button', { name: 'Connect Shortcut' }))
   const link = await screen.findByRole('link', { name: 'Link Econumo' })
   expect(body).toEqual({ name: 'Apple Wallet', scope: 'ingest', expiresAt: '' })
@@ -192,8 +192,8 @@ it('iOS connect revokes the ingest tokens the server holds at tap time before mi
 
 // Connecting again is how a new iPhone, a revoked token or a reinstalled
 // Shortcut gets set up, so the button stays once the step is done.
-it('the connect step keeps its button after it is done, warning that a new token replaces the old one', async () => {
-  mockIsIOS.value = true
+it.each([['desktop', false], ['iOS', true]] as const)('%s connect step keeps its button after it is done, warning that a new token replaces the old one', async (_platform, ios) => {
+  mockIsIOS.value = ios
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure']))
   server.use(http.post('*/api/v1/user/create-personal-token', () => HttpResponse.json({ success: true, message: '', data: minted })))
   const user = userEvent.setup()

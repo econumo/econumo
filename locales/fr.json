@@ -551,7 +551,7 @@
         "install": {
           "title": "Installer le raccourci",
           "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci ».",
-          "file": "Télécharger plutôt le fichier"
+          "file": "ou télécharger"
         },
         "configure": {
           "title": "Relier le raccourci à Econumo",

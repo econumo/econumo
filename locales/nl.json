@@ -551,7 +551,7 @@
         "install": {
           "title": "Opdracht installeren",
           "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’.",
-          "file": "In plaats daarvan het bestand downloaden"
+          "file": "of downloaden"
         },
         "configure": {
           "title": "Opdracht met Econumo verbinden",

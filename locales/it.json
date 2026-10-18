@@ -551,7 +551,7 @@
         "install": {
           "title": "Installa il comando rapido",
           "text": "Apri il file sul tuo iPhone e tocca «Aggiungi comando rapido».",
-          "file": "Scarica invece il file"
+          "file": "o scaricare"
         },
         "configure": {
           "title": "Collega il comando rapido a Econumo",

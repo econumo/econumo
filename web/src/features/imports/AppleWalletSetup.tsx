@@ -26,7 +26,7 @@ const INGEST_TOKEN_NAME = 'Apple Wallet'
 // Inside an installed PWA iOS keeps every same-origin link in the app's own
 // window (a download replaces the app until it is relaunched). An iCloud
 // shortcut link is another origin and Shortcuts opens it straight into "Add
-// Shortcut", so on iOS the install uses it when one is published (Share ->
+// Shortcut", so the install uses it when one is published (Share ->
 // Copy iCloud Link on the signed shortcut; re-copy it whenever the recipe
 // changes). Shortcuts' import-shortcut scheme accepts only iCloud links, so
 // the served file cannot be handed over that way. Empty = the file link.
@@ -229,16 +229,16 @@ function Stepper({ setup }: { setup: WalletSetup }) {
         return (
           <>
             {text(id)}
-            {ios && WALLET_SHORTCUT_ICLOUD_URL ? (
-              <>
+            {WALLET_SHORTCUT_ICLOUD_URL ? (
+              <div className="flex flex-wrap items-center gap-3">
                 <ExternalButton href={WALLET_SHORTCUT_ICLOUD_URL} onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'wallet', via: 'icloud' })}>
                   <Download className="size-4" />{WALLET_SHORTCUT_NAME}
                 </ExternalButton>
-                <a href={WALLET_SHORTCUT_URL} target="_blank" rel="noopener" className="self-start text-sm text-econumo-link underline-offset-2 hover:underline"
+                <a href={WALLET_SHORTCUT_URL} target="_blank" rel="noopener" className="text-econumo-link underline-offset-2 hover:underline"
                   onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'wallet', via: 'file' })}>
                   {t('imports.apple_wallet.steps.install.file')}
                 </a>
-              </>
+              </div>
             ) : (
               <ExternalButton href={WALLET_SHORTCUT_URL} download onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'wallet' })}>
                 <Download className="size-4" />{WALLET_SHORTCUT_NAME}
@@ -254,21 +254,21 @@ function Stepper({ setup }: { setup: WalletSetup }) {
             <div className="flex flex-wrap items-center gap-3">
               {/* offered after the step is done too: a new iPhone, a revoked
                   token or a reinstalled Shortcut all need the connect again */}
-              {ios && setup.configureLink ? (
+              {setup.configureLink ? (
                 <ExternalButton href={setup.configureLink} variant="default" onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_TEST)}>
                   <ExternalLink className="size-4" />{t('imports.apple_wallet.steps.configure.open')}
                 </ExternalButton>
-              ) : ios ? (
+              ) : (
                 <Button type="button" variant={isDone ? 'outline' : 'default'} className="h-10" disabled={configuring} onClick={() => void createLink()}>
                   {t('imports.apple_wallet.steps.configure.button')}
                 </Button>
-              ) : null}
+              )}
               <a href={MANUAL_GUIDE_URL} target="_blank" rel="noopener" className="text-econumo-link underline-offset-2 hover:underline">
                 {t('imports.apple_wallet.steps.configure.manual')}
               </a>
             </div>
             {/* connecting again revokes the token the Shortcut holds now */}
-            {ios && isDone && !setup.configureLink ? <p className="text-xs text-muted-foreground">{t('imports.apple_wallet.steps.configure.again_note')}</p> : null}
+            {isDone && !setup.configureLink ? <p className="text-xs text-muted-foreground">{t('imports.apple_wallet.steps.configure.again_note')}</p> : null}
             {isDone ? undo : <><Waiting>{t('imports.apple_wallet.steps.configure.waiting')}</Waiting>{markDone(id)}</>}
           </>
         )

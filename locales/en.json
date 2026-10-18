@@ -551,7 +551,7 @@
         "install": {
           "title": "Install the Shortcut",
           "text": "Open the file on your iPhone and tap Add Shortcut.",
-          "file": "Download the file instead"
+          "file": "or download"
         },
         "configure": {
           "title": "Connect the Shortcut to Econumo",

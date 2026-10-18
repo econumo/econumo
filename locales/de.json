@@ -551,7 +551,7 @@
         "install": {
           "title": "Kurzbefehl installieren",
           "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“.",
-          "file": "Stattdessen die Datei herunterladen"
+          "file": "oder herunterladen"
         },
         "configure": {
           "title": "Kurzbefehl mit Econumo verbinden",

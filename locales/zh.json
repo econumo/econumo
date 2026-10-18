@@ -551,7 +551,7 @@
         "install": {
           "title": "安装快捷指令",
           "text": "在 iPhone 上打开该文件并点按“添加快捷指令”。",
-          "file": "改为下载文件"
+          "file": "或下载"
         },
         "configure": {
           "title": "将快捷指令连接到 Econumo",
