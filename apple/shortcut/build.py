@@ -330,8 +330,11 @@ def workflow(name: str, actions: list, color: int) -> dict:
         "WFWorkflowClientVersion": "2700.0.4",
         "WFWorkflowMinimumClientVersion": 900,
         "WFWorkflowMinimumClientVersionString": "900",
-        # 59395 (0xE803) is the dollar-sign glyph
-        "WFWorkflowIcon": {"WFWorkflowIconGlyphNumber": 59395, "WFWorkflowIconStartColor": color},
+        # 62322 is the dollar sign, read from a Mac's Shortcuts.sqlite
+        # (ZSHORTCUTICON.ZGLYPHNUMBER) after picking it in the icon picker:
+        # glyph numbers are undocumented and older published tables are
+        # stale (59395 renders as Finder/Files today)
+        "WFWorkflowIcon": {"WFWorkflowIconGlyphNumber": 62322, "WFWorkflowIconStartColor": color},
         "WFWorkflowHasShortcutInputVariables": True,
         "WFWorkflowHasOutputFallback": False,
         "WFWorkflowImportQuestions": [],
