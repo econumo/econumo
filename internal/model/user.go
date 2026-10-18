@@ -23,7 +23,6 @@ const (
 	OptionBudget       = "budget"
 	OptionOnboarding   = "onboarding"
 	OptionAnalytics    = "analytics"
-	OptionTheme        = "theme"
 
 	DefaultCurrency     = "USD"
 	DefaultReportPeriod = "monthly"
@@ -279,16 +278,6 @@ func (u *User) SetAnalytics(enabled bool, id vo.Id, now time.Time) {
 		return
 	}
 	u.Options = append(u.Options, NewUserOption(id, OptionAnalytics, &v, now))
-}
-
-// SetTheme creates the preference on first use, including for existing users.
-// An absent theme option means system, so no backfill is needed.
-func (u *User) SetTheme(theme string, id vo.Id, now time.Time) {
-	if o := u.Option(OptionTheme); o != nil {
-		o.setValue(&theme, now)
-		return
-	}
-	u.Options = append(u.Options, NewUserOption(id, OptionTheme, &theme, now))
 }
 
 // UpdateBudget sets the user's active budget option.

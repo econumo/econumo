@@ -68,3 +68,15 @@ it('restores an evicted analytics opt-out from Preferences', async () => {
   await restoreNativeStorage()
   expect(localStorage.getItem('analyticsOptOut')).toBe('true')
 })
+
+it('mirrors the device theme and restores it if WebView storage is evicted', async () => {
+  const store = new Map<string, string>()
+  const prefs = installPrefs(store)
+  mirrorWrite('econumo.theme', 'dark')
+  expect(prefs.set).toHaveBeenCalledWith({ key: 'econumo.theme', value: 'dark' })
+  await restoreNativeStorage()
+  expect(localStorage.getItem('econumo.theme')).toBe('dark')
+  localStorage.setItem('econumo.theme', 'light')
+  await restoreNativeStorage()
+  expect(localStorage.getItem('econumo.theme')).toBe('light')
+})

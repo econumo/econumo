@@ -99,7 +99,6 @@ var ReadonlyAllowedPaths = map[string]bool{
 	"/api/v1/user/confirm-email-change":        true,
 	"/api/v1/user/resend-email-change-code":    true,
 	"/api/v1/user/update-analytics":            true,
-	"/api/v1/user/update-theme":                true,
 	"/api/v1/oauth/start-link":                 true,
 	"/api/v1/oauth/complete-link":              true,
 	"/api/v1/oauth/unlink-identity":            true,

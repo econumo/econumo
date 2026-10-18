@@ -1,27 +1,23 @@
-import { useEffect, useEffectEvent, useLayoutEffect, type ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useLayoutEffect, type ReactNode } from 'react'
 import { ThemeProvider as AppearanceProvider, useTheme } from 'next-themes'
-import { queryKeys } from './queryKeys'
-import type { CurrentUserDto } from '@/api/dto/user'
-import { UserOptions } from '@/api/dto/user'
-import { themePreference } from '@/lib/theme'
+import { THEME_STORAGE_KEY, themePreference } from '@/lib/theme'
 import { nativePlugin } from '@/lib/platform'
+import { mirrorWrite } from '@/lib/appStorage'
 
-function DatabaseTheme({ system }: { system: boolean }) {
-  // Observe login, hydration, refetches and preference writes without issuing
-  // a user request on public routes. Authenticated screens own that fetch.
-  const { data: user } = useQuery<CurrentUserDto>({ queryKey: queryKeys.user, enabled: false })
-  const { setTheme, resolvedTheme } = useTheme()
-  const applyPreference = useEffectEvent(setTheme)
-  const preference = system ? 'system' : user ? themePreference(user.options.find((o) => o.name === UserOptions.THEME)?.value) : undefined
+function DeviceTheme() {
+  const { theme, setTheme, resolvedTheme } = useTheme()
 
   useLayoutEffect(() => {
-    if (preference !== undefined) {
-      applyPreference(preference)
+    if (theme !== undefined && theme !== themePreference(theme)) {
+      setTheme('system')
     }
-    // A storage event updates the appearance without changing this tab's
-    // cached user. Reapply only when the database preference actually changes.
-  }, [preference, user?.id])
+  }, [theme, setTheme])
+
+  useEffect(() => {
+    // Keep the native copy through WebView storage eviction. This is local
+    // to the app installation, independent of account or selected server.
+    mirrorWrite(THEME_STORAGE_KEY, themePreference(theme))
+  }, [theme])
 
   useEffect(() => {
     // Also follows live OS changes in System mode, including the PWA chrome.
@@ -33,17 +29,16 @@ function DatabaseTheme({ system }: { system: boolean }) {
   return null
 }
 
-export function ThemeProvider({ children, system = false }: { children: ReactNode; system?: boolean }) {
+export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <AppearanceProvider
-      key={system ? 'public' : 'user'}
       attribute="class"
       defaultTheme="system"
-      storageKey={system ? 'econumo.public-theme' : 'econumo.theme'}
+      storageKey={THEME_STORAGE_KEY}
       enableSystem
       disableTransitionOnChange
     >
-      <DatabaseTheme system={system} />
+      <DeviceTheme />
       {children}
     </AppearanceProvider>
   )

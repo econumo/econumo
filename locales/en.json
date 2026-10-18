@@ -904,8 +904,7 @@
             "system": "System",
             "light": "Light",
             "dark": "Dark",
-            "description": "System follows your device’s appearance.",
-            "save_error": "Could not save your theme. Please try again."
+            "description": "Applies only to this device. System follows your device’s appearance."
           },
           "menu_item": "Profile",
           "header": "Personal settings",

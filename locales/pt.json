@@ -904,8 +904,7 @@
             "system": "Sistema",
             "light": "Claro",
             "dark": "Escuro",
-            "description": "O tema do sistema segue a aparência do seu dispositivo.",
-            "save_error": "Não foi possível guardar o tema. Tente novamente."
+            "description": "Aplica-se apenas a este dispositivo. O tema do sistema segue a aparência do dispositivo."
           },
           "menu_item": "Perfil",
           "header": "Definições pessoais",

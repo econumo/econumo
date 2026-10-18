@@ -7,7 +7,6 @@ export const UserOptions = {
   BUDGET: 'budget',
   ONBOARDING: 'onboarding',
   ANALYTICS: 'analytics',
-  THEME: 'theme',
 } as const
 export type UserOptions = (typeof UserOptions)[keyof typeof UserOptions]
 

@@ -25,6 +25,7 @@ import { SettingsShell } from './SettingsShell'
 import { AnalyticsDialog } from './AnalyticsDialog'
 import { ThemeDialog } from './ThemeDialog'
 import { themePreference } from '@/lib/theme'
+import { useTheme } from 'next-themes'
 
 
 export function ProfilePage() {
@@ -32,6 +33,7 @@ export function ProfilePage() {
   const navigate = useNavigate()
   const { data: user } = useUserData()
   const updateName = useUpdateName()
+  const { theme } = useTheme()
 
   const { data: currencies } = useCurrencies()
   const updateCurrency = useUpdateCurrency()
@@ -184,7 +186,7 @@ export function ProfilePage() {
       >
         {t('user.page.settings.profile.theme.label')}
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          {t(`user.page.settings.profile.theme.${themePreference(userOption(user, UserOptions.THEME))}`)}
+          {t(`user.page.settings.profile.theme.${themePreference(theme)}`)}
           <ChevronRight className="size-4" />
         </span>
       </button>

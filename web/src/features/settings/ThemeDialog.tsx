@@ -1,8 +1,7 @@
 import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import { RadioGroup } from 'radix-ui'
 import { useTranslation } from 'react-i18next'
-import { UserOptions } from '@/api/dto/user'
-import { useUpdateTheme, useUserData, userOption } from '@/features/user/queries'
+import { useTheme } from 'next-themes'
 import { themePreference, themePreferences } from '@/lib/theme'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
@@ -11,9 +10,8 @@ const icons = { system: Monitor, light: Sun, dark: Moon }
 
 export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation()
-  const { data: user } = useUserData()
-  const updateTheme = useUpdateTheme()
-  const selected = themePreference(userOption(user, UserOptions.THEME))
+  const { theme, setTheme } = useTheme()
+  const selected = themePreference(theme)
 
   return (
     <ResponsiveDialog
@@ -27,8 +25,7 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
           aria-label={t('user.page.settings.profile.theme.label')}
           aria-describedby="profile-theme-description"
           value={selected}
-          disabled={!user || updateTheme.isPending}
-          onValueChange={(value) => updateTheme.mutate(themePreference(value))}
+          onValueChange={(value) => setTheme(themePreference(value))}
           className="grid grid-cols-3 gap-2 p-1 sm:gap-3"
         >
           {themePreferences.map((value) => {
@@ -37,7 +34,7 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
               <RadioGroup.Item
                 key={value}
                 value={value}
-                className="group min-w-0 rounded-lg border border-border bg-background p-1.5 text-sm outline-none transition-shadow hover:border-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait data-[state=checked]:border-econumo-magenta data-[state=checked]:ring-1 data-[state=checked]:ring-econumo-magenta"
+                className="group min-w-0 rounded-lg border border-border bg-background p-1.5 text-sm outline-none transition-shadow hover:border-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:border-econumo-magenta data-[state=checked]:ring-1 data-[state=checked]:ring-econumo-magenta"
               >
                 <span aria-hidden="true" className={`theme-preview theme-preview-${value}`}>
                   <span className="theme-preview-sidebar"><span /><span /><span /></span>
@@ -57,7 +54,6 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
         <p id="profile-theme-description" className="mt-3 text-xs leading-relaxed text-muted-foreground">
           {t('user.page.settings.profile.theme.description')}
         </p>
-        {updateTheme.isError ? <p role="alert" className="mt-2 text-xs text-destructive">{t('user.page.settings.profile.theme.save_error')}</p> : null}
       </div>
     </ResponsiveDialog>
   )

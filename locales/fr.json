@@ -904,8 +904,7 @@
             "system": "Système",
             "light": "Clair",
             "dark": "Sombre",
-            "description": "Le thème système suit l’apparence de votre appareil.",
-            "save_error": "Impossible d’enregistrer le thème. Veuillez réessayer."
+            "description": "S’applique uniquement à cet appareil. Le thème système suit son apparence."
           },
           "menu_item": "Profil",
           "header": "Paramètres personnels",

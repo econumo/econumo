@@ -12716,75 +12716,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/api/v1/user/update-theme": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Saves system, light, or dark appearance for the authenticated user and returns the refreshed user. An absent preference defaults to system.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User"
-                ],
-                "summary": "Update theme preference",
-                "parameters": [
-                    {
-                        "description": "Theme preference",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.UpdateThemeRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.UpdateThemeResult"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseException"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -17692,27 +17623,6 @@ const docTemplate = `{
             "properties": {
                 "item": {
                     "$ref": "#/definitions/model.TagResult"
-                }
-            }
-        },
-        "model.UpdateThemeRequest": {
-            "type": "object",
-            "properties": {
-                "theme": {
-                    "type": "string",
-                    "enum": [
-                        "system",
-                        "light",
-                        "dark"
-                    ]
-                }
-            }
-        },
-        "model.UpdateThemeResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/model.CurrentUserResult"
                 }
             }
         },

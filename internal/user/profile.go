@@ -1,4 +1,4 @@
-// Profile use cases: update the display name, currency, and user preferences.
+// Profile use cases: update the display name, currency, and report period.
 package user
 
 import (
@@ -89,22 +89,6 @@ func (s *Service) UpdateAnalytics(ctx context.Context, userID vo.Id, req model.U
 		return nil, err
 	}
 	return &model.UpdateAnalyticsResult{User: cur}, nil
-}
-
-// UpdateTheme persists the appearance in users_options and returns the user.
-func (s *Service) UpdateTheme(ctx context.Context, userID vo.Id, req model.UpdateThemeRequest) (*model.UpdateThemeResult, error) {
-	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
-		u.SetTheme(req.Theme, s.repo.NextIdentity(), now)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	cur, err := s.toCurrentUser(ctx, u)
-	if err != nil {
-		return nil, err
-	}
-	return &model.UpdateThemeResult{User: cur}, nil
 }
 
 // UpdateLanguage persists the caller's UI language. Write-only: nothing reads

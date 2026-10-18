@@ -1,10 +1,11 @@
-import { act, render, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { CurrentUserDto } from '@/api/dto/user'
-import { fixtureUser } from '@/test/fixtures'
+import { createMemoryRouter, RouterProvider } from 'react-router'
+import { useTheme } from 'next-themes'
+import { THEME_STORAGE_KEY } from '@/lib/theme'
 import { queryKeys } from './queryKeys'
 import { ThemeProvider } from './ThemeProvider'
-import { createMemoryRouter, RouterProvider } from 'react-router'
 import { RootLayout } from './layouts/RootLayout'
 import { LoginLayout } from './layouts/LoginLayout'
 
@@ -37,18 +38,16 @@ function changeSystem(dark: boolean) {
   })
 }
 
-function savedUser(theme?: string): CurrentUserDto {
-  return { ...fixtureUser, hasPassword: true, options: theme ? [{ name: 'theme', value: theme }] : [] }
+function ThemeControls() {
+  const { setTheme } = useTheme()
+  return <>{['system', 'light', 'dark'].map((theme) => <button key={theme} onClick={() => setTheme(theme)}>{theme}</button>)}</>
 }
 
-function renderTheme(user?: CurrentUserDto) {
-  const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  if (user) cache.setQueryData(queryKeys.user, user)
-  render(<QueryClientProvider client={cache}><ThemeProvider><div>App</div></ThemeProvider></QueryClientProvider>)
-  return cache
+function renderTheme() {
+  return render(<ThemeProvider><ThemeControls /></ThemeProvider>)
 }
 
-it('defaults to System and follows OS changes without a user request', async () => {
+it('defaults to System and follows live OS changes', async () => {
   renderTheme()
   await waitFor(() => expect(document.documentElement).toHaveClass('light'))
   changeSystem(true)
@@ -59,54 +58,47 @@ it('defaults to System and follows OS changes without a user request', async () 
   await waitFor(() => expect(document.documentElement).toHaveClass('light'))
 })
 
-it('uses the database preference over the startup cache and ignores OS changes for explicit choices', async () => {
-  localStorage.setItem('econumo.theme', 'light')
-  renderTheme(savedUser('dark'))
+it('restores a device override, saves it locally, and preserves it after a reload', async () => {
+  localStorage.setItem(THEME_STORAGE_KEY, 'dark')
+  const first = renderTheme()
   await waitFor(() => expect(document.documentElement).toHaveClass('dark'))
-  expect(localStorage.getItem('econumo.theme')).toBe('dark')
-  changeSystem(true)
-  changeSystem(false)
-  expect(document.documentElement).toHaveClass('dark')
-})
-
-it('applies restored data, preference changes and a different user with no theme option', async () => {
-  const cache = renderTheme()
-  act(() => { cache.setQueryData(queryKeys.user, savedUser('dark')) })
-  await waitFor(() => expect(document.documentElement).toHaveClass('dark'))
-  act(() => { cache.setQueryData(queryKeys.user, savedUser('light')) })
-  await waitFor(() => expect(document.documentElement).toHaveClass('light'))
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'light' }))
+  expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
   changeSystem(true)
   expect(document.documentElement).toHaveClass('light')
-  act(() => { cache.setQueryData(queryKeys.user, { ...savedUser(), id: 'another-user' }) })
+  first.unmount()
+  renderTheme()
+  await waitFor(() => expect(document.documentElement).toHaveClass('light'))
+  await user.click(screen.getByRole('button', { name: 'system' }))
   await waitFor(() => expect(document.documentElement).toHaveClass('dark'))
-  expect(localStorage.getItem('econumo.theme')).toBe('system')
+  expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('system')
 })
 
-it('falls back to System for unknown database values', async () => {
+it('falls back to System for invalid local values', async () => {
+  localStorage.setItem(THEME_STORAGE_KEY, 'unsupported')
   systemDark = true
-  renderTheme(savedUser('unsupported'))
+  renderTheme()
   await waitFor(() => expect(document.documentElement).toHaveClass('dark'))
-  expect(localStorage.getItem('econumo.theme')).toBe('system')
+  expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('system')
 })
 
-it('accepts a change from another tab without reasserting its stale cached preference', async () => {
-  const cache = renderTheme(savedUser('dark'))
+it('follows theme changes in another tab on the same device', async () => {
+  localStorage.setItem(THEME_STORAGE_KEY, 'dark')
+  renderTheme()
   await waitFor(() => expect(document.documentElement).toHaveClass('dark'))
   act(() => {
-    localStorage.setItem('econumo.theme', 'light')
-    window.dispatchEvent(new StorageEvent('storage', { key: 'econumo.theme', oldValue: 'dark', newValue: 'light' }))
+    localStorage.setItem(THEME_STORAGE_KEY, 'light')
+    window.dispatchEvent(new StorageEvent('storage', { key: THEME_STORAGE_KEY, oldValue: 'dark', newValue: 'light' }))
   })
   await waitFor(() => expect(document.documentElement).toHaveClass('light'))
-  expect(localStorage.getItem('econumo.theme')).toBe('light')
-  expect(cache.getQueryData<CurrentUserDto>(queryKeys.user)?.options[0].value).toBe('dark')
+  expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
 })
 
-it.each(['/login', '/register'])('uses the live system appearance on %s and restores the saved theme after sign-in', async (path) => {
-  // Even a cached explicit preference from the last account must not override
-  // the system appearance of the public sign-in and registration screens.
-  localStorage.setItem('econumo.theme', 'dark')
+it.each(['/login', '/register'])('keeps this device’s override on %s and across account changes', async (path) => {
+  localStorage.setItem(THEME_STORAGE_KEY, 'dark')
   const cache = new QueryClient()
-  cache.setQueryData(queryKeys.user, savedUser('dark'))
+  cache.setQueryData(queryKeys.user, { id: 'first-user', options: [{ name: 'theme', value: 'light' }] })
   const router = createMemoryRouter([{
     element: <RootLayout />,
     children: [
@@ -114,20 +106,21 @@ it.each(['/login', '/register'])('uses the live system appearance on %s and rest
         { path: '/login', element: <div>Login form</div> },
         { path: '/register', element: <div>Registration form</div> },
       ] },
-      { path: '/settings/profile', element: <div>Profile</div> },
+      { path: '/settings/profile', element: <ThemeControls /> },
     ],
   }], { initialEntries: [path] })
   render(<QueryClientProvider client={cache}><RouterProvider router={router} /></QueryClientProvider>)
-  await waitFor(() => expect(document.documentElement).toHaveClass('light'))
-  expect(localStorage.getItem('econumo.theme')).toBe('dark')
-  expect(localStorage.getItem('econumo.public-theme')).toBe('system')
-  expect(cache.getQueryData<CurrentUserDto>(queryKeys.user)?.options[0].value).toBe('dark')
-  changeSystem(true)
   await waitFor(() => expect(document.documentElement).toHaveClass('dark'))
   await act(() => router.navigate(path === '/login' ? '/register' : '/login'))
-  changeSystem(false)
-  await waitFor(() => expect(document.documentElement).toHaveClass('light'))
+  expect(document.documentElement).toHaveClass('dark')
   await act(() => router.navigate('/settings/profile'))
+  act(() => { cache.setQueryData(queryKeys.user, { id: 'another-user', options: [] }) })
+  expect(document.documentElement).toHaveClass('dark')
+  expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'system' }))
+  await act(() => router.navigate('/login'))
+  expect(document.documentElement).toHaveClass('light')
+  changeSystem(true)
   await waitFor(() => expect(document.documentElement).toHaveClass('dark'))
-  expect(localStorage.getItem('econumo.theme')).toBe('dark')
 })

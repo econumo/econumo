@@ -10,7 +10,6 @@ import { setAnalyticsAccessState } from '@/lib/metrics'
 import { rememberHasPassword } from '@/lib/analyticsAuthMethods'
 import { rememberSessionUser } from '@/lib/storage'
 import { refreshAuthMethodFlags } from './oauth'
-import type { ThemePreference } from '@/lib/theme'
 
 // login-user is the one endpoint that responds with a bare {token, user}
 // body instead of the standard {success, message, data} envelope.
@@ -86,11 +85,6 @@ export async function updateCurrency(currency: string): Promise<CurrentUserDto> 
 
 export async function updateAnalytics(enabled: boolean): Promise<CurrentUserDto> {
   const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-analytics'), { enabled })
-  return response.data.data.user
-}
-
-export async function updateTheme(theme: ThemePreference): Promise<CurrentUserDto> {
-  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-theme'), { theme })
   return response.data.data.user
 }
 

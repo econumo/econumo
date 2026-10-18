@@ -904,8 +904,7 @@
             "system": "Systemowy",
             "light": "Jasny",
             "dark": "Ciemny",
-            "description": "Motyw systemowy dopasowuje się do wyglądu urządzenia.",
-            "save_error": "Nie udało się zapisać motywu. Spróbuj ponownie."
+            "description": "Dotyczy tylko tego urządzenia. Motyw systemowy dopasowuje się do jego wyglądu."
           },
           "menu_item": "Profil",
           "header": "Ustawienia osobiste",

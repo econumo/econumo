@@ -669,13 +669,6 @@ func TestReadonlyMayUpdateAnalytics(t *testing.T) {
 	}
 }
 
-func TestReadonlyMayUpdateTheme(t *testing.T) {
-	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/update-theme", readonlyStub())
-	if !ran || rec.Code == http.StatusPaymentRequired {
-		t.Fatalf("theme preference blocked: status = %d ran = %v", rec.Code, ran)
-	}
-}
-
 func TestAuth_CreatePersonalTokenIsNotAllowlisted(t *testing.T) {
 	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/create-personal-token", readonlyStub())
 	if rec.Code != http.StatusPaymentRequired {
