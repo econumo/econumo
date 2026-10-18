@@ -81,7 +81,7 @@ export function ConnectedAppsPage() {
               type="button"
               variant="ghost"
               size="sm"
-              className="shrink-0 text-econumo-magenta"
+              className="shrink-0 text-econumo-link"
               onClick={() => setConfirmRevoke(app)}
             >
               {t('authserver.apps.revoke')}

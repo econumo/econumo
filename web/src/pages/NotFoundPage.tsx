@@ -7,7 +7,7 @@ export function NotFoundPage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
       <h1 className="text-5xl font-bold">404</h1>
-      <Link to={RouterPage.HOME} className="text-primary underline">
+      <Link to={RouterPage.HOME} className="text-econumo-link underline">
         {t('common.econumo.label')}
       </Link>
     </div>

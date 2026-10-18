@@ -9,8 +9,8 @@ import { cn } from '@/lib/utils'
 // "econumo-green"/"econumo-yellow" tokens exist in index.css.
 const STATUS_CLASS: Record<ImportRunDto['status'], string> = {
   running: 'text-muted-foreground',
-  completed: 'text-green-600',
-  partial: 'text-amber-600',
+  completed: 'text-income',
+  partial: 'text-amber-700 dark:text-amber-300',
   failed: 'text-destructive',
 }
 

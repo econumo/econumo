@@ -1,4 +1,5 @@
 import { isNativeApp, nativePlugin } from './platform'
+import { THEME_STORAGE_KEY } from './theme'
 
 interface PreferencesPlugin {
   get(o: { key: string }): Promise<{ value: string | null }>
@@ -8,10 +9,10 @@ interface PreferencesPlugin {
 
 // WKWebView may evict localStorage under storage pressure; these are the keys
 // whose loss logs the user out or strands them on the wrong server (and the
-// token's user, without which nothing is restored offline). Values are
-// mirrored verbatim (storage.ts JSON-encodes the other keys), so restore is a
-// straight copy back.
-const MIRRORED_KEYS: readonly string[] = ['token', 'sessionUserId', 'backendHost', 'selfHosted', 'analyticsOptOut']
+// token's user, without which nothing is restored offline), plus the local
+// appearance preference. Values are mirrored verbatim (storage.ts JSON-encodes
+// the other keys), so restoration copies them directly.
+const MIRRORED_KEYS: readonly string[] = ['token', 'sessionUserId', 'backendHost', 'selfHosted', 'analyticsOptOut', THEME_STORAGE_KEY]
 
 function prefs(): PreferencesPlugin | null {
   return nativePlugin<PreferencesPlugin>('Preferences')

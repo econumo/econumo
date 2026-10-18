@@ -58,7 +58,7 @@ function SetupVideos() {
     return null
   }
   const id = playing ? youtubeId(playing.url) : null
-  const linkClass = 'text-primary underline-offset-2 hover:underline'
+  const linkClass = 'text-econumo-link underline-offset-2 hover:underline'
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
       <span className="flex items-center gap-2 text-muted-foreground"><CirclePlay className="size-4 text-econumo-purple" />{t('imports.apple_wallet.video')}</span>
@@ -234,7 +234,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
                   {t('imports.apple_wallet.steps.configure.button')}
                 </Button>
               ) : null}
-              <a href={MANUAL_GUIDE_URL} target="_blank" rel="noopener" className="text-primary underline-offset-2 hover:underline">
+              <a href={MANUAL_GUIDE_URL} target="_blank" rel="noopener" className="text-econumo-link underline-offset-2 hover:underline">
                 {t('imports.apple_wallet.steps.configure.manual')}
               </a>
             </div>

@@ -70,7 +70,7 @@ export function SubscriptionBanner() {
         : t('subscription.banner.connection_readonly', { name: partner!.name })
 
   return (
-    <div className="flex items-center gap-3 bg-primary/10 px-4 py-2 text-sm text-primary">
+    <div className="flex items-center gap-3 bg-primary/10 px-4 py-2 text-sm text-econumo-link">
       <span className="min-w-0 flex-1">{message}</span>
       {cta}
       <button

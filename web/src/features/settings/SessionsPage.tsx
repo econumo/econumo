@@ -56,7 +56,7 @@ export function SessionsPage() {
               <span className="truncate text-sm">
                 {describeUserAgent(session.userAgent) || t('user.page.settings.profile.sessions.unknown_device')}
                 {session.isCurrent ? (
-                  <span className="ml-2 rounded bg-econumo-magenta/10 px-1.5 py-0.5 text-[11px] font-medium text-econumo-magenta">
+                  <span className="ml-2 rounded bg-econumo-magenta/10 px-1.5 py-0.5 text-[11px] font-medium text-econumo-link">
                     {t('user.page.settings.profile.sessions.current')}
                   </span>
                 ) : null}
@@ -75,7 +75,7 @@ export function SessionsPage() {
               type="button"
               variant="ghost"
               size="sm"
-              className="shrink-0 text-econumo-magenta"
+              className="shrink-0 text-econumo-link"
               onClick={() => setConfirmTarget(session)}
             >
               {session.isCurrent

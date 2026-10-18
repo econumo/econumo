@@ -924,6 +924,13 @@
     "page": {
       "settings": {
         "profile": {
+          "theme": {
+            "label": "Thema",
+            "system": "Systeem",
+            "light": "Licht",
+            "dark": "Donker",
+            "description": "Geldt alleen op dit apparaat. Het systeemthema volgt de weergave van je apparaat."
+          },
           "menu_item": "Profiel",
           "header": "Persoonlijke instellingen",
           "groups": {

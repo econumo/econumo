@@ -47,7 +47,7 @@ export function CurrencyPickerDialog({ open, title, value, onClose, onPick }: Cu
               }}
             >
               <span className="flex-1">{fullCurrencyLabel(currency)}</span>
-              {currency.id === value ? <Check className="size-4 text-econumo-magenta" /> : null}
+              {currency.id === value ? <Check className="size-4 text-econumo-link" /> : null}
             </CommandItem>
           ))}
         </CommandList>

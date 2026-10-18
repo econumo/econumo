@@ -924,6 +924,13 @@
     "page": {
       "settings": {
         "profile": {
+          "theme": {
+            "label": "Tema",
+            "system": "Sistema",
+            "light": "Claro",
+            "dark": "Escuro",
+            "description": "Aplica-se apenas a este dispositivo. O tema do sistema segue a aparência do dispositivo."
+          },
           "menu_item": "Perfil",
           "header": "Definições pessoais",
           "groups": {

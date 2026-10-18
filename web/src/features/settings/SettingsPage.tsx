@@ -47,9 +47,9 @@ function MenuRow({
     <span
       className={`flex w-full items-center justify-between gap-2 rounded-lg px-4 py-3.5 text-sm ${
         accent === 'rest'
-          ? 'bg-primary/10 text-primary hover:bg-primary/15'
+          ? 'bg-primary/10 text-econumo-link hover:bg-primary/15'
           : accent === 'hover'
-            ? 'bg-econumo-card hover:bg-primary/10 hover:text-primary'
+            ? 'bg-econumo-card hover:bg-primary/10 hover:text-econumo-link'
             : 'bg-econumo-card hover:bg-econumo-hover'
       }`}
     >
@@ -120,7 +120,7 @@ export function SettingsPage() {
               href={update.url}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-4 py-3.5 text-sm font-medium text-primary hover:bg-primary/15"
+              className="flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-4 py-3.5 text-sm font-medium text-econumo-link hover:bg-primary/15"
             >
               <span>{t('settings.update.available', { version: update.version })}</span>
               <ChevronRight className="size-4" />
@@ -137,7 +137,7 @@ export function SettingsPage() {
                 }}
                 trailing={
                   access.state === 'trial' ? (
-                    <span className="shrink-0 text-xs text-primary/80">
+                    <span className="shrink-0 text-xs text-econumo-link/80">
                       {t('subscription.settings.status.trial', { date: formatDayHeading(dayKey(access.accessUntil), i18n.language) })}
                     </span>
                   ) : access.state === 'readonly' ? (

@@ -1,5 +1,5 @@
 import { createBrowserRouter } from 'react-router'
-import { TrackPageViews } from './TrackPageViews'
+import { RootLayout } from './layouts/RootLayout'
 import { RequireAuth } from './RequireAuth'
 import { LoginLayout } from './layouts/LoginLayout'
 import { ApplicationLayout } from './layouts/ApplicationLayout'
@@ -44,7 +44,7 @@ import { isAppleWalletImportEnabled, isSimpleFINImportEnabled, isTransactionImpo
 export function createRouter() {
   return createBrowserRouter([
     {
-      element: <TrackPageViews />,
+      element: <RootLayout />,
       children: [
         {
           element: <LoginLayout />,
