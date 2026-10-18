@@ -557,7 +557,7 @@
           "title": "Relier le raccourci à Econumo",
           "text": "Crée un jeton d’accès et ouvre econumo avec. Le raccourci enregistre l’adresse du serveur et le jeton, puis contacte Econumo. Touchez « Toujours autoriser » à chaque demande : l’automatisation aura besoin de ces autorisations.",
           "button": "Connecter le raccourci",
-          "open": "Ouvrir {name}",
+          "open": "Lier Econumo",
           "waiting": "En attente du premier contact du raccourci avec Econumo…",
           "manual": "Configurer manuellement",
           "again_note": "Reconnecter remplace le jeton qu’utilise le raccourci : les paiements ne sont plus importés tant que vous n’ouvrez pas econumo avec le nouveau."

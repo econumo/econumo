@@ -557,7 +557,7 @@
           "title": "Connect the Shortcut to Econumo",
           "text": "Creates an access token and opens the econumo Shortcut with it. The Shortcut saves the server address and the token, then checks in with Econumo. Tap Always Allow on every prompt — the automation needs these permissions later.",
           "button": "Connect Shortcut",
-          "open": "Open {name}",
+          "open": "Link Econumo",
           "waiting": "Waiting for the Shortcut to reach Econumo…",
           "manual": "Configure manually",
           "again_note": "Connecting again replaces the token the Shortcut uses now: payments stop importing until you open econumo with the new one."

@@ -557,7 +557,7 @@
           "title": "Połącz skrót z Econumo",
           "text": "Tworzy token dostępu i otwiera z nim econumo. Skrót zapisuje adres serwera i token, a potem łączy się z Econumo. Przy każdym pytaniu stuknij „Zawsze zezwalaj” — automatyzacja będzie potrzebować tych uprawnień.",
           "button": "Połącz skrót",
-          "open": "Otwórz {name}",
+          "open": "Powiąż Econumo",
           "waiting": "Czekam, aż skrót dotrze do Econumo…",
           "manual": "Skonfiguruj ręcznie",
           "again_note": "Ponowne połączenie zastępuje token, którego skrót używa teraz: płatności nie będą importowane, dopóki nie otworzysz econumo z nowym."

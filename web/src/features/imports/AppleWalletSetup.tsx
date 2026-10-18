@@ -200,7 +200,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
       setup.setConfigureLink(link)
       // One tap: hand the link to Shortcuts as soon as the token exists. It
       // runs after an await, so iOS may refuse it as not coming from a tap;
-      // the "Open econumo" button the link also shows is the fallback.
+      // the "Link Econumo" button the link also shows is the fallback.
       trackEvent(METRICS.IMPORT_SHORTCUT_TEST)
       openAppUrl(link)
     } catch (err) {
@@ -256,7 +256,7 @@ function Stepper({ setup }: { setup: WalletSetup }) {
                   token or a reinstalled Shortcut all need the connect again */}
               {ios && setup.configureLink ? (
                 <ExternalButton href={setup.configureLink} variant="default" onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_TEST)}>
-                  <ExternalLink className="size-4" />{t('imports.apple_wallet.steps.configure.open', { name: WALLET_SHORTCUT_NAME })}
+                  <ExternalLink className="size-4" />{t('imports.apple_wallet.steps.configure.open')}
                 </ExternalButton>
               ) : ios ? (
                 <Button type="button" variant={isDone ? 'outline' : 'default'} className="h-10" disabled={configuring} onClick={() => void createLink()}>

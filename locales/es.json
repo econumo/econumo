@@ -557,7 +557,7 @@
           "title": "Conectar el atajo con Econumo",
           "text": "Crea un token de acceso y abre econumo con él. El atajo guarda la dirección del servidor y el token y luego contacta con Econumo. Toca «Permitir siempre» en cada aviso: la automatización necesitará estos permisos más adelante.",
           "button": "Conectar el atajo",
-          "open": "Abrir {name}",
+          "open": "Vincular Econumo",
           "waiting": "Esperando a que el atajo llegue a Econumo…",
           "manual": "Configurar manualmente",
           "again_note": "Conectar de nuevo sustituye el token que usa ahora el atajo: los pagos dejan de importarse hasta que abras econumo con el nuevo."

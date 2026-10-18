@@ -434,7 +434,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       (visible under Profile → Tokens with scope `ingest`) and opens the
       Shortcuts app with it right away — the app window stays on the page.
       If iOS does not switch (it may refuse an app hand-off that follows the
-      server round trip), the step shows "Open econumo", which does the same
+      server round trip), the step shows "Link Econumo", which does the same
       on a second tap. The shortcut saves the configuration
       (`econumo-wallet.json` in iCloud Drive › Shortcuts), asks for the server
       host and iCloud Drive (Always Allow), and shows "Econumo configured
@@ -446,7 +446,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
 - [ ] Step 2 once done, iOS 📱: the step still offers "Connect Shortcut"
       (outline style) with the note "Connecting again replaces the token the
       Shortcut uses now…"; tapping it revokes the old ingest token, mints a new
-      one and shows "Open econumo" (note hidden); payments stop importing
+      one and shows "Link Econumo" (note hidden); payments stop importing
       until the Shortcut has run with the new token, then resume. The step
       stays done throughout.
 - [ ] Step 2, iOS only 📱: "Connect Shortcut" with an `ingest` PAT minted

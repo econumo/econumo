@@ -144,7 +144,7 @@ it('iOS connect mints an ingest token, then offers the shortcut\'s setup link in
   )
   expect(screen.queryByText(/Open this page on your iPhone/)).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Connect Shortcut' }))
-  const link = await screen.findByRole('link', { name: 'Open econumo' })
+  const link = await screen.findByRole('link', { name: 'Link Econumo' })
   expect(body).toEqual({ name: 'Apple Wallet', scope: 'ingest', expiresAt: '' })
   expect(link).toHaveAttribute('target', '_blank')
   const href = link.getAttribute('href') ?? ''
@@ -202,7 +202,7 @@ it('the connect step keeps its button after it is done, warning that a new token
   expect(stateOf('Connect the Shortcut to Econumo')).toBe('done')
   expect(screen.getByText(/Connecting again replaces the token the Shortcut uses now/)).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Connect Shortcut' }))
-  expect(await screen.findByRole('link', { name: 'Open econumo' })).toBeInTheDocument()
+  expect(await screen.findByRole('link', { name: 'Link Econumo' })).toBeInTheDocument()
   expect(screen.queryByText(/Connecting again replaces/)).not.toBeInTheDocument()
   expect(stateOf('Connect the Shortcut to Econumo')).toBe('done')
 })
@@ -221,7 +221,7 @@ it('a double tap on Connect Shortcut mints once', async () => {
   const first = user.click(btn)
   await user.click(btn)
   await first
-  await screen.findByRole('link', { name: 'Open econumo' })
+  await screen.findByRole('link', { name: 'Link Econumo' })
   expect(creates).toBe(1)
 })
 
@@ -235,7 +235,7 @@ it('iOS connect toasts the server error and leaves the step open when minting fa
   await user.click(screen.getByRole('button', { name: 'Connect Shortcut' }))
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Too many attempts. Try again later.'))
   expect(stateOf('Connect the Shortcut to Econumo')).toBe('current')
-  expect(screen.queryByRole('link', { name: 'Open econumo' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Link Econumo' })).not.toBeInTheDocument()
 })
 
 it('while the connect step is open the page watches for the shortcut: the "account is required" check-in is proof, discarded, and the step completes', async () => {

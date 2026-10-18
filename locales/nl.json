@@ -557,7 +557,7 @@
           "title": "Opdracht met Econumo verbinden",
           "text": "Maakt een toegangstoken en opent econumo daarmee. De opdracht bewaart het serveradres en het token en meldt zich daarna bij Econumo. Tik bij elke melding op ‘Altijd toestaan’ — de automatisering heeft deze rechten later nodig.",
           "button": "Opdracht koppelen",
-          "open": "{name} openen",
+          "open": "Econumo koppelen",
           "waiting": "Wachten tot de opdracht Econumo bereikt…",
           "manual": "Handmatig configureren",
           "again_note": "Opnieuw koppelen vervangt het token dat de opdracht nu gebruikt: betalingen worden pas weer geïmporteerd als je econumo met het nieuwe opent."

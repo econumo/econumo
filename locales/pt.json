@@ -557,7 +557,7 @@
           "title": "Ligar o atalho ao Econumo",
           "text": "Cria um token de acesso e abre o econumo com ele. O atalho guarda o endereço do servidor e o token e depois contacta o Econumo. Toque em «Permitir sempre» em cada pedido — a automatização vai precisar destas permissões.",
           "button": "Ligar o atalho",
-          "open": "Abrir {name}",
+          "open": "Associar o Econumo",
           "waiting": "À espera de que o atalho chegue ao Econumo…",
           "manual": "Configurar manualmente",
           "again_note": "Ligar de novo substitui o token que o atalho usa agora: os pagamentos deixam de ser importados até abrir o econumo com o novo."
