@@ -550,7 +550,8 @@
         "hint_desktop": "Open this page on your iPhone to follow the steps there. On this device you can download the Shortcut and mark steps as done.",
         "install": {
           "title": "Install the Shortcut",
-          "text": "Open the file on your iPhone and tap Add Shortcut."
+          "text": "Open the file on your iPhone and tap Add Shortcut.",
+          "file": "Download the file instead"
         },
         "configure": {
           "title": "Connect the Shortcut to Econumo",

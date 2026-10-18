@@ -550,7 +550,8 @@
         "hint_desktop": "Öffne diese Seite auf deinem iPhone, um die Schritte dort zu befolgen. Auf diesem Gerät kannst du den Kurzbefehl laden und Schritte als erledigt markieren.",
         "install": {
           "title": "Kurzbefehl installieren",
-          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
+          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“.",
+          "file": "Stattdessen die Datei herunterladen"
         },
         "configure": {
           "title": "Kurzbefehl mit Econumo verbinden",

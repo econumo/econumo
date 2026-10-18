@@ -550,7 +550,8 @@
         "hint_desktop": "Open deze pagina op je iPhone om de stappen daar te volgen. Op dit apparaat kun je de opdracht downloaden en stappen als klaar markeren.",
         "install": {
           "title": "Opdracht installeren",
-          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’."
+          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’.",
+          "file": "In plaats daarvan het bestand downloaden"
         },
         "configure": {
           "title": "Opdracht met Econumo verbinden",

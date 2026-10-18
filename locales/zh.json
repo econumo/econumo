@@ -550,7 +550,8 @@
         "hint_desktop": "请在 iPhone 上打开此页面并在那里按步骤操作。在此设备上可以下载快捷指令并将步骤标记为完成。",
         "install": {
           "title": "安装快捷指令",
-          "text": "在 iPhone 上打开该文件并点按“添加快捷指令”。"
+          "text": "在 iPhone 上打开该文件并点按“添加快捷指令”。",
+          "file": "改为下载文件"
         },
         "configure": {
           "title": "将快捷指令连接到 Econumo",

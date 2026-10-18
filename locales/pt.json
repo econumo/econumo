@@ -550,7 +550,8 @@
         "hint_desktop": "Abra esta página no seu iPhone para seguir os passos lá. Neste dispositivo pode transferir o atalho e marcar os passos como concluídos.",
         "install": {
           "title": "Instalar o atalho",
-          "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho»."
+          "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho».",
+          "file": "Transferir o ficheiro em vez disso"
         },
         "configure": {
           "title": "Ligar o atalho ao Econumo",

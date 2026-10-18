@@ -421,9 +421,13 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       step offers "Mark as not done", a server-confirmed one does not. Ticks
       from the older guides carry over (both install steps → step 1, the
       run-once step → step 2).
-- [ ] Step 1 downloads `econumo.shortcut` (button label in its
-      exact lower-case name) in a new window (from the home-screen app the
-      Safari sheet closes back to the page, no relaunch needed) 📱. The v1
+- [ ] Step 1 (button label in the shortcut's exact lower-case name,
+      `econumo`): on an iPhone it opens
+      `shortcuts://import-shortcut?url=<origin>/shortcuts/econumo.shortcut&name=econumo`,
+      so the Shortcuts app shows "Add Shortcut" and the home-screen app stays
+      where it was (no relaunch); "Download the file instead" opens the file
+      in a new window as a fallback. On a desktop the button downloads
+      `econumo.shortcut` in a new window 📱. The v1
       files (`econumo-wallet-v1.shortcut`, `econumo-setup-v1.shortcut`) still
       download from `/shortcuts/` for existing setups.
 - [ ] Step 2, iOS only 📱: "Create access token" mints an ingest PAT (visible

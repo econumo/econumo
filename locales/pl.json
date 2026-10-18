@@ -550,7 +550,8 @@
         "hint_desktop": "Otwórz tę stronę na iPhonie, aby wykonać kroki tam. Na tym urządzeniu możesz pobrać skrót i oznaczać kroki jako gotowe.",
         "install": {
           "title": "Zainstaluj skrót",
-          "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”."
+          "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”.",
+          "file": "Zamiast tego pobierz plik"
         },
         "configure": {
           "title": "Połącz skrót z Econumo",

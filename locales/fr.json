@@ -550,7 +550,8 @@
         "hint_desktop": "Ouvrez cette page sur votre iPhone pour y suivre les étapes. Sur cet appareil, vous pouvez télécharger le raccourci et marquer les étapes comme terminées.",
         "install": {
           "title": "Installer le raccourci",
-          "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci »."
+          "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci ».",
+          "file": "Télécharger plutôt le fichier"
         },
         "configure": {
           "title": "Relier le raccourci à Econumo",
