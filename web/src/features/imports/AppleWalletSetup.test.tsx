@@ -10,7 +10,8 @@ import { AppleWalletConnect, AppleWalletDisconnect, AppleWalletSetup, setupDeepL
 import { useWalletSetup } from './walletSetup'
 
 const mockIsIOS = vi.hoisted(() => ({ value: false }))
-vi.mock('@/lib/platform', () => ({ isIOS: () => mockIsIOS.value, isNativeApp: () => false }))
+const openAppUrl = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/platform', () => ({ isIOS: () => mockIsIOS.value, isNativeApp: () => false, openAppUrl }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 const card = { externalAccountId: 'Apple Card', externalName: 'Apple Card', externalCurrency: 'USD', state: 'unmapped' as const, accountId: '', queuedCount: 0, tapCount: 1, lastSeenAt: '2026-08-20 10:42:03' }
@@ -48,6 +49,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   mockIsIOS.value = false
+  openAppUrl.mockClear()
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
@@ -148,6 +150,9 @@ it('iOS connect mints an ingest token, then offers the shortcut\'s setup link in
   const href = link.getAttribute('href') ?? ''
   expect(href.startsWith('shortcuts://run-shortcut?name=econumo&input=text&text=')).toBe(true)
   expect(decodeURIComponent(href.split('text=')[1])).toContain('"token":"eco_pat_new"')
+  // one tap: the same link goes to Shortcuts right away; the button is the fallback
+  expect(openAppUrl).toHaveBeenCalledTimes(1)
+  expect(openAppUrl).toHaveBeenCalledWith(href)
   // a minted token proves nothing yet: the step waits for the shortcut's check-in
   link.addEventListener('click', (e) => e.preventDefault())
   await user.click(link)

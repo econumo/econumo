@@ -11,7 +11,7 @@ import { useCreatePersonalToken, usePersonalTokens, useRevokePersonalToken } fro
 import { apiErrorMessage } from '@/lib/apiError'
 import { backendHost, getWebsiteUrl } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { isIOS } from '@/lib/platform'
+import { isIOS, openAppUrl } from '@/lib/platform'
 import { useCreateImportSource, useDeleteImportSource } from './queries'
 import { SETUP_VIDEOS, embedUrl, youtubeId, type SetupVideo } from './setupVideos'
 import { STEPS, forgetSetupTicks, type StepId, type WalletSetup } from './walletSetup'
@@ -196,7 +196,13 @@ function Stepper({ setup }: { setup: WalletSetup }) {
       }
       const created = await createToken.mutateAsync({ name: INGEST_TOKEN_NAME, expiresAt: null, scope: 'ingest' })
       trackEvent(METRICS.IMPORT_SHORTCUT_CONFIGURE)
-      setup.setConfigureLink(setupDeepLink(backendHost(), created.token))
+      const link = setupDeepLink(backendHost(), created.token)
+      setup.setConfigureLink(link)
+      // One tap: hand the link to Shortcuts as soon as the token exists. It
+      // runs after an await, so iOS may refuse it as not coming from a tap;
+      // the "Open econumo" button the link also shows is the fallback.
+      trackEvent(METRICS.IMPORT_SHORTCUT_TEST)
+      openAppUrl(link)
     } catch (err) {
       toast.error(apiErrorMessage(err))
     } finally {
