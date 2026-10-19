@@ -361,6 +361,9 @@
         "header": "Змінити транзакцію"
       },
       "form": {
+        "date": {
+          "label": "Дата"
+        },
         "amount": {
           "label": "Сума",
           "validation": {

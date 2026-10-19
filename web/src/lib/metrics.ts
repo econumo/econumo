@@ -123,6 +123,7 @@ export const METRICS = {
   LABEL_UNARCHIVE: 'appLabelUnarchive',
   TRANSACTION_CREATE: 'appTransactionCreate',
   TRANSACTION_UPDATE: 'appTransactionUpdate',
+  TRANSACTION_DATE_SELECT: 'appTransactionDateSelect',
   TRANSACTION_DELETE: 'appTransactionDelete',
   TRANSACTION_IMPORT: 'appTransactionImport',
   TRANSACTION_EXPORT: 'appTransactionExport',

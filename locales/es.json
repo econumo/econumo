@@ -361,6 +361,9 @@
         "header": "Editar la transacción"
       },
       "form": {
+        "date": {
+          "label": "Fecha"
+        },
         "amount": {
           "label": "Importe",
           "validation": {

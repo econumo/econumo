@@ -3,17 +3,15 @@ import { ArrowUpDown, ChevronLeft, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
-import { calendarLocale } from '@/lib/calendarLocale'
 import { formatDate, parseDateTime, formatDateTime, dayKey } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { isNotEmpty, isValidDecimalNumber, isValidFormula, isValidNumber, isValidCategoryName, isValidPayeeName } from '@/lib/validation'
 import { tryNormalize } from '@/lib/decimal'
 import { useUiStore } from '@/app/uiStore'
@@ -51,11 +49,12 @@ import { SelectCard } from './SelectCard'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TransactionType } from '@/api/dto/transaction'
 import { useFormErrors } from '@/hooks/useFormErrors'
+import { TransactionDatePicker } from './TransactionDatePicker'
 
 const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
 
 function TransactionForm({ params, onDone }: { params: OpenTransactionParams; onDone: () => void }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { id: routeAccountId } = useParams()
   const { data: accounts = [] } = useAccounts()
   const { data: folders = [] } = useFolders()
@@ -84,7 +83,6 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   )
   const { errors, setErrors, clear: clearError } = useFormErrors<Record<string, string | undefined>>()
   const [addTagOpen, setAddTagOpen] = useState(false)
-  const [dateOpen, setDateOpen] = useState(false)
 
   const isTransfer = form.type === 'transfer'
   const isExpense = form.type === 'expense'
@@ -280,14 +278,14 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     >
       {/* the dialog header is visually hidden — the title shares one row with
           the back-a-day arrow + date chip (Vue header row) */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-lg font-normal uppercase tracking-wide">{title}</span>
         <span className="flex items-center gap-1">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7"
+            className="size-7 max-sm:size-11"
             aria-label="previous day"
             onClick={() => {
               const d = parseDateTime(form.date)
@@ -297,27 +295,10 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <Popover open={dateOpen} onOpenChange={setDateOpen}>
-            <PopoverTrigger asChild>
-              <Button type="button" variant="secondary" className="h-7 rounded bg-econumo-card px-2 text-xs font-normal" aria-label="date">
-                {dateOnly}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                weekStartsOn={1}
-                locale={calendarLocale(i18n.language)}
-                selected={parseDateTime(dateOnly)}
-                onSelect={(day) => {
-                  if (day) {
-                    patch({ date: `${formatDate(day)} 00:00:00` })
-                    setDateOpen(false)
-                  }
-                }}
-              />
-            </PopoverContent>
-          </Popover>
+          <TransactionDatePicker value={dateOnly} onChange={(day) => {
+            patch({ date: `${formatDate(day)} 00:00:00` })
+            trackEvent(METRICS.TRANSACTION_DATE_SELECT)
+          }} />
         </span>
       </div>
 

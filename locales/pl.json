@@ -361,6 +361,9 @@
         "header": "Edytuj transakcję"
       },
       "form": {
+        "date": {
+          "label": "Data"
+        },
         "amount": {
           "label": "Kwota",
           "validation": {

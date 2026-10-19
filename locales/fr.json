@@ -361,6 +361,9 @@
         "header": "Modifier la transaction"
       },
       "form": {
+        "date": {
+          "label": "Date"
+        },
         "amount": {
           "label": "Montant",
           "validation": {
