@@ -199,6 +199,12 @@
         "search": "Suchen",
         "shared_with": "Gemeinsames Konto"
       },
+      "history": {
+        "navigation": "Transaktionsverlauf",
+        "jump": "Zum Monat springen",
+        "year": "Jahr",
+        "back_today": "Zurück zu heute"
+      },
       "transaction_list": {
         "none": "Keine Transaktionen gefunden",
         "today": "Heute",

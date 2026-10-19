@@ -199,6 +199,12 @@
         "search": "Search",
         "shared_with": "Shared account"
       },
+      "history": {
+        "navigation": "Transaction timeline",
+        "jump": "Jump to month",
+        "year": "Year",
+        "back_today": "Back to today"
+      },
       "transaction_list": {
         "none": "No transactions found",
         "today": "Today",

@@ -199,6 +199,12 @@
         "search": "Buscar",
         "shared_with": "Cuenta compartida"
       },
+      "history": {
+        "navigation": "Historial de transacciones",
+        "jump": "Ir al mes",
+        "year": "Año",
+        "back_today": "Volver a hoy"
+      },
       "transaction_list": {
         "none": "No se encontraron transacciones",
         "today": "Hoy",

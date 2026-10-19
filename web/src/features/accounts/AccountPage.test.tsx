@@ -55,6 +55,7 @@ it('renders the header balance and the grouped transaction rows', async () => {
   renderPage()
   expect(await screen.findByRole('heading', { name: 'Cash' })).toBeInTheDocument()
   expect(screen.getByTestId('account-balance')).toHaveTextContent('100.50 $')
+  expect(await within(screen.getByRole('banner')).findByRole('button', { name: 'Jump to month' })).toHaveTextContent('July 2026')
   // expense row: category title + separate description; sign and symbol
   const expenseRow = await screen.findByTestId('tx-t1')
   expect(expenseRow).toHaveTextContent('Food')
@@ -72,6 +73,36 @@ it('search narrows the list', async () => {
   await user.type(screen.getByLabelText('Search'), 'salary')
   expect(screen.queryByTestId('tx-t1')).not.toBeInTheDocument()
   expect(screen.getByTestId('tx-t2')).toBeInTheDocument()
+})
+
+it('jumps to older account history and resets the timeline to matching months when searching', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  const recent = Array.from({ length: 220 }, (_, index) => ({
+    id: `recent-${index}`, author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '1', amountRecipient: '1', categoryId: 'cat-food', description: 'coffee',
+    payeeId: null, tagId: null, date: '2026-07-02 09:30:00',
+  }))
+  server.use(...coreHandlers({ transactions: [
+    ...recent,
+    { ...recent[0], id: 'old', date: '2020-05-15 12:00:00', description: 'old groceries' },
+  ] }))
+  renderPage()
+  await screen.findByTestId('tx-recent-0')
+  expect(screen.queryByTestId('tx-old')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Jump to month' }))
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Year' }), '2020')
+  await user.click(screen.getByRole('button', { name: 'May 2020' }))
+  expect(screen.getByTestId('tx-old')).toBeInTheDocument()
+  expect(screen.queryByTestId('tx-recent-0')).not.toBeInTheDocument()
+
+  await user.type(screen.getByRole('textbox', { name: 'Search' }), 'groceries')
+  expect(screen.getByTestId('tx-old')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Jump to month' })).toHaveTextContent('May 2020')
+  await user.clear(screen.getByRole('textbox', { name: 'Search' }))
+  expect(screen.getByTestId('tx-recent-0')).toBeInTheDocument()
+  expect(screen.queryByTestId('tx-old')).not.toBeInTheDocument()
+  expect(screen.getByRole('slider')).toHaveAttribute('aria-valuetext', 'July 2026')
 })
 
 it('delete flow: confirm dialog fires the API and applies the returned accounts', async () => {
@@ -198,6 +229,7 @@ it('compact viewport: add-transaction lives in the footer, header keeps only set
   renderPage()
   await screen.findByTestId('tx-t1')
   const header = screen.getByRole('banner')
+  expect(within(header).getByRole('button', { name: 'Jump to month' })).toHaveTextContent('July 2026')
   expect(within(header).queryByRole('button', { name: 'Add transaction' })).not.toBeInTheDocument()
   expect(within(header).getByRole('button', { name: 'Configure' })).toBeInTheDocument()
   const footer = screen.getByRole('contentinfo')

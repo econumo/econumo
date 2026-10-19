@@ -199,6 +199,12 @@
         "search": "Zoeken",
         "shared_with": "Gedeelde rekening"
       },
+      "history": {
+        "navigation": "Transactietijdlijn",
+        "jump": "Ga naar maand",
+        "year": "Jaar",
+        "back_today": "Terug naar vandaag"
+      },
       "transaction_list": {
         "none": "Geen transacties gevonden",
         "today": "Vandaag",
