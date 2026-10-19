@@ -1,5 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { formatDate } from '@/lib/datetime'
 import { ChevronLeft, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +15,7 @@ import { useIsCompact } from '@/hooks/useIsCompact'
 import { useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { useAccounts } from './queries'
+import { TransactionHistory } from './TransactionHistory'
 import { useUserData } from '@/features/user/queries'
 import { useDeleteTransaction } from '@/features/transactions/queries'
 import { useDeleteRecurring, usePostRecurring, useRecurring, useSkipRecurring } from '@/features/recurring/queries'
@@ -24,100 +24,10 @@ import { recurringPostPayload } from '@/features/recurring/postPayload'
 import { useExchange } from '@/features/currencies/useExchange'
 import { separatorText, useAccountTransactions } from '@/features/transactions/useAccountTransactions'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
-import type { DailyListEntry } from '@/features/transactions/useAccountTransactions'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
 import { canWriteToAccount } from '@/features/connections/shared'
-
-// Accounts hold thousands of transactions; mounting them all at once makes
-// switching accounts visibly slow. Render a chunk and grow it as the scroll
-// sentinel comes into range — search still matches the full dataset because
-// filtering happens on the data, not the DOM.
-const LIST_CHUNK = 100
-
-function WindowedEntries({
-  entries,
-  anchorIndex,
-  ready,
-  children,
-}: {
-  entries: DailyListEntry[]
-  /** index of the first at-or-before-today entry — everything above it is the
-      future block that starts hidden above the fold */
-  anchorIndex: number
-  /** anchoring waits for this so the future block is complete before the
-      scroll position is chosen (the recurring query may land after the
-      transactions) */
-  ready: boolean
-  children: (entry: DailyListEntry) => ReactNode
-}) {
-  const [visibleCount, setVisibleCount] = useState(LIST_CHUNK)
-  const sentinelRef = useRef<HTMLDivElement | null>(null)
-  const anchorRef = useRef<HTMLDivElement | null>(null)
-  const anchoredRef = useRef(false)
-  const hasMore = visibleCount < entries.length
-
-  // Land the initial view on today: future rows stay above the fold and are
-  // pulled into view by scrolling up. Runs once per mount (the list remounts
-  // per account), so later list changes never yank the scroll position.
-  useLayoutEffect(() => {
-    if (anchoredRef.current || !ready || entries.length === 0 || anchorIndex < 0) {
-      return
-    }
-    if (anchorIndex === 0) {
-      // no future block — nothing to hide
-      anchoredRef.current = true
-      return
-    }
-    if (anchorIndex >= visibleCount) {
-      // the anchor row isn't rendered yet — grow the window first, then anchor
-      setVisibleCount(anchorIndex + LIST_CHUNK)
-      return
-    }
-    const anchor = anchorRef.current
-    const container = anchor?.parentElement
-    if (anchor && container) {
-      container.scrollTop += anchor.getBoundingClientRect().top - container.getBoundingClientRect().top
-    }
-    anchoredRef.current = true
-  }, [ready, entries.length, anchorIndex, visibleCount])
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) {
-      return
-    }
-    // The parent is the scroll container; it must be the observer root —
-    // rootMargin on the default (viewport) root does not expand the clip
-    // rect of a scrollable ancestor, so prefetch would never trigger.
-    const observer = new IntersectionObserver(
-      (hits) => {
-        if (hits.some((hit) => hit.isIntersecting)) {
-          setVisibleCount((count) => count + LIST_CHUNK)
-        }
-      },
-      { root: sentinel.parentElement, rootMargin: '600px' },
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-    // re-observe after each growth: the sentinel may still be in range and the
-    // observer only fires on intersection *changes*
-  }, [hasMore, visibleCount])
-
-  return (
-    <>
-      {entries.slice(0, visibleCount).flatMap((entry, i) => {
-        const node = children(entry)
-        // the zero-height marker the initial scroll lands on
-        return i === anchorIndex && anchorIndex > 0
-          ? [<div key="future-anchor" data-testid="future-anchor" ref={anchorRef} aria-hidden="true" />, node]
-          : [node]
-      })}
-      {hasMore ? <div ref={sentinelRef} aria-hidden="true" className="h-px" /> : null}
-    </>
-  )
-}
 
 export function AccountPage() {
   const { t, i18n } = useTranslation()
@@ -139,6 +49,7 @@ export function AccountPage() {
   const openRecurringModal = useUiStore((s) => s.openRecurringModal)
 
   const [search, setSearch] = useState('')
+  const [historyNavigationTarget, setHistoryNavigationTarget] = useState<HTMLDivElement | null>(null)
   // still reachable from the desktop kebab on an unposted recurring row, even
   // though the preview dialog itself no longer offers delete
   const [recurringDeleteTarget, setRecurringDeleteTarget] = useState<RecurringDto | null>(null)
@@ -208,37 +119,40 @@ export function AccountPage() {
     ) : null
 
   return (
-    <div className="flex h-full flex-col gap-3 p-4">
+    <div className="flex h-full min-h-0 flex-col gap-3 p-4">
       {isCompact ? (
         <>
-          <header className="flex items-center gap-3">
-            <Button type="button" variant="ghost" size="icon" aria-label="back" title={t('common.button.back.label')} onClick={() => navigate(RouterPage.HOME)}>
-              <ChevronLeft className="size-5" />
-            </Button>
-            <EntityIcon name={account.icon} className="text-2xl text-muted-foreground" />
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-lg uppercase" title={account.name}>
-                {account.name}
-              </h1>
-              <span className="flex items-center gap-2">
-                <p className="text-sm text-muted-foreground" data-testid="account-balance">
-                  {moneyFormat(account.balance, account.currency, { useNativePrecision: false })}
-                </p>
-                {sharedAvatars}
-              </span>
-            </div>
-            {canUpdateSettings ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={t('accounts.page.toolbar.settings')}
-                title={t('accounts.page.toolbar.settings')}
-                onClick={() => openAccountModal({ account })}
-              >
-                <Settings2 className="size-5" />
+          <header className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="ghost" size="icon" aria-label="back" title={t('common.button.back.label')} onClick={() => navigate(RouterPage.HOME)}>
+                <ChevronLeft className="size-5" />
               </Button>
-            ) : null}
+              <EntityIcon name={account.icon} className="text-2xl text-muted-foreground" />
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-lg uppercase" title={account.name}>
+                  {account.name}
+                </h1>
+                <span className="flex items-center gap-2">
+                  <p className="text-sm text-muted-foreground" data-testid="account-balance">
+                    {moneyFormat(account.balance, account.currency, { useNativePrecision: false })}
+                  </p>
+                  {sharedAvatars}
+                </span>
+              </div>
+              {canUpdateSettings ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('accounts.page.toolbar.settings')}
+                  title={t('accounts.page.toolbar.settings')}
+                  onClick={() => openAccountModal({ account })}
+                >
+                  <Settings2 className="size-5" />
+                </Button>
+              ) : null}
+            </div>
+            <div ref={setHistoryNavigationTarget} className="relative h-3 border-b" />
           </header>
           <Input
             aria-label={t('accounts.page.toolbar.search')}
@@ -261,7 +175,7 @@ export function AccountPage() {
               </span>
               {sharedAvatars}
             </div>
-            <div className="flex items-end justify-between gap-3 border-b pb-2">
+            <div className="flex items-end justify-between gap-3">
               <p className="text-[15px] font-medium" data-testid="account-balance">
                 {moneyFormat(account.balance, account.currency, { useNativePrecision: false })}
               </p>
@@ -281,6 +195,7 @@ export function AccountPage() {
                 </Button>
               ) : null}
             </div>
+            <div ref={setHistoryNavigationTarget} className="relative h-3 border-b" />
           </header>
           <div className="flex items-center justify-between gap-3">
             {canChangeTransaction ? (
@@ -305,8 +220,13 @@ export function AccountPage() {
         </>
       )}
 
-      <div className="flex-1 overflow-y-auto">
-        <WindowedEntries key={account.id} entries={entries} anchorIndex={anchorIndex} ready={recurringList !== undefined}>
+      <TransactionHistory
+        key={`${account.id}:${search}`}
+        entries={entries}
+        anchorIndex={anchorIndex}
+        ready={recurringList !== undefined}
+        navigationTarget={historyNavigationTarget}
+      >
           {(entry) =>
             entry.kind === 'separator' ? (
             <div key={`sep-${entry.day}`} className="px-2 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
@@ -396,8 +316,7 @@ export function AccountPage() {
             </div>
           )
           }
-        </WindowedEntries>
-      </div>
+      </TransactionHistory>
 
       {isCompact && canChangeTransaction ? (
         <footer className="shrink-0 pb-[env(safe-area-inset-bottom)]">

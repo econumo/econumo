@@ -199,6 +199,12 @@
         "search": "Cerca",
         "shared_with": "Conto condiviso"
       },
+      "history": {
+        "navigation": "Cronologia delle transazioni",
+        "jump": "Vai al mese",
+        "year": "Anno",
+        "back_today": "Torna a oggi"
+      },
       "transaction_list": {
         "none": "Nessuna transazione trovata",
         "today": "Oggi",

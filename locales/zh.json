@@ -199,6 +199,12 @@
         "search": "搜索",
         "shared_with": "共享账户"
       },
+      "history": {
+        "navigation": "交易时间轴",
+        "jump": "跳转到月份",
+        "year": "年份",
+        "back_today": "返回今天"
+      },
       "transaction_list": {
         "none": "未找到交易",
         "today": "今天",
