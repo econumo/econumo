@@ -228,7 +228,3 @@ export interface ApplyImportRuleDto {
   updated: number
   skipped: number
 }
-
-export interface ImportRuleSuggestionDto extends ImportRuleSpecDto {
-  reason: string
-}

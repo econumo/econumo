@@ -1,11 +1,11 @@
 package server_test
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -127,42 +127,18 @@ func TestImportProviders_DisabledProviderSourceIsRefusedAndHidden(t *testing.T) 
 	}
 }
 
-func TestSuggestRules_AnthropicWiring(t *testing.T) {
+func TestImportRuleSuggestionsRemovedWithAIConfigured(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	userID := f.User(fixture.User{})
-	accountID := f.Account(fixture.Account{UserID: userID})
-	categoryID := f.Category(fixture.Category{UserID: userID, Name: "Coffee"})
-	txID := f.Transaction(fixture.Transaction{UserID: userID, AccountID: accountID, CategoryID: categoryID, Amount: "4.50"})
-	sourceID := f.ImportSource(fixture.ImportSource{UserID: userID, Name: "iPhone"})
-	f.ImportTransactionLink(fixture.ImportTransactionLink{
-		SourceID: sourceID, ExternalAccountID: "Card", ExternalTransactionID: "coffee-1",
-		TransactionID: txID, ExternalPayee: "Blue Bottle", ExternalAmount: "4.50", ExternalCurrency: "USD",
-	})
-	full := "eco_pat_anthropic-wiring-test-full-00000000000000"
+	full := "eco_pat_ai-configured-test-full-0000000000000000"
 	exp := time.Now().UTC().Add(24 * time.Hour)
 	f.AccessToken(fixture.AccessToken{UserID: userID, Kind: "personal", TokenHash: appuser.HashAccessToken(full), ExpiresAt: &exp})
 
-	calls := 0
+	var calls atomic.Int64
 	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
-		if r.URL.Path != "/anthropic/v1/messages" || r.Header.Get("x-api-key") != "test-key" || r.Header.Get("anthropic-version") != "2023-06-01" {
-			t.Errorf("unexpected Anthropic request: %s %v", r.URL.Path, r.Header)
-		}
-		var body struct {
-			System   string                           `json:"system"`
-			Messages []struct{ Role, Content string } `json:"messages"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			t.Error(err)
-		}
-		if body.System == "" || len(body.Messages) != 1 || body.Messages[0].Role != "user" || !strings.Contains(body.Messages[0].Content, "Blue Bottle") {
-			t.Errorf("missing suggestion prompt: %+v", body)
-		}
-		suggestion := `{"rules":[{"matchField":"external_payee","matchType":"contains","matchValue":"Blue Bottle","categoryId":"` + categoryID + `","reason":"Coffee purchases"}]}`
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"content": []map[string]string{{"type": "text", "text": suggestion}}, "stop_reason": "end_turn",
-		})
+		calls.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer endpoint.Close()
 	cfg := baseTestConfig(db.Engine)
@@ -176,7 +152,11 @@ func TestSuggestRules_AnthropicWiring(t *testing.T) {
 	defer ts.Close()
 	s := importServer{t: t, url: ts.URL, f: f, user: userID, token: full}
 	status, body := s.do(http.MethodPost, "/api/v1/import/suggest-rules", `{"scope":"all"}`)
-	if status != http.StatusOK || !strings.Contains(body, categoryID) || !strings.Contains(body, "Coffee purchases") || calls != 1 {
-		t.Fatalf("status=%d body=%s calls=%d", status, body, calls)
+	if status != http.StatusNotFound || calls.Load() != 0 {
+		t.Fatalf("removed suggestions endpoint: status=%d body=%s AI calls=%d", status, body, calls.Load())
+	}
+	status, body = s.do(http.MethodGet, "/api/v1/import/get-rule-list", "")
+	if status != http.StatusOK {
+		t.Fatalf("rule management must remain available: status=%d body=%s", status, body)
 	}
 }

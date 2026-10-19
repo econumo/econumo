@@ -42,7 +42,6 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, providers Pro
 		// POST, not GET: the whole rule spec travels in the body, like list-external-accounts.
 		mux.Handle("POST /api/v1/import/preview-rule", auth(h.PreviewRule))
 		mux.Handle("POST /api/v1/import/apply-rule", auth(h.ApplyRule))
-		mux.Handle("POST /api/v1/import/suggest-rules", auth(h.SuggestRules))
 		if providers.AppleWallet {
 			// The only route an ingest-scoped PAT may call (middleware.IngestPathPrefix).
 			mux.Handle("POST /api/v1/import/ingest-apple-wallet-event", auth(h.IngestAppleWalletEvent))

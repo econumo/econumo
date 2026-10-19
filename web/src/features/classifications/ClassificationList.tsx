@@ -60,7 +60,7 @@ interface ClassificationListProps<T extends ClassificationItem> {
   /** page-level banner (e.g. a server refusal) rendered between info and the list */
   alert?: ReactNode
   createLabel: string
-  /** a second header action beside Create (e.g. an AI suggestion trigger) */
+  /** a second header action beside Create */
   secondaryAction?: ReactNode
   /** replaces the generic empty-list text */
   emptyText?: string

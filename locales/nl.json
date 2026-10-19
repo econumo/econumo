@@ -780,13 +780,6 @@
         "delete_title": "Deze regel verwijderen?",
         "delete_confirm": "Regel verwijderen",
         "skip_hint": "Overeenkomende transacties worden niet geïmporteerd"
-      },
-      "suggest": {
-        "button": "Regels voorstellen",
-        "running": "Aan het nadenken…",
-        "heading": "Voorgestelde regels",
-        "accept": "Accepteren",
-        "discard": "Verwerpen"
       }
     },
     "history": {
@@ -2020,9 +2013,7 @@
       "provider_unavailable": "De bankbridge kon niet worden bereikt. Probeer het over een paar minuten opnieuw.",
       "sync_range_invalid": "De datumreeks is ongeldig: de startdatum mag niet na de einddatum liggen en de reeks mag niet langer dan 400 dagen zijn.",
       "access_url_invalid": "De opgeslagen bankgegevens zijn geen geldige toegangs-URL. Verbind SimpleFIN opnieuw met een nieuw setup-token.",
-      "rule_skip_not_applicable": "Een overslaan-regel kan niet worden toegepast op bestaande transacties",
-      "ai_disabled": "AI-suggesties zijn niet ingeschakeld op deze server",
-      "ai_unavailable": "De AI-service is niet beschikbaar. Probeer het later opnieuw."
+      "rule_skip_not_applicable": "Een overslaan-regel kan niet worden toegepast op bestaande transacties"
     },
     "label": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",

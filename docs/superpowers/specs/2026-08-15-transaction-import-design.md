@@ -1,5 +1,10 @@
 # Transaction Import (SimpleFIN + Apple Wallet) — Design
 
+> **Update (2026-10-18):** Bulk AI rule suggestion generation has been removed.
+> The AI client, provider configuration, and integration remain available for future features.
+> Rule creation after editing imported transactions and manual rule management remain supported.
+> Suggestion-generation sections below describe the historical design.
+
 **Date:** 2026-08-15
 **Status:** Approved; open questions resolved 2026-09-01 (see Resolved
 questions). Supersedes the 2026-07-19 SimpleFIN-only draft.

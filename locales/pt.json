@@ -780,13 +780,6 @@
         "delete_title": "Eliminar esta regra?",
         "delete_confirm": "Eliminar regra",
         "skip_hint": "As transações correspondentes não são importadas"
-      },
-      "suggest": {
-        "button": "Sugerir regras",
-        "running": "A pensar…",
-        "heading": "Regras sugeridas",
-        "accept": "Aceitar",
-        "discard": "Descartar"
       }
     },
     "history": {
@@ -2020,9 +2013,7 @@
       "provider_unavailable": "Não foi possível contactar o bridge bancário. Tente novamente dentro de alguns minutos.",
       "sync_range_invalid": "O intervalo de datas é inválido: o início não pode ser posterior ao fim, e o intervalo não pode exceder 400 dias.",
       "access_url_invalid": "A credencial bancária guardada não é um URL de acesso válido. Volte a ligar o SimpleFIN com um novo token de configuração.",
-      "rule_skip_not_applicable": "Uma regra de ignorar não pode ser aplicada a transações existentes",
-      "ai_disabled": "As sugestões de IA não estão ativadas neste servidor",
-      "ai_unavailable": "O serviço de IA está indisponível. Tente novamente mais tarde."
+      "rule_skip_not_applicable": "Uma regra de ignorar não pode ser aplicada a transações existentes"
     },
     "label": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",

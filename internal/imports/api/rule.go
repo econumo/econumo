@@ -123,22 +123,3 @@ func (h *Handlers) PreviewRule(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) ApplyRule(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.ApplyRule)
 }
-
-// SuggestRules handles POST /api/v1/import/suggest-rules (auth).
-//
-// @Summary     Ask the configured AI for rule suggestions
-// @Description Returns AI-proposed rule specs for imports in scope. 400 import.ai_disabled when no AI provider is configured on this server.
-// @Tags        Import
-// @Accept      json
-// @Produce     json
-// @Param       request body     model.SuggestImportRulesRequest true "Scope"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.SuggestImportRulesResult}
-// @Failure     400     {object} apidoc.JsonResponseError
-// @Failure     401     {object} apidoc.JsonResponseUnauthorized
-// @Failure     402     {object} apidoc.JsonResponseError
-// @Failure     500     {object} apidoc.JsonResponseException
-// @Security    Bearer
-// @Router      /api/v1/import/suggest-rules [post]
-func (h *Handlers) SuggestRules(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.svc.SuggestRules)
-}

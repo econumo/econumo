@@ -626,22 +626,3 @@ type ImportRuleResult struct {
 type GetImportRuleListResult struct {
 	Items []ImportRuleResult `json:"items"`
 }
-
-type ImportRuleSuggestion struct {
-	ImportRuleSpec
-	Reason string `json:"reason"`
-}
-
-type SuggestImportRulesRequest struct {
-	Scope         string `json:"scope"`
-	RunId         string `json:"runId"`
-	ScopeSourceId string `json:"scopeSourceId"`
-}
-
-func (r SuggestImportRulesRequest) Validate() error {
-	return validateRuleScope(r.Scope, r.RunId, r.ScopeSourceId)
-}
-
-type SuggestImportRulesResult struct {
-	Items []ImportRuleSuggestion `json:"items"`
-}

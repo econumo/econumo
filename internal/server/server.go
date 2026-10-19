@@ -204,7 +204,6 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			appimports.RateScopeIngest:          cfg.RateLimitIngest,
 			appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
 			appimports.RateScopeSync:            cfg.RateLimitSync,
-			appimports.RateScopeSuggestRules:    cfg.RateLimitSuggestRules,
 			appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
 			// No per-key cap: the caller of start-login/start-link is anonymous
 			// until the provider answers. The global per-minute cap applies.

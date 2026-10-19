@@ -32,7 +32,7 @@ interface ImportRuleDialogProps {
   open: boolean
   // editing an existing rule (its id is posted to update-rule) ...
   rule?: ImportRuleDto
-  // ... or creating one, optionally prefilled (an accepted-for-editing suggestion)
+  // ... or creating one with an initial spec
   initial?: ImportRuleSpecDto
   onClose: () => void
   onSaved?: (rule: ImportRuleDto) => void

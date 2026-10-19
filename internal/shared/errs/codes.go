@@ -126,8 +126,6 @@ const (
 	CodeImportSyncRangeInvalid      = "import.sync_range_invalid"
 	CodeImportAccessUrlInvalid      = "import.access_url_invalid"
 	CodeImportRuleSkipNotApplicable = "import.rule_skip_not_applicable"
-	CodeImportAiDisabled            = "import.ai_disabled"
-	CodeImportAiUnavailable         = "import.ai_unavailable"
 	CodeOAuthProviderNotConfigured  = "oauth.provider_not_configured"
 	CodeOAuthHandoffInvalid         = "oauth.handoff_invalid"
 	CodeOAuthLastIdentity           = "oauth.last_identity"
@@ -261,8 +259,6 @@ var AllCodes = []string{
 	CodeImportSyncRangeInvalid,
 	CodeImportAccessUrlInvalid,
 	CodeImportRuleSkipNotApplicable,
-	CodeImportAiDisabled,
-	CodeImportAiUnavailable,
 	CodeOAuthProviderNotConfigured,
 	CodeOAuthHandoffInvalid,
 	CodeOAuthLastIdentity,

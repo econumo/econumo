@@ -84,12 +84,6 @@ function renderPage(data: Record<string, unknown> = {}) {
       ;(posted.delete ??= []).push(await request.json())
       return HttpResponse.json({ success: true, message: '', data: null })
     }),
-    http.post('*/api/v1/import/suggest-rules', async ({ request }) => {
-      ;(posted.suggest ??= []).push(await request.json())
-      return HttpResponse.json({ success: true, message: '', data: { items: [
-        { sourceId: '', action: 'classify', matchField: 'external_payee', matchType: 'contains', matchValue: 'UBER', isCaseSensitive: false, categoryId: 'cat-food', payeeId: '', tagId: '', labelIds: [], priority: 0, reason: '4 rides last month' },
-      ] } })
-    }),
   )
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter([{ path: '/settings/import-rules', element: <ImportRulesPage /> }], { initialEntries: ['/settings/import-rules'] })
@@ -104,7 +98,8 @@ beforeEach(() => {
   for (const k of Object.keys(posted)) delete posted[k]
 })
 
-it('lists rules in priority order with skip rules marked and targets named', async () => {
+it('lists rules without bulk suggestions even with AI enabled', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
   renderPage()
   const rows = await screen.findAllByRole('listitem')
   expect(rows).toHaveLength(2)
@@ -172,35 +167,6 @@ it('edits and deletes a rule', async () => {
   await user.click(await screen.findByRole('button', { name: 'Delete' }))
   await waitFor(() => expect(posted.delete![0]).toEqual({ id: 'rule2' }))
   await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1))
-})
-
-it('with AI enabled, suggestions can be accepted or discarded', async () => {
-  window.econumoConfig = { AI_ENABLED: true }
-  renderPage()
-  const user = userEvent.setup()
-  await user.click(await screen.findByRole('button', { name: 'Suggest rules' }))
-  await waitFor(() => expect(posted.suggest![0]).toEqual({ scope: 'all', runId: '', scopeSourceId: '' }))
-  const suggestion = await screen.findByRole('region', { name: 'Suggested rules' })
-  expect(within(suggestion).getByText('Payee contains UBER')).toBeInTheDocument()
-  expect(within(suggestion).getByText('4 rides last month')).toBeInTheDocument()
-  expect(await within(suggestion).findByText('Matches 7 imported transactions')).toBeInTheDocument()
-  await user.click(within(suggestion).getByRole('button', { name: 'Accept' }))
-  await waitFor(() => expect(posted.create![0]).toMatchObject({ matchValue: 'UBER', categoryId: 'cat-food', priority: 2 }))
-  await waitFor(() => expect(screen.queryByRole('region', { name: 'Suggested rules' })).not.toBeInTheDocument())
-})
-
-it('disables Suggest rules for a readonly user', async () => {
-  window.econumoConfig = { AI_ENABLED: true }
-  access.state = 'readonly'
-  renderPage()
-  expect(await screen.findByRole('button', { name: 'Suggest rules' })).toBeDisabled()
-})
-
-it('enables Suggest rules for a full-access user', async () => {
-  window.econumoConfig = { AI_ENABLED: true }
-  access.state = 'full_access'
-  renderPage()
-  expect(await screen.findByRole('button', { name: 'Suggest rules' })).toBeEnabled()
 })
 
 it('reordering persists the new priorities', async () => {

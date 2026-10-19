@@ -20,7 +20,6 @@ import {
   useImportSources,
   useLinkImportAccount,
   useSkipQueuedEvent,
-  useSuggestImportRules,
   useSyncImportSource,
 } from './queries'
 
@@ -240,15 +239,4 @@ it('useApplyImportRule posts the scope and invalidates the ledger caches', async
   // for ten minutes and the post-edit rule prompt compares against it
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ['transactionImports'] })
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_RULE_APPLY, { updated: 3, skipped: 2 })
-})
-
-it('useSuggestImportRules returns the model proposals and fires the metric with the count', async () => {
-  server.use(http.post('*/api/v1/import/suggest-rules', () =>
-    HttpResponse.json({ success: true, message: '', data: { items: [{ ...wireRule, reason: 'Every Blue Bottle tap was categorised Coffee' }] } })))
-  const { wrapper } = makeWrapper()
-  const { result } = renderHook(() => useSuggestImportRules(), { wrapper })
-  let items: unknown[] = []
-  await act(async () => { items = await result.current.mutateAsync({ scope: 'all', runId: '', scopeSourceId: '' }) })
-  expect(items).toHaveLength(1)
-  expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_RULES_SUGGEST, { count: 1 })
 })

@@ -780,13 +780,6 @@
         "delete_title": "Diese Regel löschen?",
         "delete_confirm": "Regel löschen",
         "skip_hint": "Passende Transaktionen werden nicht importiert"
-      },
-      "suggest": {
-        "button": "Regeln vorschlagen",
-        "running": "Denkt nach…",
-        "heading": "Vorgeschlagene Regeln",
-        "accept": "Übernehmen",
-        "discard": "Verwerfen"
       }
     },
     "history": {
@@ -2020,9 +2013,7 @@
       "provider_unavailable": "Die Bank-Bridge konnte nicht erreicht werden. Versuche es in ein paar Minuten erneut.",
       "sync_range_invalid": "Der Zeitraum ist ungültig: Der Beginn darf nicht nach dem Ende liegen, und der Zeitraum darf 400 Tage nicht überschreiten.",
       "access_url_invalid": "Die gespeicherte Bank-Anmeldeinformation ist keine gültige Zugriffs-URL. Verbinde SimpleFIN mit einem neuen Setup-Token erneut.",
-      "rule_skip_not_applicable": "Eine Ausschlussregel kann nicht auf vorhandene Transaktionen angewendet werden",
-      "ai_disabled": "KI-Vorschläge sind auf diesem Server nicht aktiviert",
-      "ai_unavailable": "Der KI-Dienst ist nicht verfügbar. Versuche es später erneut."
+      "rule_skip_not_applicable": "Eine Ausschlussregel kann nicht auf vorhandene Transaktionen angewendet werden"
     },
     "label": {
       "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",
