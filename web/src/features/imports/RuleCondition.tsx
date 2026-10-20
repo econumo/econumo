@@ -54,7 +54,7 @@ function PillSelect({ value, onChange, children, 'aria-label': ariaLabel }: { va
   return (
     <span className="relative inline-flex">
       <select aria-label={ariaLabel} value={value} onChange={(e) => onChange(e.target.value)}
-        className="cursor-pointer appearance-none rounded-md bg-background py-1 pr-7 pl-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/30">
+        className="cursor-pointer appearance-none rounded-md bg-background py-1 pr-7 pl-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {children}
       </select>
       <ChevronDown className="pointer-events-none absolute top-1/2 right-2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
