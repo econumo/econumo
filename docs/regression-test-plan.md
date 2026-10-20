@@ -2082,6 +2082,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 
 ## 13. Cross-cutting & platform
 
+- [ ] Dark theme: text inputs, selects, textareas and the amount/plan fields
+      (Add transaction, Set plan) carry no fill of their own: they show the
+      surface they sit on, as in the light theme. 📱
 - [ ] i18n: switch to a non-English language — spot-check every page for
       untranslated keys/overflowing labels; server-rendered errors (e.g. bad
       login) arrive translated; switch back.
