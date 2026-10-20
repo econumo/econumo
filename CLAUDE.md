@@ -367,6 +367,20 @@ build arg of the same name sets it per image build, default `dev`) — that one
 IS a real version, used by the mobile app where no server config is present.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
+**Service worker** (`web/sw/sw.js`, registered by `web/src/lib/serviceWorker.ts`, production
+web builds only, never in the native app): it makes the installed PWA start offline. A Vite
+plugin in `web/vite.config.ts` writes `dist/sw.js` after the build, prepending the precache
+list (the bundle, `econumo-config.js`, the manifest and the icons it and `index.html` name)
+and a version that digests those files, so a deploy that changes any of them installs a new
+worker (`skipWaiting` + `clients.claim`, older `econumo-*` caches dropped on activate).
+Navigations are network-first with the shell cached under `/` (Go's file server redirects
+`/index.html`), falling back to it offline or after 4 s; `/assets/*` is cache-first; other
+shell files network-first. `/api`, `/mcp`, the OAuth server routes, `/.well-known`, `/health`,
+`/_` and liltag are never intercepted, and nothing user-specific is cached (the data lives in
+IndexedDB, above). "Clear cache and reload" also asks the worker to download every shell file
+again; it drops the old caches only once all of them arrived, so an unreachable server leaves
+the offline copy in place.
+
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One
 database, `econumo` (`web/src/lib/db.ts`), holds three stores: `importKeys` (the SimpleFIN
 data key, migrated once from the old `econumo-import` database), `accountTransactions`

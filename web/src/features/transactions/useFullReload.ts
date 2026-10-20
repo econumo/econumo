@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { queryKeys } from '@/app/queryKeys'
 import { markForReload } from '@/lib/transactionStore'
+import { refreshServiceWorkerCache } from '@/lib/serviceWorker'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { requestFullReload } from './revisionTracking'
 
@@ -77,7 +78,8 @@ export function useFullReload(): (source: FullReloadSource) => Promise<void> {
       requestFullReload()
       await markForReload()
       void queryClient.invalidateQueries()
-      await settled(queryClient)
+      // the app files the service worker keeps for offline starts go too
+      await Promise.all([settled(queryClient), refreshServiceWorkerCache().catch(() => {})])
     } finally {
       setPending(queryClient, false)
     }

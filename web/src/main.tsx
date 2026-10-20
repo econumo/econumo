@@ -9,6 +9,9 @@ import { createPersistOptions, refreshRestoredQueries } from '@/lib/queryPersist
 import { queryClient } from '@/app/queryClient'
 import { bootNativeApp, hideSplash } from '@/lib/appBoot'
 import { setRouter } from '@/app/routerRef'
+import { registerServiceWorker } from '@/lib/serviceWorker'
+
+registerServiceWorker()
 
 void bootNativeApp().then(() => {
   const router = createRouter()
