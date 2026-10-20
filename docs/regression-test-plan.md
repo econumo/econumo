@@ -835,6 +835,10 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       unit tests; in a manual run just note the next-date math looks right.
 - [ ] Edit and delete a rule; delete asks for confirmation; posted transactions
       survive rule deletion.
+- [ ] 📱 Editing a rule whose next payment is in another month, the date
+      chip's calendar opens at that month with the date selected (not
+      today's month), and offers the same month/year pickers (bottom sheet
+      on a phone) as the transaction dialog.
 - [ ] Recurring settings page groups rules by account; actions are gated by
       write permission on shared accounts.
 

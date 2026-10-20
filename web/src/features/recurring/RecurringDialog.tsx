@@ -2,15 +2,12 @@ import { ChevronLeft, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
-import { calendarLocale } from '@/lib/calendarLocale'
 import { dayKey, formatDate, formatDateTime, parseDateTime } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { tryNormalize } from '@/lib/decimal'
@@ -32,6 +29,7 @@ import { TagDialog } from '@/features/classifications/TagDialog'
 import { ClassificationChips } from '@/features/transactions/ClassificationChips'
 import { EntitySelect } from '@/features/transactions/EntitySelect'
 import { SelectCard } from '@/features/transactions/SelectCard'
+import { TransactionDatePicker } from '@/features/transactions/TransactionDatePicker'
 import type { TransactionType } from '@/api/dto/transaction'
 import type { RecurringSchedule } from '@/api/dto/recurring'
 import { useCreateRecurring, useUpdateRecurring } from './queries'
@@ -42,7 +40,7 @@ const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
 const SCHEDULE_ORDER: RecurringSchedule[] = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']
 
 function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone: () => void }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { data: accounts = [] } = useAccounts()
   const { data: folders = [] } = useFolders()
   const { data: categories = [] } = useCategories()
@@ -56,7 +54,6 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
 
   const { form, patch, setType, setSchedule, account } = useRecurringForm(params, accounts)
   const { errors, setErrors, clear: clearError } = useFormErrors<Record<string, string | undefined>>()
-  const [dateOpen, setDateOpen] = useState(false)
   const [addTagOpen, setAddTagOpen] = useState(false)
 
   const isTransfer = form.type === 'transfer'
@@ -166,27 +163,9 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
             >
               <ChevronLeft className="size-4" />
             </Button>
-            <Popover open={dateOpen} onOpenChange={setDateOpen}>
-              <PopoverTrigger asChild>
-                <Button type="button" variant="secondary" className="h-7 rounded bg-econumo-card px-2 text-xs font-normal" aria-label="date">
-                  {dateOnly}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="single"
-                  weekStartsOn={1}
-                  locale={calendarLocale(i18n.language)}
-                  selected={parseDateTime(dateOnly)}
-                  onSelect={(day) => {
-                    if (day) {
-                      patch({ nextPaymentAt: `${formatDate(day)} 00:00:00`, anchorDate: null })
-                      setDateOpen(false)
-                    }
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
+            <TransactionDatePicker value={dateOnly} onChange={(day) => {
+              patch({ nextPaymentAt: `${formatDate(day)} 00:00:00`, anchorDate: null })
+            }} />
           </span>
         </div>
 
