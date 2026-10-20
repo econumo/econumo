@@ -104,6 +104,18 @@ it('the back-a-day arrow moves the next payment date', async () => {
   await waitFor(() => expect(screen.getByRole('button', { name: 'date' }).textContent).not.toBe(before))
 })
 
+it('the calendar opens at the planned month, not today', async () => {
+  const user = userEvent.setup()
+  const year = new Date().getFullYear() + 2
+  renderDialog()
+  useUiStore.getState().openRecurringModal({ recurring: { ...wireRecurringAsDto, nextPaymentAt: `${year}-08-20 00:00:00` } })
+  await user.click(await screen.findByRole('button', { name: 'date' }))
+  expect(screen.getByRole('combobox', { name: 'Choose the Year' })).toHaveValue(String(year))
+  expect(screen.getByRole('combobox', { name: 'Choose the Month' })).toHaveValue('7')
+  await user.click(screen.getByRole('button', { name: new RegExp(`August 25th, ${year}`) }))
+  expect(screen.getByRole('button', { name: 'date' })).toHaveTextContent(`${year}-08-25`)
+})
+
 it('tags render as the transaction dialog pill row, toggling the template tag', async () => {
   const user = userEvent.setup()
   renderDialog()
