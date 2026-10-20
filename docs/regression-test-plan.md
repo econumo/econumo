@@ -2095,6 +2095,19 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Dark theme: text inputs, selects, textareas and the amount/plan fields
       (Add transaction, Set plan) carry no fill of their own: they show the
       surface they sit on, as in the light theme. 📱
+- [ ] 📱 Offline start of the installed app: open the app online once (in
+      DevTools → Application → Service workers, `/sw.js` is activated and Cache
+      storage holds one `econumo-shell-…` cache), then go offline (airplane
+      mode on the phone) and launch it from the Home Screen or reload a deep
+      link such as `/settings` — the app opens with its data instead of the
+      browser's "can't connect" page. `/api/doc` still loads from the server,
+      never the app shell.
+- [ ] After a deploy, the next online launch runs the new version (the
+      sidebar version label changes) with no reinstall, and Cache storage
+      holds only the new build's `econumo-shell-…` cache.
+- [ ] A launch on a connection that hangs (DevTools throttling "Offline" off,
+      custom profile with a 30 s latency) opens the cached app after about 4 s
+      instead of waiting for the network.
 - [ ] i18n: switch to a non-English language — spot-check every page for
       untranslated keys/overflowing labels; server-rendered errors (e.g. bad
       login) arrive translated; switch back.
@@ -2154,6 +2167,10 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       meanwhile starts nothing new. Offline, it (and the sync-button hold)
       only shows "You're offline. Clear the cache and reload when you're back online."
       and an offline reload afterwards still shows every transaction.
+      Online, it also downloads every app file again: DevTools → Cache
+      storage then holds only the `econumo-shell-…` cache, refreshed (no
+      `econumo-runtime`). With the server unreachable it keeps the old copy, so
+      an offline launch afterwards still opens the app.
 - [ ] Cross-device edit: with the app open on devices A and B, edit or add a
       transaction on A, then tap sync on B (or refocus B after 10 minutes) —
       B shows the change without a manual reload; only the touched account
