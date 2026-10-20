@@ -1933,6 +1933,19 @@
       "menuItem": "App connesse"
     }
   },
+  "install": {
+    "notice": "Installa Econumo come app",
+    "dismiss": "Ignora",
+    "menu_item": "Installa l’app",
+    "dialog": {
+      "title": "Installa Econumo",
+      "intro": "Aggiungi Econumo alla schermata Home per aprirlo a schermo intero, come qualsiasi altra app.",
+      "step_share": "Tocca il pulsante Condividi del browser. In Safari può trovarsi nel menu •••.",
+      "step_add": "Scorri e scegli «Aggiungi alla schermata Home».",
+      "step_confirm": "Tocca «Aggiungi». Econumo comparirà nella schermata Home.",
+      "close": "Ho capito"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Questo valore non deve essere vuoto.",

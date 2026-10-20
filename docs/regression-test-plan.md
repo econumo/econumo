@@ -2095,6 +2095,16 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Dark theme: text inputs, selects, textareas and the amount/plan fields
       (Add transaction, Set plan) carry no fill of their own: they show the
       surface they sit on, as in the light theme. 📱
+- [ ] 📱 Install hint, iOS Safari (not yet added to the Home Screen): the
+      sidebar shows "Install Econumo as an app" above its footer, and Settings
+      shows an "Install the app" row under the profile card. Either one opens
+      the instructions (Share → "Add to Home Screen" → "Add"). Dismissing the
+      sidebar hint (×) hides it for good, also after a reload; the Settings row
+      stays. Launched from the Home Screen icon, neither the hint nor the row
+      appears.
+- [ ] Install hint, Chrome/Edge on desktop or Android: the same hint and row
+      open the browser's own install dialog; once installed (or opened as the
+      installed app) both disappear. Firefox and desktop Safari show neither.
 - [ ] i18n: switch to a non-English language — spot-check every page for
       untranslated keys/overflowing labels; server-rendered errors (e.g. bad
       login) arrive translated; switch back.

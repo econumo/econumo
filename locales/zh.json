@@ -1933,6 +1933,19 @@
       "menuItem": "已连接的应用"
     }
   },
+  "install": {
+    "notice": "将 Econumo 安装为应用",
+    "dismiss": "关闭",
+    "menu_item": "安装应用",
+    "dialog": {
+      "title": "安装 Econumo",
+      "intro": "将 Econumo 添加到主屏幕，即可像其他应用一样全屏打开。",
+      "step_share": "轻点浏览器中的“共享”按钮。在 Safari 中它可能位于 ••• 菜单内。",
+      "step_add": "向下滚动并选择“添加到主屏幕”。",
+      "step_confirm": "轻点“添加”。Econumo 将出现在你的主屏幕上。",
+      "close": "知道了"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "此值不能为空。",

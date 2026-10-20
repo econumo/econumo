@@ -1933,6 +1933,19 @@
       "menuItem": "Connected apps"
     }
   },
+  "install": {
+    "notice": "Install Econumo as an app",
+    "dismiss": "Dismiss",
+    "menu_item": "Install the app",
+    "dialog": {
+      "title": "Install Econumo",
+      "intro": "Add Econumo to your Home Screen to open it full-screen, like any other app.",
+      "step_share": "Tap the Share button in the browser. In Safari it may be inside the ••• menu.",
+      "step_add": "Scroll down and choose “Add to Home Screen”.",
+      "step_confirm": "Tap “Add”. Econumo appears on your Home Screen.",
+      "close": "Got it"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "This value should not be blank.",

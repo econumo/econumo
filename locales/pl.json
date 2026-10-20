@@ -1933,6 +1933,19 @@
       "menuItem": "Połączone aplikacje"
     }
   },
+  "install": {
+    "notice": "Zainstaluj Econumo jako aplikację",
+    "dismiss": "Ukryj",
+    "menu_item": "Zainstaluj aplikację",
+    "dialog": {
+      "title": "Zainstaluj Econumo",
+      "intro": "Dodaj Econumo do ekranu początkowego, aby otwierać je na pełnym ekranie jak każdą inną aplikację.",
+      "step_share": "Stuknij przycisk Udostępnij w przeglądarce. W Safari może być w menu •••.",
+      "step_add": "Przewiń w dół i wybierz „Do ekranu początk.”.",
+      "step_confirm": "Stuknij „Dodaj”. Econumo pojawi się na ekranie początkowym.",
+      "close": "Rozumiem"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Ta wartość nie powinna być pusta.",

@@ -11,6 +11,7 @@ import darkLogo from '@/assets/econumo-dark.svg?inline'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UpdateNotice } from '@/components/UpdateNotice'
+import { InstallNotice } from '@/features/install/InstallNotice'
 import { ServerVersionNotice } from '@/components/ServerVersionNotice'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
@@ -241,6 +242,7 @@ export function ApplicationLayout() {
             )}
 
             {!rail ? <UpdateNotice /> : null}
+            {!rail ? <InstallNotice /> : null}
 
             {rail ? (
               <footer className="flex flex-col items-center gap-4 border-t px-2 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">

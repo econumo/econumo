@@ -1933,6 +1933,19 @@
       "menuItem": "Verbundene Apps"
     }
   },
+  "install": {
+    "notice": "Econumo als App installieren",
+    "dismiss": "Ausblenden",
+    "menu_item": "App installieren",
+    "dialog": {
+      "title": "Econumo installieren",
+      "intro": "Füge Econumo zum Home-Bildschirm hinzu, um es wie jede andere App im Vollbild zu öffnen.",
+      "step_share": "Tippe im Browser auf „Teilen“. In Safari kann es im Menü ••• liegen.",
+      "step_add": "Scrolle nach unten und wähle „Zum Home-Bildschirm“.",
+      "step_confirm": "Tippe auf „Hinzufügen“. Econumo erscheint auf deinem Home-Bildschirm.",
+      "close": "Verstanden"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Dieser Wert darf nicht leer sein.",
