@@ -289,6 +289,12 @@ navigation (single-pane vs sidebar).
       search filters the list; virtualized scroll stays smooth with 100+ rows
       (seed them via CSV import — a generated 100+-row file doubles as the
       import-at-scale test).
+- [ ] Account page 📱: dragging the coins on the header divider scrolls the
+      list through history; a date bubble follows the coins while dragging
+      (below them on desktop, above them on a phone) and disappears on release.
+      Releasing with the pointer still on the coins does not open the month
+      picker, and hovering the coins shows nothing. A click/tap on the coins
+      without dragging (or Enter when focused) opens the month picker.
 - [ ] Not-posted recurring entries due today or overdue lead the "today" group,
       above today's real transactions, however far in the past they were due —
       so opening the account puts them first on screen. They stay dimmed with

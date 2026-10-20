@@ -1,12 +1,12 @@
 import { useImperativeHandle, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent, Ref } from 'react'
+import type { KeyboardEvent, MouseEvent, PointerEvent, Ref } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import coins from '@/assets/econumo-coins.svg?inline'
 import { formatDate, parseDateTime } from '@/lib/datetime'
@@ -33,9 +33,11 @@ export function HistoryNavigator({ months, activeMonth, onJump, onToday, ref }: 
   const [year, setYear] = useState(activeMonth.slice(0, 4))
   const [previewIndex, setPreviewIndex] = useState<number | null>(null)
   const [markerPosition, setMarkerPosition] = useState<number | null>(null)
-  const [dateVisible, setDateVisible] = useState(false)
   const markerRef = useRef<HTMLButtonElement>(null)
-  const suppressClickRef = useRef(false)
+  // The picker opens only for a press that started and ended on the coins
+  // without dragging. Browsers differ on where the click after a captured
+  // drag lands, so a click is never trusted to mean "open" on its own.
+  const tappedRef = useRef(false)
   const dragRef = useRef<{
     startX: number
     grabOffset: number
@@ -103,8 +105,13 @@ export function HistoryNavigator({ months, activeMonth, onJump, onToday, ref }: 
 
   const onOpenChange = (value: boolean) => {
     if (value) setYear(activeMonth.slice(0, 4))
-    setDateVisible(false)
     setOpen(value)
+  }
+  const onMarkerClick = (event: MouseEvent<HTMLButtonElement>) => {
+    // detail is 0 for a click synthesized by Enter or Space.
+    const tapped = tappedRef.current || event.detail === 0
+    tappedRef.current = false
+    if (tapped) onOpenChange(true)
   }
   const trigger = (
     <Button
@@ -117,20 +124,24 @@ export function HistoryNavigator({ months, activeMonth, onJump, onToday, ref }: 
       aria-label={t('accounts.page.history.jump')}
       aria-haspopup="dialog"
       aria-expanded={open}
-      onClick={isPhone ? () => onOpenChange(true) : undefined}
+      onClick={onMarkerClick}
       aria-description={monthLabel(shownMonth)}
     >
       <img src={coins} alt="" draggable={false} className="pointer-events-none h-2.5 w-auto bg-background select-none" />
       <span className="sr-only">{monthLabel(shownMonth)}</span>
     </Button>
   )
+  // The date bubble shows only while dragging, never on hover. On a phone it
+  // sits above the coins, where the finger does not cover it.
   const marker = (
     <TooltipProvider>
-      <Tooltip disableHoverableContent open={!isPhone && !open && (dateVisible || previewIndex !== null)} onOpenChange={setDateVisible}>
+      <Tooltip disableHoverableContent open={!open && previewIndex !== null}>
         <TooltipTrigger asChild>
-          {isPhone ? trigger : <PopoverTrigger asChild>{trigger}</PopoverTrigger>}
+          {isPhone ? trigger : <PopoverAnchor asChild>{trigger}</PopoverAnchor>}
         </TooltipTrigger>
-        <TooltipContent side="bottom" sideOffset={5}>{monthLabel(shownMonth)}</TooltipContent>
+        <TooltipContent side={isPhone ? 'top' : 'bottom'} sideOffset={isPhone ? 12 : 5} updatePositionStrategy="always" className={isPhone ? 'text-sm' : undefined}>
+          {monthLabel(shownMonth)}
+        </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   )
@@ -175,7 +186,7 @@ export function HistoryNavigator({ months, activeMonth, onJump, onToday, ref }: 
       onPointerDown={(event) => {
         // Portaled picker events bubble through React, but belong to the picker.
         if (open || event.button !== 0 || !event.currentTarget.contains(event.target as Node)) return
-        suppressClickRef.current = false
+        tappedRef.current = false
         const fromLabel = markerRef.current?.contains(event.target as Node) ?? false
         const capture = fromLabel ? markerRef.current! : event.currentTarget
         const markerRect = markerRef.current?.getBoundingClientRect()
@@ -199,10 +210,9 @@ export function HistoryNavigator({ months, activeMonth, onJump, onToday, ref }: 
         if (drag.moved || !drag.fromLabel) {
           const position = pickPosition(event)
           jumpToPosition(position)
-          setDateVisible(true)
         }
         dragRef.current = null
-        suppressClickRef.current = drag.moved
+        tappedRef.current = drag.fromLabel && !drag.moved
         if (drag.capture.hasPointerCapture(event.pointerId)) drag.capture.releasePointerCapture(event.pointerId)
       }}
       onPointerCancel={() => {
@@ -211,12 +221,6 @@ export function HistoryNavigator({ months, activeMonth, onJump, onToday, ref }: 
         setPreviewIndex(null)
       }}
       onLostPointerCapture={() => { dragRef.current = null; setPreviewIndex(null) }}
-      onClickCapture={(event) => {
-        if (!suppressClickRef.current) return
-        suppressClickRef.current = false
-        event.preventDefault()
-        event.stopPropagation()
-      }}
     >
       <div
         role="slider"

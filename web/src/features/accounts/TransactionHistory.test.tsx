@@ -139,14 +139,36 @@ it('on a phone, Cancel and Escape leave the timeline unchanged, and Back to toda
   expect(marker).toHaveTextContent('October 2026')
 })
 
-it('reveals the month and year when hovering the coin marker', async () => {
+it.each([false, true])('shows the month only while dragging the coins, never on hover (phone: %s)', async (phone) => {
+  if (phone) mockPhone()
   const user = userEvent.setup()
   renderHistory()
   const marker = screen.getByRole('button', { name: 'Jump to month' })
+  const navigation = screen.getByRole('navigation', { name: 'Transaction timeline' })
   await user.hover(marker)
-  expect(await screen.findByRole('tooltip')).toHaveTextContent('October 2026')
-  await user.unhover(marker)
+  expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  mockTrackGeometry(marker, navigation)
+  fireEvent.pointerDown(marker, { button: 0, clientX: 20, pointerId: 1 })
+  fireEvent.pointerMove(navigation, { clientX: 318.2, pointerId: 1 })
+  expect(await screen.findByRole('tooltip')).toHaveTextContent('July 2021')
+  fireEvent.pointerUp(navigation, { clientX: 318.2, pointerId: 1 })
   await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
+})
+
+it('opens the picker only for a press that starts and ends on the coins without dragging', async () => {
+  const user = userEvent.setup()
+  renderHistory()
+  const marker = screen.getByRole('button', { name: 'Jump to month' })
+  const navigation = screen.getByRole('navigation', { name: 'Transaction timeline' })
+  // A pointer click the press handlers never saw, e.g. one a browser routes
+  // to the coins after a drag ended over them.
+  fireEvent.click(marker, { detail: 1 })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  mockTrackGeometry(marker, navigation)
+  fireEvent.pointerDown(navigation, { button: 0, clientX: 300, pointerId: 1 })
+  fireEvent.pointerUp(marker, { clientX: 300, pointerId: 1 })
+  fireEvent.click(marker, { detail: 1 })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   await user.click(marker)
   expect(screen.getByRole('dialog', { name: 'Jump to month' })).toBeInTheDocument()
   expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
@@ -165,7 +187,7 @@ it.each([false, true])('drags the coins without opening the picker on a phone: %
   expect(label).toHaveTextContent('November 2016')
   expect(screen.queryByTestId('row-2016-11-15-0')).not.toBeInTheDocument()
   fireEvent.pointerUp(navigation, { clientX: 580, pointerId: 1 })
-  fireEvent.click(label)
+  fireEvent.click(label, { detail: 1 })
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(screen.getByTestId('row-2016-11-15-0')).toBeInTheDocument()
   expect(slider).toHaveAttribute('aria-valuetext', 'November 2016')
