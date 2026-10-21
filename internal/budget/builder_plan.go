@@ -322,6 +322,32 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		el.hasActual = true
 	}
 
+	// A tag's children are the categories its spending carries, the same
+	// breakdown the budget page shows; a tagged row without a category files
+	// under Uncategorized.
+	addTagChild := func(el *planElement, i int, parentIndex string, categoryID *string, amount vo.DecimalNumber, currencyID vo.Id) {
+		child := planChild{id: model.UncategorizedID, typ: model.ElementCategory, name: model.UncategorizedName, icon: model.UncategorizedIcon}
+		if categoryID != nil && *categoryID != "" {
+			cat, ok := f.categories[*categoryID]
+			if !ok {
+				return
+			}
+			child = planChild{id: *categoryID, typ: model.ElementCategory, name: cat.Name, icon: cat.Icon, ownerID: cat.OwnerID, isArchived: cat.IsArchived}
+		}
+		subIndex := elementKey(child.id, child.typ)
+		toConvert[planChildKey(i, parentIndex, subIndex)] = append(toConvert[planChildKey(i, parentIndex, subIndex)], model.ConvertItem{
+			PeriodStart: monthsList[i], PeriodEnd: monthsList[i].AddDate(0, 1, 0),
+			From: currencyID, To: el.currencyID, Amount: amount,
+		})
+		for ci := range el.children {
+			if el.children[ci].id == child.id {
+				return
+			}
+		}
+		child.hasActual = true
+		el.children = append(el.children, child)
+	}
+
 	var elements []*planElement
 
 	// --- envelopes, both sides ---
@@ -436,7 +462,9 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 			// The tag wins over the category — a tagged expense belongs to its
 			// tag row, exactly as on the budget page.
 			if el, ok := tagEls[*row.TagID]; ok {
-				addActual(el, i, elementKey(el.id, model.ElementTag), amount, cid, el.currencyID)
+				parentIndex := elementKey(el.id, model.ElementTag)
+				addActual(el, i, parentIndex, amount, cid, el.currencyID)
+				addTagChild(el, i, parentIndex, row.CategoryID, amount, cid)
 			}
 		case row.CategoryID == nil:
 			addActual(expenseUncat, i, elementKey(model.UncategorizedID, model.ElementCategory), amount, cid, budgetCurrencyID)

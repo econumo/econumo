@@ -950,6 +950,10 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] Budget table: budgeted / spent / available columns; expanding an element
       shows details; totals row; uncategorized and labels sections appear with
       info notes when relevant.
+- [ ] Plan grid: a tag with spending in the window expands like in the Budget
+      view, one read-only line per category its transactions carry
+      (Uncategorized for tagged rows without a category), each with that
+      category's monthly actuals; the lines sum to the tag's actuals.
 - [ ] 📱 Section order: the Reporting tags folder is the last expense section,
       below Uncategorized and Archived (desktop: right above the Total row;
       phone: right above the Total card), and still shows when neither of those
