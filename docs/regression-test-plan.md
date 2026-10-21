@@ -2105,6 +2105,12 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Install hint, Chrome/Edge on desktop or Android: the same hint and row
       open the browser's own install dialog; once installed (or opened as the
       installed app) both disappear. Firefox and desktop Safari show neither.
+- [ ] 📱 Install as an app: in Chrome DevTools → Application → Manifest the
+      manifest shows no errors or warnings, with name and short name "Econumo"
+      and both `any` and `maskable` icons (the maskable preview keeps the whole
+      logo inside the circle). On Android, "Install app" puts an icon on the
+      home screen that is not shrunk inside a white frame; on iOS, Share → Add
+      to Home Screen opens a full-screen app labelled "Econumo".
 - [ ] i18n: switch to a non-English language — spot-check every page for
       untranslated keys/overflowing labels; server-rendered errors (e.g. bad
       login) arrive translated; switch back.
