@@ -385,21 +385,23 @@ function TagGroupRow({
         >
           <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
           <EntityIcon name="tag" className="text-lg text-muted-foreground" />
-          <span className="truncate text-[15px]" title={name}>
+          <span className="truncate text-[15px] text-muted-foreground" title={name}>
             {name}
           </span>
           <span className="shrink-0 text-xs text-muted-foreground">{pluralPick(t('budgets.page.budget.structure.tag_group.count'), elements.length, i18n.language)}</span>
           {currencyId !== budget.meta.currencyId && currency ? <CurrencyTag code={currency.code} /> : null}
         </button>
-        <span className={`${FIRST_COL} text-[15px]`} data-testid="tag-group-budgeted">
+        {/* a sum, not a row of its own: grey like a folder line, red only where the
+            tags together overspent */}
+        <span className={`${FIRST_COL} text-[15px] text-muted-foreground`} data-testid="tag-group-budgeted">
           {!isZero(stats.carry) ? <CarryLeadIn carry={stats.carry} text={`${moneyFormat(stats.carry, currency, opts)} +`} testId="tag-group-carry" /> : null}
           <span className="shrink-0">{moneyFormat(stats.budgeted, currency, opts)}</span>
         </span>
         <span className={`${SECOND_COL} text-[15px] tabular-nums ${overspent ? 'text-expense' : 'text-muted-foreground'}`} data-testid="tag-group-spent">
           {future ? <Dash /> : moneyFormat(stats.spent, currency, opts)}
         </span>
-        <span className={`${THIRD_COL} text-[15px]`} data-testid="tag-group-available">
-          {nothingToShow(stats) ? <Dash /> : <AvailablePill available={stats.available} currency={currency} />}
+        <span className={`${THIRD_COL} text-[15px] tabular-nums ${overspent ? 'text-expense' : 'text-muted-foreground'}`} data-testid="tag-group-available">
+          {nothingToShow(stats) ? <Dash /> : moneyFormat(stats.available, currency, opts)}
         </span>
         {actionsColumn ? <ActionsSpacer /> : null}
       </div>

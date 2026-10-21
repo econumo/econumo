@@ -66,6 +66,8 @@ interface RowProps {
   folderLike?: boolean
   /** a tag inside a same-name group: one step in, with its owner's name */
   grouped?: { owner?: string }
+  /** a sum line (a same-name tag group): grey name and figures */
+  muted?: boolean
 }
 
 // with a bar under it, the row's first line gives up its bottom padding and minimum
@@ -92,10 +94,11 @@ function PhoneRow({
   toggle,
   folderLike = false,
   grouped,
+  muted = false,
 }: RowProps) {
   const Chevron = toggle?.open ? ChevronDown : ChevronRight
   const pad = folderLike ? 'min-h-9 py-1' : cellPad(progress !== null)
-  const size = folderLike ? 'text-xs font-medium text-muted-foreground' : 'text-[15px]'
+  const size = folderLike ? 'text-xs font-medium text-muted-foreground' : muted ? 'text-[15px] text-muted-foreground' : 'text-[15px]'
   const label = (
     <>
       <span className={`min-w-0 truncate ${size}`}>{name}</span>
@@ -145,7 +148,8 @@ function PhoneRow({
           ) : null}
           <span className="shrink-0">{first}</span>
         </span>
-        <span className={`relative text-right tabular-nums ${size} ${secondClass}`}>
+        {/* a colour of its own (overspent) replaces the muted grey rather than racing it */}
+        <span className={`relative text-right tabular-nums ${secondClass ? size.replace(' text-muted-foreground', '') : size} ${secondClass}`}>
           {second}
           {commented ? (
             <span
@@ -393,6 +397,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: budgetText, spent: spentText })}
           onOpen={toggle}
           toggle={{ open, onToggle: toggle }}
+          muted
         />
         {open
           ? elements.map((el) => expenseRow(el, { owner: (el.ownerUserId && accessById.get(el.ownerUserId)?.name) || undefined }))
