@@ -1935,6 +1935,7 @@
   },
   "install": {
     "notice": "将 Econumo 安装为应用",
+    "cta": "安装",
     "dismiss": "关闭",
     "menu_item": "安装应用",
     "dialog": {

@@ -11,7 +11,7 @@ import darkLogo from '@/assets/econumo-dark.svg?inline'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UpdateNotice } from '@/components/UpdateNotice'
-import { InstallNotice } from '@/features/install/InstallNotice'
+import { InstallBanner } from '@/features/install/InstallBanner'
 import { ServerVersionNotice } from '@/components/ServerVersionNotice'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
@@ -183,6 +183,7 @@ export function ApplicationLayout() {
     <div className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
       <SubscriptionBanner />
       <ServerVersionNotice />
+      <InstallBanner />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
           <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">
@@ -242,7 +243,6 @@ export function ApplicationLayout() {
             )}
 
             {!rail ? <UpdateNotice /> : null}
-            {!rail ? <InstallNotice /> : null}
 
             {rail ? (
               <footer className="flex flex-col items-center gap-4 border-t px-2 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">

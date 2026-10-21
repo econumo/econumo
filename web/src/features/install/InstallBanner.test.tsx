@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { InstallNotice } from './InstallNotice'
+import { InstallBanner } from './InstallBanner'
 
 const mockMode = vi.hoisted(() => ({ value: 'ios' as 'ios' | 'prompt' | null }))
 const promptInstall = vi.hoisted(() => vi.fn())
@@ -25,38 +25,38 @@ beforeEach(() => {
   trackEvent.mockReset()
 })
 
-it('renders nothing when the app cannot be installed', () => {
+it('renders nothing when the app cannot be installed or already runs installed', () => {
   mockMode.value = null
-  render(<InstallNotice />)
-  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  const { container } = render(<InstallBanner />)
+  expect(container).toBeEmptyDOMElement()
 })
 
 it('opens the Share-menu instructions on iOS', async () => {
   const user = userEvent.setup()
-  render(<InstallNotice />)
-  await user.click(screen.getByRole('button', { name: 'Install Econumo as an app' }))
-  expect(await screen.findByText('Install Econumo')).toBeInTheDocument()
-  expect(screen.getByText(/Add to Home Screen/)).toBeInTheDocument()
-  expect(trackEvent).toHaveBeenCalledWith('appInstallAppOpen', { source: 'sidebar', mode: 'ios' })
+  render(<InstallBanner />)
+  expect(screen.getByText('Install Econumo as an app')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Install' }))
+  expect(await screen.findByText(/Add to Home Screen/)).toBeInTheDocument()
+  expect(trackEvent).toHaveBeenCalledWith('appInstallAppOpen', { source: 'banner', mode: 'ios' })
   expect(promptInstall).not.toHaveBeenCalled()
 })
 
 it('hands over to the browser prompt where there is one', async () => {
   mockMode.value = 'prompt'
   const user = userEvent.setup()
-  render(<InstallNotice />)
-  await user.click(screen.getByRole('button', { name: 'Install Econumo as an app' }))
+  render(<InstallBanner />)
+  await user.click(screen.getByRole('button', { name: 'Install' }))
   expect(promptInstall).toHaveBeenCalledOnce()
-  await vi.waitFor(() => expect(trackEvent).toHaveBeenCalledWith('appInstallAppAccept', { source: 'sidebar' }))
+  await vi.waitFor(() => expect(trackEvent).toHaveBeenCalledWith('appInstallAppAccept', { source: 'banner' }))
 })
 
-it('stays hidden after a dismissal', async () => {
+it('stays hidden after a dismissal, on every later page', async () => {
   const user = userEvent.setup()
-  const { unmount } = render(<InstallNotice />)
+  const { unmount } = render(<InstallBanner />)
   await user.click(screen.getByRole('button', { name: 'Dismiss' }))
-  expect(screen.queryByRole('button', { name: 'Install Econumo as an app' })).not.toBeInTheDocument()
+  expect(screen.queryByText('Install Econumo as an app')).not.toBeInTheDocument()
   expect(trackEvent).toHaveBeenCalledWith('appInstallNoticeDismiss')
   unmount()
-  render(<InstallNotice />)
-  expect(screen.queryByRole('button', { name: 'Install Econumo as an app' })).not.toBeInTheDocument()
+  render(<InstallBanner />)
+  expect(screen.queryByText('Install Econumo as an app')).not.toBeInTheDocument()
 })

@@ -1935,6 +1935,7 @@
   },
   "install": {
     "notice": "Instala Econumo como app",
+    "cta": "Instalar",
     "dismiss": "Descartar",
     "menu_item": "Instalar la app",
     "dialog": {
