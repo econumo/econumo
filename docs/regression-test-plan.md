@@ -954,6 +954,16 @@ and on tablet/phone only with a hardware keyboard.
       view, one read-only line per category its transactions carry
       (Uncategorized for tagged rows without a category), each with that
       category's monthly actuals; the lines sum to the tag's actuals.
+- [ ] 📱 Same-name tags (multi-user budget: you and a partner each have a live
+      "Travel" tag in the same folder; case and surrounding spaces ignored)
+      show as ONE folded line ("Travel · 2 tags") where the first of them sits,
+      in the Budget view (desktop and phone) and the Plan grid. Its figures are
+      the tags' sums (Budget / Spent / Available; per month actual · plan in
+      the Plan grid), in their own currency when they share one, otherwise in
+      the budget currency. Opening it lists each tag with its owner's name,
+      each keeping its own limit, cell editing, ⋮ menu and category breakdown.
+      A single tag, an archived tag, or same-name tags in different folders
+      stay ungrouped.
 - [ ] 📱 Section order: the Reporting tags folder is the last expense section,
       below Uncategorized and Archived (desktop: right above the Total row;
       phone: right above the Total card), and still shows when neither of those

@@ -5,6 +5,9 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { EntityIcon } from '@/components/EntityIcon'
 import { isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
+import { pluralPick } from '@/lib/plural'
+import { METRICS, trackEvent } from '@/lib/metrics'
+import type { ReactNode } from 'react'
 import type { BudgetCommentDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
 import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
@@ -17,13 +20,14 @@ import { CellShell } from './CellShell'
 import { COMMENT_ANCHOR_ATTR } from './cellDom'
 import { isEnvelopeType } from './elementEdit'
 import { DragChild, EnvelopeDrop, EnvelopeHeadDrop } from './MonthDrag'
-import { CurrencyTag, Dash, RowMenu } from './monthLines'
+import { CurrencyTag, Dash, FigureCells, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
-import { CHILD_INDENT, FOLDER_INDENT, PLAN_CROSSHAIR, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, useRowLevel } from './monthLayout'
+import { CHILD_INDENT, FOLDER_INDENT, groupedLevel, PLAN_CROSSHAIR, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext, useRowLevel } from './monthLayout'
 import { planCellView, shownActual } from './planCell'
 import { PlanCellInput } from './PlanCellInput'
 import type { CellMove } from './PlanCellInput'
-import type { PlanRow } from './planMath'
+import type { MonthExchange, PlanRow } from './planMath'
+import { tagGroupPlanSums } from './planMath'
 
 export interface PlanLimitTarget {
   el: PlanElementDto
@@ -89,6 +93,8 @@ export interface PlanCellEdit {
 export interface GridCtx {
   visibleMonths: string[]
   monthIndex: (m: string) => number
+  /** into the budget currency, at each window month's rates */
+  exchange: MonthExchange
   /** the current month: actuals show up to it, plans alone after it */
   selected: string
   /** a tinted column, -1 for none (the Plan grid tints none) */
@@ -247,10 +253,67 @@ export const ChildRow = memo(function ChildRow({
   )
 })
 
-export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
+/** Same-name tags (each partner's own "Travel") under one line with their monthly
+ *  sums. The line is no keyboard stop and carries no plan: each tag keeps its own. */
+export function PlanTagGroup({ groupKey, name, rows, ctx, children }: { groupKey: string; name: string; rows: PlanRow[]; ctx: GridCtx; children: ReactNode }) {
+  const { t, i18n } = useTranslation()
+  const level = useRowLevel()
+  const open = useBudgetPeriodStore((s) => !!s.planUnfoldedElements[groupKey])
+  const togglePlanElement = useBudgetPeriodStore((s) => s.togglePlanElement)
+  const { sums, currencyId } = tagGroupPlanSums(
+    rows.map((r) => r.element),
+    ctx.visibleMonths,
+    ctx.monthIndex,
+    ctx.exchange,
+    ctx.baseCurrencyId,
+  )
+  const currency = ctx.currencies.find((c) => c.id === currencyId)
+  const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
+  const Chevron = open ? ChevronDown : ChevronRight
+  return (
+    <div data-testid={`plan-tag-group-${groupKey}`}>
+      <div role="row" data-plan-line="" className="border-b border-border/60">
+        <div className={`${PLAN_LINE} relative min-h-9 hover:bg-accent/50`}>
+          <div role="rowheader" className={`${PLAN_NAME_COL} ${ROW_INDENT[level]} py-1`}>
+            <button
+              type="button"
+              className="flex min-w-0 items-center gap-2 text-left"
+              aria-expanded={open}
+              title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
+              onClick={() => {
+                if (!open) {
+                  trackEvent(METRICS.BUDGET_TAG_GROUP_EXPAND, { view: 'plan', tags: rows.length })
+                }
+                togglePlanElement(groupKey)
+              }}
+            >
+              <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
+              <EntityIcon name="tag" className="text-lg text-muted-foreground" />
+              <span className="min-w-0 truncate text-[15px]" title={name}>
+                {name}
+              </span>
+              <span className="shrink-0 text-xs text-muted-foreground">{pluralPick(t('budgets.page.budget.structure.tag_group.count'), rows.length, i18n.language)}</span>
+            </button>
+            {currencyId !== ctx.baseCurrencyId && currency ? <CurrencyTag code={currency.code} /> : null}
+          </div>
+          <FigureCells
+            cells={ctx.visibleMonths.map((m, i) => (
+              <SumCell key={m} index={i} sum={ctx.monthIndex(m) >= 0 ? (sums[i] ?? null) : null} month={m} ctx={ctx} fmt={fmt} />
+            ))}
+          />
+        </div>
+      </div>
+      {open ? <RowLevelContext.Provider value={groupedLevel(level)}>{children}</RowLevelContext.Provider> : null}
+    </div>
+  )
+}
+
+export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }: { row: PlanRow; ctx: GridCtx; grouped?: boolean }) {
   const { t } = useTranslation()
   const level = useRowLevel()
   const el = row.element
+  // inside a same-name group the names match: the owner tells the tags apart
+  const ownerHint = grouped && el.ownerUserId ? ctx.meta.access.find((a) => a.user.id === el.ownerUserId)?.user.name : undefined
   const unfolded = useBudgetPeriodStore((s) => !!s.planUnfoldedElements[el.id])
   const togglePlanElement = useBudgetPeriodStore((s) => s.togglePlanElement)
   const currency = ctx.currencies.find((c) => c.id === el.currencyId)
@@ -318,6 +381,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
           <span className={`min-w-0 truncate ${isUncategorized ? '' : 'text-[15px]'}`} title={displayName}>
             {displayName}
           </span>
+          {ownerHint ? <span className="shrink-0 truncate text-xs text-muted-foreground">{ownerHint}</span> : null}
           {el.currencyId !== ctx.baseCurrencyId && currency ? <CurrencyTag code={currency.code} /> : null}
           <span className="flex-1" />
           <RowMenu name={displayName} actions={ctx.rowMenu?.(el)} />

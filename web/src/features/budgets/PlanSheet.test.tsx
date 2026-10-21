@@ -3535,3 +3535,41 @@ it('the current month name is bold in the month row', async () => {
     expect(h.querySelector('[data-month-label]')).not.toHaveClass('font-semibold')
   }
 })
+
+it('same-name tags read as one line with summed months; opening it lists each tag', async () => {
+  const plan = structuredClone(fixtureWirePlan) as BudgetPlanDto
+  const partner = { user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, role: 'admin' as const, isAccepted: 1 as const }
+  plan.meta.access.push(partner)
+  const budget = structuredClone(fixtureWireBudget)
+  budget.meta.access.push(partner)
+  const tag1 = plan.structure.elements.find((e) => e.id === 'tag1')!
+  plan.structure.elements.push({
+    ...tag1,
+    id: 'tag2',
+    name: 'Vacation',
+    position: 9,
+    ownerUserId: 'u2',
+    cells: [
+      { actual: '5', planned: '' },
+      { actual: '5', planned: '' },
+      { actual: '5', planned: '10' },
+      { actual: '0', planned: '' },
+    ],
+  })
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    planHandler(plan),
+  )
+  renderPage()
+  await screen.findByTestId('plan-month-header')
+  const group = await screen.findByTestId('plan-tag-group-taggroup::vacation')
+  // July: actual 15 + 5, plan 50 + 10
+  const july = within(group).getAllByTestId(/^plan-sum-/).find((c) => c.textContent?.includes('60'))
+  expect(july).toHaveTextContent('20')
+  expect(screen.queryByTestId('plan-cell-tag1:0')).not.toBeInTheDocument()
+  await userEvent.click(within(group).getByRole('button', { name: /vacation/ }))
+  expect(screen.getAllByTestId('plan-cell-tag1:0').length).toBeGreaterThan(0)
+  expect(within(group).getByText('Partner')).toBeInTheDocument()
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_TAG_GROUP_EXPAND, { view: 'plan', tags: 2 })
+})

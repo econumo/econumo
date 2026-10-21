@@ -5,6 +5,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { EntityIcon } from '@/components/EntityIcon'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
+import { pluralPick } from '@/lib/plural'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import type { MoneyFormatOptions } from '@/lib/money'
 import type { BudgetChildElementDto, BudgetDto, BudgetElementDto, LabelSpendDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
@@ -14,12 +16,13 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { isEnvelopeType } from './elementEdit'
 import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
-import { budgetTotals, carryOver, displayAvailable, elementDisplayName, nothingToShow, overBudget } from './budgetMath'
+import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, nothingToShow, overBudget, tagGroupStats } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
-import { CHILD_INDENT, FIRST_COL, FOLD_LINE, foldOnLineClick, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
+import { CHILD_INDENT, FIRST_COL, FOLD_LINE, foldOnLineClick, FOLDER_INDENT, groupedLevel, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
+import { segmentTagGroups } from './tagGroups'
 
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
@@ -148,6 +151,7 @@ function ElementRow({
   actionsColumn = false,
   hideChildren = false,
   future = false,
+  ownerHint,
 }: {
   element: BudgetElementDto
   bucket: FolderBucket
@@ -159,6 +163,8 @@ function ElementRow({
   actionsColumn?: boolean
   hideChildren?: boolean
   future?: boolean
+  /** a tag in a same-name group: whose tag it is, since the names match */
+  ownerHint?: string
 }) {
   const { t } = useTranslation()
   const level = useRowLevel()
@@ -213,6 +219,7 @@ function ElementRow({
       <span className={`truncate ${size}`} title={displayName}>
         {displayName}
       </span>
+      {ownerHint ? <span className="shrink-0 truncate text-xs text-muted-foreground">{ownerHint}</span> : null}
       {currencyId !== budget.meta.currencyId && currency ? <CurrencyTag code={currency.code} /> : null}
       {isUncategorized ? <InfoNote text={t('budgets.page.budget.structure.uncategorized.info')} testId="budget-uncategorized-info-note" /> : null}
     </>
@@ -329,6 +336,76 @@ function ElementRow({
   )
 
   return extras.renderRowWrapper ? <>{extras.renderRowWrapper(element, bucket, row)}</> : row
+}
+
+/** Same-name tags (each partner's own "Travel") under one line carrying their sums.
+ *  The line has no limit of its own: each tag keeps its own, on its row below. */
+function TagGroupRow({
+  groupKey,
+  name,
+  elements,
+  budget,
+  currencies,
+  actionsColumn,
+  future,
+  children,
+}: {
+  groupKey: string
+  name: string
+  elements: BudgetElementDto[]
+  budget: BudgetDto
+  currencies: CurrencyDto[]
+  actionsColumn: boolean
+  future: boolean
+  children: ReactNode
+}) {
+  const { t, i18n } = useTranslation()
+  const level = useRowLevel()
+  const open = useBudgetPeriodStore((s) => !!s.unfoldedElements[groupKey])
+  const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
+  const { stats, currencyId } = tagGroupStats(elements, budget, makeBudgetExchange(budget, currencies))
+  const currency = currencies.find((c) => c.id === currencyId)
+  const opts = cellOpts(currency)
+  const overspent = overBudget(stats, future)
+  const Chevron = open ? ChevronDown : ChevronRight
+  return (
+    <div className="flex flex-col" data-testid={`tag-group-${groupKey}`}>
+      <div className={`${LINE} ${ROW_INDENT[level]} relative min-h-10 rounded-md py-1.5 hover:bg-accent/50`}>
+        <button
+          type="button"
+          className={`${NAME_COL} text-left`}
+          aria-expanded={open}
+          title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
+          onClick={() => {
+            if (!open) {
+              trackEvent(METRICS.BUDGET_TAG_GROUP_EXPAND, { view: 'budget', tags: elements.length })
+            }
+            toggleElement(groupKey)
+          }}
+        >
+          <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
+          <EntityIcon name="tag" className="text-lg text-muted-foreground" />
+          <span className="truncate text-[15px]" title={name}>
+            {name}
+          </span>
+          <span className="shrink-0 text-xs text-muted-foreground">{pluralPick(t('budgets.page.budget.structure.tag_group.count'), elements.length, i18n.language)}</span>
+          {currencyId !== budget.meta.currencyId && currency ? <CurrencyTag code={currency.code} /> : null}
+        </button>
+        <span className={`${FIRST_COL} text-[15px]`} data-testid="tag-group-budgeted">
+          {!isZero(stats.carry) ? <CarryLeadIn carry={stats.carry} text={`${moneyFormat(stats.carry, currency, opts)} +`} testId="tag-group-carry" /> : null}
+          <span className="shrink-0">{moneyFormat(stats.budgeted, currency, opts)}</span>
+        </span>
+        <span className={`${SECOND_COL} text-[15px] tabular-nums ${overspent ? 'text-expense' : 'text-muted-foreground'}`} data-testid="tag-group-spent">
+          {future ? <Dash /> : moneyFormat(stats.spent, currency, opts)}
+        </span>
+        <span className={`${THIRD_COL} text-[15px]`} data-testid="tag-group-available">
+          {nothingToShow(stats) ? <Dash /> : <AvailablePill available={stats.available} currency={currency} />}
+        </span>
+        {actionsColumn ? <ActionsSpacer /> : null}
+      </div>
+      {open ? <RowLevelContext.Provider value={groupedLevel(level)}>{children}</RowLevelContext.Provider> : null}
+    </div>
+  )
 }
 
 /** one reporting tag: the row columns, with the amount under Spent — a label has
@@ -558,21 +635,41 @@ export function BudgetTable({
   ]
   const opts = cellOpts(budgetCurrency)
 
+  const elementRow = (element: BudgetElementDto, bucket: FolderBucket, rowExtras: ElementRowExtras, ownerHint?: string) => (
+    <ElementRow
+      key={element.id}
+      element={element}
+      bucket={bucket}
+      budget={budget}
+      currencies={currencies}
+      accessById={accessById}
+      extras={rowExtras}
+      actionsColumn={actionsColumn}
+      hideChildren={collapsedElementId === element.id}
+      future={future}
+      ownerHint={ownerHint}
+    />
+  )
+  // the archive lists rows by name, one by one: a group is for live tags only
   const rowsOf = (bucket: FolderBucket, rowExtras: ElementRowExtras) =>
-    bucket.elements.map((element) => (
-      <ElementRow
-        key={element.id}
-        element={element}
-        bucket={bucket}
-        budget={budget}
-        currencies={currencies}
-        accessById={accessById}
-        extras={rowExtras}
-        actionsColumn={actionsColumn}
-        hideChildren={collapsedElementId === element.id}
-        future={future}
-      />
-    ))
+    segmentTagGroups(bucket.elements, (el) => el, bucket.folder?.id ?? null).map((segment) =>
+      segment.kind === 'row' ? (
+        elementRow(segment.item, bucket, rowExtras)
+      ) : (
+        <TagGroupRow
+          key={segment.key}
+          groupKey={segment.key}
+          name={segment.name}
+          elements={segment.items}
+          budget={budget}
+          currencies={currencies}
+          actionsColumn={actionsColumn}
+          future={future}
+        >
+          {segment.items.map((el) => elementRow(el, bucket, rowExtras, (el.ownerUserId && accessById.get(el.ownerUserId)?.name) || undefined))}
+        </TagGroupRow>
+      ),
+    )
 
   return (
     <div className="flex flex-col border-t pt-1" data-testid="budget-table">

@@ -1403,6 +1403,9 @@
           "total": {
             "name": "Gesamt",
             "expenses": "Gesamtausgaben"
+          },
+          "tag_group": {
+            "count": "{count} Tag | {count} Tags"
           }
         },
         "archived_banner": "Dieses Budget ist archiviert und schreibgeschützt",

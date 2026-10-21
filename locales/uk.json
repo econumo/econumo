@@ -1403,6 +1403,9 @@
           "total": {
             "name": "Разом",
             "expenses": "Усього витрат"
+          },
+          "tag_group": {
+            "count": "{count} тег | {count} теги | {count} тегів"
           }
         },
         "archived_banner": "Цей бюджет в архіві та доступний лише для читання",

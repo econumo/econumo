@@ -1403,6 +1403,9 @@
           "total": {
             "name": "Total",
             "expenses": "Total des dépenses"
+          },
+          "tag_group": {
+            "count": "{count} étiquette | {count} étiquettes"
           }
         },
         "archived_banner": "Ce budget est archivé et en lecture seule",

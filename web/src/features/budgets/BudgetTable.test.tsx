@@ -735,3 +735,28 @@ it('a click anywhere on a folder line folds it, but the line\'s own controls kee
   expect(useBudgetPeriodStore.getState().planFolds.bf1).toBeUndefined()
   expect(within(screen.getByTestId('budget-folder-Essentials')).queryByTestId('element-cat-food')).toBeNull()
 })
+
+it('same-name tags show under one line with their sums, each tag with its owner', async () => {
+  const user = userEvent.setup()
+  renderTable((budget) => {
+    budget.meta.access.push({ user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, role: 'admin', isAccepted: 1 })
+    const tag = { type: 2 as const, icon: 'tag', currencyId: null, isArchived: 0 as const, folderId: null, children: [] }
+    budget.structure.elements.push(
+      { ...tag, id: 'tag-a', name: 'Travel', position: 3, budgeted: '100', available: '-20', spent: '30', budgetSpent: '30', ownerUserId: 'u1' },
+      { ...tag, id: 'tag-b', name: 'travel ', position: 4, budgeted: '50', available: '-10', spent: '15', budgetSpent: '15', ownerUserId: 'u2' },
+    )
+  })
+  const group = await screen.findByTestId('tag-group-taggroup::travel')
+  expect(within(group).getByText('Travel')).toBeInTheDocument()
+  expect(within(group).getByText('2 tags')).toBeInTheDocument()
+  // what earlier months left, (−20 + 30) + (−10 + 15), leads the budget in
+  await waitFor(() => expect(within(group).getByTestId('tag-group-budgeted')).toHaveTextContent('15.00 +150.00'))
+  expect(within(group).getByTestId('tag-group-spent')).toHaveTextContent('45.00')
+  // available = what is left this month: (−20 + 100) + (−10 + 50)
+  expect(within(group).getByTestId('tag-group-available')).toHaveTextContent('120.00')
+  // folded until opened: the tags themselves are not listed yet
+  expect(screen.queryByTestId('element-tag-a')).not.toBeInTheDocument()
+  await user.click(within(group).getByRole('button', { name: /Travel/ }))
+  expect(within(screen.getByTestId('element-tag-a')).getByText('Ada')).toBeInTheDocument()
+  expect(within(screen.getByTestId('element-tag-b')).getByText('Partner')).toBeInTheDocument()
+})

@@ -1403,6 +1403,9 @@
           "total": {
             "name": "Totaal",
             "expenses": "Totale uitgaven"
+          },
+          "tag_group": {
+            "count": "{count} tag | {count} tags"
           }
         },
         "archived_banner": "Dit budget is gearchiveerd en alleen-lezen",
