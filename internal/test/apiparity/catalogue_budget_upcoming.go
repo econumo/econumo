@@ -2,13 +2,14 @@ package apiparity
 
 // budget_upcoming_recurring: get-budget's upcoming fields over recurring
 // templates of both participants of a shared budget. Every template is placed
-// so the projection never depends on the day of the month: the owner's two
-// are due at ClockTime itself (one occurrence in the current month), the
-// partner's is overdue since a fixed past date (one overdue occurrence, filed
-// in the current month). The month must stay out of the request path, which
-// the golden records verbatim, so the selected month is the default (current)
-// one plus a fixed past month; future-month carry-over is covered by
-// internal/budget/api/upcoming_test.go.
+// so the projection never depends on the day of the month: every one is
+// monthly and due at ClockTime itself, so exactly one occurrence falls in the
+// current month. A fixed date would not do: an overdue monthly template also
+// projects this month's own occurrence while that day is still ahead. The
+// month must stay out of the request path, which the golden records verbatim,
+// so the selected month is the default (current) one plus a fixed past month;
+// future-month carry-over and overdue collapsing are covered by
+// internal/budget/api/upcoming_test.go and the model's projection tests.
 func init() {
 	register(Scenario{Name: "budget_upcoming_recurring", Calls: func() []Call {
 		now := ClockTime.Format("2006-01-02 15:04:05")
@@ -31,11 +32,11 @@ func init() {
 					"accountId": OwnerAccount, "categoryId": CatFood, "tagId": TagWork,
 					"schedule": "monthly", "nextPaymentAt": now, "description": "gym",
 				}},
-			{Label: "partner-overdue-bill", Method: "POST", Path: "/api/v1/recurring/create-recurring-transaction", Auth: "guest",
+			{Label: "partner-bill", Method: "POST", Path: "/api/v1/recurring/create-recurring-transaction", Auth: "guest",
 				Body: map[string]any{
 					"id": "e0000000-0000-0000-0000-0000000000e3", "type": "expense", "amount": "30.00",
 					"accountId": SharedAccount,
-					"schedule":  "monthly", "nextPaymentAt": "2024-04-15 00:00:00", "description": "internet",
+					"schedule":  "monthly", "nextPaymentAt": now, "description": "internet",
 				}},
 			{Label: "get-budget-current-month", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
 			{Label: "get-budget-past-month", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget + "&date=2024-04-01", Auth: "owner"},

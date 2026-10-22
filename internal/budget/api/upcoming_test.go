@@ -184,3 +184,28 @@ func TestBuildBudget_UpcomingOnlyTagIsAdded(t *testing.T) {
 		positions[e.Position] = e.Id
 	}
 }
+
+// A participant's template on their own member account is the owner's
+// upcoming money too, filed under the participant's category.
+func TestBuildBudget_UpcomingFromParticipant(t *testing.T) {
+	const partnerCat = "cccc2222-0000-7000-8000-000000000001"
+	h := newUpcomingHarness(t, "2030-03-01")
+	h.f.User(fixture.User{ID: otherUserID, Email: "o@e.test", Name: "O", Password: "pw", Salt: seedSalt})
+	h.f.Account(fixture.Account{ID: otherAccountID, UserID: otherUserID, CurrencyID: usdID})
+	h.f.Category(fixture.Category{ID: partnerCat, UserID: otherUserID, Name: "Internet", Type: 0, Icon: "wifi"})
+	h.f.Connect(seedUserID, otherUserID)
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/grant-access", h.token(t), map[string]any{"budgetId": budgetID1, "userId": otherUserID, "role": "user"})
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/accept-access", otherUserID, map[string]any{"budgetId": budgetID1})
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/add-account", otherUserID, map[string]any{"id": budgetID1, "accountId": otherAccountID})
+
+	rt := monthlyExpense("30", 25, false)
+	rt.UserID, rt.AccountID = vo.MustParseId(otherUserID), vo.MustParseId(otherAccountID)
+	cat := vo.MustParseId(partnerCat)
+	rt.CategoryID = &cat
+	h.svc.SetRecurring(recurringStub{templates: []*model.RecurringTransaction{rt}})
+
+	got := upcomingBudget(t, h, "2030-03-01").element(t, partnerCat)
+	if got.Spent != "0" || got.Upcoming != "30" || got.BudgetUpcoming != "30" || got.UpcomingBefore != "0" {
+		t.Errorf("participant's category for the owner = %+v, want spent 0, upcoming 30", got)
+	}
+}
