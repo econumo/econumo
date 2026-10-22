@@ -152,6 +152,12 @@ export interface BudgetUpcomingDto extends BudgetTransactionDto {
   canEdit: boolean
 }
 
+/** budget/get-transaction-list: items are real transactions only */
+export interface BudgetTransactionListDto {
+  items: BudgetTransactionDto[]
+  upcoming: BudgetUpcomingDto[]
+}
+
 export interface BudgetCommentDto {
   id: Id
   elementId: Id

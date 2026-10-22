@@ -1194,6 +1194,10 @@
     }
   },
   "budgets": {
+    "transactions": {
+      "upcoming_hint": "Upcoming recurring payment",
+      "later_cycle": "Can be posted after the earlier payment"
+    },
     "modal": {
       "budget_form": {
         "accounts": "Accounts",

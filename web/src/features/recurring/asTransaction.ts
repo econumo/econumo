@@ -1,5 +1,7 @@
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { AccountDto } from '@/api/dto/account'
+import type { BudgetUpcomingDto } from '@/api/dto/budget'
+import type { CurrencyDto } from '@/api/dto/currency'
 import type { CategoryDto } from '@/api/dto/category'
 import type { LabelDto } from '@/api/dto/label'
 import type { PayeeDto } from '@/api/dto/payee'
@@ -53,5 +55,45 @@ export function recurringAsTransaction(recurring: RecurringDto, { accounts, cate
     recurringId: recurring.id,
     isImported: 0,
     recurring,
+  } as unknown as ViewTransaction
+}
+
+/**
+ * One projected occurrence from the budget list, shaped for the read-only
+ * preview. The template may sit on a partner's account the caller cannot see,
+ * so the occurrence's own names stand in for whatever does not resolve locally.
+ */
+export function upcomingAsTransaction(
+  occurrence: BudgetUpcomingDto,
+  { accounts, currencies }: { accounts?: AccountDto[]; currencies?: CurrencyDto[] },
+): ViewTransaction {
+  const currency = currencies?.find((c) => c.id === occurrence.currencyId)
+  const account =
+    accounts?.find((a) => a.id === occurrence.accountId) ??
+    ({ id: occurrence.accountId, name: occurrence.accountName, icon: '', currency, sharedAccess: [] } as unknown as AccountDto)
+  return {
+    id: occurrence.templateId,
+    author: occurrence.author,
+    type: occurrence.type ?? (occurrence.direction ? 'transfer' : 'expense'),
+    accountId: occurrence.accountId,
+    accountRecipientId: null,
+    amount: occurrence.amount,
+    amountRecipient: null,
+    categoryId: occurrence.category?.id ?? null,
+    payeeId: occurrence.payee?.id ?? null,
+    tagId: occurrence.tag?.id ?? null,
+    labelIds: occurrence.labelIds ?? [],
+    description: occurrence.description,
+    date: occurrence.spentAt,
+    account,
+    category: occurrence.category ? (occurrence.category as CategoryDto) : undefined,
+    payee: occurrence.payee ? (occurrence.payee as PayeeDto) : undefined,
+    tag: occurrence.tag ? (occurrence.tag as TagDto) : undefined,
+    // the preview resolves labelIds against the caller's own labels and falls
+    // back to these names, which is all a partner's labels can offer
+    labels: occurrence.labelNames.map((name, i) => ({ id: `${occurrence.templateId}-label-${i}`, name, icon: 'label' }) as LabelDto),
+    isInFuture: false,
+    recurringId: occurrence.templateId,
+    isImported: 0,
   } as unknown as ViewTransaction
 }
