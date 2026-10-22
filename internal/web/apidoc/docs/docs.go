@@ -13401,6 +13401,9 @@ const docTemplate = `{
                 "budgetSpent": {
                     "type": "string"
                 },
+                "budgetUpcoming": {
+                    "type": "string"
+                },
                 "icon": {
                     "type": "string"
                 },
@@ -13421,6 +13424,10 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcoming": {
+                    "description": "Upcoming/BudgetUpcoming are the period's projected recurring payments not\nyet posted, in the parent's currency and the budget currency; Spent stays\nreal money only.",
+                    "type": "string"
                 }
             }
         },
@@ -15403,6 +15410,9 @@ const docTemplate = `{
                 },
                 "spent": {
                     "type": "string"
+                },
+                "upcoming": {
+                    "type": "string"
                 }
             }
         },
@@ -15777,6 +15787,9 @@ const docTemplate = `{
                 "budgetSpent": {
                     "type": "string"
                 },
+                "budgetUpcoming": {
+                    "type": "string"
+                },
                 "budgeted": {
                     "type": "string"
                 },
@@ -15815,6 +15828,13 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcoming": {
+                    "description": "Upcoming is the period's projected recurring spend not yet posted, and\nUpcomingBefore the projected spend filed in earlier months of the\nprojection window (from the caller's current month on), both in\nCurrencyId; BudgetUpcoming is Upcoming in the budget currency. Spent and\nAvailable stay real money only.",
+                    "type": "string"
+                },
+                "upcomingBefore": {
+                    "type": "string"
                 }
             }
         },
@@ -16514,6 +16534,10 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcoming": {
+                    "description": "Upcoming is the period's projected recurring change of the account not\nyet posted, measured like Spent.",
+                    "type": "string"
                 }
             }
         },

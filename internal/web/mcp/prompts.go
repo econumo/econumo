@@ -23,6 +23,12 @@ func budgetFieldGlossary() string {
 - budgetSpent: the same spending converted to the BUDGET's base currency
   (meta.currencyId). When currencies differ, compare limits against budgetSpent,
   not spent. Child categories carry both spent and budgetSpent.
+- spent, budgetSpent and available count POSTED transactions only. upcoming /
+  budgetUpcoming are this month's recurring payments not yet posted (element and
+  budget currency); upcomingBefore is the not-yet-posted recurring spend filed in
+  earlier months, from the current month on, in the element's currency. A month
+  before the current one has no upcoming money (all "0"). Labels and savings rows
+  carry upcoming too.
 - balances[]: one row per currency the budget touches (budget currency first) —
   account-level, separate from envelope spending. startBalance/endBalance are
   point-in-time totals (null until the period starts/ends); income/expenses/

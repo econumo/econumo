@@ -68,7 +68,7 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 		return model.BudgetResult{}, err
 	}
 
-	return model.BudgetResult{
+	result := model.BudgetResult{
 		Meta: meta,
 		Filters: model.FiltersResult{
 			PeriodStart: f.periodStart.Format(datetime.Layout),
@@ -78,7 +78,9 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 		Balances:      balances,
 		CurrencyRates: rates,
 		Structure:     structure,
-	}, nil
+	}
+	mergeBudgetUpcoming(&result, model.BudgetResult{})
+	return result, nil
 }
 
 // buildMeta builds the access list plus a synthetic owner entry.

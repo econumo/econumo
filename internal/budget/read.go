@@ -47,8 +47,12 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req model.GetBudg
 		return nil, err
 	}
 	periodStart = b.clampPeriod(periodStart)
-	result, err := s.BuildBudget(ctx, userID, b, periodStart, s.clock.Now())
+	now := s.clock.Now()
+	result, err := s.BuildBudget(ctx, userID, b, periodStart, now)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.addUpcoming(ctx, userID, b, periodStart, now, &result); err != nil {
 		return nil, err
 	}
 	return &model.GetBudgetResult{Item: result}, nil

@@ -86,6 +86,11 @@ type ChildElementResult struct {
 	Spent       string `json:"spent"`
 	BudgetSpent string `json:"budgetSpent"`
 	OwnerUserId string `json:"ownerUserId"`
+	// Upcoming/BudgetUpcoming are the period's projected recurring payments not
+	// yet posted, in the parent's currency and the budget currency; Spent stays
+	// real money only.
+	Upcoming       string `json:"upcoming"`
+	BudgetUpcoming string `json:"budgetUpcoming"`
 }
 
 // ParentElementResult is a top-level budget element (envelope/tag/category).
@@ -104,6 +109,14 @@ type ParentElementResult struct {
 	BudgetSpent string               `json:"budgetSpent"`
 	Children    []ChildElementResult `json:"children"`
 	OwnerUserId *string              `json:"ownerUserId"`
+	// Upcoming is the period's projected recurring spend not yet posted, and
+	// UpcomingBefore the projected spend filed in earlier months of the
+	// projection window (from the caller's current month on), both in
+	// CurrencyId; BudgetUpcoming is Upcoming in the budget currency. Spent and
+	// Available stay real money only.
+	Upcoming       string `json:"upcoming"`
+	BudgetUpcoming string `json:"budgetUpcoming"`
+	UpcomingBefore string `json:"upcomingBefore"`
 }
 
 // LabelSpendResult is one reporting label in the budget's labels block. It has
@@ -121,6 +134,7 @@ type LabelSpendResult struct {
 	Spent       string               `json:"spent"`
 	OwnerUserId string               `json:"ownerUserId"`
 	Children    []ChildElementResult `json:"children"`
+	Upcoming    string               `json:"upcoming"`
 }
 
 // SavingsElementResult is one savings account's row in get-budget's
@@ -144,6 +158,9 @@ type SavingsElementResult struct {
 	Spent          string `json:"spent"`
 	Available      string `json:"available"`
 	ClosingBalance string `json:"closingBalance"`
+	// Upcoming is the period's projected recurring change of the account not
+	// yet posted, measured like Spent.
+	Upcoming string `json:"upcoming"`
 }
 
 // StructureResult is the budget's folders + ordered elements + labels +

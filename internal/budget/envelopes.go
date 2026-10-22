@@ -273,6 +273,7 @@ func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, fol
 		Id: id.String(), Type: int(typ.Int16()), Name: name, Icon: icon,
 		CurrencyId: currencyID.String(), IsArchived: boolToInt(archived), FolderId: fid, Position: position,
 		Budgeted: "0", Available: "0", Spent: "0", BudgetSpent: "0",
+		Upcoming: "0", BudgetUpcoming: "0", UpcomingBefore: "0",
 		Children: children, OwnerUserId: nil,
 	}
 }
@@ -356,6 +357,7 @@ func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, cate
 		out = append(out, model.ChildElementResult{
 			Id: c.ID, Type: int(childType.Int16()), Name: c.Name, Icon: c.Icon,
 			IsArchived: boolToInt(c.IsArchived), Spent: "0", BudgetSpent: "0", OwnerUserId: c.OwnerID,
+			Upcoming: "0", BudgetUpcoming: "0",
 		})
 	}
 	return out, nil
