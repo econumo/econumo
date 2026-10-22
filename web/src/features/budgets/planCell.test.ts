@@ -13,6 +13,11 @@ describe('planCellView', () => {
   it('shows only the plan after the selected month', () => {
     expect(planCellView({ type: cat, cell: { actual: '0', planned: '55' }, month: '2026-11-01', selected: sel })).toEqual({ actual: null, dash: false, plan: '55', over: false, balance: false })
   })
+  it('future plan cell shows folded actual', () => {
+    expect(planCellView({ type: cat, cell: { actual: '30', planned: '55' }, month: '2026-11-01', selected: sel })).toEqual({ actual: '30', dash: false, plan: '55', over: false, balance: false })
+    expect(planCellView({ type: cat, cell: { actual: '80', planned: '55' }, month: '2026-11-01', selected: sel }).over).toBe(true)
+    expect(planCellView({ type: cat, cell: { actual: '30', planned: '' }, month: '2026-11-01', selected: sel })).toMatchObject({ actual: '30', plan: null })
+  })
   it('leaves an unplanned month blank, never 0', () => {
     expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: '2026-11-01', selected: sel }).plan).toBeNull()
   })

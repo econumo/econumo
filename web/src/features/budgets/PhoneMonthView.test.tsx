@@ -275,7 +275,7 @@ it('a row with no budget draws the empty gray track', () => {
 it('a future month shows a dash for Spent, the empty gray track, and no colour', () => {
   renderView({ selectedDate: '2099-01-01' }, (b) => {
     const food = b.structure.elements.find((el) => el.id === 'cat-food')!
-    Object.assign(food, { budgeted: '100', spent: '150', budgetSpent: '150', available: '-120' })
+    Object.assign(food, { budgeted: '100', spent: '0', budgetSpent: '0', available: '30' })
   })
   const row = screen.getByTestId('phone-row-cat-food')
   const bar = within(row).getByTestId('phone-progress').firstElementChild
@@ -283,6 +283,16 @@ it('a future month shows a dash for Spent, the empty gray track, and no colour',
   expect(bar?.className).toContain('bg-muted-foreground/40')
   expect(within(row).getByText('—').className).not.toContain('text-expense')
   expect(screen.getByRole('button', { name: 'Food, budget 30.00 + 100.00, spent —' })).toBeInTheDocument()
+})
+
+it('a future month shows the combined Spent and the filled bar when upcoming exists', () => {
+  renderView({ selectedDate: '2099-01-01' }, (b) => {
+    const food = b.structure.elements.find((el) => el.id === 'cat-food')!
+    Object.assign(food, { budgeted: '100', spent: '50', budgetSpent: '50', available: '-20' })
+  })
+  const row = screen.getByTestId('phone-row-cat-food')
+  expect(within(row).getByTestId('phone-progress').firstElementChild).not.toHaveStyle({ width: '0%' })
+  expect(screen.getByRole('button', { name: 'Food, budget 30.00 + 100.00, spent 50.00' })).toBeInTheDocument()
 })
 
 const rainyDay = { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0, budgeted: '100', spent: '40', available: '60', closingBalance: '1040' } as const

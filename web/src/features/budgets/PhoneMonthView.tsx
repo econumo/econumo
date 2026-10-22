@@ -300,7 +300,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     grouped = false,
   ) => {
     const childName = elementDisplayName(child.id, child.name, t)
-    const childAmount = future ? EMPTY : fmt(amount, parent.currencyId)
+    const childAmount = future && isZero(amount) ? EMPTY : fmt(amount, parent.currencyId)
     return (
       <div key={child.id} data-testid={`phone-child-${child.id}`} className={`${GRID} rounded-md text-sm text-muted-foreground`}>
         <span className={`flex min-h-10 min-w-0 items-center gap-2 py-1.5 ${grouped ? 'pl-16' : 'pl-9'}`}>
@@ -337,7 +337,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     const overspent = !isUncategorized && overBudget(figures, future)
     const carryText = isUncategorized || isZero(carry) ? null : `${fmt(carry, element.currencyId)} +`
     const budgetText = isUncategorized ? EMPTY : fmt(element.budgeted, element.currencyId)
-    const spentText = future ? EMPTY : fmt(element.spent, element.currencyId)
+    const spentText = future && isZero(element.spent) ? EMPTY : fmt(element.spent, element.currencyId)
     const expandable = element.children.length > 0
     const open = !!unfolded[element.id]
     return (
@@ -354,7 +354,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           // a row with nothing to measure against, or a month that has not happened
           // yet, still draws the empty track, as a budgeted row with nothing spent does;
           // an overspent row fills it, even when there was no budget to fill toward
-          progress={isUncategorized ? null : future ? 0 : overspent ? 1 : (rowProgress(figures) ?? 0)}
+          progress={isUncategorized ? null : future && isZero(element.spent) ? 0 : overspent ? 1 : (rowProgress(figures) ?? 0)}
           barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           commented={commented(element.id)}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: carryText ? `${carryText} ${budgetText}` : budgetText, spent: spentText })}
@@ -375,7 +375,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     const open = !!unfolded[key]
     const overspent = overBudget(stats, future)
     const budgetText = fmt(stats.budgeted, currencyId)
-    const spentText = future ? EMPTY : fmt(stats.spent, currencyId)
+    const spentText = future && isZero(stats.spent) ? EMPTY : fmt(stats.spent, currencyId)
     const toggle = () => {
       if (!open) {
         trackEvent(METRICS.BUDGET_TAG_GROUP_EXPAND, { view: 'phone', tags: elements.length })
@@ -392,7 +392,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           first={budgetText}
           second={spentText}
           secondClass={overspent ? 'text-expense' : ''}
-          progress={future ? 0 : overspent ? 1 : (rowProgress(stats) ?? 0)}
+          progress={future && isZero(stats.spent) ? 0 : overspent ? 1 : (rowProgress(stats) ?? 0)}
           barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: budgetText, spent: spentText })}
           onOpen={toggle}
@@ -419,7 +419,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
             <CardHeader
               name={name}
               first={fmt(bucket.stats.budgeted)}
-              second={future ? EMPTY : fmt(bucket.stats.spent)}
+              second={future && isZero(bucket.stats.spent) ? EMPTY : fmt(bucket.stats.spent)}
               fold={{ folded, onToggle: () => toggleBudgetFold(foldKey) }}
             />
           ) : undefined
@@ -527,7 +527,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   }
 
   const labelRow = (label: LabelSpendDto) => {
-    const spent = future ? EMPTY : fmt(label.spent)
+    const spent = future && isZero(label.spent) ? EMPTY : fmt(label.spent)
     return (
       <PhoneRow
         key={label.id}

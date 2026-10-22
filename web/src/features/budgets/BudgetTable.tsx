@@ -192,7 +192,7 @@ function ElementRow({
   const size = isUncategorized ? '' : 'text-[15px]'
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string, danger: boolean) => {
-    if (future) {
+    if (future && isZero(spent)) {
       return <Dash />
     }
     const color = danger ? 'text-expense' : 'text-muted-foreground'
@@ -398,7 +398,7 @@ function TagGroupRow({
           <span className="shrink-0">{moneyFormat(stats.budgeted, currency, opts)}</span>
         </span>
         <span className={`${SECOND_COL} text-[15px] tabular-nums ${overspent ? 'text-expense' : 'text-muted-foreground'}`} data-testid="tag-group-spent">
-          {future ? <Dash /> : moneyFormat(stats.spent, currency, opts)}
+          {future && isZero(stats.spent) ? <Dash /> : moneyFormat(stats.spent, currency, opts)}
         </span>
         <span className={`${THIRD_COL} text-[15px] tabular-nums ${overspent ? 'text-expense' : 'text-muted-foreground'}`} data-testid="tag-group-available">
           {nothingToShow(stats) ? <Dash /> : moneyFormat(stats.available, currency, opts)}
@@ -438,7 +438,7 @@ function LabelRow({
   const Chevron = unfolded ? ChevronDown : ChevronRight
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
-    future ? (
+    future && isZero(spent) ? (
       <Dash />
     ) : onLabelClick ? (
       <button
@@ -594,7 +594,7 @@ function folderSums(stats: BucketStats, currency: CurrencyDto | undefined, futur
   const danger = overBudget(stats, future)
   return [
     moneyFormat(stats.budgeted, currency, opts),
-    future ? <Dash key="dash-452-1" /> : <span key="spent" className={danger ? 'text-expense' : ''}>{moneyFormat(stats.spent, currency, opts)}</span>,
+    future && isZero(stats.spent) ? <Dash key="dash-452-1" /> : <span key="spent" className={danger ? 'text-expense' : ''}>{moneyFormat(stats.spent, currency, opts)}</span>,
     nothingToShow(stats) ? <Dash key="dash-453-1" /> : <span key="available" className={danger ? 'text-expense' : ''}>{moneyFormat(stats.available, currency, opts)}</span>,
   ]
 }
@@ -681,7 +681,7 @@ export function BudgetTable({
         headings={[t('budgets.page.budget.structure.tab.budgeted'), t('budgets.page.budget.structure.tab.spent'), t('budgets.page.budget.structure.tab.available')]}
         sums={[
           moneyFormat(totals.budgeted, budgetCurrency, opts),
-          future ? <Dash key="dash-516-1" /> : moneyFormat(totals.spent, budgetCurrency, opts),
+          future && isZero(totals.spent) ? <Dash key="dash-516-1" /> : moneyFormat(totals.spent, budgetCurrency, opts),
           nothingToShow(totals) ? <Dash key="dash-517-1" /> : moneyFormat(totals.available, budgetCurrency, opts),
         ]}
         actionsColumn={actionsColumn}
@@ -819,7 +819,7 @@ export function BudgetTotals({
             <span className="shrink-0">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
           </span>
           <span className={`${SECOND_COL} ${danger ? 'text-expense' : 'text-muted-foreground'}`}>
-            {future ? <Dash /> : moneyFormat(totals.spent, budgetCurrency, opts)}
+            {future && isZero(totals.spent) ? <Dash /> : moneyFormat(totals.spent, budgetCurrency, opts)}
           </span>
           <span className={`${THIRD_COL} ${danger ? 'text-expense' : ''}`} data-testid="totals-available">
             {nothingToShow(totals) ? <Dash /> : moneyFormat(totals.available, budgetCurrency, opts)}
