@@ -56,6 +56,9 @@ type upcomingChild struct {
 
 type upcomingElement struct {
 	Id             string          `json:"id"`
+	Position       int             `json:"position"`
+	Budgeted       string          `json:"budgeted"`
+	BudgetSpent    string          `json:"budgetSpent"`
 	Spent          string          `json:"spent"`
 	Available      string          `json:"available"`
 	Upcoming       string          `json:"upcoming"`
@@ -155,5 +158,29 @@ func TestBuildBudget_UpcomingTagChild(t *testing.T) {
 	}
 	if len(tag.Children) != 1 || tag.Children[0].Id != catID || tag.Children[0].Spent != "10" || tag.Children[0].Upcoming != "50" || tag.Children[0].BudgetUpcoming != "50" {
 		t.Errorf("tag children = %+v, want the category with spent 10, upcoming 50", tag.Children)
+	}
+}
+
+// A tagged rent with no real spend and no limit shows up only through its
+// projection, the way a real tagged spend would have shown the tag.
+func TestBuildBudget_UpcomingOnlyTagIsAdded(t *testing.T) {
+	h := newUpcomingHarness(t, "2030-03-01", monthlyExpense("50", 25, true))
+	v := upcomingBudget(t, h, "2030-04-01")
+	tag := v.element(t, tagID)
+	if tag.Budgeted != "0" || tag.Spent != "0" || tag.BudgetSpent != "0" || tag.Available != "0" {
+		t.Errorf("tag real amounts = %+v, want zeros", tag)
+	}
+	if tag.Upcoming != "50" || tag.BudgetUpcoming != "50" || tag.UpcomingBefore != "50" {
+		t.Errorf("tag upcoming = %+v, want 50 / 50 / March's 50", tag)
+	}
+	if len(tag.Children) != 1 || tag.Children[0].Id != catID || tag.Children[0].Spent != "0" || tag.Children[0].Upcoming != "50" {
+		t.Errorf("tag children = %+v, want the category with upcoming 50", tag.Children)
+	}
+	positions := map[int]string{}
+	for _, e := range v.Item.Structure.Elements {
+		if other, dup := positions[e.Position]; dup {
+			t.Errorf("elements %s and %s share position %d", other, e.Id, e.Position)
+		}
+		positions[e.Position] = e.Id
 	}
 }

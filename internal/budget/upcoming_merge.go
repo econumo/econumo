@@ -2,6 +2,7 @@ package budget
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -33,15 +34,27 @@ func (s *Service) addUpcoming(ctx context.Context, userID vo.Id, b *budgetAggreg
 	if err != nil {
 		return err
 	}
-	mergeBudgetUpcoming(result, up)
+	if mergeBudgetUpcoming(result, up) {
+		reorderElements(result.Structure.Elements, s.elementOptions(b))
+		sortBySortKeyThenID(result.Structure.Labels,
+			func(l model.LabelSpendResult) string { return f.labels[l.Id].SortKey },
+			func(l model.LabelSpendResult) string { return l.Id })
+	}
 	return nil
 }
 
 // mergeBudgetUpcoming copies the projected build's spend into real's upcoming
-// fields; an element the projected build lacks gets "0". The projected build
-// sums no limits, so its Available is -(spentBefore + spent) and
+// fields; a row the projected build lacks gets "0". The projected build sums no
+// limits, so its Available is -(spentBefore + spent) and
 // upcomingBefore = -Available - Spent.
-func mergeBudgetUpcoming(real *model.BudgetResult, up model.BudgetResult) {
+//
+// A row only the projected build has (a tag, tag child or label carrying
+// upcoming money but no real spend or limit) is added with zero real amounts:
+// the builders show those rows on spend, so projected spend shows them the
+// way real spend would. It reports whether anything was added, as positions
+// and label order then need recomputing.
+func mergeBudgetUpcoming(real *model.BudgetResult, up model.BudgetResult) bool {
+	added := false
 	type key struct {
 		id  string
 		typ int
@@ -50,31 +63,64 @@ func mergeBudgetUpcoming(real *model.BudgetResult, up model.BudgetResult) {
 	for _, e := range up.Structure.Elements {
 		elements[key{e.Id, e.Type}] = e
 	}
+	seen := map[key]bool{}
 	for i := range real.Structure.Elements {
 		el := &real.Structure.Elements[i]
-		u, ok := elements[key{el.Id, el.Type}]
+		k := key{el.Id, el.Type}
+		seen[k] = true
+		u, ok := elements[k]
 		if !ok {
 			el.Upcoming, el.BudgetUpcoming, el.UpcomingBefore = "0", "0", "0"
-			mergeChildrenUpcoming(el.Children, nil)
+			el.Children, _ = mergeChildrenUpcoming(el.Children, nil)
 			continue
 		}
-		el.Upcoming, el.BudgetUpcoming = u.Spent, u.BudgetSpent
-		el.UpcomingBefore = vo.NewDecimal("0").Sub(vo.NewDecimal(u.Available)).Sub(vo.NewDecimal(u.Spent)).String()
-		mergeChildrenUpcoming(el.Children, u.Children)
+		el.Upcoming, el.BudgetUpcoming, el.UpcomingBefore = u.Spent, u.BudgetSpent, upcomingBefore(u)
+		var childAdded bool
+		el.Children, childAdded = mergeChildrenUpcoming(el.Children, u.Children)
+		added = added || childAdded
+	}
+	for _, u := range up.Structure.Elements {
+		if seen[key{u.Id, u.Type}] {
+			continue
+		}
+		children, _ := mergeChildrenUpcoming([]model.ChildElementResult{}, u.Children)
+		real.Structure.Elements = append(real.Structure.Elements, model.ParentElementResult{
+			Id: u.Id, Type: u.Type, Name: u.Name, Icon: u.Icon, CurrencyId: u.CurrencyId,
+			IsArchived: u.IsArchived, FolderId: u.FolderId, Position: u.Position, OwnerUserId: u.OwnerUserId,
+			Budgeted: "0", Available: "0", Spent: "0", BudgetSpent: "0",
+			Upcoming: u.Spent, BudgetUpcoming: u.BudgetSpent, UpcomingBefore: upcomingBefore(u),
+			Children: children,
+		})
+		added = true
 	}
 
 	labels := make(map[string]model.LabelSpendResult, len(up.Structure.Labels))
 	for _, l := range up.Structure.Labels {
 		labels[l.Id] = l
 	}
+	seenLabel := map[string]bool{}
 	for i := range real.Structure.Labels {
 		l := &real.Structure.Labels[i]
+		seenLabel[l.Id] = true
 		u, ok := labels[l.Id]
 		l.Upcoming = "0"
 		if ok {
 			l.Upcoming = u.Spent
 		}
-		mergeChildrenUpcoming(l.Children, u.Children)
+		var childAdded bool
+		l.Children, childAdded = mergeChildrenUpcoming(l.Children, u.Children)
+		added = added || childAdded
+	}
+	for _, u := range up.Structure.Labels {
+		if seenLabel[u.Id] {
+			continue
+		}
+		children, _ := mergeChildrenUpcoming([]model.ChildElementResult{}, u.Children)
+		real.Structure.Labels = append(real.Structure.Labels, model.LabelSpendResult{
+			Id: u.Id, Name: u.Name, Icon: u.Icon, IsArchived: u.IsArchived, OwnerUserId: u.OwnerUserId,
+			Spent: "0", Upcoming: u.Spent, Children: children,
+		})
+		added = true
 	}
 
 	savings := make(map[string]model.SavingsElementResult, len(up.Structure.Savings))
@@ -88,18 +134,70 @@ func mergeBudgetUpcoming(real *model.BudgetResult, up model.BudgetResult) {
 			sv.Upcoming = u.Spent
 		}
 	}
+	return added
 }
 
-func mergeChildrenUpcoming(real, up []model.ChildElementResult) {
+func upcomingBefore(u model.ParentElementResult) string {
+	return vo.NewDecimal("0").Sub(vo.NewDecimal(u.Available)).Sub(vo.NewDecimal(u.Spent)).String()
+}
+
+// mergeChildrenUpcoming fills real's children from up's by id and appends the
+// children only up has, with zero real amounts, keeping the builders' id order.
+func mergeChildrenUpcoming(real, up []model.ChildElementResult) ([]model.ChildElementResult, bool) {
 	byID := make(map[string]model.ChildElementResult, len(up))
 	for _, c := range up {
 		byID[c.Id] = c
 	}
+	seen := map[string]bool{}
 	for i := range real {
 		c := &real[i]
+		seen[c.Id] = true
 		c.Upcoming, c.BudgetUpcoming = "0", "0"
 		if u, ok := byID[c.Id]; ok {
 			c.Upcoming, c.BudgetUpcoming = u.Spent, u.BudgetSpent
 		}
 	}
+	added := false
+	for _, u := range up {
+		if seen[u.Id] {
+			continue
+		}
+		real = append(real, model.ChildElementResult{
+			Id: u.Id, Type: u.Type, Name: u.Name, Icon: u.Icon, IsArchived: u.IsArchived, OwnerUserId: u.OwnerUserId,
+			Spent: "0", BudgetSpent: "0", Upcoming: u.Spent, BudgetUpcoming: u.BudgetSpent,
+		})
+		added = true
+	}
+	if added {
+		sort.Slice(real, func(i, j int) bool { return real[i].Id < real[j].Id })
+	}
+	return real, added
+}
+
+// reorderElements reassigns the dense per-folder positions and the wire order
+// over the merged rows, with the same keys assignElementPositions uses.
+func reorderElements(elements []model.ParentElementResult, options map[string]elementOption) {
+	sortKey := func(e model.ParentElementResult) string {
+		return string(options[elementKey(e.Id, model.ElementType(e.Type))].sortKey)
+	}
+	sort.SliceStable(elements, func(i, j int) bool {
+		x, y := elements[i], elements[j]
+		if xl, yl := x.Id == model.UncategorizedID, y.Id == model.UncategorizedID; xl != yl {
+			return !xl
+		}
+		if kx, ky := sortKey(x), sortKey(y); kx != ky {
+			return kx < ky
+		}
+		return x.Id < y.Id
+	})
+	perFolder := map[string]int{}
+	for i := range elements {
+		folder := ""
+		if elements[i].FolderId != nil {
+			folder = *elements[i].FolderId
+		}
+		elements[i].Position = perFolder[folder]
+		perFolder[folder]++
+	}
+	sortByPositionThenID(elements, func(p model.ParentElementResult) int { return p.Position }, func(p model.ParentElementResult) string { return p.Id })
 }
