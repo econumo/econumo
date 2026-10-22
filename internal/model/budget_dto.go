@@ -850,8 +850,9 @@ type BudgetTransactionResult struct {
 // the budget transaction list: Id is the template's id and SpentAt the
 // occurrence's due date (an overdue one keeps its original date). A template
 // due several times in the period repeats its Id, so clients must key rows by
-// (Id, SpentAt), never by Id alone. AccountName is "" when the template's
-// account is not a member of the budget (a transfer in from outside it).
+// (Id, SpentAt), never by Id alone. AccountId and AccountName are "" when the
+// template's account is not a member of the budget (a transfer in from outside
+// it): that account is not the budget's to show.
 type BudgetUpcomingResult struct {
 	BudgetTransactionResult
 	TemplateId  string   `json:"templateId"`

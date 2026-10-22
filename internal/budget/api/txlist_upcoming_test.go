@@ -222,8 +222,8 @@ func TestTxList_UpcomingTransfers(t *testing.T) {
 	if u.CurrencyId != eur || !decEq(u.Amount, "91") || u.Direction != "in" {
 		t.Errorf("transfer in = %+v, want 91 EUR in (100 USD at %s)", u, augustEURRate)
 	}
-	if u.AccountId != privateID || u.AccountName != "" {
-		t.Errorf("transfer in account = %q/%q, want the id and no name for a non-member", u.AccountId, u.AccountName)
+	if u.AccountId != "" || u.AccountName != "" {
+		t.Errorf("transfer in account = %q/%q, want neither id nor name for a non-member", u.AccountId, u.AccountName)
 	}
 	o := upcomingByTemplate(t, got, out)
 	if o.CurrencyId != usdID || !decEq(o.Amount, "40") || o.Direction != "out" || o.AccountName != "Cash" {

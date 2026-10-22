@@ -406,15 +406,15 @@ func (s *Service) assembleUpcoming(ctx context.Context, userID vo.Id, f filters,
 		}
 		// A transfer into the budget may come from an account outside it, such
 		// as a partner's private one: its name is not the budget's to show.
-		accountName := ""
+		accountID, accountName := "", ""
 		if members[o.accountID] {
-			accountName = pr.nameOf[o.accountID]
+			accountID, accountName = o.accountID, pr.nameOf[o.accountID]
 		}
 		out = append(out, model.BudgetUpcomingResult{
 			BudgetTransactionResult: item,
 			TemplateId:              o.templateID,
 			Schedule:                o.schedule,
-			AccountId:               o.accountID,
+			AccountId:               accountID,
 			AccountName:             accountName,
 			LabelNames:              labelNames,
 			IsNext:                  o.isNext,
