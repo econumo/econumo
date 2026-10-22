@@ -133,10 +133,12 @@ type monthlySavings struct {
 }
 
 // pendingSavingsMonth is one month from the caller's current month through the
-// selected one: its plan (element currency) and the key of its converted actual.
+// selected one: its plan (element currency, nil when none), and the keys of its
+// converted actual and upcoming money.
 type pendingSavingsMonth struct {
-	planned   vo.DecimalNumber
-	actualKey string
+	planned     *vo.DecimalNumber
+	actualKey   string
+	upcomingKey string
 }
 
 // addMonthlySavings queues each savings row's actual for the period, its
@@ -174,9 +176,10 @@ func (s *Service) addMonthlySavings(ctx context.Context, b *budgetAggregate, f f
 
 // addSavingsPending fills out.pending when the selected month is the caller's
 // current month or a later one: the closing balance is then a projection, the
-// booked balance plus each month's plan not yet met by its actual, from the
-// current month through the selected one. A past month's closing balance is
-// what is booked.
+// booked balance plus, for each month from the current one through the
+// selected one, its upcoming recurring money and the part of its plan that the
+// actual and upcoming money leave unmet. A past month's closing balance is what
+// is booked.
 func (s *Service) addSavingsPending(ctx context.Context, b *budgetAggregate, f filters, ids []vo.Id, out *monthlySavings, toConvert map[string][]model.ConvertItem) error {
 	cur := localMonth(s.clock.Now(), reqctx.Location(ctx))
 	if f.periodStart.Before(cur) {
@@ -200,6 +203,16 @@ func (s *Service) addSavingsPending(ctx context.Context, b *budgetAggregate, f f
 	for _, a := range actual {
 		actualByKey[a.AccountID+"_"+a.Month] = a.Amount
 	}
+	upcomingByKey := map[string]string{}
+	if s.upcoming != nil {
+		upcoming, err := s.upcoming.AccountsNetByMonth(ctx, ids, cur, f.periodEnd)
+		if err != nil {
+			return err
+		}
+		for _, u := range upcoming {
+			upcomingByKey[u.AccountID+"_"+u.Month] = u.Amount
+		}
+	}
 	for _, r := range out.rows {
 		if r.account.IsDeleted {
 			continue
@@ -210,17 +223,30 @@ func (s *Service) addSavingsPending(ctx context.Context, b *budgetAggregate, f f
 		}
 		for m := cur; m.Before(f.periodEnd); m = m.AddDate(0, 1, 0) {
 			month := m.Format(datetime.DateLayout)
-			p, ok := planned[r.account.ID+"_"+month]
-			if !ok {
-				continue
+			pm := pendingSavingsMonth{
+				actualKey:   "savings-pending_" + r.account.ID + "_" + month,
+				upcomingKey: "savings-upcoming_" + r.account.ID + "_" + month,
 			}
-			key := "savings-pending_" + r.account.ID + "_" + month
-			if amount, ok := actualByKey[r.account.ID+"_"+month]; ok {
+			queue := func(key, amount string) {
 				toConvert[key] = append(toConvert[key], model.ConvertItem{
 					PeriodStart: m, PeriodEnd: m.AddDate(0, 1, 0), From: accountCur, To: r.currencyID, Amount: vo.NewDecimal(amount),
 				})
 			}
-			out.pending[r.account.ID] = append(out.pending[r.account.ID], pendingSavingsMonth{planned: p, actualKey: key})
+			upcoming, hasUpcoming := upcomingByKey[r.account.ID+"_"+month]
+			if hasUpcoming {
+				queue(pm.upcomingKey, upcoming)
+			}
+			p, hasPlan := planned[r.account.ID+"_"+month]
+			if !hasPlan && !hasUpcoming {
+				continue
+			}
+			if hasPlan {
+				pm.planned = &p
+				if amount, ok := actualByKey[r.account.ID+"_"+month]; ok {
+					queue(pm.actualKey, amount)
+				}
+			}
+			out.pending[r.account.ID] = append(out.pending[r.account.ID], pm)
 		}
 	}
 	return nil
@@ -259,7 +285,12 @@ func emitMonthlySavings(ms monthlySavings, limits map[string]budgetedAmount, get
 		// the gap is per month, so saving more than planned in one month does not
 		// cover another month's shortfall
 		for _, p := range ms.pending[r.account.ID] {
-			if gap := p.planned.Sub(get(p.actualKey)); gap.IsGreaterThan(zero) {
+			upcoming := get(p.upcomingKey)
+			closing = closing.Add(upcoming)
+			if p.planned == nil {
+				continue
+			}
+			if gap := p.planned.Sub(get(p.actualKey)).Sub(upcoming); gap.IsGreaterThan(zero) {
 				closing = closing.Add(gap)
 			}
 		}

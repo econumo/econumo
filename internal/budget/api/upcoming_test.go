@@ -209,3 +209,43 @@ func TestBuildBudget_UpcomingFromParticipant(t *testing.T) {
 		t.Errorf("participant's category for the owner = %+v, want spent 0, upcoming 30", got)
 	}
 }
+
+// A recurring Cash->S1 150 on the 25th (clock: August 17th) is money the
+// closing balance can count on: each month from the current one adds its
+// upcoming transfer plus whatever of the plan the booked and upcoming money
+// still leave open. S1 books 300 in August against a 400 plan.
+func TestSavingsClosing_UpcomingTransfer(t *testing.T) {
+	h, tok, _ := newSavingsBudget(t)
+	recip := vo.MustParseId(savingsUSDID)
+	h.svc.SetRecurring(recurringStub{templates: []*model.RecurringTransaction{{
+		ID: vo.NewId(), UserID: vo.MustParseId(seedUserID), Type: model.TransactionTypeTransfer,
+		AccountID: vo.MustParseId(accountID), AccountRecipID: &recip, Amount: "150", Description: "save",
+		Schedule: model.RecurringScheduleMonthly, ScheduledDay: 25,
+		NextPaymentAt: time.Date(2026, 8, 25, 0, 0, 0, 0, time.UTC),
+	}}})
+
+	closing := func(date string) string {
+		t.Helper()
+		return h.savingsClosings(t, tok, date)[savingsUSDID][0]
+	}
+	// July is past: booked only.
+	if got := closing("2026-07-15"); !decEq(got, "0") {
+		t.Errorf("July closing = %s, want 0", got)
+	}
+	// 300 booked + 150 upcoming; the 400 plan is already met.
+	if got := closing("2026-08-15"); !decEq(got, "450") {
+		t.Errorf("August closing = %s, want 450", got)
+	}
+	// September without a plan still counts its 150.
+	if got := closing("2026-09-15"); !decEq(got, "600") {
+		t.Errorf("September closing (no plan) = %s, want 600", got)
+	}
+	h.setLimit(t, tok, savingsUSDID, "2026-09-01", "100")
+	if got := closing("2026-09-15"); !decEq(got, "600") {
+		t.Errorf("September closing (plan 100) = %s, want 600", got)
+	}
+	h.setLimit(t, tok, savingsUSDID, "2026-09-01", "200")
+	if got := closing("2026-09-15"); !decEq(got, "650") {
+		t.Errorf("September closing (plan 200) = %s, want 650", got)
+	}
+}

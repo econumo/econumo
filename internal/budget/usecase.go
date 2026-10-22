@@ -41,6 +41,10 @@ type Service struct {
 
 	txLabels  TransactionLabels
 	recurring RecurringSource
+
+	// upcoming, when set, is the projected read of the recurring templates for
+	// the build at hand: the savings closing balance then counts upcoming money.
+	upcoming ReadModel
 }
 
 // SetTransactionLabels wires the reporting-label lookup. It is a setter rather

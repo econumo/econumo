@@ -10,26 +10,32 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// addUpcoming fills result's upcoming fields: the same builder run a second
-// time over the projected recurring occurrences instead of the stored
-// transactions. A month that ended before the caller's current month has no
-// upcoming money, so it skips the projection and keeps the zeros BuildBudget
-// set.
-func (s *Service) addUpcoming(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, now time.Time, result *model.BudgetResult) error {
+// projectUpcoming projects the recurring occurrences for the period. A month
+// that ended before the caller's current month has no upcoming money, so it
+// returns a nil read and the zeros BuildBudget set stay.
+func (s *Service) projectUpcoming(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, now time.Time) (*projectedRead, filters, error) {
 	periodEnd := periodStart.AddDate(0, 1, 0)
 	if !periodEnd.After(localMonth(now, reqctx.Location(ctx))) {
-		return nil
+		return nil, filters{}, nil
 	}
 	f, err := s.buildFilters(ctx, userID, b, periodStart, periodEnd)
 	if err != nil {
-		return err
+		return nil, filters{}, err
 	}
 	pr, err := s.newProjectedRead(ctx, f, periodEnd)
 	if err != nil {
-		return err
+		return nil, filters{}, err
 	}
+	return pr, f, nil
+}
+
+// addUpcoming fills result's upcoming fields: the same builder run a second
+// time over the projected recurring occurrences instead of the stored
+// transactions.
+func (s *Service) addUpcoming(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, now time.Time, pr *projectedRead, f filters, result *model.BudgetResult) error {
 	sp := *s
 	sp.read = pr
+	sp.upcoming = nil
 	up, err := sp.BuildBudget(ctx, userID, b, periodStart, now)
 	if err != nil {
 		return err
