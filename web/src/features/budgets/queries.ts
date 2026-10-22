@@ -18,6 +18,12 @@ import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useBudgetPeriodStore } from './budgetStore'
 import { addMonths, currentMonth, monthDiff } from './planMath'
+import { foldBudgetUpcoming, foldPlanUpcoming } from './upcoming'
+
+// module-level so the select keeps one reference and its result stays stable;
+// the cache itself keeps the raw wire data the optimistic patches work on
+const selectBudget = (data: BudgetDto | null): BudgetDto | null => (data ? foldBudgetUpcoming(data) : data)
+const selectPlan = (data: BudgetPlanDto | null): BudgetPlanDto | null => (data ? foldPlanUpcoming(data) : data)
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -119,6 +125,7 @@ export function useBudget() {
     queryFn: () => (budgetId ? budgetApi.getBudget(budgetId, selectedDate) : Promise.resolve(null)),
     enabled: user !== undefined,
     staleTime: TEN_MINUTES,
+    select: selectBudget,
     // month switches keep showing the previous period instead of a blank page
     placeholderData: keepPreviousData,
   })
@@ -159,7 +166,12 @@ export function useSetLimit() {
                           budgeted,
                           available: sub(budgeted, row.spent),
                           ...(projected && row.isArchived === 0 && row.closingBalance !== undefined
-                            ? { closingBalance: add(sub(row.closingBalance, gap(row.budgeted, row.spent)), gap(budgeted, row.spent)) }
+                            ? {
+                                closingBalance: add(
+                                  sub(row.closingBalance, gap(row.budgeted, add(row.spent, row.upcoming))),
+                                  gap(budgeted, add(row.spent, row.upcoming)),
+                                ),
+                              }
                             : {}),
                         }
                       : row,
@@ -216,6 +228,7 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
     queryFn: () => (budgetId ? budgetApi.getBudgetPlan(budgetId, from, months) : Promise.resolve(null)),
     enabled: budgetId !== null,
     staleTime: TEN_MINUTES,
+    select: selectPlan,
     // shifting months keeps showing the previous window instead of a blank sheet
     placeholderData: keepPreviousData,
   })
