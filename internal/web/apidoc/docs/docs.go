@@ -13270,6 +13270,36 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.PlanMonthTransfersResult"
                     }
+                },
+                "upcomingOpeningBalances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OpeningBalanceResult"
+                    }
+                },
+                "upcomingSavingsFlows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
+                    }
+                },
+                "upcomingSavingsIncomeExpense": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
+                    }
+                },
+                "upcomingSavingsOpeningBalances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OpeningBalanceResult"
+                    }
+                },
+                "upcomingTransfers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanMonthTransfersResult"
+                    }
                 }
             }
         },
@@ -15896,6 +15926,9 @@ const docTemplate = `{
                 },
                 "planned": {
                     "type": "string"
+                },
+                "upcoming": {
+                    "type": "string"
                 }
             }
         },
@@ -15903,6 +15936,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "actual": {
+                    "type": "string"
+                },
+                "upcoming": {
                     "type": "string"
                 }
             }
@@ -16018,6 +16054,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "planned": {
+                    "type": "string"
+                },
+                "upcoming": {
                     "type": "string"
                 }
             }

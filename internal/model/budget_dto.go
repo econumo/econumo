@@ -334,16 +334,20 @@ func (r GetBudgetPlanRequest) Validate() error {
 }
 
 // PlanCellResult is one (element, month) plan cell. Planned is "" when no
-// limit row exists for that month — the frozen empty-cell encoding.
+// limit row exists for that month — the frozen empty-cell encoding. Upcoming
+// is the month's recurring payments not yet posted, filed like Actual; "0" for
+// a month before the caller's current one.
 type PlanCellResult struct {
-	Actual  string `json:"actual"`
-	Planned string `json:"planned"`
+	Actual   string `json:"actual"`
+	Planned  string `json:"planned"`
+	Upcoming string `json:"upcoming"`
 }
 
 // PlanChildCellResult is one (envelope child, month) cell — actual only;
 // planned lives on the parent, exactly like budgeted on the budget page.
 type PlanChildCellResult struct {
-	Actual string `json:"actual"`
+	Actual   string `json:"actual"`
+	Upcoming string `json:"upcoming"`
 }
 
 // PlanChildResult is a category nested under an envelope in the plan sheet.
@@ -429,11 +433,13 @@ type PlanSavingsElementResult struct {
 }
 
 // PlanSavingsCellResult is a savings row's month: ClosingBalance is the
-// account's booked balance at the end of that month, in the element currency.
+// account's booked balance at the end of that month, in the element currency;
+// it leaves Upcoming out, which the client adds.
 type PlanSavingsCellResult struct {
 	Actual         string `json:"actual"`
 	Planned        string `json:"planned"`
 	ClosingBalance string `json:"closingBalance"`
+	Upcoming       string `json:"upcoming"`
 }
 
 // PlanSavingsFlowResult is one (month, account currency) net change of the
@@ -460,6 +466,13 @@ type PlanStructureResult struct {
 // SavingsIncomeExpense is the income minus the expenses booked on the savings
 // accounts, same shape as SavingsFlows: the category rows count the everyday
 // accounts only, so the combined balance needs it added back.
+//
+// The Upcoming* arrays are their namesakes over the recurring payments not yet
+// posted, with the same shape and order rules: UpcomingOpeningBalances is what
+// is due before the window start (non-zero only for a window starting after
+// the current month). A window that ends before the caller's current month
+// projects nothing: opening balances "0", transfer months with no items, flows
+// [].
 type BudgetPlanResult struct {
 	Meta                   MetaResult                 `json:"meta"`
 	Months                 []string                   `json:"months"`
@@ -470,6 +483,12 @@ type BudgetPlanResult struct {
 	SavingsFlows           []PlanSavingsFlowResult    `json:"savingsFlows"`
 	SavingsIncomeExpense   []PlanSavingsFlowResult    `json:"savingsIncomeExpense"`
 	Structure              PlanStructureResult        `json:"structure"`
+
+	UpcomingOpeningBalances        []OpeningBalanceResult     `json:"upcomingOpeningBalances"`
+	UpcomingSavingsOpeningBalances []OpeningBalanceResult     `json:"upcomingSavingsOpeningBalances"`
+	UpcomingTransfers              []PlanMonthTransfersResult `json:"upcomingTransfers"`
+	UpcomingSavingsFlows           []PlanSavingsFlowResult    `json:"upcomingSavingsFlows"`
+	UpcomingSavingsIncomeExpense   []PlanSavingsFlowResult    `json:"upcomingSavingsIncomeExpense"`
 }
 
 // GetBudgetPlanResult is {item: BudgetPlanResult}.

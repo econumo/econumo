@@ -41,6 +41,9 @@ func (s *Service) GetBudgetPlan(ctx context.Context, userID vo.Id, req model.Get
 	if err != nil {
 		return nil, err
 	}
+	if err := s.addPlanUpcoming(ctx, userID, b, from, months, &result); err != nil {
+		return nil, err
+	}
 	return &model.GetBudgetPlanResult{Item: result}, nil
 }
 

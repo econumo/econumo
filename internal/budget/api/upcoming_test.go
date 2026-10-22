@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"testing"
@@ -247,5 +248,242 @@ func TestSavingsClosing_UpcomingTransfer(t *testing.T) {
 	h.setLimit(t, tok, savingsUSDID, "2026-09-01", "200")
 	if got := closing("2026-09-15"); !decEq(got, "650") {
 		t.Errorf("September closing (plan 200) = %s, want 650", got)
+	}
+}
+
+type upcomingPlanCell struct {
+	Actual         string `json:"actual"`
+	Planned        string `json:"planned"`
+	Upcoming       string `json:"upcoming"`
+	ClosingBalance string `json:"closingBalance"`
+}
+
+type upcomingPlanRow struct {
+	Id       string             `json:"id"`
+	Type     int                `json:"type"`
+	FolderId *string            `json:"folderId"`
+	Position int                `json:"position"`
+	Cells    []upcomingPlanCell `json:"cells"`
+	Children []struct {
+		Id    string             `json:"id"`
+		Cells []upcomingPlanCell `json:"cells"`
+	} `json:"children"`
+}
+
+type upcomingAmount struct {
+	CurrencyId string `json:"currencyId"`
+	Amount     string `json:"amount"`
+}
+
+type upcomingFlow struct {
+	Month      string `json:"month"`
+	CurrencyId string `json:"currencyId"`
+	Amount     string `json:"amount"`
+}
+
+type upcomingPlanView struct {
+	Item struct {
+		Structure struct {
+			Elements []upcomingPlanRow `json:"elements"`
+			Savings  []upcomingPlanRow `json:"savings"`
+		} `json:"structure"`
+		UpcomingOpeningBalances        []upcomingAmount `json:"upcomingOpeningBalances"`
+		UpcomingSavingsOpeningBalances []upcomingAmount `json:"upcomingSavingsOpeningBalances"`
+		UpcomingTransfers              []struct {
+			Period string `json:"period"`
+			Items  []struct {
+				CurrencyId string `json:"currencyId"`
+				In         string `json:"in"`
+				Out        string `json:"out"`
+			} `json:"items"`
+		} `json:"upcomingTransfers"`
+		UpcomingSavingsFlows         []upcomingFlow `json:"upcomingSavingsFlows"`
+		UpcomingSavingsIncomeExpense []upcomingFlow `json:"upcomingSavingsIncomeExpense"`
+	} `json:"item"`
+}
+
+func upcomingPlan(t *testing.T, h *harness, tok, budgetID, window string) (upcomingPlanView, envelope) {
+	t.Helper()
+	env := h.mustDo(t, http.MethodGet, "/api/v1/budget/get-budget-plan?id="+budgetID+window, tok, nil)
+	return mustUnmarshal[upcomingPlanView](t, env.Data), env
+}
+
+func planRow(t *testing.T, rows []upcomingPlanRow, id string, typ int) upcomingPlanRow {
+	t.Helper()
+	for _, r := range rows {
+		if r.Id == id && r.Type == typ {
+			return r
+		}
+	}
+	t.Fatalf("plan row %s/%d missing: %+v", id, typ, rows)
+	return upcomingPlanRow{}
+}
+
+func cellUpcomings(cells []upcomingPlanCell) []string {
+	out := make([]string, len(cells))
+	for i, c := range cells {
+		out[i] = c.Upcoming
+	}
+	return out
+}
+
+func sameStrings(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range want {
+		if !decEq(got[i], want[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// The clock is March 22nd: February is past, March holds the rent still due
+// on the 25th, and every later window month holds its own. The tagged gym has
+// no real spend and no plan, so its tag row shows through the projection.
+func TestBuildPlan_UpcomingCells(t *testing.T) {
+	h := newUpcomingHarness(t, "2030-01-01", monthlyExpense("50", 25, false), monthlyExpense("20", 25, true))
+	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: accountID, CategoryID: catID, Amount: "10", SpentAt: "2030-03-10 12:00:00"})
+	v, _ := upcomingPlan(t, h, h.token(t), budgetID1, "&from=2030-02-01&months=4")
+	els := v.Item.Structure.Elements
+
+	cat := planRow(t, els, catID, 1)
+	if got := cellUpcomings(cat.Cells); !sameStrings(got, []string{"0", "50", "50", "50"}) {
+		t.Errorf("category upcoming = %v, want 0/50/50/50", got)
+	}
+	if got := []string{cat.Cells[0].Actual, cat.Cells[1].Actual, cat.Cells[2].Actual, cat.Cells[3].Actual}; !sameStrings(got, []string{"0", "10", "0", "0"}) {
+		t.Errorf("category actual = %v, want real money only (0/10/0/0)", got)
+	}
+
+	tag := planRow(t, els, tagID, 2)
+	if got := cellUpcomings(tag.Cells); !sameStrings(got, []string{"0", "20", "20", "20"}) {
+		t.Errorf("tag upcoming = %v, want 0/20/20/20", got)
+	}
+	for i, c := range tag.Cells {
+		if c.Actual != "0" || c.Planned != "" {
+			t.Errorf("tag cell %d = %+v, want no real money and no plan", i, c)
+		}
+	}
+	if len(tag.Children) != 1 || tag.Children[0].Id != catID || !sameStrings(cellUpcomings(tag.Children[0].Cells), []string{"0", "20", "20", "20"}) {
+		t.Errorf("tag children = %+v, want the category with upcoming 0/20/20/20", tag.Children)
+	}
+	positions := map[[2]any]string{}
+	for _, e := range els {
+		k := [2]any{e.FolderId == nil, e.Position}
+		if e.FolderId != nil {
+			k[0] = *e.FolderId
+		}
+		if other, dup := positions[k]; dup {
+			t.Errorf("rows %s and %s share position %d", other, e.Id, e.Position)
+		}
+		positions[k] = e.Id
+	}
+}
+
+// A window ending before the current month projects nothing: every upcoming
+// field is zero, and the arrays keep their real counterparts' shape.
+func TestBuildPlan_WindowInPastNoUpcoming(t *testing.T) {
+	h := newUpcomingHarness(t, "2030-01-01", monthlyExpense("50", 25, false), monthlyExpense("20", 25, true))
+	v, env := upcomingPlan(t, h, h.token(t), budgetID1, "&from=2030-01-01&months=2")
+	for _, e := range v.Item.Structure.Elements {
+		if e.Id == tagID {
+			t.Errorf("tag with neither real nor projected money must stay hidden: %+v", e)
+		}
+		if !sameStrings(cellUpcomings(e.Cells), []string{"0", "0"}) {
+			t.Errorf("row %s upcoming = %v, want zeros", e.Id, cellUpcomings(e.Cells))
+		}
+	}
+	if len(v.Item.UpcomingOpeningBalances) == 0 {
+		t.Error("upcomingOpeningBalances must list the budget's currencies")
+	}
+	for _, b := range v.Item.UpcomingOpeningBalances {
+		if b.Amount != "0" {
+			t.Errorf("upcoming opening balance = %+v, want 0", b)
+		}
+	}
+	if tr := v.Item.UpcomingTransfers; len(tr) != 2 || tr[0].Period != "2030-01-01" || len(tr[0].Items) != 0 || len(tr[1].Items) != 0 {
+		t.Errorf("upcomingTransfers = %+v, want two empty months", tr)
+	}
+	for _, key := range []string{`"upcomingSavingsOpeningBalances":[]`, `"upcomingSavingsFlows":[]`, `"upcomingSavingsIncomeExpense":[]`} {
+		if !bytes.Contains(env.Data, []byte(key)) {
+			t.Errorf("response lacks %s: %s", key, env.Data)
+		}
+	}
+}
+
+// Clock: August 17th. Cash->S1 150 and Cash->an account outside the budget 40,
+// both monthly on the 25th: S1's cells and the savings flows carry the 150, the
+// boundary transfers line the 40, and S1's closing balance stays booked only.
+func TestBuildPlan_UpcomingTransfersAndSavings(t *testing.T) {
+	h, tok, _ := newSavingsBudget(t)
+	const outsideID = "aaaa1111-0000-7000-8000-0000000000ff"
+	h.f.Account(fixture.Account{ID: outsideID, UserID: seedUserID, CurrencyID: usdID, Name: "Outside"})
+	booked, _ := upcomingPlan(t, h, tok, budgetID1, "&from=2026-08-01&months=2")
+
+	transfer := func(to, amount string) *model.RecurringTransaction {
+		recip := vo.MustParseId(to)
+		return &model.RecurringTransaction{
+			ID: vo.NewId(), UserID: vo.MustParseId(seedUserID), Type: model.TransactionTypeTransfer,
+			AccountID: vo.MustParseId(accountID), AccountRecipID: &recip, Amount: amount, Description: "move",
+			Schedule: model.RecurringScheduleMonthly, ScheduledDay: 25,
+			NextPaymentAt: time.Date(2026, 8, 25, 0, 0, 0, 0, time.UTC),
+		}
+	}
+	h.svc.SetRecurring(recurringStub{templates: []*model.RecurringTransaction{transfer(savingsUSDID, "150"), transfer(outsideID, "40")}})
+
+	v, _ := upcomingPlan(t, h, tok, budgetID1, "&from=2026-08-01&months=2")
+	s1 := planRow(t, v.Item.Structure.Savings, savingsUSDID, 5)
+	if got := cellUpcomings(s1.Cells); !sameStrings(got, []string{"150", "150"}) {
+		t.Errorf("S1 upcoming = %v, want 150/150", got)
+	}
+	was := planRow(t, booked.Item.Structure.Savings, savingsUSDID, 5)
+	for i := range s1.Cells {
+		if s1.Cells[i].ClosingBalance != was.Cells[i].ClosingBalance || s1.Cells[i].Actual != was.Cells[i].Actual {
+			t.Errorf("S1 cell %d = %+v, want the booked %+v plus upcoming", i, s1.Cells[i], was.Cells[i])
+		}
+	}
+	if f := v.Item.UpcomingSavingsFlows; len(f) != 2 || f[0].Month != "2026-08-01" || f[1].Month != "2026-09-01" ||
+		f[0].CurrencyId != usdID || !decEq(f[0].Amount, "150") || !decEq(f[1].Amount, "150") {
+		t.Errorf("upcomingSavingsFlows = %+v, want 150 USD in August and September", f)
+	}
+	if ie := v.Item.UpcomingSavingsIncomeExpense; len(ie) != 0 {
+		t.Errorf("upcomingSavingsIncomeExpense = %+v, want none (transfers only)", ie)
+	}
+	tr := v.Item.UpcomingTransfers
+	if len(tr) != 2 {
+		t.Fatalf("upcomingTransfers = %+v, want two months", tr)
+	}
+	for _, m := range tr {
+		if len(m.Items) != 1 || m.Items[0].CurrencyId != usdID || !decEq(m.Items[0].Out, "40") || !decEq(m.Items[0].In, "0") {
+			t.Errorf("upcomingTransfers %s = %+v, want 40 USD out", m.Period, m.Items)
+		}
+	}
+	for _, b := range v.Item.UpcomingOpeningBalances {
+		if !decEq(b.Amount, "0") {
+			t.Errorf("opening balance %+v, want 0 for a window starting this month", b)
+		}
+	}
+
+	// A September window opens on what August still has due: -40 across the
+	// budget, +150 on the savings.
+	sep, _ := upcomingPlan(t, h, tok, budgetID1, "&from=2026-09-01&months=1")
+	for _, b := range sep.Item.UpcomingOpeningBalances {
+		want := "0"
+		if b.CurrencyId == usdID {
+			want = "-40"
+		}
+		if !decEq(b.Amount, want) {
+			t.Errorf("September upcoming opening %+v, want %s", b, want)
+		}
+	}
+	for _, b := range sep.Item.UpcomingSavingsOpeningBalances {
+		want := "0"
+		if b.CurrencyId == usdID {
+			want = "150"
+		}
+		if !decEq(b.Amount, want) {
+			t.Errorf("September upcoming savings opening %+v, want %s", b, want)
+		}
 	}
 }

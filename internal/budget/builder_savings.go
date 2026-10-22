@@ -401,7 +401,7 @@ func emitPlanSavings(rows []savingsRow, plannedFor func(string) []string, hasAct
 		for i := range cells {
 			cells[i] = model.PlanSavingsCellResult{
 				Actual: get(planKey(i, index)).String(), Planned: planned[i],
-				ClosingBalance: get(planKey(i, savingsClosingKey(r.account.ID))).String(),
+				ClosingBalance: get(planKey(i, savingsClosingKey(r.account.ID))).String(), Upcoming: "0",
 			}
 		}
 		out = append(out, model.PlanSavingsElementResult{

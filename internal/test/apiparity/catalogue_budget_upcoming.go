@@ -1,13 +1,14 @@
 package apiparity
 
-// budget_upcoming_recurring: get-budget's upcoming fields over recurring
-// templates of both participants of a shared budget. Every template is placed
+// budget_upcoming_recurring: get-budget's and get-budget-plan's upcoming
+// fields over recurring templates of both participants of a shared budget. Every template is placed
 // so the projection never depends on the day of the month: every one is
 // monthly and due at ClockTime itself, so exactly one occurrence falls in the
 // current month. A fixed date would not do: an overdue monthly template also
 // projects this month's own occurrence while that day is still ahead. The
 // month must stay out of the request path, which the golden records verbatim,
-// so the selected month is the default (current) one plus a fixed past month;
+// so the selected month is the default (current) one plus a fixed past month,
+// and the plan window starts at the default (current) month;
 // future-month carry-over and overdue collapsing are covered by
 // internal/budget/api/upcoming_test.go and the model's projection tests.
 func init() {
@@ -40,6 +41,7 @@ func init() {
 				}},
 			{Label: "get-budget-current-month", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
 			{Label: "get-budget-past-month", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget + "&date=2024-04-01", Auth: "owner"},
+			{Label: "get-budget-plan-current-window", Method: "GET", Path: "/api/v1/budget/get-budget-plan?id=" + Budget + "&months=2", Auth: "owner"},
 		}
 	}})
 }

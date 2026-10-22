@@ -373,6 +373,26 @@ definitions:
         items:
           $ref: '#/definitions/model.PlanMonthTransfersResult'
         type: array
+      upcomingOpeningBalances:
+        items:
+          $ref: '#/definitions/model.OpeningBalanceResult'
+        type: array
+      upcomingSavingsFlows:
+        items:
+          $ref: '#/definitions/model.PlanSavingsFlowResult'
+        type: array
+      upcomingSavingsIncomeExpense:
+        items:
+          $ref: '#/definitions/model.PlanSavingsFlowResult'
+        type: array
+      upcomingSavingsOpeningBalances:
+        items:
+          $ref: '#/definitions/model.OpeningBalanceResult'
+        type: array
+      upcomingTransfers:
+        items:
+          $ref: '#/definitions/model.PlanMonthTransfersResult'
+        type: array
     type: object
   model.BudgetResult:
     properties:
@@ -2111,10 +2131,14 @@ definitions:
         type: string
       planned:
         type: string
+      upcoming:
+        type: string
     type: object
   model.PlanChildCellResult:
     properties:
       actual:
+        type: string
+      upcoming:
         type: string
     type: object
   model.PlanChildResult:
@@ -2190,6 +2214,8 @@ definitions:
       closingBalance:
         type: string
       planned:
+        type: string
+      upcoming:
         type: string
     type: object
   model.PlanSavingsElementResult:
