@@ -384,7 +384,7 @@ function buildFlatRows(
     pushSide('expense')
   }
   if (rows.archived.length > 0 && !folded('archived')) {
-    rows.archived.forEach(pushRow)
+    pushRows(rows.archived, 'archived')
   }
   return flatRows
 }
@@ -1977,9 +1977,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             />
             {!folded('archived') ? (
               <RowLevelContext.Provider value="top">
-                {shownRows.archived.map((r) => (
-                  <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
-                ))}
+                <PlanRowList rows={shownRows.archived} ctx={ctx} indicator={null} scope="archived" />
               </RowLevelContext.Provider>
             ) : null}
           </section>

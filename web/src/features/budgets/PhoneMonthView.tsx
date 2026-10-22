@@ -427,7 +427,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
       >
         {folded
           ? null
-          : segmentTagGroups(bucket.elements, (el) => el, bucket.folder?.id ?? null).map((segment) =>
+          : segmentTagGroups(bucket.elements, (el) => el, bucket === buckets.archive ? 'archived' : (bucket.folder?.id ?? null)).map((segment) =>
               segment.kind === 'row' ? expenseRow(segment.item) : tagGroup(segment.key, segment.name, segment.items),
             )}
       </Card>

@@ -16,31 +16,30 @@ const nameKey = (name: string): string => name.trim().toLocaleLowerCase()
 /** the group's fold key: per folder, so the same name in two folders folds apart */
 export const tagGroupKey = (scope: string | null, name: string): string => `taggroup:${scope ?? ''}:${nameKey(name)}`
 
-/** Live tags sharing a name (trimmed, case-insensitive) form a group at the place of
- *  the first of them; everything else keeps its own place. */
+/** Tags sharing a name (trimmed, case-insensitive) form a group at the place of the
+ *  first of them; everything else keeps its own place. Archived tags group only with
+ *  archived ones, live with live. */
 export function segmentTagGroups<T>(items: T[], of: (item: T) => Groupable, scope: string | null): RowSegment<T>[] {
-  const groupable = (item: T) => {
-    const el = of(item)
-    return el.type === BudgetElementType.TAG && el.isArchived === 0
-  }
+  const groupable = (item: T) => of(item).type === BudgetElementType.TAG
+  const memberKey = (item: T) => `${of(item).isArchived}:${nameKey(of(item).name)}`
   const byName = new Map<string, T[]>()
   for (const item of items) {
     if (groupable(item)) {
-      const key = nameKey(of(item).name)
+      const key = memberKey(item)
       byName.set(key, [...(byName.get(key) ?? []), item])
     }
   }
   const segments: RowSegment<T>[] = []
   const placed = new Set<string>()
   for (const item of items) {
-    const members = groupable(item) ? byName.get(nameKey(of(item).name))! : null
+    const members = groupable(item) ? byName.get(memberKey(item))! : null
     if (!members || members.length < 2) {
       segments.push({ kind: 'row', item })
       continue
     }
-    const key = tagGroupKey(scope, of(item).name)
-    if (!placed.has(key)) {
-      placed.add(key)
+    if (!placed.has(memberKey(item))) {
+      placed.add(memberKey(item))
+      const key = tagGroupKey(scope, of(item).name)
       segments.push({ kind: 'group', key, name: of(members[0]).name.trim(), items: members })
     }
   }

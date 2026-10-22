@@ -962,8 +962,9 @@ and on tablet/phone only with a hardware keyboard.
       the Plan grid), in their own currency when they share one, otherwise in
       the budget currency. Opening it lists each tag with its owner's name,
       each keeping its own limit, cell editing, ⋮ menu and category breakdown.
-      A single tag, an archived tag, or same-name tags in different folders
-      stay ungrouped.
+      Same-name archived tags group the same way inside Archived (never with
+      a live tag of that name). A single tag, or same-name tags in different
+      folders, stay ungrouped.
 - [ ] 📱 Section order: the Reporting tags folder is the last expense section,
       below Uncategorized and Archived (desktop: right above the Total row;
       phone: right above the Total card), and still shows when neither of those

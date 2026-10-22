@@ -652,9 +652,8 @@ export function BudgetTable({
       ownerHint={ownerHint}
     />
   )
-  // the archive lists rows by name, one by one: a group is for live tags only
   const rowsOf = (bucket: FolderBucket, rowExtras: ElementRowExtras) =>
-    segmentTagGroups(bucket.elements, (el) => el, bucket.folder?.id ?? null).map((segment) =>
+    segmentTagGroups(bucket.elements, (el) => el, bucket === buckets.archive ? 'archived' : (bucket.folder?.id ?? null)).map((segment) =>
       segment.kind === 'row' ? (
         elementRow(segment.item, bucket, rowExtras)
       ) : (
