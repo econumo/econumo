@@ -21,7 +21,7 @@ func (s *Service) projectUpcoming(ctx context.Context, userID vo.Id, b *budgetAg
 // periodEnd), or returns a nil read when the window ended before the caller's
 // current month.
 func (s *Service) projectWindow(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, periodEnd, now time.Time) (*projectedRead, filters, error) {
-	if !periodEnd.After(localMonth(now, reqctx.Location(ctx))) {
+	if !upcomingShown(ctx, periodEnd, now) {
 		return nil, filters{}, nil
 	}
 	f, err := s.buildFilters(ctx, userID, b, periodStart, periodEnd)
@@ -33,6 +33,12 @@ func (s *Service) projectWindow(ctx context.Context, userID vo.Id, b *budgetAggr
 		return nil, filters{}, err
 	}
 	return pr, f, nil
+}
+
+// upcomingShown reports whether a window ending at periodEnd reaches the
+// caller's current month: one that ended before it has no upcoming money.
+func upcomingShown(ctx context.Context, periodEnd, now time.Time) bool {
+	return periodEnd.After(localMonth(now, reqctx.Location(ctx)))
 }
 
 // addUpcoming fills result's upcoming fields: the same builder run a second

@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"errors"
 
 	appbudget "github.com/econumo/econumo/internal/budget"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -63,10 +65,15 @@ func (s *BudgetRecurringSource) ListByAccountIDs(ctx context.Context, accountIDs
 }
 
 // CanEdit is the recurring feature's write-access rule: the account owner, or
-// a write grant (admin/user, never guest) on the account.
+// a write grant (admin/user, never guest) on the account. A missing account
+// means no one may act on the template, as the recurring writes refuse it.
 func (s *BudgetRecurringSource) CanEdit(ctx context.Context, userID, accountID vo.Id) (bool, error) {
 	owner, err := s.owners.AccountOwner(ctx, accountID)
 	if err != nil {
+		var nf *errs.NotFoundError
+		if errors.As(err, &nf) {
+			return false, nil
+		}
 		return false, err
 	}
 	if owner.Equal(userID) {

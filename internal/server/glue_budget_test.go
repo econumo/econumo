@@ -195,4 +195,10 @@ func TestBudgetRecurringSource_ListsSourceAndRecipientWithLabels(t *testing.T) {
 			t.Errorf("CanEdit(%s) = %v, want %v", c.user, got, c.want)
 		}
 	}
+	// A template whose account is gone is not editable, and must not fail the
+	// list it appears in.
+	got, err := src.CanEdit(ctx, vo.MustParseId(owner), vo.MustParseId("0197d000-0000-7000-8000-0000000000ff"))
+	if err != nil || got {
+		t.Errorf("CanEdit(missing account) = %v, %v; want false, nil", got, err)
+	}
 }

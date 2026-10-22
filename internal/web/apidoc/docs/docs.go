@@ -13376,6 +13376,80 @@ const docTemplate = `{
                 }
             }
         },
+        "model.BudgetUpcomingResult": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountName": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "author": {
+                    "$ref": "#/definitions/model.UserResult"
+                },
+                "canEdit": {
+                    "type": "boolean"
+                },
+                "category": {
+                    "$ref": "#/definitions/model.TxCategoryResult"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "direction": {
+                    "description": "Direction is present only on rows of the transfers, income and\naccountId selectors: \"out\" when the money left the included (or\nsavings) account, \"in\" when it arrived — Amount/CurrencyId are that\nside's. Omitted on every other list so their bytes are unchanged.",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isNext": {
+                    "type": "boolean"
+                },
+                "isOverdue": {
+                    "type": "boolean"
+                },
+                "labelIds": {
+                    "description": "Reporting labels attached to the row. Always non-nil ([] when none) so a\nclient can render it without a null check, matching labelIds on the\ntransaction feature's own wire.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "labelNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "payee": {
+                    "$ref": "#/definitions/model.TxPayeeResult"
+                },
+                "schedule": {
+                    "type": "string"
+                },
+                "spentAt": {
+                    "type": "string"
+                },
+                "tag": {
+                    "$ref": "#/definitions/model.TxTagResult"
+                },
+                "templateId": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Type (\"expense\", \"income\" or \"transfer\") is present only on rows of the\nincome and accountId selectors.",
+                    "type": "string"
+                }
+            }
+        },
         "model.CategoryResult": {
             "type": "object",
             "properties": {
@@ -14702,6 +14776,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.BudgetTransactionResult"
+                    }
+                },
+                "upcoming": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.BudgetUpcomingResult"
                     }
                 }
             }

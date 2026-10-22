@@ -8,12 +8,14 @@ package apiparity
 // projects this month's own occurrence while that day is still ahead. The
 // month must stay out of the request path, which the golden records verbatim,
 // so the selected month is the default (current) one plus a fixed past month,
-// and the plan window starts at the default (current) month;
+// and the plan window starts at the default (current) month; the transaction
+// lists, which must name the month, record it as <current-month>;
 // future-month carry-over and overdue collapsing are covered by
 // internal/budget/api/upcoming_test.go and the model's projection tests.
 func init() {
 	register(Scenario{Name: "budget_upcoming_recurring", Calls: func() []Call {
 		now := ClockTime.Format("2006-01-02 15:04:05")
+		month := ClockTime.Format("2006-01") + "-01"
 		return []Call{
 			{Label: "guest-accepts", Method: "POST", Path: "/api/v1/budget/accept-access", Auth: "guest",
 				Body: map[string]any{"budgetId": Budget}},
@@ -42,6 +44,14 @@ func init() {
 			{Label: "get-budget-current-month", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
 			{Label: "get-budget-past-month", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget + "&date=2024-04-01", Auth: "owner"},
 			{Label: "get-budget-plan-current-window", Method: "GET", Path: "/api/v1/budget/get-budget-plan?id=" + Budget + "&months=2", Auth: "owner"},
+			{Label: "get-transaction-list-category-current-month", Method: "GET",
+				Path:       "/api/v1/budget/get-transaction-list?budgetId=" + Budget + "&periodStart=" + month + "&categoryId=" + CatFood,
+				GoldenPath: "/api/v1/budget/get-transaction-list?budgetId=" + Budget + "&periodStart=<current-month>&categoryId=" + CatFood, Auth: "owner"},
+			{Label: "get-transaction-list-uncategorized-current-month", Method: "GET",
+				Path:       "/api/v1/budget/get-transaction-list?budgetId=" + Budget + "&periodStart=" + month + "&uncategorized=1",
+				GoldenPath: "/api/v1/budget/get-transaction-list?budgetId=" + Budget + "&periodStart=<current-month>&uncategorized=1", Auth: "owner"},
+			{Label: "get-transaction-list-category-past-month", Method: "GET",
+				Path: "/api/v1/budget/get-transaction-list?budgetId=" + Budget + "&periodStart=2024-04-01&categoryId=" + CatFood, Auth: "owner"},
 		}
 	}})
 }

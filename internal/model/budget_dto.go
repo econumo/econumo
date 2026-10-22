@@ -846,9 +846,26 @@ type BudgetTransactionResult struct {
 	Type string `json:"type,omitempty"`
 }
 
-// GetBudgetTransactionListResult is {items: [...]}.
+// BudgetUpcomingResult is one projected occurrence of a recurring template in
+// the budget transaction list: Id is the template's id and SpentAt the
+// occurrence's due date (an overdue one keeps its original date).
+type BudgetUpcomingResult struct {
+	BudgetTransactionResult
+	TemplateId  string   `json:"templateId"`
+	Schedule    string   `json:"schedule"`
+	AccountId   string   `json:"accountId"`
+	AccountName string   `json:"accountName"`
+	LabelNames  []string `json:"labelNames"`
+	IsNext      bool     `json:"isNext"`
+	IsOverdue   bool     `json:"isOverdue"`
+	CanEdit     bool     `json:"canEdit"`
+}
+
+// GetBudgetTransactionListResult is {items: [...], upcoming: [...]}. Items
+// carry real transactions only.
 type GetBudgetTransactionListResult struct {
-	Items []BudgetTransactionResult `json:"items"`
+	Items    []BudgetTransactionResult `json:"items"`
+	Upcoming []BudgetUpcomingResult    `json:"upcoming"`
 }
 
 // GetCommentListRequest selects a budget and a month window for the comment

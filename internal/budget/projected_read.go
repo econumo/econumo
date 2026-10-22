@@ -21,6 +21,7 @@ import (
 // projectedTx is one occurrence flattened like a transaction row.
 type projectedTx struct {
 	templateID  string
+	schedule    string
 	userID      string
 	typ         model.TransactionType
 	accountID   string
@@ -47,14 +48,18 @@ type projectedRead struct {
 	ReadModel
 	occ        []projectedTx
 	currencyOf map[string]string
+	nameOf     map[string]string
+	byKey      map[occurrenceKey]*projectedTx
 }
+
+type occurrenceKey struct{ templateID, dueAt string }
 
 var _ ReadModel = (*projectedRead)(nil)
 
 // newProjectedRead projects every template touching the budget's member
 // accounts up to until (exclusive, on FiledAt).
 func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Time) (*projectedRead, error) {
-	p := &projectedRead{ReadModel: s.read, currencyOf: map[string]string{}}
+	p := &projectedRead{ReadModel: s.read, currencyOf: map[string]string{}, nameOf: map[string]string{}}
 	if s.recurring == nil || len(f.includedAccountIDs) == 0 {
 		return p, nil
 	}
@@ -85,6 +90,7 @@ func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Ti
 	}
 	for _, v := range views {
 		p.currencyOf[v.ID] = v.CurrencyID
+		p.nameOf[v.ID] = v.Name
 	}
 
 	today := localToday(s.clock.Now(), reqctx.Location(ctx))
@@ -97,7 +103,7 @@ func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Ti
 		}
 		for _, o := range model.ProjectOccurrences(rt, today, until) {
 			tx := projectedTx{
-				templateID: rt.ID.String(), userID: rt.UserID.String(), typ: rt.Type,
+				templateID: rt.ID.String(), schedule: string(rt.Schedule), userID: rt.UserID.String(), typ: rt.Type,
 				accountID: rt.AccountID.String(), currencyID: p.currencyOf[rt.AccountID.String()],
 				amount: amount, categoryID: optString(rt.CategoryID), payeeID: optString(rt.PayeeID), tagID: optString(rt.TagID),
 				labelIDs: labels, description: rt.Description,
@@ -147,6 +153,20 @@ func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Ti
 		return p.occ[i].templateID < p.occ[j].templateID
 	})
 	return p, nil
+}
+
+// occurrence finds the occurrence a list row was built from: rows carry the
+// template id and the due date in SpentAt.
+func (p *projectedRead) occurrence(templateID, spentAt string) (*projectedTx, bool) {
+	if p.byKey == nil {
+		p.byKey = make(map[occurrenceKey]*projectedTx, len(p.occ))
+		for i := range p.occ {
+			o := &p.occ[i]
+			p.byKey[occurrenceKey{o.templateID, o.dueAt.Format(datetime.Layout)}] = o
+		}
+	}
+	o, ok := p.byKey[occurrenceKey{templateID, spentAt}]
+	return o, ok
 }
 
 // localToday is the caller's local midnight as a UTC-tagged wall clock, the
