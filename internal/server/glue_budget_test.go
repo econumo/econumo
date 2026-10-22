@@ -7,9 +7,13 @@ package server_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/model"
+	recurringrepo "github.com/econumo/econumo/internal/recurring/repo"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -115,5 +119,80 @@ func TestBudgetAccountLookup_OwnedLiveAccountIDs(t *testing.T) {
 	}
 	if len(got) != 1 || !got[0].Equal(live) {
 		t.Fatalf("got %v want only the owned live account %s", got, live)
+	}
+}
+
+func TestBudgetRecurringSource_ListsSourceAndRecipientWithLabels(t *testing.T) {
+	const (
+		owner    = "0197d000-0000-7000-8000-000000000001"
+		guest    = "0197d000-0000-7000-8000-000000000002"
+		writer   = "0197d000-0000-7000-8000-000000000003"
+		member   = "0197d000-0000-7000-8000-0000000000a1"
+		outside  = "0197d000-0000-7000-8000-0000000000a2"
+		label    = "0197d000-0000-7000-8000-0000000000b1"
+		expense  = "0197d000-0000-7000-8000-0000000000c1"
+		transfer = "0197d000-0000-7000-8000-0000000000c2"
+	)
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	for _, u := range []string{owner, guest, writer} {
+		f.User(fixture.User{ID: u, Email: u + "@e.test"})
+	}
+	f.Account(fixture.Account{ID: member, UserID: owner})
+	f.Account(fixture.Account{ID: outside, UserID: owner})
+	f.Label(fixture.Label{ID: label, UserID: owner})
+	f.AccountAccess(member, guest, 2)
+	f.AccountAccess(member, writer, 1)
+
+	ctx := context.Background()
+	repo := recurringrepo.NewRepo(db.Engine, db.TX)
+	next := time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)
+	mk := func(id, account string, typ model.TransactionType) *model.RecurringTransaction {
+		return model.NewRecurringTransaction(model.RecurringNewState{
+			ID: vo.MustParseId(id), UserID: vo.MustParseId(owner), Type: typ, AccountID: vo.MustParseId(account),
+			Amount: "10", Schedule: model.RecurringScheduleMonthly, NextPaymentAt: next, CreatedAt: next,
+		})
+	}
+	if err := repo.Save(ctx, mk(expense, member, model.TransactionTypeExpense)); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(expense), []vo.Id{vo.MustParseId(label)}); err != nil {
+		t.Fatal(err)
+	}
+	in := mk(transfer, outside, model.TransactionTypeTransfer)
+	recip := vo.MustParseId(member)
+	in.AccountRecipID = &recip
+	if err := repo.Save(ctx, in); err != nil {
+		t.Fatal(err)
+	}
+
+	src := server.NewBudgetRecurringSource(repo, server.NewBudgetAccountLookup(accountrepo.NewRepo(db.Engine, db.TX)),
+		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(db.Engine, db.TX)))
+	items, err := src.ListByAccountIDs(ctx, []vo.Id{vo.MustParseId(member)})
+	if err != nil {
+		t.Fatalf("ListByAccountIDs: %v", err)
+	}
+	byID := map[string]*model.RecurringTransaction{}
+	for _, rt := range items {
+		byID[rt.ID.String()] = rt
+	}
+	if len(items) != 2 || byID[expense] == nil || byID[transfer] == nil {
+		t.Fatalf("want the member's expense and the transfer into it, got %d items", len(items))
+	}
+	if l := byID[expense].LabelIDs; len(l) != 1 || l[0].String() != label {
+		t.Errorf("expense labels = %v, want [%s]", l, label)
+	}
+
+	for _, c := range []struct {
+		user string
+		want bool
+	}{{owner, true}, {writer, true}, {guest, false}} {
+		got, err := src.CanEdit(ctx, vo.MustParseId(c.user), vo.MustParseId(member))
+		if err != nil {
+			t.Fatalf("CanEdit(%s): %v", c.user, err)
+		}
+		if got != c.want {
+			t.Errorf("CanEdit(%s) = %v, want %v", c.user, got, c.want)
+		}
 	}
 }
