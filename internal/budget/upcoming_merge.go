@@ -10,29 +10,14 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// projectUpcoming projects the recurring occurrences for the period. A month
-// that ended before the caller's current month has no upcoming money, so it
-// returns a nil read and the zeros BuildBudget set stay.
-func (s *Service) projectUpcoming(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, now time.Time) (*projectedRead, filters, error) {
-	return s.projectWindow(ctx, userID, b, periodStart, periodStart.AddDate(0, 1, 0), now)
-}
-
-// projectWindow projects the recurring occurrences filed in [periodStart,
-// periodEnd), or returns a nil read when the window ended before the caller's
-// current month.
-func (s *Service) projectWindow(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, periodEnd, now time.Time) (*projectedRead, filters, error) {
-	if !upcomingShown(ctx, periodEnd, now) {
-		return nil, filters{}, nil
+// projectWindow projects the recurring occurrences filed in f's window, or
+// returns a nil read when the window ended before the caller's current month
+// or nothing is projected into it.
+func (s *Service) projectWindow(ctx context.Context, f filters, now time.Time) (*projectedRead, error) {
+	if !upcomingShown(ctx, f.periodEnd, now) {
+		return nil, nil
 	}
-	f, err := s.buildFilters(ctx, userID, b, periodStart, periodEnd)
-	if err != nil {
-		return nil, filters{}, err
-	}
-	pr, err := s.newProjectedRead(ctx, f, periodEnd)
-	if err != nil {
-		return nil, filters{}, err
-	}
-	return pr, f, nil
+	return s.newProjectedRead(ctx, f, f.periodEnd)
 }
 
 // upcomingShown reports whether a window ending at periodEnd reaches the
@@ -44,11 +29,11 @@ func upcomingShown(ctx context.Context, periodEnd, now time.Time) bool {
 // addUpcoming fills result's upcoming fields: the same builder run a second
 // time over the projected recurring occurrences instead of the stored
 // transactions.
-func (s *Service) addUpcoming(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, now time.Time, pr *projectedRead, f filters, result *model.BudgetResult) error {
+func (s *Service) addUpcoming(ctx context.Context, b *budgetAggregate, now time.Time, pr *projectedRead, f filters, result *model.BudgetResult) error {
 	sp := *s
 	sp.read = pr
 	sp.upcoming = nil
-	up, err := sp.BuildBudget(ctx, userID, b, periodStart, now)
+	up, err := sp.buildBudget(ctx, b, f, now)
 	if err != nil {
 		return err
 	}
@@ -240,17 +225,17 @@ func reorderRows[T any](rows []T, options map[string]elementOption, key func(T) 
 
 // addPlanUpcoming fills the plan's upcoming fields the way addUpcoming does
 // for get-budget: BuildBudgetPlan run again over the projected occurrences of
-// the window. A window that ended before the current month keeps the zeros
-// BuildBudgetPlan set.
-func (s *Service) addPlanUpcoming(ctx context.Context, userID vo.Id, b *budgetAggregate, from time.Time, months int, result *model.BudgetPlanResult) error {
-	pr, _, err := s.projectWindow(ctx, userID, b, from, from.AddDate(0, months, 0), s.clock.Now())
+// the window. A window that ended before the current month, or one nothing is
+// projected into, keeps the zeros BuildBudgetPlan set.
+func (s *Service) addPlanUpcoming(ctx context.Context, b *budgetAggregate, f filters, months int, result *model.BudgetPlanResult) error {
+	pr, err := s.projectWindow(ctx, f, s.clock.Now())
 	if err != nil || pr == nil {
 		return err
 	}
 	sp := *s
 	sp.read = pr
 	sp.upcoming = nil
-	up, err := sp.BuildBudgetPlan(ctx, userID, b, from, months)
+	up, err := sp.buildBudgetPlan(ctx, b, f, months)
 	if err != nil {
 		return err
 	}

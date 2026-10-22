@@ -21,7 +21,10 @@ upcoming recurring payments.
    upcoming amount. The difference between real and upcoming is visible only in the cell's
    transaction list.
 3. Posting a template turns its upcoming amount into real spending without moving the total
-   (see "Late payments" for the one case where the month changes).
+   (see "Late payments" for the one case where the month changes). Exception: posting a
+   template several cycles behind raises the current month's total, because posting advances
+   `nextPaymentAt` by one cycle and the next missed cycle, dropped until then, becomes the new
+   overdue row (see "Overdue: one row" below).
 4. The transaction list opened from a Budget or Plan cell shows the upcoming payments of that
    cell and month in their date groups (one row per occurrence), each with a repeat icon and its due date.
    - The template's **next** payment (including a late one) can be posted, skipped or edited
@@ -74,6 +77,15 @@ upcoming recurring payments.
   month as overdue, and it is the actionable one. The cycles between it and today are neither
   shown nor counted; projection continues with the occurrences dated after today. A weekly
   template three weeks behind therefore shows one overdue row plus its remaining weeks.
+  Posting that overdue row advances the template by one cycle only, so the next missed week
+  becomes the overdue row and the month total goes up by it (the Goal 3 exception); a
+  template due once keeps the month total when its overdue payment is posted.
+- **Templates on deleted accounts are not projected.** A deleted account keeps its budget
+  membership and its templates, but no one can see, post or remove them there, so a template
+  whose account, or a transfer's recipient, is deleted would be upcoming money nothing clears.
+- **A non-member account's name is not shown.** A transfer into a member from an account
+  outside the budget (a partner's private account) carries that account's id but an empty
+  `accountName`.
 - **Projection end:** the last month the request covers (the selected month for `get-budget`,
   the window end for `get-budget-plan`). Templates have no end date, so this bounds the work.
 - **Future-dated real transactions** are styled upcoming in the list only (from tomorrow

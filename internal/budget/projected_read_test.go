@@ -279,22 +279,34 @@ func TestProjectedRead_CrossCurrencyTransfer(t *testing.T) {
 	}
 }
 
-func TestProjectedRead_DeletedMemberCounts(t *testing.T) {
+// A template on a deleted account, or a transfer into one, cannot be seen,
+// posted or removed, so it projects nothing.
+func TestProjectedRead_DeletedAccountExcluded(t *testing.T) {
 	accounts := prAccounts()
-	v := accounts[prEveryday]
+	v := accounts[prSavings]
 	v.IsDeleted = true
-	accounts[prEveryday] = v
-	rt := prTemplate(t, model.TransactionTypeExpense, prEveryday, "12", model.RecurringScheduleMonthly)
-	s := prService(&recurringSourceStub{templates: []*model.RecurringTransaction{rt}}, nil)
+	accounts[prSavings] = v
+	onDeleted := prTemplate(t, model.TransactionTypeExpense, prSavings, "12", model.RecurringScheduleMonthly)
+	intoDeleted := prTemplate(t, model.TransactionTypeTransfer, prEveryday, "20", model.RecurringScheduleMonthly)
+	intoDeleted.AccountRecipID = prIDp(t, prSavings)
+	live := prTemplate(t, model.TransactionTypeExpense, prEveryday, "7", model.RecurringScheduleMonthly)
+	s := prService(&recurringSourceStub{templates: []*model.RecurringTransaction{onDeleted, intoDeleted, live}}, &rateConvertor{rate: "1"})
 	s.accounts = accounts
-	p := prRead(t, s, prEveryday)
+	p := prRead(t, s, prEveryday, prSavings)
 
-	rows, err := p.CountSpending(context.Background(), nil, prIDs(t, prEveryday), prNov, prDec)
-	if err != nil {
-		t.Fatal(err)
+	if len(p.occ) != 2 {
+		t.Fatalf("occurrences = %d, want 2 (the live template in Nov and Dec)", len(p.occ))
 	}
-	if len(rows) != 1 || vo.NewDecimal(rows[0].Amount).String() != "12" {
-		t.Errorf("deleted member spending = %+v, want one row of 12", rows)
+	for _, o := range p.occ {
+		if o.templateID != live.ID.String() {
+			t.Errorf("projected template %s, want only the live one", o.templateID)
+		}
+	}
+
+	only := prService(&recurringSourceStub{templates: []*model.RecurringTransaction{onDeleted}}, nil)
+	only.accounts = accounts
+	if p := prRead(t, only, prSavings); p != nil {
+		t.Errorf("read over a deleted account's template = %+v, want nil", p)
 	}
 }
 
@@ -369,8 +381,24 @@ func TestProjectedRead_LabelsAndListsMirrorSQL(t *testing.T) {
 	}
 }
 
-func TestProjectedRead_NoSourceIsEmpty(t *testing.T) {
-	p := prRead(t, prService(nil, nil), prEveryday)
+// Nothing to project yields a nil read, so the callers skip the second
+// builder pass.
+func TestProjectedRead_NothingProjectedIsNil(t *testing.T) {
+	if p := prRead(t, prService(nil, nil), prEveryday); p != nil {
+		t.Errorf("no source: read = %+v, want nil", p)
+	}
+	if p := prRead(t, prService(&recurringSourceStub{}, nil), prEveryday); p != nil {
+		t.Errorf("no templates: read = %+v, want nil", p)
+	}
+	ended := prTemplate(t, model.TransactionTypeExpense, prEveryday, "5", model.RecurringScheduleMonthly)
+	ended.NextPaymentAt = prJan.AddDate(0, 1, 0)
+	if p := prRead(t, prService(&recurringSourceStub{templates: []*model.RecurringTransaction{ended}}, nil), prEveryday); p != nil {
+		t.Errorf("no occurrence in the window: read = %+v, want nil", p)
+	}
+}
+
+func TestProjectedRead_NoOccurrencesIsEmpty(t *testing.T) {
+	p := &projectedRead{ReadModel: &spendingStub{}}
 	ctx := context.Background()
 	acc := prIDs(t, prEveryday)
 	check := func(name string, n int, err error) {
@@ -399,4 +427,24 @@ func TestProjectedRead_NoSourceIsEmpty(t *testing.T) {
 	check("BudgetTransactionsOnAccount", len(r9), err)
 	r10, err := p.AccountsReport(ctx, acc, prNov, prJan)
 	check("AccountsReport", len(r10), err)
+}
+
+// projectWindow gates the second builder pass: a current window with no
+// templates, like a past one, returns no read.
+func TestProjectWindow_NilWhenNothingProjected(t *testing.T) {
+	ctx := context.Background()
+	now := prToday.Add(9 * time.Hour)
+	current := filters{includedAccountIDs: prIDs(t, prEveryday), periodStart: prNov, periodEnd: prDec}
+	if p, err := prService(&recurringSourceStub{}, nil).projectWindow(ctx, current, now); err != nil || p != nil {
+		t.Errorf("no templates: read = %+v, err %v; want nil", p, err)
+	}
+	rt := prTemplate(t, model.TransactionTypeExpense, prEveryday, "9", model.RecurringScheduleMonthly)
+	s := prService(&recurringSourceStub{templates: []*model.RecurringTransaction{rt}}, nil)
+	if p, err := s.projectWindow(ctx, current, now); err != nil || p == nil || len(p.occ) != 1 {
+		t.Errorf("one template: read = %+v, err %v; want its November occurrence", p, err)
+	}
+	past := filters{includedAccountIDs: current.includedAccountIDs, periodStart: prNov.AddDate(0, -1, 0), periodEnd: prNov}
+	if p, err := s.projectWindow(ctx, past, now); err != nil || p != nil {
+		t.Errorf("past window: read = %+v, err %v; want nil", p, err)
+	}
 }

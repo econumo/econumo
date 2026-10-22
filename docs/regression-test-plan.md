@@ -1686,6 +1686,12 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] An overdue template (next payment date in the past) counts once in the
       caller's current month and shows one row there; later months count only
       occurrences after today.
+- [ ] Posting the overdue payment of a template due once keeps the current
+      month's total. Posting the overdue payment of a template several cycles
+      behind (e.g. weekly, three weeks late) brings the next missed cycle in as
+      the new overdue row, so the month's total rises by that cycle.
+- [ ] A recurring template on a deleted budget account, or a transfer into
+      one, adds no upcoming money to any month and shows no row.
 - [ ] 📱 The cell's transaction list shows upcoming rows in date groups, dimmed
       with a repeat glyph. The next payment (and an overdue one) offers Post,
       Skip and Edit to a caller who can edit the template: Post dates the
@@ -1693,12 +1699,13 @@ and on tablet/phone only with a hardware keyboard.
       today. Later cycles of the same template are display only.
 - [ ] 📱 A partner's template that sources or receives into a budget member
       account counts in the figures and shows in the list; a participant who
-      cannot edit it sees the row without Post / Skip / Edit.
+      cannot edit it sees the row without Post / Skip / Edit. A transfer into a
+      member from an account outside the budget shows no account name to a
+      participant who cannot see that account.
 - [ ] Editing, posting, skipping or deleting a recurring template refreshes
       the Budget view, the Plan grid and the cell list without a reload.
 - [ ] A savings account's closing Balance on /budget includes upcoming
       transfers into or out of it, and the Plan grid's Savings section agrees.
-
 
 ### Phone month view 📱
 

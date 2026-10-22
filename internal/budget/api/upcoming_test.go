@@ -15,6 +15,8 @@ import (
 // upcomingToday is the 22nd: a template due on the 25th is still ahead.
 var upcomingToday = tzClock{t: time.Date(2030, 3, 22, 10, 0, 0, 0, time.UTC)}
 
+// recurringStub returns every template whose source or transfer recipient is
+// in the requested set, like the real glue.
 type recurringStub struct{ templates []*model.RecurringTransaction }
 
 func (r recurringStub) ListByAccountIDs(_ context.Context, ids []vo.Id) ([]*model.RecurringTransaction, error) {
@@ -24,7 +26,7 @@ func (r recurringStub) ListByAccountIDs(_ context.Context, ids []vo.Id) ([]*mode
 	}
 	var out []*model.RecurringTransaction
 	for _, rt := range r.templates {
-		if in[rt.AccountID.String()] {
+		if in[rt.AccountID.String()] || (rt.AccountRecipID != nil && in[rt.AccountRecipID.String()]) {
 			out = append(out, rt)
 		}
 	}
@@ -484,6 +486,32 @@ func TestBuildPlan_UpcomingTransfersAndSavings(t *testing.T) {
 		}
 		if !decEq(b.Amount, want) {
 			t.Errorf("September upcoming savings opening %+v, want %s", b, want)
+		}
+	}
+}
+
+// A budget no template touches answers get-budget and get-budget-plan with
+// the bytes of one without a recurring source at all.
+func TestUpcoming_NoTemplatesSameBytes(t *testing.T) {
+	h := newUpcomingHarness(t, "2030-01-01")
+	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: accountID, CategoryID: catID, Amount: "10", SpentAt: "2030-03-10 12:00:00"})
+	paths := []string{
+		"/api/v1/budget/get-budget?id=" + budgetID1 + "&date=2030-03-01",
+		"/api/v1/budget/get-budget?id=" + budgetID1 + "&date=2030-04-01",
+		"/api/v1/budget/get-budget-plan?id=" + budgetID1 + "&from=2030-02-01&months=3",
+	}
+	read := func() [][]byte {
+		var out [][]byte
+		for _, p := range paths {
+			out = append(out, h.mustDo(t, http.MethodGet, p, h.token(t), nil).Data)
+		}
+		return out
+	}
+	withSource := read()
+	h.svc.SetRecurring(nil)
+	for i, want := range read() {
+		if !bytes.Equal(withSource[i], want) {
+			t.Errorf("%s:\n with source %s\n without     %s", paths[i], withSource[i], want)
 		}
 	}
 }

@@ -109,8 +109,8 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		return res, nil
 	}
 	pr, err := s.newProjectedRead(ctx, f, periodEnd)
-	if err != nil {
-		return nil, err
+	if err != nil || pr == nil {
+		return res, err
 	}
 	upRows, err := query(pr)
 	if err != nil {
@@ -377,6 +377,7 @@ func (s *Service) assembleUpcoming(ctx context.Context, userID vo.Id, f filters,
 		return nil, err
 	}
 	canEdit := map[string]bool{}
+	members := idSet(f.includedAccountIDs)
 	for _, row := range rows {
 		o, ok := pr.occurrence(row.ID, row.SpentAt)
 		if !ok {
@@ -403,12 +404,18 @@ func (s *Service) assembleUpcoming(ctx context.Context, userID vo.Id, f filters,
 				labelNames = append(labelNames, meta.Name)
 			}
 		}
+		// A transfer into the budget may come from an account outside it, such
+		// as a partner's private one: its name is not the budget's to show.
+		accountName := ""
+		if members[o.accountID] {
+			accountName = pr.nameOf[o.accountID]
+		}
 		out = append(out, model.BudgetUpcomingResult{
 			BudgetTransactionResult: item,
 			TemplateId:              o.templateID,
 			Schedule:                o.schedule,
 			AccountId:               o.accountID,
-			AccountName:             pr.nameOf[o.accountID],
+			AccountName:             accountName,
 			LabelNames:              labelNames,
 			IsNext:                  o.isNext,
 			IsOverdue:               o.isOverdue,

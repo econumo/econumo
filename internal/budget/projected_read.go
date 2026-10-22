@@ -57,19 +57,21 @@ type occurrenceKey struct{ templateID, dueAt string }
 var _ ReadModel = (*projectedRead)(nil)
 
 // newProjectedRead projects every template touching the budget's member
-// accounts up to until (exclusive, on FiledAt).
+// accounts up to until (exclusive, on FiledAt). It returns a nil read when
+// nothing is projected, so callers skip the second builder pass and keep the
+// zeros the real build set.
 func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Time) (*projectedRead, error) {
-	p := &projectedRead{ReadModel: s.read, currencyOf: map[string]string{}, nameOf: map[string]string{}}
 	if s.recurring == nil || len(f.includedAccountIDs) == 0 {
-		return p, nil
+		return nil, nil
 	}
 	templates, err := s.recurring.ListByAccountIDs(ctx, f.includedAccountIDs)
 	if err != nil {
 		return nil, err
 	}
 	if len(templates) == 0 {
-		return p, nil
+		return nil, nil
 	}
+	p := &projectedRead{ReadModel: s.read, currencyOf: map[string]string{}, nameOf: map[string]string{}}
 
 	var accountIDs []vo.Id
 	add := func(id vo.Id) {
@@ -88,14 +90,21 @@ func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Ti
 	if err != nil {
 		return nil, err
 	}
+	deleted := map[string]bool{}
 	for _, v := range views {
 		p.currencyOf[v.ID] = v.CurrencyID
 		p.nameOf[v.ID] = v.Name
+		deleted[v.ID] = v.IsDeleted
 	}
 
 	today := localToday(s.clock.Now(), reqctx.Location(ctx))
 	toConvert := map[string][]model.ConvertItem{}
 	for _, rt := range templates {
+		// A template on a deleted account can be neither seen, posted nor
+		// removed, so projecting it would be upcoming money nothing can clear.
+		if deleted[rt.AccountID.String()] || (rt.Type.IsTransfer() && rt.AccountRecipID != nil && deleted[rt.AccountRecipID.String()]) {
+			continue
+		}
 		amount := vo.NewDecimal(rt.Amount)
 		labels := make([]string, 0, len(rt.LabelIDs))
 		for _, l := range rt.LabelIDs {
@@ -144,6 +153,9 @@ func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Ti
 			}
 			p.occ[i].amountRecipient = v
 		}
+	}
+	if len(p.occ) == 0 {
+		return nil, nil
 	}
 	// Newest first, the order every BudgetTransactions* list returns.
 	sort.SliceStable(p.occ, func(i, j int) bool {

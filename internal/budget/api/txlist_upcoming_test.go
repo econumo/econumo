@@ -27,6 +27,9 @@ func (s ownerEditStub) CanEdit(_ context.Context, userID, _ vo.Id) (bool, error)
 type upcomingTx struct {
 	Id          string   `json:"id"`
 	Amount      string   `json:"amount"`
+	CurrencyId  string   `json:"currencyId"`
+	Direction   string   `json:"direction"`
+	Type        string   `json:"type"`
 	SpentAt     string   `json:"spentAt"`
 	LabelIds    []string `json:"labelIds"`
 	TemplateId  string   `json:"templateId"`
@@ -159,5 +162,111 @@ func TestTxList_UpcomingPastMonthEmpty(t *testing.T) {
 	got, raw := upcomingCategoryList(t, h, h.token(t), "2030-02-01")
 	if len(got.Upcoming) != 0 || !bytes.Contains(raw, []byte(`"upcoming":[]`)) {
 		t.Errorf("past month list = %s, want \"upcoming\":[]", raw)
+	}
+}
+
+// augustTemplate is a monthly template due August 25th 2026, the month the
+// savings budget's clock (August 17th) is in.
+func augustTemplate(typ model.TransactionType, from, to, amount, category string) *model.RecurringTransaction {
+	rt := &model.RecurringTransaction{
+		ID: vo.NewId(), UserID: vo.MustParseId(seedUserID), Type: typ,
+		AccountID: vo.MustParseId(from), Amount: amount, Description: "auto",
+		Schedule: model.RecurringScheduleMonthly, ScheduledDay: 25,
+		NextPaymentAt: time.Date(2026, 8, 25, 0, 0, 0, 0, time.UTC),
+	}
+	if to != "" {
+		recip := vo.MustParseId(to)
+		rt.AccountRecipID = &recip
+	}
+	if category != "" {
+		cat := vo.MustParseId(category)
+		rt.CategoryID = &cat
+	}
+	return rt
+}
+
+func augustUpcoming(t *testing.T, h *harness, tok, query string) []upcomingTx {
+	t.Helper()
+	env := h.mustDo(t, http.MethodGet, "/api/v1/budget/get-transaction-list?budgetId="+budgetID1+"&periodStart=2026-08-01"+query, tok, nil)
+	return mustUnmarshal[upcomingTxList](t, env.Data).Upcoming
+}
+
+func upcomingByTemplate(t *testing.T, rows []upcomingTx, rt *model.RecurringTransaction) upcomingTx {
+	t.Helper()
+	for _, r := range rows {
+		if r.TemplateId == rt.ID.String() {
+			return r
+		}
+	}
+	t.Fatalf("template %s missing from %+v", rt.ID, rows)
+	return upcomingTx{}
+}
+
+// A transfer from an account outside the budget into a EUR member is listed
+// in the recipient's currency, as money in, without the outside account's
+// name; one leaving the budget keeps its member account's name.
+func TestTxList_UpcomingTransfers(t *testing.T) {
+	h, tok, eur := newSavingsBudget(t)
+	const privateID = "aaaa1111-0000-7000-8000-0000000000fe"
+	h.f.Account(fixture.Account{ID: privateID, UserID: seedUserID, CurrencyID: usdID, Name: "Private"})
+	in := augustTemplate(model.TransactionTypeTransfer, privateID, savingsEURID, "100", "")
+	out := augustTemplate(model.TransactionTypeTransfer, accountID, privateID, "40", "")
+	inside := augustTemplate(model.TransactionTypeTransfer, accountID, savingsUSDID, "150", "")
+	h.svc.SetRecurring(recurringStub{templates: []*model.RecurringTransaction{in, out, inside}})
+
+	got := augustUpcoming(t, h, tok, "&transfers=1")
+	if len(got) != 2 {
+		t.Fatalf("upcoming = %+v, want the two crossing transfers only", got)
+	}
+	u := upcomingByTemplate(t, got, in)
+	if u.CurrencyId != eur || !decEq(u.Amount, "91") || u.Direction != "in" {
+		t.Errorf("transfer in = %+v, want 91 EUR in (100 USD at %s)", u, augustEURRate)
+	}
+	if u.AccountId != privateID || u.AccountName != "" {
+		t.Errorf("transfer in account = %q/%q, want the id and no name for a non-member", u.AccountId, u.AccountName)
+	}
+	o := upcomingByTemplate(t, got, out)
+	if o.CurrencyId != usdID || !decEq(o.Amount, "40") || o.Direction != "out" || o.AccountName != "Cash" {
+		t.Errorf("transfer out = %+v, want 40 USD out of Cash", o)
+	}
+}
+
+// An income template is listed on its income category's row when it lands on
+// an everyday account; one on a savings account belongs to that row instead.
+func TestTxList_UpcomingIncome(t *testing.T) {
+	h, tok := newSavingsCategoriesBudget(t)
+	everyday := augustTemplate(model.TransactionTypeIncome, accountID, "", "2000", savingsSalaryCatID)
+	onSavings := augustTemplate(model.TransactionTypeIncome, savingsUSDID, "", "30", savingsSalaryCatID)
+	h.svc.SetRecurring(recurringStub{templates: []*model.RecurringTransaction{everyday, onSavings}})
+
+	got := augustUpcoming(t, h, tok, "&income=1&categoryId="+savingsSalaryCatID)
+	if len(got) != 1 {
+		t.Fatalf("upcoming = %+v, want the everyday income only", got)
+	}
+	u := got[0]
+	if u.TemplateId != everyday.ID.String() || !decEq(u.Amount, "2000") || u.Direction != "in" || u.Type != "income" ||
+		u.Category == nil || u.Category.Id != savingsSalaryCatID {
+		t.Errorf("income = %+v, want 2000 in/income in Salary", u)
+	}
+}
+
+// A savings row's list holds every template touching the account, each with
+// its direction on the savings side.
+func TestTxList_UpcomingSavingsAccount(t *testing.T) {
+	h, tok := newSavingsCategoriesBudget(t)
+	save := augustTemplate(model.TransactionTypeTransfer, accountID, savingsUSDID, "150", "")
+	fee := augustTemplate(model.TransactionTypeExpense, savingsUSDID, "", "5", catID)
+	elsewhere := augustTemplate(model.TransactionTypeExpense, accountID, "", "7", catID)
+	h.svc.SetRecurring(recurringStub{templates: []*model.RecurringTransaction{save, fee, elsewhere}})
+
+	got := augustUpcoming(t, h, tok, "&accountId="+savingsUSDID)
+	if len(got) != 2 {
+		t.Fatalf("upcoming = %+v, want the transfer in and the fee", got)
+	}
+	if s := upcomingByTemplate(t, got, save); !decEq(s.Amount, "150") || s.Direction != "in" || s.Type != "transfer" || s.AccountName != "Cash" {
+		t.Errorf("transfer = %+v, want 150 in/transfer from Cash", s)
+	}
+	if f := upcomingByTemplate(t, got, fee); !decEq(f.Amount, "5") || f.Direction != "out" || f.Type != "expense" || f.AccountName != "Rainy day" {
+		t.Errorf("fee = %+v, want 5 out/expense on Rainy day", f)
 	}
 }
