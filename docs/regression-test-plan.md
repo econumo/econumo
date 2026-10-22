@@ -965,6 +965,14 @@ and on tablet/phone only with a hardware keyboard.
       Same-name archived tags group the same way inside Archived (never with
       a live tag of that name). A single tag, or same-name tags in different
       folders, stay ungrouped.
+- [ ] An archived category, tag or envelope keeps an editable plan: in the
+      Plan grid's Archived section its month cells edit, clear, paste and fill
+      like a live row's; in the Budget view's Archive section its budgeted
+      amount edits in place (desktop) or through the item sheet's "Set budget"
+      (phone/tablet); an archived income row's Planned edits the same way.
+      The new value shows on the row and survives a reload, while the
+      Expenses / Income totals, Balance and the Archived line still leave
+      archived plans out.
 - [ ] 📱 Section order: the Reporting tags folder is the last expense section,
       below Uncategorized and Archived (desktop: right above the Total row;
       phone: right above the Total card), and still shows when neither of those
@@ -1329,8 +1337,8 @@ and on tablet/phone only with a hardware keyboard.
         Enter and switching to another window never commit an edit.
 - [ ] Plan clear and read-only cells, desktop: Delete / Backspace on a
       selected cell clears the plan (the cell goes blank and the plan is gone
-      after a reload). A read-only cell (guest, archived element, before the
-      budget start, archived budget) can be selected but never opens an
+      after a reload). A read-only cell (guest, a deleted savings account,
+      before the budget start, archived budget) can be selected but never opens an
       editor: typing, F2, Enter, double-click and Delete do nothing there.
       Ctrl/⌘+C / V (single cell), the fill handle and Shift+→ fill, and
       Shift+Enter / Shift+F2 comments work as before; Enter on a read-only
@@ -1628,8 +1636,8 @@ and on tablet/phone only with a hardware keyboard.
       its thread opens in a popover beside the cell; Esc closes it and the
       arrow keys keep moving the selection. Plain Enter on the same cell edits
       the amount in place, with no comments section.
-- [ ] On desktop, a non-editable cell (guest role, an archived element —
-      even on a budget you can edit — or a month outside the budget's range)
+- [ ] On desktop, a non-editable cell (guest role, a deleted savings account,
+      or a month outside the budget's range)
       cannot be edited, but its comment thread still opens from the hover
       corner (or Shift+Enter / Shift+F2) in a popover beside the cell, so a
       thread can be started there too.

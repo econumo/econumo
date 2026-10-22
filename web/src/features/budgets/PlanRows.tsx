@@ -9,7 +9,7 @@ import { pluralPick } from '@/lib/plural'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { ReactNode } from 'react'
 import type { BudgetCommentDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
-import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { elementDisplayName } from './budgetMath'
@@ -59,10 +59,15 @@ export function sourceAmount(el: PlanElementDto, monthIndex: number): string {
   return planned === '' ? '0' : planned
 }
 
-/** A row is editable per-cell only for a non-uncategorized, non-archived parent row,
- *  with a fetched cell and update rights for that month — children never carry limits. */
+/** A row is editable per-cell only for a non-uncategorized parent row, with a fetched
+ *  cell and update rights for that month — children never carry limits. An archived
+ *  category, tag or envelope keeps an editable plan, so its history can be corrected
+ *  (the totals still leave it out); a deleted savings account's cannot. */
 export function isEditableCell(el: PlanElementDto, month: string, monthIndex: number, meta: BudgetMetaDto, userId: Id | undefined): boolean {
-  return el.id !== UNCATEGORIZED_ID && el.isArchived === 0 && monthIndex >= 0 && canUpdateLimits(meta, userId, month)
+  if (el.isArchived === 1 && el.type === BudgetElementType.SAVINGS) {
+    return false
+  }
+  return el.id !== UNCATEGORIZED_ID && monthIndex >= 0 && canUpdateLimits(meta, userId, month)
 }
 
 // A comment thread's read/write gate is independent of the role-based `isEditableCell`

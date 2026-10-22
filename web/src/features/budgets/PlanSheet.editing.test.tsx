@@ -280,7 +280,7 @@ it('a read-only cell never opens an editor and Delete sends nothing', async () =
   expect(calls).toEqual([])
 })
 
-it('an archived row never opens an editor and Delete sends nothing', async () => {
+it('an archived row keeps an editable plan: typing edits the cell, Delete clears it', async () => {
   const plan = {
     ...fixtureWirePlan,
     structure: {
@@ -301,11 +301,14 @@ it('an archived row never opens an editor and Delete sends nothing', async () =>
   const grid = await screen.findByTestId('plan-sheet')
   fireEvent.click(await screen.findByTestId('plan-cell-arch-1:1'))
   fireEvent.keyDown(grid, { key: '5' })
-  fireEvent.keyDown(grid, { key: 'Enter' })
+  const input = await screen.findByRole('textbox')
+  fireEvent.change(input, { target: { value: '55' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  await waitFor(() => expect(calls).toEqual([expect.objectContaining({ elementId: 'arch-1', period: '2026-07-01', amount: '55' })]))
+  fireEvent.click(screen.getByTestId('plan-cell-arch-1:0'))
   fireEvent.keyDown(grid, { key: 'Delete' })
-  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-  await new Promise((r) => setTimeout(r, 50))
-  expect(calls).toEqual([])
+  await waitFor(() => expect(calls).toHaveLength(2))
+  expect(calls[1]).toEqual(expect.objectContaining({ elementId: 'arch-1', period: '2026-06-01', amount: null }))
 })
 
 it('on a tablet typing opens no editor', async () => {

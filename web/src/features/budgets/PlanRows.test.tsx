@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { SumCell } from './PlanRows'
+import type { BudgetMetaDto, PlanElementDto } from '@/api/dto/budget'
+import { isEditableCell, SumCell } from './PlanRows'
 
 const sel = '2026-07-01'
 
@@ -37,5 +38,20 @@ describe('SumCell', () => {
 
   it('a month with no data is empty', () => {
     expect(sumCell(null).textContent).toBe('')
+  })
+})
+
+describe('isEditableCell', () => {
+  const meta = {
+    id: 'b1', ownerUserId: 'u1', name: 'B', startedAt: '2026-01-01 00:00:00', endedAt: '', currencyId: 'cur-usd', isArchived: 0,
+    access: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'owner', isAccepted: 1 }],
+  } as BudgetMetaDto
+  const row = (type: number, isArchived: 0 | 1) => ({ id: 'x', type, isArchived }) as PlanElementDto
+
+  it('keeps an archived category or tag editable, but never a deleted savings account', () => {
+    expect(isEditableCell(row(1, 1), sel, 0, meta, 'u1')).toBe(true)
+    expect(isEditableCell(row(2, 1), sel, 0, meta, 'u1')).toBe(true)
+    expect(isEditableCell(row(5, 0), sel, 0, meta, 'u1')).toBe(true)
+    expect(isEditableCell(row(5, 1), sel, 0, meta, 'u1')).toBe(false)
   })
 })

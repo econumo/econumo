@@ -722,12 +722,12 @@ export function BudgetTable({
             const rowExtras: ElementRowExtras = isReadOnlySection
               ? {
                   onSpentClick: extras.onSpentClick,
-                  // read affordances only: an individually-archived element keeps
-                  // its existing thread reachable (marker) and can still gain new
-                  // comments (the thread) — only the WRITE affordances (limit
-                  // editing, drag, folder actions) are read-only here. This branch
-                  // is reached only by the Archive section (Uncategorized returns
+                  // an individually-archived element keeps its thread (marker and
+                  // new comments) and its limit editing, so its history can be
+                  // corrected; drag and folder actions stay off. This branch is
+                  // reached only by the Archive section (Uncategorized returns
                   // earlier, above, with its own fixed extras)
+                  renderBudgetCell: extras.renderBudgetCell,
                   renderBudgetCellMarker: extras.renderBudgetCellMarker,
                   onBudgetCellComments: extras.onBudgetCellComments,
                   onBudgetCellDetails: extras.onBudgetCellDetails,
