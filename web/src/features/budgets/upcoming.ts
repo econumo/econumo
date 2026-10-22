@@ -1,4 +1,5 @@
 import type {
+  BudgetChildElementDto,
   BudgetDto,
   BudgetPlanDto,
   PlanMonthTransfersDto,
@@ -26,6 +27,12 @@ const minus = (value: string, upcoming: string | undefined): string =>
 const budgetFolds = new WeakMap<BudgetDto, BudgetDto>()
 const planFolds = new WeakMap<BudgetPlanDto, BudgetPlanDto>()
 
+const foldChild = (ch: BudgetChildElementDto): BudgetChildElementDto => ({
+  ...ch,
+  spent: plus(ch.spent, ch.upcoming),
+  budgetSpent: plus(ch.budgetSpent, ch.budgetUpcoming),
+})
+
 export function foldBudgetUpcoming(b: BudgetDto): BudgetDto {
   const cached = budgetFolds.get(b)
   if (cached) {
@@ -41,13 +48,17 @@ export function foldBudgetUpcoming(b: BudgetDto): BudgetDto {
         spent: plus(el.spent, el.upcoming),
         budgetSpent: plus(el.budgetSpent, el.budgetUpcoming),
         available: minus(minus(el.available, el.upcomingBefore), el.upcoming),
-        children: el.children.map((ch) => ({
-          ...ch,
-          spent: plus(ch.spent, ch.upcoming),
-          budgetSpent: plus(ch.budgetSpent, ch.budgetUpcoming),
-        })),
+        children: el.children.map(foldChild),
       })),
-      ...(labels ? { labels: labels.map((l) => ({ ...l, spent: plus(l.spent, l.upcoming) })) } : {}),
+      ...(labels
+        ? {
+            labels: labels.map((l) => ({
+              ...l,
+              spent: plus(l.spent, l.upcoming),
+              ...(l.children ? { children: l.children.map(foldChild) } : {}),
+            })),
+          }
+        : {}),
       // closingBalance is left alone: the server already counts upcoming money in it
       ...(savings
         ? { savings: savings.map((s) => ({ ...s, spent: plus(s.spent, s.upcoming), available: minus(s.available, s.upcoming) })) }
@@ -58,14 +69,18 @@ export function foldBudgetUpcoming(b: BudgetDto): BudgetDto {
   return folded
 }
 
-function mergeOpening(base: PlanOpeningBalanceDto[], extra: PlanOpeningBalanceDto[] | undefined): PlanOpeningBalanceDto[] {
+// opening balances follow the server's rule for them: budget currency first,
+// then discovery order (an upcoming-only currency is discovered last)
+function mergeOpening(base: PlanOpeningBalanceDto[], extra: PlanOpeningBalanceDto[] | undefined, budgetCurrencyId: Id): PlanOpeningBalanceDto[] {
   if (!extra || extra.every((e) => isZero(e.amount))) {
     return base
   }
   const byCurrency = new Map(extra.map((e) => [e.currencyId, e.amount]))
   const merged = base.map((b) => ({ ...b, amount: plus(b.amount, byCurrency.get(b.currencyId)) }))
   const known = new Set(base.map((b) => b.currencyId))
-  return [...merged, ...extra.filter((e) => !known.has(e.currencyId) && !isZero(e.amount))]
+  const added = extra.filter((e) => !known.has(e.currencyId) && !isZero(e.amount))
+  const budgetFirst = added.filter((e) => e.currencyId === budgetCurrencyId)
+  return [...budgetFirst, ...merged, ...added.filter((e) => e.currencyId !== budgetCurrencyId)]
 }
 
 // the server's order for per-currency rows: budget currency first, then by id
@@ -133,9 +148,9 @@ export function foldPlanUpcoming(p: BudgetPlanDto): BudgetPlanDto {
   const savingsIncomeExpense = mergeFlows(p.savingsIncomeExpense, p.upcomingSavingsIncomeExpense, budgetCurrencyId)
   const folded: BudgetPlanDto = {
     ...p,
-    openingBalances: mergeOpening(p.openingBalances, p.upcomingOpeningBalances),
+    openingBalances: mergeOpening(p.openingBalances, p.upcomingOpeningBalances, budgetCurrencyId),
     ...(p.savingsOpeningBalances
-      ? { savingsOpeningBalances: mergeOpening(p.savingsOpeningBalances, p.upcomingSavingsOpeningBalances) }
+      ? { savingsOpeningBalances: mergeOpening(p.savingsOpeningBalances, p.upcomingSavingsOpeningBalances, budgetCurrencyId) }
       : {}),
     transfers: mergeTransfers(p.transfers, p.upcomingTransfers, budgetCurrencyId),
     ...(savingsFlows ? { savingsFlows } : {}),

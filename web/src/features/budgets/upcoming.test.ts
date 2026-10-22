@@ -32,7 +32,14 @@ it('foldBudgetUpcoming adds upcoming to spent and lowers available', () => {
         }),
         element({ id: 'e2', upcoming: '10', budgetUpcoming: '10', upcomingBefore: '30' }),
       ],
-      labels: [{ id: 'l1', name: 'L', icon: 'i', isArchived: 0, spent: '7', ownerUserId: 'u1', upcoming: '3' }],
+      labels: [{
+        id: 'l1', name: 'L', icon: 'i', isArchived: 0, spent: '7', ownerUserId: 'u1', upcoming: '3',
+        children: [
+          { id: 'c1', type: 1, name: 'C', icon: 'i', isArchived: 0, spent: '7', budgetSpent: '7', ownerUserId: 'u1', upcoming: '1', budgetUpcoming: '1' },
+          // an upcoming-only category under the label
+          { id: 'c2', type: 1, name: 'D', icon: 'i', isArchived: 0, spent: '0', budgetSpent: '0', ownerUserId: 'u1', upcoming: '2', budgetUpcoming: '2' },
+        ],
+      }],
       savings: [{
         id: 's1', type: 5, name: 'S', icon: 'i', currencyId: 'usd', ownerUserId: 'u1', isArchived: 0, position: 0,
         budgeted: '100', spent: '40', available: '60', closingBalance: '900', upcoming: '25',
@@ -46,7 +53,9 @@ it('foldBudgetUpcoming adds upcoming to spent and lowers available', () => {
   expect(food.children[0].spent).toBe('25')
   expect(food.children[0].budgetSpent).toBe('22.5')
   expect(second.available).toBe('40')
-  expect(folded.structure.labels![0].spent).toBe('10')
+  const label = folded.structure.labels![0]
+  expect(label.spent).toBe('10')
+  expect(label.children!.map((c) => [c.spent, c.budgetSpent])).toEqual([['8', '8'], ['2', '2']])
   const savings = folded.structure.savings![0]
   expect(savings.spent).toBe('65')
   expect(savings.available).toBe('35')
@@ -150,4 +159,17 @@ it('savings closing adds cumulative upcoming', () => {
   const cells = folded.structure.savings![0].cells
   expect(cells.map((c) => c.actual)).toEqual(['100', '60', '0'])
   expect(cells.map((c) => c.closingBalance)).toEqual(['1100', '1160', '1160'])
+})
+
+it('an upcoming-only currency joins the opening balances by the server order rule', () => {
+  const base = planWith({ openingBalances: [{ currencyId: 'eur', amount: '5' }] })
+  const folded = foldPlanUpcoming({
+    ...base,
+    upcomingOpeningBalances: [{ currencyId: 'gbp', amount: '1' }, { currencyId: 'usd', amount: '2' }, { currencyId: 'eur', amount: '0' }],
+  })
+  expect(folded.openingBalances).toEqual([
+    { currencyId: 'usd', amount: '2' },
+    { currencyId: 'eur', amount: '5' },
+    { currencyId: 'gbp', amount: '1' },
+  ])
 })
