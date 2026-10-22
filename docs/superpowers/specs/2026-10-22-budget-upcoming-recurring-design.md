@@ -15,9 +15,11 @@ upcoming recurring payments.
 
 1. Every month in the Budget (monthly view) and the Plan grid counts the recurring payments
    still to come in it, for every template on the budget's member accounts, whoever owns it.
-2. Upcoming amounts count like spending (and like income/transfers for those types) but render
-   in a lighter, distinct style, so "used" = real + upcoming and Available goes down by the
-   upcoming amount.
+2. Upcoming amounts count like spending (and like income/transfers for those types): the
+   spent / actual figure is ONE combined number, real + upcoming, shown exactly as today with
+   no split or separate style (decided with the user), and Available goes down by the
+   upcoming amount. The difference between real and upcoming is visible only in the cell's
+   transaction list.
 3. Posting a template turns its upcoming amount into real spending without moving the total
    (see "Late payments" for the one case where the month changes).
 4. The transaction list opened from a Budget or Plan cell shows the upcoming payments of that
@@ -44,7 +46,7 @@ upcoming recurring payments.
 - The frozen wire meaning of `spent`, `budgetSpent`, `available`, `actual` must not change:
   old clients and MCP callers must keep reading real money only. Everything new is additive.
 - A partner's payment must never be actionable by someone who cannot edit that template.
-- Upcoming rows must never be confusable with real ones (no identical styling).
+- Upcoming rows in the transaction list must never be confusable with real ones.
 
 ## Decided with the user
 
@@ -145,19 +147,18 @@ dates must bucket into the same month on both engines (compute months in Go, not
 
 ### Budget monthly view (SPA)
 
-- Spent shows real + upcoming, with the upcoming part in a lighter tone (e.g. a lighter
-  segment in the progress bar and a muted second figure or tooltip "incl. 50 upcoming").
-  Exact visuals left to the builder within the house rules: no bold for hierarchy, separate
-  with colour/size.
+- Spent shows the single combined figure real + upcoming, styled as today; the progress bar
+  and over-budget state use the same combined figure.
 - Future months: today the spent column shows a dash (`future` in `BudgetTable.tsx`). It
-  now shows the upcoming amount (plus future-dated real transactions) in the upcoming style,
-  and the cell opens the list when there is anything to show.
+  now shows the combined figure (upcoming plus any future-dated real transactions), and the
+  cell opens the list when there is anything to show.
 - Folders, tag groups and totals (`budgetMath.ts`) sum upcoming alongside spent.
 
 ### Plan grid (SPA)
 
-- Current and future cells show real actual + upcoming, upcoming styled light; future cells
-  that today show only the plan now show the upcoming figure under/next to it.
+- Current and future cells show the single combined actual (real + upcoming), styled as the
+  actual is today; future cells, which today show only the plan, now show that combined
+  actual too.
 - `planTotals`' effective value for current/future months becomes
   `max(planned, actual + upcoming)`; Balance and savings projections (`projectSavingsClosings`)
   use the same effective value, so a recurring salary or savings transfer moves the projected
@@ -202,6 +203,5 @@ budget query).
 
 ## Left to the builder
 
-- Exact visual treatment of upcoming figures and progress bars.
 - Names of new plan top-level fields and internal helpers.
 - Whether the projection lives in a new `builder_upcoming.go` or alongside existing builders.
