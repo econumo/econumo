@@ -21,7 +21,7 @@ upcoming recurring payments.
 3. Posting a template turns its upcoming amount into real spending without moving the total
    (see "Late payments" for the one case where the month changes).
 4. The transaction list opened from a Budget or Plan cell shows the upcoming payments of that
-   cell and month under an "Upcoming" group, each with a repeat icon and its due date.
+   cell and month in their date groups (one row per occurrence), each with a repeat icon and its due date.
    - The template's **next** payment (including a late one) can be posted, skipped or edited
      from there, with the same actions as the Inbox's Due section.
    - Later payments of the same template are display only. Tapping one opens the template
@@ -67,11 +67,11 @@ upcoming recurring payments.
   `date: now` (`recurring/postPayload.ts`), so a posted late payment lands in today's month.
   Counting it there keeps "posting changes the style, not the total" true. A late payment is
   labelled with its original due date and an "overdue" note (same as the Inbox).
-- **Missed cycles each count.** Occurrences are generated from `nextPaymentAt` forward. Every
-  occurrence dated before today is late and counts in the current month as its own row (a
-  weekly template three weeks behind shows three rows). Only the earliest is the template's
-  next payment and actionable. Posting or skipping advances the template one cycle, so the
-  rows shrink by one and the totals stay right.
+- **Overdue: one row, then only what is after today** (decided with the user). When a
+  template's next payment is in the past, that one payment shows and counts in the current
+  month as overdue, and it is the actionable one. The cycles between it and today are neither
+  shown nor counted; projection continues with the occurrences dated after today. A weekly
+  template three weeks behind therefore shows one overdue row plus its remaining weeks.
 - **Projection end:** the last month the request covers (the selected month for `get-budget`,
   the window end for `get-budget-plan`). Templates have no end date, so this bounds the work.
 - **Future-dated real transactions** are styled upcoming in the list only (from tomorrow
@@ -102,8 +102,9 @@ accounts (`buildFilters` → `includedAccountIDs`).
   import features.
 - For each template, expand occurrences with `model.NextOccurrence` (it keeps the scheduled
   day, so month-end clamping is right) from `nextPaymentAt` while the occurrence is before
-  the projection end. Occurrences dated before today (caller's timezone) are filed in the
-  caller's current month (`localMonth(now, tz)`), one occurrence each.
+  the projection end. If `nextPaymentAt` is before today (caller's timezone) it is filed in
+  the caller's current month (`localMonth(now, tz)`) as the overdue occurrence; the further
+  occurrences dated before today are dropped, and expansion continues with those from today on.
 - Each occurrence is filed with the SAME rules as real transactions, so it lands in the same
   cell the posted transaction will:
   - expense (type 0) on an everyday member: by tag (tag wins, category as child), else
@@ -166,7 +167,12 @@ dates must bucket into the same month on both engines (compute months in Go, not
 
 ### Transaction list (`BudgetTransactionsDialog.tsx`)
 
-- An "Upcoming" group above the day groups, rows rendered with `TransactionRow` through
+- One row per occurrence, also for weekly/biweekly templates (decided with the user: no
+  folded "4 x 10" line). A weekly 10 on Wednesdays shows four or five rows in a month and
+  counts their sum in the cell.
+
+- Upcoming rows sit in their own date groups like real rows (so posting doesn't reshuffle
+  the list), styled upcoming, rendered with `TransactionRow` through
   `recurringAsTransaction`-style mapping, repeat icon, due date, lighter style; the late one
   carries the overdue note.
 - `isNext && canEdit`: tapping opens `ViewRecurringDialog` with Post / Skip / Edit (reuse
