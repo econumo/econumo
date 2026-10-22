@@ -189,29 +189,47 @@ func mergeChildrenUpcoming(real, up []model.ChildElementResult) ([]model.ChildEl
 // reorderElements reassigns the dense per-folder positions and the wire order
 // over the merged rows, with the same keys assignElementPositions uses.
 func reorderElements(elements []model.ParentElementResult, options map[string]elementOption) {
-	sortKey := func(e model.ParentElementResult) string {
-		return string(options[elementKey(e.Id, model.ElementType(e.Type))].sortKey)
+	reorderRows(elements, options,
+		func(e model.ParentElementResult) (string, int, *string) { return e.Id, e.Type, e.FolderId },
+		func(e *model.ParentElementResult) *int { return &e.Position })
+}
+
+// reorderRows orders rows by sort key with the Uncategorized rows last, then
+// assigns dense per-folder positions and sorts by them. The two Uncategorized
+// rows share an id and an empty key, so their type breaks the tie: expense
+// before income, the order the builders append them in.
+func reorderRows[T any](rows []T, options map[string]elementOption, key func(T) (id string, typ int, folder *string), position func(*T) *int) {
+	sortKey := func(r T) string {
+		id, typ, _ := key(r)
+		return string(options[elementKey(id, model.ElementType(typ))].sortKey)
 	}
-	sort.SliceStable(elements, func(i, j int) bool {
-		x, y := elements[i], elements[j]
-		if xl, yl := x.Id == model.UncategorizedID, y.Id == model.UncategorizedID; xl != yl {
+	sort.SliceStable(rows, func(i, j int) bool {
+		xi, xt, _ := key(rows[i])
+		yi, yt, _ := key(rows[j])
+		if xl, yl := xi == model.UncategorizedID, yi == model.UncategorizedID; xl != yl {
 			return !xl
 		}
-		if kx, ky := sortKey(x), sortKey(y); kx != ky {
+		if kx, ky := sortKey(rows[i]), sortKey(rows[j]); kx != ky {
 			return kx < ky
 		}
-		return x.Id < y.Id
+		if xi != yi {
+			return xi < yi
+		}
+		return xt < yt
 	})
 	perFolder := map[string]int{}
-	for i := range elements {
+	for i := range rows {
+		_, _, folderID := key(rows[i])
 		folder := ""
-		if elements[i].FolderId != nil {
-			folder = *elements[i].FolderId
+		if folderID != nil {
+			folder = *folderID
 		}
-		elements[i].Position = perFolder[folder]
+		*position(&rows[i]) = perFolder[folder]
 		perFolder[folder]++
 	}
-	sortByPositionThenID(elements, func(p model.ParentElementResult) int { return p.Position }, func(p model.ParentElementResult) string { return p.Id })
+	sortByPositionThenID(rows,
+		func(r T) int { return *position(&r) },
+		func(r T) string { id, _, _ := key(r); return id })
 }
 
 // addPlanUpcoming fills the plan's upcoming fields the way addUpcoming does
@@ -354,29 +372,9 @@ func mergePlanChildren(real, up []model.PlanChildResult) ([]model.PlanChildResul
 // reorderPlanElements is reorderElements over plan rows: the same keys
 // emitPlanElements positions them with.
 func reorderPlanElements(elements []model.PlanElementResult, options map[string]elementOption) {
-	sortKey := func(e model.PlanElementResult) string {
-		return string(options[elementKey(e.Id, model.ElementType(e.Type))].sortKey)
-	}
-	sort.SliceStable(elements, func(i, j int) bool {
-		x, y := elements[i], elements[j]
-		if xl, yl := x.Id == model.UncategorizedID, y.Id == model.UncategorizedID; xl != yl {
-			return !xl
-		}
-		if kx, ky := sortKey(x), sortKey(y); kx != ky {
-			return kx < ky
-		}
-		return x.Id < y.Id
-	})
-	perFolder := map[string]int{}
-	for i := range elements {
-		folder := ""
-		if elements[i].FolderId != nil {
-			folder = *elements[i].FolderId
-		}
-		elements[i].Position = perFolder[folder]
-		perFolder[folder]++
-	}
-	sortByPositionThenID(elements, func(p model.PlanElementResult) int { return p.Position }, func(p model.PlanElementResult) string { return p.Id })
+	reorderRows(elements, options,
+		func(e model.PlanElementResult) (string, int, *string) { return e.Id, e.Type, e.FolderId },
+		func(e *model.PlanElementResult) *int { return &e.Position })
 }
 
 // zeroBalances is balances with every amount "0": the upcoming opening

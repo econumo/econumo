@@ -150,3 +150,21 @@ func TestMergePlanUpcoming(t *testing.T) {
 		t.Errorf("savings = %+v, want upcoming from the projection and the booked closing balance kept", s)
 	}
 }
+
+func TestReorderPlanElements_UncategorizedExpenseBeforeIncome(t *testing.T) {
+	rows := []model.PlanElementResult{
+		{Id: model.UncategorizedID, Type: int(model.ElementIncomeCategory)},
+		{Id: model.UncategorizedID, Type: int(model.ElementCategory)},
+		{Id: "z-cat", Type: int(model.ElementCategory)},
+	}
+	reorderPlanElements(rows, map[string]elementOption{})
+	want := []struct {
+		id  string
+		typ model.ElementType
+	}{{"z-cat", model.ElementCategory}, {model.UncategorizedID, model.ElementCategory}, {model.UncategorizedID, model.ElementIncomeCategory}}
+	for i, w := range want {
+		if rows[i].Id != w.id || rows[i].Type != int(w.typ) || rows[i].Position != i {
+			t.Errorf("row %d = %s/%d at %d, want %s/%d at %d", i, rows[i].Id, rows[i].Type, rows[i].Position, w.id, w.typ, i)
+		}
+	}
+}
