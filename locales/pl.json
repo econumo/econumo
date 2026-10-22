@@ -1403,6 +1403,9 @@
           "total": {
             "name": "Razem",
             "expenses": "Suma wydatków"
+          },
+          "tag_group": {
+            "count": "{count} tag | {count} tagi | {count} tagów"
           }
         },
         "archived_banner": "Ten budżet jest zarchiwizowany i tylko do odczytu",

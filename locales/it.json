@@ -1403,6 +1403,9 @@
           "total": {
             "name": "Totale",
             "expenses": "Totale delle uscite"
+          },
+          "tag_group": {
+            "count": "{count} tag | {count} tag"
           }
         },
         "archived_banner": "Questo budget è archiviato e in sola lettura",

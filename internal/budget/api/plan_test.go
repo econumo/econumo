@@ -150,6 +150,8 @@ func TestGetBudgetPlan_ExpenseCells(t *testing.T) {
 		CategoryID: catID, TagID: tagID, Type: 0, Amount: "15.00000000", SpentAt: "2024-05-20 12:00:00"})
 	f.Transaction(fixture.Transaction{ID: "d0002222-0000-7000-8000-000000000004", UserID: seedUserID, AccountID: accountID,
 		Type: 0, Amount: "5.00000000", SpentAt: "2024-05-21 12:00:00"})
+	f.Transaction(fixture.Transaction{ID: "d0002222-0000-7000-8000-000000000005", UserID: seedUserID, AccountID: accountID,
+		TagID: tagID, Type: 0, Amount: "7.00000000", SpentAt: "2024-04-22 12:00:00"})
 
 	// Limits: envelope Apr=100, May=120; Rent May=300.
 	for _, l := range []struct{ id, period, amount string }{
@@ -203,16 +205,27 @@ func TestGetBudgetPlan_ExpenseCells(t *testing.T) {
 		t.Errorf("child cells = %+v", envRow.Children[0].Cells)
 	}
 
-	// Tag row: leaf, May actual 15 (the tagged row belongs to the tag, not Food).
+	// Tag row: Apr 7 (no category), May 15 (the tagged row belongs to the tag,
+	// not Food), broken down by category like on the budget page.
 	tagRow, ok := byID[tagID]
 	if !ok {
 		t.Fatalf("tag row missing")
 	}
-	if len(tagRow.Children) != 0 {
-		t.Errorf("tag rows are leaves in the plan; children=%+v", tagRow.Children)
+	if !decEq(tagRow.Cells[0].Actual, "7") || !decEq(tagRow.Cells[1].Actual, "15") {
+		t.Errorf("tag cells = %+v", tagRow.Cells)
 	}
-	if !decEq(tagRow.Cells[1].Actual, "15") {
-		t.Errorf("tag May actual = %q", tagRow.Cells[1].Actual)
+	tagChildren := map[string]model.PlanChildResult{}
+	for _, ch := range tagRow.Children {
+		tagChildren[ch.Id] = ch
+	}
+	if len(tagChildren) != 2 {
+		t.Fatalf("tag children = %+v, want Food + Uncategorized", tagRow.Children)
+	}
+	if food := tagChildren[catID]; !decEq(food.Cells[0].Actual, "0") || !decEq(food.Cells[1].Actual, "15") {
+		t.Errorf("tag Food child cells = %+v", food.Cells)
+	}
+	if uncat := tagChildren[model.UncategorizedID]; !decEq(uncat.Cells[0].Actual, "7") || !decEq(uncat.Cells[1].Actual, "0") {
+		t.Errorf("tag Uncategorized child cells = %+v", uncat.Cells)
 	}
 
 	// Standalone non-archived category with no activity still shows, planned May=300.

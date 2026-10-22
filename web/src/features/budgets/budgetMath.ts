@@ -4,6 +4,7 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import { compareNames } from '@/lib/collate'
 import { add, cmp, div, isZero } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
+import { withTagGroupsAdjacent } from './tagGroups'
 
 export interface BucketStats {
   budgeted: string
@@ -53,6 +54,27 @@ export function bucketStats(elements: BudgetElementDto[], budget: BudgetDto, exc
   return { budgeted, spent, available, carry }
 }
 
+/** A same-name tag group's line: in the tags' own currency when they share one,
+ *  in the budget currency otherwise, as a folder line sums. */
+export function tagGroupStats(elements: BudgetElementDto[], budget: BudgetDto, exchangeFn: ExchangeFn): { stats: BucketStats; currencyId: string } {
+  const base = budget.meta.currencyId
+  const currencyIds = new Set(elements.map((el) => el.currencyId ?? base))
+  if (currencyIds.size !== 1) {
+    return { stats: bucketStats(elements, budget, exchangeFn), currencyId: base }
+  }
+  let budgeted = '0'
+  let spent = '0'
+  let available = '0'
+  let carry = '0'
+  for (const el of elements) {
+    budgeted = add(budgeted, el.budgeted)
+    spent = add(spent, el.spent)
+    available = add(available, displayAvailable(el))
+    carry = add(carry, carryOver(el))
+  }
+  return { stats: { budgeted, spent, available, carry }, currencyId: [...currencyIds][0] }
+}
+
 export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang = 'en'): BudgetBuckets {
   const folders = [...budget.structure.folders].sort((a, b) => a.position - b.position)
   const elements = budget.structure.elements
@@ -70,12 +92,15 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang =
     folders.length === 0
       ? []
       : folders.map((folder) => {
-          const folderElements = active.filter((el) => el.folderId === folder.id).sort(byPosition)
+          const folderElements = withTagGroupsAdjacent(active.filter((el) => el.folderId === folder.id).sort(byPosition), (el) => el)
           return { folder, elements: folderElements, stats: bucketStats(folderElements, budget, exchangeFn) }
         })
 
   const folderless =
-    folders.length === 0 ? [...active].sort(byPosition) : active.filter((el) => el.folderId === null).sort(byPosition)
+    withTagGroupsAdjacent(
+      folders.length === 0 ? [...active].sort(byPosition) : active.filter((el) => el.folderId === null).sort(byPosition),
+      (el) => el,
+    )
 
   // archive is read-only history: a row earns its place only if one of its
   // displayed numbers (budget, spent, available) is nonzero

@@ -318,7 +318,7 @@ it('a guest’s tablet sheet has no Set budget but reaches the thread', async ()
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
 })
 
-it('a tablet tap on an archived element’s amount opens its sheet without Set budget', async () => {
+it('a tablet tap on an archived element’s amount opens its sheet with Set budget', async () => {
   const archivedElementBudget = {
     ...fixtureWireBudget,
     structure: {
@@ -332,7 +332,7 @@ it('a tablet tap on an archived element’s amount opens its sheet without Set b
   renderPage('/budget')
   await user.click(within(await screen.findByTestId('element-tag-old')).getByRole('button', { name: 'details zzz-archived' }))
   const sheet = await screen.findByTestId('element-sheet')
-  expect(within(sheet).queryByRole('button', { name: 'Set budget' })).toBeNull()
+  expect(within(sheet).getByRole('button', { name: 'Set budget' })).toBeInTheDocument()
   expect(within(sheet).getByRole('button', { name: 'Add comment' })).toBeInTheDocument()
 })
 
@@ -449,8 +449,10 @@ it('lets a desktop user start a thread on an archived element with no comments, 
   const user = userEvent.setup()
   renderPage('/budget')
 
+  // the amount is its limit editor, as on a live row; the thread starts from the corner
   const row = await screen.findByTestId('element-tag-old')
   expect(within(row).queryByTestId('comment-marker')).toBeNull()
-  await user.click(within(row).getByLabelText(/^comments /))
+  expect(within(row).queryByLabelText(/^comments /)).toBeNull()
+  await user.click(within(row).getByTestId('comment-marker-add'))
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
 })

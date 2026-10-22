@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
 import { moneyFormat } from '@/lib/money'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { cmp, isZero } from '@/lib/decimal'
 import type { BudgetCommentDto, BudgetDto, BudgetElementDto, BudgetSavingsElementDto, LabelSpendDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
@@ -10,12 +11,13 @@ import type { BudgetElementType } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import type { BudgetBuckets, FolderBucket } from './budgetMath'
-import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, overBudget, rowProgress, totalsWithSavings } from './budgetMath'
+import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, overBudget, rowProgress, tagGroupStats, totalsWithSavings } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 import { currentMonth } from './planMath'
 import { commentCellKey } from './queries'
+import { segmentTagGroups } from './tagGroups'
 
 const INCOME_FOLD_ID = '__phone_income__'
 const SAVINGS_FOLD_ID = '__phone_savings__'
@@ -62,6 +64,10 @@ interface RowProps {
   /** Uncategorized sits among the folders and reads like one: a folder line's height
    *  and type, with no icon and no bar */
   folderLike?: boolean
+  /** a tag inside a same-name group: one step in, with its owner's name */
+  grouped?: { owner?: string }
+  /** a sum line (a same-name tag group): grey name and figures */
+  muted?: boolean
 }
 
 // with a bar under it, the row's first line gives up its bottom padding and minimum
@@ -87,13 +93,16 @@ function PhoneRow({
   onOpen,
   toggle,
   folderLike = false,
+  grouped,
+  muted = false,
 }: RowProps) {
   const Chevron = toggle?.open ? ChevronDown : ChevronRight
   const pad = folderLike ? 'min-h-9 py-1' : cellPad(progress !== null)
-  const size = folderLike ? 'text-xs font-medium text-muted-foreground' : 'text-[15px]'
+  const size = folderLike ? 'text-xs font-medium text-muted-foreground' : muted ? 'text-[15px] text-muted-foreground' : 'text-[15px]'
   const label = (
     <>
       <span className={`min-w-0 truncate ${size}`}>{name}</span>
+      {grouped?.owner ? <span className="shrink-0 truncate text-xs text-muted-foreground">{grouped.owner}</span> : null}
       {tag ? (
         <span data-testid="phone-currency-tag" className="shrink-0 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
           {tag}
@@ -104,7 +113,12 @@ function PhoneRow({
   return (
     <div className={`${GRID} rounded-md`} data-testid={testId}>
       {toggle ? (
-        <button type="button" aria-expanded={toggle.open} onClick={toggle.onToggle} className={`${NAME_CELL} ${pad} rounded-md text-left active:bg-accent/50`}>
+        <button
+          type="button"
+          aria-expanded={toggle.open}
+          onClick={toggle.onToggle}
+          className={`${NAME_CELL} ${grouped ? 'pl-9' : ''} ${pad} rounded-md text-left active:bg-accent/50`}
+        >
           <Chevron aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
           {label}
         </button>
@@ -115,7 +129,7 @@ function PhoneRow({
           {label}
         </span>
       ) : (
-        <span className={`${NAME_CELL} ${pad}`}>
+        <span className={`${NAME_CELL} ${grouped ? 'pl-9' : ''} ${pad}`}>
           <EntityIcon name={icon} className="text-lg text-muted-foreground" />
           {label}
         </span>
@@ -134,7 +148,8 @@ function PhoneRow({
           ) : null}
           <span className="shrink-0">{first}</span>
         </span>
-        <span className={`relative text-right tabular-nums ${size} ${secondClass}`}>
+        {/* a colour of its own (overspent) replaces the muted grey rather than racing it */}
+        <span className={`relative text-right tabular-nums ${secondClass ? size.replace(' text-muted-foreground', '') : size} ${secondClass}`}>
           {second}
           {commented ? (
             <span
@@ -261,6 +276,7 @@ function TotalLine({ testId, label, value, negative = false }: { testId: string;
 export function PhoneMonthView({ budget, buckets, currencies, selectedDate, planMonth, commentsByCell, onOpenSheet, onShowTransactions }: PhoneMonthViewProps) {
   const { t } = useTranslation()
   const unfolded = useBudgetPeriodStore((s) => s.unfoldedElements)
+  const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
   const budgetFolds = useBudgetPeriodStore((s) => s.budgetFolds)
   const toggleBudgetFold = useBudgetPeriodStore((s) => s.toggleBudgetFold)
@@ -281,12 +297,13 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     child: { id: Id; type: BudgetElementType; name: string; icon: string },
     amount: string,
     parent: { id: Id; type: BudgetElementType; currencyId: Id | null },
+    grouped = false,
   ) => {
     const childName = elementDisplayName(child.id, child.name, t)
     const childAmount = future ? EMPTY : fmt(amount, parent.currencyId)
     return (
       <div key={child.id} data-testid={`phone-child-${child.id}`} className={`${GRID} rounded-md text-sm text-muted-foreground`}>
-        <span className="flex min-h-10 min-w-0 items-center gap-2 py-1.5 pl-9">
+        <span className={`flex min-h-10 min-w-0 items-center gap-2 py-1.5 ${grouped ? 'pl-16' : 'pl-9'}`}>
           <EntityIcon name={child.icon} className="text-lg" />
           <span className="truncate">{childName}</span>
         </span>
@@ -312,7 +329,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     )
   }
 
-  const expenseRow = (element: BudgetElementDto) => {
+  const expenseRow = (element: BudgetElementDto, grouped?: { owner?: string }) => {
     const name = elementDisplayName(element.id, element.name, t)
     const isUncategorized = element.id === UNCATEGORIZED_ID
     const carry = carryOver(element)
@@ -344,8 +361,47 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           onOpen={() => onOpenSheet({ kind: 'expense', element })}
           toggle={expandable ? { open, onToggle: () => toggleElement(element.id) } : undefined}
           folderLike={isUncategorized}
+          grouped={grouped}
         />
-        {expandable && open ? element.children.map((child) => childLine(child, child.spent, element)) : null}
+        {expandable && open ? element.children.map((child) => childLine(child, child.spent, element, !!grouped)) : null}
+      </div>
+    )
+  }
+
+  // same-name tags (each partner's own) under one row with their sums; the row has
+  // no sheet of its own, so its figures fold it too
+  const tagGroup = (key: string, name: string, elements: BudgetElementDto[]) => {
+    const { stats, currencyId } = tagGroupStats(elements, budget, makeBudgetExchange(budget, currencies))
+    const open = !!unfolded[key]
+    const overspent = overBudget(stats, future)
+    const budgetText = fmt(stats.budgeted, currencyId)
+    const spentText = future ? EMPTY : fmt(stats.spent, currencyId)
+    const toggle = () => {
+      if (!open) {
+        trackEvent(METRICS.BUDGET_TAG_GROUP_EXPAND, { view: 'phone', tags: elements.length })
+      }
+      toggleElement(key)
+    }
+    return (
+      <div key={key} data-testid={`phone-tag-group-${key}`}>
+        <PhoneRow
+          testId={`phone-tag-group-row-${key}`}
+          icon="tag"
+          name={name}
+          tag={tagOf(currencyId)}
+          first={budgetText}
+          second={spentText}
+          secondClass={overspent ? 'text-expense' : ''}
+          progress={future ? 0 : overspent ? 1 : (rowProgress(stats) ?? 0)}
+          barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
+          ariaLabel={t('budgets.page.phone.row_aria', { name, budget: budgetText, spent: spentText })}
+          onOpen={toggle}
+          toggle={{ open, onToggle: toggle }}
+          muted
+        />
+        {open
+          ? elements.map((el) => expenseRow(el, { owner: (el.ownerUserId && accessById.get(el.ownerUserId)?.name) || undefined }))
+          : null}
       </div>
     )
   }
@@ -369,7 +425,11 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           ) : undefined
         }
       >
-        {folded ? null : bucket.elements.map(expenseRow)}
+        {folded
+          ? null
+          : segmentTagGroups(bucket.elements, (el) => el, bucket === buckets.archive ? 'archived' : (bucket.folder?.id ?? null)).map((segment) =>
+              segment.kind === 'row' ? expenseRow(segment.item) : tagGroup(segment.key, segment.name, segment.items),
+            )}
       </Card>
     )
   }

@@ -55,6 +55,7 @@ import { CommentsPanel } from './CommentsPanel'
 import { ElementSheet } from './ElementSheet'
 import { planCellFigures } from './phoneMonth'
 import { isEnvelopeType } from './elementEdit'
+import { segmentTagGroups } from './tagGroups'
 import { limitAmountFromInput } from './limitAmount'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { SetLimitDialog } from './SetLimitDialog'
@@ -89,7 +90,7 @@ import type { MonthExchange, PlanCellRef, PlanFolderSection, PlanRow, PlanRows }
 import type { LineControls, MenuAction } from './monthLayout'
 import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
-import { ElementRow, SumCell, cellDomId, commentsReadOnly, isEditableCell, pickedKey, sourceAmount } from './PlanRows'
+import { ElementRow, PlanTagGroup, SumCell, cellDomId, commentsReadOnly, isEditableCell, pickedKey, sourceAmount } from './PlanRows'
 import { PlanSelectionHint } from './PlanSelectionHint'
 import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
 import type { GridCtx, PlanCellEdit, PlanLimitTarget, PlanSelection } from './PlanRows'
@@ -155,16 +156,24 @@ interface FillDrag {
 // A row in a list: under its grip when drag is on (the wrapper sits OUTSIDE the
 // row's own [data-row-id] element, so selection, keyboard navigation and the fill
 // handle are untouched by it), bare otherwise.
-function PlanRowList({ rows, ctx, indicator }: { rows: PlanRow[]; ctx: GridCtx; indicator: DropIndicator | null }) {
+function PlanRowList({ rows, ctx, indicator, scope }: { rows: PlanRow[]; ctx: GridCtx; indicator: DropIndicator | null; scope: Id | null }) {
+  const one = (r: PlanRow, grouped: boolean) =>
+    ctx.drag && isDraggableRow(r) ? (
+      <DragRow key={rowKey(r)} id={r.element.id} indicator={indicator?.kind === 'row' && indicator.id === r.element.id ? indicator.edge : undefined}>
+        <ElementRow row={r} ctx={ctx} grouped={grouped} />
+      </DragRow>
+    ) : (
+      <ElementRow key={rowKey(r)} row={r} ctx={ctx} grouped={grouped} />
+    )
   return (
     <>
-      {rows.map((r) =>
-        ctx.drag && isDraggableRow(r) ? (
-          <DragRow key={rowKey(r)} id={r.element.id} indicator={indicator?.kind === 'row' && indicator.id === r.element.id ? indicator.edge : undefined}>
-            <ElementRow row={r} ctx={ctx} />
-          </DragRow>
+      {segmentTagGroups(rows, (r) => r.element, scope).map((segment) =>
+        segment.kind === 'row' ? (
+          one(segment.item, false)
         ) : (
-          <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
+          <PlanTagGroup key={segment.key} groupKey={segment.key} name={segment.name} rows={segment.items} ctx={ctx}>
+            {segment.items.map((r) => one(r, true))}
+          </PlanTagGroup>
         ),
       )}
     </>
@@ -281,7 +290,7 @@ function FolderRows({
       menu={menu}
       empty={!folded && !collapsed && section.rows.length === 0}
     >
-      <PlanRowList rows={visibleRows} ctx={ctx} indicator={indicator} />
+      <PlanRowList rows={visibleRows} ctx={ctx} indicator={indicator} scope={section.folder.id} />
     </FolderGroup>
   )
 }
@@ -324,25 +333,41 @@ interface DragState {
   folderIn: DragSide | null
 }
 
-function buildFlatRows(rows: PlanRows, savingsRows: PlanRow[], folded: (key: string) => boolean, drag: DragState): FlatRow[] {
+function buildFlatRows(
+  rows: PlanRows,
+  savingsRows: PlanRow[],
+  folded: (key: string) => boolean,
+  drag: DragState,
+  groupOpen: (key: string) => boolean,
+): FlatRow[] {
   const flatRows: FlatRow[] = []
   const pushRow = (r: PlanRow) => {
     flatRows.push({ kind: 'element', rowKey: rowKey(r), el: r.element })
   }
+  // a folded same-name tag group's tags are off screen too
+  const pushRows = (list: PlanRow[], scope: Id | null) => {
+    for (const segment of segmentTagGroups(list, (r) => r.element, scope)) {
+      if (segment.kind === 'row') {
+        pushRow(segment.item)
+      } else if (groupOpen(segment.key)) {
+        segment.items.forEach(pushRow)
+      }
+    }
+  }
   // section and folder lines are not stops: the cursor walks rows, and a folded
   // group's rows are skipped
-  const pushGroup = (foldKey: string, groupRows: PlanRow[], side: DragSide) => {
+  const pushGroup = (foldKey: string, groupRows: PlanRow[], side: DragSide, scope: Id | null) => {
     if (!folded(foldKey) && drag.folderIn !== side) {
-      groupRows.forEach(pushRow)
+      pushRows(groupRows, scope)
     }
   }
   const pushSide = (side: 'income' | 'expense') => {
     const band = rows[side]
-    band.folders.forEach((f) => pushGroup(f.folder.id, f.rows, side))
+    band.folders.forEach((f) => pushGroup(f.folder.id, f.rows, side, f.folder.id))
     if (hasNoFolderLine(band, drag.rowIn === side)) {
-      pushGroup(NO_FOLDER_KEY[side], band.loose, side)
+      pushGroup(NO_FOLDER_KEY[side], band.loose, side, null)
     } else {
-      band.loose.forEach(pushRow)
+      pushRows(band.loose, null)
     }
     if (band.uncategorized) {
       pushRow(band.uncategorized)
@@ -354,12 +379,12 @@ function buildFlatRows(rows: PlanRows, savingsRows: PlanRow[], folded: (key: str
   if (!folded('savings')) {
     savingsRows.forEach(pushRow)
   }
-  rows.neutral.forEach((f) => pushGroup(f.folder.id, f.rows, 'neutral'))
+  rows.neutral.forEach((f) => pushGroup(f.folder.id, f.rows, 'neutral', f.folder.id))
   if (!folded('expense')) {
     pushSide('expense')
   }
   if (rows.archived.length > 0 && !folded('archived')) {
-    rows.archived.forEach(pushRow)
+    pushRows(rows.archived, 'archived')
   }
   return flatRows
 }
@@ -462,6 +487,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
   const folded = useCallback((key: string): boolean => !!planFolds[key], [planFolds])
+  const planUnfolded = useBudgetPeriodStore((s) => s.planUnfoldedElements)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
   // Desktop: every selected cell once a drag, Shift+click or Ctrl/⌘+click takes in
   // more than the active one — empty while one cell is selected. It is only read,
@@ -776,8 +802,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     [balance, savingsBalance],
   )
   const flatRows = useMemo(
-    () => (shownRows ? buildFlatRows(shownRows, savingsRows, folded, dragState) : []),
-    [shownRows, savingsRows, folded, dragState],
+    () => (shownRows ? buildFlatRows(shownRows, savingsRows, folded, dragState, (key) => !!planUnfolded[key]) : []),
+    [shownRows, savingsRows, folded, dragState, planUnfolded],
   )
 
   // Touch keeps the item sheet (and its amount dialog); a read-only cell never opens an editor.
@@ -920,12 +946,13 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   }, [ex, shownPicked, flatRows, visibleMonths, monthIndex, cur])
 
   const gridCtx: GridCtx | null = useMemo(() => {
-    if (!plan) {
+    if (!plan || !ex) {
       return null
     }
     return {
       visibleMonths,
       monthIndex,
+      exchange: ex,
       selected: cur,
       selectedCol: -1,
       crosshairCol,
@@ -963,6 +990,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     plan,
+    ex,
     visibleMonths,
     monthIndex,
     selectedDate,
@@ -1084,7 +1112,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   // a section's folder-less rows: under a No folder line next to real folders, at
   // that line's step on their own otherwise
   const looseGroup = (side: 'income' | 'expense', rows: PlanRow[]) => {
-    const list = <PlanRowList rows={rows} ctx={ctx} indicator={dropIndicator} />
+    const list = <PlanRowList rows={rows} ctx={ctx} indicator={dropIndicator} scope={null} />
     const key = NO_FOLDER_KEY[side]
     const all = shownRows[side].loose
     const node = !noFolderLine(side) ? (
@@ -1876,10 +1904,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
                   { onDragOver: handleSavingsDragOver, onDragEnd: handleSavingsDragEnd },
                   dragEnabled ? (
                     <DragFolder sortableId={null} dropId="bfolder:null" rowIds={draggableIds(savingsLive)}>
-                      <PlanRowList rows={savingsLive} ctx={ctx} indicator={dropIndicator} />
+                      <PlanRowList rows={savingsLive} ctx={ctx} indicator={dropIndicator} scope={null} />
                     </DragFolder>
                   ) : (
-                    <PlanRowList rows={savingsLive} ctx={ctx} indicator={null} />
+                    <PlanRowList rows={savingsLive} ctx={ctx} indicator={null} scope={null} />
                   ),
                 )}
                 {savingsDeleted.map((r) => (
@@ -1949,9 +1977,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             />
             {!folded('archived') ? (
               <RowLevelContext.Provider value="top">
-                {shownRows.archived.map((r) => (
-                  <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
-                ))}
+                <PlanRowList rows={shownRows.archived} ctx={ctx} indicator={null} scope="archived" />
               </RowLevelContext.Provider>
             ) : null}
           </section>

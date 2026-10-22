@@ -1403,6 +1403,9 @@
           "total": {
             "name": "合计",
             "expenses": "支出合计"
+          },
+          "tag_group": {
+            "count": "{count} 个标签 | {count} 个标签"
           }
         },
         "archived_banner": "此预算已归档，为只读状态",

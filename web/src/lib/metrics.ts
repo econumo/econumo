@@ -82,6 +82,7 @@ export const METRICS = {
   BUDGET_UNARCHIVE: 'appBudgetUnarchived',
   BUDGET_SET_END_DATE: 'appBudgetEndDateSet',
   BUDGET_SAVINGS_TOGGLE: 'appBudgetSavingsToggle',
+  BUDGET_TAG_GROUP_EXPAND: 'appBudgetTagGroupExpand',
   BUDGET_GRANT_ACCESS: 'appBudgetGrantAccess',
   BUDGET_REVOKE_ACCESS: 'appBudgetRevokeAccess',
   BUDGET_ACCEPT_ACCESS: 'appBudgetAcceptAccess',

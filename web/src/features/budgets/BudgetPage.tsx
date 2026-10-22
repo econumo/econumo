@@ -488,13 +488,14 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       return false
     }
     switch (target.kind) {
+      // an archived element's plan stays editable, to correct its history
       case 'expense':
-        return target.element.isArchived === 0 && target.element.id !== UNCATEGORIZED_ID
+        return target.element.id !== UNCATEGORIZED_ID
       case 'savings':
         return target.row.isArchived === 0
       case 'plan':
         // an income row exists only while its plan window is loaded
-        return target.cell.element.isArchived === 0 && target.cell.element.id !== UNCATEGORIZED_ID && planMonth !== null
+        return target.cell.element.id !== UNCATEGORIZED_ID && planMonth !== null
       case 'label':
         return false
     }
