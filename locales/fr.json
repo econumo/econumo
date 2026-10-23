@@ -1694,7 +1694,8 @@
       "note_budget": "Vos comptes sont regroupés par vos dossiers, ceux de chaque participant sous son nom ; les comptes en devise étrangère sont convertis au taux de chaque mois."
     },
     "drill": {
-      "unsupported": "Ces transactions ne peuvent pas être listées ici. Ouvrez la page Budget pour les voir."
+      "unsupported": "Ces transactions ne peuvent pas être listées ici. Ouvrez la page Budget pour les voir.",
+      "deleted_accounts": "Les transactions des comptes supprimés sont comptées dans le rapport mais ne sont pas listées ici."
     },
     "insight": {
       "empty": "Aucune transaction pour l’instant",
@@ -1704,7 +1705,8 @@
       "networth_up": "+{amount} sur la période",
       "networth_down": "−{amount} sur la période",
       "networth_flat": "Aucun changement sur la période"
-    }
+    },
+    "updated_at": "Mis à jour {time}"
   },
   "classifications": {
     "common": {

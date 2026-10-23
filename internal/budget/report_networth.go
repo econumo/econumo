@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -46,6 +48,13 @@ func (s *Service) GetNetWorthReport(ctx context.Context, userID vo.Id, req model
 	if err != nil {
 		return nil, err
 	}
+	// Balances are month-end, so an all-time window opens at the close of the
+	// month before the first transaction (zero), and its change covers the
+	// first month's activity, like a preset that asks for the month before.
+	if req.From == "" && window.months < reportMonthsMax {
+		window.from = window.from.AddDate(0, -1, 0)
+		window.months++
+	}
 	item, err := s.buildNetWorth(ctx, userID, accountIDs, window, currency)
 	if err != nil {
 		return nil, err
@@ -74,7 +83,11 @@ func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, accountIDs []
 	if err != nil {
 		return result, err
 	}
-	nets, err := s.read.AccountsNetByMonth(ctx, accountIDs, w.from, w.end())
+	netsTo := w.end()
+	if tomorrow := localTomorrow(s.clock.Now(), reqctx.Location(ctx)); tomorrow.Before(netsTo) {
+		netsTo = tomorrow
+	}
+	nets, err := s.read.AccountsNetByMonth(ctx, accountIDs, w.from, netsTo)
 	if err != nil {
 		return result, err
 	}
@@ -168,4 +181,15 @@ func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, accountIDs []
 		return x.Id < y.Id
 	})
 	return result, nil
+}
+
+// localTomorrow is the start of the caller's next day as a UTC-typed wall
+// clock, the bound the account list's balance uses: a balance counts
+// everything through the end of today and no future-dated transaction.
+func localTomorrow(now time.Time, loc *time.Location) time.Time {
+	if loc == nil {
+		loc = time.UTC
+	}
+	y, m, d := now.In(loc).Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC).AddDate(0, 0, 1)
 }

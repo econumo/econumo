@@ -1694,7 +1694,8 @@
       "note_budget": "I tuoi conti sono raggruppati per le tue cartelle, quelli di ogni partecipante sotto il suo nome; i conti in valuta estera sono convertiti al cambio di ogni mese."
     },
     "drill": {
-      "unsupported": "Queste transazioni non possono essere elencate qui. Apri la pagina Budget per vederle."
+      "unsupported": "Queste transazioni non possono essere elencate qui. Apri la pagina Budget per vederle.",
+      "deleted_accounts": "Le transazioni dei conti eliminati sono incluse nel report ma non sono elencate qui."
     },
     "insight": {
       "empty": "Ancora nessuna transazione",
@@ -1704,7 +1705,8 @@
       "networth_up": "+{amount} nel periodo",
       "networth_down": "−{amount} nel periodo",
       "networth_flat": "Nessuna variazione nel periodo"
-    }
+    },
+    "updated_at": "Aggiornato {time}"
   },
   "classifications": {
     "common": {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
@@ -127,4 +128,32 @@ func TestNetWorthReport_Budget_NoAccess(t *testing.T) {
 	if !errors.As(err, &ad) {
 		t.Fatalf("want access denied, got %v", err)
 	}
+}
+
+func TestNetWorthReport_CurrentMonthStopsAtEndOfToday(t *testing.T) {
+	h := newFlowHarness(t)
+	h.tx(1, h.acct, "", "", "", "100", "2026-04-10 10:00:00")
+	h.tx(1, h.acct, "", "", "", "30", "2026-05-17 23:00:00")
+	h.tx(1, h.acct, "", "", "", "7", "2026-05-18 08:00:00")
+	h.tx(1, h.acct, "", "", "", "500", "2026-05-25 10:00:00")
+	r := h.netWorth(t, model.GetNetWorthReportRequest{From: "2026-04-01"})
+	eqAmounts(t, r.Accounts[0].Balances, "100", "130")
+
+	ahead := reqctx.WithLocation(h.ctx, time.FixedZone("UTC+14", 14*3600))
+	res, err := h.svc.GetNetWorthReport(ahead, vo.MustParseId(h.user), model.GetNetWorthReportRequest{From: "2026-04-01"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	eqAmounts(t, res.Item.Accounts[0].Balances, "100", "137")
+}
+
+func TestNetWorthReport_AllTimeOpensBeforeFirstMonth(t *testing.T) {
+	h := newFlowHarness(t)
+	h.tx(1, h.acct, "", "", "", "100", "2026-03-10 10:00:00")
+	h.tx(1, h.acct, "", "", "", "20", "2026-04-10 10:00:00")
+	r := h.netWorth(t, model.GetNetWorthReportRequest{})
+	if len(r.Months) != 4 || r.Months[0] != "2026-02-01" || r.Months[3] != "2026-05-01" {
+		t.Fatalf("months = %v, want 2026-02..2026-05", r.Months)
+	}
+	eqAmounts(t, r.Accounts[0].Balances, "0", "100", "120", "120")
 }

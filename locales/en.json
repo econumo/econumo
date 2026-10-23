@@ -1694,7 +1694,8 @@
       "note_budget": "Your accounts are grouped by your folders, each participant's accounts under their name; foreign-currency accounts converted at each month's rate."
     },
     "drill": {
-      "unsupported": "These transactions can't be listed here. Open the Budget page to see them."
+      "unsupported": "These transactions can't be listed here. Open the Budget page to see them.",
+      "deleted_accounts": "Transactions of deleted accounts are counted in the report but not listed here."
     },
     "insight": {
       "empty": "No transactions yet",
@@ -1704,7 +1705,8 @@
       "networth_up": "Up {amount} over the period",
       "networth_down": "Down {amount} over the period",
       "networth_flat": "No change over the period"
-    }
+    },
+    "updated_at": "Updated {time}"
   },
   "classifications": {
     "common": {

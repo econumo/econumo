@@ -126,3 +126,7 @@ func (pgsqlBalance) ListAccountBalancesForUser(ctx context.Context, db backend.D
 	}
 	return out, nil
 }
+
+func (pgsqlQuerier) ListAccountIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]string, error) {
+	return pgsqlgen.New(db).ListAccountIDsByOwner(ctx, userID)
+}

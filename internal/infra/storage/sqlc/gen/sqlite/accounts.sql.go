@@ -95,6 +95,34 @@ func (q *Queries) GetAccountTransactionsRevision(ctx context.Context, id string)
 	return transactions_revision, err
 }
 
+const listAccountIDsByOwner = `-- name: ListAccountIDsByOwner :many
+SELECT id FROM accounts WHERE user_id = ? ORDER BY id
+`
+
+// Every account the user owns, soft-deleted ones included (the reports).
+func (q *Queries) ListAccountIDsByOwner(ctx context.Context, userID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listAccountIDsByOwner, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAccountOptionsByUser = `-- name: ListAccountOptionsByUser :many
 SELECT account_id, user_id, created_at, updated_at, sort_key
 FROM accounts_options

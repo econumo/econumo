@@ -14,7 +14,7 @@ import (
 // @Tags     Report
 // @Produce  json
 // @Param    budgetId query string false "Budget id (omit for the caller's own accounts)"
-// @Param    from     query string false "First month (Y-m-d, snapped to first of month; defaults to the first transaction's month)"
+// @Param    from     query string false "First month (Y-m-d, snapped to first of month; defaults to the first transaction's month, at most 240 months back)"
 // @Param    to       query string false "Last month (Y-m-d, snapped to first of month; defaults to the current month; window is at most 240 months)"
 // @Param    groupBy  query string false "category (default), tag or payee; budget scope supports category only"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetFlowReportResult}
@@ -44,7 +44,7 @@ func (h *Handlers) GetFlowReport(w http.ResponseWriter, r *http.Request) {
 // @Tags     Report
 // @Produce  json
 // @Param    budgetId query string false "Budget id (omit for the caller's own accounts)"
-// @Param    from     query string false "First month (Y-m-d, snapped to first of month; defaults to the first transaction's month)"
+// @Param    from     query string false "First month (Y-m-d, snapped to first of month; defaults to the month before the first transaction's month, at most 240 months back)"
 // @Param    to       query string false "Last month (Y-m-d, snapped to first of month; defaults to the current month; window is at most 240 months)"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetNetWorthReportResult}
 // @Failure  400 {object} apidoc.JsonResponseError

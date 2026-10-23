@@ -1694,7 +1694,8 @@
       "note_budget": "Tus cuentas se agrupan por tus carpetas y las de cada participante bajo su nombre; las cuentas en otra moneda se convierten al tipo de cada mes."
     },
     "drill": {
-      "unsupported": "Estas transacciones no se pueden listar aquí. Abre la página de Presupuesto para verlas."
+      "unsupported": "Estas transacciones no se pueden listar aquí. Abre la página de Presupuesto para verlas.",
+      "deleted_accounts": "Las transacciones de cuentas eliminadas se cuentan en el informe, pero no se muestran aquí."
     },
     "insight": {
       "empty": "Aún no hay transacciones",
@@ -1704,7 +1705,8 @@
       "networth_up": "Sube {amount} en el periodo",
       "networth_down": "Baja {amount} en el periodo",
       "networth_flat": "Sin cambios en el periodo"
-    }
+    },
+    "updated_at": "Actualizado {time}"
   },
   "classifications": {
     "common": {

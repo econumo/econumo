@@ -50,6 +50,8 @@ func parseReportMonth(raw, field string) (time.Time, bool, error) {
 // resolveReportWindow turns the raw from/to params into the month window.
 // An empty from starts at the first transaction's month, an empty to ends at
 // the caller's current month; endCap (an ended budget's end month) clamps to.
+// A defaulted from that would exceed the cap is clamped to the last
+// reportMonthsMax months; an explicit one is refused.
 func (s *Service) resolveReportWindow(ctx context.Context, rawFrom, rawTo string, accountIDs []vo.Id, endCap *time.Time) (reportWindow, error) {
 	from, hasFrom, err := parseReportMonth(rawFrom, "from")
 	if err != nil {
@@ -83,7 +85,11 @@ func (s *Service) resolveReportWindow(ctx context.Context, rawFrom, rawTo string
 	}
 	months := (to.Year()-from.Year())*12 + int(to.Month()-from.Month()) + 1
 	if months > reportMonthsMax {
-		return reportWindow{}, invalidChoice("to")
+		if hasFrom {
+			return reportWindow{}, invalidChoice("to")
+		}
+		from = to.AddDate(0, -(reportMonthsMax - 1), 0)
+		months = reportMonthsMax
 	}
 	return reportWindow{from: from, months: months}, nil
 }

@@ -9681,7 +9681,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "First month (Y-m-d, snapped to first of month; defaults to the first transaction's month)",
+                        "description": "First month (Y-m-d, snapped to first of month; defaults to the first transaction's month, at most 240 months back)",
                         "name": "from",
                         "in": "query"
                     },
@@ -9761,7 +9761,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "First month (Y-m-d, snapped to first of month; defaults to the first transaction's month)",
+                        "description": "First month (Y-m-d, snapped to first of month; defaults to the month before the first transaction's month, at most 240 months back)",
                         "name": "from",
                         "in": "query"
                     },

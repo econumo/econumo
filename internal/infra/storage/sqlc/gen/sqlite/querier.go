@@ -428,6 +428,8 @@ type Querier interface {
 	// Args, in order: before (x4), user_id (own), user_id (shared). REAL balance per
 	// row; the repo formats it to PHP's precision-14 string.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
+	// Every account the user owns, soft-deleted ones included (the reports).
+	ListAccountIDsByOwner(ctx context.Context, userID string) ([]string, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// The same count for every AVAILABLE account (the balance query's set).
 	// Args: user_id (own), user_id (shared).
@@ -471,6 +473,8 @@ type Querier interface {
 	// Budgets the user owns OR has an access row for. Ordered by created_at for a
 	// stable list.
 	ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUserParams) ([]Budget, error)
+	// ids is a JSON array of category ids: one round trip whoever owns them.
+	ListCategoriesByIDs(ctx context.Context, ids string) ([]Category, error)
 	// The owner's categories ordered by sort key; used by move-categorie (load,
 	// place the moved row, save it) and as the basis for the returned list.
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
@@ -529,6 +533,8 @@ type Querier interface {
 	// The owner's labels ordered by sort key; used by move-label (load, place the
 	// moved row, save it) and as the basis for the returned list.
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
+	// ids is a JSON array of payee ids: one round trip whoever owns them.
+	ListPayeesByIDs(ctx context.Context, ids string) ([]Payee, error)
 	// The owner's payees ordered by sort key; used by move-payee (load,
 	// place the moved row, save it) and as the basis for the returned list.
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
@@ -538,6 +544,8 @@ type Querier interface {
 	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	// ids is a JSON array of tag ids: one round trip whoever owns them.
+	ListTagsByIDs(ctx context.Context, ids string) ([]Tag, error)
 	// The owner's tags ordered by sort key; used by move-tag (load,
 	// place the moved row, save it) and as the basis for the returned list.
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)

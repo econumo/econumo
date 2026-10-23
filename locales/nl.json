@@ -1694,7 +1694,8 @@
       "note_budget": "Je rekeningen zijn gegroepeerd op je mappen, die van elke deelnemer onder diens naam; rekeningen in vreemde valuta omgerekend tegen de koers van elke maand."
     },
     "drill": {
-      "unsupported": "Deze transacties kunnen hier niet worden getoond. Open de Budget-pagina om ze te zien."
+      "unsupported": "Deze transacties kunnen hier niet worden getoond. Open de Budget-pagina om ze te zien.",
+      "deleted_accounts": "Transacties van verwijderde rekeningen tellen mee in het rapport, maar staan hier niet in de lijst."
     },
     "insight": {
       "empty": "Nog geen transacties",
@@ -1704,7 +1705,8 @@
       "networth_up": "{amount} meer in deze periode",
       "networth_down": "{amount} minder in deze periode",
       "networth_flat": "Geen verandering in deze periode"
-    }
+    },
+    "updated_at": "Bijgewerkt {time}"
   },
   "classifications": {
     "common": {

@@ -9259,7 +9259,7 @@ paths:
         name: budgetId
         type: string
       - description: First month (Y-m-d, snapped to first of month; defaults to the
-          first transaction's month)
+          first transaction's month, at most 240 months back)
         in: query
         name: from
         type: string
@@ -9310,7 +9310,7 @@ paths:
         name: budgetId
         type: string
       - description: First month (Y-m-d, snapped to first of month; defaults to the
-          first transaction's month)
+          month before the first transaction's month, at most 240 months back)
         in: query
         name: from
         type: string

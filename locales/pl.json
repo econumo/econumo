@@ -1694,7 +1694,8 @@
       "note_budget": "Twoje konta pogrupowano według Twoich folderów, konta każdego uczestnika pod jego imieniem; konta w obcej walucie przeliczono po kursie z każdego miesiąca."
     },
     "drill": {
-      "unsupported": "Tych transakcji nie można tu wyświetlić. Otwórz stronę Budżetu, aby je zobaczyć."
+      "unsupported": "Tych transakcji nie można tu wyświetlić. Otwórz stronę Budżetu, aby je zobaczyć.",
+      "deleted_accounts": "Transakcje usuniętych kont są uwzględnione w raporcie, ale nie są tu wyświetlane."
     },
     "insight": {
       "empty": "Brak transakcji",
@@ -1704,7 +1705,8 @@
       "networth_up": "Wzrost o {amount} w okresie",
       "networth_down": "Spadek o {amount} w okresie",
       "networth_flat": "Bez zmian w okresie"
-    }
+    },
+    "updated_at": "Zaktualizowano {time}"
   },
   "classifications": {
     "common": {

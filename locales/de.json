@@ -1694,7 +1694,8 @@
       "note_budget": "Deine Konten sind nach deinen Ordnern gruppiert, die Konten jeder anderen Person unter ihrem Namen; Konten in Fremdwährung zum Kurs des jeweiligen Monats umgerechnet."
     },
     "drill": {
-      "unsupported": "Diese Transaktionen können hier nicht aufgelistet werden. Öffne die Budget-Seite, um sie zu sehen."
+      "unsupported": "Diese Transaktionen können hier nicht aufgelistet werden. Öffne die Budget-Seite, um sie zu sehen.",
+      "deleted_accounts": "Buchungen gelöschter Konten sind im Bericht enthalten, werden hier aber nicht aufgeführt."
     },
     "insight": {
       "empty": "Noch keine Buchungen",
@@ -1704,7 +1705,8 @@
       "networth_up": "Plus {amount} im Zeitraum",
       "networth_down": "Minus {amount} im Zeitraum",
       "networth_flat": "Keine Veränderung im Zeitraum"
-    }
+    },
+    "updated_at": "Aktualisiert {time}"
   },
   "classifications": {
     "common": {

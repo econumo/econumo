@@ -130,3 +130,7 @@ func (sqliteBalance) ListAccountBalancesForUser(ctx context.Context, db backend.
 	}
 	return out, nil
 }
+
+func (sqliteQuerier) ListAccountIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]string, error) {
+	return sqlitegen.New(db).ListAccountIDsByOwner(ctx, userID)
+}

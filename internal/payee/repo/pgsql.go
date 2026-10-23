@@ -47,3 +47,15 @@ func (pgsqlQuerier) ReassignPayeeTransactions(ctx context.Context, db backend.DB
 func (pgsqlQuerier) ReassignPayeeRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return pgsqlgen.New(db).ReassignPayeeRecurring(ctx, pgsqlgen.ReassignPayeeRecurringParams(p))
 }
+
+func (pgsqlQuerier) ListPayeesByIDs(ctx context.Context, db backend.DBTX, ids string) ([]payeeRow, error) {
+	rows, err := pgsqlgen.New(db).ListPayeesByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]payeeRow, len(rows))
+	for i, x := range rows {
+		out[i] = payeeRow(x)
+	}
+	return out, nil
+}

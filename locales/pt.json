@@ -1694,7 +1694,8 @@
       "note_budget": "Suas contas são agrupadas pelas suas pastas, as de cada participante sob o nome dele; contas em moeda estrangeira convertidas pela taxa de cada mês."
     },
     "drill": {
-      "unsupported": "Estas transações não podem ser listadas aqui. Abra a página Orçamento para vê-las."
+      "unsupported": "Estas transações não podem ser listadas aqui. Abra a página Orçamento para vê-las.",
+      "deleted_accounts": "As transações de contas excluídas entram no relatório, mas não são listadas aqui."
     },
     "insight": {
       "empty": "Ainda não há transações",
@@ -1704,7 +1705,8 @@
       "networth_up": "Alta de {amount} no período",
       "networth_down": "Queda de {amount} no período",
       "networth_flat": "Sem mudança no período"
-    }
+    },
+    "updated_at": "Atualizado {time}"
   },
   "classifications": {
     "common": {

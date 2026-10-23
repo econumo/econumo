@@ -179,3 +179,32 @@ func TestBudgetMetadataLookup_ByIDsAcrossOwners(t *testing.T) {
 		t.Fatalf("payees = %+v, %v", payees, err)
 	}
 }
+
+// One batched query resolves many ids across owners; none asks for nothing.
+func TestBudgetMetadataLookup_ByIDsBatch(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	u, other := vo.NewId().String(), vo.NewId().String()
+	f.User(fixture.User{ID: u, Email: "u@e.test", Name: "U", Password: "pw", Salt: "s"})
+	f.User(fixture.User{ID: other, Email: "o@e.test", Name: "O", Password: "pw", Salt: "s"})
+	mine := f.Category(fixture.Category{UserID: u, Name: "Mine"})
+	theirs := f.Category(fixture.Category{UserID: other, Name: "Theirs"})
+	f.Category(fixture.Category{UserID: u, Name: "Not asked"})
+	ctx := context.Background()
+	l := server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo(db.Engine, db.TX))
+
+	cats, err := l.CategoriesByIDs(ctx, []vo.Id{vo.MustParseId(mine), vo.MustParseId(theirs), vo.NewId()})
+	if err != nil || len(cats) != 2 {
+		t.Fatalf("categories = %+v, %v", cats, err)
+	}
+	names := map[string]string{}
+	for _, c := range cats {
+		names[c.ID] = c.Name + "/" + c.OwnerID
+	}
+	if names[mine] != "Mine/"+u || names[theirs] != "Theirs/"+other {
+		t.Fatalf("names = %v", names)
+	}
+	if none, err := l.CategoriesByIDs(ctx, nil); err != nil || len(none) != 0 {
+		t.Fatalf("empty = %+v, %v", none, err)
+	}
+}

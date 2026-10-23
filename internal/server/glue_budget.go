@@ -9,7 +9,6 @@ import (
 	appbudget "github.com/econumo/econumo/internal/budget"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/model"
-	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -36,7 +35,7 @@ func (l *BudgetCurrencyLookup) EnsureUsable(ctx context.Context, userID, currenc
 type budgetAccountRepo interface {
 	GetByID(ctx context.Context, id vo.Id) (*model.Account, error)
 	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
-	ListDeleted(ctx context.Context) ([]*model.Account, error)
+	ListIDsByOwner(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
 // BudgetAccountLookup adapts the account repository to budget.AccountLookup.
@@ -90,30 +89,9 @@ func (l *BudgetAccountLookup) OwnedLiveAccountIDs(ctx context.Context, userID vo
 	return out, nil
 }
 
-// OwnedAccountIDs returns the user's own accounts, deleted ones included:
-// ListAvailable yields only live accounts, so the deleted ones come from
-// ListDeleted filtered by owner.
+// OwnedAccountIDs returns the user's own accounts, deleted ones included.
 func (l *BudgetAccountLookup) OwnedAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
-	live, err := l.accounts.ListAvailable(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	deleted, err := l.accounts.ListDeleted(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]vo.Id, 0, len(live)+len(deleted))
-	for _, a := range live {
-		if a.UserID.Equal(userID) {
-			out = append(out, a.ID)
-		}
-	}
-	for _, a := range deleted {
-		if a.UserID.Equal(userID) {
-			out = append(out, a.ID)
-		}
-	}
-	return out, nil
+	return l.accounts.ListIDsByOwner(ctx, userID)
 }
 
 // AccountOwner returns an account's owner id.
@@ -127,7 +105,7 @@ func (l *BudgetAccountLookup) AccountOwner(ctx context.Context, accountID vo.Id)
 
 type budgetCategoryRepo interface {
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error)
-	GetByID(ctx context.Context, id vo.Id) (*model.Category, error)
+	ListByIDs(ctx context.Context, ids []vo.Id) ([]*model.Category, error)
 }
 
 // BudgetCategoryMetadataLookup adapts the category repository to the category
@@ -167,18 +145,15 @@ func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, u
 	return out, nil
 }
 
-// CategoriesByIDs resolves the given categories whoever owns them; an id that
-// does not exist is skipped.
+// CategoriesByIDs resolves the given categories whoever owns them, in one
+// query; an id that does not exist is skipped.
 func (l *BudgetCategoryMetadataLookup) CategoriesByIDs(ctx context.Context, ids []vo.Id) ([]model.CategoryMeta, error) {
-	out := make([]model.CategoryMeta, 0, len(ids))
-	for _, id := range ids {
-		c, err := l.categories.GetByID(ctx, id)
-		if err != nil {
-			if _, missing := errs.AsNotFound(err); missing {
-				continue
-			}
-			return nil, err
-		}
+	cats, err := l.categories.ListByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.CategoryMeta, 0, len(cats))
+	for _, c := range cats {
 		out = append(out, model.CategoryMeta{
 			ID: c.ID.String(), OwnerID: c.UserID.String(), Name: c.Name, Icon: c.Icon,
 			IsIncome: c.Type == model.TypeIncome, IsArchived: c.IsArchived,
@@ -189,7 +164,7 @@ func (l *BudgetCategoryMetadataLookup) CategoriesByIDs(ctx context.Context, ids 
 
 type budgetTagRepo interface {
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, error)
-	GetByID(ctx context.Context, id vo.Id) (*model.Tag, error)
+	ListByIDs(ctx context.Context, ids []vo.Id) ([]*model.Tag, error)
 }
 
 // BudgetTagMetadataLookup adapts the tag repository to the tag slice of
@@ -228,18 +203,15 @@ func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo
 	return out, nil
 }
 
-// TagsByIDs resolves the given tags whoever owns them; an id that does not
-// exist is skipped.
+// TagsByIDs resolves the given tags whoever owns them, in one query; an id
+// that does not exist is skipped.
 func (l *BudgetTagMetadataLookup) TagsByIDs(ctx context.Context, ids []vo.Id) ([]model.TagMeta, error) {
-	out := make([]model.TagMeta, 0, len(ids))
-	for _, id := range ids {
-		t, err := l.tags.GetByID(ctx, id)
-		if err != nil {
-			if _, missing := errs.AsNotFound(err); missing {
-				continue
-			}
-			return nil, err
-		}
+	tags, err := l.tags.ListByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.TagMeta, 0, len(tags))
+	for _, t := range tags {
 		out = append(out, model.TagMeta{ID: t.ID.String(), OwnerID: t.UserID.String(), Name: t.Name, IsArchived: t.IsArchived})
 	}
 	return out, nil
@@ -247,7 +219,7 @@ func (l *BudgetTagMetadataLookup) TagsByIDs(ctx context.Context, ids []vo.Id) ([
 
 type budgetPayeeRepo interface {
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, error)
-	GetByID(ctx context.Context, id vo.Id) (*model.Payee, error)
+	ListByIDs(ctx context.Context, ids []vo.Id) ([]*model.Payee, error)
 }
 
 // BudgetPayeeMetadataLookup adapts the payee repository to the payee slice of
@@ -284,18 +256,15 @@ func (l *BudgetPayeeMetadataLookup) PayeesByOwners(ctx context.Context, userIDs 
 	return out, nil
 }
 
-// PayeesByIDs resolves the given payees whoever owns them; an id that does not
-// exist is skipped.
+// PayeesByIDs resolves the given payees whoever owns them, in one query; an
+// id that does not exist is skipped.
 func (l *BudgetPayeeMetadataLookup) PayeesByIDs(ctx context.Context, ids []vo.Id) ([]model.PayeeMeta, error) {
-	out := make([]model.PayeeMeta, 0, len(ids))
-	for _, id := range ids {
-		p, err := l.payees.GetByID(ctx, id)
-		if err != nil {
-			if _, missing := errs.AsNotFound(err); missing {
-				continue
-			}
-			return nil, err
-		}
+	payees, err := l.payees.ListByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.PayeeMeta, 0, len(payees))
+	for _, p := range payees {
 		out = append(out, model.PayeeMeta{ID: p.ID.String(), Name: p.Name})
 	}
 	return out, nil

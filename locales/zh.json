@@ -1694,7 +1694,8 @@
       "note_budget": "您的账户按您的文件夹分组，每位参与者的账户列在其名下；外币账户按每月汇率换算。"
     },
     "drill": {
-      "unsupported": "这些交易无法在此列出。请打开预算页面查看。"
+      "unsupported": "这些交易无法在此列出。请打开预算页面查看。",
+      "deleted_accounts": "已删除账户的交易计入报表，但不在此处列出。"
     },
     "insight": {
       "empty": "还没有交易",
@@ -1704,7 +1705,8 @@
       "networth_up": "期间增加 {amount}",
       "networth_down": "期间减少 {amount}",
       "networth_flat": "期间没有变化"
-    }
+    },
+    "updated_at": "更新于 {time}"
   },
   "classifications": {
     "common": {

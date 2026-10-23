@@ -127,3 +127,28 @@ func TestParseFlowGroupBy(t *testing.T) {
 		t.Fatalf("field = %q, want groupBy", k)
 	}
 }
+
+func TestReportWindow_DefaultedFromClampsToMax(t *testing.T) {
+	first := time.Date(1990, 7, 4, 9, 0, 0, 0, time.UTC)
+	w, err := reportSvc(&first).resolveReportWindow(context.Background(), "", "", someAccounts, nil)
+	if err != nil {
+		t.Fatalf("defaulted from must clamp, got %v", err)
+	}
+	if w.months != reportMonthsMax || !w.from.Equal(month(2006, 6)) {
+		t.Fatalf("got %v/%d, want 2006-06/240", w.from, w.months)
+	}
+	if !w.end().Equal(month(2026, 6)) {
+		t.Fatalf("end = %v, want 2026-06", w.end())
+	}
+}
+
+func TestReportWindow_DefaultedFromClampsBelowExplicitTo(t *testing.T) {
+	first := time.Date(1990, 7, 4, 9, 0, 0, 0, time.UTC)
+	w, err := reportSvc(&first).resolveReportWindow(context.Background(), "", "2020-03-01", someAccounts, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.months != reportMonthsMax || !w.from.Equal(month(2000, 4)) {
+		t.Fatalf("got %v/%d, want 2000-04/240", w.from, w.months)
+	}
+}
