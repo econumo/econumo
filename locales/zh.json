@@ -1934,8 +1934,7 @@
     }
   },
   "install": {
-    "notice": "Econumo 作为应用使用效果最佳。请将其添加到主屏幕；如果已添加，请从主屏幕打开。",
-    "notice_prompt": "Econumo 作为应用使用效果最佳。安装后即可在独立窗口中打开。",
+    "notice": "Econumo 作为应用更好用",
     "cta": "安装",
     "cta_ios": "如何安装",
     "dismiss": "关闭",

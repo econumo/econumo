@@ -1934,8 +1934,7 @@
     }
   },
   "install": {
-    "notice": "Econumo fonctionne mieux comme une app. Ajoutez-le à votre écran d’accueil ou, si c’est déjà fait, ouvrez-le depuis celui-ci.",
-    "notice_prompt": "Econumo fonctionne mieux comme une app. Installez-le pour l’ouvrir dans sa propre fenêtre.",
+    "notice": "Econumo est meilleur en app",
     "cta": "Installer",
     "cta_ios": "Comment l’installer",
     "dismiss": "Masquer",

@@ -1934,8 +1934,7 @@
     }
   },
   "install": {
-    "notice": "O Econumo funciona melhor como app. Adicione-o à Tela de Início ou, se já adicionou, abra-o por lá.",
-    "notice_prompt": "O Econumo funciona melhor como app. Instale-o para abri-lo em sua própria janela.",
+    "notice": "O Econumo funciona melhor como app",
     "cta": "Instalar",
     "cta_ios": "Como instalar",
     "dismiss": "Dispensar",

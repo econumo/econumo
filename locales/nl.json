@@ -1934,8 +1934,7 @@
     }
   },
   "install": {
-    "notice": "Econumo werkt het best als app. Zet het op je beginscherm, of open het daar als je dat al hebt gedaan.",
-    "notice_prompt": "Econumo werkt het best als app. Installeer het om het in een eigen venster te openen.",
+    "notice": "Econumo werkt het best als app",
     "cta": "Installeren",
     "cta_ios": "Zo installeer je het",
     "dismiss": "Verbergen",

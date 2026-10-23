@@ -34,7 +34,7 @@ it('renders nothing when the app cannot be installed or already runs installed',
 it('opens the Share-menu instructions on iOS', async () => {
   const user = userEvent.setup()
   render(<InstallBanner />)
-  expect(screen.getByText(/Add it to your Home Screen, or if you already have, open it from there/)).toBeInTheDocument()
+  expect(screen.getByText('Econumo works best as an app')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'How to install' }))
   expect(await screen.findByText(/Add to Home Screen”/)).toBeInTheDocument()
   expect(screen.getByText(/Already added it\?/)).toBeInTheDocument()
@@ -46,7 +46,6 @@ it('hands over to the browser prompt where there is one', async () => {
   mockMode.value = 'prompt'
   const user = userEvent.setup()
   render(<InstallBanner />)
-  expect(screen.getByText(/Install it to open it from its own window/)).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Install' }))
   expect(promptInstall).toHaveBeenCalledOnce()
   await vi.waitFor(() => expect(trackEvent).toHaveBeenCalledWith('appInstallAppAccept', { source: 'banner' }))

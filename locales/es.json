@@ -1934,8 +1934,7 @@
     }
   },
   "install": {
-    "notice": "Econumo funciona mejor como app. Añádelo a tu pantalla de inicio o, si ya lo hiciste, ábrelo desde allí.",
-    "notice_prompt": "Econumo funciona mejor como app. Instálalo para abrirlo en su propia ventana.",
+    "notice": "Econumo funciona mejor como app",
     "cta": "Instalar",
     "cta_ios": "Cómo instalar",
     "dismiss": "Descartar",
