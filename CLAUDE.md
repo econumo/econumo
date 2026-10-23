@@ -367,6 +367,12 @@ build arg of the same name sets it per image build, default `dev`) — that one
 IS a real version, used by the mobile app where no server config is present.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
+**Reports page** (`/reports`, `web/src/features/reports`): Spending, Cash flow (Sankey on
+desktop) and Net worth tabs over the report routes above. The tab list is stored per user on
+the device only (localStorage `econumo.reportTabs`) and Reports always opens on the FIRST tab.
+Every report query key is invalidated after any successful mutation
+(`web/src/lib/appQueryClient.ts`), so a report never shows stale figures.
+
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One
 database, `econumo` (`web/src/lib/db.ts`), holds three stores: `importKeys` (the SimpleFIN
 data key, migrated once from the old `econumo-import` database), `accountTransactions`
@@ -1048,6 +1054,14 @@ In the distroless image these run via the binary directly, e.g.
   200 comma-separated ids; ids the caller cannot access are omitted from `revisions` (never an
   error). `/api/v1/transaction/get-transaction-list` (the legacy full list, still used by MCP,
   older clients and the SPA's fallback against a server without revisions) is unchanged.
+- **Reports:** `GET /api/v1/report/get-flow-report` and `get-net-worth-report`, hosted by the
+  budget feature (`internal/budget/report_*.go`, `internal/budget/api/report.go`; no `report`
+  package). Scope is a budget or the caller's own accounts: the budget scope reuses
+  `BuildBudgetPlan`, so its figures equal `get-budget-plan`'s for the same rows and months (a
+  parity test enforces it) and show months before the budget start but none past an ended
+  budget's end month; the my-accounts scope reads `FlowByMonth`. Net worth is the opening
+  balance plus `AccountsNetByMonth`, converted at each month's average rate. A window is at most
+  240 months (longer: 400 on `to`, `common.invalid_choice`).
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
