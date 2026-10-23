@@ -247,3 +247,12 @@ it('deleting a transaction from the drill-down refetches the report', async () =
   await waitFor(() => expect(deleted).toBe('t1'))
   await waitFor(() => expect(flowRequests).toBeGreaterThan(before))
 })
+
+it('Month step: the table compares the last two complete months, the chart keeps the running one', async () => {
+  vi.setSystemTime(new Date(2026, 9, 23, 12))
+  openSpending({ step: 'month' })
+  const table = await screen.findByRole('table')
+  const head = within(table).getAllByRole('columnheader').map((th) => th.textContent)
+  expect(head).toEqual(['Name', 'Aug 2026', 'Sep 2026', 'Change', 'Monthly avg'])
+  expect(screen.getByText(/Oct 2026 is not over yet/)).toBeInTheDocument()
+})

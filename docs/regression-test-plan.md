@@ -1865,8 +1865,10 @@ tag, and a budget with a planned limit on one category.
       or for All time. Change shows money and %, more spending in orange,
       less in green (reversed for Income).
 - [ ] Table: the last bucket against the one before it, headed with the
-      bucket names ("2025", "2026*"); a running bucket shows its actual so
-      far and is compared through its projection. With a single bucket, or
+      bucket names ("2025", "2026*"); a running quarter or year shows its
+      actual so far and is compared through its projection. In Month step
+      the table compares the last two complete months (on Oct 23: Aug vs
+      Sep); the running month shows only in the chart, dashed. With a single bucket, or
       a previous bucket cut by the period start, only the last bucket is
       shown. Amounts show the currency's cents in the headline, table and
       tooltips; only axis ticks are rounded.

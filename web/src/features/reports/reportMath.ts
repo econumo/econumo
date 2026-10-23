@@ -144,12 +144,18 @@ export interface BucketChange {
 
 /**
  * The Over time table: the last bucket against the one before it. A later
- * bucket still in progress is compared through its projection (its own value
+ * quarter or year still in progress is compared through its projection (its own value
  * stays actual-to-date), so an unfinished year does not read as a drop. An
  * earlier bucket cut by the window start has nothing like-for-like to offer,
  * so it is left out and only the later bucket is shown.
  */
-export function bucketChanges(rows: ReportRowDto[], months: string[], step: Step, today: Date = new Date()): BucketChange | null {
+export function bucketChanges(rows: ReportRowDto[], allMonths: string[], step: Step, today: Date = new Date()): BucketChange | null {
+  // in Month step the running month is too short to compare, even projected
+  // (a bill paid on the 2nd would read as a jump), so the table takes the
+  // last two complete months; the chart still shows the running one
+  const cut = step === 'month' && allMonths[allMonths.length - 1] === currentMonth(today) ? 1 : 0
+  const months = cut ? allMonths.slice(0, -1) : allMonths
+  if (cut) rows = rows.map((r) => ({ ...r, amounts: r.amounts.slice(0, months.length) }))
   const totals = rollUp(months, months.map((_, i) => sum(rows.map((r) => r.amounts[i] ?? '0'))), step, today)
   if (totals.length === 0) return null
   const later = totals[totals.length - 1]

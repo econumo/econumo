@@ -220,3 +220,13 @@ describe('bucketChanges', () => {
 it('spendingInsight names the top row by id', () => {
   expect(spendingInsight([row('a', ['30']), row('b', ['70'])]).params.id).toBe('b')
 })
+
+it('bucketChanges in Month step compares the last two complete months', () => {
+  const ms = months('2026-01-01', 10)
+  // rent is paid early each month: on Oct 23 the running month already holds it
+  const rows = [row('rent', ms.map(() => '1000'))]
+  const c = bucketChanges(rows, ms, 'month', new Date(2026, 9, 23))!
+  expect(c.later.start).toBe('2026-09-01')
+  expect(c.earlier?.start).toBe('2026-08-01')
+  expect(c.rows[0]).toMatchObject({ a: '1000', b: '1000', diff: '0', pct: 0 })
+})
