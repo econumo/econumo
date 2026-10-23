@@ -1651,6 +1651,27 @@
       "hint_select": "Toque numa linha ou barra para mostrar só essa linha.",
       "hint_drill": "Toque numa barra para ver as transações."
     },
+    "cashflow": {
+      "view": "Vista",
+      "view_bars": "Barras",
+      "view_flow": "Fluxo",
+      "col_period": "Período",
+      "income": "Receitas",
+      "spent": "Gasto",
+      "saved": "Poupado",
+      "spending": "Despesas",
+      "net_saved": "Poupança líquida",
+      "transfers_in": "Transferido para dentro",
+      "transfers_out": "Transferido para fora",
+      "chart": "Gráfico de fluxo de caixa",
+      "flow_chart": "Fluxo de dinheiro",
+      "from_balance": "Do saldo",
+      "to_savings": "Movido para contas poupança",
+      "stayed": "Ficou nas contas do dia a dia",
+      "other_income": "Outras receitas",
+      "running_note": "* {period} ainda não terminou: os valores são até agora.",
+      "flow_note": "O fluxo abrange todo o período: de onde veio a receita e para onde foi."
+    },
     "drill": {
       "unsupported": "Estas transações não podem ser listadas aqui. Abra a página Orçamento para vê-las."
     },

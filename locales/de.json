@@ -1651,6 +1651,27 @@
       "hint_select": "Tippe auf eine Zeile oder einen Balken, um nur diese Zeile darzustellen.",
       "hint_drill": "Tippe auf einen Balken, um seine Transaktionen zu sehen."
     },
+    "cashflow": {
+      "view": "Ansicht",
+      "view_bars": "Balken",
+      "view_flow": "Fluss",
+      "col_period": "Zeitraum",
+      "income": "Einnahmen",
+      "spent": "Ausgegeben",
+      "saved": "Gespart",
+      "spending": "Ausgaben",
+      "net_saved": "Netto gespart",
+      "transfers_in": "Eingehende Überweisungen",
+      "transfers_out": "Ausgehende Überweisungen",
+      "chart": "Cashflow-Diagramm",
+      "flow_chart": "Geldfluss",
+      "from_balance": "Aus dem Guthaben",
+      "to_savings": "Auf Sparkonten übertragen",
+      "stayed": "Auf Alltagskonten geblieben",
+      "other_income": "Sonstige Einnahmen",
+      "running_note": "* {period} ist noch nicht vorbei: Die Zahlen sind der bisherige Stand.",
+      "flow_note": "Der Fluss umfasst den ganzen Zeitraum: woher die Einnahmen kamen und wohin sie gingen."
+    },
     "drill": {
       "unsupported": "Diese Transaktionen können hier nicht aufgelistet werden. Öffne die Budget-Seite, um sie zu sehen."
     },

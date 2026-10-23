@@ -252,3 +252,75 @@ export function netWorthInsight(total: string[]): Insight {
   }
 }
 
+
+export const FLOW_HUB = '__income'
+export const FLOW_BALANCE = '__balance'
+export const FLOW_SAVED = '__saved'
+export const FLOW_TO_SAVINGS = '__toSavings'
+export const FLOW_STAYED = '__stayed'
+export const FLOW_OTHER_INCOME = '__otherIncome'
+export const FLOW_OTHER_EXPENSE = '__otherExpense'
+const FLOW_TOP_INCOME = 5
+const FLOW_TOP_EXPENSE = 7
+
+export interface FlowNode {
+  id: string
+  kind: 'income' | 'expense' | 'special'
+  /** the row's own name and kind; special nodes are named by the caller */
+  name: string
+  rowKind: string
+  value: string
+}
+
+export interface FlowGraph {
+  nodes: FlowNode[]
+  links: { source: number; target: number; value: string }[]
+}
+
+const positive = (v: string) => (cmp(v, 0) > 0 ? v : '0')
+
+function flowSide(rows: ReportRowDto[], n: number, kind: FlowNode['kind'], otherId: string): FlowNode[] {
+  const ranked = rows
+    .map((r, i) => ({ r, total: sum(r.amounts), i }))
+    .sort((a, b) => cmp(b.total, a.total) || a.i - b.i)
+  const top = ranked.slice(0, n).filter((x) => cmp(x.total, 0) > 0)
+  // a row netting below zero (refunds over spending) lowers Other rather than
+  // vanishing, so the flow stays as close to the headline as a Sankey allows
+  const rest = positive(sum(ranked.filter((x) => !top.includes(x)).map((x) => x.total)))
+  const nodes: FlowNode[] = top.map((x) => ({ id: x.r.id, kind, name: x.r.name, rowKind: x.r.kind, value: x.total }))
+  if (cmp(rest, 0) > 0) nodes.push({ id: otherId, kind, name: '', rowKind: '', value: rest })
+  return nodes
+}
+
+/**
+ * The Flow view: income rows -> Income -> expense rows and what was left.
+ * In a budget, what was left splits into what moved to savings members
+ * (Plan's Saved, never below zero) and what stayed in everyday accounts.
+ * Whenever the outflows exceed income, "From balance" covers the gap, so
+ * income + from balance = spent + saved holds for every graph.
+ */
+export function flowGraph(report: FlowReportDto, budget: boolean): FlowGraph {
+  const income = flowSide(report.income, FLOW_TOP_INCOME, 'income', FLOW_OTHER_INCOME)
+  const expense = flowSide(report.expense, FLOW_TOP_EXPENSE, 'expense', FLOW_OTHER_EXPENSE)
+  const incomeTotal = sum(income.map((x) => x.value))
+  const spentTotal = sum(expense.map((x) => x.value))
+  const moved = budget ? positive(sum(report.savings.flatMap((r) => r.amounts))) : '0'
+  const left = sub(incomeTotal, add(spentTotal, moved))
+  const special = (id: string, value: string): FlowNode[] => (cmp(value, 0) > 0 ? [{ id, kind: 'special', name: '', rowKind: '', value }] : [])
+  const sources = [...income, ...special(FLOW_BALANCE, positive(sub('0', left)))]
+  const outputs = [
+    ...expense,
+    ...(budget ? [...special(FLOW_TO_SAVINGS, moved), ...special(FLOW_STAYED, positive(left))] : special(FLOW_SAVED, positive(left))),
+  ]
+  if (sources.length === 0 || outputs.length === 0) return { nodes: [], links: [] }
+  const hubValue = sum(sources.map((x) => x.value))
+  const nodes = [...sources, { id: FLOW_HUB, kind: 'special' as const, name: '', rowKind: '', value: hubValue }, ...outputs]
+  const hub = sources.length
+  return {
+    nodes,
+    links: [
+      ...sources.map((x, i) => ({ source: i, target: hub, value: x.value })),
+      ...outputs.map((x, i) => ({ source: hub, target: hub + 1 + i, value: x.value })),
+    ],
+  }
+}

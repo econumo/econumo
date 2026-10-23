@@ -2,6 +2,7 @@ import type { FlowReportDto, NetWorthReportDto, ReportRowDto } from '@/api/dto/r
 import {
   cashFlow,
   cashFlowInsight,
+  flowGraph,
   changeRows,
   compareYears,
   netWorthInsight,
@@ -11,6 +12,7 @@ import {
   bucketChanges,
   topGroups,
 } from './reportMath'
+import { FLOW_BALANCE, FLOW_HUB, FLOW_OTHER_EXPENSE, FLOW_OTHER_INCOME, FLOW_SAVED, FLOW_STAYED, FLOW_TO_SAVINGS } from './reportMath'
 
 const row = (id: string, amounts: string[], over: Partial<ReportRowDto> = {}): ReportRowDto => ({
   id,
@@ -147,6 +149,90 @@ describe('cashFlow', () => {
   })
   it('empty report gives no rows', () => {
     expect(cashFlow({ currencyId: 'c', months: [], expense: [], income: [], transfersIn: [], transfersOut: [], savings: [] })).toEqual([])
+  })
+})
+
+describe('flowGraph', () => {
+  const flow = (over: Partial<FlowReportDto>): FlowReportDto => ({
+    currencyId: 'c', months: ['2026-01-01'], expense: [], income: [], transfersIn: ['0'], transfersOut: ['0'], savings: [], ...over,
+  })
+  const value = (g: ReturnType<typeof flowGraph>, id: string) => g.nodes.find((n) => n.id === id)?.value
+  const balanced = (g: ReturnType<typeof flowGraph>) => {
+    const into = g.links.filter((l) => g.nodes[l.target].id === FLOW_HUB).reduce((a, l) => a + Number(l.value), 0)
+    const out = g.links.filter((l) => g.nodes[l.source].id === FLOW_HUB).reduce((a, l) => a + Number(l.value), 0)
+    return [into, out]
+  }
+
+  it('income rows feed the hub; expense rows and Saved leave it', () => {
+    const g = flowGraph(flow({
+      income: [row('salary', ['1000'], { kind: 'income_category' })],
+      expense: [row('food', ['300']), row('rent', ['500'])],
+    }), false)
+    expect(g.nodes.map((n) => n.id)).toEqual(['salary', FLOW_HUB, 'rent', 'food', FLOW_SAVED])
+    expect(value(g, FLOW_SAVED)).toBe('200')
+    expect(value(g, FLOW_BALANCE)).toBeUndefined()
+    expect(balanced(g)).toEqual([1000, 1000])
+  })
+
+  it('top 5 income and top 7 expense rows, the rest folded into Other', () => {
+    const income = Array.from({ length: 7 }, (_, i) => row(`i${i}`, [String(100 - i)], { kind: 'income_category' }))
+    const expense = Array.from({ length: 9 }, (_, i) => row(`e${i}`, [String(50 - i)]))
+    const g = flowGraph(flow({ income, expense }), false)
+    expect(g.nodes.filter((n) => n.kind === 'income').map((n) => n.id)).toEqual(['i0', 'i1', 'i2', 'i3', 'i4', FLOW_OTHER_INCOME])
+    expect(value(g, FLOW_OTHER_INCOME)).toBe(String(95 + 94))
+    expect(g.nodes.filter((n) => n.kind === 'expense').map((n) => n.id)).toHaveLength(8)
+    expect(value(g, FLOW_OTHER_EXPENSE)).toBe(String(43 + 42))
+    const [into, out] = balanced(g)
+    expect(into).toBe(out)
+  })
+
+  it('spending over income draws the gap from the balance', () => {
+    const g = flowGraph(flow({
+      income: [row('salary', ['1000'], { kind: 'income_category' })],
+      expense: [row('rent', ['1300'])],
+    }), false)
+    expect(value(g, FLOW_BALANCE)).toBe('300')
+    expect(value(g, FLOW_SAVED)).toBeUndefined()
+    // income + from balance = spent + saved
+    expect(balanced(g)).toEqual([1300, 1300])
+  })
+
+  it('budget scope splits Saved into savings accounts and everyday accounts', () => {
+    const g = flowGraph(flow({
+      income: [row('salary', ['1000'], { kind: 'income_category' })],
+      expense: [row('rent', ['600'])],
+      savings: [row('acc-s', ['150'], { kind: 'savings' }), row('acc-t', ['-50'], { kind: 'savings' })],
+    }), true)
+    expect(value(g, FLOW_TO_SAVINGS)).toBe('100')
+    expect(value(g, FLOW_STAYED)).toBe('300')
+    expect(value(g, FLOW_SAVED)).toBeUndefined()
+    expect(balanced(g)).toEqual([1000, 1000])
+  })
+
+  it('budget scope: moving more to savings than was saved comes from the balance', () => {
+    const g = flowGraph(flow({
+      income: [row('salary', ['1000'], { kind: 'income_category' })],
+      expense: [row('rent', ['900'])],
+      savings: [row('acc-s', ['400'], { kind: 'savings' })],
+    }), true)
+    expect(value(g, FLOW_TO_SAVINGS)).toBe('400')
+    expect(value(g, FLOW_STAYED)).toBeUndefined()
+    expect(value(g, FLOW_BALANCE)).toBe('300')
+    expect(balanced(g)).toEqual([1300, 1300])
+  })
+
+  it('savings taken out (negative) count as nothing moved', () => {
+    const g = flowGraph(flow({
+      income: [row('salary', ['1000'], { kind: 'income_category' })],
+      expense: [row('rent', ['600'])],
+      savings: [row('acc-s', ['-200'], { kind: 'savings' })],
+    }), true)
+    expect(value(g, FLOW_TO_SAVINGS)).toBeUndefined()
+    expect(value(g, FLOW_STAYED)).toBe('400')
+  })
+
+  it('an empty window gives no graph', () => {
+    expect(flowGraph(flow({}), false).nodes).toEqual([])
   })
 })
 

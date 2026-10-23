@@ -1651,6 +1651,27 @@
       "hint_select": "Dotknij wiersza lub słupka, aby pokazać tylko ten wiersz.",
       "hint_drill": "Dotknij słupka, aby zobaczyć jego transakcje."
     },
+    "cashflow": {
+      "view": "Widok",
+      "view_bars": "Słupki",
+      "view_flow": "Przepływ",
+      "col_period": "Okres",
+      "income": "Przychody",
+      "spent": "Wydano",
+      "saved": "Zaoszczędzono",
+      "spending": "Wydatki",
+      "net_saved": "Oszczędności netto",
+      "transfers_in": "Przelewy przychodzące",
+      "transfers_out": "Przelewy wychodzące",
+      "chart": "Wykres przepływów pieniężnych",
+      "flow_chart": "Przepływ pieniędzy",
+      "from_balance": "Z salda",
+      "to_savings": "Przeniesione na konta oszczędnościowe",
+      "stayed": "Zostało na kontach codziennych",
+      "other_income": "Inne przychody",
+      "running_note": "* {period} jeszcze trwa: kwoty są dotychczasowe.",
+      "flow_note": "Przepływ obejmuje cały okres: skąd pochodziły przychody i dokąd trafiły."
+    },
     "drill": {
       "unsupported": "Tych transakcji nie można tu wyświetlić. Otwórz stronę Budżetu, aby je zobaczyć."
     },

@@ -8,9 +8,7 @@ import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import { CHART_OTHER, CHART_PALETTE } from '@/components/ui/chartPalette'
 import type { ChartConfig } from '@/components/ui/chart'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useCurrencies } from '@/features/currencies/queries'
 import { abs, add, div, isNegative, isZero, mul, sub } from '@/lib/decimal'
-import { moneyFormat } from '@/lib/money'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { bucketChanges, changeRows, compareYears, rollUp, spendingInsight, topGroups } from './reportMath'
 import type { Bucket, ChangeRow } from './reportMath'
@@ -18,6 +16,9 @@ import { OTHER_ID, seriesColors } from './reportColors'
 import { PILL, ReportFilters, Segmented } from './ReportFilters'
 import { compareYearsOf, flowQueryArgs, lastMonthOf, periodRange, previousRange } from './reportPeriod'
 import { usePeriodLabels } from './usePeriodLabels'
+import { compactNumber, percent, signedMoney, useMoney } from './reportFormat'
+import { TooltipBox } from './ReportTooltip'
+import type { TooltipEntry } from './ReportTooltip'
 import type { MonthRange } from './reportPeriod'
 import { useFlowReport } from './queries'
 import { asRow, findRow, rowDisplayName } from './reportRows'
@@ -32,29 +33,6 @@ const PROJECTION = '__projected'
 const PLANNED = '__planned'
 
 const sum = (xs: string[]) => xs.reduce((acc, x) => add(acc, x), '0')
-
-function useMoney(currencyId: Id | undefined) {
-  const { data: currencies } = useCurrencies()
-  const currency = currencies?.find((c) => c.id === currencyId)
-  return (amount: string) =>
-    moneyFormat(amount, currency ?? { symbol: '', fractionDigits: 2 }, { showCurrency: !!currency })
-}
-
-function compactNumber(lang: string) {
-  const fmt = new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 })
-  return (v: number) => fmt.format(v)
-}
-
-function percent(pct: number | null): string | null {
-  if (pct === null) return null
-  const r = Math.round(pct)
-  return `${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(r)}%`
-}
-
-function signedMoney(diff: string, money: (a: string) => string): string {
-  if (isZero(diff)) return money('0')
-  return `${isNegative(diff) ? '−' : '+'}${money(abs(diff))}`
-}
 
 // more spending reads as worse, more income as better; the sign carries the
 // meaning, the colour only repeats it
@@ -117,42 +95,6 @@ function Legend({ series, colors, selectedId, onSelect }: {
         </li>
       ))}
     </ul>
-  )
-}
-
-interface TooltipEntry {
-  dataKey?: string | number
-  value?: number | string | null
-  payload?: Record<string, unknown>
-}
-
-function TooltipBox({ active, payload, series, money, extra }: {
-  active?: boolean
-  payload?: readonly TooltipEntry[]
-  series: { id: Id; name: string; color: string }[]
-  money: (a: string) => string
-  extra?: (data: Record<string, unknown>) => { label: string; value: string }[]
-}) {
-  if (!active || !payload?.length) return null
-  const data = payload[0].payload ?? {}
-  const shown = series.filter((s) => data[s.id] !== null && data[s.id] !== undefined)
-  return (
-    <div className="grid min-w-36 gap-1 rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-xl">
-      <span>{String(data.title ?? data.label ?? '')}</span>
-      {shown.map((s) => (
-        <span key={s.id} className="flex items-center gap-2">
-          <span className="size-2.5 shrink-0 rounded-sm" style={{ background: s.color }} />
-          <span className="flex-1 text-muted-foreground">{s.name}</span>
-          <span className="tabular-nums">{money(String(data[s.id]))}</span>
-        </span>
-      ))}
-      {(extra?.(data) ?? []).map((e) => (
-        <span key={e.label} className="flex items-center gap-2">
-          <span className="flex-1 text-muted-foreground">{e.label}</span>
-          <span className="tabular-nums">{e.value}</span>
-        </span>
-      ))}
-    </div>
   )
 }
 

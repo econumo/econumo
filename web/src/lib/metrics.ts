@@ -173,6 +173,7 @@ export const METRICS = {
   REPORTS_CHANGE_GROUP_BY: 'appReportsChangeGroupBy',
   REPORTS_SELECT_ROW: 'appReportsSelectRow',
   REPORTS_DRILL_DOWN: 'appReportsDrillDown',
+  REPORTS_CASHFLOW_VIEW: 'appReportsCashflowView',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

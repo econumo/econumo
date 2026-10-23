@@ -1651,6 +1651,27 @@
       "hint_select": "Touchez une ligne ou une barre pour n'afficher que cette ligne.",
       "hint_drill": "Touchez une barre pour voir ses transactions."
     },
+    "cashflow": {
+      "view": "Vue",
+      "view_bars": "Barres",
+      "view_flow": "Flux",
+      "col_period": "Période",
+      "income": "Revenus",
+      "spent": "Dépensé",
+      "saved": "Épargné",
+      "spending": "Dépenses",
+      "net_saved": "Épargne nette",
+      "transfers_in": "Virements entrants",
+      "transfers_out": "Virements sortants",
+      "chart": "Graphique des flux de trésorerie",
+      "flow_chart": "Flux d’argent",
+      "from_balance": "Pris sur le solde",
+      "to_savings": "Versé sur les comptes d’épargne",
+      "stayed": "Resté sur les comptes courants",
+      "other_income": "Autres revenus",
+      "running_note": "* {period} n’est pas encore terminé : les chiffres sont ceux à ce jour.",
+      "flow_note": "Le flux couvre toute la période : d’où venaient les revenus et où ils sont allés."
+    },
     "drill": {
       "unsupported": "Ces transactions ne peuvent pas être listées ici. Ouvrez la page Budget pour les voir."
     },

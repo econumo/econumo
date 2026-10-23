@@ -19,6 +19,7 @@ import { TabBar } from './TabBar'
 import { flowReportQuery } from './queries'
 import { flowQueryArgs } from './reportPeriod'
 import { SpendingReport } from './SpendingReport'
+import { CashFlowReport } from './CashFlowReport'
 import { spendingRowNames } from './reportRows'
 
 function ReportBody({ tab }: { tab: ReportTab }) {
@@ -42,6 +43,14 @@ function ReportBody({ tab }: { tab: ReportTab }) {
       <div className="flex flex-col gap-3">
         <h2 className="text-lg font-normal">{t(REPORT_QUESTION.spending)}</h2>
         <SpendingReport tab={tab} />
+      </div>
+    )
+  }
+  if (tab.kind === 'cashflow') {
+    return (
+      <div className="flex flex-col gap-3">
+        <h2 className="text-lg font-normal">{t(REPORT_QUESTION.cashflow)}</h2>
+        <CashFlowReport tab={tab} />
       </div>
     )
   }

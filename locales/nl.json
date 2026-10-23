@@ -1651,6 +1651,27 @@
       "hint_select": "Tik op een rij of balk om alleen die rij te tonen.",
       "hint_drill": "Tik op een balk om de transacties te zien."
     },
+    "cashflow": {
+      "view": "Weergave",
+      "view_bars": "Staven",
+      "view_flow": "Stroom",
+      "col_period": "Periode",
+      "income": "Inkomsten",
+      "spent": "Uitgegeven",
+      "saved": "Gespaard",
+      "spending": "Uitgaven",
+      "net_saved": "Netto gespaard",
+      "transfers_in": "Inkomende overboekingen",
+      "transfers_out": "Uitgaande overboekingen",
+      "chart": "Kasstroomgrafiek",
+      "flow_chart": "Geldstroom",
+      "from_balance": "Uit het saldo",
+      "to_savings": "Naar spaarrekeningen",
+      "stayed": "Op betaalrekeningen gebleven",
+      "other_income": "Overige inkomsten",
+      "running_note": "* {period} is nog niet voorbij: de cijfers zijn tot nu toe.",
+      "flow_note": "De stroom beslaat de hele periode: waar de inkomsten vandaan kwamen en waar ze heen gingen."
+    },
     "drill": {
       "unsupported": "Deze transacties kunnen hier niet worden getoond. Open de Budget-pagina om ze te zien."
     },

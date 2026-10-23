@@ -1651,6 +1651,27 @@
       "hint_select": "Toca una fila o una barra para ver solo esa fila en el gráfico.",
       "hint_drill": "Toca una barra para ver sus transacciones."
     },
+    "cashflow": {
+      "view": "Vista",
+      "view_bars": "Barras",
+      "view_flow": "Flujo",
+      "col_period": "Periodo",
+      "income": "Ingresos",
+      "spent": "Gastado",
+      "saved": "Ahorrado",
+      "spending": "Gastos",
+      "net_saved": "Ahorro neto",
+      "transfers_in": "Transferido a la entrada",
+      "transfers_out": "Transferido a la salida",
+      "chart": "Gráfico de flujo de caja",
+      "flow_chart": "Flujo de dinero",
+      "from_balance": "Del saldo",
+      "to_savings": "Movido a cuentas de ahorro",
+      "stayed": "Quedó en cuentas diarias",
+      "other_income": "Otros ingresos",
+      "running_note": "* {period} aún no ha terminado: las cifras son hasta ahora.",
+      "flow_note": "El flujo abarca todo el periodo: de dónde vinieron los ingresos y a dónde fueron."
+    },
     "drill": {
       "unsupported": "Estas transacciones no se pueden listar aquí. Abre la página de Presupuesto para verlas."
     },

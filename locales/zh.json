@@ -1651,6 +1651,27 @@
       "hint_select": "点按某一行或柱子，图表只显示该行。",
       "hint_drill": "点按柱子查看相应交易。"
     },
+    "cashflow": {
+      "view": "视图",
+      "view_bars": "柱状",
+      "view_flow": "流向",
+      "col_period": "期间",
+      "income": "收入",
+      "spent": "已支出",
+      "saved": "结余",
+      "spending": "支出",
+      "net_saved": "净结余",
+      "transfers_in": "转入",
+      "transfers_out": "转出",
+      "chart": "现金流图表",
+      "flow_chart": "资金流向",
+      "from_balance": "动用余额",
+      "to_savings": "转入储蓄账户",
+      "stayed": "留在日常账户",
+      "other_income": "其他收入",
+      "running_note": "* {period} 尚未结束：数字为截至目前。",
+      "flow_note": "流向图涵盖整个期间：收入从何而来、去向何处。"
+    },
     "drill": {
       "unsupported": "这些交易无法在此列出。请打开预算页面查看。"
     },
