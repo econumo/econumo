@@ -29,6 +29,25 @@ it('offers the Share-menu instructions on iOS', () => {
   expect(installMode()).toBe('ios')
 })
 
+it.each([
+  ['Firefox for Android', 'Mozilla/5.0 (Android 15; Mobile; rv:140.0) Gecko/140.0 Firefox/140.0', 'android_firefox'],
+  ['Safari 17+ on macOS', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15', 'macos_safari'],
+  ['Safari 16 on macOS (no Add to Dock)', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15', null],
+  ['Chrome on macOS without its prompt yet', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36', null],
+  ['Edge on macOS', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36 Edg/140.0', null],
+  ['Firefox on macOS', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:140.0) Gecko/20100101 Firefox/140.0', null],
+  ['Firefox on Windows', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0', null],
+])('%s', (_, agent, expected) => {
+  ua.mockReturnValue(agent)
+  expect(installMode()).toBe(expected)
+})
+
+it('prefers the browser prompt over the menu steps', () => {
+  ua.mockReturnValue('Mozilla/5.0 (Android 15; Mobile; rv:140.0) Gecko/140.0 Firefox/140.0')
+  firePrompt()
+  expect(installMode()).toBe('prompt')
+})
+
 it('offers nothing once running as an installed app', () => {
   ua.mockReturnValue('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Safari/604.1')
   Object.defineProperty(navigator, 'standalone', { value: true, configurable: true })

@@ -1,15 +1,16 @@
 import { useCallback, useState } from 'react'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { promptInstall, useInstallMode, type InstallMode } from './installPrompt'
+import { promptInstall, useInstallMode, type InstallMode, type InstructionMode } from './installPrompt'
 
 export type InstallSource = 'settings' | 'banner' | 'popup'
 
 // One entry point for every install surface: Chromium gets its own dialog,
-// iOS gets the Share-menu instructions.
+// the menu-only browsers get the steps.
 export function useInstallApp(): {
   mode: InstallMode | null
   start: (source: InstallSource) => void
-  instructionsOpen: boolean
+  // the steps to show, while they are open
+  instructions: InstructionMode | null
   closeInstructions: () => void
 } {
   const mode = useInstallMode()
@@ -19,7 +20,7 @@ export function useInstallApp(): {
       return
     }
     trackEvent(METRICS.INSTALL_APP_OPEN, { source, mode })
-    if (mode === 'ios') {
+    if (mode !== 'prompt') {
       setInstructionsOpen(true)
       return
     }
@@ -30,5 +31,6 @@ export function useInstallApp(): {
     })
   }, [mode])
   const closeInstructions = useCallback(() => setInstructionsOpen(false), [])
-  return { mode, start, instructionsOpen, closeInstructions }
+  const instructions = instructionsOpen && mode && mode !== 'prompt' ? mode : null
+  return { mode, start, instructions, closeInstructions }
 }

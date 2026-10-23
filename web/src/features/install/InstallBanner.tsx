@@ -12,7 +12,7 @@ import { InstallInstructionsDialog } from './InstallInstructionsDialog'
 // the "Install the app" row.
 export function InstallBanner() {
   const { t } = useTranslation()
-  const { mode, start, instructionsOpen, closeInstructions } = useInstallApp()
+  const { mode, start, instructions, closeInstructions } = useInstallApp()
   const [dismissed, setDismissed] = useState(isInstallNoticeDismissed)
   return (
     <>
@@ -37,7 +37,7 @@ export function InstallBanner() {
         </div>
       ) : null}
       {/* mounted on demand: the banner sits on every page, the dialog is rare */}
-      {instructionsOpen ? <InstallInstructionsDialog open onClose={closeInstructions} /> : null}
+      {instructions ? <InstallInstructionsDialog mode={instructions} open onClose={closeInstructions} /> : null}
     </>
   )
 }

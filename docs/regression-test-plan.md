@@ -2109,10 +2109,19 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       signed-in page opens the install steps by itself, once; after "Got it"
       it never opens again on that device (reload, logout and login included),
       and it never opens after the banner was dismissed, in the installed app,
-      or in Chrome/Edge.
+      or in Chrome/Edge (they get the browser's own install dialog instead).
+- [ ] Install banner, Safari 17+ on macOS: the same banner and Settings row;
+      Install opens the Dock steps (File → "Add to Dock" → "Add") ending with
+      "Already added it? Open Econumo from the Dock…"; the one-time popup
+      opens at the first signed-in visit; neither appears in the Dock app.
+      Safari 16 shows neither.
+- [ ] 📱 Install banner, Firefox for Android: the same banner and row; Install
+      opens the Firefox steps (⋮ menu → "Install" → confirm); the one-time
+      popup opens at the first signed-in visit; neither appears once launched
+      from the home-screen icon.
 - [ ] Install banner, Chrome/Edge on desktop or Android (HTTPS or localhost): the banner's Install button and the Settings row
       open the browser's own install dialog; once installed (or opened as the
-      installed app) both disappear. Firefox and desktop Safari show neither.
+      installed app) both disappear. Desktop Firefox shows neither.
 - [ ] 📱 Install as an app: in Chrome DevTools → Application → Manifest the
       manifest shows no errors or warnings, with name and short name "Econumo"
       and both `any` and `maskable` icons (the maskable preview keeps the whole

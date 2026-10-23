@@ -1945,6 +1945,18 @@
       "step_add": "Desplázate y elige «Añadir a pantalla de inicio».",
       "step_confirm": "Toca «Añadir». Econumo aparecerá en tu pantalla de inicio.",
       "installed_hint": "¿Ya lo añadiste? Abre Econumo desde su icono en la pantalla de inicio en lugar del navegador.",
+      "macos": {
+        "intro": "Añade Econumo al Dock para abrirlo en su propia ventana, como cualquier otra app.",
+        "step_file": "En la barra de menús de Safari, abre Archivo (o haz clic en el botón Compartir).",
+        "step_add": "Elige «Añadir al Dock».",
+        "step_confirm": "Haz clic en «Añadir». Econumo aparecerá en el Dock y en el Launchpad.",
+        "installed_hint": "¿Ya lo añadiste? Abre Econumo desde el Dock en lugar de Safari."
+      },
+      "android_firefox": {
+        "step_menu": "Toca el menú ⋮ de Firefox.",
+        "step_install": "Elige «Instalar» (en versiones anteriores, «Añadir a la pantalla de inicio»).",
+        "step_confirm": "Confirma. Econumo aparecerá en tu pantalla de inicio."
+      },
       "close": "Entendido"
     }
   },

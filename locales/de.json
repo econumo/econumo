@@ -1945,6 +1945,18 @@
       "step_add": "Scrolle nach unten und wähle „Zum Home-Bildschirm“.",
       "step_confirm": "Tippe auf „Hinzufügen“. Econumo erscheint auf deinem Home-Bildschirm.",
       "installed_hint": "Schon hinzugefügt? Öffne Econumo über das Symbol auf dem Home-Bildschirm statt im Browser.",
+      "macos": {
+        "intro": "Füge Econumo zum Dock hinzu, um es wie jede andere App in einem eigenen Fenster zu öffnen.",
+        "step_file": "Öffne in der Menüleiste von Safari „Ablage“ (oder klicke auf „Teilen“).",
+        "step_add": "Wähle „Zum Dock hinzufügen“.",
+        "step_confirm": "Klicke auf „Hinzufügen“. Econumo erscheint im Dock und im Launchpad.",
+        "installed_hint": "Schon hinzugefügt? Öffne Econumo über das Dock statt in Safari."
+      },
+      "android_firefox": {
+        "step_menu": "Tippe in Firefox auf das Menü ⋮.",
+        "step_install": "Wähle „Installieren“ (in älteren Versionen „Zum Startbildschirm hinzufügen“).",
+        "step_confirm": "Bestätige. Econumo erscheint auf deinem Startbildschirm."
+      },
       "close": "Verstanden"
     }
   },

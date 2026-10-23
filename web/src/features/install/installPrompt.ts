@@ -7,9 +7,12 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
-// 'prompt': the browser can install on request (Chromium). 'ios': iOS has no
-// install API, so the user is shown how to add the app from the Share menu.
-export type InstallMode = 'prompt' | 'ios'
+// 'prompt': the browser can install on request (Chromium). The others can
+// install only from a browser menu and have no install API, so the user is
+// shown the steps: iOS from the Share menu, macOS Safari 17+ with File → Add
+// to Dock, Firefox for Android from its ⋮ menu.
+export type InstallMode = 'prompt' | InstructionMode
+export type InstructionMode = 'ios' | 'macos_safari' | 'android_firefox'
 
 const DISMISSED_KEY = 'econumo.install-notice-dismissed'
 const POPUP_SHOWN_KEY = 'econumo.install-popup-shown'
@@ -56,7 +59,20 @@ export function installMode(): InstallMode | null {
   if (deferredPrompt) {
     return 'prompt'
   }
-  return isIOS() ? 'ios' : null
+  if (isIOS()) {
+    return 'ios'
+  }
+  const ua = navigator.userAgent
+  if (/Android/.test(ua) && /Firefox\//.test(ua)) {
+    return 'android_firefox'
+  }
+  // Add to Dock arrived in Safari 17; every other macOS browser names itself
+  // in the user agent next to "Safari"
+  const safari = /Macintosh/.test(ua) && /Version\/(\d+)[.\d]* Safari\//.exec(ua)
+  if (safari && !/Chrome|Chromium|Edg|OPR|Firefox/.test(ua) && Number(safari[1]) >= 17) {
+    return 'macos_safari'
+  }
+  return null
 }
 
 export function useInstallMode(): InstallMode | null {

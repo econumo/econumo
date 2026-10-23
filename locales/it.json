@@ -1945,6 +1945,18 @@
       "step_add": "Scorri e scegli «Aggiungi alla schermata Home».",
       "step_confirm": "Tocca «Aggiungi». Econumo comparirà nella schermata Home.",
       "installed_hint": "Già aggiunto? Apri Econumo dalla sua icona nella schermata Home invece che dal browser.",
+      "macos": {
+        "intro": "Aggiungi Econumo al Dock per aprirlo in una finestra tutta sua, come qualsiasi altra app.",
+        "step_file": "Nella barra dei menu di Safari, apri File (o fai clic sul pulsante Condividi).",
+        "step_add": "Scegli «Aggiungi al Dock».",
+        "step_confirm": "Fai clic su «Aggiungi». Econumo comparirà nel Dock e nel Launchpad.",
+        "installed_hint": "Già aggiunto? Apri Econumo dal Dock invece che da Safari."
+      },
+      "android_firefox": {
+        "step_menu": "Tocca il menu ⋮ di Firefox.",
+        "step_install": "Scegli «Installa» (nelle versioni precedenti, «Aggiungi a schermata Home»).",
+        "step_confirm": "Conferma. Econumo comparirà nella schermata Home."
+      },
       "close": "Ho capito"
     }
   },

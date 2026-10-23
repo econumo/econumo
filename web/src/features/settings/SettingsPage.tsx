@@ -210,7 +210,7 @@ export function SettingsPage() {
         </a>
       </footer>
 
-      <InstallInstructionsDialog open={install.instructionsOpen} onClose={install.closeInstructions} />
+      {install.instructions ? <InstallInstructionsDialog mode={install.instructions} open onClose={install.closeInstructions} /> : null}
 
       <ConfirmDialog
         open={logoutOpen}
