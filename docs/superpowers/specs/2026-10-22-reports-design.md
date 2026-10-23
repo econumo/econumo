@@ -146,6 +146,14 @@ report totals == Plan actuals for the same window.
 "My accounts" scope uses the same rules applied to the user's own accounts and
 categories.
 
+**Decided (owner, 2026-10-22): new server read API for both scopes; the browser only
+draws.** Report data comes from new `GET` endpoints (one per report) that aggregate by
+month in SQL and reuse the budget feature's monthly queries and the currency conversion.
+No report aggregation in the browser, and no split where one scope is computed
+client-side. Responses go into the persisted query cache so a previously opened report
+still renders offline (with its "as of" time). Transaction drill-down uses the existing
+locally stored transaction list.
+
 ### Scope rules (designer's calls — check these)
 
 - **Group by in budget scope:** the switch offers only the budget's own rows (tags and
@@ -161,8 +169,11 @@ categories.
   minus its expense rows for the same months. In budget scope the Sankey splits "saved"
   into "moved to savings accounts" (Plan's Saved for savings members) and "stayed in
   everyday accounts"; transfers in/out of the budget's member set are a separate node.
-- **Net worth balances** are converted at the month-end rate (not the month-average used
-  for flows); net worth is its own figure and not part of the Plan parity tests. In budget
+- **Net worth balances** are converted at the same month-average rates the Plan uses for
+  savings closing balances (revised during planning: no month-end rate exists in the
+  rate store, and this keeps net worth consistent with Plan's savings figures); net worth
+  is not part of the Plan parity tests. The server returns per-account monthly balances
+  already converted; grouping by folder/owner is a client-side sum. In budget
   scope the grouping is by owner first: my accounts grouped by my folders, each partner's
   accounts listed under the partner's name, without exposing their folder names.
 
