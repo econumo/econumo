@@ -18,6 +18,7 @@ import { compactNumber, signedMoney, useMoney } from './reportFormat'
 import { TooltipBox } from './ReportTooltip'
 import type { TooltipEntry } from './ReportTooltip'
 import { SankeyFlow } from './SankeyFlow'
+import { ReportUpdatedAt } from './ReportUpdatedAt'
 import { useReportTabs } from './reportTabs'
 import type { ReportParams, ReportTab } from './reportTabs'
 
@@ -72,6 +73,7 @@ export function CashFlowReport({ tab }: { tab: ReportTab }) {
         </div>
       )}
       <ReportFilters tab={tab} showStep={!flowView} showGroupBy={flowView} />
+      <ReportUpdatedAt query={report} />
     </div>
   )
 

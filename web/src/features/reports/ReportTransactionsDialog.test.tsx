@@ -24,11 +24,11 @@ const transactions = [
   tx('t-partner', { description: 'partner groceries', accountId: 'a-shared', author: partner, date: '2026-07-06 10:00:00' }),
 ]
 
-function renderDialog(props: { budgetId: string | null; row: DrillRow; from: string; to: string }) {
+function renderDialog(props: { budgetId: string | null; row: DrillRow; from: string; to: string; expected?: { amount: string; currencyId: string } }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <ReportTransactionsDialog scope={{ budgetId: props.budgetId }} row={props.row} from={props.from} to={props.to} onClose={() => {}} />
+      <ReportTransactionsDialog scope={{ budgetId: props.budgetId }} row={props.row} from={props.from} to={props.to} expected={props.expected} onClose={() => {}} />
     </QueryClientProvider>,
   )
 }
@@ -44,6 +44,29 @@ it('my accounts: lists my own matching transactions in the range', async () => {
   expect(screen.queryByText('not food')).toBeNull()
   expect(screen.queryByText('partner groceries')).toBeNull()
   expect(screen.getByRole('dialog', { name: /^Food · Jul\s–\sAug 2026$/ })).toBeInTheDocument()
+})
+
+const deletedNote = /deleted accounts are counted in the report/
+
+it('my accounts: no note while the listed transactions add up to the report figure', async () => {
+  server.use(...coreHandlers({ accounts, transactions }))
+  renderDialog({ budgetId: null, row: food, from: '2026-07-01', to: '2026-08-01', expected: { amount: '19.98', currencyId: 'cur-usd' } })
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  expect(screen.queryByText(deletedNote)).toBeNull()
+})
+
+it('my accounts: a note when the report counts more than is listed (deleted accounts)', async () => {
+  server.use(...coreHandlers({ accounts, transactions }))
+  renderDialog({ budgetId: null, row: food, from: '2026-07-01', to: '2026-08-01', expected: { amount: '50', currencyId: 'cur-usd' } })
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  expect(screen.getByText(deletedNote)).toBeInTheDocument()
+})
+
+it('my accounts: no note when listed rows are in another currency than the report', async () => {
+  server.use(...coreHandlers({ accounts, transactions }))
+  renderDialog({ budgetId: null, row: food, from: '2026-07-01', to: '2026-08-01', expected: { amount: '50', currencyId: 'cur-eur' } })
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  expect(screen.queryByText(deletedNote)).toBeNull()
 })
 
 it('my accounts: a payee row matches by payee and side', async () => {

@@ -1,4 +1,5 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import { onlineManager } from '@tanstack/react-query'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import type { NetWorthAccountDto, NetWorthReportDto } from '@/api/dto/report'
@@ -146,4 +147,32 @@ it('empty state when no account holds a balance', async () => {
   openNetWorth({}, report([acc('zero', 'Empty wallet', ['0', '0', '0'])]))
   expect(await screen.findByText('No account balances yet')).toBeInTheDocument()
   expect(screen.queryByRole('table')).not.toBeInTheDocument()
+})
+
+it('a single-month report shows the balance without a change line', async () => {
+  openNetWorth({}, { currencyId: 'cur-usd', months: ['2026-10-01'], accounts: [acc('a1', 'Cash', ['2000'])] })
+  await screen.findByRole('table')
+  expect(plain(headline().textContent)).toContain('2,000.00 $')
+  expect(plain(headline().textContent)).not.toContain('No transactions yet')
+  expect(plain(headline().textContent)).not.toContain('Oct 2026')
+})
+
+it('offline: cached figures say when they were fetched', async () => {
+  openNetWorth()
+  await screen.findByRole('table')
+  expect(screen.queryByText(/^Updated /)).not.toBeInTheDocument()
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => onlineManager.setOnline(true))
+  expect(screen.getByText(/^Updated .*2026/)).toBeInTheDocument()
+  act(() => onlineManager.setOnline(true))
+  expect(screen.queryByText(/^Updated /)).not.toBeInTheDocument()
+})
+
+it('a failed refresh keeps the figures and says when they were fetched', async () => {
+  const { queryClient } = openNetWorth()
+  await screen.findByRole('table')
+  server.use(http.get('*/api/v1/report/get-net-worth-report', () => HttpResponse.json({ success: false, message: 'boom', code: 0 }, { status: 500 })))
+  await act(() => queryClient.refetchQueries({ queryKey: ['reportNetWorth'] }))
+  expect(await screen.findByText(/^Updated /)).toBeInTheDocument()
+  expect(screen.getByRole('table')).toBeInTheDocument()
 })

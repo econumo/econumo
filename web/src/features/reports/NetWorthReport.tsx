@@ -19,6 +19,7 @@ import { compactNumber, signedMoney, useMoney } from './reportFormat'
 import { seriesColors } from './reportColors'
 import { TooltipBox } from './ReportTooltip'
 import type { TooltipEntry } from './ReportTooltip'
+import { ReportUpdatedAt } from './ReportUpdatedAt'
 import { useReportTabs } from './reportTabs'
 import type { ReportParams, ReportTab } from './reportTabs'
 
@@ -64,17 +65,20 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const scope = p.budgetId ? 'budget' : 'mine'
 
   const header = (
-    <div className="flex flex-wrap items-start gap-2">
-      <ReportFilters tab={tab} showStep={false} showPeriod={false} />
-      <Segmented
-        label={t('reports.filters.period')}
-        value={p.period}
-        options={PRESETS.map((o) => ({ value: o.value, label: t(o.key) }))}
-        onChange={(period) => {
-          setParams({ period })
-          trackEvent(METRICS.REPORTS_CHANGE_PERIOD, { period })
-        }}
-      />
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-start gap-2">
+        <ReportFilters tab={tab} showStep={false} showPeriod={false} />
+        <Segmented
+          label={t('reports.filters.period')}
+          value={p.period}
+          options={PRESETS.map((o) => ({ value: o.value, label: t(o.key) }))}
+          onChange={(period) => {
+            setParams({ period })
+            trackEvent(METRICS.REPORTS_CHANGE_PERIOD, { period })
+          }}
+        />
+      </div>
+      <ReportUpdatedAt query={report} />
     </div>
   )
 
@@ -166,10 +170,12 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       <section aria-label={t('reports.spending.headline')} className={`flex flex-col gap-1 ${dim}`}>
         <span className="text-sm text-muted-foreground">{t('reports.networth.today')}</span>
         <span className="text-xl tabular-nums sm:text-2xl">{money(totalLine.now)}</span>
-        <span className="flex flex-wrap gap-x-1.5 text-sm">
-          <span className={changeClass(totalLine.change)}>{t(insight.key, { amount: money(insight.params.amount ?? '0') })}</span>
-          <span className="text-muted-foreground">{t('reports.networth.since', { month: labels.month(data.months[0]) })}</span>
-        </span>
+        {insight.key !== 'reports.insight.empty' && (
+          <span className="flex flex-wrap gap-x-1.5 text-sm">
+            <span className={changeClass(totalLine.change)}>{t(insight.key, { amount: money(insight.params.amount ?? '0') })}</span>
+            <span className="text-muted-foreground">{t('reports.networth.since', { month: labels.month(data.months[0]) })}</span>
+          </span>
+        )}
       </section>
       <figure aria-label={t('reports.networth.chart')} className={`flex flex-col gap-2 ${dim}`}>
         <ChartContainer config={config} className="aspect-auto h-60 w-full sm:h-72">

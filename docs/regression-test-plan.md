@@ -1863,7 +1863,10 @@ tag, and a budget with a planned limit on one category.
       and its change against the equal-length period just before it ("vs
       Mar – Dec 2025"); no change is shown when nothing precedes the period
       or for All time. Change shows money and %, more spending in orange,
-      less in green (reversed for Income).
+      less in green (reversed for Income). In a budget that ended mid-period
+      (e.g. This year, budget ended in March) the headline covers the months
+      the report shows ("Spent in Q1 2026") and compares them with the
+      equal-length period before them ("vs Q4 2025").
 - [ ] Table: the last bucket against the one before it, headed with the
       bucket names ("2025", "2026*"); a running quarter or year shows its
       actual so far and is compared through its projection. In Month step
@@ -1901,7 +1904,10 @@ tag, and a budget with a planned limit on one category.
       the bar's months, newest first, grouped by day. Budget scope lists
       what the Budget page lists for the row (a partner's transactions
       included, read-only); My accounts lists my own accounts' matching
-      transactions only. A transaction opens its preview; edit and delete
+      transactions only. When a deleted account of mine has transactions in
+      the bar, the listed amounts add up to less than the bar and a muted
+      note says that transactions of deleted accounts are counted in the
+      report but not listed. A transaction opens its preview; edit and delete
       work from there, and the report figures refresh after the write.
 - [ ] Light and dark theme: bars, outline, planned line, change colours and
       table stay readable. 📱 At 390px the controls wrap, the chart fits
@@ -1943,7 +1949,13 @@ tag, and a budget with a planned limit on one category.
       All (no step); the headline shows "Today", the latest total, and
       "Up / Down {amount} over the period since the end of {month}", where
       the month is the one before the period (1y on Oct 23: Oct 2025).
-      Amounts show cents.
+      All starts at the end of the month before the first transaction, so
+      its change equals the latest total. Amounts show cents.
+- [ ] Net worth "Today" counts transactions through the end of today in
+      the device's timezone: a transaction dated later this month is left
+      out of the current month until its day comes (earlier months are
+      unchanged). A report of a single month shows its total without a
+      change line.
 - [ ] Net worth in My accounts: groups are my account folders, plus "No
       folder" and "Deleted accounts" when such accounts carry a balance;
       accounts that are zero in every month are not listed. The table
@@ -1955,6 +1967,14 @@ tag, and a budget with a planned limit on one category.
       partner's name (never their folder names); the column reads Group.
       With "This year" figures on the report list's card, the card's total
       equals the report's latest total.
+- [ ] Offline (or after a failed refresh) a report shown from the cache
+      carries a muted "Updated {date and time}" line under its filters; it
+      goes away after the next successful load. Reports longer than 36
+      months (e.g. All time over several years) are not kept for an offline
+      start, shorter ones are.
+- [ ] All time over more than 20 years of history shows the last 240
+      months instead of an error; a Custom range longer than 240 months is
+      refused.
 - [ ] 📱 At 390px the Net worth controls fit on one or two lines, the chart
       fits the width and the table shows the group, Now and Change; light and
       dark theme keep the areas, the Total line and the change colours

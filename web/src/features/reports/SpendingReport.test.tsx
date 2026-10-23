@@ -45,13 +45,17 @@ const report = (over: Partial<FlowReportDto> = {}): FlowReportDto => ({
 })
 
 let lastQuery: URLSearchParams | null = null
+let prevQuery: URLSearchParams | null = null
 let flowRequests = 0
 // the headline's previous-period request is the one carrying `to`
 function flowHandler(data: FlowReportDto = report(), previous: FlowReportDto = report({ expense: [] })) {
   return http.get('*/api/v1/report/get-flow-report', ({ request }) => {
     const q = new URL(request.url).searchParams
     flowRequests++
-    if (q.has('to')) return HttpResponse.json({ success: true, message: '', data: { item: previous } })
+    if (q.has('to')) {
+      prevQuery = q
+      return HttpResponse.json({ success: true, message: '', data: { item: previous } })
+    }
     lastQuery = q
     return HttpResponse.json({ success: true, message: '', data: { item: data } })
   })
@@ -79,6 +83,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date(2026, 9, 15, 12))
   localStorage.clear()
   lastQuery = null
+  prevQuery = null
   flowRequests = 0
   vi.mocked(trackEvent).mockClear()
   setViewport(false)
@@ -279,5 +284,32 @@ it('headline omits the change when the selected row is missing from the previous
   await screen.findByRole('list', { name: 'Legend' })
   await waitFor(() => expect(flowRequests).toBeGreaterThanOrEqual(2))
   expect(within(headline()).getByText('100.00 $')).toBeInTheDocument()
+  expect(plain(headline().textContent)).not.toContain('vs')
+})
+
+it('an ended budget: the headline compares the window the server returned', async () => {
+  // this year is asked for, but the budget ended in March: Jan-Mar 2026 vs Oct-Dec 2025
+  const three = (v: string) => [v, v, v]
+  const cur = report({ months: months.slice(12, 15), expense: [row('cat-food', 'Groceries', three('200'))] })
+  const previous = report({ months: months.slice(9, 12), expense: [row('cat-food', 'Groceries', three('100'))] })
+  openSpending({ period: 'thisYear', budgetId: 'b1' }, cur, previous)
+  await screen.findByRole('list', { name: 'Legend' })
+  await waitFor(() => expect(within(headline()).getByText(/\+300\.00 \$ · \+100%/)).toBeInTheDocument())
+  expect(prevQuery?.get('from')).toBe('2025-10-01')
+  expect(prevQuery?.get('to')).toBe('2025-12-01')
+  expect(plain(headline().textContent)).toContain('Spent in Q1 2026')
+  expect(plain(headline().textContent)).toContain('vs Q4 2025')
+})
+
+it('headline omits the change when the previous window came back different', async () => {
+  const three = (v: string) => [v, v, v]
+  const cur = report({ months: months.slice(12, 15), expense: [row('cat-food', 'Groceries', three('200'))] })
+  // the server cut the previous window short: not a like-for-like comparison
+  const previous = report({ months: months.slice(11, 12), expense: [row('cat-food', 'Groceries', ['100'])] })
+  openSpending({ period: 'thisYear', budgetId: 'b1' }, cur, previous)
+  await screen.findByRole('list', { name: 'Legend' })
+  await waitFor(() => expect(prevQuery).not.toBeNull())
+  await waitFor(() => expect(flowRequests).toBeGreaterThanOrEqual(2))
+  expect(within(headline()).getByText('600.00 $')).toBeInTheDocument()
   expect(plain(headline().textContent)).not.toContain('vs')
 })

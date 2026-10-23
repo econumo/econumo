@@ -1060,8 +1060,12 @@ In the distroless image these run via the binary directly, e.g.
   `BuildBudgetPlan`, so its figures equal `get-budget-plan`'s for the same rows and months (a
   parity test enforces it) and show months before the budget start but none past an ended
   budget's end month; the my-accounts scope reads `FlowByMonth`. Net worth is the opening
-  balance plus `AccountsNetByMonth`, converted at each month's average rate. A window is at most
-  240 months (longer: 400 on `to`, `common.invalid_choice`).
+  balance plus `AccountsNetByMonth`, converted at each month's average rate; the current month
+  stops at the end of the caller's today (as the account balance does), and an all-time window
+  opens one month before the first transaction (a zero balance). A window is at most 240
+  months: an explicit longer one is a 400 on `to` (`common.invalid_choice`), a defaulted
+  (all-time) one is clamped to the last 240. The SPA persists a report response only up to 36
+  months (`web/src/lib/queryPersist.ts`).
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,

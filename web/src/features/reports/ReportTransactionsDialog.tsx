@@ -23,6 +23,7 @@ import type { ViewTransaction } from '@/features/transactions/useAccountTransact
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { useUserData } from '@/features/user/queries'
 import { dayKey } from '@/lib/datetime'
+import { add, cmp } from '@/lib/decimal'
 import { usePeriodLabels } from './usePeriodLabels'
 import { budgetSelector, matches } from './reportRows'
 import type { DrillRow } from './reportRows'
@@ -89,11 +90,27 @@ function useMyRows(enabled: boolean, row: DrillRow, from: string, to: string) {
   return { supported: true, isLoading: enabled && isLoading, rows }
 }
 
-export function ReportTransactionsDialog({ scope, row, from, to, onClose }: {
+// My-accounts rows come from the local transaction list, which holds no
+// deleted account, while the report still counts them. The two only compare
+// when every listed row is in the report's currency.
+function missesDeleted(rows: { view: ViewTransaction }[], expected: Expected | undefined): boolean {
+  if (!expected) return false
+  if (rows.some((r) => r.view.account?.currency.id !== expected.currencyId)) return false
+  return cmp(rows.reduce((acc, r) => add(acc, r.view.amount), '0'), expected.amount) !== 0
+}
+
+export interface Expected {
+  /** the report's figure for the row over the range */
+  amount: string
+  currencyId: Id
+}
+
+export function ReportTransactionsDialog({ scope, row, from, to, expected, onClose }: {
   scope: ReportScope
   row: DrillRow
   from: string
   to: string
+  expected?: Expected
   onClose: () => void
 }) {
   const { t, i18n } = useTranslation()
@@ -116,6 +133,7 @@ export function ReportTransactionsDialog({ scope, row, from, to, onClose }: {
   const entries = groupByDay(rows.map((r) => ({ tx: r.view, groupDay: dayKey(r.view.date) })))
   const canChange = (tx: ViewTransaction) => canTouchTransaction(tx, !!tx.account && canWriteToAccount(tx.account, user?.id))
   const title = `${row.name} · ${labels.range([from, to])}`
+  const deletedNote = !scope.budgetId && !isLoading && missesDeleted(rows, expected)
 
   return (
     <>
@@ -148,6 +166,7 @@ export function ReportTransactionsDialog({ scope, row, from, to, onClose }: {
             )}
           </div>
         )}
+        {deletedNote ? <p className="pt-2 text-xs text-muted-foreground">{t('reports.drill.deleted_accounts')}</p> : null}
       </ResponsiveDialog>
 
       {preview ? (

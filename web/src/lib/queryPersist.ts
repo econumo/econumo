@@ -160,6 +160,18 @@ function withTransactionRestore(inner: Persister, maxAge: number, buster: string
   }
 }
 
+// A report spans up to 240 months; anything past three years is fetched again
+// rather than kept in the localStorage snapshot, which has a few MB to share.
+const PERSISTED_REPORT_MONTHS = 36
+
+function isLongReport(key: readonly unknown[], data: unknown): boolean {
+  if (key[0] !== queryKeys.reportFlow[0] && key[0] !== queryKeys.reportNetWorth[0]) {
+    return false
+  }
+  const months = (data as { months?: unknown } | undefined)?.months
+  return !Array.isArray(months) || months.length > PERSISTED_REPORT_MONTHS
+}
+
 // throttleTime: tests pass 0 — the persister's 1 s default equals waitFor's
 // default timeout, so asserting on the written snapshot would race it.
 export function createPersistOptions({ throttleTime = 1000 }: { throttleTime?: number } = {}) {
@@ -177,8 +189,11 @@ export function createPersistOptions({ throttleTime = 1000 }: { throttleTime?: n
     dehydrateOptions: {
       // an authorization request carries single-use OAuth state and is only
       // meaningful for the page that asked; transactions are kept in IndexedDB
-      shouldDehydrateQuery: (query: { queryKey: readonly unknown[]; state: { status: string } }) =>
-        query.queryKey[0] !== 'authserver' && query.queryKey[0] !== queryKeys.transactions[0] && query.state.status === 'success',
+      shouldDehydrateQuery: (query: { queryKey: readonly unknown[]; state: { status: string; data?: unknown } }) =>
+        query.queryKey[0] !== 'authserver' &&
+        query.queryKey[0] !== queryKeys.transactions[0] &&
+        query.state.status === 'success' &&
+        !isLongReport(query.queryKey, query.state.data),
     },
   }
 }

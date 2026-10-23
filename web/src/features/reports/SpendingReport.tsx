@@ -24,6 +24,8 @@ import { useFlowReport } from './queries'
 import { asRow, findRow, rowDisplayName } from './reportRows'
 import { ReportTransactionsDialog } from './ReportTransactionsDialog'
 import type { DrillRow } from './reportRows'
+import type { Expected } from './ReportTransactionsDialog'
+import { ReportUpdatedAt } from './ReportUpdatedAt'
 import { useReportTabs } from './reportTabs'
 import type { ReportParams, ReportTab } from './reportTabs'
 
@@ -202,6 +204,7 @@ interface Drill {
   row: DrillRow
   from: string
   to: string
+  expected?: Expected
 }
 
 function changeOf(later: string, earlier: string): { diff: string; pct: number | null } {
@@ -217,15 +220,19 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
   const today = new Date()
   const args = flowQueryArgs(p, today)
   const report = useFlowReport(args)
-  // the headline's "vs" figure: the equal-length period before the selected one
-  const selectedRange = p.mode === 'overTime' ? periodRange(p, today) : null
-  const prevRange = selectedRange ? previousRange(selectedRange) : null
+  const responseMonths = report.data?.months
+  const months = useMemo(() => responseMonths ?? [], [responseMonths])
+  // the headline's "vs" figure: the equal-length period before the window the
+  // server returned, which an ended budget can cut short of the selected one
+  const prevRange: MonthRange | null =
+    p.mode === 'overTime' && periodRange(p, today) !== null && months.length > 0 && !report.isPlaceholderData
+      ? previousRange([months[0], months[months.length - 1]])
+      : null
   const prevReport = useFlowReport({ ...args, from: prevRange?.[0], to: prevRange?.[1], enabled: prevRange !== null })
   const money = useMoney(report.data?.currencyId)
   const compact = useMemo(() => compactNumber(i18n.language), [i18n.language])
   const [drill, setDrill] = useState<Drill | null>(null)
 
-  const months = report.data?.months ?? []
   const rows = useMemo(() => report.data?.[p.side] ?? [], [report.data, p.side])
   const found = findRow(rows, p.selectedId)
   const selected = found?.row ?? null
@@ -249,27 +256,46 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
       },
       from,
       to,
+      expected: report.data
+        ? { amount: sum(found.row.amounts.filter((_, i) => months[i] >= from && months[i] <= to)), currencyId: report.data.currencyId }
+        : undefined,
     })
     trackEvent(METRICS.REPORTS_DRILL_DOWN, { scope: p.budgetId ? 'budget' : 'mine', mode: p.mode })
   }
 
-  const top = topGroups(rows, TOP)
-  const totalAmounts = months.map((_, i) => sum(rows.map((r) => r.amounts[i] ?? '0')))
-  const series: Series[] = selected
-    ? [{ id: selected.id, name: rowName(selected), amounts: selected.amounts }]
-    : [
-        ...top.ids.map((id) => {
-          const r = rows.find((x) => x.id === id)!
-          return { id, name: rowName(r), amounts: r.amounts }
-        }),
-        ...(top.otherIds.length > 0
-          ? [{
-              id: OTHER_ID,
-              name: t('reports.spending.other'),
-              amounts: months.map((_, i) => sum(rows.filter((r) => top.otherIds.includes(r.id)).map((r) => r.amounts[i] ?? '0'))),
-            }]
-          : []),
-      ]
+  const top = useMemo(() => topGroups(rows, TOP), [rows])
+  const totalAmounts = useMemo(() => months.map((_, i) => sum(rows.map((r) => r.amounts[i] ?? '0'))), [months, rows])
+  const otherAmounts = useMemo(() => {
+    if (top.otherIds.length === 0) return null
+    const ids = new Set(top.otherIds)
+    const others = rows.filter((r) => ids.has(r.id))
+    return months.map((_, i) => sum(others.map((r) => r.amounts[i] ?? '0')))
+  }, [months, rows, top])
+  const series: Series[] = useMemo(
+    () =>
+      selected
+        ? [{ id: selected.id, name: rowDisplayName(selected, t), amounts: selected.amounts }]
+        : [
+            ...top.ids.map((id) => {
+              const r = rows.find((x) => x.id === id)!
+              return { id, name: rowDisplayName(r, t), amounts: r.amounts }
+            }),
+            ...(otherAmounts ? [{ id: OTHER_ID, name: t('reports.spending.other'), amounts: otherAmounts }] : []),
+          ],
+    [selected, top, rows, otherAmounts, t],
+  )
+  // the bucket roll-ups walk every row and month; they read today's date only,
+  // so a new day is the one time-based reason to recompute
+  const day = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+  const overTime = useMemo(() => {
+    if (p.mode !== 'overTime') return null
+    const now = new Date(day)
+    return {
+      totalBuckets: rollUp(months, totalAmounts, p.step, now),
+      seriesBuckets: series.map((s) => rollUp(months, s.amounts, p.step, now)),
+      table: bucketChanges(rows, months, p.step, now),
+    }
+  }, [p.mode, p.step, months, totalAmounts, series, rows, day])
   // colours are resolved over the top set even when one row is shown, so a
   // row keeps the colour it had in the stacked chart
   const colors = seriesColors(selected && !top.ids.includes(selected.id) ? [selected.id] : [...top.ids, OTHER_ID])
@@ -304,6 +330,7 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
         />
       </div>
       <ReportFilters tab={tab} showGroupBy showStep={p.mode === 'overTime'} showPeriod={p.mode === 'overTime'} />
+      <ReportUpdatedAt query={report} />
     </div>
   )
 
@@ -474,9 +501,7 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
     )
   }
 
-  const bucketsBy = (amounts: string[]) => rollUp(months, amounts, p.step, today)
-  const totalBuckets = bucketsBy(totalAmounts)
-  const seriesBuckets = series.map((s) => bucketsBy(s.amounts))
+  const { totalBuckets, seriesBuckets, table } = overTime!
   const chartBuckets: Bucket[] = selected ? seriesBuckets[0] : totalBuckets
   const projected = chartBuckets.find((b) => b.projected !== b.total) ?? null
   const showPlanned = p.budgetId !== null && selected !== null && p.step === 'month' && found?.parent === null && selected.planned.length === months.length
@@ -501,7 +526,10 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
   // headline: the whole selected period against the equal-length period before it
   const windowRange: MonthRange = [months[0], months[months.length - 1]]
   const headlineTotal = sum(selected ? selected.amounts : totalAmounts)
-  const prevRows = prevReport.data && !prevReport.isPlaceholderData ? prevReport.data[p.side] : null
+  // a previous window the server cut or moved is no like-for-like comparison
+  const prevMonths = prevReport.data?.months ?? []
+  const prevMatches = prevRange !== null && prevMonths[0] === prevRange[0] && prevMonths[prevMonths.length - 1] === prevRange[1]
+  const prevRows = prevReport.data && !prevReport.isPlaceholderData && prevMatches ? prevReport.data[p.side] : null
   // a selected row (a child included) missing from the previous period counts as no data there
   const prevAmounts = prevRows ? (selected ? findRow(prevRows, selected.id)?.row.amounts : prevRows.flatMap((r) => r.amounts)) : undefined
   const prevTotal = prevAmounts && prevAmounts.some((a) => !isZero(a)) ? sum(prevAmounts) : null
@@ -513,7 +541,6 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
 
   // table: the last bucket against the one before it
   const tableOf = (list: ReportRowDto[]) => bucketChanges(list, months, p.step, today)
-  const table = tableOf(rows)
 
   const onSegment = (id: Id) => (_: unknown, index: number) => {
     const bucket = chartBuckets[index]
