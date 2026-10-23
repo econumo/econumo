@@ -367,7 +367,8 @@ build arg of the same name sets it per image build, default `dev`) — that one
 IS a real version, used by the mobile app where no server config is present.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
-**Reports page** (`/reports`, `web/src/features/reports`): Spending, Cash flow (Sankey on
+**Reports page** (`/reports`, `web/src/features/reports`; only while `ECONUMO_REPORTS` is on — the
+served `REPORTS` key hides the route and nav links otherwise): Spending, Cash flow (Sankey on
 desktop) and Net worth tabs over the report routes above. The tab list is stored per user on
 the device only (localStorage `econumo.reportTabs`) and Reports always opens on the FIRST tab.
 Every report query key is invalidated after any successful mutation
@@ -759,6 +760,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
+- `ECONUMO_REPORTS` — the Reports page (strict boolean, default `false`; malformed fails at boot).
+  Off: `server.BuildAPI` does not mount `/api/v1/report/*` (404) and the served `REPORTS` key
+  hides the route and both nav links. The apiparity harness turns it on.
 - `ECONUMO_IMPORT_APPLE_WALLET` / `ECONUMO_IMPORT_SIMPLEFIN` — the two transaction-import
   providers (strict booleans, Apple Wallet defaults `true`, SimpleFIN `false`;
   malformed fails at boot). A provider that is
@@ -852,8 +856,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET` and
-  `IMPORT_SIMPLEFIN` are always present (server truth). `MCP_URL` is the MCP OAuth resource
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET`,
+  `IMPORT_SIMPLEFIN` and `REPORTS` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
   instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom
@@ -1054,7 +1058,8 @@ In the distroless image these run via the binary directly, e.g.
   200 comma-separated ids; ids the caller cannot access are omitted from `revisions` (never an
   error). `/api/v1/transaction/get-transaction-list` (the legacy full list, still used by MCP,
   older clients and the SPA's fallback against a server without revisions) is unchanged.
-- **Reports:** `GET /api/v1/report/get-flow-report` and `get-net-worth-report`, hosted by the
+- **Reports:** `GET /api/v1/report/get-flow-report` and `get-net-worth-report` (mounted only while
+  `ECONUMO_REPORTS` is on; otherwise they 404), hosted by the
   budget feature (`internal/budget/report_*.go`, `internal/budget/api/report.go`; no `report`
   package). Scope is a budget or the caller's own accounts: the budget scope reuses
   `BuildBudgetPlan`, so its figures equal `get-budget-plan`'s for the same rows and months (a

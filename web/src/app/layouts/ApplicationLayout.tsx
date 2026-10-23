@@ -14,6 +14,7 @@ import { UpdateNotice } from '@/components/UpdateNotice'
 import { ServerVersionNotice } from '@/components/ServerVersionNotice'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
+import { isReportsEnabled } from '@/lib/config'
 import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
@@ -220,13 +221,15 @@ export function ApplicationLayout() {
                     >
                       <Wallet className="size-5" />
                     </Link>
-                    <Link
-                      to={RouterPage.REPORTS}
-                      title={t('common.nav.reports')}
-                      className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
-                    >
-                      <ChartColumn className="size-5" />
-                    </Link>
+                    {isReportsEnabled() ? (
+                      <Link
+                        to={RouterPage.REPORTS}
+                        title={t('common.nav.reports')}
+                        className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
+                      >
+                        <ChartColumn className="size-5" />
+                      </Link>
+                    ) : null}
                   </div>
                 ) : (
                   // compact matches the folder headers below (size and left edge)
@@ -239,9 +242,11 @@ export function ApplicationLayout() {
                     <Link to={budgetLink} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
                       {t('common.nav.budget')}
                     </Link>
-                    <Link to={RouterPage.REPORTS} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
-                      {t('common.nav.reports')}
-                    </Link>
+                    {isReportsEnabled() ? (
+                      <Link to={RouterPage.REPORTS} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
+                        {t('common.nav.reports')}
+                      </Link>
+                    ) : null}
                   </div>
                 )}
                 <SidebarAccountTree collapsed={rail} />

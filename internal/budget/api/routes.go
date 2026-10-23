@@ -24,9 +24,6 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("GET /api/v1/budget/get-budget-plan", auth(h.GetBudgetPlan))
 		mux.Handle("GET /api/v1/budget/get-transaction-list", auth(h.GetTransactionList))
 
-		mux.Handle("GET /api/v1/report/get-flow-report", auth(h.GetFlowReport))
-		mux.Handle("GET /api/v1/report/get-net-worth-report", auth(h.GetNetWorthReport))
-
 		mux.Handle("POST /api/v1/budget/create-folder", auth(h.CreateFolder))
 		mux.Handle("POST /api/v1/budget/update-folder", auth(h.UpdateFolder))
 		mux.Handle("POST /api/v1/budget/delete-folder", auth(h.DeleteFolder))
@@ -51,5 +48,17 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/budget/create-comment", auth(h.CreateComment))
 		mux.Handle("POST /api/v1/budget/update-comment", auth(h.UpdateComment))
 		mux.Handle("POST /api/v1/budget/delete-comment", auth(h.DeleteComment))
+	}
+}
+
+// RegisterReportAPI mounts the report reads; the composition root mounts it
+// only while ECONUMO_REPORTS is on.
+func RegisterReportAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
+	return func(mux *http.ServeMux) {
+		authMw := middleware.Auth(authn)
+		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
+
+		mux.Handle("GET /api/v1/report/get-flow-report", auth(h.GetFlowReport))
+		mux.Handle("GET /api/v1/report/get-net-worth-report", auth(h.GetNetWorthReport))
 	}
 }

@@ -1830,6 +1830,11 @@ and on tablet/phone only with a hardware keyboard.
 
 ## 10a. Reports
 
+Run with `ECONUMO_REPORTS=true`.
+
+- [ ] **Flag off** (`ECONUMO_REPORTS` unset): no Reports link in the menu or the icon
+      rail, `/reports` shows the not-found page, and `/api/v1/report/*` returns 404 📱
+
 Seed at least two years of transactions over several categories, a payee, a
 tag, and a budget with a planned limit on one category.
 

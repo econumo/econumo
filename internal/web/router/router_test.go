@@ -224,7 +224,7 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	// the dist file), so every key is present: the ones explicitly set above,
 	// plus every other key at its default (LILTAG_CONFIG_URL, LILTAG_CACHE_TTL,
 	// INSTANCE_ID, VERSION, VERSION_LABEL, IMPORT_MATCHER) and MIN_APP_VERSION because it was set.
-	want := `window.econumoConfig = {"AI_ENABLED":false,"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","IMPORT_APPLE_WALLET":false,"IMPORT_MATCHER":{"matchDays":0,"tipDays":0,"tipTolerancePct":0,"tokenMinLength":0},"IMPORT_SIMPLEFIN":false,"INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MCP_URL":"https://econumo.example.test/mcp","MIN_APP_VERSION":"v9.9.9","PASSWORD_LOGIN":true,"VERSION":null,"VERSION_LABEL":null};`
+	want := `window.econumoConfig = {"AI_ENABLED":false,"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","IMPORT_APPLE_WALLET":false,"IMPORT_MATCHER":{"matchDays":0,"tipDays":0,"tipTolerancePct":0,"tokenMinLength":0},"IMPORT_SIMPLEFIN":false,"INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MCP_URL":"https://econumo.example.test/mcp","MIN_APP_VERSION":"v9.9.9","PASSWORD_LOGIN":true,"REPORTS":false,"VERSION":null,"VERSION_LABEL":null};`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
 	}
@@ -301,6 +301,7 @@ func TestRuntimeConfigOverrides_UnsetKeysGetDefaults(t *testing.T) {
 		`"PASSWORD_LOGIN":true`,
 		`"IMPORT_APPLE_WALLET":false`,
 		`"IMPORT_SIMPLEFIN":false`,
+		`"REPORTS":false`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("default %q missing:\n%s", want, body)
@@ -562,5 +563,21 @@ func TestResponsesAreGzipped(t *testing.T) {
 	got, _ := io.ReadAll(zr)
 	if string(got) != body {
 		t.Fatalf("round trip mismatch")
+	}
+}
+
+func TestRuntimeConfigOverrides_Reports(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := router.New(router.Deps{SPA: os.DirFS(dir), Cfg: config.Config{Reports: true}})
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+
+	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
+	defer resp.Body.Close()
+	if body := readBody(t, resp); !strings.Contains(body, `"REPORTS":true`) {
+		t.Fatalf("REPORTS must be true:\n%s", body)
 	}
 }

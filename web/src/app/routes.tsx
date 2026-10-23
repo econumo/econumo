@@ -39,7 +39,7 @@ import { BudgetPage } from '@/features/budgets/BudgetPage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
 import { ConnectedAppsPage } from '@/features/authserver/ConnectedAppsPage'
 import { ConsentPage } from '@/features/authserver/ConsentPage'
-import { isAppleWalletImportEnabled, isSimpleFINImportEnabled, isTransactionImportEnabled } from '@/lib/config'
+import { isAppleWalletImportEnabled, isReportsEnabled, isSimpleFINImportEnabled, isTransactionImportEnabled } from '@/lib/config'
 
 export function createRouter() {
   return createBrowserRouter([
@@ -67,7 +67,7 @@ export function createRouter() {
                 { path: '/account/:id', element: <AccountPage /> },
                 { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
                 { path: '/plan', element: <BudgetPage key="plan" mode="plan" /> },
-                { path: '/reports', element: <ReportsPage /> },
+                ...(isReportsEnabled() ? [{ path: '/reports', element: <ReportsPage /> }] : []),
                 { path: '/onboarding', element: <OnboardingPage /> },
                 { path: '/settings', element: <SettingsPage /> },
                 { path: '/settings/profile', element: <ProfilePage /> },

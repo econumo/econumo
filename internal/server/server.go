@@ -457,6 +457,11 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		})
 	}
 
+	var reportsAPI router.RegisterAPI
+	if cfg.Reports {
+		reportsAPI = handlerbudget.RegisterReportAPI(budgetHandlers, authn)
+	}
+
 	registerAPI := router.Compose(
 		handleruser.RegisterAPI(userHandlers, authn),
 		handleroauth.RegisterAPI(oauthHandlers, authn),
@@ -471,6 +476,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		handlerrecurring.RegisterAPI(recurringHandlers, authn),
 		handlerconnection.RegisterAPI(connectionHandlers, authn),
 		handlerbudget.RegisterAPI(budgetHandlers, authn),
+		reportsAPI,
 		importsAPI,
 		handlersystem.RegisterAPI(systemHandlers, authn),
 		apidoc.RegisterAPI(),
