@@ -1593,6 +1593,9 @@
       "networth_down": "Queda de {amount} este ano",
       "networth_flat": "Sem mudança este ano"
     },
+    "period": {
+      "quarter": "{quarter}º tri. {year}"
+    },
     "filters": {
       "period": "Período",
       "period_thisYear": "Este ano",
@@ -1612,6 +1615,8 @@
       "group_tag": "Etiqueta"
     },
     "spending": {
+      "headline": "Resumo",
+      "show_transactions": "Ver transações",
       "mode": "Visualização",
       "mode_overTime": "Ao longo do tempo",
       "mode_compare": "Comparar anos",

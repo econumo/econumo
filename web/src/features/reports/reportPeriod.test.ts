@@ -1,5 +1,4 @@
-import { rollUp } from './reportMath'
-import { comparisonRanges, flowQueryArgs, rangeLabel } from './reportPeriod'
+import { flowQueryArgs, periodLabels, periodRange, previousRange } from './reportPeriod'
 import { defaultParams } from './reportTabs'
 
 const today = new Date(2026, 9, 15)
@@ -31,47 +30,48 @@ describe('flowQueryArgs', () => {
   })
 })
 
-const monthsFrom = (from: string, n: number) =>
-  Array.from({ length: n }, (_, i) => {
-    const d = new Date(Number(from.slice(0, 4)), Number(from.slice(5, 7)) - 1 + i, 1)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+describe('periodRange / previousRange', () => {
+  it('a preset runs to the current month, its previous period has the same length', () => {
+    const range = periodRange({ ...defaultParams(null), period: 'thisYear' }, today)!
+    expect(range).toEqual(['2026-01-01', '2026-10-01'])
+    expect(previousRange(range)).toEqual(['2025-03-01', '2025-12-01'])
   })
 
-describe('comparisonRanges', () => {
-  it('cuts the previous year to the months of the current one', () => {
-    const ms = monthsFrom('2024-01-01', 34)
-    const b = rollUp(ms, ms.map(() => '1'), 'year', today)
-    expect(comparisonRanges(b, 'year', today)).toEqual({ a: ['2025-01-01', '2025-10-01'], b: ['2026-01-01', '2026-10-01'] })
+  it('all time has no range and so no previous period', () => {
+    expect(periodRange({ ...defaultParams(null), period: 'all' }, today)).toBeNull()
   })
 
-  it('compares two complete months when the latest is the unfinished current one', () => {
-    const ms = monthsFrom('2026-01-01', 10)
-    const b = rollUp(ms, ms.map(() => '1'), 'month', today)
-    expect(comparisonRanges(b, 'month', today)).toEqual({ a: ['2026-08-01', '2026-08-01'], b: ['2026-09-01', '2026-09-01'] })
-  })
-
-  it('a quarter one month old falls back to the two quarters before', () => {
-    const ms = monthsFrom('2026-01-01', 10)
-    const b = rollUp(ms, ms.map(() => '1'), 'quarter', today)
-    expect(comparisonRanges(b, 'quarter', today)).toEqual({ a: ['2026-04-01', '2026-06-01'], b: ['2026-07-01', '2026-09-01'] })
-  })
-
-  it('no comparison with a single bucket or a window-cut previous bucket', () => {
-    const one = monthsFrom('2026-01-01', 10)
-    expect(comparisonRanges(rollUp(one, one.map(() => '1'), 'year', today), 'year', today)).toBeNull()
-    const cut = monthsFrom('2025-11-01', 12)
-    expect(comparisonRanges(rollUp(cut, cut.map(() => '1'), 'year', today), 'year', today)).toBeNull()
+  it('custom ends at its own end month', () => {
+    const p = { ...defaultParams(null), period: 'custom' as const, from: '2024-03-01', to: '2024-05-01' }
+    expect(periodRange(p, today)).toEqual(['2024-03-01', '2024-05-01'])
+    expect(previousRange(['2024-03-01', '2024-05-01'])).toEqual(['2023-12-01', '2024-02-01'])
   })
 })
 
-describe('rangeLabel', () => {
+// Intl separates ranges with thin spaces in some languages
+const plain = (s: string) => s.replace(/[\u2009\u202f]/g, ' ')
+
+describe('periodLabels', () => {
+  const en = periodLabels('en', (q, year) => `Q${q} ${year}`)
+
   it.each([
     [['2025-01-01', '2025-12-01'], '2025'],
     [['2026-07-01', '2026-09-01'], 'Q3 2026'],
     [['2026-10-01', '2026-10-01'], 'Oct 2026'],
-    [['2026-01-01', '2026-10-01'], 'Jan–Oct 2026'],
+    [['2026-01-01', '2026-10-01'], 'Jan – Oct 2026'],
     [['2025-11-01', '2026-02-01'], 'Nov 2025 – Feb 2026'],
-  ] as const)('%j → %s', (range, label) => {
-    expect(rangeLabel([range[0], range[1]], 'en')).toBe(label)
+  ] as const)('range %j → %s', (range, label) => {
+    expect(plain(en.range([range[0], range[1]]))).toBe(label)
+  })
+
+  it('buckets and months follow the language', () => {
+    expect(en.bucket('2026-10-01', 'quarter')).toBe('Q4 2026')
+    expect(en.bucket('2026-10-01', 'year')).toBe('2026')
+    expect(plain(en.monthsOfYear(1, 10))).toBe('Jan – Oct')
+    const ru = periodLabels('ru', (q, year) => `${q} кв. ${year}`)
+    expect(ru.month('2026-10-01')).toMatch(/^окт/)
+    expect(ru.bucket('2026-10-01', 'quarter')).toBe('4 кв. 2026')
+    const zh = periodLabels('zh', (q, year) => `${year}第${q}季度`)
+    expect(zh.month('2026-10-01')).toBe('2026年10月')
   })
 })

@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fixtureTransactions } from '@/test/fixtures'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import type { FlowReportDto, ReportRowDto } from '@/api/dto/report'
@@ -44,14 +45,19 @@ const report = (over: Partial<FlowReportDto> = {}): FlowReportDto => ({
 })
 
 let lastQuery: URLSearchParams | null = null
-function flowHandler(data: FlowReportDto = report()) {
+let flowRequests = 0
+// the headline's previous-period request is the one carrying `to`
+function flowHandler(data: FlowReportDto = report(), previous: FlowReportDto = report({ expense: [] })) {
   return http.get('*/api/v1/report/get-flow-report', ({ request }) => {
-    lastQuery = new URL(request.url).searchParams
+    const q = new URL(request.url).searchParams
+    flowRequests++
+    if (q.has('to')) return HttpResponse.json({ success: true, message: '', data: { item: previous } })
+    lastQuery = q
     return HttpResponse.json({ success: true, message: '', data: { item: data } })
   })
 }
 
-function openSpending(patch: Partial<ReportParams> = {}, data?: FlowReportDto) {
+function openSpending(patch: Partial<ReportParams> = {}, data?: FlowReportDto, previous?: FlowReportDto) {
   useReportTabs.setState({
     userId: 'u1',
     tabs: [{ id: 't1', kind: 'spending', title: null, params: { ...defaultParams(null), ...patch } }],
@@ -59,7 +65,7 @@ function openSpending(patch: Partial<ReportParams> = {}, data?: FlowReportDto) {
   })
   server.use(
     ...coreHandlers(),
-    flowHandler(data),
+    flowHandler(data, previous),
     http.get('*/api/v1/oauth/get-identity-list', () => HttpResponse.json({ success: true, message: '', data: [] })),
   )
   return renderReports()
@@ -73,6 +79,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date(2026, 9, 15, 12))
   localStorage.clear()
   lastQuery = null
+  flowRequests = 0
   vi.mocked(trackEvent).mockClear()
   setViewport(false)
 })
@@ -90,13 +97,46 @@ it('stacks the top five rows and everything else', async () => {
   expect(lastQuery?.has('to')).toBe(false)
 })
 
-it('headline compares this year so far with the same months last year', async () => {
-  openSpending()
-  expect(await screen.findByText('Spent in Jan–Oct 2026')).toBeInTheDocument()
+const headline = () => screen.getByRole('region', { name: 'Summary' })
+const plain = (s: string | null) => (s ?? '').replace(/[\u2009\u202f]/g, ' ')
+
+it('headline: the selected period against the equal-length period before it', async () => {
+  // this year = Jan-Oct 2026; the ten months before it = Mar-Dec 2025
+  const prevMonths = months.slice(2, 12)
+  const previous = report({ months: prevMonths, expense: expense.map((r) => ({ ...r, amounts: r.amounts.slice(2, 12) })) })
+  openSpending({ period: 'thisYear' }, report({ months: months.slice(12), expense: expense.map((r) => ({ ...r, amounts: r.amounts.slice(12) })) }), previous)
+  await screen.findByRole('list', { name: 'Legend' })
+  await waitFor(() => expect(within(headline()).getByText(/\+500\.00 \$ · \+17%/)).toBeInTheDocument())
+  expect(plain(headline().textContent)).toContain('Spent in Jan – Oct 2026')
   // (150+90+40+30+20+10+5) * 10
-  expect(screen.getByText('3,450 $')).toBeInTheDocument()
-  expect(screen.getByText(/\+500 \$ · \+17%/)).toBeInTheDocument()
-  expect(screen.getByText('vs Jan–Oct 2025', { exact: false })).toBeInTheDocument()
+  expect(within(headline()).getByText('3,450.00 $')).toBeInTheDocument()
+  expect(plain(headline().textContent)).toContain('vs Mar – Dec 2025')
+  expect(within(headline()).getByText(/Groceries is the largest/)).toBeInTheDocument()
+})
+
+it('headline: no change when nothing precedes the period', async () => {
+  openSpending()
+  await screen.findByRole('list', { name: 'Legend' })
+  // 2025: 12 * 295, 2026: 10 * 345
+  expect(within(headline()).getByText('6,990.00 $')).toBeInTheDocument()
+  expect(plain(headline().textContent)).not.toContain('vs')
+})
+
+it('table: the last bucket against the one before it, named after the buckets', async () => {
+  openSpending()
+  const table = await screen.findByRole('table')
+  const head = within(table).getAllByRole('columnheader').map((th) => th.textContent)
+  expect(head).toEqual(['Name', '2025', '2026*', 'Change', 'Monthly avg'])
+  const groceries = within(table).getByRole('button', { name: 'Groceries' }).closest('tr')!
+  expect(within(groceries).getByText('1,200.00 $')).toBeInTheDocument()
+  expect(within(groceries).getByText('1,500.00 $')).toBeInTheDocument()
+})
+
+it('money keeps the currency fraction digits', async () => {
+  const data = report({ expense: [row('cat-food', 'Groceries', months.map((m) => (m === '2026-09-01' ? '481.75' : '100')))] })
+  openSpending({ step: 'month' }, data)
+  const table = await screen.findByRole('table')
+  expect(within(table).getAllByText('481.75 $')[0]).toBeInTheDocument()
 })
 
 it('the current year is projected and footnoted', async () => {
@@ -126,10 +166,11 @@ it('a selected row that is not in the report is ignored', async () => {
 
 it('compare years: like-for-like Jan–Oct totals', async () => {
   openSpending({ mode: 'compare', compare: [2025, 2026], selectedId: 'cat-food' })
-  expect(await screen.findByText('Spent in Jan–Oct 2026')).toBeInTheDocument()
-  expect(screen.getAllByText('1,500 $')[0]).toBeInTheDocument()
-  expect(screen.getAllByText(/\+500 \$ · \+50%/)[0]).toBeInTheDocument()
-  expect(screen.getByText(/vs Jan–Oct 2025/)).toBeInTheDocument()
+  await screen.findByRole('list', { name: 'Legend' })
+  expect(plain(headline().textContent)).toContain('Spent in Jan – Oct 2026')
+  expect(within(headline()).getByText('1,500.00 $')).toBeInTheDocument()
+  expect(within(headline()).getByText(/\+500\.00 \$ · \+50%/)).toBeInTheDocument()
+  expect(plain(headline().textContent)).toContain('vs Jan – Oct 2025')
   expect(lastQuery?.get('from')).toBe('2025-01-01')
 })
 
@@ -171,4 +212,38 @@ it('a bar of a selected row opens its transactions', async () => {
   fireEvent.click(series.querySelector('.recharts-rectangle')!)
   expect(await screen.findByRole('dialog')).toBeInTheDocument()
   expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_DRILL_DOWN, { scope: 'mine', mode: 'overTime' })
+})
+
+it('compare year pickers keep stored years older than ten years', async () => {
+  openSpending({ mode: 'compare', compare: [2010, 2026] })
+  expect(await screen.findByRole('combobox', { name: 'Earlier year' })).toHaveTextContent('2010')
+})
+
+it('with a row selected, Show transactions opens the drill-down from the keyboard', async () => {
+  openSpending({ selectedId: 'cat-food' })
+  const user = userEvent.setup()
+  const show = await screen.findByRole('button', { name: 'Show transactions' })
+  show.focus()
+  await user.keyboard('{Enter}')
+  expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_DRILL_DOWN, { scope: 'mine', mode: 'overTime' })
+})
+
+it('deleting a transaction from the drill-down refetches the report', async () => {
+  let deleted: unknown
+  openSpending({ selectedId: 'cat-food' })
+  server.use(
+    http.post('*/api/v1/transaction/delete-transaction', async ({ request }) => {
+      deleted = ((await request.json()) as { id: string }).id
+      return HttpResponse.json({ success: true, message: '', data: { item: fixtureTransactions[0], accounts: [] } })
+    }),
+  )
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Show transactions' }))
+  await user.click(await screen.findByText('coffee beans'))
+  await user.click(await screen.findByRole('button', { name: 'Delete' }))
+  const before = flowRequests
+  await user.click(await screen.findByRole('button', { name: 'Delete' }))
+  await waitFor(() => expect(deleted).toBe('t1'))
+  await waitFor(() => expect(flowRequests).toBeGreaterThan(before))
 })

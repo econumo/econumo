@@ -52,69 +52,67 @@ export function lastMonthOf(b: Bucket): string {
   return addMonths(b.start, b.months - 1)
 }
 
-const STEP_LENGTH: Record<Step, number> = { month: 1, quarter: 3, year: 12 }
-
-/**
- * The two ranges the Over time headline and table compare: the latest bucket
- * against the one before it, like-for-like. A latest bucket that is cut short
- * (the current year so far, or a custom range ending mid-quarter) is compared
- * with the same number of months of the bucket before. When the latest bucket
- * holds nothing but the unfinished current month, a months-granular comparison
- * would pit a few days against a whole month, so the two complete buckets
- * before it are compared instead. A previous bucket cut by the window start
- * has no like-for-like counterpart: no comparison then.
- */
-export function comparisonRanges(buckets: Bucket[], step: Step, today: Date = new Date()): { a: MonthRange; b: MonthRange } | null {
-  const len = STEP_LENGTH[step]
-  const cur = currentMonth(today)
-  let list = buckets
-  const last = list[list.length - 1]
-  if (last && last.months === 1 && last.start === cur) {
-    list = list.slice(0, -1)
-  }
-  if (list.length < 2) return null
-  const later = list[list.length - 1]
-  const earlier = list[list.length - 2]
-  if (earlier.months < len) return null
-  const n = Math.min(later.months, len)
-  return {
-    a: [earlier.start, addMonths(earlier.start, n - 1)],
-    b: [later.start, addMonths(later.start, n - 1)],
-  }
+/** the months a preset or custom period covers; null for all time, which has no fixed start */
+export function periodRange(p: ReportParams, today: Date = new Date()): MonthRange | null {
+  const from = periodFrom(p, today)
+  if (!from) return null
+  return [from, p.period === 'custom' && p.to ? p.to : currentMonth(today)]
 }
 
-const monthFmt = (lang: string, month: 'short' | 'long' = 'short') => new Intl.DateTimeFormat(lang, { month, timeZone: 'UTC' })
-const monthName = (m: string, lang: string) => monthFmt(lang).format(new Date(`${m.slice(0, 7)}-15T00:00:00Z`))
-
-export function monthLabel(m: string, lang: string): string {
-  return `${monthName(m, lang)} ${m.slice(0, 4)}`
-}
-
-export function bucketLabel(start: string, step: Step, lang: string): string {
-  if (step === 'year') return start.slice(0, 4)
-  if (step === 'quarter') return `Q${Math.floor((Number(start.slice(5, 7)) - 1) / 3) + 1} ${start.slice(0, 4)}`
-  return monthLabel(start, lang)
-}
-
-/** "2025", "Q3 2026", "Oct 2026", "Jan–Oct 2026", "Nov 2025 – Feb 2026" */
-export function rangeLabel([from, to]: MonthRange, lang: string): string {
-  const fy = from.slice(0, 4)
-  const ty = to.slice(0, 4)
-  const fm = Number(from.slice(5, 7))
-  const tm = Number(to.slice(5, 7))
-  if (from === to) return monthLabel(from, lang)
-  if (fy === ty) {
-    if (fm === 1 && tm === 12) return fy
-    if ((fm - 1) % 3 === 0 && tm === fm + 2) return bucketLabel(from, 'quarter', lang)
-    return `${monthName(from, lang)}–${monthName(to, lang)} ${fy}`
-  }
-  return `${monthLabel(from, lang)} – ${monthLabel(to, lang)}`
+/** the equal-length period just before `range` */
+export function previousRange([from, to]: MonthRange): MonthRange {
+  const n = monthDiff(from, to) + 1
+  return [addMonths(from, -n), addMonths(from, -1)]
 }
 
 export function monthsInRange([from, to]: MonthRange): number {
   return monthDiff(from, to) + 1
 }
 
-export function shortMonth(month: number, lang: string): string {
-  return monthName(`2000-${String(month).padStart(2, '0')}-01`, lang)
+const utc = (m: string) => new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1, 15))
+
+export interface PeriodLabels {
+  /** "Oct 2026" */
+  month: (m: string) => string
+  /** "Jan" */
+  monthShort: (month: number) => string
+  /** a step bucket: "2026", "Q4 2026", "Oct 2026" */
+  bucket: (start: string, step: Step) => string
+  /** a month range: "2025", "Q3 2026", "Oct 2026", "Jan – Oct 2026", "Nov 2025 – Feb 2026" */
+  range: (range: MonthRange) => string
+  /** a range of months within one year, without the year: "Jan – Oct" */
+  monthsOfYear: (from: number, to: number) => string
+}
+
+// Everything goes through Intl in the UI language, so word order and month
+// names follow the language; only the quarter has no Intl form and comes from
+// the catalogue.
+export function periodLabels(lang: string, quarter: (q: number, year: string) => string): PeriodLabels {
+  const monthYear = new Intl.DateTimeFormat(lang, { month: 'short', year: 'numeric', timeZone: 'UTC' })
+  const monthOnly = new Intl.DateTimeFormat(lang, { month: 'short', timeZone: 'UTC' })
+  const yearOnly = new Intl.DateTimeFormat(lang, { year: 'numeric', timeZone: 'UTC' })
+  const quarterOf = (m: string) => Math.floor((Number(m.slice(5, 7)) - 1) / 3) + 1
+  const bucket = (start: string, step: Step) => {
+    if (step === 'year') return yearOnly.format(utc(start))
+    if (step === 'quarter') return quarter(quarterOf(start), yearOnly.format(utc(start)))
+    return monthYear.format(utc(start))
+  }
+  const range = ([from, to]: MonthRange) => {
+    if (from === to) return monthYear.format(utc(from))
+    const fm = Number(from.slice(5, 7))
+    const tm = Number(to.slice(5, 7))
+    if (from.slice(0, 4) === to.slice(0, 4)) {
+      if (fm === 1 && tm === 12) return bucket(from, 'year')
+      if ((fm - 1) % 3 === 0 && tm === fm + 2) return bucket(from, 'quarter')
+    }
+    return monthYear.formatRange(utc(from), utc(to))
+  }
+  const monthOf = (month: number) => utc(`2000-${String(month).padStart(2, '0')}-01`)
+  return {
+    month: (m) => monthYear.format(utc(m)),
+    monthShort: (month) => monthOnly.format(monthOf(month)),
+    bucket,
+    range,
+    monthsOfYear: (from, to) => (from === to ? monthOnly.format(monthOf(from)) : monthOnly.formatRange(monthOf(from), monthOf(to))),
+  }
 }

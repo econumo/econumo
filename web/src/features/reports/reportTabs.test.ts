@@ -190,6 +190,8 @@ it.each([
   ['three years', [2024, 2025, 2026]],
   ['non-integers', [2025.5, 2026]],
   ['strings', ['2025', '2026']],
+  ['in the wrong order', [2026, 2025]],
+  ['one year twice', [2025, 2025]],
 ])('compare that is %s falls back to none', async (_, compare) => {
   expect((await storedParams({ compare })).compare).toBeNull()
 })

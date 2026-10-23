@@ -1593,6 +1593,9 @@
       "networth_down": "Зниження на {amount} цього року",
       "networth_flat": "Без змін цього року"
     },
+    "period": {
+      "quarter": "{quarter} кв. {year}"
+    },
     "filters": {
       "period": "Період",
       "period_thisYear": "Цей рік",
@@ -1612,6 +1615,8 @@
       "group_tag": "Тег"
     },
     "spending": {
+      "headline": "Підсумок",
+      "show_transactions": "Показати операції",
       "mode": "Вигляд",
       "mode_overTime": "Динаміка",
       "mode_compare": "Порівняти роки",

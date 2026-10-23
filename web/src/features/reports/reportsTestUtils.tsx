@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createAppQueryClient } from '@/lib/appQueryClient'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { ReportsPage } from './ReportsPage'
@@ -45,7 +46,9 @@ export function setViewport(phone: boolean) {
 }
 
 export function renderReports() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  // the app's client, so the report invalidation on writes is exercised
+  const queryClient = createAppQueryClient()
+  queryClient.setDefaultOptions({ queries: { ...queryClient.getDefaultOptions().queries, retry: false }, mutations: { retry: false } })
   const router = createMemoryRouter([{ path: '/reports', element: <ReportsPage /> }], { initialEntries: ['/reports'] })
   render(
     <QueryClientProvider client={queryClient}>

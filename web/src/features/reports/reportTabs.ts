@@ -89,7 +89,7 @@ function sanitizeParams(raw: unknown): ReportParams {
   const from = typeof p.from === 'string' && MONTH.test(p.from) ? p.from : undefined
   const to = typeof p.to === 'string' && MONTH.test(p.to) ? p.to : undefined
   const period = oneOf(PERIODS, p.period, d.period)
-  const compare = Array.isArray(p.compare) && p.compare.length === 2 && p.compare.every((y) => Number.isInteger(y))
+  const compare = Array.isArray(p.compare) && p.compare.length === 2 && p.compare.every((y) => Number.isInteger(y)) && (p.compare[0] as number) < (p.compare[1] as number)
     ? [p.compare[0] as number, p.compare[1] as number] as [number, number]
     : null
   const out: ReportParams = {

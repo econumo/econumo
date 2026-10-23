@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts'
-import { ChevronRight, X } from 'lucide-react'
+import { ChevronRight, List, X } from 'lucide-react'
 import type { ReportRowDto } from '@/api/dto/report'
 import type { Id } from '@/api/types'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
@@ -9,22 +9,15 @@ import { CHART_OTHER, CHART_PALETTE } from '@/components/ui/chartPalette'
 import type { ChartConfig } from '@/components/ui/chart'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCurrencies } from '@/features/currencies/queries'
-import { abs, add, isNegative, isZero, sub } from '@/lib/decimal'
+import { abs, add, div, isNegative, isZero, mul, sub } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { changeRows, compareYears, rollUp, spendingInsight, topGroups } from './reportMath'
+import { bucketChanges, changeRows, compareYears, rollUp, spendingInsight, topGroups } from './reportMath'
 import type { Bucket, ChangeRow } from './reportMath'
 import { OTHER_ID, seriesColors } from './reportColors'
 import { PILL, ReportFilters, Segmented } from './ReportFilters'
-import {
-  bucketLabel,
-  compareYearsOf,
-  comparisonRanges,
-  flowQueryArgs,
-  lastMonthOf,
-  rangeLabel,
-  shortMonth,
-} from './reportPeriod'
+import { compareYearsOf, flowQueryArgs, lastMonthOf, periodRange, previousRange } from './reportPeriod'
+import { usePeriodLabels } from './usePeriodLabels'
 import type { MonthRange } from './reportPeriod'
 import { useFlowReport } from './queries'
 import { asRow, findRow, rowDisplayName } from './reportRows'
@@ -40,15 +33,11 @@ const PLANNED = '__planned'
 
 const sum = (xs: string[]) => xs.reduce((acc, x) => add(acc, x), '0')
 
-function sliceRows(rows: ReportRowDto[], months: string[], [from, to]: MonthRange): ReportRowDto[] {
-  return rows.map((r) => ({ ...r, amounts: r.amounts.filter((_, i) => months[i] >= from && months[i] <= to) }))
-}
-
 function useMoney(currencyId: Id | undefined) {
   const { data: currencies } = useCurrencies()
   const currency = currencies?.find((c) => c.id === currencyId)
-  // report figures are whole units: cents add nothing to "how much per year"
-  return (amount: string) => moneyFormat(amount, { symbol: currency?.symbol ?? '', fractionDigits: 0 }, { showCurrency: !!currency })
+  return (amount: string) =>
+    moneyFormat(amount, currency ?? { symbol: '', fractionDigits: 2 }, { showCurrency: !!currency })
 }
 
 function compactNumber(lang: string) {
@@ -167,12 +156,12 @@ function TooltipBox({ active, payload, series, money, extra }: {
   )
 }
 
-function ChangeTable({ rows, months, a, b, aLabel, bLabel, side, selectedId, colors, money, onSelect }: {
-  rows: ReportRowDto[]
-  months: string[]
-  a: MonthRange | null
-  b: MonthRange
-  aLabel: string
+function ChangeTable({ list, childrenOf, aLabel, bLabel, side, selectedId, colors, money, onSelect }: {
+  list: ChangeRow[]
+  /** an envelope's (or tag's) child rows, compared the same way; [] for none */
+  childrenOf: (id: Id) => ChangeRow[]
+  /** null = one period only, no comparison columns */
+  aLabel: string | null
   bLabel: string
   side: ReportParams['side']
   selectedId: Id | null
@@ -183,10 +172,8 @@ function ChangeTable({ rows, months, a, b, aLabel, bLabel, side, selectedId, col
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState<Set<Id>>(new Set())
   const [showAll, setShowAll] = useState(false)
-  const list = changeRows(rows, months, a ?? b, b)
-  const byId = new Map(rows.map((r) => [r.id, r]))
   const visible = showAll ? list : list.slice(0, TABLE_ROWS)
-  const comparing = a !== null
+  const comparing = aLabel !== null
 
   const line = (r: ChangeRow, depth: number, expandable: boolean) => {
     const selected = selectedId === r.id
@@ -251,11 +238,10 @@ function ChangeTable({ rows, months, a, b, aLabel, bLabel, side, selectedId, col
         </thead>
         <tbody>
           {visible.flatMap((r) => {
-            const source = byId.get(r.id)
-            const children = source && source.children.length > 0 ? source.children.map(asRow) : []
+            const children = childrenOf(r.id)
             const out = [line(r, 0, children.length > 0)]
             if (children.length > 0 && expanded.has(r.id)) {
-              for (const c of changeRows(children, months, a ?? b, b)) out.push(line(c, 1, false))
+              for (const c of children) out.push(line(c, 1, false))
             }
             return out
           })}
@@ -270,18 +256,30 @@ function ChangeTable({ rows, months, a, b, aLabel, bLabel, side, selectedId, col
   )
 }
 
+
 interface Drill {
   row: DrillRow
   from: string
   to: string
 }
 
+function changeOf(later: string, earlier: string): { diff: string; pct: number | null } {
+  const diff = sub(later, earlier)
+  return { diff, pct: isZero(earlier) ? null : Number(div(mul(diff, 100), abs(earlier))) }
+}
+
 export function SpendingReport({ tab }: { tab: ReportTab }) {
   const { t, i18n } = useTranslation()
+  const labels = usePeriodLabels()
   const p = tab.params
   const setParams = (patch: Partial<ReportParams>) => useReportTabs.getState().setParams(tab.id, patch)
   const today = new Date()
-  const report = useFlowReport(flowQueryArgs(p, today))
+  const args = flowQueryArgs(p, today)
+  const report = useFlowReport(args)
+  // the headline's "vs" figure: the equal-length period before the selected one
+  const selectedRange = p.mode === 'overTime' ? periodRange(p, today) : null
+  const prevRange = selectedRange ? previousRange(selectedRange) : null
+  const prevReport = useFlowReport({ ...args, from: prevRange?.[0], to: prevRange?.[1], enabled: prevRange !== null })
   const money = useMoney(report.data?.currencyId)
   const compact = useMemo(() => compactNumber(i18n.language), [i18n.language])
   const [drill, setDrill] = useState<Drill | null>(null)
@@ -381,19 +379,6 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
     )
   }
 
-  const selectedChip = selected ? (
-    <button
-      type="button"
-      onClick={() => select(selected.id)}
-      className="flex max-w-full items-center gap-1 self-start rounded-full border px-2.5 py-0.5 text-sm"
-      aria-label={t('reports.spending.show_all')}
-    >
-      <span className="size-2.5 shrink-0 rounded-sm" style={{ background: colors[selected.id] }} />
-      <span className="truncate">{rowName(selected)}</span>
-      <X className="size-3.5 shrink-0 text-muted-foreground" />
-    </button>
-  ) : null
-
   const spentKey = p.side === 'expense' ? 'reports.spending.spent_in' : 'reports.spending.earned_in'
   const empty = rows.length === 0 || totalAmounts.every((a) => isZero(a))
   const dim = report.isPlaceholderData ? 'opacity-60 transition-opacity' : ''
@@ -407,6 +392,35 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
     )
   }
 
+  const selection = (range: MonthRange) =>
+    selected ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => select(selected.id)}
+          className="flex max-w-full items-center gap-1 rounded-full border px-2.5 py-0.5 text-sm"
+          aria-label={t('reports.spending.show_all')}
+        >
+          <span className="size-2.5 shrink-0 rounded-sm" style={{ background: colors[selected.id] }} />
+          <span className="truncate">{rowName(selected)}</span>
+          <X className="size-3.5 shrink-0 text-muted-foreground" />
+        </button>
+        <button
+          type="button"
+          onClick={() => openDrill(range[0], range[1])}
+          className="flex items-center gap-1 rounded-full px-2 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <List className="size-3.5" />
+          {t('reports.spending.show_transactions')}
+        </button>
+      </div>
+    ) : null
+
+  const childChanges = (compute: (children: ReportRowDto[]) => ChangeRow[]) => (id: Id) => {
+    const r = rows.find((x) => x.id === id)
+    return r && r.children.length > 0 ? compute(r.children.map(asRow)) : []
+  }
+
   if (p.mode === 'compare') {
     const [earlier, later] = compareYearsOf(p, today)
     const amounts = selected ? selected.amounts : totalAmounts
@@ -414,22 +428,19 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
     const through = String(cy.throughMonth).padStart(2, '0')
     const aRange: MonthRange = [`${earlier}-01-01`, `${earlier}-${through}-01`]
     const bRange: MonthRange = [`${later}-01-01`, `${later}-${through}-01`]
-    const diff = sub(cy.laterTotal, cy.earlierTotal)
-    const pct = isZero(cy.earlierTotal) ? null : (Number(diff) * 100) / Math.abs(Number(cy.earlierTotal))
+    const { diff, pct } = changeOf(cy.laterTotal, cy.earlierTotal)
     const laterColor = selected ? colors[selected.id] : CHART_PALETTE[0]
     const data = cy.slots.map((s) => ({
-      label: shortMonth(s.month, i18n.language),
-      title: shortMonth(s.month, i18n.language),
-      month: s.month,
+      label: labels.monthShort(s.month),
+      title: labels.monthShort(s.month),
       earlier: s.earlier === null ? null : Number(s.earlier),
       later: s.later === null ? null : Number(s.later),
     }))
-    const years = Array.from({ length: 10 }, (_, i) => today.getFullYear() - i)
+    const years = [...new Set([...Array.from({ length: 10 }, (_, i) => today.getFullYear() - i), earlier, later])].sort((a, b) => b - a)
     const setYears = (pair: [number, number]) => {
       setParams({ compare: pair })
       trackEvent(METRICS.REPORTS_CHANGE_PERIOD, { period: 'compare' })
     }
-    const period = cy.throughMonth === 12 ? null : rangeLabel(['2000-01-01', `2000-${through}-01`], i18n.language).replace(' 2000', '')
     const config: ChartConfig = {
       earlier: { label: String(earlier), color: CHART_OTHER },
       later: { label: String(later), color: laterColor },
@@ -440,6 +451,7 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
       const m = `${year}-${String(slot.month).padStart(2, '0')}-01`
       openDrill(m, m)
     }
+    const compareRows = (list: ReportRowDto[]) => changeRows(list, months, aRange, bRange)
     return (
       <div className="flex flex-col gap-4">
         {header}
@@ -458,16 +470,14 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
             </SelectContent>
           </Select>
         </div>
-        <section className={`flex flex-col gap-1 ${dim}`}>
-          {selectedChip}
-          <span className="text-sm text-muted-foreground">
-            {t(spentKey, { period: period ? `${period} ${later}` : String(later) })}
-          </span>
+        <section aria-label={t('reports.spending.headline')} className={`flex flex-col gap-1 ${dim}`}>
+          {selection(bRange)}
+          <span className="text-sm text-muted-foreground">{t(spentKey, { period: labels.range(bRange) })}</span>
           <span className="flex flex-wrap items-baseline gap-x-2">
             <span className="text-2xl tabular-nums">{money(cy.laterTotal)}</span>
             <span className="text-sm">
               <Change diff={diff} pct={pct} side={p.side} money={money} />
-              <span className="text-muted-foreground"> {t('reports.spending.vs', { period: period ? `${period} ${earlier}` : String(earlier) })}</span>
+              <span className="text-muted-foreground"> {t('reports.spending.vs', { period: labels.range(aRange) })}</span>
             </span>
           </span>
         </section>
@@ -504,12 +514,10 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
           </ul>
         </figure>
         <ChangeTable
-          rows={rows}
-          months={months}
-          a={aRange}
-          b={bRange}
-          aLabel={rangeLabel(aRange, i18n.language)}
-          bLabel={rangeLabel(bRange, i18n.language)}
+          list={compareRows(rows)}
+          childrenOf={childChanges(compareRows)}
+          aLabel={labels.range(aRange)}
+          bLabel={labels.range(bRange)}
           side={p.side}
           selectedId={selected?.id ?? null}
           colors={colors}
@@ -517,7 +525,7 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
           onSelect={select}
         />
         <p className="text-xs text-muted-foreground">
-          {cy.throughMonth < 12 ? `${t('reports.spending.compare_note', { period: period ?? '' })} ` : null}
+          {cy.throughMonth < 12 ? `${t('reports.spending.compare_note', { period: labels.monthsOfYear(1, cy.throughMonth) })} ` : null}
           {t(selected ? 'reports.spending.hint_drill' : 'reports.spending.hint_select')}
         </p>
         {drill ? <ReportTransactionsDialog scope={{ budgetId: p.budgetId }} {...drill} onClose={() => setDrill(null)} /> : null}
@@ -531,13 +539,11 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
   const chartBuckets: Bucket[] = selected ? seriesBuckets[0] : totalBuckets
   const projected = chartBuckets.find((b) => b.projected !== b.total) ?? null
   const showPlanned = p.budgetId !== null && selected !== null && p.step === 'month' && found?.parent === null && selected.planned.length === months.length
+  const bucketName = (b: Bucket) => `${labels.bucket(b.start, p.step)}${b.projected !== b.total ? '*' : ''}`
   const data = chartBuckets.map((b, i) => {
-    const label = bucketLabel(b.start, p.step, i18n.language)
     const point: Record<string, unknown> = {
-      label: b.projected !== b.total ? `${label}*` : label,
-      title: rangeLabel([b.start, lastMonthOf(b)], i18n.language),
-      start: b.start,
-      end: lastMonthOf(b),
+      label: bucketName(b),
+      title: labels.range([b.start, lastMonthOf(b)]),
       [PROJECTION]: b.projected !== b.total ? Number(b.projected) : null,
     }
     series.forEach((s, k) => {
@@ -551,23 +557,23 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
   })
   const config: ChartConfig = Object.fromEntries(series.map((s) => [s.id, { label: s.name, color: colors[s.id] }]))
 
-  const ranges = comparisonRanges(totalBuckets, p.step, today)
-  const lastBucket = totalBuckets[totalBuckets.length - 1]
-  const bRange: MonthRange = ranges?.b ?? [months[0], months[months.length - 1]]
-  const aRange: MonthRange | null = ranges?.a ?? null
-  const inRange = (amounts: string[], [from, to]: MonthRange) => sum(amounts.filter((_, i) => months[i] >= from && months[i] <= to))
-  const headlineAmounts = selected ? selected.amounts : totalAmounts
-  const bTotal = inRange(headlineAmounts, bRange)
-  const aTotal = aRange ? inRange(headlineAmounts, aRange) : null
-  const diff = aTotal !== null ? sub(bTotal, aTotal) : null
-  const pct = aTotal !== null && diff !== null && !isZero(aTotal) ? (Number(diff) * 100) / Math.abs(Number(aTotal)) : null
-  const insight = selected ? null : spendingInsight(sliceRows(rows, months, bRange))
-  const insightRow = insight ? rows.find((r) => r.name === insight.params.name) : undefined
-  const insightName = insightRow ? rowName(insightRow) : (insight?.params.name ?? '')
-  const paceBucket = selected ? seriesBuckets[0][seriesBuckets[0].length - 1] : lastBucket
-  const onPace = paceBucket && paceBucket.projected !== paceBucket.total && bRange[0] <= paceBucket.start && bRange[1] >= lastMonthOf(paceBucket)
-    ? paceBucket
+  // headline: the whole selected period against the equal-length period before it
+  const windowRange: MonthRange = [months[0], months[months.length - 1]]
+  const headlineTotal = sum(selected ? selected.amounts : totalAmounts)
+  const prevRows = prevReport.data && !prevReport.isPlaceholderData ? prevReport.data[p.side] : null
+  const prevHasData = !!prevRows && prevRows.some((r) => r.amounts.some((a) => !isZero(a)))
+  const prevTotal = prevRows && prevHasData
+    ? sum((selected ? prevRows.filter((r) => r.id === selected.id) : prevRows).flatMap((r) => r.amounts))
     : null
+  const headlineChange = prevTotal !== null ? changeOf(headlineTotal, prevTotal) : null
+  const insight = selected ? null : spendingInsight(rows)
+  const insightRow = insight?.params.id ? rows.find((r) => r.id === insight.params.id) : undefined
+  const lastBucket = chartBuckets[chartBuckets.length - 1]
+  const onPace = lastBucket && lastBucket.projected !== lastBucket.total ? lastBucket : null
+
+  // table: the last bucket against the one before it
+  const tableOf = (list: ReportRowDto[]) => bucketChanges(list, months, p.step, today)
+  const table = tableOf(rows)
 
   const onSegment = (id: Id) => (_: unknown, index: number) => {
     const bucket = chartBuckets[index]
@@ -582,26 +588,26 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
   return (
     <div className="flex flex-col gap-4">
       {header}
-      <section className={`flex flex-col gap-1 ${dim}`}>
-        {selectedChip}
-        <span className="text-sm text-muted-foreground">{t(spentKey, { period: rangeLabel(bRange, i18n.language) })}</span>
+      <section aria-label={t('reports.spending.headline')} className={`flex flex-col gap-1 ${dim}`}>
+        {selection(windowRange)}
+        <span className="text-sm text-muted-foreground">{t(spentKey, { period: labels.range(windowRange) })}</span>
         <span className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-2xl tabular-nums">{money(bTotal)}</span>
-          {diff !== null && aRange ? (
+          <span className="text-2xl tabular-nums">{money(headlineTotal)}</span>
+          {headlineChange && prevRange ? (
             <span className="text-sm">
-              <Change diff={diff} pct={pct} side={p.side} money={money} />
-              <span className="text-muted-foreground"> {t('reports.spending.vs', { period: rangeLabel(aRange, i18n.language) })}</span>
+              <Change diff={headlineChange.diff} pct={headlineChange.pct} side={p.side} money={money} />
+              <span className="text-muted-foreground"> {t('reports.spending.vs', { period: labels.range(prevRange) })}</span>
             </span>
           ) : null}
         </span>
         {onPace ? (
           <span className="text-sm text-muted-foreground">
-            {t('reports.spending.on_pace', { amount: money(onPace.projected), period: bucketLabel(onPace.start, p.step, i18n.language) })}
+            {t('reports.spending.on_pace', { amount: money(onPace.projected), period: labels.bucket(onPace.start, p.step) })}
           </span>
         ) : null}
-        {insight && insight.key !== 'reports.insight.empty' ? (
+        {insight && insightRow ? (
           <span className="text-sm text-muted-foreground">
-            {t(insight.key, { ...insight.params, name: insightName, amount: money(insight.params.amount ?? '0') })}
+            {t(insight.key, { ...insight.params, name: rowName(insightRow), amount: money(insight.params.amount ?? '0') })}
           </span>
         ) : null}
       </section>
@@ -621,7 +627,7 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
                   series={series.map((s) => ({ id: s.id, name: s.name, color: colors[s.id] }))}
                   extra={(d) => [
                     ...(series.length > 1
-                      ? [{ label: t('reports.spending.total'), value: money(String(series.reduce((acc, s) => acc + Number(d[s.id] ?? 0), 0))) }]
+                      ? [{ label: t('reports.spending.total'), value: money(sum(series.map((s) => String(d[s.id] ?? 0)))) }]
                       : []),
                     ...(d[PROJECTION] !== null && d[PROJECTION] !== undefined
                       ? [{ label: t('reports.spending.projected'), value: money(String(d[PROJECTION])) }]
@@ -683,23 +689,23 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
           ) : null}
         </div>
       </figure>
-      <ChangeTable
-        key={`${bRange[0]}|${aRange?.[0] ?? ''}`}
-        rows={rows}
-        months={months}
-        a={aRange}
-        b={bRange}
-        aLabel={aRange ? rangeLabel(aRange, i18n.language) : ''}
-        bLabel={rangeLabel(bRange, i18n.language)}
-        side={p.side}
-        selectedId={selected?.id ?? null}
-        colors={colors}
-        money={money}
-        onSelect={select}
-      />
+      {table ? (
+        <ChangeTable
+          key={`${table.later.start}|${table.earlier?.start ?? ''}`}
+          list={table.rows}
+          childrenOf={childChanges((list) => tableOf(list)?.rows ?? [])}
+          aLabel={table.earlier ? labels.bucket(table.earlier.start, p.step) : null}
+          bLabel={bucketName(table.later)}
+          side={p.side}
+          selectedId={selected?.id ?? null}
+          colors={colors}
+          money={money}
+          onSelect={select}
+        />
+      ) : null}
       <p className="text-xs text-muted-foreground">
         {projected
-          ? `${t('reports.spending.projected_note', { period: bucketLabel(projected.start, p.step, i18n.language) })} `
+          ? `${t('reports.spending.projected_note', { period: labels.bucket(projected.start, p.step) })} `
           : null}
         {t(selected ? 'reports.spending.hint_drill' : 'reports.spending.hint_select')}
       </p>

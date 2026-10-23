@@ -23,7 +23,7 @@ import type { ViewTransaction } from '@/features/transactions/useAccountTransact
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { useUserData } from '@/features/user/queries'
 import { dayKey } from '@/lib/datetime'
-import { rangeLabel } from './reportPeriod'
+import { usePeriodLabels } from './usePeriodLabels'
 import { budgetSelector, matches } from './reportRows'
 import type { DrillRow } from './reportRows'
 
@@ -97,6 +97,7 @@ export function ReportTransactionsDialog({ scope, row, from, to, onClose }: {
   onClose: () => void
 }) {
   const { t, i18n } = useTranslation()
+  const labels = usePeriodLabels()
   const budgetRows = useBudgetRows(scope.budgetId, row, from, to)
   const myRows = useMyRows(scope.budgetId === null, row, from, to)
   const { supported, isLoading, rows } = scope.budgetId ? budgetRows : myRows
@@ -114,7 +115,7 @@ export function ReportTransactionsDialog({ scope, row, from, to, onClose }: {
 
   const entries = groupByDay(rows.map((r) => ({ tx: r.view, groupDay: dayKey(r.view.date) })))
   const canChange = (tx: ViewTransaction) => canTouchTransaction(tx, !!tx.account && canWriteToAccount(tx.account, user?.id))
-  const title = `${row.name} · ${rangeLabel([from, to], i18n.language)}`
+  const title = `${row.name} · ${labels.range([from, to])}`
 
   return (
     <>

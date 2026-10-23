@@ -136,6 +136,42 @@ export function changeRows(
     .sort((x, y) => cmp(abs(y.diff), abs(x.diff)))
 }
 
+export interface BucketChange {
+  earlier: Bucket | null
+  later: Bucket
+  rows: ChangeRow[]
+}
+
+/**
+ * The Over time table: the last bucket against the one before it. A later
+ * bucket still in progress is compared through its projection (its own value
+ * stays actual-to-date), so an unfinished year does not read as a drop. An
+ * earlier bucket cut by the window start has nothing like-for-like to offer,
+ * so it is left out and only the later bucket is shown.
+ */
+export function bucketChanges(rows: ReportRowDto[], months: string[], step: Step, today: Date = new Date()): BucketChange | null {
+  const totals = rollUp(months, months.map((_, i) => sum(rows.map((r) => r.amounts[i] ?? '0'))), step, today)
+  if (totals.length === 0) return null
+  const later = totals[totals.length - 1]
+  const prev = totals.length > 1 ? totals[totals.length - 2] : null
+  const earlier = prev && prev.months === STEP_LENGTH[step] ? prev : null
+  const list = rows
+    .map((r) => {
+      const b = rollUp(months, r.amounts, step, today)
+      const lb = b[b.length - 1]
+      const eb = earlier ? b[b.length - 2] : undefined
+      const av = eb?.total ?? '0'
+      const diff = sub(lb.projected, av)
+      const pct = earlier === null || isZero(av) ? null : Number(div(mul(diff, 100), abs(av)))
+      return {
+        id: r.id, name: r.name, kind: r.kind, a: av, b: lb.total, diff, pct,
+        monthlyAvg: div(lb.total, Math.max(1, lb.months)),
+      }
+    })
+    .sort((x, y) => (earlier ? cmp(abs(y.diff), abs(x.diff)) : cmp(y.b, x.b)))
+  return { earlier, later, rows: list }
+}
+
 export interface CashFlowMonth {
   month: string
   income: string
@@ -183,12 +219,12 @@ export function netWorthSeries(
 const EMPTY: Insight = { key: 'reports.insight.empty', params: {} }
 
 export function spendingInsight(rows: ReportRowDto[]): Insight {
-  const totals = rows.map((r) => ({ name: r.name, total: sum(r.amounts) }))
+  const totals = rows.map((r) => ({ id: r.id, name: r.name, total: sum(r.amounts) }))
   const all = sum(totals.map((t) => t.total))
   if (totals.length === 0 || cmp(all, 0) <= 0) return EMPTY
   const top = totals.reduce((best, t) => (cmp(t.total, best.total) > 0 ? t : best))
   const share = Math.round(Number(div(mul(top.total, 100), all)))
-  return { key: 'reports.insight.spending_top', params: { name: top.name, amount: top.total, share: String(share) } }
+  return { key: 'reports.insight.spending_top', params: { id: top.id, name: top.name, amount: top.total, share: String(share) } }
 }
 
 export function cashFlowInsight(months: CashFlowMonth[]): Insight {

@@ -1859,11 +1859,19 @@ tag, and a budget with a planned limit on one category.
       its label ends in "*", a footnote explains it, and the headline adds
       "On pace for …". A first bar cut by the period start is never
       projected.
-- [ ] Headline and table compare like for like: the current year so far
-      against the same months last year ("Jan–Oct 2026" vs "Jan–Oct 2025");
-      in Month step the current unfinished month is skipped (last complete
-      month vs the one before). Change shows money and %, more spending in
-      orange, less in green (reversed for Income).
+- [ ] Headline: the total of the selected period ("Spent in Jan – Oct 2026")
+      and its change against the equal-length period just before it ("vs
+      Mar – Dec 2025"); no change is shown when nothing precedes the period
+      or for All time. Change shows money and %, more spending in orange,
+      less in green (reversed for Income).
+- [ ] Table: the last bucket against the one before it, headed with the
+      bucket names ("2025", "2026*"); a running bucket shows its actual so
+      far and is compared through its projection. With a single bucket, or
+      a previous bucket cut by the period start, only the last bucket is
+      shown. Amounts show the currency's cents in the headline, table and
+      tooltips; only axis ticks are rounded.
+- [ ] Dates follow the UI language (month names, order, quarter label):
+      switch to Russian or Chinese and check bucket labels and ranges.
 - [ ] Table narrowing: clicking a table row, a legend item or a bar
       segment shows only that row (chip above the headline; tab title
       becomes the row's name); clicking it again or the chip's × clears it.
@@ -1884,13 +1892,15 @@ tag, and a budget with a planned limit on one category.
       Spending amount (Month step, row selected, table column) equals the
       Plan page's actual for that row and month, rounded to whole units;
       months before the budget start are shown too.
-- [ ] **Drill-down**: with a row selected, tapping a bar (Over time) or a
+- [ ] **Drill-down**: with a row selected, "Show transactions" next to the
+      row chip (reachable with Tab + Enter) opens its transactions for the
+      period shown; tapping a bar (Over time) or a
       month bar of either year (Compare) opens that row's transactions for
       the bar's months, newest first, grouped by day. Budget scope lists
       what the Budget page lists for the row (a partner's transactions
       included, read-only); My accounts lists my own accounts' matching
       transactions only. A transaction opens its preview; edit and delete
-      work from there.
+      work from there, and the report figures refresh after the write.
 - [ ] Light and dark theme: bars, outline, planned line, change colours and
       table stay readable. 📱 At 390px the controls wrap, the chart fits
       the width and the table shows Name, the later period and Change %.

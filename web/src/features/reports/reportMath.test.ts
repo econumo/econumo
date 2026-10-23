@@ -8,6 +8,7 @@ import {
   netWorthSeries,
   rollUp,
   spendingInsight,
+  bucketChanges,
   topGroups,
 } from './reportMath'
 
@@ -172,7 +173,7 @@ describe('netWorthSeries', () => {
 describe('insights', () => {
   it('spending names the top group and its share', () => {
     const r = spendingInsight([row('a', ['30']), row('b', ['70'])])
-    expect(r).toEqual({ key: 'reports.insight.spending_top', params: { name: 'B', amount: '70', share: '70' } })
+    expect(r).toEqual({ key: 'reports.insight.spending_top', params: { id: 'b', name: 'B', amount: '70', share: '70' } })
   })
   it('spending with nothing spent is the empty insight', () => {
     expect(spendingInsight([]).key).toBe('reports.insight.empty')
@@ -191,4 +192,31 @@ describe('insights', () => {
     expect(netWorthInsight(['100', '100']).key).toBe('reports.insight.networth_flat')
     expect(netWorthInsight(['100']).key).toBe('reports.insight.empty')
   })
+})
+
+describe('bucketChanges', () => {
+  it('compares the last year with the one before, a running year through its projection', () => {
+    const ms = months('2025-01-01', 22)
+    const rows = [row('a', ms.map((m) => (m < '2026' ? '10' : '12'))), row('b', ms.map(() => '1'))]
+    const c = bucketChanges(rows, ms, 'year', new Date(2026, 9, 31))!
+    expect(c.earlier?.start).toBe('2025-01-01')
+    expect(c.later.start).toBe('2026-01-01')
+    const a = c.rows.find((r) => r.id === 'a')!
+    expect(a).toMatchObject({ a: '120', b: '120', monthlyAvg: '12' })
+    // Jan-Oct 31 is the full ten months: 120 projects to 144
+    expect(Number(a.diff)).toBeCloseTo(24, 6)
+    expect(a.pct).toBeCloseTo(20, 6)
+    expect(c.rows[0].id).toBe('a')
+  })
+
+  it('a window-cut earlier bucket is not compared', () => {
+    const ms = months('2025-11-01', 12)
+    const c = bucketChanges([row('a', ms.map(() => '1'))], ms, 'year', new Date(2026, 9, 15))!
+    expect(c.earlier).toBeNull()
+    expect(c.rows[0]).toMatchObject({ b: '10', pct: null })
+  })
+})
+
+it('spendingInsight names the top row by id', () => {
+  expect(spendingInsight([row('a', ['30']), row('b', ['70'])]).params.id).toBe('b')
 })

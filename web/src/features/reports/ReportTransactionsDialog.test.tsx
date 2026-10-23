@@ -43,7 +43,7 @@ it('my accounts: lists my own matching transactions in the range', async () => {
   expect(screen.queryByText('last year groceries')).toBeNull()
   expect(screen.queryByText('not food')).toBeNull()
   expect(screen.queryByText('partner groceries')).toBeNull()
-  expect(screen.getByRole('dialog', { name: 'Food · Jul–Aug 2026' })).toBeInTheDocument()
+  expect(screen.getByRole('dialog', { name: /^Food · Jul\s–\sAug 2026$/ })).toBeInTheDocument()
 })
 
 it('my accounts: a payee row matches by payee and side', async () => {

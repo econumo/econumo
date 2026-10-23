@@ -19,8 +19,8 @@ export function flowReportQuery(params: ReportQueryParams & { groupBy?: GroupBy 
   }
 }
 
-export function useFlowReport(params: ReportQueryParams & { groupBy?: GroupBy }) {
-  return useQuery<FlowReportDto>({ ...flowReportQuery(params), placeholderData: keepPreviousData })
+export function useFlowReport(params: ReportQueryParams & { groupBy?: GroupBy; enabled?: boolean }) {
+  return useQuery<FlowReportDto>({ ...flowReportQuery(params), placeholderData: keepPreviousData, enabled: params.enabled ?? true })
 }
 
 export function useNetWorthReport(params: ReportQueryParams) {

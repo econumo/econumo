@@ -1593,6 +1593,9 @@
       "networth_down": "Снижение на {amount} в этом году",
       "networth_flat": "Без изменений в этом году"
     },
+    "period": {
+      "quarter": "{quarter} кв. {year}"
+    },
     "filters": {
       "period": "Период",
       "period_thisYear": "Этот год",
@@ -1612,6 +1615,8 @@
       "group_tag": "Тег"
     },
     "spending": {
+      "headline": "Сводка",
+      "show_transactions": "Показать операции",
       "mode": "Вид",
       "mode_overTime": "Динамика",
       "mode_compare": "Сравнить годы",

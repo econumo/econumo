@@ -1593,6 +1593,9 @@
       "networth_down": "{amount} minder dit jaar",
       "networth_flat": "Geen verandering dit jaar"
     },
+    "period": {
+      "quarter": "K{quarter} {year}"
+    },
     "filters": {
       "period": "Periode",
       "period_thisYear": "Dit jaar",
@@ -1612,6 +1615,8 @@
       "group_tag": "Tag"
     },
     "spending": {
+      "headline": "Samenvatting",
+      "show_transactions": "Transacties tonen",
       "mode": "Weergave",
       "mode_overTime": "In de tijd",
       "mode_compare": "Jaren vergelijken",

@@ -1593,6 +1593,9 @@
       "networth_down": "今年减少 {amount}",
       "networth_flat": "今年没有变化"
     },
+    "period": {
+      "quarter": "{year}第{quarter}季度"
+    },
     "filters": {
       "period": "期间",
       "period_thisYear": "今年",
@@ -1612,6 +1615,8 @@
       "group_tag": "标签"
     },
     "spending": {
+      "headline": "摘要",
+      "show_transactions": "查看交易",
       "mode": "视图",
       "mode_overTime": "随时间变化",
       "mode_compare": "按年对比",
