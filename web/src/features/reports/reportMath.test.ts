@@ -12,7 +12,9 @@ import {
   bucketChanges,
   topGroups,
 } from './reportMath'
-import { FLOW_BALANCE, FLOW_HUB, FLOW_OTHER_EXPENSE, FLOW_OTHER_INCOME, FLOW_SAVED, FLOW_STAYED, FLOW_TO_SAVINGS } from './reportMath'
+import {
+  FLOW_BALANCE, FLOW_HUB, FLOW_OTHER_EXPENSE, FLOW_OTHER_INCOME, FLOW_SAVED, FLOW_STAYED, FLOW_TO_SAVINGS, FLOW_TRANSFER_IN, FLOW_TRANSFER_OUT,
+} from './reportMath'
 
 const row = (id: string, amounts: string[], over: Partial<ReportRowDto> = {}): ReportRowDto => ({
   id,
@@ -233,6 +235,63 @@ describe('flowGraph', () => {
 
   it('an empty window gives no graph', () => {
     expect(flowGraph(flow({}), false).nodes).toEqual([])
+  })
+
+  it('the hub is income-only without transfers in or a balance draw', () => {
+    const g = flowGraph(flow({ income: [row('salary', ['1000'], { kind: 'income_category' })], expense: [row('rent', ['300'])] }), false)
+    expect(g.hubIncomeOnly).toBe(true)
+  })
+
+  it('my accounts: transfers in feed the hub, transfers out leave it, and it balances', () => {
+    const g = flowGraph(flow({
+      income: [row('salary', ['1000'], { kind: 'income_category' })],
+      expense: [row('rent', ['600'])],
+      transfersIn: ['200'],
+      transfersOut: ['100'],
+    }), false)
+    expect(g.nodes.map((n) => n.id)).toEqual(['salary', FLOW_TRANSFER_IN, FLOW_HUB, 'rent', FLOW_TRANSFER_OUT, FLOW_SAVED])
+    expect(value(g, FLOW_HUB)).toBe('1200')
+    expect(value(g, FLOW_SAVED)).toBe('500')
+    expect(g.hubIncomeOnly).toBe(false)
+    expect(balanced(g)).toEqual([1200, 1200])
+  })
+
+  it('transfers out beyond what is left come from the balance', () => {
+    const g = flowGraph(flow({
+      income: [row('salary', ['1000'], { kind: 'income_category' })],
+      expense: [row('rent', ['900'])],
+      transfersOut: ['400'],
+    }), false)
+    expect(value(g, FLOW_TRANSFER_OUT)).toBe('400')
+    expect(value(g, FLOW_BALANCE)).toBe('300')
+    expect(value(g, FLOW_SAVED)).toBeUndefined()
+    expect(g.hubIncomeOnly).toBe(false)
+    expect(balanced(g)).toEqual([1300, 1300])
+  })
+
+  it('budget: transfers and savings together still balance', () => {
+    const g = flowGraph(flow({
+      income: [row('salary', ['1000'], { kind: 'income_category' })],
+      expense: [row('rent', ['500'])],
+      transfersIn: ['100'],
+      transfersOut: ['50'],
+      savings: [row('acc-s', ['200'], { kind: 'savings' })],
+    }), true)
+    expect(value(g, FLOW_TRANSFER_IN)).toBe('100')
+    expect(value(g, FLOW_TRANSFER_OUT)).toBe('50')
+    expect(value(g, FLOW_TO_SAVINGS)).toBe('200')
+    expect(value(g, FLOW_STAYED)).toBe('350')
+    expect(balanced(g)).toEqual([1100, 1100])
+  })
+
+  it('budget without savings members: one Saved node', () => {
+    const g = flowGraph(flow({
+      income: [row('salary', ['1000'], { kind: 'income_category' })],
+      expense: [row('rent', ['600'])],
+    }), true)
+    expect(value(g, FLOW_SAVED)).toBe('400')
+    expect(value(g, FLOW_STAYED)).toBeUndefined()
+    expect(value(g, FLOW_TO_SAVINGS)).toBeUndefined()
   })
 })
 

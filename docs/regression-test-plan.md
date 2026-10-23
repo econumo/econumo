@@ -1922,12 +1922,16 @@ tag, and a budget with a planned limit on one category.
       totals for that month (an account's opening balance appears as
       Uncategorized income in its creation month on both screens).
 - [ ] **Flow (Sankey)**, desktop only: Bars / Flow switch; Flow draws the
-      top 5 income rows (+ "Other income") into "Income", then out to the
-      top 7 expense rows (+ "Everything else") and "Saved". In a budget
-      with savings members, "Saved" splits into "Moved to savings accounts"
-      and "Stayed in everyday accounts". When spending (plus money moved to
-      savings) is higher than income, a "From balance" source covers the
-      gap and nothing is shown as saved. Step is hidden in Flow; Group by
+      top 5 income rows (+ "Other income") and "Transferred in" into the
+      hub, then out to the top 7 expense rows (+ "Everything else"),
+      "Transferred out" and "Saved"; transfer nodes appear only when
+      non-zero. In a budget with savings members, "Saved" splits into
+      "Moved to savings accounts" and "Stayed in everyday accounts"; a
+      budget without savings members shows one "Saved". When the outflows
+      are higher than the inflows, a "From balance" source covers the gap
+      and nothing is shown as saved. The hub reads "Income" (equal to the
+      headline Income) when only income feeds it, "Available" when
+      transfers in or From balance do. Step is hidden in Flow; Group by
       (My accounts) regroups the rows.
 - [ ] 📱 At 390px the Bars / Flow switch is not shown, a tab left in Flow
       on desktop opens as Bars, and the chart and four table columns fit

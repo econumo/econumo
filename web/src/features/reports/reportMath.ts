@@ -260,6 +260,8 @@ export const FLOW_TO_SAVINGS = '__toSavings'
 export const FLOW_STAYED = '__stayed'
 export const FLOW_OTHER_INCOME = '__otherIncome'
 export const FLOW_OTHER_EXPENSE = '__otherExpense'
+export const FLOW_TRANSFER_IN = '__transferIn'
+export const FLOW_TRANSFER_OUT = '__transferOut'
 const FLOW_TOP_INCOME = 5
 const FLOW_TOP_EXPENSE = 7
 
@@ -273,6 +275,8 @@ export interface FlowNode {
 }
 
 export interface FlowGraph {
+  /** false when transfers in or a balance draw feed the hub, so it is more than income */
+  hubIncomeOnly: boolean
   nodes: FlowNode[]
   links: { source: number; target: number; value: string }[]
 }
@@ -293,30 +297,37 @@ function flowSide(rows: ReportRowDto[], n: number, kind: FlowNode['kind'], other
 }
 
 /**
- * The Flow view: income rows -> Income -> expense rows and what was left.
- * In a budget, what was left splits into what moved to savings members
- * (Plan's Saved, never below zero) and what stayed in everyday accounts.
- * Whenever the outflows exceed income, "From balance" covers the gap, so
- * income + from balance = spent + saved holds for every graph.
+ * The Flow view: income rows and transfers in -> the hub -> expense rows,
+ * transfers out and what was left. In a budget with savings members, what
+ * was left splits into what moved to them (Plan's Saved, never below zero)
+ * and what stayed in everyday accounts. Whenever the outflows exceed the
+ * inflows, "From balance" covers the gap, so the hub's two sides always add
+ * up.
  */
 export function flowGraph(report: FlowReportDto, budget: boolean): FlowGraph {
   const income = flowSide(report.income, FLOW_TOP_INCOME, 'income', FLOW_OTHER_INCOME)
   const expense = flowSide(report.expense, FLOW_TOP_EXPENSE, 'expense', FLOW_OTHER_EXPENSE)
-  const incomeTotal = sum(income.map((x) => x.value))
-  const spentTotal = sum(expense.map((x) => x.value))
-  const moved = budget ? positive(sum(report.savings.flatMap((r) => r.amounts))) : '0'
-  const left = sub(incomeTotal, add(spentTotal, moved))
   const special = (id: string, value: string): FlowNode[] => (cmp(value, 0) > 0 ? [{ id, kind: 'special', name: '', rowKind: '', value }] : [])
-  const sources = [...income, ...special(FLOW_BALANCE, positive(sub('0', left)))]
+  const transferIn = special(FLOW_TRANSFER_IN, positive(sum(report.transfersIn)))
+  const transferOut = special(FLOW_TRANSFER_OUT, positive(sum(report.transfersOut)))
+  const split = budget && report.savings.length > 0
+  const moved = split ? positive(sum(report.savings.flatMap((r) => r.amounts))) : '0'
+  const inflow = sum([...income, ...transferIn].map((x) => x.value))
+  const outflow = sum([...expense, ...transferOut].map((x) => x.value))
+  const left = sub(inflow, add(outflow, moved))
+  const balance = special(FLOW_BALANCE, positive(sub('0', left)))
+  const sources = [...income, ...transferIn, ...balance]
   const outputs = [
     ...expense,
-    ...(budget ? [...special(FLOW_TO_SAVINGS, moved), ...special(FLOW_STAYED, positive(left))] : special(FLOW_SAVED, positive(left))),
+    ...transferOut,
+    ...(split ? [...special(FLOW_TO_SAVINGS, moved), ...special(FLOW_STAYED, positive(left))] : special(FLOW_SAVED, positive(left))),
   ]
-  if (sources.length === 0 || outputs.length === 0) return { nodes: [], links: [] }
+  if (sources.length === 0 || outputs.length === 0) return { hubIncomeOnly: true, nodes: [], links: [] }
   const hubValue = sum(sources.map((x) => x.value))
   const nodes = [...sources, { id: FLOW_HUB, kind: 'special' as const, name: '', rowKind: '', value: hubValue }, ...outputs]
   const hub = sources.length
   return {
+    hubIncomeOnly: transferIn.length === 0 && balance.length === 0,
     nodes,
     links: [
       ...sources.map((x, i) => ({ source: i, target: hub, value: x.value })),

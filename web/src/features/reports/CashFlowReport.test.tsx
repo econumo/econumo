@@ -152,10 +152,34 @@ it('Flow: spending over income draws from the balance, and both sides add up', a
   openCashFlow({ view: 'flow' }, data)
   const chart = await waitFor(flowChart)
   await waitFor(() => expect(within(chart).getByText('From balance')).toBeInTheDocument())
-  // 40,000 earned + 2,000 from balance = 42,000 spent
+  // 40,000 earned + 2,000 from balance = 42,000 available = 42,000 spent
   expect(within(chart).getAllByText('2,000.00 $')).toHaveLength(2) // Trip and From balance
-  expect(within(chart).getAllByText('42,000.00 $')).toHaveLength(1)
+  const hub = within(chart).getByText('Available').closest('text')!
+  expect(within(hub as unknown as HTMLElement).getByText('42,000.00 $')).toBeInTheDocument()
+  expect(within(chart).queryByText('Income')).toBeNull()
+  expect(within(headline()).getByText('40,000.00 $')).toBeInTheDocument()
   expect(within(chart).queryByText('Saved')).toBeNull()
+})
+
+it('Flow: transfers in and out are their own nodes, and the hub reads Available', async () => {
+  const data = report({ transfersIn: flat('100'), transfersOut: flat('50') })
+  openCashFlow({ view: 'flow' }, data)
+  const chart = await waitFor(flowChart)
+  await waitFor(() => expect(within(chart).getByText('Transferred in')).toBeInTheDocument())
+  expect(within(chart).getByText('Transferred out')).toBeInTheDocument()
+  const hub = within(chart).getByText('Available').closest('text')!
+  // 50,000 earned + 1,000 transferred in
+  expect(within(hub as unknown as HTMLElement).getByText('51,000.00 $')).toBeInTheDocument()
+  // 51,000 - 42,000 spent - 500 transferred out
+  expect(within(chart).getByText('8,500.00 $')).toBeInTheDocument()
+})
+
+it('Flow in a budget without savings members draws one Saved node', async () => {
+  openCashFlow({ view: 'flow', budgetId: 'b1' })
+  const chart = await waitFor(flowChart)
+  await waitFor(() => expect(within(chart).getByText('Saved')).toBeInTheDocument())
+  expect(within(chart).queryByText('Stayed in everyday accounts')).toBeNull()
+  expect(within(chart).queryByText('Moved to savings accounts')).toBeNull()
 })
 
 it('Flow in a budget splits Saved into savings and everyday accounts', async () => {

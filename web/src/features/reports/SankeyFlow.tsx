@@ -5,7 +5,7 @@ import type { FlowReportDto } from '@/api/dto/report'
 import { ChartContainer } from '@/components/ui/chart'
 import { CHART_OTHER } from '@/components/ui/chartPalette'
 import {
-  FLOW_BALANCE, FLOW_HUB, FLOW_OTHER_EXPENSE, FLOW_OTHER_INCOME, FLOW_SAVED, FLOW_STAYED, FLOW_TO_SAVINGS, flowGraph,
+  FLOW_BALANCE, FLOW_HUB, FLOW_TRANSFER_IN, FLOW_TRANSFER_OUT, FLOW_OTHER_EXPENSE, FLOW_OTHER_INCOME, FLOW_SAVED, FLOW_STAYED, FLOW_TO_SAVINGS, flowGraph,
 } from './reportMath'
 import type { FlowNode } from './reportMath'
 import { seriesColors } from './reportColors'
@@ -30,7 +30,9 @@ export function SankeyFlow({ report, budget, money }: {
   const graph = flowGraph(report, budget)
   const expenseColors = seriesColors(graph.nodes.filter((n) => n.kind === 'expense' && n.id !== FLOW_OTHER_EXPENSE).map((n) => n.id))
   const special: Record<string, { name: string; color: string }> = {
-    [FLOW_HUB]: { name: t('reports.cashflow.income'), color: INCOME },
+    [FLOW_HUB]: { name: t(graph.hubIncomeOnly ? 'reports.cashflow.income' : 'reports.cashflow.available'), color: INCOME },
+    [FLOW_TRANSFER_IN]: { name: t('reports.cashflow.transfers_in'), color: CHART_OTHER },
+    [FLOW_TRANSFER_OUT]: { name: t('reports.cashflow.transfers_out'), color: CHART_OTHER },
     [FLOW_BALANCE]: { name: t('reports.cashflow.from_balance'), color: CHART_OTHER },
     [FLOW_SAVED]: { name: t('reports.cashflow.saved'), color: SAVED },
     [FLOW_TO_SAVINGS]: { name: t('reports.cashflow.to_savings'), color: SAVED },
