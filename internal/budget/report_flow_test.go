@@ -36,37 +36,38 @@ type flowHarness struct {
 	user     string
 	acct     string
 	accounts *accountrepo.Repo
+	tdb      *dbtest.DB
 }
 
 func newFlowHarness(t *testing.T) *flowHarness {
 	t.Helper()
-	tdb := dbtest.NewSQLite(t)
-	txm := tdb.TX
+	tdb := dbtest.New(t)
+	txm, eng := tdb.TX, tdb.Engine
 	f := fixture.New(t, tdb)
 	user := f.User(fixture.User{Name: "Me", Email: "me@flow.test"})
 	f.DefaultOptions(user)
 	acct := f.Account(fixture.Account{UserID: user, Name: "Main"})
 
-	userRepo := userrepo.NewRepo("sqlite", txm)
-	accountRepo := accountrepo.NewRepo("sqlite", txm)
-	categoryRepo := categoryrepo.NewRepo("sqlite", txm)
-	tagRepo := tagrepo.NewRepo("sqlite", txm)
-	payeeRepo := payeerepo.NewRepo("sqlite", txm)
-	currencyLookup := currencyrepo.New("sqlite", txm)
-	rateProvider := currencyrepo.NewRateProvider("sqlite", txm, currencyLookup, fixture.USD)
+	userRepo := userrepo.NewRepo(eng, txm)
+	accountRepo := accountrepo.NewRepo(eng, txm)
+	categoryRepo := categoryrepo.NewRepo(eng, txm)
+	tagRepo := tagrepo.NewRepo(eng, txm)
+	payeeRepo := payeerepo.NewRepo(eng, txm)
+	currencyLookup := currencyrepo.New(eng, txm)
+	rateProvider := currencyrepo.NewRateProvider(eng, txm, currencyLookup, fixture.USD)
 	clk := flowClock{t: time.Date(2026, 5, 17, 10, 0, 0, 0, time.UTC)}
 	svc := appbudget.NewService(
-		budgetrepo.NewRepo("sqlite", txm), budgetrepo.NewReadRepo("sqlite", txm),
+		budgetrepo.NewRepo(eng, txm), budgetrepo.NewReadRepo(eng, txm),
 		domcurrency.NewConvertor(rateProvider), rateProvider,
 		server.NewBudgetUserLookup(userRepo, clk),
 		server.NewBudgetAccountLookup(accountRepo),
 		server.NewBudgetCurrencyLookup(currencyLookup),
 		budgetrepo.NewMetadataLookup(server.NewBudgetCategoryMetadataLookup(categoryRepo), server.NewBudgetTagMetadataLookup(tagRepo), server.NewBudgetPayeeMetadataLookup(payeeRepo)),
-		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
-		operationrepo.NewGuard("sqlite", txm),
+		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(eng, txm)),
+		operationrepo.NewGuard(eng, txm),
 		txm, clk,
 	)
-	return &flowHarness{ctx: context.Background(), svc: svc, f: f, user: user, acct: acct, accounts: accountRepo}
+	return &flowHarness{ctx: context.Background(), svc: svc, f: f, user: user, acct: acct, accounts: accountRepo, tdb: tdb}
 }
 
 func (h *flowHarness) report(t *testing.T, req model.GetFlowReportRequest) model.FlowReportResult {
