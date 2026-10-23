@@ -178,7 +178,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   ├── auth/ ................ password hashing + AES email encryption
 │   │   ├── clock/ ................ time source abstraction
 │   │   ├── ai/ .................. OpenAI-compatible / Anthropic Messages client (AI integration); imports nothing internal
-│   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
+│   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API | SMTP)
 │   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
 │   │                              distinct from the repo-root web/, the React SPA): middleware, router,
 │   │                              response envelope (httpx), SPA server, apidoc — no feature logic
@@ -738,7 +738,13 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `econumo-config.js` — `ALLOW_CUSTOM_API`, `INSTANCE_ID`, etc. — is generated).
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
-  each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
+  each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend;
+  `smtp://[user:pass@]host[:port]` (default 587, STARTTLS REQUIRED — a relay that does not offer it
+  is refused rather than sent a reset code in the clear) and `smtps://…` (implicit TLS, default 465)
+  send through any SMTP server (`internal/infra/mailer/smtp.go`, stdlib `net/smtp`, AUTH PLAIN or
+  LOGIN, quoted-printable UTF-8 text). SMTP requires `?from=` (the envelope sender). A loopback host
+  may skip TLS and is not certificate-checked; `?insecure=true` extends that to any host (a relay on
+  a trusted Docker network). Parse errors never echo the DSN, which carries the password.
   From / Reply-To fold in as query params: `resend://<key>?from=…&reply_to=…` (also accepted by
   `console://`/`log://`). Parsed once in `config.Load` (a bad scheme fails at boot). Replaces the former
   `RESEND_API_KEY` / `ECONUMO_MAIL_FROM` / `ECONUMO_MAIL_REPLY_TO`.
