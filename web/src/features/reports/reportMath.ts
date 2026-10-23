@@ -51,13 +51,18 @@ export function rollUp(months: string[], amounts: string[], step: Step, today: D
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([start, g]) => {
       const total = sum(g.amounts)
-      const containsCurrent = monthDiff(start, cur) >= 0 && monthDiff(start, cur) < len
+      const sinceStart = monthDiff(start, cur)
+      const containsCurrent = sinceStart >= 0 && sinceStart < len
       const partial = containsCurrent || g.months.length < len
+      // Only the bucket holding the current month is projected, and only when the
+      // window covers it from its first month: scaling a window-cut slice to the
+      // full step would invent spending outside the chosen period.
+      const whole = g.months.filter((m) => m < cur).length
+      const projectable = containsCurrent && g.months.includes(cur) && whole === sinceStart
       // elapsed months = whole + day/dim, kept as the exact fraction (whole*dim + day)/dim
       const dim = daysInMonth(cur)
-      const whole = g.months.filter((m) => m < cur).length
-      const elapsedDays = whole * dim + (g.months.includes(cur) ? today.getDate() : 0)
-      const projected = partial && elapsedDays > 0 ? div(mul(total, len * dim), elapsedDays) : total
+      const elapsedDays = whole * dim + today.getDate()
+      const projected = projectable ? div(mul(total, len * dim), elapsedDays) : total
       return { key: start, start, months: g.months.length, total, partial, projected }
     })
 }

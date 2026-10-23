@@ -1828,6 +1828,73 @@ and on tablet/phone only with a hardware keyboard.
       actions; unarchive restores writability.
 - [ ] Reset budget (if surfaced in UI) clears plans after confirm.
 
+## 10a. Reports
+
+Seed at least two years of transactions over several categories, a payee, a
+tag, and a budget with a planned limit on one category.
+
+- [ ] **Tabs**: Reports opens on the FIRST tab, whichever was active last
+      time. "+" adds a New tab (report list) in the active tab's scope;
+      double-click renames (blank name goes back to the generated title:
+      report name, then the selected row and "2026 vs 2025" in Compare);
+      close removes it and a last closed tab leaves one New tab; drag
+      reorders; Duplicate copies a tab next to it. At 12 tabs "+" is
+      disabled with "Up to 12 tabs".
+- [ ] Tabs are per user and per device: another user on the same browser
+      sees only their own tabs; a tab whose budget was deleted or unshared
+      falls back to My accounts.
+- [ ] 📱 Phone: tabs are pills; long-press a pill (or Shift+click) opens the
+      Rename / Duplicate / Close menu; the back arrow returns home.
+- [ ] Report list: the scope picker lists My accounts and every budget;
+      the three cards show this year's figures for that scope; picking a
+      card turns the tab into that report in the same scope.
+- [ ] **Spending, Over time**: stacked bars of the top five rows plus
+      "Everything else" (grey); a row keeps the same colour in the legend,
+      the table, a narrowed chart and Compare. Month / Quarter / Year and
+      the period presets (This year, Last 12 months, Last 3 years, All time,
+      Custom with From/To months) redraw the chart; Custom refuses a From
+      after To and a To in the future.
+- [ ] Projection: the bar holding the current month has a dashed outline
+      up to the projected full-period figure with the actual bar inside,
+      its label ends in "*", a footnote explains it, and the headline adds
+      "On pace for …". A first bar cut by the period start is never
+      projected.
+- [ ] Headline and table compare like for like: the current year so far
+      against the same months last year ("Jan–Oct 2026" vs "Jan–Oct 2025");
+      in Month step the current unfinished month is skipped (last complete
+      month vs the one before). Change shows money and %, more spending in
+      orange, less in green (reversed for Income).
+- [ ] Table narrowing: clicking a table row, a legend item or a bar
+      segment shows only that row (chip above the headline; tab title
+      becomes the row's name); clicking it again or the chip's × clears it.
+      An envelope row expands to its categories; a child row can be
+      selected too. "Show N more" reveals the rest.
+- [ ] Expenses / Income switch shows the other side and clears the
+      selection. Group by (Category / Payee / Tag) appears in My accounts
+      only; the no-payee / no-tag bucket reads "No payee" / "No tag".
+- [ ] **Compare years**: two year pickers (later vs earlier, default this
+      year vs last); paired monthly bars, earlier grey and later in colour;
+      for the current year both years are cut to the same months and the
+      footnote says so; totals in the headline and table match those months.
+- [ ] **Planned line**: in a budget scope, with one budget row selected and
+      Month step, a dashed "Planned" line follows the row's plan with gaps
+      in months without a plan; it is absent in My accounts, with no row
+      selected, and in Quarter / Year step.
+- [ ] **Budget scope matches Plan**: for one budget row and month, the
+      Spending amount (Month step, row selected, table column) equals the
+      Plan page's actual for that row and month, rounded to whole units;
+      months before the budget start are shown too.
+- [ ] **Drill-down**: with a row selected, tapping a bar (Over time) or a
+      month bar of either year (Compare) opens that row's transactions for
+      the bar's months, newest first, grouped by day. Budget scope lists
+      what the Budget page lists for the row (a partner's transactions
+      included, read-only); My accounts lists my own accounts' matching
+      transactions only. A transaction opens its preview; edit and delete
+      work from there.
+- [ ] Light and dark theme: bars, outline, planned line, change colours and
+      table stay readable. 📱 At 390px the controls wrap, the chart fits
+      the width and the table shows Name, the later period and Change %.
+
 ## 11. Sharing — connections, accounts, budgets (multi-user)
 
 Run with Users A and B side by side (two browser profiles/windows), verifying

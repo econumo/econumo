@@ -47,7 +47,18 @@ describe('rollUp', () => {
       ['2026-01-01', 2, '3', true],
       ['2026-04-01', 3, '12', false],
     ])
-    expect(b[0].projected).toBe('4.5')
+    expect(b[0].projected).toBe('3')
+  })
+
+  it('a current bucket cut by the window start is not projected', () => {
+    const b = rollUp(['2026-09-01'], ['30'], 'quarter', new Date(2026, 8, 10))
+    expect(b[0]).toMatchObject({ partial: true, total: '30', projected: '30' })
+  })
+
+  it('a current quarter with its first month in the window is projected', () => {
+    const b = rollUp(['2026-07-01', '2026-08-01', '2026-09-01'], ['10', '10', '5'], 'quarter', new Date(2026, 8, 15))
+    expect(b[0].partial).toBe(true)
+    expect(Number(b[0].projected)).toBeCloseTo((25 * 3 * 30) / (2 * 30 + 15), 6)
   })
 
   it('projects a partial current year: Jan-Oct 15 scales by 12 / 9.48...', () => {

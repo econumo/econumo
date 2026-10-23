@@ -165,6 +165,14 @@ export const METRICS = {
   REPORTS_TAB_CLOSE: 'appReportsTabClose',
   REPORTS_TAB_DUPLICATE: 'appReportsTabDuplicate',
   REPORTS_TAB_MOVE: 'appReportsTabMove',
+  REPORTS_SPENDING_MODE: 'appReportsSpendingMode',
+  REPORTS_CHANGE_SCOPE: 'appReportsChangeScope',
+  REPORTS_CHANGE_PERIOD: 'appReportsChangePeriod',
+  REPORTS_CHANGE_STEP: 'appReportsChangeStep',
+  REPORTS_CHANGE_SIDE: 'appReportsChangeSide',
+  REPORTS_CHANGE_GROUP_BY: 'appReportsChangeGroupBy',
+  REPORTS_SELECT_ROW: 'appReportsSelectRow',
+  REPORTS_DRILL_DOWN: 'appReportsDrillDown',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

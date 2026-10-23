@@ -158,6 +158,42 @@ it('fills params a stored tab is missing', async () => {
   expect(store().tabs[0].params).toEqual({ ...defaultParams('b1') })
 })
 
+const storedParams = async (params: unknown) => {
+  localStorage.setItem('econumo.reportTabs', JSON.stringify({
+    state: { userId: 'u1', tabs: [{ id: 't1', kind: 'spending', title: null, params }], activeId: 't1' },
+    version: 0,
+  }))
+  await useReportTabs.persist.rehydrate()
+  store().ensureFor('u1')
+  return store().tabs[0].params
+}
+
+it('replaces unknown enum values with the defaults', async () => {
+  const params = await storedParams({
+    budgetId: 'b1', period: 'forever', step: 'week', mode: 'pie', side: 'both', groupBy: 'account', view: 3,
+    selectedId: 42, from: 7, to: null,
+  })
+  expect(params).toEqual(defaultParams('b1'))
+})
+
+it('keeps valid stored values', async () => {
+  const kept = {
+    budgetId: null, period: 'custom', from: '2024-03-01', to: '2025-02-01', step: 'quarter', mode: 'compare',
+    side: 'income', groupBy: 'payee', selectedId: 'cat-1', compare: [2024, 2026], view: 'flow',
+  }
+  expect(await storedParams(kept)).toEqual(kept)
+})
+
+it.each([
+  ['a string', '2025,2026'],
+  ['one year', [2025]],
+  ['three years', [2024, 2025, 2026]],
+  ['non-integers', [2025.5, 2026]],
+  ['strings', ['2025', '2026']],
+])('compare that is %s falls back to none', async (_, compare) => {
+  expect((await storedParams({ compare })).compare).toBeNull()
+})
+
 it(`caps tabs at ${MAX_REPORT_TABS}`, () => {
   store().ensureFor('u1')
   for (let i = 0; i < 20; i++) store().openNew()

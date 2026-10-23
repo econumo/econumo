@@ -63,13 +63,50 @@ function sanitize(raw: unknown): ReportTab | null {
   if (!raw || typeof raw !== 'object') return null
   const t = raw as Partial<ReportTab>
   if (typeof t.id !== 'string' || !KINDS.includes(t.kind as ReportKind)) return null
-  const params = (t.params && typeof t.params === 'object' ? t.params : {}) as Partial<ReportParams>
   return {
     id: t.id,
     kind: t.kind as ReportKind,
     title: typeof t.title === 'string' && t.title.trim() ? t.title : null,
-    params: { ...defaultParams(typeof params.budgetId === 'string' ? params.budgetId : null), ...params },
+    params: sanitizeParams(t.params),
   }
+}
+
+const PERIODS: ReportParams['period'][] = ['thisYear', 'last12', 'last3y', 'all', 'custom']
+const STEPS: Step[] = ['month', 'quarter', 'year']
+const MODES: ReportParams['mode'][] = ['overTime', 'compare']
+const SIDES: ReportParams['side'][] = ['expense', 'income']
+const GROUP_BYS: GroupBy[] = ['category', 'payee', 'tag']
+const VIEWS: ReportParams['view'][] = ['bars', 'flow']
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])-01$/
+
+function oneOf<T>(allowed: readonly T[], value: unknown, fallback: T): T {
+  return allowed.includes(value as T) ? (value as T) : fallback
+}
+
+function sanitizeParams(raw: unknown): ReportParams {
+  const p = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const d = defaultParams(typeof p.budgetId === 'string' ? p.budgetId : null)
+  const from = typeof p.from === 'string' && MONTH.test(p.from) ? p.from : undefined
+  const to = typeof p.to === 'string' && MONTH.test(p.to) ? p.to : undefined
+  const period = oneOf(PERIODS, p.period, d.period)
+  const compare = Array.isArray(p.compare) && p.compare.length === 2 && p.compare.every((y) => Number.isInteger(y))
+    ? [p.compare[0] as number, p.compare[1] as number] as [number, number]
+    : null
+  const out: ReportParams = {
+    ...d,
+    // a custom range without a readable start would silently become "all time"
+    period: period === 'custom' && !from ? d.period : period,
+    step: oneOf(STEPS, p.step, d.step),
+    mode: oneOf(MODES, p.mode, d.mode),
+    side: oneOf(SIDES, p.side, d.side),
+    groupBy: oneOf(GROUP_BYS, p.groupBy, d.groupBy),
+    view: oneOf(VIEWS, p.view, d.view),
+    selectedId: typeof p.selectedId === 'string' ? p.selectedId : null,
+    compare,
+  }
+  if (from) out.from = from
+  if (to) out.to = to
+  return out
 }
 
 interface ReportTabsState {

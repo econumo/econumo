@@ -10,14 +10,17 @@ interface ReportQueryParams {
   to?: string
 }
 
-export function useFlowReport(params: ReportQueryParams & { groupBy?: GroupBy }) {
+export function flowReportQuery(params: ReportQueryParams & { groupBy?: GroupBy }) {
   const { budgetId, from, to, groupBy } = params
-  return useQuery<FlowReportDto>({
+  return {
     queryKey: [...queryKeys.reportFlow, budgetId ?? 'mine', from ?? '', to ?? '', groupBy ?? ''],
     queryFn: () => reportApi.getFlowReport({ budgetId, from, to, groupBy }),
     staleTime: TEN_MINUTES,
-    placeholderData: keepPreviousData,
-  })
+  }
+}
+
+export function useFlowReport(params: ReportQueryParams & { groupBy?: GroupBy }) {
+  return useQuery<FlowReportDto>({ ...flowReportQuery(params), placeholderData: keepPreviousData })
 }
 
 export function useNetWorthReport(params: ReportQueryParams) {

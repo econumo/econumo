@@ -1,4 +1,6 @@
 import { useEffect, useMemo } from 'react'
+import { useQueries } from '@tanstack/react-query'
+import type { FlowReportDto } from '@/api/dto/report'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
@@ -14,6 +16,10 @@ import { ReportList } from './ReportList'
 import { MAX_REPORT_TABS, REPORT_QUESTION, tabTitle, useReportTabs } from './reportTabs'
 import type { ReportKind, ReportTab } from './reportTabs'
 import { TabBar } from './TabBar'
+import { flowReportQuery } from './queries'
+import { flowQueryArgs } from './reportPeriod'
+import { SpendingReport } from './SpendingReport'
+import { spendingRowNames } from './reportRows'
 
 function ReportBody({ tab }: { tab: ReportTab }) {
   const { t } = useTranslation()
@@ -29,6 +35,14 @@ function ReportBody({ tab }: { tab: ReportTab }) {
           trackEvent(METRICS.REPORTS_OPEN_REPORT, { report: kind, scope: tab.params.budgetId ? 'budget' : 'mine' })
         }}
       />
+    )
+  }
+  if (tab.kind === 'spending') {
+    return (
+      <div className="flex flex-col gap-3">
+        <h2 className="text-lg font-normal">{t(REPORT_QUESTION.spending)}</h2>
+        <SpendingReport tab={tab} />
+      </div>
     )
   }
   return <h2 className="text-lg font-normal">{t(REPORT_QUESTION[tab.kind])}</h2>
@@ -68,6 +82,18 @@ export function ReportsPage() {
     for (const tab of tabs) repair(tab.id, ids)
   }, [ready, budgets, tabIds])
 
+  // titles name a selected row; budget rows (envelopes) are only known from the
+  // report itself, so each spending tab's cached report is read, never fetched
+  const spendingTabs = store.tabs.filter((tab) => tab.kind === 'spending' && tab.params.selectedId)
+  const cached = useQueries({
+    queries: spendingTabs.map((tab) => ({ ...flowReportQuery(flowQueryArgs(tab.params)), enabled: false })),
+  })
+  const reportRows = cached.map((q, i) => {
+    const data = q.data as FlowReportDto | undefined
+    return spendingRowNames(data?.[spendingTabs[i].params.side], t)
+  })
+  const reportRowsKey = JSON.stringify(reportRows)
+
   const names = useMemo(() => ({
     report: {
       list: t('reports.tabs.new'),
@@ -75,9 +101,12 @@ export function ReportsPage() {
       cashflow: t('reports.kind.cashflow'),
       networth: t('reports.kind.networth'),
     } satisfies Record<ReportKind, string>,
-    rows: Object.fromEntries([...(categories ?? []), ...(tags ?? []), ...(payees ?? [])].map((r) => [r.id, r.name])),
+    rows: {
+      ...Object.fromEntries([...(categories ?? []), ...(tags ?? []), ...(payees ?? [])].map((r) => [r.id, r.name])),
+      ...Object.assign({}, ...(JSON.parse(reportRowsKey) as Record<string, string>[])),
+    },
     versus: (later: number, earlier: number) => t('reports.tabs.versus', { later, earlier }),
-  }), [t, categories, tags, payees])
+  }), [t, categories, tags, payees, reportRowsKey])
 
   const active = store.tabs.find((tab) => tab.id === store.activeId) ?? store.tabs[0]
 
