@@ -50,6 +50,16 @@ func (emptyMetadataStub) PayeesByOwners(context.Context, []vo.Id) ([]model.Payee
 	return nil, nil
 }
 
+func (emptyMetadataStub) CategoriesByIDs(context.Context, []vo.Id) ([]model.CategoryMeta, error) {
+	return nil, nil
+}
+func (emptyMetadataStub) TagsByIDs(context.Context, []vo.Id) ([]model.TagMeta, error) {
+	return nil, nil
+}
+func (emptyMetadataStub) PayeesByIDs(context.Context, []vo.Id) ([]model.PayeeMeta, error) {
+	return nil, nil
+}
+
 type frozenClock struct{ t time.Time }
 
 func (c frozenClock) Now() time.Time { return c.t }

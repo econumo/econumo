@@ -30,11 +30,12 @@ type flowClock struct{ t time.Time }
 func (c flowClock) Now() time.Time { return c.t }
 
 type flowHarness struct {
-	ctx  context.Context
-	svc  *appbudget.Service
-	f    *fixture.Builder
-	user string
-	acct string
+	ctx      context.Context
+	svc      *appbudget.Service
+	f        *fixture.Builder
+	user     string
+	acct     string
+	accounts *accountrepo.Repo
 }
 
 func newFlowHarness(t *testing.T) *flowHarness {
@@ -65,7 +66,7 @@ func newFlowHarness(t *testing.T) *flowHarness {
 		operationrepo.NewGuard("sqlite", txm),
 		txm, clk,
 	)
-	return &flowHarness{ctx: context.Background(), svc: svc, f: f, user: user, acct: acct}
+	return &flowHarness{ctx: context.Background(), svc: svc, f: f, user: user, acct: acct, accounts: accountRepo}
 }
 
 func (h *flowHarness) report(t *testing.T, req model.GetFlowReportRequest) model.FlowReportResult {
@@ -237,5 +238,51 @@ func TestFlowReport_InvalidGroupBy(t *testing.T) {
 	_, err := h.svc.GetFlowReport(h.ctx, vo.MustParseId(h.user), model.GetFlowReportRequest{GroupBy: "bogus"})
 	if err == nil {
 		t.Fatal("want error")
+	}
+}
+
+func TestFlowReport_Personal_DeletionCorrectionCounted(t *testing.T) {
+	h := newFlowHarness(t)
+	gone := h.f.Account(fixture.Account{UserID: h.user, Name: "Gone", Deleted: true})
+	h.tx(1, gone, "", "", "", "50", "2026-04-02 10:00:00")
+	err := h.accounts.SaveCorrection(h.ctx, model.AccountCorrection{
+		ID: vo.NewId(), UserID: vo.MustParseId(h.user), AccountID: vo.MustParseId(gone),
+		Description: "Balance adjustment (account deleted)", Type: 0, Amount: "50",
+		SpentAt: time.Date(2026, 5, 10, 9, 0, 0, 0, time.UTC), CreatedAt: time.Date(2026, 5, 10, 9, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := h.report(t, model.GetFlowReportRequest{From: "2026-04-01", To: "2026-05-01"})
+	unc := rowByName(t, r.Expense, model.UncategorizedName)
+	if unc.Id != model.UncategorizedID {
+		t.Fatalf("row = %+v", unc)
+	}
+	eqAmounts(t, unc.Amounts, "0", "50")
+}
+
+func TestFlowReport_Personal_PartnerCategoryOnSharedAccount(t *testing.T) {
+	h := newFlowHarness(t)
+	partner := h.f.User(fixture.User{ID: "ffff0000-0000-7000-8000-0000000000aa", Name: "Partner", Email: "partner@flow.test"})
+	h.f.DefaultOptions(partner)
+	theirCat := h.f.Category(fixture.Category{UserID: partner, Name: "PartnerCat", Type: 0, Icon: "pets"})
+	theirTag := h.f.Tag(fixture.Tag{UserID: partner, Name: "PartnerTag"})
+	h.f.AccountAccess(h.acct, partner, 1)
+	h.f.Transaction(fixture.Transaction{UserID: partner, AccountID: h.acct, CategoryID: theirCat, TagID: theirTag, Type: 0, Amount: "8", SpentAt: "2026-05-02 10:00:00"})
+
+	r := h.report(t, model.GetFlowReportRequest{})
+	row := rowByName(t, r.Expense, "PartnerCat")
+	if row.Id != theirCat || row.Icon != "pets" {
+		t.Fatalf("row = %+v", row)
+	}
+	eqAmounts(t, row.Amounts, "8")
+	for _, x := range r.Expense {
+		if x.Id == model.UncategorizedID {
+			t.Fatalf("partner category folded into Uncategorized: %+v", r.Expense)
+		}
+	}
+	rt := h.report(t, model.GetFlowReportRequest{GroupBy: "tag"})
+	if rowByName(t, rt.Expense, "PartnerTag").Id != theirTag {
+		t.Fatalf("tag rows = %+v", rt.Expense)
 	}
 }

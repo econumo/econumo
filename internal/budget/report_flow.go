@@ -38,7 +38,7 @@ func (s *Service) GetFlowReport(ctx context.Context, userID vo.Id, req model.Get
 	if err != nil {
 		return nil, err
 	}
-	item, err := s.buildPersonalFlow(ctx, userID, accountIDs, window, groupBy, currency)
+	item, err := s.buildPersonalFlow(ctx, accountIDs, window, groupBy, currency)
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +62,27 @@ type flowGroupMeta struct {
 	isArchived bool
 }
 
-func (s *Service) flowGroupNames(ctx context.Context, userID vo.Id, groupBy string) (map[string]flowGroupMeta, error) {
-	owners := []vo.Id{userID}
+func (s *Service) flowGroupNames(ctx context.Context, groupBy string, flows []model.MonthlyFlowRow) (map[string]flowGroupMeta, error) {
+	var ids []vo.Id
+	seen := map[string]bool{}
+	for _, r := range flows {
+		if r.GroupID == nil || seen[*r.GroupID] {
+			continue
+		}
+		seen[*r.GroupID] = true
+		id, err := vo.ParseId(*r.GroupID)
+		if err != nil {
+			continue
+		}
+		ids = append(ids, id)
+	}
 	out := map[string]flowGroupMeta{}
+	if len(ids) == 0 {
+		return out, nil
+	}
 	switch groupBy {
 	case flowGroupCategory:
-		cats, err := s.metadata.CategoriesByOwners(ctx, owners)
+		cats, err := s.metadata.CategoriesByIDs(ctx, ids)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +90,7 @@ func (s *Service) flowGroupNames(ctx context.Context, userID vo.Id, groupBy stri
 			out[c.ID] = flowGroupMeta{name: c.Name, icon: c.Icon, isArchived: c.IsArchived}
 		}
 	case flowGroupTag:
-		tags, err := s.metadata.TagsByOwners(ctx, owners)
+		tags, err := s.metadata.TagsByIDs(ctx, ids)
 		if err != nil {
 			return nil, err
 		}
@@ -83,7 +98,7 @@ func (s *Service) flowGroupNames(ctx context.Context, userID vo.Id, groupBy stri
 			out[tg.ID] = flowGroupMeta{name: tg.Name, isArchived: tg.IsArchived}
 		}
 	default:
-		payees, err := s.metadata.PayeesByOwners(ctx, owners)
+		payees, err := s.metadata.PayeesByIDs(ctx, ids)
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +120,7 @@ func flowKey(typ int, group string, monthIdx int) string {
 	return fmt.Sprintf("f%d|%s|%d", typ, group, monthIdx)
 }
 
-func (s *Service) buildPersonalFlow(ctx context.Context, userID vo.Id, accountIDs []vo.Id, w reportWindow, groupBy string, currency vo.Id) (model.FlowReportResult, error) {
+func (s *Service) buildPersonalFlow(ctx context.Context, accountIDs []vo.Id, w reportWindow, groupBy string, currency vo.Id) (model.FlowReportResult, error) {
 	months := w.monthList()
 	monthStrs := make([]string, len(months))
 	monthIdx := map[string]int{}
@@ -123,7 +138,7 @@ func (s *Service) buildPersonalFlow(ctx context.Context, userID vo.Id, accountID
 	if err != nil {
 		return model.FlowReportResult{}, err
 	}
-	names, err := s.flowGroupNames(ctx, userID, groupBy)
+	names, err := s.flowGroupNames(ctx, groupBy, flows)
 	if err != nil {
 		return model.FlowReportResult{}, err
 	}

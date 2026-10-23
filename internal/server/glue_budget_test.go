@@ -9,9 +9,12 @@ import (
 	"testing"
 
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/vo"
+	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
@@ -145,5 +148,34 @@ func TestBudgetAccountLookup_OwnedAccountIDs(t *testing.T) {
 		if !id.Equal(live) && !id.Equal(dead) {
 			t.Fatalf("unexpected account %s in %v", id, got)
 		}
+	}
+}
+
+// The ByIDs lookups resolve ids whoever owns them and skip unknown ones.
+func TestBudgetMetadataLookup_ByIDsAcrossOwners(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	u, other := vo.NewId().String(), vo.NewId().String()
+	f.User(fixture.User{ID: u, Email: "u@e.test", Name: "U", Password: "pw", Salt: "s"})
+	f.User(fixture.User{ID: other, Email: "o@e.test", Name: "O", Password: "pw", Salt: "s"})
+	cat := f.Category(fixture.Category{UserID: other, Name: "Theirs"})
+	tag := f.Tag(fixture.Tag{UserID: other, Name: "TheirTag"})
+	payee := f.Payee(fixture.Payee{UserID: other, Name: "TheirPayee"})
+	ctx := context.Background()
+
+	cats, err := server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo(db.Engine, db.TX)).
+		CategoriesByIDs(ctx, []vo.Id{vo.MustParseId(cat), vo.NewId()})
+	if err != nil || len(cats) != 1 || cats[0].Name != "Theirs" {
+		t.Fatalf("categories = %+v, %v", cats, err)
+	}
+	tags, err := server.NewBudgetTagMetadataLookup(tagrepo.NewRepo(db.Engine, db.TX)).
+		TagsByIDs(ctx, []vo.Id{vo.MustParseId(tag), vo.NewId()})
+	if err != nil || len(tags) != 1 || tags[0].Name != "TheirTag" {
+		t.Fatalf("tags = %+v, %v", tags, err)
+	}
+	payees, err := server.NewBudgetPayeeMetadataLookup(payeerepo.NewRepo(db.Engine, db.TX)).
+		PayeesByIDs(ctx, []vo.Id{vo.MustParseId(payee), vo.NewId()})
+	if err != nil || len(payees) != 1 || payees[0].Name != "TheirPayee" {
+		t.Fatalf("payees = %+v, %v", payees, err)
 	}
 }
