@@ -1,4 +1,4 @@
-import { flowQueryArgs, periodLabels, periodRange, previousRange } from './reportPeriod'
+import { flowQueryArgs, netWorthQueryArgs, periodLabels, periodRange, previousRange } from './reportPeriod'
 import { defaultParams } from './reportTabs'
 
 const today = new Date(2026, 9, 15)
@@ -73,5 +73,22 @@ describe('periodLabels', () => {
     expect(ru.bucket('2026-10-01', 'quarter')).toBe('4 кв. 2026')
     const zh = periodLabels('zh', (q, year) => `${year}第${q}季度`)
     expect(zh.month('2026-10-01')).toBe('2026年10月')
+  })
+})
+
+describe('netWorthQueryArgs', () => {
+  // month-end balances: the period starts from the close of the month before it
+  it.each([
+    ['thisYear', '2025-12-01'],
+    ['last12', '2025-10-01'],
+    ['last3y', '2023-12-01'],
+    ['all', undefined],
+  ] as const)('%s fetches from %s', (period, from) => {
+    expect(netWorthQueryArgs({ ...defaultParams('b1'), period }, today)).toEqual({ budgetId: 'b1', from })
+  })
+
+  it('custom sends both ends, the start one month early', () => {
+    const p = { ...defaultParams(null), period: 'custom' as const, from: '2024-03-01', to: '2025-02-01' }
+    expect(netWorthQueryArgs(p, today)).toEqual({ budgetId: null, from: '2024-02-01', to: '2025-02-01' })
   })
 })

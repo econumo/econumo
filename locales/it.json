@@ -1673,6 +1673,26 @@
       "running_note": "* {period} non è ancora finito: le cifre sono quelle finora.",
       "flow_note": "Il flusso copre l’intero periodo: da dove sono arrivate le entrate e dove sono andate."
     },
+    "networth": {
+      "period_1y": "1 a",
+      "period_3y": "3 a",
+      "period_all": "Tutto",
+      "today": "Oggi",
+      "since": "dalla fine di {month}",
+      "chart": "Grafico del patrimonio",
+      "col_folder": "Cartella",
+      "col_group": "Gruppo",
+      "col_start": "Inizio",
+      "col_now": "Ora",
+      "no_folder": "Nessuna cartella",
+      "deleted": "Conti eliminati",
+      "other_owner": "Altro partecipante",
+      "expand": "Mostra i conti in {name}",
+      "collapse": "Nascondi i conti in {name}",
+      "empty": "Ancora nessun saldo sui conti",
+      "note_mine": "Raggruppato per le tue cartelle dei conti; i conti in valuta estera sono convertiti al cambio di ogni mese.",
+      "note_budget": "I tuoi conti sono raggruppati per le tue cartelle, quelli di ogni partecipante sotto il suo nome; i conti in valuta estera sono convertiti al cambio di ogni mese."
+    },
     "drill": {
       "unsupported": "Queste transazioni non possono essere elencate qui. Apri la pagina Budget per vederle."
     },

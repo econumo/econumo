@@ -20,6 +20,7 @@ import { flowReportQuery } from './queries'
 import { flowQueryArgs } from './reportPeriod'
 import { SpendingReport } from './SpendingReport'
 import { CashFlowReport } from './CashFlowReport'
+import { NetWorthReport } from './NetWorthReport'
 import { spendingRowNames } from './reportRows'
 
 function ReportBody({ tab }: { tab: ReportTab }) {
@@ -54,7 +55,12 @@ function ReportBody({ tab }: { tab: ReportTab }) {
       </div>
     )
   }
-  return <h2 className="text-lg font-normal">{t(REPORT_QUESTION[tab.kind])}</h2>
+  return (
+    <div className="flex flex-col gap-3">
+      <h2 className="text-lg font-normal">{t(REPORT_QUESTION.networth)}</h2>
+      <NetWorthReport tab={tab} />
+    </div>
+  )
 }
 
 export function ReportsPage() {

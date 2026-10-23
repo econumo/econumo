@@ -174,6 +174,7 @@ export const METRICS = {
   REPORTS_SELECT_ROW: 'appReportsSelectRow',
   REPORTS_DRILL_DOWN: 'appReportsDrillDown',
   REPORTS_CASHFLOW_VIEW: 'appReportsCashflowView',
+  REPORTS_NETWORTH_EXPAND: 'appReportsNetworthExpand',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

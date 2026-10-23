@@ -1673,6 +1673,26 @@
       "running_note": "* {period} ist noch nicht vorbei: Die Zahlen sind der bisherige Stand.",
       "flow_note": "Der Fluss umfasst den ganzen Zeitraum: woher die Einnahmen kamen und wohin sie gingen."
     },
+    "networth": {
+      "period_1y": "1 J.",
+      "period_3y": "3 J.",
+      "period_all": "Alle",
+      "today": "Heute",
+      "since": "seit Ende {month}",
+      "chart": "Vermögensdiagramm",
+      "col_folder": "Ordner",
+      "col_group": "Gruppe",
+      "col_start": "Anfang",
+      "col_now": "Jetzt",
+      "no_folder": "Kein Ordner",
+      "deleted": "Gelöschte Konten",
+      "other_owner": "Andere Person",
+      "expand": "Konten in {name} anzeigen",
+      "collapse": "Konten in {name} ausblenden",
+      "empty": "Noch keine Kontostände",
+      "note_mine": "Nach deinen Kontoordnern gruppiert; Konten in Fremdwährung zum Kurs des jeweiligen Monats umgerechnet.",
+      "note_budget": "Deine Konten sind nach deinen Ordnern gruppiert, die Konten jeder anderen Person unter ihrem Namen; Konten in Fremdwährung zum Kurs des jeweiligen Monats umgerechnet."
+    },
     "drill": {
       "unsupported": "Diese Transaktionen können hier nicht aufgelistet werden. Öffne die Budget-Seite, um sie zu sehen."
     },

@@ -1673,6 +1673,26 @@
       "running_note": "* {period} is not over yet: its figures are so far.",
       "flow_note": "Flow covers the whole period: where the income came from and where it went."
     },
+    "networth": {
+      "period_1y": "1y",
+      "period_3y": "3y",
+      "period_all": "All",
+      "today": "Today",
+      "since": "since the end of {month}",
+      "chart": "Net worth chart",
+      "col_folder": "Folder",
+      "col_group": "Group",
+      "col_start": "Start",
+      "col_now": "Now",
+      "no_folder": "No folder",
+      "deleted": "Deleted accounts",
+      "other_owner": "Another participant",
+      "expand": "Show the accounts in {name}",
+      "collapse": "Hide the accounts in {name}",
+      "empty": "No account balances yet",
+      "note_mine": "Grouped by your account folders; foreign-currency accounts converted at each month's rate.",
+      "note_budget": "Your accounts are grouped by your folders, each participant's accounts under their name; foreign-currency accounts converted at each month's rate."
+    },
     "drill": {
       "unsupported": "These transactions can't be listed here. Open the Budget page to see them."
     },

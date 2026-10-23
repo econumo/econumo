@@ -46,6 +46,22 @@ export function flowQueryArgs(p: ReportParams, today: Date = new Date()): FlowQu
   return args
 }
 
+export interface NetWorthQueryArgs {
+  budgetId: Id | null
+  from?: string
+  to?: string
+}
+
+// Balances are month-end, so a period's starting balance is the close of the
+// month before it: "this year" starts from December's close, like the report
+// list's card.
+export function netWorthQueryArgs(p: ReportParams, today: Date = new Date()): NetWorthQueryArgs {
+  const from = periodFrom(p, today)
+  const args: NetWorthQueryArgs = { budgetId: p.budgetId, from: from ? addMonths(from, -1) : undefined }
+  if (p.period === 'custom' && p.to) args.to = p.to
+  return args
+}
+
 export type MonthRange = [string, string]
 
 export function lastMonthOf(b: Bucket): string {

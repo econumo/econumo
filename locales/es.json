@@ -1673,6 +1673,26 @@
       "running_note": "* {period} aún no ha terminado: las cifras son hasta ahora.",
       "flow_note": "El flujo abarca todo el periodo: de dónde vinieron los ingresos y a dónde fueron."
     },
+    "networth": {
+      "period_1y": "1 a",
+      "period_3y": "3 a",
+      "period_all": "Todo",
+      "today": "Hoy",
+      "since": "desde el final de {month}",
+      "chart": "Gráfico de patrimonio",
+      "col_folder": "Carpeta",
+      "col_group": "Grupo",
+      "col_start": "Inicio",
+      "col_now": "Ahora",
+      "no_folder": "Sin carpeta",
+      "deleted": "Cuentas eliminadas",
+      "other_owner": "Otro participante",
+      "expand": "Mostrar las cuentas de {name}",
+      "collapse": "Ocultar las cuentas de {name}",
+      "empty": "Aún no hay saldos en las cuentas",
+      "note_mine": "Agrupado por tus carpetas de cuentas; las cuentas en otra moneda se convierten al tipo de cada mes.",
+      "note_budget": "Tus cuentas se agrupan por tus carpetas y las de cada participante bajo su nombre; las cuentas en otra moneda se convierten al tipo de cada mes."
+    },
     "drill": {
       "unsupported": "Estas transacciones no se pueden listar aquí. Abre la página de Presupuesto para verlas."
     },

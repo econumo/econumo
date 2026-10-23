@@ -1937,6 +1937,28 @@ tag, and a budget with a planned limit on one category.
       on desktop opens as Bars, and the chart and four table columns fit
       the width. Light and dark theme: bars, line, Sankey labels and links
       stay readable.
+- [ ] **Net worth**: a stacked area per group with a solid Total line;
+      groups with a negative balance (credit cards, loans) are drawn below
+      zero and the Total line sits at their sum. Period presets 1y / 3y /
+      All (no step); the headline shows "Today", the latest total, and
+      "Up / Down {amount} over the period since the end of {month}", where
+      the month is the one before the period (1y on Oct 23: Oct 2025).
+      Amounts show cents.
+- [ ] Net worth in My accounts: groups are my account folders, plus "No
+      folder" and "Deleted accounts" when such accounts carry a balance;
+      accounts that are zero in every month are not listed. The table
+      reads Folder, Start, Now, Change (green up, red down) with a Total
+      row equal to the headline; a group expands to its accounts (chevron
+      or row tap) and collapses again.
+- [ ] Net worth in a budget shared with a partner: my member accounts
+      appear under my folders, each partner's member accounts under the
+      partner's name (never their folder names); the column reads Group.
+      With "This year" figures on the report list's card, the card's total
+      equals the report's latest total.
+- [ ] 📱 At 390px the Net worth controls fit on one or two lines, the chart
+      fits the width and the table shows the group, Now and Change; light and
+      dark theme keep the areas, the Total line and the change colours
+      readable.
 
 ## 11. Sharing — connections, accounts, budgets (multi-user)
 

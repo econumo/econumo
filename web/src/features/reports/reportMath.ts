@@ -222,6 +222,29 @@ export function netWorthSeries(
   return { groups: [...groups.values()], total }
 }
 
+export interface NetWorthGrouping {
+  me: Id
+  /** my accounts' folder, from my account list; deleted accounts are not in it */
+  folderOf: Record<Id, Id | null>
+  folders: { id: Id; name: string }[]
+  /** budget participants' names by user id */
+  owners: Record<Id, string>
+  names: { noFolder: string; deleted: string; otherOwner: string }
+}
+
+// My accounts sit in my folders; anyone else's account is listed under its
+// owner's name, since their folders are theirs and are never shown.
+export function netWorthGroupOf(g: NetWorthGrouping) {
+  const folderName = new Map(g.folders.map((f) => [f.id, f.name]))
+  return (a: NetWorthAccountDto): { id: string; name: string } => {
+    if (a.ownerUserId !== g.me) return { id: `owner:${a.ownerUserId}`, name: g.owners[a.ownerUserId] ?? g.names.otherOwner }
+    if (a.isDeleted) return { id: 'deleted', name: g.names.deleted }
+    const folderId = g.folderOf[a.id]
+    const name = folderId ? folderName.get(folderId) : undefined
+    return folderId && name !== undefined ? { id: `folder:${folderId}`, name } : { id: 'nofolder', name: g.names.noFolder }
+  }
+}
+
 const EMPTY: Insight = { key: 'reports.insight.empty', params: {} }
 
 export function spendingInsight(rows: ReportRowDto[]): Insight {

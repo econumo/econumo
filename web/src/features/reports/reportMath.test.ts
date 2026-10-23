@@ -5,6 +5,7 @@ import {
   flowGraph,
   changeRows,
   compareYears,
+  netWorthGroupOf,
   netWorthInsight,
   netWorthSeries,
   rollUp,
@@ -312,6 +313,29 @@ describe('netWorthSeries', () => {
   })
   it('empty report gives empty arrays', () => {
     expect(netWorthSeries({ currencyId: 'c', months: [], accounts: [] }, () => ({ id: 'x', name: 'x' }))).toEqual({ groups: [], total: [] })
+  })
+})
+
+describe('netWorthGroupOf', () => {
+  const acc = (id: string, ownerUserId: string, isDeleted = 0) => ({ id, name: id, icon: '', currencyId: 'c', ownerUserId, isDeleted, balances: [] })
+  const groupOf = netWorthGroupOf({
+    me: 'me',
+    folderOf: { cash: 'f1', card: 'f2', loose: null },
+    folders: [{ id: 'f1', name: 'Cash' }, { id: 'f2', name: 'Credit cards' }],
+    owners: { bob: 'Bob' },
+    names: { noFolder: 'No folder', deleted: 'Deleted accounts', otherOwner: 'Participant' },
+  })
+  it('puts my accounts in my folders', () => {
+    expect(groupOf(acc('cash', 'me'))).toEqual({ id: 'folder:f1', name: 'Cash' })
+    expect(groupOf(acc('card', 'me'))).toEqual({ id: 'folder:f2', name: 'Credit cards' })
+  })
+  it('my accounts without a folder, and deleted ones, get their own groups', () => {
+    expect(groupOf(acc('loose', 'me'))).toEqual({ id: 'nofolder', name: 'No folder' })
+    expect(groupOf(acc('gone', 'me', 1))).toEqual({ id: 'deleted', name: 'Deleted accounts' })
+  })
+  it("a partner's accounts go under the partner's name, whatever folder they sit in", () => {
+    expect(groupOf(acc('cash', 'bob'))).toEqual({ id: 'owner:bob', name: 'Bob' })
+    expect(groupOf(acc('x', 'eve'))).toEqual({ id: 'owner:eve', name: 'Participant' })
   })
 })
 

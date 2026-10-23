@@ -1673,6 +1673,26 @@
       "running_note": "* {period} jeszcze trwa: kwoty są dotychczasowe.",
       "flow_note": "Przepływ obejmuje cały okres: skąd pochodziły przychody i dokąd trafiły."
     },
+    "networth": {
+      "period_1y": "1 r.",
+      "period_3y": "3 l.",
+      "period_all": "Wszystko",
+      "today": "Dziś",
+      "since": "od końca {month}",
+      "chart": "Wykres majątku",
+      "col_folder": "Folder",
+      "col_group": "Grupa",
+      "col_start": "Początek",
+      "col_now": "Teraz",
+      "no_folder": "Bez folderu",
+      "deleted": "Usunięte konta",
+      "other_owner": "Inny uczestnik",
+      "expand": "Pokaż konta w {name}",
+      "collapse": "Ukryj konta w {name}",
+      "empty": "Brak sald na kontach",
+      "note_mine": "Pogrupowano według Twoich folderów kont; konta w obcej walucie przeliczono po kursie z każdego miesiąca.",
+      "note_budget": "Twoje konta pogrupowano według Twoich folderów, konta każdego uczestnika pod jego imieniem; konta w obcej walucie przeliczono po kursie z każdego miesiąca."
+    },
     "drill": {
       "unsupported": "Tych transakcji nie można tu wyświetlić. Otwórz stronę Budżetu, aby je zobaczyć."
     },
