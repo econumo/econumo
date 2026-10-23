@@ -256,3 +256,28 @@ it('Month step: the table compares the last two complete months, the chart keeps
   expect(head).toEqual(['Name', 'Aug 2026', 'Sep 2026', 'Change', 'Monthly avg'])
   expect(screen.getByText(/Oct 2026 is not over yet/)).toBeInTheDocument()
 })
+
+it('headline change for a selected envelope child compares that child only', async () => {
+  const child = (amounts: string[]) => ({ id: 'cat-rent', kind: 'category', name: 'Rent', icon: '', isArchived: 0, amounts })
+  const envelope = (amounts: string[], childAmounts: string[]) =>
+    row('env-home', 'Home', amounts, { kind: 'envelope', children: [child(childAmounts)] })
+  const ten = (v: string) => Array.from({ length: 10 }, () => v)
+  const cur = report({ months: months.slice(12), expense: [envelope(ten('300'), ten('200'))] })
+  const previous = report({ months: months.slice(2, 12), expense: [envelope(ten('250'), ten('150'))] })
+  openSpending({ period: 'thisYear', budgetId: 'b1', selectedId: 'cat-rent' }, cur, previous)
+  await screen.findByRole('list', { name: 'Legend' })
+  // Rent: 2000 now against 1500 before
+  await waitFor(() => expect(within(headline()).getByText(/\+500\.00 \$ · \+33%/)).toBeInTheDocument())
+  expect(within(headline()).getByText('2,000.00 $')).toBeInTheDocument()
+})
+
+it('headline omits the change when the selected row is missing from the previous period', async () => {
+  const ten = (v: string) => Array.from({ length: 10 }, () => v)
+  const cur = report({ months: months.slice(12), expense: [row('cat-new', 'New', ten('10')), row('cat-old', 'Old', ten('5'))] })
+  const previous = report({ months: months.slice(2, 12), expense: [row('cat-old', 'Old', ten('5'))] })
+  openSpending({ period: 'thisYear', selectedId: 'cat-new' }, cur, previous)
+  await screen.findByRole('list', { name: 'Legend' })
+  await waitFor(() => expect(flowRequests).toBeGreaterThanOrEqual(2))
+  expect(within(headline()).getByText('100.00 $')).toBeInTheDocument()
+  expect(plain(headline().textContent)).not.toContain('vs')
+})

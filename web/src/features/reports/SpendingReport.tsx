@@ -256,7 +256,6 @@ function ChangeTable({ list, childrenOf, aLabel, bLabel, side, selectedId, color
   )
 }
 
-
 interface Drill {
   row: DrillRow
   from: string
@@ -561,10 +560,9 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
   const windowRange: MonthRange = [months[0], months[months.length - 1]]
   const headlineTotal = sum(selected ? selected.amounts : totalAmounts)
   const prevRows = prevReport.data && !prevReport.isPlaceholderData ? prevReport.data[p.side] : null
-  const prevHasData = !!prevRows && prevRows.some((r) => r.amounts.some((a) => !isZero(a)))
-  const prevTotal = prevRows && prevHasData
-    ? sum((selected ? prevRows.filter((r) => r.id === selected.id) : prevRows).flatMap((r) => r.amounts))
-    : null
+  // a selected row (a child included) missing from the previous period counts as no data there
+  const prevAmounts = prevRows ? (selected ? findRow(prevRows, selected.id)?.row.amounts : prevRows.flatMap((r) => r.amounts)) : undefined
+  const prevTotal = prevAmounts && prevAmounts.some((a) => !isZero(a)) ? sum(prevAmounts) : null
   const headlineChange = prevTotal !== null ? changeOf(headlineTotal, prevTotal) : null
   const insight = selected ? null : spendingInsight(rows)
   const insightRow = insight?.params.id ? rows.find((r) => r.id === insight.params.id) : undefined
