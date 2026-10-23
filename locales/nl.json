@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budget & plan",
+      "reports": "Rapporten",
       "onboarding": "Aan de slag",
       "create_account": "Rekening toevoegen",
       "collapse_menu": "Menu inklappen",
@@ -1553,6 +1554,53 @@
           "header": "Gearchiveerd"
         }
       }
+    }
+  },
+  "reports": {
+    "page": {
+      "title": "Rapporten"
+    },
+    "tabs": {
+      "new": "Nieuw tabblad",
+      "close": "{name} sluiten",
+      "close_menu": "Sluiten",
+      "rename": "Hernoemen",
+      "duplicate": "Dupliceren",
+      "name_label": "Naam van tabblad",
+      "limit": "Maximaal {count} tabbladen",
+      "versus": "{later} vs {earlier}"
+    },
+    "kind": {
+      "spending": "Uitgaven",
+      "cashflow": "Kasstroom",
+      "networth": "Nettovermogen"
+    },
+    "list": {
+      "choose": "Kies een rapport",
+      "scope": "Bereik",
+      "scope_mine": "Mijn rekeningen",
+      "spending_q": "Waar geef ik geld aan uit, en hoe verandert dat?",
+      "cashflow_q": "Verdien ik meer dan ik uitgeef?",
+      "networth_q": "Word ik rijker of armer?",
+      "forecast_q": "Wat gebeurt er met mijn geld?",
+      "coming_later": "Komt later",
+      "spent_caption": "uitgegeven in {year}",
+      "saved_caption": "gespaard in {year}",
+      "overspent_caption": "te veel uitgegeven in {year}",
+      "saved_rate": "{rate}% van het inkomen",
+      "networth_caption": "vandaag",
+      "networth_up": "{amount} meer dit jaar",
+      "networth_down": "{amount} minder dit jaar",
+      "networth_flat": "Geen verandering dit jaar"
+    },
+    "insight": {
+      "empty": "Nog geen transacties",
+      "spending_top": "{name} is de grootste: {amount}, {share}% van het totaal",
+      "cashflow_saved": "{amount} gespaard, {rate}% van het inkomen",
+      "cashflow_overspent": "{amount} meer uitgegeven dan verdiend",
+      "networth_up": "{amount} meer in deze periode",
+      "networth_down": "{amount} minder in deze periode",
+      "networth_flat": "Geen verandering in deze periode"
     }
   },
   "classifications": {

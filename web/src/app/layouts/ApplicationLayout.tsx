@@ -1,7 +1,7 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
+import { ChartColumn, RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file sits right at vite's 4KB auto-inline
 // cutoff, and a separately shipped sidebar logo can 404 where an inlined one
@@ -220,6 +220,13 @@ export function ApplicationLayout() {
                     >
                       <Wallet className="size-5" />
                     </Link>
+                    <Link
+                      to={RouterPage.REPORTS}
+                      title={t('common.nav.reports')}
+                      className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
+                    >
+                      <ChartColumn className="size-5" />
+                    </Link>
                   </div>
                 ) : (
                   // compact matches the folder headers below (size and left edge)
@@ -231,6 +238,9 @@ export function ApplicationLayout() {
                     ) : null}
                     <Link to={budgetLink} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
                       {t('common.nav.budget')}
+                    </Link>
+                    <Link to={RouterPage.REPORTS} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
+                      {t('common.nav.reports')}
                     </Link>
                   </div>
                 )}

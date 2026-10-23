@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budget & Plan",
+      "reports": "Reports",
       "onboarding": "Getting started",
       "create_account": "Add account",
       "collapse_menu": "Collapse menu",
@@ -1553,6 +1554,53 @@
           "header": "Archived"
         }
       }
+    }
+  },
+  "reports": {
+    "page": {
+      "title": "Reports"
+    },
+    "tabs": {
+      "new": "New tab",
+      "close": "Close {name}",
+      "close_menu": "Close",
+      "rename": "Rename",
+      "duplicate": "Duplicate",
+      "name_label": "Tab name",
+      "limit": "Up to {count} tabs",
+      "versus": "{later} vs {earlier}"
+    },
+    "kind": {
+      "spending": "Spending",
+      "cashflow": "Cash flow",
+      "networth": "Net worth"
+    },
+    "list": {
+      "choose": "Choose a report",
+      "scope": "Scope",
+      "scope_mine": "My accounts",
+      "spending_q": "What do I spend money on, and how is it changing?",
+      "cashflow_q": "Do I earn more than I spend?",
+      "networth_q": "Am I getting richer or poorer?",
+      "forecast_q": "What will happen to my money?",
+      "coming_later": "Coming later",
+      "spent_caption": "spent in {year}",
+      "saved_caption": "saved in {year}",
+      "overspent_caption": "overspent in {year}",
+      "saved_rate": "{rate}% of income",
+      "networth_caption": "today",
+      "networth_up": "Up {amount} this year",
+      "networth_down": "Down {amount} this year",
+      "networth_flat": "No change this year"
+    },
+    "insight": {
+      "empty": "No transactions yet",
+      "spending_top": "{name} is the largest: {amount}, {share}% of the total",
+      "cashflow_saved": "Saved {amount}, {rate}% of income",
+      "cashflow_overspent": "Spent {amount} more than earned",
+      "networth_up": "Up {amount} over the period",
+      "networth_down": "Down {amount} over the period",
+      "networth_flat": "No change over the period"
     }
   },
   "classifications": {

@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "预算与计划",
+      "reports": "报表",
       "onboarding": "快速入门",
       "create_account": "添加账户",
       "collapse_menu": "收起菜单",
@@ -1553,6 +1554,53 @@
           "header": "已归档"
         }
       }
+    }
+  },
+  "reports": {
+    "page": {
+      "title": "报表"
+    },
+    "tabs": {
+      "new": "新标签页",
+      "close": "关闭 {name}",
+      "close_menu": "关闭",
+      "rename": "重命名",
+      "duplicate": "复制",
+      "name_label": "标签页名称",
+      "limit": "最多 {count} 个标签页",
+      "versus": "{later} 对比 {earlier}"
+    },
+    "kind": {
+      "spending": "支出",
+      "cashflow": "现金流",
+      "networth": "净资产"
+    },
+    "list": {
+      "choose": "选择报表",
+      "scope": "范围",
+      "scope_mine": "我的账户",
+      "spending_q": "我的钱花在哪里，变化如何？",
+      "cashflow_q": "我的收入多于支出吗？",
+      "networth_q": "我在变富还是变穷？",
+      "forecast_q": "我的钱将会怎样？",
+      "coming_later": "即将推出",
+      "spent_caption": "{year} 年支出",
+      "saved_caption": "{year} 年结余",
+      "overspent_caption": "{year} 年超支",
+      "saved_rate": "占收入的 {rate}%",
+      "networth_caption": "今天",
+      "networth_up": "今年增加 {amount}",
+      "networth_down": "今年减少 {amount}",
+      "networth_flat": "今年没有变化"
+    },
+    "insight": {
+      "empty": "还没有交易",
+      "spending_top": "{name} 最多：{amount}，占总额的 {share}%",
+      "cashflow_saved": "结余 {amount}，占收入的 {rate}%",
+      "cashflow_overspent": "支出比收入多 {amount}",
+      "networth_up": "期间增加 {amount}",
+      "networth_down": "期间减少 {amount}",
+      "networth_flat": "期间没有变化"
     }
   },
   "classifications": {

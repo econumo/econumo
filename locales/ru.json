@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Бюджет и план",
+      "reports": "Отчёты",
       "onboarding": "Начало работы",
       "create_account": "Добавить счёт",
       "collapse_menu": "Свернуть меню",
@@ -1553,6 +1554,53 @@
           "header": "Архив"
         }
       }
+    }
+  },
+  "reports": {
+    "page": {
+      "title": "Отчёты"
+    },
+    "tabs": {
+      "new": "Новая вкладка",
+      "close": "Закрыть {name}",
+      "close_menu": "Закрыть",
+      "rename": "Переименовать",
+      "duplicate": "Дублировать",
+      "name_label": "Название вкладки",
+      "limit": "Не больше {count} вкладок",
+      "versus": "{later} и {earlier}"
+    },
+    "kind": {
+      "spending": "Расходы",
+      "cashflow": "Денежный поток",
+      "networth": "Капитал"
+    },
+    "list": {
+      "choose": "Выберите отчёт",
+      "scope": "Область",
+      "scope_mine": "Мои счета",
+      "spending_q": "На что я трачу деньги и как это меняется?",
+      "cashflow_q": "Зарабатываю ли я больше, чем трачу?",
+      "networth_q": "Я богатею или беднею?",
+      "forecast_q": "Что будет с моими деньгами?",
+      "coming_later": "Скоро",
+      "spent_caption": "потрачено в {year}",
+      "saved_caption": "сбережено в {year}",
+      "overspent_caption": "перерасход в {year}",
+      "saved_rate": "{rate}% дохода",
+      "networth_caption": "сегодня",
+      "networth_up": "Рост на {amount} в этом году",
+      "networth_down": "Снижение на {amount} в этом году",
+      "networth_flat": "Без изменений в этом году"
+    },
+    "insight": {
+      "empty": "Пока нет операций",
+      "spending_top": "Больше всего — {name}: {amount}, {share}% от общей суммы",
+      "cashflow_saved": "Сбережено {amount}, {rate}% дохода",
+      "cashflow_overspent": "Потрачено на {amount} больше, чем заработано",
+      "networth_up": "Рост на {amount} за период",
+      "networth_down": "Снижение на {amount} за период",
+      "networth_flat": "Без изменений за период"
     }
   },
   "classifications": {

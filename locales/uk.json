@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Бюджет і план",
+      "reports": "Звіти",
       "onboarding": "Початок роботи",
       "create_account": "Додати рахунок",
       "collapse_menu": "Згорнути меню",
@@ -1553,6 +1554,53 @@
           "header": "Архів"
         }
       }
+    }
+  },
+  "reports": {
+    "page": {
+      "title": "Звіти"
+    },
+    "tabs": {
+      "new": "Нова вкладка",
+      "close": "Закрити {name}",
+      "close_menu": "Закрити",
+      "rename": "Перейменувати",
+      "duplicate": "Дублювати",
+      "name_label": "Назва вкладки",
+      "limit": "Не більше {count} вкладок",
+      "versus": "{later} і {earlier}"
+    },
+    "kind": {
+      "spending": "Витрати",
+      "cashflow": "Грошовий потік",
+      "networth": "Капітал"
+    },
+    "list": {
+      "choose": "Оберіть звіт",
+      "scope": "Область",
+      "scope_mine": "Мої рахунки",
+      "spending_q": "На що я витрачаю гроші і як це змінюється?",
+      "cashflow_q": "Чи заробляю я більше, ніж витрачаю?",
+      "networth_q": "Я багатшаю чи біднішаю?",
+      "forecast_q": "Що буде з моїми грошима?",
+      "coming_later": "Незабаром",
+      "spent_caption": "витрачено у {year}",
+      "saved_caption": "заощаджено у {year}",
+      "overspent_caption": "перевитрата у {year}",
+      "saved_rate": "{rate}% доходу",
+      "networth_caption": "сьогодні",
+      "networth_up": "Зростання на {amount} цього року",
+      "networth_down": "Зниження на {amount} цього року",
+      "networth_flat": "Без змін цього року"
+    },
+    "insight": {
+      "empty": "Поки немає операцій",
+      "spending_top": "Найбільше — {name}: {amount}, {share}% від загальної суми",
+      "cashflow_saved": "Заощаджено {amount}, {rate}% доходу",
+      "cashflow_overspent": "Витрачено на {amount} більше, ніж зароблено",
+      "networth_up": "Зростання на {amount} за період",
+      "networth_down": "Зниження на {amount} за період",
+      "networth_flat": "Без змін за період"
     }
   },
   "classifications": {

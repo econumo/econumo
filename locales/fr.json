@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budget et plan",
+      "reports": "Rapports",
       "onboarding": "Premiers pas",
       "create_account": "Ajouter un compte",
       "collapse_menu": "Réduire le menu",
@@ -1553,6 +1554,53 @@
           "header": "Archivés"
         }
       }
+    }
+  },
+  "reports": {
+    "page": {
+      "title": "Rapports"
+    },
+    "tabs": {
+      "new": "Nouvel onglet",
+      "close": "Fermer {name}",
+      "close_menu": "Fermer",
+      "rename": "Renommer",
+      "duplicate": "Dupliquer",
+      "name_label": "Nom de l’onglet",
+      "limit": "{count} onglets au maximum",
+      "versus": "{later} vs {earlier}"
+    },
+    "kind": {
+      "spending": "Dépenses",
+      "cashflow": "Flux de trésorerie",
+      "networth": "Patrimoine net"
+    },
+    "list": {
+      "choose": "Choisissez un rapport",
+      "scope": "Périmètre",
+      "scope_mine": "Mes comptes",
+      "spending_q": "À quoi je dépense mon argent, et comment cela évolue-t-il ?",
+      "cashflow_q": "Est-ce que je gagne plus que je ne dépense ?",
+      "networth_q": "Est-ce que je m’enrichis ou m’appauvris ?",
+      "forecast_q": "Que va devenir mon argent ?",
+      "coming_later": "Bientôt disponible",
+      "spent_caption": "dépensé en {year}",
+      "saved_caption": "épargné en {year}",
+      "overspent_caption": "dépassement en {year}",
+      "saved_rate": "{rate} % des revenus",
+      "networth_caption": "aujourd’hui",
+      "networth_up": "+{amount} cette année",
+      "networth_down": "−{amount} cette année",
+      "networth_flat": "Aucun changement cette année"
+    },
+    "insight": {
+      "empty": "Aucune transaction pour l’instant",
+      "spending_top": "{name} est le plus important : {amount}, {share} % du total",
+      "cashflow_saved": "{amount} épargnés, {rate} % des revenus",
+      "cashflow_overspent": "{amount} dépensés de plus que gagnés",
+      "networth_up": "+{amount} sur la période",
+      "networth_down": "−{amount} sur la période",
+      "networth_flat": "Aucun changement sur la période"
     }
   },
   "classifications": {

@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budżet i plan",
+      "reports": "Raporty",
       "onboarding": "Pierwsze kroki",
       "create_account": "Dodaj konto",
       "collapse_menu": "Zwiń menu",
@@ -1553,6 +1554,53 @@
           "header": "Zarchiwizowane"
         }
       }
+    }
+  },
+  "reports": {
+    "page": {
+      "title": "Raporty"
+    },
+    "tabs": {
+      "new": "Nowa karta",
+      "close": "Zamknij {name}",
+      "close_menu": "Zamknij",
+      "rename": "Zmień nazwę",
+      "duplicate": "Duplikuj",
+      "name_label": "Nazwa karty",
+      "limit": "Maksymalnie {count} kart",
+      "versus": "{later} vs {earlier}"
+    },
+    "kind": {
+      "spending": "Wydatki",
+      "cashflow": "Przepływy",
+      "networth": "Wartość netto"
+    },
+    "list": {
+      "choose": "Wybierz raport",
+      "scope": "Zakres",
+      "scope_mine": "Moje konta",
+      "spending_q": "Na co wydaję pieniądze i jak to się zmienia?",
+      "cashflow_q": "Czy zarabiam więcej, niż wydaję?",
+      "networth_q": "Bogacę się czy biednieję?",
+      "forecast_q": "Co stanie się z moimi pieniędzmi?",
+      "coming_later": "Wkrótce",
+      "spent_caption": "wydano w {year}",
+      "saved_caption": "zaoszczędzono w {year}",
+      "overspent_caption": "wydano za dużo w {year}",
+      "saved_rate": "{rate}% dochodu",
+      "networth_caption": "dziś",
+      "networth_up": "Wzrost o {amount} w tym roku",
+      "networth_down": "Spadek o {amount} w tym roku",
+      "networth_flat": "Bez zmian w tym roku"
+    },
+    "insight": {
+      "empty": "Brak transakcji",
+      "spending_top": "Najwięcej: {name}, {amount}, {share}% całości",
+      "cashflow_saved": "Zaoszczędzono {amount}, {rate}% dochodu",
+      "cashflow_overspent": "Wydano o {amount} więcej, niż zarobiono",
+      "networth_up": "Wzrost o {amount} w okresie",
+      "networth_down": "Spadek o {amount} w okresie",
+      "networth_flat": "Bez zmian w okresie"
     }
   },
   "classifications": {

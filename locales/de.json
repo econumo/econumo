@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budget & Plan",
+      "reports": "Berichte",
       "onboarding": "Erste Schritte",
       "create_account": "Konto hinzufügen",
       "collapse_menu": "Menü einklappen",
@@ -1553,6 +1554,53 @@
           "header": "Archiviert"
         }
       }
+    }
+  },
+  "reports": {
+    "page": {
+      "title": "Berichte"
+    },
+    "tabs": {
+      "new": "Neuer Tab",
+      "close": "{name} schließen",
+      "close_menu": "Schließen",
+      "rename": "Umbenennen",
+      "duplicate": "Duplizieren",
+      "name_label": "Tabname",
+      "limit": "Höchstens {count} Tabs",
+      "versus": "{later} vs. {earlier}"
+    },
+    "kind": {
+      "spending": "Ausgaben",
+      "cashflow": "Cashflow",
+      "networth": "Nettovermögen"
+    },
+    "list": {
+      "choose": "Bericht wählen",
+      "scope": "Bereich",
+      "scope_mine": "Meine Konten",
+      "spending_q": "Wofür gebe ich Geld aus, und wie verändert sich das?",
+      "cashflow_q": "Verdiene ich mehr, als ich ausgebe?",
+      "networth_q": "Werde ich reicher oder ärmer?",
+      "forecast_q": "Was wird aus meinem Geld?",
+      "coming_later": "Kommt später",
+      "spent_caption": "{year} ausgegeben",
+      "saved_caption": "{year} gespart",
+      "overspent_caption": "{year} zu viel ausgegeben",
+      "saved_rate": "{rate} % des Einkommens",
+      "networth_caption": "heute",
+      "networth_up": "Plus {amount} in diesem Jahr",
+      "networth_down": "Minus {amount} in diesem Jahr",
+      "networth_flat": "Keine Veränderung in diesem Jahr"
+    },
+    "insight": {
+      "empty": "Noch keine Buchungen",
+      "spending_top": "{name} ist der größte Posten: {amount}, {share} % der Summe",
+      "cashflow_saved": "{amount} gespart, {rate} % des Einkommens",
+      "cashflow_overspent": "{amount} mehr ausgegeben als eingenommen",
+      "networth_up": "Plus {amount} im Zeitraum",
+      "networth_down": "Minus {amount} im Zeitraum",
+      "networth_flat": "Keine Veränderung im Zeitraum"
     }
   },
   "classifications": {

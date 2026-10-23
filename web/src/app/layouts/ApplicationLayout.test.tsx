@@ -145,6 +145,16 @@ it('the Budget & Plan link opens the budget view last opened on this device', as
   await waitFor(() => expect(screen.getByRole('link', { name: 'Budget & Plan' })).toHaveAttribute('href', '/plan'))
 })
 
+it('Reports sits beside Budget & Plan in the menu and in the icon rail', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderShell('/')
+  expect(await screen.findByRole('link', { name: 'Reports' })).toHaveAttribute('href', '/reports')
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Reports')).not.toBeInTheDocument()
+  expect(screen.getByTitle('Reports')).toHaveAttribute('href', '/reports')
+})
+
 it('sizes the shell with dvh, never svh', async () => {
   mockViewport(false)
   const { container } = renderShell('/')

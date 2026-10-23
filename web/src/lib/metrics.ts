@@ -158,6 +158,13 @@ export const METRICS = {
   INBOX_OPEN: 'appInboxOpen',
   GLOBAL_SEARCH_OPEN: 'appGlobalSearchOpen',
   GLOBAL_SEARCH_SELECT: 'appGlobalSearchSelect',
+  REPORTS_OPEN: 'appReportsOpen',
+  REPORTS_OPEN_REPORT: 'appReportsOpenReport',
+  REPORTS_TAB_NEW: 'appReportsTabNew',
+  REPORTS_TAB_RENAME: 'appReportsTabRename',
+  REPORTS_TAB_CLOSE: 'appReportsTabClose',
+  REPORTS_TAB_DUPLICATE: 'appReportsTabDuplicate',
+  REPORTS_TAB_MOVE: 'appReportsTabMove',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

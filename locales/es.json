@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Presupuesto y plan",
+      "reports": "Informes",
       "onboarding": "Primeros pasos",
       "create_account": "Añadir cuenta",
       "collapse_menu": "Contraer el menú",
@@ -1553,6 +1554,53 @@
           "header": "Archivados"
         }
       }
+    }
+  },
+  "reports": {
+    "page": {
+      "title": "Informes"
+    },
+    "tabs": {
+      "new": "Nueva pestaña",
+      "close": "Cerrar {name}",
+      "close_menu": "Cerrar",
+      "rename": "Renombrar",
+      "duplicate": "Duplicar",
+      "name_label": "Nombre de la pestaña",
+      "limit": "Hasta {count} pestañas",
+      "versus": "{later} vs. {earlier}"
+    },
+    "kind": {
+      "spending": "Gastos",
+      "cashflow": "Flujo de caja",
+      "networth": "Patrimonio neto"
+    },
+    "list": {
+      "choose": "Elige un informe",
+      "scope": "Ámbito",
+      "scope_mine": "Mis cuentas",
+      "spending_q": "¿En qué gasto el dinero y cómo está cambiando?",
+      "cashflow_q": "¿Gano más de lo que gasto?",
+      "networth_q": "¿Me estoy haciendo más rico o más pobre?",
+      "forecast_q": "¿Qué pasará con mi dinero?",
+      "coming_later": "Próximamente",
+      "spent_caption": "gastado en {year}",
+      "saved_caption": "ahorrado en {year}",
+      "overspent_caption": "gastado de más en {year}",
+      "saved_rate": "{rate} % de los ingresos",
+      "networth_caption": "hoy",
+      "networth_up": "Sube {amount} este año",
+      "networth_down": "Baja {amount} este año",
+      "networth_flat": "Sin cambios este año"
+    },
+    "insight": {
+      "empty": "Aún no hay transacciones",
+      "spending_top": "{name} es lo mayor: {amount}, el {share} % del total",
+      "cashflow_saved": "Ahorrado {amount}, el {rate} % de los ingresos",
+      "cashflow_overspent": "Gastaste {amount} más de lo que ganaste",
+      "networth_up": "Sube {amount} en el periodo",
+      "networth_down": "Baja {amount} en el periodo",
+      "networth_flat": "Sin cambios en el periodo"
     }
   },
   "classifications": {

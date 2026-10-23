@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Orçamento e plano",
+      "reports": "Relatórios",
       "onboarding": "Primeiros passos",
       "create_account": "Adicionar conta",
       "collapse_menu": "Recolher menu",
@@ -1553,6 +1554,53 @@
           "header": "Arquivados"
         }
       }
+    }
+  },
+  "reports": {
+    "page": {
+      "title": "Relatórios"
+    },
+    "tabs": {
+      "new": "Nova aba",
+      "close": "Fechar {name}",
+      "close_menu": "Fechar",
+      "rename": "Renomear",
+      "duplicate": "Duplicar",
+      "name_label": "Nome da aba",
+      "limit": "Até {count} abas",
+      "versus": "{later} vs {earlier}"
+    },
+    "kind": {
+      "spending": "Gastos",
+      "cashflow": "Fluxo de caixa",
+      "networth": "Patrimônio líquido"
+    },
+    "list": {
+      "choose": "Escolha um relatório",
+      "scope": "Escopo",
+      "scope_mine": "Minhas contas",
+      "spending_q": "Com o que gasto dinheiro e como isso está mudando?",
+      "cashflow_q": "Ganho mais do que gasto?",
+      "networth_q": "Estou ficando mais rico ou mais pobre?",
+      "forecast_q": "O que vai acontecer com o meu dinheiro?",
+      "coming_later": "Em breve",
+      "spent_caption": "gasto em {year}",
+      "saved_caption": "poupado em {year}",
+      "overspent_caption": "gasto a mais em {year}",
+      "saved_rate": "{rate}% da renda",
+      "networth_caption": "hoje",
+      "networth_up": "Alta de {amount} este ano",
+      "networth_down": "Queda de {amount} este ano",
+      "networth_flat": "Sem mudança este ano"
+    },
+    "insight": {
+      "empty": "Ainda não há transações",
+      "spending_top": "{name} é o maior: {amount}, {share}% do total",
+      "cashflow_saved": "Poupou {amount}, {rate}% da renda",
+      "cashflow_overspent": "Gastou {amount} a mais do que ganhou",
+      "networth_up": "Alta de {amount} no período",
+      "networth_down": "Queda de {amount} no período",
+      "networth_flat": "Sem mudança no período"
     }
   },
   "classifications": {
