@@ -117,3 +117,33 @@ func TestBudgetAccountLookup_OwnedLiveAccountIDs(t *testing.T) {
 		t.Fatalf("got %v want only the owned live account %s", got, live)
 	}
 }
+
+// OwnedAccountIDs feeds the reports: the user's own accounts, deleted ones
+// included, never one merely shared with them.
+func TestBudgetAccountLookup_OwnedAccountIDs(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	u, other := vo.NewId().String(), vo.NewId().String()
+	f.User(fixture.User{ID: u, Email: "u@e.test", Name: "U", Password: "pw", Salt: "s"})
+	f.User(fixture.User{ID: other, Email: "o@e.test", Name: "O", Password: "pw", Salt: "s"})
+	live, dead, shared, otherDead := vo.NewId(), vo.NewId(), vo.NewId(), vo.NewId()
+	f.Account(fixture.Account{ID: live.String(), UserID: u})
+	f.Account(fixture.Account{ID: dead.String(), UserID: u, Deleted: true})
+	f.Account(fixture.Account{ID: shared.String(), UserID: other})
+	f.Account(fixture.Account{ID: otherDead.String(), UserID: other, Deleted: true})
+	f.AccountAccess(shared.String(), u, 1)
+
+	l := server.NewBudgetAccountLookup(accountrepo.NewRepo(db.Engine, db.TX))
+	got, err := l.OwnedAccountIDs(context.Background(), vo.MustParseId(u))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %v want the live and the deleted own account", got)
+	}
+	for _, id := range got {
+		if !id.Equal(live) && !id.Equal(dead) {
+			t.Fatalf("unexpected account %s in %v", id, got)
+		}
+	}
+}

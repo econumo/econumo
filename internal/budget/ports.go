@@ -42,6 +42,9 @@ type AccountLookup interface {
 	// deleted — accounts merely shared with them are excluded. Feeds the
 	// accept-access membership seeding.
 	OwnedLiveAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
+	// OwnedAccountIDs returns every account the user OWNS, soft-deleted
+	// ones included: their history still belongs in the user's reports.
+	OwnedAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
 // CurrencyLookup resolves a currency id by code (createBudget default
