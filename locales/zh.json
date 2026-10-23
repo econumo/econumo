@@ -1936,7 +1936,6 @@
   "install": {
     "notice": "Econumo 作为应用更好用",
     "cta": "安装",
-    "cta_ios": "如何安装",
     "dismiss": "关闭",
     "menu_item": "安装应用",
     "dialog": {

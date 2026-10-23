@@ -35,7 +35,7 @@ it('opens the Share-menu instructions on iOS', async () => {
   const user = userEvent.setup()
   render(<InstallBanner />)
   expect(screen.getByText('Econumo works best as an app')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'How to install' }))
+  await user.click(screen.getByRole('button', { name: 'Install' }))
   expect(await screen.findByText(/Add to Home Screen”/)).toBeInTheDocument()
   expect(screen.getByText(/Already added it\?/)).toBeInTheDocument()
   expect(trackEvent).toHaveBeenCalledWith('appInstallAppOpen', { source: 'banner', mode: 'ios' })

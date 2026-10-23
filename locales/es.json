@@ -1936,7 +1936,6 @@
   "install": {
     "notice": "Econumo funciona mejor como app",
     "cta": "Instalar",
-    "cta_ios": "Cómo instalar",
     "dismiss": "Descartar",
     "menu_item": "Instalar la app",
     "dialog": {

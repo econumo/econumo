@@ -2096,7 +2096,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       (Add transaction, Set plan) carry no fill of their own: they show the
       surface they sit on, as in the light theme. 📱
 - [ ] 📱 Install banner, iOS Safari (not yet added to the Home Screen): a
-      one-line banner "Econumo works best as an app" with a "How to install" button
+      one-line banner "Econumo works best as an app" with an "Install" button
       and × sits at the top of every page — `/login`, `/register`, the app
       pages and the OAuth consent page — and Settings shows an "Install the
       app" row under the profile card. The button (or the row) opens the steps
@@ -2110,7 +2110,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       it never opens again on that device (reload, logout and login included),
       and it never opens after the banner was dismissed, in the installed app,
       or in Chrome/Edge.
-- [ ] Install banner, Chrome/Edge on desktop or Android (HTTPS or localhost): the banner's button reads "Install"; it and the Settings row
+- [ ] Install banner, Chrome/Edge on desktop or Android (HTTPS or localhost): the banner's Install button and the Settings row
       open the browser's own install dialog; once installed (or opened as the
       installed app) both disappear. Firefox and desktop Safari show neither.
 - [ ] 📱 Install as an app: in Chrome DevTools → Application → Manifest the
