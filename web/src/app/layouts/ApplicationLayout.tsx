@@ -12,6 +12,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UpdateNotice } from '@/components/UpdateNotice'
 import { InstallBanner } from '@/features/install/InstallBanner'
+import { InstallPopup } from '@/features/install/InstallPopup'
 import { ServerVersionNotice } from '@/components/ServerVersionNotice'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
@@ -184,6 +185,7 @@ export function ApplicationLayout() {
       <SubscriptionBanner />
       <ServerVersionNotice />
       <InstallBanner />
+      <InstallPopup />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
           <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">

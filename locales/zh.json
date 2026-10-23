@@ -1934,8 +1934,10 @@
     }
   },
   "install": {
-    "notice": "将 Econumo 安装为应用",
+    "notice": "Econumo 作为应用使用效果最佳。请将其添加到主屏幕；如果已添加，请从主屏幕打开。",
+    "notice_prompt": "Econumo 作为应用使用效果最佳。安装后即可在独立窗口中打开。",
     "cta": "安装",
+    "cta_ios": "如何安装",
     "dismiss": "关闭",
     "menu_item": "安装应用",
     "dialog": {
@@ -1944,6 +1946,7 @@
       "step_share": "轻点浏览器中的“共享”按钮。在 Safari 中它可能位于 ••• 菜单内。",
       "step_add": "向下滚动并选择“添加到主屏幕”。",
       "step_confirm": "轻点“添加”。Econumo 将出现在你的主屏幕上。",
+      "installed_hint": "已经添加了？请从主屏幕图标打开 Econumo，而不是在浏览器中打开。",
       "close": "知道了"
     }
   },

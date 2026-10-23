@@ -1934,8 +1934,10 @@
     }
   },
   "install": {
-    "notice": "Installeer Econumo als app",
+    "notice": "Econumo werkt het best als app. Zet het op je beginscherm, of open het daar als je dat al hebt gedaan.",
+    "notice_prompt": "Econumo werkt het best als app. Installeer het om het in een eigen venster te openen.",
     "cta": "Installeren",
+    "cta_ios": "Zo installeer je het",
     "dismiss": "Verbergen",
     "menu_item": "App installeren",
     "dialog": {
@@ -1944,6 +1946,7 @@
       "step_share": "Tik op de deelknop van de browser. In Safari staat die mogelijk in het •••-menu.",
       "step_add": "Scrol omlaag en kies ‘Zet op beginscherm’.",
       "step_confirm": "Tik op ‘Voeg toe’. Econumo staat nu op je beginscherm.",
+      "installed_hint": "Al toegevoegd? Open Econumo via het pictogram op je beginscherm in plaats van in de browser.",
       "close": "Begrepen"
     }
   },

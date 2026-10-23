@@ -1934,8 +1934,10 @@
     }
   },
   "install": {
-    "notice": "Zainstaluj Econumo jako aplikację",
+    "notice": "Econumo działa najlepiej jako aplikacja. Dodaj je do ekranu początkowego, a jeśli już to zrobiłeś, otwieraj je stamtąd.",
+    "notice_prompt": "Econumo działa najlepiej jako aplikacja. Zainstaluj je, aby otwierać je we własnym oknie.",
     "cta": "Zainstaluj",
+    "cta_ios": "Jak zainstalować",
     "dismiss": "Ukryj",
     "menu_item": "Zainstaluj aplikację",
     "dialog": {
@@ -1944,6 +1946,7 @@
       "step_share": "Stuknij przycisk Udostępnij w przeglądarce. W Safari może być w menu •••.",
       "step_add": "Przewiń w dół i wybierz „Do ekranu początk.”.",
       "step_confirm": "Stuknij „Dodaj”. Econumo pojawi się na ekranie początkowym.",
+      "installed_hint": "Już dodane? Otwieraj Econumo ikoną na ekranie początkowym zamiast w przeglądarce.",
       "close": "Rozumiem"
     }
   },

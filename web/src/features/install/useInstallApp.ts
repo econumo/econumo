@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { promptInstall, useInstallMode, type InstallMode } from './installPrompt'
 
-export type InstallSource = 'settings' | 'banner'
+export type InstallSource = 'settings' | 'banner' | 'popup'
 
 // One entry point for every install surface: Chromium gets its own dialog,
 // iOS gets the Share-menu instructions.

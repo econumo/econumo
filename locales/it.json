@@ -1934,8 +1934,10 @@
     }
   },
   "install": {
-    "notice": "Installa Econumo come app",
+    "notice": "Econumo funziona meglio come app. Aggiungilo alla schermata Home oppure, se l’hai già fatto, aprilo da lì.",
+    "notice_prompt": "Econumo funziona meglio come app. Installalo per aprirlo in una finestra tutta sua.",
     "cta": "Installa",
+    "cta_ios": "Come installare",
     "dismiss": "Ignora",
     "menu_item": "Installa l’app",
     "dialog": {
@@ -1944,6 +1946,7 @@
       "step_share": "Tocca il pulsante Condividi del browser. In Safari può trovarsi nel menu •••.",
       "step_add": "Scorri e scegli «Aggiungi alla schermata Home».",
       "step_confirm": "Tocca «Aggiungi». Econumo comparirà nella schermata Home.",
+      "installed_hint": "Già aggiunto? Apri Econumo dalla sua icona nella schermata Home invece che dal browser.",
       "close": "Ho capito"
     }
   },

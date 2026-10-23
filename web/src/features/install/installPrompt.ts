@@ -12,6 +12,7 @@ interface BeforeInstallPromptEvent extends Event {
 export type InstallMode = 'prompt' | 'ios'
 
 const DISMISSED_KEY = 'econumo.install-notice-dismissed'
+const POPUP_SHOWN_KEY = 'econumo.install-popup-shown'
 
 let deferredPrompt: BeforeInstallPromptEvent | null = null
 let installed = false
@@ -89,6 +90,23 @@ export function dismissInstallNotice(): void {
     localStorage.setItem(DISMISSED_KEY, '1')
   } catch {
     // storage unavailable: the notice comes back on the next launch
+  }
+}
+
+// The one-time popup at the first signed-in visit on iOS Safari.
+export function shouldShowInstallPopup(): boolean {
+  try {
+    return localStorage.getItem(POPUP_SHOWN_KEY) !== '1' && !isInstallNoticeDismissed()
+  } catch {
+    return false
+  }
+}
+
+export function markInstallPopupShown(): void {
+  try {
+    localStorage.setItem(POPUP_SHOWN_KEY, '1')
+  } catch {
+    // storage unavailable: shouldShowInstallPopup already said no
   }
 }
 

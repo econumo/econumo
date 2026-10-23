@@ -34,6 +34,7 @@ export function InstallInstructionsDialog({ open, onClose }: { open: boolean; on
           </li>
         ))}
       </ol>
+      <p className="mt-4 text-sm text-muted-foreground">{t('install.dialog.installed_hint')}</p>
     </ResponsiveDialog>
   )
 }

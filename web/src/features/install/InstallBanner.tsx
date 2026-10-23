@@ -18,9 +18,9 @@ export function InstallBanner() {
     <>
       {mode && !dismissed ? (
         <div className="flex items-center gap-3 bg-primary/10 px-4 py-2 text-sm text-econumo-link">
-          <span className="min-w-0 flex-1">{t('install.notice')}</span>
-          <Button type="button" size="sm" variant="outline" onClick={() => start('banner')}>
-            {t('install.cta')}
+          <span className="min-w-0 flex-1">{t(mode === 'ios' ? 'install.notice' : 'install.notice_prompt')}</span>
+          <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => start('banner')}>
+            {t(mode === 'ios' ? 'install.cta_ios' : 'install.cta')}
           </Button>
           <button
             type="button"
