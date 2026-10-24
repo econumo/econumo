@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DailyListEntry, ViewTransaction } from '@/features/transactions/useAccountTransactions'
-import { entryKey, resolveDrop } from './historyDrop'
+import { acceptsDrop, entryKey, resolveDrop } from './historyDrop'
 
 const sep = (day: string): DailyListEntry => ({ kind: 'separator', day, label: 'date' })
 const tx = (id: string, date: string, extra: Partial<ViewTransaction> = {}): DailyListEntry =>
@@ -44,5 +44,16 @@ describe('resolveDrop', () => {
     const recurring = { id: 'r1', nextPaymentAt: '2024-03-02 00:00:00' } as ViewTransaction['recurring']
     const withPreview = [sep('2024-03-02'), tx('r1', '2024-02-20 00:00:00', { recurring }), tx('a', '2024-03-02 10:00:00'), tx('b', '2024-03-02 09:00:00')]
     expect(resolveDrop(withPreview, 'b', 1)).toMatchObject({ date: '2024-03-02', aboveId: null })
+  })
+})
+
+describe('acceptsDrop', () => {
+  // above the first header there is no day, so it takes no drops: a row dragged
+  // up there lands on the first row instead, at the top of the first day
+  it('refuses the first header and accepts every other entry', () => {
+    expect(acceptsDrop(entries, 'sep-2024-03-02')).toBe(false)
+    expect(acceptsDrop(entries, 'sep-2024-03-01')).toBe(true)
+    expect(acceptsDrop(entries, 'a')).toBe(true)
+    expect(resolveDrop(entries, 'd', at('a'))).toMatchObject({ date: '2024-03-02', aboveId: null })
   })
 })

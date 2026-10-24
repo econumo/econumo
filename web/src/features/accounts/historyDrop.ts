@@ -8,6 +8,14 @@ export function entryKey(entry: DailyListEntry): string {
   return tx.recurring ? `${tx.id}@${tx.date}` : tx.id
 }
 
+/** Whether the entry `key` takes drops. Everything does except the first
+ *  header: above it there is no day to land in, so a row dragged up there
+ *  falls on the first row instead, at the top of the first day, where the
+ *  gap the list opens and the drop agree. */
+export function acceptsDrop(entries: DailyListEntry[], key: string): boolean {
+  return entries.length === 0 || entryKey(entries[0]) !== key
+}
+
 export interface HistoryDrop {
   /** the day the row lands in, Y-m-d */
   date: string

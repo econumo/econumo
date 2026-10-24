@@ -6,7 +6,7 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { CSS } from '@dnd-kit/utilities'
 import type { DailyListEntry, ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import { snapRowToPointer } from '@/lib/dnd'
-import { entryKey, resolveDrop } from './historyDrop'
+import { acceptsDrop, entryKey, resolveDrop } from './historyDrop'
 import type { HistoryDrop } from './historyDrop'
 
 // A press this long lifts a row: a finger on any screen, a mouse in the phone
@@ -27,11 +27,12 @@ class GripSensor extends PointerSensor {
 interface HistoryDragState {
   /** the day header to light up: the drop would move the row to that day */
   targetDay: string | null
+  acceptsDrop: (key: string) => boolean
   /** true right after a drop, so the click a touch drag ends with opens nothing */
   justDragged: () => boolean
 }
 
-const HistoryDragContext = createContext<HistoryDragState>({ targetDay: null, justDragged: () => false })
+const HistoryDragContext = createContext<HistoryDragState>({ targetDay: null, acceptsDrop: () => true, justDragged: () => false })
 
 function useHistoryDrag(): HistoryDragState {
   return useContext(HistoryDragContext)
@@ -100,7 +101,8 @@ export function HistoryDragProvider({ entries, onDrop, renderOverlay, children }
     }
   }
 
-  const state = useMemo(() => ({ targetDay, justDragged }), [targetDay, justDragged])
+  const accepts = useCallback((key: string) => acceptsDrop(entries, key), [entries])
+  const state = useMemo(() => ({ targetDay, acceptsDrop: accepts, justDragged }), [targetDay, accepts, justDragged])
 
   return (
     <HistoryDragContext.Provider value={state}>
@@ -140,10 +142,10 @@ export function SortableHistoryEntry({ id, draggable, compact, children }: {
     justDragged: () => boolean
   }) => ReactNode
 }) {
-  const { targetDay, justDragged } = useHistoryDrag()
+  const { targetDay, acceptsDrop: accepts, justDragged } = useHistoryDrag()
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id,
-    disabled: { draggable: !draggable, droppable: false },
+    disabled: { draggable: !draggable, droppable: !accepts(id) },
   })
   let row: HTMLAttributes<HTMLElement> = {}
   let handle: HTMLAttributes<HTMLElement> | null = null
