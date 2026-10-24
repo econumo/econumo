@@ -7,7 +7,7 @@ export interface PlanCellViewInput {
   type: BudgetElementType
   cell: PlanCellDto | undefined
   month: string
-  /** the month selected in the strip: later months show an actual only when it is non-zero */
+  /** the caller's current month: later months show an actual only when it is non-zero */
   selected: string
 }
 
@@ -21,6 +21,9 @@ export interface PlanCellView {
   over: boolean
   /** a savings account: `actual` is its month-end balance (projected ahead), not what was saved */
   balance: boolean
+  /** the current month has nothing real yet but recurring money upcoming: its dash
+   *  still opens the cell's transaction list */
+  upcoming?: true
 }
 
 /** A zero actual is only worth a mark next to a plan, as "— · 55"; on its own the
@@ -55,6 +58,10 @@ export function planCellView({ type, cell, month, selected }: PlanCellViewInput)
   const showsActual = past || !isZero(cell.actual)
   const actual = showsActual ? cell.actual : null
   const plan = shownPlan(cell.planned, actual)
+  // the current month shows the fact only; what is still to come is in its list
+  if (month === selected && isZero(cell.actual) && cell.upcoming !== undefined && !isZero(cell.upcoming)) {
+    return { actual: null, dash: true, plan, over: false, balance: false, upcoming: true }
+  }
   return {
     ...shownActual(actual, plan !== null),
     plan,

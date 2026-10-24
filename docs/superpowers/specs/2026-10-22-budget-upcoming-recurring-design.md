@@ -15,13 +15,18 @@ upcoming recurring payments.
 
 1. Every month in the Budget (monthly view) and the Plan grid counts the recurring payments
    still to come in it, for every template on the budget's member accounts, whoever owns it.
-2. Upcoming amounts count like spending (and like income/transfers for those types): the
-   spent / actual figure is ONE combined number, real + upcoming, shown exactly as today with
-   no split or separate style (decided with the user), and Available goes down by the
-   upcoming amount. The difference between real and upcoming is visible only in the cell's
-   transaction list.
-3. Posting a template turns its upcoming amount into real spending without moving the total
-   (see "Late payments" for the one case where the month changes). Exception: posting a
+2. Upcoming amounts count like spending (and like income/transfers for those types). In a
+   month after the caller's current one the spent / actual figure is ONE combined number,
+   real + upcoming, shown in the future months' lighter grey, and Available goes down by the
+   upcoming amount. The caller's current month shows the fact only: spent / actual and
+   Available are real money, and its upcoming payments are seen in the cell's transaction
+   list, which opens even while the figure is 0 (decided with the user). The Plan's
+   projections (effective totals, Balance, Total savings, savings closing balances) and the
+   carry-over into later months still count the current month's upcoming money.
+3. Posting a template turns its upcoming amount into real spending: in a later month the
+   total does not move; in the current month the payment moves from the list into the
+   figure, and the projections do not move (see "Late payments" for the one case where the
+   month changes). Exception: posting a
    template several cycles behind raises the current month's total, because posting advances
    `nextPaymentAt` by one cycle and the next missed cycle, dropped until then, becomes the new
    overdue row (see "Overdue: one row" below).
@@ -53,8 +58,11 @@ upcoming recurring payments.
 
 ## Decided with the user
 
-- Upcoming counts in Available (option "170 used, 30 available" for 200 planned / 120 spent /
-  50 upcoming).
+- Upcoming counts in Available in a month after the current one (option "170 used, 30
+  available" for 200 planned / 120 spent / 50 upcoming).
+- The current month shows the fact only (120 used, 80 available in that example); its
+  upcoming payments are visible in the list opened from the spent / actual figure. Future
+  months show the combined figure.
 - Next payment: post / skip / edit. Later cycles: seeing is enough.
 - Shared budgets: a partner's templates on member accounts show and count for every
   participant.
@@ -167,24 +175,28 @@ dates must bucket into the same month on both engines (compute months in Go, not
 
 ### Budget monthly view (SPA)
 
-- Spent shows the single combined figure real + upcoming, styled as today; the progress bar
-  and over-budget state use the same combined figure.
+- Current month: Spent, Available, the bar and the over-budget state are real money only;
+  the Spent figure opens the list (a 0 included) where the upcoming rows are. Later months:
+  Spent shows the single combined figure real + upcoming, and the bar and Available use it.
 - Future months: today the spent column shows a dash (`future` in `BudgetTable.tsx`). It
   now shows the combined figure (upcoming plus any future-dated real transactions), and the
   cell opens the list when there is anything to show.
-- Folders, tag groups and totals (`budgetMath.ts`) sum upcoming alongside spent.
+- Folders, tag groups and totals (`budgetMath.ts`) sum the rows as shown: real only in the
+  current month, upcoming alongside spent in later months.
 
 ### Plan grid (SPA)
 
-- Current and future cells show the single combined actual (real + upcoming), styled as the
-  actual is today; future cells, which today show only the plan, now show that combined
-  actual too.
+- Current-month cells show the real actual; one with nothing real yet but money upcoming
+  shows its dash as a link to the list. Future cells, which used to show only the plan, show
+  the combined actual (real + upcoming).
 - `planTotals`' effective value for current/future months becomes
-  `max(planned, actual + upcoming)`; Balance and savings projections (`projectSavingsClosings`)
+  `max(planned, actual + upcoming)` (the current month adds the raw upcoming to its real
+  actual, `projectedActual`; a later month's actual already holds it); Balance and savings projections (`projectSavingsClosings`)
   use the same effective value, so a recurring salary or savings transfer moves the projected
   balance even without a plan. The server's savings `closingBalance` pending gap uses the same
   rule (`addSavingsPending`).
-- `planSelectionSum` includes upcoming in the "Actual" figure for current/future months.
+- `planSelectionSum` includes upcoming in the "Actual" figure for future months; the current
+  month adds its real actual only, as its cells show.
 
 ### Transaction list (`BudgetTransactionsDialog.tsx`)
 

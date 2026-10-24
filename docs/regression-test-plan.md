@@ -1721,9 +1721,19 @@ and on tablet/phone only with a hardware keyboard.
       failing the list.
 - [ ] 📱 **Upcoming recurring payments in Budget and Plan**: with an active
       recurring expense on a budget account (category X, due later this month),
-      the current month's Budget view shows it inside X's combined Spent
-      (Available drops by it) and in the month's Expenses/Total lines; posting
-      or skipping it moves the figure to the real/actual side or removes it.
+      the current month's Budget view shows only what was really spent in X's
+      Spent, Available and the month's Expenses/Total lines (the fact); tapping
+      X's Spent opens its list with the upcoming row in it. With nothing spent
+      in X yet, X's Spent reads 0 and still opens that list (on a phone through
+      the item sheet's Transactions). Posting it moves the amount into Spent;
+      skipping it removes the row. Folder and tag-group sums and reporting
+      tags follow the same rule.
+- [ ] In the Plan grid's current month, cells show the real actual only; a
+      cell with nothing real yet but a payment upcoming shows a dash that opens
+      its list. The Income/Expenses/Savings totals, Balance, Total savings and
+      the savings rows' Balance still count this month's upcoming money (the
+      same figures as before this change), and every month after the current
+      one still carries it over.
 - [ ] 📱 A future month (Budget view and Plan grid) shows the upcoming amounts
       of the templates falling in it instead of a dash; in the Plan grid the
       future cell shows the upcoming amount and the Balance / Total savings

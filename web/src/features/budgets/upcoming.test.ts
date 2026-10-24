@@ -24,7 +24,11 @@ function budget(over: Partial<BudgetDto['structure']> = {}): BudgetDto {
   }
 }
 
-it('foldBudgetUpcoming adds upcoming to spent and lowers available', () => {
+// the fixtures' selected month and plan window open in October 2026
+const SEPTEMBER = '2026-09-01'
+const OCTOBER = '2026-10-01'
+
+it('foldBudgetUpcoming adds upcoming to spent and lowers available in a later month', () => {
   const folded = foldBudgetUpcoming(
     budget({
       elements: [
@@ -47,6 +51,7 @@ it('foldBudgetUpcoming adds upcoming to spent and lowers available', () => {
         budgeted: '100', spent: '40', available: '60', closingBalance: '900', upcoming: '25',
       }],
     }),
+    SEPTEMBER,
   )
   const [food, second] = folded.structure.elements
   expect(food.spent).toBe('170')
@@ -67,7 +72,7 @@ it('foldBudgetUpcoming adds upcoming to spent and lowers available', () => {
 
 it('fold is identity without upcoming fields', () => {
   const raw = budget({ elements: [element()], savings: undefined, labels: undefined })
-  expect(foldBudgetUpcoming(raw)).toEqual(raw)
+  expect(foldBudgetUpcoming(raw, SEPTEMBER)).toEqual(raw)
 
   const plan: BudgetPlanDto = {
     meta,
@@ -80,12 +85,50 @@ it('fold is identity without upcoming fields', () => {
       elements: [{ id: 'e1', type: 1, name: 'F', icon: 'i', currencyId: 'usd', isArchived: 0, folderId: null, position: 0, ownerUserId: 'u1', cells: [{ actual: '5', planned: '' }], children: [] }],
     },
   }
-  expect(foldPlanUpcoming(plan)).toEqual(plan)
+  expect(foldPlanUpcoming(plan, SEPTEMBER)).toEqual(plan)
 })
 
 it('fold results are memoized per data object', () => {
   const raw = budget({ elements: [element({ upcoming: '1', budgetUpcoming: '1', upcomingBefore: '0' })] })
-  expect(foldBudgetUpcoming(raw)).toBe(foldBudgetUpcoming(raw))
+  expect(foldBudgetUpcoming(raw, SEPTEMBER)).toBe(foldBudgetUpcoming(raw, SEPTEMBER))
+  const plan = planWith()
+  expect(foldPlanUpcoming(plan, OCTOBER)).toBe(foldPlanUpcoming(plan, OCTOBER))
+  // a new month folds again
+  expect(foldPlanUpcoming(plan, SEPTEMBER)).not.toBe(foldPlanUpcoming(plan, OCTOBER))
+})
+
+it('the current month is not folded: spent, available and labels stay the fact, and the upcoming fields stay readable', () => {
+  const raw = budget({
+    elements: [
+      element({
+        upcoming: '50', budgetUpcoming: '45', upcomingBefore: '0',
+        children: [{ id: 'c1', type: 1, name: 'C', icon: 'i', isArchived: 0, spent: '0', budgetSpent: '0', ownerUserId: 'u1', upcoming: '5', budgetUpcoming: '4.5' }],
+      }),
+    ],
+    labels: [{ id: 'l1', name: 'L', icon: 'i', isArchived: 0, spent: '7', ownerUserId: 'u1', upcoming: '3' }],
+    savings: [{
+      id: 's1', type: 5, name: 'S', icon: 'i', currencyId: 'usd', ownerUserId: 'u1', isArchived: 0, position: 0,
+      budgeted: '100', spent: '40', available: '60', closingBalance: '900', upcoming: '25',
+    }],
+  })
+  const folded = foldBudgetUpcoming(raw, OCTOBER)
+  const [food] = folded.structure.elements
+  expect([food.spent, food.budgetSpent, food.available]).toEqual(['120', '120', '80'])
+  expect(food.upcoming).toBe('50')
+  expect(food.children[0].spent).toBe('0')
+  expect(food.children[0].upcoming).toBe('5')
+  expect(folded.structure.labels![0].spent).toBe('7')
+  const savings = folded.structure.savings![0]
+  expect([savings.spent, savings.available, savings.closingBalance]).toEqual(['40', '60', '900'])
+  // an earlier month carries no upcoming money and is left alone as well
+  expect(foldBudgetUpcoming(raw, '2026-11-01')).toEqual(raw)
+})
+
+it('a later month still carries the current month\'s upcoming money over (upcomingBefore)', () => {
+  const raw = budget({ elements: [element({ budgeted: '200', available: '80', spent: '0', budgetSpent: '0', upcoming: '20', budgetUpcoming: '20', upcomingBefore: '50' })] })
+  const [food] = foldBudgetUpcoming(raw, SEPTEMBER).structure.elements
+  expect(food.spent).toBe('20')
+  expect(food.available).toBe('10')
 })
 
 function planWith(over: Partial<BudgetPlanDto> = {}, savings?: PlanSavingsElementDto[]): BudgetPlanDto {
@@ -128,6 +171,7 @@ it('foldPlanUpcoming adds cell upcoming and merges transfers by currency', () =>
       upcomingSavingsFlows: [{ month: '2026-10-01', currencyId: 'usd', amount: '60' }, { month: '2026-11-01', currencyId: 'usd', amount: '60' }],
       upcomingSavingsIncomeExpense: [{ month: '2026-11-01', currencyId: 'usd', amount: '2' }],
     }),
+    SEPTEMBER,
   )
   const el = folded.structure.elements[0]
   expect(el.cells.map((c) => c.actual)).toEqual(['25', '7.5', '0'])
@@ -157,6 +201,7 @@ it('savings closing adds cumulative upcoming', () => {
         { actual: '0', planned: '', closingBalance: '1040', upcoming: '0' },
       ],
     }]),
+    SEPTEMBER,
   )
   const cells = folded.structure.savings![0].cells
   expect(cells.map((c) => c.actual)).toEqual(['100', '60', '0'])
@@ -179,6 +224,7 @@ it('a window starting after the current month: each savings row opens on its upc
       },
       [row('s1', '600', '150', ['150', '150', '0']), row('s2', '400', '0', ['0', '0', '0'])],
     ),
+    SEPTEMBER,
   )
   const rows = folded.structure.savings!
   expect(rows[0].cells.map((c) => c.closingBalance)).toEqual(['900', '1050', '1050'])
@@ -192,13 +238,46 @@ it('a window starting after the current month: each savings row opens on its upc
 
 it('an upcoming-only currency joins the opening balances by the server order rule', () => {
   const base = planWith({ openingBalances: [{ currencyId: 'eur', amount: '5' }] })
-  const folded = foldPlanUpcoming({
-    ...base,
-    upcomingOpeningBalances: [{ currencyId: 'gbp', amount: '1' }, { currencyId: 'usd', amount: '2' }, { currencyId: 'eur', amount: '0' }],
-  })
+  const folded = foldPlanUpcoming(
+    {
+      ...base,
+      upcomingOpeningBalances: [{ currencyId: 'gbp', amount: '1' }, { currencyId: 'usd', amount: '2' }, { currencyId: 'eur', amount: '0' }],
+    },
+    SEPTEMBER,
+  )
   expect(folded.openingBalances).toEqual([
     { currencyId: 'usd', amount: '2' },
     { currencyId: 'eur', amount: '5' },
     { currencyId: 'gbp', amount: '1' },
   ])
+})
+
+it('the plan\'s current month keeps its actuals real; later months fold, and the projections still count the current month', () => {
+  const folded = foldPlanUpcoming(
+    planWith(
+      {
+        upcomingTransfers: [{ period: '2026-10-01', items: [{ currencyId: 'usd', in: '100', out: '0' }] }],
+        upcomingSavingsFlows: [{ month: '2026-10-01', currencyId: 'usd', amount: '60' }],
+      },
+      [{
+        id: 's1', type: 5, name: 'S', icon: 'i', currencyId: 'usd', ownerUserId: 'u1', isArchived: 0, position: 0,
+        cells: [
+          { actual: '40', planned: '100', closingBalance: '1040', upcoming: '60' },
+          { actual: '0', planned: '100', closingBalance: '1040', upcoming: '60' },
+          { actual: '0', planned: '', closingBalance: '1040', upcoming: '0' },
+        ],
+      }],
+    ),
+    OCTOBER,
+  )
+  const el = folded.structure.elements[0]
+  expect(el.cells.map((c) => c.actual)).toEqual(['5', '7.5', '0'])
+  expect(el.cells[0].upcoming).toBe('20')
+  expect(el.children[0].cells.map((c) => c.actual)).toEqual(['5', '7.5', '0'])
+  const savings = folded.structure.savings![0].cells
+  expect(savings.map((c) => c.actual)).toEqual(['40', '60', '0'])
+  // a closing balance is a projection: it counts the current month's upcoming money
+  expect(savings.map((c) => c.closingBalance)).toEqual(['1100', '1160', '1160'])
+  expect(folded.transfers[0].items).toEqual([{ currencyId: 'usd', in: '110', out: '5' }])
+  expect(folded.savingsFlows).toEqual([{ month: '2026-10-01', currencyId: 'usd', amount: '100' }])
 })

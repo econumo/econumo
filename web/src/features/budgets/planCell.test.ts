@@ -25,6 +25,13 @@ describe('planCellView', () => {
     expect(planCellView({ type: cat, cell: { actual: '0', planned: '55' }, month: sel, selected: sel })).toEqual({ actual: null, dash: true, plan: '55', over: false, balance: false })
     expect(planCellView({ type: cat, cell: { actual: '0.00', planned: '55' }, month: '2026-09-01', selected: sel })).toEqual({ actual: null, dash: true, plan: '55', over: false, balance: false })
   })
+  it('the current month shows the fact; nothing real yet but money upcoming is a dash that opens the list', () => {
+    expect(planCellView({ type: cat, cell: { actual: '20', planned: '55', upcoming: '30' }, month: sel, selected: sel })).toEqual({ actual: '20', dash: false, plan: '55', over: false, balance: false })
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '55', upcoming: '30' }, month: sel, selected: sel })).toEqual({ actual: null, dash: true, plan: '55', over: false, balance: false, upcoming: true })
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '', upcoming: '30' }, month: sel, selected: sel })).toEqual({ actual: null, dash: true, plan: null, over: false, balance: false, upcoming: true })
+    // a later month's actual already carries its upcoming money
+    expect(planCellView({ type: cat, cell: { actual: '30', planned: '', upcoming: '30' }, month: '2026-11-01', selected: sel }).upcoming).toBeUndefined()
+  })
   it('leaves a month with neither an actual nor a plan blank', () => {
     expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: sel, selected: sel })).toEqual({ actual: null, dash: false, plan: null, over: false, balance: false })
   })

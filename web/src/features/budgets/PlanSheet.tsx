@@ -771,12 +771,14 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         const c = i >= 0 ? r.element.cells[i] : undefined
         return c !== undefined && test(c)
       })
-    const visibleUncat = (r: PlanRow | null): PlanRow | null => (r && hasVisible(r, (c) => !isZero(c.actual)) ? r : null)
+    // the current month's actual is the fact only: money still upcoming shows the row too
+    const moved = (c: PlanCellDto) => !isZero(c.actual) || !isZero(c.upcoming ?? '0')
+    const visibleUncat = (r: PlanRow | null): PlanRow | null => (r && hasVisible(r, moved) ? r : null)
     return {
       ...rows,
       income: { ...rows.income, uncategorized: visibleUncat(rows.income.uncategorized) },
       expense: { ...rows.expense, uncategorized: visibleUncat(rows.expense.uncategorized) },
-      archived: rows.archived.filter((r) => hasVisible(r, (c) => !isZero(c.actual) || c.planned !== '')),
+      archived: rows.archived.filter((r) => hasVisible(r, (c) => moved(c) || c.planned !== '')),
     }
   }, [rows, visibleMonths, monthIndex])
 

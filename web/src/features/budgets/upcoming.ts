@@ -9,12 +9,16 @@ import type {
 } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { add, isZero, sub } from '@/lib/decimal'
+import { currentMonth } from './planMath'
 
 // The server reports recurring payments not yet posted apart from the real
-// money (spent/actual stay real). Every screen shows ONE combined figure, so
-// the queries fold the two together here, once, and nothing downstream needs to
-// know upcoming money exists. A field an older server does not send counts as
-// zero, and a zero leaves the wire string untouched.
+// money (spent/actual stay real). A month after the caller's current one shows
+// ONE combined figure, so the queries fold the two together here, once. The
+// current month shows the fact only: its figures are left real, its upcoming
+// money stays in the raw fields for the cell's transaction list and for the
+// projections (planMath adds it to the Plan's effective values, and closing
+// balances and the transfer/savings-flow merges count it here). A field an older
+// server does not send counts as zero, and a zero leaves the wire string untouched.
 
 const plus = (value: string, upcoming: string | undefined): string =>
   upcoming === undefined || isZero(upcoming) ? value : add(value, upcoming)
@@ -23,9 +27,10 @@ const minus = (value: string, upcoming: string | undefined): string =>
   upcoming === undefined || isZero(upcoming) ? value : sub(value, upcoming)
 
 // select runs per observer; caching per data object keeps the folded value
-// referentially stable for as long as the cache entry is unchanged
-const budgetFolds = new WeakMap<BudgetDto, BudgetDto>()
-const planFolds = new WeakMap<BudgetPlanDto, BudgetPlanDto>()
+// referentially stable for as long as the cache entry is unchanged (and the
+// current month is the same one)
+const budgetFolds = new WeakMap<BudgetDto, { cur: string; folded: BudgetDto }>()
+const planFolds = new WeakMap<BudgetPlanDto, { cur: string; folded: BudgetPlanDto }>()
 
 const foldChild = (ch: BudgetChildElementDto): BudgetChildElementDto => ({
   ...ch,
@@ -33,10 +38,14 @@ const foldChild = (ch: BudgetChildElementDto): BudgetChildElementDto => ({
   budgetSpent: plus(ch.budgetSpent, ch.budgetUpcoming),
 })
 
-export function foldBudgetUpcoming(b: BudgetDto): BudgetDto {
+export function foldBudgetUpcoming(b: BudgetDto, cur: string = currentMonth()): BudgetDto {
   const cached = budgetFolds.get(b)
-  if (cached) {
-    return cached
+  if (cached && cached.cur === cur) {
+    return cached.folded
+  }
+  if (b.filters.periodStart.slice(0, 10) <= cur) {
+    budgetFolds.set(b, { cur, folded: b })
+    return b
   }
   const { labels, savings } = b.structure
   const folded: BudgetDto = {
@@ -65,7 +74,7 @@ export function foldBudgetUpcoming(b: BudgetDto): BudgetDto {
         : {}),
     },
   }
-  budgetFolds.set(b, folded)
+  budgetFolds.set(b, { cur, folded })
   return folded
 }
 
@@ -137,11 +146,13 @@ function mergeFlows(base: PlanSavingsFlowDto[] | undefined, extra: PlanSavingsFl
   )
 }
 
-export function foldPlanUpcoming(p: BudgetPlanDto): BudgetPlanDto {
+export function foldPlanUpcoming(p: BudgetPlanDto, cur: string = currentMonth()): BudgetPlanDto {
   const cached = planFolds.get(p)
-  if (cached) {
-    return cached
+  if (cached && cached.cur === cur) {
+    return cached.folded
   }
+  const later = p.months.map((m) => m > cur)
+  const actual = <T extends { actual: string; upcoming?: string }>(c: T, i: number): T => (later[i] ? { ...c, actual: plus(c.actual, c.upcoming) } : c)
   const budgetCurrencyId = p.meta.currencyId
   const { savings } = p.structure
   const savingsFlows = mergeFlows(p.savingsFlows, p.upcomingSavingsFlows, budgetCurrencyId)
@@ -159,11 +170,8 @@ export function foldPlanUpcoming(p: BudgetPlanDto): BudgetPlanDto {
       ...p.structure,
       elements: p.structure.elements.map((el) => ({
         ...el,
-        cells: el.cells.map((c) => ({ ...c, actual: plus(c.actual, c.upcoming) })),
-        children: el.children.map((ch) => ({
-          ...ch,
-          cells: ch.cells.map((c) => ({ ...c, actual: plus(c.actual, c.upcoming) })),
-        })),
+        cells: el.cells.map(actual),
+        children: el.children.map((ch) => ({ ...ch, cells: ch.cells.map(actual) })),
       })),
       // a plan closing balance is booked only: it takes what was due on its row
       // before the window, then every upcoming change from the window start
@@ -174,11 +182,10 @@ export function foldPlanUpcoming(p: BudgetPlanDto): BudgetPlanDto {
               let due = plus('0', row.upcomingOpeningBalance)
               return {
                 ...row,
-                cells: row.cells.map((c) => {
+                cells: row.cells.map((c, i) => {
                   due = plus(due, c.upcoming)
                   return {
-                    ...c,
-                    actual: plus(c.actual, c.upcoming),
+                    ...actual(c, i),
                     ...(c.closingBalance !== undefined ? { closingBalance: plus(c.closingBalance, due) } : {}),
                   }
                 }),
@@ -188,6 +195,6 @@ export function foldPlanUpcoming(p: BudgetPlanDto): BudgetPlanDto {
         : {}),
     },
   }
-  planFolds.set(p, folded)
+  planFolds.set(p, { cur, folded })
   return folded
 }

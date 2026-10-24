@@ -727,6 +727,46 @@ it('an actual in a month after the current one is a lighter grey than a current-
   expect(aug.className).toContain('text-muted-foreground/50')
 })
 
+it('the current month shows the fact only; a cell with nothing real yet but money upcoming opens its list from the dash', async () => {
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  let params: URLSearchParams | undefined
+  const row = (id: string, july: { actual: string; upcoming: string }) => ({
+    id, type: 1 as const, name: id, icon: 'delete', currencyId: 'cur-usd', isArchived: 0 as const, folderId: null, position: 9, ownerUserId: 'u1',
+    cells: [{ actual: '0', planned: '' }, { actual: '0', planned: '' }, { actual: july.actual, planned: '', upcoming: july.upcoming }, { actual: '0', planned: '', upcoming: '6' }],
+    children: [],
+  })
+  const plan = {
+    ...fixtureWirePlan,
+    structure: {
+      ...fixtureWirePlan.structure,
+      elements: [...fixtureWirePlan.structure.elements, row('part-paid', { actual: '4', upcoming: '6' }), row('nothing-yet', { actual: '0', upcoming: '6' })],
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(plan),
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      params = new URL(request.url).searchParams
+      return HttpResponse.json({ success: true, message: '', data: { items: [], upcoming: [] } })
+    }),
+  )
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  // July is the current month: 4 spent, not 4 + 6
+  expect(within(screen.getByTestId('plan-cell-part-paid:1')).getByTestId('cell-actual')).toHaveTextContent(/^4\.00$/)
+  // August is later: combined
+  expect(within(screen.getByTestId('plan-cell-part-paid:2')).getByTestId('cell-actual')).toHaveTextContent(/^6\.00$/)
+  const dash = within(screen.getByTestId('plan-cell-nothing-yet:1')).getByTestId('cell-actual')
+  expect(dash).toHaveTextContent('—')
+  await user.click(dash)
+  expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  await waitFor(() => expect(params?.get('categoryId')).toBe('nothing-yet'))
+  expect(params?.get('periodStart')).toBe('2026-07-01')
+})
+
 it('the Archived line sums its rows: their actuals, never their plans', async () => {
   const plan = {
     ...fixtureWirePlan,

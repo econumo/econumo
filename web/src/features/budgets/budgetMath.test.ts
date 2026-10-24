@@ -59,6 +59,19 @@ it('drops the Uncategorized bucket when the selected month has no uncategorized 
   expect(refundBuckets.uncategorized.elements.map((e) => e.id)).toEqual(['uncategorized'])
 })
 
+it('keeps Uncategorized and an archived row in a current month with nothing spent yet but money upcoming, so its list opens', () => {
+  const uncatEl: BudgetElementDto = {
+    id: 'uncategorized', type: 1, name: 'Uncategorized', icon: 'question_mark', currencyId: null, isArchived: 0,
+    folderId: null, position: 9, budgeted: '0', available: '0', spent: '0', budgetSpent: '0',
+    ownerUserId: null, children: [], upcoming: '12', budgetUpcoming: '12',
+  }
+  const b: BudgetDto = JSON.parse(JSON.stringify(budget))
+  b.structure.elements.push(uncatEl, { ...uncatEl, id: 'old-tag', type: 2, name: 'Old', isArchived: 1 })
+  const buckets = bucketElements(b, exch)
+  expect(buckets.uncategorized.elements.map((e) => e.id)).toEqual(['uncategorized'])
+  expect(buckets.archive.elements.map((e) => e.id)).toContain('old-tag')
+})
+
 it('zero folders puts every active element into the no-folder bucket', () => {
   const noFolders: BudgetDto = { ...budget, structure: { folders: [], elements: budget.structure.elements, labels: budget.structure.labels } }
   const buckets = bucketElements(noFolders, exch)

@@ -85,7 +85,8 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
 
   const buckets = bucketPlanRows(plan)
   const income = buckets.income
-  const received = (el: PlanElementDto) => !isZero(el.cells[index]?.actual ?? '0')
+  // the current month's actual is the fact only: money still upcoming lists the row too
+  const received = (el: PlanElementDto) => !isZero(el.cells[index]?.actual ?? '0') || !isZero(el.cells[index]?.upcoming ?? '0')
   const inBase = (cells: PlanCellFigures[], pick: (c: PlanCellFigures) => string) =>
     cells.reduce((sum, c) => add(sum, ex(c.element.currencyId, pick(c), index)), '0')
   const group = (kind: IncomeGroup['kind'], id: string, name: string | null, elements: PlanElementDto[]): IncomeGroup => {
@@ -122,7 +123,7 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
     income: { rows, groups, toReceive: groups.reduce((sum, g) => add(sum, g.toReceive), '0'), planned: totals[index].incomePlanned, received: totals[index].incomeActual },
     balance: balance[index],
     savingsBalance: savings ? savings[index] : null,
-    transfersNet: totals[index].transfersNet,
+    transfersNet: totals[index].transfersNetActual,
   }
 }
 

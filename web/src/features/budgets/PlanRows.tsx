@@ -480,7 +480,21 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                 data-testid="cell-figures"
                 className={`flex min-w-0 flex-1 justify-between gap-1 ${editing ? 'items-center' : 'items-baseline'}`}
               >
-                {actual === null ? (
+                {actual === null && view.upcoming && actualLinkable ? (
+                  <button
+                    type="button"
+                    data-testid="cell-actual"
+                    title={t('budgets.page.budget.structure.element.action.show_transactions')}
+                    className="text-xs underline-offset-2 hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      ctx.select(rk, i, e)
+                      ctx.openTransactions(el, m)
+                    }}
+                  >
+                    <Dash />
+                  </button>
+                ) : actual === null ? (
                   view.dash ? (
                     <span data-testid="cell-no-actual" className="text-xs">
                       <Dash />
