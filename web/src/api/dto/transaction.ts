@@ -64,6 +64,8 @@ export interface MoveTransactionDto {
   id: Id
   /** the account page the row was dragged on; only its side's order changes */
   accountId: Id
+  /** the day the page showed it on, Y-m-d; the server refuses the move if it is stored elsewhere now */
+  fromDate: string
   /** the day dropped into, Y-m-d */
   date: string
   /** the transaction now directly above it on that account; null = top of the day */

@@ -10824,7 +10824,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Puts a transaction where it was dropped on an account page: directly below aboveId on that account's day, or at the top of the day when aboveId is null. Only that account's order changes, and no other transaction is renumbered. A different date moves the transaction to that day, keeping its time. Returns the rewritten transaction(s) plus the refreshed account list.",
+                "description": "Puts a transaction where it was dropped on an account page: directly below aboveId on that account's day, or at the top of the day when aboveId is null. Only that account's order changes, and no other transaction is renumbered. A date other than fromDate (the day the page showed it on) moves the transaction to that day, keeping its time. A transaction no longer stored on fromDate, or an aboveId no longer on the target day, is refused as changed meanwhile. Returns the rewritten transaction(s) plus the refreshed account list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -15837,6 +15837,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "date": {
+                    "type": "string"
+                },
+                "fromDate": {
                     "type": "string"
                 },
                 "id": {

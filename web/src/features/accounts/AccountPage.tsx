@@ -119,7 +119,7 @@ export function AccountPage() {
     }
     setDroppedEntries(drop.entries)
     moveTransaction.mutate(
-      { id: tx.id, accountId: account.id, date: drop.date, aboveId: drop.aboveId },
+      { id: tx.id, accountId: account.id, fromDate: drop.fromDate, date: drop.date, aboveId: drop.aboveId },
       { onSettled: () => setDroppedEntries(null) },
     )
   }

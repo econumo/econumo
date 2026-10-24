@@ -134,18 +134,20 @@ type UpdateTransactionResult struct {
 }
 
 // MoveTransactionRequest is the move-transaction body: the moved row, the
-// account page it was dragged on, the day it was dropped into ("Y-m-d") and the
-// transaction now directly above it on that account (null = top of the day).
+// account page it was dragged on, the day the page showed it on and the day it
+// was dropped into ("Y-m-d"), and the transaction now directly above it on that
+// account (null = top of the day).
 type MoveTransactionRequest struct {
 	Id        string  `json:"id"`
 	AccountId string  `json:"accountId"`
+	FromDate  string  `json:"fromDate"`
 	Date      string  `json:"date"`
 	AboveId   *string `json:"aboveId"`
 }
 
 func (r MoveTransactionRequest) Validate() error {
 	var fields []errs.FieldError
-	for _, f := range []struct{ key, val string }{{"id", r.Id}, {"accountId", r.AccountId}, {"date", r.Date}} {
+	for _, f := range []struct{ key, val string }{{"id", r.Id}, {"accountId", r.AccountId}, {"fromDate", r.FromDate}, {"date", r.Date}} {
 		if strings.TrimSpace(f.val) == "" {
 			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}

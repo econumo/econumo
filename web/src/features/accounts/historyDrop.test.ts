@@ -12,15 +12,15 @@ const at = (key: string) => entries.findIndex((e) => entryKey(e) === key)
 
 describe('resolveDrop', () => {
   it('reorders within a day', () => {
-    expect(resolveDrop(entries, 'c', at('a'))).toMatchObject({ date: '2024-03-02', aboveId: null })
+    expect(resolveDrop(entries, 'c', at('a'))).toMatchObject({ fromDate: '2024-03-02', date: '2024-03-02', aboveId: null })
   })
 
   it('moves down onto the next day header to the top of that day', () => {
-    expect(resolveDrop(entries, 'b', at('sep-2024-03-01'))).toMatchObject({ date: '2024-03-01', aboveId: null })
+    expect(resolveDrop(entries, 'b', at('sep-2024-03-01'))).toMatchObject({ fromDate: '2024-03-02', date: '2024-03-01', aboveId: null })
   })
 
   it('moves up onto a day header to the bottom of the day above', () => {
-    expect(resolveDrop(entries, 'd', at('sep-2024-03-01'))).toMatchObject({ date: '2024-03-02', aboveId: 'c' })
+    expect(resolveDrop(entries, 'd', at('sep-2024-03-01'))).toMatchObject({ fromDate: '2024-03-01', date: '2024-03-02', aboveId: 'c' })
   })
 
   it('moves into the middle of another day', () => {

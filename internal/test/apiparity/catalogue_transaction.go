@@ -30,16 +30,19 @@ func init() {
 
 	// transaction_move: drag-and-drop on an account page. Txn1 and Txn2 share
 	// the seed day with Txn2 on top; Txn1 goes to the top, then Txn2 moves to
-	// the next day, after which Txn2 is no longer on the first day to drop under.
+	// the next day, after which Txn2 is no longer on the first day to drop under,
+	// nor where a page still showing it on the first day thinks it is.
 	register(Scenario{Name: "transaction_move", Calls: func() []Call {
 		const path = "/api/v1/transaction/move-transaction"
 		return []Call{
 			{Label: "move-to-top", Method: "POST", Path: path, Auth: "owner",
-				Body: map[string]any{"id": Txn1, "accountId": OwnerAccount, "date": "2024-04-01", "aboveId": nil}},
+				Body: map[string]any{"id": Txn1, "accountId": OwnerAccount, "fromDate": "2024-04-01", "date": "2024-04-01", "aboveId": nil}},
 			{Label: "move-to-another-day", Method: "POST", Path: path, Auth: "owner",
-				Body: map[string]any{"id": Txn2, "accountId": OwnerAccount, "date": "2024-04-02", "aboveId": nil}},
+				Body: map[string]any{"id": Txn2, "accountId": OwnerAccount, "fromDate": "2024-04-01", "date": "2024-04-02", "aboveId": nil}},
 			{Label: "err:move-stale-day", Method: "POST", Path: path, Auth: "owner",
-				Body: map[string]any{"id": Txn1, "accountId": OwnerAccount, "date": "2024-04-01", "aboveId": Txn2}},
+				Body: map[string]any{"id": Txn1, "accountId": OwnerAccount, "fromDate": "2024-04-01", "date": "2024-04-01", "aboveId": Txn2}},
+			{Label: "err:move-row-moved-elsewhere", Method: "POST", Path: path, Auth: "owner",
+				Body: map[string]any{"id": Txn2, "accountId": OwnerAccount, "fromDate": "2024-04-01", "date": "2024-04-01", "aboveId": nil}},
 			{Label: "err:move-blank", Method: "POST", Path: path, Auth: "owner", Body: map[string]any{}},
 			{Label: "after-moves", Method: "GET", Path: "/api/v1/transaction/get-account-transaction-list?accountIds=" + OwnerAccount, Auth: "owner"},
 		}

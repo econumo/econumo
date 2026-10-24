@@ -100,7 +100,7 @@ describe('useMoveTransaction', () => {
     { ...wireTx, id: 'm1', date: '2024-03-01 09:00:00', sortKey: 'a2', recipientSortKey: null },
     { ...wireTx, id: 'm2', date: '2024-03-01 10:00:00', sortKey: 'a1', recipientSortKey: null },
   ]
-  const req = { id: 'm2', accountId: 'a1', date: '2024-03-01', aboveId: null }
+  const req = { id: 'm2', accountId: 'a1', fromDate: '2024-03-01', date: '2024-03-01', aboveId: null }
   const keysOf = (rows: { id: string; sortKey?: string }[] | undefined) => Object.fromEntries((rows ?? []).map((r) => [r.id, r.sortKey]))
 
   it('takes the server rows on success and leaves the others alone', async () => {

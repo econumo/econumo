@@ -32,10 +32,16 @@ func seedDay(t *testing.T, h *harness) *fixture.Builder {
 }
 
 // move posts a drop: above is the row now directly above the moved one, "" for
-// the top of the day.
+// the top of the day. The row is sent as shown on the day it is stored on.
 func (h *harness) move(t *testing.T, id, account, date, above string) (int, envelope) {
 	t.Helper()
-	body := map[string]any{"id": id, "accountId": account, "date": date, "aboveId": nil}
+	_, _, at := h.keys(t, id)
+	return h.moveFrom(t, id, account, at[:10], date, above)
+}
+
+func (h *harness) moveFrom(t *testing.T, id, account, fromDate, date, above string) (int, envelope) {
+	t.Helper()
+	body := map[string]any{"id": id, "accountId": account, "fromDate": fromDate, "date": date, "aboveId": nil}
 	if above != "" {
 		body["aboveId"] = above
 	}
@@ -197,5 +203,23 @@ func TestMoveRejectsRowNotOnAccount(t *testing.T) {
 	seedDay(t, h)
 	if st, e := h.move(t, mvA, mvAc2, "2024-03-01", ""); st != http.StatusBadRequest {
 		t.Fatalf("move on a foreign account = %d; body=%s", st, e.raw)
+	}
+}
+
+// Another device moved the row to another day while this page still shows it
+// on the old one: a drag within the old day must not quietly move it back.
+func TestMoveRejectsRowMovedElsewhere(t *testing.T) {
+	h := newHarness(t)
+	seedDay(t, h)
+	// shown on 2024-03-02 here, but stored on 2024-03-01 now
+	st, e := h.moveFrom(t, mvC, accountID, "2024-03-02", "2024-03-02", "")
+	if st != http.StatusBadRequest || e.Message != "This day changed meanwhile. Refresh and try again." {
+		t.Fatalf("stale move = %d %q; body=%s", st, e.Message, e.raw)
+	}
+	if k, _, at := h.keys(t, mvC); at != "2024-03-01 18:30:00" || k != "a1" {
+		t.Errorf("stale move wrote: %s key %q", at, k)
+	}
+	if st, e := h.moveFrom(t, mvC, accountID, "", "2024-03-01", ""); st != http.StatusBadRequest {
+		t.Errorf("blank fromDate = %d; body=%s", st, e.raw)
 	}
 }

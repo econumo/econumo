@@ -90,7 +90,6 @@ export function useMoveTransaction() {
   return useMutation({
     mutationFn: transactionApi.moveTransaction,
     onSuccess: (result, req: MoveTransactionDto) => {
-      const before = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)?.find((t) => t.id === req.id)
       const patch = beginLocalWrite(queryClient)
       if (patch) {
         noteOwnWrite(result.accounts, result.items.flatMap((t) => [t.accountId, t.accountRecipientId]))
@@ -103,7 +102,7 @@ export function useMoveTransaction() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
-      trackEvent(METRICS.TRANSACTION_MOVE, { dayChanged: before ? before.date.slice(0, 10) !== req.date : false })
+      trackEvent(METRICS.TRANSACTION_MOVE, { dayChanged: req.fromDate !== req.date })
     },
     onError: (err) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })

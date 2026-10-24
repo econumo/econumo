@@ -17,6 +17,8 @@ export function acceptsDrop(entries: DailyListEntry[], key: string): boolean {
 }
 
 export interface HistoryDrop {
+  /** the day the row was shown on before the drop, Y-m-d */
+  fromDate: string
   /** the day the row lands in, Y-m-d */
   date: string
   /** the real transaction now directly above it in that day; null = top of the day */
@@ -34,12 +36,20 @@ export function resolveDrop(entries: DailyListEntry[], activeId: Id, overIndex: 
   if (from < 0 || overIndex < 0 || overIndex >= entries.length || from === overIndex) {
     return null
   }
+  let fromDate: string | null = null
+  for (let i = from - 1; i >= 0 && fromDate === null; i--) {
+    const entry = entries[i]
+    if (entry.kind === 'separator') fromDate = entry.day
+  }
+  if (fromDate === null) {
+    return null
+  }
   const moved = arrayMove(entries, from, overIndex)
   let aboveId: Id | null = null
   for (let i = overIndex - 1; i >= 0; i--) {
     const entry = moved[i]
     if (entry.kind === 'separator') {
-      return { date: entry.day, aboveId, entries: moved }
+      return { fromDate, date: entry.day, aboveId, entries: moved }
     }
     if (aboveId === null && !entry.transaction.recurring) {
       aboveId = entry.transaction.id

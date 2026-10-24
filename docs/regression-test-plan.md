@@ -340,7 +340,9 @@ navigation (single-pane vs sidebar).
 - [ ] Dropping a row under a transaction that another device meanwhile moved to
       another day or deleted snaps back with "This day changed meanwhile.
       Refresh and try again."; the list refreshes and the drag then works. A row
-      merely added to that day elsewhere does not block the drop.
+      merely added to that day elsewhere does not block the drop. Likewise a
+      row another device moved to a different day (before this page synced) is
+      not dragged back: the drop snaps back with the same message.
 - [ ] Upgrading an instance with existing transactions keeps every account's
       list in exactly the same order as before the upgrade (boot log: "placed
       the transactions of N account(s)").

@@ -22,8 +22,11 @@ var (
 // day when AboveId is null. Only the moved row's key on that account's side
 // changes, so the rest of the day is never renumbered and the other account of
 // a transfer keeps its order; a drop into another day also changes the date,
-// keeping the time. An AboveId that is no longer on that day (moved or deleted
-// elsewhere meanwhile) is refused rather than guessed at.
+// keeping the time. What the page showed is checked before anything is written:
+// the row must still be on req.FromDate, or a drag within a stale day would
+// quietly undo another device's date change, and an AboveId no longer on the
+// target day (moved or deleted elsewhere meanwhile) is refused rather than
+// guessed at.
 func (s *Service) MoveTransaction(ctx context.Context, userID vo.Id, req model.MoveTransactionRequest) (*model.MoveTransactionResult, error) {
 	if err := req.Validate(); err != nil {
 		return nil, err
@@ -62,7 +65,10 @@ func (s *Service) MoveTransaction(ctx context.Context, userID vo.Id, req model.M
 		if !onAccount {
 			return &errs.ValidationError{Msg: "transaction.transaction.not_available", MsgCode: notAvailableCode("transaction.transaction.not_available")}
 		}
-		if t.SpentAt.Format(datetime.DateLayout) != req.Date {
+		if t.SpentAt.Format(datetime.DateLayout) != req.FromDate {
+			return errDayChanged
+		}
+		if req.FromDate != req.Date {
 			if merr := s.moveToDay(ctx, userID, t, day); merr != nil {
 				return merr
 			}
