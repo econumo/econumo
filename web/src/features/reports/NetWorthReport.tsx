@@ -1,6 +1,9 @@
 // SPIKE (throwaway): simplified net worth — one total line, own accounts + one row per partner,
 // controls tucked into the corners. Strings are hard-coded English on purpose.
 import { useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
+import { EntityIcon } from '@/components/EntityIcon'
+import { UserAvatar } from '@/components/UserAvatar'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
 import { Area, CartesianGrid, ComposedChart, ReferenceLine, XAxis, YAxis } from 'recharts'
@@ -39,6 +42,7 @@ const allZero = (a: NetWorthAccountDto) => a.balances.every((b) => isZero(b))
 const sumAt = (rows: NetWorthAccountDto[], i: number) => rows.reduce((s, a) => add(s, a.balances[i] ?? '0'), '0')
 
 interface Line {
+  icon?: ReactNode
   id: string
   name: string
   start: string
@@ -112,6 +116,14 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const shown = data ? data.accounts.filter((a) => !allZero(a)) : []
   const me = user?.id ?? ''
   const budget = budgets?.find((b) => b.id === p.budgetId)
+  const ownerAvatar = (id: string) =>
+    id === me
+      ? user?.avatar
+      : (budget?.access.find((a) => a.user.id === id)?.user.avatar ?? (accounts ?? []).find((a) => a.owner.id === id)?.owner.avatar)
+  const accountLine = (a: NetWorthAccountDto): Line => ({
+    ...lineOf(a.id, a.name, a.balances[0], a.balances[n - 1]),
+    icon: <EntityIcon name={a.icon} className="text-base text-muted-foreground" />,
+  })
   const ownerName = (id: string) =>
     budget?.access.find((a) => a.user.id === id)?.user.name ??
     (accounts ?? []).find((a) => a.owner.id === id)?.owner.name ??
@@ -144,7 +156,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
           return {
             balances: Array.from({ length: n }, (_, i) => sumAt(rows, i)),
             line: lineOf(id, groupOf(rows[0]).name, sumAt(rows, 0), sumAt(rows, n - 1)),
-            accounts: rows.map((a) => lineOf(a.id, a.name, a.balances[0], a.balances[n - 1])).sort(byNow),
+            accounts: rows.map(accountLine).sort(byNow),
           }
         })
         .sort((a, b) => byNow(a.line, b.line))
@@ -171,7 +183,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     if (g.accounts.length === 0) {
       return [
         <div key={g.line.id} className={`${LINE} min-h-10 rounded-md py-1.5 pl-6 hover:bg-accent/50`}>
-          <span className={NAME_COL}><span className="truncate">{g.line.name}</span></span>
+          <span className={NAME_COL}>{g.line.icon}<span className="truncate">{g.line.name}</span></span>
           {figures(g.line)}
         </div>,
       ]
@@ -188,6 +200,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       >
         <span className={NAME_COL}>
           <ChevronRight className={`size-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+          {g.line.icon}
           <span className="truncate">{g.line.name}</span>
         </span>
         {figures(g.line)}
@@ -195,7 +208,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       ...(isOpen
         ? g.accounts.map((acc) => (
             <div key={`${g.line.id}-${acc.id}`} className={`${LINE} min-h-8 rounded-md py-1 pl-12 text-sm text-muted-foreground hover:bg-accent/50`}>
-              <span className={NAME_COL}><span className="truncate">{acc.name}</span></span>
+              <span className={NAME_COL}>{acc.icon}<span className="truncate">{acc.name}</span></span>
               {figures(acc, true)}
             </div>
           ))
@@ -224,9 +237,13 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     const rows = shown.filter((a) => a.ownerUserId === id)
     const saving = rows.filter((a) => a.isSavings === 1)
     const rest = rows.filter((a) => a.isSavings !== 1)
-    const children = saving.map((a) => lineOf(a.id, a.name, a.balances[0], a.balances[n - 1])).sort(byNow)
-    if (saving.length > 0 && rest.length > 0) children.push(lineOf(`${id}-other`, 'Everyday accounts', sumAt(rest, 0), sumAt(rest, n - 1)))
-    return { line: lineOf(id, name, sumAt(rows, 0), sumAt(rows, n - 1)), accounts: saving.length > 0 ? children : [] }
+    const children = saving.map(accountLine).sort(byNow)
+    if (saving.length > 0 && rest.length > 0) children.push({ ...lineOf(`${id}-other`, 'Everyday accounts', sumAt(rest, 0), sumAt(rest, n - 1)), icon: <span className="w-4 shrink-0" /> })
+    const avatar = ownerAvatar(id)
+    return {
+      line: { ...lineOf(id, name, sumAt(rows, 0), sumAt(rows, n - 1)), icon: avatar ? <UserAvatar avatar={avatar} size="xs" /> : undefined },
+      accounts: saving.length > 0 ? children : [],
+    }
   }
   const personRows = p.budgetId
     ? groupRows(
