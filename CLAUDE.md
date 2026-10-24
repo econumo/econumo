@@ -360,13 +360,21 @@ bullet below); `public/econumo-config.js` is only the static fallback used
 when there is no Go server in front of the SPA (the mobile app's bundled
 WebView, `pnpm dev` without a backend). Versions are two separate keys:
 `VERSION` is the real running version (`getVersion()` — every comparison:
-analytics `$app_version`, the update check, the query-cache buster, the mobile
-compatibility floors), `VERSION_LABEL` is the text the UI DISPLAYS
+analytics `$app_version`, the update check, the mobile
+compatibility floors), `VERSION_REF` the source revision of the build
+(`getVersionRef()`, `""` when unknown; `internal/version.Ref()`: the
+ldflags-stamped `version.Commit`, else the toolchain's `vcs.revision`), which only
+keys the persisted caches — the query-cache and IndexedDB busters are
+`getCacheBuster()`, `VERSION+VERSION_REF`, so a dev deploy (every dev build reports
+`VERSION` `dev`) restores nothing an older build cached — `VERSION_LABEL` is the text the UI DISPLAYS
 (`getVersionLabel()` — the sidebar footer and the settings row, nothing else),
 set by the runtime `ECONUMO_VERSION` and falling back to `VERSION`. Vite also
 inlines a build-time `ECONUMO_VERSION` as the bundle's own version (the Docker
 build arg of the same name sets it per image build, default `dev`) — that one
-IS a real version, used by the mobile app where no server config is present.
+IS a real version, used by the mobile app where no server config is present;
+`ECONUMO_COMMIT` (the build arg and env var of the same name, set by both publish
+workflows and the Makefile from the checked-out sha) is inlined the same way as the
+bundle's own `VERSION_REF`.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One
@@ -852,7 +860,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   config from a URL instead of the bundled `liltag-config.json`),
   `ECONUMO_LILTAG_CACHE_TTL` (default the JS number `0`), and `ECONUMO_VERSION`
   (`VERSION_LABEL`, the version text the UI DISPLAYS — set it to relabel a
-  demo/staging box; unset falls back to `VERSION`). `VERSION` itself has NO env
+  demo/staging box; unset falls back to `VERSION`). `VERSION_REF` (always present, `""` when the build carries no
+  revision) has no env override either. `VERSION` itself has NO env
   override: it always carries the binary's `internal/version.Version`, because
   the SPA compares it as a real version (analytics `$app_version`, the update
   check, the mobile app's compatibility floors), and a display label must never

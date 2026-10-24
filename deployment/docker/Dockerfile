@@ -24,8 +24,10 @@ COPY locales/ /build/locales/
 COPY compat/ /build/compat/
 # Vite inlines ECONUMO_VERSION (envPrefix in vite.config.ts) as the UI version label.
 # Pass --build-arg ECONUMO_VERSION=v1.2.3 to set it; defaults to "dev".
+# ECONUMO_COMMIT is the source revision (the build has no .git to read it from).
 ARG ECONUMO_VERSION=""
-RUN ECONUMO_VERSION="${ECONUMO_VERSION:-dev}" pnpm run build
+ARG ECONUMO_COMMIT=""
+RUN ECONUMO_VERSION="${ECONUMO_VERSION:-dev}" ECONUMO_COMMIT="${ECONUMO_COMMIT}" pnpm run build
 
 # --- 2. Go build (CGO off -> fully static binary) ---
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS gobuild
@@ -47,8 +49,9 @@ COPY web/embed.go ./web/embed.go
 COPY --from=frontend /build/web/dist ./web/dist
 ARG TARGETOS TARGETARCH
 ARG ECONUMO_VERSION=""
+ARG ECONUMO_COMMIT=""
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath \
-    -ldflags="-s -w -X github.com/econumo/econumo/internal/version.Version=${ECONUMO_VERSION:-dev}" \
+    -ldflags="-s -w -X github.com/econumo/econumo/internal/version.Version=${ECONUMO_VERSION:-dev} -X github.com/econumo/econumo/internal/version.Commit=${ECONUMO_COMMIT}" \
     -o /app/econumo ./cmd/econumo
 # Pre-create runtime dirs owned by the non-root user (distroless can't mkdir on boot).
 RUN mkdir -p /out/var/db

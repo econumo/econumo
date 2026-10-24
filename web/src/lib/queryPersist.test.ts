@@ -243,6 +243,14 @@ describe('restoring the stored transactions', () => {
     expect(await restoredTransactions()).toBeUndefined()
   })
 
+  it('restores nothing written by another build of the same version', async () => {
+    window.econumoConfig = { VERSION: 'dev', VERSION_REF: 'aaa' }
+    await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
+    snapshot({ user: fixtureUser, accounts: fixtureAccounts })
+    window.econumoConfig = { VERSION: 'dev', VERSION_REF: 'bbb' }
+    expect(await restoredTransactions()).toBeUndefined()
+  })
+
   it('seeds nothing when the snapshot accounts carry no revisions (an older server)', async () => {
     await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
     snapshot({ user: fixtureUser, accounts: fixtureAccounts.map(({ transactionsRevision: _r, ...a }) => a) })

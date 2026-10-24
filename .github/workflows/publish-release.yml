@@ -155,6 +155,11 @@ jobs:
         with:
           ref: ${{ needs.create-tag.outputs.version }}
 
+      # The image build has no .git to read it from, so pass it in.
+      - name: Record commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       # No QEMU: both build stages run on $BUILDPLATFORM (Go cross-compiles,
       # the SPA is platform-independent) and the distroless stage only COPYs.
       - name: Set up Buildx
@@ -178,6 +183,7 @@ jobs:
           tags: ${{ needs.create-tag.outputs.tags }}
           build-args: |
             ECONUMO_VERSION=${{ needs.create-tag.outputs.version }}
+            ECONUMO_COMMIT=${{ steps.commit.outputs.sha }}
 
   build-binaries:
     name: Build Release Binaries
@@ -191,6 +197,10 @@ jobs:
         with:
           ref: ${{ needs.create-tag.outputs.version }}
 
+      - name: Record commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
@@ -201,6 +211,7 @@ jobs:
       - name: Build SPA
         env:
           ECONUMO_VERSION: ${{ needs.create-tag.outputs.version }}
+          ECONUMO_COMMIT: ${{ steps.commit.outputs.sha }}
         run: |
           npm install -g pnpm@11
           cd web
@@ -215,12 +226,13 @@ jobs:
       - name: Build binaries
         env:
           VERSION: ${{ needs.create-tag.outputs.version }}
+          COMMIT: ${{ steps.commit.outputs.sha }}
         run: |
           mkdir -p release-out
           for arch in amd64 arm64; do
             CGO_ENABLED=0 GOOS=linux GOARCH="$arch" \
               go build -trimpath \
-              -ldflags "-s -w -X github.com/econumo/econumo/internal/version.Version=${VERSION}" \
+              -ldflags "-s -w -X github.com/econumo/econumo/internal/version.Version=${VERSION} -X github.com/econumo/econumo/internal/version.Commit=${COMMIT}" \
               -o "release-out/econumo-linux-${arch}" ./cmd/econumo
           done
           cd release-out && sha256sum econumo-linux-amd64 econumo-linux-arm64 > SHA256SUMS

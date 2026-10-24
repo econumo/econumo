@@ -117,6 +117,13 @@ type Deps struct {
 	// version.
 	SPAVersionLabel string
 
+	// SPAVersionRef is merged as VERSION_REF, the source revision of the
+	// running build ("" when unknown). Dev builds all report VERSION "dev",
+	// so the SPA keys its caches on VERSION plus VERSION_REF and a dev deploy
+	// does not restore what an older build cached. Nothing compares it as a
+	// version.
+	SPAVersionRef string
+
 	// MinAppVersion is merged into the served econumo-config.js as
 	// MIN_APP_VERSION — the oldest mobile-app build this backend accepts
 	// (version.MinAppVersion, injected by the composition root like SPAVersion
@@ -271,6 +278,7 @@ func New(deps Deps) http.Handler {
 		"INSTANCE_ID":   deps.InstanceID,
 		"VERSION":       version,
 		"VERSION_LABEL": versionLabel,
+		"VERSION_REF":   deps.SPAVersionRef,
 		// The matcher thresholds the import queue uses client-side to group
 		// cross-provider duplicates. Stage 2 ships one provider, so the SPA only
 		// types the key today; serving the value now means stage 3 needs no
