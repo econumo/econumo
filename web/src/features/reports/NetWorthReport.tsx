@@ -1,17 +1,19 @@
 // SPIKE (throwaway): simplified net worth — one total line, own accounts + one row per partner,
 // controls tucked into the corners. Strings are hard-coded English on purpose.
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChevronRight } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import type { NetWorthAccountDto } from '@/api/dto/report'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import type { ChartConfig } from '@/components/ui/chart'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useAccounts } from '@/features/accounts/queries'
+import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useBudgets } from '@/features/budgets/queries'
 import { useUserData } from '@/features/user/queries'
 import { add, cmp, isNegative, isZero, sub } from '@/lib/decimal'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { netWorthGroupOf } from './reportMath'
 import { netWorthQueryArgs } from './reportPeriod'
 import { usePeriodLabels } from './usePeriodLabels'
 import { useNetWorthReport } from './queries'
@@ -53,6 +55,8 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const { data: user } = useUserData()
   const { data: accounts } = useAccounts()
   const { data: budgets } = useBudgets()
+  const { data: folders } = useFolders()
+  const [open, setOpen] = useState<Set<string>>(new Set())
   const preset = PRESETS.find((o) => o.value === p.period) ?? PRESETS[1]
 
   const scopePicker = (
@@ -121,11 +125,69 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     })
     .sort(byNow)
 
+  const num = 'py-2 pl-2 text-right tabular-nums'
+  // My accounts: folders, each expandable to its accounts (as before).
+  const groupOf = netWorthGroupOf({
+    me,
+    folderOf: Object.fromEntries((accounts ?? []).map((a) => [a.id, a.folderId])),
+    folders: folders ?? [],
+    owners: {},
+    names: { noFolder: t('reports.networth.no_folder'), deleted: t('reports.networth.deleted'), otherOwner: t('reports.networth.other_owner') },
+  })
+  const folderGroups = p.budgetId
+    ? []
+    : [...new Set(shown.map((a) => groupOf(a).id))]
+        .map((id) => {
+          const rows = shown.filter((a) => groupOf(a).id === id)
+          return {
+            line: lineOf(id, groupOf(rows[0]).name, sumAt(rows, 0), sumAt(rows, n - 1)),
+            accounts: rows.map((a) => lineOf(a.id, a.name, a.balances[0], a.balances[n - 1])).sort(byNow),
+          }
+        })
+        .sort((a, b) => byNow(a.line, b.line))
+  const toggle = (id: string) =>
+    setOpen((cur) => {
+      const next = new Set(cur)
+      if (next.has(id)) next.delete(id)
+      else {
+        next.add(id)
+        trackEvent(METRICS.REPORTS_NETWORTH_EXPAND, { scope: 'mine' })
+      }
+      return next
+    })
+  const folderRows = folderGroups.flatMap((g) => {
+    const isOpen = open.has(g.line.id)
+    return [
+      <tr key={g.line.id} onClick={() => toggle(g.line.id)} className="cursor-pointer border-b border-border/60 hover:bg-econumo-hover/60">
+        <td className="py-2 pr-2">
+          <span className="flex min-w-0 items-center gap-1">
+            <ChevronRight className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+            <button type="button" aria-expanded={isOpen} className="truncate text-left" onClick={(e) => { e.stopPropagation(); toggle(g.line.id) }}>
+              {g.line.name}
+            </button>
+          </span>
+        </td>
+        <td className={`hidden ${num} text-muted-foreground sm:table-cell`}>{money(g.line.start)}</td>
+        <td className={num}>{money(g.line.now)}</td>
+        <td className={`${num} whitespace-nowrap ${changeClass(g.line.change)}`}>{signedMoney(g.line.change, money)}</td>
+      </tr>,
+      ...(isOpen
+        ? g.accounts.map((a) => (
+            <tr key={`${g.line.id}-${a.id}`} className="border-b border-border/60 text-muted-foreground">
+              <td className="truncate py-2 pr-2 pl-5">{a.name}</td>
+              <td className={`hidden ${num} sm:table-cell`}>{money(a.start)}</td>
+              <td className={num}>{money(a.now)}</td>
+              <td className={`${num} whitespace-nowrap ${changeClass(a.change)}`}>{signedMoney(a.change, money)}</td>
+            </tr>
+          ))
+        : []),
+    ]
+  })
+
   const chartData = data ? data.months.map((m, i) => ({ label: labels.month(m), value: Number(total[i]) })) : []
   const config: ChartConfig = { value: { label: t('reports.networth.today'), color: LINE } }
   const dim = report.isPlaceholderData ? 'opacity-60 transition-opacity' : ''
 
-  const num = 'py-2 pl-2 text-right tabular-nums'
   const row = (l: Line, strong = false) => (
     <tr key={l.id} className={strong ? '' : 'border-b border-border/60'}>
       <td className="truncate py-2 pr-2">{l.name}</td>
@@ -204,8 +266,14 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
               </tr>
             </thead>
             <tbody>
-              {mine.length > 0 && partners.length > 0 ? section('Your accounts') : null}
-              {mine.map((l) => row(l))}
+              {p.budgetId ? (
+                <>
+                  {mine.length > 0 && partners.length > 0 ? section('Your accounts') : null}
+                  {mine.map((l) => row(l))}
+                </>
+              ) : (
+                folderRows
+              )}
               {partners.length > 0 ? section('Shared in this budget') : null}
               {partners.map((l) => row(l))}
             </tbody>
