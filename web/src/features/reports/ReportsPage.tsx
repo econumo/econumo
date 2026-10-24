@@ -56,10 +56,7 @@ function ReportBody({ tab }: { tab: ReportTab }) {
     )
   }
   return (
-    <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-normal">{t(REPORT_QUESTION.networth)}</h2>
-      <NetWorthReport tab={tab} />
-    </div>
+    <NetWorthReport tab={tab} />
   )
 }
 
