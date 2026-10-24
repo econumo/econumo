@@ -22,7 +22,7 @@ import { isEnvelopeType } from './elementEdit'
 import { DragChild, EnvelopeDrop, EnvelopeHeadDrop } from './MonthDrag'
 import { CurrencyTag, Dash, FigureCells, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
-import { CHILD_INDENT, FOLDER_INDENT, groupedLevel, PLAN_CROSSHAIR, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext, useRowLevel } from './monthLayout'
+import { CHILD_INDENT, FOLDER_INDENT, FUTURE_FIGURE, groupedLevel, PLAN_CROSSHAIR, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext, useRowLevel } from './monthLayout'
 import { planCellView, shownActual } from './planCell'
 import { PlanCellInput } from './PlanCellInput'
 import type { CellMove } from './PlanCellInput'
@@ -412,7 +412,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
           const cellComments = ctx.commentsByCell.get(commentCellKey(el.id, m)) ?? []
           const commentCount = cellComments.length
           const target = { el, month: m, monthIndex: idx }
-          const actualColor = view.over ? 'text-expense' : 'text-muted-foreground'
+          const actualColor = view.over ? 'text-expense' : m > ctx.selected && !view.balance ? FUTURE_FIGURE : 'text-muted-foreground'
           const cellNode = (
             <div
               {...{ [COMMENT_ANCHOR_ATTR]: '' }}

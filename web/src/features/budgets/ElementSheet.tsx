@@ -13,6 +13,7 @@ import { carryOver, displayAvailable, elementDisplayName, rowState } from './bud
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
 import { sheetCell, sheetIcon, sheetSetsPlan } from './phoneMonth'
+import { FUTURE_FIGURE } from './monthLayout'
 import { currentMonth, formatPlanMonth } from './planMath'
 
 const EMPTY = '—'
@@ -156,7 +157,7 @@ export function ElementSheet({
           {figures.map((f) => (
             <div key={f.key} className="flex flex-col items-center text-center" data-testid={`sheet-figure-${f.key}`}>
               <span className="text-[13px] text-muted-foreground">{f.label}</span>
-              <span className={`text-[17px] font-medium tabular-nums ${f.negative ? 'text-expense' : f.muted ? 'text-muted-foreground' : ''}`}>{f.value}</span>
+              <span className={`text-[17px] font-medium tabular-nums ${f.negative ? 'text-expense' : f.muted ? FUTURE_FIGURE : ''}`}>{f.value}</span>
             </div>
           ))}
         </div>

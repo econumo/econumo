@@ -15,6 +15,7 @@ import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudg
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
+import { FUTURE_FIGURE } from './monthLayout'
 import { currentMonth } from './planMath'
 import { commentCellKey } from './queries'
 import { segmentTagGroups } from './tagGroups'
@@ -270,7 +271,7 @@ function TotalLine({ testId, label, value, negative = false, muted = false }: { 
   return (
     <div className="flex items-baseline justify-between gap-3" data-testid={testId}>
       <span className="text-[13px] text-muted-foreground">{label}</span>
-      <span className={`text-[15px] tabular-nums ${negative ? 'text-expense' : muted ? 'text-muted-foreground' : ''}`}>{value}</span>
+      <span className={`text-[15px] tabular-nums ${negative ? 'text-expense' : muted ? FUTURE_FIGURE : ''}`}>{value}</span>
     </div>
   )
 }
@@ -291,7 +292,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const future = selectedDate > currentMonth()
-  const mutedIfFuture = future ? 'text-muted-foreground' : ''
+  const mutedIfFuture = future ? FUTURE_FIGURE : ''
   const commented = (id: Id) => (commentsByCell.get(commentCellKey(id, selectedDate))?.length ?? 0) > 0
 
   // an envelope's category: its own amount, which opens that category's share of the
@@ -358,7 +359,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           // yet, still draws the empty track, as a budgeted row with nothing spent does;
           // an overspent row fills it, even when there was no budget to fill toward
           progress={isUncategorized ? null : future && isZero(element.spent) ? 0 : overAvailable(figures, future) ? 1 : (rowProgress(figures) ?? 0)}
-          barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
+          barClass={overspent ? 'bg-expense' : future ? 'bg-muted-foreground/25' : 'bg-muted-foreground/40'}
           commented={commented(element.id)}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: carryText ? `${carryText} ${budgetText}` : budgetText, spent: spentText })}
           onOpen={() => onOpenSheet({ kind: 'expense', element })}
@@ -396,7 +397,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           second={spentText}
           secondClass={overspent ? 'text-expense' : mutedIfFuture}
           progress={future && isZero(stats.spent) ? 0 : overAvailable(stats, future) ? 1 : (rowProgress(stats) ?? 0)}
-          barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
+          barClass={overspent ? 'bg-expense' : future ? 'bg-muted-foreground/25' : 'bg-muted-foreground/40'}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: budgetText, spent: spentText })}
           onOpen={toggle}
           toggle={{ open, onToggle: toggle }}
@@ -441,7 +442,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   // spending, reaching the figure is the goal, so only the bar is coloured
   const planBar = (planned: string, actual: string) => ({
     progress: future && isZero(actual) ? 0 : (rowProgress({ budgeted: planned, spent: actual }) ?? 0),
-    barClass: !(future && isZero(actual)) && cmp(planned, '0') > 0 && cmp(actual, planned) >= 0 ? 'bg-income' : 'bg-muted-foreground/40',
+    barClass: !(future && isZero(actual)) && cmp(planned, '0') > 0 && cmp(actual, planned) >= 0 ? 'bg-income' : future ? 'bg-muted-foreground/25' : 'bg-muted-foreground/40',
   })
 
   const incomeRow = (row: PlanCellFigures) => {

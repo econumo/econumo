@@ -697,6 +697,36 @@ it('a section\'s last line draws no bottom rule over the next section\'s top rul
   }
 })
 
+it('an actual in a month after the current one is a lighter grey than a current-month one', async () => {
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  const plan = {
+    ...fixtureWirePlan,
+    structure: {
+      ...fixtureWirePlan.structure,
+      elements: [
+        ...fixtureWirePlan.structure.elements,
+        {
+          id: 'up-1', type: 1, name: 'Upcoming', icon: 'delete', currencyId: 'cur-usd', isArchived: 0, folderId: null, position: 9, ownerUserId: 'u1',
+          cells: [{ actual: '0', planned: '' }, { actual: '0', planned: '' }, { actual: '7', planned: '' }, { actual: '9', planned: '' }],
+          children: [],
+        },
+      ],
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(plan),
+  )
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const row = document.querySelector('[data-row-id="up-1:1"]') as HTMLElement
+  const aug = within(row).getByText('9.00')
+  expect(aug).toHaveAttribute('data-testid', 'cell-actual')
+  expect(aug.className).toContain('text-muted-foreground/50')
+})
+
 it('the Archived line sums its rows: their actuals, never their plans', async () => {
   const plan = {
     ...fixtureWirePlan,

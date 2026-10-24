@@ -281,9 +281,9 @@ it('future month spent is muted', async () => {
     { onSpentClick: vi.fn(), future: true },
   )
   const food = await screen.findByTestId('element-cat-food')
-  expect(within(food).getByTestId('cell-spent').firstElementChild!.className).toContain('text-muted-foreground')
-  expect(screen.getByTestId('totals-spent').className).toContain('text-muted-foreground')
-  expect(screen.getByTestId('totals-spent-mobile').className).toContain('text-muted-foreground')
+  expect(within(food).getByTestId('cell-spent').firstElementChild!.className).toContain('text-muted-foreground/50')
+  expect(screen.getByTestId('totals-spent').className).toContain('text-muted-foreground/50')
+  expect(screen.getByTestId('totals-spent-mobile').className).toContain('text-muted-foreground/50')
 })
 
 it('clicking a child spent amount reports the child category with the parent currency', async () => {

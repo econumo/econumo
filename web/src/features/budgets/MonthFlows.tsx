@@ -20,7 +20,7 @@ import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu, TotalLine } from './monthLines'
 import type { MenuAction, RowLevel } from './monthLayout'
-import { CHILD_INDENT, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
+import { CHILD_INDENT, FIRST_COL, FOLDER_INDENT, FUTURE_FIGURE, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
 import { leftToReceive } from './phoneMonth'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 import { arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, moveElementInArrangement, placeFromEnvelope, preferRowCollisions } from './elementMove'
@@ -195,7 +195,7 @@ export function MonthFlows({
     setSavingsPreview(null)
   }, [budget])
 
-  const mute = (text: string) => (future ? <span className="text-muted-foreground">{text}</span> : text)
+  const mute = (text: string) => (future ? <span className={FUTURE_FIGURE}>{text}</span> : text)
 
   const actualCell = (target: BudgetTransactionsTarget | null, amount: string, currencyId: Id | null) => {
     if (future && isZero(amount)) {
@@ -203,14 +203,14 @@ export function MonthFlows({
     }
     const text = fmt(amount, currencyId)
     if (!target || !onShowTransactions) {
-      return future ? <span className="text-muted-foreground">{text}</span> : text
+      return future ? <span className={FUTURE_FIGURE}>{text}</span> : text
     }
     return (
       <button
         type="button"
         title={t('budgets.page.budget.structure.element.action.show_transactions')}
         aria-label={`transactions ${target.name}`}
-        className={`underline-offset-2 hover:text-foreground hover:underline ${future ? 'text-muted-foreground' : ''}`}
+        className={`underline-offset-2 hover:text-foreground hover:underline ${future ? FUTURE_FIGURE : ''}`}
         onClick={() => onShowTransactions(target)}
       >
         {text}
@@ -661,7 +661,7 @@ export function MonthTotalsLines({
   const hasSavings = (budget.structure.savings ?? []).length > 0
   const savingsSpent = hasSavings ? totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, makeBudgetExchange(budget, currencies)).spent : null
   const shared = { actionsColumn }
-  const mute = (text: string) => (future ? <span className="text-muted-foreground">{text}</span> : text)
+  const mute = (text: string) => (future ? <span className={FUTURE_FIGURE}>{text}</span> : text)
   return (
     <div className="flex flex-col pt-1" data-testid="month-totals-lines">
       {planMonth ? (

@@ -280,7 +280,7 @@ it('a future month shows a dash for Spent, the empty gray track, and no colour',
   const row = screen.getByTestId('phone-row-cat-food')
   const bar = within(row).getByTestId('phone-progress').firstElementChild
   expect(bar).toHaveStyle({ width: '0%' })
-  expect(bar?.className).toContain('bg-muted-foreground/40')
+  expect(bar?.className).toContain('bg-muted-foreground/25')
   expect(within(row).getByText('—').className).not.toContain('text-expense')
   expect(screen.getByRole('button', { name: 'Food, budget 30.00 + 100.00, spent —' })).toBeInTheDocument()
 })
@@ -296,7 +296,7 @@ it('a future month shows the combined Spent and the filled bar when upcoming exi
   expect(within(row).getByTestId('phone-progress').firstElementChild?.className).not.toContain('bg-expense')
   expect(within(row).getByText('50.00').className).not.toContain('text-expense')
   // and muted, as a projection
-  expect(within(row).getByText('50.00').className).toContain('text-muted-foreground')
+  expect(within(row).getByText('50.00').className).toContain('text-muted-foreground/50')
   expect(screen.getByRole('button', { name: 'Food, budget 30.00 + 100.00, spent 50.00' })).toBeInTheDocument()
 })
 
@@ -363,7 +363,7 @@ it('a future month draws the empty gray track on income and savings rows, even f
   for (const testId of ['phone-income-row-ie1', 'phone-savings-row-acc-s1']) {
     const bar = within(screen.getByTestId(testId)).getByTestId('phone-progress').firstElementChild
     expect(bar).toHaveStyle({ width: '0%' })
-    expect(bar?.className).toContain('bg-muted-foreground/40')
+    expect(bar?.className).toContain('bg-muted-foreground/25')
   }
 })
 

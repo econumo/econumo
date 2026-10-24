@@ -1733,9 +1733,10 @@ and on tablet/phone only with a hardware keyboard.
       its bar and the Plan grid actual in the neutral style; the current and
       past months still turn red when overspent, and a negative Available
       stays red. In future months every spent/actual figure (rows, folder and
-      tag-group sums, section headers, month totals, the item sheet) is muted
-      grey, so it reads as projected; current and past months keep the normal
-      colour.
+      tag-group sums, section headers, month totals, the item sheet, and the
+      Plan grid's actuals) is a lighter grey than the muted grey of current-
+      month figures, so it reads as projected; current and past months keep
+      their normal colour.
 - [ ] A weekly template adds one occurrence per week to a month (four or five
       rows in the cell list, matching the month's weeks); a monthly template
       adds one.
