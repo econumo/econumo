@@ -2069,7 +2069,9 @@
       "invalid_import_file": "Bitte laden Sie eine gültige CSV-Datei hoch",
       "too_many_labels": "Eine Transaktion kann höchstens 50 Auswertungs-Tags haben.",
       "account_deleted": "Dieses Konto wurde gelöscht.",
-      "category_type_mismatch": "Der Kategorietyp muss zum Transaktionstyp passen."
+      "category_type_mismatch": "Der Kategorietyp muss zum Transaktionstyp passen.",
+      "day_changed": "Dieser Tag wurde inzwischen geändert. Aktualisiere und versuche es erneut.",
+      "cannot_move": "Diese Transaktion kann nicht auf einen anderen Tag verschoben werden."
     },
     "user": {
       "report_period_invalid": "ReportPeriod ist ungültig",

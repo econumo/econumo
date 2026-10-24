@@ -18,6 +18,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/txorder"
 	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/transaction"
@@ -388,7 +389,55 @@ func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.Tra
 	if err != nil {
 		return nil, err
 	}
-	return hydrateAll(rows)
+	out, err := hydrateAll(rows)
+	if err != nil {
+		return nil, err
+	}
+	model.SortForList(out, &accountID)
+	return out, nil
+}
+
+// DayKeys reads the side keys of accountID's day. A transfer with the account
+// on both sides cannot exist, so each row appears once.
+func (r *Repo) DayKeys(ctx context.Context, accountID vo.Id, spentAt time.Time) (map[string]int64, error) {
+	start, end := txorder.DayBounds(spentAt)
+	from, to := start.Format(datetime.Layout), end.Format(datetime.Layout)
+	q := `SELECT id, sort_key FROM transactions WHERE account_id = ` + placeholders(r.driver, 1, 1) +
+		` AND spent_at >= ` + placeholders(r.driver, 2, 1) + ` AND spent_at < ` + placeholders(r.driver, 3, 1) +
+		` UNION ALL SELECT id, recipient_sort_key FROM transactions WHERE account_recipient_id = ` + placeholders(r.driver, 4, 1) +
+		` AND spent_at >= ` + placeholders(r.driver, 5, 1) + ` AND spent_at < ` + placeholders(r.driver, 6, 1)
+	id := accountID.String()
+	rows, err := r.db(ctx).QueryContext(ctx, q, id, from, to, id, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int64{}
+	for rows.Next() {
+		var txID string
+		var key sql.NullInt64
+		if err := rows.Scan(&txID, &key); err != nil {
+			return nil, err
+		}
+		out[txID] = key.Int64
+	}
+	return out, rows.Err()
+}
+
+// SetSideKey writes the key of whichever side of id sits on accountID. The
+// row's revision moves on both of its accounts: both download it.
+func (r *Repo) SetSideKey(ctx context.Context, accountID, id vo.Id, key int64) error {
+	if err := r.rev.BumpWhere(ctx, "id = ?", id.String()); err != nil {
+		return err
+	}
+	q := `UPDATE transactions SET
+		sort_key = CASE WHEN account_id = ` + placeholders(r.driver, 1, 1) + ` THEN ` + placeholders(r.driver, 2, 1) + ` ELSE sort_key END,
+		recipient_sort_key = CASE WHEN account_id <> ` + placeholders(r.driver, 3, 1) + ` AND account_recipient_id = ` + placeholders(r.driver, 4, 1) +
+		` THEN ` + placeholders(r.driver, 5, 1) + ` ELSE recipient_sort_key END
+		WHERE id = ` + placeholders(r.driver, 6, 1)
+	a := accountID.String()
+	_, err := r.db(ctx).ExecContext(ctx, q, a, key, a, a, key, id.String())
+	return err
 }
 
 // ListByAccountIDs returns transactions whose source OR recipient is in
@@ -480,7 +529,15 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter 
 		}
 		out = append(out, t)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	var side *vo.Id
+	if len(accountIDs) == 1 {
+		side = &accountIDs[0]
+	}
+	model.SortForList(out, side)
+	return out, nil
 }
 
 // placeholders builds a comma-separated placeholder list of n params starting at

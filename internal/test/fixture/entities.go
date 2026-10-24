@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/txorder"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -557,7 +558,11 @@ func (b *Builder) placeKey(key int64, accountID string, spent any) int64 {
 		}
 		at = parsed
 	}
-	top, err := txorder.New(b.db.Engine, b.db.TX).Top(context.Background(), accountID, at)
+	tm := b.db.TX
+	if tm == nil {
+		tm = backend.NewTxManager(b.db.Raw)
+	}
+	top, err := txorder.New(b.db.Engine, tm).Top(context.Background(), accountID, at)
 	if err != nil {
 		b.t.Fatalf("fixture transaction sort key: %v", err)
 	}

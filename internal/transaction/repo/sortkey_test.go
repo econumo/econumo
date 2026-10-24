@@ -2,6 +2,7 @@ package repo_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -97,5 +98,48 @@ func TestSaveKeepsKeysOnPlainEdit(t *testing.T) {
 	}
 	if k, _ := keysOf(t, repo, a); k != 1 {
 		t.Errorf("edited row moved: key %d, want 1", k)
+	}
+}
+
+func TestListByAccountOrdersByDayThenKey(t *testing.T) {
+	repo, _ := setup(t)
+	ctx := context.Background()
+	day := time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC)
+	early, late, tr, older := "7c000000-0000-0000-0000-0000000005d1", "7c000000-0000-0000-0000-0000000005d2", "7c000000-0000-0000-0000-0000000005d3", "7c000000-0000-0000-0000-0000000005d4"
+	rk := int64(1)
+	rows := []*model.Transaction{
+		expense(early, acct1, "1", day.Add(8*time.Hour)),
+		expense(late, acct1, "1", day.Add(20*time.Hour)),
+		transfer(tr, acct2, acct1, day.Add(23*time.Hour)),
+		expense(older, acct1, "1", day.Add(-time.Hour)),
+	}
+	rows[0].SortKey, rows[1].SortKey, rows[3].SortKey = 3, 2, 9
+	rows[2].SortKey, rows[2].RecipientSortKey = 5, &rk
+	for _, tx := range rows {
+		if err := repo.Save(ctx, tx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ids := func(list []*model.Transaction) []string {
+		out := make([]string, len(list))
+		for i, tx := range list {
+			out[i] = tx.ID.String()
+		}
+		return out
+	}
+	want := []string{early, late, tr, older}
+	got, err := repo.ListByAccount(ctx, vo.MustParseId(acct1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(ids(got)) != fmt.Sprint(want) {
+		t.Errorf("ListByAccount = %v, want %v (day, then this account's key)", ids(got), want)
+	}
+	got, err = repo.ListByAccountIDs(ctx, []vo.Id{vo.MustParseId(acct1)}, model.TransactionFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(ids(got)) != fmt.Sprint(want) {
+		t.Errorf("ListByAccountIDs = %v, want %v", ids(got), want)
 	}
 }

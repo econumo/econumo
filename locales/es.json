@@ -2069,7 +2069,9 @@
       "invalid_import_file": "Sube un archivo CSV válido.",
       "too_many_labels": "Una transacción puede tener como máximo 50 etiquetas de informes.",
       "account_deleted": "Esta cuenta ha sido eliminada.",
-      "category_type_mismatch": "El tipo de categoría debe coincidir con el tipo de transacción."
+      "category_type_mismatch": "El tipo de categoría debe coincidir con el tipo de transacción.",
+      "day_changed": "Este día cambió mientras tanto. Actualiza e inténtalo de nuevo.",
+      "cannot_move": "Esta transacción no se puede mover a otro día."
     },
     "user": {
       "report_period_invalid": "El periodo del informe es incorrecto.",

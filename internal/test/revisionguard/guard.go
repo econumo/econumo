@@ -81,6 +81,7 @@ func watch(t *testing.T, db *dbtest.DB) (*apiparity.Harness, map[string]bool) {
 		case "before":
 			before = snapshot(t, db)
 		case "after":
+			checkSortKeys(t, db, label)
 			after := snapshot(t, db)
 			ids := make([]string, 0, len(after))
 			for id := range after {
@@ -106,6 +107,50 @@ func watch(t *testing.T, db *dbtest.DB) (*apiparity.Harness, map[string]bool) {
 	return h, changed
 }
 
+// Every write path must leave each row placed on each of its sides: a key on
+// the source account, one on the recipient exactly when it is a transfer, and
+// no two rows of an account's day sharing a key there.
+const sortKeyViolations = `
+SELECT id FROM transactions
+WHERE sort_key <= 0
+   OR (type = 2 AND account_recipient_id IS NOT NULL AND (recipient_sort_key IS NULL OR recipient_sort_key <= 0))
+   OR (type <> 2 AND recipient_sort_key IS NOT NULL)
+UNION
+SELECT s.id FROM (
+    SELECT id, account_id AS acct, CAST(spent_at AS DATE) AS day, sort_key AS k FROM transactions
+    UNION ALL
+    SELECT id, account_recipient_id, CAST(spent_at AS DATE), recipient_sort_key FROM transactions WHERE account_recipient_id IS NOT NULL
+) s
+JOIN (
+    SELECT id, account_id AS acct, CAST(spent_at AS DATE) AS day, sort_key AS k FROM transactions
+    UNION ALL
+    SELECT id, account_recipient_id, CAST(spent_at AS DATE), recipient_sort_key FROM transactions WHERE account_recipient_id IS NOT NULL
+) o ON o.acct = s.acct AND o.day = s.day AND o.k = s.k AND o.id <> s.id
+ORDER BY 1`
+
+func checkSortKeys(t *testing.T, db *dbtest.DB, label string) {
+	t.Helper()
+	q := sortKeyViolations
+	if db.Engine != "postgresql" {
+		q = strings.ReplaceAll(q, "CAST(spent_at AS DATE)", "substr(spent_at, 1, 10)")
+	}
+	rows, err := db.Raw.Query(q)
+	if err != nil {
+		t.Fatalf("revisionguard: sort key query: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			t.Fatalf("revisionguard: scan: %v", err)
+		}
+		t.Errorf("%s: transaction %s is not placed in its day (missing, stray or shared sort key)", label, id)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("revisionguard: rows: %v", err)
+	}
+}
+
 type accountState struct {
 	fp  string
 	rev int64
@@ -118,6 +163,7 @@ const fingerprintQuery = `
 SELECT a.id, a.transactions_revision,
        t.id, t.user_id, t.account_id, t.account_recipient_id, t.category_id, t.payee_id, t.tag_id,
        t.description, t.spent_at, t.type, t.amount, t.amount_recipient, t.recurring_id,
+       t.sort_key, t.recipient_sort_key,
        u.name, u.avatar
 FROM accounts a
 LEFT JOIN transactions t ON t.account_id = a.id OR t.account_recipient_id = a.id
@@ -128,7 +174,7 @@ const (
 	colTxID            = 2
 	colAmount          = 12
 	colAmountRecipient = 13
-	fingerprintCols    = 17
+	fingerprintCols    = 19
 )
 
 func snapshot(t *testing.T, db *dbtest.DB) map[string]accountState {

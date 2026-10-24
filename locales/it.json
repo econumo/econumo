@@ -2069,7 +2069,9 @@
       "invalid_import_file": "Carica un file CSV valido",
       "too_many_labels": "Una transazione può avere al massimo 50 tag per i report.",
       "account_deleted": "Questo conto è stato eliminato.",
-      "category_type_mismatch": "Il tipo di categoria deve corrispondere al tipo di transazione."
+      "category_type_mismatch": "Il tipo di categoria deve corrispondere al tipo di transazione.",
+      "day_changed": "Questo giorno è stato modificato nel frattempo. Aggiorna e riprova.",
+      "cannot_move": "Questa transazione non può essere spostata in un altro giorno."
     },
     "user": {
       "report_period_invalid": "Il periodo del report non è corretto",

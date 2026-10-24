@@ -11,6 +11,8 @@
 package model
 
 import (
+	"cmp"
+	"slices"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -195,3 +197,30 @@ func sameOptID(a, b *vo.Id) bool {
 	}
 	return a.Equal(*b)
 }
+
+// SideKey is the row's position within its day on accountID: the recipient
+// key when accountID is the transfer's recipient, the source key otherwise.
+func (t *Transaction) SideKey(accountID *vo.Id) int64 {
+	if accountID != nil && t.RecipientSortKey != nil && t.AccountRecipID != nil &&
+		t.AccountRecipID.Equal(*accountID) && !t.AccountID.Equal(*accountID) {
+		return *t.RecipientSortKey
+	}
+	return t.SortKey
+}
+
+// SortForList puts txs in list order: newest day first, then the key of the
+// side on accountID (the source key for a list spanning several accounts),
+// then id. The time of day takes no part.
+func SortForList(txs []*Transaction, accountID *vo.Id) {
+	slices.SortStableFunc(txs, func(a, b *Transaction) int {
+		if c := cmp.Compare(b.SpentAt.Format(dayLayout), a.SpentAt.Format(dayLayout)); c != 0 {
+			return c
+		}
+		if c := cmp.Compare(b.SideKey(accountID), a.SideKey(accountID)); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.ID.String(), b.ID.String())
+	})
+}
+
+const dayLayout = "2006-01-02"

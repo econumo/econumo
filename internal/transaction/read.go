@@ -207,6 +207,8 @@ func (s *Service) GetAccountTransactionList(ctx context.Context, userID vo.Id, r
 			RecurringId:        res.RecurringId,
 			LabelIds:           res.LabelIds,
 			IsImported:         res.IsImported,
+			SortKey:            res.SortKey,
+			RecipientSortKey:   res.RecipientSortKey,
 		})
 	}
 	authorList := make([]model.UserResult, 0, len(authors))

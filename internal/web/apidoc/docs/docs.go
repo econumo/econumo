@@ -12985,8 +12985,14 @@ const docTemplate = `{
                 "payeeId": {
                     "type": "string"
                 },
+                "recipientSortKey": {
+                    "type": "integer"
+                },
                 "recurringId": {
                     "type": "string"
+                },
+                "sortKey": {
+                    "type": "integer"
                 },
                 "tagId": {
                     "type": "string"
@@ -16936,9 +16942,16 @@ const docTemplate = `{
                 "payeeId": {
                     "type": "string"
                 },
+                "recipientSortKey": {
+                    "type": "integer"
+                },
                 "recurringId": {
                     "description": "RecurringId is the template this transaction was posted from, null for a\nhand-entered one. Read-only provenance: create/update never accept it.",
                     "type": "string"
+                },
+                "sortKey": {
+                    "description": "SortKey orders the row within its day on accountId, RecipientSortKey on\naccountRecipientId (null unless a transfer); higher is listed first.",
+                    "type": "integer"
                 },
                 "tagId": {
                     "type": "string"
