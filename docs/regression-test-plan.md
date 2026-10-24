@@ -79,6 +79,11 @@ navigation (single-pane vs sidebar).
       server stdout in dev) → enter code + new password → old password rejected,
       new one works; all other sessions of the user are revoked.
 - [ ] Recovery with a wrong/expired code → clear error, password unchanged.
+- [ ] With `MAILER_DSN=smtp://user:pass@host:587?from=…` (STARTTLS) and with
+      `smtps://…:465` (implicit TLS) pointed at a real relay, the reset code
+      email arrives with the right From/Reply-To and a readable non-English
+      subject and body (switch the UI language first); a relay that offers no
+      STARTTLS is refused (server log WARN/ERROR) unless `?insecure=true` is set.
 - [ ] Logout (Settings → Profile → Log out, with confirm) → back at login; the
       session disappears from the Sessions list (check from another session).
 - [ ] Expired/invalid token: clear the token (or revoke the session elsewhere)

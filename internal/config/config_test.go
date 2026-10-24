@@ -43,39 +43,69 @@ func TestDriverFromURL(t *testing.T) {
 
 func TestParseMailerDSN(t *testing.T) {
 	cases := []struct {
-		name                            string
-		dsn                             string
-		provider, apiKey, from, replyTo string
-		wantErr                         bool
+		name    string
+		dsn     string
+		want    mailerDSN
+		wantErr bool
 	}{
-		{name: "empty defaults to console", dsn: "", provider: "console"},
-		{name: "blank defaults to console", dsn: "   ", provider: "console"},
-		{name: "console scheme", dsn: "console://", provider: "console"},
-		{name: "log scheme", dsn: "log://", provider: "console"},
-		{name: "console with envelope", dsn: "console://?from=a@x.test&reply_to=b@x.test", provider: "console", from: "a@x.test", replyTo: "b@x.test"},
-		{name: "resend with key", dsn: "resend://re_Abc_123", provider: "resend", apiKey: "re_Abc_123"},
-		{name: "resend with envelope", dsn: "resend://re_Abc_123?from=a@x.test&reply_to=b@x.test", provider: "resend", apiKey: "re_Abc_123", from: "a@x.test", replyTo: "b@x.test"},
-		{name: "scheme is case-insensitive", dsn: "RESEND://re_Abc_123", provider: "resend", apiKey: "re_Abc_123"},
+		{name: "empty defaults to console", dsn: "", want: mailerDSN{provider: "console"}},
+		{name: "blank defaults to console", dsn: "   ", want: mailerDSN{provider: "console"}},
+		{name: "console scheme", dsn: "console://", want: mailerDSN{provider: "console"}},
+		{name: "log scheme", dsn: "log://", want: mailerDSN{provider: "console"}},
+		{name: "console with envelope", dsn: "console://?from=a@x.test&reply_to=b@x.test", want: mailerDSN{provider: "console", from: "a@x.test", replyTo: "b@x.test"}},
+		{name: "resend with key", dsn: "resend://re_Abc_123", want: mailerDSN{provider: "resend", apiKey: "re_Abc_123"}},
+		{name: "resend with envelope", dsn: "resend://re_Abc_123?from=a@x.test&reply_to=b@x.test", want: mailerDSN{provider: "resend", apiKey: "re_Abc_123", from: "a@x.test", replyTo: "b@x.test"}},
+		{name: "scheme is case-insensitive", dsn: "RESEND://re_Abc_123", want: mailerDSN{provider: "resend", apiKey: "re_Abc_123"}},
 		{name: "resend without key errors", dsn: "resend://", wantErr: true},
-		{name: "unsupported scheme errors", dsn: "smtp://localhost", wantErr: true},
+		{name: "smtp with credentials", dsn: "smtp://user%40x.test:p%40ss%2Fw@mail.x.test:2525?from=a@x.test&reply_to=b@x.test",
+			want: mailerDSN{provider: "smtp", from: "a@x.test", replyTo: "b@x.test", smtpHost: "mail.x.test", smtpPort: "2525", smtpUsername: "user@x.test", smtpPassword: "p@ss/w"}},
+		{name: "smtp without credentials or port", dsn: "smtp://relay?from=a@x.test",
+			want: mailerDSN{provider: "smtp", from: "a@x.test", smtpHost: "relay"}},
+		{name: "smtps is implicit TLS", dsn: "smtps://u:p@mail.x.test?from=a@x.test",
+			want: mailerDSN{provider: "smtp", from: "a@x.test", smtpHost: "mail.x.test", smtpUsername: "u", smtpPassword: "p", smtpImplicitTLS: true}},
+		{name: "smtp insecure", dsn: "smtp://postfix:25?from=a@x.test&insecure=true",
+			want: mailerDSN{provider: "smtp", from: "a@x.test", smtpHost: "postfix", smtpPort: "25", smtpInsecure: true}},
+		{name: "smtp ipv6 host", dsn: "smtp://[::1]:25?from=a@x.test",
+			want: mailerDSN{provider: "smtp", from: "a@x.test", smtpHost: "::1", smtpPort: "25"}},
+		{name: "smtp without from errors", dsn: "smtp://mail.x.test", wantErr: true},
+		{name: "smtp without host errors", dsn: "smtp://?from=a@x.test", wantErr: true},
+		{name: "smtp bad port errors", dsn: "smtp://mail.x.test:0?from=a@x.test", wantErr: true},
+		{name: "smtp bad insecure errors", dsn: "smtp://mail.x.test?from=a@x.test&insecure=yes", wantErr: true},
+		{name: "unsupported scheme errors", dsn: "mailjet+api://key", wantErr: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			provider, apiKey, from, replyTo, err := parseMailerDSN(tc.dsn)
+			got, err := parseMailerDSN(tc.dsn)
 			if tc.wantErr {
 				if err == nil {
-					t.Fatalf("parseMailerDSN(%q) = (%q,%q,%q,%q), want error", tc.dsn, provider, apiKey, from, replyTo)
+					t.Fatalf("parseMailerDSN(%q) = %+v, want error", tc.dsn, got)
 				}
 				return
 			}
 			if err != nil {
 				t.Fatalf("parseMailerDSN(%q) unexpected error: %v", tc.dsn, err)
 			}
-			if provider != tc.provider || apiKey != tc.apiKey || from != tc.from || replyTo != tc.replyTo {
-				t.Errorf("parseMailerDSN(%q) = (%q,%q,%q,%q), want (%q,%q,%q,%q)",
-					tc.dsn, provider, apiKey, from, replyTo, tc.provider, tc.apiKey, tc.from, tc.replyTo)
+			if got != tc.want {
+				t.Errorf("parseMailerDSN(%q) = %+v, want %+v", tc.dsn, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestParseMailerDSN_ErrorsDoNotLeakSecrets(t *testing.T) {
+	for _, dsn := range []string{
+		"smtp://user:s3cret@mail.x.test",              // missing from
+		"smtp://user:s3cret@mail.x.test:99999?from=a", // bad port
+		"smtp://user:s3cret@mail.x.test\x7f",          // malformed
+		"smtp://user:s3cret@%zz",                      // malformed
+	} {
+		_, err := parseMailerDSN(dsn)
+		if err == nil {
+			t.Fatalf("parseMailerDSN(%q) want error", dsn)
+		}
+		if strings.Contains(err.Error(), "s3cret") {
+			t.Errorf("error for %q leaks the password: %v", dsn, err)
+		}
 	}
 }
 
