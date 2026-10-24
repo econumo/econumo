@@ -100,6 +100,8 @@ const (
 	CodeTransactionTooManyLabels        = "transaction.too_many_labels"
 	CodeTransactionAccountDeleted       = "transaction.account_deleted"
 	CodeTransactionCategoryTypeMismatch = "transaction.category_type_mismatch"
+	CodeTransactionDayChanged           = "transaction.day_changed"
+	CodeTransactionCannotMove           = "transaction.cannot_move"
 
 	CodeUserReportPeriodInvalid       = "user.report_period_invalid"
 	CodeUserLanguageInvalid           = "user.language_invalid"
@@ -233,6 +235,8 @@ var AllCodes = []string{
 	CodeTransactionTooManyLabels,
 	CodeTransactionAccountDeleted,
 	CodeTransactionCategoryTypeMismatch,
+	CodeTransactionDayChanged,
+	CodeTransactionCannotMove,
 
 	CodeUserReportPeriodInvalid,
 	CodeUserLanguageInvalid,

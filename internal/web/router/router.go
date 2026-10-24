@@ -117,6 +117,13 @@ type Deps struct {
 	// version.
 	SPAVersionLabel string
 
+	// SPAVersionRef is merged as VERSION_REF, the source revision of the
+	// running build ("" when unknown). Dev builds all report VERSION "dev",
+	// so the SPA keys its caches on VERSION plus VERSION_REF and a dev deploy
+	// does not restore what an older build cached. Nothing compares it as a
+	// version.
+	SPAVersionRef string
+
 	// MinAppVersion is merged into the served econumo-config.js as
 	// MIN_APP_VERSION — the oldest mobile-app build this backend accepts
 	// (version.MinAppVersion, injected by the composition root like SPAVersion
@@ -250,14 +257,16 @@ func New(deps Deps) http.Handler {
 		"AI_ENABLED":         deps.Cfg.AIEnabled,
 		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
 		"PASSWORD_LOGIN":     !deps.Cfg.PasswordLoginDisabled,
+		// The SPA posts feedback straight to the econumo.com collector, so a
+		// self-hosting admin can hide the form.
+		"FEEDBACK": !deps.Cfg.FeedbackDisabled,
 		// The SPA hides a provider that is off, and import rules plus the
 		// import sections of the Inbox while both are; the server does not
 		// mount their routes.
 		"IMPORT_APPLE_WALLET": deps.Cfg.ImportAppleWallet,
 		"IMPORT_SIMPLEFIN":    deps.Cfg.ImportSimpleFIN,
-		// ECONUMO_REPORTS: the SPA hides Reports while it is off and the
-		// server does not mount the report routes.
-		"REPORTS": deps.Cfg.Reports,
+		// ECONUMO_DEV: the SPA shows unfinished features only while it is on.
+		"DEV": deps.Cfg.Dev,
 		// Present even when empty: the backend decides whether create-billing-link
 		// works, so an empty value must switch the SPA's billing UI off rather than
 		// leave a stale default pointing at a portal the server will not mint for.
@@ -271,6 +280,7 @@ func New(deps Deps) http.Handler {
 		"INSTANCE_ID":   deps.InstanceID,
 		"VERSION":       version,
 		"VERSION_LABEL": versionLabel,
+		"VERSION_REF":   deps.SPAVersionRef,
 		// The matcher thresholds the import queue uses client-side to group
 		// cross-provider duplicates. Stage 2 ships one provider, so the SPA only
 		// types the key today; serving the value now means stage 3 needs no

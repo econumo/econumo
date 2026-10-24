@@ -18,6 +18,7 @@ import (
 	domaccount "github.com/econumo/econumo/internal/account"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txorder"
 	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -71,10 +72,11 @@ type balanceQuerier interface {
 
 // Repo implements account.Repository.
 type Repo struct {
-	tx  *backend.TxManager
-	q   querier
-	b   balanceQuerier
-	rev *txrevision.Bumper
+	tx    *backend.TxManager
+	q     querier
+	b     balanceQuerier
+	rev   *txrevision.Bumper
+	order *txorder.Placer
 }
 
 var _ domaccount.Repository = (*Repo)(nil)
@@ -83,9 +85,9 @@ var _ domaccount.Repository = (*Repo)(nil)
 func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
 	case "sqlite":
-		return &Repo{tx: tx, q: sqliteQuerier{}, b: sqliteBalance{}, rev: txrevision.New(driver, tx)}
+		return &Repo{tx: tx, q: sqliteQuerier{}, b: sqliteBalance{}, rev: txrevision.New(driver, tx), order: txorder.New(driver, tx)}
 	case "postgresql":
-		return &Repo{tx: tx, q: pgsqlQuerier{}, b: pgsqlBalance{}, rev: txrevision.New(driver, tx)}
+		return &Repo{tx: tx, q: pgsqlQuerier{}, b: pgsqlBalance{}, rev: txrevision.New(driver, tx), order: txorder.New(driver, tx)}
 	default:
 		panic("accountrepo: unknown database driver " + driver)
 	}
@@ -254,6 +256,10 @@ func (r *Repo) TransactionsCounts(ctx context.Context, userID vo.Id) (map[string
 
 // SaveCorrection inserts a balance-correction transaction.
 func (r *Repo) SaveCorrection(ctx context.Context, c model.AccountCorrection) error {
+	sortKey, err := r.order.Top(ctx, c.AccountID.String(), c.SpentAt)
+	if err != nil {
+		return err
+	}
 	if err := r.q.InsertCorrectionTransaction(ctx, r.db(ctx), insertCorrectionP{
 		ID:          c.ID.String(),
 		UserID:      c.UserID.String(),
@@ -264,6 +270,7 @@ func (r *Repo) SaveCorrection(ctx context.Context, c model.AccountCorrection) er
 		SpentAt:     c.SpentAt,
 		Type:        c.Type,
 		Amount:      c.Amount,
+		SortKey:     sortKey,
 	}); err != nil {
 		return err
 	}

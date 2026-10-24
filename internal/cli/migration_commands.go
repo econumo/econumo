@@ -7,8 +7,10 @@ import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/sqlite"
+	"github.com/econumo/econumo/internal/infra/txorder"
 )
 
 // migrationCommands are data migrations the boot runner invokes as command
@@ -38,6 +40,18 @@ func migrationCommands() []command {
 					return err
 				}
 				fmt.Printf("seeded %d analytics preference(s)\n", n)
+				return nil
+			},
+		},
+		{
+			name:    "migration:seed-transaction-sort-keys",
+			summary: "give every transaction without one a sort key on each account side, in the order lists showed before keys existed (idempotent)",
+			run: func(ctx context.Context, c *container, args []string) error {
+				n, err := txorder.New(c.cfg.DatabaseDriver, backend.NewTxManager(c.db)).SeedMissing(ctx)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("placed the transactions of %d account(s)\n", n)
 				return nil
 			},
 		},

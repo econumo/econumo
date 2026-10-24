@@ -181,7 +181,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	emailChangeRepo := userrepo.NewEmailChangeRequestRepo(cfg.DatabaseDriver, txm)
 	mailTransport := seams.Mailer
 	if mailTransport == nil {
-		mailTransport = mailer.New(cfg.MailProvider, cfg.MailAPIKey)
+		mailTransport = MailTransport(cfg)
 	}
 	if cfg.AppURL != "" {
 		mailTransport = mailer.WithAppLink(mailTransport, cfg.AppURL)
@@ -457,11 +457,6 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		})
 	}
 
-	var reportsAPI router.RegisterAPI
-	if cfg.Reports {
-		reportsAPI = handlerbudget.RegisterReportAPI(budgetHandlers, authn)
-	}
-
 	registerAPI := router.Compose(
 		handleruser.RegisterAPI(userHandlers, authn),
 		handleroauth.RegisterAPI(oauthHandlers, authn),
@@ -476,7 +471,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		handlerrecurring.RegisterAPI(recurringHandlers, authn),
 		handlerconnection.RegisterAPI(connectionHandlers, authn),
 		handlerbudget.RegisterAPI(budgetHandlers, authn),
-		reportsAPI,
+		handlerbudget.RegisterReportAPI(budgetHandlers, authn),
 		importsAPI,
 		handlersystem.RegisterAPI(systemHandlers, authn),
 		apidoc.RegisterAPI(),
@@ -538,6 +533,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		SPA:                spaFS,
 		SPAVersion:         version.Version,
 		SPAVersionLabel:    cfg.Version,
+		SPAVersionRef:      version.Ref(),
 		MinAppVersion:      compat.MinAppVersion,
 		InstanceID:         instanceID,
 	}), adminHandler, rateUpdater, nil
@@ -548,3 +544,19 @@ type pinger struct{ db *sql.DB }
 var _ router.Pinger = pinger{}
 
 func (p pinger) Ping(ctx context.Context) error { return p.db.PingContext(ctx) }
+
+// MailTransport builds the MAILER_DSN transport; the CLI container shares it.
+func MailTransport(cfg config.Config) mailer.Mailer {
+	return mailer.New(mailer.Transport{
+		Provider: cfg.MailProvider,
+		APIKey:   cfg.MailAPIKey,
+		SMTP: mailer.SMTPConfig{
+			Host:        cfg.MailSMTPHost,
+			Port:        cfg.MailSMTPPort,
+			Username:    cfg.MailSMTPUsername,
+			Password:    cfg.MailSMTPPassword,
+			ImplicitTLS: cfg.MailSMTPImplicitTLS,
+			Insecure:    cfg.MailSMTPInsecure,
+		},
+	})
+}

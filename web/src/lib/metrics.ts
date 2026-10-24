@@ -126,6 +126,7 @@ export const METRICS = {
   TRANSACTION_UPDATE: 'appTransactionUpdate',
   TRANSACTION_DATE_SELECT: 'appTransactionDateSelect',
   TRANSACTION_DELETE: 'appTransactionDelete',
+  TRANSACTION_MOVE: 'appTransactionMove',
   TRANSACTION_IMPORT: 'appTransactionImport',
   TRANSACTION_EXPORT: 'appTransactionExport',
   CONNECTION_GENERATE_INVITE: 'appConnectionGenerateInvite',
@@ -155,6 +156,9 @@ export const METRICS = {
   IMPORT_RULE_CREATE: 'appImportRuleCreate',
   IMPORT_RULE_APPLY: 'appImportRuleApply',
   DATA_FULL_RELOAD: 'appDataFullReload',
+  INSTALL_APP_OPEN: 'appInstallAppOpen',
+  INSTALL_APP_ACCEPT: 'appInstallAppAccept',
+  INSTALL_NOTICE_DISMISS: 'appInstallNoticeDismiss',
   INBOX_OPEN: 'appInboxOpen',
   GLOBAL_SEARCH_OPEN: 'appGlobalSearchOpen',
   GLOBAL_SEARCH_SELECT: 'appGlobalSearchSelect',
@@ -175,6 +179,9 @@ export const METRICS = {
   REPORTS_DRILL_DOWN: 'appReportsDrillDown',
   REPORTS_CASHFLOW_VIEW: 'appReportsCashflowView',
   REPORTS_NETWORTH_EXPAND: 'appReportsNetworthExpand',
+  REPORTS_SUGGEST: 'appReportsSuggest',
+  FEEDBACK_OPEN: 'appFeedbackOpen',
+  FEEDBACK_SEND: 'appFeedbackSend',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

@@ -5,6 +5,9 @@ import type { Id } from '@/api/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCurrencies } from '@/features/currencies/queries'
 import { abs, add, div, isNegative, isZero, mul, sub } from '@/lib/decimal'
+import { useUiStore } from '@/app/uiStore'
+import { isDevEnabled, isFeedbackEnabled } from '@/lib/config'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { moneyFormat } from '@/lib/money'
 import { cashFlow, netWorthInsight, netWorthSeries, spendingInsight } from './reportMath'
 import { useFlowReport, useNetWorthReport, useReportBudgets } from './queries'
@@ -186,6 +189,8 @@ export function ReportList({ budgetId, onScope, onChoose }: {
   onChoose: (kind: Exclude<ReportKind, 'list'>) => void
 }) {
   const { t } = useTranslation()
+  const dev = isDevEnabled()
+  const openFeedback = useUiStore((s) => s.openFeedback)
   const { data: budgets } = useReportBudgets()
   const year = new Date().getFullYear()
   // until the list lands a stored budget is trusted; the page repairs one that is gone
@@ -209,12 +214,26 @@ export function ReportList({ budgetId, onScope, onChoose }: {
         ) : null}
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        <SpendingCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('spending')} />
-        <CashFlowCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('cashflow')} />
+        {/* Spending, Cash flow and the forecast are unfinished: ECONUMO_DEV only */}
+        {dev ? <SpendingCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('spending')} /> : null}
+        {dev ? <CashFlowCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('cashflow')} /> : null}
         <NetWorthCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('networth')} />
-        <Card question={t('reports.list.forecast_q')} disabled>
-          <span className="text-sm text-muted-foreground">{t('reports.list.coming_later')}</span>
-        </Card>
+        {dev ? (
+          <Card question={t('reports.list.forecast_q')} disabled>
+            <span className="text-sm text-muted-foreground">{t('reports.list.coming_later')}</span>
+          </Card>
+        ) : null}
+        {isFeedbackEnabled() ? (
+          <Card
+            question={t('reports.list.suggest_q')}
+            onClick={() => {
+              trackEvent(METRICS.REPORTS_SUGGEST)
+              openFeedback('feature_request')
+            }}
+          >
+            <span className="text-sm text-muted-foreground">{t('reports.list.suggest_note')}</span>
+          </Card>
+        ) : null}
       </div>
     </div>
   )

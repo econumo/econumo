@@ -120,7 +120,8 @@ The Symfony variables are gone; start from the new
 
 - **`MAILER_DSN` changed meaning.** In v0.x it was a Symfony Mailer DSN
   (`null://null`, `mailjet+api://…`). In v1.x the scheme is `console://` (the
-  default — prints to stdout) or `resend://<api_key>?from=…&reply_to=…`. A
+  default — prints to stdout), `resend://<api_key>?from=…&reply_to=…`, or
+  `smtp://user:pass@host:587?from=…` / `smtps://…:465` for any SMTP server. A
   leftover v0.x value will **fail at boot**, so clear it or set the new form.
 - **`ECONUMO_DATA_SALT`** is deprecated, and v1.x runs **salt-free** — it no
   longer decrypts salted data. Users are looked up by `lower(email)`, which

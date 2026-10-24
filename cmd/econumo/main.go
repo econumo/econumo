@@ -164,6 +164,7 @@ func run(serveArgs []string) error {
 	slog.Info("configuration loaded",
 		"database_driver", cfg.DatabaseDriver,
 		"version", version.Version,
+		"version_ref", version.Ref(),
 	)
 	// The API ignores ECONUMO_DATA_SALT (it always runs salt-free). If the salt is
 	// still set, a database written with it has unreadable emails / mismatched

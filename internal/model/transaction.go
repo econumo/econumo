@@ -76,27 +76,35 @@ type Transaction struct {
 	// for hand-entered ones). Provenance, not mutable state: Update leaves it
 	// alone, so editing a posted instance never severs its origin.
 	RecurringID *vo.Id
+	// SortKey orders the row within its day on AccountID, RecipientSortKey on
+	// AccountRecipID (transfers only): fractional keys (internal/shared/sortkey),
+	// the higher listed first. Empty / nil means "not placed yet": the
+	// repository puts the row at the top of its day.
+	SortKey          string
+	RecipientSortKey *string
 }
 
 // NewState bundles the fields for constructing/reconstructing a Transaction.
 // Optional ids are nil when absent; AmountRecipient is nil unless set.
 type NewState struct {
-	ID              vo.Id
-	UserID          vo.Id
-	Type            TransactionType
-	AccountID       vo.Id
-	AccountRecipID  *vo.Id
-	Amount          string
-	AmountRecipient *string
-	CategoryID      *vo.Id
-	PayeeID         *vo.Id
-	TagID           *vo.Id
-	LabelIDs        []vo.Id
-	Description     string
-	SpentAt         time.Time
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	RecurringID     *vo.Id
+	ID               vo.Id
+	UserID           vo.Id
+	Type             TransactionType
+	AccountID        vo.Id
+	AccountRecipID   *vo.Id
+	Amount           string
+	AmountRecipient  *string
+	CategoryID       *vo.Id
+	PayeeID          *vo.Id
+	TagID            *vo.Id
+	LabelIDs         []vo.Id
+	Description      string
+	SpentAt          time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	RecurringID      *vo.Id
+	SortKey          string
+	RecipientSortKey *string
 }
 
 // TransactionFilter narrows a transaction list query. PeriodStart/PeriodEnd
@@ -124,7 +132,7 @@ func New(s NewState) *Transaction {
 		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
 		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID, LabelIDs: s.LabelIDs,
 		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.CreatedAt,
-		RecurringID: s.RecurringID,
+		RecurringID: s.RecurringID, SortKey: s.SortKey, RecipientSortKey: s.RecipientSortKey,
 	}
 }
 
@@ -136,7 +144,7 @@ func FromState(s NewState) *Transaction {
 		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
 		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID, LabelIDs: s.LabelIDs,
 		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
-		RecurringID: s.RecurringID,
+		RecurringID: s.RecurringID, SortKey: s.SortKey, RecipientSortKey: s.RecipientSortKey,
 	}
 }
 
@@ -146,6 +154,13 @@ func FromState(s NewState) *Transaction {
 // category/payee/tag/labels. Always stamps UpdatedAt = now, since a full
 // update replaces the mutable state.
 func (t *Transaction) Update(s NewState, now time.Time) {
+	sameDay := sameDate(t.SpentAt, s.SpentAt)
+	if !sameDay || !t.AccountID.Equal(s.AccountID) {
+		t.SortKey = ""
+	}
+	if !sameDay || !s.Type.IsTransfer() || !sameOptID(t.AccountRecipID, s.AccountRecipID) {
+		t.RecipientSortKey = nil
+	}
 	t.Type = s.Type
 	t.AccountID = s.AccountID
 	t.Amount = s.Amount
@@ -167,4 +182,17 @@ func (t *Transaction) Update(s NewState, now time.Time) {
 		t.LabelIDs = s.LabelIDs
 	}
 	t.UpdatedAt = now
+}
+
+func sameDate(a, b time.Time) bool {
+	ay, am, ad := a.Date()
+	by, bm, bd := b.Date()
+	return ay == by && am == bm && ad == bd
+}
+
+func sameOptID(a, b *vo.Id) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.Equal(*b)
 }

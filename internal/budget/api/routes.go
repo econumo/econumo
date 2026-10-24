@@ -51,8 +51,6 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 	}
 }
 
-// RegisterReportAPI mounts the report reads; the composition root mounts it
-// only while ECONUMO_REPORTS is on.
 func RegisterReportAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
 		authMw := middleware.Auth(authn)

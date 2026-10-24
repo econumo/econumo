@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -11,6 +11,7 @@ import { useTransactions } from '@/features/transactions/queries'
 import { resetRevisions } from '@/features/transactions/revisionTracking'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { loadBuckets } from '@/lib/transactionStore'
+import { useUiStore } from '@/app/uiStore'
 import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { SettingsPage } from './SettingsPage'
 
@@ -87,6 +88,21 @@ it('renders the menu rows with exact labels and navigates', async () => {
   expect(screen.getByText('Payees')).toBeInTheDocument()
   await user.click(screen.getByText('Budgets & Plans'))
   expect(await screen.findByText('BUDGETS PAGE')).toBeInTheDocument()
+})
+
+it('the last row opens the feedback dialog, unless the server turns feedback off', async () => {
+  const user = userEvent.setup()
+  useUiStore.setState({ feedbackOpen: false })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Send feedback' }))
+  expect(useUiStore.getState().feedbackOpen).toBe(true)
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.FEEDBACK_OPEN, { type: 'feedback' })
+  cleanup()
+
+  window.econumoConfig = { FEEDBACK: false }
+  renderPage()
+  expect(await screen.findByText('Data')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Send feedback' })).not.toBeInTheDocument()
 })
 
 it('hides non-semver version text while linking to the Econumo website', async () => {

@@ -11,10 +11,11 @@ import darkLogo from '@/assets/econumo-dark.svg?inline'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UpdateNotice } from '@/components/UpdateNotice'
+import { InstallBanner } from '@/features/install/InstallBanner'
+import { InstallPopup } from '@/features/install/InstallPopup'
 import { ServerVersionNotice } from '@/components/ServerVersionNotice'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
-import { isReportsEnabled } from '@/lib/config'
 import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
@@ -32,6 +33,7 @@ import { TransactionDialog } from '@/features/transactions/TransactionDialog'
 import { RulePromptDialog } from '@/features/imports/RulePromptDialog'
 import { RecurringDialog } from '@/features/recurring/RecurringDialog'
 import { GlobalSearchDialog } from '@/features/search/GlobalSearchDialog'
+import { FeedbackDialog } from '@/features/feedback/FeedbackDialog'
 import { searchShortcutLabel, useSearchHotkey } from '@/features/search/useSearchHotkey'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
@@ -183,6 +185,8 @@ export function ApplicationLayout() {
     <div className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
       <SubscriptionBanner />
       <ServerVersionNotice />
+      <InstallBanner />
+      <InstallPopup />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
           <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">
@@ -255,11 +259,9 @@ export function ApplicationLayout() {
                     <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary" data-testid="update-dot" />
                   ) : null}
                 </Link>
-                {isReportsEnabled() ? (
-                  <Link to={RouterPage.REPORTS} title={t('common.nav.reports')} className="text-muted-foreground hover:text-foreground">
-                    <ChartColumn className="size-5" />
-                  </Link>
-                ) : null}
+                <Link to={RouterPage.REPORTS} title={t('common.nav.reports')} className="text-muted-foreground hover:text-foreground">
+                  <ChartColumn className="size-5" />
+                </Link>
                 <button
                   type="button"
                   aria-label="sync"
@@ -281,16 +283,14 @@ export function ApplicationLayout() {
                   {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
                 </Link>
                 <div className="flex items-center gap-1">
-                  {isReportsEnabled() ? (
-                    <Link
-                      to={RouterPage.REPORTS}
-                      title={t('common.nav.reports')}
-                      aria-label={t('common.nav.reports')}
-                      className={`grid ${isCompact ? 'size-11' : 'size-9'} place-items-center rounded-full text-muted-foreground hover:text-foreground`}
-                    >
-                      <ChartColumn className={isCompact ? 'size-6' : 'size-5'} />
-                    </Link>
-                  ) : null}
+                  <Link
+                    to={RouterPage.REPORTS}
+                    title={t('common.nav.reports')}
+                    aria-label={t('common.nav.reports')}
+                    className={`grid ${isCompact ? 'size-11' : 'size-9'} place-items-center rounded-full text-muted-foreground hover:text-foreground`}
+                  >
+                    <ChartColumn className={isCompact ? 'size-6' : 'size-5'} />
+                  </Link>
                   <button
                     type="button"
                     aria-label="sync"
@@ -327,6 +327,7 @@ export function ApplicationLayout() {
       <AccountDialog />
       <TransactionDialog />
       <GlobalSearchDialog />
+      <FeedbackDialog />
       <RulePromptDialog />
       <RecurringDialog />
       <SwitchAccountPrompt />

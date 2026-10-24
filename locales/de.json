@@ -208,6 +208,7 @@
       },
       "transaction_list": {
         "none": "Keine Transaktionen gefunden",
+        "drag_handle": "Zum Neuordnen ziehen",
         "today": "Heute",
         "yesterday": "Gestern",
         "item": {
@@ -1584,6 +1585,8 @@
       "networth_q": "Werde ich reicher oder ärmer?",
       "forecast_q": "Was wird aus meinem Geld?",
       "coming_later": "Kommt später",
+      "suggest_q": "Bericht vorschlagen",
+      "suggest_note": "Fehlt ein Bericht? Sag uns, was du sehen möchtest.",
       "spent_caption": "{year} ausgegeben",
       "saved_caption": "{year} gespart",
       "overspent_caption": "{year} zu viel ausgegeben",
@@ -2026,6 +2029,36 @@
     "open": "Suche",
     "open_tooltip": "Suche ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Feedback senden",
+    "settings": {
+      "group": "Feedback"
+    },
+    "dialog": {
+      "title": "Feedback senden",
+      "no_reply": "Wir lesen jede Nachricht, können aber nicht immer antworten.",
+      "type": "Art",
+      "message": "Nachricht",
+      "message_required": "Schreiben Sie zuerst eine Nachricht.",
+      "email": "E-Mail (optional)",
+      "email_placeholder": "name@beispiel.de",
+      "use_email": "{email} verwenden",
+      "clear_email": "E-Mail löschen",
+      "send": "Senden",
+      "sent": "Danke für Ihr Feedback!",
+      "failed": "Ihr Feedback konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+    },
+    "type": {
+      "feedback": "Feedback",
+      "feature_request": "Wunsch",
+      "bug_report": "Fehler"
+    },
+    "placeholder": {
+      "feedback": "Was gefällt Ihnen, und was könnte besser sein?",
+      "feature_request": "Was sollte Econumo können?",
+      "bug_report": "Was ist passiert, und was haben Sie erwartet?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Ihr Abonnement endet in {count} Tag | Ihr Abonnement endet in {count} Tagen",
@@ -2086,6 +2119,35 @@
       "loopback": "Läuft auf diesem Computer",
       "returnsTo": "Leitet Sie zurück zu {host}",
       "menuItem": "Verbundene Apps"
+    }
+  },
+  "install": {
+    "notice": "Econumo ist als App am besten",
+    "cta": "Installieren",
+    "dismiss": "Ausblenden",
+    "menu_item": "App installieren",
+    "dialog": {
+      "title": "Econumo installieren",
+      "intro": "Fügen Sie Econumo zum Home-Bildschirm hinzu, um es wie jede andere App ohne Browserleisten zu öffnen.",
+      "step_share": "Tippen Sie im Browser auf „Teilen“. In Safari befindet sich die Taste eventuell im Menü „•••“.",
+      "step_add": "Scrollen Sie nach unten und wählen Sie „Zum Home-Bildschirm“.",
+      "step_confirm": "Tippen Sie auf „Hinzufügen“. Econumo erscheint auf Ihrem Home-Bildschirm.",
+      "installed_hint": "Schon hinzugefügt? Öffnen Sie Econumo dann über den Home-Bildschirm statt im Browser.",
+      "macos": {
+        "intro": "Fügen Sie Econumo zum Dock hinzu, um es wie jede andere App in einem eigenen Fenster zu öffnen.",
+        "step_file": "Öffnen Sie in der Menüleiste von Safari „Ablage“ (oder klicken Sie auf „Teilen“).",
+        "step_add": "Wählen Sie „Zum Dock hinzufügen“.",
+        "step_confirm": "Klicken Sie auf „Hinzufügen“. Econumo erscheint im Dock.",
+        "installed_hint": "Schon hinzugefügt? Öffnen Sie Econumo dann über das Dock statt in Safari."
+      },
+      "android_firefox": {
+        "intro": "Fügen Sie Econumo zum Startbildschirm hinzu, um es wie jede andere App ohne Browserleisten zu öffnen.",
+        "installed_hint": "Schon hinzugefügt? Öffnen Sie Econumo dann über den Startbildschirm statt im Browser.",
+        "step_menu": "Tippen Sie in Firefox auf das Menü ⋮.",
+        "step_install": "Wählen Sie „Installieren“ (in älteren Versionen „Zum Startbildschirm hinzufügen“).",
+        "step_confirm": "Bestätigen Sie. Econumo erscheint auf Ihrem Startbildschirm."
+      },
+      "close": "Verstanden"
     }
   },
   "errors": {
@@ -2221,7 +2283,9 @@
       "invalid_import_file": "Bitte laden Sie eine gültige CSV-Datei hoch",
       "too_many_labels": "Eine Transaktion kann höchstens 50 Auswertungs-Tags haben.",
       "account_deleted": "Dieses Konto wurde gelöscht.",
-      "category_type_mismatch": "Der Kategorietyp muss zum Transaktionstyp passen."
+      "category_type_mismatch": "Der Kategorietyp muss zum Transaktionstyp passen.",
+      "day_changed": "Dieser Tag wurde inzwischen geändert. Aktualisiere und versuche es erneut.",
+      "cannot_move": "Diese Transaktion kann nicht auf einen anderen Tag verschoben werden."
     },
     "user": {
       "report_period_invalid": "ReportPeriod ist ungültig",

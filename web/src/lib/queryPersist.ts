@@ -9,7 +9,7 @@ import { isPendingForMe } from '@/features/connections/shared'
 import { resetRevisions, seedRevisions } from '@/features/transactions/revisionTracking'
 import { assemble, hasRevisions } from '@/features/transactions/sync'
 import { CACHE_MAX_AGE_MS } from './appQueryClient'
-import { getVersion } from './config'
+import { getCacheBuster } from './config'
 import { getSessionUserId, hasToken } from './storage'
 import { clearTransactions, deleteBuckets, putSnapshot, storeEpoch, tryLoadStored, type StoredTransactions } from './transactionStore'
 
@@ -175,8 +175,8 @@ function isLongReport(key: readonly unknown[], data: unknown): boolean {
 // throttleTime: tests pass 0 — the persister's 1 s default equals waitFor's
 // default timeout, so asserting on the written snapshot would race it.
 export function createPersistOptions({ throttleTime = 1000 }: { throttleTime?: number } = {}) {
-  // a release may change response shapes; never restore across versions
-  const buster = getVersion()
+  // a build may change response shapes; never restore across builds
+  const buster = getCacheBuster()
   return {
     persister: withTransactionRestore(
       createSyncStoragePersister({ storage: window.localStorage, key: QUERY_CACHE_KEY, throttleTime }),

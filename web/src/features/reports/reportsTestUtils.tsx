@@ -45,7 +45,10 @@ export function setViewport(phone: boolean) {
   }))
 }
 
+// Spending and Cash flow sit behind ECONUMO_DEV; the suites cover them with the
+// gate on unless a test sets DEV itself
 export function renderReports() {
+  window.econumoConfig = { DEV: true, FEEDBACK: true, ...window.econumoConfig }
   // the app's client, so the report invalidation on writes is exercised
   const queryClient = createAppQueryClient()
   queryClient.setDefaultOptions({ queries: { ...queryClient.getDefaultOptions().queries, retry: false }, mutations: { retry: false } })

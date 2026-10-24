@@ -19,9 +19,11 @@ window.econumoConfig = {
   AI_ENABLED: false,
   IMPORT_APPLE_WALLET: true,
   IMPORT_SIMPLEFIN: false,
-  REPORTS: false,
+  DEV: false,
+  FEEDBACK: true,
   ALLOW_CUSTOM_API: true,
   VERSION: null,
   VERSION_LABEL: null,
+  VERSION_REF: '',
   IMPORT_MATCHER: { matchDays: 3, tipDays: 5, tipTolerancePct: 20, tokenMinLength: 3 },
 };

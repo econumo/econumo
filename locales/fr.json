@@ -208,6 +208,7 @@
       },
       "transaction_list": {
         "none": "Aucune transaction trouvée",
+        "drag_handle": "Faites glisser pour réorganiser",
         "today": "Aujourd’hui",
         "yesterday": "Hier",
         "item": {
@@ -1584,6 +1585,8 @@
       "networth_q": "Est-ce que je m’enrichis ou m’appauvris ?",
       "forecast_q": "Que va devenir mon argent ?",
       "coming_later": "Bientôt disponible",
+      "suggest_q": "Suggérer un rapport",
+      "suggest_note": "Il vous manque un rapport ? Dites-nous ce que vous aimeriez voir.",
       "spent_caption": "dépensé en {year}",
       "saved_caption": "épargné en {year}",
       "overspent_caption": "dépassement en {year}",
@@ -2026,6 +2029,36 @@
     "open": "Recherche",
     "open_tooltip": "Recherche ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Envoyer un avis",
+    "settings": {
+      "group": "Avis"
+    },
+    "dialog": {
+      "title": "Envoyer un avis",
+      "no_reply": "Nous lisons chaque message, mais ne répondons pas toujours.",
+      "type": "Type",
+      "message": "Message",
+      "message_required": "Écrivez d'abord un message.",
+      "email": "E-mail (facultatif)",
+      "email_placeholder": "nom@exemple.fr",
+      "use_email": "Utiliser {email}",
+      "clear_email": "Effacer l'e-mail",
+      "send": "Envoyer",
+      "sent": "Merci pour votre avis !",
+      "failed": "Impossible d'envoyer votre avis. Veuillez réessayer."
+    },
+    "type": {
+      "feedback": "Avis",
+      "feature_request": "Suggestion",
+      "bug_report": "Bug"
+    },
+    "placeholder": {
+      "feedback": "Qu'est-ce qui vous plaît, ou que pourrions-nous améliorer ?",
+      "feature_request": "Que manque-t-il à Econumo ?",
+      "bug_report": "Que s'est-il passé, et à quoi vous attendiez-vous ?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Votre abonnement se termine dans {count} jour | Votre abonnement se termine dans {count} jours",
@@ -2086,6 +2119,35 @@
       "loopback": "S'exécute sur cet ordinateur",
       "returnsTo": "Vous renvoie vers {host}",
       "menuItem": "Applications connectées"
+    }
+  },
+  "install": {
+    "notice": "Econumo est meilleur en app",
+    "cta": "Installer",
+    "dismiss": "Masquer",
+    "menu_item": "Installer l’app",
+    "dialog": {
+      "title": "Installer Econumo",
+      "intro": "Ajoutez Econumo à votre écran d’accueil pour l’ouvrir en plein écran, comme n’importe quelle app.",
+      "step_share": "Touchez le bouton Partager du navigateur. Dans Safari, il peut se trouver dans le menu •••.",
+      "step_add": "Faites défiler et choisissez « Sur l’écran d’accueil ».",
+      "step_confirm": "Touchez « Ajouter ». Econumo apparaît sur votre écran d’accueil.",
+      "installed_hint": "Déjà ajouté ? Ouvrez Econumo depuis son icône sur l’écran d’accueil plutôt que dans le navigateur.",
+      "macos": {
+        "intro": "Ajoutez Econumo au Dock pour l’ouvrir dans sa propre fenêtre, comme n’importe quelle app.",
+        "step_file": "Dans la barre des menus de Safari, ouvrez Fichier (ou cliquez sur le bouton Partager).",
+        "step_add": "Choisissez « Ajouter au Dock ».",
+        "step_confirm": "Cliquez sur « Ajouter ». Econumo apparaît dans le Dock.",
+        "installed_hint": "Déjà ajouté ? Ouvrez Econumo depuis le Dock plutôt que dans Safari."
+      },
+      "android_firefox": {
+        "intro": "Ajoutez Econumo à votre écran d’accueil pour l’ouvrir comme n’importe quelle app, sans les barres du navigateur.",
+        "installed_hint": "Déjà ajouté ? Ouvrez Econumo depuis votre écran d’accueil plutôt que dans le navigateur.",
+        "step_menu": "Touchez le menu ⋮ de Firefox.",
+        "step_install": "Choisissez « Installer » (dans les versions plus anciennes, « Ajouter à l’écran d’accueil »).",
+        "step_confirm": "Confirmez. Econumo apparaît sur votre écran d’accueil."
+      },
+      "close": "Compris"
     }
   },
   "errors": {
@@ -2221,7 +2283,9 @@
       "invalid_import_file": "Veuillez importer un fichier CSV valide.",
       "too_many_labels": "Une transaction peut avoir au maximum 50 tags de rapport.",
       "account_deleted": "Ce compte a été supprimé.",
-      "category_type_mismatch": "Le type de catégorie doit correspondre au type de transaction."
+      "category_type_mismatch": "Le type de catégorie doit correspondre au type de transaction.",
+      "day_changed": "Cette journée a été modifiée entre-temps. Actualisez et réessayez.",
+      "cannot_move": "Cette transaction ne peut pas être déplacée vers un autre jour."
     },
     "user": {
       "report_period_invalid": "La période du rapport est incorrecte.",

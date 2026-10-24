@@ -10971,6 +10971,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/transaction/move-transaction": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Puts a transaction where it was dropped on an account page: directly below aboveId on that account's day, or at the top of the day when aboveId is null. Only that account's order changes, and no other transaction is renumbered. A date other than fromDate (the day the page showed it on) moves the transaction to that day, keeping its time. A transaction no longer stored on fromDate, or an aboveId no longer on the target day, is refused as changed meanwhile. Returns the rewritten transaction(s) plus the refreshed account list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Transaction"
+                ],
+                "summary": "Move a transaction within or between days",
+                "parameters": [
+                    {
+                        "description": "Move transaction request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MoveTransactionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.MoveTransactionResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/transaction/update-transaction": {
             "post": {
                 "security": [
@@ -13139,7 +13214,13 @@ const docTemplate = `{
                 "payeeId": {
                     "type": "string"
                 },
+                "recipientSortKey": {
+                    "type": "string"
+                },
                 "recurringId": {
+                    "type": "string"
+                },
+                "sortKey": {
                     "type": "string"
                 },
                 "tagId": {
@@ -15960,6 +16041,43 @@ const docTemplate = `{
                 }
             }
         },
+        "model.MoveTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "aboveId": {
+                    "type": "string"
+                },
+                "accountId": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "fromDate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountResult"
+                    }
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TransactionResult"
+                    }
+                }
+            }
+        },
         "model.NetWorthAccountRow": {
             "type": "object",
             "properties": {
@@ -17269,8 +17387,15 @@ const docTemplate = `{
                 "payeeId": {
                     "type": "string"
                 },
+                "recipientSortKey": {
+                    "type": "string"
+                },
                 "recurringId": {
                     "description": "RecurringId is the template this transaction was posted from, null for a\nhand-entered one. Read-only provenance: create/update never accept it.",
+                    "type": "string"
+                },
+                "sortKey": {
+                    "description": "SortKey orders the row within its day on accountId, RecipientSortKey on\naccountRecipientId (null unless a transfer): fractional keys compared\nbyte-wise, the higher listed first.",
                     "type": "string"
                 },
                 "tagId": {

@@ -208,6 +208,7 @@
       },
       "transaction_list": {
         "none": "Geen transacties gevonden",
+        "drag_handle": "Sleep om te herschikken",
         "today": "Vandaag",
         "yesterday": "Gisteren",
         "item": {
@@ -1584,6 +1585,8 @@
       "networth_q": "Word ik rijker of armer?",
       "forecast_q": "Wat gebeurt er met mijn geld?",
       "coming_later": "Komt later",
+      "suggest_q": "Rapport voorstellen",
+      "suggest_note": "Mis je een rapport? Vertel ons wat je graag zou zien.",
       "spent_caption": "uitgegeven in {year}",
       "saved_caption": "gespaard in {year}",
       "overspent_caption": "te veel uitgegeven in {year}",
@@ -2026,6 +2029,36 @@
     "open": "Zoeken",
     "open_tooltip": "Zoeken ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Feedback sturen",
+    "settings": {
+      "group": "Feedback"
+    },
+    "dialog": {
+      "title": "Feedback sturen",
+      "no_reply": "We lezen elk bericht, maar reageren misschien niet.",
+      "type": "Soort",
+      "message": "Bericht",
+      "message_required": "Schrijf eerst een bericht.",
+      "email": "E-mailadres (optioneel)",
+      "email_placeholder": "naam@voorbeeld.nl",
+      "use_email": "{email} gebruiken",
+      "clear_email": "E-mailadres wissen",
+      "send": "Versturen",
+      "sent": "Bedankt voor uw feedback!",
+      "failed": "Uw feedback kon niet worden verstuurd. Probeer het opnieuw."
+    },
+    "type": {
+      "feedback": "Feedback",
+      "feature_request": "Idee",
+      "bug_report": "Bug"
+    },
+    "placeholder": {
+      "feedback": "Wat vindt u goed, of wat kan beter?",
+      "feature_request": "Wat mist u in Econumo?",
+      "bug_report": "Wat ging er mis, en wat verwachtte u?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Uw abonnement eindigt over {count} dag | Uw abonnement eindigt over {count} dagen",
@@ -2086,6 +2119,35 @@
       "loopback": "Draait op deze computer",
       "returnsTo": "Stuurt je terug naar {host}",
       "menuItem": "Gekoppelde apps"
+    }
+  },
+  "install": {
+    "notice": "Econumo werkt het best als app",
+    "cta": "Installeren",
+    "dismiss": "Verbergen",
+    "menu_item": "App installeren",
+    "dialog": {
+      "title": "Econumo installeren",
+      "intro": "Zet Econumo op uw beginscherm om het als elke andere app te openen, zonder de balken van de browser.",
+      "step_share": "Tik in de browser op de deelknop. In Safari staat die mogelijk in het menu ‘•••’.",
+      "step_add": "Scrol omlaag en kies ‘Zet op beginscherm’.",
+      "step_confirm": "Tik op ‘Voeg toe’. Econumo staat nu op uw beginscherm.",
+      "installed_hint": "Al toegevoegd? Open Econumo dan via uw beginscherm in plaats van in de browser.",
+      "macos": {
+        "intro": "Zet Econumo in het Dock om het als elke andere app in een eigen venster te openen.",
+        "step_file": "Open in de menubalk van Safari het menu Archief (of klik op de deelknop).",
+        "step_add": "Kies ‘Voeg toe aan Dock’.",
+        "step_confirm": "Klik op ‘Voeg toe’. Econumo verschijnt in uw Dock.",
+        "installed_hint": "Al toegevoegd? Open Econumo dan via het Dock in plaats van in Safari."
+      },
+      "android_firefox": {
+        "intro": "Zet Econumo op uw startscherm om het als elke andere app te openen, zonder de balken van de browser.",
+        "installed_hint": "Al toegevoegd? Open Econumo dan via uw startscherm in plaats van in de browser.",
+        "step_menu": "Tik op het menu ⋮ in Firefox.",
+        "step_install": "Kies ‘Installeren’ (in oudere versies ‘Toevoegen aan startscherm’).",
+        "step_confirm": "Bevestig. Econumo verschijnt op uw startscherm."
+      },
+      "close": "Begrepen"
     }
   },
   "errors": {
@@ -2221,7 +2283,9 @@
       "invalid_import_file": "Upload een geldig CSV-bestand.",
       "too_many_labels": "Een transactie kan maximaal 50 rapportagetags hebben.",
       "account_deleted": "Deze rekening is verwijderd.",
-      "category_type_mismatch": "Het categorietype moet overeenkomen met het transactietype."
+      "category_type_mismatch": "Het categorietype moet overeenkomen met het transactietype.",
+      "day_changed": "Deze dag is intussen gewijzigd. Vernieuw en probeer het opnieuw.",
+      "cannot_move": "Deze transactie kan niet naar een andere dag worden verplaatst."
     },
     "user": {
       "report_period_invalid": "De rapportageperiode is onjuist.",

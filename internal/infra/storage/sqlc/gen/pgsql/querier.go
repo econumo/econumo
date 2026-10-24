@@ -398,7 +398,11 @@ type Querier interface {
 	// ids is a JSON array of tag ids (see the sqlite variant).
 	ListTagsByIDs(ctx context.Context, ids string) ([]Tag, error)
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
-	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]ListTransactionsByAccountRow, error)
+	// Transactions on an account (as source or recipient) in list order: newest
+	// day first, then the row's place in that day on THIS account's side
+	// (sort_key as the source, recipient_sort_key as a transfer's recipient), then
+	// id. The time of day takes no part.
+	ListTransactionsByAccount(ctx context.Context, accountID string) ([]ListTransactionsByAccountRow, error)
 	ListUnrevokedOAuthGrants(ctx context.Context, userID string) ([]ListUnrevokedOAuthGrantsRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	// Ordered by id so the backfill is deterministic across engines and reruns.

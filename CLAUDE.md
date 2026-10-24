@@ -61,7 +61,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `IMPORT_APPLE_WALLET` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL`, `IMPORT_APPLE_WALLET` and `FEEDBACK` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. The merge is per server: typing a
@@ -125,6 +125,16 @@ the GitHub secrets `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are
 mapped to those `ECONUMO_R2_*` names in the step's `env:`. Local use needs the
 aws CLI installed.
 
+### Feature flags (`ECONUMO_DEV`)
+
+From now on, unfinished user-facing work ships behind the single `ECONUMO_DEV` gate (default
+`false`) instead of a new per-feature environment variable: the SPA checks `isDevEnabled()`
+(and the server `config.Config.Dev` where a route or behaviour itself must stay off), so
+development and demo instances run with `ECONUMO_DEV=true` and production stays clean. When a
+feature is finished, delete its gate rather than leaving it behind `ECONUMO_DEV`. Dedicated
+variables remain for genuine operator choices (providers, limits, integrations), not for
+"not ready yet".
+
 ### Branch naming
 
 - `feature/<slug>` — feature work, and the default for EVERY change that is
@@ -178,7 +188,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   ├── auth/ ................ password hashing + AES email encryption
 │   │   ├── clock/ ................ time source abstraction
 │   │   ├── ai/ .................. OpenAI-compatible / Anthropic Messages client (AI integration); imports nothing internal
-│   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
+│   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API | SMTP)
 │   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
 │   │                              distinct from the repo-root web/, the React SPA): middleware, router,
 │   │                              response envelope (httpx), SPA server, apidoc — no feature logic
@@ -351,26 +361,40 @@ user (share invites, imported transactions to review, failed imports, failing
 syncs) surfaces in the Inbox (`web/src/features/inbox`, `/inbox`), fed by one
 `useInbox()` hook that also drives the sidebar badge; new attention items go
 there, never into a new top banner (that slot is reserved for the subscription
-and server-version notices). Runtime config
+and server-version notices, and the install-the-app banner,
+`web/src/features/install/InstallBanner.tsx`, which also tops the signed-out
+`AuthFrame` pages). Runtime config
 (`window.econumoConfig`) is served at `/econumo-config.js`: for a running
 instance the Go server generates the whole document (see the "Web UI config"
 bullet below); `public/econumo-config.js` is only the static fallback used
 when there is no Go server in front of the SPA (the mobile app's bundled
 WebView, `pnpm dev` without a backend). Versions are two separate keys:
 `VERSION` is the real running version (`getVersion()` — every comparison:
-analytics `$app_version`, the update check, the query-cache buster, the mobile
-compatibility floors), `VERSION_LABEL` is the text the UI DISPLAYS
+analytics `$app_version`, the update check, the mobile
+compatibility floors), `VERSION_REF` the source revision of the build
+(`getVersionRef()`, `""` when unknown; `internal/version.Ref()`: the
+ldflags-stamped `version.Commit`, else the toolchain's `vcs.revision`), which only
+keys the persisted caches — the query-cache and IndexedDB busters are
+`getCacheBuster()`, `VERSION+VERSION_REF`, so a published dev deploy (every dev
+build reports `VERSION` `dev`) restores nothing an older build cached. A build with no
+ref (a bare `docker compose up --build`, which has no `.git` in its context) or one
+from a dirty tree shares its key with the previous build; bump `FORMAT_VERSION` in
+`transactionStore.ts` when such a build changes the stored shape — `VERSION_LABEL` is the text the UI DISPLAYS
 (`getVersionLabel()` — the sidebar footer and the settings row, nothing else),
 set by the runtime `ECONUMO_VERSION` and falling back to `VERSION`. Vite also
 inlines a build-time `ECONUMO_VERSION` as the bundle's own version (the Docker
 build arg of the same name sets it per image build, default `dev`) — that one
-IS a real version, used by the mobile app where no server config is present.
+IS a real version, used by the mobile app where no server config is present;
+`ECONUMO_COMMIT` (the build arg and env var of the same name, set by both publish
+workflows and the Makefile from the checked-out sha) is inlined the same way as the
+bundle's own `VERSION_REF`.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
-**Reports page** (`/reports`, `web/src/features/reports`; only while `ECONUMO_REPORTS` is on — the
-served `REPORTS` key hides the route and the footer icon otherwise; Reports is an icon before the
-sync button in the sidebar footer, not a menu entry): Spending, Cash flow (Sankey on
-desktop) and Net worth tabs over the report routes above. The tab list is stored per user on
+**Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the
+sidebar footer, not a menu entry): Net worth for everyone, plus a "Suggest a report" card that
+opens the feedback form on its feature-request type; Spending and Cash flow (Sankey on desktop)
+are unfinished and show only behind `ECONUMO_DEV` (a stored tab on one of them goes back to the
+report list without it). All read the report routes above. The tab list is stored per user on
 the device only (localStorage `econumo.reportTabs`) and Reports always opens on the FIRST tab.
 Every report query key is invalidated after any successful mutation
 (`web/src/lib/appQueryClient.ts`), so a report never shows stale figures.
@@ -582,7 +606,8 @@ Tests live alongside the Go code:
   transaction fingerprint (rows, labels, author/recurring links, the display names and avatars
   of the authors) changes without its revision moving. Smoke on sqlite; under
   `-tags enginecompare` also on PostgreSQL. A new write path that touches an account's
-  transactions fails here until it bumps.
+  transactions fails here until it bumps, and one that stores a row without its sort keys
+  (see "Transaction order") fails here too.
 - `internal/infra/oidc/oidctest` — an in-process fake OpenID provider (discovery, authorize,
   token, JWKS, userinfo, end-session) used to drive the real `internal/oauth` callback through
   `httptest`, so provider-flow tests exercise actual protocol code rather than stubbing it out.
@@ -746,7 +771,13 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `econumo-config.js` — `ALLOW_CUSTOM_API`, `INSTANCE_ID`, etc. — is generated).
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
-  each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
+  each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend;
+  `smtp://[user:pass@]host[:port]` (default 587, STARTTLS REQUIRED — a relay that does not offer it
+  is refused rather than sent a reset code in the clear) and `smtps://…` (implicit TLS, default 465)
+  send through any SMTP server (`internal/infra/mailer/smtp.go`, stdlib `net/smtp`, AUTH PLAIN or
+  LOGIN, quoted-printable UTF-8 text). SMTP requires `?from=` (the envelope sender). A loopback host
+  may skip TLS and is not certificate-checked; `?insecure=true` extends that to any host (a relay on
+  a trusted Docker network). Parse errors never echo the DSN, which carries the password.
   From / Reply-To fold in as query params: `resend://<key>?from=…&reply_to=…` (also accepted by
   `console://`/`log://`). Parsed once in `config.Load` (a bad scheme fails at boot). Replaces the former
   `RESEND_API_KEY` / `ECONUMO_MAIL_FROM` / `ECONUMO_MAIL_REPLY_TO`.
@@ -761,9 +792,10 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
-- `ECONUMO_REPORTS` — the Reports page (strict boolean, default `false`; malformed fails at boot).
-  Off: `server.BuildAPI` does not mount `/api/v1/report/*` (404) and the served `REPORTS` key
-  hides the route and the footer icon. The apiparity harness turns it on.
+- `ECONUMO_DEV` — the feature-flag gate (strict boolean, default `false`; malformed fails at boot),
+  served to the SPA as `DEV` (`isDevEnabled()`, `web/src/lib/config.ts`). See "Feature flags"
+  above: unfinished features show only while it is on. Today it gates the Spending and Cash
+  flow reports.
 - `ECONUMO_IMPORT_APPLE_WALLET` / `ECONUMO_IMPORT_SIMPLEFIN` — the two transaction-import
   providers (strict booleans, Apple Wallet defaults `true`, SimpleFIN `false`;
   malformed fails at boot). A provider that is
@@ -779,6 +811,14 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   rules/history rows and the Inbox's import sections need either; with both off it never fetches
   an import endpoint. CSV import/export is not part of it and is always on. The apiparity harness
   turns both on so the catalogue keeps covering the import routes.
+- `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
+  fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
+  it on). Served as `FEEDBACK`; `false` hides the Settings row, the form's only entry point. The
+  form (`web/src/features/feedback`) posts `type`, `message`, an optional `email` (empty by
+  default, the user's own offered as a one-tap chip), `app_version` and `hosting` (`cloud`/`self-hosted`) from the
+  BROWSER straight to the Twillingate form `feedback` of the product-analytics project
+  (`submitForm` in `web/src/lib/analytics.ts`, the SDK's wire shape without the SDK), so it
+  works with analytics off and carries no `$user_id` — only the synthetic `$host`.
 - `ECONUMO_IMPORT_MATCH_DAYS` / `ECONUMO_IMPORT_TIP_DAYS` / `ECONUMO_IMPORT_TIP_TOLERANCE` /
   `ECONUMO_IMPORT_TOKEN_MIN_LENGTH` — transaction-import matcher thresholds (defaults 3 / 5 / 20 / 3;
   ranges 0–31 days, 0–31 days, 0–100 percent, 1–16 chars). Strict parse: malformed or out-of-range
@@ -846,7 +886,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   config from a URL instead of the bundled `liltag-config.json`),
   `ECONUMO_LILTAG_CACHE_TTL` (default the JS number `0`), and `ECONUMO_VERSION`
   (`VERSION_LABEL`, the version text the UI DISPLAYS — set it to relabel a
-  demo/staging box; unset falls back to `VERSION`). `VERSION` itself has NO env
+  demo/staging box; unset falls back to `VERSION`). `VERSION_REF` (always present, `""` when the build carries no
+  revision) has no env override either. `VERSION` itself has NO env
   override: it always carries the binary's `internal/version.Version`, because
   the SPA compares it as a real version (analytics `$app_version`, the update
   check, the mobile app's compatibility floors), and a display label must never
@@ -858,7 +899,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
   `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET`,
-  `IMPORT_SIMPLEFIN` and `REPORTS` are always present (server truth). `MCP_URL` is the MCP OAuth resource
+  `IMPORT_SIMPLEFIN`, `FEEDBACK` and `DEV` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
   instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom
@@ -955,7 +996,7 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   transaction (`backend.TxManager.BeforeCommit` / `TxValue`) and flushed once just before
   COMMIT as one UPDATE per account in sorted id order (a stable lock order, so concurrent
   writers cannot deadlock on it); outside a transaction they apply immediately. Sites:
-  the transaction repo (`Save`, `ReplaceLabels`, `LinkRecurring`, `Delete`), account
+  the transaction repo (`Save`, `ReplaceLabels`, `LinkRecurring`, `Delete`, `SetSideKey`), account
   `SaveCorrection`, category/payee/tag merge and delete, label merge and delete, recurring
   delete, imports `InsertLink` / `UpdateLink` (only when its `transaction_id` changes) /
   `DeleteSource`, and the user `Save` when the name or avatar changes. The account DTO
@@ -963,6 +1004,29 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   `get-account-transaction-list` returns for the account (a size hint for packing downloads,
   read from the transactions indexes alone, a transfer counted on both sides). `internal/test/revisionguard` enforces
   the rule (see Testing).
+- **Transaction order.** Within a day, transactions are ordered by fractional keys
+  (`internal/shared/sortkey`, the scheme categories, tags, payees, accounts and budget
+  elements use), never by the time of day: `transactions.sort_key` places the row on its
+  source account, `recipient_sort_key` (transfers only, else NULL) on its recipient account,
+  so reordering one account never moves a transfer on the other. A higher key is listed
+  higher. Order everywhere is day DESC, the side key of the listed account DESC (`sort_key`
+  for a list spanning several accounts), then `id`, applied by the database: the
+  transaction repo's queries (`ListTransactionsByAccount`, `ListByAccountIDs`), `dayKeyOrder`
+  in the budget drill-down SQL; in the SPA `compareTransactions`
+  (`web/src/features/transactions/order.ts`) in the SPA. Keys are assigned in the storage
+  layer only: the transaction repo's `write` gives a row with no key on a side the top of its
+  day there (`internal/infra/txorder`, `Placer.Top`: just above the highest key either column
+  holds for that account and day), the account repo does the same for corrections, and
+  `model.Transaction.Update` drops a side's key when the day or that side's account changes.
+  New rows therefore land on top of their day; the CSV importer inserts bottom-up so a day's
+  rows keep file order. `POST /api/v1/transaction/move-transaction` (the account page's drag
+  and drop) takes `aboveId`, the row now directly above the moved one on that account (null =
+  top of the day), and writes ONE key, between that row and the one below it; nothing else
+  is renumbered, except rows whose keys tie (two inserts that raced), which are split first.
+  An `aboveId` no longer on that day is refused with `transaction.day_changed`; a different
+  `date` also moves the row to that day (time kept), which needs write access to every
+  account it touches (`transaction.cannot_move`). `revisionguard` also fails any write that
+  leaves a row without its keys.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
 - Keep `.sql` query files ASCII-only, including comments — a multibyte character (an em dash,
@@ -996,6 +1060,7 @@ data:import-sqlite [--force] <sqlite-path>
 migration:zero-deleted-accounts
 migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
+migration:seed-transaction-sort-keys
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -1038,6 +1103,13 @@ each value with the exact driver layout and leaves anything unparseable as
 stored; idempotent, a no-op on PostgreSQL, and invoked automatically at boot as
 migration step `20260915000001`.
 
+`migration:seed-transaction-sort-keys` gives every transaction without one a sort key on
+each account side (see "Transaction order"), numbering each account's days in the order the
+lists used before keys existed (spent_at DESC, id), the rows it is the source of and the
+transfers it receives together. One account per DB transaction, with that account's revision
+bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
+migration step `20261024000001`, right after the SQL file that adds the columns.
+
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
 
@@ -1059,8 +1131,7 @@ In the distroless image these run via the binary directly, e.g.
   200 comma-separated ids; ids the caller cannot access are omitted from `revisions` (never an
   error). `/api/v1/transaction/get-transaction-list` (the legacy full list, still used by MCP,
   older clients and the SPA's fallback against a server without revisions) is unchanged.
-- **Reports:** `GET /api/v1/report/get-flow-report` and `get-net-worth-report` (mounted only while
-  `ECONUMO_REPORTS` is on; otherwise they 404), hosted by the
+- **Reports:** `GET /api/v1/report/get-flow-report` and `get-net-worth-report`, hosted by the
   budget feature (`internal/budget/report_*.go`, `internal/budget/api/report.go`; no `report`
   package). Scope is a budget or the caller's own accounts: the budget scope reuses
   `BuildBudgetPlan`, so its figures equal `get-budget-plan`'s for the same rows and months (a

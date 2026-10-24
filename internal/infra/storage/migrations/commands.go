@@ -36,4 +36,9 @@ func init() {
 	// functions, columns are discovered from the live schema, and anything that
 	// does not parse is left as stored.
 	RegisterCommand("20260915000001", "migration:normalize-sqlite-datetimes")
+	// 20261024000000.sql adds the transaction sort key columns; this step fills
+	// them with fractional keys in the order the lists showed before. A command
+	// because the keys come from the Go sortkey package, the one generator every
+	// later write uses.
+	RegisterCommand("20261024000001", "migration:seed-transaction-sort-keys")
 }

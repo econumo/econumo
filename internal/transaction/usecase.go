@@ -434,6 +434,8 @@ func (s *Service) buildResult(t *model.Transaction, author model.UserResult, lab
 		RecurringId:        recurringID,
 		LabelIds:           labelIds,
 		IsImported:         boolToInt(imported),
+		SortKey:            t.SortKey,
+		RecipientSortKey:   t.RecipientSortKey,
 	}
 }
 

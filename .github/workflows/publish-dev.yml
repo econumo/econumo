@@ -87,6 +87,7 @@ jobs:
           tags: ${{ env.IMAGE }}:dev
           build-args: |
             ECONUMO_VERSION=${{ env.VERSION }}
+            ECONUMO_COMMIT=${{ needs.resolve.outputs.sha }}
 
   publish-binaries:
     name: Build and Mirror Dev Binaries
@@ -110,6 +111,7 @@ jobs:
       - name: Build SPA
         env:
           ECONUMO_VERSION: ${{ env.VERSION }}
+          ECONUMO_COMMIT: ${{ needs.resolve.outputs.sha }}
         run: |
           npm install -g pnpm@11
           cd web
@@ -127,7 +129,7 @@ jobs:
           for arch in amd64 arm64; do
             CGO_ENABLED=0 GOOS=linux GOARCH="$arch" \
               go build -trimpath \
-              -ldflags "-s -w -X github.com/econumo/econumo/internal/version.Version=${VERSION}" \
+              -ldflags "-s -w -X github.com/econumo/econumo/internal/version.Version=${VERSION} -X github.com/econumo/econumo/internal/version.Commit=${{ needs.resolve.outputs.sha }}" \
               -o "release-out/econumo-linux-${arch}" ./cmd/econumo
           done
           cd release-out && sha256sum econumo-linux-amd64 econumo-linux-arm64 > SHA256SUMS

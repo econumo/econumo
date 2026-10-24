@@ -79,6 +79,11 @@ navigation (single-pane vs sidebar).
       server stdout in dev) → enter code + new password → old password rejected,
       new one works; all other sessions of the user are revoked.
 - [ ] Recovery with a wrong/expired code → clear error, password unchanged.
+- [ ] With `MAILER_DSN=smtp://user:pass@host:587?from=…` (STARTTLS) and with
+      `smtps://…:465` (implicit TLS) pointed at a real relay, the reset code
+      email arrives with the right From/Reply-To and a readable non-English
+      subject and body (switch the UI language first); a relay that offers no
+      STARTTLS is refused (server log WARN/ERROR) unless `?insecure=true` is set.
 - [ ] Logout (Settings → Profile → Log out, with confirm) → back at login; the
       session disappears from the Sessions list (check from another session).
 - [ ] Expired/invalid token: clear the token (or revoke the session elsewhere)
@@ -302,6 +307,49 @@ navigation (single-pane vs sidebar).
       group above the fold. With no transactions today at all, the pinned rows
       still open a "today" group of their own.
 - [ ] Mobile: FAB adds a transaction; row tap opens the preview bottom sheet.
+- [ ] Account page, desktop: hovering a transaction row shows a grip left of
+      its icon, level with the icon's middle (no grip without hover, none on not-posted recurring rows,
+      none while the search box has text, none on an account shared with you
+      as guest). Dragging the grip (or the space just around it) moves the row
+      within its day; dragging the icon or anywhere else in the row with the
+      mouse moves nothing; the new order
+      survives a reload and shows the same on another device and for a
+      partner sharing the account. The preview dialog still shows the time
+      originally entered.
+- [ ] Account page 📱: press and hold a row for about half a second to lift it,
+      then drag; a quick tap still opens the preview, a quick swipe still
+      scrolls, and a long press shows no text-selection or callout menu (iOS
+      home-screen app). Dragging near the top/bottom edge scrolls the list.
+- [ ] Account page on an iPad in landscape (desktop layout): no grip shows; a
+      long press on a row lifts it, a tap opens the preview, a swipe scrolls.
+- [ ] Account page in a narrow desktop browser window (phone layout): press and
+      hold a row with the mouse for about half a second, then drag; a plain
+      click still opens the preview.
+- [ ] CSV import that names a new category/payee/tag in different letter cases
+      ("Snacks" on one row, "snacks" on a later one) creates it as first spelled.
+- [ ] Account page 📱: dropping a row into another day's group moves it to that
+      day (time of day kept, edit dialog shows the new date) at the drop
+      position; while the row hovers another day, that day's header is
+      highlighted. Account balances and budgets follow the new date.
+- [ ] A transfer reordered on one account keeps its place on the other
+      account's list; moved to another day, it lands at the top of that day on
+      the other account.
+- [ ] A transfer whose other account you cannot edit can be reordered within
+      its day, but dropping it on another day snaps it back with "This
+      transaction can't be moved to another day."
+- [ ] Dropping a row under a transaction that another device meanwhile moved to
+      another day or deleted snaps back with "This day changed meanwhile.
+      Refresh and try again."; the list refreshes and the drag then works. A row
+      merely added to that day elsewhere does not block the drop. Likewise a
+      row another device moved to a different day (before this page synced) is
+      not dragged back: the drop snaps back with the same message.
+- [ ] Upgrading an instance with existing transactions keeps every account's
+      list in exactly the same order as before the upgrade (boot log: "placed
+      the transactions of N account(s)").
+- [ ] New transactions (typed in, CSV import, Apple Wallet, recurring post) land
+      at the top of their day; a CSV import shows a day's rows in file order.
+      Budget drill-down lists show a day's transactions in the same order as
+      the account page.
 
 ## 5. Transactions
 
@@ -1830,11 +1878,14 @@ and on tablet/phone only with a hardware keyboard.
 
 ## 10a. Reports
 
-Run with `ECONUMO_REPORTS=true`.
-
-- [ ] **Flag off** (`ECONUMO_REPORTS` unset): no Reports icon in the sidebar footer
-      (expanded or collapsed), `/reports` shows the not-found page, and
-      `/api/v1/report/*` returns 404 📱
+- [ ] **Default** (`ECONUMO_DEV` unset): the report list offers "Am I getting
+      richer or poorer?" and "Suggest a report" only; Suggest a report opens the
+      feedback form on the feature-request type (no card when
+      `ECONUMO_FEEDBACK=false`). A tab left on Spending or Cash flow goes back to
+      the report list 📱
+- [ ] **`ECONUMO_DEV=true`**: the list also offers Spending, Cash flow and the
+      greyed forecast card; the items below marked Spending / Cash flow are
+      checked with it on.
 - [ ] **Entry point**: Reports is a chart icon right before the sync button in the
       sidebar footer (expanded, collapsed rail, and the phone menu); there is no
       Reports entry under Budget & Plan 📱
@@ -2286,6 +2337,48 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Dark theme: text inputs, selects, textareas and the amount/plan fields
       (Add transaction, Set plan) carry no fill of their own: they show the
       surface they sit on, as in the light theme. 📱
+- [ ] 📱 Send feedback: the last Settings row, "Send feedback" (under
+      "Feedback"; the sidebar has no feedback entry), opens a dialog with
+      Feedback / Feature request / Bug report (Feedback selected), a Message
+      box, and an empty "Email (optional)" field showing the signed-in address
+      as a chip inside it. Tapping the chip fills the field; a filled field
+      (typed or from the chip) shows an X that empties it and brings the chip
+      back. "We read every message, but may not reply." sits under the title.
+      Send with an empty message shows "Write a message first." and sends
+      nothing; a real message shows "Thanks for your feedback!" and closes the
+      dialog, and the submission appears in the econumo project's `feedback`
+      form in Twillingate with its type, message, email, app version and
+      `cloud`/`self-hosted`. Opening the dialog again starts empty. Offline
+      (or the collector blocked), Send shows "Couldn't send your feedback.
+      Please try again." and keeps the text.
+- [ ] With `ECONUMO_FEEDBACK=false`, the Settings row does not appear.
+- [ ] 📱 Install banner, iOS Safari (not yet added to the Home Screen): a
+      one-line banner "Econumo works best as an app" with an "Install" button
+      and × sits at the top of every page — `/login`, `/register`, the app
+      pages and the OAuth consent page — and Settings shows an "Install the
+      app" row under the profile card. The button (or the row) opens the steps
+      (Share → "Add to Home Screen" → "Add") ending with "Already added it?
+      Open Econumo from its Home Screen icon…". × hides the banner on every
+      page for good, also after a reload and a logout; the Settings row stays.
+      Launched from the Home Screen icon, neither the banner nor the row
+      appears.
+- [ ] 📱 Install popup, iOS Safari: on a device that never saw it, the first
+      signed-in page opens the install steps by itself, once; after "Got it"
+      it never opens again on that device (reload, logout and login included),
+      and it never opens after the banner was dismissed, in the installed app,
+      or in Chrome/Edge (they get the browser's own install dialog instead).
+- [ ] Install banner, Safari 17+ on macOS: the same banner and Settings row;
+      Install opens the Dock steps (File → "Add to Dock" → "Add") ending with
+      "Already added it? Open Econumo from the Dock…"; the one-time popup
+      opens at the first signed-in visit; neither appears in the Dock app.
+      Safari 16 shows neither.
+- [ ] 📱 Install banner, Firefox for Android: the same banner and row; Install
+      opens the Firefox steps (⋮ menu → "Install" → confirm); the one-time
+      popup opens at the first signed-in visit; neither appears once launched
+      from the home-screen icon.
+- [ ] Install banner, Chrome/Edge on desktop or Android (HTTPS or localhost): the banner's Install button and the Settings row
+      open the browser's own install dialog; once installed (or opened as the
+      installed app) both disappear. Desktop Firefox shows neither.
 - [ ] 📱 Install as an app: in Chrome DevTools → Application → Manifest the
       manifest shows no errors or warnings, with name and short name "Econumo"
       and both `any` and `maskable` icons (the maskable preview keeps the whole

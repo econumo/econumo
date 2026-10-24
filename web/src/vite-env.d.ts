@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly ECONUMO_VERSION?: string
+  readonly ECONUMO_COMMIT?: string
   readonly WEBSITE_URL?: string
 }
 

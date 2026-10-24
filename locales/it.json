@@ -208,6 +208,7 @@
       },
       "transaction_list": {
         "none": "Nessuna transazione trovata",
+        "drag_handle": "Trascina per riordinare",
         "today": "Oggi",
         "yesterday": "Ieri",
         "item": {
@@ -1584,6 +1585,8 @@
       "networth_q": "Sto diventando più ricco o più povero?",
       "forecast_q": "Cosa succederà ai miei soldi?",
       "coming_later": "In arrivo",
+      "suggest_q": "Suggerisci un report",
+      "suggest_note": "Ti manca un report? Dicci cosa vorresti vedere.",
       "spent_caption": "spesi nel {year}",
       "saved_caption": "risparmiati nel {year}",
       "overspent_caption": "spesi in eccesso nel {year}",
@@ -2026,6 +2029,36 @@
     "open": "Ricerca",
     "open_tooltip": "Ricerca ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Invia feedback",
+    "settings": {
+      "group": "Feedback"
+    },
+    "dialog": {
+      "title": "Invia feedback",
+      "no_reply": "Leggiamo ogni messaggio, ma potremmo non rispondere.",
+      "type": "Tipo",
+      "message": "Messaggio",
+      "message_required": "Scrivi prima un messaggio.",
+      "email": "Email (facoltativa)",
+      "email_placeholder": "nome@esempio.it",
+      "use_email": "Usa {email}",
+      "clear_email": "Cancella email",
+      "send": "Invia",
+      "sent": "Grazie per il tuo feedback!",
+      "failed": "Impossibile inviare il feedback. Riprova."
+    },
+    "type": {
+      "feedback": "Feedback",
+      "feature_request": "Nuova funzione",
+      "bug_report": "Bug"
+    },
+    "placeholder": {
+      "feedback": "Cosa ti piace o cosa potrebbe migliorare?",
+      "feature_request": "Cosa manca in Econumo?",
+      "bug_report": "Cos'è successo e cosa ti aspettavi?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Il tuo abbonamento scade tra {count} giorno | Il tuo abbonamento scade tra {count} giorni",
@@ -2086,6 +2119,35 @@
       "loopback": "Funziona su questo computer",
       "returnsTo": "Ti riporta a {host}",
       "menuItem": "App connesse"
+    }
+  },
+  "install": {
+    "notice": "Econumo funziona meglio come app",
+    "cta": "Installa",
+    "dismiss": "Ignora",
+    "menu_item": "Installa l’app",
+    "dialog": {
+      "title": "Installa Econumo",
+      "intro": "Aggiungi Econumo alla schermata Home per aprirlo a schermo intero, come qualsiasi altra app.",
+      "step_share": "Tocca il pulsante Condividi del browser. In Safari può trovarsi nel menu •••.",
+      "step_add": "Scorri e scegli «Aggiungi alla schermata Home».",
+      "step_confirm": "Tocca «Aggiungi». Econumo comparirà nella schermata Home.",
+      "installed_hint": "Già aggiunto? Apri Econumo dalla sua icona nella schermata Home invece che dal browser.",
+      "macos": {
+        "intro": "Aggiungi Econumo al Dock per aprirlo in una finestra tutta sua, come qualsiasi altra app.",
+        "step_file": "Nella barra dei menu di Safari, apri File (o fai clic sul pulsante Condividi).",
+        "step_add": "Scegli «Aggiungi al Dock».",
+        "step_confirm": "Fai clic su «Aggiungi». Econumo comparirà nel Dock.",
+        "installed_hint": "Già aggiunto? Apri Econumo dal Dock invece che da Safari."
+      },
+      "android_firefox": {
+        "intro": "Aggiungi Econumo alla schermata Home per aprirlo come qualsiasi altra app, senza le barre del browser.",
+        "installed_hint": "Già aggiunto? Apri Econumo dalla schermata Home invece che dal browser.",
+        "step_menu": "Tocca il menu ⋮ di Firefox.",
+        "step_install": "Scegli «Installa» (nelle versioni precedenti, «Aggiungi a schermata Home»).",
+        "step_confirm": "Conferma. Econumo comparirà nella schermata Home."
+      },
+      "close": "Ho capito"
     }
   },
   "errors": {
@@ -2221,7 +2283,9 @@
       "invalid_import_file": "Carica un file CSV valido",
       "too_many_labels": "Una transazione può avere al massimo 50 tag per i report.",
       "account_deleted": "Questo conto è stato eliminato.",
-      "category_type_mismatch": "Il tipo di categoria deve corrispondere al tipo di transazione."
+      "category_type_mismatch": "Il tipo di categoria deve corrispondere al tipo di transazione.",
+      "day_changed": "Questo giorno è stato modificato nel frattempo. Aggiorna e riprova.",
+      "cannot_move": "Questa transazione non può essere spostata in un altro giorno."
     },
     "user": {
       "report_period_invalid": "Il periodo del report non è corretto",

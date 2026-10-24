@@ -15,6 +15,7 @@ import { ReportList } from './ReportList'
 import { MAX_REPORT_TABS, REPORT_QUESTION, tabTitle, useReportTabs } from './reportTabs'
 import type { ReportKind, ReportTab } from './reportTabs'
 import { TabBar } from './TabBar'
+import { isDevEnabled } from '@/lib/config'
 import { flowReportQuery, useReportBudgets } from './queries'
 import { flowQueryArgs } from './reportPeriod'
 import { SpendingReport } from './SpendingReport'
@@ -84,6 +85,15 @@ export function ReportsPage() {
     // the page opens on the first tab once per visit, not on every user-data refetch
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
+
+  // Spending and Cash flow are unfinished (ECONUMO_DEV): without the gate a tab
+  // left on one of them goes back to the report list
+  useEffect(() => {
+    if (!ready || isDevEnabled()) return
+    useReportTabs.setState((s) => ({
+      tabs: s.tabs.map((tab) => (tab.kind === 'spending' || tab.kind === 'cashflow' ? { ...tab, kind: 'list', title: null } : tab)),
+    }))
+  }, [ready])
 
   const tabIds = store.tabs.map((tab) => tab.id).join('|')
   useEffect(() => {
