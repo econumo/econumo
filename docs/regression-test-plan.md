@@ -1718,7 +1718,9 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 Opening an upcoming transfer from the cell list shows both the
       sender and the recipient card with their amounts (the recipient's in its
       own currency); an account outside the budget, on either side, shows as
-      "[Hidden account]".
+      "[Hidden account]". For a cross-currency transfer into the budget (e.g.
+      100 USD into a EUR savings account) the sender card shows 100 USD and
+      the recipient card the converted EUR amount.
 
 ### Phone month view 📱
 

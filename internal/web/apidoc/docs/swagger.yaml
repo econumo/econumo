@@ -466,6 +466,8 @@ definitions:
         type: string
       amountRecipient:
         type: string
+      amountSource:
+        type: string
       author:
         $ref: '#/definitions/model.UserResult'
       canEdit:
@@ -475,6 +477,8 @@ definitions:
       currencyId:
         type: string
       currencyRecipientId:
+        type: string
+      currencySourceId:
         type: string
       description:
         type: string

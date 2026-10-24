@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
@@ -162,11 +162,16 @@ it('read-only transfer: shows the recipient account and its amount', async () =>
   renderReadOnly({
     occurrence: {
       ...partnerOccurrence, type: 'transfer', direction: 'in', category: null, payee: null, tag: null, labelNames: [],
-      accountId: '', accountName: '', amount: '75',
-      accountRecipientId: 'acc-pot', accountRecipientName: 'Holiday pot', amountRecipient: '75', currencyRecipientId: 'cur-usd',
+      accountId: '', accountName: '', amount: '91', currencyId: 'cur-eur',
+      accountRecipientId: 'acc-pot', accountRecipientName: 'Holiday pot', amountRecipient: '91', currencyRecipientId: 'cur-eur',
+      amountSource: '100', currencySourceId: 'cur-usd',
     },
   })
-  expect(await screen.findByText('Holiday pot')).toBeInTheDocument()
+  const recipient = (await screen.findByText('Holiday pot')).parentElement!
+  const sender = screen.getByText('[Hidden account]').parentElement!
+  // the currencies arrive after the first paint
+  await waitFor(() => expect(recipient).toHaveTextContent(/91\.00\s?€/))
+  expect(sender).toHaveTextContent(/\$\s?100\.00|100\.00\s?\$/)
   expect(screen.getByText('Recipient')).toBeInTheDocument()
   expect(screen.getByText('[Hidden account]')).toBeInTheDocument()
 })

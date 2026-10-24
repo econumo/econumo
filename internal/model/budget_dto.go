@@ -859,10 +859,12 @@ type BudgetTransactionResult struct {
 // template's account is not a member of the budget (a transfer in from outside
 // it): that account is not the budget's to show.
 //
-// The four recipient fields describe a transfer's receiving side and are ""
-// on any other type: AmountRecipient is the amount in CurrencyRecipientId, the
-// recipient account's currency. AccountRecipientId and AccountRecipientName
-// follow the AccountId rule: "" when the recipient is not a budget member.
+// The transfer fields are "" on any other type. AmountSource is the
+// template's amount in CurrencySourceId, the source account's currency (Amount
+// is the listed side's, the recipient's on a transfer in); AmountRecipient is
+// the amount in CurrencyRecipientId, the recipient account's currency.
+// AccountRecipientId and AccountRecipientName follow the AccountId rule: ""
+// when the recipient is not a budget member.
 type BudgetUpcomingResult struct {
 	BudgetTransactionResult
 	TemplateId           string   `json:"templateId"`
@@ -873,6 +875,8 @@ type BudgetUpcomingResult struct {
 	AccountRecipientName string   `json:"accountRecipientName"`
 	AmountRecipient      string   `json:"amountRecipient"`
 	CurrencyRecipientId  string   `json:"currencyRecipientId"`
+	AmountSource         string   `json:"amountSource"`
+	CurrencySourceId     string   `json:"currencySourceId"`
 	LabelNames           []string `json:"labelNames"`
 	IsNext               bool     `json:"isNext"`
 	IsOverdue            bool     `json:"isOverdue"`

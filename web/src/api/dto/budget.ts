@@ -153,6 +153,11 @@ export interface BudgetUpcomingDto extends BudgetTransactionDto {
   accountRecipientName?: string
   amountRecipient?: string
   currencyRecipientId?: Id
+  /** a transfer's source side: the template amount in the source account's
+   *  currency (amount/currencyId are the listed side's, the recipient's on a
+   *  transfer in); "" on other types, absent from older servers */
+  amountSource?: string
+  currencySourceId?: Id
   labelNames: string[]
   isNext: boolean
   isOverdue: boolean

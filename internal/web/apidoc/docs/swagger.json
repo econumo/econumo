@@ -13390,6 +13390,9 @@
                 "amountRecipient": {
                     "type": "string"
                 },
+                "amountSource": {
+                    "type": "string"
+                },
                 "author": {
                     "$ref": "#/definitions/model.UserResult"
                 },
@@ -13403,6 +13406,9 @@
                     "type": "string"
                 },
                 "currencyRecipientId": {
+                    "type": "string"
+                },
+                "currencySourceId": {
                     "type": "string"
                 },
                 "description": {

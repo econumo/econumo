@@ -13397,6 +13397,9 @@ const docTemplate = `{
                 "amountRecipient": {
                     "type": "string"
                 },
+                "amountSource": {
+                    "type": "string"
+                },
                 "author": {
                     "$ref": "#/definitions/model.UserResult"
                 },
@@ -13410,6 +13413,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "currencyRecipientId": {
+                    "type": "string"
+                },
+                "currencySourceId": {
                     "type": "string"
                 },
                 "description": {

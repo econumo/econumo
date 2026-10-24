@@ -412,8 +412,10 @@ func (s *Service) assembleUpcoming(ctx context.Context, userID vo.Id, f filters,
 			accountID, accountName = o.accountID, pr.nameOf[o.accountID]
 		}
 		recipientID, recipientName, amountRecipient, currencyRecipient := "", "", "", ""
+		amountSource, currencySource := "", ""
 		if o.recipientID != "" {
 			amountRecipient, currencyRecipient = o.amountRecipient.String(), o.recipientCurrencyID
+			amountSource, currencySource = o.amount.String(), o.currencyID
 			if members[o.recipientID] {
 				recipientID, recipientName = o.recipientID, pr.nameOf[o.recipientID]
 			}
@@ -428,6 +430,8 @@ func (s *Service) assembleUpcoming(ctx context.Context, userID vo.Id, f filters,
 			AccountRecipientName:    recipientName,
 			AmountRecipient:         amountRecipient,
 			CurrencyRecipientId:     currencyRecipient,
+			AmountSource:            amountSource,
+			CurrencySourceId:        currencySource,
 			LabelNames:              labelNames,
 			IsNext:                  o.isNext,
 			IsOverdue:               o.isOverdue,

@@ -45,6 +45,8 @@ type upcomingTx struct {
 	AccountRecipientName *string `json:"accountRecipientName"`
 	AmountRecipient      *string `json:"amountRecipient"`
 	CurrencyRecipientId  *string `json:"currencyRecipientId"`
+	AmountSource         *string `json:"amountSource"`
+	CurrencySourceId     *string `json:"currencySourceId"`
 
 	Category *struct {
 		Id string `json:"id"`
@@ -228,6 +230,11 @@ func TestTxList_UpcomingTransfers(t *testing.T) {
 	if u.CurrencyId != eur || !decEq(u.Amount, "91") || u.Direction != "in" {
 		t.Errorf("transfer in = %+v, want 91 EUR in (100 USD at %s)", u, augustEURRate)
 	}
+	if !decEq(deref(u.AmountSource), "100") || deref(u.CurrencySourceId) != usdID ||
+		!decEq(deref(u.AmountRecipient), "91") || deref(u.CurrencyRecipientId) != eur {
+		t.Errorf("transfer in sides = %s %s -> %s %s, want 100 USD -> 91 EUR",
+			deref(u.AmountSource), deref(u.CurrencySourceId), deref(u.AmountRecipient), deref(u.CurrencyRecipientId))
+	}
 	if u.AccountId != "" || u.AccountName != "" {
 		t.Errorf("transfer in account = %q/%q, want neither id nor name for a non-member", u.AccountId, u.AccountName)
 	}
@@ -304,12 +311,16 @@ func TestTxList_UpcomingTransferRecipient(t *testing.T) {
 		t.Errorf("cross-currency recipient = %s/%s %s %s, want Euro pot 91 EUR",
 			deref(c.AccountRecipientId), deref(c.AccountRecipientName), deref(c.AmountRecipient), deref(c.CurrencyRecipientId))
 	}
+	if !decEq(deref(c.AmountSource), "100") || deref(c.CurrencySourceId) != usdID {
+		t.Errorf("cross-currency source = %s %s, want 100 USD", deref(c.AmountSource), deref(c.CurrencySourceId))
+	}
 	if c.AccountId != accountID || c.AccountName != "Cash" {
 		t.Errorf("cross-currency sender = %q/%q, want Cash", c.AccountId, c.AccountName)
 	}
 	f := upcomingByTemplate(t, eurRows, fee)
 	for name, v := range map[string]*string{"accountRecipientId": f.AccountRecipientId, "accountRecipientName": f.AccountRecipientName,
-		"amountRecipient": f.AmountRecipient, "currencyRecipientId": f.CurrencyRecipientId} {
+		"amountRecipient": f.AmountRecipient, "currencyRecipientId": f.CurrencyRecipientId,
+		"amountSource": f.AmountSource, "currencySourceId": f.CurrencySourceId} {
 		if deref(v) != "" {
 			t.Errorf("expense %s = %q, want \"\"", name, deref(v))
 		}
@@ -318,6 +329,9 @@ func TestTxList_UpcomingTransferRecipient(t *testing.T) {
 	p := upcomingByTemplate(t, augustUpcoming(t, h, tok, "&accountId="+savingsUSDID), fromPrivate)
 	if p.AccountId != "" || p.AccountName != "" {
 		t.Errorf("private sender = %q/%q, want blank", p.AccountId, p.AccountName)
+	}
+	if !decEq(deref(p.AmountSource), "60") || deref(p.CurrencySourceId) != usdID {
+		t.Errorf("private sender amount = %s %s, want 60 USD", deref(p.AmountSource), deref(p.CurrencySourceId))
 	}
 	if deref(p.AccountRecipientId) != savingsUSDID || deref(p.AccountRecipientName) != "Rainy day" ||
 		!decEq(deref(p.AmountRecipient), "60") || deref(p.CurrencyRecipientId) != usdID {

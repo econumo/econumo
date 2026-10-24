@@ -75,13 +75,17 @@ export function upcomingAsTransaction(
     ({ id, name: name || undefined, icon: '', currency: currencies?.find((c) => c.id === currencyId), sharedAccess: [] } as unknown as AccountDto)
   const type = occurrence.type ?? (occurrence.direction ? 'transfer' : 'expense')
   const isTransfer = type === 'transfer' && Boolean(occurrence.amountRecipient)
+  // amount/currencyId are the listed side's: on a transfer in, the recipient's
+  const hasSource = isTransfer && Boolean(occurrence.amountSource && occurrence.currencySourceId)
+  const amount = hasSource ? occurrence.amountSource : occurrence.amount
+  const sourceCurrencyId = hasSource ? occurrence.currencySourceId! : occurrence.currencyId
   return {
     id: occurrence.templateId,
     author: occurrence.author,
     type,
     accountId: occurrence.accountId,
     accountRecipientId: isTransfer && occurrence.accountRecipientId ? occurrence.accountRecipientId : null,
-    amount: occurrence.amount,
+    amount,
     amountRecipient: isTransfer ? occurrence.amountRecipient : null,
     categoryId: occurrence.category?.id ?? null,
     payeeId: occurrence.payee?.id ?? null,
@@ -89,7 +93,7 @@ export function upcomingAsTransaction(
     labelIds: occurrence.labelIds ?? [],
     description: occurrence.description,
     date: occurrence.spentAt,
-    account: resolve(occurrence.accountId, occurrence.accountName, occurrence.currencyId),
+    account: resolve(occurrence.accountId, occurrence.accountName, sourceCurrencyId),
     accountRecipient: isTransfer
       ? resolve(occurrence.accountRecipientId ?? '', occurrence.accountRecipientName ?? '', occurrence.currencyRecipientId ?? '')
       : undefined,

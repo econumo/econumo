@@ -43,6 +43,7 @@ const transferIn = {
   direction: 'in', type: 'transfer',
   templateId: 'rt2', schedule: 'monthly', accountId: '', accountName: '',
   accountRecipientId: 'a-pot', accountRecipientName: 'Euro pot', amountRecipient: '91', currencyRecipientId: 'eur',
+  amountSource: '100', currencySourceId: 'usd',
   labelNames: [], isNext: true, isOverdue: false, canEdit: false,
 } as BudgetUpcomingDto
 const currencies = [
@@ -56,8 +57,10 @@ it('an upcoming transfer names its recipient from the wire when the caller lacks
   expect(tx.amountRecipient).toBe('91')
   expect(tx.accountRecipient?.name).toBe('Euro pot')
   expect(tx.accountRecipient?.currency?.id).toBe('eur')
-  // the sender is outside the budget: no name to show
+  // the sender is outside the budget: no name to show, but its own side of the money
   expect(tx.account?.name).toBeUndefined()
+  expect(tx.amount).toBe('100')
+  expect(tx.account?.currency?.id).toBe('usd')
 })
 
 it('an upcoming transfer resolves its recipient against the caller\'s accounts', () => {
@@ -69,7 +72,7 @@ it('an upcoming transfer resolves its recipient against the caller\'s accounts',
 it('an upcoming transfer to an account outside the budget keeps its amount but no name', () => {
   const tx = upcomingAsTransaction(
     { ...transferIn, accountId: 'a1', accountName: 'Cash', currencyId: 'usd', amount: '40', direction: 'out',
-      accountRecipientId: '', accountRecipientName: '', amountRecipient: '40', currencyRecipientId: 'usd' } as BudgetUpcomingDto,
+      accountRecipientId: '', accountRecipientName: '', amountRecipient: '40', currencyRecipientId: 'usd', amountSource: '40', currencySourceId: 'usd' } as BudgetUpcomingDto,
     { accounts: [], currencies },
   )
   expect(tx.accountRecipientId).toBeNull()
@@ -80,10 +83,19 @@ it('an upcoming transfer to an account outside the budget keeps its amount but n
 
 it('an upcoming expense has no recipient', () => {
   const tx = upcomingAsTransaction(
-    { ...transferIn, type: 'expense', direction: undefined, accountRecipientId: '', accountRecipientName: '', amountRecipient: '', currencyRecipientId: '' } as unknown as BudgetUpcomingDto,
+    { ...transferIn, type: 'expense', direction: undefined, accountRecipientId: '', accountRecipientName: '', amountRecipient: '', currencyRecipientId: '', amountSource: '', currencySourceId: '' } as unknown as BudgetUpcomingDto,
     { accounts: [], currencies },
   )
   expect(tx.accountRecipientId).toBeNull()
   expect(tx.amountRecipient).toBeNull()
   expect(tx.accountRecipient).toBeUndefined()
+  expect(tx.amount).toBe('91')
+  expect(tx.account?.currency?.id).toBe('eur')
+})
+
+it('an upcoming transfer from an older server without source fields keeps the listed amount', () => {
+  const { amountSource: _a, currencySourceId: _c, ...old } = transferIn
+  const tx = upcomingAsTransaction(old as BudgetUpcomingDto, { accounts: [], currencies })
+  expect(tx.amount).toBe('91')
+  expect(tx.account?.currency?.id).toBe('eur')
 })

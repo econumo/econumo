@@ -152,10 +152,11 @@ the savings balance line.
 `get-transaction-list` (budget) — adds `upcoming: []`, each item:
 `{templateId, date, amount, currencyId, description, category, payee, tag, labelIds,
 labelNames, type, direction, author, schedule, accountId, accountName, isNext, isOverdue,
-canEdit, accountRecipientId, accountRecipientName, amountRecipient, currencyRecipientId}`
-(category/payee/tag as resolved `{id, name, icon}` like the real rows; the recipient fields are
-`""` on non-transfers, and its id/name `""` when the recipient is not a member, as for the
-source account). Filtered by the same cell params and month
+canEdit, accountRecipientId, accountRecipientName, amountRecipient, currencyRecipientId,
+amountSource, currencySourceId}`
+(category/payee/tag as resolved `{id, name, icon}` like the real rows; the transfer fields are
+`""` on non-transfers; `amountSource` is the template amount in the source account's currency;
+the recipient id/name are `""` when the recipient is not a member, as for the source account). Filtered by the same cell params and month
 as the real rows. `canEdit` = the recurring write rule for the caller.
 
 All three need apiparity/mcpparity goldens regenerated and inspected; add scenarios with a
