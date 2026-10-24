@@ -3,9 +3,10 @@ import * as transactionApi from '@/api/transaction'
 import type { TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { compareTransactions } from './order'
 import { beginLocalWrite, consumeFullReload, noteOwnWrite, transactionsQueryFn } from './revisionTracking'
 
-const byDateDesc = (items: TransactionDto[]) => [...items].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+const byDateDesc = (items: TransactionDto[]) => [...items].sort((a, b) => compareTransactions(a, b))
 
 export function useTransactions() {
   const queryClient = useQueryClient()

@@ -56,6 +56,24 @@ it('filters by account (both legs), groups by day desc with labels', async () =>
   expect(kinds).toEqual(['sep:today', 'tx-today', 'sep:yesterday', 'tx-yesterday', 'sep:date', 'tx-incoming-transfer'])
 })
 
+it('orders a day by the page account\'s sort key, not by time', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  vi.setSystemTime(new Date(2026, 6, 2, 12, 0, 0))
+  const base = { author: fixtureOwner, amountRecipient: '1', categoryId: null, description: '', payeeId: null, tagId: null }
+  server.use(
+    ...coreHandlers({
+      transactions: [
+        { ...base, id: 'morning', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '1', date: '2026-06-20 08:00:00', sortKey: 3, recipientSortKey: null },
+        { ...base, id: 'evening', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '1', date: '2026-06-20 20:00:00', sortKey: 1, recipientSortKey: null },
+        { ...base, id: 'incoming', type: 'transfer', accountId: 'a2', accountRecipientId: 'a1', amount: '1', date: '2026-06-20 23:00:00', sortKey: 9, recipientSortKey: 2 },
+      ],
+    }),
+  )
+  const { result } = renderHook(() => useAccountTransactions('a1', ''), { wrapper })
+  await waitFor(() => expect(result.current.length).toBeGreaterThan(0))
+  expect(result.current.filter((e) => e.kind === 'transaction').map((e) => (e.kind === 'transaction' ? e.transaction.id : ''))).toEqual(['morning', 'incoming', 'evening'])
+})
+
 it('search matches category, payee, description and amount terms', async () => {
   server.use(...coreHandlers())
   const { result, rerender } = renderHook(({ search }) => useAccountTransactions('a1', search), {

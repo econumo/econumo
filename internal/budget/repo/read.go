@@ -995,6 +995,16 @@ func (r *ReadRepo) LimitsByMonth(ctx context.Context, budgetID vo.Id, from, to t
 // currency joined in).
 const budgetTxCols = "t.id, t.user_id, a.currency_id, t.amount, t.description, t.spent_at, t.category_id, t.payee_id, t.tag_id"
 
+// dayKeyOrder is the transaction-list order: day, then the row's place in it,
+// then id; the time of day takes no part.
+func (r *ReadRepo) dayKeyOrder(spentAt, key, id string) string {
+	day := "substr(" + spentAt + ", 1, 10)"
+	if r.driver == "postgresql" {
+		day = "CAST(" + spentAt + " AS DATE)"
+	}
+	return " ORDER BY " + day + " DESC, " + key + " DESC, " + id
+}
+
 // scanBudgetTxRows scans budget transaction rows.
 func scanBudgetTxRows(rows interface {
 	Next() bool
@@ -1035,12 +1045,12 @@ func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryI
 		catIn := r.ph(1+len(accArgs), len(catArgs))
 		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
 		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
-		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " ORDER BY t.spent_at DESC"
+		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 		args = append(args, start, end)
 	} else {
 		accIn := r.ph(1, len(accArgs))
 		catIn := r.ph(1, len(catArgs))
-		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= ? AND t.spent_at < ? ORDER BY t.spent_at DESC"
+		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= ? AND t.spent_at < ?" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 	}
@@ -1080,7 +1090,7 @@ func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, cat
 		}
 		where += " AND t.spent_at >= $" + itoa(next) + " AND t.spent_at < $" + itoa(next+1)
 		args = append(args, start, end)
-		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE " + where + " ORDER BY t.spent_at DESC"
+		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	} else {
 		accIn := r.ph(1, len(accArgs))
 		where := "t.account_id IN (" + accIn + ") AND t.tag_id = ? AND t.type = 0"
@@ -1095,7 +1105,7 @@ func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, cat
 		where += " AND t.spent_at >= ? AND t.spent_at < ?"
 		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
-		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE " + where + " ORDER BY t.spent_at DESC"
+		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
@@ -1133,7 +1143,7 @@ func (r *ReadRepo) BudgetTransactionsByLabel(ctx context.Context, labelID vo.Id,
 			" FROM transactions t" +
 			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = " + labelP +
 			" LEFT JOIN accounts a ON t.account_id = a.id" +
-			" WHERE " + where + " ORDER BY t.spent_at DESC"
+			" WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	} else {
 		accIn := r.ph(1, len(accArgs))
 		args = append(args, labelID.String())
@@ -1146,7 +1156,7 @@ func (r *ReadRepo) BudgetTransactionsByLabel(ctx context.Context, labelID vo.Id,
 			" FROM transactions t" +
 			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = ?" +
 			" LEFT JOIN accounts a ON t.account_id = a.id" +
-			" WHERE " + where + " ORDER BY t.spent_at DESC"
+			" WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
@@ -1186,7 +1196,7 @@ func (r *ReadRepo) BudgetTransactionsByLabelAndCategory(ctx context.Context, lab
 			" FROM transactions t" +
 			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = " + labelP +
 			" LEFT JOIN accounts a ON t.account_id = a.id" +
-			" WHERE " + where + " ORDER BY t.spent_at DESC"
+			" WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	} else {
 		accIn := r.ph(1, len(accArgs))
 		args = append(args, labelID.String())
@@ -1200,7 +1210,7 @@ func (r *ReadRepo) BudgetTransactionsByLabelAndCategory(ctx context.Context, lab
 			" FROM transactions t" +
 			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = ?" +
 			" LEFT JOIN accounts a ON t.account_id = a.id" +
-			" WHERE " + where + " ORDER BY t.spent_at DESC"
+			" WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
@@ -1235,7 +1245,7 @@ func (r *ReadRepo) BudgetTransactionsByLabelUncategorized(ctx context.Context, l
 			" FROM transactions t" +
 			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = " + labelP +
 			" LEFT JOIN accounts a ON t.account_id = a.id" +
-			" WHERE " + where + " ORDER BY t.spent_at DESC"
+			" WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	} else {
 		accIn := r.ph(1, len(accArgs))
 		args = append(args, labelID.String())
@@ -1248,7 +1258,7 @@ func (r *ReadRepo) BudgetTransactionsByLabelUncategorized(ctx context.Context, l
 			" FROM transactions t" +
 			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = ?" +
 			" LEFT JOIN accounts a ON t.account_id = a.id" +
-			" WHERE " + where + " ORDER BY t.spent_at DESC"
+			" WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
@@ -1271,11 +1281,11 @@ func (r *ReadRepo) BudgetTransactionsUncategorized(ctx context.Context, accountI
 		accIn := r.ph(1, len(accArgs))
 		dStart := "$" + itoa(1+len(accArgs))
 		dEnd := "$" + itoa(2+len(accArgs))
-		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IS NULL AND t.tag_id IS NULL AND t.type = 0 AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " ORDER BY t.spent_at DESC"
+		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IS NULL AND t.tag_id IS NULL AND t.type = 0 AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 		args = append(args, start, end)
 	} else {
 		accIn := r.ph(1, len(accArgs))
-		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IS NULL AND t.tag_id IS NULL AND t.type = 0 AND t.spent_at >= ? AND t.spent_at < ? ORDER BY t.spent_at DESC"
+		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IS NULL AND t.tag_id IS NULL AND t.type = 0 AND t.spent_at >= ? AND t.spent_at < ?" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 	}
@@ -1298,12 +1308,12 @@ func (r *ReadRepo) BudgetTransactionsTransfers(ctx context.Context, accountIDs [
 	ids := idArgs(accountIDs)
 	n := len(ids)
 	half := func(out bool, phStart int, dStart, dEnd string) string {
-		amountCol, joinCol, insideCol, outsideCol, direction := "t.amount", "t.account_id", "t.account_id", "t.account_recipient_id", "'out'"
+		amountCol, joinCol, insideCol, outsideCol, direction, keyCol := "t.amount", "t.account_id", "t.account_id", "t.account_recipient_id", "'out'", "t.sort_key"
 		if !out {
-			amountCol, joinCol, insideCol, outsideCol, direction = "t.amount_recipient", "t.account_recipient_id", "t.account_recipient_id", "t.account_id", "'in'"
+			amountCol, joinCol, insideCol, outsideCol, direction, keyCol = "t.amount_recipient", "t.account_recipient_id", "t.account_recipient_id", "t.account_id", "'in'", "t.recipient_sort_key"
 		}
 		// explicit aliases: a compound SELECT's ORDER BY must name result columns
-		return "SELECT t.id as id, t.user_id, a.currency_id, " + amountCol + " as amount, t.description, t.spent_at as spent_at, t.category_id, t.payee_id, t.tag_id, " + direction + " as direction" +
+		return "SELECT t.id as id, t.user_id, a.currency_id, " + amountCol + " as amount, t.description, t.spent_at as spent_at, t.category_id, t.payee_id, t.tag_id, " + direction + " as direction, " + keyCol + " as k" +
 			" FROM transactions t JOIN accounts a ON " + joinCol + " = a.id" +
 			" WHERE t.type = 2 AND " + insideCol + " IN (" + r.ph(phStart, n) + ") AND " + outsideCol + " NOT IN (" + r.ph(phStart+n, n) + ")" +
 			" AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd
@@ -1329,7 +1339,8 @@ func (r *ReadRepo) BudgetTransactionsTransfers(ctx context.Context, accountIDs [
 		args = append(args, ids...)
 		args = append(args, ds, de)
 	}
-	sql += " ORDER BY spent_at DESC, id"
+	sql = "SELECT id, user_id, currency_id, amount, description, spent_at, category_id, payee_id, tag_id, direction FROM (" + sql + ") u" +
+		r.dayKeyOrder("spent_at", "k", "id")
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -1373,7 +1384,7 @@ func (r *ReadRepo) BudgetTransactionsIncome(ctx context.Context, categoryIDs, ac
 	}
 	sql := "SELECT " + budgetTxCols + ", 'in' as direction, 'income' as type FROM transactions t JOIN accounts a ON a.id = t.account_id" +
 		" WHERE t.type = 1 AND t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
-		" ORDER BY t.spent_at DESC, t.id"
+		r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -1386,9 +1397,9 @@ func (r *ReadRepo) BudgetTransactionsIncome(ctx context.Context, categoryIDs, ac
 // (income in, expense and outgoing transfer out, at amount) plus the transfers
 // it received (in, at amount_recipient).
 func (r *ReadRepo) BudgetTransactionsOnAccount(ctx context.Context, accountID vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
-	cols := "t.id as id, t.user_id, a.currency_id, %s as amount, t.description, t.spent_at as spent_at, t.category_id, t.payee_id, t.tag_id, %s as direction, %s as type"
-	own := fmt.Sprintf(cols, "t.amount", "CASE WHEN t.type = 1 THEN 'in' ELSE 'out' END", "CASE t.type WHEN 0 THEN 'expense' WHEN 1 THEN 'income' ELSE 'transfer' END")
-	received := fmt.Sprintf(cols, "t.amount_recipient", "'in'", "'transfer'")
+	cols := "t.id as id, t.user_id, a.currency_id, %s as amount, t.description, t.spent_at as spent_at, t.category_id, t.payee_id, t.tag_id, %s as direction, %s as type, %s as k"
+	own := fmt.Sprintf(cols, "t.amount", "CASE WHEN t.type = 1 THEN 'in' ELSE 'out' END", "CASE t.type WHEN 0 THEN 'expense' WHEN 1 THEN 'income' ELSE 'transfer' END", "t.sort_key")
+	received := fmt.Sprintf(cols, "t.amount_recipient", "'in'", "'transfer'", "t.recipient_sort_key")
 	var p [6]string
 	var args []any
 	if r.driver == "postgresql" {
@@ -1405,8 +1416,9 @@ func (r *ReadRepo) BudgetTransactionsOnAccount(ctx context.Context, accountID vo
 		args = []any{accountID.String(), ds, de, accountID.String(), ds, de}
 	}
 	sql := "SELECT " + own + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id = " + p[0] + " AND t.spent_at >= " + p[1] + " AND t.spent_at < " + p[2] +
-		" UNION ALL SELECT " + received + " FROM transactions t JOIN accounts a ON a.id = t.account_recipient_id WHERE t.type = 2 AND t.account_recipient_id = " + p[3] + " AND t.spent_at >= " + p[4] + " AND t.spent_at < " + p[5] +
-		" ORDER BY spent_at DESC, id"
+		" UNION ALL SELECT " + received + " FROM transactions t JOIN accounts a ON a.id = t.account_recipient_id WHERE t.type = 2 AND t.account_recipient_id = " + p[3] + " AND t.spent_at >= " + p[4] + " AND t.spent_at < " + p[5]
+	sql = "SELECT id, user_id, currency_id, amount, description, spent_at, category_id, payee_id, tag_id, direction, type FROM (" + sql + ") u" +
+		r.dayKeyOrder("spent_at", "k", "id")
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err

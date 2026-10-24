@@ -30,6 +30,10 @@ export interface TransactionDto extends CreateTransactionDto {
   recurringId: Id | null
   /** 1 when at least one import link points at this transaction (server-owned; 0/1 like isArchived). */
   isImported: 0 | 1
+  /** Position within the day on accountId / accountRecipientId, higher first.
+      Server-owned; absent from a server that predates them. */
+  sortKey?: number
+  recipientSortKey?: number | null
 }
 
 /** A transaction as kept in IndexedDB: the author is stored as an id and
