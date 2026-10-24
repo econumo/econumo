@@ -1940,24 +1940,24 @@
     "menu_item": "App installeren",
     "dialog": {
       "title": "Econumo installeren",
-      "intro": "Zet Econumo op je beginscherm om het schermvullend te openen, net als elke andere app.",
-      "step_share": "Tik op de deelknop van de browser. In Safari staat die mogelijk in het •••-menu.",
+      "intro": "Zet Econumo op uw beginscherm om het als elke andere app te openen, zonder de balken van de browser.",
+      "step_share": "Tik in de browser op de deelknop. In Safari staat die mogelijk in het menu ‘•••’.",
       "step_add": "Scrol omlaag en kies ‘Zet op beginscherm’.",
-      "step_confirm": "Tik op ‘Voeg toe’. Econumo staat nu op je beginscherm.",
-      "installed_hint": "Al toegevoegd? Open Econumo via het pictogram op je beginscherm in plaats van in de browser.",
+      "step_confirm": "Tik op ‘Voeg toe’. Econumo staat nu op uw beginscherm.",
+      "installed_hint": "Al toegevoegd? Open Econumo dan via uw beginscherm in plaats van in de browser.",
       "macos": {
-        "intro": "Zet Econumo in het Dock om het in een eigen venster te openen, net als elke andere app.",
+        "intro": "Zet Econumo in het Dock om het als elke andere app in een eigen venster te openen.",
         "step_file": "Open in de menubalk van Safari het menu Archief (of klik op de deelknop).",
         "step_add": "Kies ‘Voeg toe aan Dock’.",
-        "step_confirm": "Klik op ‘Voeg toe’. Econumo verschijnt in je Dock.",
-        "installed_hint": "Al toegevoegd? Open Econumo via het Dock in plaats van in Safari."
+        "step_confirm": "Klik op ‘Voeg toe’. Econumo verschijnt in uw Dock.",
+        "installed_hint": "Al toegevoegd? Open Econumo dan via het Dock in plaats van in Safari."
       },
       "android_firefox": {
-        "intro": "Zet Econumo op je startscherm om het als elke andere app te openen, zonder de balken van de browser.",
-        "installed_hint": "Al toegevoegd? Open Econumo via je startscherm in plaats van in de browser.",
+        "intro": "Zet Econumo op uw startscherm om het als elke andere app te openen, zonder de balken van de browser.",
+        "installed_hint": "Al toegevoegd? Open Econumo dan via uw startscherm in plaats van in de browser.",
         "step_menu": "Tik op het menu ⋮ in Firefox.",
         "step_install": "Kies ‘Installeren’ (in oudere versies ‘Toevoegen aan startscherm’).",
-        "step_confirm": "Bevestig. Econumo verschijnt op je startscherm."
+        "step_confirm": "Bevestig. Econumo verschijnt op uw startscherm."
       },
       "close": "Begrepen"
     }
