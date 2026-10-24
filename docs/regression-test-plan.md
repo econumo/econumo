@@ -1732,7 +1732,10 @@ and on tablet/phone only with a hardware keyboard.
       upcoming amount exceeds its plan (or has no plan) shows the spent figure,
       its bar and the Plan grid actual in the neutral style; the current and
       past months still turn red when overspent, and a negative Available
-      stays red.
+      stays red. In future months every spent/actual figure (rows, folder and
+      tag-group sums, section headers, month totals, the item sheet) is muted
+      grey, so it reads as projected; current and past months keep the normal
+      colour.
 - [ ] A weekly template adds one occurrence per week to a month (four or five
       rows in the cell list, matching the month's weeks); a monthly template
       adds one.

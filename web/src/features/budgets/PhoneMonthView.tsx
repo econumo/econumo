@@ -204,6 +204,7 @@ function SectionSummary({
   second,
   firstTestId,
   secondTestId,
+  secondClass = '',
 }: {
   testId: string
   open: boolean
@@ -213,6 +214,7 @@ function SectionSummary({
   second: string
   firstTestId?: string
   secondTestId?: string
+  secondClass?: string
 }) {
   const Chevron = open ? ChevronDown : ChevronRight
   return (
@@ -230,7 +232,7 @@ function SectionSummary({
       <span data-testid={firstTestId} className="text-right tabular-nums">
         {first}
       </span>
-      <span data-testid={secondTestId} className={`text-right tabular-nums ${LAST_CELL}`}>
+      <span data-testid={secondTestId} className={`text-right tabular-nums ${LAST_CELL} ${secondClass}`}>
         {second}
       </span>
     </button>
@@ -264,11 +266,11 @@ function CardHeader({ name, first, second, fold }: { name: string; first?: strin
   )
 }
 
-function TotalLine({ testId, label, value, negative = false }: { testId: string; label: string; value: string; negative?: boolean }) {
+function TotalLine({ testId, label, value, negative = false, muted = false }: { testId: string; label: string; value: string; negative?: boolean; muted?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-3" data-testid={testId}>
       <span className="text-[13px] text-muted-foreground">{label}</span>
-      <span className={`text-[15px] tabular-nums ${negative ? 'text-expense' : ''}`}>{value}</span>
+      <span className={`text-[15px] tabular-nums ${negative ? 'text-expense' : muted ? 'text-muted-foreground' : ''}`}>{value}</span>
     </div>
   )
 }
@@ -289,6 +291,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const future = selectedDate > currentMonth()
+  const mutedIfFuture = future ? 'text-muted-foreground' : ''
   const commented = (id: Id) => (commentsByCell.get(commentCellKey(id, selectedDate))?.length ?? 0) > 0
 
   // an envelope's category: its own amount, which opens that category's share of the
@@ -350,7 +353,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           carry={carryText ? { text: carryText, negative: cmp(carry, '0') < 0 } : undefined}
           first={budgetText}
           second={spentText}
-          secondClass={overspent ? 'text-expense' : ''}
+          secondClass={overspent ? 'text-expense' : mutedIfFuture}
           // a row with nothing to measure against, or a month that has not happened
           // yet, still draws the empty track, as a budgeted row with nothing spent does;
           // an overspent row fills it, even when there was no budget to fill toward
@@ -391,7 +394,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           tag={tagOf(currencyId)}
           first={budgetText}
           second={spentText}
-          secondClass={overspent ? 'text-expense' : ''}
+          secondClass={overspent ? 'text-expense' : mutedIfFuture}
           progress={future && isZero(stats.spent) ? 0 : overAvailable(stats, future) ? 1 : (rowProgress(stats) ?? 0)}
           barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: budgetText, spent: spentText })}
@@ -459,6 +462,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           tag={tagOf(el.currencyId)}
           first={planned}
           second={received}
+          secondClass={mutedIfFuture}
           {...(isUncategorized ? {} : planBar(row.planned, row.actual))}
           commented={commented(el.id)}
           ariaLabel={t('budgets.page.phone.income_row_aria', { name, planned, received })}
@@ -518,6 +522,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         tag={tagOf(row.currencyId)}
         first={planned}
         second={saved}
+        secondClass={mutedIfFuture}
         {...planBar(row.budgeted, row.spent)}
         commented={commented(row.id)}
         ariaLabel={t('budgets.page.phone.savings_row_aria', { name: row.name, planned, saved })}
@@ -536,6 +541,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         name={label.name}
         first={EMPTY}
         second={spent}
+        secondClass={mutedIfFuture}
         ariaLabel={t('budgets.page.phone.child_aria', { name: label.name, spent })}
         onOpen={() => onOpenSheet({ kind: 'label', label })}
       />
@@ -574,6 +580,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
                   second={future && isZero(planMonth.income.received) ? EMPTY : fmt(planMonth.income.received)}
                   firstTestId="phone-income-planned"
                   secondTestId="phone-income-received"
+                  secondClass={mutedIfFuture}
                 />
                 {incomeOpen ? planMonth.income.groups.map((g) => incomeGroup(g, planMonth.income.groups)) : null}
               </Card>
@@ -587,6 +594,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
                   label={t('budgets.page.savings.title')}
                   first={fmt(savingsSum.budgeted)}
                   second={future && isZero(savingsSum.spent) ? EMPTY : fmt(savingsSum.spent)}
+                  secondClass={mutedIfFuture}
                 />
                 {savingsOpen ? savingsRows.map(savingsRow) : null}
               </Card>
@@ -656,13 +664,14 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
             testId="phone-total-income"
             label={t('budgets.page.plan.totals.income')}
             value={future && isZero(planMonth.income.received) ? EMPTY : fmt(planMonth.income.received)}
+            muted={future}
           />
         ) : null}
-        <TotalLine testId="phone-total-expenses" label={t('budgets.page.plan.totals.expenses')} value={future && isZero(expenseTotals.spent) ? EMPTY : fmt(expenseTotals.spent)} />
+        <TotalLine testId="phone-total-expenses" label={t('budgets.page.plan.totals.expenses')} value={future && isZero(expenseTotals.spent) ? EMPTY : fmt(expenseTotals.spent)} muted={future} />
         {planMonth && !isZero(planMonth.transfersNet) ? (
           <TotalLine testId="phone-total-transfers" label={t('budgets.page.plan.totals.transfers')} value={fmt(planMonth.transfersNet)} />
         ) : null}
-        {savingsSum ? <TotalLine testId="phone-total-savings" label={t('budgets.page.plan.totals.savings')} value={future && isZero(savingsSum.spent) ? EMPTY : fmt(savingsSum.spent)} /> : null}
+        {savingsSum ? <TotalLine testId="phone-total-savings" label={t('budgets.page.plan.totals.savings')} value={future && isZero(savingsSum.spent) ? EMPTY : fmt(savingsSum.spent)} muted={future} /> : null}
         {planMonth?.savingsBalance != null ? (
           <TotalLine testId="phone-total-savings-balance" label={t('budgets.page.plan.totals.savings_balance')} value={fmt(planMonth.savingsBalance)} />
         ) : null}

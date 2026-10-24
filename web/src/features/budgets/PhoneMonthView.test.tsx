@@ -295,6 +295,8 @@ it('a future month shows the combined Spent and the filled bar when upcoming exi
   // upcoming spending above the plan is never painted as overspent
   expect(within(row).getByTestId('phone-progress').firstElementChild?.className).not.toContain('bg-expense')
   expect(within(row).getByText('50.00').className).not.toContain('text-expense')
+  // and muted, as a projection
+  expect(within(row).getByText('50.00').className).toContain('text-muted-foreground')
   expect(screen.getByRole('button', { name: 'Food, budget 30.00 + 100.00, spent 50.00' })).toBeInTheDocument()
 })
 

@@ -596,7 +596,7 @@ function folderSums(stats: BucketStats, currency: CurrencyDto | undefined, futur
   const availableDanger = overAvailable(stats, future)
   return [
     moneyFormat(stats.budgeted, currency, opts),
-    future && isZero(stats.spent) ? <Dash key="dash-452-1" /> : <span key="spent" className={danger ? 'text-expense' : ''}>{moneyFormat(stats.spent, currency, opts)}</span>,
+    future && isZero(stats.spent) ? <Dash key="dash-452-1" /> : <span key="spent" className={danger ? 'text-expense' : future ? 'text-muted-foreground' : ''}>{moneyFormat(stats.spent, currency, opts)}</span>,
     nothingToShow(stats) ? <Dash key="dash-453-1" /> : <span key="available" className={availableDanger ? 'text-expense' : ''}>{moneyFormat(stats.available, currency, opts)}</span>,
   ]
 }
@@ -683,7 +683,7 @@ export function BudgetTable({
         headings={[t('budgets.page.budget.structure.tab.budgeted'), t('budgets.page.budget.structure.tab.spent'), t('budgets.page.budget.structure.tab.available')]}
         sums={[
           moneyFormat(totals.budgeted, budgetCurrency, opts),
-          future && isZero(totals.spent) ? <Dash key="dash-516-1" /> : moneyFormat(totals.spent, budgetCurrency, opts),
+          future && isZero(totals.spent) ? <Dash key="dash-516-1" /> : <span key="spent" className={future ? 'text-muted-foreground' : undefined}>{moneyFormat(totals.spent, budgetCurrency, opts)}</span>,
           nothingToShow(totals) ? <Dash key="dash-517-1" /> : moneyFormat(totals.available, budgetCurrency, opts),
         ]}
         actionsColumn={actionsColumn}
@@ -821,7 +821,7 @@ export function BudgetTotals({
             {!isZero(totals.carry) ? <CarryLeadIn carry={totals.carry} text={`${moneyFormat(totals.carry, budgetCurrency, opts)} +`} testId="totals-carry" /> : null}
             <span className="shrink-0">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
           </span>
-          <span className={`${SECOND_COL} ${danger ? 'text-expense' : 'text-muted-foreground'}`}>
+          <span className={`${SECOND_COL} ${danger ? 'text-expense' : 'text-muted-foreground'}`} data-testid="totals-spent">
             {future && isZero(totals.spent) ? <Dash /> : moneyFormat(totals.spent, budgetCurrency, opts)}
           </span>
           <span className={`${THIRD_COL} ${availableDanger ? 'text-expense' : ''}`} data-testid="totals-available">
@@ -844,7 +844,9 @@ export function BudgetTotals({
         </span>
         <span className="flex items-baseline justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.spent')}</span>
-          <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(totals.spent, budgetCurrency, opts)}</span>
+          <span className="text-[15px] tabular-nums text-muted-foreground" data-testid="totals-spent-mobile">
+            {moneyFormat(totals.spent, budgetCurrency, opts)}
+          </span>
         </span>
         <span className="flex items-baseline justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>

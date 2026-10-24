@@ -272,6 +272,20 @@ it('future month spent above plan is not red', async () => {
   expect(within(food).getByTestId('cell-spent').firstElementChild!.className).not.toContain('text-expense')
 })
 
+it('future month spent is muted', async () => {
+  renderTable(
+    (b) => {
+      const food = b.structure.elements.find((e) => e.id === 'cat-food')!
+      Object.assign(food, { budgeted: '10', spent: '30', available: '-20' })
+    },
+    { onSpentClick: vi.fn(), future: true },
+  )
+  const food = await screen.findByTestId('element-cat-food')
+  expect(within(food).getByTestId('cell-spent').firstElementChild!.className).toContain('text-muted-foreground')
+  expect(screen.getByTestId('totals-spent').className).toContain('text-muted-foreground')
+  expect(screen.getByTestId('totals-spent-mobile').className).toContain('text-muted-foreground')
+})
+
 it('clicking a child spent amount reports the child category with the parent currency', async () => {
   const user = userEvent.setup()
   const onSpentClick = vi.fn()

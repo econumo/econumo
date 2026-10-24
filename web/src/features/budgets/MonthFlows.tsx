@@ -195,20 +195,22 @@ export function MonthFlows({
     setSavingsPreview(null)
   }, [budget])
 
+  const mute = (text: string) => (future ? <span className="text-muted-foreground">{text}</span> : text)
+
   const actualCell = (target: BudgetTransactionsTarget | null, amount: string, currencyId: Id | null) => {
     if (future && isZero(amount)) {
       return <Dash />
     }
     const text = fmt(amount, currencyId)
     if (!target || !onShowTransactions) {
-      return text
+      return future ? <span className="text-muted-foreground">{text}</span> : text
     }
     return (
       <button
         type="button"
         title={t('budgets.page.budget.structure.element.action.show_transactions')}
         aria-label={`transactions ${target.name}`}
-        className="underline-offset-2 hover:text-foreground hover:underline"
+        className={`underline-offset-2 hover:text-foreground hover:underline ${future ? 'text-muted-foreground' : ''}`}
         onClick={() => onShowTransactions(target)}
       >
         {text}
@@ -344,7 +346,7 @@ export function MonthFlows({
             sums={
               g.rows.length === 0
                 ? null
-                : [fmt(g.planned), future && isZero(g.received) ? <Dash key="dash-235-1" /> : fmt(g.received), isZero(g.planned) ? <Dash key="dash-235-2" /> : fmt(g.toReceive)]
+                : [fmt(g.planned), future && isZero(g.received) ? <Dash key="dash-235-1" /> : mute(fmt(g.received)), isZero(g.planned) ? <Dash key="dash-235-2" /> : fmt(g.toReceive)]
             }
             actionsColumn={actionsColumn}
           />
@@ -560,7 +562,7 @@ export function MonthFlows({
             headings={[t('budgets.page.savings.planned'), t('budgets.page.sheet.received'), t('budgets.page.budget.structure.tab.to_receive')]}
             sums={[
               fmt(planMonth.income.planned),
-              future && isZero(planMonth.income.received) ? <Dash key="dash-277-1" /> : fmt(planMonth.income.received),
+              future && isZero(planMonth.income.received) ? <Dash key="dash-277-1" /> : mute(fmt(planMonth.income.received)),
               isZero(planMonth.income.planned) ? <Dash key="dash-278-1" /> : fmt(planMonth.income.toReceive),
             ]}
             actionsColumn={actionsColumn}
@@ -601,7 +603,7 @@ export function MonthFlows({
             headings={[t('budgets.page.savings.planned'), t('budgets.page.savings.saved'), t('budgets.page.sheet.balance')]}
             sums={[
               fmt(savingsSum.budgeted),
-              future && isZero(savingsSum.spent) ? <Dash key="dash-294-1" /> : fmt(savingsSum.spent),
+              future && isZero(savingsSum.spent) ? <Dash key="dash-294-1" /> : mute(fmt(savingsSum.spent)),
               planMonth?.savingsBalance != null ? fmt(planMonth.savingsBalance) : <Dash key="dash-295-1" />,
             ]}
             actionsColumn={actionsColumn}
@@ -659,17 +661,18 @@ export function MonthTotalsLines({
   const hasSavings = (budget.structure.savings ?? []).length > 0
   const savingsSpent = hasSavings ? totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, makeBudgetExchange(budget, currencies)).spent : null
   const shared = { actionsColumn }
+  const mute = (text: string) => (future ? <span className="text-muted-foreground">{text}</span> : text)
   return (
     <div className="flex flex-col pt-1" data-testid="month-totals-lines">
       {planMonth ? (
-        <TotalLine testId="month-total-income" label={t('budgets.page.plan.totals.income')} values={[future && isZero(planMonth.income.received) ? <Dash key="dash" /> : fmt(planMonth.income.received)]} {...shared} />
+        <TotalLine testId="month-total-income" label={t('budgets.page.plan.totals.income')} values={[future && isZero(planMonth.income.received) ? <Dash key="dash" /> : mute(fmt(planMonth.income.received))]} {...shared} />
       ) : null}
-      <TotalLine testId="month-total-expenses" label={t('budgets.page.plan.totals.expenses')} values={[future && isZero(expensesSpent) ? <Dash key="dash" /> : fmt(expensesSpent)]} {...shared} />
+      <TotalLine testId="month-total-expenses" label={t('budgets.page.plan.totals.expenses')} values={[future && isZero(expensesSpent) ? <Dash key="dash" /> : mute(fmt(expensesSpent))]} {...shared} />
       {planMonth && !isZero(planMonth.transfersNet) ? (
         <TotalLine testId="month-total-transfers" label={t('budgets.page.plan.totals.transfers')} values={[fmt(planMonth.transfersNet)]} {...shared} />
       ) : null}
       {savingsSpent !== null ? (
-        <TotalLine testId="month-total-savings" label={t('budgets.page.plan.totals.savings')} values={[future && isZero(savingsSpent) ? <Dash key="dash" /> : fmt(savingsSpent)]} {...shared} />
+        <TotalLine testId="month-total-savings" label={t('budgets.page.plan.totals.savings')} values={[future && isZero(savingsSpent) ? <Dash key="dash" /> : mute(fmt(savingsSpent))]} {...shared} />
       ) : null}
       {planMonth?.savingsBalance != null ? (
         <TotalLine testId="month-total-savings-balance" label={t('budgets.page.plan.totals.savings_balance')} values={[fmt(planMonth.savingsBalance)]} {...shared} />

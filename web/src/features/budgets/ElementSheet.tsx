@@ -44,6 +44,7 @@ interface Figure {
   label: string
   value: string
   negative?: boolean
+  muted?: boolean
 }
 
 export function ElementSheet({
@@ -100,7 +101,7 @@ export function ElementSheet({
     if (!isUncategorized) {
       figures.push({ key: 'budget', label: label.budget, value: fmt(el.budgeted) })
     }
-    figures.push({ key: 'spent', label: label.spent, value: actual(el.spent) })
+    figures.push({ key: 'spent', label: label.spent, value: actual(el.spent), muted: future })
     if (!isUncategorized) {
       figures.push({ key: 'available', label: label.available, value: fmt(available), negative: cmp(available, '0') < 0 })
       const state = rowState({ budgeted: el.budgeted, spent: el.spent, available }, future)
@@ -110,7 +111,7 @@ export function ElementSheet({
     }
     actualInBase = el.budgetSpent
   } else if (target.kind === 'label') {
-    figures.push({ key: 'spent', label: label.spent, value: actual(target.label.spent) })
+    figures.push({ key: 'spent', label: label.spent, value: actual(target.label.spent), muted: future })
     actualInBase = target.label.spent
   } else {
     const planned = target.kind === 'savings' ? target.row.budgeted : target.cell.planned
@@ -119,14 +120,14 @@ export function ElementSheet({
     const type = target.kind === 'savings' ? BudgetElementType.SAVINGS : target.cell.element.type
     if (type === BudgetElementType.SAVINGS) {
       figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
-      figures.push({ key: 'saved', label: label.saved, value: actual(done) })
+      figures.push({ key: 'saved', label: label.saved, value: actual(done), muted: future })
       figures.push({ key: 'balance', label: label.balance, value: closing !== undefined ? fmt(closing) : EMPTY })
     } else if (isIncomeType(type)) {
       figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
-      figures.push({ key: 'received', label: label.received, value: actual(done) })
+      figures.push({ key: 'received', label: label.received, value: actual(done), muted: future })
     } else {
       figures.push({ key: 'budget', label: label.budget, value: fmt(planned) })
-      figures.push({ key: 'spent', label: label.spent, value: actual(done) })
+      figures.push({ key: 'spent', label: label.spent, value: actual(done), muted: future })
     }
     actualInBase = foreign ? exchange(cell.currencyId, baseCurrencyId, done) : done
   }
@@ -155,7 +156,7 @@ export function ElementSheet({
           {figures.map((f) => (
             <div key={f.key} className="flex flex-col items-center text-center" data-testid={`sheet-figure-${f.key}`}>
               <span className="text-[13px] text-muted-foreground">{f.label}</span>
-              <span className={`text-[17px] font-medium tabular-nums ${f.negative ? 'text-expense' : ''}`}>{f.value}</span>
+              <span className={`text-[17px] font-medium tabular-nums ${f.negative ? 'text-expense' : f.muted ? 'text-muted-foreground' : ''}`}>{f.value}</span>
             </div>
           ))}
         </div>
