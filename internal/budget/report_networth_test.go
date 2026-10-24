@@ -157,3 +157,28 @@ func TestNetWorthReport_AllTimeOpensBeforeFirstMonth(t *testing.T) {
 	}
 	eqAmounts(t, r.Accounts[0].Balances, "0", "100", "120", "120")
 }
+
+func TestNetWorthReport_Budget_FlagsSavingsMembers(t *testing.T) {
+	h := newFlowHarness(t)
+	sav := h.f.Account(fixture.Account{UserID: h.user, Name: "Deposit"})
+	b := h.budget(t, "2026-01-01 00:00:00", h.acct, sav)
+	h.exec(t, "UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ? AND account_id = ?", true, b, sav)
+	h.tx(1, h.acct, "", "", "", "10", "2026-04-02 10:00:00")
+	h.tx(1, sav, "", "", "", "20", "2026-04-02 10:00:00")
+
+	r := h.netWorth(t, model.GetNetWorthReportRequest{BudgetId: b, From: "2026-04-01", To: "2026-04-01"})
+	flags := map[string]int{}
+	for _, a := range r.Accounts {
+		flags[a.Id] = a.IsSavings
+	}
+	if flags[sav] != 1 || flags[h.acct] != 0 {
+		t.Fatalf("savings flags = %v", flags)
+	}
+
+	mine := h.netWorth(t, model.GetNetWorthReportRequest{From: "2026-04-01", To: "2026-04-01"})
+	for _, a := range mine.Accounts {
+		if a.IsSavings != 0 {
+			t.Fatalf("my-accounts scope carries no savings flag, got %+v", a)
+		}
+	}
+}

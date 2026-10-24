@@ -1678,10 +1678,7 @@
       "period_3y": "3 a",
       "period_all": "Tudo",
       "today": "Hoje",
-      "since": "desde o fim de {month}",
       "chart": "Gráfico do patrimônio",
-      "col_folder": "Pasta",
-      "col_group": "Grupo",
       "col_start": "Início",
       "col_now": "Agora",
       "no_folder": "Sem pasta",
@@ -1690,8 +1687,10 @@
       "expand": "Mostrar as contas em {name}",
       "collapse": "Ocultar as contas em {name}",
       "empty": "Ainda não há saldos nas contas",
-      "note_mine": "Agrupado pelas suas pastas de contas; contas em moeda estrangeira convertidas pela taxa de cada mês.",
-      "note_budget": "Suas contas são agrupadas pelas suas pastas, as de cada participante sob o nome dele; contas em moeda estrangeira convertidas pela taxa de cada mês."
+      "everyday": "Contas do dia a dia",
+      "period_1y_words": "no último ano",
+      "period_3y_words": "nos últimos 3 anos",
+      "period_all_words": "desde o início"
     },
     "drill": {
       "unsupported": "Estas transações não podem ser listadas aqui. Abra a página Orçamento para vê-las.",

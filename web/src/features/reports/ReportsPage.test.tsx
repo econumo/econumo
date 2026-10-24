@@ -82,7 +82,7 @@ it('opening the page activates the first tab', async () => {
   renderReports()
   expect(await screen.findByRole('tab', { name: 'Net worth' })).toHaveAttribute('aria-selected', 'true')
   expect(screen.getByRole('tab', { name: 'Mine' })).toHaveAttribute('aria-selected', 'false')
-  expect(screen.getByRole('heading', { name: 'Am I getting richer or poorer?' })).toBeInTheDocument()
+  expect(await screen.findByRole('table', { name: 'Am I getting richer or poorer?' })).toBeInTheDocument()
 })
 
 it('a tab whose budget is gone falls back to My accounts', async () => {

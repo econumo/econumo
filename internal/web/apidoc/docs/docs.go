@@ -15981,6 +15981,9 @@ const docTemplate = `{
                 "isDeleted": {
                     "type": "integer"
                 },
+                "isSavings": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 },

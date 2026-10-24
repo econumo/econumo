@@ -1,5 +1,3 @@
-// SPIKE (throwaway): simplified net worth — one total line, own accounts + one row per partner,
-// controls tucked into the corners. Strings are hard-coded English on purpose.
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -26,9 +24,9 @@ import { useReportTabs } from './reportTabs'
 import type { ReportParams, ReportTab } from './reportTabs'
 
 const PRESETS = [
-  { value: 'last12', label: '1y', words: 'in the last year' },
-  { value: 'last3y', label: '3y', words: 'in the last 3 years' },
-  { value: 'all', label: 'All', words: 'since the start' },
+  { value: 'last12', key: 'reports.networth.period_1y' },
+  { value: 'last3y', key: 'reports.networth.period_3y' },
+  { value: 'all', key: 'reports.networth.period_all' },
 ] as const
 const MINE = 'mine'
 const COL = 'w-24 shrink-0 justify-end text-right tabular-nums whitespace-nowrap sm:w-28 flex'
@@ -105,7 +103,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
           }}
           className={`rounded-md px-2 py-0.5 ${preset.value === o.value ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
         >
-          {o.label}
+          {t(o.key)}
         </button>
       ))}
     </div>
@@ -172,17 +170,17 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   // Lines styled like the Budget/Plan rows: rounded hover, no rules between rows.
   const figures = (l: Line, muted = false) => (
     <>
-      <span className={`hidden ${COL} text-muted-foreground sm:flex`}>{money(l.start)}</span>
-      <span className={`${COL} ${muted ? '' : 'text-foreground'}`}>{money(l.now)}</span>
-      <span className={`${COL} ${changeClass(l.change)}`}>{signedMoney(l.change, money)}</span>
+      <span role="cell" className={`hidden ${COL} text-muted-foreground sm:flex`}>{money(l.start)}</span>
+      <span role="cell" className={`${COL} ${muted ? '' : 'text-foreground'}`}>{money(l.now)}</span>
+      <span role="cell" className={`${COL} ${changeClass(l.change)}`}>{signedMoney(l.change, money)}</span>
     </>
   )
   const groupRows = (groups: { line: Line; accounts: Line[] }[]) => groups.flatMap((g) => {
     const isOpen = open.has(g.line.id)
     if (g.accounts.length === 0) {
       return [
-        <div key={g.line.id} className={`${LINE} min-h-10 rounded-md py-1.5 pl-6 hover:bg-accent/50`}>
-          <span className={NAME_COL}>{g.line.icon}<span className="truncate">{g.line.name}</span></span>
+        <div key={g.line.id} role="row" className={`${LINE} min-h-10 rounded-md py-1.5 pl-6 hover:bg-accent/50`}>
+          <span role="cell" className={NAME_COL}>{g.line.icon}<span className="truncate">{g.line.name}</span></span>
           {figures(g.line)}
         </div>,
       ]
@@ -190,15 +188,23 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     return [
       <div
         key={g.line.id}
-        role="button"
-        tabIndex={0}
-        aria-expanded={isOpen}
+        role="row"
         onClick={() => toggle(g.line.id)}
-        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), toggle(g.line.id))}
         className={`${LINE} min-h-10 cursor-pointer rounded-md py-1.5 hover:bg-accent/50`}
       >
-        <span className={NAME_COL}>
-          <ChevronRight className={`size-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+        <span role="cell" className={NAME_COL}>
+          <button
+            type="button"
+            aria-expanded={isOpen}
+            aria-label={t(isOpen ? 'reports.networth.collapse' : 'reports.networth.expand', { name: g.line.name })}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggle(g.line.id)
+            }}
+            className="grid size-4 shrink-0 place-items-center text-muted-foreground"
+          >
+            <ChevronRight className={`size-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+          </button>
           {g.line.icon}
           <span className="truncate">{g.line.name}</span>
         </span>
@@ -206,8 +212,8 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       </div>,
       ...(isOpen
         ? g.accounts.map((acc) => (
-            <div key={`${g.line.id}-${acc.id}`} className={`${LINE} min-h-8 rounded-md py-1 pl-12 text-sm text-muted-foreground hover:bg-accent/50`}>
-              <span className={NAME_COL}>{acc.icon}<span className="truncate">{acc.name}</span></span>
+            <div key={`${g.line.id}-${acc.id}`} role="row" className={`${LINE} min-h-8 rounded-md py-1 pl-12 text-sm text-muted-foreground hover:bg-accent/50`}>
+              <span role="cell" className={NAME_COL}>{acc.icon}<span className="truncate">{acc.name}</span></span>
               {figures(acc, true)}
             </div>
           ))
@@ -237,7 +243,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     const saving = rows.filter((a) => a.isSavings === 1)
     const rest = rows.filter((a) => a.isSavings !== 1)
     const children = saving.map(accountLine).sort(byNow)
-    if (saving.length > 0 && rest.length > 0) children.push({ ...lineOf(`${id}-other`, 'Everyday accounts', sumAt(rest, 0), sumAt(rest, n - 1)), icon: <EntityIcon name="account_balance_wallet" className="text-base text-muted-foreground" /> })
+    if (saving.length > 0 && rest.length > 0) children.push({ ...lineOf(`${id}-other`, t('reports.networth.everyday'), sumAt(rest, 0), sumAt(rest, n - 1)), icon: <EntityIcon name="account_balance_wallet" className="text-base text-muted-foreground" /> })
     const avatar = ownerAvatar(id)
     return {
       line: { ...lineOf(id, name, sumAt(rows, 0), sumAt(rows, n - 1)), icon: avatar ? <UserAvatar avatar={avatar} size="xs" /> : undefined },
@@ -271,16 +277,16 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
-        <div className={`flex min-w-0 flex-col ${dim}`}>
+        <section aria-label={t('reports.spending.headline')} className={`flex min-w-0 flex-col ${dim}`}>
           <span className="text-sm text-muted-foreground">{t('reports.networth.today')}</span>
           <span className="text-2xl tabular-nums sm:text-3xl">{data ? money(totalLine.now) : '…'}</span>
           {data && n > 1 ? (
             <span className="text-sm">
               <span className={changeClass(totalLine.change)}>{signedMoney(totalLine.change, money)}</span>{' '}
-              <span className="text-muted-foreground">{preset.words}</span>
+              <span className="text-muted-foreground">{t(`${preset.key}_words`)}</span>
             </span>
           ) : null}
-        </div>
+        </section>
         {scopePicker}
       </div>
       <ReportUpdatedAt query={report} />
@@ -337,17 +343,17 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
             </ChartContainer>
           </figure>
 
-          <div className={`-mx-2 flex flex-col ${dim}`}>
-            <div className={`${LINE} pb-1 text-xs text-muted-foreground`}>
-              <span className={NAME_COL} />
-              <span className={`hidden ${COL} sm:flex`}>{t('reports.networth.col_start')}</span>
-              <span className={COL}>{t('reports.networth.col_now')}</span>
-              <span className={COL}>{t('reports.spending.col_change')}</span>
+          <div role="table" aria-label={t('reports.list.networth_q')} className={`-mx-2 flex flex-col ${dim}`}>
+            <div role="row" className={`${LINE} pb-1 text-xs text-muted-foreground`}>
+              <span role="columnheader" className={NAME_COL} />
+              <span role="columnheader" className={`hidden ${COL} sm:flex`}>{t('reports.networth.col_start')}</span>
+              <span role="columnheader" className={COL}>{t('reports.networth.col_now')}</span>
+              <span role="columnheader" className={COL}>{t('reports.spending.col_change')}</span>
             </div>
             {p.budgetId ? personRows : folderRows}
             <div className="mt-1 border-t pt-1">
-              <div className={`${LINE} min-h-10 rounded-md py-1.5 pl-6 text-[15px] hover:bg-accent/50`}>
-                <span className={NAME_COL}>{totalLine.name}</span>
+              <div role="row" className={`${LINE} min-h-10 rounded-md py-1.5 pl-6 text-[15px] hover:bg-accent/50`}>
+                <span role="cell" className={NAME_COL}>{totalLine.name}</span>
                 {figures(totalLine)}
               </div>
             </div>

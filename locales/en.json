@@ -1678,10 +1678,7 @@
       "period_3y": "3y",
       "period_all": "All",
       "today": "Today",
-      "since": "since the end of {month}",
       "chart": "Net worth chart",
-      "col_folder": "Folder",
-      "col_group": "Group",
       "col_start": "Start",
       "col_now": "Now",
       "no_folder": "No folder",
@@ -1690,8 +1687,10 @@
       "expand": "Show the accounts in {name}",
       "collapse": "Hide the accounts in {name}",
       "empty": "No account balances yet",
-      "note_mine": "Grouped by your account folders; foreign-currency accounts converted at each month's rate.",
-      "note_budget": "Your accounts are grouped by your folders, each participant's accounts under their name; foreign-currency accounts converted at each month's rate."
+      "everyday": "Everyday accounts",
+      "period_1y_words": "in the last year",
+      "period_3y_words": "in the last 3 years",
+      "period_all_words": "since the start"
     },
     "drill": {
       "unsupported": "These transactions can't be listed here. Open the Budget page to see them.",

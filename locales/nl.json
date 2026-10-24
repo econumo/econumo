@@ -1678,10 +1678,7 @@
       "period_3y": "3 j",
       "period_all": "Alles",
       "today": "Vandaag",
-      "since": "sinds eind {month}",
       "chart": "Vermogensgrafiek",
-      "col_folder": "Map",
-      "col_group": "Groep",
       "col_start": "Begin",
       "col_now": "Nu",
       "no_folder": "Geen map",
@@ -1690,8 +1687,10 @@
       "expand": "Rekeningen in {name} tonen",
       "collapse": "Rekeningen in {name} verbergen",
       "empty": "Nog geen rekeningsaldi",
-      "note_mine": "Gegroepeerd op je rekeningmappen; rekeningen in vreemde valuta omgerekend tegen de koers van elke maand.",
-      "note_budget": "Je rekeningen zijn gegroepeerd op je mappen, die van elke deelnemer onder diens naam; rekeningen in vreemde valuta omgerekend tegen de koers van elke maand."
+      "everyday": "Betaalrekeningen",
+      "period_1y_words": "in het afgelopen jaar",
+      "period_3y_words": "in de afgelopen 3 jaar",
+      "period_all_words": "sinds het begin"
     },
     "drill": {
       "unsupported": "Deze transacties kunnen hier niet worden getoond. Open de Budget-pagina om ze te zien.",

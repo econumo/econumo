@@ -1678,10 +1678,7 @@
       "period_3y": "3 ans",
       "period_all": "Tout",
       "today": "Aujourd'hui",
-      "since": "depuis la fin de {month}",
       "chart": "Graphique du patrimoine",
-      "col_folder": "Dossier",
-      "col_group": "Groupe",
       "col_start": "Début",
       "col_now": "Maintenant",
       "no_folder": "Sans dossier",
@@ -1690,8 +1687,10 @@
       "expand": "Afficher les comptes de {name}",
       "collapse": "Masquer les comptes de {name}",
       "empty": "Aucun solde de compte pour l'instant",
-      "note_mine": "Regroupé par vos dossiers de comptes ; les comptes en devise étrangère sont convertis au taux de chaque mois.",
-      "note_budget": "Vos comptes sont regroupés par vos dossiers, ceux de chaque participant sous son nom ; les comptes en devise étrangère sont convertis au taux de chaque mois."
+      "everyday": "Comptes courants",
+      "period_1y_words": "sur la dernière année",
+      "period_3y_words": "sur les 3 dernières années",
+      "period_all_words": "depuis le début"
     },
     "drill": {
       "unsupported": "Ces transactions ne peuvent pas être listées ici. Ouvrez la page Budget pour les voir.",

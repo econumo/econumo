@@ -1678,10 +1678,7 @@
       "period_3y": "3 l.",
       "period_all": "Wszystko",
       "today": "Dziś",
-      "since": "od końca {month}",
       "chart": "Wykres majątku",
-      "col_folder": "Folder",
-      "col_group": "Grupa",
       "col_start": "Początek",
       "col_now": "Teraz",
       "no_folder": "Bez folderu",
@@ -1690,8 +1687,10 @@
       "expand": "Pokaż konta w {name}",
       "collapse": "Ukryj konta w {name}",
       "empty": "Brak sald na kontach",
-      "note_mine": "Pogrupowano według Twoich folderów kont; konta w obcej walucie przeliczono po kursie z każdego miesiąca.",
-      "note_budget": "Twoje konta pogrupowano według Twoich folderów, konta każdego uczestnika pod jego imieniem; konta w obcej walucie przeliczono po kursie z każdego miesiąca."
+      "everyday": "Konta codzienne",
+      "period_1y_words": "w ostatnim roku",
+      "period_3y_words": "w ostatnich 3 latach",
+      "period_all_words": "od początku"
     },
     "drill": {
       "unsupported": "Tych transakcji nie można tu wyświetlić. Otwórz stronę Budżetu, aby je zobaczyć.",

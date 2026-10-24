@@ -2056,6 +2056,8 @@ definitions:
         type: string
       isDeleted:
         type: integer
+      isSavings:
+        type: integer
       name:
         type: string
       ownerUserId:

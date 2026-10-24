@@ -1848,7 +1848,9 @@ tag, and a budget with a planned limit on one category.
       report name, then the selected row and "2026 vs 2025" in Compare);
       close removes it and a last closed tab leaves one New tab; drag
       reorders; Duplicate copies a tab next to it. At 12 tabs "+" is
-      disabled with "Up to 12 tabs".
+      disabled with "Up to 12 tabs". Desktop tabs are underlined text like
+      the Budget / Plan switch; the × shows on hover; renaming keeps the
+      tab's width (the field grows only as the name does).
 - [ ] Tabs are per user and per device: another user on the same browser
       sees only their own tabs; a tab whose budget was deleted or unshared
       falls back to My accounts.
@@ -1952,30 +1954,36 @@ tag, and a budget with a planned limit on one category.
       on desktop opens as Bars, and the chart and four table columns fit
       the width. Light and dark theme: bars, line, Sankey labels and links
       stay readable.
-- [ ] **Net worth**: a stacked area per group with a solid Total line;
-      groups with a negative balance (credit cards, loans) are drawn below
-      zero and the Total line sits at their sum. Period presets 1y / 3y /
-      All (no step); the headline shows "Today", the latest total, and
-      "Up / Down {amount} over the period since the end of {month}", where
-      the month is the one before the period (1y on Oct 23: Oct 2025).
-      All starts at the end of the month before the first transaction, so
-      its change equals the latest total. Amounts show cents.
+- [ ] **Net worth**: one line for the total with a soft fill under it (no
+      stacked colours, no legend); hovering a month shows each folder (My
+      accounts) or person (budget) with its amount and the Total at the
+      bottom. Period buttons 1y / 3y / All sit small on the chart's top-right
+      corner; the scope picker is a quiet "{budget} ▾" top-right. The headline
+      shows "Today", the latest total, and "+/-{amount} in the last year /
+      in the last 3 years / since the start". All starts at the end of the
+      month before the first transaction, so its change equals the latest
+      total. Amounts show cents.
 - [ ] Net worth "Today" counts transactions through the end of today in
       the device's timezone: a transaction dated later this month is left
       out of the current month until its day comes (earlier months are
       unchanged). A report of a single month shows its total without a
       change line.
-- [ ] Net worth in My accounts: groups are my account folders, plus "No
+- [ ] Net worth in My accounts: rows are my account folders, plus "No
       folder" and "Deleted accounts" when such accounts carry a balance;
-      accounts that are zero in every month are not listed. The table
-      reads Folder, Start, Now, Change (green up, red down) with a Total
-      row equal to the headline; a group expands to its accounts (chevron
-      or row tap) and collapses again.
-- [ ] Net worth in a budget shared with a partner: my member accounts
-      appear under my folders, each partner's member accounts under the
-      partner's name (never their folder names); the column reads Group.
-      With "This year" figures on the report list's card, the card's total
-      equals the report's latest total.
+      accounts that are zero in every month are not listed. Columns Start,
+      Now, Change (green up, red down) and a Total row equal to the
+      headline; a folder opens (chevron or row tap) to its accounts, each
+      with its sidebar icon, and closes again. Rows use the Budget page's
+      look: rounded hover on every row, no lines between rows.
+- [ ] Net worth in a budget shared with a partner: one row per person with
+      their avatar, partners first and me last; no folder names appear.
+      A person with savings members in the budget opens to those savings
+      accounts by name plus "Everyday accounts" (wallet icon) for the rest;
+      a person without savings members is a single row. With "This year"
+      figures on the report list's card, the card's total equals the
+      report's latest total.
+- [ ] Archived budgets are not offered in any report's budget picker; with no
+      active budget the picker is not shown and reports cover My accounts.
 - [ ] Offline (or after a failed refresh) a report shown from the cache
       carries a muted "Updated {date and time}" line under its filters; it
       goes away after the next successful load. Reports longer than 36
@@ -1984,10 +1992,9 @@ tag, and a budget with a planned limit on one category.
 - [ ] All time over more than 20 years of history shows the last 240
       months instead of an error; a Custom range longer than 240 months is
       refused.
-- [ ] 📱 At 390px the Net worth controls fit on one or two lines, the chart
-      fits the width and the table shows the group, Now and Change; light and
-      dark theme keep the areas, the Total line and the change colours
-      readable.
+- [ ] 📱 At 390px the Net worth header fits, the chart fits the width and
+      the list shows the name, Now and Change; light and dark theme keep the
+      line, the fill and the change colours readable.
 
 ## 11. Sharing — connections, accounts, budgets (multi-user)
 

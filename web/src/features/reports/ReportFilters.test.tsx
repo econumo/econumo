@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets } from '@/test/fixtures'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { ReportFilters } from './ReportFilters'
 import { defaultParams, useReportTabs } from './reportTabs'
@@ -55,7 +55,7 @@ it('payee group-by is hidden in the budget scope', () => {
 it('changing scope clears the selected row and fires its metric', async () => {
   renderFilters({ selectedId: 'cat-food' })
   const user = userEvent.setup()
-  await user.click(screen.getByRole('combobox', { name: 'Scope' }))
+  await user.click(await screen.findByRole('combobox', { name: 'Scope' }))
   await user.click(await screen.findByRole('option', { name: 'Main budget' }))
   expect(params()).toMatchObject({ budgetId: 'b1', selectedId: null })
   expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_CHANGE_SCOPE, { scope: 'budget' })
@@ -79,4 +79,12 @@ it('step is a segmented control', async () => {
   await user.click(screen.getByRole('radio', { name: 'Quarter' }))
   expect(params().step).toBe('quarter')
   expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_CHANGE_STEP, { step: 'quarter' })
+})
+
+it('archived budgets are left out, and with none active the scope picker is gone', async () => {
+  server.use(...coreHandlers({ budgets: [{ ...fixtureBudgets[0], isArchived: 1 }] }))
+  renderFilters()
+  await screen.findByRole('combobox', { name: 'Period' })
+  await new Promise((r) => setTimeout(r, 50))
+  expect(screen.queryByRole('combobox', { name: 'Scope' })).not.toBeInTheDocument()
 })

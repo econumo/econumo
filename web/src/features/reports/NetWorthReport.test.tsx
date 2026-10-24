@@ -63,7 +63,9 @@ function openNetWorth(patch: Partial<ReportParams> = {}, data: NetWorthReportDto
 
 const plain = (s: string | null) => (s ?? '').replace(/[  ]/g, ' ')
 const headline = () => screen.getByRole('region', { name: 'Summary' })
-const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((c) => plain(c.textContent))
+// the name cell leads with an icon or avatar ligature; the name is its last element
+const cells = (row: HTMLElement) =>
+  within(row).getAllByRole('cell').map((c, i) => plain(i === 0 ? (c.lastElementChild?.textContent ?? c.textContent) : c.textContent))
 const rowNamed = (name: string) => {
   const row = screen.getAllByRole('row').find((r) => within(r).queryAllByRole('cell').length > 0 && cells(r)[0] === name)
   if (!row) throw new Error(`no row ${name}`)
@@ -84,15 +86,14 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-it('headline: the latest total and its change since the period started', async () => {
+it('headline: the latest total and its change over the chosen period', async () => {
   openNetWorth()
   await screen.findByRole('table')
   expect(plain(headline().textContent)).toContain('6,200.00 $')
-  expect(plain(headline().textContent)).toContain('Up 3,100.00 $ over the period')
-  expect(plain(headline().textContent)).toContain('Dec 2025')
+  expect(plain(headline().textContent)).toContain('+3,100.00 $ in the last 3 years')
 })
 
-it('groups my accounts by my folders, debts included, and hides all-zero accounts', async () => {
+it('my accounts: folders, debts included, all-zero accounts hidden', async () => {
   openNetWorth()
   await screen.findByRole('table')
   expect(cells(await waitFor(() => rowNamed('Savings')))).toEqual(['Savings', '5,100.00 $', '6,200.00 $', '+1,100.00 $'])
@@ -107,7 +108,7 @@ it('the total row equals the sum of the groups', async () => {
   expect(cells(rowNamed('Total'))).toEqual(['Total', '3,100.00 $', '6,200.00 $', '+3,100.00 $'])
 })
 
-it('a group expands to its accounts', async () => {
+it('a folder expands to its accounts', async () => {
   openNetWorth()
   await screen.findByRole('table')
   expect(screen.queryByText('Euro Stash')).not.toBeInTheDocument()
@@ -120,15 +121,38 @@ it('a group expands to its accounts', async () => {
   expect(vi.mocked(trackEvent).mock.calls.filter(([m]) => m === METRICS.REPORTS_NETWORTH_EXPAND)).toHaveLength(1)
 })
 
-it("budget scope: a partner's accounts are listed under the partner's name", async () => {
-  const partner = acc('a2', 'Bob savings', ['700', '800', '900'], { ownerUserId: 'u2' })
-  openNetWorth({ budgetId: 'b1' }, report([mine[0], partner]), { budgets: [sharedBudget, fixtureBudgets[1]] })
+it('budget scope: one row per person, partners first and me last; savings by name, the rest as Everyday accounts', async () => {
+  const data = report([
+    acc('a1', 'Cash', ['1000', '1500', '2000']),
+    acc('dep', 'Deposit', ['200', '300', '400'], { isSavings: 1 }),
+    acc('b-sav', 'Bob savings', ['700', '800', '900'], { ownerUserId: 'u2', isSavings: 1 }),
+    acc('b-wal', 'Bob wallet', ['50', '60', '70'], { ownerUserId: 'u2' }),
+  ])
+  openNetWorth({ budgetId: 'b1' }, data, { budgets: [sharedBudget, fixtureBudgets[1]] })
   await screen.findByRole('table')
-  // a2 sits in my "Savings" folder on my side; the owner wins
-  expect(cells(await waitFor(() => rowNamed('Bob')))).toEqual(['Bob', '700.00 $', '900.00 $', '+200.00 $'])
-  expect(cells(rowNamed('General'))).toEqual(['General', '1,000.00 $', '2,000.00 $', '+1,000.00 $'])
+  const names = await waitFor(() => {
+    const list = screen.getAllByRole('row').slice(1).map((r) => cells(r)[0])
+    expect(list.length).toBe(3)
+    return list
+  })
+  expect(names[0]).toBe('Bob')
+  expect(names[1]).toBe('Ada')
+  expect(names[2]).toBe('Total')
   expect(hasRow('Savings')).toBe(false)
+
+  await userEvent.click(screen.getByRole('button', { name: 'Show the accounts in Bob' }))
+  expect(cells(rowNamed('Bob savings')).slice(1)).toEqual(['700.00 $', '900.00 $', '+200.00 $'])
+  expect(cells(rowNamed('Everyday accounts')).slice(1)).toEqual(['50.00 $', '70.00 $', '+20.00 $'])
+  expect(screen.queryByText('Bob wallet')).not.toBeInTheDocument()
   expect(asked[asked.length - 1].get('budgetId')).toBe('b1')
+})
+
+it('budget scope: a person without savings members is a single row', async () => {
+  const data = report([acc('a1', 'Cash', ['1000', '1500', '2000']), acc('b-wal', 'Bob wallet', ['50', '60', '70'], { ownerUserId: 'u2' })])
+  openNetWorth({ budgetId: 'b1' }, data, { budgets: [sharedBudget] })
+  await screen.findByRole('table')
+  await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(4))
+  expect(screen.queryByRole('button', { name: /Show the accounts/ })).not.toBeInTheDocument()
 })
 
 it('period presets map onto the tab and fetch from the close before the period', async () => {
@@ -139,8 +163,15 @@ it('period presets map onto the tab and fetch from the close before the period',
   expect(useReportTabs.getState().tabs[0].params.period).toBe('last12')
   await waitFor(() => expect(asked[asked.length - 1].get('from')).toBe('2025-10-01'))
   expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_CHANGE_PERIOD, { period: 'last12' })
+  expect(plain(headline().textContent)).toContain('in the last year')
   await userEvent.click(screen.getByRole('radio', { name: 'All' }))
   await waitFor(() => expect(asked[asked.length - 1].get('from')).toBeNull())
+})
+
+it('the budget picker lists active budgets only and disappears without any', async () => {
+  openNetWorth({}, report(), { budgets: [{ ...fixtureBudgets[0], isArchived: 1 }] })
+  await screen.findByRole('table')
+  expect(screen.queryByRole('combobox', { name: 'Scope' })).not.toBeInTheDocument()
 })
 
 it('empty state when no account holds a balance', async () => {
@@ -153,8 +184,7 @@ it('a single-month report shows the balance without a change line', async () => 
   openNetWorth({}, { currencyId: 'cur-usd', months: ['2026-10-01'], accounts: [acc('a1', 'Cash', ['2000'])] })
   await screen.findByRole('table')
   expect(plain(headline().textContent)).toContain('2,000.00 $')
-  expect(plain(headline().textContent)).not.toContain('No transactions yet')
-  expect(plain(headline().textContent)).not.toContain('Oct 2026')
+  expect(plain(headline().textContent)).not.toContain('in the last')
 })
 
 it('offline: cached figures say when they were fetched', async () => {

@@ -1678,10 +1678,7 @@
       "period_3y": "3年",
       "period_all": "全部",
       "today": "今天",
-      "since": "自 {month}末起",
       "chart": "净资产图表",
-      "col_folder": "文件夹",
-      "col_group": "分组",
       "col_start": "期初",
       "col_now": "当前",
       "no_folder": "无文件夹",
@@ -1690,8 +1687,10 @@
       "expand": "显示 {name} 中的账户",
       "collapse": "隐藏 {name} 中的账户",
       "empty": "暂无账户余额",
-      "note_mine": "按您的账户文件夹分组；外币账户按每月汇率换算。",
-      "note_budget": "您的账户按您的文件夹分组，每位参与者的账户列在其名下；外币账户按每月汇率换算。"
+      "everyday": "日常账户",
+      "period_1y_words": "过去一年",
+      "period_3y_words": "过去 3 年",
+      "period_all_words": "自开始以来"
     },
     "drill": {
       "unsupported": "这些交易无法在此列出。请打开预算页面查看。",
