@@ -566,7 +566,9 @@
         },
         "configure": {
           "title": "Connect the Shortcut",
-          "text": "Generates an API token. The Shortcut saves the server address and token, then connects to Econumo. Tap Always Allow on every prompt — the automation will need these permissions.",
+          "text": "Tap Connect the Shortcut, then tap Always Allow on every prompt.",
+          "details_toggle": "What does this do?",
+          "details": "It creates an access token for this iPhone. The Shortcut saves your server address and the token, then checks in with Econumo. The automation needs the permissions you allow here.",
           "button": "Connect the Shortcut",
           "open": "Link Econumo",
           "waiting": "Waiting for the Shortcut to reach Econumo…",

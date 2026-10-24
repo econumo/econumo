@@ -566,7 +566,9 @@
         },
         "configure": {
           "title": "Connecter le raccourci",
-          "text": "Génère un jeton API. Le raccourci enregistre l’adresse du serveur et le jeton, puis se connecte à Econumo. Touchez « Toujours autoriser » à chaque demande : l’automatisation aura besoin de ces autorisations.",
+          "text": "Touchez « Connecter le raccourci », puis « Toujours autoriser » à chaque demande.",
+          "details_toggle": "À quoi ça sert ?",
+          "details": "Cela crée un jeton d’accès pour cet iPhone. Le raccourci enregistre l’adresse de votre serveur et le jeton, puis contacte Econumo. L’automatisation a besoin des autorisations que vous accordez ici.",
           "button": "Connecter le raccourci",
           "open": "Lier Econumo",
           "waiting": "En attente du premier contact du raccourci avec Econumo…",

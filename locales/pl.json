@@ -566,7 +566,9 @@
         },
         "configure": {
           "title": "Połącz skrót",
-          "text": "Generuje token API. Skrót zapisuje adres serwera i token, a potem łączy się z Econumo. Przy każdym pytaniu stuknij „Zawsze zezwalaj” — automatyzacja będzie potrzebować tych uprawnień.",
+          "text": "Stuknij „Połącz skrót”, a potem przy każdym pytaniu „Zawsze zezwalaj”.",
+          "details_toggle": "Co to robi?",
+          "details": "Tworzy token dostępu dla tego iPhone’a. Skrót zapisuje adres Twojego serwera i token, a potem łączy się z Econumo. Automatyzacja potrzebuje uprawnień, na które tu zezwolisz.",
           "button": "Połącz skrót",
           "open": "Powiąż Econumo",
           "waiting": "Czekam, aż skrót dotrze do Econumo…",

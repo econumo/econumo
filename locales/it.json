@@ -566,7 +566,9 @@
         },
         "configure": {
           "title": "Collega il comando rapido",
-          "text": "Genera un token API. Il comando rapido salva l’indirizzo del server e il token, poi si collega a Econumo. Tocca «Consenti sempre» a ogni richiesta: l’automazione avrà bisogno di questi permessi.",
+          "text": "Tocca «Collega il comando rapido», poi «Consenti sempre» a ogni richiesta.",
+          "details_toggle": "A cosa serve?",
+          "details": "Crea un token di accesso per questo iPhone. Il comando rapido salva l’indirizzo del tuo server e il token, poi contatta Econumo. L’automazione ha bisogno dei permessi che concedi qui.",
           "button": "Collega il comando rapido",
           "open": "Associa Econumo",
           "waiting": "In attesa che il comando rapido raggiunga Econumo…",

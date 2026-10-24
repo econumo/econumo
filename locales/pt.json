@@ -566,7 +566,9 @@
         },
         "configure": {
           "title": "Ligar o atalho",
-          "text": "Gera um token de API. O atalho guarda o endereço do servidor e o token e depois liga-se ao Econumo. Toque em «Permitir sempre» em cada pedido — a automatização vai precisar destas permissões.",
+          "text": "Toque em «Ligar o atalho» e depois em «Permitir sempre» em cada pedido.",
+          "details_toggle": "O que isto faz?",
+          "details": "Cria um token de acesso para este iPhone. O atalho guarda o endereço do seu servidor e o token e depois contacta o Econumo. A automatização precisa das permissões que der aqui.",
           "button": "Ligar o atalho",
           "open": "Associar o Econumo",
           "waiting": "À espera de que o atalho chegue ao Econumo…",
