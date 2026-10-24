@@ -19,6 +19,7 @@ import { usePeriodLabels } from './usePeriodLabels'
 import { useNetWorthReport } from './queries'
 import { compactNumber, signedMoney, useMoney } from './reportFormat'
 import { ReportUpdatedAt } from './ReportUpdatedAt'
+import { LINE, NAME_COL } from '@/features/budgets/monthLayout'
 import { useReportTabs } from './reportTabs'
 import type { ReportParams, ReportTab } from './reportTabs'
 
@@ -28,7 +29,8 @@ const PRESETS = [
   { value: 'all', label: 'All', words: 'since the start' },
 ] as const
 const MINE = 'mine'
-const LINE = 'var(--primary)'
+const COL = 'w-24 shrink-0 justify-end text-right tabular-nums whitespace-nowrap sm:w-28 flex'
+const STROKE = 'var(--primary)'
 // calm, ordered by size: the biggest band gets the first colour
 const BANDS = ['#a78bfa', '#7dd3fc', '#6ee7b7', '#fcd34d', '#f9a8d4', '#cbd5e1']
 
@@ -126,7 +128,6 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     })
     .sort(byNow)
 
-  const num = 'py-2 pl-2 text-right tabular-nums'
   // My accounts: folders, each expandable to its accounts (as before).
   const groupOf = netWorthGroupOf({
     me,
@@ -157,44 +158,46 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       }
       return next
     })
+  // Lines styled like the Budget/Plan rows: rounded hover, no rules between rows.
+  const figures = (l: Line, muted = false) => (
+    <>
+      <span className={`hidden ${COL} text-muted-foreground sm:flex`}>{money(l.start)}</span>
+      <span className={`${COL} ${muted ? '' : 'text-foreground'}`}>{money(l.now)}</span>
+      <span className={`${COL} ${changeClass(l.change)}`}>{signedMoney(l.change, money)}</span>
+    </>
+  )
   const groupRows = (groups: { line: Line; accounts: Line[] }[]) => groups.flatMap((g) => {
     const isOpen = open.has(g.line.id)
     if (g.accounts.length === 0) {
       return [
-        <tr key={g.line.id} className="border-b border-border/60 hover:bg-econumo-hover/60">
-          <td className="py-2 pr-2 pl-[1.125rem]">
-            <span className="flex min-w-0 items-center gap-1">
-                <span className="truncate">{g.line.name}</span>
-            </span>
-          </td>
-          <td className={`hidden ${num} text-muted-foreground sm:table-cell`}>{money(g.line.start)}</td>
-          <td className={num}>{money(g.line.now)}</td>
-          <td className={`${num} whitespace-nowrap ${changeClass(g.line.change)}`}>{signedMoney(g.line.change, money)}</td>
-        </tr>,
+        <div key={g.line.id} className={`${LINE} min-h-10 rounded-md py-1.5 pl-6 hover:bg-accent/50`}>
+          <span className={NAME_COL}><span className="truncate">{g.line.name}</span></span>
+          {figures(g.line)}
+        </div>,
       ]
     }
     return [
-      <tr key={g.line.id} onClick={() => toggle(g.line.id)} className="cursor-pointer border-b border-border/60 hover:bg-econumo-hover/60">
-        <td className="py-2 pr-2">
-          <span className="flex min-w-0 items-center gap-1">
-            <ChevronRight className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-            <button type="button" aria-expanded={isOpen} className="truncate text-left" onClick={(e) => { e.stopPropagation(); toggle(g.line.id) }}>
-              {g.line.name}
-            </button>
-          </span>
-        </td>
-        <td className={`hidden ${num} text-muted-foreground sm:table-cell`}>{money(g.line.start)}</td>
-        <td className={num}>{money(g.line.now)}</td>
-        <td className={`${num} whitespace-nowrap ${changeClass(g.line.change)}`}>{signedMoney(g.line.change, money)}</td>
-      </tr>,
+      <div
+        key={g.line.id}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isOpen}
+        onClick={() => toggle(g.line.id)}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), toggle(g.line.id))}
+        className={`${LINE} min-h-10 cursor-pointer rounded-md py-1.5 hover:bg-accent/50`}
+      >
+        <span className={NAME_COL}>
+          <ChevronRight className={`size-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+          <span className="truncate">{g.line.name}</span>
+        </span>
+        {figures(g.line)}
+      </div>,
       ...(isOpen
-        ? g.accounts.map((a) => (
-            <tr key={`${g.line.id}-${a.id}`} className="border-b border-border/60 text-muted-foreground hover:bg-econumo-hover/60">
-              <td className="truncate py-2 pr-2 pl-5">{a.name}</td>
-              <td className={`hidden ${num} sm:table-cell`}>{money(a.start)}</td>
-              <td className={num}>{money(a.now)}</td>
-              <td className={`${num} whitespace-nowrap ${changeClass(a.change)}`}>{signedMoney(a.change, money)}</td>
-            </tr>
+        ? g.accounts.map((acc) => (
+            <div key={`${g.line.id}-${acc.id}`} className={`${LINE} min-h-8 rounded-md py-1 pl-12 text-sm text-muted-foreground hover:bg-accent/50`}>
+              <span className={NAME_COL}><span className="truncate">{acc.name}</span></span>
+              {figures(acc, true)}
+            </div>
           ))
         : []),
     ]
@@ -242,20 +245,12 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       }))
     : []
   const config: ChartConfig = {
-    value: { label: t('reports.spending.total'), color: LINE },
+    value: { label: t('reports.spending.total'), color: STROKE },
     ...Object.fromEntries(bands.map((b, bi) => [`b${bi}`, { label: b.name, color: colorOf(b.id) }])),
   }
   const hasNegative = total.some((v) => isNegative(v))
   const dim = report.isPlaceholderData ? 'opacity-60 transition-opacity' : ''
 
-  const row = (l: Line, strong = false) => (
-    <tr key={l.id} className={`hover:bg-econumo-hover/60 ${strong ? '' : 'border-b border-border/60'}`}>
-      <td className="truncate py-2 pr-2">{l.name}</td>
-      <td className={`hidden ${num} text-muted-foreground sm:table-cell`}>{money(l.start)}</td>
-      <td className={num}>{money(l.now)}</td>
-      <td className={`${num} whitespace-nowrap ${changeClass(l.change)}`}>{signedMoney(l.change, money)}</td>
-    </tr>
-  )
 
   return (
     <div className="flex flex-col gap-3">
@@ -317,33 +312,30 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                 />
                 <defs>
                   <linearGradient id="nw-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={LINE} stopOpacity={0.25} />
-                    <stop offset="100%" stopColor={LINE} stopOpacity={0.02} />
+                    <stop offset="0%" stopColor={STROKE} stopOpacity={0.25} />
+                    <stop offset="100%" stopColor={STROKE} stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <Area dataKey="value" type="monotone" stroke={LINE} strokeWidth={2.5} fill="url(#nw-fill)" isAnimationActive={false} />
+                <Area dataKey="value" type="monotone" stroke={STROKE} strokeWidth={2.5} fill="url(#nw-fill)" isAnimationActive={false} />
               </ComposedChart>
             </ChartContainer>
           </figure>
 
-          <table className={`w-full table-fixed text-sm ${dim}`}>
-            <thead>
-              <tr className="text-xs text-muted-foreground">
-                <th className="py-1 pr-2 text-left font-normal" />
-                <th className="hidden w-28 py-1 pl-2 text-right font-normal sm:table-cell">{t('reports.networth.col_start')}</th>
-                <th className="w-28 py-1 pl-2 text-right font-normal">{t('reports.networth.col_now')}</th>
-                <th className="w-28 py-1 pl-2 text-right font-normal">{t('reports.spending.col_change')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {p.budgetId ? (
-                personRows
-              ) : (
-                folderRows
-              )}
-            </tbody>
-            <tfoot className="border-t">{row(totalLine, true)}</tfoot>
-          </table>
+          <div className={`-mx-2 flex flex-col ${dim}`}>
+            <div className={`${LINE} pb-1 text-xs text-muted-foreground`}>
+              <span className={NAME_COL} />
+              <span className={`hidden ${COL} sm:flex`}>{t('reports.networth.col_start')}</span>
+              <span className={COL}>{t('reports.networth.col_now')}</span>
+              <span className={COL}>{t('reports.spending.col_change')}</span>
+            </div>
+            {p.budgetId ? personRows : folderRows}
+            <div className="mt-1 border-t pt-1">
+              <div className={`${LINE} min-h-10 rounded-md py-1.5 pl-6 text-[15px] hover:bg-accent/50`}>
+                <span className={NAME_COL}>{totalLine.name}</span>
+                {figures(totalLine)}
+              </div>
+            </div>
+          </div>
         </>
       )}
     </div>
