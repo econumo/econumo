@@ -15,6 +15,9 @@ const (
 	skR3  = "01a10000-0000-7000-8000-0000000000d3"
 	skT   = "01a10000-0000-7000-8000-0000000000d4"
 	skOld = "01a10000-0000-7000-8000-0000000000d5"
+	skE1  = "01a10000-0000-7000-8000-0000000000e1"
+	skE2  = "01a10000-0000-7000-8000-0000000000e2"
+	skIn  = "01a10000-0000-7000-8000-0000000000e3"
 )
 
 // 20261024000000 adds the per-side sort keys and numbers every account's days
@@ -48,6 +51,10 @@ func checkSortKeyMigration(t *testing.T, db *sql.DB, rebind func(string) string,
 	tx(skR3, skA, 0, "2026-10-01 09:00:00", nil)
 	tx(skT, skA, 2, "2026-10-01 08:00:00", skB)
 	tx(skOld, skA, 0, "2026-09-30 23:00:00", nil)
+	// a's own rows and a transfer INTO a share one day: both sides number together
+	tx(skE1, skA, 0, "2026-10-02 10:00:00", nil)
+	tx(skIn, skB, 2, "2026-10-02 12:00:00", skA)
+	tx(skE2, skA, 0, "2026-10-02 14:00:00", nil)
 
 	finish()
 
@@ -66,6 +73,15 @@ func checkSortKeyMigration(t *testing.T, db *sql.DB, rebind func(string) string,
 		if id != skT && rk.Valid {
 			t.Errorf("%s: a non-transfer carries recipient_sort_key %d", id, rk.Int64)
 		}
+	}
+	if k, _ := keys(skE1); k != 1 {
+		t.Errorf("e1: sort_key = %d, want 1", k)
+	}
+	if k, _ := keys(skE2); k != 3 {
+		t.Errorf("e2: sort_key = %d, want 3", k)
+	}
+	if k, rk := keys(skIn); !rk.Valid || rk.Int64 != 2 || k != 1 {
+		t.Errorf("incoming transfer: sort_key %d recipient_sort_key %v, want 1 on b and 2 between a's rows", k, rk)
 	}
 	if _, rk := keys(skT); !rk.Valid || rk.Int64 != 1 {
 		t.Errorf("transfer recipient_sort_key = %v, want 1", rk)

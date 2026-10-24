@@ -83,15 +83,17 @@ export function useDeleteTransaction() {
 }
 
 /** A drag on an account page. The list shows the drop at once; the server's
- *  rows replace the guess on success, and a refusal (a day another device
- *  changed meanwhile) puts the previous order back. */
+ *  rows replace the guess on success. A refusal puts back only the rows the
+ *  drop touched (anything that arrived meanwhile stays) and syncs again: the
+ *  usual cause is a day another device changed, whose rows this list lacks. */
 export function useMoveTransaction() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: transactionApi.moveTransaction,
     onMutate: (req: MoveTransactionDto) => {
-      const previous = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)
-      const moved = previous?.find((t) => t.id === req.id)
+      const touched = new Set(req.transactionIds)
+      const previous = (queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions) ?? []).filter((t) => touched.has(t.id))
+      const moved = previous.find((t) => t.id === req.id)
       patchTransactions(queryClient, (rows) => applyLocalMove(rows, req))
       return { previous, dayChanged: moved ? moved.date.slice(0, 10) !== req.date : false }
     },
@@ -111,9 +113,9 @@ export function useMoveTransaction() {
       trackEvent(METRICS.TRANSACTION_MOVE, { dayChanged: context?.dayChanged ?? false })
     },
     onError: (err, _req, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(queryKeys.transactions, context.previous)
-      }
+      const before = new Map((context?.previous ?? []).map((t) => [t.id, t]))
+      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (rows) => rows?.map((t) => before.get(t.id) ?? t))
+      void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       toast.error(apiErrorMessage(err))
     },
   })

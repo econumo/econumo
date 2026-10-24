@@ -123,17 +123,25 @@ describe('useMoveTransaction', () => {
     expect(queryClient.getQueryData(queryKeys.accounts)).toEqual([wireAccount])
   })
 
-  it('puts the old order back when the server refuses', async () => {
+  it('puts the old order back when the server refuses, keeps rows that arrived meanwhile and refreshes', async () => {
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
     server.use(
-      http.post('*/api/v1/transaction/move-transaction', () =>
-        HttpResponse.json({ success: false, message: 'This day changed meanwhile. Refresh and try again.', code: 400, errors: {} }, { status: 400 }),
-      ),
+      http.post('*/api/v1/transaction/move-transaction', async () => {
+        await gate
+        return HttpResponse.json({ success: false, message: 'This day changed meanwhile. Refresh and try again.', code: 400, errors: {} }, { status: 400 })
+      }),
     )
     const { queryClient, wrapper } = makeWrapper()
     queryClient.setQueryData(queryKeys.transactions, day)
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
     const { result } = renderHook(() => useMoveTransaction(), { wrapper })
     result.current.mutate(req)
+    await waitFor(() => expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 1, m2: 2 }))
+    queryClient.setQueryData<{ id: string }[]>(queryKeys.transactions, (rows) => [...(rows ?? []), { ...day[0], id: 'arrived', sortKey: 3 }])
+    release()
     await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 2, m2: 1 })
+    expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 2, m2: 1, arrived: 3 })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.transactions })
   })
 })
