@@ -1,4 +1,5 @@
-import { flowQueryArgs, netWorthQueryArgs, periodLabels, periodRange, previousRange } from './reportPeriod'
+import { flowQueryArgs, lastMonthOf, netWorthQueryArgs, periodLabels, periodRange, previousRange } from './reportPeriod'
+import { rollUp } from './reportMath'
 import { defaultParams } from './reportTabs'
 
 const today = new Date(2026, 9, 15)
@@ -90,5 +91,15 @@ describe('netWorthQueryArgs', () => {
   it('custom sends both ends, the start one month early', () => {
     const p = { ...defaultParams(null), period: 'custom' as const, from: '2024-03-01', to: '2025-02-01' }
     expect(netWorthQueryArgs(p, today)).toEqual({ budgetId: null, from: '2024-02-01', to: '2025-02-01' })
+  })
+})
+
+describe('lastMonthOf', () => {
+  it('a bucket cut by the window ends at its last covered month, not its calendar length', () => {
+    // Nov–Dec 2025 falls into the 2025 year bucket, which starts in January
+    const [b] = rollUp(['2025-11-01', '2025-12-01'], ['10', '20'], 'year', today)
+    expect(b.start).toBe('2025-01-01')
+    expect(b.first).toBe('2025-11-01')
+    expect(lastMonthOf(b)).toBe('2025-12-01')
   })
 })

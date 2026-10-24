@@ -178,6 +178,8 @@ it('empty state when no account holds a balance', async () => {
   openNetWorth({}, report([acc('zero', 'Empty wallet', ['0', '0', '0'])]))
   expect(await screen.findByText('No account balances yet')).toBeInTheDocument()
   expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  // the period stays switchable, so All can still reach older balances
+  expect(screen.getByRole('radio', { name: 'All' })).toBeInTheDocument()
 })
 
 it('a single-month report shows the balance without a change line', async () => {

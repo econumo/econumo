@@ -7,7 +7,10 @@ export type Step = 'month' | 'quarter' | 'year'
 
 export interface Bucket {
   key: string
+  /** the calendar bucket's first month (labels); first/last are the months the window actually covers */
   start: string
+  first: string
+  last: string
   months: number
   total: string
   partial: boolean
@@ -63,7 +66,7 @@ export function rollUp(months: string[], amounts: string[], step: Step, today: D
       const dim = daysInMonth(cur)
       const elapsedDays = whole * dim + today.getDate()
       const projected = projectable ? div(mul(total, len * dim), elapsedDays) : total
-      return { key: start, start, months: g.months.length, total, partial, projected }
+      return { key: start, start, first: g.months[0], last: g.months[g.months.length - 1], months: g.months.length, total, partial, projected }
     })
 }
 

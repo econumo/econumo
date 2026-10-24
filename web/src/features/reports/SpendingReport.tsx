@@ -509,7 +509,7 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
   const data = chartBuckets.map((b, i) => {
     const point: Record<string, unknown> = {
       label: bucketName(b),
-      title: labels.range([b.start, lastMonthOf(b)]),
+      title: labels.range([b.first, lastMonthOf(b)]),
       [PROJECTION]: b.projected !== b.total ? Number(b.projected) : null,
     }
     series.forEach((s, k) => {
@@ -546,7 +546,7 @@ export function SpendingReport({ tab }: { tab: ReportTab }) {
     const bucket = chartBuckets[index]
     if (!bucket) return
     if (selected) {
-      openDrill(bucket.start < months[0] ? months[0] : bucket.start, lastMonthOf(bucket))
+      openDrill(bucket.first, lastMonthOf(bucket))
     } else if (id !== OTHER_ID) {
       select(id)
     }

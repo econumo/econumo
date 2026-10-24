@@ -65,7 +65,7 @@ export function netWorthQueryArgs(p: ReportParams, today: Date = new Date()): Ne
 export type MonthRange = [string, string]
 
 export function lastMonthOf(b: Bucket): string {
-  return addMonths(b.start, b.months - 1)
+  return b.last
 }
 
 /** the months a preset or custom period covers; null for all time, which has no fixed start */

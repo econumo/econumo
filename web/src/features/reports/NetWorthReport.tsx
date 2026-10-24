@@ -296,7 +296,11 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       ) : report.isError && !data ? (
         <p className="text-sm text-muted-foreground">{t('common.app.error')}</p>
       ) : shown.length === 0 ? (
-        <p className="py-6 text-sm text-muted-foreground">{t('reports.networth.empty')}</p>
+        // the period stays switchable: an empty 1y window may hide balances All would show
+        <div className="flex flex-col gap-1">
+          <div className="flex justify-end">{periodPicker}</div>
+          <p className="py-6 text-sm text-muted-foreground">{t('reports.networth.empty')}</p>
+        </div>
       ) : (
         <>
           <figure aria-label={t('reports.networth.chart')} className={`flex flex-col gap-1 ${dim}`}>

@@ -192,6 +192,12 @@ it('Flow in a budget splits Saved into savings and everyday accounts', async () 
   expect(within(chart).getByText('3,000.00 $')).toBeInTheDocument()
 })
 
+it('a period with transfers only still shows its table', async () => {
+  openCashFlow({}, report({ income: [], expense: [], transfersIn: months.map((m) => (m === '2026-05-01' ? '300' : '0')) }))
+  expect(await screen.findByRole('table')).toBeInTheDocument()
+  expect(screen.queryByText('No transactions yet')).toBeNull()
+})
+
 it('an empty period says so', async () => {
   openCashFlow({}, report({ income: [], expense: [] }))
   expect(await screen.findByText('No transactions yet')).toBeInTheDocument()

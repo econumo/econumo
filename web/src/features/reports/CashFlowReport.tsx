@@ -95,7 +95,9 @@ export function CashFlowReport({ tab }: { tab: ReportTab }) {
   const flow = cashFlow(data)
   const income = sum(flow.map((m) => m.income))
   const spent = sum(flow.map((m) => m.spent))
-  if (months.length === 0 || (isZero(income) && isZero(spent))) {
+  // transfers across the boundary and savings activity count as activity too
+  const moved = flow.some((m) => !isZero(m.transfersIn) || !isZero(m.transfersOut)) || data.savings.some((r) => r.amounts.some((a) => !isZero(a)))
+  if (months.length === 0 || (isZero(income) && isZero(spent) && !moved)) {
     return (
       <div className="flex flex-col gap-4">
         {header}
@@ -118,7 +120,7 @@ export function CashFlowReport({ tab }: { tab: ReportTab }) {
     saved: sub(b.total, spentB[i].total),
     transfersIn: inB[i].total,
     transfersOut: outB[i].total,
-    running: b.start <= cur && lastMonthOf(b) >= cur,
+    running: b.first <= cur && lastMonthOf(b) >= cur,
   }))
   const running = buckets.find((b) => b.running) ?? null
   const bucketName = (b: CashFlowBucket) => `${labels.bucket(b.bucket.start, p.step)}${b.running ? '*' : ''}`
@@ -130,7 +132,7 @@ export function CashFlowReport({ tab }: { tab: ReportTab }) {
 
   const chartData = buckets.map((b) => ({
     label: bucketName(b),
-    title: labels.range([b.bucket.start, lastMonthOf(b.bucket)]),
+    title: labels.range([b.bucket.first, lastMonthOf(b.bucket)]),
     income: Number(b.income),
     spentBar: -Number(b.spent),
     savedLine: Number(b.saved),
