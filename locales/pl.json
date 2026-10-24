@@ -1887,7 +1887,8 @@
       "message_required": "Najpierw napisz wiadomość.",
       "email": "E-mail (opcjonalnie)",
       "email_placeholder": "ty@przyklad.pl",
-      "use_my_email": "Użyj mojego e-maila",
+      "use_email": "Użyj {email}",
+      "clear_email": "Wyczyść e-mail",
       "send": "Wyślij",
       "sent": "Dziękujemy za opinię!",
       "failed": "Nie udało się wysłać opinii. Spróbuj ponownie."

@@ -1887,7 +1887,8 @@
       "message_required": "Schrijf eerst een bericht.",
       "email": "E-mail (optioneel)",
       "email_placeholder": "u@voorbeeld.nl",
-      "use_my_email": "Mijn e-mail gebruiken",
+      "use_email": "{email} gebruiken",
+      "clear_email": "E-mail wissen",
       "send": "Versturen",
       "sent": "Bedankt voor uw feedback!",
       "failed": "Uw feedback kon niet worden verstuurd. Probeer het opnieuw."

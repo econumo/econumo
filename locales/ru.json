@@ -1887,7 +1887,8 @@
       "message_required": "Сначала напишите сообщение.",
       "email": "Email (необязательно)",
       "email_placeholder": "you@example.com",
-      "use_my_email": "Указать мой email",
+      "use_email": "Указать {email}",
+      "clear_email": "Очистить email",
       "send": "Отправить",
       "sent": "Спасибо за отзыв!",
       "failed": "Не удалось отправить отзыв. Попробуйте ещё раз."

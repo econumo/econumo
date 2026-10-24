@@ -96,7 +96,7 @@ it('the last row opens the feedback dialog, unless the server turns feedback off
   renderPage()
   await user.click(await screen.findByRole('button', { name: 'Send feedback' }))
   expect(useUiStore.getState().feedbackOpen).toBe(true)
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.FEEDBACK_OPEN, { source: 'settings' })
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.FEEDBACK_OPEN)
   cleanup()
 
   window.econumoConfig = { FEEDBACK: false }

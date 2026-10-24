@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,7 @@ function FeedbackForm({ onDone }: { onDone: () => void }) {
   // empty by default: replying is never promised, so the address is opt-in
   const [email, setEmail] = useState('')
   const [messageError, setMessageError] = useState<string | null>(null)
+  const suggested = user?.email ?? ''
 
   const send = useMutation({
     mutationFn: () =>
@@ -122,24 +124,42 @@ function FeedbackForm({ onDone }: { onDone: () => void }) {
           />
         </CardField>
 
-        <div className="flex flex-col gap-1">
-          <CardField label={t('feedback.dialog.email')} htmlFor="feedback-email">
+        <CardField label={t('feedback.dialog.email')} htmlFor="feedback-email">
+          <div className="flex items-center gap-2">
             <Input
               id="feedback-email"
               type="email"
               autoComplete="email"
-              className={cardFieldControlClass}
-              placeholder={t('feedback.dialog.email_placeholder')}
+              className={`${cardFieldControlClass} min-w-0 flex-1`}
+              // the suggestion chip stands in for the placeholder while it shows
+              placeholder={suggested ? '' : t('feedback.dialog.email_placeholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-          </CardField>
-          {user?.email && email !== user.email ? (
-            <button type="button" className="self-start px-1 text-sm text-econumo-link hover:underline" onClick={() => setEmail(user.email)}>
-              {t('feedback.dialog.use_my_email')}
-            </button>
-          ) : null}
-        </div>
+            {email ? (
+              <button
+                type="button"
+                aria-label={t('feedback.dialog.clear_email')}
+                title={t('feedback.dialog.clear_email')}
+                className="-my-1 grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-econumo-hover hover:text-foreground"
+                onClick={() => setEmail('')}
+              >
+                <X className="size-4" />
+              </button>
+            ) : suggested ? (
+              <button
+                type="button"
+                aria-label={t('feedback.dialog.use_email', { email: suggested })}
+                title={t('feedback.dialog.use_email', { email: suggested })}
+                className="-my-1 flex min-w-0 max-w-[70%] shrink items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs text-econumo-link hover:bg-primary/15"
+                onClick={() => setEmail(suggested)}
+              >
+                <Plus className="size-3.5 shrink-0" />
+                <span className="truncate">{suggested}</span>
+              </button>
+            ) : null}
+          </div>
+        </CardField>
       </form>
     </ResponsiveDialog>
   )

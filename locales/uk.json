@@ -1887,7 +1887,8 @@
       "message_required": "Спершу напишіть повідомлення.",
       "email": "Email (необов'язково)",
       "email_placeholder": "you@example.com",
-      "use_my_email": "Вказати мій email",
+      "use_email": "Вказати {email}",
+      "clear_email": "Очистити email",
       "send": "Надіслати",
       "sent": "Дякуємо за відгук!",
       "failed": "Не вдалося надіслати відгук. Спробуйте ще раз."

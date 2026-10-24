@@ -778,9 +778,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   turns both on so the catalogue keeps covering the import routes.
 - `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
   fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
-  it on). Served as `FEEDBACK`; `false` hides the sidebar icon and the Settings row. The form
-  (`web/src/features/feedback`) posts `type`, `message`, an optional `email` (empty by default,
-  one click fills the user's own), `app_version` and `hosting` (`cloud`/`self-hosted`) from the
+  it on). Served as `FEEDBACK`; `false` hides the Settings row, the form's only entry point. The
+  form (`web/src/features/feedback`) posts `type`, `message`, an optional `email` (empty by
+  default, the user's own offered as a one-tap chip), `app_version` and `hosting` (`cloud`/`self-hosted`) from the
   BROWSER straight to the Twillingate form `feedback` of the product-analytics project
   (`submitForm` in `web/src/lib/analytics.ts`, the SDK's wire shape without the SDK), so it
   works with analytics off and carries no `$user_id` — only the synthetic `$host`.

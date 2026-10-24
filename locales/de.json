@@ -1887,7 +1887,8 @@
       "message_required": "Schreiben Sie zuerst eine Nachricht.",
       "email": "E-Mail (optional)",
       "email_placeholder": "sie@beispiel.de",
-      "use_my_email": "Meine E-Mail verwenden",
+      "use_email": "{email} verwenden",
+      "clear_email": "E-Mail löschen",
       "send": "Senden",
       "sent": "Danke für Ihr Feedback!",
       "failed": "Ihr Feedback konnte nicht gesendet werden. Bitte versuchen Sie es erneut."

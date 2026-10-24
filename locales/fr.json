@@ -1887,7 +1887,8 @@
       "message_required": "Écrivez d'abord un message.",
       "email": "E-mail (facultatif)",
       "email_placeholder": "vous@exemple.fr",
-      "use_my_email": "Utiliser mon e-mail",
+      "use_email": "Utiliser {email}",
+      "clear_email": "Effacer l'e-mail",
       "send": "Envoyer",
       "sent": "Merci pour votre avis !",
       "failed": "Impossible d'envoyer votre avis. Veuillez réessayer."

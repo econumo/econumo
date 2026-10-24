@@ -55,7 +55,7 @@ it('sends the type, message, email, version and hosting to the feedback form', a
   renderDialog()
   await userEvent.click(screen.getByRole('radio', { name: 'Bug report' }))
   await userEvent.type(screen.getByLabelText('Message'), '  The plan grid is blank  ')
-  await userEvent.click(await screen.findByRole('button', { name: 'Use my email' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Use ada@example.test' }))
   expect(screen.getByLabelText('Email (optional)')).toHaveValue('ada@example.test')
   await userEvent.click(screen.getByRole('button', { name: 'Send' }))
 
@@ -85,6 +85,19 @@ it('starts as plain feedback with no email filled in', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Send' }))
   await waitFor(() => expect(bodies).toHaveLength(1))
   expect(bodies[0].fields).toMatchObject({ type: 'feedback', email: '' })
+})
+
+it('the X clears a filled email and brings the suggestion back', async () => {
+  renderDialog()
+  expect(screen.queryByRole('button', { name: 'Clear email' })).not.toBeInTheDocument()
+  await userEvent.click(await screen.findByRole('button', { name: 'Use ada@example.test' }))
+  expect(screen.queryByRole('button', { name: 'Use ada@example.test' })).not.toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Clear email' }))
+  expect(screen.getByLabelText('Email (optional)')).toHaveValue('')
+  expect(screen.getByRole('button', { name: 'Use ada@example.test' })).toBeInTheDocument()
+
+  await userEvent.type(screen.getByLabelText('Email (optional)'), 'me@other.test')
+  expect(screen.getByRole('button', { name: 'Clear email' })).toBeInTheDocument()
 })
 
 it('refuses an empty message without sending', async () => {

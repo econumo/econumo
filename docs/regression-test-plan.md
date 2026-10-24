@@ -2123,20 +2123,21 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Dark theme: text inputs, selects, textareas and the amount/plan fields
       (Add transaction, Set plan) carry no fill of their own: they show the
       surface they sit on, as in the light theme. 📱
-- [ ] 📱 Send feedback: the sidebar footer (an icon next to sync; also in the
-      collapsed icon rail) and the last Settings row, "Send feedback", open a
-      dialog with Feedback / Feature request / Bug report (Feedback selected),
-      a Message box, and an empty "Email (optional)" field with a "Use my
-      email" link that fills in the signed-in address. "We read every message,
-      but may not reply." sits under the title. Send with an empty message
-      shows "Write a message first." and sends nothing; a real message shows
-      "Thanks for your feedback!" and closes the dialog, and the submission
-      appears in the econumo project's `feedback` form in Twillingate with its
-      type, message, email, app version and `cloud`/`self-hosted`. Opening the
-      dialog again starts empty. Offline (or the collector blocked), Send shows
-      "Couldn't send your feedback. Please try again." and keeps the text.
-- [ ] With `ECONUMO_FEEDBACK=false`, neither the sidebar icon nor the Settings
-      row appears.
+- [ ] 📱 Send feedback: the last Settings row, "Send feedback" (under
+      "Feedback"; the sidebar has no feedback entry), opens a dialog with
+      Feedback / Feature request / Bug report (Feedback selected), a Message
+      box, and an empty "Email (optional)" field showing the signed-in address
+      as a chip inside it. Tapping the chip fills the field; a filled field
+      (typed or from the chip) shows an X that empties it and brings the chip
+      back. "We read every message, but may not reply." sits under the title.
+      Send with an empty message shows "Write a message first." and sends
+      nothing; a real message shows "Thanks for your feedback!" and closes the
+      dialog, and the submission appears in the econumo project's `feedback`
+      form in Twillingate with its type, message, email, app version and
+      `cloud`/`self-hosted`. Opening the dialog again starts empty. Offline
+      (or the collector blocked), Send shows "Couldn't send your feedback.
+      Please try again." and keeps the text.
+- [ ] With `ECONUMO_FEEDBACK=false`, the Settings row does not appear.
 - [ ] 📱 Install banner, iOS Safari (not yet added to the Home Screen): a
       one-line banner "Econumo works best as an app" with an "Install" button
       and × sits at the top of every page — `/login`, `/register`, the app

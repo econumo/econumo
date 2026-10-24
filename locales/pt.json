@@ -1887,7 +1887,8 @@
       "message_required": "Escreva primeiro uma mensagem.",
       "email": "E-mail (opcional)",
       "email_placeholder": "voce@exemplo.pt",
-      "use_my_email": "Usar o meu e-mail",
+      "use_email": "Usar {email}",
+      "clear_email": "Limpar e-mail",
       "send": "Enviar",
       "sent": "Obrigado pelo seu comentário!",
       "failed": "Não foi possível enviar o comentário. Tente novamente."
