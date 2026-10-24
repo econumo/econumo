@@ -318,6 +318,14 @@ navigation (single-pane vs sidebar).
       then drag; a quick tap still opens the preview, a quick swipe still
       scrolls, and a long press shows no text-selection or callout menu (iOS
       home-screen app). Dragging near the top/bottom edge scrolls the list.
+- [ ] Account page on an iPad in landscape (desktop layout, no hover): the grip
+      shows on every draggable row without hovering, and dragging it with a
+      finger reorders.
+- [ ] Account page in a narrow desktop browser window (phone layout): press and
+      hold a row with the mouse for about half a second, then drag; a plain
+      click still opens the preview.
+- [ ] CSV import that names a new category/payee/tag in different letter cases
+      ("Snacks" on one row, "snacks" on a later one) creates it as first spelled.
 - [ ] Account page 📱: dropping a row into another day's group moves it to that
       day (time of day kept, edit dialog shows the new date) at the drop
       position; while the row hovers another day, that day's header is

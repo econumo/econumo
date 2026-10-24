@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 import type { HTMLAttributes, ReactNode } from 'react'
-import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -36,7 +36,7 @@ function groupDayOf(entries: DailyListEntry[], index: number): string | null {
 
 export function HistoryDragProvider({ entries, touch, onDrop, renderOverlay, children }: {
   entries: DailyListEntry[]
-  /** phone/tablet layout: rows lift on a long press instead of from the grip */
+  /** phone layout: rows lift on a long press instead of from the grip */
   touch: boolean
   onDrop: (tx: ViewTransaction, drop: HistoryDrop, dayChanged: boolean) => void
   renderOverlay: (tx: ViewTransaction) => ReactNode
@@ -45,8 +45,13 @@ export function HistoryDragProvider({ entries, touch, onDrop, renderOverlay, chi
   const pointer = useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
   const keyboard = useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   const hold = useSensor(TouchSensor, { activationConstraint: { delay: TOUCH_HOLD_MS, tolerance: 8 } })
-  // a pointer sensor on a touch screen would turn every scroll swipe into a drag
-  const sensors = useSensors(touch ? hold : pointer, touch ? null : keyboard)
+  const mouseHold = useSensor(MouseSensor, { activationConstraint: { delay: TOUCH_HOLD_MS, tolerance: 8 } })
+  // The phone layout lifts the whole row by press-and-hold: a finger through
+  // the touch sensor, a mouse (a narrow desktop window) through the mouse one.
+  // A pointer sensor there would turn every scroll swipe into a drag. The
+  // desktop grip has touch-action: none, so its pointer sensor also serves a
+  // finger (an iPad in the desktop layout).
+  const sensors = useSensors(touch ? hold : pointer, touch ? mouseHold : keyboard)
   const keys = useMemo(() => entries.map(entryKey), [entries])
   const [active, setActive] = useState<ViewTransaction | null>(null)
   const [targetDay, setTargetDay] = useState<string | null>(null)

@@ -304,7 +304,7 @@ export function AccountPage() {
                   type="button"
                   aria-label={t('accounts.page.transaction_list.drag_handle')}
                   title={t('accounts.page.transaction_list.drag_handle')}
-                  className="mt-2.5 -mr-1 flex w-4 shrink-0 cursor-grab touch-none justify-center text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                  className="mt-2.5 -mr-1 flex w-4 shrink-0 cursor-grab touch-none justify-center text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                   onClick={(e) => e.stopPropagation()}
                   {...handle}
                 >

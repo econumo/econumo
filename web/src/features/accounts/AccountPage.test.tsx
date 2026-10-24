@@ -570,6 +570,13 @@ describe('drag to reorder', () => {
     expect(handles()).toHaveLength(0)
   })
 
+  it('desktop: the grip stays visible on touch screens, which cannot hover', async () => {
+    mockViewport(false)
+    renderPage()
+    await screen.findByTestId('tx-t1')
+    expect(handles()[0].className).toContain('[@media(hover:none)]:opacity-100')
+  })
+
   it('compact: rows lift by press-and-hold, so there is no grip', async () => {
     mockViewport(true)
     renderPage()
