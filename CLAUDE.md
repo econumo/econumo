@@ -365,8 +365,11 @@ compatibility floors), `VERSION_REF` the source revision of the build
 (`getVersionRef()`, `""` when unknown; `internal/version.Ref()`: the
 ldflags-stamped `version.Commit`, else the toolchain's `vcs.revision`), which only
 keys the persisted caches — the query-cache and IndexedDB busters are
-`getCacheBuster()`, `VERSION+VERSION_REF`, so a dev deploy (every dev build reports
-`VERSION` `dev`) restores nothing an older build cached — `VERSION_LABEL` is the text the UI DISPLAYS
+`getCacheBuster()`, `VERSION+VERSION_REF`, so a published dev deploy (every dev
+build reports `VERSION` `dev`) restores nothing an older build cached. A build with no
+ref (a bare `docker compose up --build`, which has no `.git` in its context) or one
+from a dirty tree shares its key with the previous build; bump `FORMAT_VERSION` in
+`transactionStore.ts` when such a build changes the stored shape — `VERSION_LABEL` is the text the UI DISPLAYS
 (`getVersionLabel()` — the sidebar footer and the settings row, nothing else),
 set by the runtime `ECONUMO_VERSION` and falling back to `VERSION`. Vite also
 inlines a build-time `ECONUMO_VERSION` as the bundle's own version (the Docker
