@@ -297,8 +297,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                     const row = payload[0].payload as Record<string, number | string>
                     return (
                       <div className="min-w-40 rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-sm">
-                        <div className="text-muted-foreground">{row.label}</div>
-                        <div className="mb-1 tabular-nums">{money(String(row.value))}</div>
+                        <div className="mb-1 text-muted-foreground">{row.label}</div>
                         {bands.map((b, bi) => (
                           <div key={b.id} className="flex items-center justify-between gap-3 text-muted-foreground">
                             <span className="flex items-center gap-1.5">
@@ -308,6 +307,10 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                             <span className="tabular-nums">{money(String(row[`b${bi}`]))}</span>
                           </div>
                         ))}
+                        <div className="mt-1 flex items-center justify-between gap-3 border-t pt-1">
+                          <span>{t('reports.spending.total')}</span>
+                          <span className="tabular-nums">{money(String(row.value))}</span>
+                        </div>
                       </div>
                     )
                   }}
