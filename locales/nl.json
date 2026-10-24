@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "Geen transacties gevonden",
+        "drag_handle": "Sleep om te herschikken",
         "today": "Vandaag",
         "yesterday": "Gisteren",
         "item": {

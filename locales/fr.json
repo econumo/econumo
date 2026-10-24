@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "Aucune transaction trouvée",
+        "drag_handle": "Faites glisser pour réorganiser",
         "today": "Aujourd’hui",
         "yesterday": "Hier",
         "item": {

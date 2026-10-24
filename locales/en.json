@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "No transactions found",
+        "drag_handle": "Drag to reorder",
         "today": "Today",
         "yesterday": "Yesterday",
         "item": {

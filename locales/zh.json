@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "未找到交易",
+        "drag_handle": "拖动以重新排序",
         "today": "今天",
         "yesterday": "昨天",
         "item": {

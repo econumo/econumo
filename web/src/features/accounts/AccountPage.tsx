@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatDate } from '@/lib/datetime'
-import { ChevronLeft, MoreVertical, Plus, Settings2 } from 'lucide-react'
+import { ChevronLeft, GripVertical, MoreVertical, Plus, Settings2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
 import type { RecurringDto } from '@/api/dto/recurring'
@@ -16,8 +17,11 @@ import { useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { useAccounts } from './queries'
 import { TransactionHistory } from './TransactionHistory'
+import { HistoryDragProvider, SortableHistoryEntry } from './HistoryDrag'
+import { entryKey } from './historyDrop'
+import type { HistoryDrop } from './historyDrop'
 import { useUserData } from '@/features/user/queries'
-import { useDeleteTransaction } from '@/features/transactions/queries'
+import { useDeleteTransaction, useMoveTransaction } from '@/features/transactions/queries'
 import { useDeleteRecurring, usePostRecurring, useRecurring, useSkipRecurring } from '@/features/recurring/queries'
 import { ViewRecurringDialog } from '@/features/recurring/ViewRecurringDialog'
 import { recurringPostPayload } from '@/features/recurring/postPayload'
@@ -37,6 +41,7 @@ export function AccountPage() {
   const { data: accounts } = useAccounts()
   const { data: user } = useUserData()
   const deleteTransaction = useDeleteTransaction()
+  const moveTransaction = useMoveTransaction()
   const skipRecurring = useSkipRecurring()
   const postRecurring = usePostRecurring()
   const deleteRecurring = useDeleteRecurring()
@@ -98,6 +103,17 @@ export function AccountPage() {
   const canChangeTransaction = canWriteToAccount(account, user?.id)
 
   const canTouchRow = (tx: ViewTransaction): boolean => canTouchTransaction(tx, canChangeTransaction)
+  // reordering writes only this account's order, so write access to it is
+  // enough; moving to another day edits the transaction (canTouchRow)
+  const canDrag = (tx: ViewTransaction): boolean => canChangeTransaction && !tx.recurring && search.trim() === ''
+
+  const dropTransaction = (tx: ViewTransaction, drop: HistoryDrop, dayChanged: boolean) => {
+    if (dayChanged && !canTouchRow(tx)) {
+      toast.error(t('errors.transaction.cannot_move'))
+      return
+    }
+    moveTransaction.mutate({ id: tx.id, accountId: account.id, ...drop })
+  }
 
   const editTransaction = (tx: ViewTransaction) => {
     setPreview(null)
@@ -220,6 +236,12 @@ export function AccountPage() {
         </>
       )}
 
+      <HistoryDragProvider
+        entries={entries}
+        touch={isCompact}
+        onDrop={dropTransaction}
+        renderOverlay={(tx) => <TransactionRow transaction={tx} pageAccount={account} />}
+      >
       <TransactionHistory
         key={`${account.id}:${search}`}
         entries={entries}
@@ -229,9 +251,15 @@ export function AccountPage() {
       >
           {(entry) =>
             entry.kind === 'separator' ? (
-            <div key={`sep-${entry.day}`} className="px-2 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-              {separatorText(entry, t, i18n.language)}
-            </div>
+            <SortableHistoryEntry key={`sep-${entry.day}`} id={entryKey(entry)} draggable={false} touch={isCompact}>
+              {({ targetDay }) => (
+                <div
+                  className={`rounded-md px-2 pb-1 pt-4 text-xs font-medium uppercase ${targetDay === entry.day ? 'bg-accent text-foreground' : 'text-muted-foreground'}`}
+                >
+                  {separatorText(entry, t, i18n.language)}
+                </div>
+              )}
+            </SortableHistoryEntry>
           ) : (
             // The whole row is one hover/tap surface (like the settings lists):
             // click opens the transaction preview; desktop keeps the kebab menu
@@ -240,10 +268,20 @@ export function AccountPage() {
             // skipping advances nextPaymentAt, and a template-id key would MOVE
             // the just-tapped node to the next (later) date — browser scroll
             // anchoring then follows it to the top of the future block.
+            <SortableHistoryEntry
+              key={entryKey(entry)}
+              id={entryKey(entry)}
+              draggable={canDrag(entry.transaction)}
+              touch={isCompact}
+            >
+              {({ row, handle, justDragged }) => (
             <div
-              key={entry.transaction.recurring ? `${entry.transaction.id}@${entry.transaction.date}` : entry.transaction.id}
-              className={`flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'}`}
+              {...row}
+              className={`group flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'} ${isCompact && canDrag(entry.transaction) ? 'select-none [-webkit-touch-callout:none]' : ''}`}
               onClick={() => {
+                if (justDragged()) {
+                  return
+                }
                 const rt = entry.transaction.recurring
                 if (rt) {
                   setRecurringPreview(rt)
@@ -252,6 +290,20 @@ export function AccountPage() {
                 }
               }}
             >
+              {handle ? (
+                <button
+                  type="button"
+                  aria-label={t('accounts.page.transaction_list.drag_handle')}
+                  title={t('accounts.page.transaction_list.drag_handle')}
+                  className="mt-2.5 -mr-1 flex w-4 shrink-0 cursor-grab touch-none justify-center text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                  onClick={(e) => e.stopPropagation()}
+                  {...handle}
+                >
+                  <GripVertical className="size-4" />
+                </button>
+              ) : !isCompact ? (
+                <span className="-mr-1 w-4 shrink-0" aria-hidden="true" />
+              ) : null}
               <div className="min-w-0 flex-1">
                 <TransactionRow
                   transaction={entry.transaction}
@@ -314,9 +366,12 @@ export function AccountPage() {
                 </DropdownMenu>
               ) : null}
             </div>
+              )}
+            </SortableHistoryEntry>
           )
           }
       </TransactionHistory>
+      </HistoryDragProvider>
 
       {isCompact && canChangeTransaction ? (
         <footer className="shrink-0 pb-[env(safe-area-inset-bottom)]">
