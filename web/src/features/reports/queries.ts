@@ -3,6 +3,7 @@ import * as reportApi from '@/api/report'
 import type { FlowReportDto, GroupBy, NetWorthReportDto } from '@/api/dto/report'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { useBudgets } from '@/features/budgets/queries'
 
 interface ReportQueryParams {
   budgetId: Id | null
@@ -31,4 +32,11 @@ export function useNetWorthReport(params: ReportQueryParams) {
     staleTime: TEN_MINUTES,
     placeholderData: keepPreviousData,
   })
+}
+
+/** Budgets a report can be scoped to: archived ones are left out. With none
+ *  left the scope picker disappears and every report is "My accounts". */
+export function useReportBudgets() {
+  const query = useBudgets()
+  return { ...query, data: query.data?.filter((b) => b.isArchived !== 1) }
 }

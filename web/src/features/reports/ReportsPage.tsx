@@ -7,7 +7,6 @@ import { ChevronLeft } from 'lucide-react'
 import { UserOptions } from '@/api/dto/user'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
-import { useBudgets } from '@/features/budgets/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useIsCompact } from '@/hooks/useIsCompact'
@@ -16,7 +15,7 @@ import { ReportList } from './ReportList'
 import { MAX_REPORT_TABS, REPORT_QUESTION, tabTitle, useReportTabs } from './reportTabs'
 import type { ReportKind, ReportTab } from './reportTabs'
 import { TabBar } from './TabBar'
-import { flowReportQuery } from './queries'
+import { flowReportQuery, useReportBudgets } from './queries'
 import { flowQueryArgs } from './reportPeriod'
 import { SpendingReport } from './SpendingReport'
 import { CashFlowReport } from './CashFlowReport'
@@ -65,7 +64,7 @@ export function ReportsPage() {
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const { data: user } = useUserData()
-  const { data: budgets } = useBudgets()
+  const { data: budgets } = useReportBudgets()
   const { data: categories } = useCategories()
   const { data: tags } = useTags()
   const { data: payees } = usePayees()

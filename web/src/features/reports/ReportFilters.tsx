@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import type { GroupBy } from '@/api/dto/report'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useBudgets } from '@/features/budgets/queries'
 import { addMonths, currentMonth } from '@/features/budgets/planMath'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { Step } from './reportMath'
 import { periodFrom } from './reportPeriod'
+import { useReportBudgets } from './queries'
 import { useReportTabs } from './reportTabs'
 import type { ReportParams, ReportTab } from './reportTabs'
 
@@ -50,7 +50,7 @@ export function ReportFilters({ tab, showStep = true, showGroupBy = false, showP
   showPeriod?: boolean
 }) {
   const { t } = useTranslation()
-  const { data: budgets } = useBudgets()
+  const { data: budgets } = useReportBudgets()
   const setParams = (patch: Partial<ReportParams>) => useReportTabs.getState().setParams(tab.id, patch)
   const p = tab.params
   const thisMonth = currentMonth()
@@ -60,6 +60,7 @@ export function ReportFilters({ tab, showStep = true, showGroupBy = false, showP
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
+        {(budgets ?? []).length > 0 ? (
         <Select
           value={known && p.budgetId ? p.budgetId : MINE}
           onValueChange={(v) => {
@@ -79,6 +80,7 @@ export function ReportFilters({ tab, showStep = true, showGroupBy = false, showP
             ))}
           </SelectContent>
         </Select>
+        ) : null}
         {showPeriod ? (
           <Select
             value={p.period}

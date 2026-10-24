@@ -3,12 +3,11 @@ import { useTranslation } from 'react-i18next'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useBudgets } from '@/features/budgets/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { abs, add, div, isNegative, isZero, mul, sub } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import { cashFlow, netWorthInsight, netWorthSeries, spendingInsight } from './reportMath'
-import { useFlowReport, useNetWorthReport } from './queries'
+import { useFlowReport, useNetWorthReport, useReportBudgets } from './queries'
 import { REPORT_QUESTION } from './reportTabs'
 import type { ReportKind } from './reportTabs'
 
@@ -187,7 +186,7 @@ export function ReportList({ budgetId, onScope, onChoose }: {
   onChoose: (kind: Exclude<ReportKind, 'list'>) => void
 }) {
   const { t } = useTranslation()
-  const { data: budgets } = useBudgets()
+  const { data: budgets } = useReportBudgets()
   const year = new Date().getFullYear()
   // until the list lands a stored budget is trusted; the page repairs one that is gone
   const known = budgetId === null || !budgets || budgets.some((b) => b.id === budgetId)
@@ -195,6 +194,7 @@ export function ReportList({ budgetId, onScope, onChoose }: {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">{t('reports.list.choose')}</span>
+        {(budgets ?? []).length > 0 ? (
         <Select value={known && budgetId ? budgetId : MINE} onValueChange={(v) => onScope(v === MINE ? null : v)}>
           <SelectTrigger aria-label={t('reports.list.scope')} className="w-auto max-w-64 min-w-40">
             <SelectValue />
@@ -206,6 +206,7 @@ export function ReportList({ budgetId, onScope, onChoose }: {
             ))}
           </SelectContent>
         </Select>
+        ) : null}
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <SpendingCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('spending')} />

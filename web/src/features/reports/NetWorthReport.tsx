@@ -12,14 +12,13 @@ import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import type { ChartConfig } from '@/components/ui/chart'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
-import { useBudgets } from '@/features/budgets/queries'
 import { useUserData } from '@/features/user/queries'
 import { add, cmp, isNegative, isZero, sub } from '@/lib/decimal'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { netWorthGroupOf } from './reportMath'
 import { netWorthQueryArgs } from './reportPeriod'
 import { usePeriodLabels } from './usePeriodLabels'
-import { useNetWorthReport } from './queries'
+import { useNetWorthReport, useReportBudgets } from './queries'
 import { compactNumber, signedMoney, useMoney } from './reportFormat'
 import { ReportUpdatedAt } from './ReportUpdatedAt'
 import { LINE, NAME_COL } from '@/features/budgets/monthLayout'
@@ -62,12 +61,12 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const compact = useMemo(() => compactNumber(i18n.language), [i18n.language])
   const { data: user } = useUserData()
   const { data: accounts } = useAccounts()
-  const { data: budgets } = useBudgets()
+  const { data: budgets } = useReportBudgets()
   const { data: folders } = useFolders()
   const [open, setOpen] = useState<Set<string>>(new Set())
   const preset = PRESETS.find((o) => o.value === p.period) ?? PRESETS[1]
 
-  const scopePicker = (
+  const scopePicker = (budgets ?? []).length === 0 ? null : (
     <Select
       value={p.budgetId ?? MINE}
       onValueChange={(v) => {

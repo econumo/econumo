@@ -29,11 +29,13 @@ export interface TabBarProps {
   onMove: (id: string, toIndex: number) => void
 }
 
-function RenameInput({ initial, onSave, onCancel, className }: {
+function RenameInput({ initial, onSave, onCancel, className, sizerClassName }: {
   initial: string
   onSave: (title: string) => void
   onCancel: () => void
   className: string
+  /** the input's box without its colours: an invisible copy of the text sizes the field, so renaming never changes the tab's width */
+  sizerClassName: string
 }) {
   const { t } = useTranslation()
   const [value, setValue] = useState(initial)
@@ -49,9 +51,11 @@ function RenameInput({ initial, onSave, onCancel, className }: {
     }
   }
   return (
-    <input
+    <span className="inline-grid min-w-0">
+      <span aria-hidden="true" className={`invisible col-start-1 row-start-1 whitespace-pre ${sizerClassName}`}>{value || ' '}</span>
+      <input
       aria-label={t('reports.tabs.name_label')}
-      className={className}
+      className={`col-start-1 row-start-1 w-full min-w-0 ${className}`}
       value={value}
       maxLength={64}
       autoFocus
@@ -69,6 +73,7 @@ function RenameInput({ initial, onSave, onCancel, className }: {
         }
       }}
     />
+    </span>
   )
 }
 
@@ -92,10 +97,9 @@ function DesktopTab({ tab, active, editing, onActivate, onStartRename, onRename,
       {...listeners}
       role="presentation"
       tabIndex={undefined}
-      className={`group -mb-px flex max-w-56 shrink-0 items-center gap-0.5 rounded-t-lg border pl-3 pr-1 ${
-        active
-          ? 'border-border border-b-background bg-background text-foreground'
-          : 'border-transparent text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+      // underlined like the Budget / Plan switch: the selected tab carries the rule
+      className={`group -mb-px flex max-w-56 shrink-0 items-center gap-1 border-b-2 ${
+        active ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
       } ${isDragging ? 'z-10 opacity-80' : ''}`}
     >
       {editing ? (
@@ -103,7 +107,8 @@ function DesktopTab({ tab, active, editing, onActivate, onStartRename, onRename,
           initial={tab.title}
           onSave={onRename}
           onCancel={onCancelRename}
-          className="my-1 w-36 rounded border border-primary bg-transparent px-1 py-0.5 text-sm outline-none"
+          className="bg-transparent py-2.5 text-sm outline-none"
+          sizerClassName="py-2.5 text-sm"
         />
       ) : (
         <button
@@ -111,7 +116,7 @@ function DesktopTab({ tab, active, editing, onActivate, onStartRename, onRename,
           role="tab"
           aria-selected={active}
           title={tab.title}
-          className="min-w-0 truncate py-2 text-sm outline-none focus-visible:underline"
+          className="min-w-0 truncate py-2.5 text-sm outline-none focus-visible:underline"
           onClick={onActivate}
           onDoubleClick={onStartRename}
         >
@@ -122,13 +127,11 @@ function DesktopTab({ tab, active, editing, onActivate, onStartRename, onRename,
         type="button"
         aria-label={t('reports.tabs.close', { name: tab.title })}
         title={t('reports.tabs.close_menu')}
-        className={`grid size-6 shrink-0 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground ${
-          active ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
-        }`}
+        className="-mr-1 grid size-5 shrink-0 place-items-center rounded-full text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={onClose}
       >
-        <X className="size-3.5" />
+        <X className="size-3" />
       </button>
     </div>
   )
@@ -144,10 +147,10 @@ function DesktopStrip(props: TabBarProps) {
     if (to !== -1) props.onMove(String(active.id), to)
   }
   return (
-    <div className="flex items-end gap-0.5 overflow-x-auto border-b px-1 scrollbar-none">
+    <div className="flex items-center gap-4 overflow-x-auto border-b scrollbar-none">
       <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToHorizontalAxis]} onDragEnd={onDragEnd}>
         <SortableContext items={props.tabs.map((tab) => tab.id)} strategy={horizontalListSortingStrategy}>
-          <div role="tablist" aria-label={t('reports.page.title')} className="flex items-end gap-0.5">
+          <div role="tablist" aria-label={t('reports.page.title')} className="flex items-end gap-5">
             {props.tabs.map((tab) => (
               <DesktopTab
                 key={tab.id}
@@ -168,7 +171,7 @@ function DesktopStrip(props: TabBarProps) {
         </SortableContext>
       </DndContext>
       <NewTabButton canAdd={props.canAdd} onNew={props.onNew}
-        className="mb-1 grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent" />
+        className="grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent" />
     </div>
   )
 }
@@ -217,7 +220,8 @@ function Pill({ tab, active, editing, menuOpen, onActivate, onMenu, onMenuOpenCh
           initial={tab.title}
           onSave={onRename}
           onCancel={onCancelRename}
-          className={`${base} w-36 border-primary bg-transparent outline-none`}
+          className={`${base} border-primary bg-transparent outline-none`}
+          sizerClassName={base}
         />
       ) : (
         <button
