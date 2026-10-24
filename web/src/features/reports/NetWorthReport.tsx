@@ -161,7 +161,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     const isOpen = open.has(g.line.id)
     if (g.accounts.length === 0) {
       return [
-        <tr key={g.line.id} className="border-b border-border/60">
+        <tr key={g.line.id} className="border-b border-border/60 hover:bg-econumo-hover/60">
           <td className="py-2 pr-2 pl-[1.125rem]">
             <span className="flex min-w-0 items-center gap-1">
                 <span className="truncate">{g.line.name}</span>
@@ -189,7 +189,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       </tr>,
       ...(isOpen
         ? g.accounts.map((a) => (
-            <tr key={`${g.line.id}-${a.id}`} className="border-b border-border/60 text-muted-foreground">
+            <tr key={`${g.line.id}-${a.id}`} className="border-b border-border/60 text-muted-foreground hover:bg-econumo-hover/60">
               <td className="truncate py-2 pr-2 pl-5">{a.name}</td>
               <td className={`hidden ${num} sm:table-cell`}>{money(a.start)}</td>
               <td className={num}>{money(a.now)}</td>
@@ -249,7 +249,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const dim = report.isPlaceholderData ? 'opacity-60 transition-opacity' : ''
 
   const row = (l: Line, strong = false) => (
-    <tr key={l.id} className={strong ? '' : 'border-b border-border/60'}>
+    <tr key={l.id} className={`hover:bg-econumo-hover/60 ${strong ? '' : 'border-b border-border/60'}`}>
       <td className="truncate py-2 pr-2">{l.name}</td>
       <td className={`hidden ${num} text-muted-foreground sm:table-cell`}>{money(l.start)}</td>
       <td className={num}>{money(l.now)}</td>
