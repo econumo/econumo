@@ -1885,10 +1885,10 @@
       "type": "Tipo",
       "message": "Mensagem",
       "message_required": "Escreva primeiro uma mensagem.",
-      "email": "E-mail (opcional)",
-      "email_placeholder": "voce@exemplo.pt",
+      "email": "Email (opcional)",
+      "email_placeholder": "nome@exemplo.pt",
       "use_email": "Usar {email}",
-      "clear_email": "Limpar e-mail",
+      "clear_email": "Limpar email",
       "send": "Enviar",
       "sent": "Obrigado pelo seu comentário!",
       "failed": "Não foi possível enviar o comentário. Tente novamente."
@@ -1900,7 +1900,7 @@
     },
     "placeholder": {
       "feedback": "De que gosta, ou o que poderia ser melhor?",
-      "feature_request": "O que gostaria que o Econumo fizesse?",
+      "feature_request": "O que falta no Econumo?",
       "bug_report": "O que aconteceu e o que esperava?"
     }
   },

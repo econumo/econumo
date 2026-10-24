@@ -1881,12 +1881,12 @@
     },
     "dialog": {
       "title": "发送反馈",
-      "no_reply": "我们会阅读每条消息，但不一定回复。",
+      "no_reply": "我们会阅读每一条反馈，但不一定回复。",
       "type": "类型",
-      "message": "消息",
-      "message_required": "请先填写消息。",
+      "message": "内容",
+      "message_required": "请先填写内容。",
       "email": "邮箱（可选）",
-      "email_placeholder": "you@example.com",
+      "email_placeholder": "name@example.com",
       "use_email": "使用 {email}",
       "clear_email": "清除邮箱",
       "send": "发送",
@@ -1900,8 +1900,8 @@
     },
     "placeholder": {
       "feedback": "您喜欢什么，或者哪里可以改进？",
-      "feature_request": "您希望 Econumo 能做什么？",
-      "bug_report": "发生了什么，您原本期望怎样？"
+      "feature_request": "您希望 Econumo 增加什么功能？",
+      "bug_report": "发生了什么？您原本期望的结果是什么？"
     }
   },
   "subscription": {

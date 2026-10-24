@@ -1885,10 +1885,10 @@
       "type": "Soort",
       "message": "Bericht",
       "message_required": "Schrijf eerst een bericht.",
-      "email": "E-mail (optioneel)",
-      "email_placeholder": "u@voorbeeld.nl",
+      "email": "E-mailadres (optioneel)",
+      "email_placeholder": "naam@voorbeeld.nl",
       "use_email": "{email} gebruiken",
-      "clear_email": "E-mail wissen",
+      "clear_email": "E-mailadres wissen",
       "send": "Versturen",
       "sent": "Bedankt voor uw feedback!",
       "failed": "Uw feedback kon niet worden verstuurd. Probeer het opnieuw."
@@ -1900,8 +1900,8 @@
     },
     "placeholder": {
       "feedback": "Wat vindt u goed, of wat kan beter?",
-      "feature_request": "Wat zou u willen dat Econumo doet?",
-      "bug_report": "Wat gebeurde er, en wat verwachtte u?"
+      "feature_request": "Wat mist u in Econumo?",
+      "bug_report": "Wat ging er mis, en wat verwachtte u?"
     }
   },
   "subscription": {

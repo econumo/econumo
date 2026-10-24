@@ -1886,7 +1886,7 @@
       "message": "Messaggio",
       "message_required": "Scrivi prima un messaggio.",
       "email": "Email (facoltativa)",
-      "email_placeholder": "tu@esempio.it",
+      "email_placeholder": "nome@esempio.it",
       "use_email": "Usa {email}",
       "clear_email": "Cancella email",
       "send": "Invia",
@@ -1900,8 +1900,8 @@
     },
     "placeholder": {
       "feedback": "Cosa ti piace o cosa potrebbe migliorare?",
-      "feature_request": "Cosa vorresti che facesse Econumo?",
-      "bug_report": "Cosa è successo e cosa ti aspettavi?"
+      "feature_request": "Cosa manca in Econumo?",
+      "bug_report": "Cos'è successo e cosa ti aspettavi?"
     }
   },
   "subscription": {

@@ -1886,7 +1886,7 @@
       "message": "Сообщение",
       "message_required": "Сначала напишите сообщение.",
       "email": "Email (необязательно)",
-      "email_placeholder": "you@example.com",
+      "email_placeholder": "name@example.com",
       "use_email": "Указать {email}",
       "clear_email": "Очистить email",
       "send": "Отправить",
@@ -1900,7 +1900,7 @@
     },
     "placeholder": {
       "feedback": "Что вам нравится или что можно улучшить?",
-      "feature_request": "Что бы вы хотели, чтобы умел Econumo?",
+      "feature_request": "Чего вам не хватает в Econumo?",
       "bug_report": "Что произошло и чего вы ожидали?"
     }
   },

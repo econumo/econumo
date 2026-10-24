@@ -1886,7 +1886,7 @@
       "message": "Wiadomość",
       "message_required": "Najpierw napisz wiadomość.",
       "email": "E-mail (opcjonalnie)",
-      "email_placeholder": "ty@przyklad.pl",
+      "email_placeholder": "imie@przyklad.pl",
       "use_email": "Użyj {email}",
       "clear_email": "Wyczyść e-mail",
       "send": "Wyślij",
@@ -1900,8 +1900,8 @@
     },
     "placeholder": {
       "feedback": "Co Ci się podoba, a co można poprawić?",
-      "feature_request": "Co chciałbyś, żeby Econumo robiło?",
-      "bug_report": "Co się stało i czego oczekiwałeś?"
+      "feature_request": "Czego brakuje Ci w Econumo?",
+      "bug_report": "Co się stało i czego się spodziewałeś?"
     }
   },
   "subscription": {
