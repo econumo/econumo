@@ -7,7 +7,7 @@ export interface PlanCellViewInput {
   type: BudgetElementType
   cell: PlanCellDto | undefined
   month: string
-  /** the month selected in the strip: later months have no actuals worth showing */
+  /** the month selected in the strip: later months show an actual only when it is non-zero */
   selected: string
 }
 
@@ -51,12 +51,14 @@ export function planCellView({ type, cell, month, selected }: PlanCellViewInput)
   if (type === BudgetElementType.SAVINGS && cell.closingBalance !== undefined) {
     return { actual: cell.closingBalance, dash: false, plan: shownPlan(cell.planned, cell.closingBalance), over: false, balance: true }
   }
-  const actual = past ? cell.actual : null
+  // a later month shows an actual only when upcoming recurring amounts folded one in
+  const showsActual = past || !isZero(cell.actual)
+  const actual = showsActual ? cell.actual : null
   const plan = shownPlan(cell.planned, actual)
   return {
     ...shownActual(actual, plan !== null),
     plan,
-    over: past && type !== BudgetElementType.SAVINGS && isOverspent(type, cell),
+    over: showsActual && type !== BudgetElementType.SAVINGS && isOverspent(type, cell),
     balance: false,
   }
 }

@@ -1194,6 +1194,10 @@
     }
   },
   "budgets": {
+    "transactions": {
+      "upcoming_hint": "即将到来的定期付款",
+      "later_cycle": "需在上一笔付款入账后才能入账"
+    },
     "modal": {
       "budget_form": {
         "accounts": "账户",

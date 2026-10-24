@@ -86,6 +86,11 @@ type ChildElementResult struct {
 	Spent       string `json:"spent"`
 	BudgetSpent string `json:"budgetSpent"`
 	OwnerUserId string `json:"ownerUserId"`
+	// Upcoming/BudgetUpcoming are the period's projected recurring payments not
+	// yet posted, in the parent's currency and the budget currency; Spent stays
+	// real money only.
+	Upcoming       string `json:"upcoming"`
+	BudgetUpcoming string `json:"budgetUpcoming"`
 }
 
 // ParentElementResult is a top-level budget element (envelope/tag/category).
@@ -104,6 +109,14 @@ type ParentElementResult struct {
 	BudgetSpent string               `json:"budgetSpent"`
 	Children    []ChildElementResult `json:"children"`
 	OwnerUserId *string              `json:"ownerUserId"`
+	// Upcoming is the period's projected recurring spend not yet posted, and
+	// UpcomingBefore the projected spend filed in earlier months of the
+	// projection window (from the caller's current month on), both in
+	// CurrencyId; BudgetUpcoming is Upcoming in the budget currency. Spent and
+	// Available stay real money only.
+	Upcoming       string `json:"upcoming"`
+	BudgetUpcoming string `json:"budgetUpcoming"`
+	UpcomingBefore string `json:"upcomingBefore"`
 }
 
 // LabelSpendResult is one reporting label in the budget's labels block. It has
@@ -121,6 +134,7 @@ type LabelSpendResult struct {
 	Spent       string               `json:"spent"`
 	OwnerUserId string               `json:"ownerUserId"`
 	Children    []ChildElementResult `json:"children"`
+	Upcoming    string               `json:"upcoming"`
 }
 
 // SavingsElementResult is one savings account's row in get-budget's
@@ -144,6 +158,9 @@ type SavingsElementResult struct {
 	Spent          string `json:"spent"`
 	Available      string `json:"available"`
 	ClosingBalance string `json:"closingBalance"`
+	// Upcoming is the period's projected recurring change of the account not
+	// yet posted, measured like Spent.
+	Upcoming string `json:"upcoming"`
 }
 
 // StructureResult is the budget's folders + ordered elements + labels +
@@ -317,16 +334,20 @@ func (r GetBudgetPlanRequest) Validate() error {
 }
 
 // PlanCellResult is one (element, month) plan cell. Planned is "" when no
-// limit row exists for that month — the frozen empty-cell encoding.
+// limit row exists for that month — the frozen empty-cell encoding. Upcoming
+// is the month's recurring payments not yet posted, filed like Actual; "0" for
+// a month before the caller's current one.
 type PlanCellResult struct {
-	Actual  string `json:"actual"`
-	Planned string `json:"planned"`
+	Actual   string `json:"actual"`
+	Planned  string `json:"planned"`
+	Upcoming string `json:"upcoming"`
 }
 
 // PlanChildCellResult is one (envelope child, month) cell — actual only;
 // planned lives on the parent, exactly like budgeted on the budget page.
 type PlanChildCellResult struct {
-	Actual string `json:"actual"`
+	Actual   string `json:"actual"`
+	Upcoming string `json:"upcoming"`
 }
 
 // PlanChildResult is a category nested under an envelope in the plan sheet.
@@ -412,11 +433,13 @@ type PlanSavingsElementResult struct {
 }
 
 // PlanSavingsCellResult is a savings row's month: ClosingBalance is the
-// account's booked balance at the end of that month, in the element currency.
+// account's booked balance at the end of that month, in the element currency;
+// it leaves Upcoming out, which the client adds.
 type PlanSavingsCellResult struct {
 	Actual         string `json:"actual"`
 	Planned        string `json:"planned"`
 	ClosingBalance string `json:"closingBalance"`
+	Upcoming       string `json:"upcoming"`
 }
 
 // PlanSavingsFlowResult is one (month, account currency) net change of the
@@ -443,6 +466,13 @@ type PlanStructureResult struct {
 // SavingsIncomeExpense is the income minus the expenses booked on the savings
 // accounts, same shape as SavingsFlows: the category rows count the everyday
 // accounts only, so the combined balance needs it added back.
+//
+// The Upcoming* arrays are their namesakes over the recurring payments not yet
+// posted, with the same shape and order rules: UpcomingOpeningBalances is what
+// is due before the window start (non-zero only for a window starting after
+// the current month). A window that ends before the caller's current month
+// projects nothing: opening balances "0", transfer months with no items, flows
+// [].
 type BudgetPlanResult struct {
 	Meta                   MetaResult                 `json:"meta"`
 	Months                 []string                   `json:"months"`
@@ -453,6 +483,12 @@ type BudgetPlanResult struct {
 	SavingsFlows           []PlanSavingsFlowResult    `json:"savingsFlows"`
 	SavingsIncomeExpense   []PlanSavingsFlowResult    `json:"savingsIncomeExpense"`
 	Structure              PlanStructureResult        `json:"structure"`
+
+	UpcomingOpeningBalances        []OpeningBalanceResult     `json:"upcomingOpeningBalances"`
+	UpcomingSavingsOpeningBalances []OpeningBalanceResult     `json:"upcomingSavingsOpeningBalances"`
+	UpcomingTransfers              []PlanMonthTransfersResult `json:"upcomingTransfers"`
+	UpcomingSavingsFlows           []PlanSavingsFlowResult    `json:"upcomingSavingsFlows"`
+	UpcomingSavingsIncomeExpense   []PlanSavingsFlowResult    `json:"upcomingSavingsIncomeExpense"`
 }
 
 // GetBudgetPlanResult is {item: BudgetPlanResult}.
@@ -810,9 +846,30 @@ type BudgetTransactionResult struct {
 	Type string `json:"type,omitempty"`
 }
 
-// GetBudgetTransactionListResult is {items: [...]}.
+// BudgetUpcomingResult is one projected occurrence of a recurring template in
+// the budget transaction list: Id is the template's id and SpentAt the
+// occurrence's due date (an overdue one keeps its original date). A template
+// due several times in the period repeats its Id, so clients must key rows by
+// (Id, SpentAt), never by Id alone. AccountId and AccountName are "" when the
+// template's account is not a member of the budget (a transfer in from outside
+// it): that account is not the budget's to show.
+type BudgetUpcomingResult struct {
+	BudgetTransactionResult
+	TemplateId  string   `json:"templateId"`
+	Schedule    string   `json:"schedule"`
+	AccountId   string   `json:"accountId"`
+	AccountName string   `json:"accountName"`
+	LabelNames  []string `json:"labelNames"`
+	IsNext      bool     `json:"isNext"`
+	IsOverdue   bool     `json:"isOverdue"`
+	CanEdit     bool     `json:"canEdit"`
+}
+
+// GetBudgetTransactionListResult is {items: [...], upcoming: [...]}. Items
+// carry real transactions only.
 type GetBudgetTransactionListResult struct {
-	Items []BudgetTransactionResult `json:"items"`
+	Items    []BudgetTransactionResult `json:"items"`
+	Upcoming []BudgetUpcomingResult    `json:"upcoming"`
 }
 
 // GetCommentListRequest selects a budget and a month window for the comment

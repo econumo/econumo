@@ -77,11 +77,17 @@ it('centres each figure in its column', () => {
   expect(screen.getByTestId('sheet-figure-budget').className).toContain('text-center')
 })
 
-it('shows a dash for Spent and no state sentence in a future month', () => {
-  const over: BudgetElementDto = { ...food, budgeted: '100', spent: '150', budgetSpent: '150', available: '-120' }
-  renderSheet({ target: { kind: 'expense', element: over }, month: '2099-01-01' })
+it('shows a dash for Spent and no state sentence in a future month with nothing upcoming', () => {
+  const idle: BudgetElementDto = { ...food, budgeted: '100', spent: '0', budgetSpent: '0', available: '100' }
+  renderSheet({ target: { kind: 'expense', element: idle }, month: '2099-01-01' })
   expect(screen.getByTestId('sheet-figure-spent')).toHaveTextContent('Spent—')
   expect(screen.queryByTestId('sheet-state')).toBeNull()
+})
+
+it('shows the combined Spent in a future month when upcoming exists', () => {
+  const upcoming: BudgetElementDto = { ...food, budgeted: '100', spent: '40', budgetSpent: '40', available: '60' }
+  renderSheet({ target: { kind: 'expense', element: upcoming }, month: '2099-01-01' })
+  expect(screen.getByTestId('sheet-figure-spent')).toHaveTextContent('40')
 })
 
 it('tags every amount of a foreign-currency item and adds the converted line and rate note', () => {

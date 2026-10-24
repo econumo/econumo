@@ -438,13 +438,12 @@ export interface PlanSelectionSum {
 }
 
 /** What a multi-cell selection adds up to, in the budget currency at each month's own
- *  rate. Actuals count up to `current` only, as the grid shows them; a savings row adds
+ *  rate. Future months count their actuals too (upcoming recurring folded in); a savings row adds
  *  what was saved, since its month-end balances added across months mean nothing. */
 export function planSelectionSum(
   cells: { el: PlanElementDto; month: string }[],
   monthIndex: (m: string) => number,
   ex: MonthExchange,
-  current: string,
 ): PlanSelectionSum {
   let planned = '0'
   let actual = '0'
@@ -457,9 +456,7 @@ export function planSelectionSum(
     if (cell.planned !== '') {
       planned = add(planned, ex(el.currencyId, cell.planned, i))
     }
-    if (month <= current) {
-      actual = add(actual, ex(el.currencyId, cell.actual, i))
-    }
+    actual = add(actual, ex(el.currencyId, cell.actual, i))
   }
   return { count: cells.length, planned, actual }
 }

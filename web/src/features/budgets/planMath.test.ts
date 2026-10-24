@@ -299,6 +299,13 @@ describe('totals + balance', () => {
     expect(totals[1].uncategorizedActual).toBe('-30')
   })
 
+  it('planTotals counts unplanned upcoming in a future month', () => {
+    const el = mkEl({ id: 'cat-x', type: 1, name: 'X', cells: [{ actual: '0', planned: '' }, { actual: '40', planned: '' }] })
+    const plan = mkPlan({ months: ['2026-07-01', '2026-08-01'], structure: { folders: [], elements: [el] } })
+    const totals = planTotals(plan, makePlanExchange(plan, [usd, eur]), new Date(2026, 6, 15))
+    expect(totals[1].effectiveNet).toBe('-40')
+  })
+
   it('planTotals converts each month with its own rates (2:1 then 4:1)', () => {
     const eurExpense = mkEl({
       id: 'cat-eur',
@@ -1168,21 +1175,19 @@ describe('planSelectionSum', () => {
       ],
       monthIndex,
       ex,
-      '2026-07-01',
     )
     // plans 20 + 0 + 4×2 + 3×3, actuals 10 + 5 + 1×2 + 2×3
     expect(sum).toEqual({ count: 4, planned: '37', actual: '23' })
   })
 
-  it('leaves out actuals after the current month, as the grid does', () => {
+  it('selection sum includes future actual', () => {
     const food = mkEl({ id: 'f', type: BudgetElementType.CATEGORY, name: 'Food', cells: cells3([['10', '20'], ['5', '1'], ['7', '2']]) })
     const sum = planSelectionSum(
       months.map((month) => ({ el: food, month })),
       monthIndex,
       ex,
-      '2026-07-01',
     )
-    expect(sum).toEqual({ count: 3, planned: '23', actual: '15' })
+    expect(sum).toEqual({ count: 3, planned: '23', actual: '22' })
   })
 
   it('adds what a savings account saved, not its month-end balance', () => {
@@ -1203,14 +1208,13 @@ describe('planSelectionSum', () => {
       ],
       monthIndex,
       ex,
-      '2026-07-01',
     )
     expect(sum).toEqual({ count: 2, planned: '200', actual: '150' })
   })
 
   it('counts a month the plan has no data for without adding anything', () => {
     const food = mkEl({ id: 'f', type: BudgetElementType.CATEGORY, name: 'Food', cells: cells3([['10', '20'], ['5', ''], ['0', '0']]) })
-    expect(planSelectionSum([{ el: food, month: '2026-06-01' }, { el: food, month: '2026-12-01' }], monthIndex, ex, '2026-12-01')).toEqual({
+    expect(planSelectionSum([{ el: food, month: '2026-06-01' }, { el: food, month: '2026-12-01' }], monthIndex, ex)).toEqual({
       count: 2,
       planned: '20',
       actual: '10',

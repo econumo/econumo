@@ -942,8 +942,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       const month = visibleMonths[c.col]
       return el && month !== undefined ? [{ el, month }] : []
     })
-    return planSelectionSum(cells, monthIndex, ex, cur)
-  }, [ex, shownPicked, flatRows, visibleMonths, monthIndex, cur])
+    return planSelectionSum(cells, monthIndex, ex)
+  }, [ex, shownPicked, flatRows, visibleMonths, monthIndex])
 
   const gridCtx: GridCtx | null = useMemo(() => {
     if (!plan || !ex) {

@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureOwner, fixtureWireBudget } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureTransactions, fixtureWireBudget } from '@/test/fixtures'
+import { formatDate, formatDateTime } from '@/lib/datetime'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import { queryKeys } from '@/app/queryKeys'
@@ -57,7 +58,7 @@ beforeEach(() => {
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
-  useUiStore.setState({ transactionModal: null })
+  useUiStore.setState({ transactionModal: null, recurringModal: null })
   server.use(
     ...coreHandlers(),
     http.get('*/api/v1/budget/get-transaction-list', () =>
@@ -424,4 +425,168 @@ it('opening a list fires the analytics event with its kind', async () => {
   renderDialog({ id: 'acc-savings', type: BudgetElementType.SAVINGS, name: 'Emergency fund', icon: 'savings', currencyId: 'cur-usd' })
   await vi.waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_TRANSACTIONS_OPEN, { kind: 'savings' }))
   expect(trackEvent).toHaveBeenCalledTimes(1)
+})
+
+const ownTemplate = {
+  id: 'r-gym', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+  amount: '10', categoryId: 'cat-food', payeeId: null, tagId: null, labelIds: [], description: 'gym',
+  schedule: 'weekly', nextPaymentAt: '2026-07-08 09:00:00',
+}
+
+function upcomingItem(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'r-gym', author: fixtureOwner, currencyId: 'cur-usd', amount: '10', description: 'gym',
+    category: { id: 'cat-food', name: 'Food', icon: 'restaurant' }, payee: null, tag: null, labelIds: [],
+    spentAt: '2026-07-08 09:00:00', templateId: 'r-gym', schedule: 'weekly', accountId: 'a1', accountName: 'Cash',
+    labelNames: [], isNext: true, isOverdue: false, canEdit: true, ...overrides,
+  }
+}
+
+function serveUpcoming(upcoming: unknown[], recurring: unknown[] = [ownTemplate], items: unknown[] = []) {
+  server.use(
+    ...coreHandlers({ recurring }),
+    http.get('*/api/v1/budget/get-transaction-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items, upcoming } }),
+    ),
+    http.get('*/api/v1/oauth/get-identity-list', () => HttpResponse.json({ success: true, message: '', data: [] })),
+  )
+}
+
+function capturePost() {
+  let posted: { date?: string; recurringId?: string } | undefined
+  server.use(
+    http.post('*/api/v1/recurring/post-recurring-transaction', async ({ request }) => {
+      posted = (await request.json()) as typeof posted
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { item: { ...fixtureTransactions[0], id: 'posted' }, accounts: fixtureAccounts, nextPaymentAt: '2099-01-01 09:00:00' },
+      })
+    }),
+  )
+  return () => posted
+}
+
+async function recurringListLoaded(queryClient: QueryClient) {
+  await waitFor(() => expect(queryClient.getQueryState(queryKeys.recurring)?.status).toBe('success'))
+}
+
+it('shows weekly upcoming rows in date groups', async () => {
+  serveUpcoming(
+    [
+      upcomingItem({ spentAt: '2026-07-15 09:00:00', isNext: false }),
+      upcomingItem(),
+      upcomingItem({ spentAt: '2026-07-22 09:00:00', isNext: false }),
+    ],
+    [ownTemplate],
+    [wireItems[0]],
+  )
+  renderDialog()
+  const rows = await screen.findAllByTestId(/^budget-(tx|upcoming)-/)
+  expect(rows.map((r) => r.getAttribute('data-testid'))).toEqual([
+    'budget-upcoming-r-gym-2026-07-22',
+    'budget-upcoming-r-gym-2026-07-15',
+    'budget-upcoming-r-gym-2026-07-08',
+    'budget-tx-t1',
+  ])
+  // every occurrence sits under its own day heading, like a real row
+  for (const heading of ['22nd July 2026', '15th July 2026', '8th July 2026', '2nd July 2026']) {
+    expect(screen.getByText(heading)).toBeInTheDocument()
+  }
+  const upcoming = screen.getByTestId('budget-upcoming-r-gym-2026-07-08')
+  expect(upcoming).toHaveTextContent('gym')
+  expect(upcoming).toHaveTextContent('-10.00')
+  expect(upcoming.querySelector('[aria-label="Recurring transaction"]')).not.toBeNull()
+  expect(upcoming.className).toContain('opacity-50')
+})
+
+it('dims a real transaction dated in the future', async () => {
+  const future = formatDateTime(new Date(Date.now() + 10 * 24 * 3600 * 1000))
+  serveUpcoming([], [], [{ ...wireItems[0], spentAt: future }, wireItems[1]])
+  renderDialog()
+  expect((await screen.findByTestId('budget-tx-t1')).className).toContain('opacity-50')
+  expect(screen.getByTestId('budget-tx-tx-foreign').className).not.toContain('opacity-50')
+})
+
+it('marks an overdue payment with its due date', async () => {
+  serveUpcoming([upcomingItem({ spentAt: '2026-06-28 09:00:00', isOverdue: true })])
+  renderDialog()
+  expect(await screen.findByTestId('budget-upcoming-r-gym-2026-06-28')).toHaveTextContent('Overdue · Jun 28')
+})
+
+it('next payment offers post and skip', async () => {
+  serveUpcoming([upcomingItem()])
+  let skipped: unknown
+  server.use(
+    http.post('*/api/v1/recurring/skip-recurring-transaction', async ({ request }) => {
+      skipped = ((await request.json()) as { id: string }).id
+      return HttpResponse.json({ success: true, message: '', data: { item: { ...ownTemplate, nextPaymentAt: '2026-07-15 09:00:00' } } })
+    }),
+  )
+  const user = userEvent.setup()
+  await recurringListLoaded(renderDialog())
+  await user.click(await screen.findByTestId('budget-upcoming-r-gym-2026-07-08'))
+  expect(await screen.findByRole('button', { name: 'Post' })).toBeEnabled()
+  await user.click(screen.getByRole('button', { name: 'Skip' }))
+  await vi.waitFor(() => expect(skipped).toBe('r-gym'))
+})
+
+it('later cycle has no post or skip', async () => {
+  serveUpcoming([upcomingItem({ spentAt: '2026-07-15 09:00:00', isNext: false })])
+  const user = userEvent.setup()
+  await recurringListLoaded(renderDialog())
+  await user.click(await screen.findByTestId('budget-upcoming-r-gym-2026-07-15'))
+  expect(await screen.findByText('Can be posted after the earlier payment')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Post' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
+  // the template is the caller's own, so its editor stays one tap away
+  await user.click(screen.getByRole('button', { name: 'Edit' }))
+  expect(useUiStore.getState().recurringModal?.recurring?.id).toBe('r-gym')
+})
+
+it('renders partner template read-only', async () => {
+  serveUpcoming(
+    [upcomingItem({ id: 'r-partner', templateId: 'r-partner', accountId: 'acc-partner', accountName: 'Partner card', canEdit: false, description: 'internet' })],
+    [],
+  )
+  const user = userEvent.setup()
+  await recurringListLoaded(renderDialog())
+  await user.click(await screen.findByTestId('budget-upcoming-r-partner-2026-07-08'))
+  expect(await screen.findByText('Partner card')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Post' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+  expect(screen.queryByText('Can be posted after the earlier payment')).toBeNull()
+})
+
+it('a payment the caller may edit but cannot see in their recurring list is read-only', async () => {
+  serveUpcoming([upcomingItem({ id: 'r-other', templateId: 'r-other' })], [])
+  const user = userEvent.setup()
+  await recurringListLoaded(renderDialog())
+  await user.click(await screen.findByTestId('budget-upcoming-r-other-2026-07-08'))
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Post' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+})
+
+it('post from budget uses scheduled date when in future', async () => {
+  const due = formatDateTime(new Date(Date.now() + 10 * 24 * 3600 * 1000))
+  serveUpcoming([upcomingItem({ spentAt: due })], [{ ...ownTemplate, nextPaymentAt: due }])
+  const getPosted = capturePost()
+  const user = userEvent.setup()
+  await recurringListLoaded(renderDialog())
+  await user.click(await screen.findByTestId(`budget-upcoming-r-gym-${due.split(' ')[0]}`))
+  await user.click(await screen.findByRole('button', { name: 'Post' }))
+  await vi.waitFor(() => expect(getPosted()?.date).toBe(due))
+  expect(getPosted()?.recurringId).toBe('r-gym')
+})
+
+it('post overdue uses now', async () => {
+  serveUpcoming([upcomingItem({ spentAt: '2026-06-28 09:00:00', isOverdue: true })], [{ ...ownTemplate, nextPaymentAt: '2026-06-28 09:00:00' }])
+  const getPosted = capturePost()
+  const user = userEvent.setup()
+  await recurringListLoaded(renderDialog())
+  await user.click(await screen.findByTestId('budget-upcoming-r-gym-2026-06-28'))
+  await user.click(await screen.findByRole('button', { name: 'Post' }))
+  await vi.waitFor(() => expect(getPosted()).toBeDefined())
+  expect(getPosted()?.date?.split(' ')[0]).toBe(formatDate(new Date()))
 })

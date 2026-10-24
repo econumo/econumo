@@ -373,6 +373,26 @@ definitions:
         items:
           $ref: '#/definitions/model.PlanMonthTransfersResult'
         type: array
+      upcomingOpeningBalances:
+        items:
+          $ref: '#/definitions/model.OpeningBalanceResult'
+        type: array
+      upcomingSavingsFlows:
+        items:
+          $ref: '#/definitions/model.PlanSavingsFlowResult'
+        type: array
+      upcomingSavingsIncomeExpense:
+        items:
+          $ref: '#/definitions/model.PlanSavingsFlowResult'
+        type: array
+      upcomingSavingsOpeningBalances:
+        items:
+          $ref: '#/definitions/model.OpeningBalanceResult'
+        type: array
+      upcomingTransfers:
+        items:
+          $ref: '#/definitions/model.PlanMonthTransfersResult'
+        type: array
     type: object
   model.BudgetResult:
     properties:
@@ -432,6 +452,65 @@ definitions:
           income and accountId selectors.
         type: string
     type: object
+  model.BudgetUpcomingResult:
+    properties:
+      accountId:
+        type: string
+      accountName:
+        type: string
+      amount:
+        type: string
+      author:
+        $ref: '#/definitions/model.UserResult'
+      canEdit:
+        type: boolean
+      category:
+        $ref: '#/definitions/model.TxCategoryResult'
+      currencyId:
+        type: string
+      description:
+        type: string
+      direction:
+        description: |-
+          Direction is present only on rows of the transfers, income and
+          accountId selectors: "out" when the money left the included (or
+          savings) account, "in" when it arrived — Amount/CurrencyId are that
+          side's. Omitted on every other list so their bytes are unchanged.
+        type: string
+      id:
+        type: string
+      isNext:
+        type: boolean
+      isOverdue:
+        type: boolean
+      labelIds:
+        description: |-
+          Reporting labels attached to the row. Always non-nil ([] when none) so a
+          client can render it without a null check, matching labelIds on the
+          transaction feature's own wire.
+        items:
+          type: string
+        type: array
+      labelNames:
+        items:
+          type: string
+        type: array
+      payee:
+        $ref: '#/definitions/model.TxPayeeResult'
+      schedule:
+        type: string
+      spentAt:
+        type: string
+      tag:
+        $ref: '#/definitions/model.TxTagResult'
+      templateId:
+        type: string
+      type:
+        description: |-
+          Type ("expense", "income" or "transfer") is present only on rows of the
+          income and accountId selectors.
+        type: string
+    type: object
   model.CategoryResult:
     properties:
       createdAt:
@@ -468,6 +547,8 @@ definitions:
     properties:
       budgetSpent:
         type: string
+      budgetUpcoming:
+        type: string
       icon:
         type: string
       id:
@@ -482,6 +563,12 @@ definitions:
         type: string
       type:
         type: integer
+      upcoming:
+        description: |-
+          Upcoming/BudgetUpcoming are the period's projected recurring payments not
+          yet posted, in the parent's currency and the budget currency; Spent stays
+          real money only.
+        type: string
     type: object
   model.ClaimSetupTokenRequest:
     properties:
@@ -1303,6 +1390,10 @@ definitions:
         items:
           $ref: '#/definitions/model.BudgetTransactionResult'
         type: array
+      upcoming:
+        items:
+          $ref: '#/definitions/model.BudgetUpcomingResult'
+        type: array
     type: object
   model.GetCategoryListResult:
     properties:
@@ -1780,6 +1871,8 @@ definitions:
         type: string
       spent:
         type: string
+      upcoming:
+        type: string
     type: object
   model.LinkImportAccountRequest:
     properties:
@@ -2023,6 +2116,8 @@ definitions:
         type: string
       budgetSpent:
         type: string
+      budgetUpcoming:
+        type: string
       budgeted:
         type: string
       children:
@@ -2049,6 +2144,16 @@ definitions:
         type: string
       type:
         type: integer
+      upcoming:
+        description: |-
+          Upcoming is the period's projected recurring spend not yet posted, and
+          UpcomingBefore the projected spend filed in earlier months of the
+          projection window (from the caller's current month on), both in
+          CurrencyId; BudgetUpcoming is Upcoming in the budget currency. Spent and
+          Available stay real money only.
+        type: string
+      upcomingBefore:
+        type: string
     type: object
   model.PayeeResult:
     properties:
@@ -2089,10 +2194,14 @@ definitions:
         type: string
       planned:
         type: string
+      upcoming:
+        type: string
     type: object
   model.PlanChildCellResult:
     properties:
       actual:
+        type: string
+      upcoming:
         type: string
     type: object
   model.PlanChildResult:
@@ -2168,6 +2277,8 @@ definitions:
       closingBalance:
         type: string
       planned:
+        type: string
+      upcoming:
         type: string
     type: object
   model.PlanSavingsElementResult:
@@ -2509,6 +2620,11 @@ definitions:
         type: string
       type:
         type: integer
+      upcoming:
+        description: |-
+          Upcoming is the period's projected recurring change of the account not
+          yet posted, measured like Spent.
+        type: string
     type: object
   model.SessionItem:
     properties:

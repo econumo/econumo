@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { moneyFormat } from '@/lib/money'
-import { cmp, sub } from '@/lib/decimal'
+import { cmp, isZero, sub } from '@/lib/decimal'
 import type { BudgetCommentDto } from '@/api/dto/budget'
 import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
@@ -80,7 +80,7 @@ export function ElementSheet({
     moneyFormat(amount, c, { showCurrency: false, useNativePrecision: false, maxPrecision: c?.fractionDigits ?? 2 })
   // the sheet repeats a foreign item's code beside every amount (the row only tags its name)
   const fmt = (amount: string) => `${fmtIn(amount, currency)}${foreign && currency ? ` ${currency.code}` : ''}`
-  const actual = (amount: string) => (future ? EMPTY : fmt(amount))
+  const actual = (amount: string) => (future && isZero(amount) ? EMPTY : fmt(amount))
   const label = {
     budget: t('budgets.page.budget.structure.tab.budgeted'),
     spent: t('budgets.page.budget.structure.tab.spent'),
@@ -166,7 +166,7 @@ export function ElementSheet({
         ) : null}
         {foreign && baseCurrency ? (
           <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-            {!future ? (
+            {!future || !isZero(actualInBase) ? (
               <span data-testid="sheet-converted">
                 {t('budgets.page.sheet.converted', { amount: fmtIn(actualInBase, baseCurrency), currency: baseCurrency.code })}
               </span>

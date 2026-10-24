@@ -60,6 +60,7 @@ type harness struct {
 	db  *sql.DB
 	tdb *dbtest.DB
 	f   *fixture.Builder
+	svc *appbudget.Service
 }
 
 func newHarness(t *testing.T) *harness {
@@ -130,7 +131,7 @@ func newHarnessWithTx(t *testing.T, clk port.Clock, wrapTx func(port.TxRunner) p
 	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, authstub.Authenticator{})})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, db: db, tdb: tdb, f: f}
+	return &harness{srv: srv, db: db, tdb: tdb, f: f, svc: svc}
 }
 
 func (h *harness) token(t *testing.T) string {

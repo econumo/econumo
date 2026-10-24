@@ -239,6 +239,18 @@ describe('useSetLimit on a savings row', () => {
     expect(queryClient.getQueryData<BudgetDto>(key)?.structure.savings?.[0]?.closingBalance).toBe('1000')
   })
 
+  it('measures the unmet plan against the actual plus the upcoming money, as the server does', async () => {
+    const { queryClient, wrapper } = makeWrapper()
+    const key = [...queryKeys.budget, 'b1', '2026-09-01']
+    // 1000 booked + 50 upcoming + 10 still expected (100 planned, 40 saved, 50 upcoming)
+    const raw = withSavings('1060')
+    queryClient.setQueryData(key, { ...raw, structure: { ...raw.structure, savings: [{ ...raw.structure.savings[0], upcoming: '50' }] } })
+    const { result } = renderHook(() => useSetLimit(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-09-01', amount: '250' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryData<BudgetDto>(key)?.structure.savings?.[0]?.closingBalance).toBe('1210')
+  })
+
   it('a past month keeps its booked balance', async () => {
     const { queryClient, wrapper } = makeWrapper()
     const key = [...queryKeys.budget, 'b1', '2026-08-01']

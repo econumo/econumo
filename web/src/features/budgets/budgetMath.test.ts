@@ -161,8 +161,9 @@ describe('rowState', () => {
     expect(rowState({ budgeted: '700', spent: '801.37', available: '-101.37' })).toBe('over')
     expect(rowState({ budgeted: '100', spent: '50', available: '-1' })).toBe('over')
   })
-  it('is none for a future month whatever the figures', () => {
-    expect(rowState({ budgeted: '700', spent: '801.37', available: '-101.37' }, true)).toBe('none')
+  it('is none for a future month with nothing upcoming, and as usual once something is', () => {
+    expect(rowState({ budgeted: '700', spent: '0', available: '700' }, true)).toBe('none')
+    expect(rowState({ budgeted: '700', spent: '801.37', available: '-101.37' }, true)).toBe('over')
   })
 })
 
@@ -171,9 +172,10 @@ describe('rowProgress', () => {
     expect(rowProgress({ budgeted: '200', spent: '50' })).toBe(0.25)
     expect(rowProgress({ budgeted: '200', spent: '500' })).toBe(1)
   })
-  it('is null with no budget or in a future month', () => {
+  it('is null with no budget or in a future month with nothing upcoming', () => {
     expect(rowProgress({ budgeted: '0', spent: '50' })).toBeNull()
-    expect(rowProgress({ budgeted: '200', spent: '50' }, true)).toBeNull()
+    expect(rowProgress({ budgeted: '200', spent: '0' }, true)).toBeNull()
+    expect(rowProgress({ budgeted: '200', spent: '50' }, true)).toBe(0.25)
   })
   it('never goes below zero (refunds)', () => {
     expect(rowProgress({ budgeted: '200', spent: '-30' })).toBe(0)
@@ -197,8 +199,9 @@ describe('overBudget', () => {
     expect(overBudget({ budgeted: '120', spent: '100', available: '-150' })).toBe(false)
     expect(overBudget({ budgeted: '100', spent: '100', available: '0' })).toBe(false)
   })
-  it('is false in a future month', () => {
-    expect(overBudget({ budgeted: '100', spent: '150', available: '-20' }, true)).toBe(false)
+  it('is false in a future month with nothing upcoming, true once upcoming overspends', () => {
+    expect(overBudget({ budgeted: '100', spent: '0', available: '-20' }, true)).toBe(false)
+    expect(overBudget({ budgeted: '100', spent: '150', available: '-20' }, true)).toBe(true)
   })
 })
 

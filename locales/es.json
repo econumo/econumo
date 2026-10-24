@@ -1194,6 +1194,10 @@
     }
   },
   "budgets": {
+    "transactions": {
+      "upcoming_hint": "Próximo pago recurrente",
+      "later_cycle": "Se puede registrar después del pago anterior"
+    },
     "modal": {
       "budget_form": {
         "accounts": "Cuentas",

@@ -1,5 +1,6 @@
 import type { Id } from '../types'
 import type { UserDto } from './user'
+import type { RecurringSchedule } from './recurring'
 
 export type BudgetRole = 'owner' | 'admin' | 'user' | 'guest'
 
@@ -44,6 +45,10 @@ export interface BudgetChildElementDto {
   spent: string
   budgetSpent: string
   ownerUserId: Id
+  /** recurring payments of the period not yet posted (parent currency, then
+   *  budget currency); spent stays real money. Absent from older servers. */
+  upcoming?: string
+  budgetUpcoming?: string
 }
 
 export interface BudgetElementDto extends Omit<BudgetChildElementDto, 'ownerUserId'> {
@@ -55,6 +60,9 @@ export interface BudgetElementDto extends Omit<BudgetChildElementDto, 'ownerUser
   available: string
   ownerUserId: Id | null
   children: BudgetChildElementDto[]
+  /** projected recurring spend filed in earlier months of the projection
+   *  window (from the current month on), in currencyId. Absent from older servers. */
+  upcomingBefore?: string
 }
 
 export type BudgetFolderSide = 'income' | 'expense'
@@ -84,6 +92,7 @@ export interface LabelSpendDto {
    *  themselves these DO sum to the label's own total. Optional on the wire:
    *  servers older than this release omit it. */
   children?: BudgetChildElementDto[]
+  upcoming?: string
 }
 
 // nullable by period phase: future month = all null except holdings; current month = endBalance null
@@ -130,6 +139,25 @@ export interface BudgetTransactionDto {
   type?: 'expense' | 'income' | 'transfer'
 }
 
+/** one projected occurrence of a recurring template in the budget transaction
+ *  list: id is the template's, spentAt the occurrence's due date */
+export interface BudgetUpcomingDto extends BudgetTransactionDto {
+  templateId: Id
+  schedule: RecurringSchedule
+  accountId: Id
+  accountName: string
+  labelNames: string[]
+  isNext: boolean
+  isOverdue: boolean
+  canEdit: boolean
+}
+
+/** budget/get-transaction-list: items are real transactions only */
+export interface BudgetTransactionListDto {
+  items: BudgetTransactionDto[]
+  upcoming: BudgetUpcomingDto[]
+}
+
 export interface BudgetCommentDto {
   id: Id
   elementId: Id
@@ -160,6 +188,9 @@ export interface BudgetSavingsElementDto {
    *  from the current month on, booked plus every month's plan not yet met from
    *  the current month through this one. Absent from older servers. */
   closingBalance?: string
+  /** the period's recurring change of the account not yet posted, measured like
+   *  spent; already counted in closingBalance. Absent from older servers. */
+  upcoming?: string
 }
 
 /** one of the requester's own member accounts */
@@ -195,6 +226,9 @@ export interface PlanCellDto {
   /** savings rows only: the account's booked balance at the end of the month;
    *  absent from older servers */
   closingBalance?: string
+  /** the month's recurring payments not yet posted, filed like actual; absent
+   *  from older servers */
+  upcoming?: string
 }
 
 /** per-month cell on a plan-view child row: children never carry their own limit. */
@@ -205,7 +239,7 @@ export interface PlanChildDto {
   icon: string
   isArchived: 0 | 1
   ownerUserId: Id
-  cells: { actual: string }[]
+  cells: { actual: string; upcoming?: string }[]
 }
 
 export interface PlanElementDto {
@@ -294,4 +328,11 @@ export interface BudgetPlanDto {
    *  savingsFlows. The category rows count the everyday accounts only, so the
    *  combined balance adds this back. Optional for the same reason. */
   savingsIncomeExpense?: PlanSavingsFlowDto[]
+  /** the namesakes over recurring payments not yet posted, same shapes and
+   *  order rules; absent from older servers */
+  upcomingOpeningBalances?: PlanOpeningBalanceDto[]
+  upcomingSavingsOpeningBalances?: PlanOpeningBalanceDto[]
+  upcomingTransfers?: PlanMonthTransfersDto[]
+  upcomingSavingsFlows?: PlanSavingsFlowDto[]
+  upcomingSavingsIncomeExpense?: PlanSavingsFlowDto[]
 }
