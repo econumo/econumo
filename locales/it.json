@@ -574,7 +574,14 @@
         },
         "automate": {
           "title": "Crea l’automazione",
-          "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare → Esegui dopo conferma → econumo."
+          "text": "Nell’app Comandi rapidi crea un’automazione Wallet:",
+          "list": {
+            "open": "Apri Automazione (su iOS 27: Libreria → Automazione) e tocca +",
+            "wallet": "Scegli Wallet",
+            "cards": "Lascia selezionate tutte le carte e le categorie",
+            "confirm": "Lascia attiva la conferma: «Esegui dopo conferma» (iOS 26) o «Conferma prima di eseguire» (iOS 27)",
+            "shortcut": "Esegui il comando rapido econumo (su iOS 27: aggiungi «Esegui comando rapido» → econumo, con «Transazione» come input)"
+          }
         },
         "payment": {
           "title": "Fai il primo pagamento",
@@ -583,9 +590,13 @@
         },
         "immediate": {
           "title": "Imposta l’automazione su «Esegui subito»",
-          "text": "Nell’app Comandi rapidi apri l’automazione e cambia «Esegui dopo conferma» in «Esegui subito». Da quel momento i pagamenti vengono importati senza richieste."
+          "text": "Disattiva la conferma così i pagamenti vengono importati senza richieste: apri l’automazione in Comandi rapidi e scegli «Esegui subito» (iOS 26) o disattiva «Conferma prima di eseguire» (iOS 27)."
         },
-        "done": "Fatto"
+        "done": "Fatto",
+        "guide_title": "Guida passo passo con screenshot:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Apri Comandi rapidi"
       },
       "same_named_cards": "Le carte con lo stesso nome in Wallet vengono mostrate come un’unica carta.",
       "cards": {

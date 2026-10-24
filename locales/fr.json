@@ -574,7 +574,14 @@
         },
         "automate": {
           "title": "Créer l’automatisation",
-          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer → Exécuter après confirmation → econumo."
+          "text": "Dans l’app Raccourcis, créez une automatisation Wallet :",
+          "list": {
+            "open": "Ouvrez Automatisation (sur iOS 27 : Bibliothèque → Automatisation) et touchez +",
+            "wallet": "Choisissez Wallet",
+            "cards": "Laissez toutes les cartes et catégories sélectionnées",
+            "confirm": "Gardez la confirmation : « Exécuter après confirmation » (iOS 26) ou « Confirmer avant l’exécution » (iOS 27)",
+            "shortcut": "Exécutez le raccourci econumo (sur iOS 27 : ajoutez « Exécuter le raccourci » → econumo, avec « Transaction » comme entrée)"
+          }
         },
         "payment": {
           "title": "Effectuer le premier paiement",
@@ -583,9 +590,13 @@
         },
         "immediate": {
           "title": "Passer l’automatisation en « Exécuter immédiatement »",
-          "text": "Dans l’app Raccourcis, ouvrez l’automatisation et remplacez « Exécuter après confirmation » par « Exécuter immédiatement ». Les paiements sont ensuite importés sans demande."
+          "text": "Désactivez la confirmation pour que les paiements soient importés sans demande : ouvrez l’automatisation dans Raccourcis et choisissez « Exécuter immédiatement » (iOS 26) ou désactivez « Confirmer avant l’exécution » (iOS 27)."
         },
-        "done": "Terminé"
+        "done": "Terminé",
+        "guide_title": "Guide pas à pas avec captures d’écran :",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Ouvrir Raccourcis"
       },
       "same_named_cards": "Les cartes portant le même nom dans Wallet sont affichées comme une seule carte.",
       "cards": {

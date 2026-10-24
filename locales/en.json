@@ -574,7 +574,14 @@
         },
         "automate": {
           "title": "Create the automation",
-          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import → Run After Confirmation → econumo."
+          "text": "In the Shortcuts app, create a Wallet automation:",
+          "list": {
+            "open": "Open Automation (on iOS 27: Library → Automation) and tap +",
+            "wallet": "Choose Wallet",
+            "cards": "Keep all cards and categories selected",
+            "confirm": "Keep confirmation on: Run After Confirmation (iOS 26) or Confirm Before Run (iOS 27)",
+            "shortcut": "Run the econumo shortcut (on iOS 27: add Run Shortcut → econumo, with Transaction as its input)"
+          }
         },
         "payment": {
           "title": "Make the first payment",
@@ -583,9 +590,13 @@
         },
         "immediate": {
           "title": "Switch the automation to Run Immediately",
-          "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt."
+          "text": "Turn off the confirmation so payments import without asking: open the automation in Shortcuts and choose Run Immediately (iOS 26) or turn off Confirm Before Run (iOS 27)."
         },
-        "done": "Done"
+        "done": "Done",
+        "guide_title": "Step-by-step guide with screenshots:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Open Shortcuts"
       },
       "same_named_cards": "Cards with the same name in Wallet appear as one card.",
       "cards": {

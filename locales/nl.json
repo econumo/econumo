@@ -574,7 +574,14 @@
         },
         "automate": {
           "title": "Automatisering aanmaken",
-          "text": "In de Opdrachten-app: Automatisering → + → Wallet → kies de kaarten en categorieën die je wilt importeren → Voer uit na bevestiging → econumo."
+          "text": "Maak in de Opdrachten-app een Wallet-automatisering:",
+          "list": {
+            "open": "Open Automatisering (op iOS 27: Bibliotheek → Automatisering) en tik op +",
+            "wallet": "Kies Wallet",
+            "cards": "Laat alle kaarten en categorieën geselecteerd",
+            "confirm": "Laat de bevestiging aan: ‘Voer uit na bevestiging’ (iOS 26) of ‘Bevestig voor uitvoeren’ (iOS 27)",
+            "shortcut": "Voer de opdracht econumo uit (op iOS 27: voeg ‘Voer opdracht uit’ → econumo toe, met ‘Transactie’ als invoer)"
+          }
         },
         "payment": {
           "title": "Eerste betaling doen",
@@ -583,9 +590,13 @@
         },
         "immediate": {
           "title": "Zet de automatisering op ‘Voer direct uit’",
-          "text": "Open in de Opdrachten-app de automatisering en verander ‘Voer uit na bevestiging’ in ‘Voer direct uit’. Vanaf dan worden betalingen zonder vraag geïmporteerd."
+          "text": "Zet de bevestiging uit, zodat betalingen zonder vraag worden geïmporteerd: open de automatisering in Opdrachten en kies ‘Voer direct uit’ (iOS 26) of zet ‘Bevestig voor uitvoeren’ uit (iOS 27)."
         },
-        "done": "Klaar"
+        "done": "Klaar",
+        "guide_title": "Stapsgewijze handleiding met screenshots:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Open Opdrachten"
       },
       "same_named_cards": "Kaarten met dezelfde naam in Wallet worden als één kaart weergegeven.",
       "cards": {

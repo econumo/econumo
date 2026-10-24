@@ -574,7 +574,14 @@
         },
         "automate": {
           "title": "Crear la automatización",
-          "text": "En la app Atajos: Automatización → + → Wallet → elige las tarjetas y categorías que quieres importar → Ejecutar tras confirmar → econumo."
+          "text": "En la app Atajos, crea una automatización de Wallet:",
+          "list": {
+            "open": "Abre Automatización (en iOS 27: Biblioteca → Automatización) y toca +",
+            "wallet": "Elige Wallet",
+            "cards": "Deja seleccionadas todas las tarjetas y categorías",
+            "confirm": "Mantén la confirmación activada: «Ejecutar tras confirmar» (iOS 26) o «Confirmar antes de ejecutar» (iOS 27)",
+            "shortcut": "Ejecuta el atajo econumo (en iOS 27: añade «Ejecutar atajo» → econumo, con «Transacción» como entrada)"
+          }
         },
         "payment": {
           "title": "Hacer el primer pago",
@@ -583,9 +590,13 @@
         },
         "immediate": {
           "title": "Cambiar la automatización a «Ejecutar inmediatamente»",
-          "text": "En la app Atajos, abre la automatización y cambia «Ejecutar tras confirmar» por «Ejecutar inmediatamente». A partir de entonces los pagos se importan sin preguntar."
+          "text": "Desactiva la confirmación para que los pagos se importen sin preguntar: abre la automatización en Atajos y elige «Ejecutar inmediatamente» (iOS 26) o desactiva «Confirmar antes de ejecutar» (iOS 27)."
         },
-        "done": "Hecho"
+        "done": "Hecho",
+        "guide_title": "Guía paso a paso con capturas:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Abrir Atajos"
       },
       "same_named_cards": "Las tarjetas con el mismo nombre en Wallet se muestran como una sola tarjeta.",
       "cards": {

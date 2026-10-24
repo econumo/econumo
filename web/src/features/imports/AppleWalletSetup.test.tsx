@@ -8,11 +8,13 @@ import { coreHandlers } from '@/test/fixtures'
 import type { ImportSourceDto } from '@/api/dto/imports'
 import { AppleWalletConnect, AppleWalletDisconnect, AppleWalletSetup, setupDeepLink } from './AppleWalletSetup'
 import { useWalletSetup } from './walletSetup'
+import { METRICS, trackEvent } from '@/lib/metrics'
 
 const mockIsIOS = vi.hoisted(() => ({ value: false }))
 const openAppUrl = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/platform', () => ({ isIOS: () => mockIsIOS.value, isNativeApp: () => false, openAppUrl }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
+vi.mock('@/lib/metrics', async (original) => ({ ...await original<typeof import('@/lib/metrics')>(), trackEvent: vi.fn() }))
 
 const card = { externalAccountId: 'Apple Card', externalName: 'Apple Card', externalCurrency: 'USD', state: 'unmapped' as const, accountId: '', queuedCount: 0, tapCount: 1, lastSeenAt: '2026-08-20 10:42:03' }
 const source: ImportSourceDto = { id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', lastSyncedAt: '', lastRunStatus: '', lastRunAt: '', lastRunError: '', lastRunErrorAccountId: '', credentialCiphertext: '', cards: [] }
@@ -56,6 +58,7 @@ beforeEach(() => {
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   vi.mocked(toast.error).mockClear()
+  vi.mocked(trackEvent).mockClear()
 })
 
 it('setupDeepLink encodes the JSON input for the Setup shortcut', () => {
@@ -402,4 +405,55 @@ it('disconnect drops the hand ticks', async () => {
   await user.click(await screen.findByRole('button', { name: 'Disconnect' }))
   await waitFor(() => expect(localStorage.getItem('appleWalletSetup:s1')).toBeNull())
   expect(localStorage.getItem('appleWalletSetupReset:s1')).toBeNull()
+})
+
+it.each([
+  ['Create the automation', ['install', 'configure'], '#ios-26', '#ios-27'],
+  ['Switch the automation to Run Immediately', ['install', 'configure', 'automate'], '#on-ios-26', '#on-ios-27'],
+] as const)('%s links to the iOS 26 and iOS 27 sections of the guide in a new window', (title, ticked, a26, a27) => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(ticked))
+  mockIsIOS.value = true
+  // step 5 is current only once a payment has arrived
+  renderSetup(title === 'Create the automation' ? source : { ...source, cards: [card] })
+  const body = step(title)
+  for (const [name, anchor] of [['iOS 26', a26], ['iOS 27', a27]] as const) {
+    const link = within(body).getByRole('link', { name })
+    expect(link).toHaveAttribute('href', `https://econumo.com/docs/user-guide/apple-wallet${anchor}`)
+    expect(link).toHaveAttribute('target', '_blank')
+  }
+  const open = within(body).getByRole('link', { name: 'Open Shortcuts' })
+  expect(open).toHaveAttribute('href', 'shortcuts://')
+  expect(open).toHaveAttribute('target', '_blank')
+})
+
+it('step 3 lists the automation checklist in order', () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure']))
+  renderSetup(source)
+  const items = within(within(step('Create the automation')).getByRole('list')).getAllByRole('listitem').map((li) => li.textContent)
+  expect(items).toEqual([
+    'Open Automation (on iOS 27: Library → Automation) and tap +',
+    'Choose Wallet',
+    'Keep all cards and categories selected',
+    'Keep confirmation on: Run After Confirmation (iOS 26) or Confirm Before Run (iOS 27)',
+    'Run the econumo shortcut (on iOS 27: add Run Shortcut → econumo, with Transaction as its input)',
+  ])
+})
+
+it('desktop shows the guide links but no Open Shortcuts button', () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure']))
+  renderSetup(source)
+  expect(within(step('Create the automation')).getByRole('link', { name: 'iOS 27' })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Open Shortcuts' })).not.toBeInTheDocument()
+})
+
+it('tracks guide link and Shortcuts opens with the step they came from', async () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure']))
+  mockIsIOS.value = true
+  const user = userEvent.setup()
+  renderSetup(source)
+  const body = step('Create the automation')
+  await user.click(within(body).getByRole('link', { name: 'iOS 27' }))
+  await user.click(within(body).getByRole('link', { name: 'Open Shortcuts' }))
+  expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SETUP_GUIDE_OPEN, { provider: 'apple-wallet', step: 'automate', ios: '27' })
+  expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SETUP_SHORTCUTS_OPEN, { provider: 'apple-wallet', step: 'automate' })
 })

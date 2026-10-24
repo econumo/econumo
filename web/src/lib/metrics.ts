@@ -152,6 +152,8 @@ export const METRICS = {
   IMPORT_SETUP_STEP_VIEW: 'appImportSetupStepView',
   IMPORT_SETUP_COMPLETE: 'appImportSetupComplete',
   IMPORT_SETUP_RESTART: 'appImportSetupRestart',
+  IMPORT_SETUP_GUIDE_OPEN: 'appImportSetupGuideOpen',
+  IMPORT_SETUP_SHORTCUTS_OPEN: 'appImportSetupShortcutsOpen',
   IMPORT_SYNC: 'appImportSync',
   IMPORT_RULE_CREATE: 'appImportRuleCreate',
   IMPORT_RULE_APPLY: 'appImportRuleApply',

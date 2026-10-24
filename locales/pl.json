@@ -574,7 +574,14 @@
         },
         "automate": {
           "title": "Utwórz automatyzację",
-          "text": "W aplikacji Skróty: Automatyzacja → + → Wallet → wybierz karty i kategorie do importu → Uruchom po potwierdzeniu → econumo."
+          "text": "W aplikacji Skróty utwórz automatyzację Wallet:",
+          "list": {
+            "open": "Otwórz Automatyzację (w iOS 27: Biblioteka → Automatyzacja) i stuknij +",
+            "wallet": "Wybierz Wallet",
+            "cards": "Pozostaw zaznaczone wszystkie karty i kategorie",
+            "confirm": "Pozostaw potwierdzanie włączone: „Uruchom po potwierdzeniu” (iOS 26) lub „Potwierdź przed uruchomieniem” (iOS 27)",
+            "shortcut": "Uruchom skrót econumo (w iOS 27: dodaj „Uruchom skrót” → econumo, z „Transakcją” jako wejściem)"
+          }
         },
         "payment": {
           "title": "Wykonaj pierwszą płatność",
@@ -583,9 +590,13 @@
         },
         "immediate": {
           "title": "Przełącz automatyzację na „Uruchom natychmiast”",
-          "text": "W aplikacji Skróty otwórz automatyzację i zmień „Uruchom po potwierdzeniu” na „Uruchom natychmiast”. Od tej pory płatności są importowane bez pytania."
+          "text": "Wyłącz potwierdzanie, aby płatności importowały się bez pytania: otwórz automatyzację w Skrótach i wybierz „Uruchom natychmiast” (iOS 26) lub wyłącz „Potwierdź przed uruchomieniem” (iOS 27)."
         },
-        "done": "Gotowe"
+        "done": "Gotowe",
+        "guide_title": "Instrukcja krok po kroku ze zrzutami ekranu:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Otwórz Skróty"
       },
       "same_named_cards": "Karty o tej samej nazwie w Wallet są wyświetlane jako jedna karta.",
       "cards": {

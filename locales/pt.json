@@ -574,7 +574,14 @@
         },
         "automate": {
           "title": "Criar a automatização",
-          "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar → Executar após confirmação → econumo."
+          "text": "Na app Atalhos, crie uma automatização de Wallet:",
+          "list": {
+            "open": "Abra Automatização (no iOS 27: Biblioteca → Automatização) e toque em +",
+            "wallet": "Escolha Wallet",
+            "cards": "Mantenha todos os cartões e categorias selecionados",
+            "confirm": "Mantenha a confirmação ligada: «Executar após confirmação» (iOS 26) ou «Confirmar antes de executar» (iOS 27)",
+            "shortcut": "Execute o atalho econumo (no iOS 27: adicione «Executar atalho» → econumo, com «Transação» como entrada)"
+          }
         },
         "payment": {
           "title": "Fazer o primeiro pagamento",
@@ -583,9 +590,13 @@
         },
         "immediate": {
           "title": "Mudar a automatização para «Executar imediatamente»",
-          "text": "Na app Atalhos, abra a automatização e mude «Executar após confirmação» para «Executar imediatamente». A partir daí os pagamentos são importados sem perguntar."
+          "text": "Desligue a confirmação para os pagamentos serem importados sem perguntar: abra a automatização em Atalhos e escolha «Executar imediatamente» (iOS 26) ou desligue «Confirmar antes de executar» (iOS 27)."
         },
-        "done": "Concluído"
+        "done": "Concluído",
+        "guide_title": "Guia passo a passo com capturas de ecrã:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Abrir Atalhos"
       },
       "same_named_cards": "Cartões com o mesmo nome no Wallet são apresentados como um único cartão.",
       "cards": {

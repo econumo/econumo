@@ -18,6 +18,7 @@ import { STEPS, forgetSetupTicks, type StepId, type WalletSetup } from './wallet
 export const WALLET_SHORTCUT_NAME = 'econumo'
 export const WALLET_SHORTCUT_URL = `/shortcuts/${WALLET_SHORTCUT_NAME}.shortcut`
 export const WALLET_GUIDE_URL = `${getWebsiteUrl()}/docs/user-guide/apple-wallet`
+const SHORTCUTS_APP_URL = 'shortcuts://'
 const INGEST_TOKEN_NAME = 'Apple Wallet'
 
 // Inside an installed PWA iOS keeps every same-origin link in the app's own
@@ -54,6 +55,43 @@ function ExternalButton({ href, onClick, variant = 'outline', download = false, 
         {children}
       </a>
     </Button>
+  )
+}
+
+type ShortcutsStep = 'automate' | 'immediate'
+
+// The Shortcuts app differs between iOS 26 and 27 exactly in these two steps,
+// so each links to its own section of the illustrated guide per version.
+const GUIDE_ANCHORS: Record<ShortcutsStep, Record<'26' | '27', string>> = {
+  automate: { 26: '#ios-26', 27: '#ios-27' },
+  immediate: { 26: '#on-ios-26', 27: '#on-ios-27' },
+}
+
+function GuideLinks({ step }: { step: ShortcutsStep }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+      <span className="text-muted-foreground">{t('imports.apple_wallet.steps.guide_title')}</span>
+      {(['26', '27'] as const).map((ios) => (
+        <a key={ios} href={`${WALLET_GUIDE_URL}${GUIDE_ANCHORS[step][ios]}`} target="_blank" rel="noopener"
+          className="inline-flex items-center gap-1.5 text-econumo-link underline-offset-2 hover:underline"
+          onClick={() => trackEvent(METRICS.IMPORT_SETUP_GUIDE_OPEN, { provider: 'apple-wallet', step, ios })}>
+          {t(`imports.apple_wallet.steps.guide_ios${ios}`)}<ExternalLink className="size-3.5" />
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function OpenShortcutsButton({ step }: { step: ShortcutsStep }) {
+  const { t } = useTranslation()
+  if (!isIOS()) {
+    return null
+  }
+  return (
+    <ExternalButton href={SHORTCUTS_APP_URL} onClick={() => trackEvent(METRICS.IMPORT_SETUP_SHORTCUTS_OPEN, { provider: 'apple-wallet', step })}>
+      <ExternalLink className="size-4" />{t('imports.apple_wallet.steps.open_shortcuts')}
+    </ExternalButton>
   )
 }
 
@@ -231,6 +269,33 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
             {/* connecting again revokes the token the Shortcut holds now */}
             {isDone && !setup.configureLink ? <p className="text-xs text-muted-foreground">{t('imports.apple_wallet.steps.configure.again_note')}</p> : null}
             {!isDone ? <><Waiting>{t('imports.apple_wallet.steps.configure.waiting')}</Waiting>{doneButton(id)}</> : null}
+          </>
+        )
+      case 'automate':
+        return (
+          <>
+            {text(id)}
+            <ol className="flex list-decimal flex-col gap-1 pl-5 text-muted-foreground">
+              {(['open', 'wallet', 'cards', 'confirm', 'shortcut'] as const).map((key) => (
+                <li key={key}>{t(`imports.apple_wallet.steps.automate.list.${key}`)}</li>
+              ))}
+            </ol>
+            <div className="flex flex-wrap items-center gap-3">
+              <OpenShortcutsButton step={id} />
+              {!isDone ? doneButton(id) : null}
+            </div>
+            <GuideLinks step={id} />
+          </>
+        )
+      case 'immediate':
+        return (
+          <>
+            {text(id)}
+            <div className="flex flex-wrap items-center gap-3">
+              <OpenShortcutsButton step={id} />
+              {!isDone ? doneButton(id) : null}
+            </div>
+            <GuideLinks step={id} />
           </>
         )
       case 'payment':
