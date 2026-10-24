@@ -163,6 +163,12 @@ export interface GridCtx {
 const figureClass = (ctx: GridCtx, col: number): string =>
   `${PLAN_FIGURE_COL}${col === ctx.selectedCol ? ` ${PLAN_SELECTED_TINT}` : ''}${col === ctx.crosshairCol ? ` ${PLAN_CROSSHAIR}` : ''}`
 
+/** A later savings balance links to its month's transactions only when money is due
+ *  to move then: the list holds nothing but those upcoming payments. */
+function movesMoney(cell: PlanElementDto['cells'][number] | undefined): boolean {
+  return !!cell && (!isZero(cell.actual) || !isZero(cell.upcoming ?? '0'))
+}
+
 /** A later month's actual shows only when upcoming money folded one in, lighter, as
  *  the rows read; up to the current month a zero reads as a dash next to a plan. */
 function laterActual(actual: string | null, month: string, current: string): string | null {
@@ -507,7 +513,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                       <Dash />
                     </span>
                   ) : null
-                ) : actualLinkable && (!view.balance || m <= ctx.selected) ? (
+                ) : actualLinkable && (!view.balance || m <= ctx.selected || movesMoney(cell)) ? (
                   <button
                     type="button"
                     data-testid="cell-actual"

@@ -1777,6 +1777,9 @@ and on tablet/phone only with a hardware keyboard.
       open a Plan window that starts next month: each savings row's Balance
       already includes this month's transfer, and the rows add up to the
       Savings balance line in every month of the window.
+- [ ] In the Plan grid, a later month's savings Balance with an upcoming
+      transfer into or out of the account is a link: it opens that month's list
+      with the upcoming transfer; a later month with nothing due stays plain.
 - [ ] 📱 Opening an upcoming transfer from the cell list shows both the
       sender and the recipient card with their amounts (the recipient's in its
       own currency); an account outside the budget, on either side, shows as
