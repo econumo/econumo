@@ -527,8 +527,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       the waiting line and the hand ticks still work; running the configured
       shortcut by hand on the phone completes step 2 here too.
 - [ ] Step 3 shows a numbered checklist that holds on iOS 26 and iOS 27:
-      open Automation (iOS 27: Library → Automation) and tap +, choose Wallet,
-      keep all cards and categories, keep confirmation on (Run After
+      open Automation (iOS 27: Library → Automation) and tap New Automation
+      or +, choose Wallet, select the cards and categories, keep confirmation on (Run After
       Confirmation / Confirm Before Run), run econumo (iOS 27: Run Shortcut →
       econumo with Transaction as input). Below it, "Step-by-step guide with
       screenshots: iOS 26 · iOS 27" opens the article at `#ios-26` / `#ios-27`

@@ -578,9 +578,9 @@
           "title": "Create the automation",
           "text": "In the Shortcuts app, create a Wallet automation:",
           "list": {
-            "open": "Open Automation (on iOS 27: Library → Automation) and tap +",
+            "open": "Open Automation (on iOS 27: Library → Automation), then tap New Automation or +",
             "wallet": "Choose Wallet",
-            "cards": "Keep all cards and categories selected",
+            "cards": "Select the cards and categories to import (all of them for every purchase)",
             "confirm": "Keep confirmation on: Run After Confirmation (iOS 26) or Confirm Before Run (iOS 27)",
             "shortcut": "Run the econumo shortcut (on iOS 27: add Run Shortcut → econumo, with Transaction as its input)"
           }

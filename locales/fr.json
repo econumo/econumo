@@ -578,9 +578,9 @@
           "title": "Créer l’automatisation",
           "text": "Dans l’app Raccourcis, créez une automatisation Wallet :",
           "list": {
-            "open": "Ouvrez Automatisation (sur iOS 27 : Bibliothèque → Automatisation) et touchez +",
+            "open": "Ouvrez Automatisation (sur iOS 27 : Bibliothèque → Automatisation), puis touchez « Nouvelle automatisation » ou +",
             "wallet": "Choisissez Wallet",
-            "cards": "Laissez toutes les cartes et catégories sélectionnées",
+            "cards": "Sélectionnez les cartes et catégories à importer (toutes pour chaque achat)",
             "confirm": "Gardez la confirmation : « Exécuter après confirmation » (iOS 26) ou « Confirmer avant l’exécution » (iOS 27)",
             "shortcut": "Exécutez le raccourci econumo (sur iOS 27 : ajoutez « Exécuter le raccourci » → econumo, avec « Transaction » comme entrée)"
           }

@@ -578,9 +578,9 @@
           "title": "Crea l’automazione",
           "text": "Nell’app Comandi rapidi crea un’automazione Wallet:",
           "list": {
-            "open": "Apri Automazione (su iOS 27: Libreria → Automazione) e tocca +",
+            "open": "Apri Automazione (su iOS 27: Libreria → Automazione) e tocca «Nuova automazione» o +",
             "wallet": "Scegli Wallet",
-            "cards": "Lascia selezionate tutte le carte e le categorie",
+            "cards": "Seleziona le carte e le categorie da importare (tutte per ogni acquisto)",
             "confirm": "Lascia attiva la conferma: «Esegui dopo conferma» (iOS 26) o «Conferma prima di eseguire» (iOS 27)",
             "shortcut": "Esegui il comando rapido econumo (su iOS 27: aggiungi «Esegui comando rapido» → econumo, con «Transazione» come input)"
           }
