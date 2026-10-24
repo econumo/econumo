@@ -8,7 +8,6 @@ package transaction
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -218,21 +217,34 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 		}
 	}
 
-	// Bottom-up: each new row lands on top of its day, so this leaves a day's
-	// rows in file order.
-	for i := len(records) - 1; i >= 0; i-- {
-		row := records[i]
+	// Rows are read top-down, so names a row creates take the file's first
+	// spelling, but saved bottom-up: each new row lands on top of its day, so
+	// this leaves a day's rows in file order.
+	var pending []*model.Transaction
+	for i, row := range records {
 		rowNumber := i + 2
 		if rerr := s.importRow(ctx, userID, accountOwnerID, req, dualMode, row, rowNumber,
 			overrideAccount, overrideDate, overrideCategory, overridePayee, overrideTag, overrideLabelIDs, overrideDescription, labelsSeparator,
-			accountByName, categoryByKind, payeeByName, tagByName, labelCaches, result); rerr != nil {
+			accountByName, categoryByKind, payeeByName, tagByName, labelCaches, result, &pending); rerr != nil {
 			// Row-level error: record + skip, continue.
 			addImportError(result, rerr.Error(), rowNumber)
 			result.Skipped++
 		}
 	}
-	for _, rows := range result.Errors {
-		slices.Sort(rows)
+	for i := len(pending) - 1; i >= 0; i-- {
+		t := pending[i]
+		if err := s.importer.SaveTransaction(ctx, t); err != nil {
+			return err
+		}
+		// t is a brand-new row (NextIdentity), so ReplaceLabels's DELETE can never
+		// match; skip the round trip entirely when there is nothing to attach
+		// (the common case on an import with no labels mapping).
+		if len(t.LabelIDs) > 0 {
+			if err := s.repo.ReplaceLabels(ctx, t.ID, t.LabelIDs); err != nil {
+				return err
+			}
+		}
+		result.Imported++
 	}
 	return nil
 }
@@ -249,6 +261,7 @@ func (s *Service) importRow(
 	overrideCategory, overridePayee, overrideTag *model.ImportNamed, overrideLabelIDs []vo.Id, overrideDescription *string,
 	labelsSeparator string,
 	accountByName *nameCache, categoryByKind map[bool]*nameCache, payeeByName, tagByName *nameCache, labelCaches map[string]*nameCache, result *model.ImportResult,
+	pending *[]*model.Transaction,
 ) error {
 	imp := s.importer
 
@@ -421,18 +434,7 @@ func (s *Service) importRow(
 		Amount: amount.Abs().String(), CategoryID: categoryID, PayeeID: payeeID, TagID: tagID, LabelIDs: labelIDs,
 		Description: description, SpentAt: date, CreatedAt: now, UpdatedAt: now,
 	})
-	if err := imp.SaveTransaction(ctx, t); err != nil {
-		return err
-	}
-	// t is a brand-new row (NextIdentity), so ReplaceLabels's DELETE can never
-	// match; skip the round trip entirely when there is nothing to attach
-	// (the common case on an import with no labels mapping).
-	if len(t.LabelIDs) > 0 {
-		if err := s.repo.ReplaceLabels(ctx, t.ID, t.LabelIDs); err != nil {
-			return err
-		}
-	}
-	result.Imported++
+	*pending = append(*pending, t)
 	return nil
 }
 
