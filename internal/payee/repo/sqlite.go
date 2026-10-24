@@ -38,3 +38,7 @@ func (sqliteQuerier) ReassignPayeeTransactions(ctx context.Context, db backend.D
 func (sqliteQuerier) ReassignPayeeRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return sqlitegen.New(db).ReassignPayeeRecurring(ctx, p)
 }
+
+func (sqliteQuerier) ListPayeesByIDs(ctx context.Context, db backend.DBTX, ids string) ([]payeeRow, error) {
+	return sqlitegen.New(db).ListPayeesByIDs(ctx, ids)
+}

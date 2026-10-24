@@ -59,6 +59,46 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id string) (Category, err
 	return i, err
 }
 
+const listCategoriesByIDs = `-- name: ListCategoriesByIDs :many
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
+FROM categories
+WHERE id IN (SELECT j.value FROM (SELECT CAST(?1 AS TEXT) AS ids) w, json_each(w.ids) j)
+`
+
+// ids is a JSON array of category ids: one round trip whoever owns them.
+func (q *Queries) ListCategoriesByIDs(ctx context.Context, ids string) ([]Category, error) {
+	rows, err := q.db.QueryContext(ctx, listCategoriesByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Category{}
+	for rows.Next() {
+		var i Category
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.Type,
+			&i.Icon,
+			&i.IsArchived,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SortKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCategoriesByOwner = `-- name: ListCategoriesByOwner :many
 SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
 FROM categories

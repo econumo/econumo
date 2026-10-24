@@ -63,6 +63,45 @@ func (q *Queries) GetTagByID(ctx context.Context, id string) (Tag, error) {
 	return i, err
 }
 
+const listTagsByIDs = `-- name: ListTagsByIDs :many
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key, icon
+FROM tags
+WHERE id IN (SELECT j.value FROM (SELECT CAST(?1 AS TEXT) AS ids) w, json_each(w.ids) j)
+`
+
+// ids is a JSON array of tag ids: one round trip whoever owns them.
+func (q *Queries) ListTagsByIDs(ctx context.Context, ids string) ([]Tag, error) {
+	rows, err := q.db.QueryContext(ctx, listTagsByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Tag{}
+	for rows.Next() {
+		var i Tag
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.IsArchived,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SortKey,
+			&i.Icon,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTagsByOwner = `-- name: ListTagsByOwner :many
 ;
 

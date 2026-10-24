@@ -316,6 +316,8 @@ type Querier interface {
 	// PostgreSQL's SUM(NUMERIC) is EXACT (not float like SQLite), so CAST AS TEXT
 	// here yields the exact decimal - no precision-14 reformatting needed.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
+	// Every account the user owns, soft-deleted ones included (the reports).
+	ListAccountIDsByOwner(ctx context.Context, userID string) ([]string, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// The same count for every AVAILABLE account (the balance query's set).
 	ListAccountTransactionsCountsForUser(ctx context.Context, userID string) ([]ListAccountTransactionsCountsForUserRow, error)
@@ -335,6 +337,8 @@ type Querier interface {
 	ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetLimitsForPeriodParams) ([]ListBudgetLimitsForPeriodRow, error)
 	ListBudgetLimitsFrom(ctx context.Context, arg ListBudgetLimitsFromParams) ([]ListBudgetLimitsFromRow, error)
 	ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUserParams) ([]Budget, error)
+	// ids is a JSON array of category ids (see the sqlite variant).
+	ListCategoriesByIDs(ctx context.Context, ids string) ([]Category, error)
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
 	ListConnectedUserIDs(ctx context.Context, userID string) ([]string, error)
 	// Write-side queries for the currency module: the CLI admin commands
@@ -382,6 +386,8 @@ type Querier interface {
 	// The owner's labels ordered by sort key; used by move-label (load, place the
 	// moved row, save it) and as the basis for the returned list.
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
+	// ids is a JSON array of payee ids (see the sqlite variant).
+	ListPayeesByIDs(ctx context.Context, ids string) ([]Payee, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants
 	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
@@ -389,6 +395,8 @@ type Querier interface {
 	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	// ids is a JSON array of tag ids (see the sqlite variant).
+	ListTagsByIDs(ctx context.Context, ids string) ([]Tag, error)
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]ListTransactionsByAccountRow, error)
 	ListUnrevokedOAuthGrants(ctx context.Context, userID string) ([]ListUnrevokedOAuthGrantsRow, error)

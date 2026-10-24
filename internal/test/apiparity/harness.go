@@ -142,6 +142,8 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		// The import providers are off by default; the catalogue covers them.
 		ImportAppleWallet: true,
 		ImportSimpleFIN:   true,
+		// Reports are off by default; the catalogue covers them.
+		Reports: true,
 		// Production matcher defaults so the seeded queued tap adopts Txn1 by
 		// the same rules a real instance applies.
 		ImportMatchDays:       3,

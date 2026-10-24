@@ -50,6 +50,14 @@ func (s *spendingStub) IncomeByMonth(context.Context, []vo.Id, time.Time, time.T
 	return nil, nil
 }
 
+func (s *spendingStub) FlowByMonth(context.Context, []vo.Id, time.Time, time.Time, string) ([]model.MonthlyFlowRow, error) {
+	return nil, nil
+}
+
+func (s *spendingStub) FirstTransactionDate(context.Context, []vo.Id) (*time.Time, error) {
+	return nil, nil
+}
+
 func (s *spendingStub) TransfersByMonth(context.Context, []vo.Id, time.Time, time.Time) ([]model.MonthlyTransferRow, error) {
 	return nil, nil
 }

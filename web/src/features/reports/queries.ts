@@ -1,0 +1,42 @@
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import * as reportApi from '@/api/report'
+import type { FlowReportDto, GroupBy, NetWorthReportDto } from '@/api/dto/report'
+import type { Id } from '@/api/types'
+import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { useBudgets } from '@/features/budgets/queries'
+
+interface ReportQueryParams {
+  budgetId: Id | null
+  from?: string
+  to?: string
+}
+
+export function flowReportQuery(params: ReportQueryParams & { groupBy?: GroupBy }) {
+  const { budgetId, from, to, groupBy } = params
+  return {
+    queryKey: [...queryKeys.reportFlow, budgetId ?? 'mine', from ?? '', to ?? '', groupBy ?? ''],
+    queryFn: () => reportApi.getFlowReport({ budgetId, from, to, groupBy }),
+    staleTime: TEN_MINUTES,
+  }
+}
+
+export function useFlowReport(params: ReportQueryParams & { groupBy?: GroupBy; enabled?: boolean }) {
+  return useQuery<FlowReportDto>({ ...flowReportQuery(params), placeholderData: keepPreviousData, enabled: params.enabled ?? true })
+}
+
+export function useNetWorthReport(params: ReportQueryParams) {
+  const { budgetId, from, to } = params
+  return useQuery<NetWorthReportDto>({
+    queryKey: [...queryKeys.reportNetWorth, budgetId ?? 'mine', from ?? '', to ?? '', ''],
+    queryFn: () => reportApi.getNetWorthReport({ budgetId, from, to }),
+    staleTime: TEN_MINUTES,
+    placeholderData: keepPreviousData,
+  })
+}
+
+/** Budgets a report can be scoped to: archived ones are left out. With none
+ *  left the scope picker disappears and every report is "My accounts". */
+export function useReportBudgets() {
+  const query = useBudgets()
+  return { ...query, data: query.data?.filter((b) => b.isArchived !== 1) }
+}

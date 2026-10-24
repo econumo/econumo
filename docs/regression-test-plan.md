@@ -1833,6 +1833,174 @@ and on tablet/phone only with a hardware keyboard.
       actions; unarchive restores writability.
 - [ ] Reset budget (if surfaced in UI) clears plans after confirm.
 
+## 10a. Reports
+
+Run with `ECONUMO_REPORTS=true`.
+
+- [ ] **Flag off** (`ECONUMO_REPORTS` unset): no Reports icon in the sidebar footer
+      (expanded or collapsed), `/reports` shows the not-found page, and
+      `/api/v1/report/*` returns 404 📱
+- [ ] **Entry point**: Reports is a chart icon right before the sync button in the
+      sidebar footer (expanded, collapsed rail, and the phone menu); there is no
+      Reports entry under Budget & Plan 📱
+
+Seed at least two years of transactions over several categories, a payee, a
+tag, and a budget with a planned limit on one category.
+
+- [ ] **Tabs**: Reports opens on the FIRST tab, whichever was active last
+      time. "+" adds a New tab (report list) in the active tab's scope;
+      double-click renames (blank name goes back to the generated title:
+      report name, then the selected row and "2026 vs 2025" in Compare);
+      close removes it and a last closed tab leaves one New tab; drag
+      reorders; Duplicate copies a tab next to it. At 12 tabs "+" is
+      disabled with "Up to 12 tabs". Desktop tabs are underlined text like
+      the Budget / Plan switch; the × shows on hover; renaming keeps the
+      tab's width (the field grows only as the name does).
+- [ ] Tabs are per user and per device: another user on the same browser
+      sees only their own tabs; a tab whose budget was deleted or unshared
+      falls back to My accounts.
+- [ ] 📱 Phone: tabs are pills; long-press a pill (or Shift+click) opens the
+      Rename / Duplicate / Close menu; the back arrow returns home.
+- [ ] Report list: the scope picker lists My accounts and every budget;
+      the three cards show this year's figures for that scope; picking a
+      card turns the tab into that report in the same scope.
+- [ ] **Spending, Over time**: stacked bars of the top five rows plus
+      "Everything else" (grey); a row keeps the same colour in the legend,
+      the table, a narrowed chart and Compare. Month / Quarter / Year and
+      the period presets (This year, Last 12 months, Last 3 years, All time,
+      Custom with From/To months) redraw the chart; Custom refuses a From
+      after To and a To in the future.
+- [ ] Projection: the bar holding the current month has a dashed outline
+      up to the projected full-period figure with the actual bar inside,
+      its label ends in "*", a footnote explains it, and the headline adds
+      "On pace for …". A first bar cut by the period start is never
+      projected.
+- [ ] Headline: the total of the selected period ("Spent in Jan – Oct 2026")
+      and its change against the equal-length period just before it ("vs
+      Mar – Dec 2025"); no change is shown when nothing precedes the period
+      or for All time. Change shows money and %, more spending in orange,
+      less in green (reversed for Income). In a budget that ended mid-period
+      (e.g. This year, budget ended in March) the headline covers the months
+      the report shows ("Spent in Q1 2026") and compares them with the
+      equal-length period before them ("vs Q4 2025").
+- [ ] Table: the last bucket against the one before it, headed with the
+      bucket names ("2025", "2026*"); a running quarter or year shows its
+      actual so far and is compared through its projection. In Month step
+      the table compares the last two complete months (on Oct 23: Aug vs
+      Sep); the running month shows only in the chart, dashed. With a single bucket, or
+      a previous bucket cut by the period start, only the last bucket is
+      shown. Amounts show the currency's cents in the headline, table and
+      tooltips; only axis ticks are rounded.
+- [ ] Dates follow the UI language (month names, order, quarter label):
+      switch to Russian or Chinese and check bucket labels and ranges.
+- [ ] Table narrowing: clicking a table row, a legend item or a bar
+      segment shows only that row (chip above the headline; tab title
+      becomes the row's name); clicking it again or the chip's × clears it.
+      An envelope row expands to its categories; a child row can be
+      selected too. "Show N more" reveals the rest.
+- [ ] Expenses / Income switch shows the other side and clears the
+      selection. Group by (Category / Payee / Tag) appears in My accounts
+      only; the no-payee / no-tag bucket reads "No payee" / "No tag".
+- [ ] **Compare years**: two year pickers (later vs earlier, default this
+      year vs last); paired monthly bars, earlier grey and later in colour;
+      for the current year both years are cut to the same months and the
+      footnote says so; totals in the headline and table match those months.
+- [ ] **Planned line**: in a budget scope, with one budget row selected and
+      Month step, a dashed "Planned" line follows the row's plan with gaps
+      in months without a plan; it is absent in My accounts, with no row
+      selected, and in Quarter / Year step.
+- [ ] **Budget scope matches Plan**: for one budget row and month, the
+      Spending amount (Month step, row selected, table column) equals the
+      Plan page's actual for that row and month, rounded to whole units;
+      months before the budget start are shown too.
+- [ ] **Drill-down**: with a row selected, "Show transactions" next to the
+      row chip (reachable with Tab + Enter) opens its transactions for the
+      period shown; tapping a bar (Over time) or a
+      month bar of either year (Compare) opens that row's transactions for
+      the bar's months, newest first, grouped by day. Budget scope lists
+      what the Budget page lists for the row (a partner's transactions
+      included, read-only); My accounts lists my own accounts' matching
+      transactions only. When a deleted account of mine has transactions in
+      the bar, the listed amounts add up to less than the bar and a muted
+      note says that transactions of deleted accounts are counted in the
+      report but not listed. A transaction opens its preview; edit and delete
+      work from there, and the report figures refresh after the write.
+- [ ] Light and dark theme: bars, outline, planned line, change colours and
+      table stay readable. 📱 At 390px the controls wrap, the chart fits
+      the width and the table shows Name, the later period and Change %.
+- [ ] **Cash flow, Bars**: per step bucket, income (green) above the zero
+      line, spending (orange) below, and a dashed "Net saved" line. The
+      headline reads "Saved {amount}, {pct}% of income" for the period
+      (red "Spent {amount} more than earned" when spending is higher), with
+      the period's Income and Spent totals under it. Amounts show cents.
+- [ ] Cash flow table: one row per bucket, newest first: Period, Income,
+      Spent, Saved (green "+", red "−" for a month that spent more than it
+      earned). "Transferred in / out" columns appear only when money moved
+      in or out of the scope's accounts (hidden at 390px). The running
+      bucket ends in "*" and the footnote says its figures are so far;
+      nothing is projected. "Show N more" after 12 rows.
+- [ ] **Cash flow matches Plan**: in a budget scope, Month step, the Income
+      and Spent of one month equal the Plan page's income and expense row
+      totals for that month (an account's opening balance appears as
+      Uncategorized income in its creation month on both screens).
+- [ ] **Flow (Sankey)**, desktop only: Bars / Flow switch; Flow draws the
+      top 5 income rows (+ "Other income") and "Transferred in" into the
+      hub, then out to the top 7 expense rows (+ "Everything else"),
+      "Transferred out" and "Saved"; transfer nodes appear only when
+      non-zero. In a budget with savings members, "Saved" splits into
+      "Moved to savings accounts" and "Stayed in everyday accounts"; a
+      budget without savings members shows one "Saved". When the outflows
+      are higher than the inflows, a "From balance" source covers the gap
+      and nothing is shown as saved. The hub reads "Income" (equal to the
+      headline Income) when only income feeds it, "Available" when
+      transfers in or From balance do. Step is hidden in Flow; Group by
+      (My accounts) regroups the rows.
+- [ ] 📱 At 390px the Bars / Flow switch is not shown, a tab left in Flow
+      on desktop opens as Bars, and the chart and four table columns fit
+      the width. Light and dark theme: bars, line, Sankey labels and links
+      stay readable.
+- [ ] **Net worth**: one line for the total with a soft fill under it (no
+      stacked colours, no legend); hovering a month shows each folder (My
+      accounts) or person (budget) with its amount and the Total at the
+      bottom. Period buttons 1y / 3y / All sit small on the chart's top-right
+      corner; the scope picker is a quiet "{budget} ▾" top-right. The headline
+      shows "Today", the latest total, and "+/-{amount} in the last year /
+      in the last 3 years / since the start". All starts at the end of the
+      month before the first transaction, so its change equals the latest
+      total. Amounts show cents.
+- [ ] Net worth "Today" counts transactions through the end of today in
+      the device's timezone: a transaction dated later this month is left
+      out of the current month until its day comes (earlier months are
+      unchanged). A report of a single month shows its total without a
+      change line.
+- [ ] Net worth in My accounts: rows are my account folders, plus "No
+      folder" and "Deleted accounts" when such accounts carry a balance;
+      accounts that are zero in every month are not listed. Columns Start,
+      Now, Change (green up, red down) and a Total row equal to the
+      headline; a folder opens (chevron or row tap) to its accounts, each
+      with its sidebar icon, and closes again. Rows use the Budget page's
+      look: rounded hover on every row, no lines between rows.
+- [ ] Net worth in a budget shared with a partner: one row per person with
+      their avatar, partners first and me last; no folder names appear.
+      A person with savings members in the budget opens to those savings
+      accounts by name plus "Everyday accounts" (wallet icon) for the rest;
+      a person without savings members is a single row. With "This year"
+      figures on the report list's card, the card's total equals the
+      report's latest total.
+- [ ] Archived budgets are not offered in any report's budget picker; with no
+      active budget the picker is not shown and reports cover My accounts.
+- [ ] Offline (or after a failed refresh) a report shown from the cache
+      carries a muted "Updated {date and time}" line under its filters; it
+      goes away after the next successful load. Reports longer than 36
+      months (e.g. All time over several years) are not kept for an offline
+      start, shorter ones are.
+- [ ] All time over more than 20 years of history shows the last 240
+      months instead of an error; a Custom range longer than 240 months is
+      refused.
+- [ ] 📱 At 390px the Net worth header fits, the chart fits the width and
+      the list shows the name, Now and Change; light and dark theme keep the
+      line, the fill and the change colours readable.
+
 ## 11. Sharing — connections, accounts, budgets (multi-user)
 
 Run with Users A and B side by side (two browser profiles/windows), verifying

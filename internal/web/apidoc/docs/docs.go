@@ -9658,6 +9658,160 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/report/get-flow-report": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Report"
+                ],
+                "summary": "Monthly income/expense/transfer flow",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Budget id (omit for the caller's own accounts)",
+                        "name": "budgetId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "First month (Y-m-d, snapped to first of month; defaults to the first transaction's month, at most 240 months back)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last month (Y-m-d, snapped to first of month; defaults to the current month; window is at most 240 months)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "category (default), tag or payee; budget scope supports category only",
+                        "name": "groupBy",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetFlowReportResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/report/get-net-worth-report": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Report"
+                ],
+                "summary": "Account balances at the end of each month",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Budget id (omit for the caller's own accounts)",
+                        "name": "budgetId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "First month (Y-m-d, snapped to first of month; defaults to the month before the first transaction's month, at most 240 months back)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last month (Y-m-d, snapped to first of month; defaults to the current month; window is at most 240 months)",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetNetWorthReportResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/system/get-update-info": {
             "get": {
                 "security": [
@@ -14585,6 +14739,50 @@ const docTemplate = `{
                 }
             }
         },
+        "model.FlowReportResult": {
+            "type": "object",
+            "properties": {
+                "currencyId": {
+                    "type": "string"
+                },
+                "expense": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ReportRow"
+                    }
+                },
+                "income": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ReportRow"
+                    }
+                },
+                "months": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "savings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ReportRow"
+                    }
+                },
+                "transfersIn": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "transfersOut": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "model.GenerateInviteRequest": {
             "type": "object"
         },
@@ -14727,6 +14925,14 @@ const docTemplate = `{
                 }
             }
         },
+        "model.GetFlowReportResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.FlowReportResult"
+                }
+            }
+        },
         "model.GetFolderListResult": {
             "type": "object",
             "properties": {
@@ -14844,6 +15050,14 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.LabelResult"
                     }
+                }
+            }
+        },
+        "model.GetNetWorthReportResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.NetWorthReportResult"
                 }
             }
         },
@@ -15746,6 +15960,58 @@ const docTemplate = `{
                 }
             }
         },
+        "model.NetWorthAccountRow": {
+            "type": "object",
+            "properties": {
+                "balances": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDeleted": {
+                    "type": "integer"
+                },
+                "isSavings": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.NetWorthReportResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.NetWorthAccountRow"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "months": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "model.OpeningBalanceResult": {
             "type": "object",
             "properties": {
@@ -16339,6 +16605,73 @@ const docTemplate = `{
         },
         "model.ReplaceFolderResult": {
             "type": "object"
+        },
+        "model.ReportChildRow": {
+            "type": "object",
+            "properties": {
+                "amounts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ReportRow": {
+            "type": "object",
+            "properties": {
+                "amounts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ReportChildRow"
+                    }
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "planned": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "model.RequestEmailChangeRequest": {
             "type": "object",

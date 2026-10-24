@@ -48,3 +48,9 @@ UPDATE transactions SET category_id = ? WHERE category_id = ?;
 -- the old delete-category replace mode lossy: templates were left pointing at a
 -- category about to be deleted, and the FK silently nulled them.
 UPDATE recurring_transactions SET category_id = ? WHERE category_id = ?;
+
+-- name: ListCategoriesByIDs :many
+-- ids is a JSON array of category ids: one round trip whoever owns them.
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
+FROM categories
+WHERE id IN (SELECT j.value FROM (SELECT CAST(sqlc.arg(ids) AS TEXT) AS ids) w, json_each(w.ids) j);

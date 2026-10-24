@@ -12,6 +12,8 @@ export const queryKeys = {
   connections: ['connections'] as const,
   budget: ['budget'] as const,
   budgetPlan: ['budgetPlan'] as const,
+  reportFlow: ['reportFlow'] as const,
+  reportNetWorth: ['reportNetWorth'] as const,
   budgets: ['budgets'] as const,
   budgetTransactions: ['budgetTransactions'] as const,
   budgetComments: ['budgetComments'] as const,

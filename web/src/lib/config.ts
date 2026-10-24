@@ -19,6 +19,7 @@ export interface EconumoConfig {
   AI_ENABLED?: boolean
   IMPORT_APPLE_WALLET?: boolean
   IMPORT_SIMPLEFIN?: boolean
+  REPORTS?: boolean
   BILLING_URL?: string
   MCP_URL?: string
   LILTAG_CONFIG_URL?: string
@@ -220,4 +221,10 @@ export function isPasswordLoginAllowed(): boolean {
 
 export function getInstanceId(): string {
   return window.econumoConfig?.INSTANCE_ID || ''
+}
+
+// ECONUMO_REPORTS: Reports stays hidden unless the server turns it on, and the
+// server does not mount the report routes while it is off.
+export function isReportsEnabled(): boolean {
+  return window.econumoConfig?.REPORTS === true
 }
