@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
-import { Area, CartesianGrid, ComposedChart, Line as ChartLine, ReferenceLine, XAxis, YAxis } from 'recharts'
+import { Area, CartesianGrid, ComposedChart, ReferenceLine, XAxis, YAxis } from 'recharts'
 import type { NetWorthAccountDto } from '@/api/dto/report'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import type { ChartConfig } from '@/components/ui/chart'
@@ -28,7 +28,7 @@ const PRESETS = [
   { value: 'all', label: 'All', words: 'since the start' },
 ] as const
 const MINE = 'mine'
-const LINE = 'var(--foreground)'
+const LINE = 'var(--primary)'
 // calm, ordered by size: the biggest band gets the first colour
 const BANDS = ['#a78bfa', '#7dd3fc', '#6ee7b7', '#fcd34d', '#f9a8d4', '#cbd5e1']
 
@@ -118,7 +118,6 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const n = data?.months.length ?? 0
   const total = data ? data.months.map((_, i) => sumAt(shown, i)) : []
   const totalLine = lineOf('total', t('reports.spending.total'), total[0] ?? '0', total[n - 1] ?? '0')
-  const mine = shown.filter((a) => a.ownerUserId === me).map((a) => lineOf(a.id, a.name, a.balances[0], a.balances[n - 1])).sort(byNow)
   const partnerIds = [...new Set(shown.filter((a) => a.ownerUserId !== me).map((a) => a.ownerUserId))]
   const partners = partnerIds
     .map((id) => {
@@ -158,14 +157,27 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       }
       return next
     })
-  const groupRows = (groups: { line: Line; accounts: Line[] }[], color: (id: string) => string) => groups.flatMap((g) => {
+  const groupRows = (groups: { line: Line; accounts: Line[] }[]) => groups.flatMap((g) => {
     const isOpen = open.has(g.line.id)
+    if (g.accounts.length === 0) {
+      return [
+        <tr key={g.line.id} className="border-b border-border/60">
+          <td className="py-2 pr-2 pl-[1.125rem]">
+            <span className="flex min-w-0 items-center gap-1">
+                <span className="truncate">{g.line.name}</span>
+            </span>
+          </td>
+          <td className={`hidden ${num} text-muted-foreground sm:table-cell`}>{money(g.line.start)}</td>
+          <td className={num}>{money(g.line.now)}</td>
+          <td className={`${num} whitespace-nowrap ${changeClass(g.line.change)}`}>{signedMoney(g.line.change, money)}</td>
+        </tr>,
+      ]
+    }
     return [
       <tr key={g.line.id} onClick={() => toggle(g.line.id)} className="cursor-pointer border-b border-border/60 hover:bg-econumo-hover/60">
         <td className="py-2 pr-2">
           <span className="flex min-w-0 items-center gap-1">
             <ChevronRight className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-            <span className="size-2.5 shrink-0 rounded-full" style={{ background: color(g.line.id) }} />
             <button type="button" aria-expanded={isOpen} className="truncate text-left" onClick={(e) => { e.stopPropagation(); toggle(g.line.id) }}>
               {g.line.name}
             </button>
@@ -192,8 +204,8 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const series = (rows: NetWorthAccountDto[]) => Array.from({ length: n }, (_, i) => sumAt(rows, i))
   const bands = p.budgetId
     ? [
-        ...(meRows.length > 0 ? [{ id: me, name: user?.name ?? '', balances: series(meRows) }] : []),
         ...partners.map((l) => ({ id: l.id, name: l.name, balances: series(shown.filter((a) => a.ownerUserId === l.id)) })),
+        ...(meRows.length > 0 ? [{ id: me, name: user?.name ?? '', balances: series(meRows) }] : []),
       ]
     : folderGroups.map((g) => ({ id: g.line.id, name: g.line.name, balances: g.balances }))
   const DEBT = '#fda4af'
@@ -202,13 +214,23 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     const i = assets.findIndex((b) => b.id === id)
     return i < 0 ? DEBT : BANDS[i % BANDS.length]
   }
-  const folderRows = groupRows(folderGroups, colorOf)
+  const folderRows = groupRows(folderGroups)
+  // Each person: their savings members by name, everything else summed as "Other";
+  // partners first, the user last.
+  const personGroup = (id: string, name: string) => {
+    const rows = shown.filter((a) => a.ownerUserId === id)
+    const saving = rows.filter((a) => a.isSavings === 1)
+    const rest = rows.filter((a) => a.isSavings !== 1)
+    const children = saving.map((a) => lineOf(a.id, a.name, a.balances[0], a.balances[n - 1])).sort(byNow)
+    if (saving.length > 0 && rest.length > 0) children.push(lineOf(`${id}-other`, 'Other', sumAt(rest, 0), sumAt(rest, n - 1)))
+    return { line: lineOf(id, name, sumAt(rows, 0), sumAt(rows, n - 1)), accounts: saving.length > 0 ? children : [] }
+  }
   const personRows = p.budgetId
     ? groupRows(
-        meRows.length > 0
-          ? [{ line: lineOf(me, user?.name ?? '', sumAt(meRows, 0), sumAt(meRows, n - 1)), accounts: mine }]
-          : [],
-        colorOf,
+        [
+          ...partners.map((l) => personGroup(l.id, l.name)),
+          ...(meRows.length > 0 ? [personGroup(me, user?.name ?? '')] : []),
+        ],
       )
     : []
 
@@ -223,7 +245,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     value: { label: t('reports.spending.total'), color: LINE },
     ...Object.fromEntries(bands.map((b, bi) => [`b${bi}`, { label: b.name, color: colorOf(b.id) }])),
   }
-  const hasNegative = bands.some((b) => b.balances.some((v) => isNegative(v)))
+  const hasNegative = total.some((v) => isNegative(v))
   const dim = report.isPlaceholderData ? 'opacity-60 transition-opacity' : ''
 
   const row = (l: Line, strong = false) => (
@@ -263,7 +285,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
           <figure aria-label={t('reports.networth.chart')} className={`flex flex-col gap-1 ${dim}`}>
             <div className="flex justify-end">{periodPicker}</div>
             <ChartContainer config={config} className="aspect-auto h-56 w-full sm:h-64">
-              <ComposedChart data={chartData} margin={{ top: 6, right: 4, left: 0, bottom: 0 }} stackOffset="sign">
+              <ComposedChart data={chartData} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
                 <CartesianGrid vertical={false} strokeOpacity={0.5} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={40} />
                 <YAxis width={40} tickLine={false} axisLine={false} tickFormatter={compact} />
@@ -290,19 +312,13 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                     )
                   }}
                 />
-                {bands.map((b, bi) => (
-                  <Area
-                    key={b.id}
-                    dataKey={`b${bi}`}
-                    stackId="nw"
-                    type="monotone"
-                    stroke="none"
-                    fill={colorOf(b.id)}
-                    fillOpacity={0.45}
-                    isAnimationActive={false}
-                  />
-                ))}
-                <ChartLine dataKey="value" type="monotone" stroke={LINE} strokeWidth={2} dot={false} isAnimationActive={false} />
+                <defs>
+                  <linearGradient id="nw-fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={LINE} stopOpacity={0.25} />
+                    <stop offset="100%" stopColor={LINE} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <Area dataKey="value" type="monotone" stroke={LINE} strokeWidth={2.5} fill="url(#nw-fill)" isAnimationActive={false} />
               </ComposedChart>
             </ChartContainer>
           </figure>
@@ -322,19 +338,6 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
               ) : (
                 folderRows
               )}
-              {partners.map((l) => (
-                <tr key={l.id} className="border-b border-border/60">
-                  <td className="py-2 pr-2 pl-[1.125rem]">
-                    <span className="flex min-w-0 items-center gap-1">
-                      <span className="size-2.5 shrink-0 rounded-full" style={{ background: colorOf(l.id) }} />
-                      <span className="truncate">{l.name}</span>
-                    </span>
-                  </td>
-                  <td className={`hidden ${num} text-muted-foreground sm:table-cell`}>{money(l.start)}</td>
-                  <td className={num}>{money(l.now)}</td>
-                  <td className={`${num} whitespace-nowrap ${changeClass(l.change)}`}>{signedMoney(l.change, money)}</td>
-                </tr>
-              ))}
             </tbody>
             <tfoot className="border-t">{row(totalLine, true)}</tfoot>
           </table>

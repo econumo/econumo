@@ -19,6 +19,7 @@ func (s *Service) GetNetWorthReport(ctx context.Context, userID vo.Id, req model
 	var (
 		accountIDs []vo.Id
 		currency   vo.Id
+		savings    = map[string]bool{}
 		window     reportWindow
 		err        error
 	)
@@ -33,6 +34,7 @@ func (s *Service) GetNetWorthReport(ctx context.Context, userID vo.Id, req model
 		}
 		for _, m := range b.accounts {
 			accountIDs = append(accountIDs, m.AccountID)
+			savings[m.AccountID.String()] = m.IsSavings
 		}
 		currency = b.budget.CurrencyID
 		window, err = s.resolveReportWindow(ctx, req.From, req.To, accountIDs, b.endMonth())
@@ -58,6 +60,11 @@ func (s *Service) GetNetWorthReport(ctx context.Context, userID vo.Id, req model
 	item, err := s.buildNetWorth(ctx, userID, accountIDs, window, currency)
 	if err != nil {
 		return nil, err
+	}
+	for i := range item.Accounts {
+		if savings[item.Accounts[i].Id] {
+			item.Accounts[i].IsSavings = 1
+		}
 	}
 	return &model.GetNetWorthReportResult{Item: item}, nil
 }

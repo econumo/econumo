@@ -45,6 +45,8 @@ export interface NetWorthAccountDto {
   currencyId: Id
   ownerUserId: Id
   isDeleted: number
+  /** budget scope only: a savings member of the budget */
+  isSavings?: number
   balances: string[]
 }
 
