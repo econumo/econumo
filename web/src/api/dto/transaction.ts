@@ -58,3 +58,19 @@ export interface TransactionItemDto {
   item: TransactionDto
   accounts: AccountDto[]
 }
+
+export interface MoveTransactionDto {
+  id: Id
+  /** the account page the row was dragged on; only its side's order changes */
+  accountId: Id
+  /** the day dropped into, Y-m-d */
+  date: string
+  /** that account's whole day afterwards, top first */
+  transactionIds: Id[]
+}
+
+export interface MoveTransactionResultDto {
+  /** every transaction the move rewrote */
+  items: TransactionDto[]
+  accounts: AccountDto[]
+}

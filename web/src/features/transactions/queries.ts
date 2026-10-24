@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as transactionApi from '@/api/transaction'
-import type { TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
+import { toast } from 'sonner'
+import type { MoveTransactionDto, TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { apiErrorMessage } from '@/lib/apiError'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { compareTransactions } from './order'
-import { beginLocalWrite, consumeFullReload, noteOwnWrite, transactionsQueryFn } from './revisionTracking'
+import { applyLocalMove } from './move'
+import { beginLocalWrite, consumeFullReload, noteOwnWrite, patchTransactions, transactionsQueryFn } from './revisionTracking'
 
 const byDateDesc = (items: TransactionDto[]) => [...items].sort((a, b) => compareTransactions(a, b))
 
@@ -75,6 +78,43 @@ export function useDeleteTransaction() {
     onSuccess: (result) => {
       apply(result, 'delete')
       trackEvent(METRICS.TRANSACTION_DELETE)
+    },
+  })
+}
+
+/** A drag on an account page. The list shows the drop at once; the server's
+ *  rows replace the guess on success, and a refusal (a day another device
+ *  changed meanwhile) puts the previous order back. */
+export function useMoveTransaction() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: transactionApi.moveTransaction,
+    onMutate: (req: MoveTransactionDto) => {
+      const previous = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)
+      const moved = previous?.find((t) => t.id === req.id)
+      patchTransactions(queryClient, (rows) => applyLocalMove(rows, req))
+      return { previous, dayChanged: moved ? moved.date.slice(0, 10) !== req.date : false }
+    },
+    onSuccess: (result, _req, context) => {
+      const patch = beginLocalWrite(queryClient)
+      if (patch) {
+        noteOwnWrite(result.accounts, result.items.flatMap((t) => [t.accountId, t.accountRecipientId]))
+      }
+      queryClient.setQueryData(queryKeys.accounts, result.accounts)
+      if (patch) {
+        const byId = new Map(result.items.map((t) => [t.id, t]))
+        queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => (prev ?? []).map((t) => byId.get(t.id) ?? t))
+      }
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
+      trackEvent(METRICS.TRANSACTION_MOVE, { dayChanged: context?.dayChanged ?? false })
+    },
+    onError: (err, _req, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.transactions, context.previous)
+      }
+      toast.error(apiErrorMessage(err))
     },
   })
 }

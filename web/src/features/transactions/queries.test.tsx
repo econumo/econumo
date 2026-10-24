@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
-import { useCreateTransaction, useDeleteTransaction } from './queries'
+import { useCreateTransaction, useDeleteTransaction, useMoveTransaction } from './queries'
 
 const wireOwner = { id: 'u1', avatar: '', name: 'Ada' }
 const wireTx = {
@@ -93,4 +93,47 @@ it('delete-transaction removes the item and refreshes accounts', async () => {
   const txs = queryClient.getQueryData<{ id: string }[]>(queryKeys.transactions)!
   expect(txs.map((t) => t.id)).toEqual(['t-other'])
   expect(queryClient.getQueryData<{ balance: string }[]>(queryKeys.accounts)![0].balance).toBe('90.01')
+})
+
+describe('useMoveTransaction', () => {
+  const day = [
+    { ...wireTx, id: 'm1', date: '2024-03-01 09:00:00', sortKey: 2, recipientSortKey: null },
+    { ...wireTx, id: 'm2', date: '2024-03-01 10:00:00', sortKey: 1, recipientSortKey: null },
+  ]
+  const req = { id: 'm2', accountId: 'a1', date: '2024-03-01', transactionIds: ['m2', 'm1'] }
+  const keysOf = (rows: { id: string; sortKey?: number }[] | undefined) => Object.fromEntries((rows ?? []).map((r) => [r.id, r.sortKey]))
+
+  it('shows the new order at once and keeps the server rows', async () => {
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    server.use(
+      http.post('*/api/v1/transaction/move-transaction', async () => {
+        await gate
+        return HttpResponse.json({ success: true, message: '', data: { items: [{ ...day[1], sortKey: 2 }, { ...day[0], sortKey: 1 }], accounts: [wireAccount] } })
+      }),
+    )
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.transactions, day)
+    const { result } = renderHook(() => useMoveTransaction(), { wrapper })
+    result.current.mutate(req)
+    await waitFor(() => expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 1, m2: 2 }))
+    release()
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 1, m2: 2 })
+    expect(queryClient.getQueryData(queryKeys.accounts)).toEqual([wireAccount])
+  })
+
+  it('puts the old order back when the server refuses', async () => {
+    server.use(
+      http.post('*/api/v1/transaction/move-transaction', () =>
+        HttpResponse.json({ success: false, message: 'This day changed meanwhile. Refresh and try again.', code: 400, errors: {} }, { status: 400 }),
+      ),
+    )
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.transactions, day)
+    const { result } = renderHook(() => useMoveTransaction(), { wrapper })
+    result.current.mutate(req)
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 2, m2: 1 })
+  })
 })
