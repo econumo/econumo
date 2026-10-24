@@ -1949,10 +1949,12 @@
         "intro": "Adicione o Econumo ao Dock para abri-lo em sua própria janela, como qualquer outro app.",
         "step_file": "Na barra de menus do Safari, abra Arquivo (ou clique no botão Compartilhar).",
         "step_add": "Escolha “Adicionar ao Dock”.",
-        "step_confirm": "Clique em “Adicionar”. O Econumo aparecerá no Dock e no Launchpad.",
+        "step_confirm": "Clique em “Adicionar”. O Econumo aparecerá no Dock.",
         "installed_hint": "Já adicionou? Abra o Econumo pelo Dock em vez do Safari."
       },
       "android_firefox": {
+        "intro": "Adicione o Econumo à tela inicial para abri-lo como qualquer outro app, sem as barras do navegador.",
+        "installed_hint": "Já adicionou? Abra o Econumo pela tela inicial em vez do navegador.",
         "step_menu": "Toque no menu ⋮ do Firefox.",
         "step_install": "Escolha “Instalar” (em versões mais antigas, “Adicionar à tela inicial”).",
         "step_confirm": "Confirme. O Econumo aparecerá na sua tela inicial."

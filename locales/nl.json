@@ -1949,10 +1949,12 @@
         "intro": "Zet Econumo in het Dock om het in een eigen venster te openen, net als elke andere app.",
         "step_file": "Open in de menubalk van Safari het menu Archief (of klik op de deelknop).",
         "step_add": "Kies ‘Voeg toe aan Dock’.",
-        "step_confirm": "Klik op ‘Voeg toe’. Econumo verschijnt in je Dock en Launchpad.",
+        "step_confirm": "Klik op ‘Voeg toe’. Econumo verschijnt in je Dock.",
         "installed_hint": "Al toegevoegd? Open Econumo via het Dock in plaats van in Safari."
       },
       "android_firefox": {
+        "intro": "Zet Econumo op je startscherm om het als elke andere app te openen, zonder de balken van de browser.",
+        "installed_hint": "Al toegevoegd? Open Econumo via je startscherm in plaats van in de browser.",
         "step_menu": "Tik op het menu ⋮ in Firefox.",
         "step_install": "Kies ‘Installeren’ (in oudere versies ‘Toevoegen aan startscherm’).",
         "step_confirm": "Bevestig. Econumo verschijnt op je startscherm."

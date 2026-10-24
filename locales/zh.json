@@ -1949,10 +1949,12 @@
         "intro": "将 Econumo 添加到程序坞，即可像其他应用一样在独立窗口中打开。",
         "step_file": "在 Safari 的菜单栏中打开“文件”（或点按“共享”按钮）。",
         "step_add": "选择“添加到程序坞”。",
-        "step_confirm": "点按“添加”。Econumo 将出现在程序坞和启动台中。",
+        "step_confirm": "点按“添加”。Econumo 将出现在程序坞中。",
         "installed_hint": "已经添加了？请从程序坞打开 Econumo，而不是在 Safari 中打开。"
       },
       "android_firefox": {
+        "intro": "将 Econumo 添加到主屏幕，即可像其他应用一样打开，不显示浏览器栏。",
+        "installed_hint": "已经添加了？请从主屏幕打开 Econumo，而不是在浏览器中打开。",
         "step_menu": "轻点 Firefox 中的 ⋮ 菜单。",
         "step_install": "选择“安装”（旧版本中为“添加到主屏幕”）。",
         "step_confirm": "确认。Econumo 将出现在你的主屏幕上。"

@@ -1949,10 +1949,12 @@
         "intro": "Add Econumo to the Dock to open it in its own window, like any other app.",
         "step_file": "In Safari’s menu bar, open File (or click the Share button).",
         "step_add": "Choose “Add to Dock”.",
-        "step_confirm": "Click “Add”. Econumo appears in your Dock and Launchpad.",
+        "step_confirm": "Click “Add”. Econumo appears in your Dock.",
         "installed_hint": "Already added it? Open Econumo from the Dock instead of Safari."
       },
       "android_firefox": {
+        "intro": "Add Econumo to your home screen to open it like any other app, without the browser bars.",
+        "installed_hint": "Already added it? Open Econumo from your home screen instead of the browser.",
         "step_menu": "Tap the ⋮ menu in Firefox.",
         "step_install": "Choose “Install” (in older versions, “Add to Home screen”).",
         "step_confirm": "Confirm. Econumo appears on your home screen."

@@ -17,13 +17,13 @@ export function InstallInstructionsDialog({ mode, open, onClose }: { mode: Instr
       hint: t('install.dialog.installed_hint'),
     },
     android_firefox: {
-      intro: t('install.dialog.intro'),
+      intro: t('install.dialog.android_firefox.intro'),
       steps: [
         [EllipsisVertical, t('install.dialog.android_firefox.step_menu')],
         [Download, t('install.dialog.android_firefox.step_install')],
         [Check, t('install.dialog.android_firefox.step_confirm')],
       ],
-      hint: t('install.dialog.installed_hint'),
+      hint: t('install.dialog.android_firefox.installed_hint'),
     },
     macos_safari: {
       intro: t('install.dialog.macos.intro'),

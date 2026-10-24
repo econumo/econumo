@@ -1949,10 +1949,12 @@
         "intro": "Dodaj Econumo do Docka, aby otwierać je we własnym oknie jak każdą inną aplikację.",
         "step_file": "Na pasku menu Safari otwórz Plik (lub kliknij przycisk Udostępnij).",
         "step_add": "Wybierz „Dodaj do Docka”.",
-        "step_confirm": "Kliknij „Dodaj”. Econumo pojawi się w Docku i Launchpadzie.",
+        "step_confirm": "Kliknij „Dodaj”. Econumo pojawi się w Docku.",
         "installed_hint": "Już dodane? Otwieraj Econumo z Docka zamiast w Safari."
       },
       "android_firefox": {
+        "intro": "Dodaj Econumo do ekranu głównego, aby otwierać je jak każdą inną aplikację, bez pasków przeglądarki.",
+        "installed_hint": "Już dodane? Otwieraj Econumo z ekranu głównego zamiast w przeglądarce.",
         "step_menu": "Stuknij menu ⋮ w Firefoksie.",
         "step_install": "Wybierz „Zainstaluj” (w starszych wersjach „Dodaj do ekranu głównego”).",
         "step_confirm": "Potwierdź. Econumo pojawi się na ekranie głównym."
