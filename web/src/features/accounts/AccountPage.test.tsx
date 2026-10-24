@@ -574,10 +574,21 @@ describe('drag to reorder', () => {
     mockViewport(false)
     renderPage()
     await screen.findByTestId('tx-t1')
-    const classes = handles()[0].className.split(' ')
+    const classes = (handles()[0].firstElementChild as HTMLElement).className.split(' ')
     expect(classes).toContain('opacity-0')
     expect(classes).toContain('group-hover:opacity-100')
     expect(classes.some((c) => c.includes('hover:none'))).toBe(false)
+  })
+
+  it('desktop: the grab area spans the grip and the category icon, and a click on it still opens the preview', async () => {
+    mockViewport(false)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('tx-t1')
+    const grab = handles()[0]
+    expect(grab.className.split(' ')).toContain('absolute')
+    await user.click(grab)
+    expect(await screen.findByRole('dialog', { name: 'Transaction details' })).toBeInTheDocument()
   })
 
   it('compact: rows lift by press-and-hold, so there is no grip', async () => {

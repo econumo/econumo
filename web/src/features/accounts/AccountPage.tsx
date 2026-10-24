@@ -285,7 +285,7 @@ export function AccountPage() {
               {({ row, handle, justDragged }) => (
             <div
               {...row}
-              className={`group flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'} ${canDrag(entry.transaction) ? '[@media(hover:none)]:select-none [@media(hover:none)]:[-webkit-touch-callout:none]' : ''}`}
+              className={`group relative flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'} ${canDrag(entry.transaction) ? '[@media(hover:none)]:select-none [@media(hover:none)]:[-webkit-touch-callout:none]' : ''}`}
               onClick={() => {
                 if (justDragged()) {
                   return
@@ -298,19 +298,23 @@ export function AccountPage() {
                 }
               }}
             >
+              {!isCompact ? <span className="-mr-1 w-4 shrink-0" aria-hidden="true" /> : null}
               {handle ? (
+                // The grab area spans the grip column and the category icon,
+                // where the hand naturally goes; a plain click still reaches
+                // the row and opens the preview, since a drag needs movement.
                 <button
                   type="button"
                   aria-label={t('accounts.page.transaction_list.drag_handle')}
                   title={t('accounts.page.transaction_list.drag_handle')}
-                  className="mt-5 -mr-1 flex h-4 w-4 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                  onClick={(e) => e.stopPropagation()}
+                  className="group/grip absolute left-0 top-0 z-10 h-14 w-16 cursor-grab touch-none rounded-md outline-none"
                   {...handle}
                 >
-                  <GripVertical className="size-4" />
+                  {/* level with the icon's middle: 8px row padding + half its 40px */}
+                  <span className="absolute left-0 top-5 flex size-4 items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-visible/grip:opacity-100">
+                    <GripVertical className="size-4" />
+                  </span>
                 </button>
-              ) : !isCompact ? (
-                <span className="-mr-1 w-4 shrink-0" aria-hidden="true" />
               ) : null}
               <div className="min-w-0 flex-1">
                 <TransactionRow
