@@ -1,10 +1,13 @@
 package fixture
 
 import (
+	"context"
 	"encoding/json"
 	"strconv"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/txorder"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -507,6 +510,11 @@ type Transaction struct {
 	// to it, which may differ from Amount for a cross-currency transfer.
 	AccountRecipientID string
 	AmountRecipient    string
+
+	// SortKey / RecipientSortKey place the row within its day on each side;
+	// zero puts it at the top of the day, as the repository does.
+	SortKey          int64
+	RecipientSortKey int64
 }
 
 func (b *Builder) Transaction(tx Transaction) string {
@@ -525,10 +533,35 @@ func (b *Builder) Transaction(tx Transaction) string {
 	tag := nullable(tx.TagID)
 	acctRecipient := nullable(tx.AccountRecipientID)
 	amountRecipient := nullable(tx.AmountRecipient)
-	b.insert(`INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, type, amount, amount_recipient, description, spent_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, tx.UserID, tx.AccountID, acctRecipient, cat, payee, tag, tx.Type, tx.Amount, amountRecipient, tx.Description, spent, now, now)
+	sortKey := b.placeKey(tx.SortKey, tx.AccountID, spent)
+	var recipientSortKey any
+	if tx.AccountRecipientID != "" {
+		recipientSortKey = b.placeKey(tx.RecipientSortKey, tx.AccountRecipientID, spent)
+	}
+	b.insert(`INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, type, amount, amount_recipient, description, spent_at, created_at, updated_at, sort_key, recipient_sort_key)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, tx.UserID, tx.AccountID, acctRecipient, cat, payee, tag, tx.Type, tx.Amount, amountRecipient, tx.Description, spent, now, now, sortKey, recipientSortKey)
 	return id
+}
+
+func (b *Builder) placeKey(key int64, accountID string, spent any) int64 {
+	b.t.Helper()
+	if key != 0 {
+		return key
+	}
+	at, ok := spent.(time.Time)
+	if !ok {
+		parsed, err := time.Parse(datetime.Layout, spent.(string))
+		if err != nil {
+			b.t.Fatalf("fixture transaction spent_at %v: %v", spent, err)
+		}
+		at = parsed
+	}
+	top, err := txorder.New(b.db.Engine, b.db.TX).Top(context.Background(), accountID, at)
+	if err != nil {
+		b.t.Fatalf("fixture transaction sort key: %v", err)
+	}
+	return top
 }
 
 // Budget describes a budgets row. StartedAt defaults to the builder's time.

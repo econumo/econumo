@@ -8,6 +8,7 @@ package transaction
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -217,7 +218,10 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 		}
 	}
 
-	for i, row := range records {
+	// Bottom-up: each new row lands on top of its day, so this leaves a day's
+	// rows in file order.
+	for i := len(records) - 1; i >= 0; i-- {
+		row := records[i]
 		rowNumber := i + 2
 		if rerr := s.importRow(ctx, userID, accountOwnerID, req, dualMode, row, rowNumber,
 			overrideAccount, overrideDate, overrideCategory, overridePayee, overrideTag, overrideLabelIDs, overrideDescription, labelsSeparator,
@@ -226,6 +230,9 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 			addImportError(result, rerr.Error(), rowNumber)
 			result.Skipped++
 		}
+	}
+	for _, rows := range result.Errors {
+		slices.Sort(rows)
 	}
 	return nil
 }

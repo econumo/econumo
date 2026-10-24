@@ -238,6 +238,30 @@ func TestAccountRepo_SaveCorrection(t *testing.T) {
 	}
 }
 
+func TestCorrectionGoesToTopOfDay(t *testing.T) {
+	repo, db, f := newAccountRepo(t)
+	ctx := context.Background()
+	seedUser(t, f, userA, "A")
+	seedAccount(t, f, acctCash, userA, "Cash")
+	f.Transaction(fixture.Transaction{UserID: userA, AccountID: acctCash, Type: 0, SpentAt: fixedTime, SortKey: 2})
+
+	corrID := vo.NewId()
+	c := model.AccountCorrection{
+		ID: corrID, UserID: vo.MustParseId(userA), AccountID: vo.MustParseId(acctCash),
+		Description: "fix", CreatedAt: fixedTime, SpentAt: fixedTime, Type: 1, Amount: "1",
+	}
+	if err := repo.SaveCorrection(ctx, c); err != nil {
+		t.Fatalf("SaveCorrection: %v", err)
+	}
+	var key int64
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT sort_key FROM transactions WHERE id = ?`), corrID.String()).Scan(&key); err != nil {
+		t.Fatal(err)
+	}
+	if key != 3 {
+		t.Errorf("correction sort_key = %d, want 3", key)
+	}
+}
+
 // A stored type outside the known set (e.g. 0) must round-trip unchanged:
 // reads tolerate any stored value, and AccountType.Valid gates writes only.
 func TestAccountRepo_UnknownTypeValue_RoundTrips(t *testing.T) {

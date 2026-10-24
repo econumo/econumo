@@ -682,3 +682,28 @@ func TestImport_CategoryOverrideSkipsRowsOfTheOtherKind(t *testing.T) {
 		}
 	}
 }
+
+// A CSV usually carries dates without times, so a day's rows tie on spent_at;
+// the list must show them in file order, top to bottom.
+func TestImportKeepsFileOrderWithinDay(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Category,Note,Payee\n" +
+		"Cash,2024-03-01,-1,Food,first,\n" +
+		"Cash,2024-03-01,-2,Food,second,\n" +
+		"Cash,2024-03-01,-3,Food,third,\n"
+	if status, env := h.doImport(t, tok, csv, importMapping, nil); status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+	key := func(desc string) int64 {
+		t.Helper()
+		var k int64
+		if err := h.db.QueryRow(`SELECT sort_key FROM transactions WHERE description = ?`, desc).Scan(&k); err != nil {
+			t.Fatal(err)
+		}
+		return k
+	}
+	if a, b, c := key("first"), key("second"), key("third"); !(a > b && b > c) {
+		t.Errorf("keys first=%d second=%d third=%d, want descending in file order", a, b, c)
+	}
+}

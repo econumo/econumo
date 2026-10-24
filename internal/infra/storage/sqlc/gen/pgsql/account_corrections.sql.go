@@ -14,10 +14,10 @@ const insertCorrectionTransaction = `-- name: InsertCorrectionTransaction :exec
 
 INSERT INTO transactions (
     id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id,
-    description, created_at, updated_at, spent_at, type, amount, amount_recipient
+    description, created_at, updated_at, spent_at, type, amount, amount_recipient, sort_key
 ) VALUES (
     $1, $2, $3, NULL, NULL, NULL, NULL,
-    $4, $5, $6, $7, $8, $9, NULL
+    $4, $5, $6, $7, $8, $9, NULL, $10
 )
 `
 
@@ -31,6 +31,7 @@ type InsertCorrectionTransactionParams struct {
 	SpentAt     time.Time
 	Type        int16
 	Amount      string
+	SortKey     int64
 }
 
 // Balance-correction transaction insert (PostgreSQL: $N placeholders). See the
@@ -46,6 +47,7 @@ func (q *Queries) InsertCorrectionTransaction(ctx context.Context, arg InsertCor
 		arg.SpentAt,
 		arg.Type,
 		arg.Amount,
+		arg.SortKey,
 	)
 	return err
 }

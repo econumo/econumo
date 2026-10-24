@@ -15,6 +15,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txorder"
 	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -58,6 +59,7 @@ type Repo struct {
 	q      querier
 	driver string
 	rev    *txrevision.Bumper
+	order  *txorder.Placer
 }
 
 var _ domtransaction.Repository = (*Repo)(nil)
@@ -66,9 +68,9 @@ var _ domtransaction.Repository = (*Repo)(nil)
 func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
 	case "sqlite":
-		return &Repo{tx: tx, q: sqliteQuerier{}, driver: driver, rev: txrevision.New(driver, tx)}
+		return &Repo{tx: tx, q: sqliteQuerier{}, driver: driver, rev: txrevision.New(driver, tx), order: txorder.New(driver, tx)}
 	case "postgresql":
-		return &Repo{tx: tx, q: pgsqlQuerier{}, driver: driver, rev: txrevision.New(driver, tx)}
+		return &Repo{tx: tx, q: pgsqlQuerier{}, driver: driver, rev: txrevision.New(driver, tx), order: txorder.New(driver, tx)}
 	default:
 		panic("transactionrepo: unknown database driver " + driver)
 	}
@@ -107,6 +109,9 @@ func (r *Repo) saveNew(ctx context.Context, t *model.Transaction) error {
 }
 
 func (r *Repo) write(ctx context.Context, t *model.Transaction) error {
+	if err := r.place(ctx, t); err != nil {
+		return err
+	}
 	if err := r.q.UpsertTransaction(ctx, r.db(ctx), upsertParams{
 		ID:                 t.ID.String(),
 		UserID:             t.UserID.String(),
@@ -136,6 +141,31 @@ func (r *Repo) write(ctx context.Context, t *model.Transaction) error {
 		return err
 	}
 	r.markBumped(ctx, t.ID.String())
+	return nil
+}
+
+// place gives a row without a key on a side (new, or moved to another day or
+// account by Update) the top of its day there. Every write goes through here,
+// so no caller can store an unplaced row.
+func (r *Repo) place(ctx context.Context, t *model.Transaction) error {
+	if t.SortKey == 0 {
+		top, err := r.order.Top(ctx, t.AccountID.String(), t.SpentAt)
+		if err != nil {
+			return err
+		}
+		t.SortKey = top
+	}
+	if !t.Type.IsTransfer() || t.AccountRecipID == nil {
+		t.RecipientSortKey = nil
+		return nil
+	}
+	if t.RecipientSortKey == nil {
+		top, err := r.order.Top(ctx, t.AccountRecipID.String(), t.SpentAt)
+		if err != nil {
+			return err
+		}
+		t.RecipientSortKey = &top
+	}
 	return nil
 }
 

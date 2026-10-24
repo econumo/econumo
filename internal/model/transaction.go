@@ -153,6 +153,13 @@ func FromState(s NewState) *Transaction {
 // category/payee/tag/labels. Always stamps UpdatedAt = now, since a full
 // update replaces the mutable state.
 func (t *Transaction) Update(s NewState, now time.Time) {
+	sameDay := sameDate(t.SpentAt, s.SpentAt)
+	if !sameDay || !t.AccountID.Equal(s.AccountID) {
+		t.SortKey = 0
+	}
+	if !sameDay || !s.Type.IsTransfer() || !sameOptID(t.AccountRecipID, s.AccountRecipID) {
+		t.RecipientSortKey = nil
+	}
 	t.Type = s.Type
 	t.AccountID = s.AccountID
 	t.Amount = s.Amount
@@ -174,4 +181,17 @@ func (t *Transaction) Update(s NewState, now time.Time) {
 		t.LabelIDs = s.LabelIDs
 	}
 	t.UpdatedAt = now
+}
+
+func sameDate(a, b time.Time) bool {
+	ay, am, ad := a.Date()
+	by, bm, bd := b.Date()
+	return ay == by && am == bm && ad == bd
+}
+
+func sameOptID(a, b *vo.Id) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.Equal(*b)
 }
