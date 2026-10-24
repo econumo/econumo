@@ -351,7 +351,9 @@ user (share invites, imported transactions to review, failed imports, failing
 syncs) surfaces in the Inbox (`web/src/features/inbox`, `/inbox`), fed by one
 `useInbox()` hook that also drives the sidebar badge; new attention items go
 there, never into a new top banner (that slot is reserved for the subscription
-and server-version notices). Runtime config
+and server-version notices, and the install-the-app banner,
+`web/src/features/install/InstallBanner.tsx`, which also tops the signed-out
+`AuthFrame` pages). Runtime config
 (`window.econumoConfig`) is served at `/econumo-config.js`: for a running
 instance the Go server generates the whole document (see the "Web UI config"
 bullet below); `public/econumo-config.js` is only the static fallback used

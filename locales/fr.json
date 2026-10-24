@@ -1936,6 +1936,35 @@
       "menuItem": "Applications connectées"
     }
   },
+  "install": {
+    "notice": "Econumo est meilleur en app",
+    "cta": "Installer",
+    "dismiss": "Masquer",
+    "menu_item": "Installer l’app",
+    "dialog": {
+      "title": "Installer Econumo",
+      "intro": "Ajoutez Econumo à votre écran d’accueil pour l’ouvrir en plein écran, comme n’importe quelle app.",
+      "step_share": "Touchez le bouton Partager du navigateur. Dans Safari, il peut se trouver dans le menu •••.",
+      "step_add": "Faites défiler et choisissez « Sur l’écran d’accueil ».",
+      "step_confirm": "Touchez « Ajouter ». Econumo apparaît sur votre écran d’accueil.",
+      "installed_hint": "Déjà ajouté ? Ouvrez Econumo depuis son icône sur l’écran d’accueil plutôt que dans le navigateur.",
+      "macos": {
+        "intro": "Ajoutez Econumo au Dock pour l’ouvrir dans sa propre fenêtre, comme n’importe quelle app.",
+        "step_file": "Dans la barre des menus de Safari, ouvrez Fichier (ou cliquez sur le bouton Partager).",
+        "step_add": "Choisissez « Ajouter au Dock ».",
+        "step_confirm": "Cliquez sur « Ajouter ». Econumo apparaît dans le Dock.",
+        "installed_hint": "Déjà ajouté ? Ouvrez Econumo depuis le Dock plutôt que dans Safari."
+      },
+      "android_firefox": {
+        "intro": "Ajoutez Econumo à votre écran d’accueil pour l’ouvrir comme n’importe quelle app, sans les barres du navigateur.",
+        "installed_hint": "Déjà ajouté ? Ouvrez Econumo depuis votre écran d’accueil plutôt que dans le navigateur.",
+        "step_menu": "Touchez le menu ⋮ de Firefox.",
+        "step_install": "Choisissez « Installer » (dans les versions plus anciennes, « Ajouter à l’écran d’accueil »).",
+        "step_confirm": "Confirmez. Econumo apparaît sur votre écran d’accueil."
+      },
+      "close": "Compris"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Cette valeur ne doit pas être vide.",

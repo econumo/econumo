@@ -1936,6 +1936,35 @@
       "menuItem": "Verbundene Apps"
     }
   },
+  "install": {
+    "notice": "Econumo ist als App am besten",
+    "cta": "Installieren",
+    "dismiss": "Ausblenden",
+    "menu_item": "App installieren",
+    "dialog": {
+      "title": "Econumo installieren",
+      "intro": "Fügen Sie Econumo zum Home-Bildschirm hinzu, um es wie jede andere App ohne Browserleisten zu öffnen.",
+      "step_share": "Tippen Sie im Browser auf „Teilen“. In Safari befindet sich die Taste eventuell im Menü „•••“.",
+      "step_add": "Scrollen Sie nach unten und wählen Sie „Zum Home-Bildschirm“.",
+      "step_confirm": "Tippen Sie auf „Hinzufügen“. Econumo erscheint auf Ihrem Home-Bildschirm.",
+      "installed_hint": "Schon hinzugefügt? Öffnen Sie Econumo dann über den Home-Bildschirm statt im Browser.",
+      "macos": {
+        "intro": "Fügen Sie Econumo zum Dock hinzu, um es wie jede andere App in einem eigenen Fenster zu öffnen.",
+        "step_file": "Öffnen Sie in der Menüleiste von Safari „Ablage“ (oder klicken Sie auf „Teilen“).",
+        "step_add": "Wählen Sie „Zum Dock hinzufügen“.",
+        "step_confirm": "Klicken Sie auf „Hinzufügen“. Econumo erscheint im Dock.",
+        "installed_hint": "Schon hinzugefügt? Öffnen Sie Econumo dann über das Dock statt in Safari."
+      },
+      "android_firefox": {
+        "intro": "Fügen Sie Econumo zum Startbildschirm hinzu, um es wie jede andere App ohne Browserleisten zu öffnen.",
+        "installed_hint": "Schon hinzugefügt? Öffnen Sie Econumo dann über den Startbildschirm statt im Browser.",
+        "step_menu": "Tippen Sie in Firefox auf das Menü ⋮.",
+        "step_install": "Wählen Sie „Installieren“ (in älteren Versionen „Zum Startbildschirm hinzufügen“).",
+        "step_confirm": "Bestätigen Sie. Econumo erscheint auf Ihrem Startbildschirm."
+      },
+      "close": "Verstanden"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Dieser Wert darf nicht leer sein.",
