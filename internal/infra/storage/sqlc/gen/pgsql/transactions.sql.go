@@ -94,14 +94,11 @@ func (q *Queries) LinkTransactionToRecurring(ctx context.Context, arg LinkTransa
 const listTransactionsByAccount = `-- name: ListTransactionsByAccount :many
 SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id, sort_key, recipient_sort_key
 FROM transactions
-WHERE account_id = $1 OR account_recipient_id = $2
-ORDER BY spent_at DESC, id
+WHERE account_id = $1 OR account_recipient_id = $1
+ORDER BY CAST(spent_at AS date) DESC,
+    CASE WHEN account_id = $1 THEN sort_key ELSE recipient_sort_key END DESC,
+    id
 `
-
-type ListTransactionsByAccountParams struct {
-	AccountID          string
-	AccountRecipientID *string
-}
 
 type ListTransactionsByAccountRow struct {
 	ID                 string
@@ -123,8 +120,12 @@ type ListTransactionsByAccountRow struct {
 	RecipientSortKey   *string
 }
 
-func (q *Queries) ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]ListTransactionsByAccountRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTransactionsByAccount, arg.AccountID, arg.AccountRecipientID)
+// Transactions on an account (as source or recipient) in list order: newest
+// day first, then the row's place in that day on THIS account's side
+// (sort_key as the source, recipient_sort_key as a transfer's recipient), then
+// id. The time of day takes no part.
+func (q *Queries) ListTransactionsByAccount(ctx context.Context, accountID string) ([]ListTransactionsByAccountRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTransactionsByAccount, accountID)
 	if err != nil {
 		return nil, err
 	}

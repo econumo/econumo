@@ -965,8 +965,9 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   source account, `recipient_sort_key` (transfers only, else NULL) on its recipient account,
   so reordering one account never moves a transfer on the other. A higher key is listed
   higher. Order everywhere is day DESC, the side key of the listed account DESC (`sort_key`
-  for a list spanning several accounts), then `id`: `model.SortForList` for the transaction
-  repo's lists, `dayKeyOrder` in the budget drill-down SQL, `compareTransactions`
+  for a list spanning several accounts), then `id`, applied by the database: the
+  transaction repo's queries (`ListTransactionsByAccount`, `ListByAccountIDs`), `dayKeyOrder`
+  in the budget drill-down SQL; in the SPA `compareTransactions`
   (`web/src/features/transactions/order.ts`) in the SPA. Keys are assigned in the storage
   layer only: the transaction repo's `write` gives a row with no key on a side the top of its
   day there (`internal/infra/txorder`, `Placer.Top`: just above the highest key either column

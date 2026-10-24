@@ -28,7 +28,6 @@ type (
 	txRow             = sqlitegen.Transaction
 	upsertParams      = sqlitegen.UpsertTransactionParams
 	linkParams        = sqlitegen.LinkTransactionToRecurringParams
-	listAccParams     = sqlitegen.ListTransactionsByAccountParams
 	exportAcctRow     = sqlitegen.ListExportAccountsForUserRow
 	insertLabelParams = sqlitegen.InsertTransactionLabelParams
 )
@@ -38,7 +37,7 @@ type querier interface {
 	UpsertTransaction(ctx context.Context, db backend.DBTX, p upsertParams) error
 	LinkTransactionToRecurring(ctx context.Context, db backend.DBTX, p linkParams) error
 	DeleteTransaction(ctx context.Context, db backend.DBTX, id string) error
-	ListTransactionsByAccount(ctx context.Context, db backend.DBTX, p listAccParams) ([]txRow, error)
+	ListTransactionsByAccount(ctx context.Context, db backend.DBTX, accountID string) ([]txRow, error)
 	ListExportAccountsForUser(ctx context.Context, db backend.DBTX, userID string) ([]exportAcctRow, error)
 	DeleteTransactionLabels(ctx context.Context, db backend.DBTX, transactionID string) error
 	InsertTransactionLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error
@@ -385,16 +384,11 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 // ListByAccount returns transactions on an account (source or recipient).
 func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.Transaction, error) {
 	s := accountID.String()
-	rows, err := r.q.ListTransactionsByAccount(ctx, r.db(ctx), listAccParams{AccountID: s, AccountRecipientID: &s})
+	rows, err := r.q.ListTransactionsByAccount(ctx, r.db(ctx), s)
 	if err != nil {
 		return nil, err
 	}
-	out, err := hydrateAll(rows)
-	if err != nil {
-		return nil, err
-	}
-	model.SortForList(out, &accountID)
-	return out, nil
+	return hydrateAll(rows)
 }
 
 // DayKeys reads the side keys of accountID's day. A transfer with the account
@@ -501,10 +495,23 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter 
 		next++
 		args = append(args, filter.TagID.String())
 	}
-	// Newest first (the transaction-list convention, see ListTransactionsByAccount)
-	// with id as the stable tie-break: without an ORDER BY the row order diverges
-	// between SQLite and PostgreSQL, and the CSV export serves this order directly.
-	b.WriteString(" ORDER BY spent_at DESC, id")
+	// List order, as in ListTransactionsByAccount: newest day first, then the
+	// row's place in that day, then id. For one account that place is the key
+	// of the row's side on it; a list over several accounts uses the source key.
+	// id keeps the order identical across engines, and the CSV export serves
+	// this order directly.
+	day := "substr(spent_at, 1, 10)"
+	if r.driver == "postgresql" {
+		day = "CAST(spent_at AS date)"
+	}
+	b.WriteString(" ORDER BY " + day + " DESC, ")
+	if len(ids) == 1 {
+		b.WriteString("CASE WHEN account_id = " + placeholders(r.driver, next, 1) + " THEN sort_key ELSE recipient_sort_key END DESC, ")
+		args = append(args, ids[0])
+	} else {
+		b.WriteString("sort_key DESC, ")
+	}
+	b.WriteString("id")
 
 	rows, err := r.db(ctx).QueryContext(ctx, b.String(), args...)
 	if err != nil {
@@ -529,15 +536,7 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter 
 		}
 		out = append(out, t)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	var side *vo.Id
-	if len(accountIDs) == 1 {
-		side = &accountIDs[0]
-	}
-	model.SortForList(out, side)
-	return out, nil
+	return out, rows.Err()
 }
 
 // placeholders builds a comma-separated placeholder list of n params starting at
@@ -656,8 +655,8 @@ func (sqliteQuerier) LinkTransactionToRecurring(ctx context.Context, db backend.
 func (sqliteQuerier) DeleteTransaction(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteTransaction(ctx, id)
 }
-func (sqliteQuerier) ListTransactionsByAccount(ctx context.Context, db backend.DBTX, p listAccParams) ([]txRow, error) {
-	return sqlitegen.New(db).ListTransactionsByAccount(ctx, p)
+func (sqliteQuerier) ListTransactionsByAccount(ctx context.Context, db backend.DBTX, accountID string) ([]txRow, error) {
+	return sqlitegen.New(db).ListTransactionsByAccount(ctx, accountID)
 }
 func (sqliteQuerier) ListExportAccountsForUser(ctx context.Context, db backend.DBTX, userID string) ([]exportAcctRow, error) {
 	return sqlitegen.New(db).ListExportAccountsForUser(ctx, sqlitegen.ListExportAccountsForUserParams{UserID: userID, UserID_2: userID})
@@ -684,8 +683,8 @@ func (pgsqlQuerier) LinkTransactionToRecurring(ctx context.Context, db backend.D
 func (pgsqlQuerier) DeleteTransaction(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteTransaction(ctx, id)
 }
-func (pgsqlQuerier) ListTransactionsByAccount(ctx context.Context, db backend.DBTX, p listAccParams) ([]txRow, error) {
-	rows, err := pgsqlgen.New(db).ListTransactionsByAccount(ctx, pgsqlgen.ListTransactionsByAccountParams(p))
+func (pgsqlQuerier) ListTransactionsByAccount(ctx context.Context, db backend.DBTX, accountID string) ([]txRow, error) {
+	rows, err := pgsqlgen.New(db).ListTransactionsByAccount(ctx, accountID)
 	if err != nil {
 		return nil, err
 	}

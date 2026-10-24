@@ -40,9 +40,15 @@ UPDATE transactions SET recurring_id = ?, updated_at = ? WHERE id = ?;
 DELETE FROM transactions WHERE id = ?;
 
 -- name: ListTransactionsByAccount :many
--- Transactions on an account (as source or recipient), newest first; id is the
--- stable tie-break so row order is deterministic across engines.
+-- Transactions on an account (as source or recipient) in list order: newest
+-- day first, then the row's place in that day on THIS account's side
+-- (sort_key as the source, recipient_sort_key as a transfer's recipient), then
+-- id. The time of day takes no part.
 SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id, sort_key, recipient_sort_key
 FROM transactions
-WHERE account_id = ? OR account_recipient_id = ?
-ORDER BY spent_at DESC, id;
+WHERE account_id = sqlc.arg(account_id) OR account_recipient_id = sqlc.arg(account_id)
+ORDER BY substr(spent_at, 1, 10) DESC,
+    -- ?1 is sqlc.arg(account_id): sqlc's SQLite engine does not rewrite
+    -- sqlc.arg() inside ORDER BY, so the numbered parameter is spelled out.
+    CASE WHEN account_id = ?1 THEN sort_key ELSE recipient_sort_key END DESC,
+    id;

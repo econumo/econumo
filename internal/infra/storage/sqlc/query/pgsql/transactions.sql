@@ -34,7 +34,13 @@ UPDATE transactions SET recurring_id = $1, updated_at = $2 WHERE id = $3;
 DELETE FROM transactions WHERE id = $1;
 
 -- name: ListTransactionsByAccount :many
+-- Transactions on an account (as source or recipient) in list order: newest
+-- day first, then the row's place in that day on THIS account's side
+-- (sort_key as the source, recipient_sort_key as a transfer's recipient), then
+-- id. The time of day takes no part.
 SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id, sort_key, recipient_sort_key
 FROM transactions
-WHERE account_id = $1 OR account_recipient_id = $2
-ORDER BY spent_at DESC, id;
+WHERE account_id = sqlc.arg(account_id) OR account_recipient_id = sqlc.arg(account_id)
+ORDER BY CAST(spent_at AS date) DESC,
+    CASE WHEN account_id = sqlc.arg(account_id) THEN sort_key ELSE recipient_sort_key END DESC,
+    id;
