@@ -46,8 +46,11 @@ type Config struct {
 	// Import rules, the queue and run
 	// history exist only while at least one is on (TransactionImport). CSV
 	// import/export is not part of it and stays on.
-	ImportAppleWallet     bool
-	ImportSimpleFIN       bool
+	ImportAppleWallet bool
+	ImportSimpleFIN   bool
+	// FeedbackDisabled is ECONUMO_FEEDBACK (default true) inverted, so a zero
+	// Config in tests keeps the in-app feedback form on.
+	FeedbackDisabled      bool
 	ImportMatchDays       int // ECONUMO_IMPORT_MATCH_DAYS: ± window for the same-amount import adopt (default 3, 0-31)
 	ImportTipDays         int // ECONUMO_IMPORT_TIP_DAYS: how many days after a tap a bank record may post (default 5, 0-31)
 	ImportTipTolerancePct int // ECONUMO_IMPORT_TIP_TOLERANCE: percent of the tap amount a posted amount may differ by (default 20, 0-100)
@@ -311,6 +314,11 @@ func Load() (Config, error) {
 	if c.ImportSimpleFIN, err = getBoolStrict("ECONUMO_IMPORT_SIMPLEFIN", false); err != nil {
 		return Config{}, err
 	}
+	feedback, err := getBoolStrict("ECONUMO_FEEDBACK", true)
+	if err != nil {
+		return Config{}, err
+	}
+	c.FeedbackDisabled = !feedback
 
 	// Strict parse: a typo must fail at boot rather than silently opening the
 	// server's private network to a user-supplied bridge URL.

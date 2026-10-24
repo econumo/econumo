@@ -67,6 +67,9 @@ interface UiState {
   searchOpen: boolean
   openSearch: () => void
   closeSearch: () => void
+  feedbackOpen: boolean
+  openFeedback: () => void
+  closeFeedback: () => void
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -89,6 +92,12 @@ export const useUiStore = create<UiState>()((set) => ({
     set({ searchOpen: true })
   },
   closeSearch: () => set({ searchOpen: false }),
+  feedbackOpen: false,
+  openFeedback: () => {
+    trackEvent(METRICS.FEEDBACK_OPEN)
+    set({ feedbackOpen: true })
+  },
+  closeFeedback: () => set({ feedbackOpen: false }),
 }))
 
 interface SidebarState {

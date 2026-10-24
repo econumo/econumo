@@ -2164,6 +2164,48 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Dark theme: text inputs, selects, textareas and the amount/plan fields
       (Add transaction, Set plan) carry no fill of their own: they show the
       surface they sit on, as in the light theme. 📱
+- [ ] 📱 Send feedback: the last Settings row, "Send feedback" (under
+      "Feedback"; the sidebar has no feedback entry), opens a dialog with
+      Feedback / Feature request / Bug report (Feedback selected), a Message
+      box, and an empty "Email (optional)" field showing the signed-in address
+      as a chip inside it. Tapping the chip fills the field; a filled field
+      (typed or from the chip) shows an X that empties it and brings the chip
+      back. "We read every message, but may not reply." sits under the title.
+      Send with an empty message shows "Write a message first." and sends
+      nothing; a real message shows "Thanks for your feedback!" and closes the
+      dialog, and the submission appears in the econumo project's `feedback`
+      form in Twillingate with its type, message, email, app version and
+      `cloud`/`self-hosted`. Opening the dialog again starts empty. Offline
+      (or the collector blocked), Send shows "Couldn't send your feedback.
+      Please try again." and keeps the text.
+- [ ] With `ECONUMO_FEEDBACK=false`, the Settings row does not appear.
+- [ ] 📱 Install banner, iOS Safari (not yet added to the Home Screen): a
+      one-line banner "Econumo works best as an app" with an "Install" button
+      and × sits at the top of every page — `/login`, `/register`, the app
+      pages and the OAuth consent page — and Settings shows an "Install the
+      app" row under the profile card. The button (or the row) opens the steps
+      (Share → "Add to Home Screen" → "Add") ending with "Already added it?
+      Open Econumo from its Home Screen icon…". × hides the banner on every
+      page for good, also after a reload and a logout; the Settings row stays.
+      Launched from the Home Screen icon, neither the banner nor the row
+      appears.
+- [ ] 📱 Install popup, iOS Safari: on a device that never saw it, the first
+      signed-in page opens the install steps by itself, once; after "Got it"
+      it never opens again on that device (reload, logout and login included),
+      and it never opens after the banner was dismissed, in the installed app,
+      or in Chrome/Edge (they get the browser's own install dialog instead).
+- [ ] Install banner, Safari 17+ on macOS: the same banner and Settings row;
+      Install opens the Dock steps (File → "Add to Dock" → "Add") ending with
+      "Already added it? Open Econumo from the Dock…"; the one-time popup
+      opens at the first signed-in visit; neither appears in the Dock app.
+      Safari 16 shows neither.
+- [ ] 📱 Install banner, Firefox for Android: the same banner and row; Install
+      opens the Firefox steps (⋮ menu → "Install" → confirm); the one-time
+      popup opens at the first signed-in visit; neither appears once launched
+      from the home-screen icon.
+- [ ] Install banner, Chrome/Edge on desktop or Android (HTTPS or localhost): the banner's Install button and the Settings row
+      open the browser's own install dialog; once installed (or opened as the
+      installed app) both disappear. Desktop Firefox shows neither.
 - [ ] 📱 Install as an app: in Chrome DevTools → Application → Manifest the
       manifest shows no errors or warnings, with name and short name "Econumo"
       and both `any` and `maskable` icons (the maskable preview keeps the whole
