@@ -238,7 +238,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     const saving = rows.filter((a) => a.isSavings === 1)
     const rest = rows.filter((a) => a.isSavings !== 1)
     const children = saving.map(accountLine).sort(byNow)
-    if (saving.length > 0 && rest.length > 0) children.push({ ...lineOf(`${id}-other`, 'Everyday accounts', sumAt(rest, 0), sumAt(rest, n - 1)), icon: <span className="w-4 shrink-0" /> })
+    if (saving.length > 0 && rest.length > 0) children.push({ ...lineOf(`${id}-other`, 'Everyday accounts', sumAt(rest, 0), sumAt(rest, n - 1)), icon: <EntityIcon name="account_balance_wallet" className="text-base text-muted-foreground" /> })
     const avatar = ownerAvatar(id)
     return {
       line: { ...lineOf(id, name, sumAt(rows, 0), sumAt(rows, n - 1)), icon: avatar ? <UserAvatar avatar={avatar} size="xs" /> : undefined },
