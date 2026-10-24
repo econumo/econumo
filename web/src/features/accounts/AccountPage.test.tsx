@@ -580,7 +580,7 @@ describe('drag to reorder', () => {
     expect(classes.some((c) => c.includes('hover:none'))).toBe(false)
   })
 
-  it('desktop: the grab area spans the grip and the category icon, and a click on it still opens the preview', async () => {
+  it('desktop: the grip has an invisible grab area around it, and a click on it still opens the preview', async () => {
     mockViewport(false)
     const user = userEvent.setup()
     renderPage()

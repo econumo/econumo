@@ -310,9 +310,9 @@ navigation (single-pane vs sidebar).
 - [ ] Account page, desktop: hovering a transaction row shows a grip left of
       its icon, level with the icon's middle (no grip without hover, none on not-posted recurring rows,
       none while the search box has text, none on an account shared with you
-      as guest). Dragging the grip or the category icon moves the row within
-      its day (a plain click on the icon still opens the preview); dragging the
-      row anywhere else with the mouse moves nothing; the new order
+      as guest). Dragging the grip (or the space just around it) moves the row
+      within its day; dragging the icon or anywhere else in the row with the
+      mouse moves nothing; the new order
       survives a reload and shows the same on another device and for a
       partner sharing the account. The preview dialog still shows the time
       originally entered.

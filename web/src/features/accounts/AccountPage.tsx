@@ -298,20 +298,20 @@ export function AccountPage() {
                 }
               }}
             >
-              {!isCompact ? <span className="-mr-1 w-4 shrink-0" aria-hidden="true" /> : null}
+              {!isCompact ? <span className="-mr-2 w-8 shrink-0" aria-hidden="true" /> : null}
               {handle ? (
-                // The grab area spans the grip column and the category icon,
-                // where the hand naturally goes; a plain click still reaches
-                // the row and opens the preview, since a drag needs movement.
+                // An invisible target over the whole grip column, wider than
+                // the glyph so it is easy to catch; it stops where the icon
+                // starts. A plain click still reaches the row (the preview).
                 <button
                   type="button"
                   aria-label={t('accounts.page.transaction_list.drag_handle')}
                   title={t('accounts.page.transaction_list.drag_handle')}
-                  className="group/grip absolute left-0 top-0 z-10 h-14 w-16 cursor-grab touch-none rounded-md outline-none"
+                  className="group/grip absolute left-0 top-0 z-10 h-14 w-8 cursor-grab touch-none rounded-md outline-none"
                   {...handle}
                 >
                   {/* level with the icon's middle: 8px row padding + half its 40px */}
-                  <span className="absolute left-0 top-5 flex size-4 items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-visible/grip:opacity-100">
+                  <span className="absolute left-2 top-5 flex size-4 items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-visible/grip:opacity-100">
                     <GripVertical className="size-4" />
                   </span>
                 </button>
