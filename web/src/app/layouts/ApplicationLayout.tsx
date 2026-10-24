@@ -11,6 +11,8 @@ import darkLogo from '@/assets/econumo-dark.svg?inline'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UpdateNotice } from '@/components/UpdateNotice'
+import { InstallBanner } from '@/features/install/InstallBanner'
+import { InstallPopup } from '@/features/install/InstallPopup'
 import { ServerVersionNotice } from '@/components/ServerVersionNotice'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
@@ -31,6 +33,7 @@ import { TransactionDialog } from '@/features/transactions/TransactionDialog'
 import { RulePromptDialog } from '@/features/imports/RulePromptDialog'
 import { RecurringDialog } from '@/features/recurring/RecurringDialog'
 import { GlobalSearchDialog } from '@/features/search/GlobalSearchDialog'
+import { FeedbackDialog } from '@/features/feedback/FeedbackDialog'
 import { searchShortcutLabel, useSearchHotkey } from '@/features/search/useSearchHotkey'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
@@ -182,6 +185,8 @@ export function ApplicationLayout() {
     <div className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
       <SubscriptionBanner />
       <ServerVersionNotice />
+      <InstallBanner />
+      <InstallPopup />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
           <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">
@@ -309,6 +314,7 @@ export function ApplicationLayout() {
       <AccountDialog />
       <TransactionDialog />
       <GlobalSearchDialog />
+      <FeedbackDialog />
       <RulePromptDialog />
       <RecurringDialog />
       <SwitchAccountPrompt />

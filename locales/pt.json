@@ -1878,6 +1878,36 @@
     "open": "Pesquisa",
     "open_tooltip": "Pesquisa ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Enviar comentário",
+    "settings": {
+      "group": "Comentários"
+    },
+    "dialog": {
+      "title": "Enviar comentário",
+      "no_reply": "Lemos todas as mensagens, mas podemos não responder.",
+      "type": "Tipo",
+      "message": "Mensagem",
+      "message_required": "Escreva primeiro uma mensagem.",
+      "email": "Email (opcional)",
+      "email_placeholder": "nome@exemplo.pt",
+      "use_email": "Usar {email}",
+      "clear_email": "Limpar email",
+      "send": "Enviar",
+      "sent": "Obrigado pelo seu comentário!",
+      "failed": "Não foi possível enviar o comentário. Tente novamente."
+    },
+    "type": {
+      "feedback": "Comentário",
+      "feature_request": "Sugestão",
+      "bug_report": "Erro"
+    },
+    "placeholder": {
+      "feedback": "De que gosta, ou o que poderia ser melhor?",
+      "feature_request": "O que falta no Econumo?",
+      "bug_report": "O que aconteceu e o que esperava?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "A sua subscrição termina dentro de {count} dia | A sua subscrição termina dentro de {count} dias",
@@ -1938,6 +1968,35 @@
       "loopback": "Executa neste computador",
       "returnsTo": "Leva você de volta para {host}",
       "menuItem": "Aplicativos conectados"
+    }
+  },
+  "install": {
+    "notice": "O Econumo funciona melhor como aplicação",
+    "cta": "Instalar",
+    "dismiss": "Ocultar",
+    "menu_item": "Instalar a aplicação",
+    "dialog": {
+      "title": "Instalar o Econumo",
+      "intro": "Adicione o Econumo ao ecrã principal para o abrir como qualquer outra aplicação, sem as barras do navegador.",
+      "step_share": "Toque em “Partilhar” no navegador. No Safari, este botão pode estar no menu “•••”.",
+      "step_add": "Desloque para baixo e escolha “Adicionar ao ecrã principal”.",
+      "step_confirm": "Toque em “Adicionar”. O Econumo aparece no ecrã principal.",
+      "installed_hint": "Já adicionou? Então abra o Econumo a partir do ecrã principal e não do navegador.",
+      "macos": {
+        "intro": "Adicione o Econumo à Dock para o abrir numa janela própria, como qualquer outra aplicação.",
+        "step_file": "Na barra de menus do Safari, abra “Ficheiro” (ou clique em “Partilhar”).",
+        "step_add": "Escolha “Adicionar à Dock”.",
+        "step_confirm": "Clique em “Adicionar”. O Econumo aparece na Dock.",
+        "installed_hint": "Já adicionou? Então abra o Econumo a partir da Dock e não do Safari."
+      },
+      "android_firefox": {
+        "intro": "Adicione o Econumo ao ecrã principal para o abrir como qualquer outra aplicação, sem as barras do navegador.",
+        "installed_hint": "Já adicionou? Então abra o Econumo a partir do ecrã principal e não do navegador.",
+        "step_menu": "Toque no menu ⋮ do Firefox.",
+        "step_install": "Escolha “Instalar” (em versões mais antigas, “Adicionar ao ecrã principal”).",
+        "step_confirm": "Confirme. O Econumo aparece no ecrã principal."
+      },
+      "close": "Percebi"
     }
   },
   "errors": {

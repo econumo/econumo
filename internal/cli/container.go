@@ -91,7 +91,7 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	emailVerificationRepo := userrepo.NewEmailVerificationRepo(cfg.DatabaseDriver, txm)
 	emailChangeRepo := userrepo.NewEmailChangeRequestRepo(cfg.DatabaseDriver, txm)
-	mailTransport := mailer.Mailer(mailer.New(cfg.MailProvider, cfg.MailAPIKey))
+	mailTransport := server.MailTransport(cfg)
 	if cfg.AppURL != "" {
 		mailTransport = mailer.WithAppLink(mailTransport, cfg.AppURL)
 	}

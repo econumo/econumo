@@ -181,7 +181,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	emailChangeRepo := userrepo.NewEmailChangeRequestRepo(cfg.DatabaseDriver, txm)
 	mailTransport := seams.Mailer
 	if mailTransport == nil {
-		mailTransport = mailer.New(cfg.MailProvider, cfg.MailAPIKey)
+		mailTransport = MailTransport(cfg)
 	}
 	if cfg.AppURL != "" {
 		mailTransport = mailer.WithAppLink(mailTransport, cfg.AppURL)
@@ -543,3 +543,19 @@ type pinger struct{ db *sql.DB }
 var _ router.Pinger = pinger{}
 
 func (p pinger) Ping(ctx context.Context) error { return p.db.PingContext(ctx) }
+
+// MailTransport builds the MAILER_DSN transport; the CLI container shares it.
+func MailTransport(cfg config.Config) mailer.Mailer {
+	return mailer.New(mailer.Transport{
+		Provider: cfg.MailProvider,
+		APIKey:   cfg.MailAPIKey,
+		SMTP: mailer.SMTPConfig{
+			Host:        cfg.MailSMTPHost,
+			Port:        cfg.MailSMTPPort,
+			Username:    cfg.MailSMTPUsername,
+			Password:    cfg.MailSMTPPassword,
+			ImplicitTLS: cfg.MailSMTPImplicitTLS,
+			Insecure:    cfg.MailSMTPInsecure,
+		},
+	})
+}

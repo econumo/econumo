@@ -61,7 +61,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `IMPORT_APPLE_WALLET` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL`, `IMPORT_APPLE_WALLET` and `FEEDBACK` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. The merge is per server: typing a
@@ -178,7 +178,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   ├── auth/ ................ password hashing + AES email encryption
 │   │   ├── clock/ ................ time source abstraction
 │   │   ├── ai/ .................. OpenAI-compatible / Anthropic Messages client (AI integration); imports nothing internal
-│   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
+│   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API | SMTP)
 │   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
 │   │                              distinct from the repo-root web/, the React SPA): middleware, router,
 │   │                              response envelope (httpx), SPA server, apidoc — no feature logic
@@ -351,7 +351,9 @@ user (share invites, imported transactions to review, failed imports, failing
 syncs) surfaces in the Inbox (`web/src/features/inbox`, `/inbox`), fed by one
 `useInbox()` hook that also drives the sidebar badge; new attention items go
 there, never into a new top banner (that slot is reserved for the subscription
-and server-version notices). Runtime config
+and server-version notices, and the install-the-app banner,
+`web/src/features/install/InstallBanner.tsx`, which also tops the signed-out
+`AuthFrame` pages). Runtime config
 (`window.econumoConfig`) is served at `/econumo-config.js`: for a running
 instance the Go server generates the whole document (see the "Web UI config"
 bullet below); `public/econumo-config.js` is only the static fallback used
@@ -738,7 +740,13 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `econumo-config.js` — `ALLOW_CUSTOM_API`, `INSTANCE_ID`, etc. — is generated).
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
-  each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
+  each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend;
+  `smtp://[user:pass@]host[:port]` (default 587, STARTTLS REQUIRED — a relay that does not offer it
+  is refused rather than sent a reset code in the clear) and `smtps://…` (implicit TLS, default 465)
+  send through any SMTP server (`internal/infra/mailer/smtp.go`, stdlib `net/smtp`, AUTH PLAIN or
+  LOGIN, quoted-printable UTF-8 text). SMTP requires `?from=` (the envelope sender). A loopback host
+  may skip TLS and is not certificate-checked; `?insecure=true` extends that to any host (a relay on
+  a trusted Docker network). Parse errors never echo the DSN, which carries the password.
   From / Reply-To fold in as query params: `resend://<key>?from=…&reply_to=…` (also accepted by
   `console://`/`log://`). Parsed once in `config.Load` (a bad scheme fails at boot). Replaces the former
   `RESEND_API_KEY` / `ECONUMO_MAIL_FROM` / `ECONUMO_MAIL_REPLY_TO`.
@@ -768,6 +776,14 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   rules/history rows and the Inbox's import sections need either; with both off it never fetches
   an import endpoint. CSV import/export is not part of it and is always on. The apiparity harness
   turns both on so the catalogue keeps covering the import routes.
+- `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
+  fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
+  it on). Served as `FEEDBACK`; `false` hides the Settings row, the form's only entry point. The
+  form (`web/src/features/feedback`) posts `type`, `message`, an optional `email` (empty by
+  default, the user's own offered as a one-tap chip), `app_version` and `hosting` (`cloud`/`self-hosted`) from the
+  BROWSER straight to the Twillingate form `feedback` of the product-analytics project
+  (`submitForm` in `web/src/lib/analytics.ts`, the SDK's wire shape without the SDK), so it
+  works with analytics off and carries no `$user_id` — only the synthetic `$host`.
 - `ECONUMO_IMPORT_MATCH_DAYS` / `ECONUMO_IMPORT_TIP_DAYS` / `ECONUMO_IMPORT_TIP_TOLERANCE` /
   `ECONUMO_IMPORT_TOKEN_MIN_LENGTH` — transaction-import matcher thresholds (defaults 3 / 5 / 20 / 3;
   ranges 0–31 days, 0–31 days, 0–100 percent, 1–16 chars). Strict parse: malformed or out-of-range
@@ -846,8 +862,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET` and
-  `IMPORT_SIMPLEFIN` are always present (server truth). `MCP_URL` is the MCP OAuth resource
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET`,
+  `IMPORT_SIMPLEFIN` and `FEEDBACK` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
   instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom
