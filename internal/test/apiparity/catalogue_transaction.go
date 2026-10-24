@@ -28,6 +28,23 @@ func init() {
 		}
 	}})
 
+	// transaction_move: drag-and-drop on an account page. Txn1 and Txn2 share
+	// the seed day with Txn2 on top; Txn1 goes above it, then Txn2 moves to
+	// the next day, which leaves the first request's order stale.
+	register(Scenario{Name: "transaction_move", Calls: func() []Call {
+		const path = "/api/v1/transaction/move-transaction"
+		return []Call{
+			{Label: "move-within-day", Method: "POST", Path: path, Auth: "owner",
+				Body: map[string]any{"id": Txn1, "accountId": OwnerAccount, "date": "2024-04-01", "transactionIds": []string{Txn1, Txn2}}},
+			{Label: "move-to-another-day", Method: "POST", Path: path, Auth: "owner",
+				Body: map[string]any{"id": Txn2, "accountId": OwnerAccount, "date": "2024-04-02", "transactionIds": []string{Txn2}}},
+			{Label: "err:move-stale-day", Method: "POST", Path: path, Auth: "owner",
+				Body: map[string]any{"id": Txn1, "accountId": OwnerAccount, "date": "2024-04-01", "transactionIds": []string{Txn1, Txn2}}},
+			{Label: "err:move-blank", Method: "POST", Path: path, Auth: "owner", Body: map[string]any{}},
+			{Label: "after-moves", Method: "GET", Path: "/api/v1/transaction/get-account-transaction-list?accountIds=" + OwnerAccount, Auth: "owner"},
+		}
+	}})
+
 	// account_transaction_list: the per-account batch read the client cache
 	// downloads from. A foreign id is dropped silently (never a 403); the
 	// parameter being present-but-empty or malformed is a 400.

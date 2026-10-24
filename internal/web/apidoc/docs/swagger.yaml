@@ -2007,6 +2007,30 @@ definitions:
           $ref: '#/definitions/model.TagResult'
         type: array
     type: object
+  model.MoveTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      date:
+        type: string
+      id:
+        type: string
+      transactionIds:
+        items:
+          type: string
+        type: array
+    type: object
+  model.MoveTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      items:
+        items:
+          $ref: '#/definitions/model.TransactionResult'
+        type: array
+    type: object
   model.OpeningBalanceResult:
     properties:
       amount:
@@ -9860,6 +9884,54 @@ paths:
       security:
       - Bearer: []
       summary: Import a transaction list from CSV
+      tags:
+      - Transaction
+  /api/v1/transaction/move-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Puts a transaction where it was dropped on an account page. transactionIds
+        is that account's whole day afterwards, top first; only that account's order
+        changes. A different date moves the transaction to that day, keeping its time.
+        Returns every rewritten transaction plus the refreshed account list.
+      parameters:
+      - description: Move transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MoveTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MoveTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Move a transaction within or between days
       tags:
       - Transaction
   /api/v1/transaction/update-transaction:
