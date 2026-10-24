@@ -1874,6 +1874,35 @@
     "open": "Zoeken",
     "open_tooltip": "Zoeken ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Feedback sturen",
+    "settings": {
+      "group": "Feedback"
+    },
+    "dialog": {
+      "title": "Feedback sturen",
+      "no_reply": "We lezen elk bericht, maar reageren misschien niet.",
+      "type": "Soort",
+      "message": "Bericht",
+      "message_required": "Schrijf eerst een bericht.",
+      "email": "E-mail (optioneel)",
+      "email_placeholder": "u@voorbeeld.nl",
+      "use_my_email": "Mijn e-mail gebruiken",
+      "send": "Versturen",
+      "sent": "Bedankt voor uw feedback!",
+      "failed": "Uw feedback kon niet worden verstuurd. Probeer het opnieuw."
+    },
+    "type": {
+      "feedback": "Feedback",
+      "feature_request": "Idee",
+      "bug_report": "Bug"
+    },
+    "placeholder": {
+      "feedback": "Wat vindt u goed, of wat kan beter?",
+      "feature_request": "Wat zou u willen dat Econumo doet?",
+      "bug_report": "Wat gebeurde er, en wat verwachtte u?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Uw abonnement eindigt over {count} dag | Uw abonnement eindigt over {count} dagen",

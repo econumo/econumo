@@ -161,6 +161,8 @@ export const METRICS = {
   INBOX_OPEN: 'appInboxOpen',
   GLOBAL_SEARCH_OPEN: 'appGlobalSearchOpen',
   GLOBAL_SEARCH_SELECT: 'appGlobalSearchSelect',
+  FEEDBACK_OPEN: 'appFeedbackOpen',
+  FEEDBACK_SEND: 'appFeedbackSend',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

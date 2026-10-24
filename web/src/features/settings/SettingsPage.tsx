@@ -1,4 +1,4 @@
-import { ChevronRight, Download, RefreshCw } from 'lucide-react'
+import { ChevronRight, Download, MessageSquare, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -6,7 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { UserAvatar } from '@/components/UserAvatar'
-import { getVersionLabel, backendHost, isAppleWalletImportEnabled, isSimpleFINImportEnabled, isTransactionImportEnabled } from '@/lib/config'
+import { getVersionLabel, backendHost, isFeedbackEnabled, isAppleWalletImportEnabled, isSimpleFINImportEnabled, isTransactionImportEnabled } from '@/lib/config'
 import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
@@ -18,6 +18,7 @@ import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
 import { useFullReload, useFullReloadPending } from '@/features/transactions/useFullReload'
 import { useInstallApp } from '@/features/install/useInstallApp'
 import { InstallInstructionsDialog } from '@/features/install/InstallInstructionsDialog'
+import { useUiStore } from '@/app/uiStore'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -82,6 +83,7 @@ export function SettingsPage() {
   const fullReload = useFullReload()
   const reloading = useFullReloadPending()
   const install = useInstallApp()
+  const openFeedback = useUiStore((s) => s.openFeedback)
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -187,6 +189,15 @@ export function SettingsPage() {
             />
           </MenuGroup>
 
+          {isFeedbackEnabled() ? (
+            <MenuGroup label={t('feedback.settings.group')}>
+              <MenuRow
+                label={t('feedback.menu_item')}
+                trailing={<MessageSquare className="size-4 shrink-0 text-muted-foreground" />}
+                onClick={() => openFeedback('settings')}
+              />
+            </MenuGroup>
+          ) : null}
         </div>
       </div>
 

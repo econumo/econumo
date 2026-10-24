@@ -1874,6 +1874,35 @@
     "open": "Suche",
     "open_tooltip": "Suche ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Feedback senden",
+    "settings": {
+      "group": "Feedback"
+    },
+    "dialog": {
+      "title": "Feedback senden",
+      "no_reply": "Wir lesen jede Nachricht, antworten aber nicht unbedingt.",
+      "type": "Art",
+      "message": "Nachricht",
+      "message_required": "Schreiben Sie zuerst eine Nachricht.",
+      "email": "E-Mail (optional)",
+      "email_placeholder": "sie@beispiel.de",
+      "use_my_email": "Meine E-Mail verwenden",
+      "send": "Senden",
+      "sent": "Danke für Ihr Feedback!",
+      "failed": "Ihr Feedback konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+    },
+    "type": {
+      "feedback": "Feedback",
+      "feature_request": "Wunsch",
+      "bug_report": "Fehler"
+    },
+    "placeholder": {
+      "feedback": "Was gefällt Ihnen, und was könnte besser sein?",
+      "feature_request": "Was sollte Econumo können?",
+      "bug_report": "Was ist passiert, und was haben Sie erwartet?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Ihr Abonnement endet in {count} Tag | Ihr Abonnement endet in {count} Tagen",

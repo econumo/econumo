@@ -1874,6 +1874,35 @@
     "open": "搜索",
     "open_tooltip": "搜索 ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "发送反馈",
+    "settings": {
+      "group": "反馈"
+    },
+    "dialog": {
+      "title": "发送反馈",
+      "no_reply": "我们会阅读每条消息，但不一定回复。",
+      "type": "类型",
+      "message": "消息",
+      "message_required": "请先填写消息。",
+      "email": "邮箱（可选）",
+      "email_placeholder": "you@example.com",
+      "use_my_email": "使用我的邮箱",
+      "send": "发送",
+      "sent": "感谢您的反馈！",
+      "failed": "反馈发送失败，请重试。"
+    },
+    "type": {
+      "feedback": "反馈",
+      "feature_request": "功能建议",
+      "bug_report": "问题报告"
+    },
+    "placeholder": {
+      "feedback": "您喜欢什么，或者哪里可以改进？",
+      "feature_request": "您希望 Econumo 能做什么？",
+      "bug_report": "发生了什么，您原本期望怎样？"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "您的订阅将在 {count} 天后到期",

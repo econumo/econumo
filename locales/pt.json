@@ -1874,6 +1874,35 @@
     "open": "Pesquisa",
     "open_tooltip": "Pesquisa ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Enviar comentário",
+    "settings": {
+      "group": "Comentários"
+    },
+    "dialog": {
+      "title": "Enviar comentário",
+      "no_reply": "Lemos todas as mensagens, mas podemos não responder.",
+      "type": "Tipo",
+      "message": "Mensagem",
+      "message_required": "Escreva primeiro uma mensagem.",
+      "email": "E-mail (opcional)",
+      "email_placeholder": "voce@exemplo.pt",
+      "use_my_email": "Usar o meu e-mail",
+      "send": "Enviar",
+      "sent": "Obrigado pelo seu comentário!",
+      "failed": "Não foi possível enviar o comentário. Tente novamente."
+    },
+    "type": {
+      "feedback": "Comentário",
+      "feature_request": "Sugestão",
+      "bug_report": "Erro"
+    },
+    "placeholder": {
+      "feedback": "De que gosta, ou o que poderia ser melhor?",
+      "feature_request": "O que gostaria que o Econumo fizesse?",
+      "bug_report": "O que aconteceu e o que esperava?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "A sua subscrição termina dentro de {count} dia | A sua subscrição termina dentro de {count} dias",

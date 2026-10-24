@@ -1,7 +1,7 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
+import { MessageSquare, RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file sits right at vite's 4KB auto-inline
 // cutoff, and a separately shipped sidebar logo can 404 where an inlined one
@@ -33,6 +33,8 @@ import { TransactionDialog } from '@/features/transactions/TransactionDialog'
 import { RulePromptDialog } from '@/features/imports/RulePromptDialog'
 import { RecurringDialog } from '@/features/recurring/RecurringDialog'
 import { GlobalSearchDialog } from '@/features/search/GlobalSearchDialog'
+import { FeedbackDialog } from '@/features/feedback/FeedbackDialog'
+import { isFeedbackEnabled } from '@/lib/config'
 import { searchShortcutLabel, useSearchHotkey } from '@/features/search/useSearchHotkey'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
@@ -92,6 +94,8 @@ export function ApplicationLayout() {
   const { data: user } = useUserData()
   const update = useAvailableUpdate()
   const openSearch = useUiStore((s) => s.openSearch)
+  const openFeedback = useUiStore((s) => s.openFeedback)
+  const feedbackLabel = t('feedback.menu_item')
   const searchLabel = t('search.open')
   const searchTooltip = t('search.open_tooltip', { shortcut: searchShortcutLabel() })
   useSearchHotkey()
@@ -258,6 +262,17 @@ export function ApplicationLayout() {
                     <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary" data-testid="update-dot" />
                   ) : null}
                 </Link>
+                {isFeedbackEnabled() ? (
+                  <button
+                    type="button"
+                    aria-label={feedbackLabel}
+                    title={feedbackLabel}
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() => openFeedback('sidebar')}
+                  >
+                    <MessageSquare className="size-5" />
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   aria-label="sync"
@@ -278,15 +293,28 @@ export function ApplicationLayout() {
                   {t('settings.page.menu_item')}
                   {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
                 </Link>
-                <button
-                  type="button"
-                  aria-label="sync"
-                  title={syncTitle}
-                  className={`${syncClassFull} select-none [-webkit-touch-callout:none]`}
-                  {...syncPress}
-                >
-                  <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
-                </button>
+                <div className="flex items-center gap-1">
+                  {isFeedbackEnabled() ? (
+                    <button
+                      type="button"
+                      aria-label={feedbackLabel}
+                      title={feedbackLabel}
+                      className={`grid ${isCompact ? 'size-11' : 'size-9'} place-items-center rounded-full text-muted-foreground hover:text-foreground`}
+                      onClick={() => openFeedback('sidebar')}
+                    >
+                      <MessageSquare className={isCompact ? 'size-6' : 'size-5'} />
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    aria-label="sync"
+                    title={syncTitle}
+                    className={`${syncClassFull} select-none [-webkit-touch-callout:none]`}
+                    {...syncPress}
+                  >
+                    <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </footer>
             )}
           </aside>
@@ -313,6 +341,7 @@ export function ApplicationLayout() {
       <AccountDialog />
       <TransactionDialog />
       <GlobalSearchDialog />
+      <FeedbackDialog />
       <RulePromptDialog />
       <RecurringDialog />
       <SwitchAccountPrompt />

@@ -691,6 +691,32 @@ func TestLoad_ImportProviders(t *testing.T) {
 	}
 }
 
+func TestLoad_Feedback(t *testing.T) {
+	t.Setenv("PORT", "8080")
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_FEEDBACK", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.FeedbackDisabled {
+		t.Error("feedback must default on")
+	}
+
+	t.Setenv("ECONUMO_FEEDBACK", "false")
+	if cfg, err = Load(); err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.FeedbackDisabled {
+		t.Error("ECONUMO_FEEDBACK=false must disable feedback")
+	}
+
+	t.Setenv("ECONUMO_FEEDBACK", "nope")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_FEEDBACK must fail at boot")
+	}
+}
+
 func TestLoad_ImportMatcherBounds(t *testing.T) {
 	cases := []struct {
 		key, val string

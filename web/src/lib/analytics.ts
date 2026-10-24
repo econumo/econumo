@@ -11,9 +11,11 @@
 // is still unattributed. The SDK runs without consent, so it keeps nothing on
 // the device, sends $consent 0 and no $install_id.
 
+import { v4 as uuidv4 } from 'uuid'
 import { forgetAuthMethods } from './analyticsAuthMethods'
 
 const SDK_URL = 'https://t.econumo.com/js/twillingate.js'
+const FORMS_URL = 'https://t.econumo.com/ingest/forms'
 // Named, so the SDK copy the cloud's liltag config loads for its own web
 // analytics project keeps the default instance and the two never collide.
 const INSTANCE = 'econumo'
@@ -200,4 +202,18 @@ function start(instance: TwillingateInstance): void {
 function fail(): void {
   failed = true
   held = []
+}
+
+// A form submission is something the user chose to send, not tracking, so it
+// bypasses the SDK (loaded only for signed-in users with analytics on) and its
+// identity: the body is the SDK's own submitForm wire shape, without $user_id.
+// A string body keeps it a CORS simple request (text/plain, no preflight).
+export async function submitForm(name: string, fields: Record<string, string>, attributes: Record<string, string>): Promise<void> {
+  const response = await fetch(`${FORMS_URL}/${name}?key=${encodeURIComponent(INGEST_KEY)}`, {
+    method: 'POST',
+    body: JSON.stringify({ key: INGEST_KEY, id: uuidv4(), fields, attributes }),
+  })
+  if (!response.ok) {
+    throw new Error(`form ${name} refused (${response.status})`)
+  }
 }

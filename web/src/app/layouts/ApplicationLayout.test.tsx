@@ -252,6 +252,24 @@ it('clicking the top row Search button opens global search', async () => {
   await waitFor(() => expect(useUiStore.getState().searchOpen).toBe(true))
 })
 
+it('the sidebar footer opens the feedback dialog, and hides the button when the server turns feedback off', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  useUiStore.setState({ feedbackOpen: false })
+  const view = renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Send feedback' }))
+  expect(await screen.findByRole('heading', { name: 'Send feedback' })).toBeInTheDocument()
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.FEEDBACK_OPEN, { source: 'sidebar' })
+  view.unmount()
+
+  useUiStore.setState({ feedbackOpen: false })
+  window.econumoConfig = { ...window.econumoConfig, FEEDBACK: false }
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Send feedback' })).not.toBeInTheDocument()
+})
+
 it('a reload with a persisted cache skips the boot loader and refreshes in the background', async () => {
   mockViewport(false)
   let accountFetches = 0

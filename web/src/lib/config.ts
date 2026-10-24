@@ -19,6 +19,7 @@ export interface EconumoConfig {
   AI_ENABLED?: boolean
   IMPORT_APPLE_WALLET?: boolean
   IMPORT_SIMPLEFIN?: boolean
+  FEEDBACK?: boolean
   BILLING_URL?: string
   MCP_URL?: string
   LILTAG_CONFIG_URL?: string
@@ -181,6 +182,11 @@ export function isSimpleFINImportEnabled(): boolean {
 
 // Any provider on: import rules, run history and the Inbox's import sections
 // exist only then; with both off nothing fetches an import endpoint.
+// ECONUMO_FEEDBACK: on unless the server says otherwise.
+export function isFeedbackEnabled(): boolean {
+  return window.econumoConfig?.FEEDBACK !== false
+}
+
 export function isTransactionImportEnabled(): boolean {
   return isAppleWalletImportEnabled() || isSimpleFINImportEnabled()
 }
