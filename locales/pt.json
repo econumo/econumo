@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "Nenhuma transação encontrada",
+        "drag_handle": "Arraste para reordenar",
         "today": "Hoje",
         "yesterday": "Ontem",
         "item": {
@@ -2132,7 +2133,9 @@
       "invalid_import_file": "Carregue um ficheiro CSV válido.",
       "too_many_labels": "Uma transação pode ter no máximo 50 etiquetas de relatório.",
       "account_deleted": "Esta conta foi eliminada.",
-      "category_type_mismatch": "O tipo de categoria deve corresponder ao tipo de transação."
+      "category_type_mismatch": "O tipo de categoria deve corresponder ao tipo de transação.",
+      "day_changed": "Este dia foi alterado entretanto. Atualize e tente novamente.",
+      "cannot_move": "Esta transação não pode ser movida para outro dia."
     },
     "user": {
       "report_period_invalid": "O período do relatório está incorreto.",

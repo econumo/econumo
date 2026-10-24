@@ -576,7 +576,8 @@ Tests live alongside the Go code:
   transaction fingerprint (rows, labels, author/recurring links, the display names and avatars
   of the authors) changes without its revision moving. Smoke on sqlite; under
   `-tags enginecompare` also on PostgreSQL. A new write path that touches an account's
-  transactions fails here until it bumps.
+  transactions fails here until it bumps, and one that stores a row without its sort keys
+  (see "Transaction order") fails here too.
 - `internal/infra/oidc/oidctest` — an in-process fake OpenID provider (discovery, authorize,
   token, JWKS, userinfo, end-session) used to drive the real `internal/oauth` callback through
   `httptest`, so provider-flow tests exercise actual protocol code rather than stubbing it out.
@@ -960,7 +961,7 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   transaction (`backend.TxManager.BeforeCommit` / `TxValue`) and flushed once just before
   COMMIT as one UPDATE per account in sorted id order (a stable lock order, so concurrent
   writers cannot deadlock on it); outside a transaction they apply immediately. Sites:
-  the transaction repo (`Save`, `ReplaceLabels`, `LinkRecurring`, `Delete`), account
+  the transaction repo (`Save`, `ReplaceLabels`, `LinkRecurring`, `Delete`, `SetSideKey`), account
   `SaveCorrection`, category/payee/tag merge and delete, label merge and delete, recurring
   delete, imports `InsertLink` / `UpdateLink` (only when its `transaction_id` changes) /
   `DeleteSource`, and the user `Save` when the name or avatar changes. The account DTO
@@ -968,6 +969,29 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   `get-account-transaction-list` returns for the account (a size hint for packing downloads,
   read from the transactions indexes alone, a transfer counted on both sides). `internal/test/revisionguard` enforces
   the rule (see Testing).
+- **Transaction order.** Within a day, transactions are ordered by fractional keys
+  (`internal/shared/sortkey`, the scheme categories, tags, payees, accounts and budget
+  elements use), never by the time of day: `transactions.sort_key` places the row on its
+  source account, `recipient_sort_key` (transfers only, else NULL) on its recipient account,
+  so reordering one account never moves a transfer on the other. A higher key is listed
+  higher. Order everywhere is day DESC, the side key of the listed account DESC (`sort_key`
+  for a list spanning several accounts), then `id`, applied by the database: the
+  transaction repo's queries (`ListTransactionsByAccount`, `ListByAccountIDs`), `dayKeyOrder`
+  in the budget drill-down SQL; in the SPA `compareTransactions`
+  (`web/src/features/transactions/order.ts`) in the SPA. Keys are assigned in the storage
+  layer only: the transaction repo's `write` gives a row with no key on a side the top of its
+  day there (`internal/infra/txorder`, `Placer.Top`: just above the highest key either column
+  holds for that account and day), the account repo does the same for corrections, and
+  `model.Transaction.Update` drops a side's key when the day or that side's account changes.
+  New rows therefore land on top of their day; the CSV importer inserts bottom-up so a day's
+  rows keep file order. `POST /api/v1/transaction/move-transaction` (the account page's drag
+  and drop) takes `aboveId`, the row now directly above the moved one on that account (null =
+  top of the day), and writes ONE key, between that row and the one below it; nothing else
+  is renumbered, except rows whose keys tie (two inserts that raced), which are split first.
+  An `aboveId` no longer on that day is refused with `transaction.day_changed`; a different
+  `date` also moves the row to that day (time kept), which needs write access to every
+  account it touches (`transaction.cannot_move`). `revisionguard` also fails any write that
+  leaves a row without its keys.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
 - Keep `.sql` query files ASCII-only, including comments — a multibyte character (an em dash,
@@ -1001,6 +1025,7 @@ data:import-sqlite [--force] <sqlite-path>
 migration:zero-deleted-accounts
 migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
+migration:seed-transaction-sort-keys
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -1042,6 +1067,13 @@ the live schema, skips `schema_migrations` (the instance id's anchor), parses
 each value with the exact driver layout and leaves anything unparseable as
 stored; idempotent, a no-op on PostgreSQL, and invoked automatically at boot as
 migration step `20260915000001`.
+
+`migration:seed-transaction-sort-keys` gives every transaction without one a sort key on
+each account side (see "Transaction order"), numbering each account's days in the order the
+lists used before keys existed (spent_at DESC, id), the rows it is the source of and the
+transfers it receives together. One account per DB transaction, with that account's revision
+bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
+migration step `20261024000001`, right after the SQL file that adds the columns.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.

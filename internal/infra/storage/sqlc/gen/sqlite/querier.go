@@ -541,9 +541,11 @@ type Querier interface {
 	// The owner's tags ordered by sort key; used by move-tag (load,
 	// place the moved row, save it) and as the basis for the returned list.
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
-	// Transactions on an account (as source or recipient), newest first; id is the
-	// stable tie-break so row order is deterministic across engines.
-	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error)
+	// Transactions on an account (as source or recipient) in list order: newest
+	// day first, then the row's place in that day on THIS account's side
+	// (sort_key as the source, recipient_sort_key as a transfer's recipient), then
+	// id. The time of day takes no part.
+	ListTransactionsByAccount(ctx context.Context, accountID string) ([]Transaction, error)
 	ListUnrevokedOAuthGrants(ctx context.Context, userID string) ([]ListUnrevokedOAuthGrantsRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	// Ordered by id so the backfill is deterministic across engines and reruns.

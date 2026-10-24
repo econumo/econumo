@@ -185,7 +185,11 @@ definitions:
         type: array
       payeeId:
         type: string
+      recipientSortKey:
+        type: string
       recurringId:
+        type: string
+      sortKey:
         type: string
       tagId:
         type: string
@@ -2108,6 +2112,30 @@ definitions:
           $ref: '#/definitions/model.TagResult'
         type: array
     type: object
+  model.MoveTransactionRequest:
+    properties:
+      aboveId:
+        type: string
+      accountId:
+        type: string
+      date:
+        type: string
+      fromDate:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      items:
+        items:
+          $ref: '#/definitions/model.TransactionResult'
+        type: array
+    type: object
   model.OpeningBalanceResult:
     properties:
       amount:
@@ -2920,10 +2948,18 @@ definitions:
         type: array
       payeeId:
         type: string
+      recipientSortKey:
+        type: string
       recurringId:
         description: |-
           RecurringId is the template this transaction was posted from, null for a
           hand-entered one. Read-only provenance: create/update never accept it.
+        type: string
+      sortKey:
+        description: |-
+          SortKey orders the row within its day on accountId, RecipientSortKey on
+          accountRecipientId (null unless a transfer): fractional keys compared
+          byte-wise, the higher listed first.
         type: string
       tagId:
         type: string
@@ -9979,6 +10015,57 @@ paths:
       security:
       - Bearer: []
       summary: Import a transaction list from CSV
+      tags:
+      - Transaction
+  /api/v1/transaction/move-transaction:
+    post:
+      consumes:
+      - application/json
+      description: 'Puts a transaction where it was dropped on an account page: directly
+        below aboveId on that account''s day, or at the top of the day when aboveId
+        is null. Only that account''s order changes, and no other transaction is renumbered.
+        A date other than fromDate (the day the page showed it on) moves the transaction
+        to that day, keeping its time. A transaction no longer stored on fromDate,
+        or an aboveId no longer on the target day, is refused as changed meanwhile.
+        Returns the rewritten transaction(s) plus the refreshed account list.'
+      parameters:
+      - description: Move transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MoveTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MoveTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Move a transaction within or between days
       tags:
       - Transaction
   /api/v1/transaction/update-transaction:

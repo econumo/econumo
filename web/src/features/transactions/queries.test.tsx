@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
-import { useCreateTransaction, useDeleteTransaction } from './queries'
+import { useCreateTransaction, useDeleteTransaction, useMoveTransaction } from './queries'
 
 const wireOwner = { id: 'u1', avatar: '', name: 'Ada' }
 const wireTx = {
@@ -93,4 +93,44 @@ it('delete-transaction removes the item and refreshes accounts', async () => {
   const txs = queryClient.getQueryData<{ id: string }[]>(queryKeys.transactions)!
   expect(txs.map((t) => t.id)).toEqual(['t-other'])
   expect(queryClient.getQueryData<{ balance: string }[]>(queryKeys.accounts)![0].balance).toBe('90.01')
+})
+
+describe('useMoveTransaction', () => {
+  const day = [
+    { ...wireTx, id: 'm1', date: '2024-03-01 09:00:00', sortKey: 'a2', recipientSortKey: null },
+    { ...wireTx, id: 'm2', date: '2024-03-01 10:00:00', sortKey: 'a1', recipientSortKey: null },
+  ]
+  const req = { id: 'm2', accountId: 'a1', fromDate: '2024-03-01', date: '2024-03-01', aboveId: null }
+  const keysOf = (rows: { id: string; sortKey?: string }[] | undefined) => Object.fromEntries((rows ?? []).map((r) => [r.id, r.sortKey]))
+
+  it('takes the server rows on success and leaves the others alone', async () => {
+    server.use(
+      http.post('*/api/v1/transaction/move-transaction', () =>
+        HttpResponse.json({ success: true, message: '', data: { items: [{ ...day[1], sortKey: 'a3' }], accounts: [wireAccount] } }),
+      ),
+    )
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.transactions, day)
+    const { result } = renderHook(() => useMoveTransaction(), { wrapper })
+    result.current.mutate(req)
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 'a2', m2: 'a3' })
+    expect(queryClient.getQueryData(queryKeys.accounts)).toEqual([wireAccount])
+  })
+
+  it('leaves the cache untouched and syncs again when the server refuses', async () => {
+    server.use(
+      http.post('*/api/v1/transaction/move-transaction', () =>
+        HttpResponse.json({ success: false, message: 'This day changed meanwhile. Refresh and try again.', code: 400, errors: {} }, { status: 400 }),
+      ),
+    )
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.transactions, day)
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useMoveTransaction(), { wrapper })
+    result.current.mutate(req)
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 'a2', m2: 'a1' })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.transactions })
+  })
 })

@@ -38,6 +38,11 @@ type TransactionResult struct {
 	// this transaction — int 0/1 like isArchived. Full provenance is a
 	// separate per-transaction read (stage 2), so the list carries only the flag.
 	IsImported int `json:"isImported"`
+	// SortKey orders the row within its day on accountId, RecipientSortKey on
+	// accountRecipientId (null unless a transfer): fractional keys compared
+	// byte-wise, the higher listed first.
+	SortKey          string  `json:"sortKey"`
+	RecipientSortKey *string `json:"recipientSortKey"`
 }
 
 // CreateTransactionRequest is the create-transaction body. amount/amountRecipient
@@ -126,6 +131,38 @@ func (r UpdateTransactionRequest) Validate() error {
 type UpdateTransactionResult struct {
 	Item     TransactionResult `json:"item"`
 	Accounts []AccountResult   `json:"accounts"`
+}
+
+// MoveTransactionRequest is the move-transaction body: the moved row, the
+// account page it was dragged on, the day the page showed it on and the day it
+// was dropped into ("Y-m-d"), and the transaction now directly above it on that
+// account (null = top of the day).
+type MoveTransactionRequest struct {
+	Id        string  `json:"id"`
+	AccountId string  `json:"accountId"`
+	FromDate  string  `json:"fromDate"`
+	Date      string  `json:"date"`
+	AboveId   *string `json:"aboveId"`
+}
+
+func (r MoveTransactionRequest) Validate() error {
+	var fields []errs.FieldError
+	for _, f := range []struct{ key, val string }{{"id", r.Id}, {"accountId", r.AccountId}, {"fromDate", r.FromDate}, {"date", r.Date}} {
+		if strings.TrimSpace(f.val) == "" {
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+		}
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// MoveTransactionResult carries every transaction the move rewrote: the moved
+// one, plus any neighbours whose tied keys had to be split.
+type MoveTransactionResult struct {
+	Items    []TransactionResult `json:"items"`
+	Accounts []AccountResult     `json:"accounts"`
 }
 
 // DeleteTransactionRequest is the delete-transaction body (id NotBlank).
@@ -286,6 +323,8 @@ type AccountTransactionItem struct {
 	RecurringId        *string  `json:"recurringId"`
 	LabelIds           []string `json:"labelIds"`
 	IsImported         int      `json:"isImported"`
+	SortKey            string   `json:"sortKey"`
+	RecipientSortKey   *string  `json:"recipientSortKey"`
 }
 
 // GetAccountTransactionListResult is the response. Revisions holds only the

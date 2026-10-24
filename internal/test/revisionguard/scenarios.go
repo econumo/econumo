@@ -61,6 +61,20 @@ func adoptee(amount string, into *string) ap.Call {
 func scenarios() []scenario {
 	return []scenario{
 		{
+			Name: "move_transaction",
+			Calls: func() []ap.Call {
+				return []ap.Call{
+					post("move-within-day", "/api/v1/transaction/move-transaction", map[string]any{
+						"id": ap.Txn1, "accountId": ap.OwnerAccount, "fromDate": "2024-04-01", "date": "2024-04-01", "aboveId": nil,
+					}),
+					post("move-to-another-day", "/api/v1/transaction/move-transaction", map[string]any{
+						"id": ap.Txn1, "accountId": ap.OwnerAccount, "fromDate": "2024-04-01", "date": "2024-04-03", "aboveId": nil,
+					}),
+				}
+			},
+			Want: []string{"POST /api/v1/transaction/move-transaction"},
+		},
+		{
 			Name: "category_merge_with_transactions",
 			Calls: func() []ap.Call {
 				var target string

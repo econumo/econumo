@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatDate } from '@/lib/datetime'
-import { ChevronLeft, MoreVertical, Plus, Settings2 } from 'lucide-react'
+import { ChevronLeft, GripVertical, MoreVertical, Plus, Settings2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
 import type { RecurringDto } from '@/api/dto/recurring'
@@ -16,14 +17,17 @@ import { useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { useAccounts } from './queries'
 import { TransactionHistory } from './TransactionHistory'
+import { HistoryDragProvider, SortableHistoryEntry } from './HistoryDrag'
+import { entryKey } from './historyDrop'
+import type { HistoryDrop } from './historyDrop'
 import { useUserData } from '@/features/user/queries'
-import { useDeleteTransaction } from '@/features/transactions/queries'
+import { useDeleteTransaction, useMoveTransaction } from '@/features/transactions/queries'
 import { useDeleteRecurring, usePostRecurring, useRecurring, useSkipRecurring } from '@/features/recurring/queries'
 import { ViewRecurringDialog } from '@/features/recurring/ViewRecurringDialog'
 import { recurringPostPayload } from '@/features/recurring/postPayload'
 import { useExchange } from '@/features/currencies/useExchange'
 import { separatorText, useAccountTransactions } from '@/features/transactions/useAccountTransactions'
-import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
+import type { DailyListEntry, ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
@@ -37,6 +41,7 @@ export function AccountPage() {
   const { data: accounts } = useAccounts()
   const { data: user } = useUserData()
   const deleteTransaction = useDeleteTransaction()
+  const moveTransaction = useMoveTransaction()
   const skipRecurring = useSkipRecurring()
   const postRecurring = usePostRecurring()
   const deleteRecurring = useDeleteRecurring()
@@ -59,7 +64,12 @@ export function AccountPage() {
   // or from the provenance row inside a posted transaction's preview
   const [recurringPreview, setRecurringPreview] = useState<RecurringDto | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const entries = useAccountTransactions(id, search)
+  const liveEntries = useAccountTransactions(id, search)
+  // A drop shows at once: the list keeps the dropped arrangement until the
+  // server answers, then follows the cache again (the new keys, or the old
+  // order after a refusal).
+  const [droppedEntries, setDroppedEntries] = useState<DailyListEntry[] | null>(null)
+  const entries = droppedEntries ?? liveEntries
 
   // the template behind the previewed transaction. Stays undefined when it was
   // deleted or lives on an account the caller can't see (the list is scoped to
@@ -98,6 +108,21 @@ export function AccountPage() {
   const canChangeTransaction = canWriteToAccount(account, user?.id)
 
   const canTouchRow = (tx: ViewTransaction): boolean => canTouchTransaction(tx, canChangeTransaction)
+  // reordering writes only this account's order, so write access to it is
+  // enough; moving to another day edits the transaction (canTouchRow)
+  const canDrag = (tx: ViewTransaction): boolean => canChangeTransaction && !tx.recurring && search.trim() === ''
+
+  const dropTransaction = (tx: ViewTransaction, drop: HistoryDrop, dayChanged: boolean) => {
+    if (dayChanged && !canTouchRow(tx)) {
+      toast.error(t('errors.transaction.cannot_move'))
+      return
+    }
+    setDroppedEntries(drop.entries)
+    moveTransaction.mutate(
+      { id: tx.id, accountId: account.id, fromDate: drop.fromDate, date: drop.date, aboveId: drop.aboveId },
+      { onSettled: () => setDroppedEntries(null) },
+    )
+  }
 
   const editTransaction = (tx: ViewTransaction) => {
     setPreview(null)
@@ -220,6 +245,11 @@ export function AccountPage() {
         </>
       )}
 
+      <HistoryDragProvider
+        entries={entries}
+        onDrop={dropTransaction}
+        renderOverlay={(tx) => <TransactionRow transaction={tx} pageAccount={account} />}
+      >
       <TransactionHistory
         key={`${account.id}:${search}`}
         entries={entries}
@@ -229,9 +259,15 @@ export function AccountPage() {
       >
           {(entry) =>
             entry.kind === 'separator' ? (
-            <div key={`sep-${entry.day}`} className="px-2 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-              {separatorText(entry, t, i18n.language)}
-            </div>
+            <SortableHistoryEntry key={`sep-${entry.day}`} id={entryKey(entry)} draggable={false} compact={isCompact}>
+              {({ targetDay }) => (
+                <div
+                  className={`rounded-md px-2 pb-1 pt-4 text-xs font-medium uppercase ${targetDay === entry.day ? 'bg-accent text-foreground' : 'text-muted-foreground'}`}
+                >
+                  {separatorText(entry, t, i18n.language)}
+                </div>
+              )}
+            </SortableHistoryEntry>
           ) : (
             // The whole row is one hover/tap surface (like the settings lists):
             // click opens the transaction preview; desktop keeps the kebab menu
@@ -240,10 +276,20 @@ export function AccountPage() {
             // skipping advances nextPaymentAt, and a template-id key would MOVE
             // the just-tapped node to the next (later) date — browser scroll
             // anchoring then follows it to the top of the future block.
+            <SortableHistoryEntry
+              key={entryKey(entry)}
+              id={entryKey(entry)}
+              draggable={canDrag(entry.transaction)}
+              compact={isCompact}
+            >
+              {({ row, handle, justDragged }) => (
             <div
-              key={entry.transaction.recurring ? `${entry.transaction.id}@${entry.transaction.date}` : entry.transaction.id}
-              className={`flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'}`}
+              {...row}
+              className={`group relative flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'} ${canDrag(entry.transaction) ? '[@media(hover:none)]:select-none [@media(hover:none)]:[-webkit-touch-callout:none]' : ''}`}
               onClick={() => {
+                if (justDragged()) {
+                  return
+                }
                 const rt = entry.transaction.recurring
                 if (rt) {
                   setRecurringPreview(rt)
@@ -252,6 +298,24 @@ export function AccountPage() {
                 }
               }}
             >
+              {!isCompact ? <span className="-mr-2 w-8 shrink-0" aria-hidden="true" /> : null}
+              {handle ? (
+                // An invisible target over the whole grip column, wider than
+                // the glyph so it is easy to catch; it stops where the icon
+                // starts. A plain click still reaches the row (the preview).
+                <button
+                  type="button"
+                  aria-label={t('accounts.page.transaction_list.drag_handle')}
+                  title={t('accounts.page.transaction_list.drag_handle')}
+                  className="group/grip absolute left-0 top-0 z-10 h-14 w-8 cursor-grab touch-none rounded-md outline-none"
+                  {...handle}
+                >
+                  {/* level with the icon's middle: 8px row padding + half its 40px */}
+                  <span className="absolute left-2 top-5 flex size-4 items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-visible/grip:opacity-100">
+                    <GripVertical className="size-4" />
+                  </span>
+                </button>
+              ) : null}
               <div className="min-w-0 flex-1">
                 <TransactionRow
                   transaction={entry.transaction}
@@ -314,9 +378,12 @@ export function AccountPage() {
                 </DropdownMenu>
               ) : null}
             </div>
+              )}
+            </SortableHistoryEntry>
           )
           }
       </TransactionHistory>
+      </HistoryDragProvider>
 
       {isCompact && canChangeTransaction ? (
         <footer className="shrink-0 pb-[env(safe-area-inset-bottom)]">
