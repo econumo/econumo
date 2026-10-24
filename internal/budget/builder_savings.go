@@ -407,7 +407,7 @@ func emitPlanSavings(rows []savingsRow, plannedFor func(string) []string, hasAct
 		out = append(out, model.PlanSavingsElementResult{
 			Id: r.account.ID, Type: int(model.ElementSavings.Int16()), Name: r.account.Name, Icon: r.account.Icon,
 			CurrencyId: r.currencyID.String(), OwnerUserId: r.account.OwnerID, IsArchived: boolToInt(r.account.IsDeleted),
-			Position: len(out), Cells: cells,
+			Position: len(out), UpcomingOpeningBalance: "0", Cells: cells,
 		})
 	}
 	return out

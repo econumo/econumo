@@ -124,12 +124,12 @@ const partnerOccurrence: BudgetUpcomingDto = {
   labelNames: ['household'], isNext: true, isOverdue: false, canEdit: false,
 }
 
-function renderReadOnly(overrides: { onEdit?: () => void; note?: string } = {}) {
+function renderReadOnly(overrides: { onEdit?: () => void; note?: string; occurrence?: BudgetUpcomingDto } = {}) {
   server.use(...coreHandlers())
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <ViewRecurringDialog readOnly occurrence={partnerOccurrence} onClose={vi.fn()} onEdit={overrides.onEdit} note={overrides.note} />
+      <ViewRecurringDialog readOnly occurrence={overrides.occurrence ?? partnerOccurrence} onClose={vi.fn()} onEdit={overrides.onEdit} note={overrides.note} />
     </QueryClientProvider>,
   )
 }
@@ -156,4 +156,17 @@ it('read-only: offers Edit only when given, and shows the note', async () => {
   expect(onEdit).toHaveBeenCalled()
   expect(screen.getByText('Can be posted after the earlier payment')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Post' })).toBeNull()
+})
+
+it('read-only transfer: shows the recipient account and its amount', async () => {
+  renderReadOnly({
+    occurrence: {
+      ...partnerOccurrence, type: 'transfer', direction: 'in', category: null, payee: null, tag: null, labelNames: [],
+      accountId: '', accountName: '', amount: '75',
+      accountRecipientId: 'acc-pot', accountRecipientName: 'Holiday pot', amountRecipient: '75', currencyRecipientId: 'cur-usd',
+    },
+  })
+  expect(await screen.findByText('Holiday pot')).toBeInTheDocument()
+  expect(screen.getByText('Recipient')).toBeInTheDocument()
+  expect(screen.getByText('[Hidden account]')).toBeInTheDocument()
 })

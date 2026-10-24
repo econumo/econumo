@@ -13378,7 +13378,16 @@
                 "accountName": {
                     "type": "string"
                 },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "accountRecipientName": {
+                    "type": "string"
+                },
                 "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
                     "type": "string"
                 },
                 "author": {
@@ -13391,6 +13400,9 @@
                     "$ref": "#/definitions/model.TxCategoryResult"
                 },
                 "currencyId": {
+                    "type": "string"
+                },
+                "currencyRecipientId": {
                     "type": "string"
                 },
                 "description": {
@@ -16166,6 +16178,9 @@
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcomingOpeningBalance": {
+                    "type": "string"
                 }
             }
         },

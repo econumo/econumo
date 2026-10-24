@@ -146,6 +146,13 @@ export interface BudgetUpcomingDto extends BudgetTransactionDto {
   schedule: RecurringSchedule
   accountId: Id
   accountName: string
+  /** a transfer's receiving side, "" on other types (absent from older servers).
+   *  Id and name are "" when the recipient is not a budget member; the amount
+   *  is in currencyRecipientId, the recipient account's currency. */
+  accountRecipientId?: Id
+  accountRecipientName?: string
+  amountRecipient?: string
+  currencyRecipientId?: Id
   labelNames: string[]
   isNext: boolean
   isOverdue: boolean
@@ -288,6 +295,9 @@ export interface PlanSavingsElementDto {
   ownerUserId: Id
   isArchived: 0 | 1
   position: number
+  /** recurring money due on the account before the window start, in the row
+   *  currency; the cells' booked closingBalance lacks it. Absent from older servers. */
+  upcomingOpeningBalance?: string
   cells: PlanCellDto[]
 }
 

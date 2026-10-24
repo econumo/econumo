@@ -40,7 +40,13 @@ type upcomingTx struct {
 	IsNext      bool     `json:"isNext"`
 	IsOverdue   bool     `json:"isOverdue"`
 	CanEdit     bool     `json:"canEdit"`
-	Category    *struct {
+
+	AccountRecipientId   *string `json:"accountRecipientId"`
+	AccountRecipientName *string `json:"accountRecipientName"`
+	AmountRecipient      *string `json:"amountRecipient"`
+	CurrencyRecipientId  *string `json:"currencyRecipientId"`
+
+	Category *struct {
 		Id string `json:"id"`
 	} `json:"category"`
 }
@@ -268,5 +274,62 @@ func TestTxList_UpcomingSavingsAccount(t *testing.T) {
 	}
 	if f := upcomingByTemplate(t, got, fee); !decEq(f.Amount, "5") || f.Direction != "out" || f.Type != "expense" || f.AccountName != "Rainy day" {
 		t.Errorf("fee = %+v, want 5 out/expense on Rainy day", f)
+	}
+}
+
+func deref(p *string) string {
+	if p == nil {
+		return "<absent>"
+	}
+	return *p
+}
+
+// A transfer's occurrence names its recipient: a member's id and name, the
+// amount converted into its currency. A sender outside the budget stays
+// blank, a recipient outside it would too; a non-transfer carries "" in every
+// recipient field.
+func TestTxList_UpcomingTransferRecipient(t *testing.T) {
+	h, tok, eur := newSavingsBudget(t)
+	const privateID = "aaaa1111-0000-7000-8000-0000000000fe"
+	h.f.Account(fixture.Account{ID: privateID, UserID: seedUserID, CurrencyID: usdID, Name: "Private"})
+	cross := augustTemplate(model.TransactionTypeTransfer, accountID, savingsEURID, "100", "")
+	fromPrivate := augustTemplate(model.TransactionTypeTransfer, privateID, savingsUSDID, "60", "")
+	fee := augustTemplate(model.TransactionTypeExpense, savingsEURID, "", "5", catID)
+	h.svc.SetRecurring(recurringStub{templates: []*model.RecurringTransaction{cross, fromPrivate, fee}})
+
+	eurRows := augustUpcoming(t, h, tok, "&accountId="+savingsEURID)
+	c := upcomingByTemplate(t, eurRows, cross)
+	if deref(c.AccountRecipientId) != savingsEURID || deref(c.AccountRecipientName) != "Euro pot" ||
+		!decEq(deref(c.AmountRecipient), "91") || deref(c.CurrencyRecipientId) != eur {
+		t.Errorf("cross-currency recipient = %s/%s %s %s, want Euro pot 91 EUR",
+			deref(c.AccountRecipientId), deref(c.AccountRecipientName), deref(c.AmountRecipient), deref(c.CurrencyRecipientId))
+	}
+	if c.AccountId != accountID || c.AccountName != "Cash" {
+		t.Errorf("cross-currency sender = %q/%q, want Cash", c.AccountId, c.AccountName)
+	}
+	f := upcomingByTemplate(t, eurRows, fee)
+	for name, v := range map[string]*string{"accountRecipientId": f.AccountRecipientId, "accountRecipientName": f.AccountRecipientName,
+		"amountRecipient": f.AmountRecipient, "currencyRecipientId": f.CurrencyRecipientId} {
+		if deref(v) != "" {
+			t.Errorf("expense %s = %q, want \"\"", name, deref(v))
+		}
+	}
+
+	p := upcomingByTemplate(t, augustUpcoming(t, h, tok, "&accountId="+savingsUSDID), fromPrivate)
+	if p.AccountId != "" || p.AccountName != "" {
+		t.Errorf("private sender = %q/%q, want blank", p.AccountId, p.AccountName)
+	}
+	if deref(p.AccountRecipientId) != savingsUSDID || deref(p.AccountRecipientName) != "Rainy day" ||
+		!decEq(deref(p.AmountRecipient), "60") || deref(p.CurrencyRecipientId) != usdID {
+		t.Errorf("private->member recipient = %s/%s %s %s, want Rainy day 60 USD",
+			deref(p.AccountRecipientId), deref(p.AccountRecipientName), deref(p.AmountRecipient), deref(p.CurrencyRecipientId))
+	}
+
+	out := augustTemplate(model.TransactionTypeTransfer, accountID, privateID, "40", "")
+	h.svc.SetRecurring(recurringStub{templates: []*model.RecurringTransaction{out}})
+	o := upcomingByTemplate(t, augustUpcoming(t, h, tok, "&transfers=1"), out)
+	if deref(o.AccountRecipientId) != "" || deref(o.AccountRecipientName) != "" || !decEq(deref(o.AmountRecipient), "40") || deref(o.CurrencyRecipientId) != usdID {
+		t.Errorf("member->private recipient = %s/%s %s %s, want blank id/name, 40 USD",
+			deref(o.AccountRecipientId), deref(o.AccountRecipientName), deref(o.AmountRecipient), deref(o.CurrencyRecipientId))
 	}
 }

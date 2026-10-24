@@ -34,7 +34,9 @@ func budgetFieldGlossary() string {
   one). upcomingOpeningBalances, upcomingSavingsOpeningBalances,
   upcomingTransfers, upcomingSavingsFlows and upcomingSavingsIncomeExpense are
   the same as their namesakes over those payments. A savings cell's
-  closingBalance leaves its upcoming money out.
+  closingBalance leaves its upcoming money out: add the row's
+  upcomingOpeningBalance (what is due before the window) and the upcoming of
+  its cells through that month.
 - balances[]: one row per currency the budget touches (budget currency first) —
   account-level, separate from envelope spending. startBalance/endBalance are
   point-in-time totals (null until the period starts/ends); income/expenses/

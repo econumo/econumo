@@ -2,6 +2,7 @@ import type { RecurringDto } from '@/api/dto/recurring'
 import type { AccountDto } from '@/api/dto/account'
 import type { BudgetUpcomingDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
+import type { Id } from '@/api/types'
 import type { CategoryDto } from '@/api/dto/category'
 import type { LabelDto } from '@/api/dto/label'
 import type { PayeeDto } from '@/api/dto/payee'
@@ -67,25 +68,31 @@ export function upcomingAsTransaction(
   occurrence: BudgetUpcomingDto,
   { accounts, currencies }: { accounts?: AccountDto[]; currencies?: CurrencyDto[] },
 ): ViewTransaction {
-  const currency = currencies?.find((c) => c.id === occurrence.currencyId)
-  const account =
-    accounts?.find((a) => a.id === occurrence.accountId) ??
-    ({ id: occurrence.accountId, name: occurrence.accountName, icon: '', currency, sharedAccess: [] } as unknown as AccountDto)
+  // an account outside the budget comes with a blank id and name: the stand-in
+  // then has no name, so the preview shows it as hidden
+  const resolve = (id: Id, name: string, currencyId: Id): AccountDto =>
+    (id ? accounts?.find((a) => a.id === id) : undefined) ??
+    ({ id, name: name || undefined, icon: '', currency: currencies?.find((c) => c.id === currencyId), sharedAccess: [] } as unknown as AccountDto)
+  const type = occurrence.type ?? (occurrence.direction ? 'transfer' : 'expense')
+  const isTransfer = type === 'transfer' && Boolean(occurrence.amountRecipient)
   return {
     id: occurrence.templateId,
     author: occurrence.author,
-    type: occurrence.type ?? (occurrence.direction ? 'transfer' : 'expense'),
+    type,
     accountId: occurrence.accountId,
-    accountRecipientId: null,
+    accountRecipientId: isTransfer && occurrence.accountRecipientId ? occurrence.accountRecipientId : null,
     amount: occurrence.amount,
-    amountRecipient: null,
+    amountRecipient: isTransfer ? occurrence.amountRecipient : null,
     categoryId: occurrence.category?.id ?? null,
     payeeId: occurrence.payee?.id ?? null,
     tagId: occurrence.tag?.id ?? null,
     labelIds: occurrence.labelIds ?? [],
     description: occurrence.description,
     date: occurrence.spentAt,
-    account,
+    account: resolve(occurrence.accountId, occurrence.accountName, occurrence.currencyId),
+    accountRecipient: isTransfer
+      ? resolve(occurrence.accountRecipientId ?? '', occurrence.accountRecipientName ?? '', occurrence.currencyRecipientId ?? '')
+      : undefined,
     category: occurrence.category ? (occurrence.category as CategoryDto) : undefined,
     payee: occurrence.payee ? (occurrence.payee as PayeeDto) : undefined,
     tag: occurrence.tag ? (occurrence.tag as TagDto) : undefined,

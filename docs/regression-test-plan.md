@@ -1711,6 +1711,14 @@ and on tablet/phone only with a hardware keyboard.
       the Budget view, the Plan grid and the cell list without a reload.
 - [ ] A savings account's closing Balance on /budget includes upcoming
       transfers into or out of it, and the Plan grid's Savings section agrees.
+- [ ] With a monthly transfer into a savings account due later this month,
+      open a Plan window that starts next month: each savings row's Balance
+      already includes this month's transfer, and the rows add up to the
+      Savings balance line in every month of the window.
+- [ ] 📱 Opening an upcoming transfer from the cell list shows both the
+      sender and the recipient card with their amounts (the recipient's in its
+      own currency); an account outside the budget, on either side, shows as
+      "[Hidden account]".
 
 ### Phone month view 📱
 

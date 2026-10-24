@@ -165,12 +165,13 @@ export function foldPlanUpcoming(p: BudgetPlanDto): BudgetPlanDto {
           cells: ch.cells.map((c) => ({ ...c, actual: plus(c.actual, c.upcoming) })),
         })),
       })),
-      // a plan closing balance is booked only: it takes every upcoming change of
-      // its row from the window start through its month
+      // a plan closing balance is booked only: it takes what was due on its row
+      // before the window, then every upcoming change from the window start
+      // through its month
       ...(savings
         ? {
             savings: savings.map((row) => {
-              let due = '0'
+              let due = plus('0', row.upcomingOpeningBalance)
               return {
                 ...row,
                 cells: row.cells.map((c) => {

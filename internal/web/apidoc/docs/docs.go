@@ -13385,7 +13385,16 @@ const docTemplate = `{
                 "accountName": {
                     "type": "string"
                 },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "accountRecipientName": {
+                    "type": "string"
+                },
                 "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
                     "type": "string"
                 },
                 "author": {
@@ -13398,6 +13407,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/model.TxCategoryResult"
                 },
                 "currencyId": {
+                    "type": "string"
+                },
+                "currencyRecipientId": {
                     "type": "string"
                 },
                 "description": {
@@ -16173,6 +16185,9 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcomingOpeningBalance": {
+                    "type": "string"
                 }
             }
         },

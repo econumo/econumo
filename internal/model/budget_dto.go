@@ -420,16 +420,21 @@ type PlanMonthRatesResult struct {
 // BudgetPlanResult.Months; Actual is the account's net change that month (every
 // transaction on it, interest and transfers with any account included), in
 // CurrencyId (the element currency); Planned is "" with no limit.
+// UpcomingOpeningBalance is the recurring money due on the account before the
+// window start, in the element currency: what the cells' booked
+// ClosingBalance lacks before the first cell's Upcoming ("0" unless the window
+// starts after the current month).
 type PlanSavingsElementResult struct {
-	Id          string                  `json:"id"`
-	Type        int                     `json:"type"`
-	Name        string                  `json:"name"`
-	Icon        string                  `json:"icon"`
-	CurrencyId  string                  `json:"currencyId"`
-	OwnerUserId string                  `json:"ownerUserId"`
-	IsArchived  int                     `json:"isArchived"`
-	Position    int                     `json:"position"`
-	Cells       []PlanSavingsCellResult `json:"cells"`
+	Id                     string                  `json:"id"`
+	Type                   int                     `json:"type"`
+	Name                   string                  `json:"name"`
+	Icon                   string                  `json:"icon"`
+	CurrencyId             string                  `json:"currencyId"`
+	OwnerUserId            string                  `json:"ownerUserId"`
+	IsArchived             int                     `json:"isArchived"`
+	Position               int                     `json:"position"`
+	UpcomingOpeningBalance string                  `json:"upcomingOpeningBalance"`
+	Cells                  []PlanSavingsCellResult `json:"cells"`
 }
 
 // PlanSavingsCellResult is a savings row's month: ClosingBalance is the
@@ -853,16 +858,25 @@ type BudgetTransactionResult struct {
 // (Id, SpentAt), never by Id alone. AccountId and AccountName are "" when the
 // template's account is not a member of the budget (a transfer in from outside
 // it): that account is not the budget's to show.
+//
+// The four recipient fields describe a transfer's receiving side and are ""
+// on any other type: AmountRecipient is the amount in CurrencyRecipientId, the
+// recipient account's currency. AccountRecipientId and AccountRecipientName
+// follow the AccountId rule: "" when the recipient is not a budget member.
 type BudgetUpcomingResult struct {
 	BudgetTransactionResult
-	TemplateId  string   `json:"templateId"`
-	Schedule    string   `json:"schedule"`
-	AccountId   string   `json:"accountId"`
-	AccountName string   `json:"accountName"`
-	LabelNames  []string `json:"labelNames"`
-	IsNext      bool     `json:"isNext"`
-	IsOverdue   bool     `json:"isOverdue"`
-	CanEdit     bool     `json:"canEdit"`
+	TemplateId           string   `json:"templateId"`
+	Schedule             string   `json:"schedule"`
+	AccountId            string   `json:"accountId"`
+	AccountName          string   `json:"accountName"`
+	AccountRecipientId   string   `json:"accountRecipientId"`
+	AccountRecipientName string   `json:"accountRecipientName"`
+	AmountRecipient      string   `json:"amountRecipient"`
+	CurrencyRecipientId  string   `json:"currencyRecipientId"`
+	LabelNames           []string `json:"labelNames"`
+	IsNext               bool     `json:"isNext"`
+	IsOverdue            bool     `json:"isOverdue"`
+	CanEdit              bool     `json:"canEdit"`
 }
 
 // GetBudgetTransactionListResult is {items: [...], upcoming: [...]}. Items

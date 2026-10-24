@@ -458,7 +458,13 @@ definitions:
         type: string
       accountName:
         type: string
+      accountRecipientId:
+        type: string
+      accountRecipientName:
+        type: string
       amount:
+        type: string
+      amountRecipient:
         type: string
       author:
         $ref: '#/definitions/model.UserResult'
@@ -467,6 +473,8 @@ definitions:
       category:
         $ref: '#/definitions/model.TxCategoryResult'
       currencyId:
+        type: string
+      currencyRecipientId:
         type: string
       description:
         type: string
@@ -2303,6 +2311,8 @@ definitions:
         type: integer
       type:
         type: integer
+      upcomingOpeningBalance:
+        type: string
     type: object
   model.PlanSavingsFlowResult:
     properties:

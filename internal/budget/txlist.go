@@ -405,10 +405,18 @@ func (s *Service) assembleUpcoming(ctx context.Context, userID vo.Id, f filters,
 			}
 		}
 		// A transfer into the budget may come from an account outside it, such
-		// as a partner's private one: its name is not the budget's to show.
+		// as a partner's private one, and one out of it may go to one: that
+		// account's name is not the budget's to show.
 		accountID, accountName := "", ""
 		if members[o.accountID] {
 			accountID, accountName = o.accountID, pr.nameOf[o.accountID]
+		}
+		recipientID, recipientName, amountRecipient, currencyRecipient := "", "", "", ""
+		if o.recipientID != "" {
+			amountRecipient, currencyRecipient = o.amountRecipient.String(), o.recipientCurrencyID
+			if members[o.recipientID] {
+				recipientID, recipientName = o.recipientID, pr.nameOf[o.recipientID]
+			}
 		}
 		out = append(out, model.BudgetUpcomingResult{
 			BudgetTransactionResult: item,
@@ -416,6 +424,10 @@ func (s *Service) assembleUpcoming(ctx context.Context, userID vo.Id, f filters,
 			Schedule:                o.schedule,
 			AccountId:               accountID,
 			AccountName:             accountName,
+			AccountRecipientId:      recipientID,
+			AccountRecipientName:    recipientName,
+			AmountRecipient:         amountRecipient,
+			CurrencyRecipientId:     currencyRecipient,
 			LabelNames:              labelNames,
 			IsNext:                  o.isNext,
 			IsOverdue:               o.isOverdue,

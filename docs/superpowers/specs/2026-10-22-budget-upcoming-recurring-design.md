@@ -144,11 +144,18 @@ accounts (`buildFilters` → `includedAccountIDs`).
 
 `get-budget-plan` — each cell gets `upcoming` next to `{actual, planned}`; top-level
 `savingsFlows` / `transfers` get parallel upcoming arrays (names left to the builder, additive).
+Each savings row also carries `upcomingOpeningBalance` (element currency, `"0"` unless the
+window starts after the current month): the projected balance before the window start, so a
+row's closing balance is booked + that + the cumulative cell upcoming, and the rows add up to
+the savings balance line.
 
 `get-transaction-list` (budget) — adds `upcoming: []`, each item:
 `{templateId, date, amount, currencyId, description, category, payee, tag, labelIds,
 labelNames, type, direction, author, schedule, accountId, accountName, isNext, isOverdue,
-canEdit}` (category/payee/tag as resolved `{id, name, icon}` like the real rows). Filtered by the same cell params and month
+canEdit, accountRecipientId, accountRecipientName, amountRecipient, currencyRecipientId}`
+(category/payee/tag as resolved `{id, name, icon}` like the real rows; the recipient fields are
+`""` on non-transfers, and its id/name `""` when the recipient is not a member, as for the
+source account). Filtered by the same cell params and month
 as the real rows. `canEdit` = the recurring write rule for the caller.
 
 All three need apiparity/mcpparity goldens regenerated and inspected; add scenarios with a

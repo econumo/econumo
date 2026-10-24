@@ -261,12 +261,13 @@ type upcomingPlanCell struct {
 }
 
 type upcomingPlanRow struct {
-	Id       string             `json:"id"`
-	Type     int                `json:"type"`
-	FolderId *string            `json:"folderId"`
-	Position int                `json:"position"`
-	Cells    []upcomingPlanCell `json:"cells"`
-	Children []struct {
+	Id                     string             `json:"id"`
+	Type                   int                `json:"type"`
+	FolderId               *string            `json:"folderId"`
+	Position               int                `json:"position"`
+	UpcomingOpeningBalance *string            `json:"upcomingOpeningBalance"`
+	Cells                  []upcomingPlanCell `json:"cells"`
+	Children               []struct {
 		Id    string             `json:"id"`
 		Cells []upcomingPlanCell `json:"cells"`
 	} `json:"children"`
@@ -487,6 +488,46 @@ func TestBuildPlan_UpcomingTransfersAndSavings(t *testing.T) {
 		if !decEq(b.Amount, want) {
 			t.Errorf("September upcoming savings opening %+v, want %s", b, want)
 		}
+	}
+}
+
+// Clock: August 17th. Cash->S1 150 monthly on the 25th: a September window's
+// S1 row opens on the 150 still due in August, a row no template touches on 0,
+// and an August window's rows on 0.
+func TestBuildPlan_UpcomingSavingsRowOpening(t *testing.T) {
+	h, tok, _ := newSavingsBudget(t)
+	recip := vo.MustParseId(savingsUSDID)
+	h.svc.SetRecurring(recurringStub{templates: []*model.RecurringTransaction{{
+		ID: vo.NewId(), UserID: vo.MustParseId(seedUserID), Type: model.TransactionTypeTransfer,
+		AccountID: vo.MustParseId(accountID), AccountRecipID: &recip, Amount: "150", Description: "save",
+		Schedule: model.RecurringScheduleMonthly, ScheduledDay: 25,
+		NextPaymentAt: time.Date(2026, 8, 25, 0, 0, 0, 0, time.UTC),
+	}}})
+	opening := func(rows []upcomingPlanRow, id string) string {
+		t.Helper()
+		r := planRow(t, rows, id, 5)
+		if r.UpcomingOpeningBalance == nil {
+			t.Fatalf("row %s lacks upcomingOpeningBalance", id)
+		}
+		return *r.UpcomingOpeningBalance
+	}
+
+	sep, _ := upcomingPlan(t, h, tok, budgetID1, "&from=2026-09-01&months=2")
+	if got := opening(sep.Item.Structure.Savings, savingsUSDID); !decEq(got, "150") {
+		t.Errorf("September S1 upcomingOpeningBalance = %s, want 150", got)
+	}
+	if got := opening(sep.Item.Structure.Savings, savingsEURID); got != "0" {
+		t.Errorf("September euro pot upcomingOpeningBalance = %s, want 0", got)
+	}
+	aug, _ := upcomingPlan(t, h, tok, budgetID1, "&from=2026-08-01&months=2")
+	for _, id := range []string{savingsUSDID, savingsEURID} {
+		if got := opening(aug.Item.Structure.Savings, id); got != "0" {
+			t.Errorf("August %s upcomingOpeningBalance = %s, want 0", id, got)
+		}
+	}
+	past, _ := upcomingPlan(t, h, tok, budgetID1, "&from=2026-06-01&months=2")
+	if got := opening(past.Item.Structure.Savings, savingsUSDID); got != "0" {
+		t.Errorf("past window S1 upcomingOpeningBalance = %s, want 0", got)
 	}
 }
 

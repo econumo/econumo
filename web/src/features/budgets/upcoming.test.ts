@@ -1,4 +1,6 @@
 import type { BudgetDto, BudgetElementDto, BudgetPlanDto, PlanSavingsElementDto } from '@/api/dto/budget'
+import { add } from '@/lib/decimal'
+import { makePlanExchange, planTotals, savingsBalanceRow } from './planMath'
 import { foldBudgetUpcoming, foldPlanUpcoming } from './upcoming'
 
 const meta = {
@@ -159,6 +161,33 @@ it('savings closing adds cumulative upcoming', () => {
   const cells = folded.structure.savings![0].cells
   expect(cells.map((c) => c.actual)).toEqual(['100', '60', '0'])
   expect(cells.map((c) => c.closingBalance)).toEqual(['1100', '1160', '1160'])
+})
+
+it('a window starting after the current month: each savings row opens on its upcoming balance, and the rows add up to the savings balance line', () => {
+  const row = (id: string, closing: string, opening: string, upcoming: string[]): PlanSavingsElementDto => ({
+    id, type: 5, name: id, icon: 'i', currencyId: 'usd', ownerUserId: 'u1', isArchived: 0, position: 0,
+    upcomingOpeningBalance: opening,
+    cells: upcoming.map((u) => ({ actual: '0', planned: '', closingBalance: closing, upcoming: u })),
+  })
+  const folded = foldPlanUpcoming(
+    planWith(
+      {
+        savingsFlows: [],
+        savingsOpeningBalances: [{ currencyId: 'usd', amount: '1000' }],
+        upcomingSavingsOpeningBalances: [{ currencyId: 'usd', amount: '150' }],
+        upcomingSavingsFlows: [{ month: '2026-10-01', currencyId: 'usd', amount: '150' }, { month: '2026-11-01', currencyId: 'usd', amount: '150' }],
+      },
+      [row('s1', '600', '150', ['150', '150', '0']), row('s2', '400', '0', ['0', '0', '0'])],
+    ),
+  )
+  const rows = folded.structure.savings!
+  expect(rows[0].cells.map((c) => c.closingBalance)).toEqual(['900', '1050', '1050'])
+  expect(rows[1].cells.map((c) => c.closingBalance)).toEqual(['400', '400', '400'])
+
+  const now = new Date(2026, 8, 15)
+  const ex = makePlanExchange(folded, [{ id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }])
+  const line = savingsBalanceRow(folded, planTotals(folded, ex, now), ex, now)
+  expect(line).toEqual(folded.months.map((_, i) => rows.reduce((acc, r) => add(acc, r.cells[i].closingBalance!), '0')))
 })
 
 it('an upcoming-only currency joins the opening balances by the server order rule', () => {

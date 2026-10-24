@@ -242,6 +242,53 @@ func (s *Service) addPlanUpcoming(ctx context.Context, b *budgetAggregate, f fil
 	if mergePlanUpcoming(result, up) {
 		reorderPlanElements(result.Structure.Elements, s.elementOptions(b))
 	}
+	return s.addPlanSavingsUpcomingOpenings(ctx, b, f, pr, result.Structure.Savings)
+}
+
+// addPlanSavingsUpcomingOpenings fills each savings row's
+// UpcomingOpeningBalance: the projected balance before the window start,
+// converted the way addPlanSavingsClosings converts the booked one that seeds
+// the closing balances.
+func (s *Service) addPlanSavingsUpcomingOpenings(ctx context.Context, b *budgetAggregate, f filters, pr *projectedRead, out []model.PlanSavingsElementResult) error {
+	if len(out) == 0 {
+		return nil
+	}
+	ids, err := savingsAccountIDs(f)
+	if err != nil {
+		return err
+	}
+	rows, err := savingsRows(f, s.elementOptions(b))
+	if err != nil {
+		return err
+	}
+	balances, err := pr.AccountsBalancesBeforeDate(ctx, ids, f.periodStart)
+	if err != nil {
+		return err
+	}
+	byAccount := make(map[string]vo.DecimalNumber, len(balances))
+	for _, bal := range balances {
+		byAccount[bal.AccountID] = vo.NewDecimal(bal.Balance)
+	}
+	monthEnd := f.periodStart.AddDate(0, 1, 0)
+	toConvert := map[string][]model.ConvertItem{}
+	for _, r := range rows {
+		if bal, ok := byAccount[r.account.ID]; ok {
+			if err := queueSavingsBalance(toConvert, r.account.ID, f.periodStart, monthEnd, r, bal); err != nil {
+				return err
+			}
+		}
+	}
+	if len(toConvert) == 0 {
+		return nil
+	}
+	converted, err := s.convertor.BulkConvert(ctx, f.periodStart, monthEnd, toConvert)
+	if err != nil {
+		return err
+	}
+	get := convertedGetter(converted)
+	for i := range out {
+		out[i].UpcomingOpeningBalance = get(out[i].Id).String()
+	}
 	return nil
 }
 
