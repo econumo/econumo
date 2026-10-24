@@ -682,3 +682,55 @@ func TestImport_CategoryOverrideSkipsRowsOfTheOtherKind(t *testing.T) {
 		}
 	}
 }
+
+// A CSV usually carries dates without times, so a day's rows tie on spent_at;
+// the list must show them in file order, top to bottom.
+func TestImportKeepsFileOrderWithinDay(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Category,Note,Payee\n" +
+		"Cash,2024-03-01,-1,Food,first,\n" +
+		"Cash,2024-03-01,-2,Food,second,\n" +
+		"Cash,2024-03-01,-3,Food,third,\n"
+	if status, env := h.doImport(t, tok, csv, importMapping, nil); status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+	key := func(desc string) string {
+		t.Helper()
+		var k string
+		if err := h.db.QueryRow(`SELECT sort_key FROM transactions WHERE description = ?`, desc).Scan(&k); err != nil {
+			t.Fatal(err)
+		}
+		return k
+	}
+	if a, b, c := key("first"), key("second"), key("third"); !(a > b && b > c) {
+		t.Errorf("keys first=%q second=%q third=%q, want descending in file order", a, b, c)
+	}
+}
+
+// Names a row creates are spelled as the file first spells them, even though
+// rows are saved bottom-up to keep file order within a day.
+func TestImportCreatesNamesFromFirstSpelling(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Category,Note,Payee\n" +
+		"Cash,2024-03-01,-1,Snacks,first,Corner Shop\n" +
+		"Cash,2024-03-02,-2,snacks,second,corner shop\n"
+	if status, env := h.doImport(t, tok, csv, importMapping, nil); status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+	name := func(table string) string {
+		t.Helper()
+		var n string
+		if err := h.db.QueryRow(`SELECT name FROM ` + table + ` WHERE lower(name) IN ('snacks', 'corner shop')`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if got := name("categories"); got != "Snacks" {
+		t.Errorf("category created as %q, want Snacks (row 2's spelling)", got)
+	}
+	if got := name("payees"); got != "Corner Shop" {
+		t.Errorf("payee created as %q, want Corner Shop", got)
+	}
+}

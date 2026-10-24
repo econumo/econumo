@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "No transactions found",
+        "drag_handle": "Drag to reorder",
         "today": "Today",
         "yesterday": "Yesterday",
         "item": {
@@ -2128,7 +2129,9 @@
       "invalid_import_file": "Please upload a valid CSV file",
       "too_many_labels": "A transaction can have at most 50 reporting tags.",
       "account_deleted": "This account has been deleted",
-      "category_type_mismatch": "The category type must match the transaction type."
+      "category_type_mismatch": "The category type must match the transaction type.",
+      "day_changed": "This day changed meanwhile. Refresh and try again.",
+      "cannot_move": "This transaction can't be moved to another day."
     },
     "user": {
       "report_period_invalid": "ReportPeriod is incorrect",

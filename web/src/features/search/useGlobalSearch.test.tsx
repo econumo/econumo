@@ -181,7 +181,7 @@ it('orders transactions newest first and groups by day', async () => {
   expect(entries[1]).toMatchObject({ kind: 'transaction', transaction: { id: 't-coffee' } })
   expect(entries.map((e) => (e.kind === 'separator' ? `sep:${e.day}` : e.transaction.id))).toEqual([
     'sep:2026-07-02', 't-coffee',
-    'sep:2026-07-01', 't-salary', 't-hidden',
+    'sep:2026-07-01', 't-hidden', 't-salary',
     'sep:2026-06-15', 't-bank',
   ])
 })

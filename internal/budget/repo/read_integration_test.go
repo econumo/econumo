@@ -7,6 +7,7 @@ package repo_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -461,5 +462,31 @@ func TestBudgetReadRepo_UncategorizedDrilldown(t *testing.T) {
 	// Empty account id set short-circuits to nil, nil.
 	if none, err := read.BudgetTransactionsUncategorized(ctx, nil, start, end); err != nil || none != nil {
 		t.Errorf("empty account ids should be nil,nil; got %v, %v", none, err)
+	}
+}
+
+// Drill-down lists follow the account list's order: day, then the row's place
+// in it, never the time of day.
+func TestBudgetReadRepo_DrilldownOrdersByDayThenSortKey(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	cat := "c0000000-0000-0000-0000-0000000000c1"
+	seedCategory(t, db, cat, userA)
+	f := fixture.New(t, db)
+	morning, evening, earlier := "73000000-0000-0000-0000-0000000000a1", "73000000-0000-0000-0000-0000000000a2", "73000000-0000-0000-0000-0000000000a3"
+	f.Transaction(fixture.Transaction{ID: morning, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "1", SpentAt: "2024-04-05 08:00:00", SortKey: "a2"})
+	f.Transaction(fixture.Transaction{ID: evening, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "2", SpentAt: "2024-04-05 20:00:00", SortKey: "a1"})
+	f.Transaction(fixture.Transaction{ID: earlier, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "3", SpentAt: "2024-04-04 23:00:00", SortKey: "a5"})
+	rows, err := read.BudgetTransactionsByCategories(ctx, []vo.Id{vo.MustParseId(cat)}, []vo.Id{vo.MustParseId(acctA)},
+		time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make([]string, len(rows))
+	for i, r := range rows {
+		got[i] = r.ID
+	}
+	if want := []string{morning, evening, earlier}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("order %v, want %v", got, want)
 	}
 }

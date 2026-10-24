@@ -452,6 +452,8 @@ type Transaction struct {
 	UpdatedAt          time.Time
 	SpentAt            time.Time
 	RecurringID        *string
+	SortKey            string
+	RecipientSortKey   *string
 }
 
 type TransactionsLabel struct {

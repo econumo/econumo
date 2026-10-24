@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "Geen transacties gevonden",
+        "drag_handle": "Sleep om te herschikken",
         "today": "Vandaag",
         "yesterday": "Gisteren",
         "item": {
@@ -2128,7 +2129,9 @@
       "invalid_import_file": "Upload een geldig CSV-bestand.",
       "too_many_labels": "Een transactie kan maximaal 50 rapportagetags hebben.",
       "account_deleted": "Deze rekening is verwijderd.",
-      "category_type_mismatch": "Het categorietype moet overeenkomen met het transactietype."
+      "category_type_mismatch": "Het categorietype moet overeenkomen met het transactietype.",
+      "day_changed": "Deze dag is intussen gewijzigd. Vernieuw en probeer het opnieuw.",
+      "cannot_move": "Deze transactie kan niet naar een andere dag worden verplaatst."
     },
     "user": {
       "report_period_invalid": "De rapportageperiode is onjuist.",

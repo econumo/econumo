@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "未找到交易",
+        "drag_handle": "拖动以重新排序",
         "today": "今天",
         "yesterday": "昨天",
         "item": {
@@ -2128,7 +2129,9 @@
       "invalid_import_file": "请上传有效的 CSV 文件。",
       "too_many_labels": "一笔交易最多可以有 50 个统计标签。",
       "account_deleted": "该账户已删除。",
-      "category_type_mismatch": "类别类型必须与交易类型一致。"
+      "category_type_mismatch": "类别类型必须与交易类型一致。",
+      "day_changed": "这一天的记录已被更改。请刷新后重试。",
+      "cannot_move": "此交易无法移到其他日期。"
     },
     "user": {
       "report_period_invalid": "报表周期不正确。",

@@ -307,6 +307,49 @@ navigation (single-pane vs sidebar).
       group above the fold. With no transactions today at all, the pinned rows
       still open a "today" group of their own.
 - [ ] Mobile: FAB adds a transaction; row tap opens the preview bottom sheet.
+- [ ] Account page, desktop: hovering a transaction row shows a grip left of
+      its icon, level with the icon's middle (no grip without hover, none on not-posted recurring rows,
+      none while the search box has text, none on an account shared with you
+      as guest). Dragging the grip (or the space just around it) moves the row
+      within its day; dragging the icon or anywhere else in the row with the
+      mouse moves nothing; the new order
+      survives a reload and shows the same on another device and for a
+      partner sharing the account. The preview dialog still shows the time
+      originally entered.
+- [ ] Account page 📱: press and hold a row for about half a second to lift it,
+      then drag; a quick tap still opens the preview, a quick swipe still
+      scrolls, and a long press shows no text-selection or callout menu (iOS
+      home-screen app). Dragging near the top/bottom edge scrolls the list.
+- [ ] Account page on an iPad in landscape (desktop layout): no grip shows; a
+      long press on a row lifts it, a tap opens the preview, a swipe scrolls.
+- [ ] Account page in a narrow desktop browser window (phone layout): press and
+      hold a row with the mouse for about half a second, then drag; a plain
+      click still opens the preview.
+- [ ] CSV import that names a new category/payee/tag in different letter cases
+      ("Snacks" on one row, "snacks" on a later one) creates it as first spelled.
+- [ ] Account page 📱: dropping a row into another day's group moves it to that
+      day (time of day kept, edit dialog shows the new date) at the drop
+      position; while the row hovers another day, that day's header is
+      highlighted. Account balances and budgets follow the new date.
+- [ ] A transfer reordered on one account keeps its place on the other
+      account's list; moved to another day, it lands at the top of that day on
+      the other account.
+- [ ] A transfer whose other account you cannot edit can be reordered within
+      its day, but dropping it on another day snaps it back with "This
+      transaction can't be moved to another day."
+- [ ] Dropping a row under a transaction that another device meanwhile moved to
+      another day or deleted snaps back with "This day changed meanwhile.
+      Refresh and try again."; the list refreshes and the drag then works. A row
+      merely added to that day elsewhere does not block the drop. Likewise a
+      row another device moved to a different day (before this page synced) is
+      not dragged back: the drop snaps back with the same message.
+- [ ] Upgrading an instance with existing transactions keeps every account's
+      list in exactly the same order as before the upgrade (boot log: "placed
+      the transactions of N account(s)").
+- [ ] New transactions (typed in, CSV import, Apple Wallet, recurring post) land
+      at the top of their day; a CSV import shows a day's rows in file order.
+      Budget drill-down lists show a day's transactions in the same order as
+      the account page.
 
 ## 5. Transactions
 
