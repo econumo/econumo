@@ -123,6 +123,8 @@ func (r *Repo) write(ctx context.Context, t *model.Transaction) error {
 		Amount:             t.Amount,
 		AmountRecipient:    t.AmountRecipient,
 		RecurringID:        idPtr(t.RecurringID),
+		SortKey:            t.SortKey,
+		RecipientSortKey:   t.RecipientSortKey,
 	}); err != nil {
 		return err
 	}
@@ -375,7 +377,7 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter 
 	}
 	usePeriod := !filter.PeriodStart.IsZero() && !filter.PeriodEnd.IsZero()
 
-	const cols = "id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id"
+	const cols = "id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id, sort_key, recipient_sort_key"
 	var b strings.Builder
 	b.WriteString("SELECT ")
 	b.WriteString(cols)
@@ -438,6 +440,7 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter 
 			&row.ID, &row.UserID, &row.AccountID, &row.AccountRecipientID, &row.CategoryID,
 			&row.PayeeID, &row.TagID, &row.Description, &row.CreatedAt, &row.UpdatedAt,
 			&row.SpentAt, &row.Type, &row.Amount, &row.AmountRecipient, &row.RecurringID,
+			&row.SortKey, &row.RecipientSortKey,
 		); serr != nil {
 			return nil, serr
 		}
@@ -524,7 +527,7 @@ func hydrate(row txRow) (*model.Transaction, error) {
 		AccountRecipID: recip, Amount: row.Amount, AmountRecipient: row.AmountRecipient,
 		CategoryID: cat, PayeeID: payee, TagID: tag, Description: row.Description,
 		SpentAt: row.SpentAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-		RecurringID: recurring,
+		RecurringID: recurring, SortKey: row.SortKey, RecipientSortKey: row.RecipientSortKey,
 	}), nil
 }
 

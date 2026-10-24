@@ -76,27 +76,34 @@ type Transaction struct {
 	// for hand-entered ones). Provenance, not mutable state: Update leaves it
 	// alone, so editing a posted instance never severs its origin.
 	RecurringID *vo.Id
+	// SortKey orders the row within its day on AccountID, RecipientSortKey on
+	// AccountRecipID (transfers only); higher is listed first. Zero / nil means
+	// "not placed yet": the repository puts the row at the top of its day.
+	SortKey          int64
+	RecipientSortKey *int64
 }
 
 // NewState bundles the fields for constructing/reconstructing a Transaction.
 // Optional ids are nil when absent; AmountRecipient is nil unless set.
 type NewState struct {
-	ID              vo.Id
-	UserID          vo.Id
-	Type            TransactionType
-	AccountID       vo.Id
-	AccountRecipID  *vo.Id
-	Amount          string
-	AmountRecipient *string
-	CategoryID      *vo.Id
-	PayeeID         *vo.Id
-	TagID           *vo.Id
-	LabelIDs        []vo.Id
-	Description     string
-	SpentAt         time.Time
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	RecurringID     *vo.Id
+	ID               vo.Id
+	UserID           vo.Id
+	Type             TransactionType
+	AccountID        vo.Id
+	AccountRecipID   *vo.Id
+	Amount           string
+	AmountRecipient  *string
+	CategoryID       *vo.Id
+	PayeeID          *vo.Id
+	TagID            *vo.Id
+	LabelIDs         []vo.Id
+	Description      string
+	SpentAt          time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	RecurringID      *vo.Id
+	SortKey          int64
+	RecipientSortKey *int64
 }
 
 // TransactionFilter narrows a transaction list query. PeriodStart/PeriodEnd
@@ -124,7 +131,7 @@ func New(s NewState) *Transaction {
 		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
 		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID, LabelIDs: s.LabelIDs,
 		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.CreatedAt,
-		RecurringID: s.RecurringID,
+		RecurringID: s.RecurringID, SortKey: s.SortKey, RecipientSortKey: s.RecipientSortKey,
 	}
 }
 
@@ -136,7 +143,7 @@ func FromState(s NewState) *Transaction {
 		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
 		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID, LabelIDs: s.LabelIDs,
 		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
-		RecurringID: s.RecurringID,
+		RecurringID: s.RecurringID, SortKey: s.SortKey, RecipientSortKey: s.RecipientSortKey,
 	}
 }
 

@@ -122,3 +122,9 @@ sql:
             go_type:
               type: "time.Time"
               pointer: true
+          # Nullable BIGINT -> *int64 to match sqlite's nullable INTEGER.
+          - db_type: "pg_catalog.int8"
+            nullable: true
+            go_type:
+              type: "int64"
+              pointer: true

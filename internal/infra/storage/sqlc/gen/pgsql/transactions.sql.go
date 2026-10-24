@@ -21,7 +21,7 @@ func (q *Queries) DeleteTransaction(ctx context.Context, id string) error {
 
 const getTransactionByID = `-- name: GetTransactionByID :one
 
-SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id
+SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id, sort_key, recipient_sort_key
 FROM transactions
 WHERE id = $1
 `
@@ -42,6 +42,8 @@ type GetTransactionByIDRow struct {
 	Amount             string
 	AmountRecipient    *string
 	RecurringID        *string
+	SortKey            int64
+	RecipientSortKey   *int64
 }
 
 // Write + read queries for the transaction module (PostgreSQL: $N placeholders).
@@ -65,6 +67,8 @@ func (q *Queries) GetTransactionByID(ctx context.Context, id string) (GetTransac
 		&i.Amount,
 		&i.AmountRecipient,
 		&i.RecurringID,
+		&i.SortKey,
+		&i.RecipientSortKey,
 	)
 	return i, err
 }
@@ -88,7 +92,7 @@ func (q *Queries) LinkTransactionToRecurring(ctx context.Context, arg LinkTransa
 }
 
 const listTransactionsByAccount = `-- name: ListTransactionsByAccount :many
-SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id
+SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id, sort_key, recipient_sort_key
 FROM transactions
 WHERE account_id = $1 OR account_recipient_id = $2
 ORDER BY spent_at DESC, id
@@ -115,6 +119,8 @@ type ListTransactionsByAccountRow struct {
 	Amount             string
 	AmountRecipient    *string
 	RecurringID        *string
+	SortKey            int64
+	RecipientSortKey   *int64
 }
 
 func (q *Queries) ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]ListTransactionsByAccountRow, error) {
@@ -142,6 +148,8 @@ func (q *Queries) ListTransactionsByAccount(ctx context.Context, arg ListTransac
 			&i.Amount,
 			&i.AmountRecipient,
 			&i.RecurringID,
+			&i.SortKey,
+			&i.RecipientSortKey,
 		); err != nil {
 			return nil, err
 		}
@@ -157,8 +165,8 @@ func (q *Queries) ListTransactionsByAccount(ctx context.Context, arg ListTransac
 }
 
 const upsertTransaction = `-- name: UpsertTransaction :exec
-INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id, sort_key, recipient_sort_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 ON CONFLICT (id) DO UPDATE SET
     account_id           = excluded.account_id,
     account_recipient_id = excluded.account_recipient_id,
@@ -170,7 +178,9 @@ ON CONFLICT (id) DO UPDATE SET
     spent_at             = excluded.spent_at,
     type                 = excluded.type,
     amount               = excluded.amount,
-    amount_recipient     = excluded.amount_recipient
+    amount_recipient     = excluded.amount_recipient,
+    sort_key             = excluded.sort_key,
+    recipient_sort_key   = excluded.recipient_sort_key
 `
 
 type UpsertTransactionParams struct {
@@ -189,6 +199,8 @@ type UpsertTransactionParams struct {
 	Amount             string
 	AmountRecipient    *string
 	RecurringID        *string
+	SortKey            int64
+	RecipientSortKey   *int64
 }
 
 func (q *Queries) UpsertTransaction(ctx context.Context, arg UpsertTransactionParams) error {
@@ -208,6 +220,8 @@ func (q *Queries) UpsertTransaction(ctx context.Context, arg UpsertTransactionPa
 		arg.Amount,
 		arg.AmountRecipient,
 		arg.RecurringID,
+		arg.SortKey,
+		arg.RecipientSortKey,
 	)
 	return err
 }

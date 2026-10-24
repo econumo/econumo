@@ -61,7 +61,7 @@ func TestMigration20261017_Pgsql(t *testing.T) {
 		return b.String()
 	}
 	checkCategoryTypeMigration(t, db, rebind, func() {
-		if err := migrate.Run(ctx, db, upTo(""), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		if err := migrate.Run(ctx, db, upTo("20261017000001"), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 			t.Fatalf("target migration: %v", err)
 		}
 	})
