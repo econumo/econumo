@@ -328,9 +328,13 @@ navigation (single-pane vs sidebar).
 - [ ] A transfer whose other account you cannot edit can be reordered within
       its day, but dropping it on another day snaps it back with "This
       transaction can't be moved to another day."
-- [ ] Reordering a day another device changed meanwhile (add a transaction to
-      that day elsewhere first) snaps back with "This day changed meanwhile.
-      Refresh and try again."; after the refresh the drag works.
+- [ ] Dropping a row under a transaction that another device meanwhile moved to
+      another day or deleted snaps back with "This day changed meanwhile.
+      Refresh and try again."; the list refreshes and the drag then works. A row
+      merely added to that day elsewhere does not block the drop.
+- [ ] Upgrading an instance with existing transactions keeps every account's
+      list in exactly the same order as before the upgrade (boot log: "placed
+      the transactions of N account(s)").
 - [ ] New transactions (typed in, CSV import, Apple Wallet, recurring post) land
       at the top of their day; a CSV import shows a day's rows in file order.
       Budget drill-down lists show a day's transactions in the same order as

@@ -512,10 +512,11 @@ type Transaction struct {
 	AccountRecipientID string
 	AmountRecipient    string
 
-	// SortKey / RecipientSortKey place the row within its day on each side;
-	// zero puts it at the top of the day, as the repository does.
-	SortKey          int64
-	RecipientSortKey int64
+	// SortKey / RecipientSortKey place the row within its day on each side
+	// (fractional keys, higher listed first); empty puts it at the top of the
+	// day, as the repository does.
+	SortKey          string
+	RecipientSortKey string
 }
 
 func (b *Builder) Transaction(tx Transaction) string {
@@ -545,9 +546,9 @@ func (b *Builder) Transaction(tx Transaction) string {
 	return id
 }
 
-func (b *Builder) placeKey(key int64, accountID string, spent any) int64 {
+func (b *Builder) placeKey(key, accountID string, spent any) string {
 	b.t.Helper()
-	if key != 0 {
+	if key != "" {
 		return key
 	}
 	at, ok := spent.(time.Time)

@@ -27,7 +27,7 @@ import { ViewRecurringDialog } from '@/features/recurring/ViewRecurringDialog'
 import { recurringPostPayload } from '@/features/recurring/postPayload'
 import { useExchange } from '@/features/currencies/useExchange'
 import { separatorText, useAccountTransactions } from '@/features/transactions/useAccountTransactions'
-import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
+import type { DailyListEntry, ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
@@ -64,7 +64,12 @@ export function AccountPage() {
   // or from the provenance row inside a posted transaction's preview
   const [recurringPreview, setRecurringPreview] = useState<RecurringDto | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const entries = useAccountTransactions(id, search)
+  const liveEntries = useAccountTransactions(id, search)
+  // A drop shows at once: the list keeps the dropped arrangement until the
+  // server answers, then follows the cache again (the new keys, or the old
+  // order after a refusal).
+  const [droppedEntries, setDroppedEntries] = useState<DailyListEntry[] | null>(null)
+  const entries = droppedEntries ?? liveEntries
 
   // the template behind the previewed transaction. Stays undefined when it was
   // deleted or lives on an account the caller can't see (the list is scoped to
@@ -112,7 +117,11 @@ export function AccountPage() {
       toast.error(t('errors.transaction.cannot_move'))
       return
     }
-    moveTransaction.mutate({ id: tx.id, accountId: account.id, ...drop })
+    setDroppedEntries(drop.entries)
+    moveTransaction.mutate(
+      { id: tx.id, accountId: account.id, date: drop.date, aboveId: drop.aboveId },
+      { onSettled: () => setDroppedEntries(null) },
+    )
   }
 
   const editTransaction = (tx: ViewTransaction) => {

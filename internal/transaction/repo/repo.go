@@ -149,7 +149,7 @@ func (r *Repo) write(ctx context.Context, t *model.Transaction) error {
 // account by Update) the top of its day there. Every write goes through here,
 // so no caller can store an unplaced row.
 func (r *Repo) place(ctx context.Context, t *model.Transaction) error {
-	if t.SortKey == 0 {
+	if t.SortKey == "" {
 		top, err := r.order.Top(ctx, t.AccountID.String(), t.SpentAt)
 		if err != nil {
 			return err
@@ -399,7 +399,7 @@ func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.Tra
 
 // DayKeys reads the side keys of accountID's day. A transfer with the account
 // on both sides cannot exist, so each row appears once.
-func (r *Repo) DayKeys(ctx context.Context, accountID vo.Id, spentAt time.Time) (map[string]int64, error) {
+func (r *Repo) DayKeys(ctx context.Context, accountID vo.Id, spentAt time.Time) (map[string]string, error) {
 	start, end := txorder.DayBounds(spentAt)
 	from, to := start.Format(datetime.Layout), end.Format(datetime.Layout)
 	q := `SELECT id, sort_key FROM transactions WHERE account_id = ` + placeholders(r.driver, 1, 1) +
@@ -412,21 +412,21 @@ func (r *Repo) DayKeys(ctx context.Context, accountID vo.Id, spentAt time.Time) 
 		return nil, err
 	}
 	defer rows.Close()
-	out := map[string]int64{}
+	out := map[string]string{}
 	for rows.Next() {
 		var txID string
-		var key sql.NullInt64
+		var key sql.NullString
 		if err := rows.Scan(&txID, &key); err != nil {
 			return nil, err
 		}
-		out[txID] = key.Int64
+		out[txID] = key.String
 	}
 	return out, rows.Err()
 }
 
 // SetSideKey writes the key of whichever side of id sits on accountID. The
 // row's revision moves on both of its accounts: both download it.
-func (r *Repo) SetSideKey(ctx context.Context, accountID, id vo.Id, key int64) error {
+func (r *Repo) SetSideKey(ctx context.Context, accountID, id vo.Id, key string) error {
 	if err := r.rev.BumpWhere(ctx, "id = ?", id.String()); err != nil {
 		return err
 	}

@@ -16,7 +16,7 @@ func TestSortKeysRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	id := "7c000000-0000-0000-0000-0000000005a1"
 	tx := expense(id, acct1, "1", time.Date(2024, 3, 15, 9, 30, 0, 0, time.UTC))
-	tx.SortKey = 7
+	tx.SortKey = "a7"
 	if err := repo.Save(ctx, tx); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -24,11 +24,11 @@ func TestSortKeysRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.SortKey != 7 || got.RecipientSortKey != nil {
-		t.Errorf("keys = %d %v, want 7 <nil>", got.SortKey, got.RecipientSortKey)
+	if got.SortKey != "a7" || got.RecipientSortKey != nil {
+		t.Errorf("keys = %q %v, want a7 <nil>", got.SortKey, got.RecipientSortKey)
 	}
 	list, err := repo.ListByAccount(ctx, vo.MustParseId(acct1))
-	if err != nil || len(list) != 1 || list[0].SortKey != 7 {
+	if err != nil || len(list) != 1 || list[0].SortKey != "a7" {
 		t.Fatalf("ListByAccount: %v %+v", err, list)
 	}
 }
@@ -42,7 +42,7 @@ func transfer(id, from, to string, spentAt time.Time) *model.Transaction {
 	})
 }
 
-func keysOf(t *testing.T, repo *transactionrepo.Repo, id string) (int64, *int64) {
+func keysOf(t *testing.T, repo *transactionrepo.Repo, id string) (string, *string) {
 	t.Helper()
 	got, err := repo.GetByID(context.Background(), vo.MustParseId(id))
 	if err != nil {
@@ -65,15 +65,15 @@ func TestSaveNewGoesToTopOfDay(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if k, _ := keysOf(t, repo, first); k != 1 {
-		t.Errorf("first: %d, want 1", k)
+	if k, _ := keysOf(t, repo, first); k != "a0" {
+		t.Errorf("first: %q, want a0", k)
 	}
-	if k, _ := keysOf(t, repo, second); k != 2 {
-		t.Errorf("second: %d, want 2 (newest entry on top, whatever its time)", k)
+	if k, _ := keysOf(t, repo, second); k != "a1" {
+		t.Errorf("second: %q, want a1 (newest entry on top, whatever its time)", k)
 	}
 	k, rk := keysOf(t, repo, tr)
-	if k != 1 || rk == nil || *rk != 3 {
-		t.Errorf("transfer: %d %v, want 1 on acct2 and 3 on acct1", k, rk)
+	if k != "a0" || rk == nil || *rk != "a2" {
+		t.Errorf("transfer: %q %v, want a0 on acct2 and a2 on acct1", k, rk)
 	}
 }
 
@@ -96,8 +96,8 @@ func TestSaveKeepsKeysOnPlainEdit(t *testing.T) {
 	if err := repo.Save(ctx, got); err != nil {
 		t.Fatal(err)
 	}
-	if k, _ := keysOf(t, repo, a); k != 1 {
-		t.Errorf("edited row moved: key %d, want 1", k)
+	if k, _ := keysOf(t, repo, a); k != "a0" {
+		t.Errorf("edited row moved: key %q, want a0", k)
 	}
 }
 
@@ -106,15 +106,15 @@ func TestListByAccountOrdersByDayThenKey(t *testing.T) {
 	ctx := context.Background()
 	day := time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC)
 	early, late, tr, older := "7c000000-0000-0000-0000-0000000005d1", "7c000000-0000-0000-0000-0000000005d2", "7c000000-0000-0000-0000-0000000005d3", "7c000000-0000-0000-0000-0000000005d4"
-	rk := int64(1)
+	rk := "a1"
 	rows := []*model.Transaction{
 		expense(early, acct1, "1", day.Add(8*time.Hour)),
 		expense(late, acct1, "1", day.Add(20*time.Hour)),
 		transfer(tr, acct2, acct1, day.Add(23*time.Hour)),
 		expense(older, acct1, "1", day.Add(-time.Hour)),
 	}
-	rows[0].SortKey, rows[1].SortKey, rows[3].SortKey = 3, 2, 9
-	rows[2].SortKey, rows[2].RecipientSortKey = 5, &rk
+	rows[0].SortKey, rows[1].SortKey, rows[3].SortKey = "a3", "a2", "a9"
+	rows[2].SortKey, rows[2].RecipientSortKey = "a5", &rk
 	for _, tx := range rows {
 		if err := repo.Save(ctx, tx); err != nil {
 			t.Fatal(err)

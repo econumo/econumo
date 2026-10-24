@@ -959,25 +959,28 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   `get-account-transaction-list` returns for the account (a size hint for packing downloads,
   read from the transactions indexes alone, a transfer counted on both sides). `internal/test/revisionguard` enforces
   the rule (see Testing).
-- **Transaction order.** Within a day, transactions are ordered by explicit keys, never by the
-  time of day: `transactions.sort_key` places the row on its source account,
-  `recipient_sort_key` (transfers only, else NULL) on its recipient account, so reordering one
-  account never moves a transfer on the other. Order everywhere is day DESC, the side key of
-  the listed account DESC (`sort_key` for a list spanning several accounts), then `id`:
-  `model.SortForList` for the transaction repo's lists, `dayKeyOrder` in the budget drill-down
-  SQL, `compareTransactions` (`web/src/features/transactions/order.ts`) in the SPA. Keys are
-  assigned in the storage layer only: the transaction repo's `write` gives a row with no key on
-  a side the top of its day there (`internal/infra/txorder`, `Placer.Top`: 1 + the highest key
-  either column holds for that account and day), the account repo does the same for
-  corrections, and `model.Transaction.Update` drops a side's key when the day or that side's
-  account changes. New rows therefore land on top of their day; the CSV importer inserts
-  bottom-up so a day's rows keep file order. `POST /api/v1/transaction/move-transaction`
-  (the account page's drag and drop) takes the account's whole day after the drop, top
-  first, rewrites that side's keys N..1, and refuses with `transaction.day_changed` when the
-  set no longer matches the day; a different `date` also moves the row to that day (time
-  kept), which needs write access to every account it touches (`transaction.cannot_move`).
-  `revisionguard` also fails any write that leaves a row unplaced or two rows of an
-  account's day sharing a key.
+- **Transaction order.** Within a day, transactions are ordered by fractional keys
+  (`internal/shared/sortkey`, the scheme categories, tags, payees, accounts and budget
+  elements use), never by the time of day: `transactions.sort_key` places the row on its
+  source account, `recipient_sort_key` (transfers only, else NULL) on its recipient account,
+  so reordering one account never moves a transfer on the other. A higher key is listed
+  higher. Order everywhere is day DESC, the side key of the listed account DESC (`sort_key`
+  for a list spanning several accounts), then `id`: `model.SortForList` for the transaction
+  repo's lists, `dayKeyOrder` in the budget drill-down SQL, `compareTransactions`
+  (`web/src/features/transactions/order.ts`) in the SPA. Keys are assigned in the storage
+  layer only: the transaction repo's `write` gives a row with no key on a side the top of its
+  day there (`internal/infra/txorder`, `Placer.Top`: just above the highest key either column
+  holds for that account and day), the account repo does the same for corrections, and
+  `model.Transaction.Update` drops a side's key when the day or that side's account changes.
+  New rows therefore land on top of their day; the CSV importer inserts bottom-up so a day's
+  rows keep file order. `POST /api/v1/transaction/move-transaction` (the account page's drag
+  and drop) takes `aboveId`, the row now directly above the moved one on that account (null =
+  top of the day), and writes ONE key, between that row and the one below it; nothing else
+  is renumbered, except rows whose keys tie (two inserts that raced), which are split first.
+  An `aboveId` no longer on that day is refused with `transaction.day_changed`; a different
+  `date` also moves the row to that day (time kept), which needs write access to every
+  account it touches (`transaction.cannot_move`). `revisionguard` also fails any write that
+  leaves a row without its keys.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
 - Keep `.sql` query files ASCII-only, including comments — a multibyte character (an em dash,
@@ -1011,6 +1014,7 @@ data:import-sqlite [--force] <sqlite-path>
 migration:zero-deleted-accounts
 migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
+migration:seed-transaction-sort-keys
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -1052,6 +1056,13 @@ the live schema, skips `schema_migrations` (the instance id's anchor), parses
 each value with the exact driver layout and leaves anything unparseable as
 stored; idempotent, a no-op on PostgreSQL, and invoked automatically at boot as
 migration step `20260915000001`.
+
+`migration:seed-transaction-sort-keys` gives every transaction without one a sort key on
+each account side (see "Transaction order"), numbering each account's days in the order the
+lists used before keys existed (spent_at DESC, id), the rows it is the source of and the
+transfers it receives together. One account per DB transaction, with that account's revision
+bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
+migration step `20261024000001`, right after the SQL file that adds the columns.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.

@@ -174,31 +174,31 @@ func TestUpdateResetsKeysOnDayOrAccountChange(t *testing.T) {
 	c := mustID(t, "aaaa0000-0000-0000-0000-000000000003")
 	day := time.Date(2024, 3, 1, 10, 0, 0, 0, time.UTC)
 	placed := func() *Transaction {
-		rk := int64(4)
-		return &Transaction{Type: TransactionTypeTransfer, AccountID: a, AccountRecipID: &b, SpentAt: day, SortKey: 3, RecipientSortKey: &rk}
+		rk := "a4"
+		return &Transaction{Type: TransactionTypeTransfer, AccountID: a, AccountRecipID: &b, SpentAt: day, SortKey: "a3", RecipientSortKey: &rk}
 	}
-	keys := func(tx *Transaction) (int64, int64) {
+	keys := func(tx *Transaction) (string, string) {
 		if tx.RecipientSortKey == nil {
-			return tx.SortKey, 0
+			return tx.SortKey, ""
 		}
 		return tx.SortKey, *tx.RecipientSortKey
 	}
 	cases := []struct {
 		name   string
 		state  NewState
-		sk, rk int64
+		sk, rk string
 	}{
-		{"same day, other time", NewState{Type: TransactionTypeTransfer, AccountID: a, AccountRecipID: &b, SpentAt: day.Add(5 * time.Hour)}, 3, 4},
-		{"other day", NewState{Type: TransactionTypeTransfer, AccountID: a, AccountRecipID: &b, SpentAt: day.AddDate(0, 0, 1)}, 0, 0},
-		{"other source", NewState{Type: TransactionTypeTransfer, AccountID: c, AccountRecipID: &b, SpentAt: day}, 0, 4},
-		{"other recipient", NewState{Type: TransactionTypeTransfer, AccountID: a, AccountRecipID: &c, SpentAt: day}, 3, 0},
-		{"no longer a transfer", NewState{Type: TransactionTypeExpense, AccountID: a, SpentAt: day}, 3, 0},
+		{"same day, other time", NewState{Type: TransactionTypeTransfer, AccountID: a, AccountRecipID: &b, SpentAt: day.Add(5 * time.Hour)}, "a3", "a4"},
+		{"other day", NewState{Type: TransactionTypeTransfer, AccountID: a, AccountRecipID: &b, SpentAt: day.AddDate(0, 0, 1)}, "", ""},
+		{"other source", NewState{Type: TransactionTypeTransfer, AccountID: c, AccountRecipID: &b, SpentAt: day}, "", "a4"},
+		{"other recipient", NewState{Type: TransactionTypeTransfer, AccountID: a, AccountRecipID: &c, SpentAt: day}, "a3", ""},
+		{"no longer a transfer", NewState{Type: TransactionTypeExpense, AccountID: a, SpentAt: day}, "a3", ""},
 	}
 	for _, tc := range cases {
 		tx := placed()
 		tx.Update(tc.state, tc1)
 		if sk, rk := keys(tx); sk != tc.sk || rk != tc.rk {
-			t.Errorf("%s: keys %d/%d, want %d/%d", tc.name, sk, rk, tc.sk, tc.rk)
+			t.Errorf("%s: keys %q/%q, want %q/%q", tc.name, sk, rk, tc.sk, tc.rk)
 		}
 	}
 }

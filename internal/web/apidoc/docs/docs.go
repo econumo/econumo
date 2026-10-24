@@ -10824,7 +10824,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Puts a transaction where it was dropped on an account page. transactionIds is that account's whole day afterwards, top first; only that account's order changes. A different date moves the transaction to that day, keeping its time. Returns every rewritten transaction plus the refreshed account list.",
+                "description": "Puts a transaction where it was dropped on an account page: directly below aboveId on that account's day, or at the top of the day when aboveId is null. Only that account's order changes, and no other transaction is renumbered. A different date moves the transaction to that day, keeping its time. Returns the rewritten transaction(s) plus the refreshed account list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -13061,13 +13061,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "recipientSortKey": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "recurringId": {
                     "type": "string"
                 },
                 "sortKey": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "tagId": {
                     "type": "string"
@@ -15830,6 +15830,9 @@ const docTemplate = `{
         "model.MoveTransactionRequest": {
             "type": "object",
             "properties": {
+                "aboveId": {
+                    "type": "string"
+                },
                 "accountId": {
                     "type": "string"
                 },
@@ -15838,12 +15841,6 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
-                },
-                "transactionIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },
@@ -17055,15 +17052,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "recipientSortKey": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "recurringId": {
                     "description": "RecurringId is the template this transaction was posted from, null for a\nhand-entered one. Read-only provenance: create/update never accept it.",
                     "type": "string"
                 },
                 "sortKey": {
-                    "description": "SortKey orders the row within its day on accountId, RecipientSortKey on\naccountRecipientId (null unless a transfer); higher is listed first.",
-                    "type": "integer"
+                    "description": "SortKey orders the row within its day on accountId, RecipientSortKey on\naccountRecipientId (null unless a transfer): fractional keys compared\nbyte-wise, the higher listed first.",
+                    "type": "string"
                 },
                 "tagId": {
                     "type": "string"

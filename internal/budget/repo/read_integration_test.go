@@ -474,9 +474,9 @@ func TestBudgetReadRepo_DrilldownOrdersByDayThenSortKey(t *testing.T) {
 	seedCategory(t, db, cat, userA)
 	f := fixture.New(t, db)
 	morning, evening, earlier := "73000000-0000-0000-0000-0000000000a1", "73000000-0000-0000-0000-0000000000a2", "73000000-0000-0000-0000-0000000000a3"
-	f.Transaction(fixture.Transaction{ID: morning, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "1", SpentAt: "2024-04-05 08:00:00", SortKey: 2})
-	f.Transaction(fixture.Transaction{ID: evening, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "2", SpentAt: "2024-04-05 20:00:00", SortKey: 1})
-	f.Transaction(fixture.Transaction{ID: earlier, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "3", SpentAt: "2024-04-04 23:00:00", SortKey: 5})
+	f.Transaction(fixture.Transaction{ID: morning, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "1", SpentAt: "2024-04-05 08:00:00", SortKey: "a2"})
+	f.Transaction(fixture.Transaction{ID: evening, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "2", SpentAt: "2024-04-05 20:00:00", SortKey: "a1"})
+	f.Transaction(fixture.Transaction{ID: earlier, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "3", SpentAt: "2024-04-04 23:00:00", SortKey: "a5"})
 	rows, err := read.BudgetTransactionsByCategories(ctx, []vo.Id{vo.MustParseId(cat)}, []vo.Id{vo.MustParseId(acctA)},
 		time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC))
 	if err != nil {

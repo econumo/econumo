@@ -55,7 +55,7 @@ func (h *Handlers) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 // MoveTransaction handles POST /api/v1/transaction/move-transaction (auth).
 //
 // @Summary     Move a transaction within or between days
-// @Description Puts a transaction where it was dropped on an account page. transactionIds is that account's whole day afterwards, top first; only that account's order changes. A different date moves the transaction to that day, keeping its time. Returns every rewritten transaction plus the refreshed account list.
+// @Description Puts a transaction where it was dropped on an account page: directly below aboveId on that account's day, or at the top of the day when aboveId is null. Only that account's order changes, and no other transaction is renumbered. A different date moves the transaction to that day, keeping its time. Returns the rewritten transaction(s) plus the refreshed account list.
 // @Tags        Transaction
 // @Accept      json
 // @Produce     json

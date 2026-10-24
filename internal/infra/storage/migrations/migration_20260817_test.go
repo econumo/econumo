@@ -59,8 +59,9 @@ func TestMigration20260817_SeedsMembershipAndDropsBlacklist(t *testing.T) {
 	}
 	// Every command step registered after the membership schema version runs,
 	// in version order: zero-deleted-accounts (20260817000001), the analytics
-	// backfill (20260903000000) and the SQLite datetime rewrite (20260915000001).
-	wantCalls := []string{"migration:zero-deleted-accounts", "migration:seed-analytics-option", "migration:normalize-sqlite-datetimes"}
+	// backfill (20260903000000), the SQLite datetime rewrite (20260915000001) and the
+	// transaction sort keys (20261024000001).
+	wantCalls := []string{"migration:zero-deleted-accounts", "migration:seed-analytics-option", "migration:normalize-sqlite-datetimes", "migration:seed-transaction-sort-keys"}
 	if !slices.Equal(calls, wantCalls) {
 		t.Fatalf("command steps = %v, want %v", calls, wantCalls)
 	}

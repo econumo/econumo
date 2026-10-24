@@ -63,9 +63,9 @@ it('orders a day by the page account\'s sort key, not by time', async () => {
   server.use(
     ...coreHandlers({
       transactions: [
-        { ...base, id: 'morning', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '1', date: '2026-06-20 08:00:00', sortKey: 3, recipientSortKey: null },
-        { ...base, id: 'evening', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '1', date: '2026-06-20 20:00:00', sortKey: 1, recipientSortKey: null },
-        { ...base, id: 'incoming', type: 'transfer', accountId: 'a2', accountRecipientId: 'a1', amount: '1', date: '2026-06-20 23:00:00', sortKey: 9, recipientSortKey: 2 },
+        { ...base, id: 'morning', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '1', date: '2026-06-20 08:00:00', sortKey: 'a3', recipientSortKey: null },
+        { ...base, id: 'evening', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '1', date: '2026-06-20 20:00:00', sortKey: 'a1', recipientSortKey: null },
+        { ...base, id: 'incoming', type: 'transfer', accountId: 'a2', accountRecipientId: 'a1', amount: '1', date: '2026-06-20 23:00:00', sortKey: 'a9', recipientSortKey: 'a2' },
       ],
     }),
   )

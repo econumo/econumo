@@ -6,8 +6,7 @@ import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { apiErrorMessage } from '@/lib/apiError'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { compareTransactions } from './order'
-import { applyLocalMove } from './move'
-import { beginLocalWrite, consumeFullReload, noteOwnWrite, patchTransactions, transactionsQueryFn } from './revisionTracking'
+import { beginLocalWrite, consumeFullReload, noteOwnWrite, transactionsQueryFn } from './revisionTracking'
 
 const byDateDesc = (items: TransactionDto[]) => [...items].sort((a, b) => compareTransactions(a, b))
 
@@ -82,22 +81,16 @@ export function useDeleteTransaction() {
   })
 }
 
-/** A drag on an account page. The list shows the drop at once; the server's
- *  rows replace the guess on success. A refusal puts back only the rows the
- *  drop touched (anything that arrived meanwhile stays) and syncs again: the
- *  usual cause is a day another device changed, whose rows this list lacks. */
+/** A drag on an account page. The page shows the dropped arrangement itself
+ *  until this settles, so the cache only ever holds server rows: the success
+ *  merges the rows the move rewrote, and a refusal (usually a day another
+ *  device changed) leaves the cache alone and syncs again. */
 export function useMoveTransaction() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: transactionApi.moveTransaction,
-    onMutate: (req: MoveTransactionDto) => {
-      const touched = new Set(req.transactionIds)
-      const previous = (queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions) ?? []).filter((t) => touched.has(t.id))
-      const moved = previous.find((t) => t.id === req.id)
-      patchTransactions(queryClient, (rows) => applyLocalMove(rows, req))
-      return { previous, dayChanged: moved ? moved.date.slice(0, 10) !== req.date : false }
-    },
-    onSuccess: (result, _req, context) => {
+    onSuccess: (result, req: MoveTransactionDto) => {
+      const before = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)?.find((t) => t.id === req.id)
       const patch = beginLocalWrite(queryClient)
       if (patch) {
         noteOwnWrite(result.accounts, result.items.flatMap((t) => [t.accountId, t.accountRecipientId]))
@@ -110,11 +103,9 @@ export function useMoveTransaction() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
-      trackEvent(METRICS.TRANSACTION_MOVE, { dayChanged: context?.dayChanged ?? false })
+      trackEvent(METRICS.TRANSACTION_MOVE, { dayChanged: before ? before.date.slice(0, 10) !== req.date : false })
     },
-    onError: (err, _req, context) => {
-      const before = new Map((context?.previous ?? []).map((t) => [t.id, t]))
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (rows) => rows?.map((t) => before.get(t.id) ?? t))
+    onError: (err) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       toast.error(apiErrorMessage(err))
     },

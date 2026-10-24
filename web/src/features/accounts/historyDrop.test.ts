@@ -12,19 +12,24 @@ const at = (key: string) => entries.findIndex((e) => entryKey(e) === key)
 
 describe('resolveDrop', () => {
   it('reorders within a day', () => {
-    expect(resolveDrop(entries, 'c', at('a'))).toEqual({ date: '2024-03-02', transactionIds: ['c', 'a', 'b'] })
+    expect(resolveDrop(entries, 'c', at('a'))).toMatchObject({ date: '2024-03-02', aboveId: null })
   })
 
   it('moves down onto the next day header to the top of that day', () => {
-    expect(resolveDrop(entries, 'b', at('sep-2024-03-01'))).toEqual({ date: '2024-03-01', transactionIds: ['b', 'd', 'e'] })
+    expect(resolveDrop(entries, 'b', at('sep-2024-03-01'))).toMatchObject({ date: '2024-03-01', aboveId: null })
   })
 
   it('moves up onto a day header to the bottom of the day above', () => {
-    expect(resolveDrop(entries, 'd', at('sep-2024-03-01'))).toEqual({ date: '2024-03-02', transactionIds: ['a', 'b', 'c', 'd'] })
+    expect(resolveDrop(entries, 'd', at('sep-2024-03-01'))).toMatchObject({ date: '2024-03-02', aboveId: 'c' })
   })
 
   it('moves into the middle of another day', () => {
-    expect(resolveDrop(entries, 'a', at('d'))).toEqual({ date: '2024-03-01', transactionIds: ['d', 'a', 'e'] })
+    expect(resolveDrop(entries, 'a', at('d'))).toMatchObject({ date: '2024-03-01', aboveId: 'd' })
+  })
+
+  it('returns the list as it looks after the drop', () => {
+    const drop = resolveDrop(entries, 'c', at('a'))
+    expect(drop?.entries.map(entryKey)).toEqual(['sep-2024-03-02', 'c', 'a', 'b', 'sep-2024-03-01', 'd', 'e'])
   })
 
   it('ignores a drop that changes nothing', () => {
@@ -38,6 +43,6 @@ describe('resolveDrop', () => {
   it('leaves recurring previews out of the day order', () => {
     const recurring = { id: 'r1', nextPaymentAt: '2024-03-02 00:00:00' } as ViewTransaction['recurring']
     const withPreview = [sep('2024-03-02'), tx('r1', '2024-02-20 00:00:00', { recurring }), tx('a', '2024-03-02 10:00:00'), tx('b', '2024-03-02 09:00:00')]
-    expect(resolveDrop(withPreview, 'b', 1)).toEqual({ date: '2024-03-02', transactionIds: ['b', 'a'] })
+    expect(resolveDrop(withPreview, 'b', 1)).toMatchObject({ date: '2024-03-02', aboveId: null })
   })
 })

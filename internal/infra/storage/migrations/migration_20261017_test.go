@@ -28,7 +28,7 @@ const (
 // the removal in English, keeping the note whole within 255 characters.
 func TestMigration20261017_RemovesCategoriesOfTheOtherType(t *testing.T) {
 	db := runUpTo(t, "category_type", "20261017000000")
-	checkCategoryTypeMigration(t, db, func(q string) string { return q }, func() { runThrough(t, db, "20261017000000") })
+	checkCategoryTypeMigration(t, db, func(q string) string { return q }, func() { runAll(t, db) })
 }
 
 // checkCategoryTypeMigration seeds a database migrated up to just before

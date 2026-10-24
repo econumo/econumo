@@ -42,8 +42,8 @@ type GetTransactionByIDRow struct {
 	Amount             string
 	AmountRecipient    *string
 	RecurringID        *string
-	SortKey            int64
-	RecipientSortKey   *int64
+	SortKey            string
+	RecipientSortKey   *string
 }
 
 // Write + read queries for the transaction module (PostgreSQL: $N placeholders).
@@ -119,8 +119,8 @@ type ListTransactionsByAccountRow struct {
 	Amount             string
 	AmountRecipient    *string
 	RecurringID        *string
-	SortKey            int64
-	RecipientSortKey   *int64
+	SortKey            string
+	RecipientSortKey   *string
 }
 
 func (q *Queries) ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]ListTransactionsByAccountRow, error) {
@@ -199,8 +199,8 @@ type UpsertTransactionParams struct {
 	Amount             string
 	AmountRecipient    *string
 	RecurringID        *string
-	SortKey            int64
-	RecipientSortKey   *int64
+	SortKey            string
+	RecipientSortKey   *string
 }
 
 func (q *Queries) UpsertTransaction(ctx context.Context, arg UpsertTransactionParams) error {

@@ -27,8 +27,8 @@ func TestTransactionsCarrySortKeys(t *testing.T) {
 	}
 	first := create("bbbb1111-0000-7000-8000-0000000005e1")
 	second := create("bbbb1111-0000-7000-8000-0000000005e2")
-	if first["sortKey"] != float64(1) || second["sortKey"] != float64(2) {
-		t.Errorf("sortKey first=%v second=%v, want 1 and 2", first["sortKey"], second["sortKey"])
+	if first["sortKey"] != "a0" || second["sortKey"] != "a1" {
+		t.Errorf("sortKey first=%v second=%v, want a0 and a1", first["sortKey"], second["sortKey"])
 	}
 	if v, ok := first["recipientSortKey"]; !ok || v != nil {
 		t.Errorf("recipientSortKey = %v (present %v), want null", v, ok)
@@ -41,7 +41,7 @@ func TestTransactionsCarrySortKeys(t *testing.T) {
 	if err := json.Unmarshal(e.Data, &list); err != nil {
 		t.Fatal(err)
 	}
-	if len(list.Items) < 2 || list.Items[0]["id"] != second["id"] || list.Items[0]["sortKey"] != float64(2) {
-		t.Errorf("account list = %v, want the second row first with sortKey 2", list.Items)
+	if len(list.Items) < 2 || list.Items[0]["id"] != second["id"] || list.Items[0]["sortKey"] != "a1" {
+		t.Errorf("account list = %v, want the second row first with sortKey a1", list.Items)
 	}
 }

@@ -112,8 +112,8 @@ func watch(t *testing.T, db *dbtest.DB) (*apiparity.Harness, map[string]bool) {
 // no two rows of an account's day sharing a key there.
 const sortKeyViolations = `
 SELECT id FROM transactions
-WHERE sort_key <= 0
-   OR (type = 2 AND account_recipient_id IS NOT NULL AND (recipient_sort_key IS NULL OR recipient_sort_key <= 0))
+WHERE sort_key = ''
+   OR (type = 2 AND account_recipient_id IS NOT NULL AND (recipient_sort_key IS NULL OR recipient_sort_key = ''))
    OR (type <> 2 AND recipient_sort_key IS NOT NULL)
 UNION
 SELECT s.id FROM (

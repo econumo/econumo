@@ -164,8 +164,8 @@ type UpsertTransactionParams struct {
 	Amount             string
 	AmountRecipient    *string
 	RecurringID        *string
-	SortKey            int64
-	RecipientSortKey   *int64
+	SortKey            string
+	RecipientSortKey   *string
 }
 
 // recurring_id is intentionally absent from the DO UPDATE SET list below: it

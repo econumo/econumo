@@ -39,9 +39,10 @@ type TransactionResult struct {
 	// separate per-transaction read (stage 2), so the list carries only the flag.
 	IsImported int `json:"isImported"`
 	// SortKey orders the row within its day on accountId, RecipientSortKey on
-	// accountRecipientId (null unless a transfer); higher is listed first.
-	SortKey          int64  `json:"sortKey"`
-	RecipientSortKey *int64 `json:"recipientSortKey"`
+	// accountRecipientId (null unless a transfer): fractional keys compared
+	// byte-wise, the higher listed first.
+	SortKey          string  `json:"sortKey"`
+	RecipientSortKey *string `json:"recipientSortKey"`
 }
 
 // CreateTransactionRequest is the create-transaction body. amount/amountRecipient
@@ -133,13 +134,13 @@ type UpdateTransactionResult struct {
 }
 
 // MoveTransactionRequest is the move-transaction body: the moved row, the
-// account page it was dragged on, the day it was dropped into ("Y-m-d") and
-// that account's full order of the day afterwards, top first.
+// account page it was dragged on, the day it was dropped into ("Y-m-d") and the
+// transaction now directly above it on that account (null = top of the day).
 type MoveTransactionRequest struct {
-	Id             string   `json:"id"`
-	AccountId      string   `json:"accountId"`
-	Date           string   `json:"date"`
-	TransactionIds []string `json:"transactionIds"`
+	Id        string  `json:"id"`
+	AccountId string  `json:"accountId"`
+	Date      string  `json:"date"`
+	AboveId   *string `json:"aboveId"`
 }
 
 func (r MoveTransactionRequest) Validate() error {
@@ -149,16 +150,14 @@ func (r MoveTransactionRequest) Validate() error {
 			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
 	}
-	if len(r.TransactionIds) == 0 {
-		fields = append(fields, errs.FieldError{Key: "transactionIds", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
-	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
 	}
 	return nil
 }
 
-// MoveTransactionResult carries every transaction the move rewrote.
+// MoveTransactionResult carries every transaction the move rewrote: the moved
+// one, plus any neighbours whose tied keys had to be split.
 type MoveTransactionResult struct {
 	Items    []TransactionResult `json:"items"`
 	Accounts []AccountResult     `json:"accounts"`
@@ -322,8 +321,8 @@ type AccountTransactionItem struct {
 	RecurringId        *string  `json:"recurringId"`
 	LabelIds           []string `json:"labelIds"`
 	IsImported         int      `json:"isImported"`
-	SortKey            int64    `json:"sortKey"`
-	RecipientSortKey   *int64   `json:"recipientSortKey"`
+	SortKey            string   `json:"sortKey"`
+	RecipientSortKey   *string  `json:"recipientSortKey"`
 }
 
 // GetAccountTransactionListResult is the response. Revisions holds only the

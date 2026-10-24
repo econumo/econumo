@@ -31,7 +31,7 @@ type InsertCorrectionTransactionParams struct {
 	SpentAt     time.Time
 	Type        int16
 	Amount      string
-	SortKey     int64
+	SortKey     string
 }
 
 // Balance-correction transaction insert (SQLite). The account module's create

@@ -30,10 +30,11 @@ export interface TransactionDto extends CreateTransactionDto {
   recurringId: Id | null
   /** 1 when at least one import link points at this transaction (server-owned; 0/1 like isArchived). */
   isImported: 0 | 1
-  /** Position within the day on accountId / accountRecipientId, higher first.
-      Server-owned; absent from a server that predates them. */
-  sortKey?: number
-  recipientSortKey?: number | null
+  /** Position within the day on accountId / accountRecipientId: fractional
+      keys compared as text, the higher listed first. Server-owned; absent from
+      a server that predates them. */
+  sortKey?: string
+  recipientSortKey?: string | null
 }
 
 /** A transaction as kept in IndexedDB: the author is stored as an id and
@@ -65,12 +66,12 @@ export interface MoveTransactionDto {
   accountId: Id
   /** the day dropped into, Y-m-d */
   date: string
-  /** that account's whole day afterwards, top first */
-  transactionIds: Id[]
+  /** the transaction now directly above it on that account; null = top of the day */
+  aboveId: Id | null
 }
 
 export interface MoveTransactionResultDto {
-  /** every transaction the move rewrote */
+  /** the moved transaction, plus any neighbour whose tied key was split */
   items: TransactionDto[]
   accounts: AccountDto[]
 }

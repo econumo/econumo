@@ -6,11 +6,11 @@ type Ordered = Pick<TransactionDto, 'id' | 'date' | 'accountId' | 'accountRecipi
 /** The row's place within its day on `accountId`: the recipient key when the
  *  account is a transfer's recipient, the source key otherwise (and for lists
  *  spanning several accounts). Undefined from a server without keys. */
-export function sideKey(tx: Ordered, accountId?: Id): number | undefined {
+export function sideKey(tx: Ordered, accountId?: Id): string | undefined {
   if (accountId && tx.accountRecipientId === accountId && tx.accountId !== accountId && tx.recipientSortKey != null) {
     return tx.recipientSortKey
   }
-  return tx.sortKey ?? undefined
+  return tx.sortKey || undefined
 }
 
 /** List order: newest day first, then the side key (higher first), then id.
@@ -25,7 +25,8 @@ export function compareTransactions(a: Ordered, b: Ordered, accountId?: Id): num
   const keyB = sideKey(b, accountId)
   if (keyA !== undefined && keyB !== undefined) {
     if (keyA !== keyB) {
-      return keyB - keyA
+      // base-62 keys: plain string order is their byte order
+      return keyA < keyB ? 1 : -1
     }
   } else if (a.date !== b.date) {
     return a.date < b.date ? 1 : -1

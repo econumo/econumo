@@ -695,15 +695,15 @@ func TestImportKeepsFileOrderWithinDay(t *testing.T) {
 	if status, env := h.doImport(t, tok, csv, importMapping, nil); status != http.StatusOK {
 		t.Fatalf("status=%d body=%s", status, env.raw)
 	}
-	key := func(desc string) int64 {
+	key := func(desc string) string {
 		t.Helper()
-		var k int64
+		var k string
 		if err := h.db.QueryRow(`SELECT sort_key FROM transactions WHERE description = ?`, desc).Scan(&k); err != nil {
 			t.Fatal(err)
 		}
 		return k
 	}
 	if a, b, c := key("first"), key("second"), key("third"); !(a > b && b > c) {
-		t.Errorf("keys first=%d second=%d third=%d, want descending in file order", a, b, c)
+		t.Errorf("keys first=%q second=%q third=%q, want descending in file order", a, b, c)
 	}
 }

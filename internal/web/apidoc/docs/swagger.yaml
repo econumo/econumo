@@ -186,11 +186,11 @@ definitions:
       payeeId:
         type: string
       recipientSortKey:
-        type: integer
+        type: string
       recurringId:
         type: string
       sortKey:
-        type: integer
+        type: string
       tagId:
         type: string
       type:
@@ -2009,16 +2009,14 @@ definitions:
     type: object
   model.MoveTransactionRequest:
     properties:
+      aboveId:
+        type: string
       accountId:
         type: string
       date:
         type: string
       id:
         type: string
-      transactionIds:
-        items:
-          type: string
-        type: array
     type: object
   model.MoveTransactionResult:
     properties:
@@ -2819,7 +2817,7 @@ definitions:
       payeeId:
         type: string
       recipientSortKey:
-        type: integer
+        type: string
       recurringId:
         description: |-
           RecurringId is the template this transaction was posted from, null for a
@@ -2828,8 +2826,9 @@ definitions:
       sortKey:
         description: |-
           SortKey orders the row within its day on accountId, RecipientSortKey on
-          accountRecipientId (null unless a transfer); higher is listed first.
-        type: integer
+          accountRecipientId (null unless a transfer): fractional keys compared
+          byte-wise, the higher listed first.
+        type: string
       tagId:
         type: string
       type:
@@ -9890,10 +9889,11 @@ paths:
     post:
       consumes:
       - application/json
-      description: Puts a transaction where it was dropped on an account page. transactionIds
-        is that account's whole day afterwards, top first; only that account's order
-        changes. A different date moves the transaction to that day, keeping its time.
-        Returns every rewritten transaction plus the refreshed account list.
+      description: 'Puts a transaction where it was dropped on an account page: directly
+        below aboveId on that account''s day, or at the top of the day when aboveId
+        is null. Only that account''s order changes, and no other transaction is renumbered.
+        A different date moves the transaction to that day, keeping its time. Returns
+        the rewritten transaction(s) plus the refreshed account list.'
       parameters:
       - description: Move transaction request
         in: body

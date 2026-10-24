@@ -97,51 +97,40 @@ it('delete-transaction removes the item and refreshes accounts', async () => {
 
 describe('useMoveTransaction', () => {
   const day = [
-    { ...wireTx, id: 'm1', date: '2024-03-01 09:00:00', sortKey: 2, recipientSortKey: null },
-    { ...wireTx, id: 'm2', date: '2024-03-01 10:00:00', sortKey: 1, recipientSortKey: null },
+    { ...wireTx, id: 'm1', date: '2024-03-01 09:00:00', sortKey: 'a2', recipientSortKey: null },
+    { ...wireTx, id: 'm2', date: '2024-03-01 10:00:00', sortKey: 'a1', recipientSortKey: null },
   ]
-  const req = { id: 'm2', accountId: 'a1', date: '2024-03-01', transactionIds: ['m2', 'm1'] }
-  const keysOf = (rows: { id: string; sortKey?: number }[] | undefined) => Object.fromEntries((rows ?? []).map((r) => [r.id, r.sortKey]))
+  const req = { id: 'm2', accountId: 'a1', date: '2024-03-01', aboveId: null }
+  const keysOf = (rows: { id: string; sortKey?: string }[] | undefined) => Object.fromEntries((rows ?? []).map((r) => [r.id, r.sortKey]))
 
-  it('shows the new order at once and keeps the server rows', async () => {
-    let release: () => void = () => {}
-    const gate = new Promise<void>((resolve) => { release = resolve })
+  it('takes the server rows on success and leaves the others alone', async () => {
     server.use(
-      http.post('*/api/v1/transaction/move-transaction', async () => {
-        await gate
-        return HttpResponse.json({ success: true, message: '', data: { items: [{ ...day[1], sortKey: 2 }, { ...day[0], sortKey: 1 }], accounts: [wireAccount] } })
-      }),
+      http.post('*/api/v1/transaction/move-transaction', () =>
+        HttpResponse.json({ success: true, message: '', data: { items: [{ ...day[1], sortKey: 'a3' }], accounts: [wireAccount] } }),
+      ),
     )
     const { queryClient, wrapper } = makeWrapper()
     queryClient.setQueryData(queryKeys.transactions, day)
     const { result } = renderHook(() => useMoveTransaction(), { wrapper })
     result.current.mutate(req)
-    await waitFor(() => expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 1, m2: 2 }))
-    release()
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 1, m2: 2 })
+    expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 'a2', m2: 'a3' })
     expect(queryClient.getQueryData(queryKeys.accounts)).toEqual([wireAccount])
   })
 
-  it('puts the old order back when the server refuses, keeps rows that arrived meanwhile and refreshes', async () => {
-    let release: () => void = () => {}
-    const gate = new Promise<void>((resolve) => { release = resolve })
+  it('leaves the cache untouched and syncs again when the server refuses', async () => {
     server.use(
-      http.post('*/api/v1/transaction/move-transaction', async () => {
-        await gate
-        return HttpResponse.json({ success: false, message: 'This day changed meanwhile. Refresh and try again.', code: 400, errors: {} }, { status: 400 })
-      }),
+      http.post('*/api/v1/transaction/move-transaction', () =>
+        HttpResponse.json({ success: false, message: 'This day changed meanwhile. Refresh and try again.', code: 400, errors: {} }, { status: 400 }),
+      ),
     )
     const { queryClient, wrapper } = makeWrapper()
     queryClient.setQueryData(queryKeys.transactions, day)
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
     const { result } = renderHook(() => useMoveTransaction(), { wrapper })
     result.current.mutate(req)
-    await waitFor(() => expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 1, m2: 2 }))
-    queryClient.setQueryData<{ id: string }[]>(queryKeys.transactions, (rows) => [...(rows ?? []), { ...day[0], id: 'arrived', sortKey: 3 }])
-    release()
     await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 2, m2: 1, arrived: 3 })
+    expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 'a2', m2: 'a1' })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.transactions })
   })
 })

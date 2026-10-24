@@ -65,10 +65,10 @@ func scenarios() []scenario {
 			Calls: func() []ap.Call {
 				return []ap.Call{
 					post("move-within-day", "/api/v1/transaction/move-transaction", map[string]any{
-						"id": ap.Txn1, "accountId": ap.OwnerAccount, "date": "2024-04-01", "transactionIds": []string{ap.Txn1, ap.Txn2},
+						"id": ap.Txn1, "accountId": ap.OwnerAccount, "date": "2024-04-01", "aboveId": nil,
 					}),
 					post("move-to-another-day", "/api/v1/transaction/move-transaction", map[string]any{
-						"id": ap.Txn1, "accountId": ap.OwnerAccount, "date": "2024-04-03", "transactionIds": []string{ap.Txn1},
+						"id": ap.Txn1, "accountId": ap.OwnerAccount, "date": "2024-04-03", "aboveId": nil,
 					}),
 				}
 			},

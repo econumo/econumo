@@ -74,125 +74,75 @@ app.
   (optimistic); on failure it snaps back and shows the server error via
   `apiErrorMessage`.
 
-## Storage: an explicit sort key per account side (decided with Dmitry)
+## Storage: fractional sort keys per account side (decided with Dmitry)
 
-Order within a day comes from an explicit key, not from the time:
+Order within a day comes from explicit keys, never from the time of day. They
+are the fractional index keys the rest of the app already uses for categories,
+tags, payees, accounts and budget elements (`internal/shared/sortkey`): short
+base-62 text keys compared byte-wise, with `Between(prev, next)` always finding
+a key between two others, so **a move writes one row and never renumbers the
+rest of the day** (Dmitry: "I don't want to renumber other transactions").
 
-- `transactions.sort_key` (INTEGER NOT NULL): position within the day on the
-  SOURCE account (`account_id`).
-- `transactions.recipient_sort_key` (INTEGER, NULL except on transfers):
-  position within the day on the RECIPIENT account (`account_recipient_id`).
-  Two keys because a transfer is one row shown in two accounts; one shared
-  key would make reordering account A scramble the transfer's place in
-  account B and vice versa.
-- **Order:** day (date part of `spent_at`) DESC, then the side's key DESC,
-  then `id` as the final tie-break. Higher key = higher in the day's list.
-  The time of day is stored and shown as entered (preview dialog, CSV
-  export) but no longer sorts anything.
-- "The side's key" for a list scoped to account X: `sort_key` when
-  `account_id = X`, `recipient_sort_key` when `account_recipient_id = X`.
-  Lists not scoped to one account (global search, `get-transaction-list`,
-  MCP, multi-account CSV export) use `sort_key`.
-- **Upgrade** looks exactly as before: the migration (below) numbers each
-  side's days in the current order.
-- **New rows** (typed in, CSV import, Apple Wallet, SimpleFIN, recurring
-  post, corrections): go to the top of their day on each side: key =
-  1 + the highest key on that account's day (looking at both columns for
-  that account). In a batch, a row inserted later lands above the earlier
-  ones; the CSV importer inserts each day's rows bottom-up so the list shows
-  them in file order top to bottom (Claude's call).
-- **Edits:** changing the date in the edit dialog puts the row at the top of
-  the new day on each side. Changing a transfer's source or recipient
-  account puts it at the top of its day on the newly involved account. Any
-  other edit keeps the keys.
+- `transactions.sort_key` (TEXT, `COLLATE "C"` on PostgreSQL, `''` = not placed):
+  position within the day on the SOURCE account.
+- `transactions.recipient_sort_key` (same, NULL except on transfers): position on
+  the RECIPIENT account. Two keys because a transfer is one row shown in two
+  accounts.
+- **Order:** day DESC, then the side key of the listed account DESC (`sort_key`
+  for lists spanning several accounts), then `id`. The time of day is stored and
+  shown as entered but sorts nothing.
+- **New rows** (typed in, CSV, Apple Wallet, SimpleFIN, recurring post,
+  corrections) go to the top of their day: a key just above the highest either
+  column holds for that account and day. The CSV importer inserts each day
+  bottom-up so the list shows the file's order.
+- **Edits** keep the keys unless the day or that side's account changes; then
+  that side goes to the top of its new day.
 
-### Migration (decided with Dmitry: plain SQL, not a command step)
+### Migration (decided with Dmitry: a command step)
 
-One SQL migration per engine, like `20261017000000`: add the columns
-(`sort_key INTEGER NOT NULL DEFAULT 0`, `recipient_sort_key INTEGER`),
-backfill each side with `ROW_NUMBER() OVER (PARTITION BY <side account>,
-<day> ORDER BY spent_at, id DESC)` via `UPDATE ... FROM`, then bump every
-account's `transactions_revision`. Day = `substr(spent_at, 1, 10)` on
-SQLite (safe: the `20260915000001` normalizer runs earlier at boot),
-`spent_at::date` on PostgreSQL. `recipient_sort_key` is filled for
-transfers only.
+`20261024000000.sql` only adds the two columns. The command step
+`migration:seed-transaction-sort-keys` (`20261024000001`) generates the keys in
+Go with the same `sortkey` package every later write uses, numbering each
+account's days in the order the lists showed before (spent_at DESC, id), the
+rows the account is the source of and the transfers it receives counted
+together, so an upgrade changes nothing visible. One account per DB
+transaction, its revision bumped; idempotent (only unplaced rows are touched).
 
 ### Keys everywhere (Dmitry: "make sure we add sort_keys everywhere")
 
-No path may write a transaction without its keys, and no list may sort
-without them. Assignment lives in the REPOSITORY layer, never in use cases,
-so a new caller can't forget it (Claude's call):
+Assignment lives in the storage layer only, so no caller can store an unplaced
+row: the transaction repo's write (every create/update path, MCP and imports
+included), the account correction insert, and the test fixture all use
+`internal/infra/txorder`. `data:import-sqlite` copies the columns by schema. The
+REST and MCP transaction output carry `sortKey` / `recipientSortKey`; CSV export
+sorts by them but adds no column. `revisionguard` fails any write that leaves a
+row without its keys.
 
-- **Writes.** Both SQL statements that insert transactions:
-  `UpsertTransaction` (`query/{sqlite,pgsql}/transactions.sql`) and the
-  correction insert (`query/{sqlite,pgsql}/account_corrections.sql`). The
-  transaction repo's `Save` assigns top-of-day keys for a new row, and on an
-  update whose day or side account changed; otherwise it keeps them. The
-  correction insert takes top-of-day in SQL. Every creator goes through one
-  of these: REST and MCP create/update, MCP bulk update (keeps keys), CSV
-  import, recurring post, Apple Wallet / SimpleFIN imports (the
-  transaction-creation port), account corrections, deleted-account and
-  deleted/edited-transaction re-zeroing corrections.
-- **Copies.** `data:import-sqlite` must carry both columns;
-  `internal/test/fixture` must set them the way the repo does.
-- **Entity and wire.** `model.Transaction` carries both keys; the REST DTO
-  (`get-transaction-list`, `get-account-transaction-list`, create/update
-  responses) and the MCP transaction output expose `sortKey` /
-  `recipientSortKey`. CSV export sorts by them but adds no column
-  (Claude's call: it's internal ordering, not user data).
-- **Every sort.** Server `ORDER BY spent_at DESC, id` queries become day,
-  side key, id. Client: the account list comparator
-  (`useAccountTransactions.ts`), `byDateDesc` (`queries.ts`), global search
-  (`useGlobalSearch.ts`), and any other place that sorts transactions by
-  `date` (the builder greps for them, budget/plan transaction sheets
-  included).
-- **Guard test (Claude's call).** Alongside `revisionguard`, replay the
-  `apiparity` and `mcpparity` catalogues and fail if any transaction ends up
-  with `sort_key = 0`, a transfer without `recipient_sort_key`, a
-  non-transfer with one, or two rows sharing a key on the same account side
-  and day. A future write path that skips the keys fails here.
+## Server: move-transaction
 
-## Server: a reorder action
-
-New route `POST /api/v1/transaction/move-transaction` (Claude's call; a
-dedicated action rather than re-sending `update-transaction`, so the client
-can't replace labels or other fields with stale values).
+`POST /api/v1/transaction/move-transaction`:
 
 ```json
-{ "id": "<moved transaction id>", "accountId": "<page account id>",
-  "date": "YYYY-MM-DD", "transactionIds": ["<top of day>", "...", "<bottom>"] }
+{ "id": "<moved transaction>", "accountId": "<page account>",
+  "date": "YYYY-MM-DD", "aboveId": "<row now directly above it, or null for the top>" }
 ```
 
-- `accountId` is the account page it was dragged on; `transactionIds` is the
-  full intended order of that account's `date` after the drop, top first,
-  the moved row included. The client sends what the user saw.
-- The server sets that side's keys for the listed rows to N..1 (top = N) in
-  one DB transaction. Only that account's side is written, so no other
-  account's order changes. Rewriting the whole day is fine: keys are never
-  shown.
-- If `date` differs from the moved row's current day, its `spent_at` date
-  changes and the time of day is kept. That date change goes through the
-  same validated path as `UpdateTransaction` (write access, the
-  deleted-account re-zeroing correction dated at the new `spent_at`). On the
-  OTHER side of a transfer moved to a new day, the row goes to the top of
-  its new day there.
-- **Write access:** reordering needs write access to `accountId` (it only
-  writes that account's keys, so the other side's access doesn't matter for
-  a pure reorder). Moving to another day changes the transaction itself and
-  needs the same access as editing it (`canTouchTransaction` rules).
-- **Stale list (Claude's call):** the server compares the set of ids with
-  the transactions currently on that day in that account (plus the moved
-  row). If they differ (another device or a sharing partner changed the day
-  meanwhile) it refuses with a coded error (new `transaction.day_changed`,
-  translated in every catalogue); the client snaps back, toasts, and the
-  next sync brings the fresh list.
-- **Revision:** one `transactions_revision` bump per affected account (the
-  page account; plus the other side when the date changed), through
-  `txrevision`, as every write does. The keys are on the wire, so
-  `revisionguard`'s fingerprint must include them.
-- Response: the rewritten transactions in the shape the SPA's sync patches
-  from, so the list updates without a full download.
-- Readonly access (402) applies as for every other POST.
+- The server gives the moved row, on that account's side only, a key between
+  `aboveId`'s key and the key of the row currently below it (or above the
+  highest key for the top of the day). One row is written; the other account of
+  a transfer keeps its order.
+- Rows whose keys tie (two inserts that raced for the same key) have no key
+  between them; those tied rows are split first, keeping the order the list
+  shows. This is the only case a second row is written.
+- An `aboveId` that is no longer on that account's day (moved or deleted on
+  another device) is refused with `transaction.day_changed`; a row merely added
+  to the day elsewhere does not block the drop.
+- A different `date` changes the date (time kept) through the same checks as an
+  edit: write access to every account the transaction touches
+  (`transaction.cannot_move`), the deleted-account re-zeroing. Reordering alone
+  needs write access to the page account only.
+- One `transactions_revision` bump per affected account; the response carries the
+  rewritten rows and the account list.
 
 ## Client details
 
@@ -211,7 +161,9 @@ can't replace labels or other fields with stale values).
   (`entries.slice(range.start, range.end)`); the drop position is resolved
   to (day, ordered ids of that day) from the flat list. The window must keep
   rows near the drag in range while auto-scrolling.
-- Optimistic update through the existing `patchTransactions` path.
+- The page keeps the dropped arrangement on screen until the server answers,
+  then follows the cache again (the server's keys, or the old order after a
+  refusal, which also triggers a sync); the client never computes keys.
 - iOS: suppress the long-press text selection / callout on the row
   (`-webkit-touch-callout: none`, `user-select: none` while pressing) and
   make sure the press doesn't also fire the row's click. `navigator.vibrate`

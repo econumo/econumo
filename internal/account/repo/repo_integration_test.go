@@ -243,7 +243,7 @@ func TestCorrectionGoesToTopOfDay(t *testing.T) {
 	ctx := context.Background()
 	seedUser(t, f, userA, "A")
 	seedAccount(t, f, acctCash, userA, "Cash")
-	f.Transaction(fixture.Transaction{UserID: userA, AccountID: acctCash, Type: 0, SpentAt: fixedTime, SortKey: 2})
+	f.Transaction(fixture.Transaction{UserID: userA, AccountID: acctCash, Type: 0, SpentAt: fixedTime, SortKey: "a2"})
 
 	corrID := vo.NewId()
 	c := model.AccountCorrection{
@@ -253,12 +253,12 @@ func TestCorrectionGoesToTopOfDay(t *testing.T) {
 	if err := repo.SaveCorrection(ctx, c); err != nil {
 		t.Fatalf("SaveCorrection: %v", err)
 	}
-	var key int64
+	var key string
 	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT sort_key FROM transactions WHERE id = ?`), corrID.String()).Scan(&key); err != nil {
 		t.Fatal(err)
 	}
-	if key != 3 {
-		t.Errorf("correction sort_key = %d, want 3", key)
+	if key != "a3" {
+		t.Errorf("correction sort_key = %q, want a3 (just above a2)", key)
 	}
 }
 

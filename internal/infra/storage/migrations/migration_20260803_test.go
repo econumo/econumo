@@ -51,21 +51,6 @@ func runAll(t *testing.T, db *sql.DB) {
 	}
 }
 
-// runThrough applies the migrations up to and including version, for a test
-// whose assertions a later migration would disturb.
-func runThrough(t *testing.T, db *sql.DB, version string) {
-	t.Helper()
-	var through []migrate.Migration
-	for _, f := range migrations.SQLite() {
-		if f.Version <= version {
-			through = append(through, migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command})
-		}
-	}
-	if err := migrate.Run(context.Background(), db, through, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
-		t.Fatalf("target migration: %v", err)
-	}
-}
-
 func idsInKeyOrder(t *testing.T, db *sql.DB, query string, args ...any) []string {
 	t.Helper()
 	rows, err := db.QueryContext(context.Background(), query, args...)

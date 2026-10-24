@@ -79,10 +79,11 @@ type Transaction struct {
 	// alone, so editing a posted instance never severs its origin.
 	RecurringID *vo.Id
 	// SortKey orders the row within its day on AccountID, RecipientSortKey on
-	// AccountRecipID (transfers only); higher is listed first. Zero / nil means
-	// "not placed yet": the repository puts the row at the top of its day.
-	SortKey          int64
-	RecipientSortKey *int64
+	// AccountRecipID (transfers only): fractional keys (internal/shared/sortkey),
+	// the higher listed first. Empty / nil means "not placed yet": the
+	// repository puts the row at the top of its day.
+	SortKey          string
+	RecipientSortKey *string
 }
 
 // NewState bundles the fields for constructing/reconstructing a Transaction.
@@ -104,8 +105,8 @@ type NewState struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	RecurringID      *vo.Id
-	SortKey          int64
-	RecipientSortKey *int64
+	SortKey          string
+	RecipientSortKey *string
 }
 
 // TransactionFilter narrows a transaction list query. PeriodStart/PeriodEnd
@@ -157,7 +158,7 @@ func FromState(s NewState) *Transaction {
 func (t *Transaction) Update(s NewState, now time.Time) {
 	sameDay := sameDate(t.SpentAt, s.SpentAt)
 	if !sameDay || !t.AccountID.Equal(s.AccountID) {
-		t.SortKey = 0
+		t.SortKey = ""
 	}
 	if !sameDay || !s.Type.IsTransfer() || !sameOptID(t.AccountRecipID, s.AccountRecipID) {
 		t.RecipientSortKey = nil
@@ -200,7 +201,7 @@ func sameOptID(a, b *vo.Id) bool {
 
 // SideKey is the row's position within its day on accountID: the recipient
 // key when accountID is the transfer's recipient, the source key otherwise.
-func (t *Transaction) SideKey(accountID *vo.Id) int64 {
+func (t *Transaction) SideKey(accountID *vo.Id) string {
 	if accountID != nil && t.RecipientSortKey != nil && t.AccountRecipID != nil &&
 		t.AccountRecipID.Equal(*accountID) && !t.AccountID.Equal(*accountID) {
 		return *t.RecipientSortKey
