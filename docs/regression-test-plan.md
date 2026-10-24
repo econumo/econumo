@@ -307,6 +307,34 @@ navigation (single-pane vs sidebar).
       group above the fold. With no transactions today at all, the pinned rows
       still open a "today" group of their own.
 - [ ] Mobile: FAB adds a transaction; row tap opens the preview bottom sheet.
+- [ ] Account page, desktop: hovering a transaction row shows a grip at its
+      left edge (no grip without hover, none on not-posted recurring rows,
+      none while the search box has text, none on an account shared with you
+      as guest). Dragging the grip moves the row within its day; the new order
+      survives a reload and shows the same on another device and for a
+      partner sharing the account. The preview dialog still shows the time
+      originally entered.
+- [ ] Account page 📱: press and hold a row for about half a second to lift it,
+      then drag; a quick tap still opens the preview, a quick swipe still
+      scrolls, and a long press shows no text-selection or callout menu (iOS
+      home-screen app). Dragging near the top/bottom edge scrolls the list.
+- [ ] Account page 📱: dropping a row into another day's group moves it to that
+      day (time of day kept, edit dialog shows the new date) at the drop
+      position; while the row hovers another day, that day's header is
+      highlighted. Account balances and budgets follow the new date.
+- [ ] A transfer reordered on one account keeps its place on the other
+      account's list; moved to another day, it lands at the top of that day on
+      the other account.
+- [ ] A transfer whose other account you cannot edit can be reordered within
+      its day, but dropping it on another day snaps it back with "This
+      transaction can't be moved to another day."
+- [ ] Reordering a day another device changed meanwhile (add a transaction to
+      that day elsewhere first) snaps back with "This day changed meanwhile.
+      Refresh and try again."; after the refresh the drag works.
+- [ ] New transactions (typed in, CSV import, Apple Wallet, recurring post) land
+      at the top of their day; a CSV import shows a day's rows in file order.
+      Budget drill-down lists show a day's transactions in the same order as
+      the account page.
 
 ## 5. Transactions
 
