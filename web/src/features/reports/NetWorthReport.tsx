@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { Area, CartesianGrid, ComposedChart, Line as ChartLine, ReferenceLine, XAxis, YAxis } from 'recharts'
 import type { NetWorthAccountDto } from '@/api/dto/report'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import type { ChartConfig } from '@/components/ui/chart'
@@ -28,7 +28,9 @@ const PRESETS = [
   { value: 'all', label: 'All', words: 'since the start' },
 ] as const
 const MINE = 'mine'
-const LINE = 'var(--primary)'
+const LINE = 'var(--foreground)'
+// calm, ordered by size: the biggest band gets the first colour
+const BANDS = ['#a78bfa', '#7dd3fc', '#6ee7b7', '#fcd34d', '#f9a8d4', '#cbd5e1']
 
 const changeClass = (v: string) => (isZero(v) ? 'text-muted-foreground' : isNegative(v) ? 'text-expense' : 'text-income')
 const allZero = (a: NetWorthAccountDto) => a.balances.every((b) => isZero(b))
@@ -140,6 +142,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
         .map((id) => {
           const rows = shown.filter((a) => groupOf(a).id === id)
           return {
+            balances: Array.from({ length: n }, (_, i) => sumAt(rows, i)),
             line: lineOf(id, groupOf(rows[0]).name, sumAt(rows, 0), sumAt(rows, n - 1)),
             accounts: rows.map((a) => lineOf(a.id, a.name, a.balances[0], a.balances[n - 1])).sort(byNow),
           }
@@ -155,13 +158,14 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       }
       return next
     })
-  const folderRows = folderGroups.flatMap((g) => {
+  const groupRows = (groups: { line: Line; accounts: Line[] }[], color: (id: string) => string) => groups.flatMap((g) => {
     const isOpen = open.has(g.line.id)
     return [
       <tr key={g.line.id} onClick={() => toggle(g.line.id)} className="cursor-pointer border-b border-border/60 hover:bg-econumo-hover/60">
         <td className="py-2 pr-2">
           <span className="flex min-w-0 items-center gap-1">
             <ChevronRight className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+            <span className="size-2.5 shrink-0 rounded-full" style={{ background: color(g.line.id) }} />
             <button type="button" aria-expanded={isOpen} className="truncate text-left" onClick={(e) => { e.stopPropagation(); toggle(g.line.id) }}>
               {g.line.name}
             </button>
@@ -184,8 +188,42 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     ]
   })
 
-  const chartData = data ? data.months.map((m, i) => ({ label: labels.month(m), value: Number(total[i]) })) : []
-  const config: ChartConfig = { value: { label: t('reports.networth.today'), color: LINE } }
+  const meRows = shown.filter((a) => a.ownerUserId === me)
+  const series = (rows: NetWorthAccountDto[]) => Array.from({ length: n }, (_, i) => sumAt(rows, i))
+  const bands = p.budgetId
+    ? [
+        ...(meRows.length > 0 ? [{ id: me, name: user?.name ?? '', balances: series(meRows) }] : []),
+        ...partners.map((l) => ({ id: l.id, name: l.name, balances: series(shown.filter((a) => a.ownerUserId === l.id)) })),
+      ]
+    : folderGroups.map((g) => ({ id: g.line.id, name: g.line.name, balances: g.balances }))
+  const DEBT = '#fda4af'
+  const assets = bands.filter((b) => !isNegative(b.balances[n - 1] ?? '0'))
+  const colorOf = (id: string) => {
+    const i = assets.findIndex((b) => b.id === id)
+    return i < 0 ? DEBT : BANDS[i % BANDS.length]
+  }
+  const folderRows = groupRows(folderGroups, colorOf)
+  const personRows = p.budgetId
+    ? groupRows(
+        meRows.length > 0
+          ? [{ line: lineOf(me, user?.name ?? '', sumAt(meRows, 0), sumAt(meRows, n - 1)), accounts: mine }]
+          : [],
+        colorOf,
+      )
+    : []
+
+  const chartData = data
+    ? data.months.map((m, i) => ({
+        label: labels.month(m),
+        value: Number(total[i]),
+        ...Object.fromEntries(bands.map((b, bi) => [`b${bi}`, Number(b.balances[i])])),
+      }))
+    : []
+  const config: ChartConfig = {
+    value: { label: t('reports.spending.total'), color: LINE },
+    ...Object.fromEntries(bands.map((b, bi) => [`b${bi}`, { label: b.name, color: colorOf(b.id) }])),
+  }
+  const hasNegative = bands.some((b) => b.balances.some((v) => isNegative(v)))
   const dim = report.isPlaceholderData ? 'opacity-60 transition-opacity' : ''
 
   const row = (l: Line, strong = false) => (
@@ -194,11 +232,6 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       <td className={`hidden ${num} text-muted-foreground sm:table-cell`}>{money(l.start)}</td>
       <td className={num}>{money(l.now)}</td>
       <td className={`${num} whitespace-nowrap ${changeClass(l.change)}`}>{signedMoney(l.change, money)}</td>
-    </tr>
-  )
-  const section = (title: string) => (
-    <tr>
-      <td colSpan={4} className="pt-4 pb-1 text-xs text-muted-foreground">{title}</td>
     </tr>
   )
 
@@ -230,29 +263,47 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
           <figure aria-label={t('reports.networth.chart')} className={`flex flex-col gap-1 ${dim}`}>
             <div className="flex justify-end">{periodPicker}</div>
             <ChartContainer config={config} className="aspect-auto h-56 w-full sm:h-64">
-              <AreaChart data={chartData} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="nw-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={LINE} stopOpacity={0.25} />
-                    <stop offset="100%" stopColor={LINE} stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
+              <ComposedChart data={chartData} margin={{ top: 6, right: 4, left: 0, bottom: 0 }} stackOffset="sign">
                 <CartesianGrid vertical={false} strokeOpacity={0.5} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={40} />
                 <YAxis width={40} tickLine={false} axisLine={false} tickFormatter={compact} />
+                {hasNegative ? <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.6} /> : null}
                 <ChartTooltip
                   cursor={{ stroke: 'var(--muted-foreground)', strokeDasharray: '3 3' }}
-                  content={({ active, payload }) =>
-                    active && payload?.length ? (
-                      <div className="rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-sm">
-                        <div className="text-muted-foreground">{(payload[0].payload as { label: string }).label}</div>
-                        <div className="tabular-nums">{money(String(payload[0].value))}</div>
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null
+                    const row = payload[0].payload as Record<string, number | string>
+                    return (
+                      <div className="min-w-40 rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-sm">
+                        <div className="text-muted-foreground">{row.label}</div>
+                        <div className="mb-1 tabular-nums">{money(String(row.value))}</div>
+                        {bands.map((b, bi) => (
+                          <div key={b.id} className="flex items-center justify-between gap-3 text-muted-foreground">
+                            <span className="flex items-center gap-1.5">
+                              <span className="size-2 rounded-full" style={{ background: colorOf(b.id) }} />
+                              {b.name}
+                            </span>
+                            <span className="tabular-nums">{money(String(row[`b${bi}`]))}</span>
+                          </div>
+                        ))}
                       </div>
-                    ) : null
-                  }
+                    )
+                  }}
                 />
-                <Area dataKey="value" type="monotone" stroke={LINE} strokeWidth={2.5} fill="url(#nw-fill)" isAnimationActive={false} />
-              </AreaChart>
+                {bands.map((b, bi) => (
+                  <Area
+                    key={b.id}
+                    dataKey={`b${bi}`}
+                    stackId="nw"
+                    type="monotone"
+                    stroke="none"
+                    fill={colorOf(b.id)}
+                    fillOpacity={0.45}
+                    isAnimationActive={false}
+                  />
+                ))}
+                <ChartLine dataKey="value" type="monotone" stroke={LINE} strokeWidth={2} dot={false} isAnimationActive={false} />
+              </ComposedChart>
             </ChartContainer>
           </figure>
 
@@ -267,15 +318,23 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
             </thead>
             <tbody>
               {p.budgetId ? (
-                <>
-                  {mine.length > 0 && partners.length > 0 ? section('Your accounts') : null}
-                  {mine.map((l) => row(l))}
-                </>
+                personRows
               ) : (
                 folderRows
               )}
-              {partners.length > 0 ? section('Shared in this budget') : null}
-              {partners.map((l) => row(l))}
+              {partners.map((l) => (
+                <tr key={l.id} className="border-b border-border/60">
+                  <td className="py-2 pr-2 pl-[1.125rem]">
+                    <span className="flex min-w-0 items-center gap-1">
+                      <span className="size-2.5 shrink-0 rounded-full" style={{ background: colorOf(l.id) }} />
+                      <span className="truncate">{l.name}</span>
+                    </span>
+                  </td>
+                  <td className={`hidden ${num} text-muted-foreground sm:table-cell`}>{money(l.start)}</td>
+                  <td className={num}>{money(l.now)}</td>
+                  <td className={`${num} whitespace-nowrap ${changeClass(l.change)}`}>{signedMoney(l.change, money)}</td>
+                </tr>
+              ))}
             </tbody>
             <tfoot className="border-t">{row(totalLine, true)}</tfoot>
           </table>
