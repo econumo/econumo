@@ -1874,6 +1874,36 @@
     "open": "Recherche",
     "open_tooltip": "Recherche ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Envoyer un avis",
+    "settings": {
+      "group": "Avis"
+    },
+    "dialog": {
+      "title": "Envoyer un avis",
+      "no_reply": "Nous lisons chaque message, mais ne répondons pas toujours.",
+      "type": "Type",
+      "message": "Message",
+      "message_required": "Écrivez d'abord un message.",
+      "email": "E-mail (facultatif)",
+      "email_placeholder": "nom@exemple.fr",
+      "use_email": "Utiliser {email}",
+      "clear_email": "Effacer l'e-mail",
+      "send": "Envoyer",
+      "sent": "Merci pour votre avis !",
+      "failed": "Impossible d'envoyer votre avis. Veuillez réessayer."
+    },
+    "type": {
+      "feedback": "Avis",
+      "feature_request": "Suggestion",
+      "bug_report": "Bug"
+    },
+    "placeholder": {
+      "feedback": "Qu'est-ce qui vous plaît, ou que pourrions-nous améliorer ?",
+      "feature_request": "Que manque-t-il à Econumo ?",
+      "bug_report": "Que s'est-il passé, et à quoi vous attendiez-vous ?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Votre abonnement se termine dans {count} jour | Votre abonnement se termine dans {count} jours",

@@ -250,6 +250,9 @@ func New(deps Deps) http.Handler {
 		"AI_ENABLED":         deps.Cfg.AIEnabled,
 		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
 		"PASSWORD_LOGIN":     !deps.Cfg.PasswordLoginDisabled,
+		// The SPA posts feedback straight to the econumo.com collector, so a
+		// self-hosting admin can hide the form.
+		"FEEDBACK": !deps.Cfg.FeedbackDisabled,
 		// The SPA hides a provider that is off, and import rules plus the
 		// import sections of the Inbox while both are; the server does not
 		// mount their routes.

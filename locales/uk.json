@@ -1874,6 +1874,36 @@
     "open": "Пошук",
     "open_tooltip": "Пошук ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Надіслати відгук",
+    "settings": {
+      "group": "Зворотний зв'язок"
+    },
+    "dialog": {
+      "title": "Надіслати відгук",
+      "no_reply": "Ми читаємо кожне повідомлення, але можемо не відповісти.",
+      "type": "Тип",
+      "message": "Повідомлення",
+      "message_required": "Спершу напишіть повідомлення.",
+      "email": "Email (необов'язково)",
+      "email_placeholder": "name@example.com",
+      "use_email": "Вказати {email}",
+      "clear_email": "Очистити email",
+      "send": "Надіслати",
+      "sent": "Дякуємо за відгук!",
+      "failed": "Не вдалося надіслати відгук. Спробуйте ще раз."
+    },
+    "type": {
+      "feedback": "Відгук",
+      "feature_request": "Пропозиція",
+      "bug_report": "Помилка"
+    },
+    "placeholder": {
+      "feedback": "Що вам подобається або що можна покращити?",
+      "feature_request": "Чого вам бракує в Econumo?",
+      "bug_report": "Що сталося і чого ви очікували?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Підписка закінчиться через {count} день | Підписка закінчиться через {count} дні | Підписка закінчиться через {count} днів",

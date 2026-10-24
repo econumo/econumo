@@ -61,7 +61,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `IMPORT_APPLE_WALLET` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL`, `IMPORT_APPLE_WALLET` and `FEEDBACK` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. The merge is per server: typing a
@@ -776,6 +776,14 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   rules/history rows and the Inbox's import sections need either; with both off it never fetches
   an import endpoint. CSV import/export is not part of it and is always on. The apiparity harness
   turns both on so the catalogue keeps covering the import routes.
+- `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
+  fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
+  it on). Served as `FEEDBACK`; `false` hides the Settings row, the form's only entry point. The
+  form (`web/src/features/feedback`) posts `type`, `message`, an optional `email` (empty by
+  default, the user's own offered as a one-tap chip), `app_version` and `hosting` (`cloud`/`self-hosted`) from the
+  BROWSER straight to the Twillingate form `feedback` of the product-analytics project
+  (`submitForm` in `web/src/lib/analytics.ts`, the SDK's wire shape without the SDK), so it
+  works with analytics off and carries no `$user_id` — only the synthetic `$host`.
 - `ECONUMO_IMPORT_MATCH_DAYS` / `ECONUMO_IMPORT_TIP_DAYS` / `ECONUMO_IMPORT_TIP_TOLERANCE` /
   `ECONUMO_IMPORT_TOKEN_MIN_LENGTH` — transaction-import matcher thresholds (defaults 3 / 5 / 20 / 3;
   ranges 0–31 days, 0–31 days, 0–100 percent, 1–16 chars). Strict parse: malformed or out-of-range
@@ -854,8 +862,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET` and
-  `IMPORT_SIMPLEFIN` are always present (server truth). `MCP_URL` is the MCP OAuth resource
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET`,
+  `IMPORT_SIMPLEFIN` and `FEEDBACK` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
   instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom

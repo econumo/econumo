@@ -33,6 +33,7 @@ import { TransactionDialog } from '@/features/transactions/TransactionDialog'
 import { RulePromptDialog } from '@/features/imports/RulePromptDialog'
 import { RecurringDialog } from '@/features/recurring/RecurringDialog'
 import { GlobalSearchDialog } from '@/features/search/GlobalSearchDialog'
+import { FeedbackDialog } from '@/features/feedback/FeedbackDialog'
 import { searchShortcutLabel, useSearchHotkey } from '@/features/search/useSearchHotkey'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
@@ -313,6 +314,7 @@ export function ApplicationLayout() {
       <AccountDialog />
       <TransactionDialog />
       <GlobalSearchDialog />
+      <FeedbackDialog />
       <RulePromptDialog />
       <RecurringDialog />
       <SwitchAccountPrompt />

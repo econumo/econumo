@@ -1874,6 +1874,36 @@
     "open": "Wyszukiwanie",
     "open_tooltip": "Wyszukiwanie ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Wyślij opinię",
+    "settings": {
+      "group": "Opinie"
+    },
+    "dialog": {
+      "title": "Wyślij opinię",
+      "no_reply": "Czytamy każdą wiadomość, ale możemy nie odpowiedzieć.",
+      "type": "Rodzaj",
+      "message": "Wiadomość",
+      "message_required": "Najpierw napisz wiadomość.",
+      "email": "E-mail (opcjonalnie)",
+      "email_placeholder": "imie@przyklad.pl",
+      "use_email": "Użyj {email}",
+      "clear_email": "Wyczyść e-mail",
+      "send": "Wyślij",
+      "sent": "Dziękujemy za opinię!",
+      "failed": "Nie udało się wysłać opinii. Spróbuj ponownie."
+    },
+    "type": {
+      "feedback": "Opinia",
+      "feature_request": "Pomysł",
+      "bug_report": "Błąd"
+    },
+    "placeholder": {
+      "feedback": "Co Ci się podoba, a co można poprawić?",
+      "feature_request": "Czego brakuje Ci w Econumo?",
+      "bug_report": "Co się stało i czego się spodziewałeś?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Twoja subskrypcja kończy się za {count} dzień | Twoja subskrypcja kończy się za {count} dni | Twoja subskrypcja kończy się za {count} dni",

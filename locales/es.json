@@ -1874,6 +1874,36 @@
     "open": "Búsqueda",
     "open_tooltip": "Búsqueda ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Enviar comentarios",
+    "settings": {
+      "group": "Comentarios"
+    },
+    "dialog": {
+      "title": "Enviar comentarios",
+      "no_reply": "Leemos todos los mensajes, pero puede que no respondamos.",
+      "type": "Tipo",
+      "message": "Mensaje",
+      "message_required": "Escribe primero un mensaje.",
+      "email": "Correo electrónico (opcional)",
+      "email_placeholder": "nombre@ejemplo.com",
+      "use_email": "Usar {email}",
+      "clear_email": "Borrar correo",
+      "send": "Enviar",
+      "sent": "¡Gracias por tus comentarios!",
+      "failed": "No se pudieron enviar tus comentarios. Inténtalo de nuevo."
+    },
+    "type": {
+      "feedback": "Comentario",
+      "feature_request": "Sugerencia",
+      "bug_report": "Error"
+    },
+    "placeholder": {
+      "feedback": "¿Qué te gusta o qué podría mejorar?",
+      "feature_request": "¿Qué echas de menos en Econumo?",
+      "bug_report": "¿Qué ha pasado y qué esperabas?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Tu suscripción termina en {count} día | Tu suscripción termina en {count} días",

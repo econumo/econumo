@@ -1874,6 +1874,36 @@
     "open": "Ricerca",
     "open_tooltip": "Ricerca ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Invia feedback",
+    "settings": {
+      "group": "Feedback"
+    },
+    "dialog": {
+      "title": "Invia feedback",
+      "no_reply": "Leggiamo ogni messaggio, ma potremmo non rispondere.",
+      "type": "Tipo",
+      "message": "Messaggio",
+      "message_required": "Scrivi prima un messaggio.",
+      "email": "Email (facoltativa)",
+      "email_placeholder": "nome@esempio.it",
+      "use_email": "Usa {email}",
+      "clear_email": "Cancella email",
+      "send": "Invia",
+      "sent": "Grazie per il tuo feedback!",
+      "failed": "Impossibile inviare il feedback. Riprova."
+    },
+    "type": {
+      "feedback": "Feedback",
+      "feature_request": "Nuova funzione",
+      "bug_report": "Bug"
+    },
+    "placeholder": {
+      "feedback": "Cosa ti piace o cosa potrebbe migliorare?",
+      "feature_request": "Cosa manca in Econumo?",
+      "bug_report": "Cos'è successo e cosa ti aspettavi?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Il tuo abbonamento scade tra {count} giorno | Il tuo abbonamento scade tra {count} giorni",
