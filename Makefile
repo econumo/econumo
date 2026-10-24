@@ -63,7 +63,7 @@ mobile-install:
 	cd mobile && pnpm install
 
 mobile-sync:
-	cd web && pnpm build
+	cd web && ECONUMO_COMMIT=$(COMMIT) pnpm build
 	cd mobile && pnpm exec cap sync
 
 mobile-ios: mobile-sync
@@ -266,7 +266,7 @@ test: go-test pg-ensure test-engines test-repo-pgsql web-test
 # Start the stack locally, building the image from source (host port 8181).
 # Regenerates the OpenAPI docs first so the built image embeds the current spec.
 docker-up: swagger
-	docker compose up -d --build
+	ECONUMO_COMMIT=$(COMMIT) docker compose up -d --build
 
 # Stop the stack.
 docker-down:
