@@ -307,10 +307,11 @@ navigation (single-pane vs sidebar).
       group above the fold. With no transactions today at all, the pinned rows
       still open a "today" group of their own.
 - [ ] Mobile: FAB adds a transaction; row tap opens the preview bottom sheet.
-- [ ] Account page, desktop: hovering a transaction row shows a grip at its
-      left edge (no grip without hover, none on not-posted recurring rows,
+- [ ] Account page, desktop: hovering a transaction row shows a grip left of
+      its icon, level with the icon's middle (no grip without hover, none on not-posted recurring rows,
       none while the search box has text, none on an account shared with you
-      as guest). Dragging the grip moves the row within its day; the new order
+      as guest). Dragging the grip moves the row within its day; dragging the
+      row anywhere else with the mouse moves nothing; the new order
       survives a reload and shows the same on another device and for a
       partner sharing the account. The preview dialog still shows the time
       originally entered.
@@ -318,9 +319,8 @@ navigation (single-pane vs sidebar).
       then drag; a quick tap still opens the preview, a quick swipe still
       scrolls, and a long press shows no text-selection or callout menu (iOS
       home-screen app). Dragging near the top/bottom edge scrolls the list.
-- [ ] Account page on an iPad in landscape (desktop layout, no hover): the grip
-      shows on every draggable row without hovering, and dragging it with a
-      finger reorders.
+- [ ] Account page on an iPad in landscape (desktop layout): no grip shows; a
+      long press on a row lifts it, a tap opens the preview, a swipe scrolls.
 - [ ] Account page in a narrow desktop browser window (phone layout): press and
       hold a row with the mouse for about half a second, then drag; a plain
       click still opens the preview.

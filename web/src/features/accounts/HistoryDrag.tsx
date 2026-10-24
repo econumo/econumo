@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
-import type { HTMLAttributes, ReactNode } from 'react'
+import type { HTMLAttributes, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -9,9 +9,20 @@ import { snapRowToPointer } from '@/lib/dnd'
 import { entryKey, resolveDrop } from './historyDrop'
 import type { HistoryDrop } from './historyDrop'
 
-// A press this long lifts a row on a touch screen; anything shorter stays a
-// tap (preview) or a scroll.
-const TOUCH_HOLD_MS = 500
+// A press this long lifts a row: a finger on any screen, a mouse in the phone
+// layout. Anything shorter stays a tap (preview) or a scroll.
+const HOLD_MS = 500
+
+// The grip's pointer sensor answers a mouse or pen only: a finger lifts rows by
+// the long press, and a pointer sensor would turn its scroll swipes into drags.
+class GripSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: 'onPointerDown' as const,
+      handler: ({ nativeEvent: event }: ReactPointerEvent) => event.pointerType !== 'touch' && event.isPrimary && event.button === 0,
+    },
+  ]
+}
 
 interface HistoryDragState {
   /** the day header to light up: the drop would move the row to that day */
@@ -34,24 +45,20 @@ function groupDayOf(entries: DailyListEntry[], index: number): string | null {
   return null
 }
 
-export function HistoryDragProvider({ entries, touch, onDrop, renderOverlay, children }: {
+export function HistoryDragProvider({ entries, onDrop, renderOverlay, children }: {
   entries: DailyListEntry[]
-  /** phone layout: rows lift on a long press instead of from the grip */
-  touch: boolean
   onDrop: (tx: ViewTransaction, drop: HistoryDrop, dayChanged: boolean) => void
   renderOverlay: (tx: ViewTransaction) => ReactNode
   children: ReactNode
 }) {
-  const pointer = useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
-  const keyboard = useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  const hold = useSensor(TouchSensor, { activationConstraint: { delay: TOUCH_HOLD_MS, tolerance: 8 } })
-  const mouseHold = useSensor(MouseSensor, { activationConstraint: { delay: TOUCH_HOLD_MS, tolerance: 8 } })
-  // The phone layout lifts the whole row by press-and-hold: a finger through
-  // the touch sensor, a mouse (a narrow desktop window) through the mouse one.
-  // A pointer sensor there would turn every scroll swipe into a drag. The
-  // desktop grip has touch-action: none, so its pointer sensor also serves a
-  // finger (an iPad in the desktop layout).
-  const sensors = useSensors(touch ? hold : pointer, touch ? mouseHold : keyboard)
+  // Which input lifts a row is decided by the listeners each row binds (see
+  // SortableHistoryEntry), so every sensor is always on.
+  const sensors = useSensors(
+    useSensor(GripSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: HOLD_MS, tolerance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { delay: HOLD_MS, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
   const keys = useMemo(() => entries.map(entryKey), [entries])
   const [active, setActive] = useState<ViewTransaction | null>(null)
   const [targetDay, setTargetDay] = useState<string | null>(null)
@@ -67,7 +74,7 @@ export function HistoryDragProvider({ entries, touch, onDrop, renderOverlay, chi
     const entry = entries[keys.indexOf(String(a.id))]
     if (entry?.kind === 'transaction') {
       setActive(entry.transaction)
-      if (touch) navigator.vibrate?.(10)
+      navigator.vibrate?.(10)
     }
   }
 
@@ -116,12 +123,15 @@ export function HistoryDragProvider({ entries, touch, onDrop, renderOverlay, chi
   )
 }
 
-/** One entry of the history list. A header only receives drops; a row lifts
- *  from `handle` (desktop grip) or, on touch, from the whole `row`. */
-export function SortableHistoryEntry({ id, draggable, touch, children }: {
+/** One entry of the history list. A header only receives drops. A row lifts
+ *  by a long press of a finger anywhere on it (phones and tablets, any
+ *  layout); with a mouse it lifts from `handle`, the grip, in the desktop
+ *  layout, and by a long press on the row in the phone layout, which has no
+ *  grip. */
+export function SortableHistoryEntry({ id, draggable, compact, children }: {
   id: string
   draggable: boolean
-  touch: boolean
+  compact: boolean
   children: (parts: {
     row: HTMLAttributes<HTMLElement>
     handle: HTMLAttributes<HTMLElement> | null
@@ -135,9 +145,15 @@ export function SortableHistoryEntry({ id, draggable, touch, children }: {
     id,
     disabled: { draggable: !draggable, droppable: false },
   })
-  const dragProps = { ...attributes, ...(listeners ?? {}) }
-  const handle = draggable && !touch ? { ...dragProps, ref: setActivatorNodeRef } as HTMLAttributes<HTMLElement> : null
-  const row = draggable && touch ? dragProps as HTMLAttributes<HTMLElement> : {}
+  let row: HTMLAttributes<HTMLElement> = {}
+  let handle: HTMLAttributes<HTMLElement> | null = null
+  if (draggable && listeners) {
+    const { onTouchStart, onMouseDown, onPointerDown, onKeyDown } = listeners
+    row = (compact ? { onTouchStart, onMouseDown } : { onTouchStart }) as unknown as HTMLAttributes<HTMLElement>
+    if (!compact) {
+      handle = { ...attributes, onPointerDown, onKeyDown, ref: setActivatorNodeRef } as unknown as HTMLAttributes<HTMLElement>
+    }
+  }
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={isDragging ? 'opacity-40' : undefined}>
       {children({ row, handle, isDragging, targetDay, justDragged })}

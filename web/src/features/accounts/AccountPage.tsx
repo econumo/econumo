@@ -247,7 +247,6 @@ export function AccountPage() {
 
       <HistoryDragProvider
         entries={entries}
-        touch={isCompact}
         onDrop={dropTransaction}
         renderOverlay={(tx) => <TransactionRow transaction={tx} pageAccount={account} />}
       >
@@ -260,7 +259,7 @@ export function AccountPage() {
       >
           {(entry) =>
             entry.kind === 'separator' ? (
-            <SortableHistoryEntry key={`sep-${entry.day}`} id={entryKey(entry)} draggable={false} touch={isCompact}>
+            <SortableHistoryEntry key={`sep-${entry.day}`} id={entryKey(entry)} draggable={false} compact={isCompact}>
               {({ targetDay }) => (
                 <div
                   className={`rounded-md px-2 pb-1 pt-4 text-xs font-medium uppercase ${targetDay === entry.day ? 'bg-accent text-foreground' : 'text-muted-foreground'}`}
@@ -281,12 +280,12 @@ export function AccountPage() {
               key={entryKey(entry)}
               id={entryKey(entry)}
               draggable={canDrag(entry.transaction)}
-              touch={isCompact}
+              compact={isCompact}
             >
               {({ row, handle, justDragged }) => (
             <div
               {...row}
-              className={`group flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'} ${isCompact && canDrag(entry.transaction) ? 'select-none [-webkit-touch-callout:none]' : ''}`}
+              className={`group flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'} ${canDrag(entry.transaction) ? '[@media(hover:none)]:select-none [@media(hover:none)]:[-webkit-touch-callout:none]' : ''}`}
               onClick={() => {
                 if (justDragged()) {
                   return
@@ -304,7 +303,7 @@ export function AccountPage() {
                   type="button"
                   aria-label={t('accounts.page.transaction_list.drag_handle')}
                   title={t('accounts.page.transaction_list.drag_handle')}
-                  className="mt-2.5 -mr-1 flex w-4 shrink-0 cursor-grab touch-none justify-center text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                  className="mt-5 -mr-1 flex h-4 w-4 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   onClick={(e) => e.stopPropagation()}
                   {...handle}
                 >
