@@ -222,7 +222,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     const saving = rows.filter((a) => a.isSavings === 1)
     const rest = rows.filter((a) => a.isSavings !== 1)
     const children = saving.map((a) => lineOf(a.id, a.name, a.balances[0], a.balances[n - 1])).sort(byNow)
-    if (saving.length > 0 && rest.length > 0) children.push(lineOf(`${id}-other`, 'Other', sumAt(rest, 0), sumAt(rest, n - 1)))
+    if (saving.length > 0 && rest.length > 0) children.push(lineOf(`${id}-other`, 'Everyday accounts', sumAt(rest, 0), sumAt(rest, n - 1)))
     return { line: lineOf(id, name, sumAt(rows, 0), sumAt(rows, n - 1)), accounts: saving.length > 0 ? children : [] }
   }
   const personRows = p.budgetId
