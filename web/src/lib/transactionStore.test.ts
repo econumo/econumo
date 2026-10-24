@@ -27,8 +27,10 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-it('the buster combines the format and the app version', () => {
+it('the buster combines the format, the app version and the build revision', () => {
   expect(storeBuster()).toBe('1:1.0.0')
+  window.econumoConfig = { VERSION: '1.0.0', VERSION_REF: 'abc123' }
+  expect(storeBuster()).toBe('1:1.0.0+abc123')
 })
 
 it('round-trips buckets', async () => {
@@ -62,6 +64,14 @@ it('a new app version wipes the buckets', async () => {
   expect((await loadBuckets('u1')).size).toBe(0)
   await putBuckets('u1', [bucket('a')])
   expect((await loadBuckets('u1')).size).toBe(1)
+})
+
+it('a new build of the same version wipes the buckets', async () => {
+  window.econumoConfig = { VERSION: 'dev', VERSION_REF: 'aaa' }
+  await loadBuckets('u1')
+  await putBuckets('u1', [bucket('a')])
+  window.econumoConfig = { VERSION: 'dev', VERSION_REF: 'bbb' }
+  expect((await loadBuckets('u1')).size).toBe(0)
 })
 
 it('a write before the first load by another user does not leak the previous user\'s buckets', async () => {

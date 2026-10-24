@@ -1,6 +1,6 @@
 import type { UserDto } from '@/api/dto/user'
 import type { StoredTransaction } from '@/api/dto/transaction'
-import { getVersion } from '@/lib/config'
+import { getCacheBuster } from '@/lib/config'
 import { STORE_ACCOUNT_TRANSACTIONS, STORE_META, dbTransaction } from '@/lib/db'
 
 export interface Bucket {
@@ -25,14 +25,14 @@ export interface StoredTransactions {
   snapshot: unknown
 }
 
-// Bump when the stored shape changes without a release (dev builds keep the
-// same version string).
+// Bump when the stored shape changes in a build that reports no revision (a
+// local build outside git); every other build already gets a buster of its own.
 export const FORMAT_VERSION = 1
 const META_KEY = 'state'
 const SNAPSHOT_KEY = 'snapshot'
 
 export function storeBuster(): string {
-  return `${FORMAT_VERSION}:${getVersion()}`
+  return `${FORMAT_VERSION}:${getCacheBuster()}`
 }
 
 // Any IndexedDB failure (private mode, quota, a blocked upgrade) turns the

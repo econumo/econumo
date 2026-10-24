@@ -63,7 +63,7 @@ mobile-install:
 	cd mobile && pnpm install
 
 mobile-sync:
-	cd web && pnpm build
+	cd web && ECONUMO_COMMIT=$(COMMIT) pnpm build
 	cd mobile && pnpm exec cap sync
 
 mobile-ios: mobile-sync
@@ -111,10 +111,11 @@ go-build: swagger
 # stamped through ldflags) and SHA256SUMS into release-out/. VERSION
 # defaults to dev for local verification of the artifact shape.
 VERSION ?= dev
-RELEASE_LDFLAGS = -s -w -X github.com/econumo/econumo/internal/version.Version=$(VERSION)
+COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null)
+RELEASE_LDFLAGS = -s -w -X github.com/econumo/econumo/internal/version.Version=$(VERSION) -X github.com/econumo/econumo/internal/version.Commit=$(COMMIT)
 
 release-binaries: swagger
-	cd web && pnpm install --frozen-lockfile && ECONUMO_VERSION=$(VERSION) pnpm run build
+	cd web && pnpm install --frozen-lockfile && ECONUMO_VERSION=$(VERSION) ECONUMO_COMMIT=$(COMMIT) pnpm run build
 	rm -rf release-out && mkdir -p release-out
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o release-out/econumo-linux-amd64 ./cmd/econumo
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o release-out/econumo-linux-arm64 ./cmd/econumo
@@ -265,7 +266,7 @@ test: go-test pg-ensure test-engines test-repo-pgsql web-test
 # Start the stack locally, building the image from source (host port 8181).
 # Regenerates the OpenAPI docs first so the built image embeds the current spec.
 docker-up: swagger
-	docker compose up -d --build
+	ECONUMO_COMMIT=$(COMMIT) docker compose up -d --build
 
 # Stop the stack.
 docker-down:
@@ -298,6 +299,7 @@ publish-dev: swagger publish-buildx-ensure release-binaries
 		--file deployment/docker/Dockerfile \
 		--target prod \
 		--build-arg ECONUMO_VERSION=$(ECONUMO_VERSION) \
+		--build-arg ECONUMO_COMMIT=$(COMMIT) \
 		--tag $(GHCR_IMAGE):$(PUBLISH_TAG) \
 		--push \
 		.
