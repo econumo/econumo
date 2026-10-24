@@ -221,15 +221,6 @@ export function ApplicationLayout() {
                     >
                       <Wallet className="size-5" />
                     </Link>
-                    {isReportsEnabled() ? (
-                      <Link
-                        to={RouterPage.REPORTS}
-                        title={t('common.nav.reports')}
-                        className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
-                      >
-                        <ChartColumn className="size-5" />
-                      </Link>
-                    ) : null}
                   </div>
                 ) : (
                   // compact matches the folder headers below (size and left edge)
@@ -242,11 +233,6 @@ export function ApplicationLayout() {
                     <Link to={budgetLink} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
                       {t('common.nav.budget')}
                     </Link>
-                    {isReportsEnabled() ? (
-                      <Link to={RouterPage.REPORTS} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
-                        {t('common.nav.reports')}
-                      </Link>
-                    ) : null}
                   </div>
                 )}
                 <SidebarAccountTree collapsed={rail} />
@@ -269,6 +255,11 @@ export function ApplicationLayout() {
                     <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary" data-testid="update-dot" />
                   ) : null}
                 </Link>
+                {isReportsEnabled() ? (
+                  <Link to={RouterPage.REPORTS} title={t('common.nav.reports')} className="text-muted-foreground hover:text-foreground">
+                    <ChartColumn className="size-5" />
+                  </Link>
+                ) : null}
                 <button
                   type="button"
                   aria-label="sync"
@@ -289,15 +280,27 @@ export function ApplicationLayout() {
                   {t('settings.page.menu_item')}
                   {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
                 </Link>
-                <button
-                  type="button"
-                  aria-label="sync"
-                  title={syncTitle}
-                  className={`${syncClassFull} select-none [-webkit-touch-callout:none]`}
-                  {...syncPress}
-                >
-                  <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
-                </button>
+                <div className="flex items-center gap-1">
+                  {isReportsEnabled() ? (
+                    <Link
+                      to={RouterPage.REPORTS}
+                      title={t('common.nav.reports')}
+                      aria-label={t('common.nav.reports')}
+                      className={`grid ${isCompact ? 'size-11' : 'size-9'} place-items-center rounded-full text-muted-foreground hover:text-foreground`}
+                    >
+                      <ChartColumn className={isCompact ? 'size-6' : 'size-5'} />
+                    </Link>
+                  ) : null}
+                  <button
+                    type="button"
+                    aria-label="sync"
+                    title={syncTitle}
+                    className={`${syncClassFull} select-none [-webkit-touch-callout:none]`}
+                    {...syncPress}
+                  >
+                    <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </footer>
             )}
           </aside>

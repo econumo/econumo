@@ -145,15 +145,19 @@ it('the Budget & Plan link opens the budget view last opened on this device', as
   await waitFor(() => expect(screen.getByRole('link', { name: 'Budget & Plan' })).toHaveAttribute('href', '/plan'))
 })
 
-it('Reports sits beside Budget & Plan in the menu and in the icon rail', async () => {
+it('Reports is an icon next to sync in the footer, expanded and collapsed', async () => {
   window.econumoConfig = { REPORTS: true }
   mockViewport(false)
   const user = userEvent.setup()
   renderShell('/')
-  expect(await screen.findByRole('link', { name: 'Reports' })).toHaveAttribute('href', '/reports')
-  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  const link = await screen.findByRole('link', { name: 'Reports' })
+  expect(link).toHaveAttribute('href', '/reports')
+  expect(link.closest('footer')).not.toBeNull()
   expect(screen.queryByText('Reports')).not.toBeInTheDocument()
-  expect(screen.getByTitle('Reports')).toHaveAttribute('href', '/reports')
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  const railLink = screen.getByTitle('Reports')
+  expect(railLink).toHaveAttribute('href', '/reports')
+  expect(railLink.closest('footer')).not.toBeNull()
 })
 
 it('hides Reports while the server has it off', async () => {

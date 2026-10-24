@@ -368,7 +368,8 @@ IS a real version, used by the mobile app where no server config is present.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Reports page** (`/reports`, `web/src/features/reports`; only while `ECONUMO_REPORTS` is on — the
-served `REPORTS` key hides the route and nav links otherwise): Spending, Cash flow (Sankey on
+served `REPORTS` key hides the route and the footer icon otherwise; Reports is an icon before the
+sync button in the sidebar footer, not a menu entry): Spending, Cash flow (Sankey on
 desktop) and Net worth tabs over the report routes above. The tab list is stored per user on
 the device only (localStorage `econumo.reportTabs`) and Reports always opens on the FIRST tab.
 Every report query key is invalidated after any successful mutation
@@ -762,7 +763,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   existing external cron.
 - `ECONUMO_REPORTS` — the Reports page (strict boolean, default `false`; malformed fails at boot).
   Off: `server.BuildAPI` does not mount `/api/v1/report/*` (404) and the served `REPORTS` key
-  hides the route and both nav links. The apiparity harness turns it on.
+  hides the route and the footer icon. The apiparity harness turns it on.
 - `ECONUMO_IMPORT_APPLE_WALLET` / `ECONUMO_IMPORT_SIMPLEFIN` — the two transaction-import
   providers (strict booleans, Apple Wallet defaults `true`, SimpleFIN `false`;
   malformed fails at boot). A provider that is

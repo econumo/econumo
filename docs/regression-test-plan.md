@@ -1832,8 +1832,12 @@ and on tablet/phone only with a hardware keyboard.
 
 Run with `ECONUMO_REPORTS=true`.
 
-- [ ] **Flag off** (`ECONUMO_REPORTS` unset): no Reports link in the menu or the icon
-      rail, `/reports` shows the not-found page, and `/api/v1/report/*` returns 404 📱
+- [ ] **Flag off** (`ECONUMO_REPORTS` unset): no Reports icon in the sidebar footer
+      (expanded or collapsed), `/reports` shows the not-found page, and
+      `/api/v1/report/*` returns 404 📱
+- [ ] **Entry point**: Reports is a chart icon right before the sync button in the
+      sidebar footer (expanded, collapsed rail, and the phone menu); there is no
+      Reports entry under Budget & Plan 📱
 
 Seed at least two years of transactions over several categories, a payee, a
 tag, and a budget with a planned limit on one category.
