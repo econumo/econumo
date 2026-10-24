@@ -221,7 +221,7 @@ export function rowState(row: { budgeted: string; spent: string; available: stri
     return 'none'
   }
   if (cmp(row.available, '0') < 0) {
-    return 'over'
+    return future ? 'ok' : 'over'
   }
   return cmp(row.spent, row.budgeted) > 0 ? 'covered' : 'ok'
 }
@@ -245,8 +245,14 @@ export function nothingToShow(row: { budgeted: string; spent: string; available:
 
 /** The row turns red only when this month spent more than its budget and what
  *  earlier months left does not cover it. `available` is the displayed Available. */
-export function overBudget(row: { budgeted: string; spent: string; available: string }, future = false): boolean {
+export function overAvailable(row: { budgeted: string; spent: string; available: string }, future = false): boolean {
   return !(future && isZero(row.spent)) && cmp(row.spent, row.budgeted) > 0 && cmp(row.available, '0') < 0
+}
+
+/** The spent figure and its bar are never red in a month after the current one: what
+ *  shows there is mostly upcoming recurring spending against a plan not yet made. */
+export function overBudget(row: { budgeted: string; spent: string; available: string }, future = false): boolean {
+  return !future && overAvailable(row)
 }
 
 // the wire `available` already nets this month's spending against what earlier

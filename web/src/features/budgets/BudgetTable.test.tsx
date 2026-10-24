@@ -260,6 +260,18 @@ it('future month shows spent when upcoming exists', async () => {
   expect(within(screen.getByTestId('element-env-1')).queryByRole('button', { name: /^transactions/ })).not.toBeInTheDocument()
 })
 
+it('future month spent above plan is not red', async () => {
+  renderTable(
+    (b) => {
+      const food = b.structure.elements.find((e) => e.id === 'cat-food')!
+      Object.assign(food, { budgeted: '10', spent: '30', available: '-20' })
+    },
+    { onSpentClick: vi.fn(), future: true },
+  )
+  const food = await screen.findByTestId('element-cat-food')
+  expect(within(food).getByTestId('cell-spent').firstElementChild!.className).not.toContain('text-expense')
+})
+
 it('clicking a child spent amount reports the child category with the parent currency', async () => {
   const user = userEvent.setup()
   const onSpentClick = vi.fn()

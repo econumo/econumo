@@ -11,7 +11,7 @@ import type { BudgetElementType } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import type { BudgetBuckets, FolderBucket } from './budgetMath'
-import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, overBudget, rowProgress, tagGroupStats, totalsWithSavings } from './budgetMath'
+import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, overAvailable, overBudget, rowProgress, tagGroupStats, totalsWithSavings } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
@@ -354,7 +354,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           // a row with nothing to measure against, or a month that has not happened
           // yet, still draws the empty track, as a budgeted row with nothing spent does;
           // an overspent row fills it, even when there was no budget to fill toward
-          progress={isUncategorized ? null : future && isZero(element.spent) ? 0 : overspent ? 1 : (rowProgress(figures) ?? 0)}
+          progress={isUncategorized ? null : future && isZero(element.spent) ? 0 : overAvailable(figures, future) ? 1 : (rowProgress(figures) ?? 0)}
           barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           commented={commented(element.id)}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: carryText ? `${carryText} ${budgetText}` : budgetText, spent: spentText })}
@@ -392,7 +392,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           first={budgetText}
           second={spentText}
           secondClass={overspent ? 'text-expense' : ''}
-          progress={future && isZero(stats.spent) ? 0 : overspent ? 1 : (rowProgress(stats) ?? 0)}
+          progress={future && isZero(stats.spent) ? 0 : overAvailable(stats, future) ? 1 : (rowProgress(stats) ?? 0)}
           barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: budgetText, spent: spentText })}
           onOpen={toggle}

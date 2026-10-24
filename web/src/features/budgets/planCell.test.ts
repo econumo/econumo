@@ -15,7 +15,7 @@ describe('planCellView', () => {
   })
   it('future plan cell shows folded actual', () => {
     expect(planCellView({ type: cat, cell: { actual: '30', planned: '55' }, month: '2026-11-01', selected: sel })).toEqual({ actual: '30', dash: false, plan: '55', over: false, balance: false })
-    expect(planCellView({ type: cat, cell: { actual: '80', planned: '55' }, month: '2026-11-01', selected: sel }).over).toBe(true)
+    expect(planCellView({ type: cat, cell: { actual: '80', planned: '55' }, month: '2026-11-01', selected: sel }).over).toBe(false)
     expect(planCellView({ type: cat, cell: { actual: '30', planned: '' }, month: '2026-11-01', selected: sel })).toMatchObject({ actual: '30', plan: null })
   })
   it('leaves an unplanned month blank, never 0', () => {
@@ -39,6 +39,9 @@ describe('planCellView', () => {
   })
   it('shows an actual with no plan on its own, red when it is overspent', () => {
     expect(planCellView({ type: cat, cell: { actual: '20', planned: '' }, month: sel, selected: sel })).toEqual({ actual: '20', dash: false, plan: null, over: true, balance: false })
+  })
+  it('a later month actual over plan is not over', () => {
+    expect(planCellView({ type: cat, cell: { actual: '80', planned: '55' }, month: '2026-12-01', selected: sel }).over).toBe(false)
   })
   it('never marks income or savings as over', () => {
     expect(planCellView({ type: BudgetElementType.INCOME_CATEGORY, cell: { actual: '9', planned: '1' }, month: sel, selected: sel }).over).toBe(false)

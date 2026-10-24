@@ -58,7 +58,7 @@ export function planCellView({ type, cell, month, selected }: PlanCellViewInput)
   return {
     ...shownActual(actual, plan !== null),
     plan,
-    over: showsActual && type !== BudgetElementType.SAVINGS && isOverspent(type, cell),
+    over: past && type !== BudgetElementType.SAVINGS && isOverspent(type, cell),
     balance: false,
   }
 }

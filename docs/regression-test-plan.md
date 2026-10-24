@@ -1728,6 +1728,11 @@ and on tablet/phone only with a hardware keyboard.
       of the templates falling in it instead of a dash; in the Plan grid the
       future cell shows the upcoming amount and the Balance / Total savings
       lines move with it even when that cell has no plan.
+- [ ] 📱 Future months never show spent/actual in red: a future month whose
+      upcoming amount exceeds its plan (or has no plan) shows the spent figure,
+      its bar and the Plan grid actual in the neutral style; the current and
+      past months still turn red when overspent, and a negative Available
+      stays red.
 - [ ] A weekly template adds one occurrence per week to a month (four or five
       rows in the cell list, matching the month's weeks); a monthly template
       adds one.

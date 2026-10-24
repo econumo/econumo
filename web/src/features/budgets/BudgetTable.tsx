@@ -16,7 +16,7 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { isEnvelopeType } from './elementEdit'
 import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
-import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, nothingToShow, overBudget, tagGroupStats } from './budgetMath'
+import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, nothingToShow, overAvailable, overBudget, tagGroupStats } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu } from './monthLines'
@@ -367,6 +367,7 @@ function TagGroupRow({
   const currency = currencies.find((c) => c.id === currencyId)
   const opts = cellOpts(currency)
   const overspent = overBudget(stats, future)
+  const availableDanger = overAvailable(stats, future)
   const Chevron = open ? ChevronDown : ChevronRight
   return (
     <div className="flex flex-col" data-testid={`tag-group-${groupKey}`}>
@@ -400,7 +401,7 @@ function TagGroupRow({
         <span className={`${SECOND_COL} text-[15px] tabular-nums ${overspent ? 'text-expense' : 'text-muted-foreground'}`} data-testid="tag-group-spent">
           {future && isZero(stats.spent) ? <Dash /> : moneyFormat(stats.spent, currency, opts)}
         </span>
-        <span className={`${THIRD_COL} text-[15px] tabular-nums ${overspent ? 'text-expense' : 'text-muted-foreground'}`} data-testid="tag-group-available">
+        <span className={`${THIRD_COL} text-[15px] tabular-nums ${availableDanger ? 'text-expense' : 'text-muted-foreground'}`} data-testid="tag-group-available">
           {nothingToShow(stats) ? <Dash /> : moneyFormat(stats.available, currency, opts)}
         </span>
         {actionsColumn ? <ActionsSpacer /> : null}
@@ -592,10 +593,11 @@ function ReportingTagsFolder({
 function folderSums(stats: BucketStats, currency: CurrencyDto | undefined, future: boolean): [ReactNode, ReactNode, ReactNode] {
   const opts = cellOpts(currency)
   const danger = overBudget(stats, future)
+  const availableDanger = overAvailable(stats, future)
   return [
     moneyFormat(stats.budgeted, currency, opts),
     future && isZero(stats.spent) ? <Dash key="dash-452-1" /> : <span key="spent" className={danger ? 'text-expense' : ''}>{moneyFormat(stats.spent, currency, opts)}</span>,
-    nothingToShow(stats) ? <Dash key="dash-453-1" /> : <span key="available" className={danger ? 'text-expense' : ''}>{moneyFormat(stats.available, currency, opts)}</span>,
+    nothingToShow(stats) ? <Dash key="dash-453-1" /> : <span key="available" className={availableDanger ? 'text-expense' : ''}>{moneyFormat(stats.available, currency, opts)}</span>,
   ]
 }
 
@@ -805,6 +807,7 @@ export function BudgetTotals({
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
   const opts = cellOpts(budgetCurrency)
   const danger = overBudget(totals, future)
+  const availableDanger = overAvailable(totals, future)
   return (
     <>
       {/* the rule sits on a wrapper: on the line itself the hover's rounded corners
@@ -821,7 +824,7 @@ export function BudgetTotals({
           <span className={`${SECOND_COL} ${danger ? 'text-expense' : 'text-muted-foreground'}`}>
             {future && isZero(totals.spent) ? <Dash /> : moneyFormat(totals.spent, budgetCurrency, opts)}
           </span>
-          <span className={`${THIRD_COL} ${danger ? 'text-expense' : ''}`} data-testid="totals-available">
+          <span className={`${THIRD_COL} ${availableDanger ? 'text-expense' : ''}`} data-testid="totals-available">
             {nothingToShow(totals) ? <Dash /> : moneyFormat(totals.available, budgetCurrency, opts)}
           </span>
           {actionsColumn ? <ActionsSpacer /> : null}
@@ -845,7 +848,7 @@ export function BudgetTotals({
         </span>
         <span className="flex items-baseline justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>
-          <span className={`text-[15px] tabular-nums ${danger ? 'text-expense' : ''}`}>{moneyFormat(totals.available, budgetCurrency, opts)}</span>
+          <span className={`text-[15px] tabular-nums ${availableDanger ? 'text-expense' : ''}`}>{moneyFormat(totals.available, budgetCurrency, opts)}</span>
         </span>
       </div>
     </>

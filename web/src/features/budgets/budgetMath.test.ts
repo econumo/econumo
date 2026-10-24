@@ -1,4 +1,4 @@
-import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, overBudget, makeBudgetExchange, displayAvailable, totalsWithSavings } from './budgetMath'
+import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, overBudget, overAvailable, makeBudgetExchange, displayAvailable, totalsWithSavings } from './budgetMath'
 import { fixtureWireBudget } from '@/test/fixtures'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 
@@ -163,7 +163,7 @@ describe('rowState', () => {
   })
   it('is none for a future month with nothing upcoming, and as usual once something is', () => {
     expect(rowState({ budgeted: '700', spent: '0', available: '700' }, true)).toBe('none')
-    expect(rowState({ budgeted: '700', spent: '801.37', available: '-101.37' }, true)).toBe('over')
+    expect(rowState({ budgeted: '700', spent: '801.37', available: '-101.37' }, true)).toBe('ok')
   })
 })
 
@@ -201,7 +201,8 @@ describe('overBudget', () => {
   })
   it('is false in a future month with nothing upcoming, true once upcoming overspends', () => {
     expect(overBudget({ budgeted: '100', spent: '0', available: '-20' }, true)).toBe(false)
-    expect(overBudget({ budgeted: '100', spent: '150', available: '-20' }, true)).toBe(true)
+    expect(overBudget({ budgeted: '100', spent: '150', available: '-20' }, true)).toBe(false)
+    expect(overAvailable({ budgeted: '100', spent: '150', available: '-20' }, true)).toBe(true)
   })
 })
 
