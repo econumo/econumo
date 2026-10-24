@@ -30,6 +30,7 @@ function FeedbackForm({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const [type, setType] = useState<FeedbackType>(() => useUiStore.getState().feedbackType)
+  const topic = useUiStore((s) => s.feedbackTopic)
   const [message, setMessage] = useState('')
   // empty by default: replying is never promised, so the address is opt-in
   const [email, setEmail] = useState('')
@@ -42,6 +43,7 @@ function FeedbackForm({ onDone }: { onDone: () => void }) {
         'feedback',
         {
           type,
+          topic,
           message: message.trim(),
           email: email.trim(),
           app_version: getVersion(),
@@ -50,7 +52,7 @@ function FeedbackForm({ onDone }: { onDone: () => void }) {
         { $host: analyticsHost() },
       ),
     onSuccess: () => {
-      trackEvent(METRICS.FEEDBACK_SEND, { type, with_email: email.trim() !== '' })
+      trackEvent(METRICS.FEEDBACK_SEND, { type, topic, with_email: email.trim() !== '' })
       toast.success(t('feedback.dialog.sent'))
       onDone()
     },

@@ -228,7 +228,7 @@ export function ReportList({ budgetId, onScope, onChoose }: {
             question={t('reports.list.suggest_q')}
             onClick={() => {
               trackEvent(METRICS.REPORTS_SUGGEST)
-              openFeedback('feature_request')
+              openFeedback('feature_request', 'reports')
             }}
           >
             <span className="text-sm text-muted-foreground">{t('reports.list.suggest_note')}</span>

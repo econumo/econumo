@@ -194,7 +194,7 @@ export function SettingsPage() {
               <MenuRow
                 label={t('feedback.menu_item')}
                 trailing={<MessageSquare className="size-4 shrink-0 text-muted-foreground" />}
-                onClick={() => openFeedback()}
+                onClick={() => openFeedback('feedback', 'general')}
               />
             </MenuGroup>
           ) : null}

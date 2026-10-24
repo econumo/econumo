@@ -152,6 +152,7 @@ it('without ECONUMO_DEV the list offers Net worth and Suggest a report only', as
   await userEvent.click(screen.getByRole('button', { name: /Suggest a report/ }))
   expect(useUiStore.getState().feedbackOpen).toBe(true)
   expect(useUiStore.getState().feedbackType).toBe('feature_request')
+  expect(useUiStore.getState().feedbackTopic).toBe('reports')
   expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_SUGGEST)
 })
 
