@@ -163,9 +163,15 @@ export interface GridCtx {
 const figureClass = (ctx: GridCtx, col: number): string =>
   `${PLAN_FIGURE_COL}${col === ctx.selectedCol ? ` ${PLAN_SELECTED_TINT}` : ''}${col === ctx.crosshairCol ? ` ${PLAN_CROSSHAIR}` : ''}`
 
-/** A section's or folder's month: `actual · plan` up to the selected month, plan alone
- *  after it, the same way the rows read. `sum` is null for a month the plan has no
- *  data for. */
+/** A later month's actual shows only when upcoming money folded one in, lighter, as
+ *  the rows read; up to the current month a zero reads as a dash next to a plan. */
+function laterActual(actual: string | null, month: string, current: string): string | null {
+  return actual !== null && month > current && isZero(actual) ? null : actual
+}
+
+/** A section's or folder's month: `actual · plan` up to the current month, after it
+ *  the plan plus any folded upcoming actual, the same way the rows read. `sum` is
+ *  null for a month the plan has no data for. */
 export function SumCell({
   index,
   sum,
@@ -185,11 +191,12 @@ export function SumCell({
   const plan = sum && !isZero(sum.planned) ? sum.planned : null
   const { actual, dash } = balance
     ? { actual: sum ? sum.actual : null, dash: false }
-    : shownActual(sum && month <= ctx.selected ? sum.actual : null, plan !== null)
+    : shownActual(laterActual(sum ? sum.actual : null, month, ctx.selected), plan !== null)
+  const later = !balance && month > ctx.selected
   return (
     <span data-testid={`plan-sum-${index}`} className="flex min-w-0 flex-1 items-baseline justify-between gap-1 text-muted-foreground tabular-nums">
       {actual !== null ? (
-        <span className="min-w-0 truncate text-xs" title={fmt(actual)}>
+        <span className={`min-w-0 truncate text-xs${later ? ` ${FUTURE_FIGURE}` : ''}`} title={fmt(actual)}>
           {fmt(actual)}
         </span>
       ) : dash ? (
@@ -232,7 +239,7 @@ export const ChildRow = memo(function ChildRow({
       {ctx.visibleMonths.map((m, i) => {
         const idx = ctx.monthIndex(m)
         const cell = idx >= 0 ? child.cells[idx] : undefined
-        const { actual } = shownActual(cell && m <= ctx.selected ? cell.actual : null, false)
+        const { actual } = shownActual(laterActual(cell ? cell.actual : null, m, ctx.selected), false)
         return (
           <div
             key={m}
@@ -246,7 +253,7 @@ export const ChildRow = memo(function ChildRow({
           >
             <span className="flex min-w-0 flex-1">
               {actual !== null ? (
-                <span data-testid="cell-actual" className="min-w-0 truncate text-xs tabular-nums" title={fmt(actual)}>
+                <span data-testid="cell-actual" className={`min-w-0 truncate text-xs tabular-nums${m > ctx.selected ? ` ${FUTURE_FIGURE}` : ''}`} title={fmt(actual)}>
                   {fmt(actual)}
                 </span>
               ) : null}

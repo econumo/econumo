@@ -3,12 +3,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureBudgets, fixtureOwner, fixtureWireBudget, fixtureWirePlan } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureOwner, fixtureUser, fixtureWireBudget, fixtureWirePlan } from '@/test/fixtures'
+import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import {
   useArchiveBudget,
+  useBudget,
   useBudgetPlan,
   useBudgets,
   useCloneBudget,
@@ -275,6 +277,51 @@ it('useBudgetPlan fetches a buffered window and keeps previous data across shift
   await waitFor(() => expect(result.current.data).toBeTruthy())
   expect(calls[0]).toContain('from=2026-05-01')
   expect(calls[0]).toContain('months=10')
+})
+
+it('a month change re-folds the same cached plan: the new current month shows the fact', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 6, 31, 23, 0, 0))
+  try {
+    const plan = structuredClone(fixtureWirePlan) as BudgetPlanDto
+    const pe1 = plan.structure.elements.find((e) => e.id === 'pe1')!
+    pe1.cells[3] = { ...pe1.cells[3], actual: '10', upcoming: '5' }
+    server.use(http.get('*/api/v1/budget/get-budget-plan', () => HttpResponse.json({ success: true, message: '', data: { item: plan } })))
+    const { wrapper } = makeWrapper()
+    const { result, rerender } = renderHook(() => useBudgetPlan('b1', '2026-07-01', 6), { wrapper })
+    const august = () => result.current.data?.structure.elements.find((e) => e.id === 'pe1')?.cells[3]?.actual
+    // July is current: August is later and combined
+    await waitFor(() => expect(august()).toBe('15'))
+    vi.setSystemTime(new Date(2026, 7, 1, 0, 30, 0))
+    rerender()
+    expect(august()).toBe('10')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('a month change re-folds the same cached budget', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 5, 30, 23, 0, 0))
+  try {
+    const budget = structuredClone(fixtureWireBudget) as unknown as BudgetDto
+    Object.assign(budget.structure.elements[0], { upcoming: '30', budgetUpcoming: '30', upcomingBefore: '0' })
+    server.use(
+      ...coreHandlers({ user: { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'budget' ? { ...o, value: 'b1' } : o)) } }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    )
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+    const { wrapper } = makeWrapper()
+    const { result, rerender } = renderHook(() => useBudget(), { wrapper })
+    const food = () => result.current.data?.structure.elements[0]?.spent
+    // June is current: the selected July is later and combined
+    await waitFor(() => expect(food()).toBe('75.5'))
+    vi.setSystemTime(new Date(2026, 6, 1, 0, 30, 0))
+    rerender()
+    expect(food()).toBe('45.5')
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 it('usePlanSetLimit patches the cell and clears on null', async () => {

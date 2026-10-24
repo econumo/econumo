@@ -767,6 +767,34 @@ it('the current month shows the fact only; a cell with nothing real yet but mone
   expect(params?.get('periodStart')).toBe('2026-07-01')
 })
 
+it('in a month after the current one, sum lines and envelope children show the folded actual too, lighter and never red', async () => {
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  const plan = structuredClone(fixtureWirePlan) as BudgetPlanDto
+  const pe1 = plan.structure.elements.find((e) => e.id === 'pe1')!
+  pe1.cells[3] = { actual: '0', planned: '', upcoming: '900' }
+  pe1.children[0].cells[3] = { actual: '0', upcoming: '900' }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(plan),
+  )
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', foldBudgetId: 'b1', planUnfoldedElements: { pe1: true } })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  // August (column 2) is after the current July
+  const child = within(screen.getByTestId('plan-cell-cat-rent:2')).getByTestId('cell-actual')
+  expect(child).toHaveTextContent('900.00')
+  expect(child.className).toContain('text-muted-foreground/50')
+  const line = screen.getByTestId('plan-section-line-expense')
+  await user.click(within(line).getByRole('button', { name: /show sums for expenses/i }))
+  const aug = within(within(line).getByTestId('plan-sum-2')).getByText('900.00')
+  expect(aug.className).toContain('text-muted-foreground/50')
+  expect(aug.className).not.toContain('text-expense')
+  // a later month with nothing upcoming stays plan-only
+  expect(within(screen.getByTestId('plan-cell-cat-rent:1')).getByTestId('cell-actual')).toHaveTextContent('45.00')
+})
+
 it('the Archived line sums its rows: their actuals, never their plans', async () => {
   const plan = {
     ...fixtureWirePlan,
