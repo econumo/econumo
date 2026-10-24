@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "Nie znaleziono transakcji",
+        "drag_handle": "Przeciągnij, aby zmienić kolejność",
         "today": "Dzisiaj",
         "yesterday": "Wczoraj",
         "item": {
@@ -2128,7 +2129,9 @@
       "invalid_import_file": "Prześlij prawidłowy plik CSV.",
       "too_many_labels": "Transakcja może mieć maksymalnie 50 tagów raportowych.",
       "account_deleted": "To konto zostało usunięte.",
-      "category_type_mismatch": "Typ kategorii musi odpowiadać typowi transakcji."
+      "category_type_mismatch": "Typ kategorii musi odpowiadać typowi transakcji.",
+      "day_changed": "Ten dzień został w międzyczasie zmieniony. Odśwież i spróbuj ponownie.",
+      "cannot_move": "Tej transakcji nie można przenieść na inny dzień."
     },
     "user": {
       "report_period_invalid": "Nieprawidłowy okres raportu.",

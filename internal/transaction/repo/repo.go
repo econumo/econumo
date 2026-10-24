@@ -15,8 +15,10 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/txorder"
 	"github.com/econumo/econumo/internal/infra/txrevision"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/transaction"
@@ -26,7 +28,6 @@ type (
 	txRow             = sqlitegen.Transaction
 	upsertParams      = sqlitegen.UpsertTransactionParams
 	linkParams        = sqlitegen.LinkTransactionToRecurringParams
-	listAccParams     = sqlitegen.ListTransactionsByAccountParams
 	exportAcctRow     = sqlitegen.ListExportAccountsForUserRow
 	insertLabelParams = sqlitegen.InsertTransactionLabelParams
 )
@@ -36,7 +37,7 @@ type querier interface {
 	UpsertTransaction(ctx context.Context, db backend.DBTX, p upsertParams) error
 	LinkTransactionToRecurring(ctx context.Context, db backend.DBTX, p linkParams) error
 	DeleteTransaction(ctx context.Context, db backend.DBTX, id string) error
-	ListTransactionsByAccount(ctx context.Context, db backend.DBTX, p listAccParams) ([]txRow, error)
+	ListTransactionsByAccount(ctx context.Context, db backend.DBTX, accountID string) ([]txRow, error)
 	ListExportAccountsForUser(ctx context.Context, db backend.DBTX, userID string) ([]exportAcctRow, error)
 	DeleteTransactionLabels(ctx context.Context, db backend.DBTX, transactionID string) error
 	InsertTransactionLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error
@@ -58,6 +59,7 @@ type Repo struct {
 	q      querier
 	driver string
 	rev    *txrevision.Bumper
+	order  *txorder.Placer
 }
 
 var _ domtransaction.Repository = (*Repo)(nil)
@@ -66,9 +68,9 @@ var _ domtransaction.Repository = (*Repo)(nil)
 func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
 	case "sqlite":
-		return &Repo{tx: tx, q: sqliteQuerier{}, driver: driver, rev: txrevision.New(driver, tx)}
+		return &Repo{tx: tx, q: sqliteQuerier{}, driver: driver, rev: txrevision.New(driver, tx), order: txorder.New(driver, tx)}
 	case "postgresql":
-		return &Repo{tx: tx, q: pgsqlQuerier{}, driver: driver, rev: txrevision.New(driver, tx)}
+		return &Repo{tx: tx, q: pgsqlQuerier{}, driver: driver, rev: txrevision.New(driver, tx), order: txorder.New(driver, tx)}
 	default:
 		panic("transactionrepo: unknown database driver " + driver)
 	}
@@ -107,6 +109,9 @@ func (r *Repo) saveNew(ctx context.Context, t *model.Transaction) error {
 }
 
 func (r *Repo) write(ctx context.Context, t *model.Transaction) error {
+	if err := r.place(ctx, t); err != nil {
+		return err
+	}
 	if err := r.q.UpsertTransaction(ctx, r.db(ctx), upsertParams{
 		ID:                 t.ID.String(),
 		UserID:             t.UserID.String(),
@@ -123,6 +128,8 @@ func (r *Repo) write(ctx context.Context, t *model.Transaction) error {
 		Amount:             t.Amount,
 		AmountRecipient:    t.AmountRecipient,
 		RecurringID:        idPtr(t.RecurringID),
+		SortKey:            t.SortKey,
+		RecipientSortKey:   t.RecipientSortKey,
 	}); err != nil {
 		return err
 	}
@@ -134,6 +141,31 @@ func (r *Repo) write(ctx context.Context, t *model.Transaction) error {
 		return err
 	}
 	r.markBumped(ctx, t.ID.String())
+	return nil
+}
+
+// place gives a row without a key on a side (new, or moved to another day or
+// account by Update) the top of its day there. Every write goes through here,
+// so no caller can store an unplaced row.
+func (r *Repo) place(ctx context.Context, t *model.Transaction) error {
+	if t.SortKey == "" {
+		top, err := r.order.Top(ctx, t.AccountID.String(), t.SpentAt)
+		if err != nil {
+			return err
+		}
+		t.SortKey = top
+	}
+	if !t.Type.IsTransfer() || t.AccountRecipID == nil {
+		t.RecipientSortKey = nil
+		return nil
+	}
+	if t.RecipientSortKey == nil {
+		top, err := r.order.Top(ctx, t.AccountRecipID.String(), t.SpentAt)
+		if err != nil {
+			return err
+		}
+		t.RecipientSortKey = &top
+	}
 	return nil
 }
 
@@ -352,11 +384,54 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 // ListByAccount returns transactions on an account (source or recipient).
 func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.Transaction, error) {
 	s := accountID.String()
-	rows, err := r.q.ListTransactionsByAccount(ctx, r.db(ctx), listAccParams{AccountID: s, AccountRecipientID: &s})
+	rows, err := r.q.ListTransactionsByAccount(ctx, r.db(ctx), s)
 	if err != nil {
 		return nil, err
 	}
 	return hydrateAll(rows)
+}
+
+// DayKeys reads the side keys of accountID's day. A transfer with the account
+// on both sides cannot exist, so each row appears once.
+func (r *Repo) DayKeys(ctx context.Context, accountID vo.Id, spentAt time.Time) (map[string]string, error) {
+	start, end := txorder.DayBounds(spentAt)
+	from, to := start.Format(datetime.Layout), end.Format(datetime.Layout)
+	q := `SELECT id, sort_key FROM transactions WHERE account_id = ` + placeholders(r.driver, 1, 1) +
+		` AND spent_at >= ` + placeholders(r.driver, 2, 1) + ` AND spent_at < ` + placeholders(r.driver, 3, 1) +
+		` UNION ALL SELECT id, recipient_sort_key FROM transactions WHERE account_recipient_id = ` + placeholders(r.driver, 4, 1) +
+		` AND spent_at >= ` + placeholders(r.driver, 5, 1) + ` AND spent_at < ` + placeholders(r.driver, 6, 1)
+	id := accountID.String()
+	rows, err := r.db(ctx).QueryContext(ctx, q, id, from, to, id, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var txID string
+		var key sql.NullString
+		if err := rows.Scan(&txID, &key); err != nil {
+			return nil, err
+		}
+		out[txID] = key.String
+	}
+	return out, rows.Err()
+}
+
+// SetSideKey writes the key of whichever side of id sits on accountID. The
+// row's revision moves on both of its accounts: both download it.
+func (r *Repo) SetSideKey(ctx context.Context, accountID, id vo.Id, key string) error {
+	if err := r.rev.BumpWhere(ctx, "id = ?", id.String()); err != nil {
+		return err
+	}
+	q := `UPDATE transactions SET
+		sort_key = CASE WHEN account_id = ` + placeholders(r.driver, 1, 1) + ` THEN ` + placeholders(r.driver, 2, 1) + ` ELSE sort_key END,
+		recipient_sort_key = CASE WHEN account_id <> ` + placeholders(r.driver, 3, 1) + ` AND account_recipient_id = ` + placeholders(r.driver, 4, 1) +
+		` THEN ` + placeholders(r.driver, 5, 1) + ` ELSE recipient_sort_key END
+		WHERE id = ` + placeholders(r.driver, 6, 1)
+	a := accountID.String()
+	_, err := r.db(ctx).ExecContext(ctx, q, a, key, a, a, key, id.String())
+	return err
 }
 
 // ListByAccountIDs returns transactions whose source OR recipient is in
@@ -375,7 +450,7 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter 
 	}
 	usePeriod := !filter.PeriodStart.IsZero() && !filter.PeriodEnd.IsZero()
 
-	const cols = "id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id"
+	const cols = "id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id, sort_key, recipient_sort_key"
 	var b strings.Builder
 	b.WriteString("SELECT ")
 	b.WriteString(cols)
@@ -420,10 +495,23 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter 
 		next++
 		args = append(args, filter.TagID.String())
 	}
-	// Newest first (the transaction-list convention, see ListTransactionsByAccount)
-	// with id as the stable tie-break: without an ORDER BY the row order diverges
-	// between SQLite and PostgreSQL, and the CSV export serves this order directly.
-	b.WriteString(" ORDER BY spent_at DESC, id")
+	// List order, as in ListTransactionsByAccount: newest day first, then the
+	// row's place in that day, then id. For one account that place is the key
+	// of the row's side on it; a list over several accounts uses the source key.
+	// id keeps the order identical across engines, and the CSV export serves
+	// this order directly.
+	day := "substr(spent_at, 1, 10)"
+	if r.driver == "postgresql" {
+		day = "CAST(spent_at AS date)"
+	}
+	b.WriteString(" ORDER BY " + day + " DESC, ")
+	if len(ids) == 1 {
+		b.WriteString("CASE WHEN account_id = " + placeholders(r.driver, next, 1) + " THEN sort_key ELSE recipient_sort_key END DESC, ")
+		args = append(args, ids[0])
+	} else {
+		b.WriteString("sort_key DESC, ")
+	}
+	b.WriteString("id")
 
 	rows, err := r.db(ctx).QueryContext(ctx, b.String(), args...)
 	if err != nil {
@@ -438,6 +526,7 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter 
 			&row.ID, &row.UserID, &row.AccountID, &row.AccountRecipientID, &row.CategoryID,
 			&row.PayeeID, &row.TagID, &row.Description, &row.CreatedAt, &row.UpdatedAt,
 			&row.SpentAt, &row.Type, &row.Amount, &row.AmountRecipient, &row.RecurringID,
+			&row.SortKey, &row.RecipientSortKey,
 		); serr != nil {
 			return nil, serr
 		}
@@ -524,7 +613,7 @@ func hydrate(row txRow) (*model.Transaction, error) {
 		AccountRecipID: recip, Amount: row.Amount, AmountRecipient: row.AmountRecipient,
 		CategoryID: cat, PayeeID: payee, TagID: tag, Description: row.Description,
 		SpentAt: row.SpentAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-		RecurringID: recurring,
+		RecurringID: recurring, SortKey: row.SortKey, RecipientSortKey: row.RecipientSortKey,
 	}), nil
 }
 
@@ -566,8 +655,8 @@ func (sqliteQuerier) LinkTransactionToRecurring(ctx context.Context, db backend.
 func (sqliteQuerier) DeleteTransaction(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteTransaction(ctx, id)
 }
-func (sqliteQuerier) ListTransactionsByAccount(ctx context.Context, db backend.DBTX, p listAccParams) ([]txRow, error) {
-	return sqlitegen.New(db).ListTransactionsByAccount(ctx, p)
+func (sqliteQuerier) ListTransactionsByAccount(ctx context.Context, db backend.DBTX, accountID string) ([]txRow, error) {
+	return sqlitegen.New(db).ListTransactionsByAccount(ctx, accountID)
 }
 func (sqliteQuerier) ListExportAccountsForUser(ctx context.Context, db backend.DBTX, userID string) ([]exportAcctRow, error) {
 	return sqlitegen.New(db).ListExportAccountsForUser(ctx, sqlitegen.ListExportAccountsForUserParams{UserID: userID, UserID_2: userID})
@@ -594,8 +683,8 @@ func (pgsqlQuerier) LinkTransactionToRecurring(ctx context.Context, db backend.D
 func (pgsqlQuerier) DeleteTransaction(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteTransaction(ctx, id)
 }
-func (pgsqlQuerier) ListTransactionsByAccount(ctx context.Context, db backend.DBTX, p listAccParams) ([]txRow, error) {
-	rows, err := pgsqlgen.New(db).ListTransactionsByAccount(ctx, pgsqlgen.ListTransactionsByAccountParams(p))
+func (pgsqlQuerier) ListTransactionsByAccount(ctx context.Context, db backend.DBTX, accountID string) ([]txRow, error) {
+	rows, err := pgsqlgen.New(db).ListTransactionsByAccount(ctx, accountID)
 	if err != nil {
 		return nil, err
 	}

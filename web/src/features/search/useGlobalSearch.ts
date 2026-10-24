@@ -8,6 +8,7 @@ import type { Id } from '@/api/types'
 import { dayKey } from '@/lib/datetime'
 import { moneyFormat, type CurrencyLike } from '@/lib/money'
 import { matchesTerms, rankByName, type ClassificationType, type TermFields } from '@/lib/search'
+import { compareTransactions } from '@/features/transactions/order'
 import { useTransactions } from '@/features/transactions/queries'
 import {
   enrichTransaction,
@@ -116,7 +117,7 @@ export function useGlobalSearch(query: string, scope: SearchScope): GlobalSearch
     const matched = enriched
       .filter(({ tx, fields }) => !(recentFeed && tx.isInFuture) && inScope(tx, scope) && matchesTerms(fields, query))
       .map(({ tx }, index) => ({ tx, index }))
-      .sort((a, b) => (a.tx.date < b.tx.date ? 1 : a.tx.date > b.tx.date ? -1 : a.index - b.index))
+      .sort((a, b) => compareTransactions(a.tx, b.tx) || a.index - b.index)
       .map(({ tx }) => ({ tx, groupDay: dayKey(tx.date) }))
     return {
       accounts: groups && query.trim() ? rankByName(lookups.accounts ?? [], (a) => a.name, query) : [],

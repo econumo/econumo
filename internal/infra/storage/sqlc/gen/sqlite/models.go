@@ -452,6 +452,8 @@ type Transaction struct {
 	Amount             string
 	AmountRecipient    *string
 	RecurringID        *string
+	SortKey            string
+	RecipientSortKey   *string
 }
 
 type TransactionsLabel struct {

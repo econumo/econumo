@@ -132,6 +132,12 @@ func (r *stubImportRepo) ImportedTransactionIDs(ctx context.Context, ids []vo.Id
 func (r *stubImportRepo) TransactionsRevisions(ctx context.Context, ids []vo.Id) (map[string]int64, error) {
 	return nil, nil
 }
+func (r *stubImportRepo) DayKeys(ctx context.Context, accountID vo.Id, spentAt time.Time) (map[string]string, error) {
+	return nil, nil
+}
+func (r *stubImportRepo) SetSideKey(ctx context.Context, accountID, id vo.Id, key string) error {
+	return nil
+}
 
 type passthroughTx struct{}
 
