@@ -490,7 +490,7 @@ mandatory `Origin` header, which the collector does not record)),
 plus session-wide account-profile facts (`web/src/lib/analyticsProfile.ts`:
 total counts of connections, budgets, accounts, categories, payees, tags and
 labels — active, hidden and archived alike, unaccepted invites excluded — plus
-`signup_year`, `months_since_signup` and `apple-wallet` (`on` when the cached
+`signup_year`, `months_since_signup` and `import_apple_wallet` (`on` when the cached
 source list contains an Apple Wallet integration, `off` otherwise; omitted
 until the source list loads)), stamped onto
 each event at capture time (the SDK has no custom batch attributes). A per-user

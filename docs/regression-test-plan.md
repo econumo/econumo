@@ -2075,7 +2075,7 @@ User C sees none of it.
       archived budgets but not an unaccepted invite, `months_since_signup` is
       the whole months since registration (`0` in the first month), and no
       `accounts_hidden`, `*_archived` or `signup_month` key is sent.
-- [ ] The user attribute `apple-wallet` is `on` when an Apple Wallet source
+- [ ] The user attribute `import_apple_wallet` is `on` when an Apple Wallet source
       exists (even before the first payment) and `off` when none exists or only
       SimpleFIN exists. It is omitted until the source list has loaded. The
       connection event already carries `on`; `import_source_disconnect` already

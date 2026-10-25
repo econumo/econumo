@@ -56,7 +56,7 @@ it('connect and disconnect events see the updated apple-wallet user attribute', 
   queryClient.setQueryData(queryKeys.importSources, [])
   setAnalyticsQueryClient(queryClient)
   const captured: unknown[] = []
-  trackEventMock.mockImplementation((metric, data) => { captured.push([metric, data, profileAttributes()['apple-wallet']]) })
+  trackEventMock.mockImplementation((metric, data) => { captured.push([metric, data, profileAttributes().import_apple_wallet]) })
   server.use(
     http.post('*/api/v1/import/create-source', () => HttpResponse.json({ success: true, data: { item: { ...wireSource, cards: [] } } })),
     http.post('*/api/v1/import/delete-source', () => HttpResponse.json({ success: true, data: { items: [] } })),
