@@ -2419,6 +2419,12 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       (long forms, e.g. Add transaction) on mobile (<640px), and a centered
       dialog on tablet — content scrolls, safe areas respected, keyboard does
       not cover inputs.
+- [ ] 📱 Bottom sheet with a text field (Send feedback, Set plan) on an
+      iPhone: focusing the field puts the sheet's action row right on top of
+      the keyboard, with the header still visible and the body scrolling in
+      between. Switching keyboard language, opening the emoji keyboard or the
+      suggestion bar appearing keeps it attached; closing the keyboard returns
+      the sheet to its normal size (no blank area, no squeezed body).
 - [ ] Row actions open bottom sheets (accounts, transactions, classifications,
       recurring, sessions, tokens, budgets).
 - [ ] Long lists scroll smoothly; sidebar scroll position is remembered when
