@@ -62,7 +62,8 @@ it.each([
   mocks.version = version
   seen(stored)
   render(<WhatsNewNotice />)
-  const link = screen.getByRole('link', { name: new RegExp(notes.replace(/\./g, '\\.')) })
+  const link = screen.getByRole('link')
+  expect(link).toHaveTextContent(notes)
   expect(link).toHaveAttribute('href', `https://econumo.com/releases/${notes}`)
 })
 
