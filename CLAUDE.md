@@ -1368,8 +1368,9 @@ data unreadable. Most are also asserted by the test suite.
   converted to and shown in the cell currency in one right-aligned amount column, savings
   signed; then a "Spent" line (when > 0) and a "Total" line (spent + still due). The whole
   list is one button: a press anywhere fills the input with that total (future-dated rows are
-  already in spent, never added twice) without committing. Past months and read-only cells
-  never show it; there is no Post/Skip/Edit of templates from budget views.
+  already in spent, never added twice) without committing. A cell with nothing still to
+  come (no due payment, no future-dated row) shows no list, Spent/Total lines included.
+  Past months and read-only cells never show it; there is no Post/Skip/Edit of templates from budget views.
 - **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,
   never removes the row — `accounts.currency_id` and `transactions.account_id` cascade from it,
   so a hard delete would silently destroy every account and transaction in that currency. A
