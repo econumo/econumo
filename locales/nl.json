@@ -577,7 +577,7 @@
           "text": "Maak in de Opdrachten-app een Wallet-automatisering:",
           "list": {
             "open": "Open Automatisering (op iOS 27: Bibliotheek → Automatisering) en tik op ‘Nieuwe automatisering’ of +",
-            "wallet": "Kies Wallet",
+            "wallet": "Kies Wallet (‘Als ik op een Wallet-kaart of -pas tik’)",
             "cards": "Selecteer de kaarten en categorieën die je wilt importeren (alle voor elke aankoop)",
             "confirm": "Laat de bevestiging aan: ‘Voer uit na bevestiging’ (iOS 26) of ‘Bevestig voor uitvoeren’ (iOS 27)",
             "shortcut": "Voer de opdracht econumo uit (op iOS 27: voeg ‘Voer opdracht uit’ → econumo toe, met ‘Transactie’ als invoer)"

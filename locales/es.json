@@ -577,7 +577,7 @@
           "text": "En la app Atajos, crea una automatización de Wallet:",
           "list": {
             "open": "Abre Automatización (en iOS 27: Biblioteca → Automatización) y toca «Nueva automatización» o +",
-            "wallet": "Elige Wallet",
+            "wallet": "Elige Wallet («Cuando toque una tarjeta o un pase de Wallet»)",
             "cards": "Selecciona las tarjetas y categorías que quieres importar (todas para cada compra)",
             "confirm": "Mantén la confirmación activada: «Ejecutar tras confirmar» (iOS 26) o «Confirmar antes de ejecutar» (iOS 27)",
             "shortcut": "Ejecuta el atajo econumo (en iOS 27: añade «Ejecutar atajo» → econumo, con «Transacción» como entrada)"

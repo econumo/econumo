@@ -432,7 +432,7 @@ it('step 3 lists the automation checklist in order', () => {
   const items = within(within(step('Create the automation')).getByRole('list')).getAllByRole('listitem').map((li) => li.textContent)
   expect(items).toEqual([
     'Open Automation (on iOS 27: Library → Automation), then tap New Automation or +',
-    'Choose Wallet',
+    'Choose Wallet ("When I tap a Wallet Card or Pass")',
     'Select the cards and categories to import (all of them for every purchase)',
     'Keep confirmation on: Run After Confirmation (iOS 26) or Confirm Before Run (iOS 27)',
     'Run the econumo shortcut (on iOS 27: add Run Shortcut → econumo, with Transaction as its input)',

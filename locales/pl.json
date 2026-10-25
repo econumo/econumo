@@ -577,7 +577,7 @@
           "text": "W aplikacji Skróty utwórz automatyzację Wallet:",
           "list": {
             "open": "Otwórz Automatyzację (w iOS 27: Biblioteka → Automatyzacja) i stuknij „Nowa automatyzacja” lub +",
-            "wallet": "Wybierz Wallet",
+            "wallet": "Wybierz Wallet („Gdy stuknę kartę lub kartę pass w Wallet”)",
             "cards": "Wybierz karty i kategorie do importu (wszystkie, aby objąć każdy zakup)",
             "confirm": "Pozostaw potwierdzanie włączone: „Uruchom po potwierdzeniu” (iOS 26) lub „Potwierdź przed uruchomieniem” (iOS 27)",
             "shortcut": "Uruchom skrót econumo (w iOS 27: dodaj „Uruchom skrót” → econumo, z „Transakcją” jako wejściem)"

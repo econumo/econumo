@@ -577,7 +577,7 @@
           "text": "Erstelle in der Kurzbefehle-App eine Wallet-Automation:",
           "list": {
             "open": "Öffne Automation (unter iOS 27: Mediathek → Automation) und tippe auf „Neue Automation“ oder +",
-            "wallet": "Wähle Wallet",
+            "wallet": "Wähle Wallet („Wenn ich auf eine Wallet-Karte oder einen Pass tippe“)",
             "cards": "Wähle die Karten und Kategorien zum Importieren aus (alle, um jeden Einkauf zu erfassen)",
             "confirm": "Lass die Bestätigung an: „Nach Bestätigung ausführen“ (iOS 26) oder „Vor dem Ausführen bestätigen“ (iOS 27)",
             "shortcut": "Führe den Kurzbefehl econumo aus (unter iOS 27: „Kurzbefehl ausführen“ → econumo hinzufügen, mit „Transaktion“ als Eingabe)"
