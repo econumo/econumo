@@ -183,9 +183,10 @@ export function isAiEnabled(): boolean {
   return window.econumoConfig?.AI_ENABLED === true
 }
 
-// The import providers (ECONUMO_IMPORT_APPLE_WALLET / ECONUMO_IMPORT_SIMPLEFIN)
-// are off unless the server says otherwise, and the server does not mount the
-// routes of one that is off.
+// The import providers are off unless the server says otherwise, and the
+// server does not mount the routes of one that is off. Current servers always
+// serve IMPORT_APPLE_WALLET true; the app may also talk to an older one that
+// serves false (ECONUMO_IMPORT_SIMPLEFIN is still a switch).
 export function isAppleWalletImportEnabled(): boolean {
   return window.econumoConfig?.IMPORT_APPLE_WALLET === true
 }

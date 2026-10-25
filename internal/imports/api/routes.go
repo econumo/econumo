@@ -7,11 +7,10 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-// Providers selects the provider-specific routes; the shared ones (sources,
-// queue, runs, rules) are mounted whenever RegisterAPI is.
+// Providers selects the optional provider-specific routes; the shared ones
+// (sources, queue, runs, rules) and Apple Wallet's ingest are always mounted.
 type Providers struct {
-	AppleWallet bool
-	SimpleFIN   bool
+	SimpleFIN bool
 }
 
 func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, providers Providers) router.RegisterAPI {
@@ -42,10 +41,8 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, providers Pro
 		// POST, not GET: the whole rule spec travels in the body, like list-external-accounts.
 		mux.Handle("POST /api/v1/import/preview-rule", auth(h.PreviewRule))
 		mux.Handle("POST /api/v1/import/apply-rule", auth(h.ApplyRule))
-		if providers.AppleWallet {
-			// The only route an ingest-scoped PAT may call (middleware.IngestPathPrefix).
-			mux.Handle("POST /api/v1/import/ingest-apple-wallet-event", auth(h.IngestAppleWalletEvent))
-		}
+		// The only route an ingest-scoped PAT may call (middleware.IngestPathPrefix).
+		mux.Handle("POST /api/v1/import/ingest-apple-wallet-event", auth(h.IngestAppleWalletEvent))
 		if providers.SimpleFIN {
 			mux.Handle("POST /api/v1/import/claim-setup-token", auth(h.ClaimSetupToken))
 			mux.Handle("GET /api/v1/import/get-credential-key", auth(h.GetCredentialKey))

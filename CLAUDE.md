@@ -773,21 +773,19 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
-- `ECONUMO_IMPORT_APPLE_WALLET` / `ECONUMO_IMPORT_SIMPLEFIN` — the two transaction-import
-  providers (strict booleans, Apple Wallet defaults `true`, SimpleFIN `false`;
-  malformed fails at boot). A provider that is
-  off loses its own routes (Apple Wallet: `ingest-apple-wallet-event`; SimpleFIN:
-  `claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
+- `ECONUMO_IMPORT_SIMPLEFIN` — the SimpleFIN pull provider (strict boolean, default `false`;
+  malformed fails at boot). Apple Wallet import has no switch and is always on (the former
+  `ECONUMO_IMPORT_APPLE_WALLET` is ignored), so `internal/imports/api` is always mounted with
+  import rules, the queue and run history. While SimpleFIN is off it loses its own routes
+  (`claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
   `sync-source`), `create-source` refuses it with `import.provider_unsupported`, and its existing
   sources and their queued/failed rows drop out of `get-source-list` and `get-queued-event-list`
-  (`imports.Service.DisableProvider`; stored data is untouched). With BOTH off, `server.BuildAPI`
-  does not mount `internal/imports/api` at all, so every `/api/v1/import/*` route 404s and import
-  rules, the queue and run history are gone with it (`config.Config.TransactionImport()` = either
-  on). The SPA reads the served `IMPORT_APPLE_WALLET` / `IMPORT_SIMPLEFIN` keys: each provider's
-  settings page and route follow its own flag; Import rules, import history, the Data page's
-  rules/history rows and the Inbox's import sections need either; with both off it never fetches
-  an import endpoint. CSV import/export is not part of it and is always on. The apiparity harness
-  turns both on so the catalogue keeps covering the import routes.
+  (`imports.Service.DisableProvider`; stored data is untouched). The served
+  `IMPORT_APPLE_WALLET` key is always `true` (kept because the app may also talk to an older
+  server that serves `false`); the SPA still reads it and `IMPORT_SIMPLEFIN` per provider, and
+  Import rules, import history and the Inbox's import sections need either. CSV import/export is
+  not part of it and is always on. The apiparity harness turns SimpleFIN on so the catalogue keeps
+  covering its routes.
 - `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
   fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
   it on). Served as `FEEDBACK`; `false` hides the Settings row, the form's only entry point. The
