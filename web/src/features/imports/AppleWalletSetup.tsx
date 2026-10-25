@@ -112,7 +112,7 @@ export function AppleWalletConnect() {
       <div className="flex flex-col gap-1.5">
         <h2 className="text-xs uppercase text-muted-foreground">{t('imports.apple_wallet.connect_intro.limitations_title')}</h2>
         <ul className="flex flex-col gap-1 text-muted-foreground">
-          {(['tap_only', 'online_not_imported'] as const).map((key) => (
+          {(['tap_only', 'online_not_imported', 'no_signal'] as const).map((key) => (
             <li key={key} className="flex gap-2">
               <span aria-hidden="true" className="w-4 shrink-0 text-center">•</span>
               <span>{t(`imports.apple_wallet.connect_intro.${key}`)}</span>

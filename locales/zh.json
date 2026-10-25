@@ -539,6 +539,7 @@
         "limitations_title": "已知限制",
         "tap_only": "仅在用 iPhone 轻触付款时有效",
         "online_not_imported": "不支持网站上的 Apple Pay 付款",
+        "no_signal": "如果付款时 iPhone 没有信号，这笔付款可能不会被添加",
         "steps_title": "工作原理",
         "flow": {
           "pay": "使用 Apple Pay 付款",

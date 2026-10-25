@@ -539,6 +539,7 @@
         "limitations_title": "Limitações conhecidas",
         "tap_only": "Só funciona ao aproximar o iPhone para pagar",
         "online_not_imported": "Os pagamentos com Apple Pay em sites não são suportados",
+        "no_signal": "Um pagamento pode não ser adicionado se o iPhone não tiver rede no momento em que paga",
         "steps_title": "Como funciona",
         "flow": {
           "pay": "Pague com Apple Pay",

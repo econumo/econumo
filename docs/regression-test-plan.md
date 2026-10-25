@@ -461,7 +461,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       group's last row on the Settings page itself (not inside Import & export).
 - [ ] Before connecting 📱: the Apple Wallet page explains the feature, lists
       what is needed (an iPhone with Apple Pay, the Shortcuts app, about 5
-      minutes), explains how payments reach Econumo, says which payment fields
+      minutes), lists the known limitations (tap to pay only, no website Apple
+      Pay, a payment made with no signal may not be added), explains how
+      payments reach Econumo, says which payment fields
       Econumo receives and offers "Set up Apple Wallet". Neither this page nor
       the setup checklist has video previews or an embedded player; videos
       are available on the website through the "Setup instructions" link.
