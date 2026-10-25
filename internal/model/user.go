@@ -9,6 +9,7 @@ package model
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -285,11 +286,16 @@ func (u *User) SetAnalytics(enabled bool, id vo.Id, now time.Time) {
 }
 
 // SetLastSeenVersion records the release whose "what's new" notice the user has
-// seen, appending the option row when absent (like SetAnalytics). id is
-// consumed only in that case.
+// seen, appending the option row when absent (like SetAnalytics). It only moves
+// forward: a tab still running an older release must not lower the marker and
+// bring back a notice already dismissed elsewhere. id is consumed only when the
+// row is appended.
 func (u *User) SetLastSeenVersion(version string, id vo.Id, now time.Time) {
 	v := version
 	if o := u.Option(OptionLastSeenVersion); o != nil {
+		if o.Value != nil && IsReleaseVersion(*o.Value) && !releaseNewer(version, *o.Value) {
+			return
+		}
 		o.setValue(&v, now)
 		return
 	}
@@ -297,10 +303,24 @@ func (u *User) SetLastSeenVersion(version string, id vo.Id, now time.Time) {
 }
 
 // IsReleaseVersion reports whether v is a published release version (vX.Y.Z);
-// dev builds and custom labels are not, and never reach the option.
+// dev builds and custom labels are not, and never reach the option. The digit
+// cap keeps a valid-looking value inside the option column on both engines.
 func IsReleaseVersion(v string) bool { return releaseVersionPattern.MatchString(v) }
 
-var releaseVersionPattern = regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
+var releaseVersionPattern = regexp.MustCompile(`^v(\d{1,9})\.(\d{1,9})\.(\d{1,9})$`)
+
+// releaseNewer reports a > b for two release versions.
+func releaseNewer(a, b string) bool {
+	am, bm := releaseVersionPattern.FindStringSubmatch(a), releaseVersionPattern.FindStringSubmatch(b)
+	for i := 1; i <= 3; i++ {
+		x, _ := strconv.Atoi(am[i])
+		y, _ := strconv.Atoi(bm[i])
+		if x != y {
+			return x > y
+		}
+	}
+	return false
+}
 
 // UpdateBudget sets the user's active budget option.
 func (u *User) UpdateBudget(budgetID string, now time.Time) {

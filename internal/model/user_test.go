@@ -383,9 +383,15 @@ func TestLastSeenVersionOption(t *testing.T) {
 	}
 
 	id := u.Options[0].ID
-	u.SetLastSeenVersion("v1.6.0", vo.NewId(), now.Add(time.Hour))
-	if len(u.Options) != 1 || u.Options[0].ID != id || *u.Options[0].Value != "v1.6.0" {
+	u.SetLastSeenVersion("v1.10.0", vo.NewId(), now.Add(time.Hour))
+	if len(u.Options) != 1 || u.Options[0].ID != id || *u.Options[0].Value != "v1.10.0" {
 		t.Fatalf("options = %+v, want the existing row updated in place", u.Options)
+	}
+
+	// An older release (a stale tab) never lowers the marker.
+	u.SetLastSeenVersion("v1.9.5", vo.NewId(), now.Add(2*time.Hour))
+	if *u.Options[0].Value != "v1.10.0" {
+		t.Fatalf("value = %q, want v1.10.0 kept", *u.Options[0].Value)
 	}
 }
 
@@ -393,6 +399,7 @@ func TestIsReleaseVersion(t *testing.T) {
 	for v, want := range map[string]bool{
 		"v1.6.0": true, "v10.20.30": true,
 		"dev": false, "": false, "1.6.0": false, "v1.6": false, "v1.6.0-rc1": false, "v1.6.0 ": false,
+		"v1234567890.0.0": false,
 	} {
 		if got := IsReleaseVersion(v); got != want {
 			t.Errorf("IsReleaseVersion(%q) = %v, want %v", v, got, want)

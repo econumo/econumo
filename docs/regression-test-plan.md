@@ -2362,7 +2362,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       hidden after a reload and on the user's other devices. A user
       registered on the current version never sees it; a `dev` build or a
       downgrade shows nothing. Works for a read-only (lapsed) user too (no
-      402).
+      402). Web and home-screen PWA only; the native app never shows it.
 - [ ] Version label: with `ECONUMO_VERSION=demo-42` set at RUNTIME, the
       sidebar header and the settings version row both read `demo-42`, while
       the update notice above still compares the real binary version (so a

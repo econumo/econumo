@@ -381,7 +381,8 @@ bundle's own `VERSION_REF`.
 The sidebar's "What's new in vX.Y.Z" card (`web/src/features/whatsNew`) shows when the
 running `VERSION` is a release newer than the user's `last_seen_version` option (absent =
 an existing user who upgraded; new accounts are seeded with the running release, a `dev`
-build seeds and shows nothing); opening `https://econumo.com/releases/<version>` or
+build seeds and shows nothing; the option only moves forward; web only, never in the native
+app); opening `https://econumo.com/releases/<version>` or
 dismissing it writes the option through `update-last-seen-version`.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
