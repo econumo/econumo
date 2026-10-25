@@ -56,11 +56,7 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req model.GetBudg
 	if err != nil {
 		return nil, err
 	}
-	sr := *s
-	if pr != nil {
-		sr.upcoming = pr
-	}
-	result, err := sr.buildBudget(ctx, b, f, now)
+	result, err := s.buildBudget(ctx, b, f, now)
 	if err != nil {
 		return nil, err
 	}

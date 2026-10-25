@@ -44,6 +44,11 @@ it('drops the Uncategorized bucket when the selected month has no uncategorized 
   zeroBudget.structure.elements.push({ ...uncatEl })
   const zeroBuckets = bucketElements(zeroBudget, exch)
   expect(zeroBuckets.uncategorized.elements).toEqual([])
+
+  // upcoming money alone does not list it: Uncategorized holds no plan to hint
+  const upcomingBudget: BudgetDto = JSON.parse(JSON.stringify(budget))
+  upcomingBudget.structure.elements.push({ ...uncatEl, upcoming: '40' })
+  expect(bucketElements(upcomingBudget, exch).uncategorized.elements).toEqual([])
   expect(budgetTotals(zeroBuckets)).toEqual(budgetTotals(bucketElements(budget, exch)))
 
   // spent '5' -> present

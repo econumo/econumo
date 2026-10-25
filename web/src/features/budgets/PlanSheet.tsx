@@ -771,9 +771,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         const c = i >= 0 ? r.element.cells[i] : undefined
         return c !== undefined && test(c)
       })
-    // rows with upcoming money stay visible
-    const moved = (c: PlanCellDto) => !isZero(c.actual) || !isZero(c.upcoming ?? '0')
-    const visibleUncat = (r: PlanRow | null): PlanRow | null => (r && hasVisible(r, moved) ? r : null)
+    const actual = (c: PlanCellDto) => !isZero(c.actual)
+    // archived rows with upcoming money stay visible; Uncategorized holds no plan, so only real money counts
+    const moved = (c: PlanCellDto) => actual(c) || !isZero(c.upcoming ?? '0')
+    const visibleUncat = (r: PlanRow | null): PlanRow | null => (r && hasVisible(r, actual) ? r : null)
     return {
       ...rows,
       income: { ...rows.income, uncategorized: visibleUncat(rows.income.uncategorized) },

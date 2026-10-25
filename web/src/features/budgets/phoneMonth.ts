@@ -109,7 +109,7 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
   const groups = [
     ...income.folders.map((f) => group('folder', f.folder.id, f.folder.name, f.rows.map((r) => r.element))),
     group('loose', '__no_folder__', null, income.loose.map((r) => r.element)),
-    group('uncategorized', '__uncategorized__', null, uncategorized && received(uncategorized) ? [uncategorized] : []),
+    group('uncategorized', '__uncategorized__', null, uncategorized && !isZero(uncategorized.cells[index]?.actual ?? '0') ? [uncategorized] : []),
     // the received total counts archived rows too, so the ones with money this month must be listed
     group(
       'archived',

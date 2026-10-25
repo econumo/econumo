@@ -10,6 +10,14 @@ describe('planHint', () => {
     })
   })
 
+  it('savings positive upcoming suggests', () => {
+    expect(planHint({ planned: '', spent: '0', upcoming: '300', kind: 'savings' })).toEqual({ kind: 'suggest', amount: '300' })
+  })
+
+  it('expense negative upcoming', () => {
+    expect(planHint({ planned: '', spent: '0', upcoming: '-50', kind: 'expense' })).toBeNull()
+  })
+
   it('plan "0" counts as no plan', () => {
     expect(planHint({ planned: '0', spent: '0', upcoming: '650', kind: 'expense' })).toEqual({
       kind: 'suggest',

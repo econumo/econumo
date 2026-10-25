@@ -1756,7 +1756,8 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 The cell's transaction list (tap Spent / Actual) shows real
       transactions only: no upcoming rows and no Post / Skip / Edit of
       templates; future-dated real transactions are still dimmed. A cell with
-      nothing real yet shows a plain 0, not a link.
+      nothing real yet shows a dash in the Plan grid (the Budget view's 0 stays a
+      link to the empty list).
 - [ ] A weekly template counts one occurrence per week in a month (four or
       five, matching the month's weeks) in the hint and the editor list; a
       monthly template counts one.

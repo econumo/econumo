@@ -1,5 +1,5 @@
 import type { PlanCellDto } from '@/api/dto/budget'
-import { BudgetElementType } from '@/api/dto/budget'
+import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import { isZero } from '@/lib/decimal'
 import { isOverspent } from './planMath'
 import type { PlanHint } from './planHint'
@@ -7,6 +7,8 @@ import { planHint, planHintKind } from './planHint'
 
 export interface PlanCellViewInput {
   type: BudgetElementType
+  /** Uncategorized cannot hold a plan, so it never carries a hint */
+  id?: string
   cell: PlanCellDto | undefined
   month: string
   /** the caller's current month: later months have no actuals worth showing, earlier ones no plan hint */
@@ -45,13 +47,13 @@ function shownPlan(planned: string, actual: string | null): string | null {
   return planned
 }
 
-export function planCellView({ type, cell, month, selected }: PlanCellViewInput): PlanCellView {
+export function planCellView({ type, id, cell, month, selected }: PlanCellViewInput): PlanCellView {
   if (!cell) {
     return { actual: null, dash: false, plan: null, over: false, balance: false, hint: null }
   }
   const past = month <= selected
   // the hint compares the plan with what the month needs (saved, for savings), never a balance
-  const hint = month < selected ? null : planHint({ planned: cell.planned, spent: cell.actual, upcoming: cell.upcoming, kind: planHintKind(type) })
+  const hint = month < selected || id === UNCATEGORIZED_ID ? null : planHint({ planned: cell.planned, spent: cell.actual, upcoming: cell.upcoming, kind: planHintKind(type) })
   // where a savings account stands says more than what went in that month; ahead of
   // today it is the projection (unmet plans still to come), flat without a plan
   if (type === BudgetElementType.SAVINGS && cell.closingBalance !== undefined) {

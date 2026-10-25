@@ -31,7 +31,6 @@ func upcomingShown(ctx context.Context, periodEnd, now time.Time) bool {
 func (s *Service) addUpcoming(ctx context.Context, b *budgetAggregate, now time.Time, pr *projectedRead, f filters, result *model.BudgetResult) error {
 	sp := *s
 	sp.read = pr
-	sp.upcoming = nil
 	up, err := sp.buildBudget(ctx, b, f, now)
 	if err != nil {
 		return err
@@ -227,7 +226,6 @@ func (s *Service) addPlanUpcoming(ctx context.Context, b *budgetAggregate, f fil
 	}
 	sp := *s
 	sp.read = pr
-	sp.upcoming = nil
 	up, err := sp.buildBudgetPlan(ctx, b, f, months)
 	if err != nil {
 		return err
@@ -249,7 +247,6 @@ func (s *Service) addPlanUpcoming(ctx context.Context, b *budgetAggregate, f fil
 // booked closing balance the projection cannot supply. It reports whether
 // anything was added, as positions then need recomputing.
 func mergePlanUpcoming(real *model.BudgetPlanResult, up model.BudgetPlanResult) bool {
-
 	type key struct {
 		id  string
 		typ int

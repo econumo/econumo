@@ -1354,14 +1354,14 @@ data unreadable. Most are also asserted by the test suite.
   on the plan number, never part of the figures: spent/actual, Available, every total and
   projection (Balance, Total savings, savings `closingBalance`, carry-over) and the budget
   transaction list are real money only. Additive wire fields: `upcoming`/`budgetUpcoming` on
-  `get-budget` elements, children, savings and labels, `upcoming` on `get-budget-plan` cells,
+  `get-budget` elements and children (savings rows and labels carry only `upcoming`), `upcoming` on `get-budget-plan` cells,
   an `upcoming` array on `get-transaction-list` (read only by the plan editor's payment list).
   The SPA (`features/budgets/planHint.ts`), from the current month on, on rows
   that hold a plan: no plan (empty or 0) shows spent + still due in grey italic (display
   only, not saved, in no total); an expense row (category/tag/envelope) whose plan is below
   spent + still due shows the plan in red; income and savings are never red (savings suggest
   only when the net upcoming is positive); folder, tag-group, total, label and child rows
-  get no hint. The plan editors (desktop `LimitEditor`, phone `SetLimitDialog`, Plan grid
+  get no hint, and Uncategorized (no plan to hint) is listed only for real money. The plan editors (desktop `LimitEditor`, phone `SetLimitDialog`, Plan grid
   in-cell input) of a cell with upcoming money list those payments read-only (date, overdue
   marker, name, amount converted to the cell currency, savings signed) with their total;
   there is no Post/Skip/Edit of templates from budget views.

@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { BudgetElementType } from '@/api/dto/budget'
+import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import { planCellView, shownActual } from './planCell'
 
 const cat = BudgetElementType.CATEGORY
 const sel = '2026-10-01'
 
 describe('planCellView', () => {
+  it('Uncategorized gets no hint', () => {
+    expect(planCellView({ type: cat, id: UNCATEGORIZED_ID, cell: { actual: '0', planned: '', upcoming: '650' }, month: '2026-11-01', selected: sel }).hint).toBeNull()
+  })
+
   it('shows actual and plan up to the selected month', () => {
     expect(planCellView({ type: cat, cell: { actual: '612', planned: '600' }, month: '2026-09-01', selected: sel })).toEqual({ actual: '612', dash: false, plan: '600', over: true, balance: false, hint: null })
     expect(planCellView({ type: cat, cell: { actual: '341', planned: '600' }, month: sel, selected: sel })).toEqual({ actual: '341', dash: false, plan: '600', over: false, balance: false, hint: null })
