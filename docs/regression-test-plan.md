@@ -2280,7 +2280,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       one-line banner "Econumo works best as an app" with an "Install" button
       and × sits at the top of every page — `/login`, `/register`, the app
       pages and the OAuth consent page — and Settings shows an "Install the
-      app" row under the profile card. The button (or the row) opens the steps
+      app" row below the Billing group (under the profile card when there is no
+      billing). The button (or the row) opens the steps
       (Share → "Add to Home Screen" → "Add") ending with "Already added it?
       Open Econumo from its Home Screen icon…". × hides the banner on every
       page for good, also after a reload and a logout; the Settings row stays.
