@@ -16,9 +16,13 @@ function measure(): KeyboardInset {
   }
   // a fixed element is placed against the layout viewport, which the keyboard
   // does not shrink; iOS may also pan it (offsetTop), so the visible bottom
-  // edge is offsetTop + height
-  const bottom = Math.max(0, Math.round(window.innerHeight - vv.offsetTop - vv.height))
-  return bottom > 0 ? { bottom, height: Math.round(vv.height) } : NONE
+  // edge is offsetTop + height. A fully panned viewport needs no lift but is
+  // still short, so the height cap applies whenever the keyboard is up
+  const height = Math.round(vv.height)
+  if (height >= window.innerHeight) {
+    return NONE
+  }
+  return { bottom: Math.max(0, Math.round(window.innerHeight - vv.offsetTop - height)), height }
 }
 
 // Tracks the visual viewport continuously instead of guessing an open/closed

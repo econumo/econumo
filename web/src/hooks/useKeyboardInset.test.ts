@@ -53,6 +53,12 @@ describe('useKeyboardInset', () => {
     expect(result.current).toEqual({ bottom: 250, height: 450 })
   })
 
+  it('keeps the height cap when the viewport is panned all the way down', () => {
+    const { result } = renderHook(() => useKeyboardInset(true))
+    resize(450, 350)
+    expect(result.current).toEqual({ bottom: 0, height: 450 })
+  })
+
   it('stays idle when disabled', () => {
     const { result } = renderHook(() => useKeyboardInset(false))
     resize(450)
