@@ -1748,15 +1748,18 @@ and on tablet/phone only with a hardware keyboard.
       grid in-cell input) shows a small, muted list under the input: still-due
       recurring payments (repeat icon, overdue marked) and your own
       transactions dated later this month, merged by date, amounts converted
-      to the cell's currency (savings signed). Below: "Spent {amount}" when
-      something was spent, then "Use {amount}" = spent + still due. A cell
+      to the cell's currency (savings signed). Below: a "Spent" line when
+      something was spent, then "Total" = spent + still due. Every figure
+      (rows, Spent, Total) is in the item's currency, even for a row from an
+      account in another currency, and the figures line up in one
+      right-aligned column. A cell
       with nothing to list, a past month, or a read-only cell shows no list;
       hovering a cell never shows it. The list offers no Post, Skip or Edit.
-- [ ] 📱 Tapping "Use {amount}" (e.g. 300 spent + 250 due → 550) replaces the
+- [ ] 📱 Tapping anywhere on the list (e.g. 300 spent + 250 due, Total 550) replaces the
       input's value with that plain number and keeps the cursor in the input;
       in the Plan grid the cell stays in edit mode and nothing is saved until
       Enter / Tab / clicking away. A future-dated real transaction listed in
-      the panel is not added to "Use" a second time (it is already in Spent).
+      the panel is not added to Total a second time (it is already in Spent).
 - [ ] 📱 The cell's transaction list (tap Spent / Actual) shows real
       transactions only: no upcoming rows and no Post / Skip / Edit of
       templates; future-dated real transactions are still dimmed. A cell with
@@ -1769,7 +1772,7 @@ and on tablet/phone only with a hardware keyboard.
       caller's current month, marked overdue in the editor list; later months
       count only occurrences after today.
 - [ ] Posting the overdue payment of a template due once moves the amount from
-      the editor list's recurring rows into Spent ("Use" is unchanged). Posting the overdue payment of a template several
+      the editor list's recurring rows into Spent (Total is unchanged). Posting the overdue payment of a template several
       cycles behind (e.g. weekly, three weeks late) brings the next missed
       cycle in as the new overdue payment in the editor list.
 - [ ] A recurring template on a deleted budget account, or a transfer into

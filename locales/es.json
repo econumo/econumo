@@ -1359,8 +1359,8 @@
     "page": {
       "upcoming": {
         "title": "Próximamente",
-        "spent": "Gastado {amount}",
-        "use": "Usar {amount}"
+        "spent": "Gastado",
+        "total": "Total"
       },
       "budget": {
         "empty": {

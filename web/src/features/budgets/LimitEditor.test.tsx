@@ -54,15 +54,16 @@ it('lists the upcoming payments under the amount once opened', async () => {
   expect(seen).toEqual([])
   fireEvent.click(screen.getByRole('button', { name: 'limit Food' }))
   expect(await screen.findByText('Groceries box')).toBeInTheDocument()
-  expect(screen.getByText('Spent 300.00')).toBeInTheDocument()
+  expect(screen.getByTestId('upcoming-spent')).toHaveTextContent('Spent300.00')
+  expect(screen.getByTestId('upcoming-total')).toHaveTextContent('Total550.00')
 })
 
-it('Use puts spent + still due into the input and keeps it focused', async () => {
+it('a press on the list puts spent + still due into the input and keeps it focused', async () => {
   recordTransactionLists()
   renderEditor(upcoming)
   fireEvent.click(screen.getByRole('button', { name: 'limit Food' }))
-  const use = await screen.findByRole('button', { name: 'Use 550.00' })
-  fireEvent.click(use)
+  expect(await screen.findByRole('button', { name: 'Total 550.00' })).toBeInTheDocument()
+  fireEvent.click(screen.getByText('Groceries box'))
   const input = screen.getByRole('textbox')
   expect(input).toHaveValue('550')
   expect(input).toHaveFocus()

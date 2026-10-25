@@ -34,8 +34,9 @@ The rule, in the user's words: **facts are about facts, the plan is about the pl
    a cell in the current month or later that has money spent or due, a quiet list (small,
    muted text, below the input) shows that month's still-due recurring payments (repeat
    icon, overdue marked) and the user's own transactions dated later in the month, merged
-   by date, amounts in the cell currency. Below it: "Spent {amount}" when something was
-   spent, then a "Use {amount}" button that puts `spent + still due` into the input (focus
+   by date, every amount in the cell currency in one right-aligned column. Below it: a
+   "Spent" line when something was spent, then "Total" (`spent + still due`). A press
+   anywhere on the list puts that total into the input (focus
    stays there; the grid's in-cell editor neither commits nor closes). Nothing shows on
    read-only cells, in past months, or when the list is empty.
 
@@ -52,13 +53,14 @@ current month, payments already posted are real and are in spent, not in upcomin
    `spent + still due` stays.
 2. **The list shows only while a plan is being edited**, never as a hover on a read-only
    cell, and is visually quiet: `text-xs`, muted rows and lines, no bold.
-3. **"Use {amount}" fills the editor** with `spent + still due` (the old suggestion), as a
+3. **The list fills the editor** (first a "Use {amount}" button; after a second look the
+   whole list is the button and the last line reads "Total") with `spent + still due` (the old suggestion), as a
    plain number like the editors start with, replacing the value and keeping focus. A
-   "Spent {amount}" line sits above it when spent > 0, so the numbers add up. The separate
-   total line is dropped. Tapping it fires `appBudgetPlanUseUpcoming`.
+   "Spent" line sits above it when spent > 0, so the numbers add up. All figures are in
+   the item's currency, aligned in one column. Tapping it fires `appBudgetPlanUseUpcoming`.
 4. **The list includes the user's own future-dated transactions** of that cell (rows of the
    same `get-transaction-list` dated after today), merged with the recurring rows by date.
-   They are already in spent, so "Use" stays `spent + still due`. Editors get the list for
+   They are already in spent, so Total stays `spent + still due`. Editors get the list for
    any cell in the current month or later with spent or upcoming money; past months never.
 
 ## Non-goals
@@ -74,7 +76,7 @@ current month, payments already posted are real and are in spent, not in upcomin
 - A spent / actual figure, or the list behind it, must never include money that does not
   exist yet.
 - Nothing unsaved may look like a saved plan (hence no suggested number; the editor's
-  "Use" only fills the input).
+  list only fills the input).
 
 ## Decided with the user
 
@@ -88,7 +90,7 @@ current month, payments already posted are real and are in spent, not in upcomin
   next + later this month), red when `plan < spent + still due` ("let's try as you
   described").
 - No-plan suggestion = `spent + still due` (550 for 300 spent + 250 due), so typing the
-  suggested number never turns the cell red (now the "Use" amount).
+  suggested number never turns the cell red (now the list's Total).
 
 ## Calls made by me (check these)
 
@@ -103,7 +105,7 @@ current month, payments already posted are real and are in spent, not in upcomin
   in the Budget view stays as it is; the two can disagree when earlier months left money
   (red plan, positive Available), which reads as "this month's plan is short".
 - **Savings rows**: their `upcoming` is a net change (deposits minus withdrawals). Savings
-  never go red; the editor list shows deposits and withdrawals with their sign, and "Use"
+  never go red; the editor list shows deposits and withdrawals with their sign, and filling
   is offered only when `spent + still due` is positive.
 - **Future-dated real transactions** count in spent, so in a future month that has some,
   the rule uses `spent + upcoming` like the current month does.
@@ -134,7 +136,7 @@ current month, payments already posted are real and are in spent, not in upcomin
 - **Kept from #363**: future-dated real transactions are still styled upcoming in the
   spent list (they are real); every recurring mutation still invalidates `budget`,
   `budgetPlan` and `budgetTransactions` (the hint moves when a template is posted or edited).
-- **Analytics**: the plan write fires its own event; the "Use" button fires
+- **Analytics**: the plan write fires its own event; a press on the list fires
   `appBudgetPlanUseUpcoming` (added with the revision).
 
 ## How it reads in the UI
@@ -143,16 +145,16 @@ Expense cell "Groceries", future month, recurring 650 due that month:
 
 | plan | shown |
 |------|-------|
-| none | empty, as before (the editor's "Use 650.00" fills it) |
+| none | empty, as before (the editor's list, Total 650.00, fills it) |
 | 500  | **500** in red |
 | 700  | 700, normal |
 
 Same cell, current month, spent 300, still due 250: plan 500 shows red (300 + 250 > 500);
-plan 600 normal; no plan shows nothing, and its editor offers "Use 550.00" (300 spent +
-250 still due).
+plan 600 normal; no plan shows nothing, and its editor's list totals 550.00 (300 spent +
+250 still due) and fills it on a press.
 
 Opening the editor on any of them lists that month's still-due payments and later-dated
-own transactions under the input, then "Spent 300.00" and "Use 550.00".
+own transactions under the input, then Spent 300.00 and Total 550.00.
 
 ## Docs and tests
 

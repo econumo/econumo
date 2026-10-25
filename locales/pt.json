@@ -1359,8 +1359,8 @@
     "page": {
       "upcoming": {
         "title": "Por vir",
-        "spent": "Gasto {amount}",
-        "use": "Utilizar {amount}"
+        "spent": "Gasto",
+        "total": "Total"
       },
       "budget": {
         "empty": {

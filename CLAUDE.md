@@ -1365,8 +1365,9 @@ data unreadable. Most are also asserted by the test suite.
   input), a cell in the current month or later with spent or upcoming money gets a quiet
   list (`UpcomingPaymentsPanel`): the still-due recurring payments (repeat icon, overdue
   marker) merged by date with the cell's own transactions dated after today, amounts
-  converted to the cell currency, savings signed; then "Spent {amount}" (when > 0) and a
-  "Use {amount}" button that fills the input with spent + still due (future-dated rows are
+  converted to and shown in the cell currency in one right-aligned amount column, savings
+  signed; then a "Spent" line (when > 0) and a "Total" line (spent + still due). The whole
+  list is one button: a press anywhere fills the input with that total (future-dated rows are
   already in spent, never added twice) without committing. Past months and read-only cells
   never show it; there is no Post/Skip/Edit of templates from budget views.
 - **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,

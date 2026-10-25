@@ -533,7 +533,8 @@ it('editing a current-month cell lists what is still to come', async () => {
   fireEvent.keyDown(grid, { key: 'F2' })
   expect(await screen.findByText('Internet')).toBeInTheDocument()
   expect(screen.getByText('Coming up')).toBeInTheDocument()
-  expect(screen.getByText('Spent 300.00')).toBeInTheDocument()
+  expect(screen.getByTestId('upcoming-spent')).toHaveTextContent('Spent300.00')
+  expect(screen.getByTestId('upcoming-total')).toHaveTextContent('Total550.00')
   expect(seen[0].searchParams.get('envelopeId')).toBe('pe1')
   expect(seen[0].searchParams.get('periodStart')).toBe('2026-07-01')
   // the panel keeps the grid's keys: Esc still closes the editor
@@ -541,7 +542,7 @@ it('editing a current-month cell lists what is still to come', async () => {
   expect(screen.queryByText('Internet')).not.toBeInTheDocument()
 })
 
-it('Use fills the cell editor with spent + still due without committing', async () => {
+it('a press on the list fills the cell editor with spent + still due without committing', async () => {
   vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
   usePlanHandlers(planWithUpcoming)
   recordTransactionLists([internetRow])
@@ -549,10 +550,11 @@ it('Use fills the cell editor with spent + still due without committing', async 
   renderPage()
   const { grid } = await gridAtFirstExpenseCell()
   fireEvent.keyDown(grid, { key: 'F2' })
-  const use = await screen.findByRole('button', { name: 'Use 550.00' })
+  await screen.findByRole('button', { name: 'Total 550.00' })
   const input = screen.getByRole('textbox')
-  fireEvent.mouseDown(use)
-  fireEvent.click(use)
+  const row = screen.getByText('Internet')
+  fireEvent.mouseDown(row)
+  fireEvent.click(row)
   expect(input).toHaveValue('550')
   expect(input).toHaveFocus()
   await new Promise((r) => setTimeout(r, 30))

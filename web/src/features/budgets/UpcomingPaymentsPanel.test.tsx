@@ -70,8 +70,11 @@ it('lists payments and offers spent + still due', async () => {
   expect(await screen.findByText('Rent')).toBeInTheDocument()
   expect(screen.getByText('Gym')).toBeInTheDocument()
   expect(screen.getByText('Coming up')).toBeInTheDocument()
-  expect(screen.getByText('Spent 300.00')).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'Use 850.00' }))
+  expect(screen.getByTestId('upcoming-spent')).toHaveTextContent(/^Spent300\.00$/)
+  expect(screen.getByTestId('upcoming-total')).toHaveTextContent(/^Total850\.00$/)
+  expect(screen.getByRole('button', { name: 'Total 850.00' })).toBeInTheDocument()
+  // a press anywhere on the list fills the editor
+  fireEvent.click(screen.getByText('Gym'))
   expect(onUse).toHaveBeenCalledWith('850')
   expect(seen[0].searchParams.get('categoryId')).toBe('cat-food')
   expect(seen[0].searchParams.get('periodStart')).toBe('2026-07-01')
@@ -130,7 +133,7 @@ it('lists a real transaction dated later this month without counting it twice', 
   const names = screen.getAllByRole('listitem').map((li) => li.textContent)
   expect(names[0]).toContain('Dentist')
   expect(names[1]).toContain('Rent')
-  fireEvent.click(screen.getByRole('button', { name: 'Use 550.00' }))
+  fireEvent.click(screen.getByTestId('upcoming-total'))
   expect(onUse).toHaveBeenCalledWith('550')
 })
 
@@ -138,7 +141,7 @@ it('lists future real transactions with nothing due', async () => {
   serve([], [itemRow({ id: 't-future', description: 'Concert', amount: '80', spentAt: '2026-07-28 20:00:00' })])
   renderPanel(query({ spent: '80', upcoming: '0' }), vi.fn())
   expect(await screen.findByText('Concert')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Use 80.00' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Total 80.00' })).toBeInTheDocument()
 })
 
 describe('wantsUpcomingPanel', () => {
@@ -150,4 +153,19 @@ describe('wantsUpcomingPanel', () => {
     expect(wantsUpcomingPanel('2026-08-01', '0', '250')).toBe(true)
     expect(wantsUpcomingPanel('2026-08-01', '0', '0')).toBe(false)
   })
+})
+
+it('shows every figure in the cell currency, a future-dated real row included', async () => {
+  serve(
+    [upcomingRow({ id: 'r1', description: 'Streaming', amount: '100', currencyId: 'cur-eur', spentAt: '2026-07-20 00:00:00' })],
+    [itemRow({ id: 't1', description: 'Hotel', amount: '200', currencyId: 'cur-eur', spentAt: '2026-07-25 00:00:00' })],
+  )
+  const exchange = (from: string, to: string, amount: string) => (from === 'cur-eur' && to === 'cur-usd' ? String(Number(amount) * 1.1) : amount)
+  renderPanel(query({ exchange, spent: '220', upcoming: '110' }), vi.fn())
+  const [streaming, hotel] = await screen.findAllByRole('listitem')
+  expect(streaming).toHaveTextContent('110.00')
+  expect(hotel).toHaveTextContent('220.00')
+  expect(screen.getByTestId('upcoming-total')).toHaveTextContent('330.00')
+  expect(screen.queryByText('100.00')).not.toBeInTheDocument()
+  expect(screen.queryByText('200.00')).not.toBeInTheDocument()
 })

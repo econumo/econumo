@@ -53,7 +53,7 @@ it('lists the upcoming payments under the amount', async () => {
     </QueryClientProvider>,
   )
   expect(await screen.findByText('Phone plan')).toBeInTheDocument()
-  expect(screen.queryByText(/^Spent /)).not.toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'Use 70.00' }))
+  expect(screen.queryByTestId('upcoming-spent')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByText('Phone plan'))
   expect(document.getElementById('set-limit-amount')).toHaveValue('70')
 })

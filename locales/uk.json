@@ -1359,8 +1359,8 @@
     "page": {
       "upcoming": {
         "title": "Попереду",
-        "spent": "Витрачено {amount}",
-        "use": "Підставити {amount}"
+        "spent": "Витрачено",
+        "total": "Разом"
       },
       "budget": {
         "empty": {

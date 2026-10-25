@@ -1359,8 +1359,8 @@
     "page": {
       "upcoming": {
         "title": "即将发生",
-        "spent": "已支出 {amount}",
-        "use": "使用 {amount}"
+        "spent": "已支出",
+        "total": "合计"
       },
       "budget": {
         "empty": {

@@ -1359,8 +1359,8 @@
     "page": {
       "upcoming": {
         "title": "Noch ausstehend",
-        "spent": "Ausgegeben {amount}",
-        "use": "{amount} übernehmen"
+        "spent": "Ausgegeben",
+        "total": "Summe"
       },
       "budget": {
         "empty": {
