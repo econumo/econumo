@@ -533,12 +533,13 @@
         "needs_title": "Ti servirà",
         "needs": {
           "iphone": "Un iPhone con Apple Pay",
-          "shortcuts": "L’app Comandi rapidi, inclusa in iOS",
+          "shortcuts": "L’app Comandi Rapidi, inclusa in iOS",
           "time": "Circa 5 minuti"
         },
         "limitations_title": "Limitazioni note",
         "tap_only": "Funziona solo quando avvicini l’iPhone per pagare",
         "online_not_imported": "I pagamenti Apple Pay sui siti web non sono supportati",
+        "no_signal": "Senza campo al momento del pagamento, la transazione potrebbe non essere aggiunta",
         "steps_title": "Come funziona",
         "flow": {
           "pay": "Paga con Apple Pay",
@@ -566,7 +567,7 @@
         },
         "configure": {
           "title": "Collega il comando rapido",
-          "text": "Genera un token API. Il comando rapido salva l’indirizzo del server e il token, poi si collega a Econumo. Tocca «Consenti sempre» a ogni richiesta: l’automazione avrà bisogno di questi permessi.",
+          "text": "Tocca «Collega il comando rapido», poi «Consenti sempre» a ogni richiesta.",
           "button": "Collega il comando rapido",
           "open": "Associa Econumo",
           "waiting": "In attesa che il comando rapido raggiunga Econumo…",
@@ -574,7 +575,14 @@
         },
         "automate": {
           "title": "Crea l’automazione",
-          "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare → Esegui dopo conferma → econumo."
+          "text": "Nell’app Comandi Rapidi, crea un’automazione Wallet:",
+          "list": {
+            "open": "Apri la scheda Automazione (su iOS 27: Libreria → Automazione) e tocca «Nuova automazione» o +",
+            "wallet": "Scegli Wallet («Quando tocco una carta o un pass di Wallet»)",
+            "cards": "Seleziona le carte e le categorie da importare, oppure tutte",
+            "confirm": "Lascia attiva la conferma: «Esegui dopo conferma» (iOS 26) o «Conferma prima di eseguire» (iOS 27)",
+            "shortcut": "Scegli il comando rapido econumo (su iOS 27: aggiungi «Esegui comando rapido» → econumo, con «Transazione» come input)"
+          }
         },
         "payment": {
           "title": "Fai il primo pagamento",
@@ -583,9 +591,14 @@
         },
         "immediate": {
           "title": "Imposta l’automazione su «Esegui subito»",
-          "text": "Nell’app Comandi rapidi apri l’automazione e cambia «Esegui dopo conferma» in «Esegui subito». Da quel momento i pagamenti vengono importati senza richieste."
+          "text": "Disattiva la conferma, così i pagamenti vengono importati senza richiesta: apri l’automazione in Comandi Rapidi e scegli «Esegui subito» (iOS 26) o disattiva «Conferma prima di eseguire» (iOS 27)."
         },
-        "done": "Fatto"
+        "done": "Fatto",
+        "guide_title": "Guida passo passo con screenshot:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Apri Comandi Rapidi",
+        "optional": "Facoltativo"
       },
       "same_named_cards": "Le carte con lo stesso nome in Wallet vengono mostrate come un’unica carta.",
       "cards": {

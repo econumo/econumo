@@ -539,6 +539,7 @@
         "limitations_title": "已知限制",
         "tap_only": "仅在用 iPhone 轻触付款时有效",
         "online_not_imported": "不支持网站上的 Apple Pay 付款",
+        "no_signal": "付款时若无信号，交易可能不会被添加",
         "steps_title": "工作原理",
         "flow": {
           "pay": "使用 Apple Pay 付款",
@@ -566,7 +567,7 @@
         },
         "configure": {
           "title": "连接快捷指令",
-          "text": "生成 API 令牌。快捷指令会保存服务器地址和令牌，然后连接 Econumo。每次提示时都点按“始终允许”——自动化需要这些权限。",
+          "text": "点按“连接快捷指令”，然后在每次提示时点按“始终允许”。",
           "button": "连接快捷指令",
           "open": "关联 Econumo",
           "waiting": "正在等待快捷指令连接 Econumo…",
@@ -574,7 +575,14 @@
         },
         "automate": {
           "title": "创建自动化",
-          "text": "在“快捷指令”App 中：自动化 → + → 钱包 → 选择要导入的卡片和类别 → 确认后运行 → econumo。"
+          "text": "在“快捷指令”App 中创建钱包自动化：",
+          "list": {
+            "open": "打开“自动化”标签页（iOS 27：资料库 → 自动化），然后点按“新建自动化”或 +",
+            "wallet": "选择“钱包”（“当我轻点钱包卡片或票证时”）",
+            "cards": "选择要导入的卡片和类别，或全选",
+            "confirm": "保持确认开启：“确认后运行”（iOS 26）或“运行前确认”（iOS 27）",
+            "shortcut": "选择 econumo 快捷指令（iOS 27：添加“运行快捷指令” → econumo，并将“交易”设为输入）"
+          }
         },
         "payment": {
           "title": "完成第一笔付款",
@@ -583,9 +591,14 @@
         },
         "immediate": {
           "title": "将自动化改为“立即运行”",
-          "text": "在“快捷指令”App 中打开该自动化，把“确认后运行”改为“立即运行”。此后付款会自动导入，无需确认。"
+          "text": "关闭确认，让付款无需询问即可导入：在“快捷指令”中打开该自动化，选择“立即运行”（iOS 26）或关闭“运行前确认”（iOS 27）。"
         },
-        "done": "完成"
+        "done": "完成",
+        "guide_title": "带截图的分步指南：",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "打开快捷指令",
+        "optional": "可选"
       },
       "same_named_cards": "Wallet 中同名的卡片会显示为一张卡。",
       "cards": {

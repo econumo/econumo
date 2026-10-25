@@ -539,6 +539,7 @@
         "limitations_title": "Bekende beperkingen",
         "tap_only": "Werkt alleen als je je iPhone tegen de betaalterminal houdt",
         "online_not_imported": "Apple Pay-betalingen op websites worden niet ondersteund",
+        "no_signal": "Zonder bereik tijdens het betalen wordt de transactie mogelijk niet toegevoegd",
         "steps_title": "Zo werkt het",
         "flow": {
           "pay": "Betaal met Apple Pay",
@@ -566,7 +567,7 @@
         },
         "configure": {
           "title": "Opdracht koppelen",
-          "text": "Genereert een API-token. De opdracht bewaart het serveradres en het token en maakt daarna verbinding met Econumo. Tik bij elke melding op ‘Altijd toestaan’ — de automatisering heeft deze rechten later nodig.",
+          "text": "Tik op ‘Opdracht koppelen’ en daarna bij elke melding op ‘Altijd toestaan’.",
           "button": "Opdracht koppelen",
           "open": "Econumo koppelen",
           "waiting": "Wachten tot de opdracht Econumo bereikt…",
@@ -574,7 +575,14 @@
         },
         "automate": {
           "title": "Automatisering aanmaken",
-          "text": "In de Opdrachten-app: Automatisering → + → Wallet → kies de kaarten en categorieën die je wilt importeren → Voer uit na bevestiging → econumo."
+          "text": "Maak in de Opdrachten-app een Wallet-automatisering:",
+          "list": {
+            "open": "Open het tabblad Automatisering (op iOS 27: Bibliotheek → Automatisering) en tik op ‘Nieuwe automatisering’ of +",
+            "wallet": "Kies Wallet (‘Als ik op een Wallet-kaart of -pas tik’)",
+            "cards": "Selecteer welke kaarten en categorieën je wilt importeren, of allemaal",
+            "confirm": "Laat de bevestiging aan: ‘Voer uit na bevestiging’ (iOS 26) of ‘Bevestig voor uitvoeren’ (iOS 27)",
+            "shortcut": "Kies de opdracht econumo (op iOS 27: voeg ‘Voer opdracht uit’ → econumo toe, met ‘Transactie’ als invoer)"
+          }
         },
         "payment": {
           "title": "Eerste betaling doen",
@@ -583,9 +591,14 @@
         },
         "immediate": {
           "title": "Zet de automatisering op ‘Voer direct uit’",
-          "text": "Open in de Opdrachten-app de automatisering en verander ‘Voer uit na bevestiging’ in ‘Voer direct uit’. Vanaf dan worden betalingen zonder vraag geïmporteerd."
+          "text": "Zet de bevestiging uit, zodat betalingen zonder bevestiging worden geïmporteerd: open de automatisering in Opdrachten en kies ‘Voer direct uit’ (iOS 26) of zet ‘Bevestig voor uitvoeren’ uit (iOS 27)."
         },
-        "done": "Klaar"
+        "done": "Klaar",
+        "guide_title": "Stapsgewijze handleiding met screenshots:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Open Opdrachten",
+        "optional": "Optioneel"
       },
       "same_named_cards": "Kaarten met dezelfde naam in Wallet worden als één kaart weergegeven.",
       "cards": {

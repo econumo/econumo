@@ -47,7 +47,8 @@ it.each([false, true])('uses the same setup card before and after receiving paym
   expect(card).toContainElement(screen.getByRole('button', { name: 'Make the first payment' }))
   expect(instructions).toBeVisible()
   expect(screen.getByRole('heading', { name: 'Setup guide', level: 2 })).toBeVisible()
-  expect(screen.queryByRole('button', { name: /Setup guide/ })).toBeNull()
+  // after the first payment only the optional step 5 is left, so the guide can be folded away
+  expect(screen.queryByRole('button', { name: /Setup guide/ }) !== null).toBe(hasPayments)
   if (hasPayments) expect(card).toContainElement(screen.getByRole('button', { name: 'Configure again' }))
 })
 
@@ -107,13 +108,13 @@ it('automatically completes step 4 when polling receives the first non-failed pa
   expect(screen.getByRole('button', { name: 'Make the first payment' }).closest('li')).toHaveAttribute('data-state', 'current')
   expect(screen.getByRole('status')).toHaveTextContent('Waiting for the first payment')
   expect(screen.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Switch the automation to Run Immediately' }))
+  await user.click(screen.getByRole('button', { name: /^Switch the automation to Run Immediately/ }))
   expect(screen.getByRole('button', { name: 'Done' })).toBeDisabled()
 
   arrived = true
   act(() => document.dispatchEvent(new Event('visibilitychange')))
   await waitFor(() => expect(screen.getByRole('button', { name: 'Make the first payment' }).closest('li')).toHaveAttribute('data-state', 'done'))
-  expect(screen.getByRole('button', { name: 'Switch the automation to Run Immediately' }).closest('li')).toHaveAttribute('data-state', 'current')
+  expect(screen.getByRole('button', { name: /^Switch the automation to Run Immediately/ }).closest('li')).toHaveAttribute('data-state', 'current')
   expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled()
   expect(screen.queryByText('Waiting for the first payment…')).not.toBeInTheDocument()
 })
@@ -142,7 +143,7 @@ it('Configure again persists a full reset, ignores previous events, and requires
     }),
   )
   const view = renderPage()
-  const immediateStep = () => screen.getByRole('button', { name: 'Switch the automation to Run Immediately' }).closest('li')
+  const immediateStep = () => screen.getByRole('button', { name: /^Switch the automation to Run Immediately/ }).closest('li')
   const guide = await screen.findByRole('button', { name: 'Setup guide' })
   expect(guide).toHaveAttribute('aria-expanded', 'false')
   expect(screen.queryByRole('button', { name: 'Install the Shortcut' })).not.toBeInTheDocument()
@@ -170,7 +171,7 @@ it('Configure again persists a full reset, ignores previous events, and requires
   await waitFor(() => expect(screen.getByRole('button', { name: 'Create the automation' })).toHaveAttribute('aria-expanded', 'true'))
   await user.click(screen.getByRole('button', { name: 'Done' }))
   expect(screen.getByRole('status')).toHaveTextContent('Waiting for the first payment')
-  await user.click(screen.getByRole('button', { name: 'Switch the automation to Run Immediately' }))
+  await user.click(screen.getByRole('button', { name: /^Switch the automation to Run Immediately/ }))
   expect(screen.getByRole('button', { name: 'Done' })).toBeDisabled()
 
   taps++

@@ -6,6 +6,9 @@ import { useDiscardImportEvent, useImportQueue, useImportSources } from './queri
 
 export const STEPS = ['install', 'configure', 'automate', 'payment', 'immediate'] as const
 export type StepId = (typeof STEPS)[number]
+// Payments import either way; switching to Run Immediately only drops the
+// confirmation tap, so the setup is complete without it.
+const REQUIRED_STEPS = STEPS.filter((id) => id !== 'immediate')
 
 // What the server answers to the shortcut's setup check-in (and to a run by
 // hand): the body has no account. That failure IS the proof the shortcut
@@ -17,6 +20,7 @@ const POLL_MS = 4000
 // about the phone-side steps, and a reconnect starts the list over.
 const ticksKey = (sourceId: string) => `appleWalletSetup:${sourceId}`
 const resetKey = (sourceId: string) => `appleWalletSetupReset:${sourceId}`
+const collapsedKey = (sourceId: string) => `appleWalletSetupCollapsed:${sourceId}`
 
 interface ResetPoint {
   tapCount: number
@@ -57,12 +61,18 @@ function readTicks(sourceId: string): StepId[] {
 export function forgetSetupTicks(sourceId: string): void {
   removeItem(ticksKey(sourceId))
   removeItem(resetKey(sourceId))
+  removeItem(collapsedKey(sourceId))
 }
 
 export interface WalletSetup {
   done: (id: StepId) => boolean
   /** the first step not done yet, null once every step is */
   current: StepId | null
+  /** every required step is done; the optional Run Immediately may remain */
+  complete: boolean
+  /** the user folded the completed guide away, so it stays folded */
+  collapsed: boolean
+  setCollapsed: (collapsed: boolean) => void
   doneCount: number
   tick: (id: StepId) => void
   /** restart the checklist and wait for fresh server evidence */
@@ -82,6 +92,13 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
   // Ignore an old Run Immediately tick saved before a payment was received.
   const [ticks, setTicks] = useState<StepId[]>(() => (sourceId ? readTicks(sourceId).filter((id) => id !== 'immediate' || paymentArrived) : []))
   const [configureLink, setConfigureLink] = useState<string | null>(null)
+  const [collapsed, setCollapsedState] = useState(() => (sourceId ? getItem(collapsedKey(sourceId)) === true : false))
+  const setCollapsed = useCallback((value: boolean) => {
+    if (sourceId) {
+      setItem(collapsedKey(sourceId), value)
+    }
+    setCollapsedState(value)
+  }, [sourceId])
   const completionMethods = useRef<Partial<Record<StepId, 'manual' | 'automatic'>>>({})
 
   useEffect(() => {
@@ -124,6 +141,8 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
     }
     setItem(resetKey(sourceId), next)
     setItem(ticksKey(sourceId), [])
+    removeItem(collapsedKey(sourceId))
+    setCollapsedState(false)
     setResetPoint(next)
     setTicks([])
     setConfigureLink(null)
@@ -139,6 +158,7 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
   const auto = (id: StepId) => paymentArrived && id !== 'immediate'
   const done = (id: StepId) => (id !== 'immediate' || paymentArrived) && (auto(id) || ticks.includes(id))
   const current = STEPS.find((id) => !done(id)) ?? null
+  const complete = REQUIRED_STEPS.every(done)
   const completed = STEPS.filter(done).join(',')
   const progress = useRef({ sourceId, completed, current: undefined as StepId | null | undefined })
   useEffect(() => {
@@ -160,8 +180,9 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
         completed_count: completedSteps.length,
       })
     }
-    if (newlyCompleted.length > 0 && current === null) {
-      trackEvent(METRICS.IMPORT_SETUP_COMPLETE, { provider: 'apple-wallet', completed_count: STEPS.length })
+    const wasComplete = REQUIRED_STEPS.every((id) => previousSteps.includes(id))
+    if (newlyCompleted.length > 0 && !wasComplete && REQUIRED_STEPS.every((id) => completedSteps.includes(id))) {
+      trackEvent(METRICS.IMPORT_SETUP_COMPLETE, { provider: 'apple-wallet', completed_count: completedSteps.length })
     }
     if (current !== null && (previous.sourceId !== sourceId || previous.current !== current)) {
       trackEvent(METRICS.IMPORT_SETUP_STEP_VIEW, {
@@ -221,6 +242,9 @@ export function useWalletSetup(source: ImportSourceDto | null): WalletSetup {
   return {
     done,
     current,
+    complete,
+    collapsed,
+    setCollapsed,
     doneCount: STEPS.filter(done).length,
     tick,
     reset,

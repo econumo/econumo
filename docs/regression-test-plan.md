@@ -461,7 +461,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       group's last row on the Settings page itself (not inside Import & export).
 - [ ] Before connecting 📱: the Apple Wallet page explains the feature, lists
       what is needed (an iPhone with Apple Pay, the Shortcuts app, about 5
-      minutes), explains how payments reach Econumo, says which payment fields
+      minutes), lists the known limitations (tap to pay only, no website Apple
+      Pay, transactions made with no signal may not be added), explains how
+      payments reach Econumo, says which payment fields
       Econumo receives and offers "Set up Apple Wallet". Neither this page nor
       the setup checklist has video previews or an embedded player; videos
       are available on the website through the "Setup instructions" link.
@@ -493,6 +495,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       files (`econumo-wallet-v1.shortcut`, `econumo-setup-v1.shortcut`) are
       no longer served (not found), while an already installed v1 automation
       still imports.
+- [ ] Step 2 text is one line: "Tap Connect the Shortcut, then tap Always
+      Allow on every prompt." 📱
 - [ ] Step 2, iOS only 📱: one tap on "Connect the Shortcut" mints an ingest PAT
       (visible under Profile → Tokens with scope `ingest`) and opens the
       Shortcuts app with it right away — the app window stays on the page.
@@ -523,8 +527,21 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       below the hint text. "Connect the Shortcut", the download, the instructions link,
       the waiting line and the hand ticks still work; running the configured
       shortcut by hand on the phone completes step 2 here too.
-- [ ] Step 3 text walks through Automation → + → Wallet → cards & categories →
-      Run After Confirmation → econumo; step 4 text says the iPhone
+- [ ] Step 3 shows a numbered checklist that holds on iOS 26 and iOS 27:
+      open Automation (iOS 27: Library → Automation) and tap New Automation
+      or +, choose Wallet ("When I tap a Wallet Card or Pass"), select the cards and categories, keep confirmation on (Run After
+      Confirmation / Confirm Before Run), choose econumo (iOS 27: Run Shortcut →
+      econumo with Transaction as input). Below it, "Step-by-step guide with
+      screenshots: iOS 26 · iOS 27" opens the article at `#ios-26` / `#ios-27`
+      in a new window; on an iPhone "Open Shortcuts" opens the Shortcuts app 📱.
+      Desktop shows the two links but no "Open Shortcuts" button.
+- [ ] Step 5 text says to turn the confirmation off (Run Immediately on iOS 26,
+      Confirm Before Run off on iOS 27), with the same "Open Shortcuts"
+      button 📱 and guide links, here to `#on-ios-26` / `#on-ios-27`.
+- [ ] On a 320 px-wide phone, in German and Russian too, the checklist, the
+      buttons and the guide-link row of steps 2, 3 and 5 wrap without
+      horizontal scrolling 📱.
+- [ ] Step 4 text says the iPhone
       can stay locked, to tap Run when the automation asks and Always Allow on
       every prompt (on device: only Wallet access is asked — host and iCloud
       Drive were granted in step 2), and waits for the first payment the same
@@ -534,8 +551,11 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       and Always Allow are answered.
 - [ ] The first non-failed payment from Apple Pay completes steps 1–4 by itself
       (imported, queued, or skipped all count),
-      regardless of hand ticks; step 5 (Switch the automation to Run
-      Immediately) stays a hand tick 📱. Its Done button is disabled until
+      regardless of hand ticks, and completes the setup: step 5 (Switch the
+      automation to Run Immediately) is optional, labelled "Optional", stays a
+      hand tick and stays open; the "Setup guide" title now folds the guide
+      away, and a folded guide stays folded after a reload (Configure again
+      or a reconnect unfolds it) 📱. Its Done button is disabled until
       step 4 completes; premature saved step-5 ticks are cleared. The button
       becomes enabled as soon as the first non-failed payment arrives.
 - [ ] Apple Wallet page layout once a tap has arrived 📱: a standalone
@@ -569,11 +589,15 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       `automate`, `payment`, `immediate`, in that order. Shortcut check-in and
       the first non-failed payment count without clicking Done; failed payments
       and attempts to finish step 5 before step 4 do not. A first payment can
-      confirm steps 1–4 at once. Finishing step 5 sends `import_setup_complete`.
+      confirm steps 1–4 at once. The first payment (step 4) sends
+      `import_setup_complete`; step 5 is optional and does not resend it.
       Rerenders/polling do not duplicate milestones. Reopening the guide reports
       the current step without replaying old completions. "Configure again"
       sends `import_setup_restart` only after a successful reset and starts
-      tracking fresh progress. No source/card IDs, card names, merchant,
+      tracking fresh progress. A guide link in steps 3/5 sends
+      `import_setup_guide_open` with `step` (`automate`/`immediate`) and
+      `ios` (`26`/`27`); "Open Shortcuts" sends `import_setup_shortcuts_open`
+      with `step`. No source/card IDs, card names, merchant,
       amount, currency or credentials appear in these events. Analytics opt-out
       suppresses all of them through the usual analytics gate.
 - [ ] Ingest with an `ingest`-scoped PAT: `POST /api/v1/import/ingest-apple-wallet-event`

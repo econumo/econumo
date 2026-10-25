@@ -539,6 +539,7 @@
         "limitations_title": "Bekannte Einschränkungen",
         "tap_only": "Funktioniert nur, wenn du dein iPhone zum Bezahlen ans Terminal hältst",
         "online_not_imported": "Apple Pay-Zahlungen auf Websites werden nicht unterstützt",
+        "no_signal": "Ohne Netz beim Bezahlen wird die Transaktion möglicherweise nicht hinzugefügt",
         "steps_title": "So funktioniert es",
         "flow": {
           "pay": "Bezahle mit Apple Pay",
@@ -566,7 +567,7 @@
         },
         "configure": {
           "title": "Kurzbefehl verbinden",
-          "text": "Generiert ein API-Token. Der Kurzbefehl speichert Serveradresse und Token und verbindet sich dann mit Econumo. Tippe bei jeder Abfrage auf „Immer erlauben“ — die Automation braucht diese Berechtigungen später.",
+          "text": "Tippe auf „Kurzbefehl verbinden“ und dann bei jeder Abfrage auf „Immer erlauben“.",
           "button": "Kurzbefehl verbinden",
           "open": "Econumo verknüpfen",
           "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …",
@@ -574,7 +575,14 @@
         },
         "automate": {
           "title": "Automation anlegen",
-          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen → Nach Bestätigung ausführen → econumo."
+          "text": "Erstelle in der Kurzbefehle-App eine Wallet-Automation:",
+          "list": {
+            "open": "Öffne den Tab „Automation“ (unter iOS 27: Mediathek → Automation) und tippe auf „Neue Automation“ oder +",
+            "wallet": "Wähle Wallet („Wenn ich auf eine Wallet-Karte oder einen Pass tippe“)",
+            "cards": "Wähle die Karten und Kategorien aus, die importiert werden sollen, oder alle",
+            "confirm": "Lass die Bestätigung an: „Nach Bestätigung ausführen“ (iOS 26) oder „Vor dem Ausführen bestätigen“ (iOS 27)",
+            "shortcut": "Wähle den Kurzbefehl econumo (unter iOS 27: „Kurzbefehl ausführen“ → econumo hinzufügen, mit „Transaktion“ als Eingabe)"
+          }
         },
         "payment": {
           "title": "Erste Zahlung tätigen",
@@ -583,9 +591,14 @@
         },
         "immediate": {
           "title": "Automation auf „Sofort ausführen“ umstellen",
-          "text": "Öffne in der Kurzbefehle-App die Automation und ändere „Nach Bestätigung ausführen“ auf „Sofort ausführen“. Ab dann werden Zahlungen ohne Rückfrage importiert."
+          "text": "Schalte die Bestätigung aus, damit Zahlungen ohne Rückfrage importiert werden: Öffne die Automation in der Kurzbefehle-App und wähle „Sofort ausführen“ (iOS 26) oder schalte „Vor dem Ausführen bestätigen“ aus (iOS 27)."
         },
-        "done": "Erledigt"
+        "done": "Erledigt",
+        "guide_title": "Schritt-für-Schritt-Anleitung mit Screenshots:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Kurzbefehle öffnen",
+        "optional": "Optional"
       },
       "same_named_cards": "Karten mit gleichem Namen in Wallet werden als eine Karte angezeigt.",
       "cards": {
