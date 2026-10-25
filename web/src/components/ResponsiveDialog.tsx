@@ -66,11 +66,19 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
   const contentRef = useRef<HTMLDivElement>(null)
   // the sheet sits on the keyboard's top edge and never grows past the visible
   // area; vaul's own repositionInputs is off because it froze a stale height
-  const keyboard = useKeyboardInset(open && isMobile && !fullScreen)
+  const keyboard = useKeyboardInset(open && isMobile)
   const sheetStyle = keyboard.height > 0 ? { bottom: keyboard.bottom, maxHeight: keyboard.height - SHEET_TOP_GAP } : undefined
+  // a full-screen page shrinks to the visible area instead: left at h-dvh, iOS
+  // pans it so the header and the fields above the focused one go off-screen
+  // and the rest hides behind the keyboard; fitted, the header and footer stay
+  // put and the form scrolls between them
+  const pageStyle = keyboard.height > 0 ? { top: keyboard.top, height: keyboard.height, maxHeight: keyboard.height } : undefined
   // edge-to-edge viewport: content that reaches the screen bottom must clear
   // the home indicator itself; a pinned footer carries its own inset instead
-  const bodyClass = `flex-1 overflow-y-auto px-4 pt-1 ${footer ? 'pb-4' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`
+  // the keyboard covers the home indicator, so its inset is dead space then
+  const keyboardUp = keyboard.height > 0
+  const bodyClass = `flex-1 overflow-y-auto px-4 pt-1 ${footer || keyboardUp ? 'pb-4' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`
+  const footerClass = `border-t px-4 pt-3 ${keyboardUp ? 'pb-3' : 'pb-[max(env(safe-area-inset-bottom),0.75rem)]'} [&_button]:h-11`
 
   // An open combobox popup (Base UI, not a Radix layer, so Radix's document-
   // capture Escape handler doesn't know about it) owns Escape: it closes the
@@ -113,6 +121,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           ref={contentRef}
+          style={pageStyle}
           className="top-0 left-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
           onInteractOutside={onInteractOutside}
           onEscapeKeyDown={onEscapeKeyDown}
@@ -128,7 +137,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
           <div className={bodyClass}>{children}</div>
           {footer ? (
-            <div className="border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] [&_button]:h-11">{footer}</div>
+            <div className={footerClass}>{footer}</div>
           ) : null}
         </DialogContent>
       </Dialog>
@@ -148,7 +157,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
           <div className={bodyClass}>{children}</div>
           {footer ? (
-            <div className="border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] [&_button]:h-11">{footer}</div>
+            <div className={footerClass}>{footer}</div>
           ) : null}
         </DrawerContent>
       </Drawer>

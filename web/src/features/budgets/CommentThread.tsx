@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { dialogActionsClass } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import type { BudgetCommentDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
@@ -29,6 +30,8 @@ export interface CommentThreadProps {
   /** 'sheet' pins the composer to the bottom of the scrolling sheet body so the
    *  on-screen keyboard never pushes the thread out of view */
   layout?: 'popover' | 'sheet'
+  /** sheet only: the action row's Cancel closes the sheet */
+  onClose?: () => void
 }
 
 const MAX_COMMENT_RUNES = 500
@@ -106,7 +109,7 @@ export function CommentMarker({
   )
 }
 
-export function CommentThread({ budgetId, elementId, period, comments, currentUserId, canModerate, readOnly, truncated, layout = 'popover' }: CommentThreadProps) {
+export function CommentThread({ budgetId, elementId, period, comments, currentUserId, canModerate, readOnly, truncated, layout = 'popover', onClose }: CommentThreadProps) {
   const { t, i18n } = useTranslation()
   const createComment = useCreateComment(budgetId)
   const updateComment = useUpdateComment(budgetId)
@@ -175,6 +178,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
 
   const draftRunes = runeLength(draft)
   const editRunes = runeLength(editDraft)
+  const postDisabled = createComment.isPending || !draft.trim() || draftRunes > MAX_COMMENT_RUNES
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -270,7 +274,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
       {readOnly ? (
         <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.read_only')}</p>
       ) : (
-        <div className={`flex flex-col gap-1.5 ${layout === 'sheet' ? 'sticky bottom-0 bg-background pt-2' : ''}`} data-testid="comment-composer">
+        <div className={`flex flex-col gap-1.5 ${layout === 'sheet' ? 'sticky bottom-0 bg-popover pt-2' : ''}`} data-testid="comment-composer">
           <CardField label={t('budgets.page.plan.comments.comment_label')} htmlFor="ct-composer">
             <Textarea
               id="ct-composer"
@@ -286,17 +290,27 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
               }}
             />
           </CardField>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.counter', { count: draftRunes })}</span>
-            <Button
-              type="button"
-              size="sm"
-              disabled={createComment.isPending || !draft.trim() || draftRunes > MAX_COMMENT_RUNES}
-              onClick={post}
-            >
-              {t('budgets.page.plan.comments.post')}
-            </Button>
-          </div>
+          {layout === 'sheet' ? (
+            <>
+              <span className="text-right text-xs text-muted-foreground">{t('budgets.page.plan.comments.counter', { count: draftRunes })}</span>
+              {/* the same full-width Cancel | Save row as the Set plan sheet */}
+              <div className={`${dialogActionsClass} pt-1.5`}>
+                <Button type="button" variant="secondary" onClick={onClose}>
+                  {t('common.button.cancel.label')}
+                </Button>
+                <Button type="button" disabled={postDisabled} onClick={post}>
+                  {t('budgets.page.plan.comments.post')}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.counter', { count: draftRunes })}</span>
+              <Button type="button" size="sm" disabled={postDisabled} onClick={post}>
+                {t('budgets.page.plan.comments.post')}
+              </Button>
+            </div>
+          )}
         </div>
       )}
       <ConfirmDialog

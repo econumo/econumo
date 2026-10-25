@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { ResponsiveDialog } from './ResponsiveDialog'
 
 function mockMatchMedia(matches: boolean) {
@@ -76,4 +76,37 @@ it('size="wide" widens the desktop dialog instead of the default narrow width', 
   const content = baseElement.querySelector('[data-slot="dialog-content"]')
   expect(content?.className).toContain('sm:max-w-2xl')
   expect(content?.className).not.toContain('sm:max-w-sm')
+})
+
+it('fullScreen on mobile fits the visible area above the on-screen keyboard', () => {
+  mockMatchMedia(true)
+  const vv = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 })
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport')
+  Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+  try {
+    const { baseElement } = render(
+      <ResponsiveDialog open fullScreen onOpenChange={() => {}} title="My title" footer={<button>ok</button>}>
+        <p>body text</p>
+      </ResponsiveDialog>,
+    )
+    const content = () => baseElement.querySelector<HTMLElement>('[data-slot="dialog-content"]')
+    expect(content()?.style.height).toBe('')
+    act(() => {
+      vv.height = 450
+      vv.offsetTop = 120
+      vv.dispatchEvent(new Event('resize'))
+    })
+    // iOS panned the layout viewport: the page follows it instead of sliding off the top
+    expect(content()?.style.top).toBe('120px')
+    expect(content()?.style.height).toBe('450px')
+    // the keyboard hides the home indicator, so the footer drops its inset
+    expect(screen.getByText('ok').parentElement?.className).not.toContain('safe-area-inset-bottom')
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'visualViewport', original)
+    } else {
+      delete (window as { visualViewport?: unknown }).visualViewport
+    }
+  }
 })
