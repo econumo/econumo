@@ -53,7 +53,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   mockViewport()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
+  useBudgetPeriodStore.setState({ lastMode: 'budget', selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
 })
 
 it('renders the full budget page: strip, chips, table, totals', async () => {
@@ -232,6 +232,24 @@ it('/ renders the budget for an onboarded user with a default budget', async () 
     </QueryClientProvider>,
   )
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
+})
+
+it('/ reopens the Plan when it was the view last opened, and keeps remembering it', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+  )
+  useBudgetPeriodStore.setState({ lastMode: 'plan' })
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const router = createMemoryRouter([{ path: '/', element: <HomePage /> }], { initialEntries: ['/'] })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  expect(await screen.findByTestId('plan-sheet')).toBeInTheDocument()
+  expect(useBudgetPeriodStore.getState().lastMode).toBe('plan')
 })
 
 const accessDenied = () =>
