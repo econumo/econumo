@@ -1,10 +1,20 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronsUpDown, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Combobox as ComboboxPrimitive } from '@base-ui/react'
 import { Combobox, ComboboxContent, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
 import { EntityIcon } from '@/components/EntityIcon'
 import { rankByName } from '@/lib/search'
+import { useIsPhone } from '@/hooks/useIsPhone'
+
+// px left between a picker scrolled to the top of a phone form and the form's top edge
+const FIELD_TOP_GAP = 8
+// px a phone picker's list wants below its field: five rows and the create hint
+const PHONE_LIST_ROOM = 264
+
+// on a phone the list always opens below the field: flipping it above covered
+// the page header and flipped back as the keyboard changed height
+const PHONE_COLLISION_AVOIDANCE = { side: 'none' } as const
 
 export interface EntityOption {
   value: string
@@ -54,6 +64,29 @@ export function EntitySelect({
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const rootRef = useRef<HTMLDivElement | null>(null)
+  const isPhone = useIsPhone()
+  // the keyboard leaves little room below a field low on a phone form, so the
+  // form scrolls just enough for the list to fit under the field, at most until
+  // the field reaches the form's top
+  useEffect(() => {
+    const field = rootRef.current
+    const body = field?.closest<HTMLElement>('[data-slot="dialog-body"]')
+    if (!open || !isPhone || !field || !body) {
+      return
+    }
+    // after iOS's own scroll-into-view of the focused input
+    const frame = requestAnimationFrame(() => {
+      const vv = window.visualViewport
+      const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight
+      const rect = field.getBoundingClientRect()
+      const short = rect.bottom + PHONE_LIST_ROOM - visibleBottom
+      const toTop = rect.top - body.getBoundingClientRect().top - FIELD_TOP_GAP
+      if (short > 0 && toTop > 0) {
+        body.scrollTop += Math.min(short, toTop)
+      }
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [open, isPhone])
   // portal the popup INTO the containing dialog/drawer: the dialog's scroll lock
   // swallows wheel events on anything portaled to body (and vaul's touch lock
   // does the same to touchmove), so the list would not scroll otherwise
@@ -144,7 +177,7 @@ export function EntitySelect({
         />
         <ChevronsUpDown className="pointer-events-none size-4 shrink-0 opacity-50" />
       </div>
-      <ComboboxContent container={portalContainer}>
+      <ComboboxContent container={portalContainer} collisionAvoidance={isPhone ? PHONE_COLLISION_AVOIDANCE : undefined}>
         <ComboboxList>
           {(row: Row) => (
             <ComboboxItem

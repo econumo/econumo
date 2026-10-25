@@ -100,6 +100,8 @@ it('fullScreen on mobile fits the visible area above the on-screen keyboard', ()
     // iOS panned the layout viewport: the page follows it instead of sliding off the top
     expect(content()?.style.top).toBe('120px')
     expect(content()?.style.height).toBe('450px')
+    // trailing room so any field can scroll to the top, its picker listing below it
+    expect(baseElement.querySelector<HTMLElement>('[data-slot="dialog-body"]')?.style.paddingBottom).toBe('450px')
     // the keyboard hides the home indicator, so the footer drops its inset
     expect(screen.getByText('ok').parentElement?.className).not.toContain('safe-area-inset-bottom')
   } finally {

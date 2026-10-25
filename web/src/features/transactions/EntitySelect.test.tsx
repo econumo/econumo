@@ -203,3 +203,52 @@ it('matches on searchText when given, not on the displayed label', async () => {
   await user.keyboard('cash')
   expect((await screen.findAllByRole('option'))[0]).toHaveTextContent('Cash ($10.00)')
 })
+
+describe('on a phone, opening the picker scrolls the form until its list fits above the keyboard', () => {
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport')
+  beforeEach(() => {
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+      matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    }))
+    // the keyboard leaves the top 500px visible
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: Object.assign(new EventTarget(), { height: 500, offsetTop: 0 }) })
+  })
+  afterEach(() => {
+    if (original) {
+      Object.defineProperty(window, 'visualViewport', original)
+    } else {
+      delete (window as { visualViewport?: unknown }).visualViewport
+    }
+  })
+
+  async function openAt(fieldTop: number, bodyTop = 60) {
+    const user = userEvent.setup()
+    render(
+      <div data-slot="dialog-body">
+        <EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} />
+      </div>,
+    )
+    const body = document.querySelector<HTMLElement>('[data-slot="dialog-body"]')!
+    const field = document.querySelector<HTMLElement>('[data-slot="entity-select"]')!
+    body.getBoundingClientRect = () => ({ top: bodyTop }) as DOMRect
+    field.getBoundingClientRect = () => ({ top: fieldTop, bottom: fieldTop + 44 }) as DOMRect
+    await user.click(combobox())
+    await screen.findByRole('option', { name: 'Food' })
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+    return body.scrollTop
+  }
+
+  it('leaves a field with room below it in place', async () => {
+    expect(await openAt(100)).toBe(0)
+  })
+
+  it('scrolls a lower field up by the missing room', async () => {
+    // 200 + 44 + 264 - 500
+    expect(await openAt(200)).toBe(8)
+  })
+
+  it('stops once the field reaches the top of the form', async () => {
+    // short by 208, but the field is only 400 - 300 - 8 below the form's top
+    expect(await openAt(400, 300)).toBe(92)
+  })
+})

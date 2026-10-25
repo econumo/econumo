@@ -2439,6 +2439,12 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       and usable without closing the keyboard, the form scrolls down to Notes,
       and the Save row sits right on top of the keyboard. Closing the keyboard
       returns the page to full height.
+- [ ] 📱 Category / Recipient picker on Add transaction with the keyboard up
+      on an iPhone: the list always opens BELOW the field, never above it over
+      the header, and does not flip as the keyboard switches between the
+      number pad and letters. A field low on the form first scrolls up just
+      enough to show about five rows above the keyboard; Category near the top
+      does not move. Picking Category, then Recipient, keeps the page steady.
 - [ ] Row actions open bottom sheets (accounts, transactions, classifications,
       recurring, sessions, tokens, budgets).
 - [ ] Long lists scroll smoothly; sidebar scroll position is remembered when
