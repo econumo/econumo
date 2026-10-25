@@ -326,6 +326,7 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
               <button type="button" className="flex items-center gap-3 rounded-md py-2 text-left" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : id)}>
                 <StepMarker n={i + 1} state={state} />
                 <span className={state === 'todo' ? 'text-muted-foreground' : ''}>{t(`imports.apple_wallet.steps.${id}.title`)}</span>
+                {id === 'immediate' ? <span className="text-xs text-muted-foreground">{t('imports.apple_wallet.steps.optional')}</span> : null}
               </button>
               {isOpen ? <div className="flex flex-col gap-3 pb-3 pl-9">{body(id)}</div> : null}
             </li>
@@ -338,8 +339,10 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
 
 export function AppleWalletSetup({ setup }: { setup: WalletSetup }) {
   const { t } = useTranslation()
-  const complete = setup.current === null
-  const [expanded, setExpanded] = useState(!complete)
+  const complete = setup.complete
+  // Run Immediately is optional, so a guide still showing it stays open until
+  // the user folds it away.
+  const [expanded, setExpanded] = useState(!complete || (setup.current !== null && !setup.collapsed))
   const open = !complete || expanded
   const [configuring, setConfiguring] = useState(false)
   const [resetting, setResetting] = useState(false)
@@ -379,7 +382,7 @@ export function AppleWalletSetup({ setup }: { setup: WalletSetup }) {
       <div className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1 ${open ? 'border-b border-border pb-3' : ''}`}>
         <h2 className="min-w-0 flex-1 font-medium">
           {complete ? (
-            <button type="button" className={`flex min-h-8 w-full items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${open ? '' : 'justify-between'}`} aria-expanded={open} onClick={() => setExpanded((value) => !value)}>
+            <button type="button" className={`flex min-h-8 w-full items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${open ? '' : 'justify-between'}`} aria-expanded={open} onClick={() => { setExpanded(!open); setup.setCollapsed(open) }}>
               {t('imports.apple_wallet.setup.title')}
               <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>

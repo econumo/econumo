@@ -597,7 +597,8 @@
         "guide_title": "Stapsgewijze handleiding met screenshots:",
         "guide_ios26": "iOS 26",
         "guide_ios27": "iOS 27",
-        "open_shortcuts": "Open Opdrachten"
+        "open_shortcuts": "Open Opdrachten",
+        "optional": "Optioneel"
       },
       "same_named_cards": "Kaarten met dezelfde naam in Wallet worden als één kaart weergegeven.",
       "cards": {

@@ -551,8 +551,11 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       and Always Allow are answered.
 - [ ] The first non-failed payment from Apple Pay completes steps 1–4 by itself
       (imported, queued, or skipped all count),
-      regardless of hand ticks; step 5 (Switch the automation to Run
-      Immediately) stays a hand tick 📱. Its Done button is disabled until
+      regardless of hand ticks, and completes the setup: step 5 (Switch the
+      automation to Run Immediately) is optional, labelled "Optional", stays a
+      hand tick and stays open; the "Setup guide" title now folds the guide
+      away, and a folded guide stays folded after a reload (Configure again
+      or a reconnect unfolds it) 📱. Its Done button is disabled until
       step 4 completes; premature saved step-5 ticks are cleared. The button
       becomes enabled as soon as the first non-failed payment arrives.
 - [ ] Apple Wallet page layout once a tap has arrived 📱: a standalone
@@ -586,7 +589,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       `automate`, `payment`, `immediate`, in that order. Shortcut check-in and
       the first non-failed payment count without clicking Done; failed payments
       and attempts to finish step 5 before step 4 do not. A first payment can
-      confirm steps 1–4 at once. Finishing step 5 sends `import_setup_complete`.
+      confirm steps 1–4 at once. The first payment (step 4) sends
+      `import_setup_complete`; step 5 is optional and does not resend it.
       Rerenders/polling do not duplicate milestones. Reopening the guide reports
       the current step without replaying old completions. "Configure again"
       sends `import_setup_restart` only after a successful reset and starts

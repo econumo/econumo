@@ -597,7 +597,8 @@
         "guide_title": "Guía paso a paso con capturas:",
         "guide_ios26": "iOS 26",
         "guide_ios27": "iOS 27",
-        "open_shortcuts": "Abrir Atajos"
+        "open_shortcuts": "Abrir Atajos",
+        "optional": "Opcional"
       },
       "same_named_cards": "Las tarjetas con el mismo nombre en Wallet se muestran como una sola tarjeta.",
       "cards": {

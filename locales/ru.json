@@ -597,7 +597,8 @@
         "guide_title": "Пошаговая инструкция со скриншотами:",
         "guide_ios26": "iOS 26",
         "guide_ios27": "iOS 27",
-        "open_shortcuts": "Открыть «Команды»"
+        "open_shortcuts": "Открыть «Команды»",
+        "optional": "Необязательно"
       },
       "same_named_cards": "Карты с одинаковым именем в Wallet отображаются как одна карта.",
       "cards": {

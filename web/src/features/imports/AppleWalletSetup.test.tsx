@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -43,10 +43,10 @@ function renderSetup(src: ImportSourceDto | null, overrides: Record<string, unkn
   )
 }
 
-const stepToggle = (title: string) => screen.getAllByRole('button', { name: title }).find((button) => button.hasAttribute('aria-expanded')) as HTMLElement
-const step = (title: string) => stepToggle(title).closest('li') as HTMLElement
+const stepToggle = (title: string | RegExp) => screen.getAllByRole('button', { name: title }).find((button) => button.hasAttribute('aria-expanded')) as HTMLElement
+const step = (title: string | RegExp) => stepToggle(title).closest('li') as HTMLElement
 const connectButton = () => screen.getAllByRole('button', { name: 'Connect the Shortcut' }).find((button) => !button.hasAttribute('aria-expanded')) as HTMLElement
-const stateOf = (title: string) => step(title).getAttribute('data-state')
+const stateOf = (title: string | RegExp) => step(title).getAttribute('data-state')
 const ticks = () => JSON.parse(localStorage.getItem('appleWalletSetup:s1') ?? '[]')
 
 beforeEach(() => {
@@ -341,12 +341,12 @@ it.each([false, true])('step 5 requires the first payment (previously marked don
   const user = userEvent.setup()
   renderSetup(source, { importQueue: { ...emptyQueue, failed: [noInputEvent] } })
   expect(stateOf('Make the first payment')).toBe('current')
-  expect(stateOf('Switch the automation to Run Immediately')).toBe('todo')
-  await user.click(stepToggle('Switch the automation to Run Immediately'))
-  const done = within(step('Switch the automation to Run Immediately')).getByRole('button', { name: 'Done' })
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('todo')
+  await user.click(stepToggle(/^Switch the automation to Run Immediately/))
+  const done = within(step(/^Switch the automation to Run Immediately/)).getByRole('button', { name: 'Done' })
   expect(done).toBeDisabled()
   await user.click(done)
-  expect(stateOf('Switch the automation to Run Immediately')).toBe('todo')
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('todo')
   expect(screen.queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
   expect(ticks()).not.toContain('immediate')
 })
@@ -355,15 +355,15 @@ it.each(['mapped', 'unmapped', 'ignored'] as const)('the first payment on a %s c
   const user = userEvent.setup()
   renderSetup({ ...source, cards: [{ ...card, state, accountId: state === 'mapped' ? 'a1' : '', queuedCount: state === 'unmapped' ? 1 : 0 }] })
   expect(stateOf('Make the first payment')).toBe('done')
-  expect(stateOf('Switch the automation to Run Immediately')).toBe('current')
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('current')
   await user.click(stepToggle('Make the first payment'))
   expect(within(step('Make the first payment')).queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
   // server-confirmed steps cannot be undone by hand
   await user.click(screen.getByRole('button', { name: 'Install the Shortcut' }))
   expect(screen.queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Switch the automation to Run Immediately' }))
+  await user.click(screen.getByRole('button', { name: /^Switch the automation to Run Immediately/ }))
   await user.click(screen.getByRole('button', { name: 'Done' }))
-  expect(stateOf('Switch the automation to Run Immediately')).toBe('done')
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('done')
   expect(screen.getByText(/Open this page on your iPhone/)).toBeVisible()
   expect(screen.getByText(/Open this page on your iPhone/).nextElementSibling).toContainElement(screen.getByRole('link', { name: 'Setup instructions' }))
   expect(screen.getByRole('button', { name: 'Configure again' })).toBeInTheDocument()
@@ -383,7 +383,7 @@ it.each([false, true])('completed setup starts collapsed and can be reopened (iO
   await user.click(toggle)
   expect(toggle).toHaveAttribute('aria-expanded', 'true')
   expect(screen.getByRole('link', { name: 'Setup instructions' })).toBeVisible()
-  expect(stateOf('Switch the automation to Run Immediately')).toBe('done')
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('done')
   expect(screen.queryByText(/Open this page on your iPhone/) !== null).toBe(!ios)
 
   await user.click(toggle)
@@ -410,7 +410,7 @@ it('disconnect drops the hand ticks', async () => {
 
 it.each([
   ['Create the automation', ['install', 'configure'], '#ios-26', '#ios-27'],
-  ['Switch the automation to Run Immediately', ['install', 'configure', 'automate'], '#on-ios-26', '#on-ios-27'],
+  [/^Switch the automation to Run Immediately/, ['install', 'configure', 'automate'], '#on-ios-26', '#on-ios-27'],
 ] as const)('%s links to the iOS 26 and iOS 27 sections of the guide in a new window', (title, ticked, a26, a27) => {
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(ticked))
   mockIsIOS.value = true
@@ -463,4 +463,22 @@ it('step 2 is a single instruction', () => {
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install']))
   renderSetup(source)
   expect(within(step('Connect the Shortcut')).getByText('Tap Connect the Shortcut, then tap Always Allow on every prompt.')).toBeVisible()
+})
+
+it('the first payment completes the setup; step 5 is marked optional, stays open until the guide is collapsed', async () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure', 'automate']))
+  const user = userEvent.setup()
+  renderSetup({ ...source, cards: [card] })
+  const toggle = stepToggle(/^Switch the automation to Run Immediately/)
+  expect(toggle).toHaveTextContent('Optional')
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('current')
+  // complete without step 5: the guide title becomes the collapse toggle
+  const guide = screen.getByRole('button', { name: 'Setup guide' })
+  expect(guide).toHaveAttribute('aria-expanded', 'true')
+  await user.click(guide)
+  expect(guide).toHaveAttribute('aria-expanded', 'false')
+  cleanup()
+  renderSetup({ ...source, cards: [card] })
+  expect(screen.getByRole('button', { name: 'Setup guide' })).toHaveAttribute('aria-expanded', 'false')
 })

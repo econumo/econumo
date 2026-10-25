@@ -597,7 +597,8 @@
         "guide_title": "Step-by-step guide with screenshots:",
         "guide_ios26": "iOS 26",
         "guide_ios27": "iOS 27",
-        "open_shortcuts": "Open Shortcuts"
+        "open_shortcuts": "Open Shortcuts",
+        "optional": "Optional"
       },
       "same_named_cards": "Cards with the same name in Wallet appear as one card.",
       "cards": {

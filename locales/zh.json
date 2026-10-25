@@ -597,7 +597,8 @@
         "guide_title": "带截图的分步指南：",
         "guide_ios26": "iOS 26",
         "guide_ios27": "iOS 27",
-        "open_shortcuts": "打开快捷指令"
+        "open_shortcuts": "打开快捷指令",
+        "optional": "可选"
       },
       "same_named_cards": "Wallet 中同名的卡片会显示为一张卡。",
       "cards": {

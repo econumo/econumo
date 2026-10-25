@@ -597,7 +597,8 @@
         "guide_title": "Guida passo passo con screenshot:",
         "guide_ios26": "iOS 26",
         "guide_ios27": "iOS 27",
-        "open_shortcuts": "Apri Comandi rapidi"
+        "open_shortcuts": "Apri Comandi rapidi",
+        "optional": "Facoltativo"
       },
       "same_named_cards": "Le carte con lo stesso nome in Wallet vengono mostrate come un’unica carta.",
       "cards": {
