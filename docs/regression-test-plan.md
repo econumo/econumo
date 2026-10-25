@@ -2354,6 +2354,15 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       appear (simulate with a binary built at an older version — Docker
       `--build-arg ECONUMO_VERSION=v0.0.1`; the runtime variable no longer
       moves this, it only relabels the UI).
+- [ ] What's new notice 📱: after the server moves to a newer `vX.Y.Z`
+      (patch releases included), an existing user sees "What's new in vX.Y.Z"
+      in the sidebar (expanded sidebar and the phone drawer; not the
+      collapsed rail). The link opens `https://econumo.com/releases/vX.Y.Z`
+      in a new window; opening it or pressing ✕ hides the card, and it stays
+      hidden after a reload and on the user's other devices. A user
+      registered on the current version never sees it; a `dev` build or a
+      downgrade shows nothing. Works for a read-only (lapsed) user too (no
+      402).
 - [ ] Version label: with `ECONUMO_VERSION=demo-42` set at RUNTIME, the
       sidebar header and the settings version row both read `demo-42`, while
       the update notice above still compares the real binary version (so a

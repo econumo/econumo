@@ -2000,6 +2000,10 @@
       "close": "Percebi"
     }
   },
+  "whatsNew": {
+    "notice": "Novidades da {version}",
+    "dismiss": "Dispensar"
+  },
   "errors": {
     "common": {
       "is_blank": "Este valor não deve estar vazio.",

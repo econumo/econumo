@@ -11,6 +11,7 @@ import darkLogo from '@/assets/econumo-dark.svg?inline'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UpdateNotice } from '@/components/UpdateNotice'
+import { WhatsNewNotice } from '@/features/whatsNew/WhatsNewNotice'
 import { InstallBanner } from '@/features/install/InstallBanner'
 import { InstallPopup } from '@/features/install/InstallPopup'
 import { ServerVersionNotice } from '@/components/ServerVersionNotice'
@@ -245,6 +246,7 @@ export function ApplicationLayout() {
               <div className="flex-1" />
             )}
 
+            {!rail ? <WhatsNewNotice /> : null}
             {!rail ? <UpdateNotice /> : null}
 
             {rail ? (

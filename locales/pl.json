@@ -2000,6 +2000,10 @@
       "close": "Rozumiem"
     }
   },
+  "whatsNew": {
+    "notice": "Co nowego w {version}",
+    "dismiss": "Zamknij"
+  },
   "errors": {
     "common": {
       "is_blank": "Ta wartość nie powinna być pusta.",

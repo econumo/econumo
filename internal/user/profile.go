@@ -91,6 +91,23 @@ func (s *Service) UpdateAnalytics(ctx context.Context, userID vo.Id, req model.U
 	return &model.UpdateAnalyticsResult{User: cur}, nil
 }
 
+// UpdateLastSeenVersion records the release whose "what's new" notice the
+// caller has opened or dismissed, and returns the refreshed current user.
+func (s *Service) UpdateLastSeenVersion(ctx context.Context, userID vo.Id, req model.UpdateLastSeenVersionRequest) (*model.UpdateLastSeenVersionResult, error) {
+	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
+		u.SetLastSeenVersion(req.Version, s.repo.NextIdentity(), now)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	cur, err := s.toCurrentUser(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	return &model.UpdateLastSeenVersionResult{User: cur}, nil
+}
+
 // UpdateLanguage persists the caller's UI language. Write-only: nothing reads
 // it yet; it exists so future background emails can render in the user's
 // language. Deliberately not via mutate/Save (a dedicated UPDATE keeps the

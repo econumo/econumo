@@ -13,3 +13,9 @@
 == update-analytics POST /api/v1/user/update-analytics [owner] -> 200
 {"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"Renamed","email":"owner@example.test","avatar":"diamond:sky","createdAt":"<datetime>","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null},{"name":"analytics","value":"0"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly","accessLevel":"full","accessUntil":"","hasPassword":true}}}
 
+== update-last-seen-version POST /api/v1/user/update-last-seen-version [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"Renamed","email":"owner@example.test","avatar":"diamond:sky","createdAt":"<datetime>","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null},{"name":"analytics","value":"0"},{"name":"last_seen_version","value":"v1.6.0"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly","accessLevel":"full","accessUntil":"","hasPassword":true}}}
+
+== err:update-last-seen-version-invalid POST /api/v1/user/update-last-seen-version [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"version":["Это значение недействительно."]}}
+

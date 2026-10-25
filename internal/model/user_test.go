@@ -373,6 +373,33 @@ func TestAnalyticsOption(t *testing.T) {
 	}
 }
 
+func TestLastSeenVersionOption(t *testing.T) {
+	now := time.Date(2026, 10, 24, 10, 0, 0, 0, time.UTC)
+	u := &User{}
+
+	u.SetLastSeenVersion("v1.5.0", vo.NewId(), now)
+	if len(u.Options) != 1 || u.Options[0].Name != OptionLastSeenVersion || *u.Options[0].Value != "v1.5.0" {
+		t.Fatalf("options = %+v, want one last_seen_version row", u.Options)
+	}
+
+	id := u.Options[0].ID
+	u.SetLastSeenVersion("v1.6.0", vo.NewId(), now.Add(time.Hour))
+	if len(u.Options) != 1 || u.Options[0].ID != id || *u.Options[0].Value != "v1.6.0" {
+		t.Fatalf("options = %+v, want the existing row updated in place", u.Options)
+	}
+}
+
+func TestIsReleaseVersion(t *testing.T) {
+	for v, want := range map[string]bool{
+		"v1.6.0": true, "v10.20.30": true,
+		"dev": false, "": false, "1.6.0": false, "v1.6": false, "v1.6.0-rc1": false, "v1.6.0 ": false,
+	} {
+		if got := IsReleaseVersion(v); got != want {
+			t.Errorf("IsReleaseVersion(%q) = %v, want %v", v, got, want)
+		}
+	}
+}
+
 func TestOptionConstants_Pinned(t *testing.T) {
 	// These names + defaults are part of the wire/storage contract.
 	pins := map[string]string{

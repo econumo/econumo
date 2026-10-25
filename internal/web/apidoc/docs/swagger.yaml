@@ -3286,6 +3286,16 @@ definitions:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
     type: object
+  model.UpdateLastSeenVersionRequest:
+    properties:
+      version:
+        type: string
+    type: object
+  model.UpdateLastSeenVersionResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
   model.UpdateNameRequest:
     properties:
       name:
@@ -11096,6 +11106,48 @@ paths:
       security:
       - Bearer: []
       summary: Update language
+      tags:
+      - User
+  /api/v1/user/update-last-seen-version:
+    post:
+      consumes:
+      - application/json
+      description: Records the release (vX.Y.Z) whose "what's new" notice the authenticated
+        user has seen and returns the refreshed user.
+      parameters:
+      - description: Update last seen version request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateLastSeenVersionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateLastSeenVersionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update last seen version
       tags:
       - User
   /api/v1/user/update-name:

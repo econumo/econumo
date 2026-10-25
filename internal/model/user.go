@@ -8,6 +8,7 @@ package model
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -23,6 +24,9 @@ const (
 	OptionBudget       = "budget"
 	OptionOnboarding   = "onboarding"
 	OptionAnalytics    = "analytics"
+	// OptionLastSeenVersion is the newest release whose "what's new" notice the
+	// user has seen (a vX.Y.Z string); absent for users predating it.
+	OptionLastSeenVersion = "last_seen_version"
 
 	DefaultCurrency     = "USD"
 	DefaultReportPeriod = "monthly"
@@ -279,6 +283,24 @@ func (u *User) SetAnalytics(enabled bool, id vo.Id, now time.Time) {
 	}
 	u.Options = append(u.Options, NewUserOption(id, OptionAnalytics, &v, now))
 }
+
+// SetLastSeenVersion records the release whose "what's new" notice the user has
+// seen, appending the option row when absent (like SetAnalytics). id is
+// consumed only in that case.
+func (u *User) SetLastSeenVersion(version string, id vo.Id, now time.Time) {
+	v := version
+	if o := u.Option(OptionLastSeenVersion); o != nil {
+		o.setValue(&v, now)
+		return
+	}
+	u.Options = append(u.Options, NewUserOption(id, OptionLastSeenVersion, &v, now))
+}
+
+// IsReleaseVersion reports whether v is a published release version (vX.Y.Z);
+// dev builds and custom labels are not, and never reach the option.
+func IsReleaseVersion(v string) bool { return releaseVersionPattern.MatchString(v) }
+
+var releaseVersionPattern = regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
 
 // UpdateBudget sets the user's active budget option.
 func (u *User) UpdateBudget(budgetID string, now time.Time) {

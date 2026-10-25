@@ -378,6 +378,11 @@ IS a real version, used by the mobile app where no server config is present;
 `ECONUMO_COMMIT` (the build arg and env var of the same name, set by both publish
 workflows and the Makefile from the checked-out sha) is inlined the same way as the
 bundle's own `VERSION_REF`.
+The sidebar's "What's new in vX.Y.Z" card (`web/src/features/whatsNew`) shows when the
+running `VERSION` is a release newer than the user's `last_seen_version` option (absent =
+an existing user who upgraded; new accounts are seeded with the running release, a `dev`
+build seeds and shows nothing); opening `https://econumo.com/releases/<version>` or
+dismissing it writes the option through `update-last-seen-version`.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One
@@ -1134,7 +1139,8 @@ In the distroless image these run via the binary directly, e.g.
   `oauth/complete-link`, `oauth/unlink-identity`, `authserver/revoke-connected-app`
   and `authserver/decline-authorization` (declining writes nothing) —
   plus `update-analytics`: withdrawing from product analytics is a privacy right, not a
-  paid feature, so it must work regardless of access level); `GET` reads are never restricted.
+  paid feature, so it must work regardless of access level, and `update-last-seen-version`,
+  so the "what's new" card stays dismissable); `GET` reads are never restricted.
 
 ## Authentication
 
