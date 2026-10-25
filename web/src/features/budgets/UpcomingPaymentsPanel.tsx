@@ -2,13 +2,14 @@ import type { KeyboardEvent, MouseEvent, ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Repeat } from 'lucide-react'
 import type { BudgetDto, BudgetTransactionDto, BudgetUpcomingDto } from '@/api/dto/budget'
-import { BudgetElementType } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
-import { cmp, sub } from '@/lib/decimal'
+import { cmp, isZero, sub } from '@/lib/decimal'
 import { dayKey, isFuture, parseDateTime } from '@/lib/datetime'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { moneyFormat, normalizeNumber } from '@/lib/money'
+import { useCurrencies } from '@/features/currencies/queries'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { budgetTransactionsParams } from './budgetTransactionsParams'
 import { planNeed } from './planHint'
@@ -36,16 +37,19 @@ interface Row {
   key: string
   spentAt: string
   name: string
-  amount: string
+  /** what the row shows: its own currency, with that currency's symbol when it differs from the cell's */
+  shown: string
   recurring?: BudgetUpcomingDto
 }
 
-/** What is still to come in the cell: due recurring payments and real rows dated later this month,
- *  every figure in the cell's currency. Pressing anywhere on it puts spent + still due (the total)
+/** What is still to come in the cell: due recurring payments and real rows dated later this month.
+ *  Every figure carries a currency symbol: Spent and Total in the cell's currency, each row in its
+ *  own (a row in another currency keeps its own amount). Pressing anywhere on it puts spent + still due (the total)
  *  into the editor. */
 export function UpcomingPaymentsPanel({ query, onUse }: { query: UpcomingQuery; onUse?: (amount: string) => void }): ReactElement | null {
   const { t, i18n } = useTranslation()
   const { data } = useBudgetTransactions(budgetTransactionsParams(query.budget.meta.id, query.target, query.periodStart))
+  const { data: currencies = [] } = useCurrencies()
   const currency = query.currency
   const savings = query.target.type === BudgetElementType.SAVINGS
   const nameOf = (row: BudgetTransactionDto) => row.description || row.payee?.name || row.category?.name || ''
@@ -57,17 +61,34 @@ export function UpcomingPaymentsPanel({ query, onUse }: { query: UpcomingQuery; 
     const amount = row.currencyId !== currency.id ? query.exchange(row.currencyId, currency.id, row.amount) : row.amount
     return signedAmount(amount, row, savings)
   }
+  const numberOpts = { useNativePrecision: false, maxPrecision: currency.fractionDigits }
+  const fmt = (v: string) => moneyFormat(v, currency, { ...numberOpts, showCurrency: true })
+  const shownAmount = (row: BudgetTransactionDto): string => {
+    const own = row.currencyId === currency.id ? undefined : currencies.find((c) => c.id === row.currencyId)
+    if (!own) {
+      return fmt(cellAmount(row))
+    }
+    return moneyFormat(signedAmount(row.amount, row, savings), own, { useNativePrecision: false, maxPrecision: own.fractionDigits, showCurrency: true })
+  }
+  const later = (data?.items ?? []).filter((r) => isFuture(r.spentAt))
   const rows: Row[] = [
-    ...(data?.upcoming ?? []).map((r) => ({ key: `r:${r.templateId}:${r.spentAt}`, spentAt: r.spentAt, name: nameOf(r), amount: cellAmount(r), recurring: r })),
-    ...(data?.items ?? []).filter((r) => isFuture(r.spentAt)).map((r) => ({ key: `t:${r.id}`, spentAt: r.spentAt, name: nameOf(r), amount: cellAmount(r) })),
+    ...(data?.upcoming ?? []).map((r) => ({ key: `r:${r.templateId}:${r.spentAt}`, spentAt: r.spentAt, name: nameOf(r), shown: shownAmount(r), recurring: r })),
+    ...later.map((r) => ({ key: `t:${r.id}`, spentAt: r.spentAt, name: nameOf(r), shown: shownAmount(r) })),
   ].sort((a, b) => a.spentAt.localeCompare(b.spentAt))
   if (rows.length === 0) {
     return null
   }
-  const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false, maxPrecision: currency.fractionDigits })
   const dateFmt = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' })
   const need = planNeed(query.spent, query.upcoming)
   const totalLabel = t('budgets.page.upcoming.total')
+  // spent already holds the future-dated rows listed above, so this line keeps only what is
+  // behind us and the column adds up to the total
+  const already = later.reduce((rest, r) => sub(rest, cellAmount(r)), query.spent)
+  const alreadyLabel = savings
+    ? t('budgets.page.upcoming.saved')
+    : typeof query.target.type === 'number' && isIncomeType(query.target.type)
+      ? t('budgets.page.upcoming.received')
+      : t('budgets.page.upcoming.spent')
   const fill =
     onUse && cmp(need, '0') > 0
       ? () => {
@@ -98,7 +119,7 @@ export function UpcomingPaymentsPanel({ query, onUse }: { query: UpcomingQuery; 
           }
         : {})}
     >
-      <p className="col-span-3 sm:text-foreground">{t('budgets.page.upcoming.title')}</p>
+      <p className="col-span-3 text-foreground">{t('budgets.page.upcoming.title')}</p>
       <ul className="col-span-3 grid grid-cols-subgrid">
         {rows.map((row) => {
           const date = dateFmt.format(parseDateTime(dayKey(row.spentAt)))
@@ -110,18 +131,18 @@ export function UpcomingPaymentsPanel({ query, onUse }: { query: UpcomingQuery; 
                 <span className="truncate">{row.name}</span>
                 {row.recurring ? <Repeat className="size-3 shrink-0" aria-hidden /> : null}
               </span>
-              <span className={amountCell}>{fmt(row.amount)}</span>
+              <span className={amountCell}>{row.shown}</span>
             </li>
           )
         })}
       </ul>
-      {cmp(query.spent, '0') > 0 ? (
-        <p className="col-span-3 grid grid-cols-subgrid" data-testid="upcoming-spent">
-          <span className="col-span-2 text-right">{t('budgets.page.upcoming.spent')}</span>
-          <span className={amountCell}>{fmt(query.spent)}</span>
+      {!isZero(already) ? (
+        <p className="col-span-3 grid grid-cols-subgrid text-foreground" data-testid="upcoming-spent">
+          <span className="col-span-2">{alreadyLabel}</span>
+          <span className={amountCell}>{fmt(already)}</span>
         </p>
       ) : null}
-      <p className="col-span-3 grid grid-cols-subgrid sm:mt-0.5 sm:border-t sm:border-border sm:pt-0.5 sm:text-foreground" data-testid="upcoming-total">
+      <p className="col-span-3 grid grid-cols-subgrid mt-0.5 border-t border-border pt-0.5 text-foreground" data-testid="upcoming-total">
         <span className="col-span-2 text-right">{totalLabel}</span>
         <span className={amountCell}>{fmt(need)}</span>
       </p>

@@ -1747,12 +1747,17 @@ and on tablet/phone only with a hardware keyboard.
       money spent or due (desktop Budget editor, phone set-limit dialog, Plan
       grid in-cell input) shows a small, muted list under the input: still-due
       recurring payments (repeat icon, overdue marked) and your own
-      transactions dated later this month, merged by date, amounts converted
-      to the cell's currency (savings signed). Below: a "Spent" line when
-      something was spent, then "Total" = spent + still due. Every figure
-      (rows, Spent, Total) is in the item's currency, even for a row from an
-      account in another currency, and the figures line up in one
-      right-aligned column. A cell
+      transactions dated later this month, merged by date (savings signed).
+      Every figure carries a currency symbol: each row in its own currency
+      (a row from an account in another currency keeps its own amount and
+      symbol), Total in the item's currency. Below the rows: "Already spent"
+      ("Already received" on income, "Already saved" on savings) = what is
+      already behind us, excluding the future-dated rows listed above, hidden
+      when 0; then "Total" = spent + still due, so the column adds up (e.g.
+      60 + 55 + Already spent 300 = Total 415). "Coming up", "Already …" and
+      Total are in the brighter text colour; the figures line up in one
+      right-aligned column. In the Plan grid the list opens below the edited
+      cell, never covering it. A cell
       with nothing to list, a past month, or a read-only cell shows no list;
       hovering a cell never shows it. The list offers no Post, Skip or Edit.
 - [ ] 📱 Tapping anywhere on the list (e.g. 300 spent + 250 due, Total 550) replaces the

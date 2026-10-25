@@ -1359,7 +1359,9 @@
     "page": {
       "upcoming": {
         "title": "À venir",
-        "spent": "Dépensé",
+        "spent": "Déjà dépensé",
+        "received": "Déjà reçu",
+        "saved": "Déjà épargné",
         "total": "Total"
       },
       "budget": {

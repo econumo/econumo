@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { fixtureOwner, fixtureUsd } from '@/test/fixtures'
+import { fixtureEur, fixtureOwner, fixtureUsd } from '@/test/fixtures'
 import { BudgetElementType } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { UpcomingPaymentsPanel, type UpcomingQuery } from './UpcomingPaymentsPanel'
@@ -37,6 +37,9 @@ function serve(upcoming: unknown[], items: unknown[] = []) {
       seen.push(new URL(request.url))
       return HttpResponse.json({ success: true, message: '', data: { items, upcoming } })
     }),
+    http.get('*/api/v1/currency/get-currency-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [fixtureUsd, fixtureEur] } }),
+    ),
   )
   return seen
 }
@@ -70,9 +73,9 @@ it('lists payments and offers spent + still due', async () => {
   expect(await screen.findByText('Rent')).toBeInTheDocument()
   expect(screen.getByText('Gym')).toBeInTheDocument()
   expect(screen.getByText('Coming up')).toBeInTheDocument()
-  expect(screen.getByTestId('upcoming-spent')).toHaveTextContent(/^Spent300\.00$/)
-  expect(screen.getByTestId('upcoming-total')).toHaveTextContent(/^Total850\.00$/)
-  expect(screen.getByRole('button', { name: 'Total 850.00' })).toBeInTheDocument()
+  expect(screen.getByTestId('upcoming-spent')).toHaveTextContent(/^Already spent300\.00 \$$/)
+  expect(screen.getByTestId('upcoming-total')).toHaveTextContent(/^Total850\.00 \$$/)
+  expect(screen.getByRole('button', { name: 'Total 850.00 $' })).toBeInTheDocument()
   // a press anywhere on the list fills the editor
   fireEvent.click(screen.getByText('Gym'))
   expect(onUse).toHaveBeenCalledWith('850')
@@ -100,21 +103,21 @@ it('signs a savings row by direction', async () => {
     upcomingRow({ id: 'r2', description: 'Withdrawal', amount: '100', direction: 'out' }),
   ])
   renderPanel(query({ target: { id: 'acc-s', type: BudgetElementType.SAVINGS, name: 'Savings', icon: 'savings', currencyId: 'cur-usd' } }))
-  expect(await screen.findByText('300.00')).toBeInTheDocument()
-  expect(screen.getByText('-100.00')).toBeInTheDocument()
+  expect(await screen.findByText('300.00 $')).toBeInTheDocument()
+  expect(screen.getByText('-100.00 $')).toBeInTheDocument()
 })
 
-it('converts a row from its account currency into the cell currency', async () => {
+it('shows a row in its own currency, with its symbol', async () => {
   serve([
     upcomingRow({ id: 'r1', description: 'Rent', amount: '500' }),
     upcomingRow({ id: 'r2', description: 'Streaming', amount: '100', currencyId: 'cur-eur' }),
   ])
   const exchange = vi.fn((from: string, to: string, amount: string) => (from === 'cur-eur' && to === 'cur-usd' ? String(Number(amount) * 1.1) : amount))
   renderPanel(query({ exchange }))
-  expect(await screen.findByText('110.00')).toBeInTheDocument()
-  expect(exchange).toHaveBeenCalledWith('cur-eur', 'cur-usd', '100')
-  // a row already in the cell currency is not exchanged
-  expect(exchange).not.toHaveBeenCalledWith('cur-usd', 'cur-usd', '500')
+  // a row in another currency keeps its own amount and symbol
+  expect(await screen.findByText('100.00 €')).toBeInTheDocument()
+  expect(screen.getByText('500.00 $')).toBeInTheDocument()
+  expect(exchange).not.toHaveBeenCalled()
 })
 
 it('lists a real transaction dated later this month without counting it twice', async () => {
@@ -133,6 +136,8 @@ it('lists a real transaction dated later this month without counting it twice', 
   const names = screen.getAllByRole('listitem').map((li) => li.textContent)
   expect(names[0]).toContain('Dentist')
   expect(names[1]).toContain('Rent')
+  // the dentist is listed above, so only the lunch is already spent: 100 + 250 + 200 = 550
+  expect(screen.getByTestId('upcoming-spent')).toHaveTextContent(/^Already spent200\.00 \$$/)
   fireEvent.click(screen.getByTestId('upcoming-total'))
   expect(onUse).toHaveBeenCalledWith('550')
 })
@@ -141,7 +146,7 @@ it('lists future real transactions with nothing due', async () => {
   serve([], [itemRow({ id: 't-future', description: 'Concert', amount: '80', spentAt: '2026-07-28 20:00:00' })])
   renderPanel(query({ spent: '80', upcoming: '0' }), vi.fn())
   expect(await screen.findByText('Concert')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Total 80.00' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Total 80.00 $' })).toBeInTheDocument()
 })
 
 describe('wantsUpcomingPanel', () => {
@@ -155,7 +160,7 @@ describe('wantsUpcomingPanel', () => {
   })
 })
 
-it('shows every figure in the cell currency, a future-dated real row included', async () => {
+it('totals in the cell currency with its symbol; rows in another currency keep theirs', async () => {
   serve(
     [upcomingRow({ id: 'r1', description: 'Streaming', amount: '100', currencyId: 'cur-eur', spentAt: '2026-07-20 00:00:00' })],
     [itemRow({ id: 't1', description: 'Hotel', amount: '200', currencyId: 'cur-eur', spentAt: '2026-07-25 00:00:00' })],
@@ -163,9 +168,20 @@ it('shows every figure in the cell currency, a future-dated real row included', 
   const exchange = (from: string, to: string, amount: string) => (from === 'cur-eur' && to === 'cur-usd' ? String(Number(amount) * 1.1) : amount)
   renderPanel(query({ exchange, spent: '220', upcoming: '110' }), vi.fn())
   const [streaming, hotel] = await screen.findAllByRole('listitem')
-  expect(streaming).toHaveTextContent('110.00')
-  expect(hotel).toHaveTextContent('220.00')
-  expect(screen.getByTestId('upcoming-total')).toHaveTextContent('330.00')
-  expect(screen.queryByText('100.00')).not.toBeInTheDocument()
-  expect(screen.queryByText('200.00')).not.toBeInTheDocument()
+  expect(streaming).toHaveTextContent('100.00 €')
+  expect(hotel).toHaveTextContent('200.00 €')
+  // the hotel is the whole of spent, so nothing is behind us yet
+  expect(screen.queryByTestId('upcoming-spent')).not.toBeInTheDocument()
+  expect(screen.getByTestId('upcoming-total')).toHaveTextContent('330.00 $')
+})
+
+it('names the money already in by the row kind', async () => {
+  serve([upcomingRow({ id: 'r1', description: 'Salary', amount: '1000', spentAt: '2026-07-25 00:00:00' })])
+  const { unmount } = renderPanel(
+    query({ spent: '500', upcoming: '1000', target: { id: 'inc', type: BudgetElementType.INCOME_CATEGORY, name: 'Salary', icon: 'work', currencyId: null } }),
+  )
+  expect(await screen.findByTestId('upcoming-spent')).toHaveTextContent(/^Already received/)
+  unmount()
+  renderPanel(query({ spent: '500', upcoming: '1000', target: { id: 'acc-s', type: BudgetElementType.SAVINGS, name: 'Savings', icon: 'savings', currencyId: 'cur-usd' } }))
+  expect(await screen.findByTestId('upcoming-spent')).toHaveTextContent(/^Already saved/)
 })

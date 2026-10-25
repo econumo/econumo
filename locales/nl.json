@@ -1359,7 +1359,9 @@
     "page": {
       "upcoming": {
         "title": "Nog te gaan",
-        "spent": "Uitgegeven",
+        "spent": "Al uitgegeven",
+        "received": "Al ontvangen",
+        "saved": "Al gespaard",
         "total": "Totaal"
       },
       "budget": {

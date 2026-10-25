@@ -1359,7 +1359,9 @@
     "page": {
       "upcoming": {
         "title": "Noch ausstehend",
-        "spent": "Ausgegeben",
+        "spent": "Bereits ausgegeben",
+        "received": "Bereits erhalten",
+        "saved": "Bereits gespart",
         "total": "Summe"
       },
       "budget": {

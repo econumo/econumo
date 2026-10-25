@@ -1359,7 +1359,9 @@
     "page": {
       "upcoming": {
         "title": "Coming up",
-        "spent": "Spent",
+        "spent": "Already spent",
+        "received": "Already received",
+        "saved": "Already saved",
         "total": "Total"
       },
       "budget": {

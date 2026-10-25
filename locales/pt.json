@@ -1359,7 +1359,9 @@
     "page": {
       "upcoming": {
         "title": "Por vir",
-        "spent": "Gasto",
+        "spent": "Já gasto",
+        "received": "Já recebido",
+        "saved": "Já poupado",
         "total": "Total"
       },
       "budget": {

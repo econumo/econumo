@@ -1364,9 +1364,12 @@ data unreadable. Most are also asserted by the test suite.
   plan is being edited (desktop `LimitEditor`, phone `SetLimitDialog`, Plan grid in-cell
   input), a cell in the current month or later with spent or upcoming money gets a quiet
   list (`UpcomingPaymentsPanel`): the still-due recurring payments (repeat icon, overdue
-  marker) merged by date with the cell's own transactions dated after today, amounts
-  converted to and shown in the cell currency in one right-aligned amount column, savings
-  signed; then a "Spent" line (when > 0) and a "Total" line (spent + still due). The whole
+  marker) merged by date with the cell's own transactions dated after today, each in its own
+  currency with its symbol, in one right-aligned amount column, savings signed; then an
+  "Already spent" / "Already received" / "Already saved" line (by row kind; spent minus the
+  future-dated rows listed above, hidden at 0) and a "Total" line (spent + still due, cell
+  currency with its symbol), so the column adds up. Headings and Total are set off in the
+  foreground colour, and in the Plan grid the list opens below the cell's frame. The whole
   list is one button: a press anywhere fills the input with that total (future-dated rows are
   already in spent, never added twice) without committing. A cell with nothing still to
   come (no due payment, no future-dated row) shows no list, Spent/Total lines included.

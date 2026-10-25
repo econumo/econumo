@@ -1359,7 +1359,9 @@
     "page": {
       "upcoming": {
         "title": "Próximamente",
-        "spent": "Gastado",
+        "spent": "Ya gastado",
+        "received": "Ya recibido",
+        "saved": "Ya ahorrado",
         "total": "Total"
       },
       "budget": {

@@ -1360,6 +1360,8 @@
       "upcoming": {
         "title": "即将发生",
         "spent": "已支出",
+        "received": "已收到",
+        "saved": "已储蓄",
         "total": "合计"
       },
       "budget": {

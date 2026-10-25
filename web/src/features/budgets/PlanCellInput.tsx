@@ -102,9 +102,10 @@ export function PlanCellInput({
         className="w-full bg-transparent p-0 text-right text-[15px] tabular-nums outline-none"
       />
       {upcoming && !invalid ? (
-        // a press here must not blur the input (which commits) or reach the cell
+        // a press here must not blur the input (which commits) or reach the cell; placed and
+        // framed like the multi-cell sum hint: 4px under the cell's frame, flush with its right edge
         <div
-          className="absolute top-full right-0 z-30 mt-0.5 w-64 rounded-md bg-popover p-2 text-left text-popover-foreground shadow empty:hidden"
+          className="absolute top-full -right-2 z-30 mt-2.5 w-64 rounded-md border bg-popover px-2.5 py-1.5 text-left text-popover-foreground shadow-md empty:hidden"
           onMouseDown={(e) => e.preventDefault()}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
