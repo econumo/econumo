@@ -2360,7 +2360,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       collapsed rail). The link opens `https://econumo.com/releases/vX.Y.Z`
       in a new window. An upgrade into a new minor line names and links its
       `.0` release (v1.6.x -> v1.7.2 shows v1.7.0); a patch upgrade within
-      the line (v1.7.0 -> v1.7.2) shows v1.7.2; opening it or pressing ✕ hides the card, and it stays
+      the line (v1.7.0 -> v1.7.2) shows v1.7.2. Hidden while onboarding is
+      in progress; it appears once onboarding is completed; opening it or pressing ✕ hides the card, and it stays
       hidden after a reload and on the user's other devices. A user
       registered on the current version never sees it; a `dev` build or a
       downgrade shows nothing. Works for a read-only (lapsed) user too (no

@@ -1,5 +1,5 @@
 import { UserOptions } from '@/api/dto/user'
-import { useUserData } from '@/features/user/queries'
+import { isOnboardingCompleted, useUserData } from '@/features/user/queries'
 import { getVersion } from '@/lib/config'
 import { isNativeApp } from '@/lib/platform'
 import { isNewerVersion, SEMVER } from '@/lib/version'
@@ -36,6 +36,11 @@ export function useWhatsNew(): WhatsNew | null {
   const { data: user } = useUserData()
   const version = getVersion()
   if (!user || isNativeApp() || !SEMVER.test(version)) {
+    return null
+  }
+  // Not during onboarding: the first session is busy enough. The card waits
+  // until it is completed, since the version is stored only on open/dismiss.
+  if (!isOnboardingCompleted(user)) {
     return null
   }
   const seen = user.options.find((o) => o.name === UserOptions.LAST_SEEN_VERSION)?.value

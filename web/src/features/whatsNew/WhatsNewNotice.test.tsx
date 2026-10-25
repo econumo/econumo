@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
   trackEvent: vi.fn(),
 }))
 
-vi.mock('@/features/user/queries', () => ({
+vi.mock('@/features/user/queries', async (importOriginal) => ({
+  isOnboardingCompleted: (await importOriginal<typeof import('@/features/user/queries')>()).isOnboardingCompleted,
   useUserData: () => ({ data: mocks.user }),
   useUpdateLastSeenVersion: () => ({ mutate: mocks.mutate }),
 }))
@@ -22,8 +23,13 @@ vi.mock('@/lib/metrics', async (importOriginal) => ({
   trackEvent: mocks.trackEvent,
 }))
 
-function seen(value: string | null) {
-  mocks.user = { options: value === null ? [] : [{ name: 'last_seen_version', value }] } as Partial<CurrentUserDto>
+function seen(value: string | null, onboarding = 'completed') {
+  mocks.user = {
+    options: [
+      { name: 'onboarding', value: onboarding },
+      ...(value === null ? [] : [{ name: 'last_seen_version', value }]),
+    ],
+  } as Partial<CurrentUserDto>
 }
 
 beforeEach(() => {
@@ -82,6 +88,12 @@ it.each([
 ])('renders nothing when %s', (_, version, stored) => {
   mocks.version = version
   seen(stored)
+  const { container } = render(<WhatsNewNotice />)
+  expect(container).toBeEmptyDOMElement()
+})
+
+it('waits until onboarding is completed', () => {
+  seen('v1.5.0', 'started')
   const { container } = render(<WhatsNewNotice />)
   expect(container).toBeEmptyDOMElement()
 })

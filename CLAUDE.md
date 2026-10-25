@@ -385,7 +385,7 @@ build seeds and shows nothing; the option only moves forward; web only, never in
 app); opening `https://econumo.com/releases/<version>` or
 dismissing it writes the running version through `update-last-seen-version`. An upgrade
 into a new minor line links that line's `.0` notes (v1.6.x -> v1.7.2 shows v1.7.0), a patch
-upgrade within the line the running patch.
+upgrade within the line the running patch. Hidden until onboarding is completed.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One
