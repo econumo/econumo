@@ -1208,10 +1208,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "即将到来的定期付款",
-      "later_cycle": "需在上一笔付款入账后才能入账"
-    },
     "modal": {
       "budget_form": {
         "accounts": "账户",
@@ -1361,6 +1357,14 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "即将发生",
+        "spent": "已支出",
+        "received": "已收到",
+        "saved": "已储蓄",
+        "posted": "已入账",
+        "total": "合计"
+      },
       "budget": {
         "empty": {
           "header": "预算",

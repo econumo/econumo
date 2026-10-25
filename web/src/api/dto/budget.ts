@@ -60,9 +60,6 @@ export interface BudgetElementDto extends Omit<BudgetChildElementDto, 'ownerUser
   available: string
   ownerUserId: Id | null
   children: BudgetChildElementDto[]
-  /** projected recurring spend filed in earlier months of the projection
-   *  window (from the current month on), in currencyId. Absent from older servers. */
-  upcomingBefore?: string
 }
 
 export type BudgetFolderSide = 'income' | 'expense'
@@ -300,9 +297,6 @@ export interface PlanSavingsElementDto {
   ownerUserId: Id
   isArchived: 0 | 1
   position: number
-  /** recurring money due on the account before the window start, in the row
-   *  currency; the cells' booked closingBalance lacks it. Absent from older servers. */
-  upcomingOpeningBalance?: string
   cells: PlanCellDto[]
 }
 
@@ -343,11 +337,4 @@ export interface BudgetPlanDto {
    *  savingsFlows. The category rows count the everyday accounts only, so the
    *  combined balance adds this back. Optional for the same reason. */
   savingsIncomeExpense?: PlanSavingsFlowDto[]
-  /** the namesakes over recurring payments not yet posted, same shapes and
-   *  order rules; absent from older servers */
-  upcomingOpeningBalances?: PlanOpeningBalanceDto[]
-  upcomingSavingsOpeningBalances?: PlanOpeningBalanceDto[]
-  upcomingTransfers?: PlanMonthTransfersDto[]
-  upcomingSavingsFlows?: PlanSavingsFlowDto[]
-  upcomingSavingsIncomeExpense?: PlanSavingsFlowDto[]
 }

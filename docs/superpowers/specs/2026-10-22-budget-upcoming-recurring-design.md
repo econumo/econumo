@@ -1,5 +1,7 @@
 # Upcoming recurring payments in the Budget and the Plan
 
+> Superseded: the display and projection-in-totals parts of this spec are replaced by `2026-10-24-budget-upcoming-as-plan-design.md`.
+
 Status: design, 2026-10-22. Branch `feature/budget-upcoming-recurring`.
 
 ## Why

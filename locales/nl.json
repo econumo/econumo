@@ -1208,10 +1208,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "Aankomende terugkerende betaling",
-      "later_cycle": "Kan worden geboekt na de eerdere betaling"
-    },
     "modal": {
       "budget_form": {
         "accounts": "Rekeningen",
@@ -1361,6 +1357,14 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "Nog te gaan",
+        "spent": "Al uitgegeven",
+        "received": "Al ontvangen",
+        "saved": "Al gespaard",
+        "posted": "Geboekt",
+        "total": "Totaal"
+      },
       "budget": {
         "empty": {
           "header": "Budget",

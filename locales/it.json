@@ -1208,10 +1208,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "Pagamento ricorrente in arrivo",
-      "later_cycle": "Si può registrare dopo il pagamento precedente"
-    },
     "modal": {
       "budget_form": {
         "accounts": "Conti",
@@ -1361,6 +1357,14 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "In arrivo",
+        "spent": "Già speso",
+        "received": "Già ricevuto",
+        "saved": "Già risparmiato",
+        "posted": "Registrato",
+        "total": "Totale"
+      },
       "budget": {
         "empty": {
           "header": "Budget",

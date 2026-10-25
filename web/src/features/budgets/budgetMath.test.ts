@@ -1,4 +1,4 @@
-import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, overBudget, overAvailable, makeBudgetExchange, displayAvailable, totalsWithSavings } from './budgetMath'
+import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, overBudget, makeBudgetExchange, displayAvailable, totalsWithSavings } from './budgetMath'
 import { fixtureWireBudget } from '@/test/fixtures'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 
@@ -44,6 +44,11 @@ it('drops the Uncategorized bucket when the selected month has no uncategorized 
   zeroBudget.structure.elements.push({ ...uncatEl })
   const zeroBuckets = bucketElements(zeroBudget, exch)
   expect(zeroBuckets.uncategorized.elements).toEqual([])
+
+  // upcoming money alone does not list it: Uncategorized holds no plan to hint
+  const upcomingBudget: BudgetDto = JSON.parse(JSON.stringify(budget))
+  upcomingBudget.structure.elements.push({ ...uncatEl, upcoming: '40' })
+  expect(bucketElements(upcomingBudget, exch).uncategorized.elements).toEqual([])
   expect(budgetTotals(zeroBuckets)).toEqual(budgetTotals(bucketElements(budget, exch)))
 
   // spent '5' -> present
@@ -57,19 +62,6 @@ it('drops the Uncategorized bucket when the selected month has no uncategorized 
   refundBudget.structure.elements.push({ ...uncatEl, spent: '-5' })
   const refundBuckets = bucketElements(refundBudget, exch)
   expect(refundBuckets.uncategorized.elements.map((e) => e.id)).toEqual(['uncategorized'])
-})
-
-it('keeps Uncategorized and an archived row in a current month with nothing spent yet but money upcoming, so its list opens', () => {
-  const uncatEl: BudgetElementDto = {
-    id: 'uncategorized', type: 1, name: 'Uncategorized', icon: 'question_mark', currencyId: null, isArchived: 0,
-    folderId: null, position: 9, budgeted: '0', available: '0', spent: '0', budgetSpent: '0',
-    ownerUserId: null, children: [], upcoming: '12', budgetUpcoming: '12',
-  }
-  const b: BudgetDto = JSON.parse(JSON.stringify(budget))
-  b.structure.elements.push(uncatEl, { ...uncatEl, id: 'old-tag', type: 2, name: 'Old', isArchived: 1 })
-  const buckets = bucketElements(b, exch)
-  expect(buckets.uncategorized.elements.map((e) => e.id)).toEqual(['uncategorized'])
-  expect(buckets.archive.elements.map((e) => e.id)).toContain('old-tag')
 })
 
 it('zero folders puts every active element into the no-folder bucket', () => {
@@ -174,9 +166,8 @@ describe('rowState', () => {
     expect(rowState({ budgeted: '700', spent: '801.37', available: '-101.37' })).toBe('over')
     expect(rowState({ budgeted: '100', spent: '50', available: '-1' })).toBe('over')
   })
-  it('is none for a future month with nothing upcoming, and as usual once something is', () => {
-    expect(rowState({ budgeted: '700', spent: '0', available: '700' }, true)).toBe('none')
-    expect(rowState({ budgeted: '700', spent: '801.37', available: '-101.37' }, true)).toBe('ok')
+  it('is none for a future month whatever the figures', () => {
+    expect(rowState({ budgeted: '700', spent: '801.37', available: '-101.37' }, true)).toBe('none')
   })
 })
 
@@ -185,10 +176,9 @@ describe('rowProgress', () => {
     expect(rowProgress({ budgeted: '200', spent: '50' })).toBe(0.25)
     expect(rowProgress({ budgeted: '200', spent: '500' })).toBe(1)
   })
-  it('is null with no budget or in a future month with nothing upcoming', () => {
+  it('is null with no budget or in a future month', () => {
     expect(rowProgress({ budgeted: '0', spent: '50' })).toBeNull()
-    expect(rowProgress({ budgeted: '200', spent: '0' }, true)).toBeNull()
-    expect(rowProgress({ budgeted: '200', spent: '50' }, true)).toBe(0.25)
+    expect(rowProgress({ budgeted: '200', spent: '50' }, true)).toBeNull()
   })
   it('never goes below zero (refunds)', () => {
     expect(rowProgress({ budgeted: '200', spent: '-30' })).toBe(0)
@@ -212,10 +202,8 @@ describe('overBudget', () => {
     expect(overBudget({ budgeted: '120', spent: '100', available: '-150' })).toBe(false)
     expect(overBudget({ budgeted: '100', spent: '100', available: '0' })).toBe(false)
   })
-  it('is false in a future month with nothing upcoming, true once upcoming overspends', () => {
-    expect(overBudget({ budgeted: '100', spent: '0', available: '-20' }, true)).toBe(false)
+  it('is false in a future month', () => {
     expect(overBudget({ budgeted: '100', spent: '150', available: '-20' }, true)).toBe(false)
-    expect(overAvailable({ budgeted: '100', spent: '150', available: '-20' }, true)).toBe(true)
   })
 })
 

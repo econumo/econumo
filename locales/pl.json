@@ -1208,10 +1208,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "Nadchodząca płatność cykliczna",
-      "later_cycle": "Można zaksięgować po wcześniejszej płatności"
-    },
     "modal": {
       "budget_form": {
         "accounts": "Konta",
@@ -1361,6 +1357,14 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "Nadchodzące",
+        "spent": "Już wydano",
+        "received": "Już otrzymano",
+        "saved": "Już zaoszczędzono",
+        "posted": "Zaksięgowane",
+        "total": "Razem"
+      },
       "budget": {
         "empty": {
           "header": "Budżet",

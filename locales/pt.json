@@ -1208,10 +1208,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "Próximo pagamento recorrente",
-      "later_cycle": "Pode ser lançado após o pagamento anterior"
-    },
     "modal": {
       "budget_form": {
         "accounts": "Contas",
@@ -1361,6 +1357,14 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "Por vir",
+        "spent": "Já gasto",
+        "received": "Já recebido",
+        "saved": "Já poupado",
+        "posted": "Registado",
+        "total": "Total"
+      },
       "budget": {
         "empty": {
           "header": "Orçamento",

@@ -377,26 +377,6 @@ definitions:
         items:
           $ref: '#/definitions/model.PlanMonthTransfersResult'
         type: array
-      upcomingOpeningBalances:
-        items:
-          $ref: '#/definitions/model.OpeningBalanceResult'
-        type: array
-      upcomingSavingsFlows:
-        items:
-          $ref: '#/definitions/model.PlanSavingsFlowResult'
-        type: array
-      upcomingSavingsIncomeExpense:
-        items:
-          $ref: '#/definitions/model.PlanSavingsFlowResult'
-        type: array
-      upcomingSavingsOpeningBalances:
-        items:
-          $ref: '#/definitions/model.OpeningBalanceResult'
-        type: array
-      upcomingTransfers:
-        items:
-          $ref: '#/definitions/model.PlanMonthTransfersResult'
-        type: array
     type: object
   model.BudgetResult:
     properties:
@@ -2186,13 +2166,9 @@ definitions:
         type: integer
       upcoming:
         description: |-
-          Upcoming is the period's projected recurring spend not yet posted, and
-          UpcomingBefore the projected spend filed in earlier months of the
-          projection window (from the caller's current month on), both in
-          CurrencyId; BudgetUpcoming is Upcoming in the budget currency. Spent and
-          Available stay real money only.
-        type: string
-      upcomingBefore:
+          Upcoming is the period's recurring spend not yet posted, in CurrencyId;
+          BudgetUpcoming is Upcoming in the budget currency. A planning hint: Spent
+          and Available stay real money only.
         type: string
     type: object
   model.PayeeResult:
@@ -2343,8 +2319,6 @@ definitions:
         type: integer
       type:
         type: integer
-      upcomingOpeningBalance:
-        type: string
     type: object
   model.PlanSavingsFlowResult:
     properties:

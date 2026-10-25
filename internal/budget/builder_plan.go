@@ -23,7 +23,7 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
-	return s.buildBudgetPlan(ctx, b, f, months)
+	return s.asOfTomorrow(ctx).buildBudgetPlan(ctx, b, f, months)
 }
 
 // buildBudgetPlan is BuildBudgetPlan over filters the caller already built
@@ -91,12 +91,6 @@ func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f fil
 		SavingsFlows:           savingsFlows,
 		SavingsIncomeExpense:   savingsIncomeExpense,
 		Structure:              structure,
-
-		UpcomingOpeningBalances:        zeroBalances(opening),
-		UpcomingSavingsOpeningBalances: zeroBalances(savingsOpening),
-		UpcomingTransfers:              emptyTransfers(transfers),
-		UpcomingSavingsFlows:           []model.PlanSavingsFlowResult{},
-		UpcomingSavingsIncomeExpense:   []model.PlanSavingsFlowResult{},
 	}, nil
 }
 

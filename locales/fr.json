@@ -1208,10 +1208,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "Paiement récurrent à venir",
-      "later_cycle": "Pourra être validé après le paiement précédent"
-    },
     "modal": {
       "budget_form": {
         "accounts": "Comptes",
@@ -1361,6 +1357,14 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "À venir",
+        "spent": "Déjà dépensé",
+        "received": "Déjà reçu",
+        "saved": "Déjà épargné",
+        "posted": "Enregistré",
+        "total": "Total"
+      },
       "budget": {
         "empty": {
           "header": "Budget",

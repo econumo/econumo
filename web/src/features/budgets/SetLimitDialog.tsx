@@ -7,6 +7,7 @@ import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDia
 import { normalizeNumber } from '@/lib/money'
 import { isZero } from '@/lib/decimal'
 import { limitAmountFromInput } from './limitAmount'
+import { UpcomingPaymentsPanel, type UpcomingQuery } from './UpcomingPaymentsPanel'
 
 interface SetLimitDialogProps {
   target: { id: string; name: string; value: string } | null
@@ -14,10 +15,12 @@ interface SetLimitDialogProps {
   onCommit: (elementId: string, amount: string | null) => void
   /** an income or savings amount: a plan to meet, not a spending limit */
   plan?: boolean
+  /** set only for a cell that can have money still to come, so other cells fetch nothing */
+  upcoming?: UpcomingQuery | null
 }
 
 // Compact viewports' amount dialog (Vue's BudgetSetLimitModal), same unified amount rule.
-export function SetLimitDialog({ target, onClose, onCommit, plan = false }: SetLimitDialogProps) {
+export function SetLimitDialog({ target, onClose, onCommit, plan = false, upcoming = null }: SetLimitDialogProps) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -57,6 +60,17 @@ export function SetLimitDialog({ target, onClose, onCommit, plan = false }: SetL
           submit()
         }}
       >
+        {/* above the amount: the drawer grows upward, so the field and buttons keep their place */}
+        {upcoming ? (
+          <UpcomingPaymentsPanel
+            query={upcoming}
+            onUse={(amount) => {
+              setValue(amount)
+              setError(null)
+              document.getElementById('set-limit-amount')?.focus()
+            }}
+          />
+        ) : null}
         {/* the transaction dialog's amount card: label inside, borderless oversized input */}
         <CardField label={plan ? t('budgets.form.budget_limit.plan.label') : t('budgets.form.budget_limit.limit.label')} htmlFor="set-limit-amount" error={error}>
           <div className={amountCardInputClass}>

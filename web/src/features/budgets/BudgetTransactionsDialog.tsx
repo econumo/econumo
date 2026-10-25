@@ -7,8 +7,8 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { moneyFormat } from '@/lib/money'
 import { dayKey, formatDayHeading, isFuture, isToday, isYesterday, parseDateTime } from '@/lib/datetime'
-import type { BudgetDto, BudgetTransactionDto, BudgetUpcomingDto } from '@/api/dto/budget'
-import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type { BudgetDto, BudgetTransactionDto } from '@/api/dto/budget'
+import { BudgetElementType } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
 import type { PayeeDto } from '@/api/dto/payee'
@@ -19,16 +19,13 @@ import { canWriteToAccount } from '@/features/connections/shared'
 import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
-import { useExchange } from '@/features/currencies/useExchange'
-import { recurringPostPayload } from '@/features/recurring/postPayload'
-import { usePostRecurring, useRecurring, useSkipRecurring } from '@/features/recurring/queries'
-import { ViewRecurringDialog } from '@/features/recurring/ViewRecurringDialog'
 import { useUserData } from '@/features/user/queries'
 import { useDeleteTransaction, useTransactions } from '@/features/transactions/queries'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { elementDisplayName } from './budgetMath'
 import { useBudgetTransactions } from './queries'
+import { budgetTransactionsParams } from './budgetTransactionsParams'
 import { useBudgetPeriodStore } from './budgetStore'
 
 /** enough of an element (or a nested child category) to list its transactions.
@@ -87,60 +84,11 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
   const { data: tags } = useTags()
   const deleteTransaction = useDeleteTransaction()
   const openTransactionModal = useUiStore((s) => s.openTransactionModal)
-  const openRecurringModal = useUiStore((s) => s.openRecurringModal)
-  const { data: recurringList } = useRecurring()
-  const exchangeFn = useExchange()
-  const postRecurring = usePostRecurring()
-  const skipRecurring = useSkipRecurring()
 
   const [preview, setPreview] = useState<ViewTransaction | null>(null)
-  const [upcomingPreview, setUpcomingPreview] = useState<BudgetUpcomingDto | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
 
-  // A category listed under a tag displays the tag-and-category intersection.
-  // Sending categoryId alone puts the backend on its "tag_id IS NULL" branch,
-  // which returns the complement of what the row shows.
-  const isUncategorized = element?.id === UNCATEGORIZED_ID
-  const parentTagId = element?.parent?.type === BudgetElementType.TAG ? element.parent.id : undefined
-  // a category listed under a reporting label narrows the same way; labelId is
-  // the one filter the backend accepts alongside categoryId/uncategorized
-  const parentLabelId = element?.parent?.type === 'label' ? element.parent.id : undefined
-  const params = element
-    ? {
-        budgetId: budget.meta.id,
-        periodStart: selectedDate,
-        // the parent tag only ever applies to a CATEGORY-typed element, so it
-        // is folded into that branch rather than spread last, which would
-        // silently clobber a TAG-typed element's own tagId
-        //
-        // The Uncategorized element is presentation-only and has no id the
-        // backend can look up, so it is selected by flag instead; it composes
-        // with the parent tag exactly as a real category does. Never send
-        // uncategorized together with categoryId -- the backend rejects that.
-        ...(element.type === BudgetElementType.CATEGORY
-          ? {
-              ...(isUncategorized ? { uncategorized: true } : { categoryId: element.id }),
-              ...(parentTagId ? { tagId: parentTagId } : {}),
-              ...(parentLabelId ? { labelId: parentLabelId } : {}),
-            }
-          : {}),
-        ...(element.type === BudgetElementType.TAG ? { tagId: element.id } : {}),
-        // labelId is mutually exclusive with categoryId/tagId/envelopeId/uncategorized
-        // on the backend (400 if combined); 'label' never equals a real
-        // BudgetElementType, so this branch can never fire alongside another one
-        ...(element.type === 'label' ? { labelId: element.id } : {}),
-        ...(element.type === BudgetElementType.ENVELOPE ? { envelopeId: element.id } : {}),
-        // transfers composes with nothing on the backend; like 'label' it can
-        // never coincide with another branch here
-        ...(element.type === 'transfers' ? { transfers: true } : {}),
-        // a savings row's id is its account id; composes with nothing
-        ...(element.type === BudgetElementType.SAVINGS ? { accountId: element.id } : {}),
-        ...(element.type === BudgetElementType.INCOME_CATEGORY
-          ? { income: true, ...(isUncategorized ? { uncategorized: true } : { categoryId: element.id }) }
-          : {}),
-        ...(element.type === BudgetElementType.INCOME_ENVELOPE ? { income: true, envelopeId: element.id } : {}),
-      }
-    : null
+  const params = element ? budgetTransactionsParams(budget.meta.id, element, selectedDate) : null
   const { data, isLoading } = useBudgetTransactions(params)
   const transactions = data?.items
 
@@ -204,16 +152,25 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
   const canChange = (tx: ViewTransaction): boolean =>
     canTouchTransaction(tx, !!tx.account && canWriteToAccount(tx.account, user?.id))
 
-  // upcoming occurrences join the real rows' day groups, so posting one only
-  // changes its style, never its place; within a day real rows come first
-  const listed: { tx: BudgetTransactionDto; upcoming?: BudgetUpcomingDto }[] = [
-    ...(transactions ?? []).map((tx) => ({ tx })),
-    ...(data?.upcoming ?? []).map((u) => ({ tx: u, upcoming: u })),
-  ].sort((a, b) => dayKey(b.tx.spentAt).localeCompare(dayKey(a.tx.spentAt)))
-
   let currentDay: string | null = null
-  const rows: { kind: 'sep' | 'tx'; key: string; label?: string; tx?: BudgetTransactionDto; upcoming?: BudgetUpcomingDto }[] = []
-  for (const { tx, upcoming } of listed) {
+  const rows: { kind: 'sep' | 'tx'; key: string; label?: string; tx?: BudgetTransactionDto }[] = []
+  // What is still to come leads the list, laid out like the plan editor's "Coming up" list:
+  // rows dated after today and recurring payments still due (neither is in the figure; shown for
+  // reference only: the budget offers no Post/Skip), soonest first.
+  const later = [
+    ...(transactions ?? []).filter((tx) => isFuture(tx.spentAt)).map((tx) => ({ tx, recurring: false })),
+    ...(data?.upcoming ?? []).map((tx) => ({ tx, recurring: true })),
+  ].sort((a, b) => a.tx.spentAt.localeCompare(b.tx.spentAt))
+  const shortDate = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' })
+  const signedMoney = (tx: BudgetTransactionDto) => {
+    const currency = currencies.find((c) => c.id === tx.currencyId)
+    // spend is negative; money arriving (direction 'in') is positive
+    return moneyFormat(tx.direction === 'in' ? tx.amount : -tx.amount, currency, {
+      useNativePrecision: false,
+      maxPrecision: currency?.fractionDigits ?? 2,
+    })
+  }
+  for (const tx of (transactions ?? []).filter((tx) => !isFuture(tx.spentAt))) {
     const day = dayKey(tx.spentAt)
     if (day !== currentDay) {
       currentDay = day
@@ -224,41 +181,53 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
           : formatDayHeading(day, i18n.language)
       rows.push({ kind: 'sep', key: `sep-${day}`, label })
     }
-    rows.push(
-      upcoming
-        ? { kind: 'tx', key: `upcoming-${upcoming.templateId}-${day}`, tx, upcoming }
-        : { kind: 'tx', key: `tx-${tx.id}`, tx },
-    )
+    rows.push({ kind: 'tx', key: tx.id, tx })
   }
-
-  const overdueNote = (spentAt: string) => {
-    const date = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' }).format(parseDateTime(dayKey(spentAt)))
-    return t('inbox.due.overdue', { date })
-  }
-
-  // acts only on the template's next payment, and only when the caller has the
-  // template in their own list to act through
-  const upcomingTemplate = upcomingPreview
-    ? recurringList?.find((rt) => rt.id === upcomingPreview.templateId && upcomingPreview.canEdit)
-    : undefined
 
   return (
     <>
       {/* interactions inside the stacked preview/confirm must not dismiss the list */}
-      <ResponsiveDialog
-        open
-        onOpenChange={(o) => !o && onClose()}
-        title={displayName}
-        dismissible={!preview && !deleteTarget && !upcomingPreview}
-      >
+      <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={displayName} dismissible={!preview && !deleteTarget}>
         {isLoading ? (
           <div className="flex justify-center py-6">
             <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="loading" />
           </div>
-        ) : rows.length === 0 ? (
+        ) : rows.length === 0 && later.length === 0 ? (
           <p className="py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</p>
         ) : (
           <div className="max-h-80 overflow-y-auto scrollbar-slim">
+            {later.length > 0 ? (
+              <div data-testid="budget-tx-coming-up" className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline gap-x-2 px-1 pt-1 text-sm">
+                <p className="col-span-3 text-foreground">{t('budgets.page.upcoming.title')}</p>
+                {later.map(({ tx, recurring }) => {
+                  const line = (
+                    <>
+                      <span>{shortDate.format(parseDateTime(dayKey(tx.spentAt)))}</span>
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span className="truncate">{tx.description || tx.payee?.name || tx.category?.name || displayName}</span>
+                        {recurring ? <Repeat className="size-3.5 shrink-0" aria-label={t('recurring.preview.header')} /> : null}
+                      </span>
+                      <span className="text-right tabular-nums whitespace-nowrap">{signedMoney(tx)}</span>
+                    </>
+                  )
+                  // display only: nothing still to come is opened from here
+                  return (
+                    <div
+                      key={recurring ? `r-${tx.id}-${tx.spentAt}` : tx.id}
+                      className="col-span-3 grid grid-cols-subgrid items-baseline py-0.5 text-muted-foreground"
+                      data-testid={recurring ? `budget-upcoming-${tx.id}` : `budget-tx-${tx.id}`}
+                    >
+                      {line}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : null}
+            {later.length > 0 && rows.length > 0 ? (
+              <p className="px-1 pt-3 text-sm text-foreground" data-testid="budget-tx-posted">
+                {t('budgets.page.upcoming.posted')}
+              </p>
+            ) : null}
             {rows.map((row) =>
               row.kind === 'sep' ? (
                 <p key={row.key} className="px-1 pb-1 pt-3 text-xs font-medium uppercase text-muted-foreground">
@@ -267,19 +236,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
               ) : (
                 (() => {
                   const tx = row.tx!
-                  const upcoming = row.upcoming
-                  const currency = currencies.find((c) => c.id === tx.currencyId)
                   const classification = [tx.category?.name, tx.payee?.name].filter(Boolean).join(' · ')
-                  return (
-                    <button
-                      key={row.key}
-                      type="button"
-                      title={upcoming ? t('budgets.transactions.upcoming_hint') : t('accounts.page.preview_transaction_modal.header')}
-                      // money that has not moved yet is dimmed, like the account list's future rows
-                      className={`flex w-full items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-accent/50 ${upcoming || isFuture(tx.spentAt) ? 'opacity-50' : ''}`}
-                      data-testid={`budget-${row.key}`}
-                      onClick={() => (upcoming ? setUpcomingPreview(upcoming) : setPreview(toViewTransaction(tx)))}
-                    >
+                  const content = (
+                    <>
                       <EntityIcon name={tx.category?.icon || element.icon} className="text-base text-muted-foreground" />
                       <span className="flex min-w-0 flex-1 flex-col text-left">
                         {tx.description ? (
@@ -301,22 +260,19 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
                           </span>
                         )}
                       </span>
-                      {upcoming ? (
-                        // the same schedule glyph the account list puts on template rows
-                        <span title={t('recurring.preview.header')} className="flex shrink-0 items-center">
-                          <Repeat className="size-3 text-muted-foreground" aria-label={t('recurring.preview.header')} />
-                        </span>
-                      ) : null}
-                      <span className="flex shrink-0 flex-col items-end">
-                        <span className="tabular-nums text-muted-foreground">
-                          {/* spend is negative; money arriving (direction 'in') is positive */}
-                          {moneyFormat(tx.direction === 'in' ? tx.amount : -tx.amount, currency, {
-                            useNativePrecision: false,
-                            maxPrecision: currency?.fractionDigits ?? 2,
-                          })}
-                        </span>
-                        {upcoming?.isOverdue ? <span className="text-xs text-destructive">{overdueNote(tx.spentAt)}</span> : null}
-                      </span>
+                      <span className="tabular-nums text-muted-foreground">{signedMoney(tx)}</span>
+                    </>
+                  )
+                  return (
+                    <button
+                      key={row.key}
+                      type="button"
+                      title={t('accounts.page.preview_transaction_modal.header')}
+                      className="flex w-full items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-accent/50"
+                      data-testid={`budget-tx-${row.key}`}
+                      onClick={() => setPreview(toViewTransaction(tx))}
+                    >
+                      {content}
                     </button>
                   )
                 })()
@@ -342,46 +298,6 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
           isShared={(preview.account?.sharedAccess.length ?? 0) > 0 || !preview.account}
           dismissible={deleteTarget === null}
           fallbackCurrency={currencies.find((c) => c.id === transactions?.find((tx) => tx.id === preview.id)?.currencyId)}
-        />
-      ) : null}
-
-      {upcomingPreview && upcomingTemplate && upcomingPreview.isNext ? (
-        <ViewRecurringDialog
-          recurring={upcomingTemplate}
-          onClose={() => setUpcomingPreview(null)}
-          onPost={() => {
-            // a payment due later this month is posted on its own day so it
-            // stays where the list shows it; one due today or late is posted now
-            const date = isFuture(upcomingPreview.spentAt) ? parseDateTime(upcomingPreview.spentAt) : new Date()
-            postRecurring.mutate(recurringPostPayload(upcomingTemplate, accounts ?? [], exchangeFn, { date }), {
-              onSuccess: () => setUpcomingPreview(null),
-            })
-          }}
-          onSkip={() => {
-            skipRecurring.mutate(upcomingTemplate.id, { onSuccess: () => setUpcomingPreview(null) })
-          }}
-          onEdit={() => {
-            setUpcomingPreview(null)
-            openRecurringModal({ recurring: upcomingTemplate })
-          }}
-          canChange
-          skipPending={skipRecurring.isPending}
-          postPending={postRecurring.isPending}
-        />
-      ) : upcomingPreview ? (
-        <ViewRecurringDialog
-          readOnly
-          occurrence={upcomingPreview}
-          onClose={() => setUpcomingPreview(null)}
-          onEdit={
-            upcomingTemplate
-              ? () => {
-                  setUpcomingPreview(null)
-                  openRecurringModal({ recurring: upcomingTemplate })
-                }
-              : undefined
-          }
-          note={upcomingTemplate ? t('budgets.transactions.later_cycle') : undefined}
         />
       ) : null}
 

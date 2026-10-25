@@ -7,18 +7,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
-	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// projectWindow projects the recurring occurrences filed in f's window, or
-// returns a nil read when the window ended before the caller's current month
-// or nothing is projected into it.
-func (s *Service) projectWindow(ctx context.Context, f filters, now time.Time) (*projectedRead, error) {
-	if !upcomingShown(ctx, f.periodEnd, now) {
-		return nil, nil
-	}
-	return s.newProjectedRead(ctx, f, f.periodEnd)
-}
 
 // upcomingShown reports whether a window ending at periodEnd reaches the
 // caller's current month: one that ended before it has no upcoming money.
@@ -27,12 +16,10 @@ func upcomingShown(ctx context.Context, periodEnd, now time.Time) bool {
 }
 
 // addUpcoming fills result's upcoming fields: the same builder run a second
-// time over the projected recurring occurrences instead of the stored
-// transactions.
-func (s *Service) addUpcoming(ctx context.Context, b *budgetAggregate, now time.Time, pr *projectedRead, f filters, result *model.BudgetResult) error {
+// time over upcomingRead instead of the transactions dated up to today.
+func (s *Service) addUpcoming(ctx context.Context, b *budgetAggregate, now time.Time, pr ReadModel, f filters, result *model.BudgetResult) error {
 	sp := *s
 	sp.read = pr
-	sp.upcoming = nil
 	up, err := sp.buildBudget(ctx, b, f, now)
 	if err != nil {
 		return err
@@ -47,9 +34,7 @@ func (s *Service) addUpcoming(ctx context.Context, b *budgetAggregate, now time.
 }
 
 // mergeBudgetUpcoming copies the projected build's spend into real's upcoming
-// fields; a row the projected build lacks gets "0". The projected build sums no
-// limits, so its Available is -(spentBefore + spent) and
-// upcomingBefore = -Available - Spent.
+// fields; a row the projected build lacks gets "0".
 //
 // A row only the projected build has (a tag, tag child or label carrying
 // upcoming money but no real spend or limit) is added with zero real amounts:
@@ -73,11 +58,11 @@ func mergeBudgetUpcoming(real *model.BudgetResult, up model.BudgetResult) bool {
 		seen[k] = true
 		u, ok := elements[k]
 		if !ok {
-			el.Upcoming, el.BudgetUpcoming, el.UpcomingBefore = "0", "0", "0"
+			el.Upcoming, el.BudgetUpcoming = "0", "0"
 			el.Children, _ = mergeChildrenUpcoming(el.Children, nil)
 			continue
 		}
-		el.Upcoming, el.BudgetUpcoming, el.UpcomingBefore = u.Spent, u.BudgetSpent, upcomingBefore(u)
+		el.Upcoming, el.BudgetUpcoming = u.Spent, u.BudgetSpent
 		var childAdded bool
 		el.Children, childAdded = mergeChildrenUpcoming(el.Children, u.Children)
 		added = added || childAdded
@@ -91,7 +76,7 @@ func mergeBudgetUpcoming(real *model.BudgetResult, up model.BudgetResult) bool {
 			Id: u.Id, Type: u.Type, Name: u.Name, Icon: u.Icon, CurrencyId: u.CurrencyId,
 			IsArchived: u.IsArchived, FolderId: u.FolderId, Position: u.Position, OwnerUserId: u.OwnerUserId,
 			Budgeted: "0", Available: "0", Spent: "0", BudgetSpent: "0",
-			Upcoming: u.Spent, BudgetUpcoming: u.BudgetSpent, UpcomingBefore: upcomingBefore(u),
+			Upcoming: u.Spent, BudgetUpcoming: u.BudgetSpent,
 			Children: children,
 		})
 		added = true
@@ -138,10 +123,6 @@ func mergeBudgetUpcoming(real *model.BudgetResult, up model.BudgetResult) bool {
 		}
 	}
 	return added
-}
-
-func upcomingBefore(u model.ParentElementResult) string {
-	return vo.NewDecimal("0").Sub(vo.NewDecimal(u.Available)).Sub(vo.NewDecimal(u.Spent)).String()
 }
 
 // mergeChildrenUpcoming fills real's children from up's by id and appends the
@@ -224,17 +205,16 @@ func reorderRows[T any](rows []T, options map[string]elementOption, key func(T) 
 }
 
 // addPlanUpcoming fills the plan's upcoming fields the way addUpcoming does
-// for get-budget: BuildBudgetPlan run again over the projected occurrences of
-// the window. A window that ended before the current month, or one nothing is
-// projected into, keeps the zeros BuildBudgetPlan set.
+// for get-budget: BuildBudgetPlan run again over upcomingRead. A window that
+// ended before the current month, or one with nothing upcoming in it, keeps
+// the zeros BuildBudgetPlan set.
 func (s *Service) addPlanUpcoming(ctx context.Context, b *budgetAggregate, f filters, months int, result *model.BudgetPlanResult) error {
-	pr, err := s.projectWindow(ctx, f, s.clock.Now())
+	pr, err := s.upcomingRead(ctx, f, s.clock.Now())
 	if err != nil || pr == nil {
 		return err
 	}
 	sp := *s
 	sp.read = pr
-	sp.upcoming = nil
 	up, err := sp.buildBudgetPlan(ctx, b, f, months)
 	if err != nil {
 		return err
@@ -242,59 +222,12 @@ func (s *Service) addPlanUpcoming(ctx context.Context, b *budgetAggregate, f fil
 	if mergePlanUpcoming(result, up) {
 		reorderPlanElements(result.Structure.Elements, s.elementOptions(b))
 	}
-	return s.addPlanSavingsUpcomingOpenings(ctx, b, f, pr, result.Structure.Savings)
-}
-
-// addPlanSavingsUpcomingOpenings fills each savings row's
-// UpcomingOpeningBalance: the projected balance before the window start,
-// converted the way addPlanSavingsClosings converts the booked one that seeds
-// the closing balances.
-func (s *Service) addPlanSavingsUpcomingOpenings(ctx context.Context, b *budgetAggregate, f filters, pr *projectedRead, out []model.PlanSavingsElementResult) error {
-	if len(out) == 0 {
-		return nil
-	}
-	ids, err := savingsAccountIDs(f)
-	if err != nil {
-		return err
-	}
-	rows, err := savingsRows(f, s.elementOptions(b))
-	if err != nil {
-		return err
-	}
-	balances, err := pr.AccountsBalancesBeforeDate(ctx, ids, f.periodStart)
-	if err != nil {
-		return err
-	}
-	byAccount := make(map[string]vo.DecimalNumber, len(balances))
-	for _, bal := range balances {
-		byAccount[bal.AccountID] = vo.NewDecimal(bal.Balance)
-	}
-	monthEnd := f.periodStart.AddDate(0, 1, 0)
-	toConvert := map[string][]model.ConvertItem{}
-	for _, r := range rows {
-		if bal, ok := byAccount[r.account.ID]; ok {
-			if err := queueSavingsBalance(toConvert, r.account.ID, f.periodStart, monthEnd, r, bal); err != nil {
-				return err
-			}
-		}
-	}
-	if len(toConvert) == 0 {
-		return nil
-	}
-	converted, err := s.convertor.BulkConvert(ctx, f.periodStart, monthEnd, toConvert)
-	if err != nil {
-		return err
-	}
-	get := convertedGetter(converted)
-	for i := range out {
-		out[i].UpcomingOpeningBalance = get(out[i].Id).String()
-	}
 	return nil
 }
 
 // mergePlanUpcoming copies the projected plan's actuals into real's upcoming
 // cells (rows by (id, type), cells by month index, children and savings rows
-// by id) and takes its top-level arrays as the upcoming ones.
+// by id).
 //
 // A row or child only the projection has (a tag, an Uncategorized row, an
 // archived row or child the builder shows on activity) is added with zero
@@ -303,12 +236,6 @@ func (s *Service) addPlanSavingsUpcomingOpenings(ctx context.Context, b *budgetA
 // booked closing balance the projection cannot supply. It reports whether
 // anything was added, as positions then need recomputing.
 func mergePlanUpcoming(real *model.BudgetPlanResult, up model.BudgetPlanResult) bool {
-	real.UpcomingOpeningBalances = up.OpeningBalances
-	real.UpcomingSavingsOpeningBalances = up.SavingsOpeningBalances
-	real.UpcomingTransfers = up.Transfers
-	real.UpcomingSavingsFlows = up.SavingsFlows
-	real.UpcomingSavingsIncomeExpense = up.SavingsIncomeExpense
-
 	type key struct {
 		id  string
 		typ int
@@ -413,22 +340,4 @@ func reorderPlanElements(elements []model.PlanElementResult, options map[string]
 	reorderRows(elements, options,
 		func(e model.PlanElementResult) (string, int, *string) { return e.Id, e.Type, e.FolderId },
 		func(e *model.PlanElementResult) *int { return &e.Position })
-}
-
-// zeroBalances is balances with every amount "0": the upcoming opening
-// balances of a window with nothing projected.
-func zeroBalances(balances []model.OpeningBalanceResult) []model.OpeningBalanceResult {
-	out := make([]model.OpeningBalanceResult, len(balances))
-	for i, b := range balances {
-		out[i] = model.OpeningBalanceResult{CurrencyId: b.CurrencyId, Amount: "0"}
-	}
-	return out
-}
-
-func emptyTransfers(months []model.PlanMonthTransfersResult) []model.PlanMonthTransfersResult {
-	out := make([]model.PlanMonthTransfersResult, len(months))
-	for i, m := range months {
-		out[i] = model.PlanMonthTransfersResult{Period: m.Period, Items: []model.PlanTransferResult{}}
-	}
-	return out
 }

@@ -697,102 +697,62 @@ it('a section\'s last line draws no bottom rule over the next section\'s top rul
   }
 })
 
-it('an actual in a month after the current one is a lighter grey than a current-month one', async () => {
-  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
-  const plan = {
-    ...fixtureWirePlan,
-    structure: {
-      ...fixtureWirePlan.structure,
-      elements: [
-        ...fixtureWirePlan.structure.elements,
-        {
-          id: 'up-1', type: 1, name: 'Upcoming', icon: 'delete', currencyId: 'cur-usd', isArchived: 0, folderId: null, position: 9, ownerUserId: 'u1',
-          cells: [{ actual: '0', planned: '' }, { actual: '0', planned: '' }, { actual: '7', planned: '' }, { actual: '9', planned: '' }],
-          children: [],
-        },
-      ],
-    },
+describe('upcoming recurring as a plan hint', () => {
+  // July is the current month, August the next one; nothing is planned in August
+  function renderWithUpcoming(edit: (plan: BudgetPlanDto) => void) {
+    vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+    const plan = structuredClone(fixtureWirePlan) as BudgetPlanDto
+    edit(plan)
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(plan),
+    )
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+    renderPage()
   }
-  server.use(
-    ...coreHandlers({ user: userWithBudget }),
-    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-    planHandler(plan),
-  )
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
-  renderPage()
-  await screen.findByTestId('plan-sheet')
-  const row = document.querySelector('[data-row-id="up-1:1"]') as HTMLElement
-  const aug = within(row).getByText('9.00')
-  expect(aug).toHaveAttribute('data-testid', 'cell-actual')
-  expect(aug.className).toContain('text-muted-foreground/50')
-})
+  const element = (plan: BudgetPlanDto, id: string) => plan.structure.elements.find((e) => e.id === id)!
+  const planned = (testId: string) => within(screen.getByTestId(testId)).getByTestId('cell-planned')
 
-it('the current month shows the fact only; a cell with nothing real yet but money upcoming opens its list from the dash', async () => {
-  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
-  let params: URLSearchParams | undefined
-  const row = (id: string, july: { actual: string; upcoming: string }) => ({
-    id, type: 1 as const, name: id, icon: 'delete', currencyId: 'cur-usd', isArchived: 0 as const, folderId: null, position: 9, ownerUserId: 'u1',
-    cells: [{ actual: '0', planned: '' }, { actual: '0', planned: '' }, { actual: july.actual, planned: '', upcoming: july.upcoming }, { actual: '0', planned: '', upcoming: '6' }],
-    children: [],
+  it('a cell with no plan stays empty and the Balance ignores money due', async () => {
+    renderWithUpcoming((plan) => {
+      element(plan, 'cat-freelance').cells[3] = { actual: '0', planned: '', upcoming: '1000' }
+    })
+    await screen.findByTestId('plan-sheet')
+    expect(planned('plan-cell-cat-freelance:2')).toHaveTextContent(/^$/)
+    const base = fixtureWirePlan as unknown as BudgetPlanDto
+    const ex = makePlanExchange(base, [fixtureUsd, fixtureEur])
+    const balance = balanceRow(base, planTotals(base, ex), ex)
+    const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
+    expect(screen.getByTestId('plan-balance-2')).toHaveTextContent(fmt(balance[2]))
   })
-  const plan = {
-    ...fixtureWirePlan,
-    structure: {
-      ...fixtureWirePlan.structure,
-      elements: [...fixtureWirePlan.structure.elements, row('part-paid', { actual: '4', upcoming: '6' }), row('nothing-yet', { actual: '0', upcoming: '6' })],
-    },
-  }
-  server.use(
-    ...coreHandlers({ user: userWithBudget }),
-    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-    planHandler(plan),
-    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
-      params = new URL(request.url).searchParams
-      return HttpResponse.json({ success: true, message: '', data: { items: [], upcoming: [] } })
-    }),
-  )
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
-  const user = userEvent.setup()
-  renderPage()
-  await screen.findByTestId('plan-sheet')
-  // July is the current month: 4 spent, not 4 + 6
-  expect(within(screen.getByTestId('plan-cell-part-paid:1')).getByTestId('cell-actual')).toHaveTextContent(/^4\.00$/)
-  // August is later: combined
-  expect(within(screen.getByTestId('plan-cell-part-paid:2')).getByTestId('cell-actual')).toHaveTextContent(/^6\.00$/)
-  const dash = within(screen.getByTestId('plan-cell-nothing-yet:1')).getByTestId('cell-actual')
-  expect(dash).toHaveTextContent('—')
-  await user.click(dash)
-  expect(await screen.findByRole('dialog')).toBeInTheDocument()
-  await waitFor(() => expect(params?.get('categoryId')).toBe('nothing-yet'))
-  expect(params?.get('periodStart')).toBe('2026-07-01')
-})
 
-it('in a month after the current one, sum lines and envelope children show the folded actual too, lighter and never red', async () => {
-  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
-  const plan = structuredClone(fixtureWirePlan) as BudgetPlanDto
-  const pe1 = plan.structure.elements.find((e) => e.id === 'pe1')!
-  pe1.cells[3] = { actual: '0', planned: '', upcoming: '900' }
-  pe1.children[0].cells[3] = { actual: '0', upcoming: '900' }
-  server.use(
-    ...coreHandlers({ user: userWithBudget }),
-    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-    planHandler(plan),
-  )
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', foldBudgetId: 'b1', planUnfoldedElements: { pe1: true } })
-  const user = userEvent.setup()
-  renderPage()
-  await screen.findByTestId('plan-sheet')
-  // August (column 2) is after the current July
-  const child = within(screen.getByTestId('plan-cell-cat-rent:2')).getByTestId('cell-actual')
-  expect(child).toHaveTextContent('900.00')
-  expect(child.className).toContain('text-muted-foreground/50')
-  const line = screen.getByTestId('plan-section-line-expense')
-  await user.click(within(line).getByRole('button', { name: /show sums for expenses/i }))
-  const aug = within(within(line).getByTestId('plan-sum-2')).getByText('900.00')
-  expect(aug.className).toContain('text-muted-foreground/50')
-  expect(aug.className).not.toContain('text-expense')
-  // a later month with nothing upcoming stays plan-only
-  expect(within(screen.getByTestId('plan-cell-cat-rent:1')).getByTestId('cell-actual')).toHaveTextContent('45.00')
+  it('grid shows no suggestion', async () => {
+    renderWithUpcoming((plan) => {
+      element(plan, 'cat-food').cells[3] = { actual: '0', planned: '', upcoming: '650' }
+    })
+    await screen.findByTestId('plan-sheet')
+    const slot = planned('plan-cell-cat-food:2')
+    expect(slot).toHaveTextContent(/^$/)
+    expect(slot).not.toHaveClass('italic')
+  })
+
+  it('an expense plan below spent plus still due is red; income and past months never are', async () => {
+    renderWithUpcoming((plan) => {
+      // July: 15 spent of 50, 40 still due
+      element(plan, 'tag1').cells[2] = { actual: '15', planned: '50', upcoming: '40' }
+      element(plan, 'cat-freelance').cells[3] = { actual: '0', planned: '100', upcoming: '1000' }
+      element(plan, 'pe1').cells[1] = { actual: '60', planned: '200', upcoming: '500' }
+      element(plan, 'pe1').children[0].cells[3] = { actual: '0', upcoming: '300' }
+    })
+    await screen.findByTestId('plan-sheet')
+    expect(planned('plan-cell-tag1:1')).toHaveClass('text-expense')
+    expect(planned('plan-cell-cat-freelance:2')).not.toHaveClass('text-expense')
+    // June is before the current month
+    expect(planned('plan-cell-pe1:0')).not.toHaveClass('text-expense')
+    // the envelope with no plan in August does not suggest its child's money
+    expect(planned('plan-cell-pe1:2')).toHaveTextContent(/^$/)
+  })
 })
 
 it('the Archived line sums its rows: their actuals, never their plans', async () => {

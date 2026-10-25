@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { limitAmountFromInput } from './limitAmount'
+import { UpcomingPaymentsPanel, type UpcomingQuery } from './UpcomingPaymentsPanel'
 
 export type CellMove = 'down' | 'right' | 'left' | 'up' | 'none'
 
@@ -13,12 +14,15 @@ export function PlanCellInput({
   label,
   onCommit,
   onCancel,
+  upcoming = null,
 }: {
   initial: string
   label: string
   /** called only with a valid value; the grid decides whether it changed */
   onCommit: (raw: string, move: CellMove) => void
   onCancel: () => void
+  /** set only for a cell that can have money still to come, so other cells fetch nothing */
+  upcoming?: UpcomingQuery | null
 }) {
   const { t } = useTranslation()
   const [value, setValue] = useState(initial)
@@ -97,6 +101,25 @@ export function PlanCellInput({
         // with no padding the typed figure sits exactly where the read-only plan did
         className="w-full bg-transparent p-0 text-right text-[15px] tabular-nums outline-none"
       />
+      {upcoming && !invalid ? (
+        // a press here must not blur the input (which commits) or reach the cell; placed and
+        // framed like the multi-cell sum hint: 4px under the cell's frame, flush with its right edge
+        <div
+          className="absolute top-full -right-2 z-30 mt-2.5 w-64 rounded-md border bg-popover px-2.5 py-1.5 text-left text-popover-foreground shadow-md empty:hidden"
+          onMouseDown={(e) => e.preventDefault()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
+          <UpcomingPaymentsPanel
+            query={upcoming}
+            onUse={(amount) => {
+              setValue(amount)
+              ref.current?.focus()
+            }}
+          />
+        </div>
+      ) : null}
       {invalid ? (
         <span role="alert" className="absolute top-full right-0 z-30 mt-0.5 whitespace-nowrap rounded bg-background px-1 text-xs text-expense shadow">
           {t('common.validation.invalid_formula')}

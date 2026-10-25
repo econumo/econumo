@@ -77,17 +77,11 @@ it('centres each figure in its column', () => {
   expect(screen.getByTestId('sheet-figure-budget').className).toContain('text-center')
 })
 
-it('shows a dash for Spent and no state sentence in a future month with nothing upcoming', () => {
-  const idle: BudgetElementDto = { ...food, budgeted: '100', spent: '0', budgetSpent: '0', available: '100' }
-  renderSheet({ target: { kind: 'expense', element: idle }, month: '2099-01-01' })
+it('shows a dash for Spent and no state sentence in a future month', () => {
+  const over: BudgetElementDto = { ...food, budgeted: '100', spent: '150', budgetSpent: '150', available: '-120' }
+  renderSheet({ target: { kind: 'expense', element: over }, month: '2099-01-01' })
   expect(screen.getByTestId('sheet-figure-spent')).toHaveTextContent('Spent—')
   expect(screen.queryByTestId('sheet-state')).toBeNull()
-})
-
-it('shows the combined Spent in a future month when upcoming exists', () => {
-  const upcoming: BudgetElementDto = { ...food, budgeted: '100', spent: '40', budgetSpent: '40', available: '60' }
-  renderSheet({ target: { kind: 'expense', element: upcoming }, month: '2099-01-01' })
-  expect(screen.getByTestId('sheet-figure-spent')).toHaveTextContent('40')
 })
 
 it('tags every amount of a foreign-currency item and adds the converted line and rate note', () => {
@@ -246,4 +240,24 @@ it('a reporting tag shows Spent only, with Transactions and Edit but no comments
   expect(props.onShowTransactions).toHaveBeenCalled()
   await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
   expect(props.onEdit).toHaveBeenCalled()
+})
+
+it('keeps an empty Budget figure empty with money still due', () => {
+  const unplanned: BudgetElementDto = { ...food, budgeted: '0', spent: '300', budgetSpent: '300', available: '-300', upcoming: '250' }
+  renderSheet({ target: { kind: 'expense', element: unplanned } })
+  const figure = screen.getByTestId('sheet-figure-budget')
+  expect(within(figure).getByText('0.00')).not.toHaveClass('italic')
+  expect(figure).not.toHaveTextContent('550')
+})
+
+it('shows a Budget figure below what the month needs in red', () => {
+  const short: BudgetElementDto = { ...food, budgeted: '500', spent: '300', budgetSpent: '300', available: '200', upcoming: '250' }
+  renderSheet({ target: { kind: 'expense', element: short } })
+  expect(within(screen.getByTestId('sheet-figure-budget')).getByText('500.00')).toHaveClass('text-expense')
+})
+
+it('an income plan cell with no plan keeps its Planned figure empty', () => {
+  const salaries = planElement({ id: 'ie1', type: 4, name: 'Salaries' })
+  renderSheet({ target: { kind: 'plan', cell: { element: salaries, planned: '0', actual: '0', upcoming: '1500' } }, onShowTransactions: undefined })
+  expect(screen.getByTestId('sheet-figure-planned')).not.toHaveTextContent('1,500')
 })

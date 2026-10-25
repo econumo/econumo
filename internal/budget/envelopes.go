@@ -273,7 +273,7 @@ func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, fol
 		Id: id.String(), Type: int(typ.Int16()), Name: name, Icon: icon,
 		CurrencyId: currencyID.String(), IsArchived: boolToInt(archived), FolderId: fid, Position: position,
 		Budgeted: "0", Available: "0", Spent: "0", BudgetSpent: "0",
-		Upcoming: "0", BudgetUpcoming: "0", UpcomingBefore: "0",
+		Upcoming: "0", BudgetUpcoming: "0",
 		Children: children, OwnerUserId: nil,
 	}
 }

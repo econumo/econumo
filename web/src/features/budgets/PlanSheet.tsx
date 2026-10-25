@@ -95,6 +95,7 @@ import { PlanSelectionHint } from './PlanSelectionHint'
 import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
 import type { GridCtx, PlanCellEdit, PlanLimitTarget, PlanSelection } from './PlanRows'
 import type { CellMove } from './PlanCellInput'
+import { wantsUpcomingPanel } from './planHint'
 
 export interface PlanSheetProps {
   /** the ALREADY-LOADED budget (meta for permissions/currency); plan data is fetched inside */
@@ -771,9 +772,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         const c = i >= 0 ? r.element.cells[i] : undefined
         return c !== undefined && test(c)
       })
-    // the current month's actual is the fact only: money still upcoming shows the row too
-    const moved = (c: PlanCellDto) => !isZero(c.actual) || !isZero(c.upcoming ?? '0')
-    const visibleUncat = (r: PlanRow | null): PlanRow | null => (r && hasVisible(r, moved) ? r : null)
+    const actual = (c: PlanCellDto) => !isZero(c.actual)
+    // archived rows with upcoming money stay visible; Uncategorized holds no plan, so only real money counts
+    const moved = (c: PlanCellDto) => actual(c) || !isZero(c.upcoming ?? '0')
+    const visibleUncat = (r: PlanRow | null): PlanRow | null => (r && hasVisible(r, actual) ? r : null)
     return {
       ...rows,
       income: { ...rows.income, uncategorized: visibleUncat(rows.income.uncategorized) },
@@ -944,8 +946,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       const month = visibleMonths[c.col]
       return el && month !== undefined ? [{ el, month }] : []
     })
-    return planSelectionSum(cells, monthIndex, ex)
-  }, [ex, shownPicked, flatRows, visibleMonths, monthIndex])
+    return planSelectionSum(cells, monthIndex, ex, cur)
+  }, [ex, shownPicked, flatRows, visibleMonths, monthIndex, cur])
 
   const gridCtx: GridCtx | null = useMemo(() => {
     if (!plan || !ex) {
@@ -959,6 +961,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       selectedCol: -1,
       crosshairCol,
       currencies,
+      cellExchange: (i: number) => planMonthExchange(plan, currencies, i),
       baseCurrencyId: budget.meta.currencyId,
       meta: budget.meta,
       userId,
@@ -2033,6 +2036,25 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           }
         }}
         plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) : false}
+        upcoming={
+          planLimitTarget && dialogCell && wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming, planLimitTarget.el.type === BudgetElementType.SAVINGS)
+            ? {
+                budget,
+                target: {
+                  id: planLimitTarget.el.id,
+                  type: planLimitTarget.el.type,
+                  name: elementDisplayName(planLimitTarget.el.id, planLimitTarget.el.name, t),
+                  icon: planLimitTarget.el.icon,
+                  currencyId: planLimitTarget.el.currencyId,
+                },
+                periodStart: planLimitTarget.month,
+                currency: currencies.find((c) => c.id === planLimitTarget.el.currencyId),
+                exchange: planMonthExchange(plan, currencies, planLimitTarget.monthIndex),
+                spent: dialogCell.actual,
+                upcoming: dialogCell.upcoming,
+              }
+            : null
+        }
       />
 
       <ElementSheet

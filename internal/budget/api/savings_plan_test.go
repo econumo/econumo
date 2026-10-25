@@ -126,14 +126,33 @@ func TestGetBudgetPlanSavings_ConvertsToElementCurrency(t *testing.T) {
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/change-element-currency", tok, map[string]any{
 		"budgetId": budgetID1, "elementId": savingsEURID, "currencyId": usdID,
 	})
-	view, _ := h.savingsPlan(t, tok, budgetID1, savingsPlanWindow)
+	view, env := h.savingsPlan(t, tok, budgetID1, savingsPlanWindow)
 	s2 := planSavingsByID(view.Item.Structure.Savings)[savingsEURID]
 	wantAug := vo.NewDecimal("100").Div(vo.NewDecimal(augustEURRate)).Round(2)
 	wantSep := vo.NewDecimal("60").Div(vo.NewDecimal(septEURRate)).Round(2)
 	if s2.CurrencyId != usdID {
 		t.Fatalf("S2 currency = %s, want USD", s2.CurrencyId)
 	}
-	assertPlanCells(t, "S2", s2.Cells, []planSavingsCellView{{"0", ""}, {wantAug.String(), "50"}, {wantSep.String(), ""}})
+	// The clock is in August, so September's transfer has not happened yet: it
+	// is upcoming, converted at September's rate all the same.
+	assertPlanCells(t, "S2", s2.Cells, []planSavingsCellView{{"0", ""}, {wantAug.String(), "50"}, {"0", ""}})
+	upcoming := mustUnmarshal[struct {
+		Item struct {
+			Structure struct {
+				Savings []struct {
+					Id    string `json:"id"`
+					Cells []struct {
+						Upcoming string `json:"upcoming"`
+					} `json:"cells"`
+				} `json:"savings"`
+			} `json:"structure"`
+		} `json:"item"`
+	}](t, env.Data)
+	for _, r := range upcoming.Item.Structure.Savings {
+		if r.Id == savingsEURID && !decEq(r.Cells[2].Upcoming, wantSep.String()) {
+			t.Errorf("S2 September upcoming = %q, want %s", r.Cells[2].Upcoming, wantSep)
+		}
+	}
 }
 
 func TestGetBudgetPlanSavings_OpeningBalances(t *testing.T) {
@@ -155,7 +174,10 @@ func TestGetBudgetPlanSavings_OpeningBalances(t *testing.T) {
 func TestGetBudgetPlanSavings_Flows(t *testing.T) {
 	h, tok, eur := newSavingsBudget(t)
 	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: savingsUSDID, Type: 1, Amount: "3",
-		SpentAt: time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)})
+		SpentAt: time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)})
+	// Dated after the caller's today (the clock is on August 17): not a flow yet.
+	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: savingsEURID, Type: 1, Amount: "4",
+		SpentAt: time.Date(2026, 8, 18, 0, 0, 0, 0, time.UTC)})
 	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: savingsEURID, Type: 1, Amount: "7",
 		SpentAt: time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)})
 	// Outside the window on both sides: never a flow.
@@ -169,7 +191,6 @@ func TestGetBudgetPlanSavings_Flows(t *testing.T) {
 	want := []flow{
 		{"2026-08-01", usdID, "303"},
 		{"2026-08-01", eur, "100"},
-		{"2026-09-01", eur, "7"},
 	}
 	got := view.Item.SavingsFlows
 	if len(got) != len(want) {

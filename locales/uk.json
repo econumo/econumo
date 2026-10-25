@@ -1208,10 +1208,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "Майбутній регулярний платіж",
-      "later_cycle": "Можна провести після попереднього платежу"
-    },
     "modal": {
       "budget_form": {
         "accounts": "Рахунки",
@@ -1361,6 +1357,14 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "Попереду",
+        "spent": "Вже витрачено",
+        "received": "Вже отримано",
+        "saved": "Вже відкладено",
+        "posted": "Проведено",
+        "total": "Разом"
+      },
       "budget": {
         "empty": {
           "header": "Бюджет",

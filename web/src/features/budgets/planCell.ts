@@ -1,13 +1,17 @@
 import type { PlanCellDto } from '@/api/dto/budget'
-import { BudgetElementType } from '@/api/dto/budget'
+import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import { isZero } from '@/lib/decimal'
 import { isOverspent } from './planMath'
+import type { PlanHint } from './planHint'
+import { planHint, planHintKind } from './planHint'
 
 export interface PlanCellViewInput {
   type: BudgetElementType
+  /** Uncategorized cannot hold a plan, so it never carries a hint */
+  id?: string
   cell: PlanCellDto | undefined
   month: string
-  /** the caller's current month: later months show an actual only when it is non-zero */
+  /** the caller's current month: later months have no actuals worth showing, earlier ones no plan hint */
   selected: string
 }
 
@@ -21,9 +25,8 @@ export interface PlanCellView {
   over: boolean
   /** a savings account: `actual` is its month-end balance (projected ahead), not what was saved */
   balance: boolean
-  /** the current month has nothing real yet but recurring money upcoming: its dash
-   *  still opens the cell's transaction list */
-  upcoming?: true
+  /** display only: an expense plan short of spent + the month's upcoming payments */
+  hint: PlanHint
 }
 
 /** A zero actual is only worth a mark next to a plan, as "— · 55"; on its own the
@@ -44,28 +47,25 @@ function shownPlan(planned: string, actual: string | null): string | null {
   return planned
 }
 
-export function planCellView({ type, cell, month, selected }: PlanCellViewInput): PlanCellView {
+export function planCellView({ type, id, cell, month, selected }: PlanCellViewInput): PlanCellView {
   if (!cell) {
-    return { actual: null, dash: false, plan: null, over: false, balance: false }
+    return { actual: null, dash: false, plan: null, over: false, balance: false, hint: null }
   }
   const past = month <= selected
+  // the hint compares the plan with what the month needs (saved, for savings), never a balance
+  const hint = month < selected || id === UNCATEGORIZED_ID ? null : planHint({ planned: cell.planned, spent: cell.actual, upcoming: cell.upcoming, kind: planHintKind(type) })
   // where a savings account stands says more than what went in that month; ahead of
   // today it is the projection (unmet plans still to come), flat without a plan
   if (type === BudgetElementType.SAVINGS && cell.closingBalance !== undefined) {
-    return { actual: cell.closingBalance, dash: false, plan: shownPlan(cell.planned, cell.closingBalance), over: false, balance: true }
+    return { actual: cell.closingBalance, dash: false, plan: shownPlan(cell.planned, cell.closingBalance), over: false, balance: true, hint }
   }
-  // a later month shows an actual only when upcoming recurring amounts folded one in
-  const showsActual = past || !isZero(cell.actual)
-  const actual = showsActual ? cell.actual : null
+  const actual = past ? cell.actual : null
   const plan = shownPlan(cell.planned, actual)
-  // the current month shows the fact only; what is still to come is in its list
-  if (month === selected && isZero(cell.actual) && cell.upcoming !== undefined && !isZero(cell.upcoming)) {
-    return { actual: null, dash: true, plan, over: false, balance: false, upcoming: true }
-  }
   return {
     ...shownActual(actual, plan !== null),
     plan,
     over: past && type !== BudgetElementType.SAVINGS && isOverspent(type, cell),
     balance: false,
+    hint,
   }
 }
