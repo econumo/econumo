@@ -2013,6 +2013,10 @@
       "close": "Понятно"
     }
   },
+  "whatsNew": {
+    "notice": "Что нового в {version}",
+    "dismiss": "Скрыть"
+  },
   "errors": {
     "common": {
       "is_blank": "Это значение не должно быть пустым.",

@@ -485,3 +485,25 @@ func TestUpdateAnalytics(t *testing.T) {
 		t.Fatalf("unexpected body: %s", env.raw)
 	}
 }
+
+func TestUpdateLastSeenVersion(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	for _, v := range []string{"v1.5.0", "v1.6.0"} {
+		status, env := h.do(t, http.MethodPost, "/api/v1/user/update-last-seen-version", token, map[string]any{"version": v})
+		if status != http.StatusOK {
+			t.Fatalf("status = %d, want 200: %s", status, env.raw)
+		}
+		if want := `{"name":"last_seen_version","value":"` + v + `"}`; !strings.Contains(string(env.raw), want) {
+			t.Fatalf("option %s missing from response: %s", want, env.raw)
+		}
+	}
+
+	for _, v := range []string{"", "dev", "1.6.0"} {
+		status, env := h.do(t, http.MethodPost, "/api/v1/user/update-last-seen-version", token, map[string]any{"version": v})
+		if status != http.StatusBadRequest {
+			t.Fatalf("version %q: status = %d, want 400: %s", v, status, env.raw)
+		}
+	}
+}

@@ -2013,6 +2013,10 @@
       "close": "Compris"
     }
   },
+  "whatsNew": {
+    "notice": "Nouveautés de la {version}",
+    "dismiss": "Ignorer"
+  },
   "errors": {
     "common": {
       "is_blank": "Cette valeur ne doit pas être vide.",

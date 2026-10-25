@@ -2013,6 +2013,10 @@
       "close": "Ho capito"
     }
   },
+  "whatsNew": {
+    "notice": "Novità della {version}",
+    "dismiss": "Ignora"
+  },
   "errors": {
     "common": {
       "is_blank": "Questo valore non deve essere vuoto.",

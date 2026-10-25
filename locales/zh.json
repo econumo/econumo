@@ -2013,6 +2013,10 @@
       "close": "知道了"
     }
   },
+  "whatsNew": {
+    "notice": "{version} 新功能",
+    "dismiss": "关闭"
+  },
   "errors": {
     "common": {
       "is_blank": "此值不能为空。",

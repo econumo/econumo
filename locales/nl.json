@@ -2013,6 +2013,10 @@
       "close": "Begrepen"
     }
   },
+  "whatsNew": {
+    "notice": "Nieuw in {version}",
+    "dismiss": "Sluiten"
+  },
   "errors": {
     "common": {
       "is_blank": "Deze waarde mag niet leeg zijn.",

@@ -166,6 +166,8 @@ export const METRICS = {
   GLOBAL_SEARCH_SELECT: 'appGlobalSearchSelect',
   FEEDBACK_OPEN: 'appFeedbackOpen',
   FEEDBACK_SEND: 'appFeedbackSend',
+  WHATS_NEW_OPEN: 'appWhatsNewOpen',
+  WHATS_NEW_DISMISS: 'appWhatsNewDismiss',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

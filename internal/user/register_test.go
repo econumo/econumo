@@ -73,3 +73,22 @@ func TestRegisterAlwaysSeedsAnalyticsEnabled(t *testing.T) {
 		t.Fatalf("value = %q, want %q", *o.Value, "1")
 	}
 }
+
+// A new account starts with the running release as seen, so it never gets a
+// "what's new" notice for a version it never upgraded from; a dev build seeds
+// nothing.
+func TestRegisterSeedsLastSeenVersion(t *testing.T) {
+	h := newRegisterHarness(t)
+	h.svc.SetAppVersion("v1.6.0")
+	u := h.registerUser(t, "release@example.test")
+	o := u.Option(model.OptionLastSeenVersion)
+	if o == nil || o.Value == nil || *o.Value != "v1.6.0" {
+		t.Fatalf("last_seen_version = %+v, want v1.6.0", o)
+	}
+
+	h.svc.SetAppVersion("dev")
+	u = h.registerUser(t, "dev@example.test")
+	if o := u.Option(model.OptionLastSeenVersion); o != nil {
+		t.Fatalf("dev build seeded last_seen_version = %+v", o)
+	}
+}

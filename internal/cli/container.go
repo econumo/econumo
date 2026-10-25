@@ -23,6 +23,7 @@ import (
 	"github.com/econumo/econumo/internal/server"
 	appuser "github.com/econumo/econumo/internal/user"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
+	"github.com/econumo/econumo/internal/version"
 )
 
 // container is the CLI composition root: an opened DB plus the services the
@@ -111,6 +112,7 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),
 		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, nil, cfg.AppURL, cfg.AllowRegistration, cfg.AppLinksEnabled())
 	userSvc.SetOAuthReclaimer(server.NewOAuthReclaimer(oauthSvc))
+	userSvc.SetAppVersion(version.Version)
 
 	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)
 	currencySvc := appcurrency.NewWriteService(currencyWriteRepo, txm, clk)
