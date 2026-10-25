@@ -80,8 +80,10 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
   const bodyClass = `flex-1 overflow-y-auto px-4 pt-1 ${footer || keyboardUp ? 'pb-4' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`
   const footerClass = `border-t px-4 pt-3 ${keyboardUp ? 'pb-3' : 'pb-[max(env(safe-area-inset-bottom),0.75rem)]'} [&_button]:h-11`
   // room below the last field so any field can scroll to the top of the form:
-  // a picker opened low on the page then lists below it, above the keyboard
-  const pageBodyStyle = keyboardUp ? { paddingBottom: keyboard.height } : undefined
+  // a picker opened low on the page then lists below it, above the keyboard.
+  // A spacer, not padding: padding would hold the scroll container taller
+  // than the page and push the footer under the keyboard
+  const pageBodySpacer = keyboardUp ? <div aria-hidden style={{ height: keyboard.height }} /> : null
 
   // An open combobox popup (Base UI, not a Radix layer, so Radix's document-
   // capture Escape handler doesn't know about it) owns Escape: it closes the
@@ -138,7 +140,10 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
           </DialogHeader>
           {headerAction && !hideHeader ? <div className={`absolute top-[max(env(safe-area-inset-top),0.5rem)] ${cornerActionClass}`}>{headerAction}</div> : null}
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
-          <div data-slot="dialog-body" className={bodyClass} style={pageBodyStyle}>{children}</div>
+          <div data-slot="dialog-body" className={bodyClass}>
+            {children}
+            {pageBodySpacer}
+          </div>
           {footer ? (
             <div className={footerClass}>{footer}</div>
           ) : null}

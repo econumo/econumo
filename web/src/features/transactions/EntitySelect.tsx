@@ -12,8 +12,10 @@ const FIELD_TOP_GAP = 8
 // px a phone picker's list wants below its field: five rows and the create hint
 const PHONE_LIST_ROOM = 264
 
-// on a phone the list always opens below the field: flipping it above covered
-// the page header and flipped back as the keyboard changed height
+// on a phone form the list always opens below the field: flipping it above
+// covered the page header and flipped back as the keyboard changed height.
+// Only where the form can scroll the field up to make that room (a full-screen
+// page body); a drawer keeps flipping
 const PHONE_COLLISION_AVOIDANCE = { side: 'none' } as const
 
 export interface EntityOption {
@@ -74,24 +76,39 @@ export function EntitySelect({
     if (!open || !isPhone || !field || !body) {
       return
     }
-    // after iOS's own scroll-into-view of the focused input
-    const frame = requestAnimationFrame(() => {
-      const vv = window.visualViewport
-      const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight
-      const rect = field.getBoundingClientRect()
-      const short = rect.bottom + PHONE_LIST_ROOM - visibleBottom
-      const toTop = rect.top - body.getBoundingClientRect().top - FIELD_TOP_GAP
-      if (short > 0 && toTop > 0) {
-        body.scrollTop += Math.min(short, toTop)
-      }
-    })
-    return () => cancelAnimationFrame(frame)
+    let frame = 0
+    const fit = () => {
+      cancelAnimationFrame(frame)
+      // after iOS's own scroll-into-view of the focused input
+      frame = requestAnimationFrame(() => {
+        const vv = window.visualViewport
+        const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight
+        const rect = field.getBoundingClientRect()
+        const short = rect.bottom + PHONE_LIST_ROOM - visibleBottom
+        const toTop = rect.top - body.getBoundingClientRect().top - FIELD_TOP_GAP
+        if (short > 0 && toTop > 0) {
+          body.scrollTop += Math.min(short, toTop)
+        }
+      })
+    }
+    fit()
+    // the keyboard opens, or swaps the number pad for letters, after the
+    // picker does: measure again as the visible area settles
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', fit)
+    vv?.addEventListener('scroll', fit)
+    return () => {
+      cancelAnimationFrame(frame)
+      vv?.removeEventListener('resize', fit)
+      vv?.removeEventListener('scroll', fit)
+    }
   }, [open, isPhone])
   // portal the popup INTO the containing dialog/drawer: the dialog's scroll lock
   // swallows wheel events on anything portaled to body (and vaul's touch lock
   // does the same to touchmove), so the list would not scroll otherwise
   const portalContainer =
     (rootRef.current?.closest('[data-slot="drawer-content"], [data-slot="dialog-content"]') as HTMLElement | null) ?? undefined
+  const pinBelow = isPhone && !!rootRef.current?.closest('[data-slot="dialog-body"]')
 
   const selected = options.find((o) => o.value === value) ?? null
   const filtered = rankByName(options, (o) => o.searchText ?? o.label, search)
@@ -177,7 +194,7 @@ export function EntitySelect({
         />
         <ChevronsUpDown className="pointer-events-none size-4 shrink-0 opacity-50" />
       </div>
-      <ComboboxContent container={portalContainer} collisionAvoidance={isPhone ? PHONE_COLLISION_AVOIDANCE : undefined}>
+      <ComboboxContent container={portalContainer} collisionAvoidance={pinBelow ? PHONE_COLLISION_AVOIDANCE : undefined}>
         <ComboboxList>
           {(row: Row) => (
             <ComboboxItem

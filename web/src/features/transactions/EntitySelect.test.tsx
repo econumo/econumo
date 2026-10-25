@@ -247,6 +247,17 @@ describe('on a phone, opening the picker scrolls the form until its list fits ab
     expect(await openAt(200)).toBe(8)
   })
 
+  it('measures again when the keyboard resizes the visible area after opening', async () => {
+    expect(await openAt(100)).toBe(0)
+    const vv = window.visualViewport as unknown as EventTarget & { height: number }
+    // the letter keyboard replaces the shorter number pad
+    vv.height = 380
+    vv.dispatchEvent(new Event('resize'))
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+    // 100 + 44 + 264 - 380
+    expect(document.querySelector<HTMLElement>('[data-slot="dialog-body"]')!.scrollTop).toBe(28)
+  })
+
   it('stops once the field reaches the top of the form', async () => {
     // short by 208, but the field is only 400 - 300 - 8 below the form's top
     expect(await openAt(400, 300)).toBe(92)
