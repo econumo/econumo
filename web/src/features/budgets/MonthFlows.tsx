@@ -21,7 +21,9 @@ import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu, TotalLine } from './monthLines'
 import type { MenuAction, RowLevel } from './monthLayout'
 import { CHILD_INDENT, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
-import { leftToReceive } from './phoneMonth'
+import { leftToReceive, sheetPlanHint } from './phoneMonth'
+import type { PlanHint } from './planHint'
+import { planHintAmount } from './planHint'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 import { arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, moveElementInArrangement, placeFromEnvelope, preferRowCollisions } from './elementMove'
 import type { DropIndicator, ElementContainer, ElementMoveItem } from './elementMove'
@@ -121,8 +123,9 @@ interface MonthFlowsProps {
   planMonth: PlanMonthFigures | null
   future: boolean
   actionsColumn: boolean
-  /** the planned cell: the page decides between the inline editor, the item sheet and comments */
-  renderPlanned: (target: FlowTarget, text: string) => ReactNode
+  /** the planned cell: the page decides between the inline editor, the item sheet and
+   *  comments; `text` already shows the hint's suggestion */
+  renderPlanned: (target: FlowTarget, text: string, hint: PlanHint) => ReactNode
   onShowTransactions?: (target: BudgetTransactionsTarget) => void
   /** ⋮ menus, shown on hover */
   incomeMenu?: (cell: PlanCellFigures) => MenuAction[] | undefined
@@ -167,6 +170,10 @@ export function MonthFlows({
   const fmt = (amount: string, currencyId: Id | null = base) => {
     const c = currencyOf(currencyId)
     return moneyFormat(amount, c, cellOpts(c))
+  }
+  const planned = (target: FlowTarget, amount: string, currencyId: Id) => {
+    const hint = sheetPlanHint(target)
+    return renderPlanned(target, fmt(planHintAmount(amount, hint), currencyId), hint)
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const exchangeFn = makeBudgetExchange(budget, currencies)
@@ -279,7 +286,7 @@ export function MonthFlows({
           tag={tagOf(el.currencyId)}
           muted={el.isArchived === 1}
           folderLike={el.id === UNCATEGORIZED_ID}
-          planned={el.id === UNCATEGORIZED_ID ? <Dash /> : renderPlanned({ kind: 'plan', cell: row }, fmt(row.planned, el.currencyId))}
+          planned={el.id === UNCATEGORIZED_ID ? <Dash /> : planned({ kind: 'plan', cell: row }, row.planned, el.currencyId)}
           actual={actualCell(listTarget, row.actual, el.currencyId)}
           third={
             // with no plan there is nothing to expect: a dash, not a zero
@@ -381,7 +388,7 @@ export function MonthFlows({
       name={row.name}
       tag={tagOf(row.currencyId)}
       muted={row.isArchived === 1}
-      planned={renderPlanned({ kind: 'savings', row }, fmt(row.budgeted, row.currencyId))}
+      planned={planned({ kind: 'savings', row }, row.budgeted, row.currencyId)}
       actual={actualCell({ id: row.id, type: BudgetElementType.SAVINGS, name: row.name, icon: row.icon, currencyId: row.currencyId }, row.spent, row.currencyId)}
       third={<span title={t('budgets.page.savings.balance_hint')}>{row.closingBalance !== undefined ? fmt(row.closingBalance, row.currencyId) : <Dash />}</span>}
       actionsColumn={actionsColumn}

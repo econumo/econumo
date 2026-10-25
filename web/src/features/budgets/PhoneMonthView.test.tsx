@@ -572,3 +572,33 @@ it('same-name tags fold under one row with their sums; opened, each tag names it
   expect(within(screen.getByTestId('phone-row-tag-a')).getByText('Ada')).toBeInTheDocument()
   expect(within(screen.getByTestId('phone-row-tag-b')).getByText('Partner')).toBeInTheDocument()
 })
+
+it('phone row suggests with no plan', () => {
+  renderView({ selectedDate: '2099-01-01' }, (b) => {
+    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { budgeted: '0', spent: '0', available: '0', budgetSpent: '0', upcoming: '650' })
+  })
+  const figure = within(screen.getByTestId('phone-row-cat-food')).getByText('650.00')
+  expect(figure).toHaveClass('italic', 'text-muted-foreground')
+})
+
+it('phone row with a plan below upcoming shows the plan in red', () => {
+  renderView({ selectedDate: '2099-01-01' }, (b) => {
+    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { budgeted: '500', spent: '0', available: '500', budgetSpent: '0', upcoming: '650' })
+  })
+  expect(within(screen.getByTestId('phone-row-cat-food')).getByText('500.00')).toHaveClass('text-expense')
+})
+
+it('phone income and savings rows suggest with no plan and never go red', async () => {
+  const row = { element: salaries, planned: '0', actual: '0', upcoming: '1500' }
+  renderView({ planMonth: { ...planMonth, income: incomeOf(row) } }, (b) => {
+    b.structure.savings = [
+      { ...rainyDay, budgeted: '0', spent: '0', available: '0', upcoming: '300' },
+      { ...rainyDay, id: 'acc-s2', name: 'Trip', budgeted: '100', spent: '0', available: '100', upcoming: '300' },
+    ]
+  })
+  await userEvent.click(screen.getByTestId('phone-income-summary'))
+  expect(within(screen.getByTestId('phone-income-row-ie1')).getByText('1,500.00')).toHaveClass('italic', 'text-muted-foreground')
+  await userEvent.click(screen.getByTestId('phone-savings-summary'))
+  expect(within(screen.getByTestId('phone-savings-row-acc-s1')).getByText('300.00')).toHaveClass('italic', 'text-muted-foreground')
+  expect(within(screen.getByTestId('phone-savings-row-acc-s2')).getByText('100.00')).not.toHaveClass('text-expense')
+})

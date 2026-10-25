@@ -23,10 +23,13 @@ import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMe
 import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FIRST_COL, FOLD_LINE, foldOnLineClick, FOLDER_INDENT, groupedLevel, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
 import { segmentTagGroups } from './tagGroups'
+import { sheetPlanHint } from './phoneMonth'
+import type { PlanHint } from './planHint'
+import { planHintAmount, planHintClass } from './planHint'
 
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
-  renderBudgetCell?: (element: BudgetElementDto) => ReactNode
+  renderBudgetCell?: (element: BudgetElementDto, hint: PlanHint) => ReactNode
   /** the entry point of a cell without `renderBudgetCell` that is not editable
    *  here (non-editable role, an archived element, or a read-only section): the
    *  plain budgeted value opens the cell's thread */
@@ -190,6 +193,9 @@ function ElementRow({
   // Uncategorized sits among the folders and reads like one: a folder line's step,
   // height and type, with no icon
   const size = isUncategorized ? '' : 'text-[15px]'
+  const hint = sheetPlanHint({ kind: 'expense', element })
+  const hintClass = planHintClass(hint)
+  const plannedText = moneyFormat(planHintAmount(element.budgeted, hint), currency, opts)
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string, danger: boolean) => {
     if (future) {
@@ -235,25 +241,27 @@ function ElementRow({
           ) : extras.onBudgetCellDetails ? (
             <button
               type="button"
-              className="w-full text-right underline-offset-2 hover:underline"
+              className={`w-full text-right underline-offset-2 hover:underline ${hintClass}`}
               aria-label={`details ${displayName}`}
               onClick={() => extras.onBudgetCellDetails!(element)}
             >
-              {moneyFormat(element.budgeted, currency, opts)}
+              {plannedText}
             </button>
           ) : extras.renderBudgetCell ? (
-            extras.renderBudgetCell(element)
+            extras.renderBudgetCell(element, hint)
           ) : extras.onBudgetCellComments ? (
             <button
               type="button"
-              className="w-full text-right underline-offset-2 hover:underline"
+              className={`w-full text-right underline-offset-2 hover:underline ${hintClass}`}
               aria-label={`comments ${displayName}`}
               onClick={(e) => extras.onBudgetCellComments!(element, commentAnchorOf(e.currentTarget))}
             >
-              {moneyFormat(element.budgeted, currency, opts)}
+              {plannedText}
             </button>
           ) : (
-            moneyFormat(element.budgeted, currency, opts)
+            <span data-testid="plan-figure" className={hintClass}>
+              {plannedText}
+            </span>
           )}
         </span>
         {extras.renderBudgetCellMarker?.(element)}

@@ -15,6 +15,8 @@ import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudg
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
+import { sheetPlanHint } from './phoneMonth'
+import { planHintAmount, planHintClass } from './planHint'
 import { currentMonth } from './planMath'
 import { commentCellKey } from './queries'
 import { segmentTagGroups } from './tagGroups'
@@ -52,6 +54,8 @@ interface RowProps {
   /** read-only lead-in to `first`: what earlier months left, e.g. "530.00 +" */
   carry?: { text: string; negative: boolean }
   first: string
+  /** the plan hint's style on `first` */
+  firstClass?: string
   second: string
   secondClass?: string
   progress?: number | null
@@ -84,6 +88,7 @@ function PhoneRow({
   tag,
   carry,
   first,
+  firstClass = '',
   second,
   secondClass = '',
   progress = null,
@@ -146,7 +151,7 @@ function PhoneRow({
               {carry.text}
             </span>
           ) : null}
-          <span className="shrink-0">{first}</span>
+          <span className={`shrink-0 ${firstClass}`}>{first}</span>
         </span>
         {/* a colour of its own (overspent) replaces the muted grey rather than racing it */}
         <span className={`relative text-right tabular-nums ${secondClass ? size.replace(' text-muted-foreground', '') : size} ${secondClass}`}>
@@ -288,6 +293,10 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     return moneyFormat(amount, c, { showCurrency: false, useNativePrecision: false, maxPrecision: c?.fractionDigits ?? 2 })
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
+  const planFigure = (target: SheetTarget, planned: string, currencyId: Id | null) => {
+    const hint = sheetPlanHint(target)
+    return { first: fmt(planHintAmount(planned, hint), currencyId), firstClass: planHintClass(hint) }
+  }
   const future = selectedDate > currentMonth()
   const commented = (id: Id) => (commentsByCell.get(commentCellKey(id, selectedDate))?.length ?? 0) > 0
 
@@ -348,7 +357,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           name={name}
           tag={tagOf(element.currencyId)}
           carry={carryText ? { text: carryText, negative: cmp(carry, '0') < 0 } : undefined}
-          first={budgetText}
+          {...(isUncategorized ? { first: budgetText } : planFigure({ kind: 'expense', element }, element.budgeted, element.currencyId))}
           second={spentText}
           secondClass={overspent ? 'text-expense' : ''}
           // a row with nothing to measure against, or a month that has not happened
@@ -457,7 +466,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           icon={el.icon}
           name={name}
           tag={tagOf(el.currencyId)}
-          first={planned}
+          {...(isUncategorized ? { first: planned } : planFigure({ kind: 'plan', cell: row }, row.planned, el.currencyId))}
           second={received}
           {...(isUncategorized ? {} : planBar(row.planned, row.actual))}
           commented={commented(el.id)}
@@ -516,7 +525,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         icon={row.icon}
         name={row.name}
         tag={tagOf(row.currencyId)}
-        first={planned}
+        {...planFigure({ kind: 'savings', row }, row.budgeted, row.currencyId)}
         second={saved}
         {...planBar(row.budgeted, row.spent)}
         commented={commented(row.id)}

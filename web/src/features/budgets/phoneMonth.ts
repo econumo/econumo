@@ -1,9 +1,11 @@
-import { isIncomeType, isPlannedType } from '@/api/dto/budget'
+import { isIncomeType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { BudgetElementType } from '@/api/dto/budget'
 import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, LabelSpendDto, PlanElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { add, cmp, isZero, sub } from '@/lib/decimal'
+import type { PlanHint } from './planHint'
+import { planHint, planHintKind } from './planHint'
 import {
   balanceRow,
   bucketPlanRows,
@@ -19,6 +21,7 @@ export interface PlanCellFigures {
   planned: string
   actual: string
   closingBalance?: string
+  upcoming?: string
 }
 
 /** One group of income rows, in the Plan grid's order: each folder, then the
@@ -67,6 +70,7 @@ export function planCellFigures(element: PlanElementDto, index: number): PlanCel
     planned: cell && cell.planned !== '' ? cell.planned : '0',
     actual: cell?.actual ?? '0',
     ...(cell?.closingBalance !== undefined ? { closingBalance: cell.closingBalance } : {}),
+    ...(cell?.upcoming !== undefined ? { upcoming: cell.upcoming } : {}),
   }
 }
 
@@ -151,6 +155,26 @@ export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell {
     case 'label':
       // a reporting tag has no amount to set; its spend is already in the budget currency
       return { id: target.label.id, name: target.label.name, currencyId: baseCurrencyId, amount: '0' }
+  }
+}
+
+/** the hint on the target's plan figure; Uncategorized and reporting tags hold no plan */
+export function sheetPlanHint(target: SheetTarget): PlanHint {
+  switch (target.kind) {
+    case 'expense': {
+      const el = target.element
+      if (el.id === UNCATEGORIZED_ID) return null
+      return planHint({ planned: el.budgeted, spent: el.spent, upcoming: el.upcoming, kind: planHintKind(el.type) })
+    }
+    case 'savings':
+      return planHint({ planned: target.row.budgeted, spent: target.row.spent, upcoming: target.row.upcoming, kind: 'savings' })
+    case 'plan': {
+      const { element, planned, actual, upcoming } = target.cell
+      if (element.id === UNCATEGORIZED_ID) return null
+      return planHint({ planned, spent: actual, upcoming, kind: planHintKind(element.type) })
+    }
+    case 'label':
+      return null
   }
 }
 

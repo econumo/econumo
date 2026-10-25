@@ -12,7 +12,8 @@ import type { Id } from '@/api/types'
 import { carryOver, displayAvailable, elementDisplayName, rowState } from './budgetMath'
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
-import { sheetCell, sheetIcon, sheetSetsPlan } from './phoneMonth'
+import { sheetCell, sheetIcon, sheetPlanHint, sheetSetsPlan } from './phoneMonth'
+import { planHintAmount, planHintClass } from './planHint'
 import { currentMonth, formatPlanMonth } from './planMath'
 
 const EMPTY = '—'
@@ -44,6 +45,8 @@ interface Figure {
   label: string
   value: string
   negative?: boolean
+  /** the plan hint's style */
+  className?: string
 }
 
 export function ElementSheet({
@@ -81,6 +84,13 @@ export function ElementSheet({
   // the sheet repeats a foreign item's code beside every amount (the row only tags its name)
   const fmt = (amount: string) => `${fmtIn(amount, currency)}${foreign && currency ? ` ${currency.code}` : ''}`
   const actual = (amount: string) => (future ? EMPTY : fmt(amount))
+  const hint = sheetPlanHint(target)
+  const planFigure = (key: string, figureLabel: string, planned: string): Figure => ({
+    key,
+    label: figureLabel,
+    value: fmt(planHintAmount(planned, hint)),
+    className: planHintClass(hint),
+  })
   const label = {
     budget: t('budgets.page.budget.structure.tab.budgeted'),
     spent: t('budgets.page.budget.structure.tab.spent'),
@@ -98,7 +108,7 @@ export function ElementSheet({
     const el = target.element
     const available = displayAvailable(el)
     if (!isUncategorized) {
-      figures.push({ key: 'budget', label: label.budget, value: fmt(el.budgeted) })
+      figures.push(planFigure('budget', label.budget, el.budgeted))
     }
     figures.push({ key: 'spent', label: label.spent, value: actual(el.spent) })
     if (!isUncategorized) {
@@ -118,14 +128,14 @@ export function ElementSheet({
     const closing = target.kind === 'savings' ? target.row.closingBalance : target.cell.closingBalance
     const type = target.kind === 'savings' ? BudgetElementType.SAVINGS : target.cell.element.type
     if (type === BudgetElementType.SAVINGS) {
-      figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
+      figures.push(planFigure('planned', label.planned, planned))
       figures.push({ key: 'saved', label: label.saved, value: actual(done) })
       figures.push({ key: 'balance', label: label.balance, value: closing !== undefined ? fmt(closing) : EMPTY })
     } else if (isIncomeType(type)) {
-      figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
+      figures.push(planFigure('planned', label.planned, planned))
       figures.push({ key: 'received', label: label.received, value: actual(done) })
     } else {
-      figures.push({ key: 'budget', label: label.budget, value: fmt(planned) })
+      figures.push(planFigure('budget', label.budget, planned))
       figures.push({ key: 'spent', label: label.spent, value: actual(done) })
     }
     actualInBase = foreign ? exchange(cell.currencyId, baseCurrencyId, done) : done
@@ -155,7 +165,7 @@ export function ElementSheet({
           {figures.map((f) => (
             <div key={f.key} className="flex flex-col items-center text-center" data-testid={`sheet-figure-${f.key}`}>
               <span className="text-[13px] text-muted-foreground">{f.label}</span>
-              <span className={`text-[17px] font-medium tabular-nums ${f.negative ? 'text-expense' : ''}`}>{f.value}</span>
+              <span className={`text-[17px] font-medium tabular-nums ${f.negative ? 'text-expense' : ''} ${f.className ?? ''}`}>{f.value}</span>
             </div>
           ))}
         </div>

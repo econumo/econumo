@@ -60,6 +60,7 @@ import { CommentsPanel } from './CommentsPanel'
 import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
 import { planMonthFigures, sheetCell, sheetSetsPlan, type IncomeGroup, type SheetTarget } from './phoneMonth'
+import { planHintClass, type PlanHint } from './planHint'
 import { PhoneMonthView } from './PhoneMonthView'
 import { ViewSwitch } from './ViewSwitch'
 import { MonthFlows, MonthTotalsLines } from './MonthFlows'
@@ -448,11 +449,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // Savings block's planned cells; compact viewports use SetLimitDialog instead.
   const inlineLimitEditor =
     limitsEditable && !editMode && !isCompact
-      ? (cell: Pick<BudgetElementDto, 'id' | 'name' | 'budgeted' | 'currencyId'>) => (
+      ? (cell: Pick<BudgetElementDto, 'id' | 'name' | 'budgeted' | 'currencyId'>, hint: PlanHint) => (
           <LimitEditor
             id={cell.id}
             name={cell.name}
             value={cell.budgeted}
+            hint={hint}
             currency={currencies.find((c) => c.id === (cell.currencyId ?? budget.meta.currencyId))}
             onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: cell.id, period: selectedDate, amount })}
           />
@@ -545,15 +547,16 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     }
     setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })
   }
-  const renderFlowPlanned = (target: FlowTarget, text: string) => {
+  const renderFlowPlanned = (target: FlowTarget, text: string, hint: PlanHint) => {
     const cell = sheetCell(target, budget.meta.currencyId)
     const name = elementDisplayName(cell.id, cell.name, t)
+    const hintClass = planHintClass(hint)
     if (editMode) {
-      return text
+      return <span className={hintClass}>{text}</span>
     }
     if (isCompact) {
       return (
-        <button type="button" className="w-full text-right underline-offset-2 hover:underline" aria-label={`details ${name}`} onClick={() => setSheetTarget(target)}>
+        <button type="button" className={`w-full text-right underline-offset-2 hover:underline ${hintClass}`} aria-label={`details ${name}`} onClick={() => setSheetTarget(target)}>
           {text}
         </button>
       )
@@ -568,13 +571,14 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               id={cell.id}
               name={name}
               value={cell.amount}
+              hint={hint}
               currency={currencies.find((c) => c.id === cell.currencyId)}
               onCommit={(amount) => commitPlanned(target, amount)}
             />
           ) : (
             <button
               type="button"
-              className="w-full text-right underline-offset-2 hover:underline"
+              className={`w-full text-right underline-offset-2 hover:underline ${hintClass}`}
               aria-label={`comments ${name}`}
               onClick={(e) => openComments(thread, commentAnchorOf(e.currentTarget))}
             >

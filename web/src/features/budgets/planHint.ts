@@ -29,3 +29,14 @@ export function planHint(input: {
   }
   return kind === 'expense' && cmp(planned, need) < 0 ? { kind: 'short' } : null
 }
+
+export function planHintClass(hint: PlanHint): string {
+  if (hint?.kind === 'suggest') return PLAN_SUGGEST_CLASS
+  if (hint?.kind === 'short') return 'text-expense'
+  return ''
+}
+
+/** the figure a plan spot shows: the suggestion while no plan is set */
+export function planHintAmount(planned: string, hint: PlanHint): string {
+  return hint?.kind === 'suggest' ? hint.amount : planned
+}

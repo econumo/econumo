@@ -957,3 +957,44 @@ describe('managing categories, tags and accounts from the ⋮ menus', () => {
     await waitFor(() => expect(calls.find((c) => c.path === '/api/v1/budget/add-account')?.body).toEqual({ id: 'b1', accountId: 'acc-new', isSavings: true }))
   })
 })
+
+describe('upcoming recurring as a plan hint', () => {
+  const hintBudget = () => {
+    const budget = budgetWithSavings()
+    Object.assign(budget.structure.elements.find((el: { id: string }) => el.id === 'cat-food'), { budgeted: '0', spent: '0', available: '0', budgetSpent: '0', upcoming: '650' })
+    Object.assign(budget.structure.savings[0], { budgeted: '0', spent: '0', available: '0', upcoming: '300' })
+    return budget
+  }
+  const hintPlan = () => {
+    const plan = JSON.parse(JSON.stringify(fixtureWirePlan))
+    const salaries = plan.structure.elements.find((el: { id: string }) => el.id === 'ie1')
+    salaries.cells[2] = { actual: '0', planned: '', upcoming: '1500' }
+    return plan
+  }
+
+  it('the inline editors show the suggestion in grey italic and open on an empty input', async () => {
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: hintBudget() } })),
+      planHandler(hintPlan()),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    const food = await screen.findByTestId('element-cat-food')
+    const trigger = within(food).getByRole('button', { name: 'limit Food' })
+    expect(trigger).toHaveTextContent(/^650\.00$/)
+    expect(trigger).toHaveClass('italic', 'text-muted-foreground')
+
+    const savings = within(screen.getByTestId('month-savings-row-acc-s1')).getByRole('button', { name: 'limit Rainy day' })
+    expect(savings).toHaveTextContent(/^300\.00$/)
+    expect(savings).toHaveClass('italic', 'text-muted-foreground')
+
+    const salaries = await waitFor(() => within(screen.getByTestId('month-income-row-ie1')).getByRole('button', { name: 'limit Salaries' }))
+    expect(salaries).toHaveTextContent(/^1,500\.00$/)
+    expect(salaries).toHaveClass('italic', 'text-muted-foreground')
+
+    // the suggestion is display only: the editor opens empty
+    await user.click(trigger)
+    expect(await screen.findByLabelText('Budget')).toHaveValue('')
+  })
+})
