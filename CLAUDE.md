@@ -1346,19 +1346,25 @@ data unreadable. Most are also asserted by the test suite.
   manual (the user acts on a due template) and idempotent on the client-supplied
   transaction id.
 - **Upcoming recurring in Budget/Plan**: the server projects active recurring templates
-  (source OR recipient on a budget member account, partners' included) into occurrences
+  (source OR recipient on a budget member account, partners' included; deleted-account
+  templates skipped) into occurrences
   (`internal/model/recurring_projection.go`, `internal/budget/{projected_read,upcoming_merge,txlist}.go`,
   glue `internal/server/glue_budget_recurring.go`). An overdue next payment counts once in the
-  caller's current month, afterwards only occurrences after today. Everything is additive
-  (`upcoming`/`budgetUpcoming`/`upcomingBefore` on `get-budget`, `upcoming*` cells and opening
-  balances on `get-budget-plan`, an `upcoming` array on `get-transaction-list`); the frozen real
-  fields stay real-only, and savings `closingBalance` on `get-budget` includes upcoming. The SPA
-  folds upcoming into one combined spent/actual at the query layer (`features/budgets/upcoming.ts`)
-  for months AFTER the caller's current one only: the current month shows the fact (spent,
-  actual and Available real-only; its upcoming money is seen in the cell list, which opens even
-  from a 0), while the Plan's projections (effective values, Balance, Total savings, savings
-  closing balances; `projectedActual` in `planMath.ts`) still count it. The cell list shows rows dimmed, and only the next payment is actionable (Post dates at the
-  scheduled date when still in the future, else now; Skip; Edit) for callers with `canEdit`.
+  caller's current month, afterwards only occurrences after today. Upcoming money is a HINT
+  on the plan number, never part of the figures: spent/actual, Available, every total and
+  projection (Balance, Total savings, savings `closingBalance`, carry-over) and the budget
+  transaction list are real money only. Additive wire fields: `upcoming`/`budgetUpcoming` on
+  `get-budget` elements, children, savings and labels, `upcoming` on `get-budget-plan` cells,
+  an `upcoming` array on `get-transaction-list` (read only by the plan editor's payment list).
+  The SPA (`features/budgets/planHint.ts`), from the current month on, on rows
+  that hold a plan: no plan (empty or 0) shows spent + still due in grey italic (display
+  only, not saved, in no total); an expense row (category/tag/envelope) whose plan is below
+  spent + still due shows the plan in red; income and savings are never red (savings suggest
+  only when the net upcoming is positive); folder, tag-group, total, label and child rows
+  get no hint. The plan editors (desktop `LimitEditor`, phone `SetLimitDialog`, Plan grid
+  in-cell input) of a cell with upcoming money list those payments read-only (date, overdue
+  marker, name, amount converted to the cell currency, savings signed) with their total;
+  there is no Post/Skip/Edit of templates from budget views.
 - **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,
   never removes the row — `accounts.currency_id` and `transactions.account_id` cascade from it,
   so a hard delete would silently destroy every account and transaction in that currency. A
