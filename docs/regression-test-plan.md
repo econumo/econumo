@@ -2254,6 +2254,11 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Dark theme: text inputs, selects, textareas and the amount/plan fields
       (Add transaction, Set plan) carry no fill of their own: they show the
       surface they sit on, as in the light theme. 📱
+- [ ] 📱 iOS (Safari tab and Home Screen app), light and dark: pulling down
+      at the top or up at the bottom of the home screen (account list) and of
+      any other page never drags the whole app away to show a strip of
+      another colour; the strip under the status bar on the home screen is
+      the account list's own colour.
 - [ ] 📱 Send feedback: the last Settings row, "Send feedback" (under
       "Feedback"; the sidebar has no feedback entry), opens a dialog with
       Feedback / Feature request / Bug report (Feedback selected), a Message
