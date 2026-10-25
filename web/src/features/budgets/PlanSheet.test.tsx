@@ -697,6 +697,65 @@ it('a section\'s last line draws no bottom rule over the next section\'s top rul
   }
 })
 
+describe('upcoming recurring as a plan hint', () => {
+  // July is the current month, August the next one; nothing is planned in August
+  function renderWithUpcoming(edit: (plan: BudgetPlanDto) => void) {
+    vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+    const plan = structuredClone(fixtureWirePlan) as BudgetPlanDto
+    edit(plan)
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(plan),
+    )
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+    renderPage()
+  }
+  const element = (plan: BudgetPlanDto, id: string) => plan.structure.elements.find((e) => e.id === id)!
+  const planned = (testId: string) => within(screen.getByTestId(testId)).getByTestId('cell-planned')
+
+  it('Balance ignores a suggested plan', async () => {
+    renderWithUpcoming((plan) => {
+      element(plan, 'cat-freelance').cells[3] = { actual: '0', planned: '', upcoming: '1000' }
+    })
+    await screen.findByTestId('plan-sheet')
+    // the suggestion is there, and the Balance does not move by it
+    expect(planned('plan-cell-cat-freelance:2')).toHaveTextContent(/^1,000\.00$/)
+    const base = fixtureWirePlan as unknown as BudgetPlanDto
+    const ex = makePlanExchange(base, [fixtureUsd, fixtureEur])
+    const balance = balanceRow(base, planTotals(base, ex), ex)
+    const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
+    expect(screen.getByTestId('plan-balance-2')).toHaveTextContent(fmt(balance[2]))
+  })
+
+  it('grid shows the suggestion in italic', async () => {
+    renderWithUpcoming((plan) => {
+      element(plan, 'cat-food').cells[3] = { actual: '0', planned: '', upcoming: '650' }
+    })
+    await screen.findByTestId('plan-sheet')
+    const slot = planned('plan-cell-cat-food:2')
+    expect(slot).toHaveTextContent(/^650\.00$/)
+    expect(slot).toHaveClass('italic', 'text-muted-foreground')
+  })
+
+  it('an expense plan below spent plus still due is red; income and past months never are', async () => {
+    renderWithUpcoming((plan) => {
+      // July: 15 spent of 50, 40 still due
+      element(plan, 'tag1').cells[2] = { actual: '15', planned: '50', upcoming: '40' }
+      element(plan, 'cat-freelance').cells[3] = { actual: '0', planned: '100', upcoming: '1000' }
+      element(plan, 'pe1').cells[1] = { actual: '60', planned: '200', upcoming: '500' }
+      element(plan, 'pe1').children[0].cells[3] = { actual: '0', upcoming: '300' }
+    })
+    await screen.findByTestId('plan-sheet')
+    expect(planned('plan-cell-tag1:1')).toHaveClass('text-expense')
+    expect(planned('plan-cell-cat-freelance:2')).not.toHaveClass('text-expense')
+    // June is before the current month
+    expect(planned('plan-cell-pe1:0')).not.toHaveClass('text-expense')
+    // the envelope with no plan in August does not suggest its child's money
+    expect(planned('plan-cell-pe1:2')).toHaveTextContent(/^$/)
+  })
+})
+
 it('the Archived line sums its rows: their actuals, never their plans', async () => {
   const plan = {
     ...fixtureWirePlan,

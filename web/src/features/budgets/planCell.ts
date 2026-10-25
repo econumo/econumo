@@ -2,12 +2,14 @@ import type { PlanCellDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
 import { isZero } from '@/lib/decimal'
 import { isOverspent } from './planMath'
+import type { PlanHint } from './planHint'
+import { planHint, planHintKind } from './planHint'
 
 export interface PlanCellViewInput {
   type: BudgetElementType
   cell: PlanCellDto | undefined
   month: string
-  /** the month selected in the strip: later months have no actuals worth showing */
+  /** the caller's current month: later months have no actuals worth showing, earlier ones no plan hint */
   selected: string
 }
 
@@ -21,6 +23,8 @@ export interface PlanCellView {
   over: boolean
   /** a savings account: `actual` is its month-end balance (projected ahead), not what was saved */
   balance: boolean
+  /** display only: a suggested plan or a short expense plan, from the month's upcoming payments */
+  hint: PlanHint
 }
 
 /** A zero actual is only worth a mark next to a plan, as "— · 55"; on its own the
@@ -43,13 +47,15 @@ function shownPlan(planned: string, actual: string | null): string | null {
 
 export function planCellView({ type, cell, month, selected }: PlanCellViewInput): PlanCellView {
   if (!cell) {
-    return { actual: null, dash: false, plan: null, over: false, balance: false }
+    return { actual: null, dash: false, plan: null, over: false, balance: false, hint: null }
   }
   const past = month <= selected
+  // the hint compares the plan with what the month needs (saved, for savings), never a balance
+  const hint = month < selected ? null : planHint({ planned: cell.planned, spent: cell.actual, upcoming: cell.upcoming, kind: planHintKind(type) })
   // where a savings account stands says more than what went in that month; ahead of
   // today it is the projection (unmet plans still to come), flat without a plan
   if (type === BudgetElementType.SAVINGS && cell.closingBalance !== undefined) {
-    return { actual: cell.closingBalance, dash: false, plan: shownPlan(cell.planned, cell.closingBalance), over: false, balance: true }
+    return { actual: cell.closingBalance, dash: false, plan: shownPlan(cell.planned, cell.closingBalance), over: false, balance: true, hint }
   }
   const actual = past ? cell.actual : null
   const plan = shownPlan(cell.planned, actual)
@@ -58,5 +64,6 @@ export function planCellView({ type, cell, month, selected }: PlanCellViewInput)
     plan,
     over: past && type !== BudgetElementType.SAVINGS && isOverspent(type, cell),
     balance: false,
+    hint,
   }
 }

@@ -24,6 +24,7 @@ import { CurrencyTag, Dash, FigureCells, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FOLDER_INDENT, groupedLevel, PLAN_CROSSHAIR, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext, useRowLevel } from './monthLayout'
 import { planCellView, shownActual } from './planCell'
+import { planHintClass } from './planHint'
 import { PlanCellInput } from './PlanCellInput'
 import type { CellMove } from './PlanCellInput'
 import type { MonthExchange, PlanRow } from './planMath'
@@ -397,6 +398,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
           const editable = isEditableCell(el, m, idx, ctx.meta, ctx.userId)
           const view = planCellView({ type: el.type, cell, month: m, selected: ctx.selected })
           const actual = view.actual
+          const planFigure = view.hint?.kind === 'suggest' ? view.hint.amount : view.plan
           const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
           const picked = !!ctx.picked?.has(pickedKey(rk, i))
           const fillSource = ctx.fill.active?.rowKey === rk && ctx.fill.active.startCol === i
@@ -523,8 +525,8 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                     />
                   </span>
                 ) : (
-                  <span data-testid="cell-planned" className="ml-auto shrink-0 text-[15px] whitespace-nowrap tabular-nums">
-                    {view.plan !== null ? fmt(view.plan) : view.balance ? <Dash /> : ''}
+                  <span data-testid="cell-planned" className={`ml-auto shrink-0 text-[15px] whitespace-nowrap tabular-nums ${planHintClass(view.hint)}`}>
+                    {planFigure !== null ? fmt(planFigure) : view.balance ? <Dash /> : ''}
                   </span>
                 )}
               </span>
