@@ -3,9 +3,13 @@ import type { ReactNode } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { useIsPhone } from '@/hooks/useIsPhone'
+import { useKeyboardInset } from '@/hooks/useKeyboardInset'
 
 const STACKED_CONTENT = '[data-slot="dialog-content"], [data-slot="drawer-content"], [data-slot="alert-dialog-content"]'
 const STACKED_OVERLAY = '[data-slot="dialog-overlay"], [data-slot="drawer-overlay"], [data-slot="alert-dialog-overlay"]'
+
+// px kept free above a sheet squeezed by the on-screen keyboard
+const SHEET_TOP_GAP = 24
 
 /** the standard dialog action row (Cancel | Confirm). Action buttons are h-11
     (the Add-transaction bar height) on EVERY screen size — desktop is not a
@@ -60,6 +64,10 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
   // sits left of the corner X (size icon-sm, at right-2) or takes its place
   const cornerActionClass = showCloseButton ? 'right-10' : 'right-2'
   const contentRef = useRef<HTMLDivElement>(null)
+  // the sheet sits on the keyboard's top edge and never grows past the visible
+  // area; vaul's own repositionInputs is off because it froze a stale height
+  const keyboard = useKeyboardInset(open && isMobile && !fullScreen)
+  const sheetStyle = keyboard.bottom > 0 ? { bottom: keyboard.bottom, maxHeight: keyboard.height - SHEET_TOP_GAP } : undefined
   // edge-to-edge viewport: content that reaches the screen bottom must clear
   // the home indicator itself; a pinned footer carries its own inset instead
   const bodyClass = `flex-1 overflow-y-auto px-4 pt-1 ${footer ? 'pb-4' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`
@@ -128,8 +136,8 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
   }
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange} dismissible={dismissible}>
-        <DrawerContent ref={contentRef} onInteractOutside={onInteractOutside} onEscapeKeyDown={onEscapeKeyDown} onCloseAutoFocus={onCloseAutoFocus}>
+      <Drawer open={open} onOpenChange={onOpenChange} dismissible={dismissible} repositionInputs={false}>
+        <DrawerContent ref={contentRef} style={sheetStyle} onInteractOutside={onInteractOutside} onEscapeKeyDown={onEscapeKeyDown} onCloseAutoFocus={onCloseAutoFocus}>
           {/* the drawer has no corner X, so it never needs the pr-8 clearance */}
           {/* a header action is pinned to the end; the matching start inset keeps the title centred */}
           <DrawerHeader className={hideHeader ? 'sr-only' : headerAction ? 'relative px-12' : undefined}>
