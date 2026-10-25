@@ -183,7 +183,10 @@ export function ApplicationLayout() {
     // cross-site POST callback gets one 130px short for the window's whole
     // lifetime (a reload and a rotation both keep it; only a relaunch clears
     // it). dvh tracked the real viewport in both states.
-    <div className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
+    <div
+      className={`flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${showWorkspace ? '' : 'bg-sidebar'}`}
+      data-surface={showWorkspace ? undefined : 'sidebar'}
+    >
       <SubscriptionBanner />
       <ServerVersionNotice />
       <InstallBanner />
