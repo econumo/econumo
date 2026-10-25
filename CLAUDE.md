@@ -383,7 +383,9 @@ running `VERSION` is a release newer than the user's `last_seen_version` option 
 an existing user who upgraded; new accounts are seeded with the running release, a `dev`
 build seeds and shows nothing; the option only moves forward; web only, never in the native
 app); opening `https://econumo.com/releases/<version>` or
-dismissing it writes the option through `update-last-seen-version`.
+dismissing it writes the running version through `update-last-seen-version`. An upgrade
+into a new minor line links that line's `.0` notes (v1.6.x -> v1.7.2 shows v1.7.0), a patch
+upgrade within the line the running patch.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One

@@ -18,7 +18,7 @@ export function WhatsNewNotice() {
   }
   const close = (metric: Metric) => {
     setHidden(whatsNew.version)
-    trackEvent(metric, { version: whatsNew.version })
+    trackEvent(metric, { version: whatsNew.version, notesVersion: whatsNew.notesVersion })
     markSeen.mutate(whatsNew.version)
   }
   return (
@@ -30,7 +30,7 @@ export function WhatsNewNotice() {
         className="min-w-0 flex-1 truncate font-medium hover:text-foreground"
         onClick={() => close(METRICS.WHATS_NEW_OPEN)}
       >
-        {t('whatsNew.notice', { version: whatsNew.version })}
+        {t('whatsNew.notice', { version: whatsNew.notesVersion })}
       </a>
       <button
         type="button"
