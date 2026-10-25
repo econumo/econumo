@@ -575,10 +575,10 @@
         },
         "automate": {
           "title": "Criar a automatização",
-          "text": "Na app Atalhos, crie uma automatização da Wallet:",
+          "text": "Na app Atalhos, crie uma automatização da Carteira:",
           "list": {
             "open": "Abra o separador Automatização (no iOS 27: Biblioteca → Automatização) e toque em «Nova automatização» ou +",
-            "wallet": "Escolha Wallet («Quando toco num cartão ou passe da Wallet»)",
+            "wallet": "Escolha Carteira («Quando toco num cartão ou passe da Carteira»)",
             "cards": "Selecione os cartões e categorias a importar, ou todos",
             "confirm": "Mantenha a confirmação ligada: «Executar após confirmação» (iOS 26) ou «Confirmar antes de executar» (iOS 27)",
             "shortcut": "Escolha o atalho econumo (no iOS 27: adicione «Executar atalho» → econumo, com «Transação» como entrada)"

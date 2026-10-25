@@ -533,7 +533,7 @@
         "needs_title": "Ti servirà",
         "needs": {
           "iphone": "Un iPhone con Apple Pay",
-          "shortcuts": "L’app Comandi rapidi, inclusa in iOS",
+          "shortcuts": "L’app Comandi Rapidi, inclusa in iOS",
           "time": "Circa 5 minuti"
         },
         "limitations_title": "Limitazioni note",
@@ -575,7 +575,7 @@
         },
         "automate": {
           "title": "Crea l’automazione",
-          "text": "Nell’app Comandi rapidi, crea un’automazione Wallet:",
+          "text": "Nell’app Comandi Rapidi, crea un’automazione Wallet:",
           "list": {
             "open": "Apri la scheda Automazione (su iOS 27: Libreria → Automazione) e tocca «Nuova automazione» o +",
             "wallet": "Scegli Wallet («Quando tocco una carta o un pass di Wallet»)",
@@ -591,13 +591,13 @@
         },
         "immediate": {
           "title": "Imposta l’automazione su «Esegui subito»",
-          "text": "Disattiva la conferma, così i pagamenti vengono importati senza richiesta: apri l’automazione in Comandi rapidi e scegli «Esegui subito» (iOS 26) o disattiva «Conferma prima di eseguire» (iOS 27)."
+          "text": "Disattiva la conferma, così i pagamenti vengono importati senza richiesta: apri l’automazione in Comandi Rapidi e scegli «Esegui subito» (iOS 26) o disattiva «Conferma prima di eseguire» (iOS 27)."
         },
         "done": "Fatto",
         "guide_title": "Guida passo passo con screenshot:",
         "guide_ios26": "iOS 26",
         "guide_ios27": "iOS 27",
-        "open_shortcuts": "Apri Comandi rapidi",
+        "open_shortcuts": "Apri Comandi Rapidi",
         "optional": "Facoltativo"
       },
       "same_named_cards": "Le carte con lo stesso nome in Wallet vengono mostrate come un’unica carta.",
