@@ -959,6 +959,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       selectedCol: -1,
       crosshairCol,
       currencies,
+      cellExchange: (i: number) => planMonthExchange(plan, currencies, i),
       baseCurrencyId: budget.meta.currencyId,
       meta: budget.meta,
       userId,
@@ -2046,6 +2047,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
                 },
                 periodStart: planLimitTarget.month,
                 currency: currencies.find((c) => c.id === planLimitTarget.el.currencyId),
+                exchange: planMonthExchange(plan, currencies, planLimitTarget.monthIndex),
               }
             : null
         }

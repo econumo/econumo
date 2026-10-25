@@ -496,7 +496,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       return null
     }
     const currencyId = sheetCell(target, budget.meta.currencyId).currencyId
-    return { budget, target: listTarget, periodStart: selectedDate, currency: currencies.find((c) => c.id === currencyId) }
+    return {
+      budget,
+      target: listTarget,
+      periodStart: selectedDate,
+      currency: currencies.find((c) => c.id === currencyId),
+      exchange: makeBudgetExchange(budget, currencies),
+    }
   }
   const sheetCanSetAmount = (target: SheetTarget): boolean => {
     if (!limitsEditable) {

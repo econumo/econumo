@@ -108,6 +108,8 @@ export interface GridCtx {
   /** the selected cell's column, highlighted down the grid; -1 when nothing is selected */
   crosshairCol: number
   currencies: CurrencyDto[]
+  /** a window month's rates between any two currencies */
+  cellExchange: (monthIndex: number) => (fromCurrencyId: Id, toCurrencyId: Id, amount: string) => string
   baseCurrencyId: Id
   meta: BudgetMetaDto
   userId: Id | undefined
@@ -529,6 +531,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                               target: { id: el.id, type: el.type, name: displayName, icon: el.icon, currencyId: el.currencyId },
                               periodStart: m,
                               currency,
+                              exchange: ctx.cellExchange(idx),
                             }
                           : null
                       }

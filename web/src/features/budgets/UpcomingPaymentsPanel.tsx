@@ -17,11 +17,13 @@ export interface UpcomingQuery {
   target: BudgetTransactionsTarget
   periodStart: string
   currency: CurrencyDto | undefined
+  /** at the month's budget rates; each row is in its account's currency, the cell in `currency` */
+  exchange: (fromCurrencyId: Id, toCurrencyId: Id, amount: string) => string
 }
 
 // a savings row's figure is a net change, so a withdrawal counts against it
-const signedAmount = (row: BudgetUpcomingDto, savings: boolean): string =>
-  savings && row.direction === 'out' ? sub('0', row.amount) : row.amount
+const signedAmount = (amount: string, row: BudgetUpcomingDto, savings: boolean): string =>
+  savings && row.direction === 'out' ? sub('0', amount) : amount
 
 /** Read-only: the payments the grey plan suggestion is made of. */
 export function UpcomingPaymentsPanel({ query }: { query: UpcomingQuery }): ReactElement | null {
@@ -35,7 +37,11 @@ export function UpcomingPaymentsPanel({ query }: { query: UpcomingQuery }): Reac
   const fmt = (v: string) =>
     moneyFormat(v, query.currency, { showCurrency: false, useNativePrecision: false, maxPrecision: query.currency?.fractionDigits ?? 2 })
   const dateFmt = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' })
-  const total = rows.reduce((sum, row) => add(sum, signedAmount(row, savings)), '0')
+  const cellAmount = (row: BudgetUpcomingDto): string => {
+    const amount = query.currency && row.currencyId !== query.currency.id ? query.exchange(row.currencyId, query.currency.id, row.amount) : row.amount
+    return signedAmount(amount, row, savings)
+  }
+  const total = rows.reduce((sum, row) => add(sum, cellAmount(row)), '0')
 
   return (
     <div data-testid="upcoming-payments" className="flex flex-col gap-1 text-sm">
@@ -49,7 +55,7 @@ export function UpcomingPaymentsPanel({ query }: { query: UpcomingQuery }): Reac
                 {row.isOverdue ? t('inbox.due.overdue', { date }) : date}
               </span>
               <span className="min-w-0 flex-1 truncate">{row.description || row.payee?.name || row.category?.name}</span>
-              <span className="tabular-nums">{fmt(signedAmount(row, savings))}</span>
+              <span className="tabular-nums">{fmt(cellAmount(row))}</span>
             </li>
           )
         })}

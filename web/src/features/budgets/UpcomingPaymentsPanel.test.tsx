@@ -31,6 +31,7 @@ const query = (over: Partial<UpcomingQuery> = {}): UpcomingQuery => ({
   target: { id: 'cat-food', type: BudgetElementType.CATEGORY, name: 'Food', icon: 'restaurant', currencyId: null },
   periodStart: '2026-07-01',
   currency: fixtureUsd as CurrencyDto,
+  exchange: (_from, _to, amount) => amount,
   ...over,
 })
 
@@ -79,4 +80,18 @@ it('signs a savings row by direction and nets the total', async () => {
   renderPanel(query({ target: { id: 'acc-s', type: BudgetElementType.SAVINGS, name: 'Savings', icon: 'savings', currencyId: 'cur-usd' } }))
   expect(await screen.findByText('Total 200.00')).toBeInTheDocument()
   expect(screen.getByText('-100.00')).toBeInTheDocument()
+})
+
+it('converts a row from its account currency into the cell currency', async () => {
+  serve([
+    upcomingRow({ id: 'r1', description: 'Rent', amount: '500' }),
+    upcomingRow({ id: 'r2', description: 'Streaming', amount: '100', currencyId: 'cur-eur' }),
+  ])
+  const exchange = vi.fn((from: string, to: string, amount: string) => (from === 'cur-eur' && to === 'cur-usd' ? String(Number(amount) * 1.1) : amount))
+  renderPanel(query({ exchange }))
+  expect(await screen.findByText('110.00')).toBeInTheDocument()
+  expect(screen.getByText('Total 610.00')).toBeInTheDocument()
+  expect(exchange).toHaveBeenCalledWith('cur-eur', 'cur-usd', '100')
+  // a row already in the cell currency is not exchanged
+  expect(exchange).not.toHaveBeenCalledWith('cur-usd', 'cur-usd', '500')
 })

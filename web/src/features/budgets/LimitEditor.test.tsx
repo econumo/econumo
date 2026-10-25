@@ -32,6 +32,7 @@ const upcoming: UpcomingQuery = {
   target: { id: 'cat-food', type: BudgetElementType.CATEGORY, name: 'Food', icon: 'restaurant', currencyId: null },
   periodStart: '2026-07-01',
   currency: fixtureUsd as CurrencyDto,
+  exchange: (_from, _to, amount) => amount,
 }
 
 function renderEditor(query: UpcomingQuery | null) {
