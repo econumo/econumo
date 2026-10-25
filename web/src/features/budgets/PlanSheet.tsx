@@ -771,7 +771,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         const c = i >= 0 ? r.element.cells[i] : undefined
         return c !== undefined && test(c)
       })
-    // the current month's actual is the fact only: money still upcoming shows the row too
+    // rows with upcoming money stay visible
     const moved = (c: PlanCellDto) => !isZero(c.actual) || !isZero(c.upcoming ?? '0')
     const visibleUncat = (r: PlanRow | null): PlanRow | null => (r && hasVisible(r, moved) ? r : null)
     return {
@@ -944,8 +944,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       const month = visibleMonths[c.col]
       return el && month !== undefined ? [{ el, month }] : []
     })
-    return planSelectionSum(cells, monthIndex, ex)
-  }, [ex, shownPicked, flatRows, visibleMonths, monthIndex])
+    return planSelectionSum(cells, monthIndex, ex, cur)
+  }, [ex, shownPicked, flatRows, visibleMonths, monthIndex, cur])
 
   const gridCtx: GridCtx | null = useMemo(() => {
     if (!plan || !ex) {

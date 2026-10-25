@@ -13,24 +13,12 @@ describe('planCellView', () => {
   it('shows only the plan after the selected month', () => {
     expect(planCellView({ type: cat, cell: { actual: '0', planned: '55' }, month: '2026-11-01', selected: sel })).toEqual({ actual: null, dash: false, plan: '55', over: false, balance: false })
   })
-  it('future plan cell shows folded actual', () => {
-    expect(planCellView({ type: cat, cell: { actual: '30', planned: '55' }, month: '2026-11-01', selected: sel })).toEqual({ actual: '30', dash: false, plan: '55', over: false, balance: false })
-    expect(planCellView({ type: cat, cell: { actual: '80', planned: '55' }, month: '2026-11-01', selected: sel }).over).toBe(false)
-    expect(planCellView({ type: cat, cell: { actual: '30', planned: '' }, month: '2026-11-01', selected: sel })).toMatchObject({ actual: '30', plan: null })
-  })
   it('leaves an unplanned month blank, never 0', () => {
     expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: '2026-11-01', selected: sel }).plan).toBeNull()
   })
   it('marks a planned month with nothing spent yet with a dash: "— · 55"', () => {
     expect(planCellView({ type: cat, cell: { actual: '0', planned: '55' }, month: sel, selected: sel })).toEqual({ actual: null, dash: true, plan: '55', over: false, balance: false })
     expect(planCellView({ type: cat, cell: { actual: '0.00', planned: '55' }, month: '2026-09-01', selected: sel })).toEqual({ actual: null, dash: true, plan: '55', over: false, balance: false })
-  })
-  it('the current month shows the fact; nothing real yet but money upcoming is a dash that opens the list', () => {
-    expect(planCellView({ type: cat, cell: { actual: '20', planned: '55', upcoming: '30' }, month: sel, selected: sel })).toEqual({ actual: '20', dash: false, plan: '55', over: false, balance: false })
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '55', upcoming: '30' }, month: sel, selected: sel })).toEqual({ actual: null, dash: true, plan: '55', over: false, balance: false, upcoming: true })
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '', upcoming: '30' }, month: sel, selected: sel })).toEqual({ actual: null, dash: true, plan: null, over: false, balance: false, upcoming: true })
-    // a later month's actual already carries its upcoming money
-    expect(planCellView({ type: cat, cell: { actual: '30', planned: '', upcoming: '30' }, month: '2026-11-01', selected: sel }).upcoming).toBeUndefined()
   })
   it('leaves a month with neither an actual nor a plan blank', () => {
     expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: sel, selected: sel })).toEqual({ actual: null, dash: false, plan: null, over: false, balance: false })
@@ -46,9 +34,6 @@ describe('planCellView', () => {
   })
   it('shows an actual with no plan on its own, red when it is overspent', () => {
     expect(planCellView({ type: cat, cell: { actual: '20', planned: '' }, month: sel, selected: sel })).toEqual({ actual: '20', dash: false, plan: null, over: true, balance: false })
-  })
-  it('a later month actual over plan is not over', () => {
-    expect(planCellView({ type: cat, cell: { actual: '80', planned: '55' }, month: '2026-12-01', selected: sel }).over).toBe(false)
   })
   it('never marks income or savings as over', () => {
     expect(planCellView({ type: BudgetElementType.INCOME_CATEGORY, cell: { actual: '9', planned: '1' }, month: sel, selected: sel }).over).toBe(false)

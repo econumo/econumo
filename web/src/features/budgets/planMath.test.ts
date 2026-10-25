@@ -4,7 +4,6 @@ import { BudgetElementType } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { add, sub } from '@/lib/decimal'
 import { fixtureWirePlan } from '@/test/fixtures'
-import { foldPlanUpcoming } from './upcoming'
 import {
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
@@ -298,13 +297,6 @@ describe('totals + balance', () => {
     expect(totals[0].uncategorizedActual).toBe('180')
     // 50 - 80 = -30: more unassigned income than spend reads negative
     expect(totals[1].uncategorizedActual).toBe('-30')
-  })
-
-  it('planTotals counts unplanned upcoming in a future month', () => {
-    const el = mkEl({ id: 'cat-x', type: 1, name: 'X', cells: [{ actual: '0', planned: '' }, { actual: '40', planned: '' }] })
-    const plan = mkPlan({ months: ['2026-07-01', '2026-08-01'], structure: { folders: [], elements: [el] } })
-    const totals = planTotals(plan, makePlanExchange(plan, [usd, eur]), new Date(2026, 6, 15))
-    expect(totals[1].effectiveNet).toBe('-40')
   })
 
   it('planTotals converts each month with its own rates (2:1 then 4:1)', () => {
@@ -631,9 +623,7 @@ describe('totals + balance', () => {
       transfersIn: '0',
       transfersOut: '0',
       transfersNet: '0',
-      transfersNetActual: '0',
       savingsActual: '0',
-      savingsUpcoming: '0',
       savingsPlanned: '0',
       effectiveSavings: '0',
     })
@@ -1178,19 +1168,21 @@ describe('planSelectionSum', () => {
       ],
       monthIndex,
       ex,
+      '2026-07-01',
     )
     // plans 20 + 0 + 4×2 + 3×3, actuals 10 + 5 + 1×2 + 2×3
     expect(sum).toEqual({ count: 4, planned: '37', actual: '23' })
   })
 
-  it('selection sum includes future actual', () => {
+  it('leaves out actuals after the current month, as the grid does', () => {
     const food = mkEl({ id: 'f', type: BudgetElementType.CATEGORY, name: 'Food', cells: cells3([['10', '20'], ['5', '1'], ['7', '2']]) })
     const sum = planSelectionSum(
       months.map((month) => ({ el: food, month })),
       monthIndex,
       ex,
+      '2026-07-01',
     )
-    expect(sum).toEqual({ count: 3, planned: '23', actual: '22' })
+    expect(sum).toEqual({ count: 3, planned: '23', actual: '15' })
   })
 
   it('adds what a savings account saved, not its month-end balance', () => {
@@ -1211,141 +1203,17 @@ describe('planSelectionSum', () => {
       ],
       monthIndex,
       ex,
+      '2026-07-01',
     )
     expect(sum).toEqual({ count: 2, planned: '200', actual: '150' })
   })
 
   it('counts a month the plan has no data for without adding anything', () => {
     const food = mkEl({ id: 'f', type: BudgetElementType.CATEGORY, name: 'Food', cells: cells3([['10', '20'], ['5', ''], ['0', '0']]) })
-    expect(planSelectionSum([{ el: food, month: '2026-06-01' }, { el: food, month: '2026-12-01' }], monthIndex, ex)).toEqual({
+    expect(planSelectionSum([{ el: food, month: '2026-06-01' }, { el: food, month: '2026-12-01' }], monthIndex, ex, '2026-12-01')).toEqual({
       count: 2,
       planned: '20',
       actual: '10',
     })
-  })
-})
-
-describe('the current month shows the fact, the projections still count its upcoming money', () => {
-  const months = ['2026-06-01', '2026-07-01', '2026-08-01']
-  const now = new Date(2026, 6, 15) // July is the current month
-  const eurRate = (period: string) => ({
-    period,
-    rates: [
-      { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', periodStart: period, periodEnd: period },
-      { currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '2', periodStart: period, periodEnd: period },
-    ],
-  })
-
-  // a wire plan: actuals real, upcoming apart (June is past and carries none)
-  function wirePlan(): BudgetPlanDto {
-    const income = mkEl({
-      id: 'inc', type: 3, name: 'Salary',
-      cells: [{ actual: '1000', planned: '1000' }, { actual: '0', planned: '1000', upcoming: '1000' }, { actual: '0', planned: '1000', upcoming: '1000' }],
-    })
-    const rent = mkEl({
-      id: 'rent', type: 1, name: 'Rent',
-      // current month: upcoming takes it past the plan
-      cells: [{ actual: '500', planned: '500' }, { actual: '100', planned: '300', upcoming: '250' }, { actual: '0', planned: '300', upcoming: '250' }],
-    })
-    const food = mkEl({
-      id: 'food', type: 1, name: 'Food', currencyId: 'cur-eur',
-      // current month: real plus upcoming stays under the plan
-      cells: [{ actual: '40', planned: '50' }, { actual: '10', planned: '50', upcoming: '15' }, { actual: '0', planned: '', upcoming: '15' }],
-    })
-    const closed = mkEl({
-      id: 'closed', type: 1, name: 'Closed', isArchived: 1,
-      cells: [{ actual: '5', planned: '' }, { actual: '0', planned: '', upcoming: '7' }, { actual: '0', planned: '' }],
-    })
-    const fund = mkSavingsEl({
-      id: 'fund', name: 'Fund',
-      cells: [
-        { actual: '100', planned: '100', closingBalance: '600' },
-        { actual: '20', planned: '100', closingBalance: '620', upcoming: '50' },
-        { actual: '0', planned: '100', closingBalance: '620', upcoming: '50' },
-      ],
-    })
-    const rainy = mkSavingsEl({
-      id: 'rainy', name: 'Rainy day',
-      // current month: upcoming over-saves the plan
-      cells: [
-        { actual: '0', planned: '', closingBalance: '300' },
-        { actual: '0', planned: '30', closingBalance: '300', upcoming: '45' },
-        { actual: '0', planned: '30', closingBalance: '300' },
-      ],
-    })
-    return mkPlan({
-      months,
-      openingBalances: [{ currencyId: 'cur-usd', amount: '2000' }],
-      currencyRates: months.map(eurRate),
-      transfers: [
-        { period: '2026-06-01', items: [{ currencyId: 'cur-usd', in: '10', out: '0' }] },
-        { period: '2026-07-01', items: [{ currencyId: 'cur-usd', in: '0', out: '20' }] },
-        { period: '2026-08-01', items: [] },
-      ],
-      upcomingTransfers: [
-        { period: '2026-07-01', items: [{ currencyId: 'cur-usd', in: '0', out: '30' }, { currencyId: 'cur-eur', in: '5', out: '0' }] },
-        { period: '2026-08-01', items: [{ currencyId: 'cur-usd', in: '0', out: '30' }] },
-      ],
-      structure: { folders: [], elements: [income, rent, food, closed], savings: [fund, rainy] },
-      savingsOpeningBalances: [{ currencyId: 'cur-usd', amount: '1000' }],
-      savingsFlows: [{ month: '2026-06-01', currencyId: 'cur-eur', amount: '100' }, { month: '2026-07-01', currencyId: 'cur-eur', amount: '20' }],
-      upcomingSavingsFlows: [{ month: '2026-07-01', currencyId: 'cur-eur', amount: '95' }, { month: '2026-08-01', currencyId: 'cur-eur', amount: '50' }],
-      savingsIncomeExpense: [],
-      upcomingSavingsIncomeExpense: [{ month: '2026-07-01', currencyId: 'cur-eur', amount: '3' }],
-    })
-  }
-
-  // what the plan looked like when the current month was folded as well: every
-  // month combined, nothing left apart
-  function foldedEverywhere(p: BudgetPlanDto): BudgetPlanDto {
-    const f = foldPlanUpcoming(p, '2026-06-01')
-    const strip = <T extends { upcoming?: string }>(c: T): T => ({ ...c, upcoming: undefined })
-    return {
-      ...f,
-      upcomingTransfers: undefined,
-      upcomingSavingsFlows: undefined,
-      upcomingSavingsIncomeExpense: undefined,
-      structure: {
-        ...f.structure,
-        elements: f.structure.elements.map((el) => ({ ...el, cells: el.cells.map(strip), children: el.children.map((ch) => ({ ...ch, cells: ch.cells.map(strip) })) })),
-        savings: f.structure.savings!.map((row) => ({ ...row, cells: row.cells.map(strip) })),
-      },
-    }
-  }
-
-  const figures = (p: BudgetPlanDto) => {
-    const ex = makePlanExchange(p, [usd, eur])
-    const totals = planTotals(p, ex, now)
-    return {
-      totals: totals.map((t) => [t.effectiveIncome, t.effectiveExpense, t.effectiveNet, t.effectiveSavings, t.transfersIn, t.transfersOut, t.transfersNet]),
-      balance: balanceRow(p, totals, ex, now),
-      savingsBalance: savingsBalanceRow(p, totals, ex, now),
-      closings: (p.structure.savings ?? []).map((row) => projectSavingsClosings(row, p.months, now).cells.map((c) => c.closingBalance)),
-    }
-  }
-
-  it('Balance, the Savings lines and the savings closing balances are the same as with the current month folded', () => {
-    const current = foldPlanUpcoming(wirePlan(), '2026-07-01')
-    expect(figures(current)).toEqual(figures(foldedEverywhere(wirePlan())))
-  })
-
-  it('the current month\'s actuals are the fact; its effective values take real plus upcoming', () => {
-    const plan = foldPlanUpcoming(wirePlan(), '2026-07-01')
-    const ex = makePlanExchange(plan, [usd, eur])
-    const t = planTotals(plan, ex, now)[1]
-    expect(t.incomeActual).toBe('0')
-    // rent 100 + food 10 EUR (5 USD); the closed row's upcoming is not real either
-    expect(t.expenseActual).toBe('105')
-    // fund 20 EUR
-    expect(t.savingsActual).toBe('10')
-    // max(1000, 0 + 1000)
-    expect(t.effectiveIncome).toBe('1000')
-    // rent max(300, 350) + food max(25, 12.5) + the closed row's 7, real plus upcoming
-    expect(t.effectiveExpense).toBe('382')
-    // the monthly view's transfers line shows the transfers that happened
-    expect(t.transfersNetActual).toBe('-20')
-    expect(t.transfersNet).toBe('-47.5')
-    // booked 620 + upcoming 50 + max(0, 100 - 20 - 50); August adds its own 50 and its gap of 50
-    expect(projectSavingsClosings(plan.structure.savings![0], plan.months, now).cells.map((c) => c.closingBalance)).toEqual(['600', '700', '800'])
   })
 })

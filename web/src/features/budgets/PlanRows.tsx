@@ -22,7 +22,7 @@ import { isEnvelopeType } from './elementEdit'
 import { DragChild, EnvelopeDrop, EnvelopeHeadDrop } from './MonthDrag'
 import { CurrencyTag, Dash, FigureCells, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
-import { CHILD_INDENT, FOLDER_INDENT, FUTURE_FIGURE, groupedLevel, PLAN_CROSSHAIR, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext, useRowLevel } from './monthLayout'
+import { CHILD_INDENT, FOLDER_INDENT, groupedLevel, PLAN_CROSSHAIR, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext, useRowLevel } from './monthLayout'
 import { planCellView, shownActual } from './planCell'
 import { PlanCellInput } from './PlanCellInput'
 import type { CellMove } from './PlanCellInput'
@@ -163,21 +163,9 @@ export interface GridCtx {
 const figureClass = (ctx: GridCtx, col: number): string =>
   `${PLAN_FIGURE_COL}${col === ctx.selectedCol ? ` ${PLAN_SELECTED_TINT}` : ''}${col === ctx.crosshairCol ? ` ${PLAN_CROSSHAIR}` : ''}`
 
-/** A later savings balance links to its month's transactions only when money is due
- *  to move then: the list holds nothing but those upcoming payments. */
-function movesMoney(cell: PlanElementDto['cells'][number] | undefined): boolean {
-  return !!cell && (!isZero(cell.actual) || !isZero(cell.upcoming ?? '0'))
-}
-
-/** A later month's actual shows only when upcoming money folded one in, lighter, as
- *  the rows read; up to the current month a zero reads as a dash next to a plan. */
-function laterActual(actual: string | null, month: string, current: string): string | null {
-  return actual !== null && month > current && isZero(actual) ? null : actual
-}
-
-/** A section's or folder's month: `actual · plan` up to the current month, after it
- *  the plan plus any folded upcoming actual, the same way the rows read. `sum` is
- *  null for a month the plan has no data for. */
+/** A section's or folder's month: `actual · plan` up to the selected month, plan alone
+ *  after it, the same way the rows read. `sum` is null for a month the plan has no
+ *  data for. */
 export function SumCell({
   index,
   sum,
@@ -197,12 +185,11 @@ export function SumCell({
   const plan = sum && !isZero(sum.planned) ? sum.planned : null
   const { actual, dash } = balance
     ? { actual: sum ? sum.actual : null, dash: false }
-    : shownActual(laterActual(sum ? sum.actual : null, month, ctx.selected), plan !== null)
-  const later = !balance && month > ctx.selected
+    : shownActual(sum && month <= ctx.selected ? sum.actual : null, plan !== null)
   return (
     <span data-testid={`plan-sum-${index}`} className="flex min-w-0 flex-1 items-baseline justify-between gap-1 text-muted-foreground tabular-nums">
       {actual !== null ? (
-        <span className={`min-w-0 truncate text-xs${later ? ` ${FUTURE_FIGURE}` : ''}`} title={fmt(actual)}>
+        <span className="min-w-0 truncate text-xs" title={fmt(actual)}>
           {fmt(actual)}
         </span>
       ) : dash ? (
@@ -245,7 +232,7 @@ export const ChildRow = memo(function ChildRow({
       {ctx.visibleMonths.map((m, i) => {
         const idx = ctx.monthIndex(m)
         const cell = idx >= 0 ? child.cells[idx] : undefined
-        const { actual } = shownActual(laterActual(cell ? cell.actual : null, m, ctx.selected), false)
+        const { actual } = shownActual(cell && m <= ctx.selected ? cell.actual : null, false)
         return (
           <div
             key={m}
@@ -259,7 +246,7 @@ export const ChildRow = memo(function ChildRow({
           >
             <span className="flex min-w-0 flex-1">
               {actual !== null ? (
-                <span data-testid="cell-actual" className={`min-w-0 truncate text-xs tabular-nums${m > ctx.selected ? ` ${FUTURE_FIGURE}` : ''}`} title={fmt(actual)}>
+                <span data-testid="cell-actual" className="min-w-0 truncate text-xs tabular-nums" title={fmt(actual)}>
                   {fmt(actual)}
                 </span>
               ) : null}
@@ -425,7 +412,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
           const cellComments = ctx.commentsByCell.get(commentCellKey(el.id, m)) ?? []
           const commentCount = cellComments.length
           const target = { el, month: m, monthIndex: idx }
-          const actualColor = view.over ? 'text-expense' : m > ctx.selected && !view.balance ? FUTURE_FIGURE : 'text-muted-foreground'
+          const actualColor = view.over ? 'text-expense' : 'text-muted-foreground'
           const cellNode = (
             <div
               {...{ [COMMENT_ANCHOR_ATTR]: '' }}
@@ -493,27 +480,13 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                 data-testid="cell-figures"
                 className={`flex min-w-0 flex-1 justify-between gap-1 ${editing ? 'items-center' : 'items-baseline'}`}
               >
-                {actual === null && view.upcoming && actualLinkable ? (
-                  <button
-                    type="button"
-                    data-testid="cell-actual"
-                    title={t('budgets.page.budget.structure.element.action.show_transactions')}
-                    className="text-xs underline-offset-2 hover:underline"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      ctx.select(rk, i, e)
-                      ctx.openTransactions(el, m)
-                    }}
-                  >
-                    <Dash />
-                  </button>
-                ) : actual === null ? (
+                {actual === null ? (
                   view.dash ? (
                     <span data-testid="cell-no-actual" className="text-xs">
                       <Dash />
                     </span>
                   ) : null
-                ) : actualLinkable && (!view.balance || m <= ctx.selected || movesMoney(cell)) ? (
+                ) : actualLinkable && (!view.balance || m <= ctx.selected) ? (
                   <button
                     type="button"
                     data-testid="cell-actual"

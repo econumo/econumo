@@ -275,29 +275,14 @@ it('a row with no budget draws the empty gray track', () => {
 it('a future month shows a dash for Spent, the empty gray track, and no colour', () => {
   renderView({ selectedDate: '2099-01-01' }, (b) => {
     const food = b.structure.elements.find((el) => el.id === 'cat-food')!
-    Object.assign(food, { budgeted: '100', spent: '0', budgetSpent: '0', available: '30' })
+    Object.assign(food, { budgeted: '100', spent: '150', budgetSpent: '150', available: '-120' })
   })
   const row = screen.getByTestId('phone-row-cat-food')
   const bar = within(row).getByTestId('phone-progress').firstElementChild
   expect(bar).toHaveStyle({ width: '0%' })
-  expect(bar?.className).toContain('bg-muted-foreground/25')
+  expect(bar?.className).toContain('bg-muted-foreground/40')
   expect(within(row).getByText('—').className).not.toContain('text-expense')
   expect(screen.getByRole('button', { name: 'Food, budget 30.00 + 100.00, spent —' })).toBeInTheDocument()
-})
-
-it('a future month shows the combined Spent and the filled bar when upcoming exists', () => {
-  renderView({ selectedDate: '2099-01-01' }, (b) => {
-    const food = b.structure.elements.find((el) => el.id === 'cat-food')!
-    Object.assign(food, { budgeted: '100', spent: '50', budgetSpent: '50', available: '-20' })
-  })
-  const row = screen.getByTestId('phone-row-cat-food')
-  expect(within(row).getByTestId('phone-progress').firstElementChild).not.toHaveStyle({ width: '0%' })
-  // upcoming spending above the plan is never painted as overspent
-  expect(within(row).getByTestId('phone-progress').firstElementChild?.className).not.toContain('bg-expense')
-  expect(within(row).getByText('50.00').className).not.toContain('text-expense')
-  // and muted, as a projection
-  expect(within(row).getByText('50.00').className).toContain('text-muted-foreground/50')
-  expect(screen.getByRole('button', { name: 'Food, budget 30.00 + 100.00, spent 50.00' })).toBeInTheDocument()
 })
 
 const rainyDay = { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0, budgeted: '100', spent: '40', available: '60', closingBalance: '1040' } as const
@@ -355,15 +340,15 @@ it('a savings withdrawal draws the empty track', async () => {
 })
 
 it('a future month draws the empty gray track on income and savings rows, even for a met plan', async () => {
-  renderView({ selectedDate: '2099-01-01', planMonth: { ...planMonth, income: incomeOf({ element: salaries, planned: '2000', actual: '0' }) } }, (b) => {
-    b.structure.savings = [{ ...rainyDay, spent: '0' }]
+  renderView({ selectedDate: '2099-01-01' }, (b) => {
+    b.structure.savings = [{ ...rainyDay, spent: '100' }]
   })
   await userEvent.click(screen.getByTestId('phone-income-summary'))
   await userEvent.click(screen.getByTestId('phone-savings-summary'))
   for (const testId of ['phone-income-row-ie1', 'phone-savings-row-acc-s1']) {
     const bar = within(screen.getByTestId(testId)).getByTestId('phone-progress').firstElementChild
     expect(bar).toHaveStyle({ width: '0%' })
-    expect(bar?.className).toContain('bg-muted-foreground/25')
+    expect(bar?.className).toContain('bg-muted-foreground/40')
   }
 })
 
@@ -483,21 +468,10 @@ it('Budget shows only this month\'s budget when earlier months left nothing, and
 })
 
 it('a future month shows dashes for what has not happened yet', () => {
-  renderView({ selectedDate: '2099-01-01', planMonth: { ...planMonth, income: incomeOf({ element: salaries, planned: '2000', actual: '0' }) } }, (b) => {
-    for (const el of b.structure.elements) {
-      Object.assign(el, { spent: '0', budgetSpent: '0', children: el.children.map((c) => ({ ...c, spent: '0', budgetSpent: '0' })) })
-    }
-  })
+  renderView({ selectedDate: '2099-01-01' })
   expect(screen.getByTestId('phone-income-received')).toHaveTextContent('—')
   expect(screen.getByTestId('phone-total-expenses')).toHaveTextContent('Expenses—')
   expect(screen.getByTestId('phone-total-income')).toHaveTextContent(/^Income—$/)
-})
-
-it('a future month shows total expenses when upcoming exists', () => {
-  renderView({ selectedDate: '2099-01-01' }, (b) => {
-    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { spent: '50', budgetSpent: '50' })
-  })
-  expect(screen.getByTestId('phone-total-expenses')).toHaveTextContent(/Expenses.*50/)
 })
 
 it('shows Transfers when money crossed the budget boundary', () => {
