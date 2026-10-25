@@ -171,7 +171,6 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
   const revokeToken = useRevokePersonalToken()
   const tokens = usePersonalTokens()
   const configuringRef = useRef(false)
-  const [detailsOpen, setDetailsOpen] = useState(false)
   // the open step follows the current one as steps complete
   const [open, setOpen] = useState<StepId | null>(setup.current)
   const [followed, setFollowed] = useState<StepId | null>(setup.current)
@@ -254,12 +253,6 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
         return (
           <>
             {text(id)}
-            <div className="flex flex-col gap-1">
-              <button type="button" className="self-start text-xs text-econumo-link underline-offset-2 hover:underline" aria-expanded={detailsOpen} onClick={() => setDetailsOpen((value) => !value)}>
-                {t('imports.apple_wallet.steps.configure.details_toggle')}
-              </button>
-              {detailsOpen ? <p className="text-xs text-muted-foreground">{t('imports.apple_wallet.steps.configure.details')}</p> : null}
-            </div>
             <div className="flex flex-wrap items-center gap-3">
               {/* offered after the step is done too: a new iPhone, a revoked
                   token or a reinstalled Shortcut all need the connect again */}

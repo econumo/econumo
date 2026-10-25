@@ -567,8 +567,6 @@
         "configure": {
           "title": "Kurzbefehl verbinden",
           "text": "Tippe auf „Kurzbefehl verbinden“ und dann bei jeder Abfrage auf „Immer erlauben“.",
-          "details_toggle": "Was passiert dabei?",
-          "details": "Es wird ein Zugriffstoken für dieses iPhone erstellt. Der Kurzbefehl speichert deine Serveradresse und das Token und meldet sich dann bei Econumo. Die Automation braucht die Berechtigungen, die du hier erlaubst.",
           "button": "Kurzbefehl verbinden",
           "open": "Econumo verknüpfen",
           "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …",

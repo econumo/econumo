@@ -458,16 +458,8 @@ it('tracks guide link and Shortcuts opens with the step they came from', async (
   expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SETUP_SHORTCUTS_OPEN, { provider: 'apple-wallet', step: 'automate' })
 })
 
-it('step 2 keeps one instruction visible and the token details behind a toggle', async () => {
+it('step 2 is a single instruction', () => {
   localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install']))
-  const user = userEvent.setup()
   renderSetup(source)
-  const body = step('Connect the Shortcut')
-  expect(within(body).getByText('Tap Connect the Shortcut, then tap Always Allow on every prompt.')).toBeVisible()
-  expect(within(body).queryByText(/creates an access token/)).not.toBeInTheDocument()
-  const toggle = within(body).getByRole('button', { name: 'What does this do?' })
-  expect(toggle).toHaveAttribute('aria-expanded', 'false')
-  await user.click(toggle)
-  expect(toggle).toHaveAttribute('aria-expanded', 'true')
-  expect(within(body).getByText(/creates an access token/)).toBeVisible()
+  expect(within(step('Connect the Shortcut')).getByText('Tap Connect the Shortcut, then tap Always Allow on every prompt.')).toBeVisible()
 })

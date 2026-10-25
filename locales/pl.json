@@ -567,8 +567,6 @@
         "configure": {
           "title": "Połącz skrót",
           "text": "Stuknij „Połącz skrót”, a potem przy każdym pytaniu „Zawsze zezwalaj”.",
-          "details_toggle": "Co to robi?",
-          "details": "Tworzy token dostępu dla tego iPhone’a. Skrót zapisuje adres Twojego serwera i token, a potem łączy się z Econumo. Automatyzacja potrzebuje uprawnień, na które tu zezwolisz.",
           "button": "Połącz skrót",
           "open": "Powiąż Econumo",
           "waiting": "Czekam, aż skrót dotrze do Econumo…",

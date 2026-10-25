@@ -567,8 +567,6 @@
         "configure": {
           "title": "Opdracht koppelen",
           "text": "Tik op ‘Opdracht koppelen’ en daarna bij elke melding op ‘Altijd toestaan’.",
-          "details_toggle": "Wat doet dit?",
-          "details": "Er wordt een toegangstoken voor deze iPhone aangemaakt. De opdracht bewaart je serveradres en het token en meldt zich daarna bij Econumo. De automatisering heeft de rechten nodig die je hier toestaat.",
           "button": "Opdracht koppelen",
           "open": "Econumo koppelen",
           "waiting": "Wachten tot de opdracht Econumo bereikt…",

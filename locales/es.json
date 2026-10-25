@@ -567,8 +567,6 @@
         "configure": {
           "title": "Conectar el atajo",
           "text": "Toca «Conectar el atajo» y luego «Permitir siempre» en cada aviso.",
-          "details_toggle": "¿Qué hace esto?",
-          "details": "Crea un token de acceso para este iPhone. El atajo guarda la dirección de tu servidor y el token y luego se comunica con Econumo. La automatización necesita los permisos que concedas aquí.",
           "button": "Conectar el atajo",
           "open": "Vincular Econumo",
           "waiting": "Esperando a que el atajo llegue a Econumo…",

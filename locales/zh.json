@@ -567,8 +567,6 @@
         "configure": {
           "title": "连接快捷指令",
           "text": "点按“连接快捷指令”，然后在每次提示时点按“始终允许”。",
-          "details_toggle": "这会做什么？",
-          "details": "这会为此 iPhone 创建访问令牌。快捷指令会保存你的服务器地址和令牌，然后连接 Econumo。自动化需要你在这里授予的权限。",
           "button": "连接快捷指令",
           "open": "关联 Econumo",
           "waiting": "正在等待快捷指令连接 Econumo…",

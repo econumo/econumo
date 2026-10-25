@@ -494,8 +494,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       no longer served (not found), while an already installed v1 automation
       still imports.
 - [ ] Step 2 text is one line: "Tap Connect the Shortcut, then tap Always
-      Allow on every prompt." "What does this do?" below it expands (and
-      collapses) the explanation of the token and the check-in 📱.
+      Allow on every prompt." 📱
 - [ ] Step 2, iOS only 📱: one tap on "Connect the Shortcut" mints an ingest PAT
       (visible under Profile → Tokens with scope `ingest`) and opens the
       Shortcuts app with it right away — the app window stays on the page.
