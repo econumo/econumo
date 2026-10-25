@@ -129,14 +129,14 @@ it('lists a real transaction dated later this month without counting it twice', 
     ],
   )
   const onUse = vi.fn()
-  // spent already holds both real rows
-  renderPanel(query({ spent: '300', upcoming: '250' }), onUse)
+  // spent holds only the lunch; upcoming holds the rent and the dentist
+  renderPanel(query({ spent: '200', upcoming: '350' }), onUse)
   expect(await screen.findByText('Dentist')).toBeInTheDocument()
   expect(screen.queryByText('Lunch')).not.toBeInTheDocument()
   const names = screen.getAllByRole('listitem').map((li) => li.textContent)
   expect(names[0]).toContain('Dentist')
   expect(names[1]).toContain('Rent')
-  // the dentist is listed above, so only the lunch is already spent: 100 + 250 + 200 = 550
+  // 100 + 250 listed, 200 already spent: 550
   expect(screen.getByTestId('upcoming-spent')).toHaveTextContent(/^Already spent200\.00 \$$/)
   fireEvent.click(screen.getByTestId('upcoming-total'))
   expect(onUse).toHaveBeenCalledWith('550')
@@ -144,7 +144,7 @@ it('lists a real transaction dated later this month without counting it twice', 
 
 it('lists future real transactions with nothing due', async () => {
   serve([], [itemRow({ id: 't-future', description: 'Concert', amount: '80', spentAt: '2026-07-28 20:00:00' })])
-  renderPanel(query({ spent: '80', upcoming: '0' }), vi.fn())
+  renderPanel(query({ spent: '0', upcoming: '80' }), vi.fn())
   expect(await screen.findByText('Concert')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Total 80.00 $' })).toBeInTheDocument()
 })
@@ -166,11 +166,11 @@ it('totals in the cell currency with its symbol; rows in another currency keep t
     [itemRow({ id: 't1', description: 'Hotel', amount: '200', currencyId: 'cur-eur', spentAt: '2026-07-25 00:00:00' })],
   )
   const exchange = (from: string, to: string, amount: string) => (from === 'cur-eur' && to === 'cur-usd' ? String(Number(amount) * 1.1) : amount)
-  renderPanel(query({ exchange, spent: '220', upcoming: '110' }), vi.fn())
+  renderPanel(query({ exchange, spent: '0', upcoming: '330' }), vi.fn())
   const [streaming, hotel] = await screen.findAllByRole('listitem')
   expect(streaming).toHaveTextContent('100.00 €')
   expect(hotel).toHaveTextContent('200.00 €')
-  // the hotel is the whole of spent, so nothing is behind us yet
+  // nothing is behind us yet
   expect(screen.queryByTestId('upcoming-spent')).not.toBeInTheDocument()
   expect(screen.getByTestId('upcoming-total')).toHaveTextContent('330.00 $')
 })

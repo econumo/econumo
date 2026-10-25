@@ -52,11 +52,11 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req model.GetBudg
 	if err != nil {
 		return nil, err
 	}
-	pr, err := s.projectWindow(ctx, f, now)
+	pr, err := s.upcomingRead(ctx, f, now)
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.buildBudget(ctx, b, f, now)
+	result, err := s.asOfTomorrow(ctx).buildBudget(ctx, b, f, now)
 	if err != nil {
 		return nil, err
 	}

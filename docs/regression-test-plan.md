@@ -1559,12 +1559,12 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 Two savings accounts in the current month, one planned 500 with
       nothing saved yet, the other planned 0 with 300 saved: the Savings line
       shows 800 and the Total savings rises by exactly 800 over the previous
-      month (Balance drops by the same). A transfer already booked into a future
-      month above that month's plan counts at its booked amount in both.
+      month (Balance drops by the same). A transfer dated in a future month
+      counts in neither until its date: it shows in that month's editor list.
 - [ ] 📱 Book a future-dated transfer of 20 from a savings account to an
-      account that is not in the budget: from that month on the Savings
-      balance is 20 lower, and the everyday Balance is the same as before the
-      transfer.
+      account that is not in the budget: the Savings balance, the everyday
+      Balance and the savings row's Saved stay as before the transfer (it has
+      not happened yet); editing that month's savings plan lists it as -20.
 - [ ] 📱 A past month where a savings account saved less than planned: the
       cell does NOT take a green under-plan style, and is never red (the Plan
       grid shows no green anywhere; only an over-plan expense reads red).
@@ -1752,8 +1752,8 @@ and on tablet/phone only with a hardware keyboard.
       (a row from an account in another currency keeps its own amount and
       symbol), Total in the item's currency. Below the rows: "Already spent"
       ("Already received" on income, "Already saved" on savings) = what is
-      already behind us, excluding the future-dated rows listed above, hidden
-      when 0; then "Total" = spent + still due, so the column adds up (e.g.
+      already behind us (the cell's spent, which leaves out the future-dated
+      rows listed above), hidden when 0; then "Total" = spent + still due, so the column adds up (e.g.
       60 + 55 + Already spent 300 = Total 415). "Coming up", "Already …" and
       Total are in the brighter text colour; the figures line up in one
       right-aligned column. In the Plan grid the list opens below the edited
@@ -1764,7 +1764,16 @@ and on tablet/phone only with a hardware keyboard.
       input's value with that plain number and keeps the cursor in the input;
       in the Plan grid the cell stays in edit mode and nothing is saved until
       Enter / Tab / clicking away. A future-dated real transaction listed in
-      the panel is not added to Total a second time (it is already in Spent).
+      the panel counts once in Total (it is upcoming, not spent).
+- [ ] 📱 **Future-dated transactions are not spent yet**: book an expense of 40
+      in category X dated later this month (and one dated next month). This
+      month's Spent / Available for X, the month's totals, Balance and the Plan
+      grid's Actual leave the 40 out; the plan turns red when it is below spent +
+      40 (+ any due payments) and X's editor list shows the 40 with Total
+      including it. Next month's Spent stays 0 and its editor list shows the
+      other one. On the day it is dated (in your timezone) it moves into Spent.
+      Same for income (Received) and a transfer into a savings account (Saved,
+      the savings Balance and Total savings move only on its date).
 - [ ] 📱 In the phone plan dialog the list sits above the amount field, so the
       field and the Save / Cancel buttons stay in the same place whether the
       list is there, still loading, or long.

@@ -366,7 +366,7 @@ func withSavingsHistory(t *testing.T, h *harness) {
 	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: savingsUSDID, Type: 1, Amount: "1000",
 		SpentAt: time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)})
 	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: savingsUSDID, AccountRecipientID: savingsEURID,
-		Type: 2, Amount: "55", AmountRecipient: "50", SpentAt: time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)})
+		Type: 2, Amount: "55", AmountRecipient: "50", SpentAt: time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)})
 }
 
 type savingsClosingView struct {

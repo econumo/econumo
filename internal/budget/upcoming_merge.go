@@ -9,16 +9,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
-// projectWindow projects the recurring occurrences filed in f's window, or
-// returns a nil read when the window ended before the caller's current month
-// or nothing is projected into it.
-func (s *Service) projectWindow(ctx context.Context, f filters, now time.Time) (*projectedRead, error) {
-	if !upcomingShown(ctx, f.periodEnd, now) {
-		return nil, nil
-	}
-	return s.newProjectedRead(ctx, f, f.periodEnd)
-}
-
 // upcomingShown reports whether a window ending at periodEnd reaches the
 // caller's current month: one that ended before it has no upcoming money.
 func upcomingShown(ctx context.Context, periodEnd, now time.Time) bool {
@@ -26,9 +16,8 @@ func upcomingShown(ctx context.Context, periodEnd, now time.Time) bool {
 }
 
 // addUpcoming fills result's upcoming fields: the same builder run a second
-// time over the projected recurring occurrences instead of the stored
-// transactions.
-func (s *Service) addUpcoming(ctx context.Context, b *budgetAggregate, now time.Time, pr *projectedRead, f filters, result *model.BudgetResult) error {
+// time over upcomingRead instead of the transactions dated up to today.
+func (s *Service) addUpcoming(ctx context.Context, b *budgetAggregate, now time.Time, pr ReadModel, f filters, result *model.BudgetResult) error {
 	sp := *s
 	sp.read = pr
 	up, err := sp.buildBudget(ctx, b, f, now)
@@ -216,11 +205,11 @@ func reorderRows[T any](rows []T, options map[string]elementOption, key func(T) 
 }
 
 // addPlanUpcoming fills the plan's upcoming fields the way addUpcoming does
-// for get-budget: BuildBudgetPlan run again over the projected occurrences of
-// the window. A window that ended before the current month, or one nothing is
-// projected into, keeps the zeros BuildBudgetPlan set.
+// for get-budget: BuildBudgetPlan run again over upcomingRead. A window that
+// ended before the current month, or one with nothing upcoming in it, keeps
+// the zeros BuildBudgetPlan set.
 func (s *Service) addPlanUpcoming(ctx context.Context, b *budgetAggregate, f filters, months int, result *model.BudgetPlanResult) error {
-	pr, err := s.projectWindow(ctx, f, s.clock.Now())
+	pr, err := s.upcomingRead(ctx, f, s.clock.Now())
 	if err != nil || pr == nil {
 		return err
 	}

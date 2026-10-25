@@ -1350,10 +1350,17 @@ data unreadable. Most are also asserted by the test suite.
   templates skipped) into occurrences
   (`internal/model/recurring_projection.go`, `internal/budget/{projected_read,upcoming_merge,txlist}.go`,
   glue `internal/server/glue_budget_recurring.go`). An overdue next payment counts once in the
-  caller's current month, afterwards only occurrences after today. Upcoming money is a HINT
+  caller's current month, afterwards only occurrences after today. A real transaction dated
+  from the caller's tomorrow on (`X-Timezone`) has not happened yet: every `get-budget` /
+  `get-budget-plan` figure reads the stored transactions through `windowRead` capped at that
+  instant (`internal/budget/dated_read.go`, `asOfTomorrow`; computed in Go, bound as a
+  parameter), and the upcoming pass reads those later rows (`upcomingRead`: the projection
+  plus the stored rows from tomorrow to the window's end, summed per key), so they are
+  upcoming money exactly like a due template. Upcoming money is a HINT
   on the plan number, never part of the figures: spent/actual, Available, every total and
-  projection (Balance, Total savings, savings `closingBalance`, carry-over) are real money
-  only. The budget transaction list leads with a "Coming up" group laid out like the
+  projection (Balance, Total savings, savings `closingBalance`, opening balances, flows,
+  carry-over) are money dated up to today only. `get-transaction-list` keeps listing every
+  real row of the period, future-dated ones included; its `upcoming[]` stays recurring-only. The budget transaction list leads with a "Coming up" group laid out like the
   plan editor's list (the cell's future-dated rows and its recurring payments still due,
   soonest first, display only), then a "Posted" heading over the past rows in their day
   groups; both headings show only when something is still to come. Additive wire fields: `upcoming`/`budgetUpcoming` on
@@ -1369,12 +1376,12 @@ data unreadable. Most are also asserted by the test suite.
   list (`UpcomingPaymentsPanel`): the still-due recurring payments (repeat icon, overdue
   marker) merged by date with the cell's own transactions dated after today, each in its own
   currency with its symbol, in one right-aligned amount column, savings signed; then an
-  "Already spent" / "Already received" / "Already saved" line (by row kind; spent minus the
-  future-dated rows listed above, hidden at 0) and a "Total" line (spent + still due, cell
+  "Already spent" / "Already received" / "Already saved" line (by row kind; the cell's spent,
+  which holds none of the rows listed above, hidden at 0) and a "Total" line (spent + still due, cell
   currency with its symbol), so the column adds up. Headings and Total are set off in the
   foreground colour, and in the Plan grid the list opens below the cell's frame. The whole
   list is one button: a press anywhere fills the input with that total (future-dated rows are
-  already in spent, never added twice) without committing. A cell with nothing still to
+  in upcoming, not in spent, so never added twice) without committing. A cell with nothing still to
   come (no due payment, no future-dated row) shows no list, Spent/Total lines included.
   Past months and read-only cells never show it; there is no Post/Skip/Edit of templates from budget views.
 - **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,

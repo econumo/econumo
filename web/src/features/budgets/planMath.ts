@@ -476,11 +476,10 @@ export function balanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: M
 /** The savings side of the balance split: opening balance plus, per month, what
  *  actually happened (savingsFlows) in the past; in the current and future months
  *  the flows booked so far plus each row's own gap to plan,
- *  Σ(max(actual, planned) − actual). Future months take the flows too: a future-dated
- *  savings→outside transfer leaves the combined balance through the boundary
- *  transfers, so it must leave the Savings balance as well, or the everyday Balance
- *  would drop for money no everyday account sent. An everyday→savings transfer is
- *  in both the flows and the row's actual, so it still counts once. The gap is per
+ *  Σ(max(actual, planned) − actual). The server leaves money dated after today out of
+ *  the flows, the boundary transfers and the actuals alike, so a later month carries
+ *  no flows. An everyday→savings transfer is in both the flows and the row's actual,
+ *  so it still counts once. The gap is per
  *  row so an over-saved row cannot cover another row's shortfall — the balance must
  *  move by exactly what the Savings line shows. */
 export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: MonthExchange, now?: Date): string[] {

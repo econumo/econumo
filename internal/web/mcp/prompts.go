@@ -23,14 +23,16 @@ func budgetFieldGlossary() string {
 - budgetSpent: the same spending converted to the BUDGET's base currency
   (meta.currencyId). When currencies differ, compare limits against budgetSpent,
   not spent. Child categories carry both spent and budgetSpent.
-- spent, budgetSpent and available count POSTED transactions only. upcoming /
-  budgetUpcoming are this month's recurring payments still due (element and
-  budget currency): a planning hint, never part of spent, actual or
-  closingBalance. A month before the current one has no upcoming money (all
+- spent, budgetSpent and available count POSTED transactions dated up to the
+  caller's today only. upcoming / budgetUpcoming are this month's money still
+  to come (element and budget currency): recurring payments still due plus
+  transactions dated after today. A planning hint, never part of spent, actual
+  or closingBalance. A month before the current one has no upcoming money (all
   "0"). Labels and savings rows carry upcoming too.
-- get_budget_plan: each cell's actual is posted money only; upcoming is that
-  month's recurring payments still due ("0" for a month before the current
-  one), a planning hint, never part of actual or closingBalance.
+- get_budget_plan: each cell's actual is posted money dated up to today only;
+  upcoming is that month's recurring payments still due plus transactions
+  dated after today ("0" for a month before the current one), a planning hint,
+  never part of actual or closingBalance.
 - balances[]: one row per currency the budget touches (budget currency first) —
   account-level, separate from envelope spending. startBalance/endBalance are
   point-in-time totals (null until the period starts/ends); income/expenses/

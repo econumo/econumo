@@ -73,6 +73,16 @@ current month, payments already posted are real and are in spent, not in upcomin
    repeat icon, aligned amounts), soonest first and display only; then a "Posted" heading
    over the past transactions in their day groups. Both headings appear only together. This replaces "Spent list: real transactions only" below; the
    spent figure itself still counts real money only.
+7. **Future-dated transactions are not spent yet** (2026-10-25): a real transaction dated
+   from the caller's tomorrow on (their timezone) has not happened, so no `get-budget` /
+   `get-budget-plan` figure counts it: spent, available, label spent, received, saved,
+   savings closing balances, opening balances, flows and transfers all stop at the end of
+   the caller's today. It is upcoming money instead, filed exactly like a real row next to
+   the due recurring payments (`upcoming` / `budgetUpcoming`, cell `upcoming`), so a row it
+   alone carries still shows. The editor list's "Already …" line is the cell's spent as is,
+   and Total stays spent + upcoming. The transaction list keeps the rows under "Coming up";
+   `upcoming[]` on `get-transaction-list` stays recurring-only. This replaces "already in
+   spent" in 4 and 5 and the "Future-dated real transactions count in spent" call below.
 
 ## Non-goals
 

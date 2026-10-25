@@ -23,9 +23,9 @@ export interface UpcomingQuery {
   currency: CurrencyDto | undefined
   /** at the month's budget rates; each row is in its account's currency, the cell in `currency` */
   exchange: (fromCurrencyId: Id, toCurrencyId: Id, amount: string) => string
-  /** the cell's real money so far, future-dated rows included (cell currency) */
+  /** the cell's real money up to today (cell currency) */
   spent: string
-  /** the cell's still-due recurring money (cell currency); absent = 0 */
+  /** the cell's money still to come: recurring payments due and rows dated after today (cell currency); absent = 0 */
   upcoming?: string
 }
 
@@ -81,9 +81,8 @@ export function UpcomingPaymentsPanel({ query, onUse }: { query: UpcomingQuery; 
   const dateFmt = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' })
   const need = planNeed(query.spent, query.upcoming)
   const totalLabel = t('budgets.page.upcoming.total')
-  // spent already holds the future-dated rows listed above, so this line keeps only what is
-  // behind us and the column adds up to the total
-  const already = later.reduce((rest, r) => sub(rest, cellAmount(r)), query.spent)
+  // spent holds what is behind us and upcoming the rows listed above, so the column adds up to the total
+  const already = query.spent
   const alreadyLabel = savings
     ? t('budgets.page.upcoming.saved')
     : typeof query.target.type === 'number' && isIncomeType(query.target.type)

@@ -155,8 +155,8 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
   let currentDay: string | null = null
   const rows: { kind: 'sep' | 'tx'; key: string; label?: string; tx?: BudgetTransactionDto }[] = []
   // What is still to come leads the list, laid out like the plan editor's "Coming up" list:
-  // rows dated after today (already in the figure) and recurring payments still due (not in
-  // it, shown for reference only: the budget offers no Post/Skip), soonest first.
+  // rows dated after today and recurring payments still due (neither is in the figure; shown for
+  // reference only: the budget offers no Post/Skip), soonest first.
   const later = [
     ...(transactions ?? []).filter((tx) => isFuture(tx.spentAt)).map((tx) => ({ tx, recurring: false })),
     ...(data?.upcoming ?? []).map((tx) => ({ tx, recurring: true })),

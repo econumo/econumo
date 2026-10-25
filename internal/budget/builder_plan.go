@@ -23,7 +23,7 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
-	return s.buildBudgetPlan(ctx, b, f, months)
+	return s.asOfTomorrow(ctx).buildBudgetPlan(ctx, b, f, months)
 }
 
 // buildBudgetPlan is BuildBudgetPlan over filters the caller already built
