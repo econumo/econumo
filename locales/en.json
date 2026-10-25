@@ -577,11 +577,11 @@
           "title": "Create the automation",
           "text": "In the Shortcuts app, create a Wallet automation:",
           "list": {
-            "open": "Open Automation (on iOS 27: Library → Automation), then tap New Automation or +",
+            "open": "Open the Automation tab (on iOS 27: Library → Automation), then tap New Automation or +",
             "wallet": "Choose Wallet (\"When I tap a Wallet Card or Pass\")",
-            "cards": "Select the cards and categories to import (all of them for every purchase)",
+            "cards": "Select the cards and categories to import, or all of them",
             "confirm": "Keep confirmation on: Run After Confirmation (iOS 26) or Confirm Before Run (iOS 27)",
-            "shortcut": "Run the econumo shortcut (on iOS 27: add Run Shortcut → econumo, with Transaction as its input)"
+            "shortcut": "Choose the econumo shortcut (on iOS 27: add Run Shortcut → econumo, with Transaction as its input)"
           }
         },
         "payment": {
@@ -591,7 +591,7 @@
         },
         "immediate": {
           "title": "Switch the automation to Run Immediately",
-          "text": "Turn off the confirmation so payments import without asking: open the automation in Shortcuts and choose Run Immediately (iOS 26) or turn off Confirm Before Run (iOS 27)."
+          "text": "Turn off the confirmation so payments are imported without asking: open the automation in Shortcuts and choose Run Immediately (iOS 26) or turn off Confirm Before Run (iOS 27)."
         },
         "done": "Done",
         "guide_title": "Step-by-step guide with screenshots:",

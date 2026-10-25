@@ -577,11 +577,11 @@
           "title": "Automatisering aanmaken",
           "text": "Maak in de Opdrachten-app een Wallet-automatisering:",
           "list": {
-            "open": "Open Automatisering (op iOS 27: Bibliotheek → Automatisering) en tik op ‘Nieuwe automatisering’ of +",
+            "open": "Open het tabblad Automatisering (op iOS 27: Bibliotheek → Automatisering) en tik op ‘Nieuwe automatisering’ of +",
             "wallet": "Kies Wallet (‘Als ik op een Wallet-kaart of -pas tik’)",
-            "cards": "Selecteer de kaarten en categorieën die je wilt importeren (alle voor elke aankoop)",
+            "cards": "Selecteer welke kaarten en categorieën je wilt importeren, of allemaal",
             "confirm": "Laat de bevestiging aan: ‘Voer uit na bevestiging’ (iOS 26) of ‘Bevestig voor uitvoeren’ (iOS 27)",
-            "shortcut": "Voer de opdracht econumo uit (op iOS 27: voeg ‘Voer opdracht uit’ → econumo toe, met ‘Transactie’ als invoer)"
+            "shortcut": "Kies de opdracht econumo (op iOS 27: voeg ‘Voer opdracht uit’ → econumo toe, met ‘Transactie’ als invoer)"
           }
         },
         "payment": {
@@ -591,7 +591,7 @@
         },
         "immediate": {
           "title": "Zet de automatisering op ‘Voer direct uit’",
-          "text": "Zet de bevestiging uit, zodat betalingen zonder vraag worden geïmporteerd: open de automatisering in Opdrachten en kies ‘Voer direct uit’ (iOS 26) of zet ‘Bevestig voor uitvoeren’ uit (iOS 27)."
+          "text": "Zet de bevestiging uit, zodat betalingen zonder bevestiging worden geïmporteerd: open de automatisering in Opdrachten en kies ‘Voer direct uit’ (iOS 26) of zet ‘Bevestig voor uitvoeren’ uit (iOS 27)."
         },
         "done": "Klaar",
         "guide_title": "Stapsgewijze handleiding met screenshots:",
