@@ -1058,7 +1058,8 @@ and on tablet/phone only with a hardware keyboard.
       carries no view switch.
 - [ ] 📱 The main menu's "Budget & Plan" link opens the view last opened on
       this device (/budget or /plan), also after a reload, with the month
-      last shown there. The selected month is shared by both views: pick a
+      last shown there. Opening the app at / (the home-screen icon, the
+      logo) shows that same view and does not reset the link to Budget. The selected month is shared by both views: pick a
       month in the strip on /budget (or page with ‹ › on /plan), switch
       Budget ↔ Plan (and back), and the same month is still selected.
 - [ ] Budget view (desktop and tablet) uses the phone's order: Income
