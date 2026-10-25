@@ -33,7 +33,8 @@ interface ViewTransactionDialogProps {
       be resolved (deleted, or on an account the caller can't see) rather than
       rendering a dead end. */
   recurringSchedule?: RecurringSchedule
-  /** opens the editor for the schedule above (the recurring row's click) */
+  /** opens the editor for the schedule above (the recurring row's click);
+      without it the schedule shows as a plain card */
   onOpenRecurring?: () => void
   /** replaces the whole action row. The recurring dialog shows the same body with
       its own actions (hide/post/skip), so the layout lives in one component. */
@@ -55,9 +56,11 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
   // transaction already carries (no separate owner-scoped lookup to invent).
   const { data: labels = [] } = useLabels()
   const { data: importLinks = [] } = useTransactionImportLinks(tx.id, tx.isImported === 1)
-  const attachedLabels = (tx.labelIds ?? [])
+  const resolvedLabels = (tx.labelIds ?? [])
     .map((id) => labels.find((l) => l.id === id))
     .filter((label): label is (typeof labels)[number] => Boolean(label))
+  // a partner's labels never resolve here; a caller-built row may carry them by name
+  const attachedLabels = resolvedLabels.length > 0 ? resolvedLabels : (tx.labels ?? [])
   const showMakeRecurring = canMakeRecurring(tx, onMakeRecurring)
   // Indicator only, independent of whether the template itself resolved: the
   // transaction's own recurringId is enough to state that it came from a
@@ -271,6 +274,13 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
             </span>
             <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </button>
+        ) : recurringSchedule ? (
+          <CardField label={t('recurring.preview.header')}>
+            <span className="flex items-center gap-2 text-sm">
+              <Repeat className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="truncate">{t(`recurring.schedule.${recurringSchedule}`)}</span>
+            </span>
+          </CardField>
         ) : null}
       </div>
     </ResponsiveDialog>

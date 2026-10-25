@@ -19,13 +19,19 @@ import (
 // window size; only the rate lookups are per-month, and those read the small
 // rates table).
 func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAggregate, from time.Time, months int) (model.BudgetPlanResult, error) {
-	windowEnd := from.AddDate(0, months, 0)
-
-	meta, err := s.buildMeta(ctx, b)
+	f, err := s.buildFilters(ctx, userID, b, from, from.AddDate(0, months, 0))
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
-	f, err := s.buildFilters(ctx, userID, b, from, windowEnd)
+	return s.buildBudgetPlan(ctx, b, f, months)
+}
+
+// buildBudgetPlan is BuildBudgetPlan over filters the caller already built
+// for the window.
+func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f filters, months int) (model.BudgetPlanResult, error) {
+	from, windowEnd := f.periodStart, f.periodEnd
+
+	meta, err := s.buildMeta(ctx, b)
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
@@ -85,6 +91,12 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 		SavingsFlows:           savingsFlows,
 		SavingsIncomeExpense:   savingsIncomeExpense,
 		Structure:              structure,
+
+		UpcomingOpeningBalances:        zeroBalances(opening),
+		UpcomingSavingsOpeningBalances: zeroBalances(savingsOpening),
+		UpcomingTransfers:              emptyTransfers(transfers),
+		UpcomingSavingsFlows:           []model.PlanSavingsFlowResult{},
+		UpcomingSavingsIncomeExpense:   []model.PlanSavingsFlowResult{},
 	}, nil
 }
 
@@ -594,7 +606,7 @@ func (s *Service) emitPlanElements(elements []*planElement, converted map[string
 		index := elementKey(el.id, el.typ)
 		cells := make([]model.PlanCellResult, nMonths)
 		for i := 0; i < nMonths; i++ {
-			cells[i] = model.PlanCellResult{Actual: get(planKey(i, index)).String(), Planned: el.planned[i]}
+			cells[i] = model.PlanCellResult{Actual: get(planKey(i, index)).String(), Planned: el.planned[i], Upcoming: "0"}
 		}
 
 		children := []model.PlanChildResult{}
@@ -605,7 +617,7 @@ func (s *Service) emitPlanElements(elements []*planElement, converted map[string
 			subIndex := elementKey(ch.id, ch.typ)
 			chCells := make([]model.PlanChildCellResult, nMonths)
 			for i := 0; i < nMonths; i++ {
-				chCells[i] = model.PlanChildCellResult{Actual: get(planChildKey(i, index, subIndex)).String()}
+				chCells[i] = model.PlanChildCellResult{Actual: get(planChildKey(i, index, subIndex)).String(), Upcoming: "0"}
 			}
 			children = append(children, model.PlanChildResult{
 				Id: ch.id, Type: int(ch.typ.Int16()), Name: ch.name, Icon: ch.icon,

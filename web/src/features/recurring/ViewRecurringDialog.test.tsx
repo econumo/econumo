@@ -1,10 +1,11 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { formatDateTime } from '@/lib/datetime'
 import type { RecurringDto } from '@/api/dto/recurring'
+import type { BudgetUpcomingDto } from '@/api/dto/budget'
 import { ViewRecurringDialog } from './ViewRecurringDialog'
 
 function mockMatchMedia() {
@@ -113,4 +114,64 @@ it('colours the amount like a regular expense', async () => {
   expect(amount).not.toBeNull()
   expect(amount?.textContent).toContain('50.5')
   expect(amount?.textContent).toMatch(/^-/)
+})
+
+const partnerOccurrence: BudgetUpcomingDto = {
+  id: 'r-partner', author: { id: 'u2', name: 'Partner', avatar: 'face:sky' }, currencyId: 'cur-usd', amount: '30',
+  description: 'internet', category: { id: 'cat-bills', name: 'Bills', icon: 'receipt' }, payee: { id: 'p-isp', name: 'ISP' },
+  tag: { id: 'tg-home', name: 'Home' }, labelIds: ['lb-partner'], spentAt: '2026-07-15 09:00:00',
+  templateId: 'r-partner', schedule: 'weekly', accountId: 'acc-partner', accountName: 'Partner card',
+  labelNames: ['household'], isNext: true, isOverdue: false, canEdit: false,
+}
+
+function renderReadOnly(overrides: { onEdit?: () => void; note?: string; occurrence?: BudgetUpcomingDto } = {}) {
+  server.use(...coreHandlers())
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <ViewRecurringDialog readOnly occurrence={overrides.occurrence ?? partnerOccurrence} onClose={vi.fn()} onEdit={overrides.onEdit} note={overrides.note} />
+    </QueryClientProvider>,
+  )
+}
+
+it('read-only: shows the occurrence from its own names, with no Post or Skip', async () => {
+  renderReadOnly()
+  expect(await screen.findByText('Partner card')).toBeInTheDocument()
+  expect(screen.getByText('Bills')).toBeInTheDocument()
+  expect(screen.getByText('ISP')).toBeInTheDocument()
+  expect(screen.getByText('Home')).toBeInTheDocument()
+  expect(screen.getByText('household')).toBeInTheDocument()
+  expect(screen.getByText('Weekly')).toBeInTheDocument()
+  expect(screen.getByText('2026-07-15 09:00:00')).toBeInTheDocument()
+  expect(document.querySelector('.text-2xl.text-expense')?.textContent).toContain('30')
+  expect(screen.queryByRole('button', { name: 'Post' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+})
+
+it('read-only: offers Edit only when given, and shows the note', async () => {
+  const onEdit = vi.fn()
+  renderReadOnly({ onEdit, note: 'Can be posted after the earlier payment' })
+  await userEvent.setup().click(await screen.findByRole('button', { name: 'Edit' }))
+  expect(onEdit).toHaveBeenCalled()
+  expect(screen.getByText('Can be posted after the earlier payment')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Post' })).toBeNull()
+})
+
+it('read-only transfer: shows the recipient account and its amount', async () => {
+  renderReadOnly({
+    occurrence: {
+      ...partnerOccurrence, type: 'transfer', direction: 'in', category: null, payee: null, tag: null, labelNames: [],
+      accountId: '', accountName: '', amount: '91', currencyId: 'cur-eur',
+      accountRecipientId: 'acc-pot', accountRecipientName: 'Holiday pot', amountRecipient: '91', currencyRecipientId: 'cur-eur',
+      amountSource: '100', currencySourceId: 'cur-usd',
+    },
+  })
+  const recipient = (await screen.findByText('Holiday pot')).parentElement!
+  const sender = screen.getByText('[Hidden account]').parentElement!
+  // the currencies arrive after the first paint
+  await waitFor(() => expect(recipient).toHaveTextContent(/91\.00\s?€/))
+  expect(sender).toHaveTextContent(/\$\s?100\.00|100\.00\s?\$/)
+  expect(screen.getByText('Recipient')).toBeInTheDocument()
+  expect(screen.getByText('[Hidden account]')).toBeInTheDocument()
 })

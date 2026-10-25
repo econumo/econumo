@@ -8,7 +8,7 @@ import type {
   BudgetFolderSide,
   BudgetMetaDto,
   BudgetPlanDto,
-  BudgetTransactionDto,
+  BudgetTransactionListDto,
 } from './dto/budget'
 
 interface Envelope<T> {
@@ -186,7 +186,7 @@ export interface BudgetTransactionsParams {
   accountId?: Id
 }
 
-export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionDto[]> {
+export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionListDto> {
   const query = new URLSearchParams({ budgetId: params.budgetId, periodStart: params.periodStart })
   if (params.categoryId) query.set('categoryId', params.categoryId)
   if (params.tagId) query.set('tagId', params.tagId)
@@ -196,10 +196,10 @@ export async function getBudgetTransactions(params: BudgetTransactionsParams): P
   if (params.transfers) query.set('transfers', '1')
   if (params.income) query.set('income', '1')
   if (params.accountId) query.set('accountId', params.accountId)
-  const response = await api.get<Envelope<{ items: BudgetTransactionDto[] }>>(
+  const response = await api.get<Envelope<Partial<BudgetTransactionListDto>>>(
     apiUrl(`/api/v1/budget/get-transaction-list?${query.toString()}`),
   )
-  return response.data.data.items
+  return { items: response.data.data.items ?? [], upcoming: response.data.data.upcoming ?? [] }
 }
 
 // Access + account inclusion functions for Plan 5 (no UI yet).

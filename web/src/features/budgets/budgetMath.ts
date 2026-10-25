@@ -75,14 +75,18 @@ export function tagGroupStats(elements: BudgetElementDto[], budget: BudgetDto, e
   return { stats: { budgeted, spent, available, carry }, currencyId: [...currencyIds][0] }
 }
 
+const hasUpcoming = (el: { upcoming?: string }): boolean => el.upcoming !== undefined && !isZero(el.upcoming)
+
 export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang = 'en'): BudgetBuckets {
   const folders = [...budget.structure.folders].sort((a, b) => a.position - b.position)
   const elements = budget.structure.elements
   // The uncategorized element is presentation-only (no persisted row to move or
   // budget), so it is pulled out before bucketing and never joins a folder. It
   // only earns a place when the selected month has uncategorized spend.
+  // In the current month spent is the fact only: money still upcoming earns the row
+  // its place too, so its list (where that money shows) can be opened.
   const uncategorizedElements = elements.filter(
-    (el) => el.id === UNCATEGORIZED_ID && el.isArchived === 0 && cmp(el.spent, '0') !== 0,
+    (el) => el.id === UNCATEGORIZED_ID && el.isArchived === 0 && (cmp(el.spent, '0') !== 0 || hasUpcoming(el)),
   )
   const active = elements.filter((el) => el.isArchived === 0 && el.id !== UNCATEGORIZED_ID)
   const byPosition = (a: BudgetElementDto, b: BudgetElementDto) => a.position - b.position
@@ -106,7 +110,7 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang =
   // displayed numbers (budget, spent, available) is nonzero
   const archived = elements
     .filter((el) => el.isArchived === 1 && el.id !== UNCATEGORIZED_ID)
-    .filter((el) => cmp(el.budgeted, '0') !== 0 || cmp(el.spent, '0') !== 0 || cmp(displayAvailable(el), '0') !== 0)
+    .filter((el) => cmp(el.budgeted, '0') !== 0 || cmp(el.spent, '0') !== 0 || cmp(displayAvailable(el), '0') !== 0 || hasUpcoming(el))
     .sort((a, b) => compareNames(a.name, b.name, lang))
 
   return {
@@ -215,13 +219,13 @@ export function periodRange(
 export type RowState = 'none' | 'ok' | 'covered' | 'over'
 
 /** The one colour rule for an expense row. `available` is the displayed Available
- *  (`displayAvailable`); a future month has no spending yet, so it has no state. */
+ *  (`displayAvailable`); a future month with nothing upcoming has no state. */
 export function rowState(row: { budgeted: string; spent: string; available: string }, future = false): RowState {
-  if (future || (isZero(row.budgeted) && isZero(row.spent))) {
+  if ((future && isZero(row.spent)) || (isZero(row.budgeted) && isZero(row.spent))) {
     return 'none'
   }
   if (cmp(row.available, '0') < 0) {
-    return 'over'
+    return future ? 'ok' : 'over'
   }
   return cmp(row.spent, row.budgeted) > 0 ? 'covered' : 'ok'
 }
@@ -231,7 +235,7 @@ export function rowState(row: { budgeted: string; spent: string; available: stri
 export function rowProgress(row: { budgeted: string; spent: string; carry?: string }, future = false): number | null {
   const carry = row.carry !== undefined && cmp(row.carry, '0') > 0 ? row.carry : '0'
   const pool = add(row.budgeted, carry)
-  if (future || cmp(pool, '0') <= 0) {
+  if ((future && isZero(row.spent)) || cmp(pool, '0') <= 0) {
     return null
   }
   return Math.max(0, Math.min(Number(div(row.spent, pool)), 1))
@@ -245,8 +249,14 @@ export function nothingToShow(row: { budgeted: string; spent: string; available:
 
 /** The row turns red only when this month spent more than its budget and what
  *  earlier months left does not cover it. `available` is the displayed Available. */
+export function overAvailable(row: { budgeted: string; spent: string; available: string }, future = false): boolean {
+  return !(future && isZero(row.spent)) && cmp(row.spent, row.budgeted) > 0 && cmp(row.available, '0') < 0
+}
+
+/** The spent figure and its bar are never red in a month after the current one: what
+ *  shows there is mostly upcoming recurring spending against a plan not yet made. */
 export function overBudget(row: { budgeted: string; spent: string; available: string }, future = false): boolean {
-  return !future && cmp(row.spent, row.budgeted) > 0 && cmp(row.available, '0') < 0
+  return !future && overAvailable(row)
 }
 
 // the wire `available` already nets this month's spending against what earlier

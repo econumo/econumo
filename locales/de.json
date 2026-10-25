@@ -1195,6 +1195,10 @@
     }
   },
   "budgets": {
+    "transactions": {
+      "upcoming_hint": "Anstehende wiederkehrende Zahlung",
+      "later_cycle": "Kann nach der vorherigen Zahlung gebucht werden"
+    },
     "modal": {
       "budget_form": {
         "accounts": "Konten",

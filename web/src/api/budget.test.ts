@@ -91,7 +91,9 @@ it('budget transactions pass the element param and amounts through (own wire sha
       })
     }),
   )
-  const items = await budgetApi.getBudgetTransactions({ budgetId: 'b1', periodStart: '2026-07-01', categoryId: 'cat-food' })
+  const { items, upcoming } = await budgetApi.getBudgetTransactions({ budgetId: 'b1', periodStart: '2026-07-01', categoryId: 'cat-food' })
+  // an older server sends no upcoming list
+  expect(upcoming).toEqual([])
   expect(url).toContain('categoryId=cat-food')
   expect(url).not.toContain('tagId')
   expect(items[0].amount).toBe('9.99')

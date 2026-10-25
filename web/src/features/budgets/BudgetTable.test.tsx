@@ -18,6 +18,7 @@ const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fracti
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
 
 type TableExtras = ElementRowExtras & {
+  future?: boolean
   collapsedElementId?: string | null
   showEmptyNoFolder?: boolean
   sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
@@ -240,6 +241,49 @@ it('clicking the spent amount reports the element as a transactions target', asy
   const food = await screen.findByTestId('element-cat-food')
   await user.click(within(food).getByRole('button', { name: 'transactions Food' }))
   expect(onSpentClick).toHaveBeenCalledWith({ id: 'cat-food', type: 1, name: 'Food', icon: 'restaurant', currencyId: null })
+})
+
+it('future month shows spent when upcoming exists', async () => {
+  const user = userEvent.setup()
+  const onSpentClick = vi.fn()
+  renderTable(
+    (b) => {
+      b.structure.elements.find((e) => e.id === 'cat-food')!.spent = '30'
+    },
+    { onSpentClick, future: true },
+  )
+  const food = await screen.findByTestId('element-cat-food')
+  await user.click(within(food).getByRole('button', { name: 'transactions Food' }))
+  expect(onSpentClick).toHaveBeenCalledTimes(1)
+  expect(food).toHaveTextContent('30.00')
+  // an element with nothing upcoming keeps the dash and is not clickable
+  expect(within(screen.getByTestId('element-env-1')).queryByRole('button', { name: /^transactions/ })).not.toBeInTheDocument()
+})
+
+it('future month spent above plan is not red', async () => {
+  renderTable(
+    (b) => {
+      const food = b.structure.elements.find((e) => e.id === 'cat-food')!
+      Object.assign(food, { budgeted: '10', spent: '30', available: '-20' })
+    },
+    { onSpentClick: vi.fn(), future: true },
+  )
+  const food = await screen.findByTestId('element-cat-food')
+  expect(within(food).getByTestId('cell-spent').firstElementChild!.className).not.toContain('text-expense')
+})
+
+it('future month spent is muted', async () => {
+  renderTable(
+    (b) => {
+      const food = b.structure.elements.find((e) => e.id === 'cat-food')!
+      Object.assign(food, { budgeted: '10', spent: '30', available: '-20' })
+    },
+    { onSpentClick: vi.fn(), future: true },
+  )
+  const food = await screen.findByTestId('element-cat-food')
+  expect(within(food).getByTestId('cell-spent').firstElementChild!.className).toContain('text-muted-foreground/50')
+  expect(screen.getByTestId('totals-spent').className).toContain('text-muted-foreground/50')
+  expect(screen.getByTestId('totals-spent-mobile').className).toContain('text-muted-foreground/50')
 })
 
 it('clicking a child spent amount reports the child category with the parent currency', async () => {

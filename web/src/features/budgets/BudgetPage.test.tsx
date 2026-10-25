@@ -939,3 +939,38 @@ describe('managing categories, tags and accounts from the ⋮ menus', () => {
     await waitFor(() => expect(calls.find((c) => c.path === '/api/v1/budget/add-account')?.body).toEqual({ id: 'b1', accountId: 'acc-new', isSavings: true }))
   })
 })
+
+it('the current month shows the fact only; a row with nothing spent yet but money upcoming opens its list', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  try {
+    const budget = structuredClone(fixtureWireBudget)
+    const [food, living] = budget.structure.elements
+    Object.assign(food, { upcoming: '30', budgetUpcoming: '30', upcomingBefore: '0' })
+    Object.assign(living, { upcoming: '20', budgetUpcoming: '18', upcomingBefore: '0' })
+    let params: URLSearchParams | undefined
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+      http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+        params = new URL(request.url).searchParams
+        return HttpResponse.json({ success: true, message: '', data: { items: [], upcoming: [] } })
+      }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    const foodRow = await screen.findByTestId('element-cat-food')
+    expect(within(foodRow).getByTestId('cell-spent')).toHaveTextContent('45.50')
+    // folding the 30 upcoming in would read 324.50
+    expect(within(foodRow).getByTestId('cell-available')).toHaveTextContent('354.50')
+    const livingRow = screen.getByTestId('element-env-1')
+    const spent = within(livingRow).getByRole('button', { name: 'transactions Living' })
+    expect(spent).toHaveTextContent('0.00')
+    await user.click(spent)
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    await waitFor(() => expect(params?.get('envelopeId')).toBe('env-1'))
+    expect(params?.get('periodStart')).toBe('2026-07-01')
+  } finally {
+    vi.useRealTimers()
+  }
+})

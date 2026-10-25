@@ -41,13 +41,17 @@ type filters struct {
 // (which the caller has already snapped to first-of-month). now is the clock
 // time (controls nullable balance fields).
 func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, now time.Time) (model.BudgetResult, error) {
-	periodEnd := periodStart.AddDate(0, 1, 0)
-
-	meta, err := s.buildMeta(ctx, b)
+	f, err := s.buildFilters(ctx, userID, b, periodStart, periodStart.AddDate(0, 1, 0))
 	if err != nil {
 		return model.BudgetResult{}, err
 	}
-	f, err := s.buildFilters(ctx, userID, b, periodStart, periodEnd)
+	return s.buildBudget(ctx, b, f, now)
+}
+
+// buildBudget is BuildBudget over filters the caller already built for the
+// period.
+func (s *Service) buildBudget(ctx context.Context, b *budgetAggregate, f filters, now time.Time) (model.BudgetResult, error) {
+	meta, err := s.buildMeta(ctx, b)
 	if err != nil {
 		return model.BudgetResult{}, err
 	}
@@ -68,7 +72,7 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 		return model.BudgetResult{}, err
 	}
 
-	return model.BudgetResult{
+	result := model.BudgetResult{
 		Meta: meta,
 		Filters: model.FiltersResult{
 			PeriodStart: f.periodStart.Format(datetime.Layout),
@@ -78,7 +82,9 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 		Balances:      balances,
 		CurrencyRates: rates,
 		Structure:     structure,
-	}, nil
+	}
+	mergeBudgetUpcoming(&result, model.BudgetResult{})
+	return result, nil
 }
 
 // buildMeta builds the access list plus a synthetic owner entry.
