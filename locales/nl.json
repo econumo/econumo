@@ -539,7 +539,7 @@
         "limitations_title": "Bekende beperkingen",
         "tap_only": "Werkt alleen als je je iPhone tegen de betaalterminal houdt",
         "online_not_imported": "Apple Pay-betalingen op websites worden niet ondersteund",
-        "no_signal": "Een betaling wordt mogelijk niet toegevoegd als je iPhone geen bereik heeft op het moment dat je betaalt",
+        "no_signal": "Transacties zonder bereik worden mogelijk niet toegevoegd",
         "steps_title": "Zo werkt het",
         "flow": {
           "pay": "Betaal met Apple Pay",

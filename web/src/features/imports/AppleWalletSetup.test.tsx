@@ -81,7 +81,7 @@ it('before connecting it explains what is needed and how payments flow; connect 
   expect(limitationsItems).toHaveLength(3)
   expect(limitationsItems[0]).toHaveTextContent('Works only when you tap your iPhone to pay')
   expect(limitationsItems[1]).toHaveTextContent('Apple Pay payments on websites aren’t supported')
-  expect(limitationsItems[2]).toHaveTextContent('A payment may not be added if your iPhone has no signal when you pay')
+  expect(limitationsItems[2]).toHaveTextContent('Transactions made without signal may not be added')
   const preview = screen.getByRole('heading', { name: 'How it works' }).parentElement as HTMLElement
   const flow = within(preview).getAllByRole('listitem')
   expect(flow).toHaveLength(4)
