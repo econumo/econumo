@@ -98,7 +98,7 @@ export function UpcomingPaymentsPanel({ query, onUse }: { query: UpcomingQuery; 
           }
         : {})}
     >
-      <p className="col-span-3">{t('budgets.page.upcoming.title')}</p>
+      <p className="col-span-3 sm:text-foreground">{t('budgets.page.upcoming.title')}</p>
       <ul className="col-span-3 grid grid-cols-subgrid">
         {rows.map((row) => {
           const date = dateFmt.format(parseDateTime(dayKey(row.spentAt)))
@@ -121,7 +121,7 @@ export function UpcomingPaymentsPanel({ query, onUse }: { query: UpcomingQuery; 
           <span className={amountCell}>{fmt(query.spent)}</span>
         </p>
       ) : null}
-      <p className="col-span-3 grid grid-cols-subgrid" data-testid="upcoming-total">
+      <p className="col-span-3 grid grid-cols-subgrid sm:mt-0.5 sm:border-t sm:border-border sm:pt-0.5 sm:text-foreground" data-testid="upcoming-total">
         <span className="col-span-2 text-right">{totalLabel}</span>
         <span className={amountCell}>{fmt(need)}</span>
       </p>
