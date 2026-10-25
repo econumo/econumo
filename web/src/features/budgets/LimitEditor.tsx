@@ -10,6 +10,7 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import { limitAmountFromInput } from './limitAmount'
 import type { PlanHint } from './planHint'
 import { planHintAmount, planHintClass } from './planHint'
+import { UpcomingPaymentsPanel, type UpcomingQuery } from './UpcomingPaymentsPanel'
 
 interface LimitEditorProps {
   id: string
@@ -18,10 +19,12 @@ interface LimitEditorProps {
   currency: CurrencyDto | undefined
   onCommit: (amount: string | null) => void
   hint?: PlanHint
+  /** set only for a cell with upcoming money, so other cells fetch nothing */
+  upcoming?: UpcomingQuery | null
 }
 
 // Desktop inline budget-cell editor (Vue's q-popup-edit).
-export function LimitEditor({ id, name, value: currentValue, currency, onCommit, hint = null }: LimitEditorProps) {
+export function LimitEditor({ id, name, value: currentValue, currency, onCommit, hint = null, upcoming = null }: LimitEditorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
@@ -73,6 +76,7 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit,
               <CalculatorInput id={`limit-${id}`} autoFocus value={value} onChange={setValue} />
             </div>
           </CardField>
+          {upcoming ? <UpcomingPaymentsPanel query={upcoming} /> : null}
           <Button type="submit" size="sm">
             {t('common.button.save.label')}
           </Button>

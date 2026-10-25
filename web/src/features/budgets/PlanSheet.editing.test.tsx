@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureOwner, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -493,4 +493,61 @@ it('keys pressed on a focused control in the grid are the control\'s, not the gr
   fireEvent.keyDown(trigger, { key: 'Enter' })
   expect(await screen.findByRole('menu')).toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+function recordTransactionLists(upcoming: unknown[] = []) {
+  const seen: URL[] = []
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      seen.push(new URL(request.url))
+      return HttpResponse.json({ success: true, message: '', data: { items: [], upcoming } })
+    }),
+  )
+  return seen
+}
+
+// Living (pe1) with 80 still due in July
+const planWithUpcoming = {
+  ...fixtureWirePlan,
+  structure: {
+    ...fixtureWirePlan.structure,
+    elements: fixtureWirePlan.structure.elements.map((el) =>
+      el.id === 'pe1' ? { ...el, cells: el.cells.map((c, i) => (i === 2 ? { ...c, upcoming: '80' } : c)) } : el,
+    ),
+  },
+}
+
+it('editing a cell with upcoming shows the payments', async () => {
+  usePlanHandlers(planWithUpcoming)
+  const seen = recordTransactionLists([
+    {
+      id: 'rt1', author: fixtureOwner, currencyId: 'cur-usd', amount: '80', description: 'Internet',
+      category: null, payee: null, tag: null, spentAt: '2026-07-20 00:00:00',
+      templateId: 'rt1', schedule: 'monthly', accountId: 'a1', accountName: 'Cash',
+      labelNames: [], isNext: true, isOverdue: false, canEdit: true,
+    },
+  ])
+  renderPage()
+  const { grid } = await gridAtFirstExpenseCell()
+  fireEvent.keyDown(grid, { key: 'F2' })
+  expect(await screen.findByText('Internet')).toBeInTheDocument()
+  expect(screen.getByText('Recurring payments due')).toBeInTheDocument()
+  expect(screen.getByText('Total 80.00')).toBeInTheDocument()
+  expect(seen[0].searchParams.get('envelopeId')).toBe('pe1')
+  expect(seen[0].searchParams.get('periodStart')).toBe('2026-07-01')
+  // the panel keeps the grid's keys: Esc still closes the editor
+  fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
+  expect(screen.queryByText('Internet')).not.toBeInTheDocument()
+})
+
+it('a cell without upcoming makes no transactions request', async () => {
+  usePlanHandlers()
+  const seen = recordTransactionLists()
+  renderPage()
+  const { grid } = await gridAtFirstExpenseCell()
+  fireEvent.keyDown(grid, { key: 'F2' })
+  expect(await screen.findByRole('textbox')).toBeInTheDocument()
+  await new Promise((r) => setTimeout(r, 30))
+  expect(seen).toEqual([])
+  expect(screen.queryByTestId('upcoming-payments')).not.toBeInTheDocument()
 })

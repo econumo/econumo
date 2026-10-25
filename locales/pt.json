@@ -1208,10 +1208,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "Próximo pagamento recorrente",
-      "later_cycle": "Pode ser lançado após o pagamento anterior"
-    },
     "modal": {
       "budget_form": {
         "accounts": "Contas",
@@ -1361,6 +1357,10 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "Pagamentos recorrentes por liquidar",
+        "total": "Total {amount}"
+      },
       "budget": {
         "empty": {
           "header": "Orçamento",

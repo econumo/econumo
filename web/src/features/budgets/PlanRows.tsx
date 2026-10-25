@@ -522,6 +522,16 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                       label={t('budgets.page.plan.cell.edit_aria', { name: displayName, month: ctx.monthLabel(m) })}
                       onCommit={ctx.finishEdit}
                       onCancel={ctx.cancelEdit}
+                      upcoming={
+                        cell?.upcoming && !isZero(cell.upcoming)
+                          ? {
+                              budget: { meta: ctx.meta },
+                              target: { id: el.id, type: el.type, name: displayName, icon: el.icon, currencyId: el.currencyId },
+                              periodStart: m,
+                              currency,
+                            }
+                          : null
+                      }
                     />
                   </span>
                 ) : (

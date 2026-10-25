@@ -5,6 +5,7 @@ import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { besidePointer, centerRowOnPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
+import { isZero } from '@/lib/decimal'
 import { Check, ChevronLeft, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { isAxiosError } from 'axios'
@@ -59,7 +60,8 @@ import { CommentMarker } from './CommentThread'
 import { CommentsPanel } from './CommentsPanel'
 import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
-import { planMonthFigures, sheetCell, sheetSetsPlan, type IncomeGroup, type SheetTarget } from './phoneMonth'
+import { planMonthFigures, sheetCell, sheetSetsPlan, sheetUpcoming, type IncomeGroup, type SheetTarget } from './phoneMonth'
+import type { UpcomingQuery } from './UpcomingPaymentsPanel'
 import { planHintClass, type PlanHint } from './planHint'
 import { PhoneMonthView } from './PhoneMonthView'
 import { ViewSwitch } from './ViewSwitch'
@@ -160,7 +162,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
   const [configureOpen, setConfigureOpen] = useState(false)
-  const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean; setsPlan?: boolean }) | null>(null)
+  const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean; setsPlan?: boolean; upcoming?: UpcomingQuery | null }) | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
   const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null)
   const menus = useBudgetLineMenus({ budget, plan: monthPlan.data, userId: user?.id, onOpenSettings: () => setUpdateBudgetOpen(true) })
@@ -449,12 +451,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // Savings block's planned cells; compact viewports use SetLimitDialog instead.
   const inlineLimitEditor =
     limitsEditable && !editMode && !isCompact
-      ? (cell: Pick<BudgetElementDto, 'id' | 'name' | 'budgeted' | 'currencyId'>, hint: PlanHint) => (
+      ? (cell: BudgetElementDto, hint: PlanHint) => (
           <LimitEditor
             id={cell.id}
             name={cell.name}
             value={cell.budgeted}
             hint={hint}
+            upcoming={upcomingQueryOf({ kind: 'expense', element: cell })}
             currency={currencies.find((c) => c.id === (cell.currencyId ?? budget.meta.currencyId))}
             onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: cell.id, period: selectedDate, amount })}
           />
@@ -485,6 +488,16 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     }
   }
   const sheetTransactions = sheetTarget ? sheetTransactionsTargetOf(sheetTarget) : null
+  // only a cell with upcoming money gets a query, so opening any other editor fetches nothing
+  const upcomingQueryOf = (target: SheetTarget): UpcomingQuery | null => {
+    const amount = sheetUpcoming(target)
+    const listTarget = amount && !isZero(amount) ? sheetTransactionsTargetOf(target) : null
+    if (!listTarget) {
+      return null
+    }
+    const currencyId = sheetCell(target, budget.meta.currencyId).currencyId
+    return { budget, target: listTarget, periodStart: selectedDate, currency: currencies.find((c) => c.id === currencyId) }
+  }
   const sheetCanSetAmount = (target: SheetTarget): boolean => {
     if (!limitsEditable) {
       return false
@@ -572,6 +585,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               name={name}
               value={cell.amount}
               hint={hint}
+              upcoming={upcomingQueryOf(target)}
               currency={currencies.find((c) => c.id === cell.currencyId)}
               onCommit={(amount) => commitPlanned(target, amount)}
             />
@@ -832,6 +846,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       <SetLimitDialog
         target={limitTarget ? { id: limitTarget.id, name: elementDisplayName(limitTarget.id, limitTarget.name, t), value: limitTarget.budgeted } : null}
         plan={limitTarget?.setsPlan}
+        upcoming={limitTarget?.upcoming}
         onClose={() => setLimitTarget(null)}
         onCommit={(elementId, amount) => {
           // an income plan lives only in the plan window, so it patches that cache;
@@ -856,7 +871,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         onClose={() => setSheetTarget(null)}
         onSetAmount={() => {
           if (sheetTarget) {
-            setLimitTarget({ ...sheetCellTarget(sheetTarget), viaPlan: sheetTarget.kind === 'plan', setsPlan: sheetSetsPlan(sheetTarget) })
+            setLimitTarget({
+              ...sheetCellTarget(sheetTarget),
+              viaPlan: sheetTarget.kind === 'plan',
+              setsPlan: sheetSetsPlan(sheetTarget),
+              upcoming: upcomingQueryOf(sheetTarget),
+            })
             setSheetTarget(null)
           }
         }}

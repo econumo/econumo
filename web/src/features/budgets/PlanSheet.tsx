@@ -2033,6 +2033,22 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           }
         }}
         plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) : false}
+        upcoming={
+          planLimitTarget && dialogCell?.upcoming && !isZero(dialogCell.upcoming)
+            ? {
+                budget,
+                target: {
+                  id: planLimitTarget.el.id,
+                  type: planLimitTarget.el.type,
+                  name: elementDisplayName(planLimitTarget.el.id, planLimitTarget.el.name, t),
+                  icon: planLimitTarget.el.icon,
+                  currencyId: planLimitTarget.el.currencyId,
+                },
+                periodStart: planLimitTarget.month,
+                currency: currencies.find((c) => c.id === planLimitTarget.el.currencyId),
+              }
+            : null
+        }
       />
 
       <ElementSheet

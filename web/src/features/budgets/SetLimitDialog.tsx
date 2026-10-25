@@ -7,6 +7,7 @@ import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDia
 import { normalizeNumber } from '@/lib/money'
 import { isZero } from '@/lib/decimal'
 import { limitAmountFromInput } from './limitAmount'
+import { UpcomingPaymentsPanel, type UpcomingQuery } from './UpcomingPaymentsPanel'
 
 interface SetLimitDialogProps {
   target: { id: string; name: string; value: string } | null
@@ -14,10 +15,12 @@ interface SetLimitDialogProps {
   onCommit: (elementId: string, amount: string | null) => void
   /** an income or savings amount: a plan to meet, not a spending limit */
   plan?: boolean
+  /** set only for a cell with upcoming money, so other cells fetch nothing */
+  upcoming?: UpcomingQuery | null
 }
 
 // Compact viewports' amount dialog (Vue's BudgetSetLimitModal), same unified amount rule.
-export function SetLimitDialog({ target, onClose, onCommit, plan = false }: SetLimitDialogProps) {
+export function SetLimitDialog({ target, onClose, onCommit, plan = false, upcoming = null }: SetLimitDialogProps) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -63,6 +66,7 @@ export function SetLimitDialog({ target, onClose, onCommit, plan = false }: SetL
             <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
           </div>
         </CardField>
+        {upcoming ? <UpcomingPaymentsPanel query={upcoming} /> : null}
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}

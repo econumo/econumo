@@ -8,7 +8,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { moneyFormat } from '@/lib/money'
 import { dayKey, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
 import type { BudgetDto, BudgetTransactionDto } from '@/api/dto/budget'
-import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
 import type { PayeeDto } from '@/api/dto/payee'
@@ -25,6 +25,7 @@ import type { ViewTransaction } from '@/features/transactions/useAccountTransact
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { elementDisplayName } from './budgetMath'
 import { useBudgetTransactions } from './queries'
+import { budgetTransactionsParams } from './budgetTransactionsParams'
 import { useBudgetPeriodStore } from './budgetStore'
 
 /** enough of an element (or a nested child category) to list its transactions.
@@ -87,48 +88,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
   const [preview, setPreview] = useState<ViewTransaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
 
-  // A category listed under a tag displays the tag-and-category intersection.
-  // Sending categoryId alone puts the backend on its "tag_id IS NULL" branch,
-  // which returns the complement of what the row shows.
-  const isUncategorized = element?.id === UNCATEGORIZED_ID
-  const parentTagId = element?.parent?.type === BudgetElementType.TAG ? element.parent.id : undefined
-  // a category listed under a reporting label narrows the same way; labelId is
-  // the one filter the backend accepts alongside categoryId/uncategorized
-  const parentLabelId = element?.parent?.type === 'label' ? element.parent.id : undefined
-  const params = element
-    ? {
-        budgetId: budget.meta.id,
-        periodStart: selectedDate,
-        // the parent tag only ever applies to a CATEGORY-typed element, so it
-        // is folded into that branch rather than spread last, which would
-        // silently clobber a TAG-typed element's own tagId
-        //
-        // The Uncategorized element is presentation-only and has no id the
-        // backend can look up, so it is selected by flag instead; it composes
-        // with the parent tag exactly as a real category does. Never send
-        // uncategorized together with categoryId -- the backend rejects that.
-        ...(element.type === BudgetElementType.CATEGORY
-          ? {
-              ...(isUncategorized ? { uncategorized: true } : { categoryId: element.id }),
-              ...(parentTagId ? { tagId: parentTagId } : {}),
-              ...(parentLabelId ? { labelId: parentLabelId } : {}),
-            }
-          : {}),
-        ...(element.type === BudgetElementType.TAG ? { tagId: element.id } : {}),
-        // labelId is mutually exclusive with categoryId/tagId/envelopeId/uncategorized
-        // on the backend (400 if combined); 'label' never equals a real
-        // BudgetElementType, so this branch can never fire alongside another one
-        ...(element.type === 'label' ? { labelId: element.id } : {}),
-        ...(element.type === BudgetElementType.ENVELOPE ? { envelopeId: element.id } : {}),
-        // transfers composes with nothing on the backend; like 'label' it can
-        // never coincide with another branch here
-        ...(element.type === 'transfers' ? { transfers: true } : {}),
-        // a savings row's id is its account id; composes with nothing
-        ...(element.type === BudgetElementType.SAVINGS ? { accountId: element.id } : {}),
-        ...(element.type === BudgetElementType.INCOME_CATEGORY ? { income: true, categoryId: element.id } : {}),
-        ...(element.type === BudgetElementType.INCOME_ENVELOPE ? { income: true, envelopeId: element.id } : {}),
-      }
-    : null
+  const params = element ? budgetTransactionsParams(budget.meta.id, element, selectedDate) : null
   const { data, isLoading } = useBudgetTransactions(params)
   const transactions = data?.items
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { limitAmountFromInput } from './limitAmount'
+import { UpcomingPaymentsPanel, type UpcomingQuery } from './UpcomingPaymentsPanel'
 
 export type CellMove = 'down' | 'right' | 'left' | 'up' | 'none'
 
@@ -13,12 +14,15 @@ export function PlanCellInput({
   label,
   onCommit,
   onCancel,
+  upcoming = null,
 }: {
   initial: string
   label: string
   /** called only with a valid value; the grid decides whether it changed */
   onCommit: (raw: string, move: CellMove) => void
   onCancel: () => void
+  /** set only for a cell with upcoming money, so other cells fetch nothing */
+  upcoming?: UpcomingQuery | null
 }) {
   const { t } = useTranslation()
   const [value, setValue] = useState(initial)
@@ -97,6 +101,18 @@ export function PlanCellInput({
         // with no padding the typed figure sits exactly where the read-only plan did
         className="w-full bg-transparent p-0 text-right text-[15px] tabular-nums outline-none"
       />
+      {upcoming && !invalid ? (
+        // read-only: a press here must not blur the input (which commits) or reach the cell
+        <div
+          className="absolute top-full right-0 z-30 mt-0.5 w-64 rounded-md bg-popover p-2 text-left text-popover-foreground shadow empty:hidden"
+          onMouseDown={(e) => e.preventDefault()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
+          <UpcomingPaymentsPanel query={upcoming} />
+        </div>
+      ) : null}
       {invalid ? (
         <span role="alert" className="absolute top-full right-0 z-30 mt-0.5 whitespace-nowrap rounded bg-background px-1 text-xs text-expense shadow">
           {t('common.validation.invalid_formula')}

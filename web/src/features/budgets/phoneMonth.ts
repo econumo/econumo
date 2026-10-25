@@ -178,6 +178,20 @@ export function sheetPlanHint(target: SheetTarget): PlanHint {
   }
 }
 
+/** the target's still-due recurring money this month (element currency); undefined when none can apply */
+export function sheetUpcoming(target: SheetTarget): string | undefined {
+  switch (target.kind) {
+    case 'expense':
+      return target.element.upcoming
+    case 'savings':
+      return target.row.upcoming
+    case 'plan':
+      return target.cell.upcoming
+    case 'label':
+      return undefined
+  }
+}
+
 export function sheetSetsPlan(target: SheetTarget): boolean {
   switch (target.kind) {
     case 'expense':
