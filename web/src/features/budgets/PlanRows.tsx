@@ -9,7 +9,7 @@ import { pluralPick } from '@/lib/plural'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { ReactNode } from 'react'
 import type { BudgetCommentDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
-import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { elementDisplayName } from './budgetMath'
@@ -339,8 +339,6 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
   // hover re-renders this row only, never the grid.
   const [hoverCol, setHoverCol] = useState<number | null>(null)
   const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
-  // the transactions list cannot show income nobody categorized
-  const actualLinkable = !(isUncategorized && isIncomeType(el.type))
   const childList = open ? (
     <div>
       {el.children.length === 0 ? (
@@ -491,7 +489,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                       <Dash />
                     </span>
                   ) : null
-                ) : actualLinkable && (!view.balance || m <= ctx.selected) ? (
+                ) : !view.balance || m <= ctx.selected ? (
                   <button
                     type="button"
                     data-testid="cell-actual"

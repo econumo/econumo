@@ -42,7 +42,9 @@ export function budgetTransactionsParams(budgetId: Id, target: BudgetTransaction
     ...(target.type === 'transfers' ? { transfers: true } : {}),
     // a savings row's id is its account id; composes with nothing
     ...(target.type === BudgetElementType.SAVINGS ? { accountId: target.id } : {}),
-    ...(target.type === BudgetElementType.INCOME_CATEGORY ? { income: true, categoryId: target.id } : {}),
+    ...(target.type === BudgetElementType.INCOME_CATEGORY
+      ? { income: true, ...(isUncategorized ? { uncategorized: true } : { categoryId: target.id }) }
+      : {}),
     ...(target.type === BudgetElementType.INCOME_ENVELOPE ? { income: true, envelopeId: target.id } : {}),
   }
 }

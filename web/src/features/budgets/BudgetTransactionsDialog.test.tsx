@@ -375,6 +375,17 @@ it('an income category requests income=1 with categoryId', async () => {
   expect(params.has('envelopeId')).toBe(false)
 })
 
+it('the income Uncategorized row requests income=1 with uncategorized', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({ id: UNCATEGORIZED_ID, type: BudgetElementType.INCOME_CATEGORY, name: 'Uncategorized', icon: '', currencyId: null })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('income')).toBe('1')
+  expect(params.get('uncategorized')).toBe('1')
+  expect(params.has('categoryId')).toBe(false)
+  expect(params.has('envelopeId')).toBe(false)
+})
+
 it('an income envelope requests income=1 with envelopeId only', async () => {
   const getUrl = captureTransactionListUrl()
   renderDialog({ id: 'env-work', type: BudgetElementType.INCOME_ENVELOPE, name: 'Work', icon: 'work', currencyId: null })

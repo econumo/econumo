@@ -470,8 +470,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     icon: element.icon,
     currencyId: element.currencyId,
   })
-  // the income Uncategorized row has no list: it gathers income booked in expense
-  // categories too, which no selector can name
   const sheetTransactionsTargetOf = (target: SheetTarget): BudgetTransactionsTarget | null => {
     switch (target.kind) {
       case 'expense':
@@ -480,7 +478,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         return { id: target.row.id, type: BudgetElementType.SAVINGS, name: target.row.name, icon: target.row.icon, currencyId: target.row.currencyId }
       case 'plan': {
         const el = target.cell.element
-        return el.id === UNCATEGORIZED_ID ? null : { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId }
+        return { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId }
       }
       case 'label':
         return { id: target.label.id, type: 'label', name: target.label.name, icon: target.label.icon, currencyId: null }

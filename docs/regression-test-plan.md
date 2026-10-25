@@ -1181,7 +1181,7 @@ and on tablet/phone only with a hardware keyboard.
       a reload and are shared with the Plan grid and the phone.
 - [ ] Budget view: the income and savings Planned amounts edit inline on a
       desktop (popover) and open the item sheet on a tablet; Received and
-      Saved open the transactions dialog (except income Uncategorized);
+      Saved open the transactions dialog (income Uncategorized too);
       Balance, Total savings and the Income line match the Plan grid's
       figures for the same month.
 - [ ] Element visibility rule: a category/tag/envelope with **either** spending
@@ -1888,7 +1888,9 @@ and on tablet/phone only with a hardware keyboard.
       equals Saved. An income row's sheet → "Transactions" lists that
       category's (or income envelope's) income on the everyday accounts, all
       positive, summing to Received; income booked on a savings account is not
-      in it. The income Uncategorized row has no "Transactions".
+      in it. The income Uncategorized row's "Transactions" lists the
+      everyday accounts' income with no income category, summing to its
+      Received.
 - [ ] 📱 A guest, an archived budget, a month outside the
       budget's range, an archived element and the Uncategorized row get no
       "Set budget" in the sheet; Uncategorized has no comments link, and an

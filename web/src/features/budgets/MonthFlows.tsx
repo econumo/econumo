@@ -225,8 +225,7 @@ export function MonthFlows({
   const incomeRow = (row: PlanCellFigures, draggable: boolean, level: RowLevel) => {
     const el = row.element
     const name = elementDisplayName(el.id, el.name, t)
-    // income Uncategorized gathers income booked in expense categories too: no list names it
-    const listTarget = el.id === UNCATEGORIZED_ID ? null : { id: el.id, type: el.type, name, icon: el.icon, currencyId: el.currencyId }
+    const listTarget = { id: el.id, type: el.type, name, icon: el.icon, currencyId: el.currencyId }
     // an envelope unfolds even while empty: its list is where a category is dropped
     const envelope = isEnvelopeType(el.type)
     const children = el.children.filter((c) => c.id !== pendingMemberId)
