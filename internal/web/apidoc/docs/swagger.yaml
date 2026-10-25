@@ -5187,8 +5187,8 @@ paths:
         in: query
         name: transfers
         type: boolean
-      - description: Income of categoryId or envelopeId (exactly one; composes with
-          nothing else)
+      - description: Income of categoryId or envelopeId (exactly one), or with uncategorized
+          the income Uncategorized row; composes with nothing else
         in: query
         name: income
         type: boolean

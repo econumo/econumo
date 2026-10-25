@@ -66,6 +66,10 @@ func (s *spendingStub) BudgetTransactionsIncome(context.Context, []vo.Id, []vo.I
 	return nil, nil
 }
 
+func (s *spendingStub) BudgetTransactionsIncomeUncategorized(context.Context, []vo.Id, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
+	return nil, nil
+}
+
 func (s *spendingStub) BudgetTransactionsOnAccount(context.Context, vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
 	return nil, nil
 }

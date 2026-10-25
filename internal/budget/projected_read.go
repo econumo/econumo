@@ -607,6 +607,21 @@ func (p *projectedRead) BudgetTransactionsIncome(_ context.Context, categoryIDs,
 	return out, nil
 }
 
+func (p *projectedRead) BudgetTransactionsIncomeUncategorized(_ context.Context, knownCategoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	acc, known := idSet(accountIDs), idSet(knownCategoryIDs)
+	var out []model.BudgetTransactionRow
+	for i := range p.occ {
+		o := &p.occ[i]
+		if o.typ != model.TransactionTypeIncome || !acc[o.accountID] || !o.filedIn(start, end) || (o.categoryID != nil && known[*o.categoryID]) {
+			continue
+		}
+		r := o.row(o.amount, o.currencyID)
+		r.Direction, r.Type = "in", "income"
+		out = append(out, r)
+	}
+	return out, nil
+}
+
 func (p *projectedRead) BudgetTransactionsOnAccount(_ context.Context, accountID vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	id := accountID.String()
 	var out []model.BudgetTransactionRow
