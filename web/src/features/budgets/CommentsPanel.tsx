@@ -24,7 +24,7 @@ export function CommentsPanel({ open, onClose, title, anchor, ...threadProps }: 
   return (
     <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={title}>
       <div data-testid="comments-sheet">
-        <CommentThread {...threadProps} layout="sheet" />
+        <CommentThread {...threadProps} layout="sheet" onClose={onClose} />
       </div>
     </ResponsiveDialog>
   )
