@@ -13,7 +13,7 @@ import { isNativeApp } from './platform'
 // off), so Connected apps never shows another server's address.
 // Apple Wallet and feedback default on in the app, but a server can explicitly
 // disable them.
-const MERGED_KEYS = ['ALLOW_REGISTRATION', 'PASSWORD_LOGIN', 'INSTANCE_ID', 'MCP_URL', 'IMPORT_APPLE_WALLET', 'FEEDBACK'] as const
+const MERGED_KEYS = ['ALLOW_REGISTRATION', 'PASSWORD_LOGIN', 'INSTANCE_ID', 'MCP_URL', 'FEEDBACK'] as const
 
 // Minimum server version the bundled app is compatible with; an older server
 // hard-blocks the app. The server's own floor arrives as MIN_APP_VERSION in

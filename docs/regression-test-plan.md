@@ -429,31 +429,14 @@ navigation (single-pane vs sidebar).
 
 ## 5a. Imports — Apple Wallet
 
-Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
-`ECONUMO_IMPORT_SIMPLEFIN=true`.
+Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
 
-- [ ] With both provider environment variables unset, Apple Wallet and Import
-      rules are available by default; SimpleFIN stays hidden. The bundled mobile
-      config also defaults Apple Wallet on, but honors the selected backend's
-      explicit `IMPORT_APPLE_WALLET: false`, including after switching servers.
-- [ ] Both import providers off (`ECONUMO_IMPORT_APPLE_WALLET=false` and
-      `ECONUMO_IMPORT_SIMPLEFIN=false`) 📱: Settings → Data shows only
-      "Import & export"; no Apple Wallet, SimpleFIN or Import rules rows.
-      Import & export lists only the CSV import/export rows (no "Sync bank
-      connections" or "Import rules").
-      `/settings/apple-wallet`, `/settings/apple-wallet/history`,
-      `/settings/simplefin`, `/settings/simplefin/history` and
-      `/settings/import-rules` show the not-found page. The Inbox shows only sharing
-      invites (or "All caught up") and no request to `/api/v1/import/*` is made
-      anywhere in the app (Network tab); a direct call to any import endpoint
-      returns 404.
-- [ ] Only SimpleFIN on 📱: Settings → Data shows SimpleFIN and Import rules but
-      no Apple Wallet; `/settings/apple-wallet` shows the not-found page; an
-      Apple Wallet source left from before is absent from the Inbox, and the
-      ingest endpoint returns 404.
-- [ ] Only Apple Wallet on 📱: Settings → Data shows Apple Wallet and Import
-      rules but no SimpleFIN; `/settings/simplefin` shows the not-found page and
-      "Sync bank connections" never appears.
+- [ ] With `ECONUMO_IMPORT_SIMPLEFIN` unset, Apple Wallet and Import rules are
+      available; SimpleFIN stays hidden, `/settings/simplefin` shows the
+      not-found page and "Sync bank connections" never appears. Apple Wallet
+      has no switch: a leftover `ECONUMO_IMPORT_APPLE_WALLET=false` in the
+      environment changes nothing, and `econumo-config.js` carries no
+      `IMPORT_APPLE_WALLET` key.
 
 - [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
       import/export rows; dialogs open as before) and "Apple Wallet" (its own page;

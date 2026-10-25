@@ -641,53 +641,29 @@ func TestLoad_ImportAllowPrivateHosts(t *testing.T) {
 	}
 }
 
-func TestLoad_ImportProviders(t *testing.T) {
+func TestLoad_ImportSimpleFIN(t *testing.T) {
 	t.Setenv("PORT", "8080")
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
-	t.Setenv("ECONUMO_IMPORT_APPLE_WALLET", "")
 	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "")
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.ImportAppleWallet || cfg.ImportSimpleFIN || !cfg.TransactionImport() {
-		t.Error("Apple Wallet must default on and SimpleFIN off")
-	}
-
-	t.Setenv("ECONUMO_IMPORT_APPLE_WALLET", "false")
-	cfg, err = Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.ImportAppleWallet || cfg.ImportSimpleFIN || cfg.TransactionImport() {
-		t.Error("explicit false must disable Apple Wallet and shared import routes")
+	if cfg.ImportSimpleFIN {
+		t.Error("SimpleFIN must default off")
 	}
 
 	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "true")
-	cfg, err = Load()
-	if err != nil {
+	if cfg, err = Load(); err != nil {
 		t.Fatal(err)
 	}
-	if cfg.ImportAppleWallet || !cfg.ImportSimpleFIN || !cfg.TransactionImport() {
-		t.Errorf("SimpleFIN alone: apple=%v simplefin=%v any=%v", cfg.ImportAppleWallet, cfg.ImportSimpleFIN, cfg.TransactionImport())
+	if !cfg.ImportSimpleFIN {
+		t.Error("explicit true must enable SimpleFIN")
 	}
 
-	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "false")
-	t.Setenv("ECONUMO_IMPORT_APPLE_WALLET", "true")
-	cfg, err = Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !cfg.ImportAppleWallet || cfg.ImportSimpleFIN || !cfg.TransactionImport() {
-		t.Errorf("Apple Wallet alone: apple=%v simplefin=%v any=%v", cfg.ImportAppleWallet, cfg.ImportSimpleFIN, cfg.TransactionImport())
-	}
-
-	for _, key := range []string{"ECONUMO_IMPORT_APPLE_WALLET", "ECONUMO_IMPORT_SIMPLEFIN"} {
-		t.Setenv(key, "yes please")
-		if _, err := Load(); err == nil {
-			t.Errorf("malformed %s must fail at boot", key)
-		}
-		t.Setenv(key, "false")
+	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "yes please")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_IMPORT_SIMPLEFIN must fail at boot")
 	}
 }
 
