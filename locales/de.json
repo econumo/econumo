@@ -539,7 +539,7 @@
         "limitations_title": "Bekannte Einschränkungen",
         "tap_only": "Funktioniert nur, wenn du dein iPhone zum Bezahlen ans Terminal hältst",
         "online_not_imported": "Apple Pay-Zahlungen auf Websites werden nicht unterstützt",
-        "no_signal": "Transaktionen ohne Empfang werden möglicherweise nicht erfasst",
+        "no_signal": "Ohne Netz beim Bezahlen wird die Transaktion möglicherweise nicht hinzugefügt",
         "steps_title": "So funktioniert es",
         "flow": {
           "pay": "Bezahle mit Apple Pay",
