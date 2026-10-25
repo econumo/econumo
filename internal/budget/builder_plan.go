@@ -91,12 +91,6 @@ func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f fil
 		SavingsFlows:           savingsFlows,
 		SavingsIncomeExpense:   savingsIncomeExpense,
 		Structure:              structure,
-
-		UpcomingOpeningBalances:        zeroBalances(opening),
-		UpcomingSavingsOpeningBalances: zeroBalances(savingsOpening),
-		UpcomingTransfers:              emptyTransfers(transfers),
-		UpcomingSavingsFlows:           []model.PlanSavingsFlowResult{},
-		UpcomingSavingsIncomeExpense:   []model.PlanSavingsFlowResult{},
 	}, nil
 }
 

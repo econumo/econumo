@@ -13420,36 +13420,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.PlanMonthTransfersResult"
                     }
-                },
-                "upcomingOpeningBalances": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.OpeningBalanceResult"
-                    }
-                },
-                "upcomingSavingsFlows": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
-                    }
-                },
-                "upcomingSavingsIncomeExpense": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
-                    }
-                },
-                "upcomingSavingsOpeningBalances": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.OpeningBalanceResult"
-                    }
-                },
-                "upcomingTransfers": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PlanMonthTransfersResult"
-                    }
                 }
             }
         },
@@ -16145,10 +16115,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "upcoming": {
-                    "description": "Upcoming is the period's projected recurring spend not yet posted, and\nUpcomingBefore the projected spend filed in earlier months of the\nprojection window (from the caller's current month on), both in\nCurrencyId; BudgetUpcoming is Upcoming in the budget currency. Spent and\nAvailable stay real money only.",
-                    "type": "string"
-                },
-                "upcomingBefore": {
+                    "description": "Upcoming is the period's recurring spend not yet posted, in CurrencyId;\nBudgetUpcoming is Upcoming in the budget currency. A planning hint: Spent\nand Available stay real money only.",
                     "type": "string"
                 }
             }
@@ -16378,9 +16345,6 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
-                },
-                "upcomingOpeningBalance": {
-                    "type": "string"
                 }
             }
         },
