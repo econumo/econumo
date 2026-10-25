@@ -270,7 +270,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
       {readOnly ? (
         <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.read_only')}</p>
       ) : (
-        <div className={`flex flex-col gap-1.5 ${layout === 'sheet' ? 'sticky bottom-0 bg-background pt-2' : ''}`} data-testid="comment-composer">
+        <div className={`flex flex-col gap-1.5 ${layout === 'sheet' ? 'sticky bottom-0 bg-popover pt-2' : ''}`} data-testid="comment-composer">
           <CardField label={t('budgets.page.plan.comments.comment_label')} htmlFor="ct-composer">
             <Textarea
               id="ct-composer"
