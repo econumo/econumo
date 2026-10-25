@@ -1362,6 +1362,7 @@
         "spent": "Bereits ausgegeben",
         "received": "Bereits erhalten",
         "saved": "Bereits gespart",
+        "posted": "Gebucht",
         "total": "Summe"
       },
       "budget": {

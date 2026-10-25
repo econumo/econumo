@@ -1362,6 +1362,7 @@
         "spent": "已支出",
         "received": "已收到",
         "saved": "已储蓄",
+        "posted": "已入账",
         "total": "合计"
       },
       "budget": {

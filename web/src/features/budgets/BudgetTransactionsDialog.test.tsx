@@ -438,7 +438,7 @@ it('opening a list fires the analytics event with its kind', async () => {
   expect(trackEvent).toHaveBeenCalledTimes(1)
 })
 
-it('dims a real transaction dated in the future', async () => {
+it('lists a real transaction dated in the future under Coming up, above Posted, not tappable', async () => {
   const future = formatDateTime(new Date(Date.now() + 10 * 24 * 3600 * 1000))
   server.use(
     http.get('*/api/v1/budget/get-transaction-list', () =>
@@ -446,11 +446,24 @@ it('dims a real transaction dated in the future', async () => {
     ),
   )
   renderDialog()
-  expect((await screen.findByTestId('budget-tx-t1')).className).toContain('opacity-50')
-  expect(screen.getByTestId('budget-tx-tx-foreign').className).not.toContain('opacity-50')
+  const later = await screen.findByTestId('budget-tx-t1')
+  expect(later.tagName).not.toBe('BUTTON')
+  expect(screen.getByTestId('budget-tx-coming-up')).toHaveTextContent('Coming up')
+  expect(screen.getByTestId('budget-tx-coming-up')).toContainElement(later)
+  const posted = screen.getByTestId('budget-tx-posted')
+  expect(posted).toHaveTextContent('Posted')
+  expect(later.compareDocumentPosition(posted) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(posted.compareDocumentPosition(screen.getByTestId('budget-tx-tx-foreign')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
-it('lists real transactions only', async () => {
+it('shows no Coming up heading when nothing is dated in the future', async () => {
+  renderDialog()
+  expect(await screen.findByTestId('budget-tx-t1')).toBeInTheDocument()
+  expect(screen.queryByTestId('budget-tx-coming-up')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('budget-tx-posted')).not.toBeInTheDocument()
+})
+
+it('lists a recurring payment still due under Coming up, display only', async () => {
   server.use(
     http.get('*/api/v1/budget/get-transaction-list', () =>
       HttpResponse.json({
@@ -469,7 +482,11 @@ it('lists real transactions only', async () => {
   )
   renderDialog()
   expect(await screen.findByText('coffee beans')).toBeInTheDocument()
-  expect(screen.queryByText('gym membership')).not.toBeInTheDocument()
+  const gym = screen.getByTestId('budget-upcoming-r-gym')
+  expect(gym).toHaveTextContent('gym membership')
+  expect(gym.tagName).not.toBe('BUTTON')
+  expect(screen.getByTestId('budget-tx-coming-up')).toContainElement(gym)
+  expect(gym.compareDocumentPosition(screen.getByTestId('budget-tx-t1')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Post' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Skip' })).not.toBeInTheDocument()
 })

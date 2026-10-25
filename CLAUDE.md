@@ -1352,10 +1352,13 @@ data unreadable. Most are also asserted by the test suite.
   glue `internal/server/glue_budget_recurring.go`). An overdue next payment counts once in the
   caller's current month, afterwards only occurrences after today. Upcoming money is a HINT
   on the plan number, never part of the figures: spent/actual, Available, every total and
-  projection (Balance, Total savings, savings `closingBalance`, carry-over) and the budget
-  transaction list are real money only. Additive wire fields: `upcoming`/`budgetUpcoming` on
+  projection (Balance, Total savings, savings `closingBalance`, carry-over) are real money
+  only. The budget transaction list leads with a "Coming up" group laid out like the
+  plan editor's list (the cell's future-dated rows and its recurring payments still due,
+  soonest first, display only), then a "Posted" heading over the past rows in their day
+  groups; both headings show only when something is still to come. Additive wire fields: `upcoming`/`budgetUpcoming` on
   `get-budget` elements and children (savings rows and labels carry only `upcoming`), `upcoming` on `get-budget-plan` cells,
-  an `upcoming` array on `get-transaction-list` (read only by the plan editor's payment list).
+  an `upcoming` array on `get-transaction-list` (read by the plan editor's list and the transaction list's "Coming up").
   The SPA (`features/budgets/planHint.ts`), from the current month on, on rows
   that hold a plan: an empty plan (empty or 0) stays empty, no suggestion is shown; an
   expense row (category/tag/envelope) whose plan is below spent + still due shows the plan

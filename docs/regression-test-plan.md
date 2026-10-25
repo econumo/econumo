@@ -1768,9 +1768,14 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 In the phone plan dialog the list sits above the amount field, so the
       field and the Save / Cancel buttons stay in the same place whether the
       list is there, still loading, or long.
-- [ ] 📱 The cell's transaction list (tap Spent / Actual) shows real
-      transactions only: no upcoming rows and no Post / Skip / Edit of
-      templates; future-dated real transactions are still dimmed. A cell with
+- [ ] 📱 The cell's transaction list (tap Spent / Actual) opens with a
+      "Coming up" group when anything is still to come, laid out like the
+      plan editor's list (short date, name, amount in one aligned column,
+      soonest first): your own transactions dated after today and the
+      recurring payments still due (repeat icon). Those lines are display
+      only: tapping does nothing, no Post / Skip / Edit. Below, a "Posted"
+      heading over the past transactions in their day groups (tappable as
+      before). With nothing still to come, neither heading shows. A cell with
       nothing real yet shows a dash in the Plan grid (the Budget view's 0 stays a
       link to the empty list).
 - [ ] A weekly template counts one occurrence per week in a month (four or

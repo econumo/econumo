@@ -1362,6 +1362,7 @@
         "spent": "Already spent",
         "received": "Already received",
         "saved": "Already saved",
+        "posted": "Posted",
         "total": "Total"
       },
       "budget": {

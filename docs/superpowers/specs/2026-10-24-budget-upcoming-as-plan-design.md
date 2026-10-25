@@ -62,6 +62,17 @@ current month, payments already posted are real and are in spent, not in upcomin
    same `get-transaction-list` dated after today), merged with the recurring rows by date.
    They are already in spent, so Total stays `spent + still due`. Editors get the list for
    any cell in the current month or later with spent or upcoming money; past months never.
+5. **Second round of polish (2026-10-25).** Every amount in the list carries a currency
+   symbol; a row in another currency keeps its own amount and symbol, Spent/Total are in the
+   item's currency. The line above Total is "Already spent / received / saved" by row kind and
+   leaves out the future-dated rows listed above it, so the column adds up. "Coming up", that
+   line and Total use the foreground colour. On the phone the list sits above the amount; in
+   the Plan grid it opens like the multi-cell sum hint, under the cell's frame.
+6. **The spent list leads with "Coming up"** (2026-10-25): the cell's future-dated real rows
+   and the recurring payments still due, laid out like the editor's list (short date, name,
+   repeat icon, aligned amounts), soonest first and display only; then a "Posted" heading
+   over the past transactions in their day groups. Both headings appear only together. This replaces "Spent list: real transactions only" below; the
+   spent figure itself still counts real money only.
 
 ## Non-goals
 
@@ -85,7 +96,8 @@ current month, payments already posted are real and are in spent, not in upcomin
   "Revised after trying it").
 - Plan below what is needed: red; the popover with the planned transactions appears when
   editing the plan number, if there are any.
-- Spent list: past / real transactions only; upcoming rows removed from it.
+- Spent list: past / real transactions only; upcoming rows removed from it (superseded:
+  see "Revised after trying it", 6).
 - Current month: facts only for facts; the plan hint uses the payments still due (overdue
   next + later this month), red when `plan < spent + still due` ("let's try as you
   described").

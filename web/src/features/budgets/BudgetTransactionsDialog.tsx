@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Repeat } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { moneyFormat } from '@/lib/money'
-import { dayKey, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
+import { dayKey, formatDayHeading, isFuture, isToday, isYesterday, parseDateTime } from '@/lib/datetime'
 import type { BudgetDto, BudgetTransactionDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
@@ -153,8 +153,24 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
     canTouchTransaction(tx, !!tx.account && canWriteToAccount(tx.account, user?.id))
 
   let currentDay: string | null = null
-  const rows: { kind: 'sep' | 'tx'; key: string; label?: string; tx?: NonNullable<typeof transactions>[number] }[] = []
-  for (const tx of transactions ?? []) {
+  const rows: { kind: 'sep' | 'tx'; key: string; label?: string; tx?: BudgetTransactionDto }[] = []
+  // What is still to come leads the list, laid out like the plan editor's "Coming up" list:
+  // rows dated after today (already in the figure) and recurring payments still due (not in
+  // it, shown for reference only: the budget offers no Post/Skip), soonest first.
+  const later = [
+    ...(transactions ?? []).filter((tx) => isFuture(tx.spentAt)).map((tx) => ({ tx, recurring: false })),
+    ...(data?.upcoming ?? []).map((tx) => ({ tx, recurring: true })),
+  ].sort((a, b) => a.tx.spentAt.localeCompare(b.tx.spentAt))
+  const shortDate = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' })
+  const signedMoney = (tx: BudgetTransactionDto) => {
+    const currency = currencies.find((c) => c.id === tx.currencyId)
+    // spend is negative; money arriving (direction 'in') is positive
+    return moneyFormat(tx.direction === 'in' ? tx.amount : -tx.amount, currency, {
+      useNativePrecision: false,
+      maxPrecision: currency?.fractionDigits ?? 2,
+    })
+  }
+  for (const tx of (transactions ?? []).filter((tx) => !isFuture(tx.spentAt))) {
     const day = dayKey(tx.spentAt)
     if (day !== currentDay) {
       currentDay = day
@@ -176,10 +192,42 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
           <div className="flex justify-center py-6">
             <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="loading" />
           </div>
-        ) : rows.length === 0 ? (
+        ) : rows.length === 0 && later.length === 0 ? (
           <p className="py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</p>
         ) : (
           <div className="max-h-80 overflow-y-auto scrollbar-slim">
+            {later.length > 0 ? (
+              <div data-testid="budget-tx-coming-up" className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline gap-x-2 px-1 pt-1 text-sm">
+                <p className="col-span-3 text-foreground">{t('budgets.page.upcoming.title')}</p>
+                {later.map(({ tx, recurring }) => {
+                  const line = (
+                    <>
+                      <span>{shortDate.format(parseDateTime(dayKey(tx.spentAt)))}</span>
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span className="truncate">{tx.description || tx.payee?.name || tx.category?.name || displayName}</span>
+                        {recurring ? <Repeat className="size-3.5 shrink-0" aria-label={t('recurring.preview.header')} /> : null}
+                      </span>
+                      <span className="text-right tabular-nums whitespace-nowrap">{signedMoney(tx)}</span>
+                    </>
+                  )
+                  // display only: nothing still to come is opened from here
+                  return (
+                    <div
+                      key={recurring ? `r-${tx.id}-${tx.spentAt}` : tx.id}
+                      className="col-span-3 grid grid-cols-subgrid items-baseline py-0.5 text-muted-foreground"
+                      data-testid={recurring ? `budget-upcoming-${tx.id}` : `budget-tx-${tx.id}`}
+                    >
+                      {line}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : null}
+            {later.length > 0 && rows.length > 0 ? (
+              <p className="px-1 pt-3 text-sm text-foreground" data-testid="budget-tx-posted">
+                {t('budgets.page.upcoming.posted')}
+              </p>
+            ) : null}
             {rows.map((row) =>
               row.kind === 'sep' ? (
                 <p key={row.key} className="px-1 pb-1 pt-3 text-xs font-medium uppercase text-muted-foreground">
@@ -188,18 +236,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
               ) : (
                 (() => {
                   const tx = row.tx!
-                  const currency = currencies.find((c) => c.id === tx.currencyId)
                   const classification = [tx.category?.name, tx.payee?.name].filter(Boolean).join(' · ')
-                  return (
-                    <button
-                      key={row.key}
-                      type="button"
-                      title={t('accounts.page.preview_transaction_modal.header')}
-                      // money that has not moved yet is dimmed, like the account list's future rows
-                      className={`flex w-full items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-accent/50 ${isFuture(tx.spentAt) ? 'opacity-50' : ''}`}
-                      data-testid={`budget-tx-${row.key}`}
-                      onClick={() => setPreview(toViewTransaction(tx))}
-                    >
+                  const content = (
+                    <>
                       <EntityIcon name={tx.category?.icon || element.icon} className="text-base text-muted-foreground" />
                       <span className="flex min-w-0 flex-1 flex-col text-left">
                         {tx.description ? (
@@ -221,13 +260,19 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
                           </span>
                         )}
                       </span>
-                      <span className="tabular-nums text-muted-foreground">
-                        {/* spend is negative; money arriving (direction 'in') is positive */}
-                        {moneyFormat(tx.direction === 'in' ? tx.amount : -tx.amount, currency, {
-                          useNativePrecision: false,
-                          maxPrecision: currency?.fractionDigits ?? 2,
-                        })}
-                      </span>
+                      <span className="tabular-nums text-muted-foreground">{signedMoney(tx)}</span>
+                    </>
+                  )
+                  return (
+                    <button
+                      key={row.key}
+                      type="button"
+                      title={t('accounts.page.preview_transaction_modal.header')}
+                      className="flex w-full items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-accent/50"
+                      data-testid={`budget-tx-${row.key}`}
+                      onClick={() => setPreview(toViewTransaction(tx))}
+                    >
+                      {content}
                     </button>
                   )
                 })()
