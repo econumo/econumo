@@ -1687,7 +1687,9 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 Tablet: holding a finger on a cell opens nothing extra (no actions
       menu, no text-selection callout from the app) and the tap still works.
 - [ ] 📱 Phone: a comment thread opens as a sheet whose composer stays pinned
-      above the keyboard.
+      above the keyboard, on the sheet's own background (no darker box behind
+      it). It ends in the full-width Cancel | Post row of the Set plan sheet,
+      with the n/500 counter right under the field; Cancel closes the sheet.
 - [ ] On the plan grid, select a cell and press Shift+F2 (or Shift+Enter):
       its thread opens in a popover beside the cell; Esc closes it and the
       arrow keys keep moving the selection. Plain Enter on the same cell edits
