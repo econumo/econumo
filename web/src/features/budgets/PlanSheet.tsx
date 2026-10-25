@@ -2037,7 +2037,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         }}
         plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) : false}
         upcoming={
-          planLimitTarget && dialogCell && wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming)
+          planLimitTarget && dialogCell && wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming, planLimitTarget.el.type === BudgetElementType.SAVINGS)
             ? {
                 budget,
                 target: {

@@ -24,9 +24,10 @@ export function planHint(input: { planned: string; spent: string; upcoming?: str
   return cmp(planned, planNeed(spent, upcoming)) < 0 ? { kind: 'short' } : null
 }
 
-/** whether a plan editor lists the cell's money still to come: never in a past month, nor with nothing spent or due */
-export function wantsUpcomingPanel(month: string, spent: string, upcoming: string | undefined): boolean {
-  return month >= currentMonth() && (!isZero(spent) || (upcoming !== undefined && !isZero(upcoming)))
+/** whether a plan editor lists the cell's money still to come: never in a past month, nor with nothing spent or due.
+ *  A savings cell's figures are net, so a deposit and a withdrawal can cancel out: it always asks. */
+export function wantsUpcomingPanel(month: string, spent: string, upcoming: string | undefined, savings = false): boolean {
+  return month >= currentMonth() && (savings || !isZero(spent) || (upcoming !== undefined && !isZero(upcoming)))
 }
 
 export function planHintClass(hint: PlanHint): string {

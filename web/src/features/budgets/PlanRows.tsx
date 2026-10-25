@@ -524,7 +524,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                       onCommit={ctx.finishEdit}
                       onCancel={ctx.cancelEdit}
                       upcoming={
-                        cell && wantsUpcomingPanel(m, cell.actual, cell.upcoming)
+                        cell && wantsUpcomingPanel(m, cell.actual, cell.upcoming, el.type === BudgetElementType.SAVINGS)
                           ? {
                               budget: { meta: ctx.meta },
                               target: { id: el.id, type: el.type, name: displayName, icon: el.icon, currencyId: el.currencyId },

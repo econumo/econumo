@@ -158,6 +158,10 @@ describe('wantsUpcomingPanel', () => {
     expect(wantsUpcomingPanel('2026-08-01', '0', '250')).toBe(true)
     expect(wantsUpcomingPanel('2026-08-01', '0', '0')).toBe(false)
   })
+  it('always for a savings cell, whose net can hide a deposit and a withdrawal', () => {
+    expect(wantsUpcomingPanel('2026-08-01', '0', '0', true)).toBe(true)
+    expect(wantsUpcomingPanel('2026-06-01', '0', '0', true)).toBe(false)
+  })
 })
 
 it('totals in the cell currency with its symbol; rows in another currency keep theirs', async () => {

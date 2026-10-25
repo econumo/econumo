@@ -489,7 +489,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const upcomingQueryOf = (target: SheetTarget): UpcomingQuery | null => {
     const spent = sheetSpent(target)
     const upcoming = sheetUpcoming(target)
-    const listTarget = wantsUpcomingPanel(selectedDate, spent, upcoming) ? sheetTransactionsTargetOf(target) : null
+    const listTarget = wantsUpcomingPanel(selectedDate, spent, upcoming, target.kind === 'savings') ? sheetTransactionsTargetOf(target) : null
     if (!listTarget) {
       return null
     }
