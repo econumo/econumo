@@ -33,35 +33,35 @@ describe('useKeyboardInset', () => {
 
   it('reports nothing while the keyboard is closed', () => {
     const { result } = renderHook(() => useKeyboardInset(true))
-    expect(result.current).toEqual({ bottom: 0, height: 0 })
+    expect(result.current).toEqual({ bottom: 0, height: 0, top: 0 })
   })
 
   it('follows every viewport change, not an open/closed toggle', () => {
     const { result } = renderHook(() => useKeyboardInset(true))
     resize(450)
-    expect(result.current).toEqual({ bottom: 350, height: 450 })
+    expect(result.current).toEqual({ bottom: 350, height: 450, top: 0 })
     // the suggestion bar appearing: a 44px change must not flip any state
     resize(406)
-    expect(result.current).toEqual({ bottom: 394, height: 406 })
+    expect(result.current).toEqual({ bottom: 394, height: 406, top: 0 })
     resize(800)
-    expect(result.current).toEqual({ bottom: 0, height: 0 })
+    expect(result.current).toEqual({ bottom: 0, height: 0, top: 0 })
   })
 
   it('accounts for a panned layout viewport', () => {
     const { result } = renderHook(() => useKeyboardInset(true))
     resize(450, 100)
-    expect(result.current).toEqual({ bottom: 250, height: 450 })
+    expect(result.current).toEqual({ bottom: 250, height: 450, top: 100 })
   })
 
   it('keeps the height cap when the viewport is panned all the way down', () => {
     const { result } = renderHook(() => useKeyboardInset(true))
     resize(450, 350)
-    expect(result.current).toEqual({ bottom: 0, height: 450 })
+    expect(result.current).toEqual({ bottom: 0, height: 450, top: 350 })
   })
 
   it('stays idle when disabled', () => {
     const { result } = renderHook(() => useKeyboardInset(false))
     resize(450)
-    expect(result.current).toEqual({ bottom: 0, height: 0 })
+    expect(result.current).toEqual({ bottom: 0, height: 0, top: 0 })
   })
 })

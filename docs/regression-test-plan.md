@@ -2430,6 +2430,12 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       between. Switching keyboard language, opening the emoji keyboard or the
       suggestion bar appearing keeps it attached; closing the keyboard returns
       the sheet to its normal size (no blank area, no squeezed body).
+- [ ] 📱 Full-screen form with the keyboard up (Add transaction: the amount
+      is focused on open) on an iPhone: the page shrinks to the area above the
+      keyboard. The header, date and account switcher stay visible at the top
+      and usable without closing the keyboard, the form scrolls down to Notes,
+      and the Save row sits right on top of the keyboard. Closing the keyboard
+      returns the page to full height.
 - [ ] Row actions open bottom sheets (accounts, transactions, classifications,
       recurring, sessions, tokens, budgets).
 - [ ] Long lists scroll smoothly; sidebar scroll position is remembered when

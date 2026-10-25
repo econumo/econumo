@@ -5,9 +5,11 @@ export interface KeyboardInset {
   bottom: number
   /** px height of the visible area */
   height: number
+  /** px the visible area's top sits below the layout viewport's top (iOS pans it) */
+  top: number
 }
 
-const NONE: KeyboardInset = { bottom: 0, height: 0 }
+const NONE: KeyboardInset = { bottom: 0, height: 0, top: 0 }
 
 function measure(): KeyboardInset {
   const vv = window.visualViewport
@@ -22,7 +24,8 @@ function measure(): KeyboardInset {
   if (height >= window.innerHeight) {
     return NONE
   }
-  return { bottom: Math.max(0, Math.round(window.innerHeight - vv.offsetTop - height)), height }
+  const top = Math.round(vv.offsetTop)
+  return { bottom: Math.max(0, window.innerHeight - top - height), height, top }
 }
 
 // Tracks the visual viewport continuously instead of guessing an open/closed
@@ -38,7 +41,7 @@ export function useKeyboardInset(enabled: boolean): KeyboardInset {
     }
     const update = () => {
       const next = measure()
-      setInset((prev) => (prev.bottom === next.bottom && prev.height === next.height ? prev : next))
+      setInset((prev) => (prev.bottom === next.bottom && prev.height === next.height && prev.top === next.top ? prev : next))
     }
     update()
     vv.addEventListener('resize', update)
