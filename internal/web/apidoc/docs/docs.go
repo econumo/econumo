@@ -2914,7 +2914,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Income of categoryId or envelopeId (exactly one; composes with nothing else)",
+                        "description": "Income of categoryId or envelopeId (exactly one), or with uncategorized the income Uncategorized row; composes with nothing else",
                         "name": "income",
                         "in": "query"
                     },

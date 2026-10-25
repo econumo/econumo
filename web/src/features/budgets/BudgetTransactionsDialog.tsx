@@ -135,7 +135,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
         ...(element.type === 'transfers' ? { transfers: true } : {}),
         // a savings row's id is its account id; composes with nothing
         ...(element.type === BudgetElementType.SAVINGS ? { accountId: element.id } : {}),
-        ...(element.type === BudgetElementType.INCOME_CATEGORY ? { income: true, categoryId: element.id } : {}),
+        ...(element.type === BudgetElementType.INCOME_CATEGORY
+          ? { income: true, ...(isUncategorized ? { uncategorized: true } : { categoryId: element.id }) }
+          : {}),
         ...(element.type === BudgetElementType.INCOME_ENVELOPE ? { income: true, envelopeId: element.id } : {}),
       }
     : null

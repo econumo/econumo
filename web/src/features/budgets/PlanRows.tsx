@@ -9,7 +9,7 @@ import { pluralPick } from '@/lib/plural'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { ReactNode } from 'react'
 import type { BudgetCommentDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
-import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { elementDisplayName } from './budgetMath'
@@ -348,8 +348,6 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
   // hover re-renders this row only, never the grid.
   const [hoverCol, setHoverCol] = useState<number | null>(null)
   const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
-  // the transactions list cannot show income nobody categorized
-  const actualLinkable = !(isUncategorized && isIncomeType(el.type))
   const childList = open ? (
     <div>
       {el.children.length === 0 ? (
@@ -493,7 +491,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                 data-testid="cell-figures"
                 className={`flex min-w-0 flex-1 justify-between gap-1 ${editing ? 'items-center' : 'items-baseline'}`}
               >
-                {actual === null && view.upcoming && actualLinkable ? (
+                {actual === null && view.upcoming ? (
                   <button
                     type="button"
                     data-testid="cell-actual"
@@ -513,7 +511,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                       <Dash />
                     </span>
                   ) : null
-                ) : actualLinkable && (!view.balance || m <= ctx.selected || movesMoney(cell)) ? (
+                ) : !view.balance || m <= ctx.selected || movesMoney(cell) ? (
                   <button
                     type="button"
                     data-testid="cell-actual"

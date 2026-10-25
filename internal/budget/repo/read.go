@@ -1393,6 +1393,38 @@ func (r *ReadRepo) BudgetTransactionsIncome(ctx context.Context, categoryIDs, ac
 	return scanDirectedTxRows(rows)
 }
 
+// BudgetTransactionsIncomeUncategorized implements ReadModel.
+func (r *ReadRepo) BudgetTransactionsIncomeUncategorized(ctx context.Context, knownCategoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	accArgs := idArgs(accountIDs)
+	catArgs := idArgs(knownCategoryIDs)
+	args := append(append([]any{}, accArgs...), catArgs...)
+	accIn := r.ph(1, len(accArgs))
+	catCond := ""
+	if len(catArgs) > 0 {
+		catCond = " AND (t.category_id IS NULL OR t.category_id NOT IN (" + r.ph(1+len(accArgs), len(catArgs)) + "))"
+	}
+	dStart, dEnd := "?", "?"
+	if r.driver == "postgresql" {
+		dStart, dEnd = "$"+itoa(1+len(accArgs)+len(catArgs)), "$"+itoa(2+len(accArgs)+len(catArgs))
+		args = append(args, start, end)
+	} else {
+		// See sqliteDatetime.
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
+	}
+	sql := "SELECT " + budgetTxCols + ", 'in' as direction, 'income' as type FROM transactions t JOIN accounts a ON a.id = t.account_id" +
+		" WHERE t.type = 1 AND t.account_id IN (" + accIn + ")" + catCond + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
+		r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDirectedTxRows(rows)
+}
+
 // BudgetTransactionsOnAccount implements ReadModel: the account's own rows
 // (income in, expense and outgoing transfer out, at amount) plus the transfers
 // it received (in, at amount_recipient).

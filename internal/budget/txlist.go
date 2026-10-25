@@ -34,7 +34,8 @@ import (
 // selects the transfers that crossed the budget boundary (the plan sheet's
 // Transfers line) and composes with nothing: any other selector alongside it
 // is rejected the same way. income turns exactly one of categoryId/envelopeId
-// into an income row's list (income on the everyday accounts, tagged or not);
+// into an income row's list (income on the everyday accounts, tagged or not),
+// or, with uncategorized instead, into the income Uncategorized row's list;
 // accountId selects every transaction on one account of the budget (currently
 // only its savings accounts: see savingsMemberID). Both compose with nothing
 // else.
@@ -46,7 +47,9 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	if optIDSet(req.AccountId) && (req.Transfers || req.Income || req.Uncategorized || optIDSet(req.CategoryId) || optIDSet(req.TagId) || optIDSet(req.EnvelopeId) || optIDSet(req.LabelId)) {
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
-	if req.Income && (req.Transfers || req.Uncategorized || optIDSet(req.TagId) || optIDSet(req.LabelId) || optIDSet(req.CategoryId) == optIDSet(req.EnvelopeId)) {
+	if req.Income && (req.Transfers || optIDSet(req.TagId) || optIDSet(req.LabelId) ||
+		(req.Uncategorized && (optIDSet(req.CategoryId) || optIDSet(req.EnvelopeId))) ||
+		(!req.Uncategorized && optIDSet(req.CategoryId) == optIDSet(req.EnvelopeId))) {
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
 	if req.Uncategorized && req.CategoryId != nil && strings.TrimSpace(*req.CategoryId) != "" {
@@ -93,7 +96,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	// silently discarding it instead of being rejected or ignored consistently.
 	lbl := strings.TrimSpace(optID(req.LabelId))
 
-	query, err := s.txListQuery(ctx, f, req, cat, tag, env, lbl, periodStart, periodEnd)
+	query, err := s.txListQuery(ctx, b, f, req, cat, tag, env, lbl, periodStart, periodEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +129,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 // against the stored transactions and against the projected occurrences.
 type txListQuery func(r ReadModel) ([]model.BudgetTransactionRow, error)
 
-func (s *Service) txListQuery(ctx context.Context, f filters, req model.BudgetTransactionListRequest, cat, tag, env, lbl string, periodStart, periodEnd time.Time) (txListQuery, error) {
+func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters, req model.BudgetTransactionListRequest, cat, tag, env, lbl string, periodStart, periodEnd time.Time) (txListQuery, error) {
 	switch {
 	case optIDSet(req.AccountId):
 		accountID, perr := savingsMemberID(f, strings.TrimSpace(*req.AccountId))
@@ -135,6 +138,14 @@ func (s *Service) txListQuery(ctx context.Context, f filters, req model.BudgetTr
 		}
 		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
 			return r.BudgetTransactionsOnAccount(ctx, accountID, periodStart, periodEnd)
+		}, nil
+	case req.Income && req.Uncategorized:
+		known, err := s.incomeRowCategoryIDs(ctx, b, f)
+		if err != nil {
+			return nil, err
+		}
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsIncomeUncategorized(ctx, known, f.everydayAccountIDs, periodStart, periodEnd)
 		}, nil
 	case req.Income:
 		var catIDs []vo.Id
@@ -324,6 +335,38 @@ func (b *txItems) item(ctx context.Context, row model.BudgetTransactionRow, labe
 		}
 	}
 	return item, nil
+}
+
+// incomeRowCategoryIDs is every category the plan gives an income row of its
+// own: the participants' income categories and the members of income
+// envelopes. Income in any other category, or in none, lands in the income
+// Uncategorized row (see the plan builder).
+func (s *Service) incomeRowCategoryIDs(ctx context.Context, b *budgetAggregate, f filters) ([]vo.Id, error) {
+	set := map[string]bool{}
+	for id := range f.incomeCategories {
+		set[id] = true
+	}
+	envelopeCats, err := s.envelopeCategories(ctx, b)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range b.elements {
+		if e.Type != model.ElementIncomeEnvelope {
+			continue
+		}
+		for _, id := range envelopeCats[e.ExternalID.String()] {
+			set[id] = true
+		}
+	}
+	out := make([]vo.Id, 0, len(set))
+	for id := range set {
+		parsed, err := vo.ParseId(id)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, parsed)
+	}
+	return out, nil
 }
 
 // assembleTxList builds the real rows' result; Upcoming starts empty.
