@@ -21,7 +21,15 @@ func captureWarns(t *testing.T) *bytes.Buffer {
 	t.Helper()
 	var buf bytes.Buffer
 	prev := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	// The timestamp is dropped: one like 19.992Z would contain the 9.99 the
+	// test asserts is never logged.
+	dropTime := func(groups []string, a slog.Attr) slog.Attr {
+		if len(groups) == 0 && a.Key == slog.TimeKey {
+			return slog.Attr{}
+		}
+		return a
+	}
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn, ReplaceAttr: dropTime})))
 	t.Cleanup(func() { slog.SetDefault(prev) })
 	return &buf
 }

@@ -61,7 +61,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL`, `IMPORT_APPLE_WALLET` and `FEEDBACK` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `FEEDBACK` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. The merge is per server: typing a
@@ -780,11 +780,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   (`claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
   `sync-source`), `create-source` refuses it with `import.provider_unsupported`, and its existing
   sources and their queued/failed rows drop out of `get-source-list` and `get-queued-event-list`
-  (`imports.Service.DisableProvider`; stored data is untouched). The served
-  `IMPORT_APPLE_WALLET` key is always `true` (kept because the app may also talk to an older
-  server that serves `false`); the SPA still reads it and `IMPORT_SIMPLEFIN` per provider, and
-  Import rules, import history and the Inbox's import sections need either. CSV import/export is
-  not part of it and is always on. The apiparity harness turns SimpleFIN on so the catalogue keeps
+  (`imports.Service.DisableProvider`; stored data is untouched). The SPA reads the served
+  `IMPORT_SIMPLEFIN` key for SimpleFIN's settings pages and routes; Apple Wallet, Import rules,
+  import history and the Inbox's import sections are always shown (there is no
+  `IMPORT_APPLE_WALLET` key any more). CSV import/export is not part of it and is always on.
+  The apiparity harness turns SimpleFIN on so the catalogue keeps
   covering its routes.
 - `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
   fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
@@ -873,7 +873,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET`,
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`,
   `IMPORT_SIMPLEFIN` and `FEEDBACK` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the

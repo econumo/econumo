@@ -38,7 +38,7 @@ import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { BudgetPage } from '@/features/budgets/BudgetPage'
 import { ConnectedAppsPage } from '@/features/authserver/ConnectedAppsPage'
 import { ConsentPage } from '@/features/authserver/ConsentPage'
-import { isAppleWalletImportEnabled, isSimpleFINImportEnabled, isTransactionImportEnabled } from '@/lib/config'
+import { isSimpleFINImportEnabled } from '@/lib/config'
 
 export function createRouter() {
   return createBrowserRouter([
@@ -85,22 +85,14 @@ export function createRouter() {
                 { path: '/settings/recurring', element: <RecurringSettingsPage /> },
                 { path: '/settings/data', element: <ImportsDataPage /> },
                 { path: '/inbox', element: <InboxPage /> },
-                ...(isAppleWalletImportEnabled()
-                  ? [
-                      { path: '/settings/apple-wallet', element: <AppleWalletPage /> },
-                      { path: '/settings/apple-wallet/history', element: <AppleWalletHistoryPage /> },
-                    ]
-                  : []),
+                { path: '/settings/apple-wallet', element: <AppleWalletPage /> },
+                { path: '/settings/apple-wallet/history', element: <AppleWalletHistoryPage /> },
+                { path: '/settings/import-rules', element: <ImportRulesPage /> },
                 ...(isSimpleFINImportEnabled()
                   ? [
                       { path: '/settings/simplefin', element: <SimpleFINPage /> },
                       { path: '/settings/simplefin/history', element: <SimpleFINHistoryPage /> },
                       { path: '/settings/simplefin/history/:id', element: <ImportRunPage /> },
-                    ]
-                  : []),
-                ...(isTransactionImportEnabled()
-                  ? [
-                      { path: '/settings/import-rules', element: <ImportRulesPage /> },
                     ]
                   : []),
               ],

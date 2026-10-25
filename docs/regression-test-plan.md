@@ -435,10 +435,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       available; SimpleFIN stays hidden, `/settings/simplefin` shows the
       not-found page and "Sync bank connections" never appears. Apple Wallet
       has no switch: a leftover `ECONUMO_IMPORT_APPLE_WALLET=false` in the
-      environment changes nothing and `econumo-config.js` serves
-      `IMPORT_APPLE_WALLET: true`. The mobile app still honors an older
-      backend's explicit `IMPORT_APPLE_WALLET: false`, including after
-      switching servers.
+      environment changes nothing, and `econumo-config.js` carries no
+      `IMPORT_APPLE_WALLET` key.
 
 - [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
       import/export rows; dialogs open as before) and "Apple Wallet" (its own page;

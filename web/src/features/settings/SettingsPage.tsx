@@ -6,7 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { UserAvatar } from '@/components/UserAvatar'
-import { getVersionLabel, backendHost, isFeedbackEnabled, isAppleWalletImportEnabled, isSimpleFINImportEnabled, isTransactionImportEnabled } from '@/lib/config'
+import { getVersionLabel, backendHost, isFeedbackEnabled, isSimpleFINImportEnabled } from '@/lib/config'
 import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
@@ -178,9 +178,9 @@ export function SettingsPage() {
 
           <MenuGroup label={t('settings.page.groups.data')}>
             <MenuRow label={t('imports.data_page.menu_item')} to={RouterPage.SETTINGS_DATA} />
-            {isAppleWalletImportEnabled() ? <MenuRow label={t('imports.apple_wallet.menu_item')} to={RouterPage.SETTINGS_APPLE_WALLET} /> : null}
+            <MenuRow label={t('imports.apple_wallet.menu_item')} to={RouterPage.SETTINGS_APPLE_WALLET} />
             {isSimpleFINImportEnabled() ? <MenuRow label={t('imports.simplefin.menu_item')} to={RouterPage.SETTINGS_SIMPLEFIN} /> : null}
-            {isTransactionImportEnabled() ? <MenuRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} /> : null}
+            <MenuRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} />
             <MenuRow
               label={t('settings.data.reload_all')}
               trailing={<RefreshCw className={`size-4 shrink-0 text-muted-foreground ${reloading ? 'animate-spin' : ''}`} />}

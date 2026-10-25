@@ -30,7 +30,7 @@ function renderSetup(src = source) {
 beforeEach(() => {
   localStorage.clear()
   vi.mocked(trackEvent).mockClear()
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true }
+  window.econumoConfig = {}
   server.use(...coreHandlers({ importSources: [source], importQueue: { queued: [], skipped: [], failed: [] } }))
 })
 

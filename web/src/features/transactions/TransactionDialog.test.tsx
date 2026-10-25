@@ -808,7 +808,7 @@ it('a queued import in a foreign currency opens with an empty amount and shows t
 })
 
 it('editing an imported transaction prompts for a rule only when the classification diverges from what the import applied', async () => {
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   const seen = captureUpdate()
   const importLink = {
     id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
@@ -843,7 +843,7 @@ it('editing an imported transaction prompts for a rule only when the classificat
 // An account shared with the user takes its owner's rules, which the user
 // cannot create or edit: a correction there must not offer a rule.
 it('editing an imported transaction on a shared account never prompts for a rule', async () => {
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
   const shared = {
     id: 'a-sh', owner: partner, folderId: null, name: 'Joint', position: 9,
@@ -879,7 +879,7 @@ it('editing an imported transaction on a shared account never prompts for a rule
 // save against that stale snapshot alone re-opened the prompt on every later
 // save of the same transaction — offering to create a SECOND identical rule.
 it('re-saving an already corrected import does not prompt again, but a further correction does', async () => {
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   const seen = captureUpdate()
   const importLink = {
     id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
