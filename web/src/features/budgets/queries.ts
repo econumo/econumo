@@ -18,6 +18,30 @@ import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useBudgetPeriodStore } from './budgetStore'
 import { addMonths, currentMonth, monthDiff } from './planMath'
+import { foldBudgetUpcoming, foldPlanUpcoming } from './upcoming'
+
+// One select per current month: a stable reference keeps the result stable, and a
+// new month hands TanStack a new one, so a page open across month-end re-folds the
+// same cached data (the fold depends on which month is current). The cache itself
+// keeps the raw wire data the optimistic patches work on.
+const budgetSelects = new Map<string, (data: BudgetDto | null) => BudgetDto | null>()
+const planSelects = new Map<string, (data: BudgetPlanDto | null) => BudgetPlanDto | null>()
+function selectBudgetFor(cur: string) {
+  let select = budgetSelects.get(cur)
+  if (!select) {
+    select = (data) => (data ? foldBudgetUpcoming(data, cur) : data)
+    budgetSelects.set(cur, select)
+  }
+  return select
+}
+function selectPlanFor(cur: string) {
+  let select = planSelects.get(cur)
+  if (!select) {
+    select = (data) => (data ? foldPlanUpcoming(data, cur) : data)
+    planSelects.set(cur, select)
+  }
+  return select
+}
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -119,6 +143,7 @@ export function useBudget() {
     queryFn: () => (budgetId ? budgetApi.getBudget(budgetId, selectedDate) : Promise.resolve(null)),
     enabled: user !== undefined,
     staleTime: TEN_MINUTES,
+    select: selectBudgetFor(currentMonth()),
     // month switches keep showing the previous period instead of a blank page
     placeholderData: keepPreviousData,
   })
@@ -159,7 +184,12 @@ export function useSetLimit() {
                           budgeted,
                           available: sub(budgeted, row.spent),
                           ...(projected && row.isArchived === 0 && row.closingBalance !== undefined
-                            ? { closingBalance: add(sub(row.closingBalance, gap(row.budgeted, row.spent)), gap(budgeted, row.spent)) }
+                            ? {
+                                closingBalance: add(
+                                  sub(row.closingBalance, gap(row.budgeted, add(row.spent, row.upcoming))),
+                                  gap(budgeted, add(row.spent, row.upcoming)),
+                                ),
+                              }
                             : {}),
                         }
                       : row,
@@ -216,6 +246,7 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
     queryFn: () => (budgetId ? budgetApi.getBudgetPlan(budgetId, from, months) : Promise.resolve(null)),
     enabled: budgetId !== null,
     staleTime: TEN_MINUTES,
+    select: selectPlanFor(currentMonth()),
     // shifting months keeps showing the previous window instead of a blank sheet
     placeholderData: keepPreviousData,
   })

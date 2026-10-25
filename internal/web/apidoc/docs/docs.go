@@ -13505,6 +13505,36 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.PlanMonthTransfersResult"
                     }
+                },
+                "upcomingOpeningBalances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OpeningBalanceResult"
+                    }
+                },
+                "upcomingSavingsFlows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
+                    }
+                },
+                "upcomingSavingsIncomeExpense": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
+                    }
+                },
+                "upcomingSavingsOpeningBalances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OpeningBalanceResult"
+                    }
+                },
+                "upcomingTransfers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanMonthTransfersResult"
+                    }
                 }
             }
         },
@@ -13581,6 +13611,98 @@ const docTemplate = `{
                 }
             }
         },
+        "model.BudgetUpcomingResult": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountName": {
+                    "type": "string"
+                },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "accountRecipientName": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
+                    "type": "string"
+                },
+                "amountSource": {
+                    "type": "string"
+                },
+                "author": {
+                    "$ref": "#/definitions/model.UserResult"
+                },
+                "canEdit": {
+                    "type": "boolean"
+                },
+                "category": {
+                    "$ref": "#/definitions/model.TxCategoryResult"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "currencyRecipientId": {
+                    "type": "string"
+                },
+                "currencySourceId": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "direction": {
+                    "description": "Direction is present only on rows of the transfers, income and\naccountId selectors: \"out\" when the money left the included (or\nsavings) account, \"in\" when it arrived — Amount/CurrencyId are that\nside's. Omitted on every other list so their bytes are unchanged.",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isNext": {
+                    "type": "boolean"
+                },
+                "isOverdue": {
+                    "type": "boolean"
+                },
+                "labelIds": {
+                    "description": "Reporting labels attached to the row. Always non-nil ([] when none) so a\nclient can render it without a null check, matching labelIds on the\ntransaction feature's own wire.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "labelNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "payee": {
+                    "$ref": "#/definitions/model.TxPayeeResult"
+                },
+                "schedule": {
+                    "type": "string"
+                },
+                "spentAt": {
+                    "type": "string"
+                },
+                "tag": {
+                    "$ref": "#/definitions/model.TxTagResult"
+                },
+                "templateId": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Type (\"expense\", \"income\" or \"transfer\") is present only on rows of the\nincome and accountId selectors.",
+                    "type": "string"
+                }
+            }
+        },
         "model.CategoryResult": {
             "type": "object",
             "properties": {
@@ -13636,6 +13758,9 @@ const docTemplate = `{
                 "budgetSpent": {
                     "type": "string"
                 },
+                "budgetUpcoming": {
+                    "type": "string"
+                },
                 "icon": {
                     "type": "string"
                 },
@@ -13656,6 +13781,10 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcoming": {
+                    "description": "Upcoming/BudgetUpcoming are the period's projected recurring payments not\nyet posted, in the parent's currency and the budget currency; Spent stays\nreal money only.",
+                    "type": "string"
                 }
             }
         },
@@ -14945,6 +15074,12 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.BudgetTransactionResult"
                     }
+                },
+                "upcoming": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.BudgetUpcomingResult"
+                    }
                 }
             }
         },
@@ -15698,6 +15833,9 @@ const docTemplate = `{
                 },
                 "spent": {
                     "type": "string"
+                },
+                "upcoming": {
+                    "type": "string"
                 }
             }
         },
@@ -16161,6 +16299,9 @@ const docTemplate = `{
                 "budgetSpent": {
                     "type": "string"
                 },
+                "budgetUpcoming": {
+                    "type": "string"
+                },
                 "budgeted": {
                     "type": "string"
                 },
@@ -16199,6 +16340,13 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcoming": {
+                    "description": "Upcoming is the period's projected recurring spend not yet posted, and\nUpcomingBefore the projected spend filed in earlier months of the\nprojection window (from the caller's current month on), both in\nCurrencyId; BudgetUpcoming is Upcoming in the budget currency. Spent and\nAvailable stay real money only.",
+                    "type": "string"
+                },
+                "upcomingBefore": {
+                    "type": "string"
                 }
             }
         },
@@ -16260,6 +16408,9 @@ const docTemplate = `{
                 },
                 "planned": {
                     "type": "string"
+                },
+                "upcoming": {
+                    "type": "string"
                 }
             }
         },
@@ -16267,6 +16418,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "actual": {
+                    "type": "string"
+                },
+                "upcoming": {
                     "type": "string"
                 }
             }
@@ -16383,6 +16537,9 @@ const docTemplate = `{
                 },
                 "planned": {
                     "type": "string"
+                },
+                "upcoming": {
+                    "type": "string"
                 }
             }
         },
@@ -16418,6 +16575,9 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcomingOpeningBalance": {
+                    "type": "string"
                 }
             }
         },
@@ -16965,6 +17125,10 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcoming": {
+                    "description": "Upcoming is the period's projected recurring change of the account not\nyet posted, measured like Spent.",
+                    "type": "string"
                 }
             }
         },

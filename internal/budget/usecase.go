@@ -39,13 +39,23 @@ type Service struct {
 	tx          port.TxRunner
 	clock       port.Clock
 
-	txLabels TransactionLabels
+	txLabels  TransactionLabels
+	recurring RecurringSource
+
+	// upcoming, when set, is the projected read of the recurring templates for
+	// the build at hand: the savings closing balance then counts upcoming money.
+	upcoming ReadModel
 }
 
 // SetTransactionLabels wires the reporting-label lookup. It is a setter rather
 // than a constructor parameter because the transaction repo that backs it is
 // built after the budget service at composition time; called once, in BuildAPI.
 func (s *Service) SetTransactionLabels(l TransactionLabels) { s.txLabels = l }
+
+// SetRecurring wires the recurring-template source behind the upcoming
+// projection; a setter for the same reason as SetTransactionLabels. Unset, the
+// projection is empty.
+func (s *Service) SetRecurring(r RecurringSource) { s.recurring = r }
 
 func NewService(
 	repo Repository,

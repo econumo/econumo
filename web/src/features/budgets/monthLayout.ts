@@ -6,6 +6,9 @@ import type { MouseEvent } from 'react'
 // share their right edges. The first figure column grows to the left for a
 // carry-over lead-in; the others are fixed.
 // right padding = a small button's own (px-2.5), so the last column ends under the header's Configure
+/** a spent / actual figure of a month after the caller's current one: lighter than the
+ *  plain muted grey of today's figures, so what has not happened yet reads as such */
+export const FUTURE_FIGURE = 'text-muted-foreground/50'
 export const LINE = 'group/line flex items-center gap-2 pr-2.5 pl-2 sm:gap-3'
 export const NAME_COL = 'flex min-w-0 flex-1 items-center gap-2'
 export const FIRST_COL = 'hidden min-w-24 shrink-0 items-baseline justify-end gap-1.5 text-right tabular-nums sm:flex'

@@ -1196,6 +1196,10 @@
     }
   },
   "budgets": {
+    "transactions": {
+      "upcoming_hint": "Próximo pagamento recorrente",
+      "later_cycle": "Pode ser lançado após o pagamento anterior"
+    },
     "modal": {
       "budget_form": {
         "accounts": "Contas",

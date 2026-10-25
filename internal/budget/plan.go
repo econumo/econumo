@@ -37,8 +37,15 @@ func (s *Service) GetBudgetPlan(ctx context.Context, userID vo.Id, req model.Get
 		return nil, err
 	}
 	from = b.clampPeriod(from)
-	result, err := s.BuildBudgetPlan(ctx, userID, b, from, months)
+	f, err := s.buildFilters(ctx, userID, b, from, from.AddDate(0, months, 0))
 	if err != nil {
+		return nil, err
+	}
+	result, err := s.buildBudgetPlan(ctx, b, f, months)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.addPlanUpcoming(ctx, b, f, months, &result); err != nil {
 		return nil, err
 	}
 	return &model.GetBudgetPlanResult{Item: result}, nil

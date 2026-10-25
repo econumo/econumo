@@ -1196,6 +1196,10 @@
     }
   },
   "budgets": {
+    "transactions": {
+      "upcoming_hint": "Nadchodząca płatność cykliczna",
+      "later_cycle": "Można zaksięgować po wcześniejszej płatności"
+    },
     "modal": {
       "budget_form": {
         "accounts": "Konta",

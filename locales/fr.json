@@ -1196,6 +1196,10 @@
     }
   },
   "budgets": {
+    "transactions": {
+      "upcoming_hint": "Paiement récurrent à venir",
+      "later_cycle": "Pourra être validé après le paiement précédent"
+    },
     "modal": {
       "budget_form": {
         "accounts": "Comptes",

@@ -1719,6 +1719,73 @@ and on tablet/phone only with a hardware keyboard.
       column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
       they list and export at the UTC time after the upgrade instead of
       failing the list.
+- [ ] 📱 **Upcoming recurring payments in Budget and Plan**: with an active
+      recurring expense on a budget account (category X, due later this month),
+      the current month's Budget view shows only what was really spent in X's
+      Spent, Available and the month's Expenses/Total lines (the fact); tapping
+      X's Spent opens its list with the upcoming row in it. With nothing spent
+      in X yet, X's Spent reads 0 and still opens that list (on a phone through
+      the item sheet's Transactions). Posting it moves the amount into Spent;
+      skipping it removes the row. Folder and tag-group sums and reporting
+      tags follow the same rule.
+- [ ] In the Plan grid's current month, cells show the real actual only; a
+      cell with nothing real yet but a payment upcoming shows a dash that opens
+      its list. The Income/Expenses/Savings totals, Balance, Total savings and
+      the savings rows' Balance still count this month's upcoming money (the
+      same figures as before this change), and every month after the current
+      one still carries it over.
+- [ ] 📱 A future month (Budget view and Plan grid) shows the upcoming amounts
+      of the templates falling in it instead of a dash; in the Plan grid the
+      future cell shows the upcoming amount and the Balance / Total savings
+      lines move with it even when that cell has no plan.
+- [ ] 📱 Future months never show spent/actual in red: a future month whose
+      upcoming amount exceeds its plan (or has no plan) shows the spent figure,
+      its bar and the Plan grid actual in the neutral style; the current and
+      past months still turn red when overspent, and a negative Available
+      stays red. In future months every spent/actual figure (rows, folder and
+      tag-group sums, section headers, month totals, the item sheet, and the
+      Plan grid's actuals) is a lighter grey than the muted grey of current-
+      month figures, so it reads as projected; current and past months keep
+      their normal colour.
+- [ ] A weekly template adds one occurrence per week to a month (four or five
+      rows in the cell list, matching the month's weeks); a monthly template
+      adds one.
+- [ ] An overdue template (next payment date in the past) counts once in the
+      caller's current month and shows one row there; later months count only
+      occurrences after today.
+- [ ] Posting the overdue payment of a template due once keeps the current
+      month's total. Posting the overdue payment of a template several cycles
+      behind (e.g. weekly, three weeks late) brings the next missed cycle in as
+      the new overdue row, so the month's total rises by that cycle.
+- [ ] A recurring template on a deleted budget account, or a transfer into
+      one, adds no upcoming money to any month and shows no row.
+- [ ] 📱 The cell's transaction list shows upcoming rows in date groups, dimmed
+      with a repeat glyph. The next payment (and an overdue one) offers Post,
+      Skip and Edit to a caller who can edit the template: Post dates the
+      transaction at the scheduled date when it is in the future, otherwise
+      today. Later cycles of the same template are display only.
+- [ ] 📱 A partner's template that sources or receives into a budget member
+      account counts in the figures and shows in the list; a participant who
+      cannot edit it sees the row without Post / Skip / Edit. A transfer into a
+      member from an account outside the budget shows no account name to a
+      participant who cannot see that account.
+- [ ] Editing, posting, skipping or deleting a recurring template refreshes
+      the Budget view, the Plan grid and the cell list without a reload.
+- [ ] A savings account's closing Balance on /budget includes upcoming
+      transfers into or out of it, and the Plan grid's Savings section agrees.
+- [ ] With a monthly transfer into a savings account due later this month,
+      open a Plan window that starts next month: each savings row's Balance
+      already includes this month's transfer, and the rows add up to the
+      Savings balance line in every month of the window.
+- [ ] In the Plan grid, a later month's savings Balance with an upcoming
+      transfer into or out of the account is a link: it opens that month's list
+      with the upcoming transfer; a later month with nothing due stays plain.
+- [ ] 📱 Opening an upcoming transfer from the cell list shows both the
+      sender and the recipient card with their amounts (the recipient's in its
+      own currency); an account outside the budget, on either side, shows as
+      "[Hidden account]". For a cross-currency transfer into the budget (e.g.
+      100 USD into a EUR savings account) the sender card shows 100 USD and
+      the recipient card the converted EUR amount.
 
 ### Phone month view 📱
 

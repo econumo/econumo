@@ -48,7 +48,7 @@ function useBudgetRows(budgetId: Id | null, row: DrillRow, from: string, to: str
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
-  const wire = results.flatMap((r) => r.data ?? [])
+  const wire = results.flatMap((r) => r.data?.items ?? [])
   const rows = wire
     .map((w) => ({ view: budgetTransactionView(w, { transactions, accounts, categories, payees, tags }), currencyId: w.currencyId }))
     .sort((a, b) => (a.view.date < b.view.date ? 1 : a.view.date > b.view.date ? -1 : 0))

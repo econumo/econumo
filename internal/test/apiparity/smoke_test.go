@@ -28,7 +28,11 @@ func TestSmoke_Catalogue(t *testing.T) {
 				if !strings.HasPrefix(c.Label, "err:") && (statuses[i] < 200 || statuses[i] > 299) {
 					t.Errorf("[%s] expected 2xx, got %d: %s", c.Label, statuses[i], bodies[i])
 				}
-				fmt.Fprintf(&got, "== %s %s %s [%s] -> %d\n%s\n", c.Label, c.Method, c.Path, c.Auth, statuses[i], NormalizeGolden(bodies[i]))
+				path := c.Path
+				if c.GoldenPath != "" {
+					path = c.GoldenPath
+				}
+				fmt.Fprintf(&got, "== %s %s %s [%s] -> %d\n%s\n", c.Label, c.Method, path, c.Auth, statuses[i], NormalizeGolden(bodies[i]))
 			}
 
 			golden := filepath.Join("testdata", "golden", sc.Name+".golden")

@@ -1196,6 +1196,10 @@
     }
   },
   "budgets": {
+    "transactions": {
+      "upcoming_hint": "Aankomende terugkerende betaling",
+      "later_cycle": "Kan worden geboekt na de eerdere betaling"
+    },
     "modal": {
       "budget_form": {
         "accounts": "Rekeningen",

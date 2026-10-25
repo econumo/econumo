@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
 import type { RecurringDto } from '@/api/dto/recurring'
-import { useCreateRecurring, useDeleteRecurring, usePostRecurring, useRecurring, useSkipRecurring } from './queries'
+import { useCreateRecurring, useDeleteRecurring, usePostRecurring, useRecurring, useSkipRecurring, useUpdateRecurring } from './queries'
 
 const wireRecurring = {
   id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
@@ -109,4 +109,69 @@ it('useDeleteRecurring drops the template and severs cached transaction links', 
   expect(txs.find((tx) => tx.id === 't-from-r1')?.recurringId).toBeNull()
   expect(txs.find((tx) => tx.id === 't-from-other')?.recurringId).toBe('r2')
   expect(txs.find((tx) => tx.id === 't-plain')?.recurringId).toBeNull()
+})
+
+function invalidatedKeys(spy: { mock: { calls: unknown[][] } }): string[] {
+  return spy.mock.calls.map((c) => JSON.stringify((c[0] as { queryKey: unknown[] }).queryKey))
+}
+
+const budgetKeys = [queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions].map((k) => JSON.stringify(k))
+
+it('skip recurring invalidates budget, plan and budget transactions', async () => {
+  server.use(http.post('*/api/v1/recurring/skip-recurring-transaction', () =>
+    HttpResponse.json({ success: true, message: '', data: { item: { ...wireRecurring, nextPaymentAt: '2026-09-30 00:00:00' } } })))
+  const { queryClient, wrapper } = makeWrapper()
+  const spy = vi.spyOn(queryClient, 'invalidateQueries')
+  const { result } = renderHook(() => useSkipRecurring(), { wrapper })
+  result.current.mutate('r1')
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(invalidatedKeys(spy)).toEqual(expect.arrayContaining(budgetKeys))
+})
+
+it('create, update, delete and post recurring invalidate the budget queries too', async () => {
+  const wireTx = {
+    id: 't1', author: { id: 'u1', name: 'U', avatar: 'face:fuchsia' }, type: 'expense',
+    accountId: 'a1', accountRecipientId: null, amount: '50.5', amountRecipient: null,
+    categoryId: 'c1', description: 'rent', payeeId: null, tagId: null, date: '2026-08-31 00:00:00',
+  }
+  server.use(
+    http.post('*/api/v1/recurring/create-recurring-transaction', () => HttpResponse.json({ success: true, message: '', data: { item: wireRecurring } })),
+    http.post('*/api/v1/recurring/update-recurring-transaction', () => HttpResponse.json({ success: true, message: '', data: { item: wireRecurring } })),
+    http.post('*/api/v1/recurring/delete-recurring-transaction', () => HttpResponse.json({ success: true, message: '', data: {} })),
+    http.post('*/api/v1/recurring/post-recurring-transaction', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: wireTx, accounts: [], nextPaymentAt: '2026-09-30 00:00:00' } })),
+  )
+  const form = {
+    id: 'r1', type: 'expense' as const, accountId: 'a1', accountRecipientId: null, amount: '50.5',
+    categoryId: 'c1', payeeId: null, tagId: null, labelIds: [], description: 'rent',
+    schedule: 'monthly' as const, nextPaymentAt: '2026-08-31 00:00:00',
+  }
+  const runs: [string, (qc: ReturnType<typeof makeWrapper>) => Promise<void>][] = [
+    ['create', async ({ wrapper }) => {
+      const { result } = renderHook(() => useCreateRecurring(), { wrapper })
+      result.current.mutate(form)
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    }],
+    ['update', async ({ wrapper }) => {
+      const { result } = renderHook(() => useUpdateRecurring(), { wrapper })
+      result.current.mutate(form)
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    }],
+    ['delete', async ({ wrapper }) => {
+      const { result } = renderHook(() => useDeleteRecurring(), { wrapper })
+      result.current.mutate('r1')
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    }],
+    ['post', async ({ wrapper }) => {
+      const { result } = renderHook(() => usePostRecurring(), { wrapper })
+      result.current.mutate({ recurringId: 'r1', id: 'op1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '50.5', amountRecipient: null, categoryId: 'c1', description: 'rent', payeeId: null, tagId: null, labelIds: [], date: '2026-08-31 00:00:00' })
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    }],
+  ]
+  for (const [name, run] of runs) {
+    const harness = makeWrapper()
+    const spy = vi.spyOn(harness.queryClient, 'invalidateQueries')
+    await run(harness)
+    expect({ name, keys: invalidatedKeys(spy) }).toEqual({ name, keys: expect.arrayContaining(budgetKeys) })
+  }
 })

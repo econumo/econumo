@@ -1196,6 +1196,10 @@
     }
   },
   "budgets": {
+    "transactions": {
+      "upcoming_hint": "Предстоящий регулярный платёж",
+      "later_cycle": "Можно провести после предыдущего платежа"
+    },
     "modal": {
       "budget_form": {
         "accounts": "Счета",
