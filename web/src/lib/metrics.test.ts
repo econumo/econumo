@@ -41,10 +41,10 @@ it('includes apple-wallet on/off on both product events and page views', () => {
   const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
   qc.setQueryData(queryKeys.importSources, [{ provider: 'apple-wallet' }])
   trackEvent(METRICS.IMPORT_SETUP_STEP, { provider: 'apple-wallet', step: 'install', done: true })
-  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ 'apple-wallet': 'on' }))
+  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ import_apple_wallet: 'on' }))
   qc.setQueryData(queryKeys.importSources, [])
   trackEvent(METRICS.PAGE_VIEW)
-  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ 'apple-wallet': 'off' }))
+  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ import_apple_wallet: 'off' }))
 })
 
 it('suppresses every setup funnel event when analytics is off', () => {
