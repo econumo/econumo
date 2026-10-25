@@ -25,7 +25,7 @@ export interface PlanCellView {
   over: boolean
   /** a savings account: `actual` is its month-end balance (projected ahead), not what was saved */
   balance: boolean
-  /** display only: a suggested plan or a short expense plan, from the month's upcoming payments */
+  /** display only: an expense plan short of spent + the month's upcoming payments */
   hint: PlanHint
 }
 

@@ -1727,51 +1727,55 @@ and on tablet/phone only with a hardware keyboard.
       column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
       they list and export at the UTC time after the upgrade instead of
       failing the list.
-- [ ] 📱 **Upcoming recurring payments are a plan hint**: with an active
+- [ ] 📱 **Upcoming recurring payments mark a short plan**: with an active
       recurring expense on a budget account (category X, due later this month,
-      nothing planned for X), the current month's Budget view shows X's plan
-      as spent + still due in grey italic. Spent, Available, the month's
-      totals, folder and tag-group sums are real money only and do not move.
-      Entering a plan for X replaces the hint; a plan of 0 or an empty plan
-      shows the hint again. The hint is never saved (reopening the editor
-      shows an empty field).
+      nothing planned for X), the current month's Budget view (desktop, phone
+      and the item sheet) shows X's plan exactly as before: empty / 0, with no
+      grey or italic suggested number. Spent, Available, the month's totals,
+      folder and tag-group sums are real money only and do not move.
 - [ ] 📱 An expense row (category, tag or envelope) whose plan is below spent +
       still due shows its plan in red, in the current and in future months; a
       plan at or above it stays normal. Income and savings rows are never
-      red. A savings row suggests an amount only when the net upcoming
-      (transfers in minus out) is positive.
-- [ ] No hint shows on folder, tag-group, total, label or child rows, nor in a
-      past month. A future month shows the hint on rows that have no plan,
-      from the templates falling in that month.
+      red.
+- [ ] No red hint shows on folder, tag-group, total, label or child rows, nor
+      in a past month.
 - [ ] 📱 In the Plan grid the same rules apply per cell: a cell without a plan
-      shows the hint in grey italic, a short plan is red, and the Income /
-      Expenses / Savings totals, Balance, Total savings, the savings rows'
-      Balance and every carry-over to later months ignore upcoming money.
-- [ ] 📱 Editing the plan of a cell that has upcoming money (desktop Budget
-      editor, phone set-limit dialog, Plan grid in-cell input) shows a
-      read-only list of those payments: date (overdue marked), name, amount
-      converted to the cell's currency (savings signed) and their total. A cell
-      with no upcoming money shows no list. The list offers no Post, Skip or
-      Edit.
+      stays blank, a short expense plan is red, and the Income / Expenses /
+      Savings totals, Balance, Total savings, the savings rows' Balance and
+      every carry-over to later months ignore upcoming money.
+- [ ] 📱 Editing the plan of a cell in the current month or later that has
+      money spent or due (desktop Budget editor, phone set-limit dialog, Plan
+      grid in-cell input) shows a small, muted list under the input: still-due
+      recurring payments (repeat icon, overdue marked) and your own
+      transactions dated later this month, merged by date, amounts converted
+      to the cell's currency (savings signed). Below: "Spent {amount}" when
+      something was spent, then "Use {amount}" = spent + still due. A cell
+      with nothing to list, a past month, or a read-only cell shows no list;
+      hovering a cell never shows it. The list offers no Post, Skip or Edit.
+- [ ] 📱 Tapping "Use {amount}" (e.g. 300 spent + 250 due → 550) replaces the
+      input's value with that plain number and keeps the cursor in the input;
+      in the Plan grid the cell stays in edit mode and nothing is saved until
+      Enter / Tab / clicking away. A future-dated real transaction listed in
+      the panel is not added to "Use" a second time (it is already in Spent).
 - [ ] 📱 The cell's transaction list (tap Spent / Actual) shows real
       transactions only: no upcoming rows and no Post / Skip / Edit of
       templates; future-dated real transactions are still dimmed. A cell with
       nothing real yet shows a dash in the Plan grid (the Budget view's 0 stays a
       link to the empty list).
 - [ ] A weekly template counts one occurrence per week in a month (four or
-      five, matching the month's weeks) in the hint and the editor list; a
+      five, matching the month's weeks) in the red rule and the editor list; a
       monthly template counts one.
 - [ ] An overdue template (next payment date in the past) counts once in the
       caller's current month, marked overdue in the editor list; later months
       count only occurrences after today.
 - [ ] Posting the overdue payment of a template due once moves the amount from
-      the hint into Spent. Posting the overdue payment of a template several
+      the editor list's recurring rows into Spent ("Use" is unchanged). Posting the overdue payment of a template several
       cycles behind (e.g. weekly, three weeks late) brings the next missed
-      cycle in as the new overdue payment in the hint and the editor list.
+      cycle in as the new overdue payment in the editor list.
 - [ ] A recurring template on a deleted budget account, or a transfer into
-      one, adds no hint and no editor-list row in any month.
+      one, adds no red hint and no editor-list row in any month.
 - [ ] 📱 A partner's template that sources or receives into a budget member
-      account counts in the hint and the editor list; a transfer into a member
+      account counts in the red rule and the editor list; a transfer into a member
       from an account outside the budget shows no account name to a
       participant who cannot see that account.
 - [ ] Editing, posting, skipping or deleting a recurring template refreshes

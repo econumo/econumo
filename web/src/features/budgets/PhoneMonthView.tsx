@@ -16,7 +16,7 @@ import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 import { sheetPlanHint } from './phoneMonth'
-import { planHintAmount, planHintClass } from './planHint'
+import { planHintClass } from './planHint'
 import { currentMonth } from './planMath'
 import { commentCellKey } from './queries'
 import { segmentTagGroups } from './tagGroups'
@@ -295,7 +295,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const planFigure = (target: SheetTarget, planned: string, currencyId: Id | null) => {
     const hint = sheetPlanHint(target)
-    return { first: fmt(planHintAmount(planned, hint), currencyId), firstClass: planHintClass(hint) }
+    return { first: fmt(planned, currencyId), firstClass: planHintClass(hint) }
   }
   const future = selectedDate > currentMonth()
   const commented = (id: Id) => (commentsByCell.get(commentCellKey(id, selectedDate))?.length ?? 0) > 0

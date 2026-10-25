@@ -1358,8 +1358,9 @@
     },
     "page": {
       "upcoming": {
-        "title": "Nadchodzące płatności cykliczne",
-        "total": "Razem {amount}"
+        "title": "Nadchodzące",
+        "spent": "Wydano {amount}",
+        "use": "Użyj {amount}"
       },
       "budget": {
         "empty": {

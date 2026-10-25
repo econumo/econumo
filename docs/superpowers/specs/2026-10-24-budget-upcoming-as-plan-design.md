@@ -22,29 +22,44 @@ The rule, in the user's words: **facts are about facts, the plan is about the pl
    figure (`BudgetTransactionsDialog`) shows no upcoming recurring rows, and Post / Skip /
    Edit of a template is no longer offered there. Due payments are handled in the Inbox
    (Due section) and on the Recurring settings page, as before #363.
-3. **Upcoming payments inform the plan number of a cell**, in every month from the caller's
-   current one onwards:
-   - **No plan set** (planned is 0 / unset) and the cell has upcoming money: the plan spot
-     shows `spent so far + upcoming still due` (the smallest plan that would not be red) in
-     **grey italic** as a suggestion. In a future month spent is normally 0, so it is the
-     upcoming total. It is display only:
-     nothing is saved, there is no accept button, and it is **not counted in any total**
-     (cell Available, folder / group / total rows, Balance, Total savings, carry-over,
-     multi-cell selection sum). Typing a plan replaces it.
-   - **Plan set but below what the month needs**: the plan number shows in **red**. What
-     the month needs is `spent so far + upcoming still due`. In a future month spent is 0,
-     so this is simply "plan < upcoming".
+3. **Upcoming payments mark a plan that is too small**, in every month from the caller's
+   current one onwards (revised after trying it, see below):
+   - **No plan set** (planned is 0 / unset): the cell looks exactly as it did before this
+     change. No suggested number is shown anywhere.
+   - **Expense plan set but below what the month needs**: the plan number shows in **red**.
+     What the month needs is `spent so far + upcoming still due`. In a future month spent
+     is normally 0, so this is simply "plan < upcoming".
    - **Plan set and at least that**: shown normally.
-4. **Editing a plan number shows the upcoming payments.** When the user opens the plan
-   editor of a cell that has upcoming payments in that month, a popover (or, on a phone
-   sheet, a block inside the sheet) lists them: date, name / payee, amount, with their
-   total. Read-only, no actions. With no upcoming payments nothing extra shows.
+4. **Editing a plan number lists what is still to come.** While the user edits the plan of
+   a cell in the current month or later that has money spent or due, a quiet list (small,
+   muted text, below the input) shows that month's still-due recurring payments (repeat
+   icon, overdue marked) and the user's own transactions dated later in the month, merged
+   by date, amounts in the cell currency. Below it: "Spent {amount}" when something was
+   spent, then a "Use {amount}" button that puts `spent + still due` into the input (focus
+   stays there; the grid's in-cell editor neither commits nor closes). Nothing shows on
+   read-only cells, in past months, or when the list is empty.
 
 "Upcoming" keeps #363's projection rules unchanged (server, `internal/budget`): every
 template on the budget's member accounts, whoever owns it; in the current month, an
 overdue next payment counts once plus the occurrences after today; later months get all
 their occurrences; filed into cells exactly as the posted transaction would be. In the
 current month, payments already posted are real and are in spent, not in upcoming.
+
+## Revised after trying it (2026-10-24)
+
+1. **Empty plans stay empty.** The grey italic suggestion is gone everywhere (Budget view
+   desktop and phone, the item sheet, the Plan grid). Red on expense plans below
+   `spent + still due` stays.
+2. **The list shows only while a plan is being edited**, never as a hover on a read-only
+   cell, and is visually quiet: `text-xs`, muted rows and lines, no bold.
+3. **"Use {amount}" fills the editor** with `spent + still due` (the old suggestion), as a
+   plain number like the editors start with, replacing the value and keeping focus. A
+   "Spent {amount}" line sits above it when spent > 0, so the numbers add up. The separate
+   total line is dropped. Tapping it fires `appBudgetPlanUseUpcoming`.
+4. **The list includes the user's own future-dated transactions** of that cell (rows of the
+   same `get-transaction-list` dated after today), merged with the recurring rows by date.
+   They are already in spent, so "Use" stays `spent + still due`. Editors get the list for
+   any cell in the current month or later with spent or upcoming money; past months never.
 
 ## Non-goals
 
@@ -55,15 +70,17 @@ current month, payments already posted are real and are in spent, not in upcomin
 
 ## Anti-goals
 
-- A suggested (grey) plan must never move any total or projection.
+- Upcoming money must never move any total or projection.
 - A spent / actual figure, or the list behind it, must never include money that does not
   exist yet.
-- The grey suggestion must never be mistaken for a saved plan (hence grey + italic).
+- Nothing unsaved may look like a saved plan (hence no suggested number; the editor's
+  "Use" only fills the input).
 
 ## Decided with the user
 
 - Future months: spent / actual real only (the combined grey figure from #363 is removed).
-- No plan: upcoming total as the plan, grey italic, not in totals.
+- No plan: upcoming total as the plan, grey italic, not in totals (superseded: see
+  "Revised after trying it").
 - Plan below what is needed: red; the popover with the planned transactions appears when
   editing the plan number, if there are any.
 - Spent list: past / real transactions only; upcoming rows removed from it.
@@ -71,23 +88,23 @@ current month, payments already posted are real and are in spent, not in upcomin
   next + later this month), red when `plan < spent + still due` ("let's try as you
   described").
 - No-plan suggestion = `spent + still due` (550 for 300 spent + 250 due), so typing the
-  suggested number never turns the cell red.
+  suggested number never turns the cell red (now the "Use" amount).
 
 ## Calls made by me (check these)
 
 - **Red is for expense cells only** (categories, tags, envelopes on the expense side, and
   their children). On income and savings rows, receiving or saving more than planned is
-  not an overrun, so they get the grey suggestion and the editor popover but never red.
-- **Folder, tag-group and total rows show no suggestion and no red**; they only sum real
+  not an overrun, so they get the editor list but never red.
+- **Folder, tag-group and total rows show no red**; they only sum real
   plans. The hint lives only on rows that hold a plan; child categories under an envelope
   or a tag show nothing, their upcoming money appears on the parent.
 - **The red rule uses the month's plan alone, not carry-over**, so the Budget view and the
   Plan grid share one rule (the grid has no carry-over). The existing red Available / bar
   in the Budget view stays as it is; the two can disagree when earlier months left money
   (red plan, positive Available), which reads as "this month's plan is short".
-- **Savings rows**: their `upcoming` is a net change (deposits minus withdrawals). The grey
-  suggestion shows only when that net is positive; savings never go red; the editor
-  popover lists deposits and withdrawals with their sign and the net total.
+- **Savings rows**: their `upcoming` is a net change (deposits minus withdrawals). Savings
+  never go red; the editor list shows deposits and withdrawals with their sign, and "Use"
+  is offered only when `spent + still due` is positive.
 - **Future-dated real transactions** count in spent, so in a future month that has some,
   the rule uses `spent + upcoming` like the current month does.
 - **Same treatment in the Budget monthly view (desktop table and phone sheet) and the Plan
@@ -117,8 +134,8 @@ current month, payments already posted are real and are in spent, not in upcomin
 - **Kept from #363**: future-dated real transactions are still styled upcoming in the
   spent list (they are real); every recurring mutation still invalidates `budget`,
   `budgetPlan` and `budgetTransactions` (the hint moves when a template is posted or edited).
-- **Analytics**: no new metric; this is display only, and the plan write already fires
-  its event.
+- **Analytics**: the plan write fires its own event; the "Use" button fires
+  `appBudgetPlanUseUpcoming` (added with the revision).
 
 ## How it reads in the UI
 
@@ -126,15 +143,16 @@ Expense cell "Groceries", future month, recurring 650 due that month:
 
 | plan | shown |
 |------|-------|
-| none | *650* in grey italic in the plan spot; Available 0 |
+| none | empty, as before (the editor's "Use 650.00" fills it) |
 | 500  | **500** in red |
 | 700  | 700, normal |
 
 Same cell, current month, spent 300, still due 250: plan 500 shows red (300 + 250 > 500);
-plan 600 normal; no plan shows *550* grey italic (300 spent + 250 still due).
+plan 600 normal; no plan shows nothing, and its editor offers "Use 550.00" (300 spent +
+250 still due).
 
-Opening the editor on any of them shows the list of that month's still-due payments with
-their total next to the input.
+Opening the editor on any of them lists that month's still-due payments and later-dated
+own transactions under the input, then "Spent 300.00" and "Use 550.00".
 
 ## Docs and tests
 

@@ -714,13 +714,12 @@ describe('upcoming recurring as a plan hint', () => {
   const element = (plan: BudgetPlanDto, id: string) => plan.structure.elements.find((e) => e.id === id)!
   const planned = (testId: string) => within(screen.getByTestId(testId)).getByTestId('cell-planned')
 
-  it('Balance ignores a suggested plan', async () => {
+  it('a cell with no plan stays empty and the Balance ignores money due', async () => {
     renderWithUpcoming((plan) => {
       element(plan, 'cat-freelance').cells[3] = { actual: '0', planned: '', upcoming: '1000' }
     })
     await screen.findByTestId('plan-sheet')
-    // the suggestion is there, and the Balance does not move by it
-    expect(planned('plan-cell-cat-freelance:2')).toHaveTextContent(/^1,000\.00$/)
+    expect(planned('plan-cell-cat-freelance:2')).toHaveTextContent(/^$/)
     const base = fixtureWirePlan as unknown as BudgetPlanDto
     const ex = makePlanExchange(base, [fixtureUsd, fixtureEur])
     const balance = balanceRow(base, planTotals(base, ex), ex)
@@ -728,14 +727,14 @@ describe('upcoming recurring as a plan hint', () => {
     expect(screen.getByTestId('plan-balance-2')).toHaveTextContent(fmt(balance[2]))
   })
 
-  it('grid shows the suggestion in italic', async () => {
+  it('grid shows no suggestion', async () => {
     renderWithUpcoming((plan) => {
       element(plan, 'cat-food').cells[3] = { actual: '0', planned: '', upcoming: '650' }
     })
     await screen.findByTestId('plan-sheet')
     const slot = planned('plan-cell-cat-food:2')
-    expect(slot).toHaveTextContent(/^650\.00$/)
-    expect(slot).toHaveClass('italic', 'text-muted-foreground')
+    expect(slot).toHaveTextContent(/^$/)
+    expect(slot).not.toHaveClass('italic')
   })
 
   it('an expense plan below spent plus still due is red; income and past months never are', async () => {

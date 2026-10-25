@@ -23,7 +23,6 @@ import type { MenuAction, RowLevel } from './monthLayout'
 import { CHILD_INDENT, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
 import { leftToReceive, sheetPlanHint } from './phoneMonth'
 import type { PlanHint } from './planHint'
-import { planHintAmount } from './planHint'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 import { arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, moveElementInArrangement, placeFromEnvelope, preferRowCollisions } from './elementMove'
 import type { DropIndicator, ElementContainer, ElementMoveItem } from './elementMove'
@@ -124,7 +123,7 @@ interface MonthFlowsProps {
   future: boolean
   actionsColumn: boolean
   /** the planned cell: the page decides between the inline editor, the item sheet and
-   *  comments; `text` already shows the hint's suggestion */
+   *  comments; `hint` marks a plan short of what the month needs */
   renderPlanned: (target: FlowTarget, text: string, hint: PlanHint) => ReactNode
   onShowTransactions?: (target: BudgetTransactionsTarget) => void
   /** ⋮ menus, shown on hover */
@@ -173,7 +172,7 @@ export function MonthFlows({
   }
   const planned = (target: FlowTarget, amount: string, currencyId: Id) => {
     const hint = sheetPlanHint(target)
-    return renderPlanned(target, fmt(planHintAmount(amount, hint), currencyId), hint)
+    return renderPlanned(target, fmt(amount, currencyId), hint)
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const exchangeFn = makeBudgetExchange(budget, currencies)

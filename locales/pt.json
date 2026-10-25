@@ -1358,8 +1358,9 @@
     },
     "page": {
       "upcoming": {
-        "title": "Pagamentos recorrentes por liquidar",
-        "total": "Total {amount}"
+        "title": "Por vir",
+        "spent": "Gasto {amount}",
+        "use": "Utilizar {amount}"
       },
       "budget": {
         "empty": {

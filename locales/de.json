@@ -1358,8 +1358,9 @@
     },
     "page": {
       "upcoming": {
-        "title": "Fällige wiederkehrende Zahlungen",
-        "total": "Summe {amount}"
+        "title": "Noch ausstehend",
+        "spent": "Ausgegeben {amount}",
+        "use": "{amount} übernehmen"
       },
       "budget": {
         "empty": {

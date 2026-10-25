@@ -1358,8 +1358,9 @@
     },
     "page": {
       "upcoming": {
-        "title": "Предстоящие регулярные платежи",
-        "total": "Итого {amount}"
+        "title": "Предстоит",
+        "spent": "Потрачено {amount}",
+        "use": "Подставить {amount}"
       },
       "budget": {
         "empty": {

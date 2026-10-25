@@ -1358,8 +1358,9 @@
     },
     "page": {
       "upcoming": {
-        "title": "Terugkerende betalingen die openstaan",
-        "total": "Totaal {amount}"
+        "title": "Nog te gaan",
+        "spent": "Uitgegeven {amount}",
+        "use": "{amount} gebruiken"
       },
       "budget": {
         "empty": {

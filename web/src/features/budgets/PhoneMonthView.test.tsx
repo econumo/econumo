@@ -573,12 +573,11 @@ it('same-name tags fold under one row with their sums; opened, each tag names it
   expect(within(screen.getByTestId('phone-row-tag-b')).getByText('Partner')).toBeInTheDocument()
 })
 
-it('phone row suggests with no plan', () => {
+it('phone row with no plan shows no suggestion', () => {
   renderView({ selectedDate: '2099-01-01' }, (b) => {
     Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { budgeted: '0', spent: '0', available: '0', budgetSpent: '0', upcoming: '650' })
   })
-  const figure = within(screen.getByTestId('phone-row-cat-food')).getByText('650.00')
-  expect(figure).toHaveClass('italic', 'text-muted-foreground')
+  expect(screen.getByTestId('phone-row-cat-food')).not.toHaveTextContent('650')
 })
 
 it('phone row with a plan below upcoming shows the plan in red', () => {
@@ -588,7 +587,7 @@ it('phone row with a plan below upcoming shows the plan in red', () => {
   expect(within(screen.getByTestId('phone-row-cat-food')).getByText('500.00')).toHaveClass('text-expense')
 })
 
-it('phone income and savings rows suggest with no plan and never go red', async () => {
+it('phone income and savings rows show no suggestion and never go red', async () => {
   const row = { element: salaries, planned: '0', actual: '0', upcoming: '1500' }
   renderView({ planMonth: { ...planMonth, income: incomeOf(row) } }, (b) => {
     b.structure.savings = [
@@ -597,8 +596,8 @@ it('phone income and savings rows suggest with no plan and never go red', async 
     ]
   })
   await userEvent.click(screen.getByTestId('phone-income-summary'))
-  expect(within(screen.getByTestId('phone-income-row-ie1')).getByText('1,500.00')).toHaveClass('italic', 'text-muted-foreground')
+  expect(screen.getByTestId('phone-income-row-ie1')).not.toHaveTextContent('1,500')
   await userEvent.click(screen.getByTestId('phone-savings-summary'))
-  expect(within(screen.getByTestId('phone-savings-row-acc-s1')).getByText('300.00')).toHaveClass('italic', 'text-muted-foreground')
+  expect(screen.getByTestId('phone-savings-row-acc-s1')).not.toHaveTextContent('300')
   expect(within(screen.getByTestId('phone-savings-row-acc-s2')).getByText('100.00')).not.toHaveClass('text-expense')
 })

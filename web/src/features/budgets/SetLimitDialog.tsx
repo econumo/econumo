@@ -15,7 +15,7 @@ interface SetLimitDialogProps {
   onCommit: (elementId: string, amount: string | null) => void
   /** an income or savings amount: a plan to meet, not a spending limit */
   plan?: boolean
-  /** set only for a cell with upcoming money, so other cells fetch nothing */
+  /** set only for a cell that can have money still to come, so other cells fetch nothing */
   upcoming?: UpcomingQuery | null
 }
 
@@ -66,7 +66,16 @@ export function SetLimitDialog({ target, onClose, onCommit, plan = false, upcomi
             <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
           </div>
         </CardField>
-        {upcoming ? <UpcomingPaymentsPanel query={upcoming} /> : null}
+        {upcoming ? (
+          <UpcomingPaymentsPanel
+            query={upcoming}
+            onUse={(amount) => {
+              setValue(amount)
+              setError(null)
+              document.getElementById('set-limit-amount')?.focus()
+            }}
+          />
+        ) : null}
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}

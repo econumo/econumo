@@ -27,6 +27,7 @@ import { planCellView, shownActual } from './planCell'
 import { planHintClass } from './planHint'
 import { PlanCellInput } from './PlanCellInput'
 import type { CellMove } from './PlanCellInput'
+import { wantsUpcomingPanel } from './planHint'
 import type { MonthExchange, PlanRow } from './planMath'
 import { tagGroupPlanSums } from './planMath'
 
@@ -400,7 +401,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
           const editable = isEditableCell(el, m, idx, ctx.meta, ctx.userId)
           const view = planCellView({ type: el.type, id: el.id, cell, month: m, selected: ctx.selected })
           const actual = view.actual
-          const planFigure = view.hint?.kind === 'suggest' ? view.hint.amount : view.plan
+          const planFigure = view.plan
           const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
           const picked = !!ctx.picked?.has(pickedKey(rk, i))
           const fillSource = ctx.fill.active?.rowKey === rk && ctx.fill.active.startCol === i
@@ -525,13 +526,15 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                       onCommit={ctx.finishEdit}
                       onCancel={ctx.cancelEdit}
                       upcoming={
-                        cell?.upcoming && !isZero(cell.upcoming)
+                        cell && wantsUpcomingPanel(m, cell.actual, cell.upcoming)
                           ? {
                               budget: { meta: ctx.meta },
                               target: { id: el.id, type: el.type, name: displayName, icon: el.icon, currencyId: el.currencyId },
                               periodStart: m,
                               currency,
                               exchange: ctx.cellExchange(idx),
+                              spent: cell.actual,
+                              upcoming: cell.upcoming,
                             }
                           : null
                       }

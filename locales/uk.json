@@ -1358,8 +1358,9 @@
     },
     "page": {
       "upcoming": {
-        "title": "Майбутні регулярні платежі",
-        "total": "Разом {amount}"
+        "title": "Попереду",
+        "spent": "Витрачено {amount}",
+        "use": "Підставити {amount}"
       },
       "budget": {
         "empty": {

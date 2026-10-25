@@ -21,7 +21,7 @@ export function PlanCellInput({
   /** called only with a valid value; the grid decides whether it changed */
   onCommit: (raw: string, move: CellMove) => void
   onCancel: () => void
-  /** set only for a cell with upcoming money, so other cells fetch nothing */
+  /** set only for a cell that can have money still to come, so other cells fetch nothing */
   upcoming?: UpcomingQuery | null
 }) {
   const { t } = useTranslation()
@@ -102,7 +102,7 @@ export function PlanCellInput({
         className="w-full bg-transparent p-0 text-right text-[15px] tabular-nums outline-none"
       />
       {upcoming && !invalid ? (
-        // read-only: a press here must not blur the input (which commits) or reach the cell
+        // a press here must not blur the input (which commits) or reach the cell
         <div
           className="absolute top-full right-0 z-30 mt-0.5 w-64 rounded-md bg-popover p-2 text-left text-popover-foreground shadow empty:hidden"
           onMouseDown={(e) => e.preventDefault()}
@@ -110,7 +110,13 @@ export function PlanCellInput({
           onClick={(e) => e.stopPropagation()}
           onDoubleClick={(e) => e.stopPropagation()}
         >
-          <UpcomingPaymentsPanel query={upcoming} />
+          <UpcomingPaymentsPanel
+            query={upcoming}
+            onUse={(amount) => {
+              setValue(amount)
+              ref.current?.focus()
+            }}
+          />
         </div>
       ) : null}
       {invalid ? (

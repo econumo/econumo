@@ -15,7 +15,7 @@ function recordTransactionLists() {
       seen.push(new URL(request.url))
       const upcoming = [
         {
-          id: 'rt1', author: fixtureOwner, currencyId: 'cur-usd', amount: '40', description: 'Groceries box',
+          id: 'rt1', author: fixtureOwner, currencyId: 'cur-usd', amount: '250', description: 'Groceries box',
           category: null, payee: null, tag: null, spentAt: '2026-07-20 00:00:00',
           templateId: 'rt1', schedule: 'monthly', accountId: 'a1', accountName: 'Cash',
           labelNames: [], isNext: true, isOverdue: false, canEdit: true,
@@ -33,6 +33,8 @@ const upcoming: UpcomingQuery = {
   periodStart: '2026-07-01',
   currency: fixtureUsd as CurrencyDto,
   exchange: (_from, _to, amount) => amount,
+  spent: '300',
+  upcoming: '250',
 }
 
 function renderEditor(query: UpcomingQuery | null) {
@@ -52,7 +54,18 @@ it('lists the upcoming payments under the amount once opened', async () => {
   expect(seen).toEqual([])
   fireEvent.click(screen.getByRole('button', { name: 'limit Food' }))
   expect(await screen.findByText('Groceries box')).toBeInTheDocument()
-  expect(screen.getByText('Total 40.00')).toBeInTheDocument()
+  expect(screen.getByText('Spent 300.00')).toBeInTheDocument()
+})
+
+it('Use puts spent + still due into the input and keeps it focused', async () => {
+  recordTransactionLists()
+  renderEditor(upcoming)
+  fireEvent.click(screen.getByRole('button', { name: 'limit Food' }))
+  const use = await screen.findByRole('button', { name: 'Use 550.00' })
+  fireEvent.click(use)
+  const input = screen.getByRole('textbox')
+  expect(input).toHaveValue('550')
+  expect(input).toHaveFocus()
 })
 
 it('fetches nothing for a cell without upcoming money', async () => {

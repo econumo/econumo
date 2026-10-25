@@ -1357,14 +1357,18 @@ data unreadable. Most are also asserted by the test suite.
   `get-budget` elements and children (savings rows and labels carry only `upcoming`), `upcoming` on `get-budget-plan` cells,
   an `upcoming` array on `get-transaction-list` (read only by the plan editor's payment list).
   The SPA (`features/budgets/planHint.ts`), from the current month on, on rows
-  that hold a plan: no plan (empty or 0) shows spent + still due in grey italic (display
-  only, not saved, in no total); an expense row (category/tag/envelope) whose plan is below
-  spent + still due shows the plan in red; income and savings are never red (savings suggest
-  only when the net upcoming is positive); folder, tag-group, total, label and child rows
-  get no hint, and Uncategorized (no plan to hint) is listed only for real money. The plan editors (desktop `LimitEditor`, phone `SetLimitDialog`, Plan grid
-  in-cell input) of a cell with upcoming money list those payments read-only (date, overdue
-  marker, name, amount converted to the cell currency, savings signed) with their total;
-  there is no Post/Skip/Edit of templates from budget views.
+  that hold a plan: an empty plan (empty or 0) stays empty, no suggestion is shown; an
+  expense row (category/tag/envelope) whose plan is below spent + still due shows the plan
+  in red; income and savings are never red; folder, tag-group, total, label and child rows
+  get no hint, and Uncategorized (no plan to hint) is listed only for real money. While a
+  plan is being edited (desktop `LimitEditor`, phone `SetLimitDialog`, Plan grid in-cell
+  input), a cell in the current month or later with spent or upcoming money gets a quiet
+  list (`UpcomingPaymentsPanel`): the still-due recurring payments (repeat icon, overdue
+  marker) merged by date with the cell's own transactions dated after today, amounts
+  converted to the cell currency, savings signed; then "Spent {amount}" (when > 0) and a
+  "Use {amount}" button that fills the input with spent + still due (future-dated rows are
+  already in spent, never added twice) without committing. Past months and read-only cells
+  never show it; there is no Post/Skip/Edit of templates from budget views.
 - **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,
   never removes the row — `accounts.currency_id` and `transactions.account_id` cascade from it,
   so a hard delete would silently destroy every account and transaction in that currency. A

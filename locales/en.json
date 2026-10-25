@@ -1358,8 +1358,9 @@
     },
     "page": {
       "upcoming": {
-        "title": "Recurring payments due",
-        "total": "Total {amount}"
+        "title": "Coming up",
+        "spent": "Spent {amount}",
+        "use": "Use {amount}"
       },
       "budget": {
         "empty": {

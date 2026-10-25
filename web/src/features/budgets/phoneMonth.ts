@@ -192,6 +192,20 @@ export function sheetUpcoming(target: SheetTarget): string | undefined {
   }
 }
 
+/** the target's real money so far this month (element currency): spent, received or saved */
+export function sheetSpent(target: SheetTarget): string {
+  switch (target.kind) {
+    case 'expense':
+      return target.element.spent
+    case 'savings':
+      return target.row.spent
+    case 'plan':
+      return target.cell.actual
+    case 'label':
+      return target.label.spent
+  }
+}
+
 export function sheetSetsPlan(target: SheetTarget): boolean {
   switch (target.kind) {
     case 'expense':

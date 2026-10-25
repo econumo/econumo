@@ -972,7 +972,7 @@ describe('upcoming recurring as a plan hint', () => {
     return plan
   }
 
-  it('the inline editors show the suggestion in grey italic and open on an empty input', async () => {
+  it('the inline editors show no suggestion and open on an empty input', async () => {
     server.use(
       ...coreHandlers({ user: userWithBudget }),
       http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: hintBudget() } })),
@@ -982,18 +982,17 @@ describe('upcoming recurring as a plan hint', () => {
     renderPage()
     const food = await screen.findByTestId('element-cat-food')
     const trigger = within(food).getByRole('button', { name: 'limit Food' })
-    expect(trigger).toHaveTextContent(/^650\.00$/)
-    expect(trigger).toHaveClass('italic', 'text-muted-foreground')
+    expect(trigger).toHaveTextContent(/^0\.00$/)
+    expect(trigger).not.toHaveClass('italic')
 
     const savings = within(screen.getByTestId('month-savings-row-acc-s1')).getByRole('button', { name: 'limit Rainy day' })
-    expect(savings).toHaveTextContent(/^300\.00$/)
-    expect(savings).toHaveClass('italic', 'text-muted-foreground')
+    expect(savings).toHaveTextContent(/^0\.00$/)
+    expect(savings).not.toHaveClass('italic')
 
     const salaries = await waitFor(() => within(screen.getByTestId('month-income-row-ie1')).getByRole('button', { name: 'limit Salaries' }))
-    expect(salaries).toHaveTextContent(/^1,500\.00$/)
-    expect(salaries).toHaveClass('italic', 'text-muted-foreground')
+    expect(salaries).toHaveTextContent(/^0\.00$/)
+    expect(salaries).not.toHaveClass('italic')
 
-    // the suggestion is display only: the editor opens empty
     await user.click(trigger)
     expect(await screen.findByLabelText('Budget')).toHaveValue('')
   })

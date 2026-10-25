@@ -1358,8 +1358,9 @@
     },
     "page": {
       "upcoming": {
-        "title": "待付定期付款",
-        "total": "合计 {amount}"
+        "title": "即将发生",
+        "spent": "已支出 {amount}",
+        "use": "使用 {amount}"
       },
       "budget": {
         "empty": {

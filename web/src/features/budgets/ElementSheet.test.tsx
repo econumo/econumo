@@ -242,11 +242,12 @@ it('a reporting tag shows Spent only, with Transactions and Edit but no comments
   expect(props.onEdit).toHaveBeenCalled()
 })
 
-it('suggests the upcoming total as the Budget figure while no plan is set', () => {
+it('keeps an empty Budget figure empty with money still due', () => {
   const unplanned: BudgetElementDto = { ...food, budgeted: '0', spent: '300', budgetSpent: '300', available: '-300', upcoming: '250' }
   renderSheet({ target: { kind: 'expense', element: unplanned } })
-  const value = within(screen.getByTestId('sheet-figure-budget')).getByText('550.00')
-  expect(value).toHaveClass('italic', 'text-muted-foreground')
+  const figure = screen.getByTestId('sheet-figure-budget')
+  expect(within(figure).getByText('0.00')).not.toHaveClass('italic')
+  expect(figure).not.toHaveTextContent('550')
 })
 
 it('shows a Budget figure below what the month needs in red', () => {
@@ -255,8 +256,8 @@ it('shows a Budget figure below what the month needs in red', () => {
   expect(within(screen.getByTestId('sheet-figure-budget')).getByText('500.00')).toHaveClass('text-expense')
 })
 
-it('an income plan cell suggests its upcoming total as the Planned figure', () => {
+it('an income plan cell with no plan keeps its Planned figure empty', () => {
   const salaries = planElement({ id: 'ie1', type: 4, name: 'Salaries' })
   renderSheet({ target: { kind: 'plan', cell: { element: salaries, planned: '0', actual: '0', upcoming: '1500' } }, onShowTransactions: undefined })
-  expect(within(screen.getByTestId('sheet-figure-planned')).getByText('1,500.00')).toHaveClass('italic', 'text-muted-foreground')
+  expect(screen.getByTestId('sheet-figure-planned')).not.toHaveTextContent('1,500')
 })

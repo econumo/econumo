@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -46,10 +46,14 @@ it('lists the upcoming payments under the amount', async () => {
           periodStart: '2026-07-01',
           currency: fixtureUsd as CurrencyDto,
           exchange: (_from, _to, amount) => amount,
+          spent: '0',
+          upcoming: '70',
         }}
       />
     </QueryClientProvider>,
   )
   expect(await screen.findByText('Phone plan')).toBeInTheDocument()
-  expect(screen.getByText('Total 70.00')).toBeInTheDocument()
+  expect(screen.queryByText(/^Spent /)).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Use 70.00' }))
+  expect(document.getElementById('set-limit-amount')).toHaveValue('70')
 })

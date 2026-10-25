@@ -1,8 +1,9 @@
 import { BudgetElementType, isIncomeType } from '@/api/dto/budget'
 import { add, cmp, isZero } from '@/lib/decimal'
+import { currentMonth } from './planMath'
 
 export type PlanHintKind = 'expense' | 'income' | 'savings'
-export type PlanHint = { kind: 'suggest'; amount: string } | { kind: 'short' } | null
+export type PlanHint = { kind: 'short' } | null
 
 export function planHintKind(type: BudgetElementType): PlanHintKind {
   if (type === BudgetElementType.SAVINGS) return 'savings'
@@ -10,33 +11,24 @@ export function planHintKind(type: BudgetElementType): PlanHintKind {
   return 'expense'
 }
 
-export const PLAN_SUGGEST_CLASS = 'italic text-muted-foreground'
+/** what the month needs: spent so far plus what is still due (absent = 0) */
+export function planNeed(spent: string, upcoming: string | undefined): string {
+  return upcoming === undefined ? spent : add(spent, upcoming)
+}
 
-/** planned: '' or a decimal (element currency); spent: real money so far; upcoming: still due (absent = 0) */
-export function planHint(input: {
-  planned: string
-  spent: string
-  upcoming?: string
-  kind: PlanHintKind
-}): PlanHint {
+/** planned: '' or a decimal (element currency); spent: real money so far; upcoming: still due (absent = 0).
+ *  An empty plan stays empty: only an expense plan below what the month needs is marked. */
+export function planHint(input: { planned: string; spent: string; upcoming?: string; kind: PlanHintKind }): PlanHint {
   const { planned, spent, upcoming, kind } = input
-  if (upcoming === undefined || isZero(upcoming)) return null
-  if (kind === 'savings' && cmp(upcoming, '0') <= 0) return null
+  if (kind !== 'expense' || upcoming === undefined || isZero(upcoming) || isZero(planned)) return null
+  return cmp(planned, planNeed(spent, upcoming)) < 0 ? { kind: 'short' } : null
+}
 
-  const need = add(spent, upcoming)
-  if (isZero(planned)) {
-    return cmp(need, '0') > 0 ? { kind: 'suggest', amount: need } : null
-  }
-  return kind === 'expense' && cmp(planned, need) < 0 ? { kind: 'short' } : null
+/** whether a plan editor lists the cell's money still to come: never in a past month, nor with nothing spent or due */
+export function wantsUpcomingPanel(month: string, spent: string, upcoming: string | undefined): boolean {
+  return month >= currentMonth() && (!isZero(spent) || (upcoming !== undefined && !isZero(upcoming)))
 }
 
 export function planHintClass(hint: PlanHint): string {
-  if (hint?.kind === 'suggest') return PLAN_SUGGEST_CLASS
-  if (hint?.kind === 'short') return 'text-expense'
-  return ''
-}
-
-/** the figure a plan spot shows: the suggestion while no plan is set */
-export function planHintAmount(planned: string, hint: PlanHint): string {
-  return hint?.kind === 'suggest' ? hint.amount : planned
+  return hint?.kind === 'short' ? 'text-expense' : ''
 }

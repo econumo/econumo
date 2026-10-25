@@ -95,6 +95,7 @@ import { PlanSelectionHint } from './PlanSelectionHint'
 import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
 import type { GridCtx, PlanCellEdit, PlanLimitTarget, PlanSelection } from './PlanRows'
 import type { CellMove } from './PlanCellInput'
+import { wantsUpcomingPanel } from './planHint'
 
 export interface PlanSheetProps {
   /** the ALREADY-LOADED budget (meta for permissions/currency); plan data is fetched inside */
@@ -2036,7 +2037,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         }}
         plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) : false}
         upcoming={
-          planLimitTarget && dialogCell?.upcoming && !isZero(dialogCell.upcoming)
+          planLimitTarget && dialogCell && wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming)
             ? {
                 budget,
                 target: {
@@ -2049,6 +2050,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
                 periodStart: planLimitTarget.month,
                 currency: currencies.find((c) => c.id === planLimitTarget.el.currencyId),
                 exchange: planMonthExchange(plan, currencies, planLimitTarget.monthIndex),
+                spent: dialogCell.actual,
+                upcoming: dialogCell.upcoming,
               }
             : null
         }

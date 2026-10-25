@@ -13,7 +13,7 @@ import { carryOver, displayAvailable, elementDisplayName, rowState } from './bud
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
 import { sheetCell, sheetIcon, sheetPlanHint, sheetSetsPlan } from './phoneMonth'
-import { planHintAmount, planHintClass } from './planHint'
+import { planHintClass } from './planHint'
 import { currentMonth, formatPlanMonth } from './planMath'
 
 const EMPTY = '—'
@@ -88,7 +88,7 @@ export function ElementSheet({
   const planFigure = (key: string, figureLabel: string, planned: string): Figure => ({
     key,
     label: figureLabel,
-    value: fmt(planHintAmount(planned, hint)),
+    value: fmt(planned),
     className: planHintClass(hint),
   })
   const label = {

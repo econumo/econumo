@@ -49,9 +49,9 @@ describe('planCellView', () => {
 })
 
 describe('planCellView plan hint', () => {
-  it('future cell with no plan suggests upcoming', () => {
+  it('a future cell with no plan stays empty', () => {
     const view = planCellView({ type: cat, cell: { actual: '0', planned: '', upcoming: '650' }, month: '2026-11-01', selected: sel })
-    expect(view.hint).toEqual({ kind: 'suggest', amount: '650' })
+    expect(view.hint).toBeNull()
     expect(view.plan).toBeNull()
   })
   it('current month short', () => {
@@ -60,12 +60,9 @@ describe('planCellView plan hint', () => {
   it('past month has no hint', () => {
     expect(planCellView({ type: cat, cell: { actual: '0', planned: '', upcoming: '650' }, month: '2026-09-01', selected: sel }).hint).toBeNull()
   })
-  it('a savings balance cell suggests what is still to be saved, only without a plan', () => {
+  it('a savings balance cell never carries a hint', () => {
     const sav = BudgetElementType.SAVINGS
-    expect(planCellView({ type: sav, cell: { actual: '100', planned: '', closingBalance: '5000', upcoming: '200' }, month: '2026-11-01', selected: sel }).hint).toEqual({
-      kind: 'suggest',
-      amount: '300',
-    })
+    expect(planCellView({ type: sav, cell: { actual: '100', planned: '', closingBalance: '5000', upcoming: '200' }, month: '2026-11-01', selected: sel }).hint).toBeNull()
     expect(planCellView({ type: sav, cell: { actual: '100', planned: '50', closingBalance: '5000', upcoming: '200' }, month: '2026-11-01', selected: sel }).hint).toBeNull()
   })
 })

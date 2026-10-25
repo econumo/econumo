@@ -9,7 +9,7 @@ import { isZero } from '@/lib/decimal'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { limitAmountFromInput } from './limitAmount'
 import type { PlanHint } from './planHint'
-import { planHintAmount, planHintClass } from './planHint'
+import { planHintClass } from './planHint'
 import { UpcomingPaymentsPanel, type UpcomingQuery } from './UpcomingPaymentsPanel'
 
 interface LimitEditorProps {
@@ -19,7 +19,7 @@ interface LimitEditorProps {
   currency: CurrencyDto | undefined
   onCommit: (amount: string | null) => void
   hint?: PlanHint
-  /** set only for a cell with upcoming money, so other cells fetch nothing */
+  /** set only for a cell that can have money still to come, so other cells fetch nothing */
   upcoming?: UpcomingQuery | null
 }
 
@@ -58,7 +58,7 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit,
           className={`w-full text-right underline-offset-2 hover:underline ${planHintClass(hint)}`}
           aria-label={`limit ${name}`}
         >
-          {moneyFormat(planHintAmount(currentValue, hint), currency, { showCurrency: false, useNativePrecision: false })}
+          {moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="end">
@@ -76,7 +76,16 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit,
               <CalculatorInput id={`limit-${id}`} autoFocus value={value} onChange={setValue} />
             </div>
           </CardField>
-          {upcoming ? <UpcomingPaymentsPanel query={upcoming} /> : null}
+          {upcoming ? (
+            <UpcomingPaymentsPanel
+              query={upcoming}
+              onUse={(amount) => {
+                setValue(amount)
+                setError(null)
+                document.getElementById(`limit-${id}`)?.focus()
+              }}
+            />
+          ) : null}
           <Button type="submit" size="sm">
             {t('common.button.save.label')}
           </Button>

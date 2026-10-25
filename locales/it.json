@@ -1358,8 +1358,9 @@
     },
     "page": {
       "upcoming": {
-        "title": "Pagamenti ricorrenti in scadenza",
-        "total": "Totale {amount}"
+        "title": "In arrivo",
+        "spent": "Speso {amount}",
+        "use": "Usa {amount}"
       },
       "budget": {
         "empty": {

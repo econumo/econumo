@@ -1358,8 +1358,9 @@
     },
     "page": {
       "upcoming": {
-        "title": "Paiements récurrents à venir",
-        "total": "Total {amount}"
+        "title": "À venir",
+        "spent": "Dépensé {amount}",
+        "use": "Utiliser {amount}"
       },
       "budget": {
         "empty": {

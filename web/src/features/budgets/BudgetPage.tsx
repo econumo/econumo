@@ -5,7 +5,6 @@ import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { besidePointer, centerRowOnPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
-import { isZero } from '@/lib/decimal'
 import { Check, ChevronLeft, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { isAxiosError } from 'axios'
@@ -60,9 +59,9 @@ import { CommentMarker } from './CommentThread'
 import { CommentsPanel } from './CommentsPanel'
 import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
-import { planMonthFigures, sheetCell, sheetSetsPlan, sheetUpcoming, type IncomeGroup, type SheetTarget } from './phoneMonth'
+import { planMonthFigures, sheetCell, sheetSetsPlan, sheetSpent, sheetUpcoming, type IncomeGroup, type SheetTarget } from './phoneMonth'
 import type { UpcomingQuery } from './UpcomingPaymentsPanel'
-import { planHintClass, type PlanHint } from './planHint'
+import { planHintClass, wantsUpcomingPanel, type PlanHint } from './planHint'
 import { PhoneMonthView } from './PhoneMonthView'
 import { ViewSwitch } from './ViewSwitch'
 import { MonthFlows, MonthTotalsLines } from './MonthFlows'
@@ -488,10 +487,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     }
   }
   const sheetTransactions = sheetTarget ? sheetTransactionsTargetOf(sheetTarget) : null
-  // only a cell with upcoming money gets a query, so opening any other editor fetches nothing
+  // only a cell that can have money still to come gets a query, so opening any other editor fetches nothing
   const upcomingQueryOf = (target: SheetTarget): UpcomingQuery | null => {
-    const amount = sheetUpcoming(target)
-    const listTarget = amount && !isZero(amount) ? sheetTransactionsTargetOf(target) : null
+    const spent = sheetSpent(target)
+    const upcoming = sheetUpcoming(target)
+    const listTarget = wantsUpcomingPanel(selectedDate, spent, upcoming) ? sheetTransactionsTargetOf(target) : null
     if (!listTarget) {
       return null
     }
@@ -502,6 +502,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       periodStart: selectedDate,
       currency: currencies.find((c) => c.id === currencyId),
       exchange: makeBudgetExchange(budget, currencies),
+      spent,
+      upcoming,
     }
   }
   const sheetCanSetAmount = (target: SheetTarget): boolean => {

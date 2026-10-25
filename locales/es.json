@@ -1358,8 +1358,9 @@
     },
     "page": {
       "upcoming": {
-        "title": "Pagos recurrentes pendientes",
-        "total": "Total {amount}"
+        "title": "Próximamente",
+        "spent": "Gastado {amount}",
+        "use": "Usar {amount}"
       },
       "budget": {
         "empty": {

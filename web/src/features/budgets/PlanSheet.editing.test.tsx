@@ -506,33 +506,34 @@ function recordTransactionLists(upcoming: unknown[] = []) {
   return seen
 }
 
-// Living (pe1) with 80 still due in July
+// Living (pe1) in July: 300 spent so far, 250 still due
 const planWithUpcoming = {
   ...fixtureWirePlan,
   structure: {
     ...fixtureWirePlan.structure,
     elements: fixtureWirePlan.structure.elements.map((el) =>
-      el.id === 'pe1' ? { ...el, cells: el.cells.map((c, i) => (i === 2 ? { ...c, upcoming: '80' } : c)) } : el,
+      el.id === 'pe1' ? { ...el, cells: el.cells.map((c, i) => (i === 2 ? { ...c, actual: '300', upcoming: '250' } : c)) } : el,
     ),
   },
 }
 
-it('editing a cell with upcoming shows the payments', async () => {
+const internetRow = {
+  id: 'rt1', author: fixtureOwner, currencyId: 'cur-usd', amount: '250', description: 'Internet',
+  category: null, payee: null, tag: null, spentAt: '2026-07-20 00:00:00',
+  templateId: 'rt1', schedule: 'monthly', accountId: 'a1', accountName: 'Cash',
+  labelNames: [], isNext: true, isOverdue: false, canEdit: true,
+}
+
+it('editing a current-month cell lists what is still to come', async () => {
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
   usePlanHandlers(planWithUpcoming)
-  const seen = recordTransactionLists([
-    {
-      id: 'rt1', author: fixtureOwner, currencyId: 'cur-usd', amount: '80', description: 'Internet',
-      category: null, payee: null, tag: null, spentAt: '2026-07-20 00:00:00',
-      templateId: 'rt1', schedule: 'monthly', accountId: 'a1', accountName: 'Cash',
-      labelNames: [], isNext: true, isOverdue: false, canEdit: true,
-    },
-  ])
+  const seen = recordTransactionLists([internetRow])
   renderPage()
   const { grid } = await gridAtFirstExpenseCell()
   fireEvent.keyDown(grid, { key: 'F2' })
   expect(await screen.findByText('Internet')).toBeInTheDocument()
-  expect(screen.getByText('Recurring payments due')).toBeInTheDocument()
-  expect(screen.getByText('Total 80.00')).toBeInTheDocument()
+  expect(screen.getByText('Coming up')).toBeInTheDocument()
+  expect(screen.getByText('Spent 300.00')).toBeInTheDocument()
   expect(seen[0].searchParams.get('envelopeId')).toBe('pe1')
   expect(seen[0].searchParams.get('periodStart')).toBe('2026-07-01')
   // the panel keeps the grid's keys: Esc still closes the editor
@@ -540,9 +541,28 @@ it('editing a cell with upcoming shows the payments', async () => {
   expect(screen.queryByText('Internet')).not.toBeInTheDocument()
 })
 
-it('a cell without upcoming makes no transactions request', async () => {
-  usePlanHandlers()
-  const seen = recordTransactionLists()
+it('Use fills the cell editor with spent + still due without committing', async () => {
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  usePlanHandlers(planWithUpcoming)
+  recordTransactionLists([internetRow])
+  const calls = recordSetLimit()
+  renderPage()
+  const { grid } = await gridAtFirstExpenseCell()
+  fireEvent.keyDown(grid, { key: 'F2' })
+  const use = await screen.findByRole('button', { name: 'Use 550.00' })
+  const input = screen.getByRole('textbox')
+  fireEvent.mouseDown(use)
+  fireEvent.click(use)
+  expect(input).toHaveValue('550')
+  expect(input).toHaveFocus()
+  await new Promise((r) => setTimeout(r, 30))
+  expect(calls).toEqual([])
+})
+
+it('a past month makes no transactions request', async () => {
+  // August is the current month, so July is past
+  usePlanHandlers(planWithUpcoming)
+  const seen = recordTransactionLists([internetRow])
   renderPage()
   const { grid } = await gridAtFirstExpenseCell()
   fireEvent.keyDown(grid, { key: 'F2' })

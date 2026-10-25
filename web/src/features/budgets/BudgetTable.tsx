@@ -25,7 +25,7 @@ import { CHILD_INDENT, FIRST_COL, FOLD_LINE, foldOnLineClick, FOLDER_INDENT, gro
 import { segmentTagGroups } from './tagGroups'
 import { sheetPlanHint } from './phoneMonth'
 import type { PlanHint } from './planHint'
-import { planHintAmount, planHintClass } from './planHint'
+import { planHintClass } from './planHint'
 
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
@@ -195,7 +195,7 @@ function ElementRow({
   const size = isUncategorized ? '' : 'text-[15px]'
   const hint = sheetPlanHint({ kind: 'expense', element })
   const hintClass = planHintClass(hint)
-  const plannedText = moneyFormat(planHintAmount(element.budgeted, hint), currency, opts)
+  const plannedText = moneyFormat(element.budgeted, currency, opts)
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string, danger: boolean) => {
     if (future) {
