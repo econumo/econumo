@@ -1760,6 +1760,9 @@ and on tablet/phone only with a hardware keyboard.
       in the Plan grid the cell stays in edit mode and nothing is saved until
       Enter / Tab / clicking away. A future-dated real transaction listed in
       the panel is not added to Total a second time (it is already in Spent).
+- [ ] 📱 In the phone plan dialog the list sits above the amount field, so the
+      field and the Save / Cancel buttons stay in the same place whether the
+      list is there, still loading, or long.
 - [ ] 📱 The cell's transaction list (tap Spent / Actual) shows real
       transactions only: no upcoming rows and no Post / Skip / Edit of
       templates; future-dated real transactions are still dimmed. A cell with

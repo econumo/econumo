@@ -60,12 +60,7 @@ export function SetLimitDialog({ target, onClose, onCommit, plan = false, upcomi
           submit()
         }}
       >
-        {/* the transaction dialog's amount card: label inside, borderless oversized input */}
-        <CardField label={plan ? t('budgets.form.budget_limit.plan.label') : t('budgets.form.budget_limit.limit.label')} htmlFor="set-limit-amount" error={error}>
-          <div className={amountCardInputClass}>
-            <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
-          </div>
-        </CardField>
+        {/* above the amount: the drawer grows upward, so the field and buttons keep their place */}
         {upcoming ? (
           <UpcomingPaymentsPanel
             query={upcoming}
@@ -76,6 +71,12 @@ export function SetLimitDialog({ target, onClose, onCommit, plan = false, upcomi
             }}
           />
         ) : null}
+        {/* the transaction dialog's amount card: label inside, borderless oversized input */}
+        <CardField label={plan ? t('budgets.form.budget_limit.plan.label') : t('budgets.form.budget_limit.limit.label')} htmlFor="set-limit-amount" error={error}>
+          <div className={amountCardInputClass}>
+            <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
+          </div>
+        </CardField>
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}

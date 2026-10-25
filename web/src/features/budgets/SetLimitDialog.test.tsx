@@ -13,7 +13,7 @@ beforeEach(() => {
   }))
 })
 
-it('lists the upcoming payments under the amount', async () => {
+it('lists the upcoming payments above the amount, so the field keeps its place', async () => {
   server.use(
     http.get('*/api/v1/budget/get-transaction-list', () =>
       HttpResponse.json({
@@ -52,7 +52,9 @@ it('lists the upcoming payments under the amount', async () => {
       />
     </QueryClientProvider>,
   )
-  expect(await screen.findByText('Phone plan')).toBeInTheDocument()
+  const row = await screen.findByText('Phone plan')
+  const input = document.getElementById('set-limit-amount') as HTMLElement
+  expect(row.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(screen.queryByTestId('upcoming-spent')).not.toBeInTheDocument()
   fireEvent.click(screen.getByText('Phone plan'))
   expect(document.getElementById('set-limit-amount')).toHaveValue('70')
