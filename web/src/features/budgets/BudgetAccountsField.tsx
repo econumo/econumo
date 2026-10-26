@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { ChevronRight, Lock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
 import { EntityIcon } from '@/components/EntityIcon'
-import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { dialogActionsClass } from '@/components/ResponsiveDialog'
+import { PickerSheet } from '@/components/PickerSheet'
 import { rankByName } from '@/lib/search'
-import { SheetSearch } from '@/components/SheetSearch'
-import { useIsPhone } from '@/hooks/useIsPhone'
 import type { AccountDto } from '@/api/dto/account'
 import type { Id } from '@/api/types'
 import { useFolders } from '@/features/accounts/queries'
@@ -84,44 +83,29 @@ function AccountChecklistDialog({
   notes?: ReactNode
 }) {
   const { t } = useTranslation()
-  const [search, setSearch] = useState('')
-  useEffect(() => {
-    if (open) {
-      setSearch('')
-    }
-  }, [open])
   const total = groups.reduce((n, g) => n + g.accounts.length, 0)
-  const isPhone = useIsPhone()
-  const searchable = total >= SEARCH_THRESHOLD
   return (
-    <ResponsiveDialog
+    <PickerSheet
       open={open}
-      onOpenChange={(o) => !o && onClose()}
+      onClose={onClose}
       title={title}
       description={description}
-      footer={
-        <div className="flex flex-col gap-3">
-          {isPhone && searchable ? (
-            <SheetSearch
-              aria-label={t('accounts.page.toolbar.search')}
-              placeholder={t('accounts.page.toolbar.search')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          ) : null}
-          <div className={dialogActionsClass}>
-            <Button type="button" className="col-span-2" onClick={onClose}>
-              {t('common.button.ok.label')}
-            </Button>
-          </div>
+      searchLabel={t('accounts.page.toolbar.search')}
+      searchable={total >= SEARCH_THRESHOLD}
+      // a checklist is ticked by tapping: no keyboard over the list on open
+      focusSearch={false}
+      listClassName="max-h-96 max-md:max-h-none"
+      actions={
+        <div className={dialogActionsClass}>
+          <Button type="button" className="col-span-2" onClick={onClose}>
+            {t('common.button.ok.label')}
+          </Button>
         </div>
       }
+      after={() => (notes ? <div className="mt-3 flex flex-col gap-1 text-[11px] text-muted-foreground">{notes}</div> : null)}
     >
-      <Command shouldFilter={false}>
-        {searchable && !isPhone ? (
-          <CommandInput placeholder={t('accounts.page.toolbar.search')} value={search} onValueChange={setSearch} />
-        ) : null}
-        <CommandList className="mt-2 max-h-96 max-md:max-h-none">
+      {(search) => (
+        <>
           <CommandEmpty>{t('common.list.list_empty')}</CommandEmpty>
           {groups.map((group) => {
             const shown = rankByName(group.accounts, (a) => a.name, search)
@@ -153,10 +137,9 @@ function AccountChecklistDialog({
               </CommandGroup>
             )
           })}
-        </CommandList>
-      </Command>
-      {notes ? <div className="mt-3 flex flex-col gap-1 text-[11px] text-muted-foreground">{notes}</div> : null}
-    </ResponsiveDialog>
+        </>
+      )}
+    </PickerSheet>
   )
 }
 

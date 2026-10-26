@@ -73,12 +73,10 @@ it('switching account to an existing account shows writable accounts only', asyn
   renderDialog()
   const user = await uploadCsv()
   await user.click(screen.getByRole('button', { name: 'toggle Account mode' }))
-  const select = (await screen.findByLabelText('Account')) as HTMLSelectElement
-  const labels = [...select.options].map((o) => o.textContent)
-  expect(labels.some((l) => l?.startsWith('Cash ('))).toBe(true)
   // Import requires an account pick now
   expect(screen.getByRole('button', { name: 'Import' })).toBeDisabled()
-  await user.selectOptions(select, 'a1')
+  await user.click(await screen.findByRole('combobox', { name: 'Account' }))
+  await user.click(await screen.findByRole('option', { name: /Cash \(/ }))
   expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled()
 })
 
@@ -236,7 +234,8 @@ it('switching the target account owner clears a fixed label pick, so it never le
   expect(healthChip).toHaveAttribute('aria-checked', 'true')
 
   await user.click(screen.getByRole('button', { name: 'toggle Account mode' }))
-  await user.selectOptions(screen.getByLabelText('Account'), 'a-shared')
+  await user.click(screen.getByRole('combobox', { name: 'Account' }))
+  await user.click(await screen.findByRole('option', { name: /Shared \(/ }))
 
   // the picker now only offers the new owner's labels, and the stale pick
   // from the previous owner is gone rather than silently carried over

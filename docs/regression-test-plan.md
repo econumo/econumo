@@ -2454,12 +2454,19 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       then picking, leaves the form still as the sheet closes, and the next
       picker opens over an unchanged page. With a hardware keyboard, Shift+Tab
       from the sheet's search moves up through the rows.
-- [ ] 📱 Picker sheets with a search (Currency on accounts, budgets, envelopes
-      and Profile; a budget's Accounts / Savings accounts checklist with 6+
-      accounts; Merge into on categories, tags and payees): on a phone the
-      search is the sheet's bottom row, right above the keyboard, with the list
-      above it; typing filters. Currency focuses the search on open and Enter
-      picks the first match. Desktop keeps the search above the list.
+- [ ] 📱 Every picker sheet with a search behaves the same (Category /
+      Recipient / account on transactions and recurring templates; Currency on
+      accounts, budgets, envelopes and Profile; a budget's Accounts / Savings
+      accounts checklist with 6+ accounts; Merge into on categories, tags and
+      payees; the account on Map to account for Apple Wallet / SimpleFIN cards;
+      the fixed account, category, payee and tag of a CSV import): on a phone
+      the search is the sheet's bottom row, right above the keyboard (above the
+      sheet's OK / Merge buttons where it has them), with the list above it;
+      typing filters and the first row is highlighted, ↑ / ↓ move the
+      highlight with a hardware keyboard, and Enter picks it. The selected row
+      carries a check mark. Search-first pickers (Category, Recipient, account,
+      Currency) raise the keyboard on open; the checklist and Merge into do
+      not. Desktop keeps the search above the list, with the same keys.
 - [ ] Row actions open bottom sheets (accounts, transactions, classifications,
       recurring, sessions, tokens, budgets).
 - [ ] Long lists scroll smoothly; sidebar scroll position is remembered when

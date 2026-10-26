@@ -1,12 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { CommandEmpty, CommandItem } from '@/components/ui/command'
+import { PickerSheet } from '@/components/PickerSheet'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { rankByName } from '@/lib/search'
-import { SheetSearch } from '@/components/SheetSearch'
-import { useIsPhone } from '@/hooks/useIsPhone'
 import { useCurrencies } from '@/features/currencies/queries'
 import { selectableCurrencies } from '@/features/currencies/selectable'
 import type { Id } from '@/api/types'
@@ -23,63 +19,24 @@ interface CurrencyPickerDialogProps {
 export function CurrencyPickerDialog({ open, title, value, onClose, onPick }: CurrencyPickerDialogProps) {
   const { t } = useTranslation()
   const { data: currencies } = useCurrencies()
-  const [search, setSearch] = useState('')
-
-  useEffect(() => {
-    if (open) {
-      setSearch('')
-    }
-  }, [open])
-
-  const options = rankByName(selectableCurrencies(currencies, value ?? undefined), (c) => [c.name, c.code, c.symbol], search)
-  const isPhone = useIsPhone()
-  const searchRef = useRef<HTMLInputElement>(null)
+  const options = (search: string) => rankByName(selectableCurrencies(currencies, value ?? undefined), (c) => [c.name, c.code, c.symbol], search)
   const pick = (id: Id) => {
     onPick(id)
     onClose()
   }
 
   return (
-    <ResponsiveDialog
-      open={open}
-      onOpenChange={(o) => !o && onClose()}
-      title={title}
-      initialFocus={searchRef}
-      footer={
-        isPhone ? (
-          <SheetSearch
-            ref={searchRef}
-            aria-label={t('accounts.page.toolbar.search')}
-            placeholder={t('accounts.page.toolbar.search')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              // an IME's Enter confirms the composition (Safari reports it as 229), not a pick
-              if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && options[0]) {
-                e.preventDefault()
-                pick(options[0].id)
-              }
-            }}
-          />
-        ) : undefined
-      }
-    >
-      <Command shouldFilter={false}>
-        {isPhone ? null : <CommandInput autoFocus placeholder={t('accounts.page.toolbar.search')} value={search} onValueChange={setSearch} />}
-        <CommandList className="mt-4 max-h-72 max-md:mt-0 max-md:max-h-none">
+    <PickerSheet open={open} onClose={onClose} title={title} searchLabel={t('accounts.page.toolbar.search')}>
+      {(search) => (
+        <>
           <CommandEmpty />
-          {options.map((currency) => (
-            <CommandItem
-              key={currency.id}
-              value={currency.id}
-              onSelect={() => pick(currency.id)}
-            >
+          {options(search).map((currency) => (
+            <CommandItem key={currency.id} value={currency.id} data-checked={currency.id === value} onSelect={() => pick(currency.id)}>
               <span className="flex-1">{fullCurrencyLabel(currency)}</span>
-              {currency.id === value ? <Check className="size-4 text-econumo-link" /> : null}
             </CommandItem>
           ))}
-        </CommandList>
-      </Command>
-    </ResponsiveDialog>
+        </>
+      )}
+    </PickerSheet>
   )
 }

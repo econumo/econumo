@@ -307,6 +307,12 @@ describe('on a phone', () => {
     fireEvent.touchEnd(combobox(), { changedTouches: [{ clientX: 10, clientY: 40 }] })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
+    // out past the slop and back again is still a scroll
+    fireEvent.touchStart(combobox(), { touches: [{ clientX: 10, clientY: 100 }] })
+    fireEvent.touchMove(combobox(), { touches: [{ clientX: 10, clientY: 60 }] })
+    fireEvent.touchEnd(combobox(), { changedTouches: [{ clientX: 10, clientY: 98 }] })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
     fireEvent.touchStart(combobox(), { touches: [{ clientX: 10, clientY: 100 }] })
     fireEvent.touchEnd(combobox(), { changedTouches: [{ clientX: 12, clientY: 103 }] })
     expect(screen.getByRole('dialog')).toBeInTheDocument()
