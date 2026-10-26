@@ -77,3 +77,18 @@ it('search skips letters and lists the closest name first', async () => {
   await userEvent.type(screen.getByLabelText(/search/i), 'trans')
   expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Transport', 'Bank transfers'])
 })
+
+it('on a phone the search sits below the list and still filters it', async () => {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  const user = userEvent.setup()
+  renderDialog({ candidates: [food, groceries, { id: 'c3', name: 'Rent', position: 2, isArchived: 0 }] })
+  const list = screen.getByRole('listbox')
+  const search = screen.getByRole('textbox', { name: 'Search' })
+  expect(list.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+  await user.type(search, 'ren')
+  expect(screen.getByRole('option', { name: 'Rent' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: 'Groceries' })).not.toBeInTheDocument()
+})

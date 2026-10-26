@@ -2446,6 +2446,12 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       closes the sheet, a new name offers "Add «name»". The form behind never
       scrolls or resizes while you move between pickers. Desktop keeps the
       inline dropdown.
+- [ ] 📱 Picker sheets with a search (Currency on accounts, budgets, envelopes
+      and Profile; a budget's Accounts / Savings accounts checklist with 6+
+      accounts; Merge into on categories, tags and payees): on a phone the
+      search is the sheet's bottom row, right above the keyboard, with the list
+      above it; typing filters. Currency focuses the search on open and Enter
+      picks the first match. Desktop keeps the search above the list.
 - [ ] Row actions open bottom sheets (accounts, transactions, classifications,
       recurring, sessions, tokens, budgets).
 - [ ] Long lists scroll smoothly; sidebar scroll position is remembered when

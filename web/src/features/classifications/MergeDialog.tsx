@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,6 +7,8 @@ import { EntityIcon } from '@/components/EntityIcon'
 import { InfoBox } from '@/components/InfoBox'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { rankByName } from '@/lib/search'
+import { SheetSearch } from '@/components/SheetSearch'
+import { useIsPhone } from '@/hooks/useIsPhone'
 import type { ClassificationItem } from './ClassificationList'
 
 interface MergeDialogProps<T extends ClassificationItem> {
@@ -52,21 +55,24 @@ export function MergeDialog<T extends ClassificationItem>({
 
   const eligible = candidates.filter((item) => item.id !== source?.id)
   const visible = rankByName(eligible, (item) => item.name, query)
+  const isPhone = useIsPhone()
+  const searchProps = {
+    'aria-label': t('common.list.search'),
+    placeholder: t('common.list.search'),
+    value: query,
+    onChange: (e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value),
+  }
 
   return (
     <ResponsiveDialog
       open={open}
       onOpenChange={(o) => !o && onClose()}
       title={t('classifications.common.merge.title', { name: source?.name ?? '' })}
+      footer={isPhone ? <SheetSearch {...searchProps} /> : undefined}
     >
       <div className="flex flex-col gap-3">
         {info ? <InfoBox>{info}</InfoBox> : null}
-        <Input
-          aria-label={t('common.list.search')}
-          placeholder={t('common.list.search')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+        {isPhone ? null : <Input {...searchProps} />}
         <div className="flex max-h-64 flex-col overflow-y-auto" role="listbox">
           {visible.length === 0 ? (
             <p className="px-1 py-2 text-sm text-muted-foreground">{t('common.list.search_empty')}</p>

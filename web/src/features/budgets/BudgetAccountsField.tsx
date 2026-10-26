@@ -7,6 +7,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { rankByName } from '@/lib/search'
+import { SheetSearch } from '@/components/SheetSearch'
+import { useIsPhone } from '@/hooks/useIsPhone'
 import type { AccountDto } from '@/api/dto/account'
 import type { Id } from '@/api/types'
 import { useFolders } from '@/features/accounts/queries'
@@ -89,6 +91,8 @@ function AccountChecklistDialog({
     }
   }, [open])
   const total = groups.reduce((n, g) => n + g.accounts.length, 0)
+  const isPhone = useIsPhone()
+  const searchable = total >= SEARCH_THRESHOLD
   return (
     <ResponsiveDialog
       open={open}
@@ -96,15 +100,25 @@ function AccountChecklistDialog({
       title={title}
       description={description}
       footer={
-        <div className={dialogActionsClass}>
-          <Button type="button" className="col-span-2" onClick={onClose}>
-            {t('common.button.ok.label')}
-          </Button>
+        <div className="flex flex-col gap-3">
+          {isPhone && searchable ? (
+            <SheetSearch
+              aria-label={t('accounts.page.toolbar.search')}
+              placeholder={t('accounts.page.toolbar.search')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          ) : null}
+          <div className={dialogActionsClass}>
+            <Button type="button" className="col-span-2" onClick={onClose}>
+              {t('common.button.ok.label')}
+            </Button>
+          </div>
         </div>
       }
     >
       <Command shouldFilter={false}>
-        {total >= SEARCH_THRESHOLD ? (
+        {searchable && !isPhone ? (
           <CommandInput placeholder={t('accounts.page.toolbar.search')} value={search} onValueChange={setSearch} />
         ) : null}
         <CommandList className="mt-2 max-h-96 max-md:max-h-none">

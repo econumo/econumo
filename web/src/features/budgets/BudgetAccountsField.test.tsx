@@ -87,6 +87,24 @@ describe('BudgetAccountsField', () => {
   })
 })
 
+it('on a phone the checklist search sits below the list, above OK, and still filters it', async () => {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  const user = userEvent.setup()
+  const many = ['Cash', 'Card', 'Savings', 'Brokerage', 'Wallet', 'Travel'].map((name, i) => acc(`a${i}`, name))
+  renderField(<BudgetAccountsField accounts={many} selected={new Set()} locked={new Set()} onToggle={vi.fn()} />)
+  const picker = await openPicker(user, 'accounts')
+  const search = within(picker).getByRole('textbox', { name: 'Search' })
+  const ok = within(picker).getByRole('button', { name: 'OK' })
+  expect(within(picker).getByRole('option', { name: 'include Cash' }).compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(search.compareDocumentPosition(ok) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+  await user.type(search, 'trav')
+  expect(within(picker).getByRole('option', { name: 'include Travel' })).toBeInTheDocument()
+  expect(within(picker).queryByRole('option', { name: 'include Cash' })).toBeNull()
+})
+
 describe('BudgetSavingsField', () => {
   const accounts = [acc('a1', 'Cash'), acc('a2', 'Rainy day'), acc('a3', 'Brokerage')]
 
