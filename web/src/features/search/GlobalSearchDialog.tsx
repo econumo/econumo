@@ -11,7 +11,7 @@ import { useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { ClassificationType } from '@/lib/search'
-import { useFolders } from '@/features/accounts/queries'
+import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useConnections } from '@/features/connections/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
@@ -23,8 +23,12 @@ import {
   type ViewTransaction,
 } from '@/features/transactions/useAccountTransactions'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
+import { useExchange } from '@/features/currencies/useExchange'
+import { recurringPostPayload } from '@/features/recurring/postPayload'
+import { usePostRecurring, useRecurring, useSkipRecurring } from '@/features/recurring/queries'
+import { ViewRecurringDialog } from '@/features/recurring/ViewRecurringDialog'
 import { useUserData } from '@/features/user/queries'
-import { AccountResult, ClassificationResult, DrillHeader, TransactionResult, type ClassificationItem } from './SearchRows'
+import { AccountResult, ClassificationResult, DrillHeader, RecurringResult, TransactionResult, type ClassificationItem } from './SearchRows'
 import { useGlobalSearch, type SearchScope } from './useGlobalSearch'
 import { useWindowed } from './useWindowed'
 
@@ -32,7 +36,7 @@ const ALL: SearchScope = { kind: 'all' }
 const GROUP_CAP = 5
 
 type ClassificationGroup = 'categories' | 'payees' | 'tags' | 'labels'
-type GroupKey = 'accounts' | ClassificationGroup
+type GroupKey = 'accounts' | 'recurring' | ClassificationGroup
 
 const CLASSIFICATION_GROUPS: { key: ClassificationGroup; type: ClassificationType }[] = [
   { key: 'categories', type: 'category' },
@@ -67,7 +71,15 @@ function firstTransactions(entries: DailyListEntry[], count: number): DailyListE
 
 // Lives inside the dialog content, which unmounts on close: every open starts
 // from a fresh query/scope, and nothing is computed while the search is closed.
-function SearchPanel({ onPreview, dismissible }: { onPreview: (tx: ViewTransaction) => void; dismissible: boolean }) {
+function SearchPanel({
+  onPreview,
+  onPreviewRecurring,
+  dismissible,
+}: {
+  onPreview: (tx: ViewTransaction) => void
+  onPreviewRecurring: (id: string) => void
+  dismissible: boolean
+}) {
   const { t, i18n } = useTranslation()
   const close = useUiStore((s) => s.closeSearch)
   const isPhone = useIsPhone()
@@ -115,7 +127,7 @@ function SearchPanel({ onPreview, dismissible }: { onPreview: (tx: ViewTransacti
   const result = useGlobalSearch(query, scope)
   const { count, hasMore, sentinelRef } = useWindowed(result.transactionCount, `${query}|${JSON.stringify(scope)}`)
 
-  const select = (type: ClassificationType | 'account' | 'transaction') => trackEvent(METRICS.GLOBAL_SEARCH_SELECT, { type })
+  const select = (type: ClassificationType | 'account' | 'recurring' | 'transaction') => trackEvent(METRICS.GLOBAL_SEARCH_SELECT, { type })
 
   const capped = <T,>(key: GroupKey, items: T[]): T[] => (expanded[key] ? items : items.slice(0, GROUP_CAP))
   const showAll = (key: GroupKey, total: number) =>
@@ -133,6 +145,7 @@ function SearchPanel({ onPreview, dismissible }: { onPreview: (tx: ViewTransacti
     (query.trim() !== '' || scope.kind !== 'all') &&
     result.transactionCount === 0 &&
     result.accounts.length === 0 &&
+    result.recurring.length === 0 &&
     CLASSIFICATION_GROUPS.every(({ key }) => result[key].length === 0)
 
   // phones: the panel fills the full-screen sheet, with the list scrolling
@@ -205,6 +218,21 @@ function SearchPanel({ onPreview, dismissible }: { onPreview: (tx: ViewTransacti
               </CommandGroup>
             ) : null
           })}
+          {result.recurring.length > 0 ? (
+            <CommandGroup heading={t('search.groups.recurring')}>
+              {capped('recurring', result.recurring).map((tx) => (
+                <RecurringResult
+                  key={tx.id}
+                  transaction={tx}
+                  onSelect={() => {
+                    select('recurring')
+                    onPreviewRecurring(tx.id)
+                  }}
+                />
+              ))}
+              {showAll('recurring', result.recurring.length)}
+            </CommandGroup>
+          ) : null}
           {result.transactionCount > 0 ? (
             // the recent feed (empty query) and a drill-down are one list, so no heading
             <CommandGroup heading={query.trim() && scope.kind === 'all' ? t('search.groups.transactions') : undefined}>
@@ -249,13 +277,26 @@ export function GlobalSearchDialog() {
   const open = useUiStore((s) => s.searchOpen)
   const close = useUiStore((s) => s.closeSearch)
   const openTransactionModal = useUiStore((s) => s.openTransactionModal)
+  const openRecurringModal = useUiStore((s) => s.openRecurringModal)
   const { data: user } = useUserData()
+  const { data: accounts } = useAccounts()
+  const { data: recurringList } = useRecurring()
+  const exchangeFn = useExchange()
   const deleteTransaction = useDeleteTransaction()
+  const postRecurring = usePostRecurring()
+  const skipRecurring = useSkipRecurring()
   const [preview, setPreview] = useState<ViewTransaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
+  const [recurringId, setRecurringId] = useState<string | null>(null)
+  // resolved from the live list so the sheet never acts on a stale template
+  const recurringPreview = recurringId ? recurringList?.find((rt) => rt.id === recurringId) : undefined
   // interactions inside the stacked preview/confirm must not dismiss the search
-  const dismissible = !preview && !deleteTarget
+  const dismissible = !preview && !deleteTarget && !recurringPreview
 
+  const canChangeRecurring = (accountId: string) => {
+    const account = accounts?.find((a) => a.id === accountId)
+    return !!account && canWriteToAccount(account, user?.id)
+  }
   const canChange = (tx: ViewTransaction) => canTouchTransaction(tx, !!tx.account && canWriteToAccount(tx.account, user?.id))
 
   return (
@@ -269,7 +310,7 @@ export function GlobalSearchDialog() {
         size="wide"
         dismissible={dismissible}
       >
-        <SearchPanel onPreview={setPreview} dismissible={dismissible} />
+        <SearchPanel onPreview={setPreview} onPreviewRecurring={setRecurringId} dismissible={dismissible} />
       </ResponsiveDialog>
 
       {preview ? (
@@ -288,6 +329,30 @@ export function GlobalSearchDialog() {
           canChange={canChange(preview)}
           isShared={(preview.account?.sharedAccess.length ?? 0) > 0}
           dismissible={deleteTarget === null}
+        />
+      ) : null}
+
+      {recurringPreview ? (
+        <ViewRecurringDialog
+          recurring={recurringPreview}
+          onClose={() => setRecurringId(null)}
+          onPost={() => {
+            postRecurring.mutate(recurringPostPayload(recurringPreview, accounts ?? [], exchangeFn), {
+              onSuccess: () => setRecurringId(null),
+            })
+          }}
+          onSkip={() => {
+            skipRecurring.mutate(recurringPreview.id, { onSuccess: () => setRecurringId(null) })
+          }}
+          onEdit={() => {
+            setRecurringId(null)
+            // the form must not open stacked under the search sheet
+            close()
+            openRecurringModal({ recurring: recurringPreview })
+          }}
+          canChange={canChangeRecurring(recurringPreview.accountId)}
+          skipPending={skipRecurring.isPending}
+          postPending={postRecurring.isPending}
         />
       ) : null}
 

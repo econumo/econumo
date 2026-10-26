@@ -1890,6 +1890,7 @@
       "payees": "Odbiorcy",
       "tags": "Tagi",
       "labels": "Tagi raportowe",
+      "recurring": "Cykliczne",
       "transactions": "Transakcje"
     },
     "show_all": "Pokaż wszystkie ({count})",

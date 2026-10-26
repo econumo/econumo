@@ -1890,6 +1890,7 @@
       "payees": "Beneficiários",
       "tags": "Etiquetas",
       "labels": "Etiquetas de relatório",
+      "recurring": "Recorrentes",
       "transactions": "Transações"
     },
     "show_all": "Mostrar todos ({count})",

@@ -1890,6 +1890,7 @@
       "payees": "收款人",
       "tags": "标签",
       "labels": "统计标签",
+      "recurring": "定期交易",
       "transactions": "交易"
     },
     "show_all": "显示全部 ({count})",

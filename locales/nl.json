@@ -1890,6 +1890,7 @@
       "payees": "Begunstigden",
       "tags": "Tags",
       "labels": "Rapportagetags",
+      "recurring": "Terugkerend",
       "transactions": "Transacties"
     },
     "show_all": "Alles tonen ({count})",

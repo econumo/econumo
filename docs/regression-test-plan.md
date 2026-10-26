@@ -978,6 +978,12 @@ and on tablet/phone only with a hardware keyboard.
       expands the whole group.
 - [ ] Selecting a transaction opens its preview; Edit opens the form (search
       closes); Delete removes it and the list updates.
+- [ ] A query matching a recurring template (description, amount, payee,
+      category, schedule name) shows it under "Recurring", soonest next payment
+      first, the date red when due; a category/payee/tag/label drill-down lists
+      that item's templates too; the empty-query feed shows none. Selecting one
+      opens its preview: Post and Skip act on it (search stays open), the
+      schedule row opens the template form (search closes).
 - [ ] Keyboard: ↑/↓ move the highlight, Enter opens the highlighted row, Esc
       closes search.
 - [ ] 📱 On a phone the search field reads "Search" with a ✕ to its right, and
