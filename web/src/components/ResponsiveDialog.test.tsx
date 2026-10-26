@@ -230,3 +230,41 @@ it('a fullScreen page stays held after a sheet closes until its keyboard is down
     }
   }
 })
+
+it('a sheet closed with its keyboard already down leaves the page free to fit the next keyboard', () => {
+  mockMatchMedia(true)
+  const vv = Object.assign(new EventTarget(), { height: 450, offsetTop: 0 })
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport')
+  Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+  const page = (sheetOpen: boolean) => (
+    <ResponsiveDialog open fullScreen onOpenChange={() => {}} title="Page">
+      <ResponsiveDialog open={sheetOpen} onOpenChange={() => {}} title="Sheet">
+        <p>sheet</p>
+      </ResponsiveDialog>
+    </ResponsiveDialog>
+  )
+  const keyboard = (height: number) =>
+    act(() => {
+      vv.height = height
+      vv.dispatchEvent(new Event('resize'))
+    })
+  try {
+    // fitted to a page field's keyboard, then a sheet opens and its keyboard is hidden
+    const { baseElement, rerender } = render(page(false))
+    const content = () => baseElement.querySelector<HTMLElement>('[data-slot="dialog-content"]')
+    expect(content()?.style.height).toBe('450px')
+    rerender(page(true))
+    keyboard(800)
+    rerender(page(false))
+    // a page field raises a keyboard of another height: the page fits it, not the stale 450
+    keyboard(380)
+    expect(content()?.style.height).toBe('380px')
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'visualViewport', original)
+    } else {
+      delete (window as { visualViewport?: unknown }).visualViewport
+    }
+  }
+})

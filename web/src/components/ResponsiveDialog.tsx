@@ -91,11 +91,13 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
       heldKeyboard.current = liveKeyboard
     }
   }, [covered, sheetKeyboard, liveKeyboard])
+  // also when the sheet closed with its keyboard already down: the viewport
+  // then never changes again to clear it
   useEffect(() => {
-    if (liveKeyboard.height === 0) {
+    if (sheetKeyboard && liveKeyboard.height === 0) {
       setSheetKeyboard(false)
     }
-  }, [liveKeyboard])
+  }, [sheetKeyboard, liveKeyboard])
   const keyboard = held ? heldKeyboard.current : liveKeyboard
   const cover = useCallback((delta: 1 | -1) => {
     setCovered((n) => n + delta)

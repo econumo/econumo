@@ -2446,6 +2446,14 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       closes the sheet, a new name offers "Add «name»". The form behind never
       scrolls or resizes while you move between pickers. Desktop keeps the
       inline dropdown, and opening it does not change the dialog's size.
+- [ ] 📱 Phone picker edge cases (Add transaction): a scroll of the form that
+      starts on Category or Recipient scrolls it without opening the picker;
+      typing a name with a Chinese / Japanese / Korean keyboard and pressing
+      Enter to confirm the word keeps the sheet open (a second Enter picks);
+      picking with the keyboard up, or hiding the keyboard inside the sheet and
+      then picking, leaves the form still as the sheet closes, and the next
+      picker opens over an unchanged page. With a hardware keyboard, Shift+Tab
+      from the sheet's search moves up through the rows.
 - [ ] 📱 Picker sheets with a search (Currency on accounts, budgets, envelopes
       and Profile; a budget's Accounts / Savings accounts checklist with 6+
       accounts; Merge into on categories, tags and payees): on a phone the
