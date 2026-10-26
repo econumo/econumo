@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { OptionSelect } from '@/components/OptionSelect'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyField } from '@/features/currencies/CurrencyField'
-import { rankByName } from '@/lib/search'
-import { EntityIcon } from '@/components/EntityIcon'
 import { IconPicker } from '@/components/IconPicker'
+import { ChecklistSheet, PickerRow } from '@/components/ChecklistField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { defaultEnvelopeIcon } from '@/lib/icons'
 import { isNotEmpty } from '@/lib/validation'
@@ -53,7 +50,7 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, side, onClose
   const [selected, setSelected] = useState<Set<Id>>(new Set())
   const [isArchived, setIsArchived] = useState<0 | 1>(0)
   const [error, setError] = useState<string | null>(null)
-  const [categorySearch, setCategorySearch] = useState('')
+  const [categoriesOpen, setCategoriesOpen] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -63,14 +60,13 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, side, onClose
       setSelected(new Set(envelope?.children.map((c) => c.id) ?? []))
       setIsArchived(envelope?.isArchived ?? 0)
       setError(null)
-      setCategorySearch('')
     }
   }, [open, envelope, budgetCurrencyId, user])
 
   // a single dialog never mixes sides: the category picker offers only the
   // side it was opened for (non-archived, matching type)
   const options = categories.filter((c) => c.isArchived === 0 && c.type === side)
-  const shownOptions = rankByName(options, (c) => c.name, categorySearch)
+  const picked = options.filter((c) => selected.has(c.id))
 
   const submit = () => {
     if (!isNotEmpty(name)) {
@@ -136,70 +132,50 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, side, onClose
         {!isNew ? (
           <CardField label={t('budgets.form.budget_envelope.status.label')} htmlFor="envelope-status">
             <div className="[&_button]:h-auto [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-sm [&_button]:shadow-none [&_button]:focus-visible:ring-0">
-              <Select value={String(isArchived)} onValueChange={(v) => setIsArchived(v === '1' ? 1 : 0)}>
-                <SelectTrigger id="envelope-status" aria-label={t('budgets.form.budget_envelope.status.label')} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">{t('budgets.form.budget_envelope.status.option.active')}</SelectItem>
-                  <SelectItem value="1">{t('budgets.form.budget_envelope.status.option.archive')}</SelectItem>
-                </SelectContent>
-              </Select>
+              <OptionSelect
+                id="envelope-status"
+                aria-label={t('budgets.form.budget_envelope.status.label')}
+                title={t('budgets.form.budget_envelope.status.label')}
+                className="w-full"
+                value={String(isArchived)}
+                onValueChange={(v) => setIsArchived(v === '1' ? 1 : 0)}
+                options={[
+                  { value: '0', label: t('budgets.form.budget_envelope.status.option.active') },
+                  { value: '1', label: t('budgets.form.budget_envelope.status.option.archive') },
+                ]}
+              />
             </div>
           </CardField>
         ) : null}
 
-        <div className="flex flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5">
-          <span className="flex items-baseline justify-between">
-            <Label className="text-[11px] font-normal text-muted-foreground">
-              {t('budgets.form.budget_envelope.categories.label')}
-            </Label>
-            <span className="text-[11px] text-muted-foreground">
-              {t('budgets.form.budget_envelope.categories.selected', { count: String(selected.size) })}
-            </span>
-          </span>
-          {options.length >= 6 ? (
-            <span className="mt-1 flex items-center gap-2 rounded-md bg-background px-2.5 py-1.5">
-              <Search className="size-4 shrink-0 text-muted-foreground" />
-              <input
-                aria-label={t('accounts.page.toolbar.search')}
-                placeholder={t('accounts.page.toolbar.search')}
-                className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                value={categorySearch}
-                onChange={(e) => setCategorySearch(e.target.value)}
-              />
-            </span>
-          ) : null}
-          <ul className="flex max-h-44 flex-col overflow-x-hidden overflow-y-auto scrollbar-slim">
-            {shownOptions.map((category) => (
-              <li key={category.id}>
-                <Label
-                  htmlFor={`env-cat-${category.id}`}
-                  className="flex items-center gap-2.5 rounded-md py-2 font-normal hover:bg-econumo-hover"
-                >
-                  <EntityIcon name={category.icon} className="text-lg text-muted-foreground" />
-                  <span className="min-w-0 flex-1 truncate text-sm">{category.name}</span>
-                  <Checkbox
-                    id={`env-cat-${category.id}`}
-                    className="bg-background"
-                    checked={selected.has(category.id)}
-                    onCheckedChange={(checked) => {
-                      setSelected((prev) => {
-                        const next = new Set(prev)
-                        if (checked) {
-                          next.add(category.id)
-                        } else {
-                          next.delete(category.id)
-                        }
-                        return next
-                      })
-                    }}
-                  />
-                </Label>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* a picker row like the budget's accounts: the form keeps its size
+            however many categories there are */}
+        <PickerRow
+          label={t('budgets.form.budget_envelope.categories.label')}
+          aside={t('budgets.form.budget_envelope.categories.selected', { count: String(selected.size) })}
+          value={picked.length > 0 ? picked.map((c) => c.name).join(', ') : t('budgets.modal.budget_form.savings.none')}
+          muted={picked.length === 0}
+          testId="envelope-categories-field"
+          onOpen={() => setCategoriesOpen(true)}
+        />
+        <ChecklistSheet
+          open={categoriesOpen}
+          title={t('budgets.form.budget_envelope.categories.label')}
+          groups={[{ items: options }]}
+          checked={selected}
+          onToggle={(id, on) =>
+            setSelected((prev) => {
+              const next = new Set(prev)
+              if (on) {
+                next.add(id)
+              } else {
+                next.delete(id)
+              }
+              return next
+            })
+          }
+          onClose={() => setCategoriesOpen(false)}
+        />
 
         <div className="flex min-h-0 flex-1 flex-col gap-2">
           <Label>{t('budgets.form.budget_envelope.icon.label')}</Label>

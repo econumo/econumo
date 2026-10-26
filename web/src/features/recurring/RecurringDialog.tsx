@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { OptionSelect } from '@/components/OptionSelect'
 import { Textarea } from '@/components/ui/textarea'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField, cardFieldControlClass } from '@/components/CardField'
@@ -285,18 +285,15 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
 
         <CardField label={t('recurring.modal.form.schedule.label')} htmlFor="rt-schedule">
           <div className="[&_button]:h-auto [&_button]:w-full [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-sm [&_button]:shadow-none [&_button]:focus-visible:ring-0">
-            <Select value={form.schedule} onValueChange={(v) => setSchedule(v as RecurringSchedule)}>
-              <SelectTrigger id="rt-schedule" aria-label={t('recurring.modal.form.schedule.label')} className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SCHEDULE_ORDER.map((schedule) => (
-                  <SelectItem key={schedule} value={schedule}>
-                    {t(`recurring.schedule.${schedule}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <OptionSelect
+              id="rt-schedule"
+              aria-label={t('recurring.modal.form.schedule.label')}
+              title={t('recurring.modal.form.schedule.label')}
+              className="w-full"
+              value={form.schedule}
+              onValueChange={(v) => setSchedule(v as RecurringSchedule)}
+              options={SCHEDULE_ORDER.map((schedule) => ({ value: schedule, label: t(`recurring.schedule.${schedule}`) }))}
+            />
           </div>
         </CardField>
 

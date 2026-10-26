@@ -155,20 +155,21 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
       modes: { ...prev.modes, [field]: prev.modes[field] === 'csv_column' ? next : 'csv_column' },
     }))
 
+  // a file can carry many columns: the app's searchable picker, a sheet on a
+  // phone; each column reads with a sample value from the file
   const columnSelect = (field: FieldKey, value: string | null) => (
-    <select
+    <EntitySelect
       aria-label={fieldLabels[field]}
-      className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
-      value={value ?? ''}
-      onChange={(e) => patchColumns({ [field]: e.target.value === '' ? null : e.target.value } as Partial<ImportSelection['columns']>)}
-    >
-      <option value="">{t('transactions.import_csv.none')}</option>
-      {(analysis?.header ?? []).map((column) => (
-        <option key={column} value={column}>
-          {analysis?.samples[column] ? `${column} ("${analysis.samples[column]}")` : column}
-        </option>
-      ))}
-    </select>
+      value={value}
+      onChange={(column) => patchColumns({ [field]: column } as Partial<ImportSelection['columns']>)}
+      options={(analysis?.header ?? []).map((column) => ({
+        value: column,
+        label: analysis?.samples[column] ? `${column} ("${analysis.samples[column]}")` : column,
+        searchText: column,
+      }))}
+      placeholder={t('transactions.import_csv.none')}
+      clearable
+    />
   )
 
   // the app's picker, as on a transaction: searchable, a sheet on a phone

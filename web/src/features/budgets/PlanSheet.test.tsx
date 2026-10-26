@@ -1555,9 +1555,12 @@ it('budget-mode envelope dialog still offers expense categories only', async () 
   await user.click(within(await screen.findByTestId('column-headers')).getByRole('button', { name: 'menu Expenses' }))
   await user.click(await screen.findByRole('menuitem', { name: 'New envelope' }))
 
-  const dialog = await screen.findByRole('dialog', { name: 'New envelope' })
-  expect(within(dialog).getByText('Food')).toBeInTheDocument()
-  expect(within(dialog).queryByText('Salary')).not.toBeInTheDocument()
+  await screen.findByRole('dialog', { name: 'New envelope' })
+  // the categories sit behind a picker row, as the budget's accounts do
+  await user.click(screen.getByTestId('envelope-categories-field'))
+  const picker = await screen.findByRole('dialog', { name: 'Categories' })
+  expect(within(picker).getByRole('option', { name: 'Food' })).toBeInTheDocument()
+  expect(within(picker).queryByRole('option', { name: 'Salary' })).not.toBeInTheDocument()
 })
 
 it('clicking a cell focuses the grid so arrow keys work immediately, no manual focus needed', async () => {

@@ -2455,8 +2455,18 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       picker opens over an unchanged page. With a hardware keyboard, ↑ / ↓
       from the sheet's search move through the rows and Enter picks; Tab /
       Shift+Tab leave the sheet for the next / previous field.
+- [ ] One way to choose, everywhere. A field like Category (inline searchable
+      dropdown on desktop / tablet, picker sheet on a phone): the Inbox folder
+      for an accepted shared account (hidden folders marked with a crossed-out
+      eye), every CSV import column (each read with a sample value; the clear
+      row "—" unmaps it). A picker row that opens a checklist sheet: an
+      envelope's categories, like a budget's Accounts / Savings accounts (the
+      row names the ticked ones and counts them). A short fixed list (envelope
+      status, recurring schedule, the end month when completing a budget): the
+      dropdown on desktop / tablet, the picker sheet without a search on a
+      phone, the current choice checked.
 - [ ] Currency on the account, new budget, budget settings and envelope
-      forms is a field like Category: desktop and tablet open an inline
+      forms, and on Profile, is a field like Category: desktop and tablet open an inline
       searchable dropdown under it (no separate dialog), a phone opens the
       picker sheet; the field shows the picked currency's code, symbol and
       name; there is no row that clears it; a budget member who cannot

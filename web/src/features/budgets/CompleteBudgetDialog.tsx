@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { OptionSelect } from '@/components/OptionSelect'
 import { Switch } from '@/components/ui/switch'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
@@ -125,22 +125,15 @@ export function CompleteBudgetDialog({ budget, onClose }: CompleteBudgetDialogPr
         }}
       >
         <CardField label={t('budgets.modal.complete_budget_form.end_month')} htmlFor="complete-end-month">
-          <Select value={endMonth} onValueChange={setEndMonth}>
-            <SelectTrigger
-              id="complete-end-month"
-              aria-label={t('budgets.modal.complete_budget_form.end_month')}
-              className="w-full"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((m) => (
-                <SelectItem key={m} value={m}>
-                  {formatPlanMonth(m, i18n.language)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <OptionSelect
+            id="complete-end-month"
+            aria-label={t('budgets.modal.complete_budget_form.end_month')}
+            title={t('budgets.modal.complete_budget_form.end_month')}
+            className="w-full"
+            value={endMonth}
+            onValueChange={setEndMonth}
+            options={months.map((m) => ({ value: m, label: formatPlanMonth(m, i18n.language) }))}
+          />
         </CardField>
         <label className="flex items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-sm">
           {t('budgets.modal.complete_budget_form.continue_copy')}
