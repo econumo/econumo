@@ -127,6 +127,8 @@ export function ChecklistSheet<T extends ChecklistItem>({
                       key={item.id}
                       value={item.id}
                       data-checked={on}
+                      // cmdk's aria-selected is its highlight; the tick is aria-checked
+                      aria-checked={on}
                       disabled={locked}
                       // a locked member is still checked: it must not read as greyed-out/unchecked
                       className="data-[disabled=true]:opacity-100"

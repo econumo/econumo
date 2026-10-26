@@ -142,8 +142,9 @@ export function PickerSheet({
       title={title}
       description={description}
       // with no search, the list itself takes focus (it raises no keyboard),
-      // so ↑ / ↓ and Enter work from a hardware keyboard
-      initialFocus={isPhone ? (searchable ? (focusSearch ? searchRef : undefined) : commandRef) : undefined}
+      // so ↑ / ↓ and Enter work from a keyboard on any screen; a desktop search
+      // is cmdk's own input and focuses itself
+      initialFocus={searchable ? (isPhone && focusSearch ? searchRef : undefined) : commandRef}
       onCloseAutoFocus={onCloseAutoFocus}
       footer={footer}
     >
@@ -153,7 +154,8 @@ export function PickerSheet({
       {isPhone && searchable && onNavigate ? (
         <input aria-hidden inputMode="none" className={`${NAV_STOP} sticky top-0 -mb-px block`} onFocus={() => onNavigate(-1)} />
       ) : null}
-      <Command ref={commandRef} shouldFilter={false} label={searchLabel}>
+      {/* with no search, the list is a Tab stop of its own */}
+      <Command ref={commandRef} shouldFilter={false} label={searchLabel} tabIndex={searchable ? -1 : 0}>
         {!isPhone && searchable ? (
           <CommandInput autoFocus={focusSearch} aria-label={searchLabel} placeholder={searchPlaceholder ?? searchLabel} value={query} onValueChange={changeQuery} />
         ) : null}

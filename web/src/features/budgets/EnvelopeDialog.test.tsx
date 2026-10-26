@@ -42,3 +42,18 @@ it('the categories row opens a checklist of the side’s categories; the ticked 
   await user.click(screen.getByRole('button', { name: 'Create' }))
   expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: 'Groceries', categories: ['cat-food'] }))
 })
+
+// a short checklist has no search: its list takes focus, so a keyboard alone can
+// tick categories, and each row reports whether it is ticked
+it('the checklist works from the keyboard and reports each row’s tick', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  await user.click(await screen.findByTestId('envelope-categories-field'))
+  const picker = await screen.findByRole('dialog', { name: 'Categories' })
+  const food = await within(picker).findByRole('option', { name: 'Food' })
+  expect(food).toHaveAttribute('aria-checked', 'false')
+  expect(within(picker).getByRole('listbox').closest('[cmdk-root]')).toHaveFocus()
+
+  await user.keyboard('{Enter}')
+  expect(food).toHaveAttribute('aria-checked', 'true')
+})

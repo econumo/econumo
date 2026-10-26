@@ -59,7 +59,7 @@ interface ResponsiveDialogProps {
   footer?: ReactNode
   /** desktop width: `wide` suits list-heavy dialogs (the global search palette) */
   size?: 'default' | 'wide'
-  /** mobile sheet: the field that takes focus on open (the drawer focuses itself otherwise) */
+  /** the element that takes focus on open (a mobile sheet focuses itself otherwise) */
   initialFocus?: RefObject<HTMLElement | null>
   /** runs as the dialog hands focus back on close; preventDefault() keeps focus
    *  where an action started from the dialog put it */
@@ -300,6 +300,12 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         onInteractOutside={onInteractOutside}
         onEscapeKeyDown={onEscapeKeyDown}
         onCloseAutoFocus={onCloseAutoFocus}
+        onOpenAutoFocus={(e) => {
+          if (initialFocus?.current) {
+            e.preventDefault()
+            initialFocus.current.focus()
+          }
+        }}
         // a floating X with no header row to anchor it looks stray — unless asked for
         showCloseButton={showCloseButton}
       >
