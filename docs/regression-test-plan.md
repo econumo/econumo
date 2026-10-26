@@ -2452,8 +2452,9 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       Enter to confirm the word keeps the sheet open (a second Enter picks);
       picking with the keyboard up, or hiding the keyboard inside the sheet and
       then picking, leaves the form still as the sheet closes, and the next
-      picker opens over an unchanged page. With a hardware keyboard, Shift+Tab
-      from the sheet's search moves up through the rows.
+      picker opens over an unchanged page. With a hardware keyboard, ↑ / ↓
+      from the sheet's search move through the rows and Enter picks; Tab /
+      Shift+Tab leave the sheet for the next / previous field.
 - [ ] 📱 Every picker sheet with a search behaves the same (Category /
       Recipient / account on transactions and recurring templates; Currency on
       accounts, budgets, envelopes and Profile; a budget's Accounts / Savings

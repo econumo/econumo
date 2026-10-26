@@ -146,8 +146,8 @@ export function PickerSheet({
       footer={footer}
     >
       {header}
-      {/* above the rows, so Shift+Tab from the search walks up through them
-          first; sticky, so it stays in view (iOS skips a covered field) */}
+      {/* sticky at the top of the rows, so it stays in view: iOS skips a
+          covered field. The rows themselves are reached with ↑ / ↓ */}
       {isPhone && searchable && onNavigate ? (
         <input aria-hidden inputMode="none" className={`${NAV_STOP} sticky top-0 -mb-px block`} onFocus={() => onNavigate(-1)} />
       ) : null}

@@ -17,6 +17,18 @@ const SHEET_TOP_GAP = 24
 const FIELD_REVEAL_GAP = 8
 const FIELD_REVEAL_DELAY_MS = 100
 
+const NO_KEYBOARD_INPUTS = new Set(['button', 'checkbox', 'radio', 'range', 'color', 'file', 'submit', 'reset', 'image', 'hidden'])
+
+function ownsKeyboard(target: EventTarget): boolean {
+  if (target instanceof HTMLTextAreaElement) {
+    return target.inputMode !== 'none'
+  }
+  if (target instanceof HTMLInputElement) {
+    return target.inputMode !== 'none' && !NO_KEYBOARD_INPUTS.has(target.type)
+  }
+  return target instanceof HTMLElement && target.isContentEditable
+}
+
 const CoverPage = createContext<((delta: 1 | -1) => void) | null>(null)
 
 /** the standard dialog action row (Cancel | Confirm). Action buttons are h-11
@@ -105,9 +117,11 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
       setSheetKeyboard(true)
     }
   }, [])
-  // React focus events also bubble up from the sheets portaled out of the page
+  // React focus events also bubble up from the sheets portaled out of the page.
+  // Only a page field that raises a keyboard of its own takes over: focus that
+  // a closing sheet hands back to its button leaves the hold in place
   const onPageFocus = (e: FocusEvent) => {
-    if (contentRef.current?.contains(e.target as Node)) {
+    if (contentRef.current?.contains(e.target as Node) && ownsKeyboard(e.target)) {
       setSheetKeyboard(false)
     }
   }

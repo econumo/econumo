@@ -268,3 +268,45 @@ it('a sheet closed with its keyboard already down leaves the page free to fit th
     }
   }
 })
+
+it('focus a closing sheet hands back to a button keeps the page held; a text field releases it', () => {
+  mockMatchMedia(true)
+  const vv = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 })
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport')
+  Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+  const page = (sheetOpen: boolean) => (
+    <ResponsiveDialog open fullScreen onOpenChange={() => {}} title="Page">
+      <button type="button">Currency</button>
+      <textarea aria-label="Notes" />
+      <ResponsiveDialog open={sheetOpen} onOpenChange={() => {}} title="Sheet">
+        <p>sheet</p>
+      </ResponsiveDialog>
+    </ResponsiveDialog>
+  )
+  const keyboard = (height: number, offsetTop = 0) =>
+    act(() => {
+      vv.height = height
+      vv.offsetTop = offsetTop
+      vv.dispatchEvent(new Event('resize'))
+    })
+  try {
+    const { baseElement, rerender } = render(page(true))
+    const content = () => baseElement.querySelector<HTMLElement>('[data-slot="dialog-content"]')
+    keyboard(400, 300)
+    rerender(page(false))
+    act(() => screen.getByRole('button', { name: 'Currency' }).focus())
+    keyboard(420, 200)
+    expect(content()?.style.height).toBe('')
+
+    act(() => screen.getByRole('textbox', { name: 'Notes' }).focus())
+    keyboard(430)
+    expect(content()?.style.height).toBe('430px')
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'visualViewport', original)
+    } else {
+      delete (window as { visualViewport?: unknown }).visualViewport
+    }
+  }
+})

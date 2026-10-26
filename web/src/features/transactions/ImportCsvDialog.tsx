@@ -313,6 +313,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
                     searchText: account.name,
                   }))}
                   placeholder={t('transactions.import_csv.none')}
+                  clearable
                 />
               ),
               modeToggle('account', 'existing'),
