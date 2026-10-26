@@ -82,6 +82,9 @@ function CreateHint() {
   )
 }
 
+// px a touch may travel and still count as a tap on the phone picker
+const TAP_SLOP = 10
+
 const FORM_FIELDS = 'input:not([type=hidden]):not(:disabled), textarea:not(:disabled), select:not(:disabled)'
 
 function fieldBeside(from: HTMLElement, step: 1 | -1): HTMLElement | null {
@@ -91,8 +94,9 @@ function fieldBeside(from: HTMLElement, step: 1 | -1): HTMLElement | null {
   return at < 0 ? null : (fields[at + step] ?? null)
 }
 
-// invisible fields either side of the sheet's search, where iOS's ^ / v keys land
-const NAV_STOP = 'pointer-events-none absolute top-0 left-0 size-px opacity-0'
+// invisible fields around the sheet's search, where iOS's ^ / v keys land. Not
+// pointer-events: none: iOS only stops on a field it hit-tests as uncovered
+const NAV_STOP = 'size-px opacity-0'
 
 const fieldClass =
   'flex h-8 w-full items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-disabled:opacity-50 max-md:h-11 max-md:text-base'
@@ -122,6 +126,7 @@ function PhoneEntitySelect({
   const [search, setSearch] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
   const triggerRef = useRef<HTMLInputElement>(null)
+  const touchStart = useRef<{ x: number; y: number } | null>(null)
   const selected = options.find((o) => o.value === value) ?? null
   const { rows, canCreate } = buildRows({ options, value, search, clearable, onCreate, createValidator })
 
@@ -178,7 +183,17 @@ function PhoneEntitySelect({
           onChange={() => {}}
           disabled={disabled}
           onFocus={() => setOpen(true)}
+          onTouchStart={(e) => {
+            touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+          }}
           onTouchEnd={(e) => {
+            // a scroll of the form that began on the picker is no tap: iOS
+            // neither clicks nor focuses after it, so leave it alone
+            const start = touchStart.current
+            const end = e.changedTouches[0]
+            if (!start || Math.abs(end.clientX - start.x) > TAP_SLOP || Math.abs(end.clientY - start.y) > TAP_SLOP) {
+              return
+            }
             e.preventDefault()
             if (!disabled) {
               setOpen(true)
@@ -206,7 +221,6 @@ function PhoneEntitySelect({
         onCloseAutoFocus={(e) => e.preventDefault()}
         footer={
           <div className="relative">
-            <input aria-hidden inputMode="none" className={NAV_STOP} onFocus={() => moveTo(-1)} />
             {/* focused as the sheet opens, still inside the tap, so iOS raises the keyboard */}
             <input
               ref={searchRef}
@@ -215,7 +229,8 @@ function PhoneEntitySelect({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                // an IME's Enter confirms the composition (Safari reports it as 229), not a pick
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) {
                   e.preventDefault()
                   pick(rows.find((r) => !r.clear && !r.disabled))
                 }
@@ -224,10 +239,13 @@ function PhoneEntitySelect({
               autoComplete="off"
               className={`${fieldClass} outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring/50`}
             />
-            <input aria-hidden inputMode="none" className={NAV_STOP} onFocus={() => moveTo(1)} />
+            <input aria-hidden inputMode="none" className={`${NAV_STOP} absolute top-0 left-0`} onFocus={() => moveTo(1)} />
           </div>
         }
       >
+        {/* above the rows, so Shift+Tab from the search walks up through them
+            first; sticky, so it stays in view (iOS skips a covered field) */}
+        <input aria-hidden inputMode="none" className={`${NAV_STOP} sticky top-0 -mb-px block`} onFocus={() => moveTo(-1)} />
         <div role="listbox" aria-label={ariaLabel}>
           {rows.map((row) => (
             <button

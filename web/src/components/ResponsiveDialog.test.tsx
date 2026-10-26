@@ -192,3 +192,41 @@ it('fullScreen on mobile scrolls the focused field back into view when the page 
     }
   }
 })
+
+it('a fullScreen page stays held after a sheet closes until its keyboard is down', () => {
+  mockMatchMedia(true)
+  const vv = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 })
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport')
+  Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+  const page = (sheetOpen: boolean) => (
+    <ResponsiveDialog open fullScreen onOpenChange={() => {}} title="Page">
+      <ResponsiveDialog open={sheetOpen} onOpenChange={() => {}} title="Sheet">
+        <p>sheet</p>
+      </ResponsiveDialog>
+    </ResponsiveDialog>
+  )
+  const keyboard = (height: number, offsetTop = 0) =>
+    act(() => {
+      vv.height = height
+      vv.offsetTop = offsetTop
+      vv.dispatchEvent(new Event('resize'))
+    })
+  try {
+    const { baseElement, rerender } = render(page(true))
+    const content = () => baseElement.querySelector<HTMLElement>('[data-slot="dialog-content"]')
+    keyboard(400, 300)
+    rerender(page(false))
+    // the closed sheet's keyboard is still going away, panned for its search
+    keyboard(420, 200)
+    expect(content()?.style.height).toBe('')
+    keyboard(800)
+    expect(content()?.style.height).toBe('')
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'visualViewport', original)
+    } else {
+      delete (window as { visualViewport?: unknown }).visualViewport
+    }
+  }
+})

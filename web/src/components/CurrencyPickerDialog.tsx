@@ -54,7 +54,8 @@ export function CurrencyPickerDialog({ open, title, value, onClose, onPick }: Cu
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && options[0]) {
+              // an IME's Enter confirms the composition (Safari reports it as 229), not a pick
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && options[0]) {
                 e.preventDefault()
                 pick(options[0].id)
               }

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
@@ -36,7 +36,11 @@ it('on a phone the search sits below the list, takes focus, and Enter picks the 
   expect(option.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(search).toHaveFocus()
 
-  await user.keyboard('eur{Enter}')
+  await user.keyboard('eur')
+  // an IME's Enter confirms the word being composed, not a pick
+  fireEvent.keyDown(search, { key: 'Enter', isComposing: true })
+  expect(onPick).not.toHaveBeenCalled()
+  await user.keyboard('{Enter}')
   expect(onPick).toHaveBeenCalledWith('cur-eur')
 })
 
