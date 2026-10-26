@@ -87,8 +87,8 @@ importers:
         specifier: ^7.87.0
         version: 7.87.0(react@19.3.1)
       react-i18next:
-        specifier: ^17.0.16
-        version: 17.0.16(i18next@26.3.6(typescript@7.0.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@7.0.2)
+        specifier: ^17.1.4
+        version: 17.1.4(i18next@26.3.6(typescript@7.0.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@7.0.2)
       react-resizable-panels:
         specifier: ^4.12.4
         version: 4.12.4(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -301,6 +301,10 @@ packages:
     engines: {node: '>=6.9.0'}
     peerDependencies:
       '@babel/core': ^7.0.0-0
+
+  '@babel/runtime@7.29.10':
+    resolution: {integrity: sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA==}
+    engines: {node: '>=6.9.0'}
 
   '@babel/runtime@7.29.7':
     resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
@@ -3359,8 +3363,8 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
 
-  react-i18next@17.0.16:
-    resolution: {integrity: sha512-7uImVD9hG5yUOaP5KHVied1x0A004Di/KU031ULR35Ma+9e9H5GdnNZHgQEIByyAz+IAXBkRDTedNVzjPUH8ZA==}
+  react-i18next@17.1.4:
+    resolution: {integrity: sha512-1qGDcWXQ99pd5aPA9oikycr9lLoa6Iu79/aHS4pzgi3NLbM1hDE8RaAb1U/82vsssav9fsQARpcUtnmeGpFwEQ==}
     peerDependencies:
       i18next: '>= 26.2.0'
       react: '>= 16.8.0'
@@ -4196,6 +4200,8 @@ snapshots:
       '@babel/plugin-transform-typescript': 7.29.7(@babel/core@7.29.7)
     transitivePeerDependencies:
       - supports-color
+
+  '@babel/runtime@7.29.10': {}
 
   '@babel/runtime@7.29.7': {}
 
@@ -5516,7 +5522,7 @@ snapshots:
   '@testing-library/dom@10.4.1':
     dependencies:
       '@babel/code-frame': 7.29.7
-      '@babel/runtime': 7.29.7
+      '@babel/runtime': 7.29.10
       '@types/aria-query': 5.0.4
       aria-query: 5.3.0
       dom-accessibility-api: 0.5.16
@@ -6974,9 +6980,9 @@ snapshots:
     dependencies:
       react: 19.3.1
 
-  react-i18next@17.0.16(i18next@26.3.6(typescript@7.0.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@7.0.2):
+  react-i18next@17.1.4(i18next@26.3.6(typescript@7.0.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@7.0.2):
     dependencies:
-      '@babel/runtime': 7.29.7
+      '@babel/runtime': 7.29.10
       html-parse-stringify: 4.0.1
       i18next: 26.3.6(typescript@7.0.2)
       react: 19.3.1
