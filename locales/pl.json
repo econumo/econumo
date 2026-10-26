@@ -394,6 +394,9 @@
           "label": "Notatki",
           "placeholder": "Wpisz notatkę"
         },
+        "account": {
+          "label": "Konto"
+        },
         "from": {
           "label": "Z konta"
         },

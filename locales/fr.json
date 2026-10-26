@@ -394,6 +394,9 @@
           "label": "Notes",
           "placeholder": "Saisissez des notes"
         },
+        "account": {
+          "label": "Compte"
+        },
         "from": {
           "label": "Depuis"
         },

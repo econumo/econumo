@@ -394,6 +394,9 @@
           "label": "Заметки",
           "placeholder": "Введите заметку"
         },
+        "account": {
+          "label": "Счёт"
+        },
         "from": {
           "label": "Откуда"
         },

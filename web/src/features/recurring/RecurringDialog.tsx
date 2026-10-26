@@ -191,6 +191,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
             <div className="[&_[data-slot=entity-select]]:h-auto [&_[data-slot=entity-select]]:border-0 [&_[data-slot=entity-select]]:px-0 [&_[data-slot=entity-select]]:py-1 [&_[data-slot=entity-select]]:ring-0 [&_[data-slot=entity-select]]:bg-transparent dark:[&_[data-slot=entity-select]]:bg-transparent">
               <EntitySelect
                 aria-label="account"
+                title={t('transactions.modal.form.account.label')}
                 value={form.accountId}
                 onChange={(id) => patch({ accountId: id })}
                 options={selectableAccounts.map(accountToOption)}
@@ -220,6 +221,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
             <SelectCard label={t('transactions.modal.form.from.label')}>
               <EntitySelect
                 aria-label="from account"
+                title={t('transactions.modal.form.from.label')}
                 value={form.accountId}
                 onChange={(id) => patch({ accountId: id })}
                 options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
@@ -228,6 +230,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
             <SelectCard label={t('transactions.modal.form.to.label')} error={errors.accountRecipientId}>
               <EntitySelect
                 aria-label="to account"
+                title={t('transactions.modal.form.to.label')}
                 value={form.accountRecipientId}
                 onChange={(id) => {
                   clearError('accountRecipientId')

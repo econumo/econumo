@@ -100,7 +100,9 @@ function ComboboxContent({
   > &
   Pick<ComboboxPrimitive.Portal.Props, "container">) {
   return (
-    <ComboboxPrimitive.Portal container={container}>
+    // display: contents: portaled into a grid dialog, the wrapper div would
+    // otherwise take a grid row and its gap, growing the dialog as it opens
+    <ComboboxPrimitive.Portal container={container} className="contents">
       <ComboboxPrimitive.Positioner
         side={side}
         sideOffset={sideOffset}

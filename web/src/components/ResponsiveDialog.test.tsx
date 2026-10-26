@@ -92,6 +92,9 @@ it('fullScreen on mobile fits the visible area above the on-screen keyboard', ()
     )
     const content = () => baseElement.querySelector<HTMLElement>('[data-slot="dialog-content"]')
     expect(content()?.style.height).toBe('')
+    // never inherits Radix's pointer-events: none on <body>, or iOS's ^ / v keys
+    // skip every field below the one focused as the page opens
+    expect(content()?.style.pointerEvents).toBe('auto')
     act(() => {
       vv.height = 450
       vv.offsetTop = 120
@@ -102,6 +105,85 @@ it('fullScreen on mobile fits the visible area above the on-screen keyboard', ()
     expect(content()?.style.height).toBe('450px')
     // the keyboard hides the home indicator, so the footer drops its inset
     expect(screen.getByText('ok').parentElement?.className).not.toContain('safe-area-inset-bottom')
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'visualViewport', original)
+    } else {
+      delete (window as { visualViewport?: unknown }).visualViewport
+    }
+  }
+})
+
+it('a fullScreen page holds still while a sheet is open over it', () => {
+  mockMatchMedia(true)
+  const vv = Object.assign(new EventTarget(), { height: 450, offsetTop: 0 })
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport')
+  Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+  const page = (sheetOpen: boolean) => (
+    <ResponsiveDialog open fullScreen onOpenChange={() => {}} title="Page">
+      <ResponsiveDialog open={sheetOpen} onOpenChange={() => {}} title="Sheet">
+        <p>sheet</p>
+      </ResponsiveDialog>
+    </ResponsiveDialog>
+  )
+  try {
+    const { baseElement, rerender } = render(page(false))
+    const content = () => baseElement.querySelector<HTMLElement>('[data-slot="dialog-content"]')
+    expect(content()?.style.height).toBe('450px')
+
+    rerender(page(true))
+    // the sheet's own keyboard (and iOS's pan for it) moves the sheet, not the page
+    act(() => {
+      vv.height = 400
+      vv.offsetTop = 300
+      vv.dispatchEvent(new Event('resize'))
+    })
+    expect(content()?.style.height).toBe('450px')
+    expect(content()?.style.top).toBe('0px')
+
+    // the keyboard hidden inside the sheet: the page is full height again
+    // already, so closing the sheet later changes nothing
+    act(() => {
+      vv.height = 800
+      vv.offsetTop = 0
+      vv.dispatchEvent(new Event('resize'))
+    })
+    expect(content()?.style.height).toBe('')
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'visualViewport', original)
+    } else {
+      delete (window as { visualViewport?: unknown }).visualViewport
+    }
+  }
+})
+
+it('fullScreen on mobile scrolls the focused field back into view when the page shrinks for the keyboard', async () => {
+  mockMatchMedia(true)
+  const vv = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 })
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport')
+  Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+  try {
+    const { baseElement } = render(
+      <ResponsiveDialog open fullScreen onOpenChange={() => {}} title="Page">
+        <textarea aria-label="Notes" />
+      </ResponsiveDialog>,
+    )
+    const body = baseElement.querySelector<HTMLElement>('[data-slot="dialog-body"]')!
+    const notes = screen.getByRole('textbox', { name: 'Notes' })
+    notes.focus()
+    // tapped on the full-height page it was in view; above the keyboard the form ends at 300
+    body.getBoundingClientRect = () => ({ top: 100, bottom: 300 }) as DOMRect
+    notes.getBoundingClientRect = () => ({ top: 400, bottom: 460 }) as DOMRect
+    act(() => {
+      vv.height = 450
+      vv.dispatchEvent(new Event('resize'))
+    })
+    await act(() => new Promise((resolve) => setTimeout(resolve, 150)))
+    // 460 - 300 plus the 8px gap
+    expect(body.scrollTop).toBe(168)
   } finally {
     if (original) {
       Object.defineProperty(window, 'visualViewport', original)
