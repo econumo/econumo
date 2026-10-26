@@ -2,6 +2,7 @@ import { capture, capturePageView, setAnalyticsContext, setAnalyticsGroup } from
 import { analyticsAllowed } from './analyticsPreference'
 import { authMethods } from './analyticsAuthMethods'
 import { profileAttributes } from './analyticsProfile'
+import { storedThemePreference } from './theme'
 import { backendHost, getInstanceId, getVersion, locale } from './config'
 import { isNativeApp } from './platform'
 import { hasToken } from './storage'
@@ -277,6 +278,8 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
     $host: analyticsHost(),
     $app_locale: locale(),
     deployment: deploymentKind(),
+    // The chosen appearance, not the resolved one: "system" stays "system".
+    theme: storedThemePreference(),
     // Omitted while unknown, so neither reads as a measured "none".
     ...(currentAccessState ? { access_state: currentAccessState } : {}),
     ...(authMethods() ?? {}),

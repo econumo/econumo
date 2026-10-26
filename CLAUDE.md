@@ -492,7 +492,8 @@ total counts of connections, budgets, accounts, categories, payees, tags and
 labels — active, hidden and archived alike, unaccepted invites excluded — plus
 `signup_year`, `months_since_signup` and `import_apple_wallet` (`on` when the cached
 source list contains an Apple Wallet integration, `off` otherwise; omitted
-until the source list loads)), stamped onto
+until the source list loads)) and the chosen `theme` (`system`/`light`/`dark`, the
+local preference, not the resolved appearance), stamped onto
 each event at capture time (the SDK has no custom batch attributes). A per-user
 `analytics` option (`users_options`, on by default) gates capture, is
 mirrored to `localStorage` for a synchronous boot-time check (`get-user-data`
