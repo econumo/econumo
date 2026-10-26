@@ -49,6 +49,9 @@ export const METRICS = {
   ACCOUNT_DELETE: 'appAccountDelete',
   ACCOUNT_DECLINE_ACCESS: 'appAccountDeclineAccess',
   ACCOUNT_ORDER_LIST: 'appAccountOrderList',
+  // one key for every way of moving through the account page's timeline,
+  // discriminated by the `method` property
+  ACCOUNT_HISTORY_JUMP: 'appAccountHistoryJump',
   ACCOUNT_FOLDER_EXPAND: 'appAccountFolderExpand',
   ACCOUNT_FOLDER_COLLAPSE: 'appAccountFolderCollapse',
   ACCOUNT_FOLDER_CREATE: 'appAccountFolderCreate',
