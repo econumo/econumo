@@ -2,7 +2,13 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import type { DailyListEntry } from '@/features/transactions/useAccountTransactions'
 import { fixtureTransactions } from '@/test/fixtures'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { TransactionHistory } from './TransactionHistory'
+
+vi.mock('@/lib/metrics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/metrics')>()
+  return { ...actual, trackEvent: vi.fn() }
+})
 
 function history(): DailyListEntry[] {
   // Ten years of history: each month has enough transactions that the oldest
@@ -333,4 +339,34 @@ it('shows an empty state without a navigator when there are no matches', () => {
   renderHistory([])
   expect(screen.getByText('No transactions found')).toBeInTheDocument()
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+})
+
+it('tracks every timeline jump with how it was made, but not plain scrolling or opening the picker', async () => {
+  const user = userEvent.setup()
+  vi.mocked(trackEvent).mockClear()
+  renderHistory()
+  const marker = screen.getByRole('button', { name: 'Jump to month' })
+  const navigation = screen.getByRole('navigation', { name: 'Transaction timeline' })
+  const slider = screen.getByRole('slider')
+  mockTrackGeometry(marker, navigation)
+  const methods = () => vi.mocked(trackEvent).mock.calls
+    .filter(([metric]) => metric === METRICS.ACCOUNT_HISTORY_JUMP)
+    .map(([, data]) => (data as { method: string }).method)
+
+  fireEvent.pointerDown(marker, { button: 0, clientX: 20, pointerId: 1 })
+  fireEvent.pointerMove(navigation, { clientX: 580, pointerId: 1 })
+  fireEvent.pointerUp(navigation, { clientX: 580, pointerId: 1 })
+  fireEvent.pointerDown(navigation, { button: 0, clientX: 300, pointerId: 2 })
+  fireEvent.pointerUp(navigation, { clientX: 300, pointerId: 2 })
+  slider.focus()
+  await user.keyboard('{Home}')
+  expect(methods()).toEqual(['drag', 'click', 'keyboard'])
+
+  await user.click(marker)
+  expect(methods()).toHaveLength(3)
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'August 2026' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(marker)
+  await user.click(screen.getByRole('button', { name: 'Back to today' }))
+  expect(methods()).toEqual(['drag', 'click', 'keyboard', 'picker', 'today'])
 })
