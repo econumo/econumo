@@ -394,6 +394,9 @@
           "label": "备注",
           "placeholder": "输入备注"
         },
+        "account": {
+          "label": "账户"
+        },
         "from": {
           "label": "转出账户"
         },

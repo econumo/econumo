@@ -394,6 +394,9 @@
           "label": "Notizen",
           "placeholder": "Notizen eingeben"
         },
+        "account": {
+          "label": "Konto"
+        },
         "from": {
           "label": "Von"
         },

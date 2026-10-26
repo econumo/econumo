@@ -394,6 +394,9 @@
           "label": "Notities",
           "placeholder": "Voer een notitie in"
         },
+        "account": {
+          "label": "Rekening"
+        },
         "from": {
           "label": "Van"
         },

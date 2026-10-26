@@ -394,6 +394,9 @@
           "label": "Notas",
           "placeholder": "Escribe una nota"
         },
+        "account": {
+          "label": "Cuenta"
+        },
         "from": {
           "label": "Origen"
         },

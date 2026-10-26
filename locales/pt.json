@@ -394,6 +394,9 @@
           "label": "Notas",
           "placeholder": "Introduza notas"
         },
+        "account": {
+          "label": "Conta"
+        },
         "from": {
           "label": "De"
         },
