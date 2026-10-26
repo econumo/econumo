@@ -204,6 +204,20 @@ it('matches on searchText when given, not on the displayed label', async () => {
   expect((await screen.findAllByRole('option'))[0]).toHaveTextContent('Cash ($10.00)')
 })
 
+// portaled into a grid dialog, a laid-out wrapper took a grid row and its gap
+// and grew the dialog by 16px the moment the list opened
+it('the open list adds no box to the dialog it is portaled into', async () => {
+  const user = userEvent.setup()
+  render(
+    <div data-slot="dialog-content" className="grid gap-4">
+      <EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} />
+    </div>,
+  )
+  await user.click(combobox())
+  await screen.findByRole('option', { name: 'Food' })
+  expect(document.querySelector('[data-base-ui-portal]')).toHaveClass('contents')
+})
+
 describe('on a phone', () => {
   beforeEach(() => {
     window.matchMedia = vi.fn().mockImplementation((q: string) => ({

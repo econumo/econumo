@@ -2445,7 +2445,7 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       the tap), and the list above it; typing filters, Enter or a tap picks and
       closes the sheet, a new name offers "Add «name»". The form behind never
       scrolls or resizes while you move between pickers. Desktop keeps the
-      inline dropdown.
+      inline dropdown, and opening it does not change the dialog's size.
 - [ ] 📱 Picker sheets with a search (Currency on accounts, budgets, envelopes
       and Profile; a budget's Accounts / Savings accounts checklist with 6+
       accounts; Merge into on categories, tags and payees): on a phone the
