@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
-import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
+import { CurrencyField } from '@/features/currencies/CurrencyField'
 import { rankByName } from '@/lib/search'
 import { EntityIcon } from '@/components/EntityIcon'
 import { IconPicker } from '@/components/IconPicker'
@@ -16,7 +16,6 @@ import { defaultEnvelopeIcon } from '@/lib/icons'
 import { isNotEmpty } from '@/lib/validation'
 import type { Id } from '@/api/types'
 import { useCategories } from '@/features/classifications/queries'
-import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 
 // A structural subset of BudgetElementDto/PlanElementDto — both the budget
@@ -46,13 +45,11 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, side, onClose
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: categories = [] } = useCategories()
-  const { data: currencies } = useCurrencies()
   const isNew = !envelope
 
   const [name, setName] = useState('')
   const [icon, setIcon] = useState(defaultEnvelopeIcon)
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
-  const [currencyOpen, setCurrencyOpen] = useState(false)
   const [selected, setSelected] = useState<Set<Id>>(new Set())
   const [isArchived, setIsArchived] = useState<0 | 1>(0)
   const [error, setError] = useState<string | null>(null)
@@ -130,19 +127,11 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, side, onClose
           />
         </CardField>
 
-        {/* same card shape, but a picker row: tap opens the currency search dialog */}
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
-          title={t('budgets.form.budget_envelope.currency.label')}
-          onClick={() => setCurrencyOpen(true)}
-        >
-          <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11px] text-muted-foreground">{t('budgets.form.budget_envelope.currency.label')}</span>
-            <span className="truncate text-sm">{currencies?.find((c) => c.id === currencyId)?.code ?? ''}</span>
-          </span>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        </button>
+        <CurrencyField
+          label={t('budgets.form.budget_envelope.currency.label')}
+          value={currencyId}
+          onChange={setCurrencyId}
+        />
 
         {!isNew ? (
           <CardField label={t('budgets.form.budget_envelope.status.label')} htmlFor="envelope-status">
@@ -218,13 +207,6 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, side, onClose
         </div>
       </form>
 
-      <CurrencyPickerDialog
-        open={currencyOpen}
-        title={t('budgets.form.budget_envelope.currency.label')}
-        value={currencyId}
-        onClose={() => setCurrencyOpen(false)}
-        onPick={setCurrencyId}
-      />
     </ResponsiveDialog>
   )
 }

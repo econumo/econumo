@@ -2455,9 +2455,16 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       picker opens over an unchanged page. With a hardware keyboard, ↑ / ↓
       from the sheet's search move through the rows and Enter picks; Tab /
       Shift+Tab leave the sheet for the next / previous field.
+- [ ] Currency on the account, new budget, budget settings and envelope
+      forms is a field like Category: desktop and tablet open an inline
+      searchable dropdown under it (no separate dialog), a phone opens the
+      picker sheet; the field shows the picked currency's code, symbol and
+      name; there is no row that clears it; a budget member who cannot
+      configure the budget sees it disabled.
 - [ ] 📱 Every picker sheet with a search behaves the same (Category /
-      Recipient / account on transactions and recurring templates; Currency on
-      accounts, budgets, envelopes and Profile; a budget's Accounts / Savings
+      Recipient / account on transactions and recurring templates; the
+      currency field on forms; Currency on Profile and on a budget line's menu;
+      a budget's Accounts / Savings
       accounts checklist with 6+ accounts; Merge into on categories, tags and
       payees; the account on Map to account for Apple Wallet / SimpleFIN cards;
       the fixed account, category, payee and tag of a CSV import): on a phone
