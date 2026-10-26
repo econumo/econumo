@@ -121,7 +121,7 @@ it('marks hidden folders in the folder select', async () => {
   await screen.findByText('Shared cash')
   await waitFor(() => expect(screen.getByRole('combobox')).toHaveValue('General'))
   await user.click(screen.getByRole('combobox'))
-  const hidden = await screen.findByRole('option', { name: /Archive/ })
+  const hidden = await screen.findByRole('option', { name: 'Archive, Hidden folder' })
   expect(hidden).toHaveTextContent('visibility_off')
   const visible = screen.getByRole('option', { name: /General/ })
   expect(visible).not.toHaveTextContent('visibility_off')

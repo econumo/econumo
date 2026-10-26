@@ -99,8 +99,10 @@ export function SharingSection({ invites }: { invites: PendingInvite[] }) {
                     ? folders.map((folder) => ({
                         value: folder.id,
                         label: folder.name,
-                        // a hidden folder is marked, as on the accounts page
+                        // a hidden folder is marked, as on the accounts page, and
+                        // says so to a screen reader (the icon is decorative)
                         icon: folder.isVisible === 0 ? 'visibility_off' : undefined,
+                        ariaLabel: folder.isVisible === 0 ? `${folder.name}, ${t('search.hidden_folder')}` : undefined,
                       }))
                     : [{ value: NO_FOLDER_OPTION, label: t('inbox.sharing.general_folder_hint'), disabled: true }]
                 }

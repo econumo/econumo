@@ -17,6 +17,9 @@ export interface EntityOption {
   disabled?: boolean
   /** what typing matches against when the label carries decoration (e.g. an account's balance) */
   searchText?: string
+  /** what a screen reader announces when the row says more than its text
+      (e.g. a hidden folder, marked only by an icon) */
+  ariaLabel?: string
 }
 
 interface Row extends EntityOption {
@@ -235,6 +238,7 @@ function PhoneEntitySelect({
               value={row.create ? '__create__' : row.value}
               disabled={row.disabled}
               data-checked={!row.clear && !row.create && row.value === value}
+              aria-label={row.ariaLabel}
               className={row.create ? 'text-econumo-link' : undefined}
               onSelect={() => pick(row)}
             >
@@ -349,6 +353,7 @@ function InlineEntitySelect({
               key={row.create ? '__create__' : row.value}
               value={row}
               disabled={row.disabled}
+              aria-label={row.ariaLabel}
               className={row.create ? 'text-econumo-link' : undefined}
             >
               <RowContent row={row} />

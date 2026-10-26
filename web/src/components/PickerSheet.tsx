@@ -141,7 +141,9 @@ export function PickerSheet({
       onOpenChange={(o) => !o && onClose()}
       title={title}
       description={description}
-      initialFocus={isPhone && searchable && focusSearch ? searchRef : undefined}
+      // with no search, the list itself takes focus (it raises no keyboard),
+      // so ↑ / ↓ and Enter work from a hardware keyboard
+      initialFocus={isPhone ? (searchable ? (focusSearch ? searchRef : undefined) : commandRef) : undefined}
       onCloseAutoFocus={onCloseAutoFocus}
       footer={footer}
     >

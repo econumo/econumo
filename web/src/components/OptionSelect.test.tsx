@@ -39,3 +39,14 @@ it('on a desktop it is the dropdown', () => {
   renderSelect()
   expect(screen.getByRole('combobox', { name: 'Schedule' })).toHaveTextContent('Monthly')
 })
+
+// a short list has no search: the list takes focus, so a hardware keyboard works
+it('on a phone ↓ and Enter pick from the sheet without a search', async () => {
+  mockPhone(true)
+  const user = userEvent.setup()
+  const { onValueChange } = renderSelect()
+  await user.click(screen.getByRole('button', { name: 'Schedule' }))
+  await screen.findByRole('dialog', { name: 'Schedule' })
+  await user.keyboard('{ArrowDown}{Enter}')
+  expect(onValueChange).toHaveBeenCalledWith('weekly')
+})
