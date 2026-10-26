@@ -226,6 +226,7 @@ function PhoneEntitySelect({
         // a typed name means its best match, never the clear row
         onSearchEnter={(search) => pick(rowsFor(search).rows.find((r) => !r.clear && !r.disabled))}
         onNavigate={moveTo}
+        currentValue={value ?? undefined}
         // focus never returns to the picker: arriving there would reopen it
         onCloseAutoFocus={(e) => e.preventDefault()}
         listLabel={ariaLabel}

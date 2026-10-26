@@ -50,3 +50,17 @@ it('on a phone ↓ and Enter pick from the sheet without a search', async () => 
   await user.keyboard('{ArrowDown}{Enter}')
   expect(onValueChange).toHaveBeenCalledWith('weekly')
 })
+
+// as a dropdown does: the highlight starts at the current choice, so opening
+// and pressing Enter keeps it rather than picking the first option
+it('on a phone Enter right after opening keeps the current choice', async () => {
+  mockPhone(true)
+  const user = userEvent.setup()
+  const onValueChange = vi.fn()
+  render(<OptionSelect aria-label="Schedule" title="Schedule" value="weekly" onValueChange={onValueChange} options={OPTIONS} />)
+  await user.click(screen.getByRole('button', { name: 'Schedule' }))
+  await screen.findByRole('dialog', { name: 'Schedule' })
+  await user.keyboard('{Enter}')
+  expect(onValueChange).toHaveBeenCalledWith('weekly')
+  expect(onValueChange).not.toHaveBeenCalledWith('monthly')
+})

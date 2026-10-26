@@ -26,7 +26,7 @@ export function CurrencyPickerDialog({ open, title, value, onClose, onPick }: Cu
   }
 
   return (
-    <PickerSheet open={open} onClose={onClose} title={title} searchLabel={t('accounts.page.toolbar.search')}>
+    <PickerSheet open={open} onClose={onClose} title={title} searchLabel={t('accounts.page.toolbar.search')} currentValue={value ?? undefined}>
       {(search) => (
         <>
           <CommandEmpty />

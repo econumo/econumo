@@ -57,7 +57,7 @@ export function OptionSelect({ id, 'aria-label': ariaLabel, title, value, onValu
         <span data-slot="select-value">{options.find((o) => o.value === value)?.label ?? ''}</span>
         <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />
       </button>
-      <PickerSheet open={open} onClose={() => setOpen(false)} title={title} searchLabel={title} searchable={false}>
+      <PickerSheet open={open} onClose={() => setOpen(false)} title={title} searchLabel={title} searchable={false} currentValue={value}>
         {() =>
           options.map((option) => (
             <CommandItem

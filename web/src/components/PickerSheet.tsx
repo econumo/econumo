@@ -22,9 +22,11 @@ interface PickerSheetProps {
   searchable?: boolean
   /** a search-first picker raises the keyboard on open; a checklist does not */
   focusSearch?: boolean
+  /** the row (its cmdk value) the unfiltered list highlights first: the current choice */
+  currentValue?: string
   /** phone: Enter on a typed query before any arrow key, for the picker's best
-      match. Without it, after ↑ / ↓, and on a desktop (cmdk's own input),
-      Enter picks the highlighted row */
+      match. Without it, on an empty query, after ↑ / ↓, and on a desktop
+      (cmdk's own input), Enter picks the highlighted row */
   onSearchEnter?: (query: string) => void
   /** iOS's ^ / v keys from the search carry on through the form behind */
   onNavigate?: (step: 1 | -1) => void
@@ -57,6 +59,7 @@ export function PickerSheet({
   searchPlaceholder,
   searchable = true,
   focusSearch = true,
+  currentValue,
   onSearchEnter,
   onNavigate,
   header,
@@ -87,10 +90,23 @@ export function PickerSheet({
     setNavigated(false)
   }
   // the rows are filtered here, not by cmdk, which then keeps highlighting the
-  // row it had: each query starts again from its best match, the first row
+  // row it had: each query starts again from its best match, the first row.
+  // The full list starts at the current value, as a dropdown does, so opening
+  // and pressing Enter keeps it rather than picking the first row
+  const [active, setActive] = useState('')
   useEffect(() => {
+    if (!open) {
+      return
+    }
+    if (query === '' && currentValue) {
+      setActive(currentValue)
+      requestAnimationFrame(() => {
+        commandRef.current?.querySelector(`[cmdk-item][data-value="${CSS.escape(currentValue)}"]`)?.scrollIntoView({ block: 'nearest' })
+      })
+      return
+    }
     commandRef.current?.dispatchEvent(new globalThis.KeyboardEvent('keydown', { key: 'Home', bubbles: true }))
-  }, [query])
+  }, [query, open, currentValue])
 
   // the phone search lives outside the cmdk root (in the sheet's pinned row),
   // so its keys are handed to cmdk, which ignores an IME's composing Enter
@@ -98,7 +114,7 @@ export function PickerSheet({
     if (e.nativeEvent.isComposing || e.keyCode === 229) {
       return
     }
-    if (e.key === 'Enter' && onSearchEnter && !navigated) {
+    if (e.key === 'Enter' && onSearchEnter && !navigated && query !== '') {
       e.preventDefault()
       onSearchEnter(query)
       return
@@ -155,7 +171,7 @@ export function PickerSheet({
         <input aria-hidden inputMode="none" className={`${NAV_STOP} sticky top-0 -mb-px block`} onFocus={() => onNavigate(-1)} />
       ) : null}
       {/* with no search, the list is a Tab stop of its own */}
-      <Command ref={commandRef} shouldFilter={false} label={searchLabel} tabIndex={searchable ? -1 : 0}>
+      <Command ref={commandRef} shouldFilter={false} label={searchLabel} tabIndex={searchable ? -1 : 0} value={active} onValueChange={setActive}>
         {!isPhone && searchable ? (
           <CommandInput autoFocus={focusSearch} aria-label={searchLabel} placeholder={searchPlaceholder ?? searchLabel} value={query} onValueChange={changeQuery} />
         ) : null}
