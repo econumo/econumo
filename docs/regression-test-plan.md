@@ -1200,7 +1200,8 @@ and on tablet/phone only with a hardware keyboard.
       immediately and carries into the next period per rules.
 - [ ] Empty plan vs a plan of 0 📱: a row with no plan shows a dash, never 0
       (Budget view row, phone row, item sheet) and a blank Plan cell; entering
-      0 saves a plan of 0 that shows as 0 (and keeps an unused tag visible);
+      0 saves a plan of 0 that shows as 0 (and keeps an unused active tag
+      visible; an archived row with only a plan of 0 stays hidden);
       emptying the input and saving removes the plan (dash again). An expense
       plan of 0 with a payment still due shows red. In the Plan grid, copying
       or fill-dragging an empty cell clears the target months.

@@ -55,7 +55,8 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit,
         <button
           type="button"
           data-limit-trigger=""
-          className={`w-full text-right underline-offset-2 hover:underline ${planHintClass(hint)}`}
+          // min width: an unset plan is a lone dash, too small to hit beside the comment marker
+          className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${planHintClass(hint)}`}
           aria-label={`limit ${name}`}
         >
           {currentValue === '' ? <Dash /> : moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}

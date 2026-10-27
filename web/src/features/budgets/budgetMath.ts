@@ -106,10 +106,10 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang =
     )
 
   // archive is read-only history: a row earns its place only if one of its
-  // displayed numbers (budget, spent, available) is nonzero, or it holds a plan (a plan of 0 too)
+  // displayed numbers (budget, spent, available) is nonzero; a plan of 0 alone does not keep it
   const archived = elements
     .filter((el) => el.isArchived === 1 && el.id !== UNCATEGORIZED_ID)
-    .filter((el) => el.isBudgeted === 1 || cmp(el.budgeted, '0') !== 0 || cmp(el.spent, '0') !== 0 || cmp(displayAvailable(el), '0') !== 0 || hasUpcoming(el))
+    .filter((el) => cmp(el.budgeted, '0') !== 0 || cmp(el.spent, '0') !== 0 || cmp(displayAvailable(el), '0') !== 0 || hasUpcoming(el))
     .sort((a, b) => compareNames(a.name, b.name, lang))
 
   return {

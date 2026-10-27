@@ -151,6 +151,17 @@ func TestSetLimit_ZeroPlanIsAPlan(t *testing.T) {
 		t.Fatalf("after a plan of 0: found=%v budgeted=%q isBudgeted=%d, want visible 0 with isBudgeted 1", found, budgeted, isBudgeted)
 	}
 
+	// archived, a plan of 0 alone no longer keeps it
+	if _, err := h.db.Exec(`UPDATE tags SET is_archived = 1 WHERE id = ?`, tagID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, found := read(); found {
+		t.Fatalf("an archived tag with only a plan of 0 must stay hidden")
+	}
+	if _, err := h.db.Exec(`UPDATE tags SET is_archived = 0 WHERE id = ?`, tagID); err != nil {
+		t.Fatal(err)
+	}
+
 	setLimit(nil)
 	if _, _, found := read(); found {
 		t.Fatalf("a cleared plan on an unused tag must hide it again")

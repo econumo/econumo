@@ -242,7 +242,7 @@ function ElementRow({
           ) : extras.onBudgetCellDetails ? (
             <button
               type="button"
-              className={`w-full text-right underline-offset-2 hover:underline ${hintClass}`}
+              className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${hintClass}`}
               aria-label={`details ${displayName}`}
               onClick={() => extras.onBudgetCellDetails!(element)}
             >
@@ -253,7 +253,7 @@ function ElementRow({
           ) : extras.onBudgetCellComments ? (
             <button
               type="button"
-              className={`w-full text-right underline-offset-2 hover:underline ${hintClass}`}
+              className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${hintClass}`}
               aria-label={`comments ${displayName}`}
               onClick={(e) => extras.onBudgetCellComments!(element, commentAnchorOf(e.currentTarget))}
             >

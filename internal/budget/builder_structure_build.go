@@ -124,7 +124,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			})
 			categoryUsed[catID] = true
 		}
-		if !env.IsArchived || bud.hasLimit || !budgeted.IsZero() || !budgetedBefore.IsZero() || len(el.children) > 0 {
+		if !env.IsArchived || !budgeted.IsZero() || !budgetedBefore.IsZero() || len(el.children) > 0 {
 			elements = append(elements, el)
 		}
 	}
@@ -179,7 +179,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 				})
 			}
 		}
-		if !tag.IsArchived || bud.hasLimit || !budgeted.IsZero() || !budgetedBefore.IsZero() || len(el.children) > 0 {
+		if !tag.IsArchived || !budgeted.IsZero() || !budgetedBefore.IsZero() || len(el.children) > 0 {
 			elements = append(elements, el)
 		}
 	}
@@ -226,7 +226,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		budgeted, budgetedBefore := orZero(bud.budgeted, zero), orZero(bud.budgetedBefore, zero)
 		cs := categorySpendingFor(spending, index, catID)
 		hasSpent := cs != nil && (len(cs.currenciesSpent) > 0 || len(cs.currenciesSpentBefore) > 0)
-		if cat.IsArchived && !hasSpent && !bud.hasLimit && budgeted.IsZero() && budgetedBefore.IsZero() {
+		if cat.IsArchived && !hasSpent && budgeted.IsZero() && budgetedBefore.IsZero() {
 			continue
 		}
 		el := &structElement{
@@ -318,7 +318,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		sort.Slice(children, func(i, j int) bool { return children[i].Id < children[j].Id })
 
 		available := el.budgetedBefore.Sub(spentBefore)
-		if el.isArchived && available.IsZero() && spent.IsZero() && !el.hasLimit && el.budgeted.IsZero() &&
+		if el.isArchived && available.IsZero() && spent.IsZero() && el.budgeted.IsZero() &&
 			(el.typ != model.ElementEnvelope || len(children) == 0) {
 			continue
 		}

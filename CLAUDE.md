@@ -1342,7 +1342,8 @@ data unreadable. Most are also asserted by the test suite.
   `transactions_revision` moves so synced clients refetch.
 - **Budget element visibility**: a tag/envelope/category appears in `get-budget` when it has spending **or** a limit (current or carried-over) — so a tag with a limit but no transactions stays visible.
 - **Empty plan vs a plan of 0**: a plan of 0 is stored (a limit row with amount 0) and counts as a
-  plan everywhere (visibility, the red short-plan hint); `set-limit` with `amount: null` removes the
+  plan everywhere (an active row stays visible with it, the red short-plan hint), except that an
+  archived row with nothing but a plan of 0 stays hidden; `set-limit` with `amount: null` removes the
   row. `get-budget` sends `budgeted: "0"` for both and tells them apart with the additive
   `isBudgeted` (0/1) on elements and savings rows; `get-budget-plan` cells already send `planned: ""`
   for no row. The SPA maps `isBudgeted: 0` to `budgeted: ''` (`getBudget`), shows an empty plan as
