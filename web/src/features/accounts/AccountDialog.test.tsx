@@ -102,7 +102,7 @@ it('shows the exact validation messages', async () => {
   expect(await screen.findByText('Account name must be 3-64 characters')).toBeInTheDocument()
 })
 
-it('currency row opens the search picker; the picked currency is posted', async () => {
+it('the currency field searches and picks like a category; the picked currency is posted', async () => {
   let body: Record<string, unknown> | undefined
   server.use(
     http.post('*/api/v1/account/update-account', async ({ request }) => {
@@ -115,11 +115,12 @@ it('currency row opens the search picker; the picked currency is posted', async 
   useUiStore.getState().openAccountModal({ account: fixtureAccounts[0] as unknown as AccountDto })
 
   await screen.findByText('Edit account')
-  const currencyRow = await screen.findByRole('button', { name: /Currency/ })
-  expect(currencyRow).toHaveTextContent('USD')
-  await user.click(currencyRow)
-  await user.click(await screen.findByText('EUR, €, Euro'))
-  expect(screen.getByRole('button', { name: /Currency/ })).toHaveTextContent('EUR')
+  const currency = await screen.findByRole('combobox', { name: 'Currency' })
+  await waitFor(() => expect(currency).toHaveValue('USD, $, US Dollar'))
+  await user.click(currency)
+  await user.keyboard('eur')
+  await user.click(await screen.findByRole('option', { name: 'EUR, €, Euro' }))
+  expect(currency).toHaveValue('EUR, €, Euro')
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.currencyId).toBe('cur-eur')
@@ -174,7 +175,7 @@ it('create mode has no access row', async () => {
   renderDialog()
   useUiStore.getState().openAccountModal({ folderId: 'f1' })
   await screen.findByText('New account')
-  await screen.findByRole('button', { name: /Currency/ })
+  await screen.findByRole('combobox', { name: 'Currency' })
   expect(screen.queryByRole('button', { name: /Access control/ })).toBeNull()
 })
 
@@ -189,7 +190,7 @@ it('edit mode hides the access row from a non-admin member', async () => {
   renderDialog()
   useUiStore.getState().openAccountModal({ account: foreign as unknown as AccountDto })
   await screen.findByText('Edit account')
-  await screen.findByRole('button', { name: /Currency/ })
+  await screen.findByRole('combobox', { name: 'Currency' })
   expect(screen.queryByRole('button', { name: /Access control/ })).toBeNull()
 })
 

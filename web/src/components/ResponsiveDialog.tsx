@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import type { ReactNode, RefObject } from 'react'
+import type { FocusEvent, ReactNode, RefObject } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { useIsPhone } from '@/hooks/useIsPhone'
@@ -16,6 +16,18 @@ const SHEET_TOP_GAP = 24
 // px left between a field brought into view and the form's edge
 const FIELD_REVEAL_GAP = 8
 const FIELD_REVEAL_DELAY_MS = 100
+
+const NO_KEYBOARD_INPUTS = new Set(['button', 'checkbox', 'radio', 'range', 'color', 'file', 'submit', 'reset', 'image', 'hidden'])
+
+function ownsKeyboard(target: EventTarget): boolean {
+  if (target instanceof HTMLTextAreaElement) {
+    return target.inputMode !== 'none'
+  }
+  if (target instanceof HTMLInputElement) {
+    return target.inputMode !== 'none' && !NO_KEYBOARD_INPUTS.has(target.type)
+  }
+  return target instanceof HTMLElement && target.isContentEditable
+}
 
 const CoverPage = createContext<((delta: 1 | -1) => void) | null>(null)
 
@@ -47,7 +59,7 @@ interface ResponsiveDialogProps {
   footer?: ReactNode
   /** desktop width: `wide` suits list-heavy dialogs (the global search palette) */
   size?: 'default' | 'wide'
-  /** mobile sheet: the field that takes focus on open (the drawer focuses itself otherwise) */
+  /** the element that takes focus on open (a mobile sheet focuses itself otherwise) */
   initialFocus?: RefObject<HTMLElement | null>
   /** runs as the dialog hands focus back on close; preventDefault() keeps focus
    *  where an action started from the dialog put it */
@@ -78,18 +90,41 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
   // area; vaul's own repositionInputs is off because it froze a stale height
   const liveKeyboard = useKeyboardInset(open && isMobile)
   const [covered, setCovered] = useState(0)
+  // a closed sheet's keyboard is still going away: until it is down, or a
+  // field of the page takes focus, its geometry is not the page's
+  const [sheetKeyboard, setSheetKeyboard] = useState(false)
   // held only while a sheet's own keyboard is up (it may pan the screen for
   // its search); with no keyboard the full-height page is already right, so
   // it follows, and a sheet closing finds nothing left to change
-  const held = covered > 0 && liveKeyboard.height > 0
+  const held = (covered > 0 || sheetKeyboard) && liveKeyboard.height > 0
   const heldKeyboard = useRef(liveKeyboard)
   useEffect(() => {
-    if (covered === 0) {
+    if (covered === 0 && !sheetKeyboard) {
       heldKeyboard.current = liveKeyboard
     }
-  }, [covered, liveKeyboard])
+  }, [covered, sheetKeyboard, liveKeyboard])
+  // also when the sheet closed with its keyboard already down: the viewport
+  // then never changes again to clear it
+  useEffect(() => {
+    if (sheetKeyboard && liveKeyboard.height === 0) {
+      setSheetKeyboard(false)
+    }
+  }, [sheetKeyboard, liveKeyboard])
   const keyboard = held ? heldKeyboard.current : liveKeyboard
-  const cover = useCallback((delta: 1 | -1) => setCovered((n) => n + delta), [])
+  const cover = useCallback((delta: 1 | -1) => {
+    setCovered((n) => n + delta)
+    if (delta < 0) {
+      setSheetKeyboard(true)
+    }
+  }, [])
+  // React focus events also bubble up from the sheets portaled out of the page.
+  // Only a page field that raises a keyboard of its own takes over: focus that
+  // a closing sheet hands back to its button leaves the hold in place
+  const onPageFocus = (e: FocusEvent) => {
+    if (contentRef.current?.contains(e.target as Node) && ownsKeyboard(e.target)) {
+      setSheetKeyboard(false)
+    }
+  }
   // a field tapped on the full-height page was in view, so iOS revealed
   // nothing; the page then shrinks above the keyboard and can leave it under
   // the footer. Bring it back into the form's visible part
@@ -186,6 +221,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         <DialogContent
           ref={contentRef}
           style={pageStyle}
+          onFocusCapture={onPageFocus}
           className="top-0 left-0 flex h-dvh max-h-dvh w-screen after:absolute after:inset-x-0 after:top-full after:h-dvh after:bg-background after:content-[''] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
           onInteractOutside={onInteractOutside}
           onEscapeKeyDown={onEscapeKeyDown}
@@ -264,6 +300,12 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         onInteractOutside={onInteractOutside}
         onEscapeKeyDown={onEscapeKeyDown}
         onCloseAutoFocus={onCloseAutoFocus}
+        onOpenAutoFocus={(e) => {
+          if (initialFocus?.current) {
+            e.preventDefault()
+            initialFocus.current.focus()
+          }
+        }}
         // a floating X with no header row to anchor it looks stray — unless asked for
         showCloseButton={showCloseButton}
       >

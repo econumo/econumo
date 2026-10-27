@@ -285,6 +285,39 @@ describe('on a phone', () => {
     expect(onChange).toHaveBeenLastCalledWith('c3')
   })
 
+  // an IME's Enter confirms the word being composed, not a pick
+  it('Enter during IME composition picks nothing', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const onCreate = vi.fn()
+    render(<EntitySelect aria-label="Category" value={null} onChange={onChange} onCreate={onCreate} options={OPTIONS} />)
+    await user.click(combobox())
+    const search = within(await screen.findByRole('dialog')).getByRole('textbox')
+    fireEvent.change(search, { target: { value: 'fo' } })
+    fireEvent.keyDown(search, { key: 'Enter', isComposing: true })
+    fireEvent.keyDown(search, { key: 'Enter', keyCode: 229 })
+    expect(onChange).not.toHaveBeenCalled()
+    expect(onCreate).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('a scroll that begins on the picker does not open it', () => {
+    render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} />)
+    fireEvent.touchStart(combobox(), { touches: [{ clientX: 10, clientY: 100 }] })
+    fireEvent.touchEnd(combobox(), { changedTouches: [{ clientX: 10, clientY: 40 }] })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    // out past the slop and back again is still a scroll
+    fireEvent.touchStart(combobox(), { touches: [{ clientX: 10, clientY: 100 }] })
+    fireEvent.touchMove(combobox(), { touches: [{ clientX: 10, clientY: 60 }] })
+    fireEvent.touchEnd(combobox(), { changedTouches: [{ clientX: 10, clientY: 98 }] })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    fireEvent.touchStart(combobox(), { touches: [{ clientX: 10, clientY: 100 }] })
+    fireEvent.touchEnd(combobox(), { changedTouches: [{ clientX: 12, clientY: 103 }] })
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
   it('a new name offers to create it', async () => {
     const user = userEvent.setup()
     const onCreate = vi.fn()

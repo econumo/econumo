@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { Check, ChevronsUpDown, Plus } from 'lucide-react'
+import { ChevronsUpDown, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Combobox as ComboboxPrimitive } from '@base-ui/react'
 import { Combobox, ComboboxContent, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
 import { EntityIcon } from '@/components/EntityIcon'
 import { rankByName } from '@/lib/search'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { CommandItem } from '@/components/ui/command'
+import { PickerSheet } from '@/components/PickerSheet'
 import { useIsPhone } from '@/hooks/useIsPhone'
 
 export interface EntityOption {
@@ -16,6 +17,9 @@ export interface EntityOption {
   disabled?: boolean
   /** what typing matches against when the label carries decoration (e.g. an account's balance) */
   searchText?: string
+  /** what a screen reader announces when the row says more than its text
+      (e.g. a hidden folder, marked only by an icon) */
+  ariaLabel?: string
 }
 
 interface Row extends EntityOption {
@@ -82,6 +86,9 @@ function CreateHint() {
   )
 }
 
+// px a touch may travel and still count as a tap on the phone picker
+const TAP_SLOP = 10
+
 const FORM_FIELDS = 'input:not([type=hidden]):not(:disabled), textarea:not(:disabled), select:not(:disabled)'
 
 function fieldBeside(from: HTMLElement, step: 1 | -1): HTMLElement | null {
@@ -90,9 +97,6 @@ function fieldBeside(from: HTMLElement, step: 1 | -1): HTMLElement | null {
   const at = fields.indexOf(from)
   return at < 0 ? null : (fields[at + step] ?? null)
 }
-
-// invisible fields either side of the sheet's search, where iOS's ^ / v keys land
-const NAV_STOP = 'pointer-events-none absolute top-0 left-0 size-px opacity-0'
 
 const fieldClass =
   'flex h-8 w-full items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-disabled:opacity-50 max-md:h-11 max-md:text-base'
@@ -119,16 +123,12 @@ function PhoneEntitySelect({
 }: EntitySelectProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const searchRef = useRef<HTMLInputElement>(null)
   const triggerRef = useRef<HTMLInputElement>(null)
+  const touchStart = useRef<{ x: number; y: number } | null>(null)
   const selected = options.find((o) => o.value === value) ?? null
-  const { rows, canCreate } = buildRows({ options, value, search, clearable, onCreate, createValidator })
+  const rowsFor = (search: string) => buildRows({ options, value, search, clearable, onCreate, createValidator })
 
-  const close = () => {
-    setOpen(false)
-    setSearch('')
-  }
+  const close = () => setOpen(false)
   const pick = (row: Row | undefined) => {
     if (!row || row.disabled) {
       return
@@ -152,8 +152,8 @@ function PhoneEntitySelect({
       // a programmatic focus gets no reveal from iOS: Notes would stay behind
       // the footer until typing scrolled it up
       requestAnimationFrame(() => target.scrollIntoView({ block: 'nearest' }))
-    } else {
-      searchRef.current?.blur()
+    } else if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
     }
   }
 
@@ -178,7 +178,30 @@ function PhoneEntitySelect({
           onChange={() => {}}
           disabled={disabled}
           onFocus={() => setOpen(true)}
+          onTouchStart={(e) => {
+            touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+          }}
+          onTouchMove={(e) => {
+            // a touch that ever travels past the slop is a scroll, even if it
+            // comes back to where it began
+            const start = touchStart.current
+            const at = e.touches[0]
+            if (start && (Math.abs(at.clientX - start.x) > TAP_SLOP || Math.abs(at.clientY - start.y) > TAP_SLOP)) {
+              touchStart.current = null
+            }
+          }}
+          onTouchCancel={() => {
+            touchStart.current = null
+          }}
           onTouchEnd={(e) => {
+            // a scroll of the form that began on the picker is no tap: iOS
+            // neither clicks nor focuses after it, so leave it alone
+            const start = touchStart.current
+            touchStart.current = null
+            const end = e.changedTouches[0]
+            if (!start || Math.abs(end.clientX - start.x) > TAP_SLOP || Math.abs(end.clientY - start.y) > TAP_SLOP) {
+              return
+            }
             e.preventDefault()
             if (!disabled) {
               setOpen(true)
@@ -194,58 +217,37 @@ function PhoneEntitySelect({
         />
         <ChevronsUpDown className="pointer-events-none size-4 shrink-0 opacity-50" />
       </div>
-      {/* the search sits in the sheet's pinned bottom row: the sheet rests on
-          the keyboard, so it stays right above the keys however many rows the
-          filter leaves */}
-      <ResponsiveDialog
+      <PickerSheet
         open={open}
-        onOpenChange={(next) => (next ? setOpen(true) : close())}
+        onClose={close}
         title={title ?? ariaLabel ?? ''}
-        initialFocus={searchRef}
+        searchLabel={ariaLabel ?? ''}
+        searchPlaceholder={onCreate ? t('common.select.create_placeholder') : t('common.select.search_placeholder')}
+        // a typed name means its best match, never the clear row
+        onSearchEnter={(search) => pick(rowsFor(search).rows.find((r) => !r.clear && !r.disabled))}
+        onNavigate={moveTo}
+        currentValue={value ?? undefined}
         // focus never returns to the picker: arriving there would reopen it
         onCloseAutoFocus={(e) => e.preventDefault()}
-        footer={
-          <div className="relative">
-            <input aria-hidden inputMode="none" className={NAV_STOP} onFocus={() => moveTo(-1)} />
-            {/* focused as the sheet opens, still inside the tap, so iOS raises the keyboard */}
-            <input
-              ref={searchRef}
-              type="text"
-              aria-label={ariaLabel}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  pick(rows.find((r) => !r.clear && !r.disabled))
-                }
-              }}
-              placeholder={onCreate ? t('common.select.create_placeholder') : t('common.select.search_placeholder')}
-              autoComplete="off"
-              className={`${fieldClass} outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring/50`}
-            />
-            <input aria-hidden inputMode="none" className={NAV_STOP} onFocus={() => moveTo(1)} />
-          </div>
-        }
+        listLabel={ariaLabel}
+        after={(search) => (onCreate && !rowsFor(search).canCreate ? <CreateHint /> : null)}
       >
-        <div role="listbox" aria-label={ariaLabel}>
-          {rows.map((row) => (
-            <button
+        {(search) =>
+          rowsFor(search).rows.map((row) => (
+            <CommandItem
               key={row.create ? '__create__' : row.value}
-              type="button"
-              role="option"
-              aria-selected={!row.clear && !row.create && row.value === value}
+              value={row.create ? '__create__' : row.value}
               disabled={row.disabled}
-              className={`flex w-full items-center gap-2 rounded-md px-2 py-3 text-left text-base active:bg-accent disabled:opacity-50 ${row.create ? 'text-econumo-link' : ''}`}
-              onClick={() => pick(row)}
+              data-checked={!row.clear && !row.create && row.value === value}
+              aria-label={row.ariaLabel}
+              className={row.create ? 'text-econumo-link' : undefined}
+              onSelect={() => pick(row)}
             >
               <RowContent row={row} />
-              {!row.clear && !row.create && row.value === value ? <Check className="ml-auto size-4" /> : null}
-            </button>
-          ))}
-        </div>
-        {onCreate && !canCreate ? <CreateHint /> : null}
-      </ResponsiveDialog>
+            </CommandItem>
+          ))
+        }
+      </PickerSheet>
     </>
   )
 }
@@ -352,6 +354,7 @@ function InlineEntitySelect({
               key={row.create ? '__create__' : row.value}
               value={row}
               disabled={row.disabled}
+              aria-label={row.ariaLabel}
               className={row.create ? 'text-econumo-link' : undefined}
             >
               <RowContent row={row} />

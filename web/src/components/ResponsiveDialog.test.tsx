@@ -192,3 +192,121 @@ it('fullScreen on mobile scrolls the focused field back into view when the page 
     }
   }
 })
+
+it('a fullScreen page stays held after a sheet closes until its keyboard is down', () => {
+  mockMatchMedia(true)
+  const vv = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 })
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport')
+  Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+  const page = (sheetOpen: boolean) => (
+    <ResponsiveDialog open fullScreen onOpenChange={() => {}} title="Page">
+      <ResponsiveDialog open={sheetOpen} onOpenChange={() => {}} title="Sheet">
+        <p>sheet</p>
+      </ResponsiveDialog>
+    </ResponsiveDialog>
+  )
+  const keyboard = (height: number, offsetTop = 0) =>
+    act(() => {
+      vv.height = height
+      vv.offsetTop = offsetTop
+      vv.dispatchEvent(new Event('resize'))
+    })
+  try {
+    const { baseElement, rerender } = render(page(true))
+    const content = () => baseElement.querySelector<HTMLElement>('[data-slot="dialog-content"]')
+    keyboard(400, 300)
+    rerender(page(false))
+    // the closed sheet's keyboard is still going away, panned for its search
+    keyboard(420, 200)
+    expect(content()?.style.height).toBe('')
+    keyboard(800)
+    expect(content()?.style.height).toBe('')
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'visualViewport', original)
+    } else {
+      delete (window as { visualViewport?: unknown }).visualViewport
+    }
+  }
+})
+
+it('a sheet closed with its keyboard already down leaves the page free to fit the next keyboard', () => {
+  mockMatchMedia(true)
+  const vv = Object.assign(new EventTarget(), { height: 450, offsetTop: 0 })
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport')
+  Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+  const page = (sheetOpen: boolean) => (
+    <ResponsiveDialog open fullScreen onOpenChange={() => {}} title="Page">
+      <ResponsiveDialog open={sheetOpen} onOpenChange={() => {}} title="Sheet">
+        <p>sheet</p>
+      </ResponsiveDialog>
+    </ResponsiveDialog>
+  )
+  const keyboard = (height: number) =>
+    act(() => {
+      vv.height = height
+      vv.dispatchEvent(new Event('resize'))
+    })
+  try {
+    // fitted to a page field's keyboard, then a sheet opens and its keyboard is hidden
+    const { baseElement, rerender } = render(page(false))
+    const content = () => baseElement.querySelector<HTMLElement>('[data-slot="dialog-content"]')
+    expect(content()?.style.height).toBe('450px')
+    rerender(page(true))
+    keyboard(800)
+    rerender(page(false))
+    // a page field raises a keyboard of another height: the page fits it, not the stale 450
+    keyboard(380)
+    expect(content()?.style.height).toBe('380px')
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'visualViewport', original)
+    } else {
+      delete (window as { visualViewport?: unknown }).visualViewport
+    }
+  }
+})
+
+it('focus a closing sheet hands back to a button keeps the page held; a text field releases it', () => {
+  mockMatchMedia(true)
+  const vv = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 })
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport')
+  Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+  const page = (sheetOpen: boolean) => (
+    <ResponsiveDialog open fullScreen onOpenChange={() => {}} title="Page">
+      <button type="button">Currency</button>
+      <textarea aria-label="Notes" />
+      <ResponsiveDialog open={sheetOpen} onOpenChange={() => {}} title="Sheet">
+        <p>sheet</p>
+      </ResponsiveDialog>
+    </ResponsiveDialog>
+  )
+  const keyboard = (height: number, offsetTop = 0) =>
+    act(() => {
+      vv.height = height
+      vv.offsetTop = offsetTop
+      vv.dispatchEvent(new Event('resize'))
+    })
+  try {
+    const { baseElement, rerender } = render(page(true))
+    const content = () => baseElement.querySelector<HTMLElement>('[data-slot="dialog-content"]')
+    keyboard(400, 300)
+    rerender(page(false))
+    act(() => screen.getByRole('button', { name: 'Currency' }).focus())
+    keyboard(420, 200)
+    expect(content()?.style.height).toBe('')
+
+    act(() => screen.getByRole('textbox', { name: 'Notes' }).focus())
+    keyboard(430)
+    expect(content()?.style.height).toBe('430px')
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'visualViewport', original)
+    } else {
+      delete (window as { visualViewport?: unknown }).visualViewport
+    }
+  }
+})
