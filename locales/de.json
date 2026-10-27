@@ -1890,6 +1890,7 @@
       "payees": "Zahlungsempfänger",
       "tags": "Tags",
       "labels": "Auswertungs-Tags",
+      "recurring": "Wiederkehrend",
       "transactions": "Transaktionen"
     },
     "show_all": "Alle anzeigen ({count})",

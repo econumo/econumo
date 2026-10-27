@@ -1890,6 +1890,7 @@
       "payees": "Payees",
       "tags": "Tags",
       "labels": "Labels",
+      "recurring": "Recurring",
       "transactions": "Transactions"
     },
     "show_all": "Show all ({count})",

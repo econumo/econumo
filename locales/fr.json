@@ -1890,6 +1890,7 @@
       "payees": "Bénéficiaires",
       "tags": "Tags",
       "labels": "Tags de rapport",
+      "recurring": "Récurrentes",
       "transactions": "Transactions"
     },
     "show_all": "Tout afficher ({count})",
