@@ -120,6 +120,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }, [ownerId, categories, payees, tags, labels, form, patch])
 
   const selectableAccounts = accountOptions(accounts, folders, form.isNew)
+  // a transfer needs two accounts the user can write to; an existing transfer
+  // keeps its type so it stays editable
+  const transferUnavailable = !isTransfer && selectableAccounts.filter((a) => canWriteToAccount(a, user?.id)).length < 2
   const currentCategories = categoryOptions(categories, form.type, ownerId)
   const currentPayees = payees.filter((p) => p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId))
   const chips = classificationChips(tags, labels, form, ownerId)
@@ -309,7 +312,8 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
             type="button"
             role="radio"
             aria-checked={form.type === type}
-            className={`flex-1 rounded-md px-2 py-2 text-[13px] uppercase tracking-wide transition-colors ${
+            disabled={type === 'transfer' && transferUnavailable}
+            className={`flex-1 rounded-md px-2 py-2 text-[13px] uppercase tracking-wide transition-colors disabled:pointer-events-none disabled:opacity-40 ${
               form.type === type ? 'bg-econumo-magenta text-white' : 'text-muted-foreground hover:text-foreground'
             }`}
             onClick={() => setType(type)}

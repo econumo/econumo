@@ -378,6 +378,9 @@ navigation (single-pane vs sidebar).
 - [ ] Cross-currency transfer (USD account → EUR account) asks for both
       amounts; both accounts' balances update by their respective amounts.
 - [ ] Same-currency transfer: single amount; swap from/to button works.
+- [ ] With only one account you can add transactions to (accounts in hidden
+      folders and read-only shared ones don't count), the Transfer type is
+      greyed out and cannot be selected; editing an existing transfer keeps it.
 - [ ] 📱 Transfer with no "To" account: Add/Update shows "Required field" under
       the To select and sends nothing; the API rejects the same body with a
       400 on `accountRecipientId` (create AND update).

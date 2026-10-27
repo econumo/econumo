@@ -575,6 +575,44 @@ it('read-only shared accounts are disabled in the transfer account pickers', asy
 })
 
 
+it('Transfer is unavailable with only one writable account', async () => {
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+  const readOnlyShared = {
+    ...fixtureAccounts[1], id: 'a-ro', owner: partner, name: 'Partner cash',
+    sharedAccess: [{ user: fixtureOwner, role: 'guest', isAccepted: 1 }],
+  }
+  server.use(...coreHandlers({ accounts: [fixtureAccounts[0], readOnlyShared] }))
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  await waitFor(() => expect(screen.getByRole('radio', { name: 'Transfer' })).toBeDisabled())
+  await user.click(screen.getByRole('radio', { name: 'Transfer' }))
+  expect(screen.getByRole('radio', { name: 'Expense' })).toHaveAttribute('aria-checked', 'true')
+  expect(screen.getByRole('radio', { name: 'Income' })).toBeEnabled()
+})
+
+it('Transfer stays available with two writable accounts', async () => {
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await screen.findByRole('combobox', { name: 'account' })
+  expect(screen.getByRole('radio', { name: 'Transfer' })).toBeEnabled()
+})
+
+it('editing an existing transfer keeps the Transfer type with one writable account', async () => {
+  server.use(...coreHandlers({ accounts: [fixtureAccounts[0]] }))
+  renderDialog()
+  useUiStore.getState().openTransactionModal({
+    transaction: wireTxEcho({ type: 'transfer', accountId: 'a1', accountRecipientId: 'a2', categoryId: null }) as unknown as TransactionDto,
+  })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  const transfer = screen.getByRole('radio', { name: 'Transfer' })
+  expect(transfer).toBeEnabled()
+  expect(transfer).toHaveAttribute('aria-checked', 'true')
+})
+
 it('editing a transaction round-trips its existing labels', async () => {
   // update-transaction REPLACES the label set: an edit that forgets to resend
   // the attached ids deletes them, which is what this asserts against
