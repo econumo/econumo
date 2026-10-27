@@ -88,7 +88,7 @@ export function ElementSheet({
   const planFigure = (key: string, figureLabel: string, planned: string): Figure => ({
     key,
     label: figureLabel,
-    value: fmt(planned),
+    value: planned === '' ? EMPTY : fmt(planned),
     className: planHintClass(hint),
   })
   const label = {

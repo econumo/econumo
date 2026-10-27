@@ -95,15 +95,18 @@ type ChildElementResult struct {
 
 // ParentElementResult is a top-level budget element (envelope/tag/category).
 type ParentElementResult struct {
-	Id          string               `json:"id"`
-	Type        int                  `json:"type"`
-	Name        string               `json:"name"`
-	Icon        string               `json:"icon"`
-	CurrencyId  string               `json:"currencyId"`
-	IsArchived  int                  `json:"isArchived"`
-	FolderId    *string              `json:"folderId"`
-	Position    int                  `json:"position"`
-	Budgeted    string               `json:"budgeted"`
+	Id         string  `json:"id"`
+	Type       int     `json:"type"`
+	Name       string  `json:"name"`
+	Icon       string  `json:"icon"`
+	CurrencyId string  `json:"currencyId"`
+	IsArchived int     `json:"isArchived"`
+	FolderId   *string `json:"folderId"`
+	Position   int     `json:"position"`
+	Budgeted   string  `json:"budgeted"`
+	// IsBudgeted is 1 when the period has a plan, even a plan of 0; with 0,
+	// Budgeted is "0" and means no plan was set.
+	IsBudgeted  int                  `json:"isBudgeted"`
 	Available   string               `json:"available"`
 	Spent       string               `json:"spent"`
 	BudgetSpent string               `json:"budgetSpent"`
@@ -152,6 +155,7 @@ type SavingsElementResult struct {
 	IsArchived     int    `json:"isArchived"`
 	Position       int    `json:"position"`
 	Budgeted       string `json:"budgeted"`
+	IsBudgeted     int    `json:"isBudgeted"`
 	Spent          string `json:"spent"`
 	Available      string `json:"available"`
 	ClosingBalance string `json:"closingBalance"`

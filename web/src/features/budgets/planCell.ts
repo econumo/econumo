@@ -38,13 +38,9 @@ export function shownActual(actual: string | null, hasPlan: boolean): Pick<PlanC
   return { actual: null, dash: hasPlan }
 }
 
-/** A zero plan only means something next to a figure: on its own it reads as noise,
- *  so a month with no actual (or a zero one) and a zero plan stays blank. */
-function shownPlan(planned: string, actual: string | null): string | null {
-  if (planned === '' || (isZero(planned) && (actual === null || isZero(actual)))) {
-    return null
-  }
-  return planned
+/** An unset plan stays blank; a plan of 0 was set on purpose and shows. */
+function shownPlan(planned: string): string | null {
+  return planned === '' ? null : planned
 }
 
 export function planCellView({ type, id, cell, month, selected }: PlanCellViewInput): PlanCellView {
@@ -57,10 +53,10 @@ export function planCellView({ type, id, cell, month, selected }: PlanCellViewIn
   // where a savings account stands says more than what went in that month; ahead of
   // today it is the projection (unmet plans still to come), flat without a plan
   if (type === BudgetElementType.SAVINGS && cell.closingBalance !== undefined) {
-    return { actual: cell.closingBalance, dash: false, plan: shownPlan(cell.planned, cell.closingBalance), over: false, balance: true, hint }
+    return { actual: cell.closingBalance, dash: false, plan: shownPlan(cell.planned), over: false, balance: true, hint }
   }
   const actual = past ? cell.actual : null
-  const plan = shownPlan(cell.planned, actual)
+  const plan = shownPlan(cell.planned)
   return {
     ...shownActual(actual, plan !== null),
     plan,

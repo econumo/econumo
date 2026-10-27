@@ -13,8 +13,12 @@ describe('planHint', () => {
     expect(planHint({ planned: '', spent: '0', upcoming: '-50', kind: 'expense' })).toBeNull()
   })
 
-  it('plan "0" counts as no plan', () => {
-    expect(planHint({ planned: '0', spent: '0', upcoming: '650', kind: 'expense' })).toBeNull()
+  it('no plan gets no hint', () => {
+    expect(planHint({ planned: '', spent: '0', upcoming: '650', kind: 'expense' })).toBeNull()
+  })
+
+  it('a plan of 0 is a plan: short of anything still due', () => {
+    expect(planHint({ planned: '0', spent: '0', upcoming: '650', kind: 'expense' })).toEqual({ kind: 'short' })
   })
 
   it('short when the expense plan is below the need', () => {

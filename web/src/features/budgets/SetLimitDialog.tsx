@@ -5,7 +5,6 @@ import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { normalizeNumber } from '@/lib/money'
-import { isZero } from '@/lib/decimal'
 import { limitAmountFromInput } from './limitAmount'
 import { UpcomingPaymentsPanel, type UpcomingQuery } from './UpcomingPaymentsPanel'
 
@@ -27,7 +26,7 @@ export function SetLimitDialog({ target, onClose, onCommit, plan = false, upcomi
 
   useEffect(() => {
     if (target) {
-      setValue(isZero(target.value) ? '' : normalizeNumber(target.value))
+      setValue(target.value === '' ? '' : normalizeNumber(target.value))
       setError(null)
     }
     // id/value only: both call sites build `target` as a fresh object literal every

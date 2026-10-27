@@ -77,10 +77,10 @@ it('lists the income Uncategorized row only in a month it received something', (
   expect(planMonthFigures(usdPlan(), [usd, eur], '2026-07-01', past)!.income.rows.map((r) => r.element.id)).not.toContain('uncategorized')
 })
 
-it('an unplanned cell counts as a zero plan', () => {
+it('an unplanned cell keeps its empty plan', () => {
   const ie1 = usdPlan().structure.elements.find((el) => el.id === 'ie1')!
-  expect(planCellFigures(ie1, 0)).toEqual({ element: ie1, planned: '0', actual: '2000' })
-  expect(planCellFigures(ie1, 9)).toEqual({ element: ie1, planned: '0', actual: '0' })
+  expect(planCellFigures(ie1, 0)).toEqual({ element: ie1, planned: '', actual: '2000' })
+  expect(planCellFigures(ie1, 9)).toEqual({ element: ie1, planned: '', actual: '0' })
 })
 
 it('carries a savings cell\'s closing balance', () => {

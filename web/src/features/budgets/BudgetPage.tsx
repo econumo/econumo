@@ -575,7 +575,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     }
     if (isCompact) {
       return (
-        <button type="button" className={`w-full text-right underline-offset-2 hover:underline ${hintClass}`} aria-label={`details ${name}`} onClick={() => setSheetTarget(target)}>
+        <button type="button" className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${hintClass}`} aria-label={`details ${name}`} onClick={() => setSheetTarget(target)}>
           {text}
         </button>
       )
@@ -598,7 +598,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           ) : (
             <button
               type="button"
-              className={`w-full text-right underline-offset-2 hover:underline ${hintClass}`}
+              className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${hintClass}`}
               aria-label={`comments ${name}`}
               onClick={(e) => openComments(thread, commentAnchorOf(e.currentTarget))}
             >

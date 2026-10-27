@@ -19,7 +19,7 @@ import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
 import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, nothingToShow, overBudget, tagGroupStats } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
-import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu } from './monthLines'
+import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, PlanDash, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FIRST_COL, FOLD_LINE, foldOnLineClick, FOLDER_INDENT, groupedLevel, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
 import { segmentTagGroups } from './tagGroups'
@@ -185,7 +185,8 @@ function ElementRow({
   const displayName = elementDisplayName(element.id, element.name, t)
   // categoryless spending can never be budgeted: those columns read as a dash
   const isUncategorized = element.id === UNCATEGORIZED_ID
-  const carryText = isUncategorized || isZero(carry) ? null : `${moneyFormat(carry, currency, opts)} +`
+  // the + adds the carry to this month's plan; with no plan there is nothing to add it to
+  const carryText = isUncategorized || isZero(carry) ? null : `${moneyFormat(carry, currency, opts)}${element.budgeted === '' ? '' : ' +'}`
   // red marks a problem only: this month spent more than its budget and what earlier
   // months left does not cover it
   const overspent = !isUncategorized && overBudget({ budgeted: element.budgeted, spent: element.spent, available }, future)
@@ -195,7 +196,8 @@ function ElementRow({
   const size = isUncategorized ? '' : 'text-[15px]'
   const hint = sheetPlanHint({ kind: 'expense', element })
   const hintClass = planHintClass(hint)
-  const plannedText = moneyFormat(element.budgeted, currency, opts)
+  // no plan set reads as a dash; a plan of 0 shows its 0
+  const plannedText = element.budgeted === '' ? <PlanDash /> : moneyFormat(element.budgeted, currency, opts)
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string, danger: boolean) => {
     if (future) {
@@ -241,7 +243,7 @@ function ElementRow({
           ) : extras.onBudgetCellDetails ? (
             <button
               type="button"
-              className={`w-full text-right underline-offset-2 hover:underline ${hintClass}`}
+              className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${hintClass}`}
               aria-label={`details ${displayName}`}
               onClick={() => extras.onBudgetCellDetails!(element)}
             >
@@ -252,7 +254,7 @@ function ElementRow({
           ) : extras.onBudgetCellComments ? (
             <button
               type="button"
-              className={`w-full text-right underline-offset-2 hover:underline ${hintClass}`}
+              className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${hintClass}`}
               aria-label={`comments ${displayName}`}
               onClick={(e) => extras.onBudgetCellComments!(element, commentAnchorOf(e.currentTarget))}
             >

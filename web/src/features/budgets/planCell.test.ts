@@ -27,11 +27,11 @@ describe('planCellView', () => {
   it('leaves a month with neither an actual nor a plan blank', () => {
     expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: sel, selected: sel })).toEqual({ actual: null, dash: false, plan: null, over: false, balance: false, hint: null })
   })
-  it('leaves a zero plan blank while nothing happened in that month', () => {
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '0.00' }, month: sel, selected: sel })).toEqual({ actual: null, dash: false, plan: null, over: false, balance: false, hint: null })
-    expect(planCellView({ type: cat, cell: { actual: '0.00', planned: '0' }, month: '2026-09-01', selected: sel }).plan).toBeNull()
-    // ahead of the selected month no actual shows, so a zero plan has nothing to stand next to
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '0.00' }, month: '2026-11-01', selected: sel }).plan).toBeNull()
+  it('shows a plan of 0 even while nothing happened in that month; only no plan is blank', () => {
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '0.00' }, month: sel, selected: sel })).toEqual({ actual: null, dash: true, plan: '0.00', over: false, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: { actual: '0.00', planned: '0' }, month: '2026-09-01', selected: sel }).plan).toBe('0')
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '0.00' }, month: '2026-11-01', selected: sel }).plan).toBe('0.00')
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: sel, selected: sel })).toEqual({ actual: null, dash: false, plan: null, over: false, balance: false, hint: null })
   })
   it('keeps a zero plan next to a non-zero actual: "12 · 0"', () => {
     expect(planCellView({ type: cat, cell: { actual: '12', planned: '0.00' }, month: sel, selected: sel })).toEqual({ actual: '12', dash: false, plan: '0.00', over: true, balance: false, hint: null })
@@ -95,8 +95,9 @@ describe('planCellView for a savings account', () => {
   it('a zero balance is a real figure, not a dash', () => {
     expect(planCellView({ type: sav, cell: { actual: '0', planned: '50', closingBalance: '0' }, month: sel, selected: sel })).toMatchObject({ actual: '0', dash: false })
   })
-  it('leaves a zero plan blank next to a zero balance, keeps it next to a non-zero one', () => {
-    expect(planCellView({ type: sav, cell: { actual: '0', planned: '0.00', closingBalance: '0' }, month: sel, selected: sel })).toMatchObject({ actual: '0', plan: null })
+  it('keeps a plan of 0 next to any balance, leaves no plan blank', () => {
+    expect(planCellView({ type: sav, cell: { actual: '0', planned: '0.00', closingBalance: '0' }, month: sel, selected: sel })).toMatchObject({ actual: '0', plan: '0.00' })
+    expect(planCellView({ type: sav, cell: { actual: '0', planned: '', closingBalance: '0' }, month: sel, selected: sel })).toMatchObject({ actual: '0', plan: null })
     expect(planCellView({ type: sav, cell: { actual: '0', planned: '0.00', closingBalance: '2400' }, month: '2026-11-01', selected: sel })).toMatchObject({ actual: '2400', plan: '0.00' })
   })
   it('without balances from the server it falls back to what was saved', () => {

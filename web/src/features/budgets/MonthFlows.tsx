@@ -20,7 +20,7 @@ import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu, TotalLine } from './monthLines'
 import type { MenuAction, RowLevel } from './monthLayout'
-import { CHILD_INDENT, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
+import { CHILD_INDENT, EMPTY_CELL, FIRST_COL, FOLDER_INDENT, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
 import { leftToReceive, sheetPlanHint } from './phoneMonth'
 import type { PlanHint } from './planHint'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
@@ -172,7 +172,7 @@ export function MonthFlows({
   }
   const planned = (target: FlowTarget, amount: string, currencyId: Id) => {
     const hint = sheetPlanHint(target)
-    return renderPlanned(target, fmt(amount, currencyId), hint)
+    return renderPlanned(target, amount === '' ? EMPTY_CELL : fmt(amount, currencyId), hint)
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const exchangeFn = makeBudgetExchange(budget, currencies)

@@ -31,6 +31,16 @@ it('archive keeps elements with a nonzero budget, spent or available, name-sorte
   expect(buckets.archive.elements.map((e) => e.id)).toEqual(['tag-spent', 'tag-limit', 'tag-carry'])
 })
 
+it('archive hides an element whose only figure is a plan of 0', () => {
+  const mutated: BudgetDto = JSON.parse(JSON.stringify(budget))
+  const zero = mutated.structure.elements.find((el) => el.id === 'tag-old')!
+  mutated.structure.elements.push(
+    { ...zero, id: 'tag-zero-plan', name: 'zero plan', budgeted: '0', isBudgeted: 1 },
+    { ...zero, id: 'tag-no-plan', name: 'no plan', budgeted: '', isBudgeted: 0 },
+  )
+  expect(bucketElements(mutated, exch).archive.elements.map((e) => e.id)).toEqual([])
+})
+
 it('drops the Uncategorized bucket when the selected month has no uncategorized spend', () => {
   const uncatEl: BudgetElementDto = {
     id: 'uncategorized', type: 1, name: 'Uncategorized', icon: 'question_mark', currencyId: null, isArchived: 0,
