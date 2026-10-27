@@ -76,7 +76,7 @@ export function Dash() {
  *  which covers the cell's right edge on hover and would take the click */
 export function PlanDash() {
   return (
-    <span className="pr-3">
+    <span className="pr-2">
       <Dash />
     </span>
   )

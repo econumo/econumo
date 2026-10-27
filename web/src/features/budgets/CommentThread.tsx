@@ -96,14 +96,15 @@ export function CommentMarker({
       data-testid={add ? 'comment-marker-add' : 'comment-marker'}
       aria-label={label}
       title={add ? label : undefined}
-      className={`absolute z-10 flex size-6 items-start justify-end ${placement === 'outset' ? '-right-3 -top-1' : 'right-0 top-0'}${add ? ' group/add invisible group-hover/cell:visible' : ''}`}
+      // the add marker is kept small: it sits over the cell's figure and must not take clicks meant for it
+      className={`absolute z-10 flex items-start justify-end ${add ? 'size-3.5' : 'size-6'} ${placement === 'outset' ? (add ? '-right-2 -top-1' : '-right-3 -top-1') : 'right-0 top-0'}${add ? ' group/add invisible group-hover/cell:visible' : ''}`}
       onClick={(e) => {
         e.stopPropagation()
         onOpen(commentAnchorOf(e.currentTarget))
       }}
     >
       <span
-        className={`h-0 w-0 border-l-[10px] border-t-[10px] border-l-transparent ${add ? 'border-t-muted-foreground/40 group-hover/add:border-t-muted-foreground' : 'border-t-primary'}`}
+        className={`h-0 w-0 border-l-transparent ${add ? 'border-l-[7px] border-t-[7px] border-t-muted-foreground/40 group-hover/add:border-t-muted-foreground' : 'border-l-[10px] border-t-[10px] border-t-primary'}`}
       />
     </button>
   )
