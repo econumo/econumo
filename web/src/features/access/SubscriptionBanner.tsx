@@ -24,13 +24,14 @@ export function SubscriptionBanner() {
   // so self-hosted instances (no BILLING_URL) never fetch connections here.
   const { data: connections = [] } = useConnections({ enabled: billingEnabled })
   const portal = useOpenBillingPortal()
-  const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISSED_KEY) === formatDate(new Date()))
   const sale = useSaleBanner()
-  // Only forces the re-render after a close; whether a sale is dismissed is
+  // Only forces the re-render after a close; whether a banner is dismissed is
   // always read from storage against today, so a tab left open overnight
-  // shows a multi-day sale again the next day.
-  const [, setSaleClosedAt] = useState(0)
-  const saleDismissed = sale !== null && localStorage.getItem(saleDismissedKey(sale.id)) === formatDate(new Date())
+  // shows it again the next day.
+  const [, setClosedAt] = useState(0)
+  const today = formatDate(new Date())
+  const dismissed = localStorage.getItem(DISMISSED_KEY) === today
+  const saleDismissed = sale !== null && localStorage.getItem(saleDismissedKey(sale.id)) === today
 
   const partner = billingEnabled && !dismissed ? worstConnectionAttention(connections) : null
 
@@ -96,13 +97,11 @@ export function SubscriptionBanner() {
         aria-label={t('subscription.banner.dismiss')}
         className="shrink-0 hover:opacity-70"
         onClick={() => {
-          const today = formatDate(new Date())
           if (variant === 'sale') {
             localStorage.setItem(saleDismissedKey(sale!.id), today)
-            setSaleClosedAt(Date.now())
           }
           localStorage.setItem(DISMISSED_KEY, today)
-          setDismissed(true)
+          setClosedAt(Date.now())
         }}
       >
         <X className="size-4" />

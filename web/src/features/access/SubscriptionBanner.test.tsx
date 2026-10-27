@@ -63,6 +63,22 @@ it('shows the dismissible trial variant inside 3 days, with the CTA, and fires t
   expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
 })
 
+it('brings the trial variant back the next day in a tab left open', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  vi.mocked(getSaleBanner).mockResolvedValue(null)
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
+  const user = userEvent.setup()
+  renderBanner()
+  await user.click(await screen.findByRole('button', { name: 'Dismiss' }))
+  expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
+  // Midnight passes: the stored dismissal now names a past day.
+  localStorage.setItem('subscriptionBannerDismissedDay', '2000-01-01')
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  expect(await screen.findByText('Your subscription ends in 2 days')).toBeInTheDocument()
+})
+
 it('keeps the trial variant dismissed for the rest of the day across mounts', async () => {
   window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
   server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
