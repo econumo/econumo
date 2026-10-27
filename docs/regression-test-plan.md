@@ -357,6 +357,11 @@ navigation (single-pane vs sidebar).
       global add button: date picker, amount (formula), category & payee
       selects with **create-on-type** inline creation, tags & labels chips,
       description.
+- [ ] 📱 On an account page, add an expense/income after picking a different
+      account: a bottom "Switch to <account>" bar appears and opens that
+      account. Adding to the open account shows no bar. A transfer shows the
+      bar for its "To" account, or for its "From" account when "To" is the
+      open one.
 - [ ] 📱 In Add/Edit transaction, click the calendar's month or year header to
       jump directly to a past or future month/year, then select a day. Browsing
       months/years leaves the transaction date unchanged until a day is selected;
