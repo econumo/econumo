@@ -62,7 +62,12 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit,
           {currentValue === '' ? <PlanDash /> : moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-2" align="end">
+      <PopoverContent
+        className="w-64 p-2"
+        align="end"
+        // focus handed back to the trigger draws its focus ring over the figure after every edit
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         <form
           className="flex flex-col gap-2"
           noValidate
