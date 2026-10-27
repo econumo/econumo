@@ -1205,6 +1205,10 @@ and on tablet/phone only with a hardware keyboard.
       emptying the input and saving removes the plan (dash again). An expense
       plan of 0 with a payment still due shows red. In the Plan grid, copying
       or fill-dragging an empty cell clears the target months.
+      A carry-over beside an empty plan shows no "+" ("-412.61 —"). Clicking
+      the dash opens the plan editor, never comments; the editor closing
+      leaves no focus ring on the cell. The add-comment corner shows while the
+      Budget row is hovered and stays shown on the way to it.
 - [ ] Spent cell drilldown opens the transactions dialog (filtered list,
       preview, delete works and refreshes figures).
 - [ ] Transactions dialog rows: a row with a note shows the note, then
