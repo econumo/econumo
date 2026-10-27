@@ -214,7 +214,7 @@ it('offers a hover-only "Add comment" corner on a budgeted cell without comments
   expect(within(cell).queryByTestId('comment-marker')).toBeNull()
   const add = within(cell).getByTestId('comment-marker-add')
   expect(add).toHaveAccessibleName('Add comment')
-  expect(add).toHaveClass('invisible', 'group-hover/cell:visible')
+  expect(add).toHaveClass('invisible', 'group-hover/line:visible')
   await user.click(add)
   const popover = await screen.findByTestId('comments-popover')
   expect(within(popover).getByText('No comments yet.')).toBeInTheDocument()

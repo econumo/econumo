@@ -75,7 +75,8 @@ export function sortByCreatedAt(comments: BudgetCommentDto[]): BudgetCommentDto[
 // mark then sits in the gap after the number instead of on top of its last digit.
 //
 // With no comments it is the add-comment corner: a faint triangle shown only while a
-// mouse hovers the enclosing `group/cell`. It is hidden with `visibility`, not
+// mouse hovers the enclosing `group/cell` (`outset`: the whole `group/line`, so the
+// corner, which sits mostly outside the cell, stays shown on the way to it). It is hidden with `visibility`, not
 // opacity, so it cannot be tapped or tabbed to while unseen; Tailwind's hover
 // variants apply only under `(hover: hover)`, so touch screens never show it.
 export function CommentMarker({
@@ -98,7 +99,7 @@ export function CommentMarker({
       title={add ? label : undefined}
       // the add marker's hit area reaches outward (right and up) and only ~2px into the cell,
       // so it never takes clicks meant for the figure under it
-      className={`absolute z-10 flex items-start justify-end ${add ? 'h-[10px] w-[13px] pr-[3px] pt-[3px]' : 'size-6'} ${placement === 'outset' ? (add ? '-right-[11px] -top-[7px]' : '-right-3 -top-1') : add ? '-right-[3px] -top-[3px]' : 'right-0 top-0'}${add ? ' group/add invisible group-hover/cell:visible' : ''}`}
+      className={`absolute z-10 flex items-start justify-end ${add ? 'h-[10px] w-[13px] pr-[3px] pt-[3px]' : 'size-6'} ${placement === 'outset' ? (add ? '-right-[11px] -top-[7px]' : '-right-3 -top-1') : add ? '-right-[3px] -top-[3px]' : 'right-0 top-0'}${add ? ` group/add invisible ${placement === 'outset' ? 'group-hover/line:visible' : 'group-hover/cell:visible'}` : ''}`}
       onClick={(e) => {
         e.stopPropagation()
         onOpen(commentAnchorOf(e.currentTarget))
