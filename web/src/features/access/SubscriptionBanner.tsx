@@ -9,10 +9,13 @@ import { worstConnectionAttention } from '@/lib/access'
 import { useAccessState } from '@/features/user/queries'
 import { useConnections } from '@/features/connections/queries'
 import { useOpenBillingPortal } from './useOpenBillingPortal'
+import { useSaleBanner } from './useSaleBanner'
 
 // Dismissal persists for the local calendar day: the banner stays hidden
 // across reloads and returns the next day (the countdown has moved by then).
 const DISMISSED_KEY = 'subscriptionBannerDismissedDay'
+// Per sale, so a dismissed Black Friday does not hide Cyber Monday.
+const saleDismissedKey = (id: string) => `saleBannerDismissedDay:${id}`
 
 export function SubscriptionBanner() {
   const { t, i18n } = useTranslation()
@@ -22,34 +25,46 @@ export function SubscriptionBanner() {
   const { data: connections = [] } = useConnections({ enabled: billingEnabled })
   const portal = useOpenBillingPortal()
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISSED_KEY) === formatDate(new Date()))
+  const sale = useSaleBanner()
+  const [dismissedSaleId, setDismissedSaleId] = useState<string | null>(null)
+  const saleDismissed =
+    sale !== null &&
+    (dismissedSaleId === sale.id || localStorage.getItem(saleDismissedKey(sale.id)) === formatDate(new Date()))
 
   const partner = billingEnabled && !dismissed ? worstConnectionAttention(connections) : null
 
-  // One banner; own state outranks any partner's.
+  // One banner; a running sale outranks everything, then own state outranks
+  // any partner's.
   const variant =
-    state === 'readonly'
-      ? ('readonly' as const)
-      : state === 'trial' && billingEnabled && daysLeft !== null && daysLeft <= 3 && !dismissed
-        ? ('trial' as const)
-        : partner
-          ? partner.state === 'readonly'
-            ? ('partner_readonly' as const)
-            : ('partner_trial' as const)
-          : null
+    sale && !saleDismissed
+      ? ('sale' as const)
+      : state === 'readonly'
+        ? ('readonly' as const)
+        : state === 'trial' && billingEnabled && daysLeft !== null && daysLeft <= 3 && !dismissed
+          ? ('trial' as const)
+          : partner
+            ? partner.state === 'readonly'
+              ? ('partner_readonly' as const)
+              : ('partner_trial' as const)
+            : null
 
+  const saleId = variant === 'sale' ? sale!.id : null
   useEffect(() => {
-    if (variant) {
+    if (saleId) {
+      trackEvent(METRICS.SUBSCRIPTION_BANNER_SHOW, { variant: 'sale', sale: saleId })
+    } else if (variant) {
       trackEvent(METRICS.SUBSCRIPTION_BANNER_SHOW, { variant })
     }
-  }, [variant])
+  }, [variant, saleId])
 
   if (!variant) {
     return null
   }
 
+  // The sale only exists with billing enabled, so it always gets a CTA.
   const cta = billingEnabled ? (
     <Button type="button" size="sm" variant="outline" disabled={portal.pending} onClick={() => portal.open()}>
-      {t('subscription.banner.cta')}
+      {variant === 'sale' ? sale!.cta : t('subscription.banner.cta')}
     </Button>
   ) : null
 
@@ -63,11 +78,13 @@ export function SubscriptionBanner() {
   }
 
   const message =
-    variant === 'trial'
-      ? pluralPick(t('subscription.banner.trial'), Math.max(daysLeft ?? 0, 0), i18n.language)
-      : variant === 'partner_trial'
-        ? pluralPick(t('subscription.banner.connection_trial', { name: partner!.name }), partner!.daysLeft ?? 0, i18n.language)
-        : t('subscription.banner.connection_readonly', { name: partner!.name })
+    variant === 'sale'
+      ? sale!.text
+      : variant === 'trial'
+        ? pluralPick(t('subscription.banner.trial'), Math.max(daysLeft ?? 0, 0), i18n.language)
+        : variant === 'partner_trial'
+          ? pluralPick(t('subscription.banner.connection_trial', { name: partner!.name }), partner!.daysLeft ?? 0, i18n.language)
+          : t('subscription.banner.connection_readonly', { name: partner!.name })
 
   return (
     <div className="flex items-center gap-3 bg-primary/10 px-4 py-2 text-sm text-econumo-link">
@@ -78,7 +95,12 @@ export function SubscriptionBanner() {
         aria-label={t('subscription.banner.dismiss')}
         className="shrink-0 hover:opacity-70"
         onClick={() => {
-          localStorage.setItem(DISMISSED_KEY, formatDate(new Date()))
+          const today = formatDate(new Date())
+          if (variant === 'sale') {
+            localStorage.setItem(saleDismissedKey(sale!.id), today)
+            setDismissedSaleId(sale!.id)
+          }
+          localStorage.setItem(DISMISSED_KEY, today)
           setDismissed(true)
         }}
       >
