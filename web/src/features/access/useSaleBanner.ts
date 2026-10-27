@@ -8,6 +8,10 @@ import { useConnections } from '@/features/connections/queries'
 
 // setTimeout overflows past ~24.8 days; long waits re-arm daily instead.
 const MAX_TIMER_MS = 86_400_000
+// Billing picks the sale by its own clock; a client running ahead can get the
+// ended sale back at endsAt, so it asks again a few times before giving up.
+const STALE_RETRY_MS = 30_000
+const MAX_STALE_RETRIES = 10
 
 // The billing-provided sale banner, only while startsAt <= now < endsAt.
 export function useSaleBanner(): SaleBanner | null {
@@ -16,8 +20,11 @@ export function useSaleBanner(): SaleBanner | null {
   const { data: user } = useUserData()
   const { data: connections } = useConnections({ enabled: billingEnabled })
   const [banner, setBanner] = useState<SaleBanner | null>(null)
+  // Ticks re-render at boundaries and on wake; visibility itself reads the clock.
   const [now, setNow] = useState(() => Date.now())
   const [refetches, setRefetches] = useState(0)
+  // Consecutive fetches that returned an already-ended sale.
+  const [staleFetches, setStaleFetches] = useState(0)
 
   // Serialized so refetched query data with unchanged content does not
   // re-ask billing; only access fields and locale matter.
@@ -36,11 +43,15 @@ export function useSaleBanner(): SaleBanner | null {
   const inputKey = input ? JSON.stringify(input) : null
 
   useEffect(() => {
-    if (inputKey === null) return
+    if (inputKey === null) {
+      setBanner(null)
+      return
+    }
     let cancelled = false
     void getSaleBanner(JSON.parse(inputKey) as SaleBannerInput).then((next) => {
       if (cancelled) return
       setBanner(next)
+      setStaleFetches((n) => (next && Date.parse(next.endsAt) <= Date.now() ? n + 1 : 0))
       setNow(Date.now())
     })
     return () => {
@@ -48,16 +59,29 @@ export function useSaleBanner(): SaleBanner | null {
     }
   }, [inputKey, refetches])
 
-  // Wake at the next boundary. At endsAt the banner is dropped before the
-  // refetch, so a refetch that fails or hangs leaves it hidden; the refetch
-  // is what hands one sale over to the next (Black Friday -> Cyber Monday).
+  // setTimeout pauses while the machine sleeps; waking re-checks the clock.
+  useEffect(() => {
+    const wake = () => setNow(Date.now())
+    document.addEventListener('visibilitychange', wake)
+    return () => document.removeEventListener('visibilitychange', wake)
+  }, [])
+
+  // Wake at the next boundary. Once endsAt has passed the banner is dropped
+  // before the refetch, so a refetch that fails or hangs leaves it hidden; the
+  // refetch is what hands one sale over to the next (Black Friday -> Cyber
+  // Monday), retried while billing still returns the ended sale.
   useEffect(() => {
     if (!banner) return
     const startsAt = Date.parse(banner.startsAt)
     const endsAt = Date.parse(banner.endsAt)
+    if (Number.isNaN(startsAt) || Number.isNaN(endsAt)) return
     const current = Date.now()
-    const boundary = current < startsAt ? startsAt : endsAt
-    if (!(boundary > current)) return
+    let delay: number
+    if (current < startsAt) delay = startsAt - current
+    else if (current < endsAt) delay = endsAt - current
+    else if (staleFetches === 0) delay = 0
+    else if (staleFetches <= MAX_STALE_RETRIES) delay = STALE_RETRY_MS
+    else return
     const timer = setTimeout(
       () => {
         if (Date.now() >= endsAt) {
@@ -66,12 +90,13 @@ export function useSaleBanner(): SaleBanner | null {
         }
         setNow(Date.now())
       },
-      Math.min(boundary - current, MAX_TIMER_MS),
+      Math.min(delay, MAX_TIMER_MS),
     )
     return () => clearTimeout(timer)
-  }, [banner, now])
+  }, [banner, now, staleFetches])
 
-  if (!banner || !billingEnabled) return null
-  const active = Date.parse(banner.startsAt) <= now && now < Date.parse(banner.endsAt)
+  if (!banner || inputKey === null) return null
+  const current = Date.now()
+  const active = Date.parse(banner.startsAt) <= current && current < Date.parse(banner.endsAt)
   return active ? banner : null
 }

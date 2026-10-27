@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
 import i18n from '@/app/i18n'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
@@ -39,6 +40,8 @@ function renderSaleBanner() {
 beforeEach(() => {
   window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
   vi.mocked(getSaleBanner).mockReset()
+  // getUserData probes identities in the background on every user refetch
+  server.use(http.get('*/api/v1/oauth/get-identity-list', () => HttpResponse.json({ success: true, message: '', data: [] })))
   vi.useFakeTimers({ shouldAdvanceTime: true })
 })
 
@@ -92,6 +95,84 @@ it('refetches at endsAt and shows the next sale', async () => {
   await act(() => vi.advanceTimersByTimeAsync(HOUR))
   expect(result.current).toEqual(cyberMonday)
   expect(getSaleBanner).toHaveBeenCalledTimes(2)
+})
+
+it('retries while billing still returns the ended sale, then shows the next one', async () => {
+  vi.setSystemTime(new Date('2026-11-29T23:00:00Z'))
+  server.use(...coreHandlers())
+  vi.mocked(getSaleBanner)
+    .mockResolvedValueOnce(blackFriday)
+    .mockResolvedValueOnce(blackFriday)
+    .mockResolvedValueOnce(cyberMonday)
+  const { result } = renderSaleBanner()
+  await waitFor(() => expect(result.current).toEqual(blackFriday))
+  await act(() => vi.advanceTimersByTimeAsync(HOUR))
+  expect(result.current).toBeNull()
+  expect(getSaleBanner).toHaveBeenCalledTimes(2)
+  await act(() => vi.advanceTimersByTimeAsync(30_000))
+  expect(result.current).toEqual(cyberMonday)
+  expect(getSaleBanner).toHaveBeenCalledTimes(3)
+})
+
+it('gives up retrying after a bounded number of stale answers', async () => {
+  vi.setSystemTime(new Date('2026-11-29T23:00:00Z'))
+  server.use(...coreHandlers())
+  vi.mocked(getSaleBanner).mockResolvedValue(blackFriday)
+  const { result } = renderSaleBanner()
+  await waitFor(() => expect(result.current).toEqual(blackFriday))
+  await act(() => vi.advanceTimersByTimeAsync(HOUR))
+  for (let i = 0; i < 15; i++) {
+    await act(() => vi.advanceTimersByTimeAsync(30_000))
+  }
+  expect(result.current).toBeNull()
+  // initial + the endsAt refetch + 10 retries
+  expect(getSaleBanner).toHaveBeenCalledTimes(12)
+})
+
+it('hides an ended banner on wake even if its timer never fired', async () => {
+  vi.setSystemTime(new Date('2026-11-29T23:00:00Z'))
+  server.use(...coreHandlers())
+  vi.mocked(getSaleBanner)
+    .mockResolvedValueOnce(blackFriday)
+    .mockReturnValue(new Promise(() => {}))
+  const { result } = renderSaleBanner()
+  await waitFor(() => expect(result.current).toEqual(blackFriday))
+  // a sleeping laptop: the clock jumps past endsAt, the timer has not run
+  vi.setSystemTime(new Date('2026-11-30T08:00:00Z'))
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  expect(result.current).toBeNull()
+  await waitFor(() => expect(getSaleBanner).toHaveBeenCalledTimes(2))
+})
+
+it('drops the stored banner when its input goes away', async () => {
+  vi.setSystemTime(new Date('2026-11-28T12:00:00Z'))
+  server.use(...coreHandlers())
+  vi.mocked(getSaleBanner)
+    .mockResolvedValueOnce(blackFriday)
+    .mockReturnValue(new Promise(() => {}))
+  const { result, queryClient } = renderSaleBanner()
+  await waitFor(() => expect(result.current).toEqual(blackFriday))
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  server.use(
+    http.get('*/api/v1/user/get-user-data', async () => {
+      await gate
+      return HttpResponse.json({ success: true, message: '', data: { user: fixtureUser } })
+    }),
+  )
+  act(() => {
+    void queryClient.resetQueries({ queryKey: queryKeys.user })
+  })
+  await act(() => vi.advanceTimersByTimeAsync(50))
+  expect(result.current).toBeNull()
+  // the same user comes back; the pending answer must not resurrect the old banner
+  release()
+  await waitFor(() => expect(getSaleBanner).toHaveBeenCalledTimes(2))
+  expect(result.current).toBeNull()
 })
 
 it('passes the user and connection register dates as registeredAt, and the UI locale', async () => {
