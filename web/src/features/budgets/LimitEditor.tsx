@@ -5,9 +5,9 @@ import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField } from '@/components/CardField'
 import { Button } from '@/components/ui/button'
 import { moneyFormat, normalizeNumber } from '@/lib/money'
-import { isZero } from '@/lib/decimal'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { limitAmountFromInput } from './limitAmount'
+import { Dash } from './monthLines'
 import type { PlanHint } from './planHint'
 import { planHintClass } from './planHint'
 import { UpcomingPaymentsPanel, type UpcomingQuery } from './UpcomingPaymentsPanel'
@@ -46,7 +46,7 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit,
       onOpenChange={(next) => {
         setOpen(next)
         if (next) {
-          setValue(isZero(currentValue) ? '' : normalizeNumber(currentValue))
+          setValue(currentValue === '' ? '' : normalizeNumber(currentValue))
           setError(null)
         }
       }}
@@ -58,7 +58,7 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit,
           className={`w-full text-right underline-offset-2 hover:underline ${planHintClass(hint)}`}
           aria-label={`limit ${name}`}
         >
-          {moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}
+          {currentValue === '' ? <Dash /> : moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="end">

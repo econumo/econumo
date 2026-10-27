@@ -1865,7 +1865,7 @@ describe('fill handle', () => {
     expect(screen.getByTestId('plan-sheet')).toHaveFocus()
   })
 
-  it('dragging a cell with no limit set copies an explicit 0, not an empty amount', async () => {
+  it('dragging a cell with no limit set clears the covered months', async () => {
     const bodies: unknown[] = []
     server.use(
       ...coreHandlers({ user: userWithBudget }),
@@ -1877,7 +1877,7 @@ describe('fill handle', () => {
         return HttpResponse.json({ success: true, message: '', data: {} })
       }),
     )
-    // window is May/Jun/Jul; tag1's col0 (May) has planned '' — it displays 0.00
+    // window is May/Jun/Jul; tag1's col0 (May) has planned ''
     useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
@@ -1891,7 +1891,7 @@ describe('fill handle', () => {
     fireEvent.pointerUp(handle, { pointerId: 1 })
 
     await waitFor(() => expect(bodies.length).toBeGreaterThan(0))
-    bodies.forEach((b) => expect(b).toMatchObject({ amount: '0' }))
+    bodies.forEach((b) => expect(b).toMatchObject({ amount: null }))
   })
 
   it('drag right copies the value into covered months, one set-limit per month', async () => {
@@ -2084,7 +2084,7 @@ describe('clipboard and keyboard fill', () => {
     return { setData: vi.fn(), getData: () => text }
   }
 
-  it('copy writes the selected cell: planned amount, 0 for an unset cell; a name is never copied', async () => {
+  it('copy writes the selected cell: planned amount, nothing for an unset cell; a name is never copied', async () => {
     usePlanHandlers()
     useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
@@ -2104,11 +2104,11 @@ describe('clipboard and keyboard fill', () => {
     expect(fireEvent.copy(grid, { clipboardData: jun })).toBe(false)
     expect(jun.setData).toHaveBeenCalledWith('text/plain', '200')
 
-    // pe1 Aug planned '' reads as 0 everywhere else, so it copies as 0
+    // pe1 Aug planned '' copies as empty: pasting it clears
     await user.click(screen.getByTestId('plan-cell-pe1:2'))
     const aug = clipboard()
     fireEvent.copy(grid, { clipboardData: aug })
-    expect(aug.setData).toHaveBeenCalledWith('text/plain', '0')
+    expect(aug.setData).toHaveBeenCalledWith('text/plain', '')
 
     // the keyboard cannot reach the name: ← from the first month pages the window
     // and the copy is still the month cell's amount (pe1 May planned '200')

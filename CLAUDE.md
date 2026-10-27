@@ -1341,6 +1341,13 @@ data unreadable. Most are also asserted by the test suite.
   shortened, never the note, to fit the 255-character column), and the affected accounts'
   `transactions_revision` moves so synced clients refetch.
 - **Budget element visibility**: a tag/envelope/category appears in `get-budget` when it has spending **or** a limit (current or carried-over) — so a tag with a limit but no transactions stays visible.
+- **Empty plan vs a plan of 0**: a plan of 0 is stored (a limit row with amount 0) and counts as a
+  plan everywhere (visibility, the red short-plan hint); `set-limit` with `amount: null` removes the
+  row. `get-budget` sends `budgeted: "0"` for both and tells them apart with the additive
+  `isBudgeted` (0/1) on elements and savings rows; `get-budget-plan` cells already send `planned: ""`
+  for no row. The SPA maps `isBudgeted: 0` to `budgeted: ''` (`getBudget`), shows an empty plan as
+  a dash (Budget view) or a blank cell (Plan grid) and a plan of 0 as `0`; typing 0 saves 0, an
+  empty input clears, and copying or filling from an empty Plan cell clears the targets.
 - **Account balance day boundary**: "balance as of end of today" uses the **caller's** timezone (`X-Timezone` header), not the server's UTC day.
 - **Recurring transaction scheduling**: templates advance from the scheduled date with
   month-end clamping via a persisted scheduled day (31st → Feb 28 → Mar 31); posting is
@@ -1368,7 +1375,7 @@ data unreadable. Most are also asserted by the test suite.
   `get-budget` elements and children (savings rows and labels carry only `upcoming`), `upcoming` on `get-budget-plan` cells,
   an `upcoming` array on `get-transaction-list` (read by the plan editor's list and the transaction list's "Coming up").
   The SPA (`features/budgets/planHint.ts`), from the current month on, on rows
-  that hold a plan: an empty plan (empty or 0) stays empty, no suggestion is shown; an
+  that hold a plan: an empty plan stays empty, no suggestion is shown (a plan of 0 is a plan); an
   expense row (category/tag/envelope) whose plan is below spent + still due shows the plan
   in red; income and savings are never red; folder, tag-group, total, label and child rows
   get no hint, and Uncategorized (no plan to hint) is listed only for real money. While a

@@ -204,6 +204,40 @@ it('inline limit editor commits a formula as a normalized string', async () => {
   await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: '150' }))
 })
 
+it('a plan of 0 shows as 0 and is kept; clearing the input removes the plan', async () => {
+  const bodies: unknown[] = []
+  const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
+  const food = budget.structure.elements.find((el: { id: string }) => el.id === 'cat-food')
+  Object.assign(food, { budgeted: '0', isBudgeted: 1 })
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+      const body = (await request.json()) as { amount: string | null }
+      bodies.push(body)
+      Object.assign(food, { budgeted: body.amount ?? '0', isBudgeted: body.amount === null ? 0 : 1 })
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  const row = await screen.findByTestId('element-cat-food')
+  const trigger = within(row).getByRole('button', { name: 'limit Food' })
+  expect(trigger).toHaveTextContent(/^0\.00$/)
+  await user.click(trigger)
+  const input = await screen.findByLabelText('Budget')
+  expect(input).toHaveValue('0')
+  await user.clear(input)
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(bodies).toEqual([{ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: null }]))
+  await waitFor(() => expect(trigger).toHaveTextContent(/^—$/))
+
+  await user.click(trigger)
+  await user.type(await screen.findByLabelText('Budget'), '0')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(bodies[1]).toEqual({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: '0' }))
+})
+
 it('empty state: no default budget shows create-budget when accounts+categories exist', async () => {
   server.use(...coreHandlers())
   renderPage()
@@ -961,8 +995,8 @@ describe('managing categories, tags and accounts from the ⋮ menus', () => {
 describe('upcoming recurring as a plan hint', () => {
   const hintBudget = () => {
     const budget = budgetWithSavings()
-    Object.assign(budget.structure.elements.find((el: { id: string }) => el.id === 'cat-food'), { budgeted: '0', spent: '0', available: '0', budgetSpent: '0', upcoming: '650' })
-    Object.assign(budget.structure.savings[0], { budgeted: '0', spent: '0', available: '0', upcoming: '300' })
+    Object.assign(budget.structure.elements.find((el: { id: string }) => el.id === 'cat-food'), { budgeted: '0', isBudgeted: 0, spent: '0', available: '0', budgetSpent: '0', upcoming: '650' })
+    Object.assign(budget.structure.savings[0], { budgeted: '0', isBudgeted: 0, spent: '0', available: '0', upcoming: '300' })
     return budget
   }
   const hintPlan = () => {
@@ -982,15 +1016,16 @@ describe('upcoming recurring as a plan hint', () => {
     renderPage()
     const food = await screen.findByTestId('element-cat-food')
     const trigger = within(food).getByRole('button', { name: 'limit Food' })
-    expect(trigger).toHaveTextContent(/^0\.00$/)
+    // no plan reads as a dash, never as 0
+    expect(trigger).toHaveTextContent(/^—$/)
     expect(trigger).not.toHaveClass('italic')
 
     const savings = within(screen.getByTestId('month-savings-row-acc-s1')).getByRole('button', { name: 'limit Rainy day' })
-    expect(savings).toHaveTextContent(/^0\.00$/)
+    expect(savings).toHaveTextContent(/^—$/)
     expect(savings).not.toHaveClass('italic')
 
     const salaries = await waitFor(() => within(screen.getByTestId('month-income-row-ie1')).getByRole('button', { name: 'limit Salaries' }))
-    expect(salaries).toHaveTextContent(/^0\.00$/)
+    expect(salaries).toHaveTextContent(/^—$/)
     expect(salaries).not.toHaveClass('italic')
 
     await user.click(trigger)

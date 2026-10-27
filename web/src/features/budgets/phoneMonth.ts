@@ -67,7 +67,7 @@ export function planCellFigures(element: PlanElementDto, index: number): PlanCel
   const cell = element.cells[index]
   return {
     element,
-    planned: cell && cell.planned !== '' ? cell.planned : '0',
+    planned: cell?.planned ?? '',
     actual: cell?.actual ?? '0',
     ...(cell?.closingBalance !== undefined ? { closingBalance: cell.closingBalance } : {}),
     ...(cell?.upcoming !== undefined ? { upcoming: cell.upcoming } : {}),

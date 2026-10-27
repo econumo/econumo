@@ -295,7 +295,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const planFigure = (target: SheetTarget, planned: string, currencyId: Id | null) => {
     const hint = sheetPlanHint(target)
-    return { first: fmt(planned, currencyId), firstClass: planHintClass(hint) }
+    return { first: planned === '' ? EMPTY : fmt(planned, currencyId), firstClass: planHintClass(hint) }
   }
   const future = selectedDate > currentMonth()
   const commented = (id: Id) => (commentsByCell.get(commentCellKey(id, selectedDate))?.length ?? 0) > 0
@@ -345,7 +345,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     const figures = { budgeted: element.budgeted, spent: element.spent, available: displayAvailable(element), carry }
     const overspent = !isUncategorized && overBudget(figures, future)
     const carryText = isUncategorized || isZero(carry) ? null : `${fmt(carry, element.currencyId)} +`
-    const budgetText = isUncategorized ? EMPTY : fmt(element.budgeted, element.currencyId)
+    const budgetText = isUncategorized || element.budgeted === '' ? EMPTY : fmt(element.budgeted, element.currencyId)
     const spentText = future ? EMPTY : fmt(element.spent, element.currencyId)
     const expandable = element.children.length > 0
     const open = !!unfolded[element.id]
@@ -455,7 +455,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     const name = elementDisplayName(el.id, el.name, t)
     // income Uncategorized can never be planned: a dash, as on the desktop
     const isUncategorized = el.id === UNCATEGORIZED_ID
-    const planned = isUncategorized ? EMPTY : fmt(row.planned, el.currencyId)
+    const planned = isUncategorized || row.planned === '' ? EMPTY : fmt(row.planned, el.currencyId)
     const received = future ? EMPTY : fmt(row.actual, el.currencyId)
     const expandable = el.children.length > 0
     const open = expandable && !!unfolded[el.id]
@@ -516,7 +516,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   }
 
   const savingsRow = (row: BudgetSavingsElementDto) => {
-    const planned = fmt(row.budgeted, row.currencyId)
+    const planned = row.budgeted === '' ? EMPTY : fmt(row.budgeted, row.currencyId)
     const saved = future ? EMPTY : fmt(row.spent, row.currencyId)
     return (
       <PhoneRow

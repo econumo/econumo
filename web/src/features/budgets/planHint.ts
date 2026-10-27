@@ -20,7 +20,7 @@ export function planNeed(spent: string, upcoming: string | undefined): string {
  *  An empty plan stays empty: only an expense plan below what the month needs is marked. */
 export function planHint(input: { planned: string; spent: string; upcoming?: string; kind: PlanHintKind }): PlanHint {
   const { planned, spent, upcoming, kind } = input
-  if (kind !== 'expense' || upcoming === undefined || isZero(upcoming) || isZero(planned)) return null
+  if (kind !== 'expense' || upcoming === undefined || isZero(upcoming) || planned === '') return null
   return cmp(planned, planNeed(spent, upcoming)) < 0 ? { kind: 'short' } : null
 }
 

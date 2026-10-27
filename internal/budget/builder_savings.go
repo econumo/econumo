@@ -247,7 +247,8 @@ func emitMonthlySavings(ms monthlySavings, limits map[string]budgetedAmount, get
 	zero := vo.NewDecimal("0")
 	out := []model.SavingsElementResult{}
 	for _, r := range ms.rows {
-		budgeted := orZero(limits[elementKey(r.account.ID, model.ElementSavings)].budgeted, zero)
+		lim := limits[elementKey(r.account.ID, model.ElementSavings)]
+		budgeted := orZero(lim.budgeted, zero)
 		spent := get(savingsSpentKey(r.account.ID))
 		// A deleted account shows only in a month it had activity, which its
 		// history needs to add up. A plan alone does not keep it: the row is
@@ -266,7 +267,7 @@ func emitMonthlySavings(ms monthlySavings, limits map[string]budgetedAmount, get
 		out = append(out, model.SavingsElementResult{
 			Id: r.account.ID, Type: int(model.ElementSavings.Int16()), Name: r.account.Name, Icon: r.account.Icon,
 			CurrencyId: r.currencyID.String(), OwnerUserId: r.account.OwnerID, IsArchived: boolToInt(r.account.IsDeleted),
-			Position: len(out), Budgeted: budgeted.String(), Spent: spent.String(), Available: budgeted.Sub(spent).String(),
+			Position: len(out), Budgeted: budgeted.String(), IsBudgeted: boolToInt(lim.hasLimit), Spent: spent.String(), Available: budgeted.Sub(spent).String(),
 			ClosingBalance: closing.String(),
 		})
 	}

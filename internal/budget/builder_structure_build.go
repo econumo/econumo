@@ -29,6 +29,7 @@ type structElement struct {
 	sortLast       bool
 	budgeted       vo.DecimalNumber
 	budgetedBefore vo.DecimalNumber
+	hasLimit       bool
 	children       []structChild
 }
 
@@ -104,7 +105,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		el := &structElement{
 			id: env.ID.String(), typ: model.ElementEnvelope, name: env.Name, icon: env.Icon,
 			ownerID: nil, currencyID: currencyID, isArchived: env.IsArchived,
-			folderID: optFolder(opt), sortKey: optSortKey(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
+			folderID: optFolder(opt), sortKey: optSortKey(opt), budgeted: budgeted, budgetedBefore: budgetedBefore, hasLimit: bud.hasLimit,
 		}
 		for _, catID := range envelopeCats[env.ID.String()] {
 			if categoryUsed[catID] {
@@ -123,7 +124,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			})
 			categoryUsed[catID] = true
 		}
-		if !env.IsArchived || !budgeted.IsZero() || !budgetedBefore.IsZero() || len(el.children) > 0 {
+		if !env.IsArchived || bud.hasLimit || !budgeted.IsZero() || !budgetedBefore.IsZero() || len(el.children) > 0 {
 			elements = append(elements, el)
 		}
 	}
@@ -141,7 +142,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		// both already covered here.) This deliberately keeps a budgeted-but-unspent
 		// tag visible, rather than dropping it the moment its last transaction is
 		// removed and making its limit vanish.
-		if !hasSpending && budgeted.IsZero() && budgetedBefore.IsZero() {
+		if !hasSpending && !bud.hasLimit && budgeted.IsZero() && budgetedBefore.IsZero() {
 			continue
 		}
 		opt := options[index]
@@ -152,7 +153,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		el := &structElement{
 			id: tagID, typ: model.ElementTag, name: tag.Name, icon: "tag",
 			ownerID: strPtr(tag.OwnerID), currencyID: currencyID, isArchived: tag.IsArchived,
-			folderID: optFolder(opt), sortKey: optSortKey(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
+			folderID: optFolder(opt), sortKey: optSortKey(opt), budgeted: budgeted, budgetedBefore: budgetedBefore, hasLimit: bud.hasLimit,
 		}
 		if es != nil {
 			for catID, cs := range es.spendingInCategories {
@@ -178,7 +179,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 				})
 			}
 		}
-		if !tag.IsArchived || !budgeted.IsZero() || !budgetedBefore.IsZero() || len(el.children) > 0 {
+		if !tag.IsArchived || bud.hasLimit || !budgeted.IsZero() || !budgetedBefore.IsZero() || len(el.children) > 0 {
 			elements = append(elements, el)
 		}
 	}
@@ -225,13 +226,13 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		budgeted, budgetedBefore := orZero(bud.budgeted, zero), orZero(bud.budgetedBefore, zero)
 		cs := categorySpendingFor(spending, index, catID)
 		hasSpent := cs != nil && (len(cs.currenciesSpent) > 0 || len(cs.currenciesSpentBefore) > 0)
-		if cat.IsArchived && !hasSpent && budgeted.IsZero() && budgetedBefore.IsZero() {
+		if cat.IsArchived && !hasSpent && !bud.hasLimit && budgeted.IsZero() && budgetedBefore.IsZero() {
 			continue
 		}
 		el := &structElement{
 			id: catID, typ: model.ElementCategory, name: cat.Name, icon: cat.Icon,
 			ownerID: strPtr(cat.OwnerID), currencyID: currencyID, isArchived: cat.IsArchived,
-			folderID: optFolder(opt), sortKey: optSortKey(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
+			folderID: optFolder(opt), sortKey: optSortKey(opt), budgeted: budgeted, budgetedBefore: budgetedBefore, hasLimit: bud.hasLimit,
 		}
 		// a standalone category's own spending is keyed without a sub-prefix.
 		if cs != nil {
@@ -317,7 +318,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		sort.Slice(children, func(i, j int) bool { return children[i].Id < children[j].Id })
 
 		available := el.budgetedBefore.Sub(spentBefore)
-		if el.isArchived && available.IsZero() && spent.IsZero() && el.budgeted.IsZero() &&
+		if el.isArchived && available.IsZero() && spent.IsZero() && !el.hasLimit && el.budgeted.IsZero() &&
 			(el.typ != model.ElementEnvelope || len(children) == 0) {
 			continue
 		}
@@ -327,7 +328,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			Id: el.id, Type: int(el.typ.Int16()), Name: el.name, Icon: el.icon,
 			CurrencyId: el.currencyID.String(), IsArchived: boolToInt(el.isArchived),
 			FolderId: el.folderID,
-			Budgeted: el.budgeted.String(), Available: available.Sub(spent).String(),
+			Budgeted: el.budgeted.String(), IsBudgeted: boolToInt(el.hasLimit), Available: available.Sub(spent).String(),
 			Spent: spent.String(), BudgetSpent: spentBudget.String(),
 			Children: children, OwnerUserId: el.ownerID,
 		})

@@ -16099,6 +16099,10 @@ const docTemplate = `{
                 "isArchived": {
                     "type": "integer"
                 },
+                "isBudgeted": {
+                    "description": "IsBudgeted is 1 when the period has a plan, even a plan of 0; with 0,\nBudgeted is \"0\" and means no plan was set.",
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -16809,6 +16813,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "isArchived": {
+                    "type": "integer"
+                },
+                "isBudgeted": {
                     "type": "integer"
                 },
                 "name": {

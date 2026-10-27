@@ -313,7 +313,7 @@ interface CellEditState extends PlanCellEdit {
   planned: string
 }
 
-const unsetPlan = (planned: string): boolean => planned === '' || isZero(planned)
+const unsetPlan = (planned: string): boolean => planned === ''
 
 // The Budget view's fold keys for a section's No folder group, so a fold carries over
 const NO_FOLDER_KEY: Record<'income' | 'expense', string> = { income: '__income__no_folder__', expense: '__no_folder__' }
@@ -2025,7 +2025,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             ? {
                 id: planLimitTarget.el.id,
                 name: elementDisplayName(planLimitTarget.el.id, planLimitTarget.el.name, t),
-                value: dialogCell && dialogCell.planned !== '' ? dialogCell.planned : '0',
+                value: dialogCell?.planned ?? '',
               }
             : null
         }

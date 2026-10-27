@@ -56,7 +56,10 @@ export interface BudgetElementDto extends Omit<BudgetChildElementDto, 'ownerUser
   currencyId: Id | null
   folderId: Id | null
   position: number
+  /** '' = no plan for the month (getBudget maps isBudgeted 0 to it), '0' = a plan of 0 */
   budgeted: string
+  /** absent from older servers */
+  isBudgeted?: 0 | 1
   available: string
   ownerUserId: Id | null
   children: BudgetChildElementDto[]
@@ -189,8 +192,9 @@ export interface BudgetSavingsElementDto {
   ownerUserId: Id
   isArchived: 0 | 1
   position: number
-  /** decimal strings (wire format, kept verbatim) */
+  /** decimal strings (wire format, kept verbatim); budgeted '' = no plan */
   budgeted: string
+  isBudgeted?: 0 | 1
   spent: string
   available: string
   /** the account's balance at the end of the month: booked for a past month;

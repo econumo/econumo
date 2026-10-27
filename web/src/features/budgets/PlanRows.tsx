@@ -54,11 +54,9 @@ export const selectedClass = (selected: boolean): string => (selected ? SELECTED
 
 export const pickedKey = (rk: string, col: number): string => `${rk}|${col}`
 
-// an unset cell reads as 0 everywhere else in the grid, so copying/filling from it
-// carries an explicit 0 rather than an empty limit
+// copying/filling from an unset cell carries the empty plan: it clears the targets
 export function sourceAmount(el: PlanElementDto, monthIndex: number): string {
-  const planned = monthIndex >= 0 ? (el.cells[monthIndex]?.planned ?? '') : ''
-  return planned === '' ? '0' : planned
+  return monthIndex >= 0 ? (el.cells[monthIndex]?.planned ?? '') : ''
 }
 
 /** A row is editable per-cell only for a non-uncategorized parent row, with a fetched

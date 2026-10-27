@@ -195,7 +195,8 @@ function ElementRow({
   const size = isUncategorized ? '' : 'text-[15px]'
   const hint = sheetPlanHint({ kind: 'expense', element })
   const hintClass = planHintClass(hint)
-  const plannedText = moneyFormat(element.budgeted, currency, opts)
+  // no plan set reads as a dash; a plan of 0 shows its 0
+  const plannedText = element.budgeted === '' ? <Dash /> : moneyFormat(element.budgeted, currency, opts)
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string, danger: boolean) => {
     if (future) {
