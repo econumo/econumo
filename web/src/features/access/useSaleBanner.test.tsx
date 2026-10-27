@@ -12,6 +12,7 @@ import { useSaleBanner } from './useSaleBanner'
 vi.mock('@/lib/billingSdk', () => ({ getSaleBanner: vi.fn() }))
 
 const HOUR = 3_600_000
+const POLL = 30 * 60_000
 
 const blackFriday = {
   id: 'black-friday-2026',
@@ -69,7 +70,7 @@ it('is hidden before startsAt and shows once it arrives', async () => {
   expect(result.current).toEqual(blackFriday)
 })
 
-it('hides at endsAt without refetching', async () => {
+it('hides at endsAt without an answer from billing', async () => {
   vi.setSystemTime(new Date('2026-11-28T12:00:00Z'))
   server.use(...coreHandlers())
   vi.mocked(getSaleBanner)
@@ -77,28 +78,29 @@ it('hides at endsAt without refetching', async () => {
     .mockReturnValue(new Promise(() => {}))
   const { result } = renderSaleBanner()
   await waitFor(() => expect(result.current).toEqual(blackFriday))
-  // 36h out: the first timer is clamped to 24h, then re-armed for the rest
+  // 36h out: the first timer is clamped to 24h, then re-armed for the rest.
+  // The first poll never answers, and no ask is stacked on top of it.
   await act(() => vi.advanceTimersByTimeAsync(24 * HOUR))
   expect(result.current).toEqual(blackFriday)
-  expect(getSaleBanner).toHaveBeenCalledTimes(1)
+  expect(getSaleBanner).toHaveBeenCalledTimes(2)
   await act(() => vi.advanceTimersByTimeAsync(12 * HOUR))
   expect(result.current).toBeNull()
   expect(getSaleBanner).toHaveBeenCalledTimes(2)
 })
 
 it('refetches at endsAt and shows the next sale', async () => {
-  vi.setSystemTime(new Date('2026-11-29T23:00:00Z'))
+  vi.setSystemTime(new Date('2026-11-29T23:45:00Z'))
   server.use(...coreHandlers())
   vi.mocked(getSaleBanner).mockResolvedValueOnce(blackFriday).mockResolvedValueOnce(cyberMonday)
   const { result } = renderSaleBanner()
   await waitFor(() => expect(result.current).toEqual(blackFriday))
-  await act(() => vi.advanceTimersByTimeAsync(HOUR))
+  await act(() => vi.advanceTimersByTimeAsync(15 * 60_000))
   expect(result.current).toEqual(cyberMonday)
   expect(getSaleBanner).toHaveBeenCalledTimes(2)
 })
 
 it('retries while billing still returns the ended sale, then shows the next one', async () => {
-  vi.setSystemTime(new Date('2026-11-29T23:00:00Z'))
+  vi.setSystemTime(new Date('2026-11-29T23:45:00Z'))
   server.use(...coreHandlers())
   vi.mocked(getSaleBanner)
     .mockResolvedValueOnce(blackFriday)
@@ -106,7 +108,7 @@ it('retries while billing still returns the ended sale, then shows the next one'
     .mockResolvedValueOnce(cyberMonday)
   const { result } = renderSaleBanner()
   await waitFor(() => expect(result.current).toEqual(blackFriday))
-  await act(() => vi.advanceTimersByTimeAsync(HOUR))
+  await act(() => vi.advanceTimersByTimeAsync(15 * 60_000))
   expect(result.current).toBeNull()
   expect(getSaleBanner).toHaveBeenCalledTimes(2)
   await act(() => vi.advanceTimersByTimeAsync(30_000))
@@ -115,12 +117,12 @@ it('retries while billing still returns the ended sale, then shows the next one'
 })
 
 it('gives up retrying after a bounded number of stale answers', async () => {
-  vi.setSystemTime(new Date('2026-11-29T23:00:00Z'))
+  vi.setSystemTime(new Date('2026-11-29T23:45:00Z'))
   server.use(...coreHandlers())
   vi.mocked(getSaleBanner).mockResolvedValue(blackFriday)
   const { result } = renderSaleBanner()
   await waitFor(() => expect(result.current).toEqual(blackFriday))
-  await act(() => vi.advanceTimersByTimeAsync(HOUR))
+  await act(() => vi.advanceTimersByTimeAsync(15 * 60_000))
   for (let i = 0; i < 15; i++) {
     await act(() => vi.advanceTimersByTimeAsync(30_000))
   }
@@ -144,6 +146,63 @@ it('hides an ended banner on wake even if its timer never fired', async () => {
   })
   expect(result.current).toBeNull()
   await waitFor(() => expect(getSaleBanner).toHaveBeenCalledTimes(2))
+})
+
+it('shows a sale that appears on a later poll', async () => {
+  vi.setSystemTime(new Date('2026-11-28T12:00:00Z'))
+  server.use(...coreHandlers())
+  vi.mocked(getSaleBanner).mockResolvedValueOnce(null).mockResolvedValue(blackFriday)
+  const { result } = renderSaleBanner()
+  await waitFor(() => expect(getSaleBanner).toHaveBeenCalledTimes(1))
+  await act(() => vi.advanceTimersByTimeAsync(POLL - 1000))
+  expect(result.current).toBeNull()
+  expect(getSaleBanner).toHaveBeenCalledTimes(1)
+  await act(() => vi.advanceTimersByTimeAsync(1000))
+  expect(result.current).toEqual(blackFriday)
+  expect(getSaleBanner).toHaveBeenCalledTimes(2)
+})
+
+it('hides a shown banner when a poll says the sale is off', async () => {
+  vi.setSystemTime(new Date('2026-11-28T12:00:00Z'))
+  server.use(...coreHandlers())
+  vi.mocked(getSaleBanner).mockResolvedValueOnce(blackFriday).mockResolvedValue(null)
+  const { result } = renderSaleBanner()
+  await waitFor(() => expect(result.current).toEqual(blackFriday))
+  await act(() => vi.advanceTimersByTimeAsync(POLL))
+  expect(result.current).toBeNull()
+  expect(getSaleBanner).toHaveBeenCalledTimes(2)
+})
+
+it('asks again when the tab becomes visible, once per pending answer', async () => {
+  vi.setSystemTime(new Date('2026-11-28T12:00:00Z'))
+  server.use(...coreHandlers())
+  vi.mocked(getSaleBanner)
+    .mockResolvedValueOnce(null)
+    .mockResolvedValueOnce(blackFriday)
+    .mockReturnValue(new Promise(() => {}))
+  const { result } = renderSaleBanner()
+  await waitFor(() => expect(getSaleBanner).toHaveBeenCalledTimes(1))
+  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  expect(getSaleBanner).toHaveBeenCalledTimes(1)
+  visibility.mockReturnValue('visible')
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await waitFor(() => expect(result.current).toEqual(blackFriday))
+  expect(getSaleBanner).toHaveBeenCalledTimes(2)
+  // the third ask never answers; neither a wake nor a poll stacks another on it
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await act(() => vi.advanceTimersByTimeAsync(POLL))
+  expect(getSaleBanner).toHaveBeenCalledTimes(3)
+  visibility.mockRestore()
 })
 
 it('drops the stored banner when its input goes away', async () => {

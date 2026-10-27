@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getSaleBanner } from '@/lib/billingSdk'
 import type { SaleBanner, SaleBannerInput } from '@/lib/billingSdk'
@@ -12,6 +12,9 @@ const MAX_TIMER_MS = 86_400_000
 // ended sale back at endsAt, so it asks again a few times before giving up.
 const STALE_RETRY_MS = 30_000
 const MAX_STALE_RETRIES = 10
+// Open tabs re-ask billing this often (and on becoming visible), so a sale
+// announced later, or switched off early, reaches them.
+const SALE_POLL_MS = 30 * 60_000
 
 // The billing-provided sale banner, only while startsAt <= now < endsAt.
 export function useSaleBanner(): SaleBanner | null {
@@ -22,7 +25,8 @@ export function useSaleBanner(): SaleBanner | null {
   const [banner, setBanner] = useState<SaleBanner | null>(null)
   // Ticks re-render at boundaries and on wake; visibility itself reads the clock.
   const [now, setNow] = useState(() => Date.now())
-  const [refetches, setRefetches] = useState(0)
+  // Asks billing again unless an answer is already pending; null without input.
+  const askRef = useRef<(() => void) | null>(null)
   // Consecutive fetches that returned an already-ended sale.
   const [staleFetches, setStaleFetches] = useState(0)
 
@@ -47,17 +51,34 @@ export function useSaleBanner(): SaleBanner | null {
       setBanner(null)
       return
     }
+    const input = JSON.parse(inputKey) as SaleBannerInput
     let cancelled = false
-    void getSaleBanner(JSON.parse(inputKey) as SaleBannerInput).then((next) => {
-      if (cancelled) return
-      setBanner(next)
-      setStaleFetches((n) => (next && Date.parse(next.endsAt) <= Date.now() ? n + 1 : 0))
-      setNow(Date.now())
-    })
+    let pending = false
+    const ask = () => {
+      if (pending) return
+      pending = true
+      void getSaleBanner(input).then((next) => {
+        pending = false
+        if (cancelled) return
+        setBanner(next)
+        setStaleFetches((n) => (next && Date.parse(next.endsAt) <= Date.now() ? n + 1 : 0))
+        setNow(Date.now())
+      })
+    }
+    askRef.current = ask
+    ask()
+    const poll = setInterval(ask, SALE_POLL_MS)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') ask()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       cancelled = true
+      askRef.current = null
+      clearInterval(poll)
+      document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [inputKey, refetches])
+  }, [inputKey])
 
   // setTimeout pauses while the machine sleeps; waking re-checks the clock.
   useEffect(() => {
@@ -86,7 +107,7 @@ export function useSaleBanner(): SaleBanner | null {
       () => {
         if (Date.now() >= endsAt) {
           setBanner(null)
-          setRefetches((n) => n + 1)
+          askRef.current?.()
         }
         setNow(Date.now())
       },
