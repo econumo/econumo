@@ -471,6 +471,61 @@ it('cross-currency transfer prefills the converted recipient amount and prompts 
   await waitFor(() => expect(useUiStore.getState().switchAccountPrompt).toBe('a3'))
 })
 
+const addExpense = async (routePath: string, pickAccount: string | null) => {
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderDialog(routePath)
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  if (pickAccount) {
+    await user.click(screen.getByRole('combobox', { name: 'account' }))
+    await user.click(await screen.findByText(new RegExp('^' + pickAccount)))
+  }
+  await user.type(await screen.findByLabelText('Amount'), '5')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+}
+
+it('an expense added to another account than the open one offers to switch to it', async () => {
+  await addExpense('/account/a1', 'Bank')
+  expect(useUiStore.getState().switchAccountPrompt).toBe('a2')
+})
+
+it('an expense added to the open account offers no switch', async () => {
+  await addExpense('/account/a1', null)
+  expect(useUiStore.getState().switchAccountPrompt).toBeNull()
+})
+
+it('an expense added outside an account page offers no switch', async () => {
+  await addExpense('/', 'Bank')
+  expect(useUiStore.getState().switchAccountPrompt).toBeNull()
+})
+
+it('a transfer into the open account offers no switch: it is listed there', async () => {
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { item: wireTxEcho({ type: 'transfer', accountId: 'a2', accountRecipientId: 'a1' }), accounts: fixtureAccounts },
+      }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderDialog('/account/a1')
+  useUiStore.getState().openTransactionModal({ type: 'transfer', accountId: 'a2' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '5')
+  await user.click(screen.getByRole('combobox', { name: 'to account' }))
+  await user.click(await screen.findByText(/^Cash/))
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+  expect(useUiStore.getState().switchAccountPrompt).toBeNull()
+})
+
 it('creates a category on the fly and selects it', async () => {
   let created: Record<string, unknown> | undefined
   server.use(

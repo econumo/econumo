@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowUpDown, ChevronLeft, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useParams } from 'react-router'
+import { useMatch, useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -56,6 +56,7 @@ const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
 function TransactionForm({ params, onDone }: { params: OpenTransactionParams; onDone: () => void }) {
   const { t } = useTranslation()
   const { id: routeAccountId } = useParams()
+  const accountPageId = useMatch('/account/:id')?.params.id ?? null
   const { data: accounts = [] } = useAccounts()
   const { data: folders = [] } = useFolders()
   const { data: categories = [] } = useCategories()
@@ -213,8 +214,12 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         await postRecurring.mutateAsync({ ...payload, recurringId: params.postRecurring.id })
       } else if (form.isNew) {
         await createTransaction.mutateAsync(payload)
-        if (isTransfer && payload.accountRecipientId) {
+        if (isTransfer && payload.accountRecipientId && payload.accountRecipientId !== accountPageId) {
           setSwitchAccountPrompt(payload.accountRecipientId)
+        } else if (accountPageId && payload.accountId !== accountPageId && payload.accountRecipientId !== accountPageId) {
+          // added to an account other than the one on screen: the row is not
+          // in this list, so offer the account it went to
+          setSwitchAccountPrompt(payload.accountId)
         }
       } else {
         await updateTransaction.mutateAsync(payload)
