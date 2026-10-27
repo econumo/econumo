@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { moneyFormat, normalizeNumber } from '@/lib/money'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { limitAmountFromInput } from './limitAmount'
-import { Dash } from './monthLines'
+import { PlanDash } from './monthLines'
 import type { PlanHint } from './planHint'
 import { planHintClass } from './planHint'
 import { UpcomingPaymentsPanel, type UpcomingQuery } from './UpcomingPaymentsPanel'
@@ -59,7 +59,7 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit,
           className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${planHintClass(hint)}`}
           aria-label={`limit ${name}`}
         >
-          {currentValue === '' ? <Dash /> : moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}
+          {currentValue === '' ? <PlanDash /> : moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="end">
