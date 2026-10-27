@@ -505,6 +505,27 @@ it('an expense added outside an account page offers no switch', async () => {
   expect(useUiStore.getState().switchAccountPrompt).toBeNull()
 })
 
+it('a transfer into the open account offers no switch: it is listed there', async () => {
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { item: wireTxEcho({ type: 'transfer', accountId: 'a2', accountRecipientId: 'a1' }), accounts: fixtureAccounts },
+      }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderDialog('/account/a1')
+  useUiStore.getState().openTransactionModal({ type: 'transfer', accountId: 'a2' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '5')
+  await user.click(screen.getByRole('combobox', { name: 'to account' }))
+  await user.click(await screen.findByText(/^Cash/))
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+  expect(useUiStore.getState().switchAccountPrompt).toBeNull()
+})
+
 it('creates a category on the fly and selects it', async () => {
   let created: Record<string, unknown> | undefined
   server.use(
