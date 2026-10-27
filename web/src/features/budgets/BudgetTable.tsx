@@ -185,7 +185,8 @@ function ElementRow({
   const displayName = elementDisplayName(element.id, element.name, t)
   // categoryless spending can never be budgeted: those columns read as a dash
   const isUncategorized = element.id === UNCATEGORIZED_ID
-  const carryText = isUncategorized || isZero(carry) ? null : `${moneyFormat(carry, currency, opts)} +`
+  // the + adds the carry to this month's plan; with no plan there is nothing to add it to
+  const carryText = isUncategorized || isZero(carry) ? null : `${moneyFormat(carry, currency, opts)}${element.budgeted === '' ? '' : ' +'}`
   // red marks a problem only: this month spent more than its budget and what earlier
   // months left does not cover it
   const overspent = !isUncategorized && overBudget({ budgeted: element.budgeted, spent: element.spent, available }, future)

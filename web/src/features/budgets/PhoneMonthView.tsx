@@ -344,7 +344,8 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     const carry = carryOver(element)
     const figures = { budgeted: element.budgeted, spent: element.spent, available: displayAvailable(element), carry }
     const overspent = !isUncategorized && overBudget(figures, future)
-    const carryText = isUncategorized || isZero(carry) ? null : `${fmt(carry, element.currencyId)} +`
+    // the + adds the carry to this month's plan; with no plan there is nothing to add it to
+    const carryText = isUncategorized || isZero(carry) ? null : `${fmt(carry, element.currencyId)}${element.budgeted === '' ? '' : ' +'}`
     const budgetText = isUncategorized || element.budgeted === '' ? EMPTY : fmt(element.budgeted, element.currencyId)
     const spentText = future ? EMPTY : fmt(element.spent, element.currencyId)
     const expandable = element.children.length > 0

@@ -716,6 +716,14 @@ it('shows what earlier months left, read-only, before the budgeted amount', asyn
   expect(carry.nextElementSibling).toHaveTextContent('editor')
 })
 
+it('a carry-over next to no plan has no +: there is no plan to add it to', async () => {
+  renderTable((b) => {
+    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { budgeted: '' })
+  })
+  const carry = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-carry')
+  await waitFor(() => expect(carry).toHaveTextContent(/^200\.00$/))
+})
+
 it('shows no carry-over when earlier months left nothing, and a negative one in red', async () => {
   renderTable((b) => {
     Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { available: '-45.5' })

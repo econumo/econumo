@@ -96,8 +96,9 @@ export function CommentMarker({
       data-testid={add ? 'comment-marker-add' : 'comment-marker'}
       aria-label={label}
       title={add ? label : undefined}
-      // the add marker is kept small: it sits over the cell's figure and must not take clicks meant for it
-      className={`absolute z-10 flex items-start justify-end ${add ? 'size-3.5' : 'size-6'} ${placement === 'outset' ? (add ? '-right-2 -top-1' : '-right-3 -top-1') : 'right-0 top-0'}${add ? ' group/add invisible group-hover/cell:visible' : ''}`}
+      // the add marker's hit area reaches outward (right and up) and only ~2px into the cell,
+      // so it never takes clicks meant for the figure under it
+      className={`absolute z-10 flex items-start justify-end ${add ? 'h-[10px] w-[13px] pr-[3px] pt-[3px]' : 'size-6'} ${placement === 'outset' ? (add ? '-right-[11px] -top-[7px]' : '-right-3 -top-1') : add ? '-right-[3px] -top-[3px]' : 'right-0 top-0'}${add ? ' group/add invisible group-hover/cell:visible' : ''}`}
       onClick={(e) => {
         e.stopPropagation()
         onOpen(commentAnchorOf(e.currentTarget))

@@ -337,7 +337,7 @@ it('with no comments, the marker is a hover-only "Add comment" corner that opens
   expect(screen.queryByTestId('comment-marker')).toBeNull()
   const add = screen.getByTestId('comment-marker-add')
   expect(add).toHaveAccessibleName('Add comment')
-  expect(add).toHaveClass('invisible', 'group-hover/cell:visible', 'size-3.5', '-right-2', '-top-1')
+  expect(add).toHaveClass('invisible', 'group-hover/cell:visible', 'h-[10px]', 'w-[13px]', '-right-[11px]', '-top-[7px]')
   await user.click(add)
   expect(onOpen).toHaveBeenCalledWith(screen.getByTestId('cell'))
 })
