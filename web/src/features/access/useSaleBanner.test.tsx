@@ -292,6 +292,18 @@ it('asks again only when access data changes, not on a same-content refetch', as
   )
 })
 
+it('drops the banner as soon as the access data it was chosen for changes', async () => {
+  vi.setSystemTime(new Date('2026-11-28T12:00:00Z'))
+  server.use(...coreHandlers())
+  vi.mocked(getSaleBanner).mockResolvedValue(blackFriday)
+  const { result, queryClient } = renderSaleBanner()
+  await waitFor(() => expect(result.current).toEqual(blackFriday))
+  vi.mocked(getSaleBanner).mockReturnValue(new Promise(() => {}))
+  act(() => queryClient.setQueryData(queryKeys.user, { ...fixtureUser, accessLevel: 'readonly' }))
+  await waitFor(() => expect(getSaleBanner).toHaveBeenCalledTimes(2))
+  expect(result.current).toBeNull()
+})
+
 it('never asks for a banner when billing is disabled', async () => {
   window.econumoConfig = {}
   vi.setSystemTime(new Date('2026-11-28T12:00:00Z'))

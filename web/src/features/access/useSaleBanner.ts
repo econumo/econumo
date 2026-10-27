@@ -51,6 +51,9 @@ export function useSaleBanner(): SaleBanner | null {
       setBanner(null)
       return
     }
+    // A banner picked for the previous access data or locale no longer
+    // applies; drop it rather than show it while the new answer is pending.
+    setBanner(null)
     const input = JSON.parse(inputKey) as SaleBannerInput
     let cancelled = false
     let pending = false

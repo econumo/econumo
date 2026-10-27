@@ -26,10 +26,11 @@ export function SubscriptionBanner() {
   const portal = useOpenBillingPortal()
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISSED_KEY) === formatDate(new Date()))
   const sale = useSaleBanner()
-  const [dismissedSaleId, setDismissedSaleId] = useState<string | null>(null)
-  const saleDismissed =
-    sale !== null &&
-    (dismissedSaleId === sale.id || localStorage.getItem(saleDismissedKey(sale.id)) === formatDate(new Date()))
+  // Only forces the re-render after a close; whether a sale is dismissed is
+  // always read from storage against today, so a tab left open overnight
+  // shows a multi-day sale again the next day.
+  const [, setSaleClosedAt] = useState(0)
+  const saleDismissed = sale !== null && localStorage.getItem(saleDismissedKey(sale.id)) === formatDate(new Date())
 
   const partner = billingEnabled && !dismissed ? worstConnectionAttention(connections) : null
 
@@ -98,7 +99,7 @@ export function SubscriptionBanner() {
           const today = formatDate(new Date())
           if (variant === 'sale') {
             localStorage.setItem(saleDismissedKey(sale!.id), today)
-            setDismissedSaleId(sale!.id)
+            setSaleClosedAt(Date.now())
           }
           localStorage.setItem(DISMISSED_KEY, today)
           setDismissed(true)

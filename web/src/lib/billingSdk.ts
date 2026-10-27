@@ -1,4 +1,5 @@
-import { getBillingUrl } from './config'
+import { backendHost, getBillingUrl } from './config'
+import { isNativeApp } from './platform'
 
 export interface SaleBanner {
   id: string
@@ -35,7 +36,16 @@ let sdkLoad: Promise<boolean> | null = null
 function loadSdk(billingUrl: string): Promise<boolean> {
   sdkLoad ??= new Promise<boolean>((resolve) => {
     const script = document.createElement('script')
-    script.src = `${billingUrl.replace(/\/+$/, '')}/sdk.js`
+    try {
+      // Through the URL API so a query on BILLING_URL stays a query rather
+      // than swallowing the path.
+      const src = new URL(billingUrl)
+      src.pathname = `${src.pathname.replace(/\/+$/, '')}/sdk.js`
+      script.src = src.toString()
+    } catch {
+      resolve(false)
+      return
+    }
     script.async = true
     script.addEventListener('load', () => resolve(true))
     script.addEventListener('error', () => resolve(false))
@@ -52,12 +62,24 @@ function isBanner(value: unknown): value is SaleBanner {
 
 export async function getSaleBanner(input: SaleBannerInput): Promise<SaleBanner | null> {
   const billingUrl = getBillingUrl()
-  if (billingUrl === '') return null
+  if (billingUrl === '' || !servesSelectedBackend()) return null
   try {
     if (!(await loadSdk(billingUrl)) || !window.EconumoBilling) return null
     const banner = await window.EconumoBilling.getBanner(input)
     return isBanner(banner) ? banner : null
   } catch {
     return null
+  }
+}
+
+// On the web BILLING_URL describes the instance serving the page. When the SPA
+// is pointed at a custom backend on another origin, that instance's sales have
+// nothing to do with the selected backend's users (same rule as mcpUrl()).
+function servesSelectedBackend(): boolean {
+  if (isNativeApp()) return true
+  try {
+    return new URL(backendHost()).origin === window.location.origin
+  } catch {
+    return false
   }
 }

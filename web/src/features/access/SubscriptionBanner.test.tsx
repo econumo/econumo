@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -261,6 +261,21 @@ describe('sale variant', () => {
     renderBanner()
     await user.click(await screen.findByRole('button', { name: 'Dismiss' }))
     expect(await screen.findByText(/read-only/)).toBeInTheDocument()
+  })
+
+  it('brings a dismissed sale back the next day in a tab left open', async () => {
+    vi.mocked(getSaleBanner).mockResolvedValue(sale())
+    server.use(...coreHandlers())
+    renderBanner()
+    await screen.findByText('Black Friday: 40% off')
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
+    expect(screen.queryByText('Black Friday: 40% off')).not.toBeInTheDocument()
+    // Midnight passes: the stored dismissal now names a past day.
+    localStorage.setItem('saleBannerDismissedDay:black-friday-2026', '2000-01-01')
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    expect(await screen.findByText('Black Friday: 40% off')).toBeInTheDocument()
   })
 
   it('still shows a sale with a different id after the first was dismissed today', async () => {

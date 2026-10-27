@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getBillingUrl = vi.fn<() => string>()
-vi.mock('./config', () => ({ getBillingUrl: () => getBillingUrl() }))
+const backendHost = vi.fn<() => string>(() => window.location.origin)
+vi.mock('./config', () => ({ getBillingUrl: () => getBillingUrl(), backendHost: () => backendHost() }))
 
 const entry = { accessLevel: 'full' as const, accessUntil: '2027-01-01T00:00:00Z', registeredAt: '2025-01-01T00:00:00Z' }
 const input = { locale: 'en', user: entry, connections: [] }
@@ -47,6 +48,21 @@ describe('getSaleBanner', () => {
     const getSaleBanner = await load()
     void getSaleBanner(input)
     expect(scripts()[0].src).toBe('https://billing.example/sdk.js')
+  })
+
+  it('keeps a query on the billing URL out of the script path', async () => {
+    getBillingUrl.mockReturnValue('https://billing.example/portal?tenant=x')
+    const getSaleBanner = await load()
+    void getSaleBanner(input)
+    expect(document.head.querySelector('script')?.src).toBe('https://billing.example/portal/sdk.js?tenant=x')
+  })
+
+  it('shows no sale when the SPA is pointed at a custom backend on another origin', async () => {
+    backendHost.mockReturnValue('https://other-instance.example')
+    const getSaleBanner = await load()
+    expect(await getSaleBanner(input)).toBeNull()
+    expect(scripts()).toHaveLength(0)
+    backendHost.mockReturnValue(window.location.origin)
   })
 
   it('returns null when the script fails to load, without retrying', async () => {
