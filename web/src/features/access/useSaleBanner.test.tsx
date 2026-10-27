@@ -6,10 +6,10 @@ import i18n from '@/app/i18n'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
-import { getSaleBanner } from '@/lib/billingSdk'
+import { getSaleBanner } from '@/lib/billingBanner'
 import { useSaleBanner } from './useSaleBanner'
 
-vi.mock('@/lib/billingSdk', () => ({ getSaleBanner: vi.fn() }))
+vi.mock('@/lib/billingBanner', () => ({ getSaleBanner: vi.fn() }))
 
 const HOUR = 3_600_000
 const POLL = 30 * 60_000

@@ -8,9 +8,9 @@ import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { formatDate } from '@/lib/datetime'
 import { SubscriptionBanner } from './SubscriptionBanner'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { getSaleBanner } from '@/lib/billingSdk'
+import { getSaleBanner } from '@/lib/billingBanner'
 
-vi.mock('@/lib/billingSdk', () => ({ getSaleBanner: vi.fn() }))
+vi.mock('@/lib/billingBanner', () => ({ getSaleBanner: vi.fn() }))
 
 vi.mock('@/lib/metrics', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/metrics')>()),

@@ -21,38 +21,10 @@ export interface SaleBannerInput {
   connections: SaleBannerEntry[]
 }
 
-declare global {
-  interface Window {
-    EconumoBilling?: { getBanner(input: SaleBannerInput): Promise<SaleBanner | null> }
-  }
-}
-
 const BANNER_FIELDS = ['id', 'text', 'cta', 'startsAt', 'endsAt'] as const
 
-let sdkLoad: Promise<boolean> | null = null
-
-// The script is injected once per session; a failed load stays memoized as
-// false so a broken billing portal is not hit again on every call.
-function loadSdk(billingUrl: string): Promise<boolean> {
-  sdkLoad ??= new Promise<boolean>((resolve) => {
-    const script = document.createElement('script')
-    try {
-      // Through the URL API so a query on BILLING_URL stays a query rather
-      // than swallowing the path.
-      const src = new URL(billingUrl)
-      src.pathname = `${src.pathname.replace(/\/+$/, '')}/sdk.js`
-      script.src = src.toString()
-    } catch {
-      resolve(false)
-      return
-    }
-    script.async = true
-    script.addEventListener('load', () => resolve(true))
-    script.addEventListener('error', () => resolve(false))
-    document.head.appendChild(script)
-  })
-  return sdkLoad
-}
+// A hung request must not hold the banner hook's next ask hostage.
+const TIMEOUT_MS = 10_000
 
 function isBanner(value: unknown): value is SaleBanner {
   if (typeof value !== 'object' || value === null) return false
@@ -60,12 +32,30 @@ function isBanner(value: unknown): value is SaleBanner {
   return BANNER_FIELDS.every((field) => typeof record[field] === 'string' && record[field] !== '')
 }
 
+// Built through the URL API so a query on BILLING_URL stays a query rather
+// than swallowing the path.
+function bannerEndpoint(billingUrl: string): string {
+  const url = new URL(billingUrl)
+  url.pathname = `${url.pathname.replace(/\/+$/, '')}/api/v1/portal/get-banner`
+  return url.toString()
+}
+
+// Asks the billing portal which sale banner, if any, this user should see.
+// Billing owns the rules and the copy; any failure is simply "no banner".
 export async function getSaleBanner(input: SaleBannerInput): Promise<SaleBanner | null> {
   const billingUrl = getBillingUrl()
   if (billingUrl === '' || !servesSelectedBackend()) return null
   try {
-    if (!(await loadSdk(billingUrl)) || !window.EconumoBilling) return null
-    const banner = await window.EconumoBilling.getBanner(input)
+    const res = await fetch(bannerEndpoint(billingUrl), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+      credentials: 'omit',
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
+    if (!res.ok) return null
+    const body = (await res.json()) as { data?: { banner?: unknown } }
+    const banner = body.data?.banner
     return isBanner(banner) ? banner : null
   } catch {
     return null
