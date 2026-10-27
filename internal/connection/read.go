@@ -2,6 +2,7 @@ package connection
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
@@ -59,6 +60,7 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*model.G
 			SharedAccounts: []model.AccountAccessResult{},
 			AccessLevel:    string(model.EffectiveAccessLevel(owner.AccessLevel, owner.AccessUntil, s.clock.Now())),
 			AccessUntil:    datetime.FormatOrEmpty(owner.AccessUntil),
+			CreatedAt:      createdAtOrEmpty(owner.CreatedAt),
 		}
 
 		// Dedup by account id, preserving discovery order (received first, then
@@ -89,4 +91,12 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*model.G
 		result.Items = append(result.Items, conn)
 	}
 	return result, nil
+}
+
+// createdAtOrEmpty formats a register date, "" when the lookup left it zero.
+func createdAtOrEmpty(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return datetime.FormatOrEmpty(&t)
 }

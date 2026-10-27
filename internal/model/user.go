@@ -100,6 +100,7 @@ type Header struct {
 	Avatar      string
 	AccessLevel AccessLevel
 	AccessUntil *time.Time
+	CreatedAt   time.Time
 }
 
 // User is the user aggregate root. Strings that are encrypted at rest (Email)

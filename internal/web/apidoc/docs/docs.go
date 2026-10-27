@@ -13835,6 +13835,10 @@ const docTemplate = `{
                 "accessUntil": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "description": "CreatedAt is the connected user's register date (\"\" when unknown).",
+                    "type": "string"
+                },
                 "sharedAccounts": {
                     "type": "array",
                     "items": {
