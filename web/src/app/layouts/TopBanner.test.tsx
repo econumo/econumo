@@ -6,6 +6,9 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { TopBanner } from './TopBanner'
 
+// No sale running: billing answers null.
+vi.mock('@/lib/billingBanner', () => ({ getSaleBanner: vi.fn(async () => null) }))
+
 vi.mock('@/features/install/installPrompt', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/install/installPrompt')>()),
   useInstallMode: () => 'ios',

@@ -130,6 +130,7 @@ func (r *Repo) GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error
 	return model.Header{
 		ID: row.ID, Name: row.Name, Avatar: row.Avatar,
 		AccessLevel: model.AccessLevel(row.AccessLevel), AccessUntil: row.AccessUntil,
+		CreatedAt: row.CreatedAt,
 	}, nil
 }
 

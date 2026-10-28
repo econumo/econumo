@@ -14,6 +14,8 @@ export interface ConnectionDto {
   accessLevel: 'full' | 'readonly'
   /** frozen wire format "YYYY-MM-DD HH:mm:ss" UTC; '' = no expiry */
   accessUntil: string
+  /** register date, "YYYY-MM-DD HH:mm:ss" UTC; '' = unknown */
+  createdAt: string
   sharedAccounts: SharedAccountRefDto[]
 }
 
