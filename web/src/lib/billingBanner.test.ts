@@ -70,6 +70,22 @@ describe('getSaleBanner', () => {
     expect(await getSaleBanner(input)).toBeNull()
   })
 
+  it('returns null for an older billing without the endpoint, or a non-JSON answer', async () => {
+    server.use(http.post(ENDPOINT, () => new HttpResponse('404 page not found', { status: 404 })))
+    expect(await getSaleBanner(input)).toBeNull()
+    server.use(http.post(ENDPOINT, () => new HttpResponse('<html>oops', { headers: { 'Content-Type': 'application/json' } })))
+    expect(await getSaleBanner(input)).toBeNull()
+  })
+
+  it('gives up on a billing that never answers', async () => {
+    // Stands in for the 10s timeout firing.
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort(new DOMException('timed out', 'TimeoutError')))
+    server.use(http.post(ENDPOINT, () => new Promise<never>(() => {})))
+    expect(await getSaleBanner(input)).toBeNull()
+    expect(AbortSignal.timeout).toHaveBeenCalledWith(10_000)
+    vi.restoreAllMocks()
+  })
+
   it('shows no sale when the SPA is pointed at a custom backend on another origin', async () => {
     backendHost.mockReturnValue('https://other-instance.example')
     let called = false
