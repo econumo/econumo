@@ -2496,6 +2496,10 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       picker sheet; the field shows the picked currency's code, symbol and
       name; there is no row that clears it; a budget member who cannot
       configure the budget sees it disabled.
+- [ ] 📱 On a phone, a labelled picker inside a form card (Currency on Profile
+      and the account / budget / envelope forms; From, To, Category and Payee
+      on transactions, recurring templates and import rules) shows its value
+      at the same text size as the card's other fields and rows, not larger.
 - [ ] 📱 Every picker sheet with a search behaves the same (Category /
       Recipient / account on transactions and recurring templates; the
       currency field on forms; Currency on Profile and on a budget line's menu;
