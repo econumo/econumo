@@ -2526,6 +2526,10 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       carries a check mark. Search-first pickers (Category, Recipient, account,
       Currency) raise the keyboard on open; the checklist and Merge into do
       not. Desktop keeps the search above the list, with the same keys.
+- [ ] 📱 Rows in every picker sheet on a phone (a budget's Accounts /
+      Savings accounts checklist, Category, Currency, Merge into) have the
+      same rounded corners as the sheet's search field and OK button, not
+      near-square ones.
 - [ ] Row actions open bottom sheets (accounts, transactions, classifications,
       recurring, sessions, tokens, budgets).
 - [ ] Long lists scroll smoothly; sidebar scroll position is remembered when
