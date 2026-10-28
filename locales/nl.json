@@ -1374,7 +1374,7 @@
           "no_budget": "U hebt nog geen budget aangemaakt.",
           "description": "Maak een budget aan of accepteer een uitnodiging om uw financiën te gaan plannen.",
           "create_budget": "Een budget aanmaken",
-          "initial_setup": "Voeg eerst een rekening en minstens één categorie toe om een budget te kunnen maken.",
+          "initial_setup": "Voeg eerst een rekening toe om een budget te kunnen maken.",
           "create_account": "Rekening toevoegen"
         },
         "unavailable": {

@@ -27,7 +27,6 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userOption } from '@/features/user/queries'
 import { UserOptions } from '@/api/dto/user'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCategories } from '@/features/classifications/queries'
 import {
   useBudget,
   useBudgets,
@@ -103,7 +102,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const showLogoutEscape = useLogoutEscape(isPending)
   const { data: currencies = [] } = useCurrencies()
   const { data: accounts = [] } = useAccounts()
-  const { data: categories = [] } = useCategories()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
   const [editMode, setEditMode] = useState(false)
@@ -281,13 +279,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
 
   if (!isPending && (!budget || budgetUnavailable)) {
     // no default budget — the onboarding empty state (Vue's BudgetOnboarding)
+    // categories are not needed: a budget can start empty and add them from its own menus
     const hasAccounts = accounts.length > 0
-    const hasCategories = categories.length > 0
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" data-testid="budget-empty">
         <h1 className="text-xl font-semibold">{t('budgets.page.budget.empty.header')}</h1>
         <p className="text-sm text-muted-foreground">{t('budgets.page.budget.empty.no_budget')}</p>
-        {hasAccounts && hasCategories ? (
+        {hasAccounts ? (
           <>
             <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.empty.description')}</p>
             <Button type="button" onClick={() => setCreateBudgetOpen(true)}>
@@ -297,7 +295,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         ) : (
           <>
             <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.empty.initial_setup')}</p>
-            <Button type="button" onClick={() => openAccountModal({ folderId: null })}>
+            <Button type="button" onClick={() => openAccountModal({})}>
               {t('budgets.page.budget.empty.create_account')}
             </Button>
           </>

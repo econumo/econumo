@@ -238,7 +238,7 @@ it('a plan of 0 shows as 0 and is kept; clearing the input removes the plan', as
   await waitFor(() => expect(bodies[1]).toEqual({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: '0' }))
 })
 
-it('empty state: no default budget shows create-budget when accounts+categories exist', async () => {
+it('empty state: no default budget shows create-budget when accounts exist', async () => {
   server.use(...coreHandlers())
   renderPage()
   expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
@@ -251,6 +251,14 @@ it('empty state: no accounts shows the initial-setup prompt', async () => {
   renderPage()
   expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
   await waitFor(() => expect(screen.getByRole('button', { name: 'Add account' })).toBeInTheDocument())
+})
+
+it('empty state: accounts without categories still offer create-budget', async () => {
+  server.use(...coreHandlers({ categories: [] }))
+  renderPage()
+  expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Create a budget' })).toBeInTheDocument())
+  expect(screen.queryByRole('button', { name: 'Add account' })).not.toBeInTheDocument()
 })
 
 it('/ renders the budget for an onboarded user with a default budget', async () => {

@@ -1374,7 +1374,7 @@
           "no_budget": "您还没有创建预算。",
           "description": "创建预算或接受邀请，开始规划您的财务。",
           "create_budget": "创建预算",
-          "initial_setup": "要创建预算，请先添加一个账户和至少一个分类。",
+          "initial_setup": "要创建预算，请先添加一个账户。",
           "create_account": "添加账户"
         },
         "unavailable": {

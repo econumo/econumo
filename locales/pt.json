@@ -1374,7 +1374,7 @@
           "no_budget": "Ainda não criou um orçamento.",
           "description": "Crie um orçamento ou aceite um convite para começar a planear as suas finanças.",
           "create_budget": "Criar orçamento",
-          "initial_setup": "Para criar um orçamento, adicione primeiro uma conta e pelo menos uma categoria.",
+          "initial_setup": "Para criar um orçamento, adicione primeiro uma conta.",
           "create_account": "Adicionar conta"
         },
         "unavailable": {

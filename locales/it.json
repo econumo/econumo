@@ -1374,7 +1374,7 @@
           "no_budget": "Non hai ancora creato un budget.",
           "description": "Crea un budget o accetta un invito per iniziare a pianificare le tue finanze.",
           "create_budget": "Crea un budget",
-          "initial_setup": "Per creare un budget, aggiungi prima un conto e almeno una categoria.",
+          "initial_setup": "Per creare un budget, aggiungi prima un conto.",
           "create_account": "Aggiungi conto"
         },
         "unavailable": {
