@@ -91,6 +91,9 @@ func (s *Service) persistNewUser(ctx context.Context, name, email string,
 	// variable governs only the one-time migration:seed-analytics-option backfill
 	// of pre-existing users, not this path.
 	u.SetAnalytics(true, s.repo.NextIdentity(), now)
+	if model.IsReleaseVersion(s.appVersion) {
+		u.SetLastSeenVersion(s.appVersion, s.repo.NextIdentity(), now)
+	}
 	// The currency option stores an ID: seed the resolved default. Reads treat
 	// a user without a live currency id as data corruption, so a missing
 	// default-currency row fails registration instead of minting such a user.

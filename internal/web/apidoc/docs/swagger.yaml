@@ -377,26 +377,6 @@ definitions:
         items:
           $ref: '#/definitions/model.PlanMonthTransfersResult'
         type: array
-      upcomingOpeningBalances:
-        items:
-          $ref: '#/definitions/model.OpeningBalanceResult'
-        type: array
-      upcomingSavingsFlows:
-        items:
-          $ref: '#/definitions/model.PlanSavingsFlowResult'
-        type: array
-      upcomingSavingsIncomeExpense:
-        items:
-          $ref: '#/definitions/model.PlanSavingsFlowResult'
-        type: array
-      upcomingSavingsOpeningBalances:
-        items:
-          $ref: '#/definitions/model.OpeningBalanceResult'
-        type: array
-      upcomingTransfers:
-        items:
-          $ref: '#/definitions/model.PlanMonthTransfersResult'
-        type: array
     type: object
   model.BudgetResult:
     properties:
@@ -689,6 +669,9 @@ definitions:
       accessLevel:
         type: string
       accessUntil:
+        type: string
+      createdAt:
+        description: CreatedAt is the connected user's register date ("" when unknown).
         type: string
       sharedAccounts:
         items:
@@ -2247,6 +2230,11 @@ definitions:
         type: string
       isArchived:
         type: integer
+      isBudgeted:
+        description: |-
+          IsBudgeted is 1 when the period has a plan, even a plan of 0; with 0,
+          Budgeted is "0" and means no plan was set.
+        type: integer
       name:
         type: string
       ownerUserId:
@@ -2259,13 +2247,9 @@ definitions:
         type: integer
       upcoming:
         description: |-
-          Upcoming is the period's projected recurring spend not yet posted, and
-          UpcomingBefore the projected spend filed in earlier months of the
-          projection window (from the caller's current month on), both in
-          CurrencyId; BudgetUpcoming is Upcoming in the budget currency. Spent and
-          Available stay real money only.
-        type: string
-      upcomingBefore:
+          Upcoming is the period's recurring spend not yet posted, in CurrencyId;
+          BudgetUpcoming is Upcoming in the budget currency. A planning hint: Spent
+          and Available stay real money only.
         type: string
     type: object
   model.PayeeResult:
@@ -2416,8 +2400,6 @@ definitions:
         type: integer
       type:
         type: integer
-      upcomingOpeningBalance:
-        type: string
     type: object
   model.PlanSavingsFlowResult:
     properties:
@@ -2768,6 +2750,8 @@ definitions:
       id:
         type: string
       isArchived:
+        type: integer
+      isBudgeted:
         type: integer
       name:
         type: string
@@ -3399,6 +3383,16 @@ definitions:
         type: string
     type: object
   model.UpdateLanguageResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateLastSeenVersionRequest:
+    properties:
+      version:
+        type: string
+    type: object
+  model.UpdateLastSeenVersionResult:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
@@ -5294,8 +5288,8 @@ paths:
         in: query
         name: transfers
         type: boolean
-      - description: Income of categoryId or envelopeId (exactly one; composes with
-          nothing else)
+      - description: Income of categoryId or envelopeId (exactly one), or with uncategorized
+          the income Uncategorized row; composes with nothing else
         in: query
         name: income
         type: boolean
@@ -11310,6 +11304,48 @@ paths:
       security:
       - Bearer: []
       summary: Update language
+      tags:
+      - User
+  /api/v1/user/update-last-seen-version:
+    post:
+      consumes:
+      - application/json
+      description: Records the release (vX.Y.Z) whose "what's new" notice the authenticated
+        user has seen and returns the refreshed user.
+      parameters:
+      - description: Update last seen version request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateLastSeenVersionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateLastSeenVersionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update last seen version
       tags:
       - User
   /api/v1/user/update-name:

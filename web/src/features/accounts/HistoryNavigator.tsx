@@ -10,11 +10,15 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import coins from '@/assets/econumo-coins.svg?inline'
 import { formatDate, parseDateTime } from '@/lib/datetime'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import type { HistoryMonth } from './TransactionHistory'
 
 const MARKER_WIDTH = 40
 const monthNumber = (key: string) => Number(key.slice(0, 4)) * 12 + Number(key.slice(5, 7))
 const clampPosition = (value: number) => Math.max(0, Math.min(1, value))
+
+type JumpMethod = 'drag' | 'click' | 'keyboard' | 'picker' | 'today'
+const trackJump = (method: JumpMethod) => trackEvent(METRICS.ACCOUNT_HISTORY_JUMP, { method })
 
 export interface HistoryNavigatorHandle {
   resetPosition: () => void
@@ -70,7 +74,8 @@ export function HistoryNavigator({ months, activeMonth, onJump, onToday, ref }: 
     return timeline.reduce((closest, key, index) =>
       Math.abs(monthNumber(key) - target) < Math.abs(monthNumber(timeline[closest]) - target) ? index : closest, 0)
   }
-  const jumpToPosition = (position: number) => {
+  const jumpToPosition = (position: number, method: JumpMethod) => {
+    trackJump(method)
     const next = clampPosition(position)
     setMarkerPosition(next)
     setPreviewIndex(null)
@@ -100,7 +105,7 @@ export function HistoryNavigator({ months, activeMonth, onJump, onToday, ref }: 
       default: return
     }
     event.preventDefault()
-    jumpToPosition(next)
+    jumpToPosition(next, 'keyboard')
   }
 
   const onOpenChange = (value: boolean) => {
@@ -160,6 +165,7 @@ export function HistoryNavigator({ months, activeMonth, onJump, onToday, ref }: 
           return (
             <Button key={key} type="button" variant={activeMonth === key ? 'secondary' : 'ghost'} className={isPhone ? 'h-11 text-base' : 'h-10'} aria-label={monthLabel(key)} aria-current={activeMonth === key ? 'date' : undefined} disabled={!month} onClick={() => {
               setMarkerPosition(positionForMonth(key))
+              trackJump('picker')
               if (month) onJump(month)
               setOpen(false)
             }}>
@@ -170,6 +176,7 @@ export function HistoryNavigator({ months, activeMonth, onJump, onToday, ref }: 
       </div>
       <Button type="button" variant="ghost" size="sm" className={isPhone ? 'h-11 w-full justify-start border-t text-base text-muted-foreground' : 'justify-start border-t pt-2 text-xs text-muted-foreground'} onClick={() => {
         setMarkerPosition(0)
+        trackJump('today')
         onToday()
         setOpen(false)
       }} aria-label={t('accounts.page.history.back_today')}>
@@ -209,7 +216,7 @@ export function HistoryNavigator({ months, activeMonth, onJump, onToday, ref }: 
         if (!drag) return
         if (drag.moved || !drag.fromLabel) {
           const position = pickPosition(event)
-          jumpToPosition(position)
+          jumpToPosition(position, drag.moved ? 'drag' : 'click')
         }
         dragRef.current = null
         tappedRef.current = drag.fromLabel && !drag.moved

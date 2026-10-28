@@ -15,11 +15,13 @@ type CurrencyView struct {
 
 // OwnerView is the minimal owner shape an account/budget/connection result
 // embeds. AccessLevel/AccessUntil are the raw stored columns (see
-// model.Header); only the connection list reads them.
+// model.Header); only the connection list reads them, and CreatedAt (the
+// user's register date), which other producers may leave zero.
 type OwnerView struct {
 	ID          string
 	Name        string
 	Avatar      string
 	AccessLevel AccessLevel
 	AccessUntil *time.Time
+	CreatedAt   time.Time
 }

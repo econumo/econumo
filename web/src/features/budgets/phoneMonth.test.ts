@@ -77,23 +77,10 @@ it('lists the income Uncategorized row only in a month it received something', (
   expect(planMonthFigures(usdPlan(), [usd, eur], '2026-07-01', past)!.income.rows.map((r) => r.element.id)).not.toContain('uncategorized')
 })
 
-it('the current month: income Uncategorized with money upcoming is listed, and the transfers line shows the transfers that happened', () => {
-  const plan = usdPlan()
-  const uncat = plan.structure.elements.find((el) => el.id === 'uncategorized' && el.type === 3)!
-  uncat.cells[2] = { ...uncat.cells[2], actual: '0', upcoming: '25' }
-  plan.transfers = plan.transfers.map((t) => (t.period === '2026-07-01' ? { ...t, items: [{ currencyId: 'cur-usd', in: '0', out: '50' }] } : t))
-  plan.upcomingTransfers = [{ period: '2026-07-01', items: [{ currencyId: 'cur-usd', in: '0', out: '30' }] }]
-  const july = planMonthFigures(plan, [usd, eur], '2026-07-01', new Date(2026, 6, 15))!
-  expect(july.income.rows.map((r) => r.element.id)).toContain('uncategorized')
-  expect(cmp(july.income.received, '400')).toBe(0)
-  // the wire transfers here are the folded ones: 50 merged, of which 30 is upcoming
-  expect(cmp(july.transfersNet, '-20')).toBe(0)
-})
-
-it('an unplanned cell counts as a zero plan', () => {
+it('an unplanned cell keeps its empty plan', () => {
   const ie1 = usdPlan().structure.elements.find((el) => el.id === 'ie1')!
-  expect(planCellFigures(ie1, 0)).toEqual({ element: ie1, planned: '0', actual: '2000' })
-  expect(planCellFigures(ie1, 9)).toEqual({ element: ie1, planned: '0', actual: '0' })
+  expect(planCellFigures(ie1, 0)).toEqual({ element: ie1, planned: '', actual: '2000' })
+  expect(planCellFigures(ie1, 9)).toEqual({ element: ie1, planned: '', actual: '0' })
 })
 
 it('carries a savings cell\'s closing balance', () => {

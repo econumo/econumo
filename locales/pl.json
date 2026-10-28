@@ -395,6 +395,9 @@
           "label": "Notatki",
           "placeholder": "Wpisz notatkę"
         },
+        "account": {
+          "label": "Konto"
+        },
         "from": {
           "label": "Z konta"
         },
@@ -540,6 +543,7 @@
         "limitations_title": "Znane ograniczenia",
         "tap_only": "Działa tylko wtedy, gdy zbliżasz iPhone’a, aby zapłacić",
         "online_not_imported": "Płatności Apple Pay na stronach internetowych nie są obsługiwane",
+        "no_signal": "Bez zasięgu podczas płatności transakcja może nie zostać dodana",
         "steps_title": "Jak to działa",
         "flow": {
           "pay": "Zapłać za pomocą Apple Pay",
@@ -567,7 +571,7 @@
         },
         "configure": {
           "title": "Połącz skrót",
-          "text": "Generuje token API. Skrót zapisuje adres serwera i token, a potem łączy się z Econumo. Przy każdym pytaniu stuknij „Zawsze zezwalaj” — automatyzacja będzie potrzebować tych uprawnień.",
+          "text": "Stuknij „Połącz skrót”, a potem przy każdym pytaniu „Zawsze zezwalaj”.",
           "button": "Połącz skrót",
           "open": "Powiąż Econumo",
           "waiting": "Czekam, aż skrót dotrze do Econumo…",
@@ -575,7 +579,14 @@
         },
         "automate": {
           "title": "Utwórz automatyzację",
-          "text": "W aplikacji Skróty: Automatyzacja → + → Wallet → wybierz karty i kategorie do importu → Uruchom po potwierdzeniu → econumo."
+          "text": "W aplikacji Skróty utwórz automatyzację Portfela:",
+          "list": {
+            "open": "Otwórz kartę Automatyzacja (w iOS 27: Biblioteka → Automatyzacja) i stuknij „Nowa automatyzacja” lub +",
+            "wallet": "Wybierz Portfel („Gdy stuknę kartę lub przepustkę w Portfelu”)",
+            "cards": "Wybierz karty i kategorie do importu albo wszystkie",
+            "confirm": "Pozostaw potwierdzanie włączone: „Uruchom po potwierdzeniu” (iOS 26) lub „Potwierdź przed uruchomieniem” (iOS 27)",
+            "shortcut": "Wybierz skrót econumo (w iOS 27: dodaj „Uruchom skrót” → econumo, z „Transakcją” jako danymi wejściowymi)"
+          }
         },
         "payment": {
           "title": "Wykonaj pierwszą płatność",
@@ -584,9 +595,14 @@
         },
         "immediate": {
           "title": "Przełącz automatyzację na „Uruchom natychmiast”",
-          "text": "W aplikacji Skróty otwórz automatyzację i zmień „Uruchom po potwierdzeniu” na „Uruchom natychmiast”. Od tej pory płatności są importowane bez pytania."
+          "text": "Wyłącz potwierdzanie, aby płatności importowały się bez pytania: otwórz automatyzację w Skrótach i wybierz „Uruchom natychmiast” (iOS 26) lub wyłącz „Potwierdź przed uruchomieniem” (iOS 27)."
         },
-        "done": "Gotowe"
+        "done": "Gotowe",
+        "guide_title": "Instrukcja krok po kroku ze zrzutami ekranu:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Otwórz Skróty",
+        "optional": "Opcjonalnie"
       },
       "same_named_cards": "Karty o tej samej nazwie w Wallet są wyświetlane jako jedna karta.",
       "cards": {
@@ -1196,10 +1212,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "Nadchodząca płatność cykliczna",
-      "later_cycle": "Można zaksięgować po wcześniejszej płatności"
-    },
     "modal": {
       "budget_form": {
         "accounts": "Konta",
@@ -1349,13 +1361,21 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "Nadchodzące",
+        "spent": "Już wydano",
+        "received": "Już otrzymano",
+        "saved": "Już zaoszczędzono",
+        "posted": "Zaksięgowane",
+        "total": "Razem"
+      },
       "budget": {
         "empty": {
           "header": "Budżet",
           "no_budget": "Nie masz jeszcze żadnego budżetu.",
           "description": "Utwórz budżet lub przyjmij zaproszenie, aby zacząć planować finanse.",
           "create_budget": "Utwórz budżet",
-          "initial_setup": "Aby utworzyć budżet, dodaj najpierw konto i co najmniej jedną kategorię.",
+          "initial_setup": "Aby utworzyć budżet, dodaj najpierw konto.",
           "create_account": "Dodaj konto"
         },
         "unavailable": {
@@ -2024,6 +2044,7 @@
       "payees": "Odbiorcy",
       "tags": "Tagi",
       "labels": "Tagi raportowe",
+      "recurring": "Cykliczne",
       "transactions": "Transakcje"
     },
     "show_all": "Pokaż wszystkie ({count})",
@@ -2070,7 +2091,10 @@
       "cta": "Zarządzaj subskrypcją",
       "dismiss": "Ukryj",
       "connection_trial": "Subskrypcja użytkownika {name} kończy się za {count} dzień | Subskrypcja użytkownika {name} kończy się za {count} dni | Subskrypcja użytkownika {name} kończy się za {count} dni",
-      "connection_readonly": "Subskrypcja użytkownika {name} wygasła — wspólne konta może już tylko przeglądać"
+      "connection_readonly": "Subskrypcja użytkownika {name} wygasła — wspólne konta może już tylko przeglądać",
+      "sale_ends": "do {date}",
+      "sale": "{name}: {percent}% zniżki",
+      "sale_cta": "Skorzystaj z oferty"
     },
     "settings": {
       "group": "Płatności",
@@ -2153,6 +2177,10 @@
       },
       "close": "Rozumiem"
     }
+  },
+  "whatsNew": {
+    "notice": "Co nowego w {version}",
+    "dismiss": "Zamknij"
   },
   "errors": {
     "common": {

@@ -264,6 +264,9 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 Create account from the sidebar and from Settings → Accounts: name,
       starting balance (calculator input accepts a formula, e.g. `100+23.5`),
       currency, icon. Balance shows correctly in the sidebar and account page.
+- [ ] 📱 New account dialog: the balance field is empty with a grey `0`
+      placeholder; typing `123` gives `123` (no leading `0`); leaving it empty
+      creates the account with a 0 balance and no correction transaction.
 - [ ] Starting balance creates a "correction"-style initial transaction dated
       now; account page shows it.
 - [ ] Edit account: rename, change icon; balance edit creates a correction to
@@ -357,6 +360,11 @@ navigation (single-pane vs sidebar).
       global add button: date picker, amount (formula), category & payee
       selects with **create-on-type** inline creation, tags & labels chips,
       description.
+- [ ] 📱 On an account page, add an expense/income after picking a different
+      account: a bottom "Switch to <account>" bar appears and opens that
+      account. Adding to the open account shows no bar. A transfer shows the
+      bar for its "To" account, or for its "From" account when it does not
+      touch the open account; a transfer into the open account shows none.
 - [ ] 📱 In Add/Edit transaction, click the calendar's month or year header to
       jump directly to a past or future month/year, then select a day. Browsing
       months/years leaves the transaction date unchanged until a day is selected;
@@ -378,6 +386,9 @@ navigation (single-pane vs sidebar).
 - [ ] Cross-currency transfer (USD account → EUR account) asks for both
       amounts; both accounts' balances update by their respective amounts.
 - [ ] Same-currency transfer: single amount; swap from/to button works.
+- [ ] With only one account you can add transactions to (accounts in hidden
+      folders and read-only shared ones don't count), the Transfer type is
+      greyed out and cannot be selected; editing an existing transfer keeps it.
 - [ ] 📱 Transfer with no "To" account: Add/Update shows "Required field" under
       the To select and sends nothing; the API rejects the same body with a
       400 on `accountRecipientId` (create AND update).
@@ -429,31 +440,14 @@ navigation (single-pane vs sidebar).
 
 ## 5a. Imports — Apple Wallet
 
-Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
-`ECONUMO_IMPORT_SIMPLEFIN=true`.
+Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
 
-- [ ] With both provider environment variables unset, Apple Wallet and Import
-      rules are available by default; SimpleFIN stays hidden. The bundled mobile
-      config also defaults Apple Wallet on, but honors the selected backend's
-      explicit `IMPORT_APPLE_WALLET: false`, including after switching servers.
-- [ ] Both import providers off (`ECONUMO_IMPORT_APPLE_WALLET=false` and
-      `ECONUMO_IMPORT_SIMPLEFIN=false`) 📱: Settings → Data shows only
-      "Import & export"; no Apple Wallet, SimpleFIN or Import rules rows.
-      Import & export lists only the CSV import/export rows (no "Sync bank
-      connections" or "Import rules").
-      `/settings/apple-wallet`, `/settings/apple-wallet/history`,
-      `/settings/simplefin`, `/settings/simplefin/history` and
-      `/settings/import-rules` show the not-found page. The Inbox shows only sharing
-      invites (or "All caught up") and no request to `/api/v1/import/*` is made
-      anywhere in the app (Network tab); a direct call to any import endpoint
-      returns 404.
-- [ ] Only SimpleFIN on 📱: Settings → Data shows SimpleFIN and Import rules but
-      no Apple Wallet; `/settings/apple-wallet` shows the not-found page; an
-      Apple Wallet source left from before is absent from the Inbox, and the
-      ingest endpoint returns 404.
-- [ ] Only Apple Wallet on 📱: Settings → Data shows Apple Wallet and Import
-      rules but no SimpleFIN; `/settings/simplefin` shows the not-found page and
-      "Sync bank connections" never appears.
+- [ ] With `ECONUMO_IMPORT_SIMPLEFIN` unset, Apple Wallet and Import rules are
+      available; SimpleFIN stays hidden, `/settings/simplefin` shows the
+      not-found page and "Sync bank connections" never appears. Apple Wallet
+      has no switch: a leftover `ECONUMO_IMPORT_APPLE_WALLET=false` in the
+      environment changes nothing, and `econumo-config.js` carries no
+      `IMPORT_APPLE_WALLET` key.
 
 - [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
       import/export rows; dialogs open as before) and "Apple Wallet" (its own page;
@@ -461,7 +455,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       group's last row on the Settings page itself (not inside Import & export).
 - [ ] Before connecting 📱: the Apple Wallet page explains the feature, lists
       what is needed (an iPhone with Apple Pay, the Shortcuts app, about 5
-      minutes), explains how payments reach Econumo, says which payment fields
+      minutes), lists the known limitations (tap to pay only, no website Apple
+      Pay, transactions made with no signal may not be added), explains how
+      payments reach Econumo, says which payment fields
       Econumo receives and offers "Set up Apple Wallet". Neither this page nor
       the setup checklist has video previews or an embedded player; videos
       are available on the website through the "Setup instructions" link.
@@ -493,6 +489,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       files (`econumo-wallet-v1.shortcut`, `econumo-setup-v1.shortcut`) are
       no longer served (not found), while an already installed v1 automation
       still imports.
+- [ ] Step 2 text is one line: "Tap Connect the Shortcut, then tap Always
+      Allow on every prompt." 📱
 - [ ] Step 2, iOS only 📱: one tap on "Connect the Shortcut" mints an ingest PAT
       (visible under Profile → Tokens with scope `ingest`) and opens the
       Shortcuts app with it right away — the app window stays on the page.
@@ -523,8 +521,21 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       below the hint text. "Connect the Shortcut", the download, the instructions link,
       the waiting line and the hand ticks still work; running the configured
       shortcut by hand on the phone completes step 2 here too.
-- [ ] Step 3 text walks through Automation → + → Wallet → cards & categories →
-      Run After Confirmation → econumo; step 4 text says the iPhone
+- [ ] Step 3 shows a numbered checklist that holds on iOS 26 and iOS 27:
+      open Automation (iOS 27: Library → Automation) and tap New Automation
+      or +, choose Wallet ("When I tap a Wallet Card or Pass"), select the cards and categories, keep confirmation on (Run After
+      Confirmation / Confirm Before Run), choose econumo (iOS 27: Run Shortcut →
+      econumo with Transaction as input). Below it, "Step-by-step guide with
+      screenshots: iOS 26 · iOS 27" opens the article at `#ios-26` / `#ios-27`
+      in a new window; on an iPhone "Open Shortcuts" opens the Shortcuts app 📱.
+      Desktop shows the two links but no "Open Shortcuts" button.
+- [ ] Step 5 text says to turn the confirmation off (Run Immediately on iOS 26,
+      Confirm Before Run off on iOS 27), with the same "Open Shortcuts"
+      button 📱 and guide links, here to `#on-ios-26` / `#on-ios-27`.
+- [ ] On a 320 px-wide phone, in German and Russian too, the checklist, the
+      buttons and the guide-link row of steps 2, 3 and 5 wrap without
+      horizontal scrolling 📱.
+- [ ] Step 4 text says the iPhone
       can stay locked, to tap Run when the automation asks and Always Allow on
       every prompt (on device: only Wallet access is asked — host and iCloud
       Drive were granted in step 2), and waits for the first payment the same
@@ -534,8 +545,11 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       and Always Allow are answered.
 - [ ] The first non-failed payment from Apple Pay completes steps 1–4 by itself
       (imported, queued, or skipped all count),
-      regardless of hand ticks; step 5 (Switch the automation to Run
-      Immediately) stays a hand tick 📱. Its Done button is disabled until
+      regardless of hand ticks, and completes the setup: step 5 (Switch the
+      automation to Run Immediately) is optional, labelled "Optional", stays a
+      hand tick and stays open; the "Setup guide" title now folds the guide
+      away, and a folded guide stays folded after a reload (Configure again
+      or a reconnect unfolds it) 📱. Its Done button is disabled until
       step 4 completes; premature saved step-5 ticks are cleared. The button
       becomes enabled as soon as the first non-failed payment arrives.
 - [ ] Apple Wallet page layout once a tap has arrived 📱: a standalone
@@ -569,11 +583,15 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_APPLE_WALLET=true` and
       `automate`, `payment`, `immediate`, in that order. Shortcut check-in and
       the first non-failed payment count without clicking Done; failed payments
       and attempts to finish step 5 before step 4 do not. A first payment can
-      confirm steps 1–4 at once. Finishing step 5 sends `import_setup_complete`.
+      confirm steps 1–4 at once. The first payment (step 4) sends
+      `import_setup_complete`; step 5 is optional and does not resend it.
       Rerenders/polling do not duplicate milestones. Reopening the guide reports
       the current step without replaying old completions. "Configure again"
       sends `import_setup_restart` only after a successful reset and starts
-      tracking fresh progress. No source/card IDs, card names, merchant,
+      tracking fresh progress. A guide link in steps 3/5 sends
+      `import_setup_guide_open` with `step` (`automate`/`immediate`) and
+      `ios` (`26`/`27`); "Open Shortcuts" sends `import_setup_shortcuts_open`
+      with `step`. No source/card IDs, card names, merchant,
       amount, currency or credentials appear in these events. Analytics opt-out
       suppresses all of them through the usual analytics gate.
 - [ ] Ingest with an `ingest`-scoped PAT: `POST /api/v1/import/ingest-apple-wallet-event`
@@ -971,6 +989,12 @@ and on tablet/phone only with a hardware keyboard.
       expands the whole group.
 - [ ] Selecting a transaction opens its preview; Edit opens the form (search
       closes); Delete removes it and the list updates.
+- [ ] A query matching a recurring template (description, amount, payee,
+      category, schedule name) shows it under "Recurring", soonest next payment
+      first, the date red when due; a category/payee/tag/label drill-down lists
+      that item's templates too; the empty-query feed shows none. Selecting one
+      opens its preview: Post and Skip act on it (search stays open), the
+      schedule row opens the template form (search closes).
 - [ ] Keyboard: ↑/↓ move the highlight, Enter opens the highlighted row, Esc
       closes search.
 - [ ] 📱 On a phone the search field reads "Search" with a ✕ to its right, and
@@ -995,6 +1019,11 @@ and on tablet/phone only with a hardware keyboard.
 
 - [ ] 📱 Create a budget: name, currency, ≥1 owned account required; appears in
       the sidebar; becomes default when first/chosen.
+- [ ] 📱 New user with no budget: the Budget page offers "Add account" while
+      there are no accounts; once one account exists it offers "Create a
+      budget" right away, with no categories needed.
+- [ ] 📱 A user whose last account was deleted (a folder is left over) can add
+      an account from the empty Budget page; it lands in their first folder.
 - [ ] Budget table: budgeted / spent / available columns; expanding an element
       shows details; totals row; uncategorized and labels sections appear with
       info notes when relevant.
@@ -1034,7 +1063,8 @@ and on tablet/phone only with a hardware keyboard.
       carries no view switch.
 - [ ] 📱 The main menu's "Budget & Plan" link opens the view last opened on
       this device (/budget or /plan), also after a reload, with the month
-      last shown there. The selected month is shared by both views: pick a
+      last shown there. Opening the app at / (the home-screen icon, the
+      logo) shows that same view and does not reset the link to Budget. The selected month is shared by both views: pick a
       month in the strip on /budget (or page with ‹ › on /plan), switch
       Budget ↔ Plan (and back), and the same month is still selected.
 - [ ] Budget view (desktop and tablet) uses the phone's order: Income
@@ -1173,7 +1203,7 @@ and on tablet/phone only with a hardware keyboard.
       a reload and are shared with the Plan grid and the phone.
 - [ ] Budget view: the income and savings Planned amounts edit inline on a
       desktop (popover) and open the item sheet on a tablet; Received and
-      Saved open the transactions dialog (except income Uncategorized);
+      Saved open the transactions dialog (income Uncategorized too);
       Balance, Total savings and the Income line match the Plan grid's
       figures for the same month.
 - [ ] Element visibility rule: a category/tag/envelope with **either** spending
@@ -1181,6 +1211,17 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] Set a limit via the inline editor on a budgeted amount (desktop) or the
       item sheet's "Set budget" (tablet and phone); formula input; limit shows
       immediately and carries into the next period per rules.
+- [ ] Empty plan vs a plan of 0 📱: a row with no plan shows a dash, never 0
+      (Budget view row, phone row, item sheet) and a blank Plan cell; entering
+      0 saves a plan of 0 that shows as 0 (and keeps an unused active tag
+      visible; an archived row with only a plan of 0 stays hidden);
+      emptying the input and saving removes the plan (dash again). An expense
+      plan of 0 with a payment still due shows red. In the Plan grid, copying
+      or fill-dragging an empty cell clears the target months.
+      A carry-over beside an empty plan shows no "+" ("-412.61 —"). Clicking
+      the dash opens the plan editor, never comments; the editor closing
+      leaves no focus ring on the cell. The add-comment corner shows while the
+      Budget row is hovered and stays shown on the way to it.
 - [ ] Spent cell drilldown opens the transactions dialog (filtered list,
       preview, delete works and refreshes figures).
 - [ ] Transactions dialog rows: a row with a note shows the note, then
@@ -1551,12 +1592,12 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 Two savings accounts in the current month, one planned 500 with
       nothing saved yet, the other planned 0 with 300 saved: the Savings line
       shows 800 and the Total savings rises by exactly 800 over the previous
-      month (Balance drops by the same). A transfer already booked into a future
-      month above that month's plan counts at its booked amount in both.
+      month (Balance drops by the same). A transfer dated in a future month
+      counts in neither until its date: it shows in that month's editor list.
 - [ ] 📱 Book a future-dated transfer of 20 from a savings account to an
-      account that is not in the budget: from that month on the Savings
-      balance is 20 lower, and the everyday Balance is the same as before the
-      transfer.
+      account that is not in the budget: the Savings balance, the everyday
+      Balance and the savings row's Saved stay as before the transfer (it has
+      not happened yet); editing that month's savings plan lists it as -20.
 - [ ] 📱 A past month where a savings account saved less than planned: the
       cell does NOT take a green under-plan style, and is never red (the Plan
       grid shows no green anywhere; only an over-plan expense reads red).
@@ -1679,7 +1720,9 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 Tablet: holding a finger on a cell opens nothing extra (no actions
       menu, no text-selection callout from the app) and the tap still works.
 - [ ] 📱 Phone: a comment thread opens as a sheet whose composer stays pinned
-      above the keyboard.
+      above the keyboard, on the sheet's own background (no darker box behind
+      it). It ends in the full-width Cancel | Post row of the Set plan sheet,
+      with the n/500 counter right under the field; Cancel closes the sheet.
 - [ ] On the plan grid, select a cell and press Shift+F2 (or Shift+Enter):
       its thread opens in a popover beside the cell; Esc closes it and the
       arrow keys keep moving the selection. Plain Enter on the same cell edits
@@ -1719,73 +1762,84 @@ and on tablet/phone only with a hardware keyboard.
       column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
       they list and export at the UTC time after the upgrade instead of
       failing the list.
-- [ ] 📱 **Upcoming recurring payments in Budget and Plan**: with an active
-      recurring expense on a budget account (category X, due later this month),
-      the current month's Budget view shows only what was really spent in X's
-      Spent, Available and the month's Expenses/Total lines (the fact); tapping
-      X's Spent opens its list with the upcoming row in it. With nothing spent
-      in X yet, X's Spent reads 0 and still opens that list (on a phone through
-      the item sheet's Transactions). Posting it moves the amount into Spent;
-      skipping it removes the row. Folder and tag-group sums and reporting
-      tags follow the same rule.
-- [ ] In the Plan grid's current month, cells show the real actual only; a
-      cell with nothing real yet but a payment upcoming shows a dash that opens
-      its list. The Income/Expenses/Savings totals, Balance, Total savings and
-      the savings rows' Balance still count this month's upcoming money (the
-      same figures as before this change), and every month after the current
-      one still carries it over.
-- [ ] 📱 A future month (Budget view and Plan grid) shows the upcoming amounts
-      of the templates falling in it instead of a dash; in the Plan grid the
-      future cell shows the upcoming amount and the Balance / Total savings
-      lines move with it even when that cell has no plan.
-- [ ] 📱 Future months never show spent/actual in red: a future month whose
-      upcoming amount exceeds its plan (or has no plan) shows the spent figure,
-      its bar and the Plan grid actual in the neutral style; the current and
-      past months still turn red when overspent, and a negative Available
-      stays red. In future months every spent/actual figure (rows, folder and
-      tag-group sums, section headers, month totals, the item sheet, and the
-      Plan grid's actuals) is a lighter grey than the muted grey of current-
-      month figures, so it reads as projected; current and past months keep
-      their normal colour.
-- [ ] A weekly template adds one occurrence per week to a month (four or five
-      rows in the cell list, matching the month's weeks); a monthly template
-      adds one.
+- [ ] 📱 **Upcoming recurring payments mark a short plan**: with an active
+      recurring expense on a budget account (category X, due later this month,
+      nothing planned for X), the current month's Budget view (desktop, phone
+      and the item sheet) shows X's plan exactly as before: empty / 0, with no
+      grey or italic suggested number. Spent, Available, the month's totals,
+      folder and tag-group sums are real money only and do not move.
+- [ ] 📱 An expense row (category, tag or envelope) whose plan is below spent +
+      still due shows its plan in red, in the current and in future months; a
+      plan at or above it stays normal. Income and savings rows are never
+      red.
+- [ ] No red hint shows on folder, tag-group, total, label or child rows, nor
+      in a past month.
+- [ ] 📱 In the Plan grid the same rules apply per cell: a cell without a plan
+      stays blank, a short expense plan is red, and the Income / Expenses /
+      Savings totals, Balance, Total savings, the savings rows' Balance and
+      every carry-over to later months ignore upcoming money.
+- [ ] 📱 Editing the plan of a cell in the current month or later that has
+      money spent or due (desktop Budget editor, phone set-limit dialog, Plan
+      grid in-cell input) shows a small, muted list under the input: still-due
+      recurring payments (repeat icon, overdue marked) and your own
+      transactions dated later this month, merged by date (savings signed).
+      Every figure carries a currency symbol: each row in its own currency
+      (a row from an account in another currency keeps its own amount and
+      symbol), Total in the item's currency. Below the rows: "Already spent"
+      ("Already received" on income, "Already saved" on savings) = what is
+      already behind us (the cell's spent, which leaves out the future-dated
+      rows listed above), hidden when 0; then "Total" = spent + still due, so the column adds up (e.g.
+      60 + 55 + Already spent 300 = Total 415). "Coming up", "Already …" and
+      Total are in the brighter text colour; the figures line up in one
+      right-aligned column. In the Plan grid the list opens below the edited
+      cell, never covering it. A cell
+      with nothing to list, a past month, or a read-only cell shows no list;
+      hovering a cell never shows it. The list offers no Post, Skip or Edit.
+- [ ] 📱 Tapping anywhere on the list (e.g. 300 spent + 250 due, Total 550) replaces the
+      input's value with that plain number and keeps the cursor in the input;
+      in the Plan grid the cell stays in edit mode and nothing is saved until
+      Enter / Tab / clicking away. A future-dated real transaction listed in
+      the panel counts once in Total (it is upcoming, not spent).
+- [ ] 📱 **Future-dated transactions are not spent yet**: book an expense of 40
+      in category X dated later this month (and one dated next month). This
+      month's Spent / Available for X, the month's totals, Balance and the Plan
+      grid's Actual leave the 40 out; the plan turns red when it is below spent +
+      40 (+ any due payments) and X's editor list shows the 40 with Total
+      including it. Next month's Spent stays 0 and its editor list shows the
+      other one. On the day it is dated (in your timezone) it moves into Spent.
+      Same for income (Received) and a transfer into a savings account (Saved,
+      the savings Balance and Total savings move only on its date).
+- [ ] 📱 In the phone plan dialog the list sits above the amount field, so the
+      field and the Save / Cancel buttons stay in the same place whether the
+      list is there, still loading, or long.
+- [ ] 📱 The cell's transaction list (tap Spent / Actual) opens with a
+      "Coming up" group when anything is still to come, laid out like the
+      plan editor's list (short date, name, amount in one aligned column,
+      soonest first): your own transactions dated after today and the
+      recurring payments still due (repeat icon). Those lines are display
+      only: tapping does nothing, no Post / Skip / Edit. Below, a "Posted"
+      heading over the past transactions in their day groups (tappable as
+      before). With nothing still to come, neither heading shows. A cell with
+      nothing real yet shows a dash in the Plan grid (the Budget view's 0 stays a
+      link to the empty list).
+- [ ] A weekly template counts one occurrence per week in a month (four or
+      five, matching the month's weeks) in the red rule and the editor list; a
+      monthly template counts one.
 - [ ] An overdue template (next payment date in the past) counts once in the
-      caller's current month and shows one row there; later months count only
-      occurrences after today.
-- [ ] Posting the overdue payment of a template due once keeps the current
-      month's total. Posting the overdue payment of a template several cycles
-      behind (e.g. weekly, three weeks late) brings the next missed cycle in as
-      the new overdue row, so the month's total rises by that cycle.
+      caller's current month, marked overdue in the editor list; later months
+      count only occurrences after today.
+- [ ] Posting the overdue payment of a template due once moves the amount from
+      the editor list's recurring rows into Spent (Total is unchanged). Posting the overdue payment of a template several
+      cycles behind (e.g. weekly, three weeks late) brings the next missed
+      cycle in as the new overdue payment in the editor list.
 - [ ] A recurring template on a deleted budget account, or a transfer into
-      one, adds no upcoming money to any month and shows no row.
-- [ ] 📱 The cell's transaction list shows upcoming rows in date groups, dimmed
-      with a repeat glyph. The next payment (and an overdue one) offers Post,
-      Skip and Edit to a caller who can edit the template: Post dates the
-      transaction at the scheduled date when it is in the future, otherwise
-      today. Later cycles of the same template are display only.
+      one, adds no red hint and no editor-list row in any month.
 - [ ] 📱 A partner's template that sources or receives into a budget member
-      account counts in the figures and shows in the list; a participant who
-      cannot edit it sees the row without Post / Skip / Edit. A transfer into a
-      member from an account outside the budget shows no account name to a
+      account counts in the red rule and the editor list; a transfer into a member
+      from an account outside the budget shows no account name to a
       participant who cannot see that account.
 - [ ] Editing, posting, skipping or deleting a recurring template refreshes
-      the Budget view, the Plan grid and the cell list without a reload.
-- [ ] A savings account's closing Balance on /budget includes upcoming
-      transfers into or out of it, and the Plan grid's Savings section agrees.
-- [ ] With a monthly transfer into a savings account due later this month,
-      open a Plan window that starts next month: each savings row's Balance
-      already includes this month's transfer, and the rows add up to the
-      Savings balance line in every month of the window.
-- [ ] In the Plan grid, a later month's savings Balance with an upcoming
-      transfer into or out of the account is a link: it opens that month's list
-      with the upcoming transfer; a later month with nothing due stays plain.
-- [ ] 📱 Opening an upcoming transfer from the cell list shows both the
-      sender and the recipient card with their amounts (the recipient's in its
-      own currency); an account outside the budget, on either side, shows as
-      "[Hidden account]". For a cross-currency transfer into the budget (e.g.
-      100 USD into a EUR savings account) the sender card shows 100 USD and
-      the recipient card the converted EUR amount.
+      the Budget view, the Plan grid and an open editor list without a reload.
 
 ### Phone month view 📱
 
@@ -1891,7 +1945,9 @@ and on tablet/phone only with a hardware keyboard.
       equals Saved. An income row's sheet → "Transactions" lists that
       category's (or income envelope's) income on the everyday accounts, all
       positive, summing to Received; income booked on a savings account is not
-      in it. The income Uncategorized row has no "Transactions".
+      in it. The income Uncategorized row's "Transactions" lists the
+      everyday accounts' income with no income category, summing to its
+      Received.
 - [ ] 📱 A guest, an archived budget, a month outside the
       budget's range, an archived element and the Uncategorized row get no
       "Set budget" in the sheet; Uncategorized has no comments link, and an
@@ -2238,7 +2294,7 @@ User C sees none of it.
       archived budgets but not an unaccepted invite, `months_since_signup` is
       the whole months since registration (`0` in the first month), and no
       `accounts_hidden`, `*_archived` or `signup_month` key is sent.
-- [ ] The user attribute `apple-wallet` is `on` when an Apple Wallet source
+- [ ] The user attribute `import_apple_wallet` is `on` when an Apple Wallet source
       exists (even before the first payment) and `off` when none exists or only
       SimpleFIN exists. It is omitted until the source list has loaded. The
       connection event already carries `on`; `import_source_disconnect` already
@@ -2404,6 +2460,11 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Dark theme: text inputs, selects, textareas and the amount/plan fields
       (Add transaction, Set plan) carry no fill of their own: they show the
       surface they sit on, as in the light theme. 📱
+- [ ] 📱 iOS (Safari tab and Home Screen app), light and dark: pulling down
+      at the top or up at the bottom of the home screen (account list) and of
+      any other page never drags the whole app away to show a strip of
+      another colour; the strip under the status bar on the home screen is
+      the account list's own colour.
 - [ ] 📱 Send feedback: the last Settings row, "Send feedback" (under
       "Feedback"; the sidebar has no feedback entry), opens a dialog with
       Feedback / Feature request / Bug report (Feedback selected), a Message
@@ -2419,11 +2480,17 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       (or the collector blocked), Send shows "Couldn't send your feedback.
       Please try again." and keeps the text.
 - [ ] With `ECONUMO_FEEDBACK=false`, the Settings row does not appear.
+- [ ] 📱 One top banner at a time: with the subscription banner up (trial
+      ending within 3 days, or read-only) the install banner is not shown
+      under it; dismissing the subscription banner brings the install banner
+      back in its place. In the native app the server-version notice outranks
+      the install banner the same way.
 - [ ] 📱 Install banner, iOS Safari (not yet added to the Home Screen): a
       one-line banner "Econumo works best as an app" with an "Install" button
       and × sits at the top of every page — `/login`, `/register`, the app
       pages and the OAuth consent page — and Settings shows an "Install the
-      app" row under the profile card. The button (or the row) opens the steps
+      app" row below the Billing group (under the profile card when there is no
+      billing). The button (or the row) opens the steps
       (Share → "Add to Home Screen" → "Add") ending with "Already added it?
       Open Econumo from its Home Screen icon…". × hides the banner on every
       page for good, also after a reload and a logout; the Settings row stays.
@@ -2525,6 +2592,18 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       appear (simulate with a binary built at an older version — Docker
       `--build-arg ECONUMO_VERSION=v0.0.1`; the runtime variable no longer
       moves this, it only relabels the UI).
+- [ ] What's new notice 📱: after the server moves to a newer `vX.Y.Z`
+      (patch releases included), an existing user sees "What's new in vX.Y.Z"
+      in the sidebar (expanded sidebar and the phone drawer; not the
+      collapsed rail). The link opens `https://econumo.com/releases/vX.Y.Z`
+      in a new window. An upgrade into a new minor line names and links its
+      `.0` release (v1.6.x -> v1.7.2 shows v1.7.0); a patch upgrade within
+      the line (v1.7.0 -> v1.7.2) shows v1.7.2. Hidden while onboarding is
+      in progress; it appears once onboarding is completed; opening it or pressing ✕ hides the card, and it stays
+      hidden after a reload and on the user's other devices. A user
+      registered on the current version never sees it; a `dev` build or a
+      downgrade shows nothing. Works for a read-only (lapsed) user too (no
+      402). Web and home-screen PWA only; the native app never shows it.
 - [ ] Version label: with `ECONUMO_VERSION=demo-42` set at RUNTIME, the
       sidebar header and the settings version row both read `demo-42`, while
       the update notice above still compares the real binary version (so a
@@ -2557,6 +2636,76 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       (long forms, e.g. Add transaction) on mobile (<640px), and a centered
       dialog on tablet — content scrolls, safe areas respected, keyboard does
       not cover inputs.
+- [ ] 📱 New / Edit category on a phone (Categories page, Budget menus)
+      opens as a bottom sheet like New tag / New payee, not a full-screen
+      page: the icon picker shows 4 rows per page, swiping or the dots
+      move between pages, and it opens on the page holding the current icon.
+- [ ] 📱 Bottom sheet with a text field (Send feedback, Set plan) on an
+      iPhone: focusing the field puts the sheet's action row right on top of
+      the keyboard, with the header still visible and the body scrolling in
+      between. Switching keyboard language, opening the emoji keyboard or the
+      suggestion bar appearing keeps it attached; closing the keyboard returns
+      the sheet to its normal size (no blank area, no squeezed body).
+- [ ] 📱 Full-screen form with the keyboard up (Add transaction: the amount
+      is focused on open) on an iPhone: the page shrinks to the area above the
+      keyboard. The header, date and account switcher stay visible at the top
+      and usable without closing the keyboard, the form scrolls down to Notes,
+      and the Save row sits right on top of the keyboard. Closing the keyboard
+      returns the page to full height.
+- [ ] 📱 Account / Category / Recipient pickers on a phone (Add transaction,
+      recurring template, import rule): tapping one opens a sheet with the
+      search field at the bottom, right above the keyboard (which comes up on
+      the tap), and the list above it; typing filters, Enter or a tap picks and
+      closes the sheet, a new name offers "Add «name»". The form behind never
+      scrolls or resizes while you move between pickers. Desktop keeps the
+      inline dropdown, and opening it does not change the dialog's size.
+- [ ] 📱 Phone picker edge cases (Add transaction): a scroll of the form that
+      starts on Category or Recipient scrolls it without opening the picker;
+      typing a name with a Chinese / Japanese / Korean keyboard and pressing
+      Enter to confirm the word keeps the sheet open (a second Enter picks);
+      picking with the keyboard up, or hiding the keyboard inside the sheet and
+      then picking, leaves the form still as the sheet closes, and the next
+      picker opens over an unchanged page. With a hardware keyboard, ↑ / ↓
+      from the sheet's search move through the rows and Enter picks; Tab /
+      Shift+Tab leave the sheet for the next / previous field.
+- [ ] One way to choose, everywhere. A field like Category (inline searchable
+      dropdown on desktop / tablet, picker sheet on a phone): the Inbox folder
+      for an accepted shared account (hidden folders marked with a crossed-out
+      eye), every CSV import column (each read with a sample value; the clear
+      row "—" unmaps it). A picker row that opens a checklist sheet: an
+      envelope's categories, like a budget's Accounts / Savings accounts (the
+      row names the ticked ones and counts them). A short fixed list (envelope
+      status, recurring schedule, the end month when completing a budget): the
+      dropdown on desktop / tablet, the picker sheet without a search on a
+      phone, the current choice checked.
+- [ ] Currency on the account, new budget, budget settings and envelope
+      forms, and on Profile, is a field like Category: desktop and tablet open an inline
+      searchable dropdown under it (no separate dialog), a phone opens the
+      picker sheet; the field shows the picked currency's code, symbol and
+      name; there is no row that clears it; a budget member who cannot
+      configure the budget sees it disabled.
+- [ ] 📱 On a phone, a labelled picker inside a form card (Currency on Profile
+      and the account / budget / envelope forms; From, To, Category and Payee
+      on transactions, recurring templates and import rules) shows its value
+      at the same text size as the card's other fields and rows, not larger.
+- [ ] 📱 Every picker sheet with a search behaves the same (Category /
+      Recipient / account on transactions and recurring templates; the
+      currency field on forms; Currency on Profile and on a budget line's menu;
+      a budget's Accounts / Savings
+      accounts checklist with 6+ accounts; Merge into on categories, tags and
+      payees; the account on Map to account for Apple Wallet / SimpleFIN cards;
+      the fixed account, category, payee and tag of a CSV import): on a phone
+      the search is the sheet's bottom row, right above the keyboard (above the
+      sheet's OK / Merge buttons where it has them), with the list above it;
+      typing filters and the first row is highlighted, ↑ / ↓ move the
+      highlight with a hardware keyboard, and Enter picks it. The selected row
+      carries a check mark. Search-first pickers (Category, Recipient, account,
+      Currency) raise the keyboard on open; the checklist and Merge into do
+      not. Desktop keeps the search above the list, with the same keys.
+- [ ] 📱 Rows in every picker sheet on a phone (a budget's Accounts /
+      Savings accounts checklist, Category, Currency, Merge into) have the
+      same rounded corners as the sheet's search field and OK button, not
+      near-square ones.
 - [ ] Row actions open bottom sheets (accounts, transactions, classifications,
       recurring, sessions, tokens, budgets).
 - [ ] Long lists scroll smoothly; sidebar scroll position is remembered when

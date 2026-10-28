@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-import { EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { EntitySelect } from '@/features/transactions/EntitySelect'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { dialogActionsClass } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -88,30 +87,26 @@ export function SharingSection({ invites }: { invites: PendingInvite[] }) {
               <Label htmlFor={`sharing-request-folder-${invite.id}`}>
                 {t('inbox.sharing.choose_folder')}
               </Label>
-              <Select
-                value={chosenFolder(invite)}
-                onValueChange={(value) => setFolderChoices((prev) => ({ ...prev, [invite.id]: value }))}
-              >
-                <SelectTrigger id={`sharing-request-folder-${invite.id}`} className="w-full">
-                  <SelectValue placeholder={t('inbox.sharing.general_folder_hint')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {folders && folders.length > 0 ? (
-                    folders.map((folder) => (
-                      <SelectItem key={folder.id} value={folder.id}>
-                        <span className={`flex items-center gap-1.5 ${folder.isVisible === 0 ? 'text-muted-foreground' : ''}`}>
-                          {folder.name}
-                          {folder.isVisible === 0 ? <EyeOff className="size-3.5" aria-label="hidden" /> : null}
-                        </span>
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value={NO_FOLDER_OPTION} disabled>
-                      {t('inbox.sharing.general_folder_hint')}
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              {/* the app's picker, as on a transaction: searchable, a sheet on a phone */}
+              <EntitySelect
+                id={`sharing-request-folder-${invite.id}`}
+                aria-label={t('inbox.sharing.choose_folder')}
+                value={chosenFolder(invite) || null}
+                onChange={(id) => id && setFolderChoices((prev) => ({ ...prev, [invite.id]: id }))}
+                placeholder={t('inbox.sharing.general_folder_hint')}
+                options={
+                  folders && folders.length > 0
+                    ? folders.map((folder) => ({
+                        value: folder.id,
+                        label: folder.name,
+                        // a hidden folder is marked, as on the accounts page, and
+                        // says so to a screen reader (the icon is decorative)
+                        icon: folder.isVisible === 0 ? 'visibility_off' : undefined,
+                        ariaLabel: folder.isVisible === 0 ? `${folder.name}, ${t('search.hidden_folder')}` : undefined,
+                      }))
+                    : [{ value: NO_FOLDER_OPTION, label: t('inbox.sharing.general_folder_hint'), disabled: true }]
+                }
+              />
             </div>
           ) : null}
 

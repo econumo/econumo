@@ -243,47 +243,16 @@ it('clicking the spent amount reports the element as a transactions target', asy
   expect(onSpentClick).toHaveBeenCalledWith({ id: 'cat-food', type: 1, name: 'Food', icon: 'restaurant', currencyId: null })
 })
 
-it('future month shows spent when upcoming exists', async () => {
-  const user = userEvent.setup()
-  const onSpentClick = vi.fn()
+it('future month spent is real only', async () => {
   renderTable(
     (b) => {
-      b.structure.elements.find((e) => e.id === 'cat-food')!.spent = '30'
-    },
-    { onSpentClick, future: true },
-  )
-  const food = await screen.findByTestId('element-cat-food')
-  await user.click(within(food).getByRole('button', { name: 'transactions Food' }))
-  expect(onSpentClick).toHaveBeenCalledTimes(1)
-  expect(food).toHaveTextContent('30.00')
-  // an element with nothing upcoming keeps the dash and is not clickable
-  expect(within(screen.getByTestId('element-env-1')).queryByRole('button', { name: /^transactions/ })).not.toBeInTheDocument()
-})
-
-it('future month spent above plan is not red', async () => {
-  renderTable(
-    (b) => {
-      const food = b.structure.elements.find((e) => e.id === 'cat-food')!
-      Object.assign(food, { budgeted: '10', spent: '30', available: '-20' })
+      Object.assign(b.structure.elements.find((e) => e.id === 'cat-food')!, { spent: '0', upcoming: '650', budgetUpcoming: '650' })
     },
     { onSpentClick: vi.fn(), future: true },
   )
   const food = await screen.findByTestId('element-cat-food')
-  expect(within(food).getByTestId('cell-spent').firstElementChild!.className).not.toContain('text-expense')
-})
-
-it('future month spent is muted', async () => {
-  renderTable(
-    (b) => {
-      const food = b.structure.elements.find((e) => e.id === 'cat-food')!
-      Object.assign(food, { budgeted: '10', spent: '30', available: '-20' })
-    },
-    { onSpentClick: vi.fn(), future: true },
-  )
-  const food = await screen.findByTestId('element-cat-food')
-  expect(within(food).getByTestId('cell-spent').firstElementChild!.className).toContain('text-muted-foreground/50')
-  expect(screen.getByTestId('totals-spent').className).toContain('text-muted-foreground/50')
-  expect(screen.getByTestId('totals-spent-mobile').className).toContain('text-muted-foreground/50')
+  expect(within(food).getByTestId('cell-spent')).not.toHaveTextContent('650')
+  expect(within(food).getByTestId('cell-spent')).toHaveTextContent('—')
 })
 
 it('clicking a child spent amount reports the child category with the parent currency', async () => {
@@ -747,6 +716,14 @@ it('shows what earlier months left, read-only, before the budgeted amount', asyn
   expect(carry.nextElementSibling).toHaveTextContent('editor')
 })
 
+it('a carry-over next to no plan has no +: there is no plan to add it to', async () => {
+  renderTable((b) => {
+    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { budgeted: '' })
+  })
+  const carry = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-carry')
+  await waitFor(() => expect(carry).toHaveTextContent(/^200\.00$/))
+})
+
 it('shows no carry-over when earlier months left nothing, and a negative one in red', async () => {
   renderTable((b) => {
     Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { available: '-45.5' })
@@ -803,4 +780,104 @@ it('same-name tags show under one line with their sums, each tag with its owner'
   await user.click(within(group).getByRole('button', { name: /Travel/ }))
   expect(within(screen.getByTestId('element-tag-a')).getByText('Ada')).toBeInTheDocument()
   expect(within(screen.getByTestId('element-tag-b')).getByText('Partner')).toBeInTheDocument()
+})
+
+describe('upcoming recurring as a plan hint', () => {
+  const budgetedFigure = (row: HTMLElement) => within(within(row).getByTestId('cell-budgeted')).getByTestId('plan-figure')
+
+  it('a cell with no plan stays empty with money due', async () => {
+    renderTable(
+      (budget) => {
+        Object.assign(budget.structure.elements.find((el) => el.id === 'cat-food')!, { budgeted: '0', spent: '0', available: '0', budgetSpent: '0', upcoming: '650' })
+      },
+      { future: true },
+    )
+    const row = await screen.findByTestId('element-cat-food')
+    await waitFor(() => expect(budgetedFigure(row)).toHaveTextContent(/^0\.00$/))
+    expect(row.querySelector('.italic')).toBeNull()
+    expect(row).not.toHaveTextContent('650')
+  })
+
+  it('plan below upcoming is red', async () => {
+    renderTable(
+      (budget) => {
+        Object.assign(budget.structure.elements.find((el) => el.id === 'cat-food')!, { budgeted: '500', spent: '0', budgetSpent: '0', upcoming: '650' })
+      },
+      { future: true },
+    )
+    const row = await screen.findByTestId('element-cat-food')
+    await waitFor(() => expect(budgetedFigure(row)).toHaveTextContent(/^500\.00$/))
+    const figure = budgetedFigure(row)
+    expect(figure).toHaveClass('text-expense')
+    expect(figure).not.toHaveClass('italic')
+  })
+
+  it('money due reaches no total', async () => {
+    renderTable(
+      (budget) => {
+        for (const el of budget.structure.elements) {
+          Object.assign(el, { budgeted: '0', spent: '0', available: '0', budgetSpent: '0' })
+        }
+        Object.assign(budget.structure.elements.find((el) => el.id === 'cat-food')!, { upcoming: '650', budgetUpcoming: '650' })
+      },
+      { future: true },
+    )
+    await waitFor(() => expect(budgetedFigure(screen.getByTestId('element-cat-food'))).toHaveTextContent('0.00'))
+    const totals = screen.getByTestId('budget-totals')
+    expect(totals).toHaveTextContent('0.00')
+    expect(totals).not.toHaveTextContent('650')
+    expect(within(screen.getByTestId('budget-folder-Essentials')).getByTestId('stat-line')).not.toHaveTextContent('650')
+    expect(screen.getByTestId('column-headers')).not.toHaveTextContent('650')
+  })
+
+  it('foreign-currency row compares in its own currency', async () => {
+    renderTable(
+      (budget) => {
+        budget.meta.currencyId = 'cur-eur'
+        Object.assign(budget.structure.elements.find((el) => el.id === 'cat-food')!, {
+          currencyId: 'cur-usd',
+          budgeted: '500',
+          spent: '0',
+          budgetSpent: '0',
+          upcoming: '400',
+          budgetUpcoming: '9999',
+        })
+      },
+      { future: true },
+    )
+    const row = await screen.findByTestId('element-cat-food')
+    await waitFor(() => expect(budgetedFigure(row)).toHaveTextContent(/^500\.00$/))
+    const figure = budgetedFigure(row)
+    expect(figure).not.toHaveClass('text-expense')
+  })
+
+  it('envelope child shows no hint', async () => {
+    const user = userEvent.setup()
+    renderTable(
+      (budget) => {
+        const living = budget.structure.elements.find((el) => el.id === 'env-1')!
+        living.children[0].upcoming = '75'
+      },
+      { future: true },
+    )
+    await user.click(within(await screen.findByTestId('element-env-1')).getByText('Living'))
+    const child = await screen.findByTestId('child-cat-rent')
+    expect(child).not.toHaveTextContent('75')
+    expect(child.querySelector('.italic')).toBeNull()
+  })
+
+  it('the hint reaches the inline editor and the details button', async () => {
+    const mutate = (budget: BudgetDto) => {
+      Object.assign(budget.structure.elements.find((el) => el.id === 'cat-food')!, { budgeted: '500', spent: '0', available: '500', budgetSpent: '0', upcoming: '650' })
+    }
+    const renderBudgetCell = vi.fn(() => <span>editor</span>)
+    renderTable(mutate, { future: true, renderBudgetCell })
+    await screen.findByTestId('element-cat-food')
+    expect(renderBudgetCell).toHaveBeenCalledWith(expect.objectContaining({ id: 'cat-food' }), { kind: 'short' })
+    cleanup()
+    renderTable(mutate, { future: true, onBudgetCellDetails: vi.fn() })
+    const details = within(await screen.findByTestId('element-cat-food')).getByRole('button', { name: 'details Food' })
+    await waitFor(() => expect(details).toHaveTextContent(/^500\.00$/))
+    expect(details).toHaveClass('text-expense')
+  })
 })

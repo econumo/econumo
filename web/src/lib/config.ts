@@ -18,7 +18,6 @@ export interface EconumoConfig {
   VERSION_REF?: string
   INSTANCE_ID?: string
   AI_ENABLED?: boolean
-  IMPORT_APPLE_WALLET?: boolean
   IMPORT_SIMPLEFIN?: boolean
   DEV?: boolean
   FEEDBACK?: boolean
@@ -184,26 +183,15 @@ export function isAiEnabled(): boolean {
   return window.econumoConfig?.AI_ENABLED === true
 }
 
-// The import providers (ECONUMO_IMPORT_APPLE_WALLET / ECONUMO_IMPORT_SIMPLEFIN)
-// are off unless the server says otherwise, and the server does not mount the
-// routes of one that is off.
-export function isAppleWalletImportEnabled(): boolean {
-  return window.econumoConfig?.IMPORT_APPLE_WALLET === true
-}
-
+// ECONUMO_IMPORT_SIMPLEFIN: off unless the server says otherwise, and the
+// server does not mount its routes while it is off.
 export function isSimpleFINImportEnabled(): boolean {
   return window.econumoConfig?.IMPORT_SIMPLEFIN === true
 }
 
-// Any provider on: import rules, run history and the Inbox's import sections
-// exist only then; with both off nothing fetches an import endpoint.
 // ECONUMO_FEEDBACK: on unless the server says otherwise.
 export function isFeedbackEnabled(): boolean {
   return window.econumoConfig?.FEEDBACK !== false
-}
-
-export function isTransactionImportEnabled(): boolean {
-  return isAppleWalletImportEnabled() || isSimpleFINImportEnabled()
 }
 
 export function isCustomApiAllowed(): boolean {

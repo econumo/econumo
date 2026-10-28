@@ -72,6 +72,30 @@ it('creates an account with a UUIDv7 op id and numeric balance; correction lands
   )
 })
 
+it('a caller with no folder in mind (the budget page) puts the account in the first folder', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/account/create-account', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: { ...fixtureAccounts[0], id: 'a-created' }, transaction: null } })
+    }),
+  )
+  const user = userEvent.setup()
+  const queryClient = renderDialog()
+  queryClient.setQueryData(queryKeys.folders, [
+    { id: 'f2', name: 'Savings', position: 1, isVisible: 1 },
+    { id: 'f1', name: 'General', position: 0, isVisible: 1 },
+  ])
+  useUiStore.getState().openAccountModal({})
+
+  await screen.findByText('New account')
+  await user.type(screen.getByLabelText('Name'), 'New Wallet')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.folderId).toBe('f1')
+})
+
 it('a caller that asked to hear about the new account gets it once it is created', async () => {
   const createdAccount = { ...fixtureAccounts[0], id: 'a-created', name: 'Rainy day', balance: '0' }
   server.use(
@@ -85,6 +109,36 @@ it('a caller that asked to hear about the new account gets it once it is created
   await user.type(screen.getByLabelText('Name'), 'Rainy day')
   await user.click(screen.getByRole('button', { name: 'Add' }))
   await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'a-created' })))
+})
+
+it('a new account shows 0 as a placeholder, so typing starts clean, and an untouched balance posts 0', async () => {
+  const bodies: Record<string, unknown>[] = []
+  server.use(
+    http.post('*/api/v1/account/create-account', async ({ request }) => {
+      bodies.push((await request.json()) as Record<string, unknown>)
+      return HttpResponse.json({ success: true, message: '', data: { item: { ...fixtureAccounts[0], id: 'a-created' }, transaction: null } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openAccountModal({ folderId: 'f1' })
+  await screen.findByText('New account')
+  const balanceField = screen.getByLabelText('Balance')
+  expect(balanceField).toHaveValue('')
+  expect(balanceField).toHaveAttribute('placeholder', '0')
+  await user.type(screen.getByLabelText('Name'), 'Rainy day')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0].balance).toBe('0')
+
+  useUiStore.getState().openAccountModal({ folderId: 'f1' })
+  await screen.findByText('New account')
+  await user.type(screen.getByLabelText('Name'), 'Wallet')
+  await user.type(screen.getByLabelText('Balance'), '123')
+  expect(screen.getByLabelText('Balance')).toHaveValue('123')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(bodies).toHaveLength(2))
+  expect(bodies[1].balance).toBe('123')
 })
 
 it('shows the exact validation messages', async () => {
@@ -102,7 +156,7 @@ it('shows the exact validation messages', async () => {
   expect(await screen.findByText('Account name must be 3-64 characters')).toBeInTheDocument()
 })
 
-it('currency row opens the search picker; the picked currency is posted', async () => {
+it('the currency field searches and picks like a category; the picked currency is posted', async () => {
   let body: Record<string, unknown> | undefined
   server.use(
     http.post('*/api/v1/account/update-account', async ({ request }) => {
@@ -115,11 +169,12 @@ it('currency row opens the search picker; the picked currency is posted', async 
   useUiStore.getState().openAccountModal({ account: fixtureAccounts[0] as unknown as AccountDto })
 
   await screen.findByText('Edit account')
-  const currencyRow = await screen.findByRole('button', { name: /Currency/ })
-  expect(currencyRow).toHaveTextContent('USD')
-  await user.click(currencyRow)
-  await user.click(await screen.findByText('EUR, €, Euro'))
-  expect(screen.getByRole('button', { name: /Currency/ })).toHaveTextContent('EUR')
+  const currency = await screen.findByRole('combobox', { name: 'Currency' })
+  await waitFor(() => expect(currency).toHaveValue('USD, $, US Dollar'))
+  await user.click(currency)
+  await user.keyboard('eur')
+  await user.click(await screen.findByRole('option', { name: 'EUR, €, Euro' }))
+  expect(currency).toHaveValue('EUR, €, Euro')
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.currencyId).toBe('cur-eur')
@@ -174,7 +229,7 @@ it('create mode has no access row', async () => {
   renderDialog()
   useUiStore.getState().openAccountModal({ folderId: 'f1' })
   await screen.findByText('New account')
-  await screen.findByRole('button', { name: /Currency/ })
+  await screen.findByRole('combobox', { name: 'Currency' })
   expect(screen.queryByRole('button', { name: /Access control/ })).toBeNull()
 })
 
@@ -189,7 +244,7 @@ it('edit mode hides the access row from a non-admin member', async () => {
   renderDialog()
   useUiStore.getState().openAccountModal({ account: foreign as unknown as AccountDto })
   await screen.findByText('Edit account')
-  await screen.findByRole('button', { name: /Currency/ })
+  await screen.findByRole('combobox', { name: 'Currency' })
   expect(screen.queryByRole('button', { name: /Access control/ })).toBeNull()
 })
 

@@ -102,3 +102,68 @@ func TestSetLimit_UnknownElement_StillNotFound(t *testing.T) {
 		t.Errorf("message=%q want %q", env.Message, "BudgetElement not found")
 	}
 }
+
+// A plan of 0 is a plan: it keeps an otherwise unused tag visible and reads
+// isBudgeted 1, while a cleared plan reads isBudgeted 0 with the same "0".
+func TestSetLimit_ZeroPlanIsAPlan(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "Zero Plan Budget"))
+	const tagID = "dddd2222-0000-7000-8000-000000000009"
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Tag(fixture.Tag{ID: tagID, UserID: seedUserID, Name: "Zero Tag"})
+
+	type view struct {
+		Item struct {
+			Structure struct {
+				Elements []struct {
+					Id         string `json:"id"`
+					Budgeted   string `json:"budgeted"`
+					IsBudgeted int    `json:"isBudgeted"`
+				} `json:"elements"`
+			} `json:"structure"`
+		} `json:"item"`
+	}
+	read := func() (budgeted string, isBudgeted int, found bool) {
+		st, b := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1+"&date=2099-01-15", tok, nil)
+		if st != http.StatusOK {
+			t.Fatalf("get-budget=%d body=%s", st, b.raw)
+		}
+		for _, e := range mustUnmarshal[view](t, b.Data).Item.Structure.Elements {
+			if e.Id == tagID {
+				return e.Budgeted, e.IsBudgeted, true
+			}
+		}
+		return "", 0, false
+	}
+	setLimit := func(amount any) {
+		st, env := h.do(t, http.MethodPost, "/api/v1/budget/set-limit", tok, map[string]any{
+			"budgetId": budgetID1, "elementId": tagID, "period": "2099-01-01", "amount": amount,
+		})
+		if st != http.StatusOK {
+			t.Fatalf("set-limit %v = %d body=%s", amount, st, env.raw)
+		}
+	}
+
+	setLimit("0")
+	budgeted, isBudgeted, found := read()
+	if !found || budgeted != "0" || isBudgeted != 1 {
+		t.Fatalf("after a plan of 0: found=%v budgeted=%q isBudgeted=%d, want visible 0 with isBudgeted 1", found, budgeted, isBudgeted)
+	}
+
+	// archived, a plan of 0 alone no longer keeps it
+	if _, err := h.db.Exec(`UPDATE tags SET is_archived = 1 WHERE id = ?`, tagID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, found := read(); found {
+		t.Fatalf("an archived tag with only a plan of 0 must stay hidden")
+	}
+	if _, err := h.db.Exec(`UPDATE tags SET is_archived = 0 WHERE id = ?`, tagID); err != nil {
+		t.Fatal(err)
+	}
+
+	setLimit(nil)
+	if _, _, found := read(); found {
+		t.Fatalf("a cleared plan on an unused tag must hide it again")
+	}
+}

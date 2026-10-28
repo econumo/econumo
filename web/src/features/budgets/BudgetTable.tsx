@@ -16,17 +16,20 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { isEnvelopeType } from './elementEdit'
 import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
-import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, nothingToShow, overAvailable, overBudget, tagGroupStats } from './budgetMath'
+import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, nothingToShow, overBudget, tagGroupStats } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
-import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu } from './monthLines'
+import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, PlanDash, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
-import { CHILD_INDENT, FIRST_COL, FUTURE_FIGURE, FOLD_LINE, foldOnLineClick, FOLDER_INDENT, groupedLevel, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
+import { CHILD_INDENT, FIRST_COL, FOLD_LINE, foldOnLineClick, FOLDER_INDENT, groupedLevel, LINE, NAME_COL, ROW_INDENT, RowLevelContext, SECOND_COL, THIRD_COL, useRowLevel } from './monthLayout'
 import { segmentTagGroups } from './tagGroups'
+import { sheetPlanHint } from './phoneMonth'
+import type { PlanHint } from './planHint'
+import { planHintClass } from './planHint'
 
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
-  renderBudgetCell?: (element: BudgetElementDto) => ReactNode
+  renderBudgetCell?: (element: BudgetElementDto, hint: PlanHint) => ReactNode
   /** the entry point of a cell without `renderBudgetCell` that is not editable
    *  here (non-editable role, an archived element, or a read-only section): the
    *  plain budgeted value opens the cell's thread */
@@ -182,7 +185,8 @@ function ElementRow({
   const displayName = elementDisplayName(element.id, element.name, t)
   // categoryless spending can never be budgeted: those columns read as a dash
   const isUncategorized = element.id === UNCATEGORIZED_ID
-  const carryText = isUncategorized || isZero(carry) ? null : `${moneyFormat(carry, currency, opts)} +`
+  // the + adds the carry to this month's plan; with no plan there is nothing to add it to
+  const carryText = isUncategorized || isZero(carry) ? null : `${moneyFormat(carry, currency, opts)}${element.budgeted === '' ? '' : ' +'}`
   // red marks a problem only: this month spent more than its budget and what earlier
   // months left does not cover it
   const overspent = !isUncategorized && overBudget({ budgeted: element.budgeted, spent: element.spent, available }, future)
@@ -190,12 +194,16 @@ function ElementRow({
   // Uncategorized sits among the folders and reads like one: a folder line's step,
   // height and type, with no icon
   const size = isUncategorized ? '' : 'text-[15px]'
+  const hint = sheetPlanHint({ kind: 'expense', element })
+  const hintClass = planHintClass(hint)
+  // no plan set reads as a dash; a plan of 0 shows its 0
+  const plannedText = element.budgeted === '' ? <PlanDash /> : moneyFormat(element.budgeted, currency, opts)
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string, danger: boolean) => {
-    if (future && isZero(spent)) {
+    if (future) {
       return <Dash />
     }
-    const color = danger ? 'text-expense' : future ? FUTURE_FIGURE : 'text-muted-foreground'
+    const color = danger ? 'text-expense' : 'text-muted-foreground'
     return extras.onSpentClick ? (
       <button
         type="button"
@@ -235,25 +243,27 @@ function ElementRow({
           ) : extras.onBudgetCellDetails ? (
             <button
               type="button"
-              className="w-full text-right underline-offset-2 hover:underline"
+              className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${hintClass}`}
               aria-label={`details ${displayName}`}
               onClick={() => extras.onBudgetCellDetails!(element)}
             >
-              {moneyFormat(element.budgeted, currency, opts)}
+              {plannedText}
             </button>
           ) : extras.renderBudgetCell ? (
-            extras.renderBudgetCell(element)
+            extras.renderBudgetCell(element, hint)
           ) : extras.onBudgetCellComments ? (
             <button
               type="button"
-              className="w-full text-right underline-offset-2 hover:underline"
+              className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${hintClass}`}
               aria-label={`comments ${displayName}`}
               onClick={(e) => extras.onBudgetCellComments!(element, commentAnchorOf(e.currentTarget))}
             >
-              {moneyFormat(element.budgeted, currency, opts)}
+              {plannedText}
             </button>
           ) : (
-            moneyFormat(element.budgeted, currency, opts)
+            <span data-testid="plan-figure" className={hintClass}>
+              {plannedText}
+            </span>
           )}
         </span>
         {extras.renderBudgetCellMarker?.(element)}
@@ -367,7 +377,6 @@ function TagGroupRow({
   const currency = currencies.find((c) => c.id === currencyId)
   const opts = cellOpts(currency)
   const overspent = overBudget(stats, future)
-  const availableDanger = overAvailable(stats, future)
   const Chevron = open ? ChevronDown : ChevronRight
   return (
     <div className="flex flex-col" data-testid={`tag-group-${groupKey}`}>
@@ -398,10 +407,10 @@ function TagGroupRow({
           {!isZero(stats.carry) ? <CarryLeadIn carry={stats.carry} text={`${moneyFormat(stats.carry, currency, opts)} +`} testId="tag-group-carry" /> : null}
           <span className="shrink-0">{moneyFormat(stats.budgeted, currency, opts)}</span>
         </span>
-        <span className={`${SECOND_COL} text-[15px] tabular-nums ${overspent ? 'text-expense' : future ? FUTURE_FIGURE : 'text-muted-foreground'}`} data-testid="tag-group-spent">
-          {future && isZero(stats.spent) ? <Dash /> : moneyFormat(stats.spent, currency, opts)}
+        <span className={`${SECOND_COL} text-[15px] tabular-nums ${overspent ? 'text-expense' : 'text-muted-foreground'}`} data-testid="tag-group-spent">
+          {future ? <Dash /> : moneyFormat(stats.spent, currency, opts)}
         </span>
-        <span className={`${THIRD_COL} text-[15px] tabular-nums ${availableDanger ? 'text-expense' : 'text-muted-foreground'}`} data-testid="tag-group-available">
+        <span className={`${THIRD_COL} text-[15px] tabular-nums ${overspent ? 'text-expense' : 'text-muted-foreground'}`} data-testid="tag-group-available">
           {nothingToShow(stats) ? <Dash /> : moneyFormat(stats.available, currency, opts)}
         </span>
         {actionsColumn ? <ActionsSpacer /> : null}
@@ -439,20 +448,20 @@ function LabelRow({
   const Chevron = unfolded ? ChevronDown : ChevronRight
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
-    future && isZero(spent) ? (
+    future ? (
       <Dash />
     ) : onLabelClick ? (
       <button
         type="button"
         title={showTransactionsTitle}
         aria-label={`transactions ${target.name}`}
-        className={`tabular-nums underline-offset-2 hover:text-foreground hover:underline ${future ? FUTURE_FIGURE : 'text-muted-foreground'}`}
+        className="tabular-nums text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
         onClick={() => onLabelClick(target)}
       >
         {moneyFormat(spent, currency, opts)}
       </button>
     ) : (
-      <span className={`tabular-nums ${future ? FUTURE_FIGURE : 'text-muted-foreground'}`}>{moneyFormat(spent, currency, opts)}</span>
+      <span className="tabular-nums text-muted-foreground">{moneyFormat(spent, currency, opts)}</span>
     )
 
   const name = (
@@ -593,11 +602,10 @@ function ReportingTagsFolder({
 function folderSums(stats: BucketStats, currency: CurrencyDto | undefined, future: boolean): [ReactNode, ReactNode, ReactNode] {
   const opts = cellOpts(currency)
   const danger = overBudget(stats, future)
-  const availableDanger = overAvailable(stats, future)
   return [
     moneyFormat(stats.budgeted, currency, opts),
-    future && isZero(stats.spent) ? <Dash key="dash-452-1" /> : <span key="spent" className={danger ? 'text-expense' : future ? FUTURE_FIGURE : ''}>{moneyFormat(stats.spent, currency, opts)}</span>,
-    nothingToShow(stats) ? <Dash key="dash-453-1" /> : <span key="available" className={availableDanger ? 'text-expense' : ''}>{moneyFormat(stats.available, currency, opts)}</span>,
+    future ? <Dash key="dash-452-1" /> : <span key="spent" className={danger ? 'text-expense' : ''}>{moneyFormat(stats.spent, currency, opts)}</span>,
+    nothingToShow(stats) ? <Dash key="dash-453-1" /> : <span key="available" className={danger ? 'text-expense' : ''}>{moneyFormat(stats.available, currency, opts)}</span>,
   ]
 }
 
@@ -683,7 +691,7 @@ export function BudgetTable({
         headings={[t('budgets.page.budget.structure.tab.budgeted'), t('budgets.page.budget.structure.tab.spent'), t('budgets.page.budget.structure.tab.available')]}
         sums={[
           moneyFormat(totals.budgeted, budgetCurrency, opts),
-          future && isZero(totals.spent) ? <Dash key="dash-516-1" /> : <span key="spent" className={future ? FUTURE_FIGURE : undefined}>{moneyFormat(totals.spent, budgetCurrency, opts)}</span>,
+          future ? <Dash key="dash-516-1" /> : moneyFormat(totals.spent, budgetCurrency, opts),
           nothingToShow(totals) ? <Dash key="dash-517-1" /> : moneyFormat(totals.available, budgetCurrency, opts),
         ]}
         actionsColumn={actionsColumn}
@@ -807,7 +815,6 @@ export function BudgetTotals({
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
   const opts = cellOpts(budgetCurrency)
   const danger = overBudget(totals, future)
-  const availableDanger = overAvailable(totals, future)
   return (
     <>
       {/* the rule sits on a wrapper: on the line itself the hover's rounded corners
@@ -821,10 +828,10 @@ export function BudgetTotals({
             {!isZero(totals.carry) ? <CarryLeadIn carry={totals.carry} text={`${moneyFormat(totals.carry, budgetCurrency, opts)} +`} testId="totals-carry" /> : null}
             <span className="shrink-0">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
           </span>
-          <span className={`${SECOND_COL} ${danger ? 'text-expense' : future ? FUTURE_FIGURE : 'text-muted-foreground'}`} data-testid="totals-spent">
-            {future && isZero(totals.spent) ? <Dash /> : moneyFormat(totals.spent, budgetCurrency, opts)}
+          <span className={`${SECOND_COL} ${danger ? 'text-expense' : 'text-muted-foreground'}`}>
+            {future ? <Dash /> : moneyFormat(totals.spent, budgetCurrency, opts)}
           </span>
-          <span className={`${THIRD_COL} ${availableDanger ? 'text-expense' : ''}`} data-testid="totals-available">
+          <span className={`${THIRD_COL} ${danger ? 'text-expense' : ''}`} data-testid="totals-available">
             {nothingToShow(totals) ? <Dash /> : moneyFormat(totals.available, budgetCurrency, opts)}
           </span>
           {actionsColumn ? <ActionsSpacer /> : null}
@@ -844,13 +851,11 @@ export function BudgetTotals({
         </span>
         <span className="flex items-baseline justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.spent')}</span>
-          <span className={`text-[15px] tabular-nums ${future ? FUTURE_FIGURE : 'text-muted-foreground'}`} data-testid="totals-spent-mobile">
-            {moneyFormat(totals.spent, budgetCurrency, opts)}
-          </span>
+          <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(totals.spent, budgetCurrency, opts)}</span>
         </span>
         <span className="flex items-baseline justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>
-          <span className={`text-[15px] tabular-nums ${availableDanger ? 'text-expense' : ''}`}>{moneyFormat(totals.available, budgetCurrency, opts)}</span>
+          <span className={`text-[15px] tabular-nums ${danger ? 'text-expense' : ''}`}>{moneyFormat(totals.available, budgetCurrency, opts)}</span>
         </span>
       </div>
     </>

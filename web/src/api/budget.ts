@@ -85,11 +85,25 @@ export async function unarchiveBudget(id: Id): Promise<BudgetMetaDto> {
   return response.data.data.item
 }
 
+// The wire sends "0" for both "no plan" and a plan of 0 and tells them apart by
+// isBudgeted; the SPA reads '' as no plan, as plan cells do. A server without
+// isBudgeted keeps its "0".
+const withEmptyPlan = <T extends { budgeted: string; isBudgeted?: 0 | 1 }>(row: T): T =>
+  row.isBudgeted === 0 ? { ...row, budgeted: '' } : row
+
 export async function getBudget(id: Id, date: string): Promise<BudgetDto> {
   const response = await api.get<Envelope<{ item: BudgetDto }>>(
     apiUrl(`/api/v1/budget/get-budget?id=${encodeURIComponent(id)}&date=${encodeURIComponent(date)}`),
   )
-  return response.data.data.item
+  const item = response.data.data.item
+  return {
+    ...item,
+    structure: {
+      ...item.structure,
+      elements: item.structure.elements.map(withEmptyPlan),
+      ...(item.structure.savings ? { savings: item.structure.savings.map(withEmptyPlan) } : {}),
+    },
+  }
 }
 
 export async function getBudgetPlan(id: Id, from: string, months: number): Promise<BudgetPlanDto> {

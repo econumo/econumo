@@ -41,7 +41,7 @@ func (s *Service) GetBudgetPlan(ctx context.Context, userID vo.Id, req model.Get
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.buildBudgetPlan(ctx, b, f, months)
+	result, err := s.asOfTomorrow(ctx).buildBudgetPlan(ctx, b, f, months)
 	if err != nil {
 		return nil, err
 	}

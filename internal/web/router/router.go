@@ -260,11 +260,9 @@ func New(deps Deps) http.Handler {
 		// The SPA posts feedback straight to the econumo.com collector, so a
 		// self-hosting admin can hide the form.
 		"FEEDBACK": !deps.Cfg.FeedbackDisabled,
-		// The SPA hides a provider that is off, and import rules plus the
-		// import sections of the Inbox while both are; the server does not
-		// mount their routes.
-		"IMPORT_APPLE_WALLET": deps.Cfg.ImportAppleWallet,
-		"IMPORT_SIMPLEFIN":    deps.Cfg.ImportSimpleFIN,
+		// The SPA hides SimpleFIN while it is off; the server does not mount
+		// its routes.
+		"IMPORT_SIMPLEFIN": deps.Cfg.ImportSimpleFIN,
 		// ECONUMO_DEV: the SPA shows unfinished features only while it is on.
 		"DEV": deps.Cfg.Dev,
 		// Present even when empty: the backend decides whether create-billing-link

@@ -72,6 +72,16 @@ export function Dash() {
   return <span className="text-muted-foreground/50">{EMPTY_CELL}</span>
 }
 
+/** an unset plan inside a plan trigger: kept clear of the cell's comment marker,
+ *  which covers the cell's right edge on hover and would take the click */
+export function PlanDash() {
+  return (
+    <span className="pr-2">
+      <Dash />
+    </span>
+  )
+}
+
 /** A line's ⋮ menu: with a mouse it shows while the pointer is over the line (and
  *  stays while open); in a touch screen's edit mode it shows on every line. */
 export function RowMenu({ name, actions }: { name: string; actions: MenuAction[] | undefined }) {

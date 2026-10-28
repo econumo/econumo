@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react'
-import { Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { CommandEmpty, CommandItem } from '@/components/ui/command'
+import { PickerSheet } from '@/components/PickerSheet'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { rankByName } from '@/lib/search'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -21,37 +19,24 @@ interface CurrencyPickerDialogProps {
 export function CurrencyPickerDialog({ open, title, value, onClose, onPick }: CurrencyPickerDialogProps) {
   const { t } = useTranslation()
   const { data: currencies } = useCurrencies()
-  const [search, setSearch] = useState('')
-
-  useEffect(() => {
-    if (open) {
-      setSearch('')
-    }
-  }, [open])
-
-  const options = rankByName(selectableCurrencies(currencies, value ?? undefined), (c) => [c.name, c.code, c.symbol], search)
+  const options = (search: string) => rankByName(selectableCurrencies(currencies, value ?? undefined), (c) => [c.name, c.code, c.symbol], search)
+  const pick = (id: Id) => {
+    onPick(id)
+    onClose()
+  }
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={title}>
-      <Command shouldFilter={false}>
-        <CommandInput autoFocus placeholder={t('accounts.page.toolbar.search')} value={search} onValueChange={setSearch} />
-        <CommandList className="mt-4 max-h-72 max-md:max-h-96">
+    <PickerSheet open={open} onClose={onClose} title={title} searchLabel={t('accounts.page.toolbar.search')} currentValue={value ?? undefined}>
+      {(search) => (
+        <>
           <CommandEmpty />
-          {options.map((currency) => (
-            <CommandItem
-              key={currency.id}
-              value={currency.id}
-              onSelect={() => {
-                onPick(currency.id)
-                onClose()
-              }}
-            >
+          {options(search).map((currency) => (
+            <CommandItem key={currency.id} value={currency.id} data-checked={currency.id === value} onSelect={() => pick(currency.id)}>
               <span className="flex-1">{fullCurrencyLabel(currency)}</span>
-              {currency.id === value ? <Check className="size-4 text-econumo-link" /> : null}
             </CommandItem>
           ))}
-        </CommandList>
-      </Command>
-    </ResponsiveDialog>
+        </>
+      )}
+    </PickerSheet>
   )
 }

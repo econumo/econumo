@@ -9,7 +9,7 @@ import { getLocaleOptions, mcpUrl } from '@/lib/config'
 import { useServerConfig } from '@/lib/appConfig'
 import i18n from '@/app/i18n'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
+import { CurrencyField } from '@/features/currencies/CurrencyField'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { UserCard } from '@/components/UserCard'
 import { apiFieldErrors } from '@/lib/apiError'
@@ -44,7 +44,6 @@ export function ProfilePage() {
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
-  const [currencyOpen, setCurrencyOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
@@ -157,17 +156,19 @@ export function ProfilePage() {
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
         {t('user.page.settings.profile.groups.preferences')}
       </p>
-      <button
-        type="button"
-        className="flex w-full max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
-        onClick={() => setCurrencyOpen(true)}
-      >
-        {t('user.page.settings.profile.currency.label')}
-        <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          {currencies?.find((c) => c.id === currentCurrencyId)?.code ?? ''}
-          <ChevronRight className="size-4" />
-        </span>
-      </button>
+      {/* the same currency field as the account and budget forms; a pick saves */}
+      <div className="w-full max-w-md">
+        <CurrencyField
+          label={t('user.page.settings.profile.currency.label')}
+          value={currentCurrencyId}
+          onChange={(id) => {
+            const currency = currencies?.find((c) => c.id === id)
+            if (currency && id !== currentCurrencyId) {
+              updateCurrency.mutate({ currency: currency.code })
+            }
+          }}
+        />
+      </div>
       <button
         type="button"
         className="mt-2 flex w-full max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
@@ -263,18 +264,6 @@ export function ProfilePage() {
         ) : null}
       </div>
 
-      <CurrencyPickerDialog
-        open={currencyOpen}
-        title={t('user.page.settings.profile.currency.label')}
-        value={currentCurrencyId}
-        onClose={() => setCurrencyOpen(false)}
-        onPick={(id) => {
-          const currency = currencies?.find((c) => c.id === id)
-          if (currency) {
-            updateCurrency.mutate({ currency: currency.code })
-          }
-        }}
-      />
 
       <LanguageDialog open={languageOpen} onClose={() => setLanguageOpen(false)} />
       <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />

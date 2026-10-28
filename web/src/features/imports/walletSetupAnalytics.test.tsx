@@ -30,7 +30,7 @@ function renderSetup(src = source) {
 beforeEach(() => {
   localStorage.clear()
   vi.mocked(trackEvent).mockClear()
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true }
+  window.econumoConfig = {}
   server.use(...coreHandlers({ importSources: [source], importQueue: { queued: [], skipped: [], failed: [] } }))
 })
 
@@ -52,7 +52,8 @@ it('tracks every reached and completed step once, including the automatic first 
     ['payment', 4, 'automatic', true], ['immediate', 5, 'manual', true],
   ])
   expect(events(METRICS.IMPORT_SETUP_STEP_VIEW).map((data) => data.step)).toEqual(STEPS)
-  expect(events(METRICS.IMPORT_SETUP_COMPLETE)).toEqual([{ provider: 'apple-wallet', completed_count: 5 }])
+  // step 5 is optional: the first payment completes the setup
+  expect(events(METRICS.IMPORT_SETUP_COMPLETE)).toEqual([{ provider: 'apple-wallet', completed_count: 4 }])
   rerender({ item: { ...paidSource } })
   act(() => result.current.tick('immediate'))
   expect(events(METRICS.IMPORT_SETUP_STEP)).toHaveLength(5)
@@ -75,7 +76,7 @@ it('counts all newly inferred steps when the first payment arrives, without send
   const { rerender } = renderSetup()
   rerender({ item: paidSource })
   expect(events(METRICS.IMPORT_SETUP_STEP).map((data) => data.step)).toEqual(STEPS.slice(0, 4))
-  expect(events(METRICS.IMPORT_SETUP_COMPLETE)).toHaveLength(0)
+  expect(events(METRICS.IMPORT_SETUP_COMPLETE)).toEqual([{ provider: 'apple-wallet', completed_count: 4 }])
   const payload = JSON.stringify(vi.mocked(trackEvent).mock.calls)
   for (const secret of ['private-card-id', 'Private card name', 'USD', 's1']) expect(payload).not.toContain(secret)
 })

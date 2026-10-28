@@ -398,6 +398,8 @@ func init() {
 			{Label: "update-language", Method: "POST", Path: "/api/v1/user/update-language", Auth: "owner", Body: map[string]any{"language": "ru"}},
 			{Label: "read-after-update", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "owner", Body: map[string]any{}},
 			{Label: "update-analytics", Method: "POST", Path: "/api/v1/user/update-analytics", Auth: "owner", Body: map[string]any{"enabled": false}},
+			{Label: "update-last-seen-version", Method: "POST", Path: "/api/v1/user/update-last-seen-version", Auth: "owner", Body: map[string]any{"version": "v1.6.0"}},
+			{Label: "err:update-last-seen-version-invalid", Method: "POST", Path: "/api/v1/user/update-last-seen-version", Auth: "owner", Body: map[string]any{"version": "dev"}},
 		}
 	}})
 

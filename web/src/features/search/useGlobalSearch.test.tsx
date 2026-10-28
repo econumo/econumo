@@ -218,3 +218,42 @@ describe('amounts', () => {
     expect(txIds(result)).toEqual(['t-in'])
   })
 })
+
+describe('recurring templates', () => {
+  const template = (over: Record<string, unknown>) => ({
+    ownerUserId: ME, type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '15', categoryId: null, payeeId: null,
+    tagId: null, labelIds: [], description: '', schedule: 'monthly', nextPaymentAt: '2026-08-01 00:00:00', ...over,
+  })
+  const recurring = [
+    template({ id: 'r-gym', description: 'gym membership', categoryId: 'cat-food', nextPaymentAt: '2026-08-05 00:00:00' }),
+    template({ id: 'r-rent', description: 'flat rent', amount: '900', nextPaymentAt: '2026-08-01 00:00:00' }),
+  ]
+  const ids = (result: { current: ReturnType<typeof useGlobalSearch> }) => result.current.recurring.map((tx) => tx.recurring?.id)
+
+  beforeEach(() => {
+    server.use(...coreHandlers({ transactions, recurring, categories, payees, tags, labels, accounts: [...fixtureAccounts, sharedAccount] }))
+  })
+
+  it('the recent feed lists none', async () => {
+    const { result } = renderHook(() => useGlobalSearch('', ALL), { wrapper })
+    await waitFor(() => expect(result.current.transactionCount).toBe(TOTAL_TX))
+    expect(result.current.recurring).toEqual([])
+  })
+
+  it.each([
+    { query: 'gym', expected: ['r-gym'] },
+    { query: '900', expected: ['r-rent'] },
+    { query: 'monthly', expected: ['r-rent', 'r-gym'] },
+  ])('"$query" finds templates by description, amount or schedule, soonest first', async ({ query, expected }) => {
+    const { result } = renderHook(() => useGlobalSearch(query, ALL), { wrapper })
+    await waitFor(() => expect(result.current.recurring.length).toBeGreaterThan(0))
+    expect(ids(result)).toEqual(expected)
+  })
+
+  it('a drill-down lists the templates of that item', async () => {
+    const scope: SearchScope = { kind: 'category', id: 'cat-food' }
+    const { result } = renderHook(() => useGlobalSearch('', scope), { wrapper })
+    await waitFor(() => expect(result.current.recurring.length).toBeGreaterThan(0))
+    expect(ids(result)).toEqual(['r-gym'])
+  })
+})

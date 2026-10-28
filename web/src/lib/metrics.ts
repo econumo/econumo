@@ -2,6 +2,7 @@ import { capture, capturePageView, setAnalyticsContext, setAnalyticsGroup } from
 import { analyticsAllowed } from './analyticsPreference'
 import { authMethods } from './analyticsAuthMethods'
 import { profileAttributes } from './analyticsProfile'
+import { storedThemePreference } from './theme'
 import { backendHost, getInstanceId, getVersion, locale } from './config'
 import { isNativeApp } from './platform'
 import { hasToken } from './storage'
@@ -49,6 +50,9 @@ export const METRICS = {
   ACCOUNT_DELETE: 'appAccountDelete',
   ACCOUNT_DECLINE_ACCESS: 'appAccountDeclineAccess',
   ACCOUNT_ORDER_LIST: 'appAccountOrderList',
+  // one key for every way of moving through the account page's timeline,
+  // discriminated by the `method` property
+  ACCOUNT_HISTORY_JUMP: 'appAccountHistoryJump',
   ACCOUNT_FOLDER_EXPAND: 'appAccountFolderExpand',
   ACCOUNT_FOLDER_COLLAPSE: 'appAccountFolderCollapse',
   ACCOUNT_FOLDER_CREATE: 'appAccountFolderCreate',
@@ -106,6 +110,7 @@ export const METRICS = {
   BUDGET_PLAN_TOGGLE_SUMS: 'appBudgetPlanToggleSums',
   BUDGET_PLAN_CLEAR_CELL: 'appBudgetPlanClearCell',
   BUDGET_PLAN_SELECT_CELLS: 'appBudgetPlanSelectCells',
+  BUDGET_PLAN_USE_UPCOMING: 'appBudgetPlanUseUpcoming',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
   BUDGET_TRANSACTIONS_OPEN: 'appBudgetTransactionsOpen',
   BUDGET_UPDATE_COMMENT: 'appBudgetUpdateComment',
@@ -142,6 +147,9 @@ export const METRICS = {
   IMPORT_SOURCE_DISCONNECT: 'appImportSourceDisconnect',
   IMPORT_ACCOUNT_LINK: 'appImportAccountLink',
   IMPORT_ACCOUNT_IGNORE: 'appImportAccountIgnore',
+  IMPORT_ACCOUNT_MAP: 'appImportAccountMap',
+  IMPORT_ACCOUNT_REMAP: 'appImportAccountRemap',
+  IMPORT_ACCOUNT_UNMAP: 'appImportAccountUnmap',
   IMPORT_QUEUE_IMPORT: 'appImportQueueImport',
   IMPORT_QUEUE_SKIP: 'appImportQueueSkip',
   IMPORT_SHORTCUT_DOWNLOAD: 'appImportShortcutDownload',
@@ -152,6 +160,8 @@ export const METRICS = {
   IMPORT_SETUP_STEP_VIEW: 'appImportSetupStepView',
   IMPORT_SETUP_COMPLETE: 'appImportSetupComplete',
   IMPORT_SETUP_RESTART: 'appImportSetupRestart',
+  IMPORT_SETUP_GUIDE_OPEN: 'appImportSetupGuideOpen',
+  IMPORT_SETUP_SHORTCUTS_OPEN: 'appImportSetupShortcutsOpen',
   IMPORT_SYNC: 'appImportSync',
   IMPORT_RULE_CREATE: 'appImportRuleCreate',
   IMPORT_RULE_APPLY: 'appImportRuleApply',
@@ -182,6 +192,8 @@ export const METRICS = {
   REPORTS_SUGGEST: 'appReportsSuggest',
   FEEDBACK_OPEN: 'appFeedbackOpen',
   FEEDBACK_SEND: 'appFeedbackSend',
+  WHATS_NEW_OPEN: 'appWhatsNewOpen',
+  WHATS_NEW_DISMISS: 'appWhatsNewDismiss',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 
@@ -290,6 +302,8 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
     $host: analyticsHost(),
     $app_locale: locale(),
     deployment: deploymentKind(),
+    // The chosen appearance, not the resolved one: "system" stays "system".
+    theme: storedThemePreference(),
     // Omitted while unknown, so neither reads as a measured "none".
     ...(currentAccessState ? { access_state: currentAccessState } : {}),
     ...(authMethods() ?? {}),

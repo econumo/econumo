@@ -395,6 +395,9 @@
           "label": "Notes",
           "placeholder": "Saisissez des notes"
         },
+        "account": {
+          "label": "Compte"
+        },
         "from": {
           "label": "Depuis"
         },
@@ -540,6 +543,7 @@
         "limitations_title": "Limites connues",
         "tap_only": "Fonctionne uniquement quand vous approchez votre iPhone pour payer",
         "online_not_imported": "Les paiements Apple Pay sur les sites web ne sont pas pris en charge",
+        "no_signal": "Sans réseau au moment du paiement, la transaction peut ne pas être ajoutée",
         "steps_title": "Comment ça marche",
         "flow": {
           "pay": "Payez avec Apple Pay",
@@ -567,7 +571,7 @@
         },
         "configure": {
           "title": "Connecter le raccourci",
-          "text": "Génère un jeton API. Le raccourci enregistre l’adresse du serveur et le jeton, puis se connecte à Econumo. Touchez « Toujours autoriser » à chaque demande : l’automatisation aura besoin de ces autorisations.",
+          "text": "Touchez « Connecter le raccourci », puis « Toujours autoriser » à chaque demande.",
           "button": "Connecter le raccourci",
           "open": "Lier Econumo",
           "waiting": "En attente du premier contact du raccourci avec Econumo…",
@@ -575,7 +579,14 @@
         },
         "automate": {
           "title": "Créer l’automatisation",
-          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer → Exécuter après confirmation → econumo."
+          "text": "Dans l’app Raccourcis, créez une automatisation Cartes :",
+          "list": {
+            "open": "Ouvrez l’onglet Automatisation (sur iOS 27 : Bibliothèque → Automatisation), puis touchez « Nouvelle automatisation » ou +",
+            "wallet": "Choisissez Cartes (« Quand je touche une carte ou un pass Cartes »)",
+            "cards": "Sélectionnez les cartes et catégories à importer, ou toutes",
+            "confirm": "Gardez la confirmation activée : « Exécuter après confirmation » (iOS 26) ou « Confirmer avant l’exécution » (iOS 27)",
+            "shortcut": "Choisissez le raccourci econumo (sur iOS 27 : ajoutez « Exécuter le raccourci » → econumo, avec « Transaction » comme entrée)"
+          }
         },
         "payment": {
           "title": "Effectuer le premier paiement",
@@ -584,9 +595,14 @@
         },
         "immediate": {
           "title": "Passer l’automatisation en « Exécuter immédiatement »",
-          "text": "Dans l’app Raccourcis, ouvrez l’automatisation et remplacez « Exécuter après confirmation » par « Exécuter immédiatement ». Les paiements sont ensuite importés sans demande."
+          "text": "Désactivez la confirmation pour que les paiements soient importés sans demande : ouvrez l’automatisation dans Raccourcis et choisissez « Exécuter immédiatement » (iOS 26) ou désactivez « Confirmer avant l’exécution » (iOS 27)."
         },
-        "done": "Terminé"
+        "done": "Terminé",
+        "guide_title": "Guide pas à pas avec captures d’écran :",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Ouvrir Raccourcis",
+        "optional": "Facultatif"
       },
       "same_named_cards": "Les cartes portant le même nom dans Wallet sont affichées comme une seule carte.",
       "cards": {
@@ -1196,10 +1212,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "Paiement récurrent à venir",
-      "later_cycle": "Pourra être validé après le paiement précédent"
-    },
     "modal": {
       "budget_form": {
         "accounts": "Comptes",
@@ -1349,13 +1361,21 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "À venir",
+        "spent": "Déjà dépensé",
+        "received": "Déjà reçu",
+        "saved": "Déjà épargné",
+        "posted": "Enregistré",
+        "total": "Total"
+      },
       "budget": {
         "empty": {
           "header": "Budget",
           "no_budget": "Vous n’avez pas encore créé de budget.",
           "description": "Créez un budget ou acceptez une invitation pour commencer à planifier vos finances.",
           "create_budget": "Créer un budget",
-          "initial_setup": "Pour créer un budget, ajoutez d’abord un compte et au moins une catégorie.",
+          "initial_setup": "Pour créer un budget, ajoutez d’abord un compte.",
           "create_account": "Ajouter un compte"
         },
         "unavailable": {
@@ -2024,6 +2044,7 @@
       "payees": "Bénéficiaires",
       "tags": "Tags",
       "labels": "Tags de rapport",
+      "recurring": "Récurrentes",
       "transactions": "Transactions"
     },
     "show_all": "Tout afficher ({count})",
@@ -2070,7 +2091,10 @@
       "cta": "Gérer l’abonnement",
       "dismiss": "Masquer",
       "connection_trial": "L’abonnement de {name} se termine dans {count} jour | L’abonnement de {name} se termine dans {count} jours",
-      "connection_readonly": "L’abonnement de {name} a expiré — cette personne peut consulter les comptes partagés, mais pas les modifier"
+      "connection_readonly": "L’abonnement de {name} a expiré — cette personne peut consulter les comptes partagés, mais pas les modifier",
+      "sale_ends": "jusqu’au {date}",
+      "sale": "{name} : -{percent} %",
+      "sale_cta": "J’en profite"
     },
     "settings": {
       "group": "Facturation",
@@ -2153,6 +2177,10 @@
       },
       "close": "Compris"
     }
+  },
+  "whatsNew": {
+    "notice": "Nouveautés de la {version}",
+    "dismiss": "Ignorer"
   },
   "errors": {
     "common": {

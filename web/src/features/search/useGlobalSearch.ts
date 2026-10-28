@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { AccountDto } from '@/api/dto/account'
 import type { CategoryDto } from '@/api/dto/category'
 import type { LabelDto } from '@/api/dto/label'
@@ -8,6 +9,8 @@ import type { Id } from '@/api/types'
 import { dayKey } from '@/lib/datetime'
 import { moneyFormat, type CurrencyLike } from '@/lib/money'
 import { matchesTerms, rankByName, type ClassificationType, type TermFields } from '@/lib/search'
+import { recurringAsTransaction } from '@/features/recurring/asTransaction'
+import { useRecurring } from '@/features/recurring/queries'
 import { compareTransactions } from '@/features/transactions/order'
 import { useTransactions } from '@/features/transactions/queries'
 import {
@@ -27,6 +30,8 @@ export interface GlobalSearchResult {
   payees: PayeeDto[]
   tags: TagDto[]
   labels: LabelDto[]
+  /** templates shaped as their next payment, soonest first; `recurring` holds the template */
+  recurring: ViewTransaction[]
   transactions: DailyListEntry[]
   transactionCount: number
 }
@@ -95,7 +100,9 @@ function inScope(tx: ViewTransaction, scope: SearchScope): boolean {
 
 /** `scope` must be referentially stable across renders (keep it in state). */
 export function useGlobalSearch(query: string, scope: SearchScope): GlobalSearchResult {
+  const { t } = useTranslation()
   const { data: transactions } = useTransactions()
+  const { data: recurring } = useRecurring()
   const { data: user } = useUserData()
   const lookups = useTransactionLookups()
 
@@ -108,6 +115,15 @@ export function useGlobalSearch(query: string, scope: SearchScope): GlobalSearch
       }),
     [transactions, lookups],
   )
+  const templates = useMemo(
+    () =>
+      (recurring ?? []).map((rt) => {
+        const tx = recurringAsTransaction(rt, lookups)
+        const fields = transactionFields(tx)
+        return { tx, fields: { ...fields, text: [...fields.text, t(`recurring.schedule.${rt.schedule}`)] } }
+      }),
+    [recurring, lookups, t],
+  )
 
   return useMemo(() => {
     const groups = scope.kind === 'all'
@@ -119,14 +135,17 @@ export function useGlobalSearch(query: string, scope: SearchScope): GlobalSearch
       .map(({ tx }, index) => ({ tx, index }))
       .sort((a, b) => compareTransactions(a.tx, b.tx) || a.index - b.index)
       .map(({ tx }) => ({ tx, groupDay: dayKey(tx.date) }))
+    // like the entity groups, templates answer a query; a drill-down lists its own
+    const templatesShown = recentFeed ? [] : templates
     return {
       accounts: groups && query.trim() ? rankByName(lookups.accounts ?? [], (a) => a.name, query) : [],
       categories: groups ? ownActiveFirst(lookups.categories, me, query) : [],
       payees: groups ? ownActiveFirst(lookups.payees, me, query) : [],
       tags: groups ? ownActiveFirst(lookups.tags, me, query) : [],
       labels: groups ? ownActiveFirst(lookups.labels, me, query) : [],
+      recurring: templatesShown.filter(({ tx, fields }) => inScope(tx, scope) && matchesTerms(fields, query)).map(({ tx }) => tx),
       transactions: groupByDay(matched),
       transactionCount: matched.length,
     }
-  }, [enriched, lookups, user?.id, query, scope])
+  }, [enriched, templates, lookups, user?.id, query, scope])
 }

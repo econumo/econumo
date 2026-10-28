@@ -1,9 +1,11 @@
-import { isIncomeType, isPlannedType } from '@/api/dto/budget'
+import { isIncomeType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { BudgetElementType } from '@/api/dto/budget'
 import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, LabelSpendDto, PlanElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { add, cmp, isZero, sub } from '@/lib/decimal'
+import type { PlanHint } from './planHint'
+import { planHint, planHintKind } from './planHint'
 import {
   balanceRow,
   bucketPlanRows,
@@ -19,6 +21,7 @@ export interface PlanCellFigures {
   planned: string
   actual: string
   closingBalance?: string
+  upcoming?: string
 }
 
 /** One group of income rows, in the Plan grid's order: each folder, then the
@@ -64,9 +67,10 @@ export function planCellFigures(element: PlanElementDto, index: number): PlanCel
   const cell = element.cells[index]
   return {
     element,
-    planned: cell && cell.planned !== '' ? cell.planned : '0',
+    planned: cell?.planned ?? '',
     actual: cell?.actual ?? '0',
     ...(cell?.closingBalance !== undefined ? { closingBalance: cell.closingBalance } : {}),
+    ...(cell?.upcoming !== undefined ? { upcoming: cell.upcoming } : {}),
   }
 }
 
@@ -85,7 +89,7 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
 
   const buckets = bucketPlanRows(plan)
   const income = buckets.income
-  // the current month's actual is the fact only: money still upcoming lists the row too
+  // money still upcoming lists the row too
   const received = (el: PlanElementDto) => !isZero(el.cells[index]?.actual ?? '0') || !isZero(el.cells[index]?.upcoming ?? '0')
   const inBase = (cells: PlanCellFigures[], pick: (c: PlanCellFigures) => string) =>
     cells.reduce((sum, c) => add(sum, ex(c.element.currencyId, pick(c), index)), '0')
@@ -105,7 +109,7 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
   const groups = [
     ...income.folders.map((f) => group('folder', f.folder.id, f.folder.name, f.rows.map((r) => r.element))),
     group('loose', '__no_folder__', null, income.loose.map((r) => r.element)),
-    group('uncategorized', '__uncategorized__', null, uncategorized && received(uncategorized) ? [uncategorized] : []),
+    group('uncategorized', '__uncategorized__', null, uncategorized && !isZero(uncategorized.cells[index]?.actual ?? '0') ? [uncategorized] : []),
     // the received total counts archived rows too, so the ones with money this month must be listed
     group(
       'archived',
@@ -123,7 +127,7 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
     income: { rows, groups, toReceive: groups.reduce((sum, g) => add(sum, g.toReceive), '0'), planned: totals[index].incomePlanned, received: totals[index].incomeActual },
     balance: balance[index],
     savingsBalance: savings ? savings[index] : null,
-    transfersNet: totals[index].transfersNetActual,
+    transfersNet: totals[index].transfersNet,
   }
 }
 
@@ -151,6 +155,54 @@ export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell {
     case 'label':
       // a reporting tag has no amount to set; its spend is already in the budget currency
       return { id: target.label.id, name: target.label.name, currencyId: baseCurrencyId, amount: '0' }
+  }
+}
+
+/** the hint on the target's plan figure; Uncategorized and reporting tags hold no plan */
+export function sheetPlanHint(target: SheetTarget): PlanHint {
+  switch (target.kind) {
+    case 'expense': {
+      const el = target.element
+      if (el.id === UNCATEGORIZED_ID) return null
+      return planHint({ planned: el.budgeted, spent: el.spent, upcoming: el.upcoming, kind: planHintKind(el.type) })
+    }
+    case 'savings':
+      return planHint({ planned: target.row.budgeted, spent: target.row.spent, upcoming: target.row.upcoming, kind: 'savings' })
+    case 'plan': {
+      const { element, planned, actual, upcoming } = target.cell
+      if (element.id === UNCATEGORIZED_ID) return null
+      return planHint({ planned, spent: actual, upcoming, kind: planHintKind(element.type) })
+    }
+    case 'label':
+      return null
+  }
+}
+
+/** the target's still-due recurring money this month (element currency); undefined when none can apply */
+export function sheetUpcoming(target: SheetTarget): string | undefined {
+  switch (target.kind) {
+    case 'expense':
+      return target.element.upcoming
+    case 'savings':
+      return target.row.upcoming
+    case 'plan':
+      return target.cell.upcoming
+    case 'label':
+      return undefined
+  }
+}
+
+/** the target's real money so far this month (element currency): spent, received or saved */
+export function sheetSpent(target: SheetTarget): string {
+  switch (target.kind) {
+    case 'expense':
+      return target.element.spent
+    case 'savings':
+      return target.row.spent
+    case 'plan':
+      return target.cell.actual
+    case 'label':
+      return target.label.spent
   }
 }
 

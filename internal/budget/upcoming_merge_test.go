@@ -35,14 +35,14 @@ func TestMergeBudgetUpcoming(t *testing.T) {
 	}
 
 	a := real.Structure.Elements[0]
-	if a.Spent != "5" || a.Upcoming != "20" || a.BudgetUpcoming != "40" || a.UpcomingBefore != "30" {
+	if a.Spent != "5" || a.Upcoming != "20" || a.BudgetUpcoming != "40" {
 		t.Errorf("element a = %+v", a)
 	}
 	if c := a.Children; c[0].Upcoming != "0" || c[0].BudgetUpcoming != "0" || c[1].Upcoming != "20" || c[1].BudgetUpcoming != "40" {
 		t.Errorf("children = %+v", c)
 	}
 	for _, e := range real.Structure.Elements[1:3] {
-		if e.Upcoming != "0" || e.BudgetUpcoming != "0" || e.UpcomingBefore != "0" {
+		if e.Upcoming != "0" || e.BudgetUpcoming != "0" {
 			t.Errorf("element %s/%d absent from the projection = %+v, want zeros", e.Id, e.Type, e)
 		}
 	}
@@ -50,7 +50,7 @@ func TestMergeBudgetUpcoming(t *testing.T) {
 		t.Fatalf("the projection-only element must be added: %+v", real.Structure.Elements)
 	}
 	if n := real.Structure.Elements[3]; n.Id != "only-up" || n.Name != "Rent" || n.Budgeted != "0" || n.Spent != "0" ||
-		n.BudgetSpent != "0" || n.Available != "0" || n.Upcoming != "99" || n.BudgetUpcoming != "98" || n.UpcomingBefore != "0" ||
+		n.BudgetSpent != "0" || n.Available != "0" || n.Upcoming != "99" || n.BudgetUpcoming != "98" ||
 		len(n.Children) != 1 || n.Children[0].Spent != "0" || n.Children[0].Upcoming != "99" {
 		t.Errorf("added element = %+v", n)
 	}
@@ -92,12 +92,7 @@ func TestMergePlanUpcoming(t *testing.T) {
 			{Id: "s2", Cells: []model.PlanSavingsCellResult{{Actual: "0"}, {Actual: "0"}}},
 		},
 	}}
-	upOpening := []model.OpeningBalanceResult{{CurrencyId: "usd", Amount: "-40"}}
-	upTransfers := []model.PlanMonthTransfersResult{{Period: "m0", Items: []model.PlanTransferResult{{CurrencyId: "usd", In: "0", Out: "40"}}}}
-	upFlows := []model.PlanSavingsFlowResult{{Month: "m0", CurrencyId: "usd", Amount: "150"}}
 	up := model.BudgetPlanResult{
-		OpeningBalances: upOpening, SavingsOpeningBalances: upOpening, Transfers: upTransfers,
-		SavingsFlows: upFlows, SavingsIncomeExpense: []model.PlanSavingsFlowResult{},
 		Structure: model.PlanStructureResult{
 			Elements: []model.PlanElementResult{
 				{Id: "a", Type: 1, Cells: cells("20", "30"), Children: []model.PlanChildResult{
@@ -114,12 +109,6 @@ func TestMergePlanUpcoming(t *testing.T) {
 	}
 	if !mergePlanUpcoming(&real, up) {
 		t.Error("rows only the projection has must report as added")
-	}
-
-	if real.UpcomingOpeningBalances[0].Amount != "-40" || real.UpcomingSavingsOpeningBalances[0].Amount != "-40" ||
-		real.UpcomingTransfers[0].Items[0].Out != "40" || real.UpcomingSavingsFlows[0].Amount != "150" || real.UpcomingSavingsIncomeExpense == nil {
-		t.Errorf("top-level upcoming arrays = %+v %+v %+v %+v %+v", real.UpcomingOpeningBalances, real.UpcomingSavingsOpeningBalances,
-			real.UpcomingTransfers, real.UpcomingSavingsFlows, real.UpcomingSavingsIncomeExpense)
 	}
 
 	a := real.Structure.Elements[0]

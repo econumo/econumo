@@ -33,8 +33,7 @@ func NewService(repo Repository, accounts AccountReader, converter CurrencyConve
 	return &Service{repo: repo, accounts: accounts, converter: converter, txns: txns, lister: lister, entities: entities, limiter: limiter, tx: tx, clk: clk, cfg: cfg, providers: map[string]Provider{}, parsers: map[string]EventParser{}}
 }
 
-// DisableProvider switches a provider off (ECONUMO_IMPORT_APPLE_WALLET /
-// ECONUMO_IMPORT_SIMPLEFIN): its sources can no longer be created, and sources
+// DisableProvider switches a provider off (ECONUMO_IMPORT_SIMPLEFIN): its sources can no longer be created, and sources
 // left from when it was on drop out of the source list and the queue.
 func (s *Service) DisableProvider(name string) {
 	if s.disabled == nil {

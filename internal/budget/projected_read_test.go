@@ -432,22 +432,22 @@ func TestProjectedRead_NoOccurrencesIsEmpty(t *testing.T) {
 	check("AccountsReport", len(r10), err)
 }
 
-// projectWindow gates the second builder pass: a current window with no
-// templates, like a past one, returns no read.
-func TestProjectWindow_NilWhenNothingProjected(t *testing.T) {
+// upcomingRead gates the second builder pass: a current window with no
+// templates and no future-dated transactions, like a past one, returns no read.
+func TestUpcomingRead_NilWhenNothingUpcoming(t *testing.T) {
 	ctx := context.Background()
 	now := prToday.Add(9 * time.Hour)
 	current := filters{includedAccountIDs: prIDs(t, prEveryday), periodStart: prNov, periodEnd: prDec}
-	if p, err := prService(&recurringSourceStub{}, nil).projectWindow(ctx, current, now); err != nil || p != nil {
+	if p, err := prService(&recurringSourceStub{}, nil).upcomingRead(ctx, current, now); err != nil || p != nil {
 		t.Errorf("no templates: read = %+v, err %v; want nil", p, err)
 	}
 	rt := prTemplate(t, model.TransactionTypeExpense, prEveryday, "9", model.RecurringScheduleMonthly)
 	s := prService(&recurringSourceStub{templates: []*model.RecurringTransaction{rt}}, nil)
-	if p, err := s.projectWindow(ctx, current, now); err != nil || p == nil || len(p.occ) != 1 {
+	if p, err := s.upcomingRead(ctx, current, now); err != nil || p == nil || len(p.(*projectedRead).occ) != 1 {
 		t.Errorf("one template: read = %+v, err %v; want its November occurrence", p, err)
 	}
 	past := filters{includedAccountIDs: current.includedAccountIDs, periodStart: prNov.AddDate(0, -1, 0), periodEnd: prNov}
-	if p, err := s.projectWindow(ctx, past, now); err != nil || p != nil {
+	if p, err := s.upcomingRead(ctx, past, now); err != nil || p != nil {
 		t.Errorf("past window: read = %+v, err %v; want nil", p, err)
 	}
 }

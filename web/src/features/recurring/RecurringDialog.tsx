@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { OptionSelect } from '@/components/OptionSelect'
 import { Textarea } from '@/components/ui/textarea'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField, cardFieldControlClass } from '@/components/CardField'
@@ -191,6 +191,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
             <div className="[&_[data-slot=entity-select]]:h-auto [&_[data-slot=entity-select]]:border-0 [&_[data-slot=entity-select]]:px-0 [&_[data-slot=entity-select]]:py-1 [&_[data-slot=entity-select]]:ring-0 [&_[data-slot=entity-select]]:bg-transparent dark:[&_[data-slot=entity-select]]:bg-transparent">
               <EntitySelect
                 aria-label="account"
+                title={t('transactions.modal.form.account.label')}
                 value={form.accountId}
                 onChange={(id) => patch({ accountId: id })}
                 options={selectableAccounts.map(accountToOption)}
@@ -220,6 +221,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
             <SelectCard label={t('transactions.modal.form.from.label')}>
               <EntitySelect
                 aria-label="from account"
+                title={t('transactions.modal.form.from.label')}
                 value={form.accountId}
                 onChange={(id) => patch({ accountId: id })}
                 options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
@@ -228,6 +230,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
             <SelectCard label={t('transactions.modal.form.to.label')} error={errors.accountRecipientId}>
               <EntitySelect
                 aria-label="to account"
+                title={t('transactions.modal.form.to.label')}
                 value={form.accountRecipientId}
                 onChange={(id) => {
                   clearError('accountRecipientId')
@@ -282,18 +285,15 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
 
         <CardField label={t('recurring.modal.form.schedule.label')} htmlFor="rt-schedule">
           <div className="[&_button]:h-auto [&_button]:w-full [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-sm [&_button]:shadow-none [&_button]:focus-visible:ring-0">
-            <Select value={form.schedule} onValueChange={(v) => setSchedule(v as RecurringSchedule)}>
-              <SelectTrigger id="rt-schedule" aria-label={t('recurring.modal.form.schedule.label')} className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SCHEDULE_ORDER.map((schedule) => (
-                  <SelectItem key={schedule} value={schedule}>
-                    {t(`recurring.schedule.${schedule}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <OptionSelect
+              id="rt-schedule"
+              aria-label={t('recurring.modal.form.schedule.label')}
+              title={t('recurring.modal.form.schedule.label')}
+              className="w-full"
+              value={form.schedule}
+              onValueChange={(v) => setSchedule(v as RecurringSchedule)}
+              options={SCHEDULE_ORDER.map((schedule) => ({ value: schedule, label: t(`recurring.schedule.${schedule}`) }))}
+            />
           </div>
         </CardField>
 

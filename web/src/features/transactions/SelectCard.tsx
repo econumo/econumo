@@ -5,9 +5,10 @@ import { CardField } from '@/components/CardField'
 // strips the EntitySelect chrome so the CardField alone carries it. The selector
 // must match EntitySelect's own data-slot — targeting a bare button (or a
 // role="combobox" trigger) silently styles nothing, since EntitySelect renders
-// an input inside a slotted div.
+// an input inside a slotted div. The phone's larger text is reset too, so the
+// value matches the card's other controls (cardFieldControlClass).
 const cardSelectClass =
-  '[&_[data-slot=entity-select]]:h-auto [&_[data-slot=entity-select]]:border-0 [&_[data-slot=entity-select]]:px-0 [&_[data-slot=entity-select]]:ring-0 [&_[data-slot=entity-select]]:bg-transparent dark:[&_[data-slot=entity-select]]:bg-transparent'
+  '[&_[data-slot=entity-select]]:h-auto [&_[data-slot=entity-select]]:text-sm [&_[data-slot=entity-select]]:border-0 [&_[data-slot=entity-select]]:px-0 [&_[data-slot=entity-select]]:ring-0 [&_[data-slot=entity-select]]:bg-transparent dark:[&_[data-slot=entity-select]]:bg-transparent'
 
 /**
  * CardField around an EntitySelect where the WHOLE card is the tap target —

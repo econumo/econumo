@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
+import { CurrencyField } from '@/features/currencies/CurrencyField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { isNotEmpty, isValidBudgetName } from '@/lib/validation'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
@@ -13,7 +12,6 @@ import type { UpdateBudgetForm } from '@/api/budget'
 import type { BudgetDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData } from '@/features/user/queries'
 import { useUpdateBudgetDetail, canConfigureBudget } from './queries'
 import { BudgetAccountsField, BudgetSavingsField } from './BudgetAccountsField'
@@ -28,12 +26,10 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
-  const { data: currencies } = useCurrencies()
   const updateBudget = useUpdateBudgetDetail()
 
   const [name, setName] = useState('')
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
-  const [currencyOpen, setCurrencyOpen] = useState(false)
   const [selected, setSelected] = useState<Set<Id>>(new Set())
   const [savings, setSavings] = useState<Set<Id>>(new Set())
   // whether the user touched the dedicated savings switch itself (not the cascade that
@@ -192,20 +188,12 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           />
         </CardField>
 
-        {/* same card shape, but a picker row: tap opens the currency search dialog */}
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover disabled:opacity-60 disabled:hover:bg-econumo-card"
-          title={t('budgets.form.budget_envelope.currency.label')}
+        <CurrencyField
+          label={t('budgets.form.budget_envelope.currency.label')}
+          value={currencyId}
+          onChange={setCurrencyId}
           disabled={!canConfigure}
-          onClick={() => setCurrencyOpen(true)}
-        >
-          <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11px] text-muted-foreground">{t('budgets.form.budget_envelope.currency.label')}</span>
-            <span className="truncate text-sm">{currencies?.find((c) => c.id === currencyId)?.code ?? ''}</span>
-          </span>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        </button>
+        />
 
         {ownAccounts.length > 0 ? (
           <>
@@ -237,13 +225,6 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
         destructive
       />
 
-      <CurrencyPickerDialog
-        open={currencyOpen}
-        title={t('budgets.form.budget_envelope.currency.label')}
-        value={currencyId}
-        onClose={() => setCurrencyOpen(false)}
-        onPick={setCurrencyId}
-      />
     </ResponsiveDialog>
   )
 }

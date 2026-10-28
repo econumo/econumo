@@ -323,7 +323,7 @@ it('the marker reports the cell it sits in as the anchor', async () => {
   expect(onOpen).toHaveBeenCalledWith(screen.getByTestId('cell'))
 })
 
-// jsdom applies no stylesheet, so the classes are the honest check: `invisible`
+// until a mouse hovers the enclosing `group/line` (outset) or `group/cell` (Tailwind emits that variant
 // until a mouse hovers the enclosing `group/cell` (Tailwind emits that variant
 // under `@media (hover: hover)` only, so touch screens never reveal it)
 it('with no comments, the marker is a hover-only "Add comment" corner that opens the thread', async () => {
@@ -337,7 +337,7 @@ it('with no comments, the marker is a hover-only "Add comment" corner that opens
   expect(screen.queryByTestId('comment-marker')).toBeNull()
   const add = screen.getByTestId('comment-marker-add')
   expect(add).toHaveAccessibleName('Add comment')
-  expect(add).toHaveClass('invisible', 'group-hover/cell:visible', '-right-3', '-top-1')
+  expect(add).toHaveClass('invisible', 'group-hover/line:visible', 'h-[10px]', 'w-[13px]', '-right-[11px]', '-top-[7px]')
   await user.click(add)
   expect(onOpen).toHaveBeenCalledWith(screen.getByTestId('cell'))
 })

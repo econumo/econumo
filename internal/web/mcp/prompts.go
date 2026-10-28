@@ -23,20 +23,16 @@ func budgetFieldGlossary() string {
 - budgetSpent: the same spending converted to the BUDGET's base currency
   (meta.currencyId). When currencies differ, compare limits against budgetSpent,
   not spent. Child categories carry both spent and budgetSpent.
-- spent, budgetSpent and available count POSTED transactions only. upcoming /
-  budgetUpcoming are this month's recurring payments not yet posted (element and
-  budget currency); upcomingBefore is the not-yet-posted recurring spend filed in
-  earlier months, from the current month on, in the element's currency. A month
-  before the current one has no upcoming money (all "0"). Labels and savings rows
-  carry upcoming too.
-- get_budget_plan: each cell's actual is posted money only; upcoming is that
-  month's recurring payments not yet posted ("0" for a month before the current
-  one). upcomingOpeningBalances, upcomingSavingsOpeningBalances,
-  upcomingTransfers, upcomingSavingsFlows and upcomingSavingsIncomeExpense are
-  the same as their namesakes over those payments. A savings cell's
-  closingBalance leaves its upcoming money out: add the row's
-  upcomingOpeningBalance (what is due before the window) and the upcoming of
-  its cells through that month.
+- spent, budgetSpent and available count POSTED transactions dated up to the
+  caller's today only. upcoming / budgetUpcoming are this month's money still
+  to come (element and budget currency): recurring payments still due plus
+  transactions dated after today. A planning hint, never part of spent, actual
+  or closingBalance. A month before the current one has no upcoming money (all
+  "0"). Labels and savings rows carry upcoming too.
+- get_budget_plan: each cell's actual is posted money dated up to today only;
+  upcoming is that month's recurring payments still due plus transactions
+  dated after today ("0" for a month before the current one), a planning hint,
+  never part of actual or closingBalance.
 - balances[]: one row per currency the budget touches (budget currency first) —
   account-level, separate from envelope spending. startBalance/endBalance are
   point-in-time totals (null until the period starts/ends); income/expenses/

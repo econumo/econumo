@@ -11,9 +11,9 @@ import darkLogo from '@/assets/econumo-dark.svg?inline'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UpdateNotice } from '@/components/UpdateNotice'
-import { InstallBanner } from '@/features/install/InstallBanner'
+import { WhatsNewNotice } from '@/features/whatsNew/WhatsNewNotice'
+import { TopBanner } from './TopBanner'
 import { InstallPopup } from '@/features/install/InstallPopup'
-import { ServerVersionNotice } from '@/components/ServerVersionNotice'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
 import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
@@ -25,7 +25,6 @@ import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { InboxButton } from '@/features/inbox/InboxButton'
-import { SubscriptionBanner } from '@/features/access/SubscriptionBanner'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
@@ -182,10 +181,11 @@ export function ApplicationLayout() {
     // cross-site POST callback gets one 130px short for the window's whole
     // lifetime (a reload and a rotation both keep it; only a relaunch clears
     // it). dvh tracked the real viewport in both states.
-    <div className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
-      <SubscriptionBanner />
-      <ServerVersionNotice />
-      <InstallBanner />
+    <div
+      className={`flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${showWorkspace ? '' : 'bg-sidebar'}`}
+      data-surface={showWorkspace ? undefined : 'sidebar'}
+    >
+      <TopBanner />
       <InstallPopup />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
@@ -245,6 +245,7 @@ export function ApplicationLayout() {
               <div className="flex-1" />
             )}
 
+            {!rail ? <WhatsNewNotice /> : null}
             {!rail ? <UpdateNotice /> : null}
 
             {rail ? (
@@ -337,3 +338,4 @@ export function ApplicationLayout() {
     </div>
   )
 }
+

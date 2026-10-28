@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
-import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
+import { CurrencyField } from '@/features/currencies/CurrencyField'
 import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { formatDateTime } from '@/lib/datetime'
@@ -16,7 +16,6 @@ import { moneyFormat } from '@/lib/money'
 import { evaluateFormula, sanitizeInput } from '@/lib/calculator'
 import { isNotEmpty, isValidAccountName, isValidDecimalNumber, isValidFormula, isValidNumber } from '@/lib/validation'
 import { useUiStore } from '@/app/uiStore'
-import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { AccessLevelDialog } from '@/features/connections/AccessLevelDialog'
 import { ShareAccessDialog } from '@/features/connections/ShareAccessDialog'
@@ -25,7 +24,7 @@ import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections
 import { useConnections } from '@/features/connections/queries'
 import { UserAvatar } from '@/components/UserAvatar'
 import { evaluatedAmount } from '../transactions/useTransactionForm'
-import { useAccounts, useCreateAccount, useGrantAccountAccess, useRevokeAccountAccess, useUpdateAccount } from './queries'
+import { useAccounts, useCreateAccount, useFolders, useGrantAccountAccess, useRevokeAccountAccess, useUpdateAccount } from './queries'
 import { useFormErrors } from '@/hooks/useFormErrors'
 
 export function AccountDialog() {
@@ -33,10 +32,10 @@ export function AccountDialog() {
   const params = useUiStore((s) => s.accountModal)
   const close = useUiStore((s) => s.closeAccountModal)
   const { data: user } = useUserData()
-  const { data: currencies } = useCurrencies()
   const createAccount = useCreateAccount()
   const updateAccount = useUpdateAccount()
   const { data: accounts } = useAccounts()
+  const { data: folders } = useFolders()
   const { data: connections = [] } = useConnections({ enabled: !!params?.account })
   const grantAccountAccess = useGrantAccountAccess()
   const revokeAccountAccess = useRevokeAccountAccess()
@@ -45,9 +44,8 @@ export function AccountDialog() {
   const isNew = !account
 
   const [name, setName] = useState('')
-  const [balance, setBalance] = useState('0')
+  const [balance, setBalance] = useState('')
   const [currencyId, setCurrencyId] = useState<string | null>(null)
-  const [currencyOpen, setCurrencyOpen] = useState(false)
   const [icon, setIcon] = useState(defaultAccountIcon)
   const { errors, setErrors, clear: clearError, reset: resetErrors } = useFormErrors<{ name?: string; balance?: string }>()
   const [shareOpen, setShareOpen] = useState(false)
@@ -70,7 +68,7 @@ export function AccountDialog() {
       setIcon(params.account.icon || defaultAccountIcon)
     } else {
       setName('')
-      setBalance('0')
+      setBalance('')
       setCurrencyId(userCurrencyId(user))
       setIcon(defaultAccountIcon)
     }
@@ -92,7 +90,10 @@ export function AccountDialog() {
       next.name = t('accounts.form.name.validation.invalid_name')
     }
     if (!isNotEmpty(balance)) {
-      next.balance = t('common.validation.required_field')
+      // a new account's empty balance is the placeholder's 0
+      if (!isNew) {
+        next.balance = t('common.validation.required_field')
+      }
     } else if (!isValidFormula(balance)) {
       next.balance = t('common.validation.invalid_formula')
     } else {
@@ -111,7 +112,7 @@ export function AccountDialog() {
     if (!validate() || !currencyId) {
       return
     }
-    const balanceAmount = evaluatedAmount(balance)
+    const balanceAmount = isNotEmpty(balance) ? evaluatedAmount(balance) : '0'
     try {
       if (isNew) {
         const created = await createAccount.mutateAsync({
@@ -120,7 +121,9 @@ export function AccountDialog() {
           currencyId,
           balance: balanceAmount,
           icon,
-          folderId: params.folderId ?? null,
+          // the server only invents a folder for a user who has none, so a caller with no
+          // folder in mind (the budget page) lands the account in the first one
+          folderId: params.folderId ?? folders?.[0]?.id ?? null,
         })
         params.onCreated?.(created.item)
       } else {
@@ -192,7 +195,7 @@ export function AccountDialog() {
           <CalculatorInput
             id="account-balance"
             className={cardFieldControlClass}
-            placeholder={t('accounts.form.balance.placeholder')}
+            placeholder={isNew ? '0' : t('accounts.form.balance.placeholder')}
             value={balance}
             onChange={(v) => {
               clearError('balance')
@@ -201,19 +204,11 @@ export function AccountDialog() {
           />
         </CardField>
 
-        {/* same card shape, but a picker row: tap opens the currency search dialog */}
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
-          title={t('accounts.form.currency.label')}
-          onClick={() => setCurrencyOpen(true)}
-        >
-          <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11px] text-muted-foreground">{t('accounts.form.currency.label')}</span>
-            <span className="truncate text-sm">{currencies?.find((c) => c.id === currencyId)?.code ?? ''}</span>
-          </span>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        </button>
+        <CurrencyField
+          label={t('accounts.form.currency.label')}
+          value={currencyId}
+          onChange={setCurrencyId}
+        />
 
         {canShare && liveAccount ? (
           <button
@@ -243,13 +238,6 @@ export function AccountDialog() {
         </div>
       </form>
 
-      <CurrencyPickerDialog
-        open={currencyOpen}
-        title={t('accounts.form.currency.label')}
-        value={currencyId}
-        onClose={() => setCurrencyOpen(false)}
-        onPick={setCurrencyId}
-      />
 
       {canShare && liveAccount && user ? (
         <>

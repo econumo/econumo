@@ -53,7 +53,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   mockViewport()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
+  useBudgetPeriodStore.setState({ lastMode: 'budget', selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
 })
 
 it('renders the full budget page: strip, chips, table, totals', async () => {
@@ -204,7 +204,41 @@ it('inline limit editor commits a formula as a normalized string', async () => {
   await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: '150' }))
 })
 
-it('empty state: no default budget shows create-budget when accounts+categories exist', async () => {
+it('a plan of 0 shows as 0 and is kept; clearing the input removes the plan', async () => {
+  const bodies: unknown[] = []
+  const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
+  const food = budget.structure.elements.find((el: { id: string }) => el.id === 'cat-food')
+  Object.assign(food, { budgeted: '0', isBudgeted: 1 })
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+      const body = (await request.json()) as { amount: string | null }
+      bodies.push(body)
+      Object.assign(food, { budgeted: body.amount ?? '0', isBudgeted: body.amount === null ? 0 : 1 })
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  const row = await screen.findByTestId('element-cat-food')
+  const trigger = within(row).getByRole('button', { name: 'limit Food' })
+  expect(trigger).toHaveTextContent(/^0\.00$/)
+  await user.click(trigger)
+  const input = await screen.findByLabelText('Budget')
+  expect(input).toHaveValue('0')
+  await user.clear(input)
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(bodies).toEqual([{ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: null }]))
+  await waitFor(() => expect(trigger).toHaveTextContent(/^—$/))
+
+  await user.click(trigger)
+  await user.type(await screen.findByLabelText('Budget'), '0')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(bodies[1]).toEqual({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: '0' }))
+})
+
+it('empty state: no default budget shows create-budget when accounts exist', async () => {
   server.use(...coreHandlers())
   renderPage()
   expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
@@ -217,6 +251,14 @@ it('empty state: no accounts shows the initial-setup prompt', async () => {
   renderPage()
   expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
   await waitFor(() => expect(screen.getByRole('button', { name: 'Add account' })).toBeInTheDocument())
+})
+
+it('empty state: accounts without categories still offer create-budget', async () => {
+  server.use(...coreHandlers({ categories: [] }))
+  renderPage()
+  expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Create a budget' })).toBeInTheDocument())
+  expect(screen.queryByRole('button', { name: 'Add account' })).not.toBeInTheDocument()
 })
 
 it('/ renders the budget for an onboarded user with a default budget', async () => {
@@ -232,6 +274,24 @@ it('/ renders the budget for an onboarded user with a default budget', async () 
     </QueryClientProvider>,
   )
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
+})
+
+it('/ reopens the Plan when it was the view last opened, and keeps remembering it', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+  )
+  useBudgetPeriodStore.setState({ lastMode: 'plan' })
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const router = createMemoryRouter([{ path: '/', element: <HomePage /> }], { initialEntries: ['/'] })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  expect(await screen.findByTestId('plan-sheet')).toBeInTheDocument()
+  expect(useBudgetPeriodStore.getState().lastMode).toBe('plan')
 })
 
 const accessDenied = () =>
@@ -940,37 +1000,43 @@ describe('managing categories, tags and accounts from the ⋮ menus', () => {
   })
 })
 
-it('the current month shows the fact only; a row with nothing spent yet but money upcoming opens its list', async () => {
-  vi.useFakeTimers({ toFake: ['Date'] })
-  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
-  try {
-    const budget = structuredClone(fixtureWireBudget)
-    const [food, living] = budget.structure.elements
-    Object.assign(food, { upcoming: '30', budgetUpcoming: '30', upcomingBefore: '0' })
-    Object.assign(living, { upcoming: '20', budgetUpcoming: '18', upcomingBefore: '0' })
-    let params: URLSearchParams | undefined
+describe('upcoming recurring as a plan hint', () => {
+  const hintBudget = () => {
+    const budget = budgetWithSavings()
+    Object.assign(budget.structure.elements.find((el: { id: string }) => el.id === 'cat-food'), { budgeted: '0', isBudgeted: 0, spent: '0', available: '0', budgetSpent: '0', upcoming: '650' })
+    Object.assign(budget.structure.savings[0], { budgeted: '0', isBudgeted: 0, spent: '0', available: '0', upcoming: '300' })
+    return budget
+  }
+  const hintPlan = () => {
+    const plan = JSON.parse(JSON.stringify(fixtureWirePlan))
+    const salaries = plan.structure.elements.find((el: { id: string }) => el.id === 'ie1')
+    salaries.cells[2] = { actual: '0', planned: '', upcoming: '1500' }
+    return plan
+  }
+
+  it('the inline editors show no suggestion and open on an empty input', async () => {
     server.use(
       ...coreHandlers({ user: userWithBudget }),
-      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
-      http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
-        params = new URL(request.url).searchParams
-        return HttpResponse.json({ success: true, message: '', data: { items: [], upcoming: [] } })
-      }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: hintBudget() } })),
+      planHandler(hintPlan()),
     )
     const user = userEvent.setup()
     renderPage()
-    const foodRow = await screen.findByTestId('element-cat-food')
-    expect(within(foodRow).getByTestId('cell-spent')).toHaveTextContent('45.50')
-    // folding the 30 upcoming in would read 324.50
-    expect(within(foodRow).getByTestId('cell-available')).toHaveTextContent('354.50')
-    const livingRow = screen.getByTestId('element-env-1')
-    const spent = within(livingRow).getByRole('button', { name: 'transactions Living' })
-    expect(spent).toHaveTextContent('0.00')
-    await user.click(spent)
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    await waitFor(() => expect(params?.get('envelopeId')).toBe('env-1'))
-    expect(params?.get('periodStart')).toBe('2026-07-01')
-  } finally {
-    vi.useRealTimers()
-  }
+    const food = await screen.findByTestId('element-cat-food')
+    const trigger = within(food).getByRole('button', { name: 'limit Food' })
+    // no plan reads as a dash, never as 0
+    expect(trigger).toHaveTextContent(/^—$/)
+    expect(trigger).not.toHaveClass('italic')
+
+    const savings = within(screen.getByTestId('month-savings-row-acc-s1')).getByRole('button', { name: 'limit Rainy day' })
+    expect(savings).toHaveTextContent(/^—$/)
+    expect(savings).not.toHaveClass('italic')
+
+    const salaries = await waitFor(() => within(screen.getByTestId('month-income-row-ie1')).getByRole('button', { name: 'limit Salaries' }))
+    expect(salaries).toHaveTextContent(/^—$/)
+    expect(salaries).not.toHaveClass('italic')
+
+    await user.click(trigger)
+    expect(await screen.findByLabelText('Budget')).toHaveValue('')
+  })
 })

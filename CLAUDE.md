@@ -61,7 +61,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL`, `IMPORT_APPLE_WALLET`, `FEEDBACK` and `DEV` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL`, `FEEDBACK` and `DEV` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. The merge is per server: typing a
@@ -363,7 +363,8 @@ syncs) surfaces in the Inbox (`web/src/features/inbox`, `/inbox`), fed by one
 there, never into a new top banner (that slot is reserved for the subscription
 and server-version notices, and the install-the-app banner,
 `web/src/features/install/InstallBanner.tsx`, which also tops the signed-out
-`AuthFrame` pages). Runtime config
+`AuthFrame` pages); `TopBanner` in `web/src/app/layouts` shows only one of them
+at a time, in that order). Runtime config
 (`window.econumoConfig`) is served at `/econumo-config.js`: for a running
 instance the Go server generates the whole document (see the "Web UI config"
 bullet below); `public/econumo-config.js` is only the static fallback used
@@ -388,6 +389,14 @@ IS a real version, used by the mobile app where no server config is present;
 `ECONUMO_COMMIT` (the build arg and env var of the same name, set by both publish
 workflows and the Makefile from the checked-out sha) is inlined the same way as the
 bundle's own `VERSION_REF`.
+The sidebar's "What's new in vX.Y.Z" card (`web/src/features/whatsNew`) shows when the
+running `VERSION` is a release newer than the user's `last_seen_version` option (absent =
+an existing user who upgraded; new accounts are seeded with the running release, a `dev`
+build seeds and shows nothing; the option only moves forward; web only, never in the native
+app); opening `https://econumo.com/releases/<version>` or
+dismissing it writes the running version through `update-last-seen-version`. An upgrade
+into a new minor line links that line's `.0` notes (v1.6.x -> v1.7.2 shows v1.7.0), a patch
+upgrade within the line the running patch. Hidden until onboarding is completed.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the
@@ -501,9 +510,10 @@ mandatory `Origin` header, which the collector does not record)),
 plus session-wide account-profile facts (`web/src/lib/analyticsProfile.ts`:
 total counts of connections, budgets, accounts, categories, payees, tags and
 labels — active, hidden and archived alike, unaccepted invites excluded — plus
-`signup_year`, `months_since_signup` and `apple-wallet` (`on` when the cached
+`signup_year`, `months_since_signup` and `import_apple_wallet` (`on` when the cached
 source list contains an Apple Wallet integration, `off` otherwise; omitted
-until the source list loads)), stamped onto
+until the source list loads)) and the chosen `theme` (`system`/`light`/`dark`, the
+local preference, not the resolved appearance), stamped onto
 each event at capture time (the SDK has no custom batch attributes). A per-user
 `analytics` option (`users_options`, on by default) gates capture, is
 mirrored to `localStorage` for a synchronous boot-time check (`get-user-data`
@@ -796,21 +806,19 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   served to the SPA as `DEV` (`isDevEnabled()`, `web/src/lib/config.ts`). See "Feature flags"
   above: unfinished features show only while it is on. Today it gates the Spending and Cash
   flow reports.
-- `ECONUMO_IMPORT_APPLE_WALLET` / `ECONUMO_IMPORT_SIMPLEFIN` — the two transaction-import
-  providers (strict booleans, Apple Wallet defaults `true`, SimpleFIN `false`;
-  malformed fails at boot). A provider that is
-  off loses its own routes (Apple Wallet: `ingest-apple-wallet-event`; SimpleFIN:
-  `claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
+- `ECONUMO_IMPORT_SIMPLEFIN` — the SimpleFIN pull provider (strict boolean, default `false`;
+  malformed fails at boot). Apple Wallet import has no switch and is always on (the former
+  `ECONUMO_IMPORT_APPLE_WALLET` is ignored), so `internal/imports/api` is always mounted with
+  import rules, the queue and run history. While SimpleFIN is off it loses its own routes
+  (`claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
   `sync-source`), `create-source` refuses it with `import.provider_unsupported`, and its existing
   sources and their queued/failed rows drop out of `get-source-list` and `get-queued-event-list`
-  (`imports.Service.DisableProvider`; stored data is untouched). With BOTH off, `server.BuildAPI`
-  does not mount `internal/imports/api` at all, so every `/api/v1/import/*` route 404s and import
-  rules, the queue and run history are gone with it (`config.Config.TransactionImport()` = either
-  on). The SPA reads the served `IMPORT_APPLE_WALLET` / `IMPORT_SIMPLEFIN` keys: each provider's
-  settings page and route follow its own flag; Import rules, import history, the Data page's
-  rules/history rows and the Inbox's import sections need either; with both off it never fetches
-  an import endpoint. CSV import/export is not part of it and is always on. The apiparity harness
-  turns both on so the catalogue keeps covering the import routes.
+  (`imports.Service.DisableProvider`; stored data is untouched). The SPA reads the served
+  `IMPORT_SIMPLEFIN` key for SimpleFIN's settings pages and routes; Apple Wallet, Import rules,
+  import history and the Inbox's import sections are always shown (there is no
+  `IMPORT_APPLE_WALLET` key any more). CSV import/export is not part of it and is always on.
+  The apiparity harness turns SimpleFIN on so the catalogue keeps
+  covering its routes.
 - `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
   fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
   it on). Served as `FEEDBACK`; `false` hides its entry points (the Settings row and Reports'
@@ -900,7 +908,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET`,
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`,
   `IMPORT_SIMPLEFIN`, `FEEDBACK` and `DEV` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
@@ -1171,7 +1179,8 @@ In the distroless image these run via the binary directly, e.g.
   `oauth/complete-link`, `oauth/unlink-identity`, `authserver/revoke-connected-app`
   and `authserver/decline-authorization` (declining writes nothing) —
   plus `update-analytics`: withdrawing from product analytics is a privacy right, not a
-  paid feature, so it must work regardless of access level); `GET` reads are never restricted.
+  paid feature, so it must work regardless of access level, and `update-last-seen-version`,
+  so the "what's new" card stays dismissable); `GET` reads are never restricted.
 
 ## Authentication
 
@@ -1370,25 +1379,58 @@ data unreadable. Most are also asserted by the test suite.
   shortened, never the note, to fit the 255-character column), and the affected accounts'
   `transactions_revision` moves so synced clients refetch.
 - **Budget element visibility**: a tag/envelope/category appears in `get-budget` when it has spending **or** a limit (current or carried-over) — so a tag with a limit but no transactions stays visible.
+- **Empty plan vs a plan of 0**: a plan of 0 is stored (a limit row with amount 0) and counts as a
+  plan everywhere (an active row stays visible with it, the red short-plan hint), except that an
+  archived row with nothing but a plan of 0 stays hidden; `set-limit` with `amount: null` removes the
+  row. `get-budget` sends `budgeted: "0"` for both and tells them apart with the additive
+  `isBudgeted` (0/1) on elements and savings rows; `get-budget-plan` cells already send `planned: ""`
+  for no row. The SPA maps `isBudgeted: 0` to `budgeted: ''` (`getBudget`), shows an empty plan as
+  a dash (Budget view) or a blank cell (Plan grid) and a plan of 0 as `0`; typing 0 saves 0, an
+  empty input clears, and copying or filling from an empty Plan cell clears the targets.
 - **Account balance day boundary**: "balance as of end of today" uses the **caller's** timezone (`X-Timezone` header), not the server's UTC day.
 - **Recurring transaction scheduling**: templates advance from the scheduled date with
   month-end clamping via a persisted scheduled day (31st → Feb 28 → Mar 31); posting is
   manual (the user acts on a due template) and idempotent on the client-supplied
   transaction id.
 - **Upcoming recurring in Budget/Plan**: the server projects active recurring templates
-  (source OR recipient on a budget member account, partners' included) into occurrences
+  (source OR recipient on a budget member account, partners' included; deleted-account
+  templates skipped) into occurrences
   (`internal/model/recurring_projection.go`, `internal/budget/{projected_read,upcoming_merge,txlist}.go`,
   glue `internal/server/glue_budget_recurring.go`). An overdue next payment counts once in the
-  caller's current month, afterwards only occurrences after today. Everything is additive
-  (`upcoming`/`budgetUpcoming`/`upcomingBefore` on `get-budget`, `upcoming*` cells and opening
-  balances on `get-budget-plan`, an `upcoming` array on `get-transaction-list`); the frozen real
-  fields stay real-only, and savings `closingBalance` on `get-budget` includes upcoming. The SPA
-  folds upcoming into one combined spent/actual at the query layer (`features/budgets/upcoming.ts`)
-  for months AFTER the caller's current one only: the current month shows the fact (spent,
-  actual and Available real-only; its upcoming money is seen in the cell list, which opens even
-  from a 0), while the Plan's projections (effective values, Balance, Total savings, savings
-  closing balances; `projectedActual` in `planMath.ts`) still count it. The cell list shows rows dimmed, and only the next payment is actionable (Post dates at the
-  scheduled date when still in the future, else now; Skip; Edit) for callers with `canEdit`.
+  caller's current month, afterwards only occurrences after today. A real transaction dated
+  from the caller's tomorrow on (`X-Timezone`) has not happened yet: every `get-budget` /
+  `get-budget-plan` figure reads the stored transactions through `windowRead` capped at that
+  instant (`internal/budget/dated_read.go`, `asOfTomorrow`; computed in Go, bound as a
+  parameter), and the upcoming pass reads those later rows (`upcomingRead`: the projection
+  plus the stored rows from tomorrow to the window's end, summed per key), so they are
+  upcoming money exactly like a due template. Upcoming money is a HINT
+  on the plan number, never part of the figures: spent/actual, Available, every total and
+  projection (Balance, Total savings, savings `closingBalance`, opening balances, flows,
+  carry-over) are money dated up to today only. `get-transaction-list` keeps listing every
+  real row of the period, future-dated ones included; its `upcoming[]` stays recurring-only. The budget transaction list leads with a "Coming up" group laid out like the
+  plan editor's list (the cell's future-dated rows and its recurring payments still due,
+  soonest first, display only), then a "Posted" heading over the past rows in their day
+  groups; both headings show only when something is still to come. Additive wire fields: `upcoming`/`budgetUpcoming` on
+  `get-budget` elements and children (savings rows and labels carry only `upcoming`), `upcoming` on `get-budget-plan` cells,
+  an `upcoming` array on `get-transaction-list` (read by the plan editor's list and the transaction list's "Coming up").
+  The SPA (`features/budgets/planHint.ts`), from the current month on, on rows
+  that hold a plan: an empty plan stays empty, no suggestion is shown (a plan of 0 is a plan); an
+  expense row (category/tag/envelope) whose plan is below spent + still due shows the plan
+  in red; income and savings are never red; folder, tag-group, total, label and child rows
+  get no hint, and Uncategorized (no plan to hint) is listed only for real money. While a
+  plan is being edited (desktop `LimitEditor`, phone `SetLimitDialog`, Plan grid in-cell
+  input), a cell in the current month or later with spent or upcoming money gets a quiet
+  list (`UpcomingPaymentsPanel`): the still-due recurring payments (repeat icon, overdue
+  marker) merged by date with the cell's own transactions dated after today, each in its own
+  currency with its symbol, in one right-aligned amount column, savings signed; then an
+  "Already spent" / "Already received" / "Already saved" line (by row kind; the cell's spent,
+  which holds none of the rows listed above, hidden at 0) and a "Total" line (spent + still due, cell
+  currency with its symbol), so the column adds up. Headings and Total are set off in the
+  foreground colour, and in the Plan grid the list opens below the cell's frame. The whole
+  list is one button: a press anywhere fills the input with that total (future-dated rows are
+  in upcoming, not in spent, so never added twice) without committing. A cell with nothing still to
+  come (no due payment, no future-dated row) shows no list, Spent/Total lines included.
+  Past months and read-only cells never show it; there is no Post/Skip/Edit of templates from budget views.
 - **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,
   never removes the row — `accounts.currency_id` and `transactions.account_id` cascade from it,
   so a hard delete would silently destroy every account and transaction in that currency. A

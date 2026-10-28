@@ -126,13 +126,10 @@ export function projectSavingsClosings(s: PlanSavingsElementDto, months: string[
   const cur = currentMonth(now)
   let expected = '0'
   const cells = s.cells.map((cell, i) => {
-    const month = months[i] ?? ''
-    if (month >= cur) {
+    if ((months[i] ?? '') >= cur) {
       const planned = cell.planned === '' ? '0' : cell.planned
-      // the closing balance counts the current month's upcoming money already
-      const reached = projectedActual(cell, month, cur)
-      if (cmp(planned, reached) > 0) {
-        expected = add(expected, sub(planned, reached))
+      if (cmp(planned, cell.actual) > 0) {
+        expected = add(expected, sub(planned, cell.actual))
       }
     }
     return { ...cell, closingBalance: add(cell.closingBalance ?? '0', expected) }
@@ -245,40 +242,14 @@ export interface PlanMonthTotals {
    *  in = moved into included accounts, out = moved out. Never planned. */
   transfersIn: string
   transfersOut: string
-  /** in − out: the Plan's Transfers line, and a term of Balance; the current month
-   *  counts its upcoming transfers too, like the Plan's other totals lines */
+  /** in − out: the Transfers line, and a term of Net / Balance */
   transfersNet: string
-  /** the monthly view's Transfers line: the current month shows the transfers that
-   *  happened, a later month the combined figure */
-  transfersNetActual: string
   /** Σ savings actual, budget currency */
   savingsActual: string
-  /** the current month's upcoming savings money (its actual is real only); 0 in
-   *  every other month, where it is folded into the actual or there is none */
-  savingsUpcoming: string
   /** Σ non-archived savings planned, budget currency */
   savingsPlanned: string
   /** per-row max(actual, planned) summed; past months = actual; archived rows = actual */
   effectiveSavings: string
-}
-
-/** What a cell is expected to reach, for the projections: the current month's
- *  actual is the fact only, so its upcoming money is added here; in a later month
- *  the fold already counts it in the actual. */
-export function projectedActual(cell: { actual: string; upcoming?: string }, month: string, cur: string): string {
-  return month === cur && cell.upcoming !== undefined && !isZero(cell.upcoming) ? add(cell.actual, cell.upcoming) : cell.actual
-}
-
-/** The (already merged) per-currency amounts less the current month's upcoming
- *  part, in budget currency: what really moved. */
-function lessUpcoming<T extends { currencyId: Id }>(
-  items: T[],
-  upcoming: T[],
-  pick: (item: T) => string,
-  ex: (currencyId: Id, amount: string) => string,
-): string {
-  const up = new Map(upcoming.map((u) => [u.currencyId, pick(u)]))
-  return items.reduce((acc, item) => add(acc, ex(item.currencyId, sub(pick(item), up.get(item.currencyId) ?? '0'))), '0')
 }
 
 export type MonthExchange = (fromCurrencyId: string, amount: string, monthIndex: number) => string
@@ -300,31 +271,19 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
   const cur = currentMonth(now)
   const rows = plan.structure.elements
   const transfersByMonth = new Map((plan.transfers ?? []).map((t) => [t.period, t.items]))
-  // the fold merges the current month's upcoming transfers and savings income/expense
-  // (the projections count them); the actual figures take them back out
-  const upcomingTransfers = (plan.upcomingTransfers ?? []).find((t) => t.period === cur)?.items ?? []
-  const upcomingSavingsIncomeExpense = (plan.upcomingSavingsIncomeExpense ?? []).filter((f) => f.month === cur)
   return plan.months.map((month, i) => {
-    const isCurrent = month === cur
-    const exIn = (currencyId: Id, amount: string) => ex(currencyId, amount, i)
     // income/expense booked on savings accounts: no category row counts it, but
     // the combined balance moved by it
-    const savingsIncomeExpenseRows = (plan.savingsIncomeExpense ?? []).filter((f) => f.month === month)
-    const savingsIncomeExpense = savingsIncomeExpenseRows.reduce((acc, f) => add(acc, ex(f.currencyId, f.amount, i)), '0')
-    const savingsIncomeExpenseActual = isCurrent
-      ? lessUpcoming(savingsIncomeExpenseRows, upcomingSavingsIncomeExpense, (f) => f.amount, exIn)
-      : savingsIncomeExpense
+    const savingsIncomeExpense = (plan.savingsIncomeExpense ?? [])
+      .filter((f) => f.month === month)
+      .reduce((acc, f) => add(acc, ex(f.currencyId, f.amount, i)), '0')
     let transfersIn = '0'
     let transfersOut = '0'
-    const monthTransfers = transfersByMonth.get(month) ?? []
-    for (const tr of monthTransfers) {
+    for (const tr of transfersByMonth.get(month) ?? []) {
       transfersIn = add(transfersIn, ex(tr.currencyId, tr.in, i))
       transfersOut = add(transfersOut, ex(tr.currencyId, tr.out, i))
     }
     const transfersNet = sub(transfersIn, transfersOut)
-    const transfersNetActual = isCurrent
-      ? sub(lessUpcoming(monthTransfers, upcomingTransfers, (t) => t.in, exIn), lessUpcoming(monthTransfers, upcomingTransfers, (t) => t.out, exIn))
-      : transfersNet
     let incomeActual = '0'
     let incomePlanned = '0'
     let expenseActual = '0'
@@ -339,25 +298,23 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
         continue
       }
       const actual = ex(el.currencyId, cell.actual, i)
-      const projected = isCurrent ? ex(el.currencyId, projectedActual(cell, month, cur), i) : actual
       const planned = ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i)
       const isPast = month < cur
       // per-cell effective value: overspend keeps its actual, underspend keeps its plan
-      const effective = isPast ? actual : cmp(projected, planned) >= 0 ? projected : planned
+      const effective = isPast ? actual : cmp(actual, planned) >= 0 ? actual : planned
       if (isIncomeType(el.type)) {
         incomeActual = add(incomeActual, actual)
         if (el.isArchived === 0) incomePlanned = add(incomePlanned, planned)
-        effIncome = add(effIncome, el.isArchived === 0 ? effective : projected)
+        effIncome = add(effIncome, el.isArchived === 0 ? effective : actual)
         if (el.id === UNCATEGORIZED_ID) uncatIncome = add(uncatIncome, actual)
       } else {
         expenseActual = add(expenseActual, actual)
         if (el.isArchived === 0) expensePlanned = add(expensePlanned, planned)
-        effExpense = add(effExpense, el.isArchived === 0 ? effective : projected)
+        effExpense = add(effExpense, el.isArchived === 0 ? effective : actual)
         if (el.id === UNCATEGORIZED_ID) uncatExpense = add(uncatExpense, actual)
       }
     }
     let savingsActual = '0'
-    let savingsProjected = '0'
     let savingsPlanned = '0'
     let effSavings = '0'
     for (const el of plan.structure.savings ?? []) {
@@ -366,16 +323,14 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
         continue
       }
       const actual = ex(el.currencyId, cell.actual, i)
-      const projected = isCurrent ? ex(el.currencyId, projectedActual(cell, month, cur), i) : actual
       const planned = ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i)
       const isPast = month < cur
-      const effective = isPast ? actual : cmp(projected, planned) >= 0 ? projected : planned
+      const effective = isPast ? actual : cmp(actual, planned) >= 0 ? actual : planned
       savingsActual = add(savingsActual, actual)
-      savingsProjected = add(savingsProjected, projected)
       // a deleted account's plan arrives only for months it had activity, and
       // counts there as in the monthly Total
       savingsPlanned = add(savingsPlanned, planned)
-      effSavings = add(effSavings, el.isArchived === 0 ? effective : projected)
+      effSavings = add(effSavings, el.isArchived === 0 ? effective : actual)
     }
     // Net carries the boundary transfers so the Balance row (which chains on
     // effectiveNet) reflects money that really left or entered the budget's
@@ -390,7 +345,7 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
       incomePlanned,
       expenseActual,
       expensePlanned,
-      netActual: sub(add(add(sub(incomeActual, expenseActual), transfersNetActual), savingsIncomeExpenseActual), savingsActual),
+      netActual: sub(add(add(sub(incomeActual, expenseActual), transfersNet), savingsIncomeExpense), savingsActual),
       netPlanned: sub(sub(incomePlanned, expensePlanned), savingsPlanned),
       effectiveIncome: effIncome,
       effectiveExpense: effExpense,
@@ -399,9 +354,7 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
       transfersIn,
       transfersOut,
       transfersNet,
-      transfersNetActual,
       savingsActual,
-      savingsUpcoming: sub(savingsProjected, savingsActual),
       savingsPlanned,
       effectiveSavings: effSavings,
     }
@@ -485,12 +438,13 @@ export interface PlanSelectionSum {
 }
 
 /** What a multi-cell selection adds up to, in the budget currency at each month's own
- *  rate. Future months count their actuals too (upcoming recurring folded in); a savings row adds
+ *  rate. Actuals count up to `current` only, as the grid shows them; a savings row adds
  *  what was saved, since its month-end balances added across months mean nothing. */
 export function planSelectionSum(
   cells: { el: PlanElementDto; month: string }[],
   monthIndex: (m: string) => number,
   ex: MonthExchange,
+  current: string,
 ): PlanSelectionSum {
   let planned = '0'
   let actual = '0'
@@ -503,7 +457,9 @@ export function planSelectionSum(
     if (cell.planned !== '') {
       planned = add(planned, ex(el.currencyId, cell.planned, i))
     }
-    actual = add(actual, ex(el.currencyId, cell.actual, i))
+    if (month <= current) {
+      actual = add(actual, ex(el.currencyId, cell.actual, i))
+    }
   }
   return { count: cells.length, planned, actual }
 }
@@ -520,11 +476,10 @@ export function balanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: M
 /** The savings side of the balance split: opening balance plus, per month, what
  *  actually happened (savingsFlows) in the past; in the current and future months
  *  the flows booked so far plus each row's own gap to plan,
- *  Σ(max(actual, planned) − actual). Future months take the flows too: a future-dated
- *  savings→outside transfer leaves the combined balance through the boundary
- *  transfers, so it must leave the Savings balance as well, or the everyday Balance
- *  would drop for money no everyday account sent. An everyday→savings transfer is
- *  in both the flows and the row's actual, so it still counts once. The gap is per
+ *  Σ(max(actual, planned) − actual). The server leaves money dated after today out of
+ *  the flows, the boundary transfers and the actuals alike, so a later month carries
+ *  no flows. An everyday→savings transfer is in both the flows and the row's actual,
+ *  so it still counts once. The gap is per
  *  row so an over-saved row cannot cover another row's shortfall — the balance must
  *  move by exactly what the Savings line shows. */
 export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: MonthExchange, now?: Date): string[] {
@@ -541,9 +496,7 @@ export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[]
     const t = totals[i]
     running = add(running, flows)
     if (month >= cur) {
-      // the flows count the current month's upcoming savings money already, so the
-      // gap is measured from real plus upcoming
-      running = add(running, sub(t.effectiveSavings, add(t.savingsActual, t.savingsUpcoming)))
+      running = add(running, sub(t.effectiveSavings, t.savingsActual))
     }
     return running
   })

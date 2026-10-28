@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
-	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -91,7 +89,7 @@ func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, accountIDs []
 		return result, err
 	}
 	netsTo := w.end()
-	if tomorrow := localTomorrow(s.clock.Now(), reqctx.Location(ctx)); tomorrow.Before(netsTo) {
+	if tomorrow := localTomorrow(ctx, s.clock.Now()); tomorrow.Before(netsTo) {
 		netsTo = tomorrow
 	}
 	nets, err := s.read.AccountsNetByMonth(ctx, accountIDs, w.from, netsTo)
@@ -188,15 +186,4 @@ func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, accountIDs []
 		return x.Id < y.Id
 	})
 	return result, nil
-}
-
-// localTomorrow is the start of the caller's next day as a UTC-typed wall
-// clock, the bound the account list's balance uses: a balance counts
-// everything through the end of today and no future-dated transaction.
-func localTomorrow(now time.Time, loc *time.Location) time.Time {
-	if loc == nil {
-		loc = time.UTC
-	}
-	y, m, d := now.In(loc).Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC).AddDate(0, 0, 1)
 }

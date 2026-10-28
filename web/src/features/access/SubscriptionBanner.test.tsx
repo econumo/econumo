@@ -1,12 +1,17 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { formatDate } from '@/lib/datetime'
-import { SubscriptionBanner } from './SubscriptionBanner'
+import i18n from '@/app/i18n'
+import { SubscriptionBanner, useSubscriptionBanner } from './SubscriptionBanner'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { getSaleBanner } from '@/lib/billingBanner'
+
+vi.mock('@/lib/billingBanner', () => ({ getSaleBanner: vi.fn() }))
 
 vi.mock('@/lib/metrics', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/metrics')>()),
@@ -17,18 +22,24 @@ function utcIn(days: number): string {
   return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 19).replace('T', ' ')
 }
 
+function Banner() {
+  return <SubscriptionBanner banner={useSubscriptionBanner()} />
+}
+
 function renderBanner() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
-  return render(<SubscriptionBanner />, { wrapper })
+  return render(<Banner />, { wrapper })
 }
 
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   vi.mocked(trackEvent).mockClear()
+  vi.mocked(getSaleBanner).mockReset()
+  vi.mocked(getSaleBanner).mockResolvedValue(null)
 })
 
 it('renders nothing for full access', async () => {
@@ -55,6 +66,22 @@ it('shows the dismissible trial variant inside 3 days, with the CTA, and fires t
   expect(trackEvent).toHaveBeenCalledWith(METRICS.SUBSCRIPTION_BANNER_SHOW, expect.anything())
   await user.click(screen.getByRole('button', { name: 'Dismiss' }))
   expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
+})
+
+it('brings the trial variant back the next day in a tab left open', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  vi.mocked(getSaleBanner).mockResolvedValue(null)
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
+  const user = userEvent.setup()
+  renderBanner()
+  await user.click(await screen.findByRole('button', { name: 'Dismiss' }))
+  expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
+  // Midnight passes: the stored dismissal now names a past day.
+  localStorage.setItem('subscriptionBannerDismissedDay', '2000-01-01')
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  expect(await screen.findByText('Your subscription ends in 2 days')).toBeInTheDocument()
 })
 
 it('keeps the trial variant dismissed for the rest of the day across mounts', async () => {
@@ -150,4 +177,173 @@ it('shows no partner variants when billing is disabled', async () => {
   server.use(...coreHandlers({ connections: partnerConn('readonly', '') }))
   renderBanner()
   await waitFor(() => expect(trackEvent).not.toHaveBeenCalled())
+})
+
+function isoIn(hours: number): string {
+  return new Date(Date.now() + hours * 3_600_000).toISOString()
+}
+
+function sale(id = 'black-friday-2026') {
+  return {
+    id,
+    name: 'Black Friday',
+    percent: 40,
+    startsAt: isoIn(-1),
+    endsAt: isoIn(48),
+  }
+}
+
+describe('sale variant', () => {
+  beforeEach(() => {
+    window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  })
+
+  it('outranks a read-only user banner', async () => {
+    vi.mocked(getSaleBanner).mockResolvedValue(sale())
+    server.use(
+      ...coreHandlers({
+        user: { ...fixtureUser, accessLevel: 'readonly', accessUntil: '' },
+      }),
+    )
+    renderBanner()
+    expect(await screen.findByText(/Black Friday: 40% off/)).toBeInTheDocument()
+    expect(screen.queryByText(/read-only/)).not.toBeInTheDocument()
+  })
+
+  it('says when the sale ends, in the user\'s local time', async () => {
+    vi.mocked(getSaleBanner).mockResolvedValue({ ...sale(), endsAt: '2099-11-30T00:00:00Z' })
+    server.use(...coreHandlers())
+    renderBanner()
+    const end = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(
+      new Date('2099-11-30T00:00:00Z'),
+    )
+    expect(await screen.findByText(`ends ${end}`)).toBeInTheDocument()
+    expect(screen.getByText('Black Friday: 40% off')).toBeInTheDocument()
+  })
+
+  it('writes the banner in the user\'s language around billing\'s promo name', async () => {
+    await i18n.changeLanguage('ru')
+    try {
+      vi.mocked(getSaleBanner).mockResolvedValue({ ...sale(), name: 'Чёрная пятница', percent: 12.5 })
+      server.use(...coreHandlers())
+      renderBanner()
+      expect(await screen.findByText('Чёрная пятница: скидка 12,5%')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Купить со скидкой' })).toBeInTheDocument()
+    } finally {
+      await i18n.changeLanguage('en')
+    }
+  })
+
+  it('outranks the trial banner', async () => {
+    vi.mocked(getSaleBanner).mockResolvedValue(sale())
+    server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
+    renderBanner()
+    expect(await screen.findByText(/Black Friday: 40% off/)).toBeInTheDocument()
+    expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
+  })
+
+  it('labels the CTA from Econumo\'s own translations and opens the billing portal', async () => {
+    vi.mocked(getSaleBanner).mockResolvedValue(sale())
+    let minted = false
+    server.use(
+      ...coreHandlers(),
+      http.post('*/api/v1/user/create-billing-link', () => {
+        minted = true
+        return HttpResponse.json({
+          success: true,
+          message: '',
+          data: { url: 'https://pay.example.test/?t=abc' },
+        })
+      }),
+    )
+    const tab = { location: { href: '' }, close: vi.fn() }
+    window.open = vi.fn().mockReturnValue(tab)
+    const user = userEvent.setup()
+    renderBanner()
+    await user.click(await screen.findByRole('button', { name: 'Get the deal' }))
+    expect(window.open).toHaveBeenCalled()
+    await waitFor(() => expect(tab.location.href).toBe('https://pay.example.test/?t=abc'))
+    expect(minted).toBe(true)
+  })
+
+  it('fires the show metric with the sale id', async () => {
+    vi.mocked(getSaleBanner).mockResolvedValue(sale())
+    server.use(...coreHandlers())
+    renderBanner()
+    await screen.findByText(/Black Friday: 40% off/)
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.SUBSCRIPTION_BANNER_SHOW, {
+      variant: 'sale',
+      sale: 'black-friday-2026',
+    })
+  })
+
+  it('stays dismissed for the day and suppresses the trial banner that day too', async () => {
+    vi.mocked(getSaleBanner).mockResolvedValue(sale())
+    server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
+    const user = userEvent.setup()
+    const { unmount } = renderBanner()
+    await screen.findByText(/Black Friday: 40% off/)
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }))
+    expect(screen.queryByText(/Black Friday: 40% off/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
+    expect(localStorage.getItem('saleBannerDismissedDay:black-friday-2026')).toBe(formatDate(new Date()))
+    expect(localStorage.getItem('subscriptionBannerDismissedDay')).toBe(formatDate(new Date()))
+    unmount()
+    renderBanner()
+    await waitFor(() => expect(getSaleBanner).toHaveBeenCalledTimes(2))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByText(/Black Friday: 40% off/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
+  })
+
+  it('a read-only user sees the read-only banner after dismissing the sale', async () => {
+    vi.mocked(getSaleBanner).mockResolvedValue(sale())
+    server.use(
+      ...coreHandlers({
+        user: { ...fixtureUser, accessLevel: 'readonly', accessUntil: '' },
+      }),
+    )
+    const user = userEvent.setup()
+    renderBanner()
+    await user.click(await screen.findByRole('button', { name: 'Dismiss' }))
+    expect(await screen.findByText(/read-only/)).toBeInTheDocument()
+  })
+
+  it('brings a dismissed sale back the next day in a tab left open', async () => {
+    vi.mocked(getSaleBanner).mockResolvedValue(sale())
+    server.use(...coreHandlers())
+    renderBanner()
+    await screen.findByText(/Black Friday: 40% off/)
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
+    expect(screen.queryByText(/Black Friday: 40% off/)).not.toBeInTheDocument()
+    // Midnight passes: the stored dismissal now names a past day.
+    localStorage.setItem('saleBannerDismissedDay:black-friday-2026', '2000-01-01')
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    expect(await screen.findByText(/Black Friday: 40% off/)).toBeInTheDocument()
+  })
+
+  it('still shows a sale with a different id after the first was dismissed today', async () => {
+    localStorage.setItem('saleBannerDismissedDay:black-friday-2026', formatDate(new Date()))
+    localStorage.setItem('subscriptionBannerDismissedDay', formatDate(new Date()))
+    vi.mocked(getSaleBanner).mockResolvedValue({
+      ...sale('cyber-monday-2026'),
+      name: 'Cyber Monday',
+      percent: 30,
+    })
+    server.use(...coreHandlers())
+    renderBanner()
+    expect(await screen.findByText(/Cyber Monday: 30% off/)).toBeInTheDocument()
+  })
+
+  it('shows no sale banner when billing is disabled', async () => {
+    window.econumoConfig = {}
+    vi.mocked(getSaleBanner).mockResolvedValue(sale())
+    server.use(...coreHandlers())
+    renderBanner()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByText(/Black Friday: 40% off/)).not.toBeInTheDocument()
+    expect(trackEvent).not.toHaveBeenCalled()
+  })
 })

@@ -16,7 +16,6 @@ export function recurringPostPayload(
   recurring: RecurringDto,
   accounts: AccountDto[],
   exchangeFn: (fromCurrencyId: string, toCurrencyId: string, amount: string) => string,
-  opts: { date?: Date } = {},
 ): PostRecurringPayload {
   const isTransfer = recurring.type === 'transfer'
   const amount = normalize(recurring.amount)
@@ -43,10 +42,9 @@ export function recurringPostPayload(
     // with no chip row to edit, so it asks the server to inherit the template's
     // labels rather than echoing a possibly-stale cached copy of them
     description: recurring.description || '',
-    // Posting is the moment the money moves, so by default the transaction is
+    // Posting is the moment the money moves, so the transaction is always
     // dated now — never at a schedule the user posted ahead of, and never at a
-    // missed one they are only catching up on today. The budget list passes a
-    // later due date so posting ahead keeps the payment in its month and day.
-    date: formatDateTime(opts.date ?? new Date()),
+    // missed one they are only catching up on today.
+    date: formatDateTime(new Date()),
   }
 }

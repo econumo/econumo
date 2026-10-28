@@ -53,6 +53,7 @@ type Service struct {
 	oauthGrants           OAuthReclaimer
 	identityEmails        IdentityEmailLister
 	mcpGrants             MCPGrantRevoker
+	appVersion            string
 }
 
 func NewService(
@@ -129,6 +130,11 @@ func (s *Service) SetMCPGrantRevoker(r MCPGrantRevoker) { s.mcpGrants = r }
 // SetIdentityEmailLister installs the oauth feature's linked-address lookup for
 // the change-email notice, wired after construction like the two above.
 func (s *Service) SetIdentityEmailLister(l IdentityEmailLister) { s.identityEmails = l }
+
+// SetAppVersion records the running release so new accounts start with it as
+// their last-seen version: someone who never used an older release has no
+// "what's new" to see. A non-release version (a dev build) seeds nothing.
+func (s *Service) SetAppVersion(v string) { s.appVersion = v }
 
 // Logout revokes the presenting session. The "test" literal is a frozen wire
 // constant clients depend on (see LogoutResult).

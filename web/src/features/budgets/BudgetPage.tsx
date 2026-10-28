@@ -27,7 +27,6 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userOption } from '@/features/user/queries'
 import { UserOptions } from '@/api/dto/user'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCategories } from '@/features/classifications/queries'
 import {
   useBudget,
   useBudgets,
@@ -59,7 +58,9 @@ import { CommentMarker } from './CommentThread'
 import { CommentsPanel } from './CommentsPanel'
 import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
-import { planMonthFigures, sheetCell, sheetSetsPlan, type IncomeGroup, type SheetTarget } from './phoneMonth'
+import { planMonthFigures, sheetCell, sheetSetsPlan, sheetSpent, sheetUpcoming, type IncomeGroup, type SheetTarget } from './phoneMonth'
+import type { UpcomingQuery } from './UpcomingPaymentsPanel'
+import { planHintClass, wantsUpcomingPanel, type PlanHint } from './planHint'
 import { PhoneMonthView } from './PhoneMonthView'
 import { ViewSwitch } from './ViewSwitch'
 import { MonthFlows, MonthTotalsLines } from './MonthFlows'
@@ -101,7 +102,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const showLogoutEscape = useLogoutEscape(isPending)
   const { data: currencies = [] } = useCurrencies()
   const { data: accounts = [] } = useAccounts()
-  const { data: categories = [] } = useCategories()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
   const [editMode, setEditMode] = useState(false)
@@ -159,7 +159,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
   const [configureOpen, setConfigureOpen] = useState(false)
-  const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean; setsPlan?: boolean }) | null>(null)
+  const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean; setsPlan?: boolean; upcoming?: UpcomingQuery | null }) | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
   const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null)
   const menus = useBudgetLineMenus({ budget, plan: monthPlan.data, userId: user?.id, onOpenSettings: () => setUpdateBudgetOpen(true) })
@@ -279,13 +279,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
 
   if (!isPending && (!budget || budgetUnavailable)) {
     // no default budget — the onboarding empty state (Vue's BudgetOnboarding)
+    // categories are not needed: a budget can start empty and add them from its own menus
     const hasAccounts = accounts.length > 0
-    const hasCategories = categories.length > 0
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" data-testid="budget-empty">
         <h1 className="text-xl font-semibold">{t('budgets.page.budget.empty.header')}</h1>
         <p className="text-sm text-muted-foreground">{t('budgets.page.budget.empty.no_budget')}</p>
-        {hasAccounts && hasCategories ? (
+        {hasAccounts ? (
           <>
             <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.empty.description')}</p>
             <Button type="button" onClick={() => setCreateBudgetOpen(true)}>
@@ -295,7 +295,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         ) : (
           <>
             <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.empty.initial_setup')}</p>
-            <Button type="button" onClick={() => openAccountModal({ folderId: null })}>
+            <Button type="button" onClick={() => openAccountModal({})}>
               {t('budgets.page.budget.empty.create_account')}
             </Button>
           </>
@@ -448,11 +448,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // Savings block's planned cells; compact viewports use SetLimitDialog instead.
   const inlineLimitEditor =
     limitsEditable && !editMode && !isCompact
-      ? (cell: Pick<BudgetElementDto, 'id' | 'name' | 'budgeted' | 'currencyId'>) => (
+      ? (cell: BudgetElementDto, hint: PlanHint) => (
           <LimitEditor
             id={cell.id}
             name={cell.name}
             value={cell.budgeted}
+            hint={hint}
+            upcoming={upcomingQueryOf({ kind: 'expense', element: cell })}
             currency={currencies.find((c) => c.id === (cell.currencyId ?? budget.meta.currencyId))}
             onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: cell.id, period: selectedDate, amount })}
           />
@@ -466,8 +468,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     icon: element.icon,
     currencyId: element.currencyId,
   })
-  // the income Uncategorized row has no list: it gathers income booked in expense
-  // categories too, which no selector can name
   const sheetTransactionsTargetOf = (target: SheetTarget): BudgetTransactionsTarget | null => {
     switch (target.kind) {
       case 'expense':
@@ -476,13 +476,32 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         return { id: target.row.id, type: BudgetElementType.SAVINGS, name: target.row.name, icon: target.row.icon, currencyId: target.row.currencyId }
       case 'plan': {
         const el = target.cell.element
-        return el.id === UNCATEGORIZED_ID ? null : { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId }
+        return { id: el.id, type: el.type, name: elementDisplayName(el.id, el.name, t), icon: el.icon, currencyId: el.currencyId }
       }
       case 'label':
         return { id: target.label.id, type: 'label', name: target.label.name, icon: target.label.icon, currencyId: null }
     }
   }
   const sheetTransactions = sheetTarget ? sheetTransactionsTargetOf(sheetTarget) : null
+  // only a cell that can have money still to come gets a query, so opening any other editor fetches nothing
+  const upcomingQueryOf = (target: SheetTarget): UpcomingQuery | null => {
+    const spent = sheetSpent(target)
+    const upcoming = sheetUpcoming(target)
+    const listTarget = wantsUpcomingPanel(selectedDate, spent, upcoming, target.kind === 'savings') ? sheetTransactionsTargetOf(target) : null
+    if (!listTarget) {
+      return null
+    }
+    const currencyId = sheetCell(target, budget.meta.currencyId).currencyId
+    return {
+      budget,
+      target: listTarget,
+      periodStart: selectedDate,
+      currency: currencies.find((c) => c.id === currencyId),
+      exchange: makeBudgetExchange(budget, currencies),
+      spent,
+      upcoming,
+    }
+  }
   const sheetCanSetAmount = (target: SheetTarget): boolean => {
     if (!limitsEditable) {
       return false
@@ -545,15 +564,16 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     }
     setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })
   }
-  const renderFlowPlanned = (target: FlowTarget, text: string) => {
+  const renderFlowPlanned = (target: FlowTarget, text: string, hint: PlanHint) => {
     const cell = sheetCell(target, budget.meta.currencyId)
     const name = elementDisplayName(cell.id, cell.name, t)
+    const hintClass = planHintClass(hint)
     if (editMode) {
-      return text
+      return <span className={hintClass}>{text}</span>
     }
     if (isCompact) {
       return (
-        <button type="button" className="w-full text-right underline-offset-2 hover:underline" aria-label={`details ${name}`} onClick={() => setSheetTarget(target)}>
+        <button type="button" className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${hintClass}`} aria-label={`details ${name}`} onClick={() => setSheetTarget(target)}>
           {text}
         </button>
       )
@@ -568,13 +588,15 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               id={cell.id}
               name={name}
               value={cell.amount}
+              hint={hint}
+              upcoming={upcomingQueryOf(target)}
               currency={currencies.find((c) => c.id === cell.currencyId)}
               onCommit={(amount) => commitPlanned(target, amount)}
             />
           ) : (
             <button
               type="button"
-              className="w-full text-right underline-offset-2 hover:underline"
+              className={`w-full min-w-12 text-right underline-offset-2 hover:underline ${hintClass}`}
               aria-label={`comments ${name}`}
               onClick={(e) => openComments(thread, commentAnchorOf(e.currentTarget))}
             >
@@ -828,6 +850,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       <SetLimitDialog
         target={limitTarget ? { id: limitTarget.id, name: elementDisplayName(limitTarget.id, limitTarget.name, t), value: limitTarget.budgeted } : null}
         plan={limitTarget?.setsPlan}
+        upcoming={limitTarget?.upcoming}
         onClose={() => setLimitTarget(null)}
         onCommit={(elementId, amount) => {
           // an income plan lives only in the plan window, so it patches that cache;
@@ -852,7 +875,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         onClose={() => setSheetTarget(null)}
         onSetAmount={() => {
           if (sheetTarget) {
-            setLimitTarget({ ...sheetCellTarget(sheetTarget), viaPlan: sheetTarget.kind === 'plan', setsPlan: sheetSetsPlan(sheetTarget) })
+            setLimitTarget({
+              ...sheetCellTarget(sheetTarget),
+              viaPlan: sheetTarget.kind === 'plan',
+              setsPlan: sheetSetsPlan(sheetTarget),
+              upcoming: upcomingQueryOf(sheetTarget),
+            })
             setSheetTarget(null)
           }
         }}

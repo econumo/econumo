@@ -14,6 +14,7 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { useUserData } from '@/features/user/queries'
 import type { AggregatedImportResult, CsvAnalysis, FieldKey, ImportSelection } from './importCsv'
+import { EntitySelect } from './EntitySelect'
 import { analyzeCsv, autoDetect, CHUNK_SIZE, countNewLabels, defaultSelection, runImport, selectionValid } from './importCsv'
 
 const MAX_FILE_SIZE = 10485760
@@ -154,42 +155,37 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
       modes: { ...prev.modes, [field]: prev.modes[field] === 'csv_column' ? next : 'csv_column' },
     }))
 
+  // a file can carry many columns: the app's searchable picker, a sheet on a
+  // phone; each column reads with a sample value from the file
   const columnSelect = (field: FieldKey, value: string | null) => (
-    <select
+    <EntitySelect
       aria-label={fieldLabels[field]}
-      className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
-      value={value ?? ''}
-      onChange={(e) => patchColumns({ [field]: e.target.value === '' ? null : e.target.value } as Partial<ImportSelection['columns']>)}
-    >
-      <option value="">{t('transactions.import_csv.none')}</option>
-      {(analysis?.header ?? []).map((column) => (
-        <option key={column} value={column}>
-          {analysis?.samples[column] ? `${column} ("${analysis.samples[column]}")` : column}
-        </option>
-      ))}
-    </select>
+      value={value}
+      onChange={(column) => patchColumns({ [field]: column } as Partial<ImportSelection['columns']>)}
+      options={(analysis?.header ?? []).map((column) => ({
+        value: column,
+        label: analysis?.samples[column] ? `${column} ("${analysis.samples[column]}")` : column,
+        searchText: column,
+      }))}
+      placeholder={t('transactions.import_csv.none')}
+      clearable
+    />
   )
 
+  // the app's picker, as on a transaction: searchable, a sheet on a phone
   const entitySelect = (
     field: 'categoryId' | 'payeeId' | 'tagId',
     label: string,
-    items: { id: string; name: string; ownerUserId: string }[],
+    items: { id: string; name: string; icon?: string; ownerUserId: string }[],
   ) => (
-    <select
+    <EntitySelect
       aria-label={label}
-      className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
-      value={selection.fixed[field] ?? ''}
-      onChange={(e) => patchFixed({ [field]: e.target.value === '' ? null : e.target.value })}
-    >
-      <option value="">{t('transactions.import_csv.none')}</option>
-      {items
-        .filter((item) => item.ownerUserId === targetUserId)
-        .map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.name}
-          </option>
-        ))}
-    </select>
+      value={selection.fixed[field] ?? null}
+      onChange={(id) => patchFixed({ [field]: id })}
+      options={items.filter((item) => item.ownerUserId === targetUserId).map((item) => ({ value: item.id, label: item.name, icon: item.icon }))}
+      placeholder={t('transactions.import_csv.none')}
+      clearable
+    />
   )
 
   const modeToggle = (field: keyof ImportSelection['modes'], next: 'existing' | 'manual') => (
@@ -307,19 +303,19 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
               selection.modes.account === 'csv_column' ? (
                 columnSelect('account', selection.columns.account)
               ) : (
-                <select
+                <EntitySelect
                   aria-label={fieldLabels.account}
-                  className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
-                  value={selection.fixed.accountId ?? ''}
-                  onChange={(e) => patchFixed({ accountId: e.target.value === '' ? null : e.target.value })}
-                >
-                  <option value="">{t('transactions.import_csv.none')}</option>
-                  {writableAccounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {`${account.name} (${account.balance} ${account.currency.code})`}
-                    </option>
-                  ))}
-                </select>
+                  value={selection.fixed.accountId ?? null}
+                  onChange={(id) => patchFixed({ accountId: id })}
+                  options={writableAccounts.map((account) => ({
+                    value: account.id,
+                    label: `${account.name} (${account.balance} ${account.currency.code})`,
+                    icon: account.icon,
+                    searchText: account.name,
+                  }))}
+                  placeholder={t('transactions.import_csv.none')}
+                  clearable
+                />
               ),
               modeToggle('account', 'existing'),
             )}

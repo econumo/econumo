@@ -41,10 +41,22 @@ it('includes apple-wallet on/off on both product events and page views', () => {
   const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
   qc.setQueryData(queryKeys.importSources, [{ provider: 'apple-wallet' }])
   trackEvent(METRICS.IMPORT_SETUP_STEP, { provider: 'apple-wallet', step: 'install', done: true })
-  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ 'apple-wallet': 'on' }))
+  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ import_apple_wallet: 'on' }))
   qc.setQueryData(queryKeys.importSources, [])
   trackEvent(METRICS.PAGE_VIEW)
-  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ 'apple-wallet': 'off' }))
+  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ import_apple_wallet: 'off' }))
+})
+
+it('includes the theme preference, system when none is stored', () => {
+  const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
+  trackEvent(METRICS.PAGE_VIEW)
+  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ theme: 'system' }))
+  localStorage.setItem('econumo.theme', 'dark')
+  trackEvent(METRICS.PAGE_VIEW)
+  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ theme: 'dark' }))
+  localStorage.setItem('econumo.theme', 'bogus')
+  trackEvent(METRICS.PAGE_VIEW)
+  expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ theme: 'system' }))
 })
 
 it('suppresses every setup funnel event when analytics is off', () => {

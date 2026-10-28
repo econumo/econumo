@@ -2914,7 +2914,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Income of categoryId or envelopeId (exactly one; composes with nothing else)",
+                        "description": "Income of categoryId or envelopeId (exactly one), or with uncategorized the income Uncategorized row; composes with nothing else",
                         "name": "income",
                         "in": "query"
                     },
@@ -12722,6 +12722,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/user/update-last-seen-version": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Records the release (vX.Y.Z) whose \"what's new\" notice the authenticated user has seen and returns the refreshed user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update last seen version",
+                "parameters": [
+                    {
+                        "description": "Update last seen version request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateLastSeenVersionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UpdateLastSeenVersionResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/update-name": {
             "post": {
                 "security": [
@@ -13505,36 +13574,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.PlanMonthTransfersResult"
                     }
-                },
-                "upcomingOpeningBalances": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.OpeningBalanceResult"
-                    }
-                },
-                "upcomingSavingsFlows": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
-                    }
-                },
-                "upcomingSavingsIncomeExpense": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
-                    }
-                },
-                "upcomingSavingsOpeningBalances": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.OpeningBalanceResult"
-                    }
-                },
-                "upcomingTransfers": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PlanMonthTransfersResult"
-                    }
                 }
             }
         },
@@ -13948,6 +13987,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "accessUntil": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "CreatedAt is the connected user's register date (\"\" when unknown).",
                     "type": "string"
                 },
                 "sharedAccounts": {
@@ -16326,6 +16369,10 @@ const docTemplate = `{
                 "isArchived": {
                     "type": "integer"
                 },
+                "isBudgeted": {
+                    "description": "IsBudgeted is 1 when the period has a plan, even a plan of 0; with 0,\nBudgeted is \"0\" and means no plan was set.",
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -16342,10 +16389,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "upcoming": {
-                    "description": "Upcoming is the period's projected recurring spend not yet posted, and\nUpcomingBefore the projected spend filed in earlier months of the\nprojection window (from the caller's current month on), both in\nCurrencyId; BudgetUpcoming is Upcoming in the budget currency. Spent and\nAvailable stay real money only.",
-                    "type": "string"
-                },
-                "upcomingBefore": {
+                    "description": "Upcoming is the period's recurring spend not yet posted, in CurrencyId;\nBudgetUpcoming is Upcoming in the budget currency. A planning hint: Spent\nand Available stay real money only.",
                     "type": "string"
                 }
             }
@@ -16575,9 +16619,6 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
-                },
-                "upcomingOpeningBalance": {
-                    "type": "string"
                 }
             }
         },
@@ -17109,6 +17150,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "isArchived": {
+                    "type": "integer"
+                },
+                "isBudgeted": {
                     "type": "integer"
                 },
                 "name": {
@@ -18048,6 +18092,22 @@ const docTemplate = `{
             }
         },
         "model.UpdateLanguageResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.UpdateLastSeenVersionRequest": {
+            "type": "object",
+            "properties": {
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateLastSeenVersionResult": {
             "type": "object",
             "properties": {
                 "user": {

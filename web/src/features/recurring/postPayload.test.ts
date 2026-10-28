@@ -69,12 +69,6 @@ it('posts an overdue template with today\'s date, not its missed scheduled date'
   }
 })
 
-it('posts at the given date when one is passed', () => {
-  // the budget list posts a payment due later this month on its own day
-  const payload = recurringPostPayload(template(), accounts, exchangeFn, { date: new Date(2026, 8, 3, 9, 15, 0) })
-  expect(payload.date).toBe('2026-09-03 09:15:00')
-})
-
 it('mints a fresh transaction id rather than reusing the template id', () => {
   const first = recurringPostPayload(template(), accounts, exchangeFn)
   const second = recurringPostPayload(template(), accounts, exchangeFn)

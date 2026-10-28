@@ -95,28 +95,28 @@ type ChildElementResult struct {
 
 // ParentElementResult is a top-level budget element (envelope/tag/category).
 type ParentElementResult struct {
-	Id          string               `json:"id"`
-	Type        int                  `json:"type"`
-	Name        string               `json:"name"`
-	Icon        string               `json:"icon"`
-	CurrencyId  string               `json:"currencyId"`
-	IsArchived  int                  `json:"isArchived"`
-	FolderId    *string              `json:"folderId"`
-	Position    int                  `json:"position"`
-	Budgeted    string               `json:"budgeted"`
+	Id         string  `json:"id"`
+	Type       int     `json:"type"`
+	Name       string  `json:"name"`
+	Icon       string  `json:"icon"`
+	CurrencyId string  `json:"currencyId"`
+	IsArchived int     `json:"isArchived"`
+	FolderId   *string `json:"folderId"`
+	Position   int     `json:"position"`
+	Budgeted   string  `json:"budgeted"`
+	// IsBudgeted is 1 when the period has a plan, even a plan of 0; with 0,
+	// Budgeted is "0" and means no plan was set.
+	IsBudgeted  int                  `json:"isBudgeted"`
 	Available   string               `json:"available"`
 	Spent       string               `json:"spent"`
 	BudgetSpent string               `json:"budgetSpent"`
 	Children    []ChildElementResult `json:"children"`
 	OwnerUserId *string              `json:"ownerUserId"`
-	// Upcoming is the period's projected recurring spend not yet posted, and
-	// UpcomingBefore the projected spend filed in earlier months of the
-	// projection window (from the caller's current month on), both in
-	// CurrencyId; BudgetUpcoming is Upcoming in the budget currency. Spent and
-	// Available stay real money only.
+	// Upcoming is the period's recurring spend not yet posted, in CurrencyId;
+	// BudgetUpcoming is Upcoming in the budget currency. A planning hint: Spent
+	// and Available stay real money only.
 	Upcoming       string `json:"upcoming"`
 	BudgetUpcoming string `json:"budgetUpcoming"`
-	UpcomingBefore string `json:"upcomingBefore"`
 }
 
 // LabelSpendResult is one reporting label in the budget's labels block. It has
@@ -155,6 +155,7 @@ type SavingsElementResult struct {
 	IsArchived     int    `json:"isArchived"`
 	Position       int    `json:"position"`
 	Budgeted       string `json:"budgeted"`
+	IsBudgeted     int    `json:"isBudgeted"`
 	Spent          string `json:"spent"`
 	Available      string `json:"available"`
 	ClosingBalance string `json:"closingBalance"`
@@ -420,26 +421,20 @@ type PlanMonthRatesResult struct {
 // BudgetPlanResult.Months; Actual is the account's net change that month (every
 // transaction on it, interest and transfers with any account included), in
 // CurrencyId (the element currency); Planned is "" with no limit.
-// UpcomingOpeningBalance is the recurring money due on the account before the
-// window start, in the element currency: what the cells' booked
-// ClosingBalance lacks before the first cell's Upcoming ("0" unless the window
-// starts after the current month).
 type PlanSavingsElementResult struct {
-	Id                     string                  `json:"id"`
-	Type                   int                     `json:"type"`
-	Name                   string                  `json:"name"`
-	Icon                   string                  `json:"icon"`
-	CurrencyId             string                  `json:"currencyId"`
-	OwnerUserId            string                  `json:"ownerUserId"`
-	IsArchived             int                     `json:"isArchived"`
-	Position               int                     `json:"position"`
-	UpcomingOpeningBalance string                  `json:"upcomingOpeningBalance"`
-	Cells                  []PlanSavingsCellResult `json:"cells"`
+	Id          string                  `json:"id"`
+	Type        int                     `json:"type"`
+	Name        string                  `json:"name"`
+	Icon        string                  `json:"icon"`
+	CurrencyId  string                  `json:"currencyId"`
+	OwnerUserId string                  `json:"ownerUserId"`
+	IsArchived  int                     `json:"isArchived"`
+	Position    int                     `json:"position"`
+	Cells       []PlanSavingsCellResult `json:"cells"`
 }
 
 // PlanSavingsCellResult is a savings row's month: ClosingBalance is the
-// account's booked balance at the end of that month, in the element currency;
-// it leaves Upcoming out, which the client adds.
+// account's booked balance at the end of that month, in the element currency.
 type PlanSavingsCellResult struct {
 	Actual         string `json:"actual"`
 	Planned        string `json:"planned"`
@@ -471,13 +466,6 @@ type PlanStructureResult struct {
 // SavingsIncomeExpense is the income minus the expenses booked on the savings
 // accounts, same shape as SavingsFlows: the category rows count the everyday
 // accounts only, so the combined balance needs it added back.
-//
-// The Upcoming* arrays are their namesakes over the recurring payments not yet
-// posted, with the same shape and order rules: UpcomingOpeningBalances is what
-// is due before the window start (non-zero only for a window starting after
-// the current month). A window that ends before the caller's current month
-// projects nothing: opening balances "0", transfer months with no items, flows
-// [].
 type BudgetPlanResult struct {
 	Meta                   MetaResult                 `json:"meta"`
 	Months                 []string                   `json:"months"`
@@ -488,12 +476,6 @@ type BudgetPlanResult struct {
 	SavingsFlows           []PlanSavingsFlowResult    `json:"savingsFlows"`
 	SavingsIncomeExpense   []PlanSavingsFlowResult    `json:"savingsIncomeExpense"`
 	Structure              PlanStructureResult        `json:"structure"`
-
-	UpcomingOpeningBalances        []OpeningBalanceResult     `json:"upcomingOpeningBalances"`
-	UpcomingSavingsOpeningBalances []OpeningBalanceResult     `json:"upcomingSavingsOpeningBalances"`
-	UpcomingTransfers              []PlanMonthTransfersResult `json:"upcomingTransfers"`
-	UpcomingSavingsFlows           []PlanSavingsFlowResult    `json:"upcomingSavingsFlows"`
-	UpcomingSavingsIncomeExpense   []PlanSavingsFlowResult    `json:"upcomingSavingsIncomeExpense"`
 }
 
 // GetBudgetPlanResult is {item: BudgetPlanResult}.

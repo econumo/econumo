@@ -18,6 +18,7 @@ import { STEPS, forgetSetupTicks, type StepId, type WalletSetup } from './wallet
 export const WALLET_SHORTCUT_NAME = 'econumo'
 export const WALLET_SHORTCUT_URL = `/shortcuts/${WALLET_SHORTCUT_NAME}.shortcut`
 export const WALLET_GUIDE_URL = `${getWebsiteUrl()}/docs/user-guide/apple-wallet`
+const SHORTCUTS_APP_URL = 'shortcuts://'
 const INGEST_TOKEN_NAME = 'Apple Wallet'
 
 // Inside an installed PWA iOS keeps every same-origin link in the app's own
@@ -57,6 +58,43 @@ function ExternalButton({ href, onClick, variant = 'outline', download = false, 
   )
 }
 
+type ShortcutsStep = 'automate' | 'immediate'
+
+// The Shortcuts app differs between iOS 26 and 27 exactly in these two steps,
+// so each links to its own section of the illustrated guide per version.
+const GUIDE_ANCHORS: Record<ShortcutsStep, Record<'26' | '27', string>> = {
+  automate: { 26: '#ios-26', 27: '#ios-27' },
+  immediate: { 26: '#on-ios-26', 27: '#on-ios-27' },
+}
+
+function GuideLinks({ step }: { step: ShortcutsStep }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+      <span className="text-muted-foreground">{t('imports.apple_wallet.steps.guide_title')}</span>
+      {(['26', '27'] as const).map((ios) => (
+        <a key={ios} href={`${WALLET_GUIDE_URL}${GUIDE_ANCHORS[step][ios]}`} target="_blank" rel="noopener"
+          className="inline-flex items-center gap-1.5 text-econumo-link underline-offset-2 hover:underline"
+          onClick={() => trackEvent(METRICS.IMPORT_SETUP_GUIDE_OPEN, { provider: 'apple-wallet', step, ios })}>
+          {t(`imports.apple_wallet.steps.guide_ios${ios}`)}<ExternalLink className="size-3.5" />
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function OpenShortcutsButton({ step }: { step: ShortcutsStep }) {
+  const { t } = useTranslation()
+  if (!isIOS()) {
+    return null
+  }
+  return (
+    <ExternalButton href={SHORTCUTS_APP_URL} onClick={() => trackEvent(METRICS.IMPORT_SETUP_SHORTCUTS_OPEN, { provider: 'apple-wallet', step })}>
+      <ExternalLink className="size-4" />{t('imports.apple_wallet.steps.open_shortcuts')}
+    </ExternalButton>
+  )
+}
+
 export function AppleWalletConnect() {
   const { t } = useTranslation()
   const createSource = useCreateImportSource()
@@ -74,7 +112,7 @@ export function AppleWalletConnect() {
       <div className="flex flex-col gap-1.5">
         <h2 className="text-xs uppercase text-muted-foreground">{t('imports.apple_wallet.connect_intro.limitations_title')}</h2>
         <ul className="flex flex-col gap-1 text-muted-foreground">
-          {(['tap_only', 'online_not_imported'] as const).map((key) => (
+          {(['tap_only', 'online_not_imported', 'no_signal'] as const).map((key) => (
             <li key={key} className="flex gap-2">
               <span aria-hidden="true" className="w-4 shrink-0 text-center">•</span>
               <span>{t(`imports.apple_wallet.connect_intro.${key}`)}</span>
@@ -233,6 +271,33 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
             {!isDone ? <><Waiting>{t('imports.apple_wallet.steps.configure.waiting')}</Waiting>{doneButton(id)}</> : null}
           </>
         )
+      case 'automate':
+        return (
+          <>
+            {text(id)}
+            <ol className="flex list-decimal flex-col gap-1 pl-5 text-muted-foreground">
+              {(['open', 'wallet', 'cards', 'confirm', 'shortcut'] as const).map((key) => (
+                <li key={key}>{t(`imports.apple_wallet.steps.automate.list.${key}`)}</li>
+              ))}
+            </ol>
+            <div className="flex flex-wrap items-center gap-3">
+              <OpenShortcutsButton step={id} />
+              {!isDone ? doneButton(id) : null}
+            </div>
+            <GuideLinks step={id} />
+          </>
+        )
+      case 'immediate':
+        return (
+          <>
+            {text(id)}
+            <div className="flex flex-wrap items-center gap-3">
+              <OpenShortcutsButton step={id} />
+              {!isDone ? doneButton(id) : null}
+            </div>
+            <GuideLinks step={id} />
+          </>
+        )
       case 'payment':
         return (
           <>
@@ -261,6 +326,7 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
               <button type="button" className="flex items-center gap-3 rounded-md py-2 text-left" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : id)}>
                 <StepMarker n={i + 1} state={state} />
                 <span className={state === 'todo' ? 'text-muted-foreground' : ''}>{t(`imports.apple_wallet.steps.${id}.title`)}</span>
+                {id === 'immediate' ? <span className="text-xs text-muted-foreground">{t('imports.apple_wallet.steps.optional')}</span> : null}
               </button>
               {isOpen ? <div className="flex flex-col gap-3 pb-3 pl-9">{body(id)}</div> : null}
             </li>
@@ -273,8 +339,10 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
 
 export function AppleWalletSetup({ setup }: { setup: WalletSetup }) {
   const { t } = useTranslation()
-  const complete = setup.current === null
-  const [expanded, setExpanded] = useState(!complete)
+  const complete = setup.complete
+  // Run Immediately is optional, so a guide still showing it stays open until
+  // the user folds it away.
+  const [expanded, setExpanded] = useState(!complete || (setup.current !== null && !setup.collapsed))
   const open = !complete || expanded
   const [configuring, setConfiguring] = useState(false)
   const [resetting, setResetting] = useState(false)
@@ -314,7 +382,7 @@ export function AppleWalletSetup({ setup }: { setup: WalletSetup }) {
       <div className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1 ${open ? 'border-b border-border pb-3' : ''}`}>
         <h2 className="min-w-0 flex-1 font-medium">
           {complete ? (
-            <button type="button" className={`flex min-h-8 w-full items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${open ? '' : 'justify-between'}`} aria-expanded={open} onClick={() => setExpanded((value) => !value)}>
+            <button type="button" className={`flex min-h-8 w-full items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${open ? '' : 'justify-between'}`} aria-expanded={open} onClick={() => { setExpanded(!open); setup.setCollapsed(open) }}>
               {t('imports.apple_wallet.setup.title')}
               <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>

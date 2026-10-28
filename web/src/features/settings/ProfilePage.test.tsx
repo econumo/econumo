@@ -171,11 +171,11 @@ it('changing the default currency posts the code and updates the cache', async (
   )
   const user = userEvent.setup()
   const queryClient = renderPage()
-  await screen.findByText('Currency')
-  // the row shows the current code; clicking it opens the search dialog
-  await waitFor(() => expect(screen.getByText('USD')).toBeInTheDocument())
-  await user.click(screen.getByText('Currency'))
-  await user.click(await screen.findByText('EUR, €, Euro'))
+  // the same currency field as the account and budget forms; a pick saves
+  const field = await screen.findByRole('combobox', { name: 'Currency' })
+  await waitFor(() => expect(field).toHaveValue('USD, $, US Dollar'))
+  await user.click(field)
+  await user.click(await screen.findByRole('option', { name: 'EUR, €, Euro' }))
   await waitFor(() => expect(body).toEqual({ currency: 'EUR' }))
   await waitFor(() => {
     const cached = queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)!

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowUpDown, ChevronLeft, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useParams } from 'react-router'
+import { useMatch, useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -56,6 +56,7 @@ const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
 function TransactionForm({ params, onDone }: { params: OpenTransactionParams; onDone: () => void }) {
   const { t } = useTranslation()
   const { id: routeAccountId } = useParams()
+  const accountPageId = useMatch('/account/:id')?.params.id ?? null
   const { data: accounts = [] } = useAccounts()
   const { data: folders = [] } = useFolders()
   const { data: categories = [] } = useCategories()
@@ -120,6 +121,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }, [ownerId, categories, payees, tags, labels, form, patch])
 
   const selectableAccounts = accountOptions(accounts, folders, form.isNew)
+  // a transfer needs two accounts the user can write to; an existing transfer
+  // keeps its type so it stays editable
+  const transferUnavailable = !isTransfer && selectableAccounts.filter((a) => canWriteToAccount(a, user?.id)).length < 2
   const currentCategories = categoryOptions(categories, form.type, ownerId)
   const currentPayees = payees.filter((p) => p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId))
   const chips = classificationChips(tags, labels, form, ownerId)
@@ -210,8 +214,12 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         await postRecurring.mutateAsync({ ...payload, recurringId: params.postRecurring.id })
       } else if (form.isNew) {
         await createTransaction.mutateAsync(payload)
-        if (isTransfer && payload.accountRecipientId) {
+        if (isTransfer && payload.accountRecipientId && payload.accountRecipientId !== accountPageId) {
           setSwitchAccountPrompt(payload.accountRecipientId)
+        } else if (accountPageId && payload.accountId !== accountPageId && payload.accountRecipientId !== accountPageId) {
+          // added to an account other than the one on screen: the row is not
+          // in this list, so offer the account it went to
+          setSwitchAccountPrompt(payload.accountId)
         }
       } else {
         await updateTransaction.mutateAsync(payload)
@@ -309,7 +317,8 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
             type="button"
             role="radio"
             aria-checked={form.type === type}
-            className={`flex-1 rounded-md px-2 py-2 text-[13px] uppercase tracking-wide transition-colors ${
+            disabled={type === 'transfer' && transferUnavailable}
+            className={`flex-1 rounded-md px-2 py-2 text-[13px] uppercase tracking-wide transition-colors disabled:pointer-events-none disabled:opacity-40 ${
               form.type === type ? 'bg-econumo-magenta text-white' : 'text-muted-foreground hover:text-foreground'
             }`}
             onClick={() => setType(type)}
@@ -325,6 +334,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           <div className="[&_[data-slot=entity-select]]:h-auto [&_[data-slot=entity-select]]:border-0 [&_[data-slot=entity-select]]:px-0 [&_[data-slot=entity-select]]:py-1 [&_[data-slot=entity-select]]:ring-0 [&_[data-slot=entity-select]]:bg-transparent dark:[&_[data-slot=entity-select]]:bg-transparent">
             <EntitySelect
               aria-label="account"
+              title={t('transactions.modal.form.account.label')}
               value={form.accountId}
               onChange={(id) => patch({ accountId: id })}
               options={selectableAccounts.map(accountToOption)}
@@ -375,6 +385,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 <SelectCard label={t('transactions.modal.form.from.label')}>
                   <EntitySelect
                     aria-label="from account"
+                    title={t('transactions.modal.form.from.label')}
                     value={form.accountId}
                     onChange={setSenderAccount}
                     options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
@@ -395,6 +406,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
             <SelectCard label={t('transactions.modal.form.to.label')} error={errors.accountRecipientId}>
               <EntitySelect
                 aria-label="to account"
+                title={t('transactions.modal.form.to.label')}
                 value={form.accountRecipientId}
                 onChange={setRecipientAccount}
                 options={selectableAccounts.filter((a) => a.id !== form.accountId).map(accountToOption)}

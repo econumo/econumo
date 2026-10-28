@@ -568,31 +568,6 @@ it('a tablet savings cell’s sheet → Transactions lists the account’s trans
   expect(tx.params()?.get('periodStart')).toBe('2026-08-01')
 })
 
-it('a later month’s savings balance with an upcoming transfer opens that month’s list', async () => {
-  vi.setSystemTime(new Date(2026, 5, 15, 12, 0, 0))
-  const tx = captureTxListParams()
-  const plan = {
-    ...savingsPlan,
-    structure: {
-      ...savingsPlan.structure,
-      savings: [{ ...savingsS1, cells: savingsS1.cells.map((c, i) => ({ ...c, actual: '0', closingBalance: '1000', upcoming: i === 2 ? '300' : '0' })) }],
-    },
-  }
-  useHandlers(plan, [tx.handler])
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage()
-  await screen.findByTestId('plan-sheet')
-  const cellOf = (month: string) => document.querySelector(`[data-testid^="plan-cell-acc-s1:"][data-month="${month}"]`) as HTMLElement
-  await waitFor(() => expect(cellOf('2026-07-01')).not.toBeNull())
-  // August has no money moving: its balance stays plain text
-  expect(within(cellOf('2026-08-01')).getByTestId('cell-actual').tagName).not.toBe('BUTTON')
-  const jul = within(cellOf('2026-07-01')).getByTestId('cell-actual')
-  expect(jul.tagName).toBe('BUTTON')
-  await user.click(jul)
-  await waitFor(() => expect(tx.params()?.get('accountId')).toBe('acc-s1'))
-  expect(tx.params()?.get('periodStart')).toBe('2026-07-01')
-})
-
 it('a tablet income cell’s sheet → Transactions lists the category’s income for that month', async () => {
   const tx = captureTxListParams()
   useHandlers(savingsPlan, [tx.handler])

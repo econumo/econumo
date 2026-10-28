@@ -281,6 +281,19 @@
   html {
     @apply font-sans;
     }
+  /* The shell never scrolls the document, so a root bounce only drags the whole
+     app and bares the html background past its edges (iOS). Inner scrollers
+     still bounce on their own surface. */
+  html, body {
+    overscroll-behavior: none;
+    }
+}
+
+/* On a phone the home screen IS the sidebar: what a bounce or the safe area
+   shows must be its colour, not the workspace's. Unlayered and :root-specific
+   to beat index.html's pre-paint html background. */
+:root:has([data-surface="sidebar"]) {
+  background: var(--sidebar);
 }
 
 /* Quasar parity: action buttons speak uppercase. Value-bearing triggers

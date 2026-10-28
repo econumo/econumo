@@ -443,30 +443,3 @@ it('someone else’s reporting tag shows Edit inactive', async () => {
   await user.click(await screen.findByRole('button', { name: /^kid-A, spent/ }))
   expect(within(await screen.findByRole('dialog', { name: /^kid-A · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
 })
-
-it('the current month shows the fact on a phone; a row with nothing spent yet but money upcoming still reaches its list', async () => {
-  vi.useFakeTimers({ toFake: ['Date'] })
-  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
-  try {
-    const budget = structuredClone(fixtureWireBudget)
-    const [food, living] = budget.structure.elements
-    Object.assign(food, { upcoming: '30', budgetUpcoming: '30', upcomingBefore: '0' })
-    Object.assign(living, { upcoming: '20', budgetUpcoming: '18', upcomingBefore: '0' })
-    handlers({ budget })
-    const params = captureTxListParams()
-    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-    renderPage()
-    // 45.50 spent, not 45.50 + 30
-    expect(await screen.findByRole('button', { name: /^Food, budget/ })).toHaveTextContent('45.50')
-    expect(screen.getByRole('button', { name: /^Food, budget/ })).not.toHaveTextContent('75.50')
-    await user.click(screen.getByRole('button', { name: /^Living, budget/ }))
-    const sheet = await screen.findByTestId('element-sheet')
-    expect(within(sheet).getByTestId('sheet-figure-spent')).toHaveTextContent('0.00')
-    await user.click(within(sheet).getByRole('button', { name: 'Transactions' }))
-    expect(await screen.findByRole('dialog', { name: /Living/ })).toBeInTheDocument()
-    await waitFor(() => expect(params()?.get('envelopeId')).toBe('env-1'))
-    expect(params()?.get('periodStart')).toBe('2026-07-01')
-  } finally {
-    vi.useRealTimers()
-  }
-})

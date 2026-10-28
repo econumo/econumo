@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { moneyFormat } from '@/lib/money'
-import { cmp, isZero, sub } from '@/lib/decimal'
+import { cmp, sub } from '@/lib/decimal'
 import type { BudgetCommentDto } from '@/api/dto/budget'
 import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
@@ -12,8 +12,8 @@ import type { Id } from '@/api/types'
 import { carryOver, displayAvailable, elementDisplayName, rowState } from './budgetMath'
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
-import { sheetCell, sheetIcon, sheetSetsPlan } from './phoneMonth'
-import { FUTURE_FIGURE } from './monthLayout'
+import { sheetCell, sheetIcon, sheetPlanHint, sheetSetsPlan } from './phoneMonth'
+import { planHintClass } from './planHint'
 import { currentMonth, formatPlanMonth } from './planMath'
 
 const EMPTY = '—'
@@ -45,7 +45,8 @@ interface Figure {
   label: string
   value: string
   negative?: boolean
-  muted?: boolean
+  /** the plan hint's style */
+  className?: string
 }
 
 export function ElementSheet({
@@ -82,7 +83,14 @@ export function ElementSheet({
     moneyFormat(amount, c, { showCurrency: false, useNativePrecision: false, maxPrecision: c?.fractionDigits ?? 2 })
   // the sheet repeats a foreign item's code beside every amount (the row only tags its name)
   const fmt = (amount: string) => `${fmtIn(amount, currency)}${foreign && currency ? ` ${currency.code}` : ''}`
-  const actual = (amount: string) => (future && isZero(amount) ? EMPTY : fmt(amount))
+  const actual = (amount: string) => (future ? EMPTY : fmt(amount))
+  const hint = sheetPlanHint(target)
+  const planFigure = (key: string, figureLabel: string, planned: string): Figure => ({
+    key,
+    label: figureLabel,
+    value: planned === '' ? EMPTY : fmt(planned),
+    className: planHintClass(hint),
+  })
   const label = {
     budget: t('budgets.page.budget.structure.tab.budgeted'),
     spent: t('budgets.page.budget.structure.tab.spent'),
@@ -100,9 +108,9 @@ export function ElementSheet({
     const el = target.element
     const available = displayAvailable(el)
     if (!isUncategorized) {
-      figures.push({ key: 'budget', label: label.budget, value: fmt(el.budgeted) })
+      figures.push(planFigure('budget', label.budget, el.budgeted))
     }
-    figures.push({ key: 'spent', label: label.spent, value: actual(el.spent), muted: future })
+    figures.push({ key: 'spent', label: label.spent, value: actual(el.spent) })
     if (!isUncategorized) {
       figures.push({ key: 'available', label: label.available, value: fmt(available), negative: cmp(available, '0') < 0 })
       const state = rowState({ budgeted: el.budgeted, spent: el.spent, available }, future)
@@ -112,7 +120,7 @@ export function ElementSheet({
     }
     actualInBase = el.budgetSpent
   } else if (target.kind === 'label') {
-    figures.push({ key: 'spent', label: label.spent, value: actual(target.label.spent), muted: future })
+    figures.push({ key: 'spent', label: label.spent, value: actual(target.label.spent) })
     actualInBase = target.label.spent
   } else {
     const planned = target.kind === 'savings' ? target.row.budgeted : target.cell.planned
@@ -120,15 +128,15 @@ export function ElementSheet({
     const closing = target.kind === 'savings' ? target.row.closingBalance : target.cell.closingBalance
     const type = target.kind === 'savings' ? BudgetElementType.SAVINGS : target.cell.element.type
     if (type === BudgetElementType.SAVINGS) {
-      figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
-      figures.push({ key: 'saved', label: label.saved, value: actual(done), muted: future })
+      figures.push(planFigure('planned', label.planned, planned))
+      figures.push({ key: 'saved', label: label.saved, value: actual(done) })
       figures.push({ key: 'balance', label: label.balance, value: closing !== undefined ? fmt(closing) : EMPTY })
     } else if (isIncomeType(type)) {
-      figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
-      figures.push({ key: 'received', label: label.received, value: actual(done), muted: future })
+      figures.push(planFigure('planned', label.planned, planned))
+      figures.push({ key: 'received', label: label.received, value: actual(done) })
     } else {
-      figures.push({ key: 'budget', label: label.budget, value: fmt(planned) })
-      figures.push({ key: 'spent', label: label.spent, value: actual(done), muted: future })
+      figures.push(planFigure('budget', label.budget, planned))
+      figures.push({ key: 'spent', label: label.spent, value: actual(done) })
     }
     actualInBase = foreign ? exchange(cell.currencyId, baseCurrencyId, done) : done
   }
@@ -157,7 +165,7 @@ export function ElementSheet({
           {figures.map((f) => (
             <div key={f.key} className="flex flex-col items-center text-center" data-testid={`sheet-figure-${f.key}`}>
               <span className="text-[13px] text-muted-foreground">{f.label}</span>
-              <span className={`text-[17px] font-medium tabular-nums ${f.negative ? 'text-expense' : f.muted ? FUTURE_FIGURE : ''}`}>{f.value}</span>
+              <span className={`text-[17px] font-medium tabular-nums ${f.negative ? 'text-expense' : ''} ${f.className ?? ''}`}>{f.value}</span>
             </div>
           ))}
         </div>
@@ -168,7 +176,7 @@ export function ElementSheet({
         ) : null}
         {foreign && baseCurrency ? (
           <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-            {!future || !isZero(actualInBase) ? (
+            {!future ? (
               <span data-testid="sheet-converted">
                 {t('budgets.page.sheet.converted', { amount: fmtIn(actualInBase, baseCurrency), currency: baseCurrency.code })}
               </span>

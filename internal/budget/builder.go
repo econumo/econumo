@@ -45,7 +45,7 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 	if err != nil {
 		return model.BudgetResult{}, err
 	}
-	return s.buildBudget(ctx, b, f, now)
+	return s.asOfTomorrow(ctx).buildBudget(ctx, b, f, now)
 }
 
 // buildBudget is BuildBudget over filters the caller already built for the

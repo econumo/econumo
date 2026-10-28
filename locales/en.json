@@ -395,6 +395,9 @@
           "label": "Notes",
           "placeholder": "Enter notes"
         },
+        "account": {
+          "label": "Account"
+        },
         "from": {
           "label": "From"
         },
@@ -540,6 +543,7 @@
         "limitations_title": "Known limitations",
         "tap_only": "Works only when you tap your iPhone to pay",
         "online_not_imported": "Apple Pay payments on websites aren’t supported",
+        "no_signal": "Transactions made with no signal may not be added",
         "steps_title": "How it works",
         "flow": {
           "pay": "Pay with Apple Pay",
@@ -567,7 +571,7 @@
         },
         "configure": {
           "title": "Connect the Shortcut",
-          "text": "Generates an API token. The Shortcut saves the server address and token, then connects to Econumo. Tap Always Allow on every prompt — the automation will need these permissions.",
+          "text": "Tap Connect the Shortcut, then tap Always Allow on every prompt.",
           "button": "Connect the Shortcut",
           "open": "Link Econumo",
           "waiting": "Waiting for the Shortcut to reach Econumo…",
@@ -575,7 +579,14 @@
         },
         "automate": {
           "title": "Create the automation",
-          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import → Run After Confirmation → econumo."
+          "text": "In the Shortcuts app, create a Wallet automation:",
+          "list": {
+            "open": "Open the Automation tab (on iOS 27: Library → Automation), then tap New Automation or +",
+            "wallet": "Choose Wallet (\"When I tap a Wallet Card or Pass\")",
+            "cards": "Select the cards and categories to import, or all of them",
+            "confirm": "Keep confirmation on: Run After Confirmation (iOS 26) or Confirm Before Run (iOS 27)",
+            "shortcut": "Choose the econumo shortcut (on iOS 27: add Run Shortcut → econumo, with Transaction as its input)"
+          }
         },
         "payment": {
           "title": "Make the first payment",
@@ -584,9 +595,14 @@
         },
         "immediate": {
           "title": "Switch the automation to Run Immediately",
-          "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt."
+          "text": "Turn off the confirmation so payments are imported without asking: open the automation in Shortcuts and choose Run Immediately (iOS 26) or turn off Confirm Before Run (iOS 27)."
         },
-        "done": "Done"
+        "done": "Done",
+        "guide_title": "Step-by-step guide with screenshots:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Open Shortcuts",
+        "optional": "Optional"
       },
       "same_named_cards": "Cards with the same name in Wallet appear as one card.",
       "cards": {
@@ -1196,10 +1212,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "Upcoming recurring payment",
-      "later_cycle": "Can be posted after the earlier payment"
-    },
     "modal": {
       "budget_form": {
         "accounts": "Accounts",
@@ -1349,13 +1361,21 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "Coming up",
+        "spent": "Already spent",
+        "received": "Already received",
+        "saved": "Already saved",
+        "posted": "Posted",
+        "total": "Total"
+      },
       "budget": {
         "empty": {
           "header": "Budget",
           "no_budget": "You haven’t created a budget yet.",
           "description": "Create a budget or accept an invitation to start planning your finances.",
           "create_budget": "Create a budget",
-          "initial_setup": "To create a budget, first add an account and at least one category.",
+          "initial_setup": "To create a budget, first add an account.",
           "create_account": "Add account"
         },
         "unavailable": {
@@ -2024,6 +2044,7 @@
       "payees": "Payees",
       "tags": "Tags",
       "labels": "Labels",
+      "recurring": "Recurring",
       "transactions": "Transactions"
     },
     "show_all": "Show all ({count})",
@@ -2070,7 +2091,10 @@
       "cta": "Manage subscription",
       "dismiss": "Dismiss",
       "connection_trial": "{name}'s subscription ends in {count} day | {name}'s subscription ends in {count} days",
-      "connection_readonly": "{name}'s subscription has ended — they can view shared accounts but not edit"
+      "connection_readonly": "{name}'s subscription has ended — they can view shared accounts but not edit",
+      "sale_ends": "ends {date}",
+      "sale": "{name}: {percent}% off",
+      "sale_cta": "Get the deal"
     },
     "settings": {
       "group": "Billing",
@@ -2153,6 +2177,10 @@
       },
       "close": "Got it"
     }
+  },
+  "whatsNew": {
+    "notice": "What's new in {version}",
+    "dismiss": "Dismiss"
   },
   "errors": {
     "common": {

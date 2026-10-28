@@ -395,6 +395,9 @@
           "label": "Notas",
           "placeholder": "Introduza notas"
         },
+        "account": {
+          "label": "Conta"
+        },
         "from": {
           "label": "De"
         },
@@ -540,6 +543,7 @@
         "limitations_title": "Limitações conhecidas",
         "tap_only": "Só funciona ao aproximar o iPhone para pagar",
         "online_not_imported": "Os pagamentos com Apple Pay em sites não são suportados",
+        "no_signal": "Sem rede no momento do pagamento, a transação pode não ser adicionada",
         "steps_title": "Como funciona",
         "flow": {
           "pay": "Pague com Apple Pay",
@@ -567,7 +571,7 @@
         },
         "configure": {
           "title": "Ligar o atalho",
-          "text": "Gera um token de API. O atalho guarda o endereço do servidor e o token e depois liga-se ao Econumo. Toque em «Permitir sempre» em cada pedido — a automatização vai precisar destas permissões.",
+          "text": "Toque em «Ligar o atalho» e depois em «Permitir sempre» em cada pedido.",
           "button": "Ligar o atalho",
           "open": "Associar o Econumo",
           "waiting": "À espera de que o atalho chegue ao Econumo…",
@@ -575,7 +579,14 @@
         },
         "automate": {
           "title": "Criar a automatização",
-          "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar → Executar após confirmação → econumo."
+          "text": "Na app Atalhos, crie uma automatização da Carteira:",
+          "list": {
+            "open": "Abra o separador Automatização (no iOS 27: Biblioteca → Automatização) e toque em «Nova automatização» ou +",
+            "wallet": "Escolha Carteira («Quando toco num cartão ou passe da Carteira»)",
+            "cards": "Selecione os cartões e categorias a importar, ou todos",
+            "confirm": "Mantenha a confirmação ligada: «Executar após confirmação» (iOS 26) ou «Confirmar antes de executar» (iOS 27)",
+            "shortcut": "Escolha o atalho econumo (no iOS 27: adicione «Executar atalho» → econumo, com «Transação» como entrada)"
+          }
         },
         "payment": {
           "title": "Fazer o primeiro pagamento",
@@ -584,9 +595,14 @@
         },
         "immediate": {
           "title": "Mudar a automatização para «Executar imediatamente»",
-          "text": "Na app Atalhos, abra a automatização e mude «Executar após confirmação» para «Executar imediatamente». A partir daí os pagamentos são importados sem perguntar."
+          "text": "Desligue a confirmação para os pagamentos serem importados sem perguntar: abra a automatização em Atalhos e escolha «Executar imediatamente» (iOS 26) ou desligue «Confirmar antes de executar» (iOS 27)."
         },
-        "done": "Concluído"
+        "done": "Concluído",
+        "guide_title": "Guia passo a passo com capturas de ecrã:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Abrir Atalhos",
+        "optional": "Opcional"
       },
       "same_named_cards": "Cartões com o mesmo nome no Wallet são apresentados como um único cartão.",
       "cards": {
@@ -1196,10 +1212,6 @@
     }
   },
   "budgets": {
-    "transactions": {
-      "upcoming_hint": "Próximo pagamento recorrente",
-      "later_cycle": "Pode ser lançado após o pagamento anterior"
-    },
     "modal": {
       "budget_form": {
         "accounts": "Contas",
@@ -1349,13 +1361,21 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "Por vir",
+        "spent": "Já gasto",
+        "received": "Já recebido",
+        "saved": "Já poupado",
+        "posted": "Registado",
+        "total": "Total"
+      },
       "budget": {
         "empty": {
           "header": "Orçamento",
           "no_budget": "Ainda não criou um orçamento.",
           "description": "Crie um orçamento ou aceite um convite para começar a planear as suas finanças.",
           "create_budget": "Criar orçamento",
-          "initial_setup": "Para criar um orçamento, adicione primeiro uma conta e pelo menos uma categoria.",
+          "initial_setup": "Para criar um orçamento, adicione primeiro uma conta.",
           "create_account": "Adicionar conta"
         },
         "unavailable": {
@@ -2024,6 +2044,7 @@
       "payees": "Beneficiários",
       "tags": "Etiquetas",
       "labels": "Etiquetas de relatório",
+      "recurring": "Recorrentes",
       "transactions": "Transações"
     },
     "show_all": "Mostrar todos ({count})",
@@ -2070,7 +2091,10 @@
       "cta": "Gerir subscrição",
       "dismiss": "Dispensar",
       "connection_trial": "A subscrição de {name} termina dentro de {count} dia | A subscrição de {name} termina dentro de {count} dias",
-      "connection_readonly": "A subscrição de {name} terminou — esta pessoa pode ver as contas partilhadas, mas não editá-las"
+      "connection_readonly": "A subscrição de {name} terminou — esta pessoa pode ver as contas partilhadas, mas não editá-las",
+      "sale_ends": "até {date}",
+      "sale": "{name}: {percent}% de desconto",
+      "sale_cta": "Aproveitar a oferta"
     },
     "settings": {
       "group": "Faturação",
@@ -2153,6 +2177,10 @@
       },
       "close": "Percebi"
     }
+  },
+  "whatsNew": {
+    "notice": "Novidades da {version}",
+    "dismiss": "Dispensar"
   },
   "errors": {
     "common": {

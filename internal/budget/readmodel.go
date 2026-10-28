@@ -89,6 +89,10 @@ type ReadModel interface {
 	// not, newest first, Direction "in". Backs an income row's drill-down (the
 	// counterpart of IncomeByMonth).
 	BudgetTransactionsIncome(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsIncomeUncategorized returns the income transactions
+	// BudgetTransactionsIncome leaves out: category NULL or not in
+	// knownCategoryIDs. Backs the income Uncategorized row's drill-down.
+	BudgetTransactionsIncomeUncategorized(ctx context.Context, knownCategoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
 	// BudgetTransactionsOnAccount returns every transaction in [start, end)
 	// that moved the account's balance, newest first: Amount/CurrencyID are
 	// the account's side, Direction "in" or "out" of it, Type the kind.
