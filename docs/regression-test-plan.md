@@ -2452,6 +2452,10 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       (long forms, e.g. Add transaction) on mobile (<640px), and a centered
       dialog on tablet — content scrolls, safe areas respected, keyboard does
       not cover inputs.
+- [ ] 📱 New / Edit category on a phone (Categories page, Budget menus)
+      opens as a bottom sheet like New tag / New payee, not a full-screen
+      page: the icon picker shows 4 rows per page, swiping or the dots
+      move between pages, and it opens on the page holding the current icon.
 - [ ] 📱 Bottom sheet with a text field (Send feedback, Set plan) on an
       iPhone: focusing the field puts the sheet's action row right on top of
       the keyboard, with the header still visible and the body scrolling in
