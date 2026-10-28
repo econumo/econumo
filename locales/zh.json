@@ -1937,7 +1937,10 @@
       "cta": "管理订阅",
       "dismiss": "忽略",
       "connection_trial": "{name} 的订阅将在 {count} 天后到期",
-      "connection_readonly": "{name} 的订阅已到期——对方只能查看共享账户，无法编辑"
+      "connection_readonly": "{name} 的订阅已到期——对方只能查看共享账户，无法编辑",
+      "sale_ends": "{date} 截止",
+      "sale": "{name}：立减 {percent}%",
+      "sale_cta": "立即抢购"
     },
     "settings": {
       "group": "账单",

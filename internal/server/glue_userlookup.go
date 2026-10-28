@@ -51,6 +51,6 @@ func (l *UserOwnerLookup) GetOwner(ctx context.Context, userID string) (model.Ow
 	}
 	return model.OwnerView{
 		ID: h.ID, Name: h.Name, Avatar: h.Avatar,
-		AccessLevel: h.AccessLevel, AccessUntil: h.AccessUntil,
+		AccessLevel: h.AccessLevel, AccessUntil: h.AccessUntil, CreatedAt: h.CreatedAt,
 	}, nil
 }
