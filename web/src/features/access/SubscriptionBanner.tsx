@@ -66,7 +66,7 @@ export function SubscriptionBanner() {
   // The sale only exists with billing enabled, so it always gets a CTA.
   const cta = billingEnabled ? (
     <Button type="button" size="sm" variant="outline" disabled={portal.pending} onClick={() => portal.open()}>
-      {variant === 'sale' ? sale!.cta : t('subscription.banner.cta')}
+      {variant === 'sale' ? t('subscription.banner.sale_cta') : t('subscription.banner.cta')}
     </Button>
   ) : null
 
@@ -104,7 +104,12 @@ export function SubscriptionBanner() {
     // itself. (sm:contents dissolves the second row into the one-line flex.)
     return (
       <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1.5 bg-primary/10 py-2 pr-2 pl-4 text-sm text-econumo-link sm:flex sm:gap-3 sm:pr-4">
-        <span className="font-medium">{sale!.text}</span>
+        <span className="font-medium">
+          {t('subscription.banner.sale', {
+            name: sale!.name,
+            percent: new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 2 }).format(sale!.percent),
+          })}
+        </span>
         <span className="sm:order-last">{dismiss}</span>
         <div className="col-span-2 flex items-center justify-between gap-3 pr-2 sm:contents">
           <span className="whitespace-nowrap opacity-80 sm:-ml-1.5">

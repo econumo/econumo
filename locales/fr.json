@@ -1938,7 +1938,9 @@
       "dismiss": "Masquer",
       "connection_trial": "L’abonnement de {name} se termine dans {count} jour | L’abonnement de {name} se termine dans {count} jours",
       "connection_readonly": "L’abonnement de {name} a expiré — cette personne peut consulter les comptes partagés, mais pas les modifier",
-      "sale_ends": "jusqu’au {date}"
+      "sale_ends": "jusqu’au {date}",
+      "sale": "{name} : -{percent} %",
+      "sale_cta": "J’en profite"
     },
     "settings": {
       "group": "Facturation",

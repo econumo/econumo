@@ -16,16 +16,16 @@ const POLL = 30 * 60_000
 
 const blackFriday = {
   id: 'black-friday-2026',
-  text: 'Black Friday: 40% off',
-  cta: 'Get 40% off',
+  name: 'Black Friday',
+  percent: 40,
   startsAt: '2026-11-27T00:00:00Z',
   endsAt: '2026-11-30T00:00:00Z',
 }
 
 const cyberMonday = {
   id: 'cyber-monday-2026',
-  text: 'Cyber Monday: 30% off',
-  cta: 'Get 30% off',
+  name: 'Cyber Monday',
+  percent: 30,
   startsAt: '2026-11-30T00:00:00Z',
   endsAt: '2026-12-01T00:00:00Z',
 }

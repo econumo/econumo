@@ -10,7 +10,7 @@ vi.mock('./config', async (importOriginal) => ({
 
 const entry = { accessLevel: 'full' as const, accessUntil: '2026-12-10 00:00:00', registeredAt: '2025-01-01 00:00:00' }
 const input = { locale: 'en', user: entry, connections: [entry] }
-const banner = { id: 'bf', text: 'Black Friday: 30% off', cta: 'Get the deal', startsAt: '2026-11-27T00:00:00Z', endsAt: '2026-11-30T00:00:00Z' }
+const banner = { id: 'bf', name: 'Black Friday', percent: 30, startsAt: '2026-11-27T00:00:00Z', endsAt: '2026-11-30T00:00:00Z' }
 const ENDPOINT = 'https://billing.example/api/v1/public/get-offer'
 
 function answer(data: unknown, status = 200) {
@@ -66,7 +66,11 @@ describe('getSaleBanner', () => {
     expect(await getSaleBanner(input)).toBeNull()
     server.use(http.post(ENDPOINT, () => HttpResponse.error()))
     expect(await getSaleBanner(input)).toBeNull()
-    server.use(http.post(ENDPOINT, () => answer({ banner: { ...banner, cta: '' } })))
+    server.use(http.post(ENDPOINT, () => answer({ banner: { ...banner, name: '' } })))
+    expect(await getSaleBanner(input)).toBeNull()
+    server.use(http.post(ENDPOINT, () => answer({ banner: { ...banner, percent: '30' } })))
+    expect(await getSaleBanner(input)).toBeNull()
+    server.use(http.post(ENDPOINT, () => answer({ banner: { ...banner, percent: 0 } })))
     expect(await getSaleBanner(input)).toBeNull()
   })
 

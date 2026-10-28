@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { formatDate } from '@/lib/datetime'
+import i18n from '@/app/i18n'
 import { SubscriptionBanner } from './SubscriptionBanner'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { getSaleBanner } from '@/lib/billingBanner'
@@ -181,8 +182,8 @@ function isoIn(hours: number): string {
 function sale(id = 'black-friday-2026') {
   return {
     id,
-    text: 'Black Friday: 40% off',
-    cta: 'Get 40% off',
+    name: 'Black Friday',
+    percent: 40,
     startsAt: isoIn(-1),
     endsAt: isoIn(48),
   }
@@ -216,6 +217,19 @@ describe('sale variant', () => {
     expect(screen.getByText('Black Friday: 40% off')).toBeInTheDocument()
   })
 
+  it('writes the banner in the user\'s language around billing\'s promo name', async () => {
+    await i18n.changeLanguage('ru')
+    try {
+      vi.mocked(getSaleBanner).mockResolvedValue({ ...sale(), name: 'Чёрная пятница', percent: 12.5 })
+      server.use(...coreHandlers())
+      renderBanner()
+      expect(await screen.findByText('Чёрная пятница: скидка 12,5%')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Купить со скидкой' })).toBeInTheDocument()
+    } finally {
+      await i18n.changeLanguage('en')
+    }
+  })
+
   it('outranks the trial banner', async () => {
     vi.mocked(getSaleBanner).mockResolvedValue(sale())
     server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
@@ -224,7 +238,7 @@ describe('sale variant', () => {
     expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
   })
 
-  it('labels the CTA with banner.cta and opens the billing portal', async () => {
+  it('labels the CTA from Econumo\'s own translations and opens the billing portal', async () => {
     vi.mocked(getSaleBanner).mockResolvedValue(sale())
     let minted = false
     server.use(
@@ -242,7 +256,7 @@ describe('sale variant', () => {
     window.open = vi.fn().mockReturnValue(tab)
     const user = userEvent.setup()
     renderBanner()
-    await user.click(await screen.findByRole('button', { name: 'Get 40% off' }))
+    await user.click(await screen.findByRole('button', { name: 'Get the deal' }))
     expect(window.open).toHaveBeenCalled()
     await waitFor(() => expect(tab.location.href).toBe('https://pay.example.test/?t=abc'))
     expect(minted).toBe(true)
@@ -311,7 +325,8 @@ describe('sale variant', () => {
     localStorage.setItem('subscriptionBannerDismissedDay', formatDate(new Date()))
     vi.mocked(getSaleBanner).mockResolvedValue({
       ...sale('cyber-monday-2026'),
-      text: 'Cyber Monday: 30% off',
+      name: 'Cyber Monday',
+      percent: 30,
     })
     server.use(...coreHandlers())
     renderBanner()

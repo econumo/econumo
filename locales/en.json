@@ -1938,7 +1938,9 @@
       "dismiss": "Dismiss",
       "connection_trial": "{name}'s subscription ends in {count} day | {name}'s subscription ends in {count} days",
       "connection_readonly": "{name}'s subscription has ended — they can view shared accounts but not edit",
-      "sale_ends": "ends {date}"
+      "sale_ends": "ends {date}",
+      "sale": "{name}: {percent}% off",
+      "sale_cta": "Get the deal"
     },
     "settings": {
       "group": "Billing",

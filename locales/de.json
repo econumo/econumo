@@ -1938,7 +1938,9 @@
       "dismiss": "Ausblenden",
       "connection_trial": "Das Abonnement von {name} endet in {count} Tag | Das Abonnement von {name} endet in {count} Tagen",
       "connection_readonly": "Das Abonnement von {name} ist abgelaufen — {name} kann gemeinsame Konten nur ansehen, aber nicht bearbeiten",
-      "sale_ends": "bis {date}"
+      "sale_ends": "bis {date}",
+      "sale": "{name}: {percent} % Rabatt",
+      "sale_cta": "Angebot sichern"
     },
     "settings": {
       "group": "Abrechnung",

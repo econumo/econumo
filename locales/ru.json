@@ -1938,7 +1938,9 @@
       "dismiss": "Скрыть",
       "connection_trial": "Подписка {name} закончится через {count} день | Подписка {name} закончится через {count} дня | Подписка {name} закончится через {count} дней",
       "connection_readonly": "Подписка {name} закончилась — общие счета доступны им только для просмотра",
-      "sale_ends": "до {date}"
+      "sale_ends": "до {date}",
+      "sale": "{name}: скидка {percent}%",
+      "sale_cta": "Купить со скидкой"
     },
     "settings": {
       "group": "Оплата",

@@ -1938,7 +1938,9 @@
       "dismiss": "Sluiten",
       "connection_trial": "Het abonnement van {name} eindigt over {count} dag | Het abonnement van {name} eindigt over {count} dagen",
       "connection_readonly": "Het abonnement van {name} is afgelopen — gedeelde rekeningen kunnen wel worden bekeken, maar niet bewerkt",
-      "sale_ends": "tot {date}"
+      "sale_ends": "tot {date}",
+      "sale": "{name}: {percent}% korting",
+      "sale_cta": "Profiteer nu"
     },
     "settings": {
       "group": "Facturering",

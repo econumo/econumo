@@ -1,10 +1,12 @@
 import { backendHost, getBillingUrl } from './config'
 import { isNativeApp } from './platform'
 
+// The running (or upcoming) sale, as data: billing owns the promo name and
+// the percentage, Econumo writes every word around them.
 export interface SaleBanner {
   id: string
-  text: string
-  cta: string
+  name: string
+  percent: number
   startsAt: string
   endsAt: string
 }
@@ -21,7 +23,7 @@ export interface SaleBannerInput {
   connections: SaleBannerEntry[]
 }
 
-const BANNER_FIELDS = ['id', 'text', 'cta', 'startsAt', 'endsAt'] as const
+const TEXT_FIELDS = ['id', 'name', 'startsAt', 'endsAt'] as const
 
 // A hung request must not hold the banner hook's next ask hostage.
 const TIMEOUT_MS = 10_000
@@ -29,7 +31,13 @@ const TIMEOUT_MS = 10_000
 function isBanner(value: unknown): value is SaleBanner {
   if (typeof value !== 'object' || value === null) return false
   const record = value as Record<string, unknown>
-  return BANNER_FIELDS.every((field) => typeof record[field] === 'string' && record[field] !== '')
+  const percent = record.percent
+  return (
+    TEXT_FIELDS.every((field) => typeof record[field] === 'string' && record[field] !== '') &&
+    typeof percent === 'number' &&
+    percent > 0 &&
+    percent <= 100
+  )
 }
 
 // Built through the URL API so a query on BILLING_URL stays a query rather
