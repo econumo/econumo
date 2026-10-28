@@ -36,7 +36,7 @@ function isBanner(value: unknown): value is SaleBanner {
 // than swallowing the path.
 function bannerEndpoint(billingUrl: string): string {
   const url = new URL(billingUrl)
-  url.pathname = `${url.pathname.replace(/\/+$/, '')}/api/v1/portal/get-banner`
+  url.pathname = `${url.pathname.replace(/\/+$/, '')}/api/v1/public/get-offer`
   return url.toString()
 }
 

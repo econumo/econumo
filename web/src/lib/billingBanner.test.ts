@@ -11,7 +11,7 @@ vi.mock('./config', async (importOriginal) => ({
 const entry = { accessLevel: 'full' as const, accessUntil: '2026-12-10 00:00:00', registeredAt: '2025-01-01 00:00:00' }
 const input = { locale: 'en', user: entry, connections: [entry] }
 const banner = { id: 'bf', text: 'Black Friday: 30% off', cta: 'Get the deal', startsAt: '2026-11-27T00:00:00Z', endsAt: '2026-11-30T00:00:00Z' }
-const ENDPOINT = 'https://billing.example/api/v1/portal/get-banner'
+const ENDPOINT = 'https://billing.example/api/v1/public/get-offer'
 
 function answer(data: unknown, status = 200) {
   return HttpResponse.json({ success: status < 400, message: '', data }, { status })
@@ -31,7 +31,7 @@ describe('getSaleBanner', () => {
     expect(called).toBe(false)
   })
 
-  it('posts the input to get-banner and returns the banner', async () => {
+  it('posts the input to the public get-offer and returns the banner', async () => {
     let body: unknown
     server.use(
       http.post(ENDPOINT, async ({ request }) => {
@@ -47,13 +47,13 @@ describe('getSaleBanner', () => {
     window.econumoConfig = { BILLING_URL: 'https://billing.example/portal/?tenant=x' }
     let url = ''
     server.use(
-      http.post('https://billing.example/portal/api/v1/portal/get-banner', ({ request }) => {
+      http.post('https://billing.example/portal/api/v1/public/get-offer', ({ request }) => {
         url = request.url
         return answer({ banner })
       }),
     )
     expect(await getSaleBanner(input)).toEqual(banner)
-    expect(url).toBe('https://billing.example/portal/api/v1/portal/get-banner?tenant=x')
+    expect(url).toBe('https://billing.example/portal/api/v1/public/get-offer?tenant=x')
   })
 
   it('returns null when billing has no banner', async () => {
