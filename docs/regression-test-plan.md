@@ -1016,6 +1016,11 @@ and on tablet/phone only with a hardware keyboard.
 
 - [ ] 📱 Create a budget: name, currency, ≥1 owned account required; appears in
       the sidebar; becomes default when first/chosen.
+- [ ] 📱 New user with no budget: the Budget page offers "Add account" while
+      there are no accounts; once one account exists it offers "Create a
+      budget" right away, with no categories needed.
+- [ ] 📱 A user whose last account was deleted (a folder is left over) can add
+      an account from the empty Budget page; it lands in their first folder.
 - [ ] Budget table: budgeted / spent / available columns; expanding an element
       shows details; totals row; uncategorized and labels sections appear with
       info notes when relevant.

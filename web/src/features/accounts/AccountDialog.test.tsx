@@ -72,6 +72,30 @@ it('creates an account with a UUIDv7 op id and numeric balance; correction lands
   )
 })
 
+it('a caller with no folder in mind (the budget page) puts the account in the first folder', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/account/create-account', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: { ...fixtureAccounts[0], id: 'a-created' }, transaction: null } })
+    }),
+  )
+  const user = userEvent.setup()
+  const queryClient = renderDialog()
+  queryClient.setQueryData(queryKeys.folders, [
+    { id: 'f2', name: 'Savings', position: 1, isVisible: 1 },
+    { id: 'f1', name: 'General', position: 0, isVisible: 1 },
+  ])
+  useUiStore.getState().openAccountModal({})
+
+  await screen.findByText('New account')
+  await user.type(screen.getByLabelText('Name'), 'New Wallet')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.folderId).toBe('f1')
+})
+
 it('a caller that asked to hear about the new account gets it once it is created', async () => {
   const createdAccount = { ...fixtureAccounts[0], id: 'a-created', name: 'Rainy day', balance: '0' }
   server.use(

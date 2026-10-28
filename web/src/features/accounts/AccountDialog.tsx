@@ -24,7 +24,7 @@ import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections
 import { useConnections } from '@/features/connections/queries'
 import { UserAvatar } from '@/components/UserAvatar'
 import { evaluatedAmount } from '../transactions/useTransactionForm'
-import { useAccounts, useCreateAccount, useGrantAccountAccess, useRevokeAccountAccess, useUpdateAccount } from './queries'
+import { useAccounts, useCreateAccount, useFolders, useGrantAccountAccess, useRevokeAccountAccess, useUpdateAccount } from './queries'
 import { useFormErrors } from '@/hooks/useFormErrors'
 
 export function AccountDialog() {
@@ -35,6 +35,7 @@ export function AccountDialog() {
   const createAccount = useCreateAccount()
   const updateAccount = useUpdateAccount()
   const { data: accounts } = useAccounts()
+  const { data: folders } = useFolders()
   const { data: connections = [] } = useConnections({ enabled: !!params?.account })
   const grantAccountAccess = useGrantAccountAccess()
   const revokeAccountAccess = useRevokeAccountAccess()
@@ -117,7 +118,9 @@ export function AccountDialog() {
           currencyId,
           balance: balanceAmount,
           icon,
-          folderId: params.folderId ?? null,
+          // the server only invents a folder for a user who has none, so a caller with no
+          // folder in mind (the budget page) lands the account in the first one
+          folderId: params.folderId ?? folders?.[0]?.id ?? null,
         })
         params.onCreated?.(created.item)
       } else {
