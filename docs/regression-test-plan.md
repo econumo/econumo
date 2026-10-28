@@ -2309,6 +2309,11 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       (or the collector blocked), Send shows "Couldn't send your feedback.
       Please try again." and keeps the text.
 - [ ] With `ECONUMO_FEEDBACK=false`, the Settings row does not appear.
+- [ ] 📱 One top banner at a time: with the subscription banner up (trial
+      ending within 3 days, or read-only) the install banner is not shown
+      under it; dismissing the subscription banner brings the install banner
+      back in its place. In the native app the server-version notice outranks
+      the install banner the same way.
 - [ ] 📱 Install banner, iOS Safari (not yet added to the Home Screen): a
       one-line banner "Econumo works best as an app" with an "Install" button
       and × sits at the top of every page — `/login`, `/register`, the app

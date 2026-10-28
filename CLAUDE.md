@@ -353,7 +353,8 @@ syncs) surfaces in the Inbox (`web/src/features/inbox`, `/inbox`), fed by one
 there, never into a new top banner (that slot is reserved for the subscription
 and server-version notices, and the install-the-app banner,
 `web/src/features/install/InstallBanner.tsx`, which also tops the signed-out
-`AuthFrame` pages). Runtime config
+`AuthFrame` pages); `TopBanner` in `web/src/app/layouts` shows only one of them
+at a time, in that order). Runtime config
 (`window.econumoConfig`) is served at `/econumo-config.js`: for a running
 instance the Go server generates the whole document (see the "Web UI config"
 bullet below); `public/econumo-config.js` is only the static fallback used

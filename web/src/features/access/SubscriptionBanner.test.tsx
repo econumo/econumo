@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { formatDate } from '@/lib/datetime'
-import { SubscriptionBanner } from './SubscriptionBanner'
+import { SubscriptionBanner, useSubscriptionBanner } from './SubscriptionBanner'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
 vi.mock('@/lib/metrics', async (importOriginal) => ({
@@ -17,12 +17,16 @@ function utcIn(days: number): string {
   return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 19).replace('T', ' ')
 }
 
+function Banner() {
+  return <SubscriptionBanner banner={useSubscriptionBanner()} />
+}
+
 function renderBanner() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
-  return render(<SubscriptionBanner />, { wrapper })
+  return render(<Banner />, { wrapper })
 }
 
 beforeEach(() => {

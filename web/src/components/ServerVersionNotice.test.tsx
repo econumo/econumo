@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { ServerVersionNotice } from './ServerVersionNotice'
+import { ServerVersionNotice as Notice, useServerVersionNotice } from './ServerVersionNotice'
+
+function ServerVersionNotice() {
+  return <Notice serverVersion={useServerVersionNotice()} />
+}
 import { useServerConfig } from '@/lib/appConfig'
 
 beforeEach(() => {

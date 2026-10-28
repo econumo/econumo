@@ -12,9 +12,8 @@ import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UpdateNotice } from '@/components/UpdateNotice'
 import { WhatsNewNotice } from '@/features/whatsNew/WhatsNewNotice'
-import { InstallBanner } from '@/features/install/InstallBanner'
+import { TopBanner } from './TopBanner'
 import { InstallPopup } from '@/features/install/InstallPopup'
-import { ServerVersionNotice } from '@/components/ServerVersionNotice'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
 import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
@@ -26,7 +25,6 @@ import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { InboxButton } from '@/features/inbox/InboxButton'
-import { SubscriptionBanner } from '@/features/access/SubscriptionBanner'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
@@ -187,9 +185,7 @@ export function ApplicationLayout() {
       className={`flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${showWorkspace ? '' : 'bg-sidebar'}`}
       data-surface={showWorkspace ? undefined : 'sidebar'}
     >
-      <SubscriptionBanner />
-      <ServerVersionNotice />
-      <InstallBanner />
+      <TopBanner />
       <InstallPopup />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
@@ -329,3 +325,4 @@ export function ApplicationLayout() {
     </div>
   )
 }
+

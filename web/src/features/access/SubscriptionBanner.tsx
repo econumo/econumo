@@ -14,13 +14,13 @@ import { useOpenBillingPortal } from './useOpenBillingPortal'
 // across reloads and returns the next day (the countdown has moved by then).
 const DISMISSED_KEY = 'subscriptionBannerDismissedDay'
 
-export function SubscriptionBanner() {
-  const { t, i18n } = useTranslation()
+export type SubscriptionBannerState = ReturnType<typeof useSubscriptionBanner>
+
+export function useSubscriptionBanner() {
   const { state, daysLeft, billingEnabled } = useAccessState()
   // Partner warnings only exist where the billing portal can act on them,
   // so self-hosted instances (no BILLING_URL) never fetch connections here.
   const { data: connections = [] } = useConnections({ enabled: billingEnabled })
-  const portal = useOpenBillingPortal()
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISSED_KEY) === formatDate(new Date()))
 
   const partner = billingEnabled && !dismissed ? worstConnectionAttention(connections) : null
@@ -42,6 +42,19 @@ export function SubscriptionBanner() {
       trackEvent(METRICS.SUBSCRIPTION_BANNER_SHOW, { variant })
     }
   }, [variant])
+
+  const dismiss = () => {
+    localStorage.setItem(DISMISSED_KEY, formatDate(new Date()))
+    setDismissed(true)
+  }
+
+  return { variant, partner, daysLeft, billingEnabled, dismiss }
+}
+
+export function SubscriptionBanner({ banner }: { banner: SubscriptionBannerState }) {
+  const { t, i18n } = useTranslation()
+  const { variant, partner, daysLeft, billingEnabled, dismiss } = banner
+  const portal = useOpenBillingPortal()
 
   if (!variant) {
     return null
@@ -77,10 +90,7 @@ export function SubscriptionBanner() {
         type="button"
         aria-label={t('subscription.banner.dismiss')}
         className="shrink-0 hover:opacity-70"
-        onClick={() => {
-          localStorage.setItem(DISMISSED_KEY, formatDate(new Date()))
-          setDismissed(true)
-        }}
+        onClick={dismiss}
       >
         <X className="size-4" />
       </button>
