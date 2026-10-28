@@ -87,6 +87,36 @@ it('a caller that asked to hear about the new account gets it once it is created
   await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'a-created' })))
 })
 
+it('a new account shows 0 as a placeholder, so typing starts clean, and an untouched balance posts 0', async () => {
+  const bodies: Record<string, unknown>[] = []
+  server.use(
+    http.post('*/api/v1/account/create-account', async ({ request }) => {
+      bodies.push((await request.json()) as Record<string, unknown>)
+      return HttpResponse.json({ success: true, message: '', data: { item: { ...fixtureAccounts[0], id: 'a-created' }, transaction: null } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openAccountModal({ folderId: 'f1' })
+  await screen.findByText('New account')
+  const balanceField = screen.getByLabelText('Balance')
+  expect(balanceField).toHaveValue('')
+  expect(balanceField).toHaveAttribute('placeholder', '0')
+  await user.type(screen.getByLabelText('Name'), 'Rainy day')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0].balance).toBe('0')
+
+  useUiStore.getState().openAccountModal({ folderId: 'f1' })
+  await screen.findByText('New account')
+  await user.type(screen.getByLabelText('Name'), 'Wallet')
+  await user.type(screen.getByLabelText('Balance'), '123')
+  expect(screen.getByLabelText('Balance')).toHaveValue('123')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(bodies).toHaveLength(2))
+  expect(bodies[1].balance).toBe('123')
+})
+
 it('shows the exact validation messages', async () => {
   const user = userEvent.setup()
   renderDialog()
