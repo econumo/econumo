@@ -264,6 +264,9 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 Create account from the sidebar and from Settings → Accounts: name,
       starting balance (calculator input accepts a formula, e.g. `100+23.5`),
       currency, icon. Balance shows correctly in the sidebar and account page.
+- [ ] 📱 New account dialog: the balance field is empty with a grey `0`
+      placeholder; typing `123` gives `123` (no leading `0`); leaving it empty
+      creates the account with a 0 balance and no correction transaction.
 - [ ] Starting balance creates a "correction"-style initial transaction dated
       now; account page shows it.
 - [ ] Edit account: rename, change icon; balance edit creates a correction to

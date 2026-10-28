@@ -44,7 +44,7 @@ export function AccountDialog() {
   const isNew = !account
 
   const [name, setName] = useState('')
-  const [balance, setBalance] = useState('0')
+  const [balance, setBalance] = useState('')
   const [currencyId, setCurrencyId] = useState<string | null>(null)
   const [icon, setIcon] = useState(defaultAccountIcon)
   const { errors, setErrors, clear: clearError, reset: resetErrors } = useFormErrors<{ name?: string; balance?: string }>()
@@ -68,7 +68,7 @@ export function AccountDialog() {
       setIcon(params.account.icon || defaultAccountIcon)
     } else {
       setName('')
-      setBalance('0')
+      setBalance('')
       setCurrencyId(userCurrencyId(user))
       setIcon(defaultAccountIcon)
     }
@@ -90,7 +90,10 @@ export function AccountDialog() {
       next.name = t('accounts.form.name.validation.invalid_name')
     }
     if (!isNotEmpty(balance)) {
-      next.balance = t('common.validation.required_field')
+      // a new account's empty balance is the placeholder's 0
+      if (!isNew) {
+        next.balance = t('common.validation.required_field')
+      }
     } else if (!isValidFormula(balance)) {
       next.balance = t('common.validation.invalid_formula')
     } else {
@@ -109,7 +112,7 @@ export function AccountDialog() {
     if (!validate() || !currencyId) {
       return
     }
-    const balanceAmount = evaluatedAmount(balance)
+    const balanceAmount = isNotEmpty(balance) ? evaluatedAmount(balance) : '0'
     try {
       if (isNew) {
         const created = await createAccount.mutateAsync({
@@ -192,7 +195,7 @@ export function AccountDialog() {
           <CalculatorInput
             id="account-balance"
             className={cardFieldControlClass}
-            placeholder={t('accounts.form.balance.placeholder')}
+            placeholder={isNew ? '0' : t('accounts.form.balance.placeholder')}
             value={balance}
             onChange={(v) => {
               clearError('balance')
