@@ -1937,7 +1937,8 @@
       "cta": "Gestisci l'abbonamento",
       "dismiss": "Ignora",
       "connection_trial": "L'abbonamento di {name} scade tra {count} giorno | L'abbonamento di {name} scade tra {count} giorni",
-      "connection_readonly": "L'abbonamento di {name} è scaduto: può consultare i conti condivisi ma non modificarli"
+      "connection_readonly": "L'abbonamento di {name} è scaduto: può consultare i conti condivisi ma non modificarli",
+      "sale_ends": "fino al {date}"
     },
     "settings": {
       "group": "Fatturazione",

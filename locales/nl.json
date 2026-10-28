@@ -1937,7 +1937,8 @@
       "cta": "Abonnement beheren",
       "dismiss": "Sluiten",
       "connection_trial": "Het abonnement van {name} eindigt over {count} dag | Het abonnement van {name} eindigt over {count} dagen",
-      "connection_readonly": "Het abonnement van {name} is afgelopen — gedeelde rekeningen kunnen wel worden bekeken, maar niet bewerkt"
+      "connection_readonly": "Het abonnement van {name} is afgelopen — gedeelde rekeningen kunnen wel worden bekeken, maar niet bewerkt",
+      "sale_ends": "tot {date}"
     },
     "settings": {
       "group": "Facturering",

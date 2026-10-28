@@ -1937,7 +1937,8 @@
       "cta": "Gerir subscrição",
       "dismiss": "Dispensar",
       "connection_trial": "A subscrição de {name} termina dentro de {count} dia | A subscrição de {name} termina dentro de {count} dias",
-      "connection_readonly": "A subscrição de {name} terminou — esta pessoa pode ver as contas partilhadas, mas não editá-las"
+      "connection_readonly": "A subscrição de {name} terminou — esta pessoa pode ver as contas partilhadas, mas não editá-las",
+      "sale_ends": "até {date}"
     },
     "settings": {
       "group": "Faturação",

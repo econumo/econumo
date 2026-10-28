@@ -1937,7 +1937,8 @@
       "cta": "Manage subscription",
       "dismiss": "Dismiss",
       "connection_trial": "{name}'s subscription ends in {count} day | {name}'s subscription ends in {count} days",
-      "connection_readonly": "{name}'s subscription has ended — they can view shared accounts but not edit"
+      "connection_readonly": "{name}'s subscription has ended — they can view shared accounts but not edit",
+      "sale_ends": "ends {date}"
     },
     "settings": {
       "group": "Billing",

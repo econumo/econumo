@@ -79,33 +79,66 @@ export function SubscriptionBanner() {
     )
   }
 
+  const dismiss = (
+    <button
+      type="button"
+      aria-label={t('subscription.banner.dismiss')}
+      className="shrink-0 p-1 hover:opacity-70"
+      onClick={() => {
+        if (variant === 'sale') {
+          localStorage.setItem(saleDismissedKey(sale!.id), today)
+        }
+        localStorage.setItem(DISMISSED_KEY, today)
+        setClosedAt(Date.now())
+      }}
+    >
+      <X className="size-4" />
+    </button>
+  )
+
+  if (variant === 'sale') {
+    // One line on wide screens: "Black Friday: 30% off · ends Nov 29, 7:00 PM
+    // [Get the deal] ✕". On phones a two-row grid, so neither the sale name
+    // nor the button gets squeezed: the name beside ✕, then the end time and
+    // the button across the full width. The end time never breaks inside
+    // itself. (sm:contents dissolves the second row into the one-line flex.)
+    return (
+      <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1.5 bg-primary/10 py-2 pr-2 pl-4 text-sm text-econumo-link sm:flex sm:gap-3 sm:pr-4">
+        <span className="font-medium">{sale!.text}</span>
+        <span className="sm:order-last">{dismiss}</span>
+        <div className="col-span-2 flex items-center justify-between gap-3 pr-2 sm:contents">
+          <span className="whitespace-nowrap opacity-80 sm:-ml-1.5">
+            <span aria-hidden className="mr-1.5 hidden sm:inline">
+              ·
+            </span>
+            {t('subscription.banner.sale_ends', { date: formatSaleEnd(sale!.endsAt, i18n.language) })}
+          </span>
+          <span className="shrink-0 sm:ml-auto">{cta}</span>
+        </div>
+      </div>
+    )
+  }
+
   const message =
-    variant === 'sale'
-      ? sale!.text
-      : variant === 'trial'
-        ? pluralPick(t('subscription.banner.trial'), Math.max(daysLeft ?? 0, 0), i18n.language)
-        : variant === 'partner_trial'
-          ? pluralPick(t('subscription.banner.connection_trial', { name: partner!.name }), partner!.daysLeft ?? 0, i18n.language)
-          : t('subscription.banner.connection_readonly', { name: partner!.name })
+    variant === 'trial'
+      ? pluralPick(t('subscription.banner.trial'), Math.max(daysLeft ?? 0, 0), i18n.language)
+      : variant === 'partner_trial'
+        ? pluralPick(t('subscription.banner.connection_trial', { name: partner!.name }), partner!.daysLeft ?? 0, i18n.language)
+        : t('subscription.banner.connection_readonly', { name: partner!.name })
 
   return (
     <div className="flex items-center gap-3 bg-primary/10 px-4 py-2 text-sm text-econumo-link">
       <span className="min-w-0 flex-1">{message}</span>
       {cta}
-      <button
-        type="button"
-        aria-label={t('subscription.banner.dismiss')}
-        className="shrink-0 hover:opacity-70"
-        onClick={() => {
-          if (variant === 'sale') {
-            localStorage.setItem(saleDismissedKey(sale!.id), today)
-          }
-          localStorage.setItem(DISMISSED_KEY, today)
-          setClosedAt(Date.now())
-        }}
-      >
-        <X className="size-4" />
-      </button>
+      {dismiss}
     </div>
+  )
+}
+
+// When the sale ends, in the user's own time zone and language ("Nov 30,
+// 3:00 AM"): the end is an instant, and its calendar day differs by zone.
+function formatSaleEnd(endsAt: string, lang: string): string {
+  return new Intl.DateTimeFormat(lang, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(
+    new Date(endsAt),
   )
 }

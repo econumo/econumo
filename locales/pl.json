@@ -1937,7 +1937,8 @@
       "cta": "Zarządzaj subskrypcją",
       "dismiss": "Ukryj",
       "connection_trial": "Subskrypcja użytkownika {name} kończy się za {count} dzień | Subskrypcja użytkownika {name} kończy się za {count} dni | Subskrypcja użytkownika {name} kończy się za {count} dni",
-      "connection_readonly": "Subskrypcja użytkownika {name} wygasła — wspólne konta może już tylko przeglądać"
+      "connection_readonly": "Subskrypcja użytkownika {name} wygasła — wspólne konta może już tylko przeglądać",
+      "sale_ends": "do {date}"
     },
     "settings": {
       "group": "Płatności",

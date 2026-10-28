@@ -1937,7 +1937,8 @@
       "cta": "Gestionar la suscripción",
       "dismiss": "Descartar",
       "connection_trial": "La suscripción de {name} termina en {count} día | La suscripción de {name} termina en {count} días",
-      "connection_readonly": "La suscripción de {name} ha terminado: puede ver las cuentas compartidas, pero no editarlas"
+      "connection_readonly": "La suscripción de {name} ha terminado: puede ver las cuentas compartidas, pero no editarlas",
+      "sale_ends": "hasta el {date}"
     },
     "settings": {
       "group": "Facturación",

@@ -201,15 +201,26 @@ describe('sale variant', () => {
       }),
     )
     renderBanner()
-    expect(await screen.findByText('Black Friday: 40% off')).toBeInTheDocument()
+    expect(await screen.findByText(/Black Friday: 40% off/)).toBeInTheDocument()
     expect(screen.queryByText(/read-only/)).not.toBeInTheDocument()
+  })
+
+  it('says when the sale ends, in the user\'s local time', async () => {
+    vi.mocked(getSaleBanner).mockResolvedValue({ ...sale(), endsAt: '2099-11-30T00:00:00Z' })
+    server.use(...coreHandlers())
+    renderBanner()
+    const end = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(
+      new Date('2099-11-30T00:00:00Z'),
+    )
+    expect(await screen.findByText(`ends ${end}`)).toBeInTheDocument()
+    expect(screen.getByText('Black Friday: 40% off')).toBeInTheDocument()
   })
 
   it('outranks the trial banner', async () => {
     vi.mocked(getSaleBanner).mockResolvedValue(sale())
     server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
     renderBanner()
-    expect(await screen.findByText('Black Friday: 40% off')).toBeInTheDocument()
+    expect(await screen.findByText(/Black Friday: 40% off/)).toBeInTheDocument()
     expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
   })
 
@@ -241,7 +252,7 @@ describe('sale variant', () => {
     vi.mocked(getSaleBanner).mockResolvedValue(sale())
     server.use(...coreHandlers())
     renderBanner()
-    await screen.findByText('Black Friday: 40% off')
+    await screen.findByText(/Black Friday: 40% off/)
     expect(trackEvent).toHaveBeenCalledWith(METRICS.SUBSCRIPTION_BANNER_SHOW, {
       variant: 'sale',
       sale: 'black-friday-2026',
@@ -253,8 +264,9 @@ describe('sale variant', () => {
     server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
     const user = userEvent.setup()
     const { unmount } = renderBanner()
-    await user.click(await screen.findByRole('button', { name: 'Dismiss' }))
-    expect(screen.queryByText('Black Friday: 40% off')).not.toBeInTheDocument()
+    await screen.findByText(/Black Friday: 40% off/)
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }))
+    expect(screen.queryByText(/Black Friday: 40% off/)).not.toBeInTheDocument()
     expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
     expect(localStorage.getItem('saleBannerDismissedDay:black-friday-2026')).toBe(formatDate(new Date()))
     expect(localStorage.getItem('subscriptionBannerDismissedDay')).toBe(formatDate(new Date()))
@@ -262,7 +274,7 @@ describe('sale variant', () => {
     renderBanner()
     await waitFor(() => expect(getSaleBanner).toHaveBeenCalledTimes(2))
     await new Promise((r) => setTimeout(r, 50))
-    expect(screen.queryByText('Black Friday: 40% off')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Black Friday: 40% off/)).not.toBeInTheDocument()
     expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
   })
 
@@ -283,15 +295,15 @@ describe('sale variant', () => {
     vi.mocked(getSaleBanner).mockResolvedValue(sale())
     server.use(...coreHandlers())
     renderBanner()
-    await screen.findByText('Black Friday: 40% off')
+    await screen.findByText(/Black Friday: 40% off/)
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
-    expect(screen.queryByText('Black Friday: 40% off')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Black Friday: 40% off/)).not.toBeInTheDocument()
     // Midnight passes: the stored dismissal now names a past day.
     localStorage.setItem('saleBannerDismissedDay:black-friday-2026', '2000-01-01')
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'))
     })
-    expect(await screen.findByText('Black Friday: 40% off')).toBeInTheDocument()
+    expect(await screen.findByText(/Black Friday: 40% off/)).toBeInTheDocument()
   })
 
   it('still shows a sale with a different id after the first was dismissed today', async () => {
@@ -303,7 +315,7 @@ describe('sale variant', () => {
     })
     server.use(...coreHandlers())
     renderBanner()
-    expect(await screen.findByText('Cyber Monday: 30% off')).toBeInTheDocument()
+    expect(await screen.findByText(/Cyber Monday: 30% off/)).toBeInTheDocument()
   })
 
   it('shows no sale banner when billing is disabled', async () => {
@@ -312,7 +324,7 @@ describe('sale variant', () => {
     server.use(...coreHandlers())
     renderBanner()
     await new Promise((r) => setTimeout(r, 50))
-    expect(screen.queryByText('Black Friday: 40% off')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Black Friday: 40% off/)).not.toBeInTheDocument()
     expect(trackEvent).not.toHaveBeenCalled()
   })
 })
