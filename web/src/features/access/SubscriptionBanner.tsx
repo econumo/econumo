@@ -17,13 +17,13 @@ const DISMISSED_KEY = 'subscriptionBannerDismissedDay'
 // Per sale, so a dismissed Black Friday does not hide Cyber Monday.
 const saleDismissedKey = (id: string) => `saleBannerDismissedDay:${id}`
 
-export function SubscriptionBanner() {
-  const { t, i18n } = useTranslation()
+export type SubscriptionBannerState = ReturnType<typeof useSubscriptionBanner>
+
+export function useSubscriptionBanner() {
   const { state, daysLeft, billingEnabled } = useAccessState()
   // Partner warnings only exist where the billing portal can act on them,
   // so self-hosted instances (no BILLING_URL) never fetch connections here.
   const { data: connections = [] } = useConnections({ enabled: billingEnabled })
-  const portal = useOpenBillingPortal()
   const sale = useSaleBanner()
   // Only forces the re-render after a close; whether a banner is dismissed is
   // always read from storage against today, so a tab left open overnight
@@ -59,6 +59,22 @@ export function SubscriptionBanner() {
     }
   }, [variant, saleId])
 
+  const dismiss = () => {
+    if (variant === 'sale') {
+      localStorage.setItem(saleDismissedKey(sale!.id), today)
+    }
+    localStorage.setItem(DISMISSED_KEY, today)
+    setClosedAt(Date.now())
+  }
+
+  return { variant, sale, partner, daysLeft, billingEnabled, dismiss }
+}
+
+export function SubscriptionBanner({ banner }: { banner: SubscriptionBannerState }) {
+  const { t, i18n } = useTranslation()
+  const { variant, sale, partner, daysLeft, billingEnabled, dismiss } = banner
+  const portal = useOpenBillingPortal()
+
   if (!variant) {
     return null
   }
@@ -79,18 +95,12 @@ export function SubscriptionBanner() {
     )
   }
 
-  const dismiss = (
+  const close = (
     <button
       type="button"
       aria-label={t('subscription.banner.dismiss')}
       className="shrink-0 p-1 hover:opacity-70"
-      onClick={() => {
-        if (variant === 'sale') {
-          localStorage.setItem(saleDismissedKey(sale!.id), today)
-        }
-        localStorage.setItem(DISMISSED_KEY, today)
-        setClosedAt(Date.now())
-      }}
+      onClick={dismiss}
     >
       <X className="size-4" />
     </button>
@@ -110,7 +120,7 @@ export function SubscriptionBanner() {
             percent: new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 2 }).format(sale!.percent),
           })}
         </span>
-        <span className="sm:order-last">{dismiss}</span>
+        <span className="sm:order-last">{close}</span>
         <div className="col-span-2 flex items-center justify-between gap-3 pr-2 sm:contents">
           <span className="whitespace-nowrap opacity-80 sm:-ml-1.5">
             <span aria-hidden className="mr-1.5 hidden sm:inline">
@@ -135,7 +145,7 @@ export function SubscriptionBanner() {
     <div className="flex items-center gap-3 bg-primary/10 px-4 py-2 text-sm text-econumo-link">
       <span className="min-w-0 flex-1">{message}</span>
       {cta}
-      {dismiss}
+      {close}
     </div>
   )
 }

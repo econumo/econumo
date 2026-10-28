@@ -9,14 +9,15 @@ import { InstallInstructionsDialog } from './InstallInstructionsDialog'
 
 // Top of every page, signed in or not, until it is dismissed or the app runs
 // installed. One dismissal hides it for good on this device; Settings keeps
-// the "Install the app" row.
-export function InstallBanner() {
+// the "Install the app" row. `hidden` yields the slot to a more urgent top
+// banner without dismissing it.
+export function InstallBanner({ hidden = false }: { hidden?: boolean }) {
   const { t } = useTranslation()
   const { mode, start, instructions, closeInstructions } = useInstallApp()
   const [dismissed, setDismissed] = useState(isInstallNoticeDismissed)
   return (
     <>
-      {mode && !dismissed ? (
+      {mode && !dismissed && !hidden ? (
         <div className="flex items-center gap-3 bg-primary/10 px-4 py-2 text-sm text-econumo-link">
           <span className="min-w-0 flex-1">{t('install.notice')}</span>
           <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => start('banner')}>

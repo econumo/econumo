@@ -61,3 +61,10 @@ it('stays hidden after a dismissal, on every later page', async () => {
   render(<InstallBanner />)
   expect(screen.queryByText(/works best as an app/)).not.toBeInTheDocument()
 })
+
+it('yields its slot while hidden and comes back undismissed', () => {
+  const { rerender } = render(<InstallBanner hidden />)
+  expect(screen.queryByText(/works best as an app/)).not.toBeInTheDocument()
+  rerender(<InstallBanner />)
+  expect(screen.getByText('Econumo works best as an app')).toBeInTheDocument()
+})
