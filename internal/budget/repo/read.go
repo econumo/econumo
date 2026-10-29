@@ -130,7 +130,11 @@ func sqliteDatetime(t time.Time) string { return t.Format(datetime.Layout) }
 // 1339.89000000). The binary value itself would not do: past 2^26 a float64
 // holds no exact cent, and 123456789.01 prints as 123456789.01000001 at 'f', 8.
 func sqliteSum(v float64) string {
-	r, _ := new(big.Rat).SetString(strconv.FormatFloat(v, 'f', -1, 64))
+	r, ok := new(big.Rat).SetString(strconv.FormatFloat(v, 'f', -1, 64))
+	if !ok {
+		// A SUM that overflowed to ±Inf (or NaN) has no decimal form.
+		return strconv.FormatFloat(v, 'f', 8, 64)
+	}
 	return r.FloatString(8)
 }
 
