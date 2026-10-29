@@ -39,7 +39,7 @@ function makeWrapper() {
 
 function renderPlanHarness(budgetId: string | null, firstMonth: string, visibleMonths: number) {
   const { queryClient, wrapper } = makeWrapper()
-  const { result } = renderHook(() => useBudgetPlan(budgetId, firstMonth, visibleMonths), { wrapper })
+  const { result } = renderHook(() => useBudgetPlan(budgetId, firstMonth, visibleMonths, 1), { wrapper })
   return { result, queryClient }
 }
 

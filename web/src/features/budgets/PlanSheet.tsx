@@ -745,7 +745,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (!plan) {
       return []
     }
-    const all = (plan.structure.savings ?? []).map((row) => savingsAsPlanElement(projectSavingsClosings(row, plan.months, undefined, startDay)))
+    const all = (plan.structure.savings ?? []).map((row) => savingsAsPlanElement(projectSavingsClosings(row, plan.months, startDay)))
     const placed = dragArrangement ? placeElements(all, dragArrangement) : all
     const byPosition = (a: PlanElementDto, b: PlanElementDto) => a.position - b.position
     return [

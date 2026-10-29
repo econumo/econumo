@@ -151,16 +151,16 @@ it('lists future real transactions with nothing due', async () => {
 
 describe('wantsUpcomingPanel', () => {
   it('never for a past month', () => {
-    expect(wantsUpcomingPanel('2026-06-01', '300', '250')).toBe(false)
+    expect(wantsUpcomingPanel('2026-06-01', '300', '250', false, 1)).toBe(false)
   })
   it('for the current month or later with money spent or due', () => {
-    expect(wantsUpcomingPanel('2026-07-01', '300', undefined)).toBe(true)
-    expect(wantsUpcomingPanel('2026-08-01', '0', '250')).toBe(true)
-    expect(wantsUpcomingPanel('2026-08-01', '0', '0')).toBe(false)
+    expect(wantsUpcomingPanel('2026-07-01', '300', undefined, false, 1)).toBe(true)
+    expect(wantsUpcomingPanel('2026-08-01', '0', '250', false, 1)).toBe(true)
+    expect(wantsUpcomingPanel('2026-08-01', '0', '0', false, 1)).toBe(false)
   })
   it('always for a savings cell, whose net can hide a deposit and a withdrawal', () => {
-    expect(wantsUpcomingPanel('2026-08-01', '0', '0', true)).toBe(true)
-    expect(wantsUpcomingPanel('2026-06-01', '0', '0', true)).toBe(false)
+    expect(wantsUpcomingPanel('2026-08-01', '0', '0', true, 1)).toBe(true)
+    expect(wantsUpcomingPanel('2026-06-01', '0', '0', true, 1)).toBe(false)
   })
 })
 

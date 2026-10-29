@@ -196,7 +196,7 @@ export const PLAN_BUFFER = 2
 
 const PLAN_MONTHS_MAX = 24
 
-export function planFetchWindow(firstMonth: string, visibleMonths: number, startDay = 1, now?: Date): { from: string; months: number } {
+export function planFetchWindow(firstMonth: string, visibleMonths: number, startDay: number, now?: Date): { from: string; months: number } {
   // buffer both sides so arrow navigation renders instantly
   const buffered = addMonths(firstMonth, -PLAN_BUFFER)
   const end = addMonths(firstMonth, visibleMonths + PLAN_BUFFER)
@@ -211,7 +211,7 @@ export function planFetchWindow(firstMonth: string, visibleMonths: number, start
   return { from: buffered, months: Math.min(visibleMonths + 2 * PLAN_BUFFER, PLAN_MONTHS_MAX) }
 }
 
-export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number, startDay = 1) {
+export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number, startDay: number) {
   const { from, months } = planFetchWindow(firstMonth, visibleMonths, startDay)
   const planKey = [...queryKeys.budgetPlan, budgetId ?? 'none', from, months] as const
   const query = useQuery<BudgetPlanDto | null>({

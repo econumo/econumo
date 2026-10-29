@@ -39,7 +39,8 @@ interface BudgetPeriodState {
   setPeriod: (date: string) => void
   /** the user picked a month this session (not persisted) */
   periodChosen: boolean
-  /** the month followCurrentPeriod last moved the default to (not persisted) */
+  /** the month followCurrentPeriod last moved the default to; persisted, so a reload
+   *  still knows the stored month was a default and not a pick */
   adoptedPeriod: string | null
   /** an unpicked default month moves to the opened budget's current period: a
    *  shifted budget can already be in next month's period */
@@ -88,7 +89,7 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       selectedDate: firstOfCurrentMonth(),
       setPeriod: (date) => {
         trackEvent(METRICS.BUDGET_CHANGE_DATE)
-        set({ selectedDate: normalizePeriod(date), periodChosen: true })
+        set({ selectedDate: normalizePeriod(date), periodChosen: true, adoptedPeriod: null })
       },
       periodChosen: false,
       adoptedPeriod: null,
@@ -114,7 +115,7 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       },
       stepPeriod: (delta) => {
         trackEvent(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
-        set((s) => ({ selectedDate: addMonthsToPeriod(s.selectedDate, delta), periodChosen: true }))
+        set((s) => ({ selectedDate: addMonthsToPeriod(s.selectedDate, delta), periodChosen: true, adoptedPeriod: null }))
       },
       planNameWidth: null,
       setPlanNameWidth: (px) => set({ planNameWidth: px }),
@@ -131,7 +132,7 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
     {
       name: 'budgetPeriod',
       version: 1,
-      partialize: ({ periodChosen: _chosen, adoptedPeriod: _adopted, ...rest }): Partial<BudgetPeriodState> => rest,
+      partialize: ({ periodChosen: _chosen, ...rest }): Partial<BudgetPeriodState> => rest,
       // version 0 shared one fold state between both views: each view starts from it
       migrate: (persisted, version) => {
         const state = (persisted ?? {}) as Partial<BudgetPeriodState>

@@ -1076,7 +1076,7 @@ describe('projectSavingsClosings', () => {
         { actual: '0', planned: '', closingBalance: '1400' },
       ],
     })
-    const got = projectSavingsClosings(row, months, now).cells.map((c) => c.closingBalance)
+    const got = projectSavingsClosings(row, months, 1, now).cells.map((c) => c.closingBalance)
     expect(got.map(Number)).toEqual([1100, 1500, 1900, 1900])
   })
 
@@ -1091,7 +1091,7 @@ describe('projectSavingsClosings', () => {
         { actual: '0', planned: '100', closingBalance: '1000' },
       ],
     })
-    const at = (startDay: number, today: Date) => projectSavingsClosings(row, months, today, startDay).cells.map((c) => Number(c.closingBalance))
+    const at = (startDay: number, today: Date) => projectSavingsClosings(row, months, startDay, today).cells.map((c) => Number(c.closingBalance))
     expect(at(16, now)).toEqual([1000, 1100, 1200, 1300])
     // on 20 July a day-16 budget has moved on to its August period
     expect(at(16, new Date(2026, 6, 20))).toEqual([1000, 1000, 1100, 1200])
@@ -1104,7 +1104,7 @@ describe('projectSavingsClosings', () => {
       name: 'Over',
       cells: months.map(() => ({ actual: '500', planned: '100', closingBalance: '10' })),
     })
-    expect(projectSavingsClosings(over, months, now).cells.map((c) => Number(c.closingBalance))).toEqual([10, 10, 10, 10])
+    expect(projectSavingsClosings(over, months, 1, now).cells.map((c) => Number(c.closingBalance))).toEqual([10, 10, 10, 10])
 
     const deleted = mkSavingsEl({
       id: 'gone',
@@ -1112,10 +1112,10 @@ describe('projectSavingsClosings', () => {
       isArchived: 1,
       cells: months.map(() => ({ actual: '0', planned: '100', closingBalance: '5' })),
     })
-    expect(projectSavingsClosings(deleted, months, now)).toEqual(deleted)
+    expect(projectSavingsClosings(deleted, months, 1, now)).toEqual(deleted)
 
     const legacy = mkSavingsEl({ id: 'old', name: 'Old', cells: months.map(() => ({ actual: '0', planned: '100' })) })
-    expect(projectSavingsClosings(legacy, months, now)).toEqual(legacy)
+    expect(projectSavingsClosings(legacy, months, 1, now)).toEqual(legacy)
   })
 })
 

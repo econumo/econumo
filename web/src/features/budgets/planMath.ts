@@ -116,7 +116,7 @@ export function savingsAsPlanElement(s: PlanSavingsElementDto): PlanElementDto {
  *  That is the per-row gap the Savings balance row adds, so the rows and that row
  *  agree. A deleted account plans nothing, and a server that sends no balances is
  *  left alone. */
-export function projectSavingsClosings(s: PlanSavingsElementDto, months: string[], now?: Date, startDay = 1): PlanSavingsElementDto {
+export function projectSavingsClosings(s: PlanSavingsElementDto, months: string[], startDay: number, now?: Date): PlanSavingsElementDto {
   if (s.isArchived !== 0 || s.cells.some((c) => c.closingBalance === undefined)) {
     return s
   }

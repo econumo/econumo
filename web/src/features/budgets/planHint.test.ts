@@ -85,7 +85,6 @@ describe('wantsUpcomingPanel in a shifted budget', () => {
   })
 
   it('a calendar-month budget is still in October', () => {
-    expect(wantsUpcomingPanel('2026-10-01', '300', '250')).toBe(true)
     expect(wantsUpcomingPanel('2026-10-01', '300', '250', false, 1)).toBe(true)
   })
 })
