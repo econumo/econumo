@@ -9,10 +9,7 @@ import { moneyFormat } from '@/lib/money'
 import { dayKey, formatDayHeading, isFuture, isToday, isYesterday, parseDateTime } from '@/lib/datetime'
 import type { BudgetDto, BudgetTransactionDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
-import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
-import type { PayeeDto } from '@/api/dto/payee'
-import type { TagDto } from '@/api/dto/tag'
 import { useUiStore } from '@/app/uiStore'
 import { useAccounts } from '@/features/accounts/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
@@ -27,6 +24,7 @@ import { elementDisplayName } from './budgetMath'
 import { useBudgetTransactions } from './queries'
 import { budgetTransactionsParams } from './budgetTransactionsParams'
 import { useBudgetPeriodStore } from './budgetStore'
+import { budgetTransactionView } from './budgetTransactionView'
 
 /** enough of an element (or a nested child category) to list its transactions.
  *  'label' and 'transfers' are client-side discriminants only -- neither is a
@@ -106,48 +104,8 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
 
   const displayName = elementDisplayName(element.id, element.name, t)
 
-  // full ViewTransaction when the caller can see the transaction in their own
-  // list; otherwise (a partner's row in a shared budget) a read-only shape is
-  // synthesized from the budget wire — enough for the preview, never editable
-  const toViewTransaction = (wireTx: BudgetTransactionDto): ViewTransaction => {
-    const tx = allTransactions?.find((item) => item.id === wireTx.id)
-    if (tx) {
-      return {
-        ...tx,
-        account: accounts?.find((a) => a.id === tx.accountId),
-        accountRecipient: tx.accountRecipientId ? accounts?.find((a) => a.id === tx.accountRecipientId) : undefined,
-        category: tx.categoryId ? categories?.find((c) => c.id === tx.categoryId) : undefined,
-        payee: tx.payeeId ? payees?.find((p) => p.id === tx.payeeId) : undefined,
-        tag: tx.tagId ? tags?.find((tg) => tg.id === tx.tagId) : undefined,
-        isInFuture: isFuture(tx.date),
-      }
-    }
-    return {
-      id: wireTx.id,
-      author: wireTx.author,
-      type: wireTx.type ?? (wireTx.direction ? 'transfer' : 'expense'),
-      accountId: '',
-      accountRecipientId: null,
-      amount: wireTx.amount,
-      amountRecipient: null,
-      categoryId: wireTx.category?.id ?? null,
-      description: wireTx.description,
-      payeeId: wireTx.payee?.id ?? null,
-      tagId: wireTx.tag?.id ?? null,
-      // the budget wire carries the row's reporting labels; the preview
-      // resolves them itself from the owner's label list
-      labelIds: wireTx.labelIds ?? [],
-      date: wireTx.spentAt,
-      category: wireTx.category ? (wireTx.category as CategoryDto) : undefined,
-      payee: wireTx.payee ? (wireTx.payee as PayeeDto) : undefined,
-      tag: wireTx.tag ? (wireTx.tag as TagDto) : undefined,
-      isInFuture: isFuture(wireTx.spentAt),
-      // the budget wire carries no provenance; this synthesized shape is
-      // read-only anyway, so no recurring action is offered on it
-      recurringId: null,
-      isImported: 0,
-    }
-  }
+  const toViewTransaction = (wireTx: BudgetTransactionDto): ViewTransaction =>
+    budgetTransactionView(wireTx, { transactions: allTransactions, accounts, categories, payees, tags })
 
   const canChange = (tx: ViewTransaction): boolean =>
     canTouchTransaction(tx, !!tx.account && canWriteToAccount(tx.account, user?.id))

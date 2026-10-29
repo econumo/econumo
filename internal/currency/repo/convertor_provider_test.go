@@ -133,6 +133,31 @@ func TestRateProvider_SnappedRatePeriod(t *testing.T) {
 	}
 }
 
+// A period before the first stored rate snaps FORWARD to the earliest rate
+// month: with no rates at all, every foreign amount would count at face value.
+func TestRateProvider_BeforeFirstRate_UsesEarliestMonth(t *testing.T) {
+	ctx := context.Background()
+	_, txm := setup(t) // earliest rate 2025-12-15
+	p := currencyrepo.NewRateProvider("sqlite", txm, currencyrepo.New("sqlite", txm), usdID)
+
+	start := time.Date(2020, 3, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2020, 4, 1, 0, 0, 0, 0, time.UTC)
+	rs, re, err := p.SnappedRatePeriod(ctx, start, end)
+	if err != nil {
+		t.Fatalf("SnappedRatePeriod: %v", err)
+	}
+	if rs.Format("2006-01-02") != "2025-12-01" || re.Format("2006-01-02") != "2026-01-01" {
+		t.Fatalf("snapped period = %s..%s, want 2025-12-01..2026-01-01", rs.Format("2006-01-02"), re.Format("2006-01-02"))
+	}
+	rates, err := p.AverageRates(ctx, start, end)
+	if err != nil {
+		t.Fatalf("AverageRates: %v", err)
+	}
+	if len(rates) != 1 || rates[0].Rate.String() != "0.85" {
+		t.Fatalf("rates = %+v, want EUR 0.85 (December 2025's)", rates)
+	}
+}
+
 func mustParse(t *testing.T, s string) vo.Id {
 	t.Helper()
 	id, err := vo.ParseId(s)

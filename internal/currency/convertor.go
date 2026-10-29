@@ -88,6 +88,7 @@ func (c *Convertor) BulkConvert(ctx context.Context, periodStart, periodEnd time
 		return nil, err
 	}
 
+	digits := c.digitsMemo()
 	result := make(map[string]vo.DecimalNumber, len(items))
 	for key, list := range items {
 		acc := vo.NewDecimal("0")
@@ -96,7 +97,7 @@ func (c *Convertor) BulkConvert(ctx context.Context, periodStart, periodEnd time
 			if _, ok := ratesByKey[monthKey(it.PeriodStart)]; ok {
 				k = monthKey(it.PeriodStart)
 			}
-			conv, cerr := c.convert(ctx, ratesByKey[k], baseID, it.From, it.To, it.Amount)
+			conv, cerr := convert(ctx, digits, ratesByKey[k], baseID, it.From, it.To, it.Amount)
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -122,12 +123,33 @@ func (c *Convertor) Convert(ctx context.Context, periodStart, periodEnd time.Tim
 	if err != nil {
 		return vo.DecimalNumber{}, err
 	}
-	return c.convert(ctx, rates, baseID, from, to, sum)
+	return convert(ctx, c.digitsMemo(), rates, baseID, from, to, sum)
+}
+
+// digitsMemo looks each currency's fraction digits up once per call: a
+// multi-year report converts thousands of items into a handful of currencies.
+func (c *Convertor) digitsMemo() func(context.Context, vo.Id) (int, error) {
+	seen := map[vo.Id]int{}
+	return func(ctx context.Context, id vo.Id) (int, error) {
+		if d, ok := seen[id]; ok {
+			return d, nil
+		}
+		d, err := c.rates.FractionDigits(ctx, id)
+		if err != nil {
+			var nf *errs.NotFoundError
+			if !errors.As(err, &nf) {
+				return 0, err
+			}
+			d = 2 // currency vanished; default like a missing lookup would
+		}
+		seen[id] = d
+		return d, nil
+	}
 }
 
 // convert is the core two-hop conversion through the base currency, rounded to
 // the result currency's fraction digits.
-func (c *Convertor) convert(ctx context.Context, rates []model.FullRate, baseID, from, to vo.Id, amount vo.DecimalNumber) (vo.DecimalNumber, error) {
+func convert(ctx context.Context, fractionDigits func(context.Context, vo.Id) (int, error), rates []model.FullRate, baseID, from, to vo.Id, amount vo.DecimalNumber) (vo.DecimalNumber, error) {
 	if from.Equal(to) {
 		return amount, nil
 	}
@@ -148,13 +170,9 @@ func (c *Convertor) convert(ctx context.Context, rates []model.FullRate, baseID,
 			}
 		}
 	}
-	digits, err := c.rates.FractionDigits(ctx, to)
+	digits, err := fractionDigits(ctx, to)
 	if err != nil {
-		var nf *errs.NotFoundError
-		if !errors.As(err, &nf) {
-			return vo.DecimalNumber{}, err
-		}
-		digits = 2 // currency vanished; default like a missing lookup would
+		return vo.DecimalNumber{}, err
 	}
 	return result.Round(digits), nil
 }

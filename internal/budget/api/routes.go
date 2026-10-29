@@ -50,3 +50,13 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/budget/delete-comment", auth(h.DeleteComment))
 	}
 }
+
+func RegisterReportAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
+	return func(mux *http.ServeMux) {
+		authMw := middleware.Auth(authn)
+		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
+
+		mux.Handle("GET /api/v1/report/get-flow-report", auth(h.GetFlowReport))
+		mux.Handle("GET /api/v1/report/get-net-worth-report", auth(h.GetNetWorthReport))
+	}
+}

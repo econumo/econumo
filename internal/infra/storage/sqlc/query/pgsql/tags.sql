@@ -41,3 +41,9 @@ UPDATE transactions SET tag_id = $1 WHERE tag_id = $2;
 
 -- name: ReassignTagRecurring :exec
 UPDATE recurring_transactions SET tag_id = $1 WHERE tag_id = $2;
+
+-- name: ListTagsByIDs :many
+-- ids is a JSON array of tag ids (see the sqlite variant).
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key, icon
+FROM tags
+WHERE id IN (SELECT CAST(e AS uuid) FROM jsonb_array_elements_text(CAST(sqlc.arg(ids)::text AS jsonb)) e);

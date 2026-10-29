@@ -42,6 +42,9 @@ type AccountLookup interface {
 	// deleted — accounts merely shared with them are excluded. Feeds the
 	// accept-access membership seeding.
 	OwnedLiveAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
+	// OwnedAccountIDs returns every account the user OWNS, soft-deleted
+	// ones included: their history still belongs in the user's reports.
+	OwnedAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
 // CurrencyLookup resolves a currency id by code (createBudget default
@@ -61,6 +64,12 @@ type MetadataLookup interface {
 	CategoriesByOwners(ctx context.Context, userIDs []vo.Id) ([]model.CategoryMeta, error)
 	TagsByOwners(ctx context.Context, userIDs []vo.Id) ([]model.TagMeta, error)
 	PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]model.PayeeMeta, error)
+	// The ByIDs forms resolve whichever of the ids exist, whoever owns them
+	// (a partner writes with their own categories on a shared account);
+	// unknown ids are simply absent from the result.
+	CategoriesByIDs(ctx context.Context, ids []vo.Id) ([]model.CategoryMeta, error)
+	TagsByIDs(ctx context.Context, ids []vo.Id) ([]model.TagMeta, error)
+	PayeesByIDs(ctx context.Context, ids []vo.Id) ([]model.PayeeMeta, error)
 }
 
 // Convertor is the currency convertor port; the currency feature's convertor
@@ -75,7 +84,8 @@ type Convertor interface {
 type AverageRateLookup interface {
 	AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error)
 	// SnappedRatePeriod returns the [start,end) AverageRates actually used (the
-	// latest-rate month <= end, or the requested period when no rate exists).
+	// latest-rate month <= end, the earliest-rate month before the first rate,
+	// or the requested period when no rate exists).
 	// The currencyRates block reports THIS period.
 	SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error)
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)

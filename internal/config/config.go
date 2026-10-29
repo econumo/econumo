@@ -40,6 +40,7 @@ type Config struct {
 	TrialDays                  int  // ECONUMO_TRIAL: length in days of the trial granted to a new self-service registration; 0 (default, also "none"/empty) grants no trial, i.e. permanent full access
 	EmailVerification          bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
 	CurrencyUpdateIntervalDays int  // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
+	Dev                        bool // ECONUMO_DEV: the feature-flag gate for unfinished features (default false)
 
 	// ImportSimpleFIN is ECONUMO_IMPORT_SIMPLEFIN (default off). Apple Wallet
 	// import, import rules, the queue and run history are always on.
@@ -305,6 +306,9 @@ func Load() (Config, error) {
 	}
 
 	if c.ImportSimpleFIN, err = getBoolStrict("ECONUMO_IMPORT_SIMPLEFIN", false); err != nil {
+		return Config{}, err
+	}
+	if c.Dev, err = getBoolStrict("ECONUMO_DEV", false); err != nil {
 		return Config{}, err
 	}
 	feedback, err := getBoolStrict("ECONUMO_FEEDBACK", true)

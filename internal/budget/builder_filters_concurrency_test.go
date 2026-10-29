@@ -34,6 +34,10 @@ func (a accountViewStub) OwnedLiveAccountIDs(context.Context, vo.Id) ([]vo.Id, e
 	return nil, nil
 }
 
+func (a accountViewStub) OwnedAccountIDs(context.Context, vo.Id) ([]vo.Id, error) {
+	return nil, nil
+}
+
 type emptyMetadataStub struct{}
 
 func (emptyMetadataStub) CategoriesByOwners(context.Context, []vo.Id) ([]model.CategoryMeta, error) {
@@ -43,6 +47,16 @@ func (emptyMetadataStub) TagsByOwners(context.Context, []vo.Id) ([]model.TagMeta
 	return nil, nil
 }
 func (emptyMetadataStub) PayeesByOwners(context.Context, []vo.Id) ([]model.PayeeMeta, error) {
+	return nil, nil
+}
+
+func (emptyMetadataStub) CategoriesByIDs(context.Context, []vo.Id) ([]model.CategoryMeta, error) {
+	return nil, nil
+}
+func (emptyMetadataStub) TagsByIDs(context.Context, []vo.Id) ([]model.TagMeta, error) {
+	return nil, nil
+}
+func (emptyMetadataStub) PayeesByIDs(context.Context, []vo.Id) ([]model.PayeeMeta, error) {
 	return nil, nil
 }
 

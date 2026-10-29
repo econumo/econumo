@@ -1336,6 +1336,35 @@ definitions:
       periodStart:
         type: string
     type: object
+  model.FlowReportResult:
+    properties:
+      currencyId:
+        type: string
+      expense:
+        items:
+          $ref: '#/definitions/model.ReportRow'
+        type: array
+      income:
+        items:
+          $ref: '#/definitions/model.ReportRow'
+        type: array
+      months:
+        items:
+          type: string
+        type: array
+      savings:
+        items:
+          $ref: '#/definitions/model.ReportRow'
+        type: array
+      transfersIn:
+        items:
+          type: string
+        type: array
+      transfersOut:
+        items:
+          type: string
+        type: array
+    type: object
   model.GenerateInviteRequest:
     type: object
   model.GenerateInviteResult:
@@ -1431,6 +1460,11 @@ definitions:
           $ref: '#/definitions/model.CurrencyRateResult'
         type: array
     type: object
+  model.GetFlowReportResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.FlowReportResult'
+    type: object
   model.GetFolderListResult:
     properties:
       items:
@@ -1507,6 +1541,11 @@ definitions:
         items:
           $ref: '#/definitions/model.LabelResult'
         type: array
+    type: object
+  model.GetNetWorthReportResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.NetWorthReportResult'
     type: object
   model.GetOptionListResult:
     properties:
@@ -2119,6 +2158,38 @@ definitions:
           $ref: '#/definitions/model.TransactionResult'
         type: array
     type: object
+  model.NetWorthAccountRow:
+    properties:
+      balances:
+        items:
+          type: string
+        type: array
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isSavings:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+    type: object
+  model.NetWorthReportResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.NetWorthAccountRow'
+        type: array
+      currencyId:
+        type: string
+      months:
+        items:
+          type: string
+        type: array
+    type: object
   model.OpeningBalanceResult:
     properties:
       amount:
@@ -2530,6 +2601,50 @@ definitions:
         type: string
     type: object
   model.ReplaceFolderResult:
+    type: object
+  model.ReportChildRow:
+    properties:
+      amounts:
+        items:
+          type: string
+        type: array
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      kind:
+        type: string
+      name:
+        type: string
+    type: object
+  model.ReportRow:
+    properties:
+      amounts:
+        items:
+          type: string
+        type: array
+      children:
+        items:
+          $ref: '#/definitions/model.ReportChildRow'
+        type: array
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      kind:
+        type: string
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      planned:
+        items:
+          type: string
+        type: array
     type: object
   model.RequestEmailChangeRequest:
     properties:
@@ -9296,6 +9411,103 @@ paths:
       summary: Update a recurring transaction
       tags:
       - Recurring
+  /api/v1/report/get-flow-report:
+    get:
+      parameters:
+      - description: Budget id (omit for the caller's own accounts)
+        in: query
+        name: budgetId
+        type: string
+      - description: First month (Y-m-d, snapped to first of month; defaults to the
+          first transaction's month, at most 240 months back)
+        in: query
+        name: from
+        type: string
+      - description: Last month (Y-m-d, snapped to first of month; defaults to the
+          current month; window is at most 240 months)
+        in: query
+        name: to
+        type: string
+      - description: category (default), tag or payee; budget scope supports category
+          only
+        in: query
+        name: groupBy
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetFlowReportResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Monthly income/expense/transfer flow
+      tags:
+      - Report
+  /api/v1/report/get-net-worth-report:
+    get:
+      parameters:
+      - description: Budget id (omit for the caller's own accounts)
+        in: query
+        name: budgetId
+        type: string
+      - description: First month (Y-m-d, snapped to first of month; defaults to the
+          month before the first transaction's month, at most 240 months back)
+        in: query
+        name: from
+        type: string
+      - description: Last month (Y-m-d, snapped to first of month; defaults to the
+          current month; window is at most 240 months)
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetNetWorthReportResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Account balances at the end of each month
+      tags:
+      - Report
   /api/v1/system/get-update-info:
     get:
       description: Returns the latest Econumo release published on econumo.com (version

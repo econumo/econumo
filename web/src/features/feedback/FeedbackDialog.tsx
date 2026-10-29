@@ -9,13 +9,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { useUiStore } from '@/app/uiStore'
+import type { FeedbackType } from '@/app/uiStore'
 import { useUserData } from '@/features/user/queries'
 import { submitForm } from '@/lib/analytics'
 import { getVersion } from '@/lib/config'
 import { analyticsHost, deploymentKind, METRICS, trackEvent } from '@/lib/metrics'
 
-const FEEDBACK_TYPES = ['feedback', 'feature_request', 'bug_report'] as const
-type FeedbackType = (typeof FEEDBACK_TYPES)[number]
+const FEEDBACK_TYPES: readonly FeedbackType[] = ['feedback', 'feature_request', 'bug_report']
 
 const MESSAGE_MAX = 4000
 
@@ -29,7 +29,8 @@ export function FeedbackDialog() {
 function FeedbackForm({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
-  const [type, setType] = useState<FeedbackType>('feedback')
+  const [type, setType] = useState<FeedbackType>(() => useUiStore.getState().feedbackType)
+  const topic = useUiStore((s) => s.feedbackTopic)
   const [message, setMessage] = useState('')
   // empty by default: replying is never promised, so the address is opt-in
   const [email, setEmail] = useState('')
@@ -42,6 +43,7 @@ function FeedbackForm({ onDone }: { onDone: () => void }) {
         'feedback',
         {
           type,
+          topic,
           message: message.trim(),
           email: email.trim(),
           app_version: getVersion(),
@@ -50,7 +52,7 @@ function FeedbackForm({ onDone }: { onDone: () => void }) {
         { $host: analyticsHost() },
       ),
     onSuccess: () => {
-      trackEvent(METRICS.FEEDBACK_SEND, { type, with_email: email.trim() !== '' })
+      trackEvent(METRICS.FEEDBACK_SEND, { type, topic, with_email: email.trim() !== '' })
       toast.success(t('feedback.dialog.sent'))
       onDone()
     },

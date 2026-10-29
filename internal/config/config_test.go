@@ -1097,3 +1097,24 @@ func TestLoad_PasswordLogin(t *testing.T) {
 		t.Error("password login should be disabled")
 	}
 }
+
+func TestLoad_Dev(t *testing.T) {
+	t.Setenv("PORT", "8080")
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_DEV", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Dev {
+		t.Error("ECONUMO_DEV must default off")
+	}
+	t.Setenv("ECONUMO_DEV", "true")
+	if cfg, err = Load(); err != nil || !cfg.Dev {
+		t.Errorf("ECONUMO_DEV=true: dev=%v err=%v", cfg.Dev, err)
+	}
+	t.Setenv("ECONUMO_DEV", "sometimes")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_DEV must fail at boot")
+	}
+}

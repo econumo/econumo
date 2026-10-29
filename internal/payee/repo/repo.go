@@ -7,6 +7,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -29,6 +30,7 @@ type (
 type querier interface {
 	GetPayeeByID(ctx context.Context, db backend.DBTX, id string) (payeeRow, error)
 	ListPayeesByOwner(ctx context.Context, db backend.DBTX, userID string) ([]payeeRow, error)
+	ListPayeesByIDs(ctx context.Context, db backend.DBTX, ids string) ([]payeeRow, error)
 	UpsertPayee(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeletePayee(ctx context.Context, db backend.DBTX, id string) error
 	ReassignPayeeTransactions(ctx context.Context, db backend.DBTX, p reassignTxParams) error
@@ -75,6 +77,35 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Payee, error) {
 		return nil, err
 	}
 	return hydrate(row)
+}
+
+// ListByIDs loads the given payee rows whoever owns them, in one query;
+// an unknown id is absent from the result.
+func (r *Repo) ListByIDs(ctx context.Context, ids []vo.Id) ([]*model.Payee, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	strs := make([]string, len(ids))
+	for i, id := range ids {
+		strs[i] = id.String()
+	}
+	raw, err := json.Marshal(strs)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.q.ListPayeesByIDs(ctx, r.db(ctx), string(raw))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.Payee, 0, len(rows))
+	for _, row := range rows {
+		p, herr := hydrate(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out = append(out, p)
+	}
+	return out, nil
 }
 
 func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, error) {

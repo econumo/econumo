@@ -58,3 +58,7 @@ VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (account_id, user_id) DO UPDATE SET
     sort_key   = excluded.sort_key,
     updated_at = excluded.updated_at;
+
+-- name: ListAccountIDsByOwner :many
+-- Every account the user owns, soft-deleted ones included (the reports).
+SELECT id FROM accounts WHERE user_id = $1 ORDER BY id;
