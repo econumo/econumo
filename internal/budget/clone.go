@@ -51,9 +51,9 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 		}
 		startDate = model.FirstOfMonth(d)
 		// The copy may start anywhere between the source's start and the caller's
-		// current month: earlier would invent history, later would skip months.
+		// current period: earlier would invent history, later would skip periods.
 		if startDate.Before(model.FirstOfMonth(src.budget.StartedAt)) ||
-			startDate.After(localMonth(now, reqctx.Location(ctx))) {
+			startDate.After(currentPeriod(now, reqctx.Location(ctx), src.budget.PeriodStartDay)) {
 			return nil, model.ValidateBlank(map[string]string{"startDate": ""})
 		}
 	}
@@ -185,7 +185,7 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.BuildBudget(ctx, userID, b, localMonth(now, reqctx.Location(ctx)), now)
+	result, err := s.BuildBudget(ctx, userID, b, currentPeriod(now, reqctx.Location(ctx), b.budget.PeriodStartDay), now)
 	if err != nil {
 		return nil, err
 	}

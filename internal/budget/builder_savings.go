@@ -172,17 +172,17 @@ func (s *Service) addMonthlySavings(ctx context.Context, b *budgetAggregate, f f
 	return out, s.addSavingsPending(ctx, b, f, ids, &out, toConvert)
 }
 
-// addSavingsPending fills out.pending when the selected month is the caller's
-// current month or a later one: the closing balance is then a projection, the
-// booked balance plus each month's plan not yet met by its actual, from the
-// current month through the selected one. A past month's closing balance is
+// addSavingsPending fills out.pending when the selected period is the caller's
+// current period or a later one: the closing balance is then a projection, the
+// booked balance plus each period's plan not yet met by its actual, from the
+// current period through the selected one. A past period's closing balance is
 // what is booked.
 func (s *Service) addSavingsPending(ctx context.Context, b *budgetAggregate, f filters, ids []vo.Id, out *monthlySavings, toConvert map[string][]model.ConvertItem) error {
-	cur := localMonth(s.clock.Now(), reqctx.Location(ctx))
-	if f.periodStart.Before(cur) {
+	cur := currentPeriod(s.clock.Now(), reqctx.Location(ctx), f.startDay)
+	if f.periodKey.Before(cur) {
 		return nil
 	}
-	limitRows, err := s.read.LimitsByMonth(ctx, b.budget.ID, cur, f.periodEnd)
+	limitRows, err := s.read.LimitsByMonth(ctx, b.budget.ID, cur, f.keyEnd)
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,8 @@ func (s *Service) addSavingsPending(ctx context.Context, b *budgetAggregate, f f
 			planned[l.ExternalID+"_"+l.Month] = vo.NewDecimal(l.Amount)
 		}
 	}
-	actual, err := s.read.AccountsNetByMonth(ctx, ids, cur, f.periodEnd, 1)
+	curStart, _ := model.PeriodWindow(cur, f.startDay)
+	actual, err := s.read.AccountsNetByMonth(ctx, ids, curStart, f.periodEnd, f.startDay)
 	if err != nil {
 		return err
 	}
@@ -208,8 +209,9 @@ func (s *Service) addSavingsPending(ctx context.Context, b *budgetAggregate, f f
 		if err != nil {
 			return err
 		}
-		for m := cur; m.Before(f.periodEnd); m = m.AddDate(0, 1, 0) {
+		for m := cur; m.Before(f.keyEnd); m = m.AddDate(0, 1, 0) {
 			month := m.Format(datetime.DateLayout)
+			start, end := model.PeriodWindow(m, f.startDay)
 			p, ok := planned[r.account.ID+"_"+month]
 			if !ok {
 				continue
@@ -217,7 +219,7 @@ func (s *Service) addSavingsPending(ctx context.Context, b *budgetAggregate, f f
 			key := "savings-pending_" + r.account.ID + "_" + month
 			if amount, ok := actualByKey[r.account.ID+"_"+month]; ok {
 				toConvert[key] = append(toConvert[key], model.ConvertItem{
-					PeriodStart: m, PeriodEnd: m.AddDate(0, 1, 0), From: accountCur, To: r.currencyID, Amount: vo.NewDecimal(amount),
+					PeriodStart: start, PeriodEnd: end, From: accountCur, To: r.currencyID, Amount: vo.NewDecimal(amount),
 				})
 			}
 			out.pending[r.account.ID] = append(out.pending[r.account.ID], pendingSavingsMonth{planned: p, actualKey: key})

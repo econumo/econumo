@@ -26,13 +26,13 @@ type amountSpent struct {
 }
 
 // buildElementsLimits computes per-element limits: budgeted = the element's limit
-// for the current month; budgetedBefore = sum of its limits for prior months
-// (budget.startedAt .. periodStart). Keyed "<externalId>-<typeAlias>".
+// for the selected period; budgetedBefore = sum of its limits for prior periods
+// (budget.startedAt .. periodKey). Keyed "<externalId>-<typeAlias>".
 func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f filters) (map[string]budgetedAmount, error) {
 	data := map[string]budgetedAmount{}
 
-	// Current-month limits.
-	current, err := s.limits.ListLimitsForPeriod(ctx, b.budget.ID, f.periodStart)
+	// The selected period's limits.
+	current, err := s.limits.ListLimitsForPeriod(ctx, b.budget.ID, f.periodKey)
 	if err != nil {
 		return nil, err
 	}
@@ -59,8 +59,8 @@ func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f
 		data[key] = amt
 	}
 
-	// Prior-months summed limits (budgetedBefore).
-	summed, err := s.read.SummarizedLimits(ctx, b.budget.ID, b.budget.StartedAt, f.periodStart)
+	// Prior periods' summed limits (budgetedBefore).
+	summed, err := s.read.SummarizedLimits(ctx, b.budget.ID, b.budget.StartedAt, f.periodKey)
 	if err != nil {
 		return nil, err
 	}
@@ -93,8 +93,8 @@ type elementSpending struct {
 	spendingInCategories map[string]*categorySpending // keyed category id
 }
 
-// buildElementsSpending computes current-period spending + a month-by-month
-// "before" walk from budget.startedAt to periodStart.
+// buildElementsSpending computes the selected period's spending + a
+// period-by-period "before" walk from budget.startedAt to periodKey.
 func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate, f filters) (map[string]*elementSpending, error) {
 	data := map[string]*elementSpending{}
 
@@ -154,10 +154,14 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 	if err := count(f.periodStart, f.periodEnd, true); err != nil {
 		return nil, err
 	}
-	// month-by-month before: [startedAt, periodStart) in 1-month steps.
-	for cur := b.budget.StartedAt; cur.Before(f.periodStart); cur = cur.AddDate(0, 1, 0) {
-		next := cur.AddDate(0, 1, 0)
-		if err := count(cur, next, false); err != nil {
+	// A started_at past the first of its month (rows seeded outside
+	// NewBudget) shifts every earlier window by the same offset, as the walk
+	// always has; NewBudget's started_at carries none.
+	first := model.FirstOfMonth(b.budget.StartedAt)
+	offset := b.budget.StartedAt.Sub(first)
+	for key := first; key.Before(f.periodKey); key = key.AddDate(0, 1, 0) {
+		start, end := model.PeriodWindow(key, f.startDay)
+		if err := count(start.Add(offset), end.Add(offset), false); err != nil {
 			return nil, err
 		}
 	}

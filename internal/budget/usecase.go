@@ -174,16 +174,11 @@ func (s *Service) requireFreeEnvelopeID(ctx context.Context, id vo.Id) error {
 // roleGuest returns the guest role (the read-only "reader" role).
 func roleGuest() model.BudgetRole { return model.BudgetRoleGuest }
 
-// localMonth returns the first of now's month as seen in loc (the caller's
-// request timezone), expressed as a UTC-typed wall-clock. model.Budget timestamps are
-// stored as naive "Y-m-d H:i:s", so the value must be UTC-typed to serialize as
-// that bare wall-clock. Snapping in UTC instead would start a budget in the
-// NEXT month for a behind-UTC caller creating it on the evening of the 30th/31st
-// (their local month hasn't rolled over yet, the server's UTC month has).
-func localMonth(now time.Time, loc *time.Location) time.Time {
-	if loc == nil {
-		loc = time.UTC
-	}
-	y, m, _ := now.In(loc).Date()
-	return time.Date(y, m, 1, 0, 0, 0, 0, time.UTC)
+// currentPeriod returns the key of the budget period holding the caller's
+// local today (loc is the request timezone), as a UTC-typed wall clock:
+// model.Budget timestamps are stored as naive "Y-m-d H:i:s". Snapping in UTC
+// instead would start a budget in the NEXT period for a behind-UTC caller on
+// the evening before the period rolls over.
+func currentPeriod(now time.Time, loc *time.Location, startDay int) time.Time {
+	return model.PeriodOf(localToday(now, loc), startDay)
 }

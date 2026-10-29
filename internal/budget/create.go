@@ -32,8 +32,8 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 	}
 
 	now := s.clock.Now()
-	currentMonth := localMonth(now, reqctx.Location(ctx))
-	startDate := currentMonth
+	current := currentPeriod(now, reqctx.Location(ctx), startDay)
+	startDate := current
 	if req.StartDate != "" {
 		if t, perr := time.Parse(datetime.DateLayout, req.StartDate); perr == nil {
 			startDate = t
@@ -126,7 +126,7 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.BuildBudget(ctx, userID, b, currentMonth, now)
+	result, err := s.BuildBudget(ctx, userID, b, current, now)
 	if err != nil {
 		return nil, err
 	}

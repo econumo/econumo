@@ -31,24 +31,23 @@ func (s *Service) GetBudgetList(ctx context.Context, userID vo.Id) (*model.GetBu
 	return &model.GetBudgetListResult{Items: items}, nil
 }
 
-// GetBudget returns the full budget for the period containing `date` (snapped to
-// first-of-month). Requires read access.
+// GetBudget returns the full budget for the period whose key is `date`'s
+// month (the day is ignored). Requires read access.
 func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req model.GetBudgetRequest) (*model.GetBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
-	periodStart, err := parsePeriodDate(req.Date, localMonth(s.clock.Now(), reqctx.Location(ctx)))
-	if err != nil {
-		return nil, err
-	}
 	b, err := s.requireBudget(ctx, userID, budgetID)
 	if err != nil {
 		return nil, err
 	}
-	periodStart = b.clampPeriod(periodStart)
 	now := s.clock.Now()
-	f, err := s.buildFilters(ctx, userID, b, periodStart, periodStart.AddDate(0, 1, 0))
+	key, err := parsePeriodDate(req.Date, currentPeriod(now, reqctx.Location(ctx), b.budget.PeriodStartDay))
+	if err != nil {
+		return nil, err
+	}
+	f, err := s.buildFilters(ctx, userID, b, b.clampPeriod(key), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +68,7 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req model.GetBudg
 }
 
 // parsePeriodDate parses the get-budget date and snaps it to first-of-month. An
-// empty/invalid date falls back to `fallback` (the caller-local current month):
+// empty/invalid date falls back to `fallback` (the caller's current period):
 // the frontend always sends a valid date, so defaulting is the tolerant choice
 // for garbage input.
 func parsePeriodDate(s string, fallback time.Time) (time.Time, error) {

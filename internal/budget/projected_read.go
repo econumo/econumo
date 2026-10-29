@@ -131,9 +131,9 @@ func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Ti
 					if perr != nil {
 						return nil, perr
 					}
-					month := firstOfMonth(o.FiledAt)
+					start, end := model.PeriodWindow(model.PeriodOf(o.FiledAt, f.startDay), f.startDay)
 					toConvert[strconv.Itoa(len(p.occ))] = []model.ConvertItem{{
-						PeriodStart: month, PeriodEnd: month.AddDate(0, 1, 0), From: from, To: to, Amount: amount,
+						PeriodStart: start, PeriodEnd: end, From: from, To: to, Amount: amount,
 					}}
 				}
 			}
@@ -141,8 +141,8 @@ func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Ti
 		}
 	}
 	if len(toConvert) > 0 {
-		start := firstOfMonth(today)
-		converted, cerr := s.convertor.BulkConvert(ctx, start, start.AddDate(0, 1, 0), toConvert)
+		start, end := model.PeriodWindow(model.PeriodOf(today, f.startDay), f.startDay)
+		converted, cerr := s.convertor.BulkConvert(ctx, start, end, toConvert)
 		if cerr != nil {
 			return nil, cerr
 		}
@@ -189,10 +189,6 @@ func localToday(now time.Time, loc *time.Location) time.Time {
 	}
 	y, m, d := now.In(loc).Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
-}
-
-func firstOfMonth(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
 }
 
 // projectedMonth renders the "YYYY-MM-01" period key the by-month SQL groups on.

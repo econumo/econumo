@@ -156,9 +156,9 @@ func (w windowRead) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id
 // upcomingRead is what the upcoming pass of get-budget and get-budget-plan
 // reads: the projected recurring occurrences plus the stored transactions
 // dated from the caller's tomorrow to the window's end. It is nil when the
-// window ended before the caller's current month or holds neither.
+// window ended before the caller's current period or holds neither.
 func (s *Service) upcomingRead(ctx context.Context, f filters, now time.Time) (ReadModel, error) {
-	if !upcomingShown(ctx, f.periodEnd, now) {
+	if !upcomingShown(ctx, f.periodEnd, now, f.startDay) {
 		return nil, nil
 	}
 	pr, err := s.newProjectedRead(ctx, f, f.periodEnd)

@@ -13,10 +13,11 @@ import (
 )
 
 // removableAccounts reports, per account, whether it may still leave the
-// budget: only while it has no transactions in a CLOSED month of the budget
-// (started_at <= spent_at < first of the caller's current month). Removing such
-// an account changes only the month being viewed; anything older would shrink
-// spentBefore under limits that stay — the drift this design exists to end.
+// budget: only while it has no transactions in a CLOSED period of the budget
+// (from the start of its first period to the start of the caller's current
+// one). Removing such an account changes only the period being viewed;
+// anything older would shrink spentBefore under limits that stay — the drift
+// this design exists to end.
 func (s *Service) removableAccounts(ctx context.Context, b *budgetAggregate, ids []vo.Id, now time.Time) (map[string]bool, error) {
 	out := make(map[string]bool, len(ids))
 	for _, id := range ids {
@@ -25,16 +26,18 @@ func (s *Service) removableAccounts(ctx context.Context, b *budgetAggregate, ids
 	if len(ids) == 0 {
 		return out, nil
 	}
-	// The lock window runs to the current month, but never past the budget's own
-	// end: months after it are outside the budget, so spending there must not
-	// keep a member permanently.
-	end := localMonth(now, reqctx.Location(ctx))
+	// The lock window runs to the current period, but never past the budget's
+	// own end: periods after it are outside the budget, so spending there must
+	// not keep a member permanently.
+	d := b.budget.PeriodStartDay
+	end, _ := model.PeriodWindow(currentPeriod(now, reqctx.Location(ctx), d), d)
 	if em := b.endMonth(); em != nil {
-		if after := em.AddDate(0, 1, 0); after.Before(end) {
+		if _, after := model.PeriodWindow(*em, d); after.Before(end) {
 			end = after
 		}
 	}
-	active, err := s.read.AccountsWithTransactions(ctx, ids, model.FirstOfMonth(b.budget.StartedAt), end)
+	start, _ := model.PeriodWindow(b.budget.StartedAt, d)
+	active, err := s.read.AccountsWithTransactions(ctx, ids, start, end)
 	if err != nil {
 		return nil, err
 	}

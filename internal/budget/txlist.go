@@ -70,18 +70,11 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	if err != nil {
 		return nil, model.ValidateBlank(map[string]string{"periodStart": ""})
 	}
-	periodStart = model.FirstOfMonth(periodStart)
-	periodEnd := periodStart.AddDate(0, 1, 0)
-
 	b, err := s.requireBudget(ctx, userID, budgetID)
 	if err != nil {
 		return nil, err
 	}
-	if clamped := b.clampPeriod(periodStart); !clamped.Equal(periodStart) {
-		periodStart = clamped
-		periodEnd = periodStart.AddDate(0, 1, 0)
-	}
-	f, err := s.buildFilters(ctx, userID, b, periodStart, periodEnd)
+	f, err := s.buildFilters(ctx, userID, b, b.clampPeriod(model.FirstOfMonth(periodStart)), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +89,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	// silently discarding it instead of being rejected or ignored consistently.
 	lbl := strings.TrimSpace(optID(req.LabelId))
 
-	query, err := s.txListQuery(ctx, b, f, req, cat, tag, env, lbl, periodStart, periodEnd)
+	query, err := s.txListQuery(ctx, b, f, req, cat, tag, env, lbl, f.periodStart, f.periodEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -108,10 +101,10 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	if err != nil {
 		return nil, err
 	}
-	if !upcomingShown(ctx, periodEnd, s.clock.Now()) {
+	if !upcomingShown(ctx, f.periodEnd, s.clock.Now(), f.startDay) {
 		return res, nil
 	}
-	pr, err := s.newProjectedRead(ctx, f, periodEnd)
+	pr, err := s.newProjectedRead(ctx, f, f.periodEnd)
 	if err != nil || pr == nil {
 		return res, err
 	}

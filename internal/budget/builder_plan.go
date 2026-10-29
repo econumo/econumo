@@ -19,7 +19,7 @@ import (
 // window size; only the rate lookups are per-month, and those read the small
 // rates table).
 func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAggregate, from time.Time, months int) (model.BudgetPlanResult, error) {
-	f, err := s.buildFilters(ctx, userID, b, from, from.AddDate(0, months, 0))
+	f, err := s.buildFilters(ctx, userID, b, from, months)
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
@@ -29,7 +29,7 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 // buildBudgetPlan is BuildBudgetPlan over filters the caller already built
 // for the window.
 func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f filters, months int) (model.BudgetPlanResult, error) {
-	from, windowEnd := f.periodStart, f.periodEnd
+	from, windowEnd := f.periodKey, f.keyEnd
 
 	meta, err := s.buildMeta(ctx, b)
 	if err != nil {
