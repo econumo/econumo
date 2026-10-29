@@ -23,6 +23,14 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 		return nil, err
 	}
 
+	startDay := req.PeriodStartDay
+	if startDay == 0 {
+		startDay = model.MinPeriodStartDay
+	}
+	if !model.ValidPeriodStartDay(startDay) {
+		return nil, model.InvalidPeriodStartDayError()
+	}
+
 	now := s.clock.Now()
 	currentMonth := localMonth(now, reqctx.Location(ctx))
 	startDate := currentMonth
@@ -67,6 +75,7 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		budget := model.NewBudget(budgetID, userID, req.Name, curID, startDate, now)
+		budget.PeriodStartDay = startDay
 		if serr := s.budgets.Save(txCtx, budget); serr != nil {
 			return serr
 		}

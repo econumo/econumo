@@ -2073,6 +2073,7 @@
       "accounts_required": "Sélectionnez au moins un compte",
       "archived": "Ce budget est archivé",
       "end_before_start": "Le mois de fin est antérieur au début du budget",
+      "invalid_period_start_day": "Choisissez un jour de 1 à 28",
       "comment_not_found": "Commentaire introuvable",
       "comment_forbidden": "Vous ne pouvez pas modifier ce commentaire"
     },

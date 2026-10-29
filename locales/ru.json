@@ -2073,6 +2073,7 @@
       "accounts_required": "Выберите хотя бы один счёт",
       "archived": "Этот бюджет в архиве",
       "end_before_start": "Последний месяц раньше начала бюджета",
+      "invalid_period_start_day": "Выберите день от 1 до 28",
       "comment_not_found": "Комментарий не найден",
       "comment_forbidden": "Вы не можете изменить этот комментарий"
     },

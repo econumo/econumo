@@ -19,24 +19,26 @@ import (
 type emptyInput struct{}
 
 type createBudgetInput struct {
-	Name       string   `json:"name" jsonschema:"budget name"`
-	CurrencyID string   `json:"currency_id,omitempty" jsonschema:"currency id (UUID), from list_currencies; defaults to the user's currency"`
-	StartDate  string   `json:"start_date,omitempty" jsonschema:"YYYY-MM-DD; defaults to the current month"`
-	AccountIDs []string `json:"account_ids" jsonschema:"account ids (UUIDs) to track in the budget, at least one; from list_accounts"`
+	Name           string   `json:"name" jsonschema:"budget name"`
+	CurrencyID     string   `json:"currency_id,omitempty" jsonschema:"currency id (UUID), from list_currencies; defaults to the user's currency"`
+	StartDate      string   `json:"start_date,omitempty" jsonschema:"YYYY-MM-DD; names the budget month it falls in (the day is ignored); defaults to the current month"`
+	AccountIDs     []string `json:"account_ids" jsonschema:"account ids (UUIDs) to track in the budget, at least one; from list_accounts"`
+	PeriodStartDay int      `json:"period_start_day,omitempty" jsonschema:"day of the month (1-28) a budget month starts on; default 1"`
 }
 
 type updateBudgetInput struct {
-	BudgetID   string  `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
-	Name       string  `json:"name" jsonschema:"budget name"`
-	CurrencyID string  `json:"currency_id" jsonschema:"currency id (UUID), from list_currencies"`
-	EndDate    *string `json:"end_date,omitempty" jsonschema:"end month YYYY-MM-DD; omit to leave unchanged, empty string to clear"`
+	BudgetID       string  `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+	Name           string  `json:"name" jsonschema:"budget name"`
+	CurrencyID     string  `json:"currency_id" jsonschema:"currency id (UUID), from list_currencies"`
+	EndDate        *string `json:"end_date,omitempty" jsonschema:"end budget month YYYY-MM-DD (the day is ignored); omit to leave unchanged, empty string to clear"`
+	PeriodStartDay *int    `json:"period_start_day,omitempty" jsonschema:"day of the month (1-28) a budget month starts on; omit to leave unchanged"`
 }
 
 type cloneBudgetInput struct {
 	BudgetID   string `json:"budget_id" jsonschema:"budget id (UUID) to copy, from list_budgets"`
 	NewID      string `json:"new_id" jsonschema:"client-supplied id (UUID) for the copy"`
 	Name       string `json:"name" jsonschema:"name for the copy"`
-	StartDate  string `json:"start_date,omitempty" jsonschema:"first month YYYY-MM-DD; omit for a full copy from the source's start"`
+	StartDate  string `json:"start_date,omitempty" jsonschema:"first budget month YYYY-MM-DD (the day is ignored); omit for a full copy from the source's start"`
 	WithLimits bool   `json:"with_limits" jsonschema:"copy the plans (limits) too"`
 }
 
@@ -79,7 +81,7 @@ type updateEnvelopeInput struct {
 type setLimitInput struct {
 	BudgetID  string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
 	ElementID string `json:"element_id" jsonschema:"envelope, category or tag id (UUID), from get_budget"`
-	Month     string `json:"month" jsonschema:"YYYY-MM; must not be before the budget's start month"`
+	Month     string `json:"month" jsonschema:"YYYY-MM naming the budget month; must not be before the budget's start month"`
 	Amount    string `json:"amount,omitempty" jsonschema:"decimal string, e.g. 150.00; 0 is a plan of zero; omit to clear the limit"`
 }
 
@@ -159,11 +161,11 @@ func Register(svc *appbudget.Service) webmcp.Register {
 
 		type getBudgetInput struct {
 			BudgetID string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
-			Month    string `json:"month,omitempty" jsonschema:"YYYY-MM; defaults to the current month"`
+			Month    string `json:"month,omitempty" jsonschema:"YYYY-MM naming the budget month (the day is ignored); defaults to the current month"`
 		}
 
 		sdk.AddTool(s, &sdk.Tool{Name: "get_budget",
-			Description: "Full monthly budget state: folders, envelopes, categories, tags, limits, spent and available amounts."},
+			Description: "Full monthly budget state: folders, envelopes, categories, tags, limits, spent and available amounts. When the budget's period_start_day is not 1, a month runs from that day to the day before it in the following month (from day 16 on, the month is named after the one it ends in); filters.periodStart/periodEnd carry the real window."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in getBudgetInput) (*sdk.CallToolResult, model.GetBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "get_budget")
 				userID, err := webmcp.UserID(ctx)
@@ -186,12 +188,12 @@ func Register(svc *appbudget.Service) webmcp.Register {
 
 		type getBudgetPlanInput struct {
 			BudgetID  string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
-			FromMonth string `json:"from_month,omitempty" jsonschema:"YYYY-MM window start; defaults to the current month"`
+			FromMonth string `json:"from_month,omitempty" jsonschema:"YYYY-MM naming the first budget month of the window; defaults to the current month"`
 			Months    int    `json:"months,omitempty" jsonschema:"window length in months, 1-24; defaults to 12"`
 		}
 
 		sdk.AddTool(s, &sdk.Tool{Name: "get_budget_plan",
-			Description: "Multi-month plan sheet: every income and expense row with per-month actual and planned amounts, plus opening balances and per-month rates. Planned values are edited with set_limit."},
+			Description: "Multi-month plan sheet: every income and expense row with per-month actual and planned amounts, plus opening balances and per-month rates. Planned values are edited with set_limit. Months are budget months: when the budget's period_start_day is not 1 each one is shifted to start on that day."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in getBudgetPlanInput) (*sdk.CallToolResult, model.GetBudgetPlanResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "get_budget_plan")
 				userID, err := webmcp.UserID(ctx)
@@ -225,11 +227,12 @@ func Register(svc *appbudget.Service) webmcp.Register {
 					return nil, model.CreateBudgetResult{}, err
 				}
 				res, err := svc.CreateBudget(ctx, userID, model.CreateBudgetRequest{
-					Id:         vo.NewId().String(), // entity id, minted server-side for MCP
-					Name:       in.Name,
-					StartDate:  in.StartDate,
-					CurrencyId: in.CurrencyID,
-					AccountIds: in.AccountIDs,
+					Id:             vo.NewId().String(), // entity id, minted server-side for MCP
+					Name:           in.Name,
+					StartDate:      in.StartDate,
+					CurrencyId:     in.CurrencyID,
+					AccountIds:     in.AccountIDs,
+					PeriodStartDay: in.PeriodStartDay,
 				})
 				if err != nil {
 					return nil, model.CreateBudgetResult{}, webmcp.MapErr(ctx, err)
@@ -238,7 +241,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "update_budget",
-			Description: "Rename a budget, change its currency, or set/clear its end month. Member accounts are left untouched (use add_budget_account / remove_budget_account)."},
+			Description: "Rename a budget, change its currency or period start day, or set/clear its end month. Member accounts are left untouched (use add_budget_account / remove_budget_account)."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateBudgetInput) (*sdk.CallToolResult, model.UpdateBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_budget")
 				userID, err := webmcp.UserID(ctx)
@@ -249,10 +252,11 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				// concern (add_budget_account / remove_budget_account), and an absent
 				// list leaves the budget's member accounts untouched.
 				res, err := svc.UpdateBudget(ctx, userID, model.UpdateBudgetRequest{
-					Id:         in.BudgetID,
-					Name:       in.Name,
-					CurrencyId: in.CurrencyID,
-					EndDate:    in.EndDate,
+					Id:             in.BudgetID,
+					Name:           in.Name,
+					CurrencyId:     in.CurrencyID,
+					EndDate:        in.EndDate,
+					PeriodStartDay: in.PeriodStartDay,
 				})
 				if err != nil {
 					return nil, model.UpdateBudgetResult{}, webmcp.MapErr(ctx, err)
@@ -375,7 +379,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 
 		type listCommentsInput struct {
 			BudgetID string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
-			Month    string `json:"month,omitempty" jsonschema:"YYYY-MM; defaults to the current month"`
+			Month    string `json:"month,omitempty" jsonschema:"YYYY-MM naming the budget month; defaults to the current month"`
 			Months   int    `json:"months,omitempty" jsonschema:"window length in months, 1-24 (default 1)"`
 		}
 
@@ -408,7 +412,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 		type createCommentInput struct {
 			BudgetID  string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
 			ElementID string `json:"element_id" jsonschema:"envelope, category or tag id (UUID), from get_budget"`
-			Month     string `json:"month" jsonschema:"YYYY-MM; must be inside the budget's months"`
+			Month     string `json:"month" jsonschema:"YYYY-MM naming the budget month; must be inside the budget's months"`
 			Comment   string `json:"comment" jsonschema:"plain text, 1-500 characters"`
 		}
 

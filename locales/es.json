@@ -2073,6 +2073,7 @@
       "accounts_required": "Selecciona al menos una cuenta",
       "archived": "Este presupuesto está archivado",
       "end_before_start": "El mes final es anterior al inicio del presupuesto",
+      "invalid_period_start_day": "Elige un día del 1 al 28",
       "comment_not_found": "Comentario no encontrado",
       "comment_forbidden": "No puedes modificar este comentario"
     },

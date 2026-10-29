@@ -60,6 +60,7 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		nb := model.NewBudget(newID, userID, req.Name, src.budget.CurrencyID, startDate, now)
+		nb.PeriodStartDay = src.budget.PeriodStartDay
 		if serr := s.budgets.Save(txCtx, nb); serr != nil {
 			return serr
 		}

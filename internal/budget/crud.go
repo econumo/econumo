@@ -48,6 +48,11 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		b.budget.UpdateName(req.Name, now)
 		b.budget.UpdateCurrency(curID, now)
+		if req.PeriodStartDay != nil {
+			if derr := b.budget.SetPeriodStartDay(*req.PeriodStartDay, now); derr != nil {
+				return derr
+			}
+		}
 		if req.EndDate != nil {
 			if *req.EndDate == "" {
 				if eerr := b.budget.EndAt(nil, now); eerr != nil {

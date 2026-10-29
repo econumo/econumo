@@ -31,8 +31,11 @@ type Budget struct {
 	// nil is open-ended.
 	EndedAt    *time.Time
 	IsArchived bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	// PeriodStartDay is the day of the month (MinPeriodStartDay..MaxPeriodStartDay)
+	// a budget month starts on; 1 is the calendar month.
+	PeriodStartDay int
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // NewBudget creates a budget. startDate is snapped to the first of its month.
@@ -46,7 +49,30 @@ func NewBudget(id, userID vo.Id, name string, currencyID vo.Id, startDate, now t
 		StartedAt:  FirstOfMonth(startDate),
 		CreatedAt:  now,
 		UpdatedAt:  now,
+
+		PeriodStartDay: MinPeriodStartDay,
 	}
+}
+
+// SetPeriodStartDay changes the day budget months start on, bumping updated_at
+// only on change.
+func (b *Budget) SetPeriodStartDay(d int, now time.Time) error {
+	if !ValidPeriodStartDay(d) {
+		return InvalidPeriodStartDayError()
+	}
+	if b.PeriodStartDay != d {
+		b.PeriodStartDay = d
+		b.UpdatedAt = now
+	}
+	return nil
+}
+
+// InvalidPeriodStartDayError is the coded field error for a start day outside
+// the allowed range.
+func InvalidPeriodStartDayError() error {
+	return errs.NewValidation("Validation failed", errs.FieldError{
+		Key: "periodStartDay", Message: "Choose a day from 1 to 28", Code: errs.CodeBudgetInvalidPeriodStartDay,
+	})
 }
 
 // UpdateName changes the name, bumping updated_at only on change.

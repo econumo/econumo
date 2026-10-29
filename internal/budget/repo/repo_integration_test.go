@@ -88,6 +88,31 @@ func TestBudgetRepo_BudgetCRUD(t *testing.T) {
 	}
 }
 
+func TestBudgetRepo_PeriodStartDayRoundTrip(t *testing.T) {
+	repo, _ := newRepo(t)
+	ctx := context.Background()
+	b := &model.Budget{
+		ID: vo.MustParseId(budgetID), UserID: vo.MustParseId(userA), Name: "Household",
+		CurrencyID: vo.MustParseId(usdID), StartedAt: startedAt, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+		PeriodStartDay: 16,
+	}
+	if err := repo.Save(ctx, b); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got, err := repo.GetByID(ctx, b.ID)
+	if err != nil || got.PeriodStartDay != 16 {
+		t.Fatalf("GetByID: day=%v err=%v want 16", got, err)
+	}
+	b.PeriodStartDay = 3
+	if err := repo.Save(ctx, b); err != nil {
+		t.Fatalf("re-Save: %v", err)
+	}
+	list, err := repo.ListForUser(ctx, vo.MustParseId(userA))
+	if err != nil || len(list) != 1 || list[0].PeriodStartDay != 3 {
+		t.Fatalf("ListForUser after update: %v err=%v want day 3", list, err)
+	}
+}
+
 func TestBudgetRepo_AccessCRUD(t *testing.T) {
 	repo, db := newRepo(t)
 	ctx := context.Background()
