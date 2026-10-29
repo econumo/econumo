@@ -136,7 +136,7 @@ it('shows the pay button for a readonly connection and mints a link with the for
   renderPage()
   expect(await screen.findByText('Read-only')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Pay for Partner' }))
-  await waitFor(() => expect(tab.location.href).toBe('https://pay.example.test/?t=x&for=u2'))
+  await waitFor(() => expect(tab.location.href.split('#')[0]).toBe('https://pay.example.test/?t=x&for=u2'))
   expect(body).toEqual({ for: 'u2' })
 })
 

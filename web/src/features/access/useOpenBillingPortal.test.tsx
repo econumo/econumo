@@ -5,6 +5,8 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { useOpenBillingPortal } from './useOpenBillingPortal'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { resetAnalyticsIdentity, setAnalyticsUser } from '@/lib/analytics'
+import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
 
 vi.mock('@/lib/metrics', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/metrics')>()),
@@ -29,6 +31,50 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   vi.mocked(trackEvent).mockClear()
+  resetAnalyticsIdentity()
+})
+
+function decodeFragment(href: string): unknown {
+  const value = new URL(href).hash.replace(/^#a=/, '')
+  return JSON.parse(atob(value.replace(/-/g, '+').replace(/_/g, '/')))
+}
+
+// The portal reports into the same analytics project as this same user and
+// group, handed over in a fragment so no server ever receives it.
+it('hands the analytics user and group to the portal in the link fragment', async () => {
+  server.use(
+    http.post('*/api/v1/user/create-billing-link', () =>
+      HttpResponse.json({ success: true, message: '', data: { url: 'https://pay.example.test/?t=abc' } }),
+    ),
+  )
+  window.econumoConfig = { INSTANCE_ID: 'a3f19c02b7d4' }
+  setAnalyticsUser('928709326e2884148b1dacddcfc5ea4c')
+  const tab = mockTab()
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useOpenBillingPortal(), { wrapper })
+  result.current.open()
+  await waitFor(() => expect(tab.location.href).toMatch(/^https:\/\/pay\.example\.test\/\?t=abc#a=[A-Za-z0-9_-]+$/))
+  expect(decodeFragment(tab.location.href)).toEqual({
+    u: '928709326e2884148b1dacddcfc5ea4c',
+    g: 'a3f19c02b7d4',
+    // jsdom serves localhost, which is not a cloud host.
+    n: 'selfhosted_a3f19c02b7d4',
+  })
+})
+
+it('hands nothing over for a user who opted out of analytics', async () => {
+  server.use(
+    http.post('*/api/v1/user/create-billing-link', () =>
+      HttpResponse.json({ success: true, message: '', data: { url: 'https://pay.example.test/?t=abc' } }),
+    ),
+  )
+  setAnalyticsUser('928709326e2884148b1dacddcfc5ea4c')
+  rememberAnalyticsPreference(false)
+  const tab = mockTab()
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useOpenBillingPortal(), { wrapper })
+  result.current.open()
+  await waitFor(() => expect(tab.location.href).toBe('https://pay.example.test/?t=abc'))
 })
 
 it('mints a self link per click and points the pre-opened tab at it', async () => {

@@ -81,6 +81,12 @@ export function setAnalyticsUser(id: string | null): void {
   release()
 }
 
+// The hashed id currently reported as, or null when nobody is identified.
+// Read by the billing-portal handoff (billingAnalyticsFragment in metrics.ts).
+export function analyticsUser(): string | null {
+  return userId
+}
+
 export function setAnalyticsGroup(id: string, name: string): void {
   groupId = id
   groupName = name

@@ -1,4 +1,4 @@
-import { capture, capturePageView, setAnalyticsContext, setAnalyticsGroup } from './analytics'
+import { analyticsUser, capture, capturePageView, setAnalyticsContext, setAnalyticsGroup } from './analytics'
 import { analyticsAllowed } from './analyticsPreference'
 import { authMethods } from './analyticsAuthMethods'
 import { profileAttributes } from './analyticsProfile'
@@ -245,6 +245,31 @@ export function analyticsPlatform(): 'web' | 'ios' | 'android' {
     return 'web'
   }
   return /android/i.test(navigator.userAgent) ? 'android' : 'ios'
+}
+
+// The billing portal reports into this same collector project, as the same
+// user and group, so a purchase lands in the user's own funnel. It is handed
+// them in its link's URL fragment — which no server ever receives — as one
+// base64url-encoded JSON value: {u: $user_id, g: $group_id, n: $group_name},
+// the group only when this instance has one. Nothing ("") when analytics is
+// off for this user or nobody is identified: the portal then reports nothing.
+export function billingAnalyticsFragment(): string {
+  if (!analyticsAllowed()) {
+    return ''
+  }
+  const user = analyticsUser()
+  if (!user) {
+    return ''
+  }
+  const payload: Record<string, string> = { u: user }
+  const instanceId = getInstanceId()
+  if (instanceId) {
+    payload.g = instanceId
+    payload.n = analyticsHost()
+  }
+  // Every value is ASCII (hex digests, a hostname), so btoa is safe here.
+  const encoded = btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  return `a=${encoded}`
 }
 
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {
