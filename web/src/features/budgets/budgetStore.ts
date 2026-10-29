@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Id } from '@/api/types'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { currentPeriod } from './period'
 
 /** the reporting-tags folder exists only in rendering: no folder row stands behind
  *  it, so its fold state is keyed by a reserved literal no element id (a UUID) can
@@ -36,6 +37,13 @@ interface BudgetPeriodState {
   setLastMode: (mode: BudgetMode) => void
   selectedDate: string
   setPeriod: (date: string) => void
+  /** the user picked a month this session (not persisted) */
+  periodChosen: boolean
+  /** the month followCurrentPeriod last moved the default to (not persisted) */
+  adoptedPeriod: string | null
+  /** an unpicked default month moves to the opened budget's current period: a
+   *  shifted budget can already be in next month's period */
+  followCurrentPeriod: (startDay: number, now?: Date) => void
   /** element rows default folded; presence = unfolded (Vue semantics). The Budget
    *  view (and the phone) and the Plan grid each keep their own fold state, so
    *  folding a line in one view leaves the other as it was. */
@@ -80,7 +88,19 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       selectedDate: firstOfCurrentMonth(),
       setPeriod: (date) => {
         trackEvent(METRICS.BUDGET_CHANGE_DATE)
-        set({ selectedDate: normalizePeriod(date) })
+        set({ selectedDate: normalizePeriod(date), periodChosen: true })
+      },
+      periodChosen: false,
+      adoptedPeriod: null,
+      followCurrentPeriod: (startDay, now = new Date()) => {
+        const { periodChosen, selectedDate, adoptedPeriod } = get()
+        if (periodChosen || (selectedDate !== currentPeriod(1, now) && selectedDate !== adoptedPeriod)) {
+          return
+        }
+        const target = currentPeriod(startDay, now)
+        if (target !== selectedDate) {
+          set({ selectedDate: target, adoptedPeriod: target })
+        }
       },
       unfoldedElements: {},
       toggleElement: (id) => set((state) => ({ unfoldedElements: toggleKey(state.unfoldedElements, id) })),
@@ -94,7 +114,7 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       },
       stepPeriod: (delta) => {
         trackEvent(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
-        set((s) => ({ selectedDate: addMonthsToPeriod(s.selectedDate, delta) }))
+        set((s) => ({ selectedDate: addMonthsToPeriod(s.selectedDate, delta), periodChosen: true }))
       },
       planNameWidth: null,
       setPlanNameWidth: (px) => set({ planNameWidth: px }),
@@ -111,6 +131,7 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
     {
       name: 'budgetPeriod',
       version: 1,
+      partialize: ({ periodChosen: _chosen, adoptedPeriod: _adopted, ...rest }): Partial<BudgetPeriodState> => rest,
       // version 0 shared one fold state between both views: each view starts from it
       migrate: (persisted, version) => {
         const state = (persisted ?? {}) as Partial<BudgetPeriodState>

@@ -443,3 +443,22 @@ it('someone else’s reporting tag shows Edit inactive', async () => {
   await user.click(await screen.findByRole('button', { name: /^kid-A, spent/ }))
   expect(within(await screen.findByRole('dialog', { name: /^kid-A · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
 })
+
+it('a shifted budget shows its dates beside the month strip and figures for its current period', async () => {
+  handlers({ budget: { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, periodStartDay: 16 } } })
+  vi.useFakeTimers({ toFake: ['Date'] })
+  // 20 July is already in the August period of a day-16 budget
+  vi.setSystemTime(new Date(2026, 6, 20, 12))
+  try {
+    useBudgetPeriodStore.setState({ selectedDate: '2026-08-01', periodChosen: true })
+    renderPage()
+    await screen.findByTestId('phone-month-view')
+    const strip = screen.getByRole('tablist', { name: 'period' })
+    expect(strip.parentElement).toContainElement(screen.getByTestId('period-dates'))
+    expect(screen.getByTestId('period-dates')).toHaveTextContent('Jul 16 – Aug 15')
+    // a calendar budget would treat August as ahead and hide what was spent
+    expect(screen.getByRole('button', { name: /^Food, budget .*, spent 45\.50$/ })).toBeInTheDocument()
+  } finally {
+    vi.useRealTimers()
+  }
+})

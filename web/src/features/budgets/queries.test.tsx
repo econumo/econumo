@@ -565,18 +565,23 @@ describe('planFetchWindow', () => {
   const now = new Date(2026, 9, 5) // October 2026
 
   it('buffers both sides of a window around the current month', () => {
-    expect(planFetchWindow('2026-09-01', 8, now)).toEqual({ from: '2026-07-01', months: 12 })
+    expect(planFetchWindow('2026-09-01', 8, 1, now)).toEqual({ from: '2026-07-01', months: 12 })
   })
 
   // the server books only what precedes the window, and the client projects unmet
   // plans only for the months inside it, so a later window must still reach back to
   // the current month or every projected balance loses the months in between
   it('starts no later than the current month when the window lies ahead', () => {
-    expect(planFetchWindow('2027-01-01', 8, now)).toEqual({ from: '2026-10-01', months: 13 })
-    expect(planFetchWindow('2027-09-01', 1, now)).toEqual({ from: '2026-10-01', months: 14 })
+    expect(planFetchWindow('2027-01-01', 8, 1, now)).toEqual({ from: '2026-10-01', months: 13 })
+    expect(planFetchWindow('2027-09-01', 1, 1, now)).toEqual({ from: '2026-10-01', months: 14 })
+  })
+
+  it('reaches back to the budget period holding today, not the calendar month', () => {
+    // on 5 October a day-10 budget is still in its September period
+    expect(planFetchWindow('2027-01-01', 8, 10, now)).toEqual({ from: '2026-09-01', months: 14 })
   })
 
   it('falls back to the buffered window once reaching back would pass the server cap', () => {
-    expect(planFetchWindow('2028-09-01', 8, now)).toEqual({ from: '2028-07-01', months: 12 })
+    expect(planFetchWindow('2028-09-01', 8, 1, now)).toEqual({ from: '2028-07-01', months: 12 })
   })
 })

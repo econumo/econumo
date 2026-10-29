@@ -13,6 +13,7 @@ import { compareNames } from '@/lib/collate'
 import { add, cmp, isZero, sub } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
 import { periodLabeler } from './budgetMath'
+import { currentPeriod, periodStartDayOf } from './period'
 import { withTagGroupsAdjacent } from './tagGroups'
 
 export function addMonths(month: string, delta: number): string {
@@ -25,10 +26,6 @@ export function monthDiff(a: string, b: string): number {
   const [ay, am] = a.split('-').map(Number)
   const [by, bm] = b.split('-').map(Number)
   return (by - ay) * 12 + (bm - am)
-}
-
-export function currentMonth(now: Date = new Date()): string {
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 }
 
 // A plain "YYYY-MM-01" parses as UTC midnight; formatting that directly in the
@@ -119,11 +116,11 @@ export function savingsAsPlanElement(s: PlanSavingsElementDto): PlanElementDto {
  *  That is the per-row gap the Savings balance row adds, so the rows and that row
  *  agree. A deleted account plans nothing, and a server that sends no balances is
  *  left alone. */
-export function projectSavingsClosings(s: PlanSavingsElementDto, months: string[], now?: Date): PlanSavingsElementDto {
+export function projectSavingsClosings(s: PlanSavingsElementDto, months: string[], now?: Date, startDay = 1): PlanSavingsElementDto {
   if (s.isArchived !== 0 || s.cells.some((c) => c.closingBalance === undefined)) {
     return s
   }
-  const cur = currentMonth(now)
+  const cur = currentPeriod(startDay, now)
   let expected = '0'
   const cells = s.cells.map((cell, i) => {
     if ((months[i] ?? '') >= cur) {
@@ -268,7 +265,7 @@ export function planMonthExchange(plan: BudgetPlanDto, currencies: CurrencyDto[]
 }
 
 export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): PlanMonthTotals[] {
-  const cur = currentMonth(now)
+  const cur = currentPeriod(periodStartDayOf(plan.meta), now)
   const rows = plan.structure.elements
   const transfersByMonth = new Map((plan.transfers ?? []).map((t) => [t.period, t.items]))
   return plan.months.map((month, i) => {
@@ -483,7 +480,7 @@ export function balanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: M
  *  row so an over-saved row cannot cover another row's shortfall — the balance must
  *  move by exactly what the Savings line shows. */
 export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: MonthExchange, now?: Date): string[] {
-  const cur = currentMonth(now)
+  const cur = currentPeriod(periodStartDayOf(plan.meta), now)
   const flowsByMonth = new Map<string, PlanSavingsFlowDto[]>()
   for (const f of plan.savingsFlows ?? []) {
     const arr = flowsByMonth.get(f.month) ?? []

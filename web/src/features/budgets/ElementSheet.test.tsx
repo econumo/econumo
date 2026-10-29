@@ -27,6 +27,7 @@ function renderSheet(overrides: Partial<ElementSheetProps> = {}) {
   const props: ElementSheetProps = {
     target: { kind: 'expense', element: food },
     month: '2026-07-01',
+    startDay: 1,
     baseCurrencyId: 'cur-usd',
     currencies: [usd, eur],
     exchange: makeBudgetExchange(budget, [usd, eur]),

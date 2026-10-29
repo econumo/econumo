@@ -17,7 +17,8 @@ import type { ElementMoveItem } from './elementMove'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useBudgetPeriodStore } from './budgetStore'
-import { addMonths, currentMonth, monthDiff } from './planMath'
+import { addMonths, monthDiff } from './planMath'
+import { currentPeriod, periodStartDayOf } from './period'
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -143,7 +144,7 @@ export function useSetLimit() {
         const savings = prev.structure.savings
         // from the current month on a savings row's closing balance still expects
         // its unmet plan, so the edit moves it by the change in that gap
-        const projected = form.period >= currentMonth()
+        const projected = form.period >= currentPeriod(periodStartDayOf(prev.meta))
         const gap = (planned: string, spent: string) => (cmp(planned, spent) > 0 ? sub(planned, spent) : '0')
         return {
           ...prev,
@@ -195,7 +196,7 @@ export const PLAN_BUFFER = 2
 
 const PLAN_MONTHS_MAX = 24
 
-export function planFetchWindow(firstMonth: string, visibleMonths: number, now?: Date): { from: string; months: number } {
+export function planFetchWindow(firstMonth: string, visibleMonths: number, startDay = 1, now?: Date): { from: string; months: number } {
   // buffer both sides so arrow navigation renders instantly
   const buffered = addMonths(firstMonth, -PLAN_BUFFER)
   const end = addMonths(firstMonth, visibleMonths + PLAN_BUFFER)
@@ -203,15 +204,15 @@ export function planFetchWindow(firstMonth: string, visibleMonths: number, now?:
   // unmet plans of the current and later months inside it, so a window ahead of
   // the current month must reach back to it, or every projected balance drops
   // the months in between. Past the server's month cap it cannot.
-  const cur = currentMonth(now)
+  const cur = currentPeriod(startDay, now)
   if (buffered > cur && monthDiff(cur, end) <= PLAN_MONTHS_MAX) {
     return { from: cur, months: monthDiff(cur, end) }
   }
   return { from: buffered, months: Math.min(visibleMonths + 2 * PLAN_BUFFER, PLAN_MONTHS_MAX) }
 }
 
-export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number) {
-  const { from, months } = planFetchWindow(firstMonth, visibleMonths)
+export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number, startDay = 1) {
+  const { from, months } = planFetchWindow(firstMonth, visibleMonths, startDay)
   const planKey = [...queryKeys.budgetPlan, budgetId ?? 'none', from, months] as const
   const query = useQuery<BudgetPlanDto | null>({
     queryKey: planKey,

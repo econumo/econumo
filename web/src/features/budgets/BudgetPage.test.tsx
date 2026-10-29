@@ -1040,3 +1040,56 @@ describe('upcoming recurring as a plan hint', () => {
     expect(await screen.findByLabelText('Budget')).toHaveValue('')
   })
 })
+
+describe('a budget whose months start on the 28th', () => {
+  const shifted = { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, periodStartDay: 28 } }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 30, 12))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('opens on the period holding today and shows its dates', async () => {
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null })
+    const dates: string[] = []
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', ({ request }) => {
+        dates.push(new URL(request.url).searchParams.get('date') ?? '')
+        return HttpResponse.json({ success: true, message: '', data: { item: shifted } })
+      }),
+    )
+    renderPage()
+    await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01'))
+    expect(await screen.findByRole('tab', { selected: true, name: 'November' })).toBeInTheDocument()
+    expect(screen.getByTestId('period-dates')).toHaveTextContent('Oct 28 – Nov 27')
+    await waitFor(() => expect(dates).toContain('2026-11-01'))
+    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.BUDGET_CHANGE_DATE)
+  })
+
+  it('keeps a month the user picked', async () => {
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: true, adoptedPeriod: null })
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: shifted } })),
+    )
+    renderPage()
+    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Sep 28 – Oct 27')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01')
+  })
+
+  it('a calendar-month budget shows no dates', async () => {
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null })
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    )
+    renderPage()
+    expect(await screen.findByTestId('budget-folder-Essentials')).toBeInTheDocument()
+    expect(screen.queryByTestId('period-dates')).not.toBeInTheDocument()
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01')
+  })
+})

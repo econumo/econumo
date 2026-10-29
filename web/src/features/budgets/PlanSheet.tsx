@@ -62,7 +62,6 @@ import { SetLimitDialog } from './SetLimitDialog'
 import { useBudgetLineMenus } from './useBudgetLineMenus'
 import {
   addMonths,
-  currentMonth,
   balanceRow,
   bucketPlanRows,
   everydayBalanceRow,
@@ -88,6 +87,7 @@ import {
 } from './planMath'
 import type { MonthExchange, PlanCellRef, PlanFolderSection, PlanRow, PlanRows } from './planMath'
 import type { LineControls, MenuAction } from './monthLayout'
+import { currentPeriod, periodStartDayOf } from './period'
 import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
 import { ElementRow, PlanTagGroup, SumCell, cellDomId, commentsReadOnly, isEditableCell, pickedKey, sourceAmount } from './PlanRows'
@@ -543,7 +543,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     stepPeriod(monthDiff(selectedDate, visible > 1 ? addMonths(first, 1) : first))
   }
 
-  const { data: plan, isPending, isError, refetch, planKey, fetchFrom } = useBudgetPlan(budget.meta.id, firstMonth, visible)
+  const startDay = periodStartDayOf(budget.meta)
+  const { data: plan, isPending, isError, refetch, planKey, fetchFrom } = useBudgetPlan(budget.meta.id, firstMonth, visible, startDay)
   const setLimit = usePlanSetLimit(planKey)
   const fillCells = useFillPlannedCells(planKey)
   const menus = useBudgetLineMenus({ budget, plan, userId, onOpenSettings })
@@ -555,7 +556,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     }
   }, [editorOpen])
   // the plan's OWN window, so both caches cover exactly the same months
-  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(budget.meta.id, fetchFrom, planFetchWindow(firstMonth, visible).months)
+  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(budget.meta.id, fetchFrom, planFetchWindow(firstMonth, visible, startDay).months)
 
   // The optimistic drop (an order, or a category hidden on its way into or out of an
   // envelope) is released only when genuinely fresh plan data arrives: a refetch yields
@@ -600,7 +601,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   // column to tint
   // the picked month only anchors the window; the grid marks the current month instead
   const selectedCol = visibleMonths.indexOf(selectedDate)
-  const cur = currentMonth()
+  const cur = currentPeriod(startDay)
   // An editor whose month left the window (a resize, the strip) closes rather than
   // reappearing, stale, when that month scrolls back in. Leaving its cell by click or
   // key has already committed it.
@@ -744,14 +745,14 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (!plan) {
       return []
     }
-    const all = (plan.structure.savings ?? []).map((row) => savingsAsPlanElement(projectSavingsClosings(row, plan.months)))
+    const all = (plan.structure.savings ?? []).map((row) => savingsAsPlanElement(projectSavingsClosings(row, plan.months, undefined, startDay)))
     const placed = dragArrangement ? placeElements(all, dragArrangement) : all
     const byPosition = (a: PlanElementDto, b: PlanElementDto) => a.position - b.position
     return [
       ...placed.filter((el) => el.isArchived === 0).sort(byPosition),
       ...placed.filter((el) => el.isArchived !== 0).sort(byPosition),
     ].map((element) => ({ element }))
-  }, [plan, dragArrangement])
+  }, [plan, dragArrangement, startDay])
 
   // Rows that earn their place per VISIBLE window, not per fetched cells (the fetch
   // carries buffer months either side): an uncategorized row is dropped when every
@@ -2037,7 +2038,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         }}
         plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) : false}
         upcoming={
-          planLimitTarget && dialogCell && wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming, planLimitTarget.el.type === BudgetElementType.SAVINGS)
+          planLimitTarget && dialogCell && wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming, planLimitTarget.el.type === BudgetElementType.SAVINGS, startDay)
             ? {
                 budget,
                 target: {
@@ -2060,6 +2061,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       <ElementSheet
         target={sheetPlanTarget}
         month={sheetCellTarget?.month ?? ''}
+        startDay={startDay}
         baseCurrencyId={budget.meta.currencyId}
         currencies={currencies}
         exchange={plan && sheetCellTarget ? planMonthExchange(plan, currencies, sheetCellTarget.monthIndex) : (_from, _to, amount) => amount}
