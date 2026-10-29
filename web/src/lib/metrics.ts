@@ -1,4 +1,5 @@
-import { analyticsUser, capture, capturePageView, setAnalyticsContext, setAnalyticsGroup } from './analytics'
+import { capture, capturePageView, setAnalyticsContext, setAnalyticsGroup } from './analytics'
+import { analyticsUserId } from './analyticsId'
 import { analyticsAllowed } from './analyticsPreference'
 import { authMethods } from './analyticsAuthMethods'
 import { profileAttributes } from './analyticsProfile'
@@ -252,16 +253,19 @@ export function analyticsPlatform(): 'web' | 'ios' | 'android' {
 // them in its link's URL fragment — which no server ever receives — as one
 // base64url-encoded JSON value: {u: $user_id, g: $group_id, n: $group_name},
 // the group only when this instance has one. Nothing ("") when analytics is
-// off for this user or nobody is identified: the portal then reports nothing.
-export function billingAnalyticsFragment(): string {
-  if (!analyticsAllowed()) {
+// off for this user or there is no user: the portal then reports nothing.
+//
+// Takes the raw id from the caller's user data rather than reading the
+// analytics wrapper's identity, which is only set once get-user-data has
+// answered — on a warm reload the persisted cache can put a billing button
+// on screen, and a click through, before that.
+export function billingAnalyticsFragment(userId: string | undefined, analyticsOption: string | null): string {
+  // Both opt-out records: the user's own option (authoritative, from the same
+  // user data) and the device mirror, so either one alone keeps it off.
+  if (!userId || analyticsOption === '0' || !analyticsAllowed()) {
     return ''
   }
-  const user = analyticsUser()
-  if (!user) {
-    return ''
-  }
-  const payload: Record<string, string> = { u: user }
+  const payload: Record<string, string> = { u: analyticsUserId(userId) }
   const instanceId = getInstanceId()
   if (instanceId) {
     payload.g = instanceId
