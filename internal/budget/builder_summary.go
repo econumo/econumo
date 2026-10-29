@@ -6,6 +6,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -13,8 +14,9 @@ import (
 // the period average rates. Balance amount fields are nil when the period has not
 // started/ended.
 func (s *Service) buildFinancialSummary(ctx context.Context, budgetCurrencyID vo.Id, f filters, now time.Time) ([]model.CurrencyBalanceResult, []model.AverageCurrencyRateResult, error) {
-	periodStarted := !f.periodStart.After(now)
-	periodEnded := !f.periodEnd.After(now)
+	wall := localNow(now, reqctx.Location(ctx))
+	periodStarted := !f.periodStart.After(wall)
+	periodEnded := !f.periodEnd.After(wall)
 
 	var startBalances, endBalances []model.AccountBalanceRow
 	var reports []model.AccountReportRow

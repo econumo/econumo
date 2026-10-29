@@ -184,11 +184,18 @@ func (p *projectedRead) occurrence(templateID, spentAt string) (*projectedTx, bo
 // localToday is the caller's local midnight as a UTC-tagged wall clock, the
 // form NextPaymentAt is stored in.
 func localToday(now time.Time, loc *time.Location) time.Time {
+	y, m, d := localNow(now, loc).Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+// localNow is the caller's local wall clock as a UTC-tagged time, comparable
+// with period bounds and spent_at.
+func localNow(now time.Time, loc *time.Location) time.Time {
 	if loc == nil {
 		loc = time.UTC
 	}
-	y, m, d := now.In(loc).Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	w := now.In(loc)
+	return time.Date(w.Year(), w.Month(), w.Day(), w.Hour(), w.Minute(), w.Second(), w.Nanosecond(), time.UTC)
 }
 
 // projectedMonth renders the "YYYY-MM-01" period key the by-month SQL groups on.

@@ -368,3 +368,31 @@ func TestCommentListShiftedDefaultPeriod(t *testing.T) {
 		t.Fatalf("comments = %+v, want only the current period's (2026-11-01)", res.Items)
 	}
 }
+
+func TestGetBudgetSummaryCallerWallClock(t *testing.T) {
+	h := newPeriodHarness(t, 28, time.Date(2026, 10, 27, 22, 0, 0, 0, time.UTC))
+	h.spend("40", "2026-10-28 00:00:00")
+	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := h.get(reqctx.WithLocation(context.Background(), tokyo), h.owner, "")
+	sameWindow(t, res, "2026-10-28 00:00:00", "")
+	if len(res.Balances) == 0 {
+		t.Fatal("no balances")
+	}
+	b := res.Balances[0]
+	if b.StartBalance == nil || b.Income == nil || b.Expenses == nil || b.Exchanges == nil {
+		t.Fatalf("tokyo: started period has null figures: %+v", b)
+	}
+	if b.EndBalance != nil {
+		t.Errorf("tokyo: endBalance = %s, want null", *b.EndBalance)
+	}
+	sameAmount(t, "tokyo expenses", *b.Expenses, "40")
+
+	utc := h.get(context.Background(), h.owner, "2026-11-01")
+	ub := utc.Balances[0]
+	if ub.StartBalance != nil || ub.Income != nil || ub.Expenses != nil || ub.Exchanges != nil {
+		t.Errorf("utc: period not started yet has figures: %+v", ub)
+	}
+}
