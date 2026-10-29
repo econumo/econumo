@@ -17,6 +17,12 @@ const isoDay = (d: Date): string =>
 
 const keyOf = (year: number, monthIndex: number): string => isoDay(new Date(year, monthIndex, 1))
 
+/** a "YYYY-MM-DD" day (any time part ignored) as a local Date */
+export function localDate(day: string): Date {
+  const [y, m, d] = day.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
 /** a server older than the period setting sends no day: calendar months */
 export function periodStartDayOf(meta: Pick<BudgetMetaDto, 'periodStartDay'>): number {
   return validDay(meta.periodStartDay) ? meta.periodStartDay : MIN_DAY
@@ -33,8 +39,8 @@ export function periodWindow(key: string, startDay: number): { start: string; en
 /** the key of the period holding `day` ("YYYY-MM-DD", any time part ignored) */
 export function periodOf(day: string, startDay: number): string {
   const d = clampDay(startDay)
-  const [y, m, dd] = day.slice(0, 10).split('-').map(Number)
-  const shifted = new Date(y, m - 1, dd - (d - 1))
+  const shifted = localDate(day)
+  shifted.setDate(shifted.getDate() - (d - 1))
   return keyOf(shifted.getFullYear(), shifted.getMonth() + (d >= 16 ? 1 : 0))
 }
 

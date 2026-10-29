@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -361,7 +362,6 @@ func PeriodWindow(key time.Time, startDay int) (start, end time.Time) {
 	return start, start.AddDate(0, 1, 0)
 }
 
-// PeriodOf returns the key (first of month) of the period containing t.
 func PeriodOf(t time.Time, startDay int) time.Time {
 	startDay = clampPeriodStartDay(startDay)
 	key := FirstOfMonth(t.AddDate(0, 0, -(startDay - 1)))
@@ -371,13 +371,12 @@ func PeriodOf(t time.Time, startDay int) time.Time {
 	return key
 }
 
-// PeriodKeyOfDay maps a "YYYY-MM-DD" day to its period key as "YYYY-MM-01".
 func PeriodKeyOfDay(day string, startDay int) (string, error) {
-	t, err := time.Parse("2006-01-02", day)
+	t, err := time.Parse(datetime.DateLayout, day)
 	if err != nil {
 		return "", err
 	}
-	return PeriodOf(t, startDay).Format("2006-01-02"), nil
+	return PeriodOf(t, startDay).Format(datetime.DateLayout), nil
 }
 
 // idPtrEqual compares two optional ids for equality (both nil == equal).

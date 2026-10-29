@@ -1,10 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { periodWindow } from './period'
-
-const localDate = (iso: string): Date => {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
+import { localDate, periodWindow } from './period'
 
 /** the dates a shifted budget month covers; a calendar month needs no range */
 export function PeriodDates({ periodKey, startDay }: { periodKey: string; startDay: number }) {
