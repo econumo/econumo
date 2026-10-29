@@ -53,6 +53,48 @@ type RateInput struct {
 	Date time.Time
 }
 
+// RatePeriod is the unit a rate-gap check works in. Conversions average each
+// month's rates, so one rate per month is enough for them; RatePeriodDay asks
+// for a rate on every day.
+type RatePeriod int
+
+const (
+	RatePeriodMonth RatePeriod = iota
+	RatePeriodDay
+)
+
+// RatedPeriod says a currency has at least one rate against the base inside
+// the period starting at Start (the 1st of the month, or the day).
+type RatedPeriod struct {
+	Start time.Time
+	Code  string
+}
+
+// RateGap is a period with no rate for some of the checked currencies.
+type RateGap struct {
+	Start   time.Time
+	Missing []string
+}
+
+// RateGapReport is the result of a rate-gap check over [From, To], both
+// period starts.
+type RateGapReport struct {
+	Base       string
+	Period     RatePeriod
+	From       time.Time
+	To         time.Time
+	Currencies []string
+	Gaps       []RateGap
+}
+
+// RateBackfill is the outcome of loading the rates of one gap.
+type RateBackfill struct {
+	Date        time.Time
+	Requested   []string
+	Stored      int
+	Unavailable []string
+}
+
 // CurrencyRecord is one currencies row with ownership and archival state.
 // UserID nil = global (admin-managed); non-nil = custom, owned by that user.
 type CurrencyRecord struct {

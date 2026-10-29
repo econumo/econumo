@@ -110,6 +110,28 @@ func TestCurrencyAdd(t *testing.T) {
 }
 
 // TestCurrencyAddUsageError covers the arg-count usage-error branch.
+// Without a foreign currency in use there is nothing to load, so neither
+// command reaches Open Exchange Rates.
+func TestCurrencyRateGapCommands(t *testing.T) {
+	cliEnv(t)
+	if got := Run([]string{"currency:show-rate-gaps"}); got != 0 {
+		t.Fatalf("currency:show-rate-gaps = %d, want 0", got)
+	}
+	if got := Run([]string{"currency:show-rate-gaps", "2026-01", "--daily", "-v"}); got != 0 {
+		t.Fatalf("currency:show-rate-gaps --daily = %d, want 0", got)
+	}
+	if got := Run([]string{"currency:backfill-rates", "2026-01"}); got != 0 {
+		t.Fatalf("currency:backfill-rates = %d, want 0", got)
+	}
+	// The start is required: every gap costs an API request.
+	if got := Run([]string{"currency:backfill-rates", "--daily"}); got != 1 {
+		t.Fatalf("currency:backfill-rates without a start = %d, want 1", got)
+	}
+	if got := Run([]string{"currency:show-rate-gaps", "--monthly"}); got != 1 {
+		t.Fatalf("currency:show-rate-gaps --monthly = %d, want 1", got)
+	}
+}
+
 func TestCurrencyAddUsageError(t *testing.T) {
 	cliEnv(t)
 	if got := Run([]string{"currency:add"}); got != 1 {

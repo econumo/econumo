@@ -1038,6 +1038,8 @@ user:verify-email <email>
 user:set-access <email> <full|readonly> [YYYY-MM-DD]
 user:show <email>
 currency:update-rates [date]
+currency:show-rate-gaps [start] [end] [--daily]
+currency:backfill-rates <start> [end] [--daily]
 currency:add <code> [name] [fraction-digits]
 token:purge [days]
 data:remove-salt
@@ -1058,6 +1060,18 @@ Run it **while the old salt is still set** (it needs it to decrypt), then
 unset `ECONUMO_DATA_SALT` and restart. It refuses to run with an empty salt,
 and is idempotent (already-plaintext rows are skipped).
 Back up the DB first — the decryption is one-way in practice.
+
+`currency:show-rate-gaps` lists the months (per day with `--daily`) in which a
+global currency in use (on an account, deleted ones included, a budget, a budget
+element or a user's display currency; never the base or a custom currency) has
+no rate against `ECONUMO_CURRENCY_BASE`. Conversions average each month's rates
+and a month without any borrows the latest earlier month, so one rate a month is
+enough for them. Dates are `YYYY-MM-DD` or `YYYY-MM`; the start defaults to the
+oldest transaction and the end to today (UTC, a later end is clamped).
+`currency:backfill-rates` loads exactly those gaps from Open Exchange Rates, one
+request per gap, dated the gap's first day (the 1st of the month, or the day),
+requesting only the missing codes. Its start is required because every gap
+costs API quota; it stops at the first failed request, and a rerun resumes.
 
 `data:import-sqlite` copies every table from an existing SQLite database into
 the configured PostgreSQL (`DATABASE_URL` must be a `postgres://` URL). It runs

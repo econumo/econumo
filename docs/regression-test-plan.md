@@ -1752,6 +1752,14 @@ and on tablet/phone only with a hardware keyboard.
       account in a budget-currency category counts in the category's spent at
       the converted amount (not 1:1), in both the table and the Plan grid, and
       `get-budget` `currencyRates` lists the global rates, not only custom ones.
+- [ ] `currency:show-rate-gaps` on an instance with a foreign-currency account
+      and a month with no rates: that month is listed with the account's
+      currency; `--daily` lists days instead; currencies nobody uses, custom
+      currencies and the base are never listed.
+- [ ] `currency:backfill-rates <start>` fills those gaps (one Open Exchange
+      Rates request each, dated the 1st, or each day with `--daily`):
+      `currency:show-rate-gaps` then reports no gaps for the range, and the
+      budget converts that month's foreign amounts at the loaded rate.
 - [ ] Transaction dated exactly 00:00 on the 1st of the budget month (e.g. a
       date-only CSV import row), on SQLite AND PostgreSQL: it counts ONCE, in
       that month's income/expenses, not also in its starting balance; every
