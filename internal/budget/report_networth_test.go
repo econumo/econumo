@@ -44,6 +44,24 @@ func TestNetWorthReport_Personal_RunningBalance(t *testing.T) {
 	eqAmounts(t, r.Accounts[0].Balances, "150", "130")
 }
 
+// Months before the first stored rate convert at the earliest rate, not at face
+// value (40,000 RUB is not 40,000 CAD).
+func TestNetWorthReport_BeforeFirstRateUsesEarliestRate(t *testing.T) {
+	h := newFlowHarness(t)
+	cad := h.f.Currency(fixture.Currency{Code: "CAD", Symbol: "CA$"})
+	rub := h.f.Currency(fixture.Currency{Code: "RUB", Symbol: "R"})
+	for _, d := range []string{"2026-03-05", "2026-04-05"} {
+		h.f.Rate(fixture.Rate{CurrencyID: cad, BaseCurrencyID: fixture.USD, Rate: "1.4", PublishedAt: d})
+		h.f.Rate(fixture.Rate{CurrencyID: rub, BaseCurrencyID: fixture.USD, Rate: "80", PublishedAt: d})
+	}
+	ra := h.f.Account(fixture.Account{UserID: h.user, CurrencyID: rub, Name: "Rub"})
+	h.tx(1, ra, "", "", "", "40000", "2026-01-02 10:00:00")
+	b := h.f.Budget(fixture.Budget{UserID: h.user, CurrencyID: cad})
+	h.f.BudgetAccount(b, ra)
+	r := h.netWorth(t, model.GetNetWorthReportRequest{BudgetId: b, From: "2026-01-01", To: "2026-04-01"})
+	eqAmounts(t, accountRow(t, r, ra).Balances, "700", "700", "700", "700")
+}
+
 func TestNetWorthReport_TransferMovesBetweenAccounts(t *testing.T) {
 	h := newFlowHarness(t)
 	other := h.f.Account(fixture.Account{UserID: h.user, Name: "Other"})

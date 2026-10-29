@@ -1432,6 +1432,10 @@ data unreadable. Most are also asserted by the test suite.
   in upcoming, not in spent, so never added twice) without committing. A cell with nothing still to
   come (no due payment, no future-dated row) shows no list, Spent/Total lines included.
   Past months and read-only cells never show it; there is no Post/Skip/Edit of templates from budget views.
+- **Rates before the first stored rate**: a period with no rate at or before it converts at
+  the earliest stored month's average (`RateProvider.snapPeriod`), never at face value, so a
+  long report window or an old budget month does not count 40,000 RUB as 40,000 CAD. Every
+  conversion goes through it (Budget, Plan, reports).
 - **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,
   never removes the row — `accounts.currency_id` and `transactions.account_id` cascade from it,
   so a hard delete would silently destroy every account and transaction in that currency. A

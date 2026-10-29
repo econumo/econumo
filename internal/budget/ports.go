@@ -84,7 +84,8 @@ type Convertor interface {
 type AverageRateLookup interface {
 	AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error)
 	// SnappedRatePeriod returns the [start,end) AverageRates actually used (the
-	// latest-rate month <= end, or the requested period when no rate exists).
+	// latest-rate month <= end, the earliest-rate month before the first rate,
+	// or the requested period when no rate exists).
 	// The currencyRates block reports THIS period.
 	SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error)
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)

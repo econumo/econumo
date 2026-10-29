@@ -50,6 +50,12 @@ WHERE base_currency_id = $1 AND published_at < $2
 ORDER BY published_at DESC
 LIMIT 1;
 
+-- name: GetEarliestCurrencyRateDate :one
+SELECT published_at FROM currencies_rates
+WHERE base_currency_id = $1
+ORDER BY published_at ASC
+LIMIT 1;
+
 -- name: GetLatestCurrencyRateListView :many
 -- Latest rate row per (currency, base) pair. See the sqlite variant.
 SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate

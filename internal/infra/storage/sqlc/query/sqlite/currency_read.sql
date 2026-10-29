@@ -60,6 +60,14 @@ WHERE base_currency_id = ? AND datetime(published_at) < datetime(?)
 ORDER BY published_at DESC
 LIMIT 1;
 
+-- name: GetEarliestCurrencyRateDate :one
+-- Oldest published_at for a base currency: the rate month used for periods
+-- before the first stored rate.
+SELECT published_at FROM currencies_rates
+WHERE base_currency_id = ?
+ORDER BY published_at ASC
+LIMIT 1;
+
 -- name: GetLatestCurrencyRateListView :many
 -- Latest rate row per (currency, base) pair. The previous single-latest-date
 -- form dropped any currency whose newest rate predates the newest OXR batch,

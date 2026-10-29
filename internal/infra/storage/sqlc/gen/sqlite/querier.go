@@ -216,6 +216,9 @@ type Querier interface {
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
+	// Oldest published_at for a base currency: the rate month used for periods
+	// before the first stored rate.
+	GetEarliestCurrencyRateDate(ctx context.Context, baseCurrencyID string) (time.Time, error)
 	// Fixed custom-currency rates for the convertor overlay: one rate per custom,
 	// period-independent. Globals never carry a rate here.
 	GetFixedCurrencyRates(ctx context.Context) ([]GetFixedCurrencyRatesRow, error)

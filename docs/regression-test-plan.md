@@ -2169,6 +2169,10 @@ tag, and a budget with a planned limit on one category.
       transaction list, as on the Budget page); "Everyday accounts" and
       person rows do not. In My accounts an account that is not in my
       account list is not clickable.
+- [ ] Net worth "All" reaching back before the instance's first stored
+      currency rate: a foreign-currency account (e.g. RUB in a CAD budget) is
+      converted at the earliest rate in those months, never shown at face
+      value (40,000 RUB is not 40,000 CA$).
 - [ ] Net worth leaves deleted accounts out entirely, in both scopes: no row,
       none of their past balance in the chart or Total, and a deleted
       account's old transactions do not move the start of "All".
