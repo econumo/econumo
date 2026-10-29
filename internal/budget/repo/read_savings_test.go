@@ -50,7 +50,7 @@ func TestAccountsNetByMonth(t *testing.T) {
 	mar := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	may := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 
-	rows, err := read.AccountsNetByMonth(ctx, []vo.Id{vo.MustParseId(s1), vo.MustParseId(s2)}, mar, may)
+	rows, err := read.AccountsNetByMonth(ctx, []vo.Id{vo.MustParseId(s1), vo.MustParseId(s2)}, mar, may, 1)
 	if err != nil {
 		t.Fatalf("AccountsNetByMonth: %v", err)
 	}
@@ -92,14 +92,14 @@ func TestAccountsIncomeExpenseByMonth(t *testing.T) {
 
 	mar := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	apr := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
-	rows, err := read.AccountsIncomeExpenseByMonth(ctx, []vo.Id{vo.MustParseId(s1)}, mar, apr)
+	rows, err := read.AccountsIncomeExpenseByMonth(ctx, []vo.Id{vo.MustParseId(s1)}, mar, apr, 1)
 	if err != nil {
 		t.Fatalf("AccountsIncomeExpenseByMonth: %v", err)
 	}
 	if len(rows) != 1 || rows[0].AccountID != s1 || rows[0].Month != "2026-03-01" || vo.NewDecimal(rows[0].Amount).String() != vo.NewDecimal("7").String() {
 		t.Fatalf("rows = %+v, want one March row of 7 (12 - 5)", rows)
 	}
-	if rows, err := read.AccountsIncomeExpenseByMonth(ctx, nil, mar, apr); err != nil || rows != nil {
+	if rows, err := read.AccountsIncomeExpenseByMonth(ctx, nil, mar, apr, 1); err != nil || rows != nil {
 		t.Errorf("empty accountIDs should be nil,nil; got %v, %v", rows, err)
 	}
 }
@@ -110,7 +110,7 @@ func TestAccountsNetByMonth_EmptyIDSet(t *testing.T) {
 	mar := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	may := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 
-	if rows, err := read.AccountsNetByMonth(ctx, nil, mar, may); err != nil || rows != nil {
+	if rows, err := read.AccountsNetByMonth(ctx, nil, mar, may, 1); err != nil || rows != nil {
 		t.Errorf("AccountsNetByMonth empty accountIDs should be nil,nil; got %v, %v", rows, err)
 	}
 }

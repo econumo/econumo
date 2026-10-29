@@ -91,7 +91,7 @@ func (s *Service) addSavings(ctx context.Context, f filters, options map[string]
 	if err != nil {
 		return nil, nil, err
 	}
-	actual, err := s.read.AccountsNetByMonth(ctx, ids, from, to)
+	actual, err := s.read.AccountsNetByMonth(ctx, ids, from, to, 1)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -192,7 +192,7 @@ func (s *Service) addSavingsPending(ctx context.Context, b *budgetAggregate, f f
 			planned[l.ExternalID+"_"+l.Month] = vo.NewDecimal(l.Amount)
 		}
 	}
-	actual, err := s.read.AccountsNetByMonth(ctx, ids, cur, f.periodEnd)
+	actual, err := s.read.AccountsNetByMonth(ctx, ids, cur, f.periodEnd, 1)
 	if err != nil {
 		return err
 	}
@@ -311,7 +311,7 @@ func (s *Service) addPlanSavingsClosings(ctx context.Context, f filters, rows []
 	if err != nil {
 		return err
 	}
-	nets, err := s.read.AccountsNetByMonth(ctx, ids, monthsList[0], windowEnd)
+	nets, err := s.read.AccountsNetByMonth(ctx, ids, monthsList[0], windowEnd, 1)
 	if err != nil {
 		return err
 	}
@@ -431,13 +431,13 @@ func savingsCurrencies(f filters, budgetCurrencyID vo.Id) []string {
 // per (month, account currency), ordered by month, then budget currency first,
 // then currency id. Months without activity have no entry.
 func (s *Service) buildSavingsFlows(ctx context.Context, budgetCurrencyID vo.Id, f filters, from, to time.Time,
-	byMonth func(context.Context, []vo.Id, time.Time, time.Time) ([]model.SavingsMonthRow, error)) ([]model.PlanSavingsFlowResult, error) {
+	byMonth func(context.Context, []vo.Id, time.Time, time.Time, int) ([]model.SavingsMonthRow, error)) ([]model.PlanSavingsFlowResult, error) {
 	out := []model.PlanSavingsFlowResult{}
 	ids, err := savingsAccountIDs(f)
 	if err != nil || len(ids) == 0 {
 		return out, err
 	}
-	rows, err := byMonth(ctx, ids, from, to)
+	rows, err := byMonth(ctx, ids, from, to, 1)
 	if err != nil {
 		return nil, err
 	}

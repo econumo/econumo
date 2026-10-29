@@ -571,8 +571,58 @@ func (r *ReadRepo) planMonthExpr(col string) string {
 	return "substr(" + col + ", 1, 7) || '-01'"
 }
 
+// planDayExpr renders a datetime column as its "YYYY-MM-DD" day, slicing
+// the SQLite text for the reason planMonthExpr gives.
+func (r *ReadRepo) planDayExpr(col string) string {
+	if r.driver == "postgresql" {
+		return "to_char(" + col + ", 'YYYY-MM-DD')"
+	}
+	return "substr(" + col + ", 1, 10)"
+}
+
+// periodExpr is the grouping column of the by-month reads. Day 1 groups by
+// month in SQL, so its sums keep each engine's own text; any other start day
+// groups by day and foldPeriods re-keys and adds the rows in Go.
+func (r *ReadRepo) periodExpr(col string, startDay int) string {
+	if startDay == 1 {
+		return r.planMonthExpr(col)
+	}
+	return r.planDayExpr(col)
+}
+
+// foldPeriods re-keys day-grouped rows onto their period key and adds the
+// amounts of rows that then share a key; first-seen order is kept and every
+// amount comes out normalized.
+func foldPeriods[R any, K comparable](rows []R, startDay int, month func(*R) *string, key func(R) K, amounts func(*R) []*string) ([]R, error) {
+	var out []R
+	at := map[K]int{}
+	for _, row := range rows {
+		m := month(&row)
+		p, err := model.PeriodKeyOfDay(*m, startDay)
+		if err != nil {
+			return nil, err
+		}
+		*m = p
+		k := key(row)
+		i, seen := at[k]
+		if !seen {
+			at[k] = len(out)
+			out = append(out, row)
+			for _, a := range amounts(&out[len(out)-1]) {
+				*a = vo.NewDecimal(*a).String()
+			}
+			continue
+		}
+		dst, src := amounts(&out[i]), amounts(&row)
+		for j := range dst {
+			*dst[j] = vo.NewDecimal(*dst[j]).Add(vo.NewDecimal(*src[j])).String()
+		}
+	}
+	return out, nil
+}
+
 // SpendingByMonth implements ReadModel.
-func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlySpendingRow, error) {
+func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlySpendingRow, error) {
 	// Empty IN () is a no-op on SQLite but a syntax error on PostgreSQL (same
 	// guard as CountSpending); an empty category set is NOT a short-circuit —
 	// the NULL-category rows still have to come back.
@@ -581,7 +631,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 	}
 	catArgs := idArgs(categoryIDs)
 	accArgs := idArgs(accountIDs)
-	month := r.planMonthExpr("t.spent_at")
+	month := r.periodExpr("t.spent_at", startDay)
 	var sql string
 	var args []any
 	if r.driver == "postgresql" {
@@ -645,16 +695,25 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 		}
 		out = append(out, model.MonthlySpendingRow{Month: monthStr, CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil || startDay == 1 {
+		return out, err
+	}
+	type key struct{ month, category, tag, currency string }
+	return foldPeriods(out, startDay,
+		func(x *model.MonthlySpendingRow) *string { return &x.Month },
+		func(x model.MonthlySpendingRow) key {
+			return key{x.Month, derefStr(x.CategoryID), derefStr(x.TagID), x.CurrencyID}
+		},
+		func(x *model.MonthlySpendingRow) []*string { return []*string{&x.Amount} })
 }
 
 // IncomeByMonth implements ReadModel.
-func (r *ReadRepo) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyIncomeRow, error) {
+func (r *ReadRepo) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlyIncomeRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
 	accArgs := idArgs(accountIDs)
-	month := r.planMonthExpr("t.spent_at")
+	month := r.periodExpr("t.spent_at", startDay)
 	var sql string
 	var args []any
 	// INNER JOIN: every income row's account must be one of accountIDs (the
@@ -710,13 +769,20 @@ func (r *ReadRepo) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, 
 		}
 		out = append(out, model.MonthlyIncomeRow{Month: monthStr, CategoryID: categoryID, CurrencyID: *currencyID, Amount: a})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil || startDay == 1 {
+		return out, err
+	}
+	type key struct{ month, category, currency string }
+	return foldPeriods(out, startDay,
+		func(x *model.MonthlyIncomeRow) *string { return &x.Month },
+		func(x model.MonthlyIncomeRow) key { return key{x.Month, derefStr(x.CategoryID), x.CurrencyID} },
+		func(x *model.MonthlyIncomeRow) []*string { return []*string{&x.Amount} })
 }
 
 // TransfersByMonth implements ReadModel: one grouped query per direction,
 // merged per (month, currency). Rows come back sorted by month then currency
 // id so the wire is deterministic across engines.
-func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyTransferRow, error) {
+func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlyTransferRow, error) {
 	// Empty IN () is a pgsql syntax error (same guard as the other by-month
 	// queries) — and with no included account nothing can cross the boundary.
 	if len(accountIDs) == 0 {
@@ -724,7 +790,7 @@ func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, fro
 	}
 	merged := map[string]*model.MonthlyTransferRow{}
 	run := func(out bool) error {
-		sql, args := r.transfersByMonthSQL(out, accountIDs, from, to)
+		sql, args := r.transfersByMonthSQL(out, accountIDs, from, to, startDay)
 		rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 		if err != nil {
 			return err
@@ -780,6 +846,17 @@ func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, fro
 	for _, row := range merged {
 		result = append(result, *row)
 	}
+	if startDay != 1 {
+		type key struct{ month, currency string }
+		var err error
+		result, err = foldPeriods(result, startDay,
+			func(x *model.MonthlyTransferRow) *string { return &x.Month },
+			func(x model.MonthlyTransferRow) key { return key{x.Month, x.CurrencyID} },
+			func(x *model.MonthlyTransferRow) []*string { return []*string{&x.In, &x.Out} })
+		if err != nil {
+			return nil, err
+		}
+	}
 	sort.Slice(result, func(i, j int) bool {
 		if result[i].Month != result[j].Month {
 			return result[i].Month < result[j].Month
@@ -793,14 +870,14 @@ func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, fro
 // t.amount of transfers whose SOURCE is included and recipient is not, in
 // the source account's currency; out=false sums t.amount_recipient of the
 // mirror, in the recipient account's currency.
-func (r *ReadRepo) transfersByMonthSQL(out bool, accountIDs []vo.Id, from, to time.Time) (string, []any) {
+func (r *ReadRepo) transfersByMonthSQL(out bool, accountIDs []vo.Id, from, to time.Time, startDay int) (string, []any) {
 	ids := idArgs(accountIDs)
 	n := len(ids)
 	amountCol, joinCol, insideCol, outsideCol := "t.amount", "t.account_id", "t.account_id", "t.account_recipient_id"
 	if !out {
 		amountCol, joinCol, insideCol, outsideCol = "t.amount_recipient", "t.account_recipient_id", "t.account_recipient_id", "t.account_id"
 	}
-	month := r.planMonthExpr("t.spent_at")
+	month := r.periodExpr("t.spent_at", startDay)
 	args := make([]any, 0, 2*n+2)
 	args = append(args, ids...)
 	args = append(args, ids...)
@@ -820,13 +897,13 @@ func (r *ReadRepo) transfersByMonthSQL(out bool, accountIDs []vo.Id, from, to ti
 
 // AccountsNetByMonth implements ReadModel. The sign rules are balanceSQL's,
 // bucketed by month.
-func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
+func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.SavingsMonthRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
 	ids := idArgs(accountIDs)
 	n := len(ids)
-	month := r.planMonthExpr("t.spent_at")
+	month := r.periodExpr("t.spent_at", startDay)
 	var args []any
 	var d1, d2, d3, d4 string
 	if r.driver == "postgresql" {
@@ -845,7 +922,7 @@ func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, f
 		" UNION ALL " +
 		"SELECT " + month + " as month, t.account_recipient_id as account_id, t.amount_recipient as amount FROM transactions t WHERE t.type = 2 AND t.account_recipient_id IN (" + r.ph(n+3, n) + ") AND t.spent_at >= " + d3 + " AND t.spent_at < " + d4 +
 		") x GROUP BY month, account_id"
-	rows, err := r.monthAccountAmounts(ctx, sql, args)
+	rows, err := r.monthAccountAmounts(ctx, sql, args, startDay)
 	if err != nil {
 		return nil, err
 	}
@@ -861,7 +938,7 @@ func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, f
 
 // AccountsIncomeExpenseByMonth implements ReadModel: AccountsNetByMonth
 // without the transfers.
-func (r *ReadRepo) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
+func (r *ReadRepo) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.SavingsMonthRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -875,10 +952,10 @@ func (r *ReadRepo) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs 
 	} else {
 		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
 	}
-	month := r.planMonthExpr("t.spent_at")
+	month := r.periodExpr("t.spent_at", startDay)
 	sql := "SELECT " + month + " as month, t.account_id as account_id, SUM(CASE WHEN t.type = 1 THEN t.amount ELSE 0 - t.amount END) as amount FROM transactions t WHERE t.type IN (0, 1) AND t.account_id IN (" + r.ph(1, n) + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
 		" GROUP BY month, t.account_id"
-	rows, err := r.monthAccountAmounts(ctx, sql, args)
+	rows, err := r.monthAccountAmounts(ctx, sql, args, startDay)
 	if err != nil {
 		return nil, err
 	}
@@ -893,8 +970,8 @@ func (r *ReadRepo) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs 
 }
 
 // monthAccountAmounts scans (month, account_id, amount) rows with the
-// engine's SUM representation.
-func (r *ReadRepo) monthAccountAmounts(ctx context.Context, sql string, args []any) ([]model.SavingsMonthRow, error) {
+// engine's SUM representation, folded onto period keys for startDay != 1.
+func (r *ReadRepo) monthAccountAmounts(ctx context.Context, sql string, args []any, startDay int) ([]model.SavingsMonthRow, error) {
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -924,7 +1001,13 @@ func (r *ReadRepo) monthAccountAmounts(ctx context.Context, sql string, args []a
 		row.Amount = a
 		out = append(out, row)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil || startDay == 1 {
+		return out, err
+	}
+	return foldPeriods(out, startDay,
+		func(x *model.SavingsMonthRow) *string { return &x.Month },
+		func(x model.SavingsMonthRow) [2]string { return [2]string{x.Month, x.AccountID} },
+		func(x *model.SavingsMonthRow) []*string { return []*string{&x.Amount} })
 }
 
 func sortedSavingsRows(merged map[string]vo.DecimalNumber, keys map[string]model.SavingsMonthRow) []model.SavingsMonthRow {

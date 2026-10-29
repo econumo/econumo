@@ -195,8 +195,10 @@ func firstOfMonth(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
 }
 
-// projectedMonth renders the "YYYY-MM-01" key the by-month SQL groups on.
-func projectedMonth(t time.Time) string { return firstOfMonth(t).Format(datetime.DateLayout) }
+// projectedMonth renders the "YYYY-MM-01" period key the by-month SQL groups on.
+func projectedMonth(t time.Time, startDay int) string {
+	return model.PeriodOf(t, startDay).Format(datetime.DateLayout)
+}
 
 func optString(id *vo.Id) *string {
 	if id == nil {
@@ -323,7 +325,7 @@ type spendingKey struct{ month, category, tag, currency string }
 
 // spending is the CountSpending/SpendingByMonth filter: expenses on the
 // accounts, in the category set or with no category at all.
-func (p *projectedRead) spending(categoryIDs, accountIDs []vo.Id, start, end time.Time, byMonth bool) *sums[spendingKey] {
+func (p *projectedRead) spending(categoryIDs, accountIDs []vo.Id, start, end time.Time, byMonth bool, startDay int) *sums[spendingKey] {
 	acc, cats := idSet(accountIDs), idSet(categoryIDs)
 	out := newSums[spendingKey]()
 	for i := range p.occ {
@@ -336,7 +338,7 @@ func (p *projectedRead) spending(categoryIDs, accountIDs []vo.Id, start, end tim
 		}
 		k := spendingKey{category: deref(o.categoryID), tag: deref(o.tagID), currency: o.currencyID}
 		if byMonth {
-			k.month = projectedMonth(o.filedAt)
+			k.month = projectedMonth(o.filedAt, startDay)
 		}
 		out.add(k, o.amount)
 	}
@@ -344,7 +346,7 @@ func (p *projectedRead) spending(categoryIDs, accountIDs []vo.Id, start, end tim
 }
 
 func (p *projectedRead) CountSpending(_ context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error) {
-	s := p.spending(categoryIDs, accountIDs, start, end, false)
+	s := p.spending(categoryIDs, accountIDs, start, end, false, 0)
 	var out []model.SpendingRow
 	for _, k := range s.keys {
 		out = append(out, model.SpendingRow{CategoryID: ref(k.category), TagID: ref(k.tag), CurrencyID: k.currency, Amount: s.vals[k].String()})
@@ -352,8 +354,8 @@ func (p *projectedRead) CountSpending(_ context.Context, categoryIDs, accountIDs
 	return out, nil
 }
 
-func (p *projectedRead) SpendingByMonth(_ context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlySpendingRow, error) {
-	s := p.spending(categoryIDs, accountIDs, from, to, true)
+func (p *projectedRead) SpendingByMonth(_ context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlySpendingRow, error) {
+	s := p.spending(categoryIDs, accountIDs, from, to, true, startDay)
 	var out []model.MonthlySpendingRow
 	for _, k := range s.keys {
 		out = append(out, model.MonthlySpendingRow{Month: k.month, CategoryID: ref(k.category), TagID: ref(k.tag), CurrencyID: k.currency, Amount: s.vals[k].String()})
@@ -394,7 +396,7 @@ func (p *projectedRead) CountSpendingByLabel(_ context.Context, accountIDs []vo.
 }
 
 // IncomeByMonth has no category filter, like its SQL.
-func (p *projectedRead) IncomeByMonth(_ context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyIncomeRow, error) {
+func (p *projectedRead) IncomeByMonth(_ context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlyIncomeRow, error) {
 	type key struct{ month, category, currency string }
 	acc := idSet(accountIDs)
 	s := newSums[key]()
@@ -403,7 +405,7 @@ func (p *projectedRead) IncomeByMonth(_ context.Context, accountIDs []vo.Id, fro
 		if o.typ != model.TransactionTypeIncome || !acc[o.accountID] || !o.filedIn(from, to) {
 			continue
 		}
-		s.add(key{month: projectedMonth(o.filedAt), category: deref(o.categoryID), currency: o.currencyID}, o.amount)
+		s.add(key{month: projectedMonth(o.filedAt, startDay), category: deref(o.categoryID), currency: o.currencyID}, o.amount)
 	}
 	var out []model.MonthlyIncomeRow
 	for _, k := range s.keys {
@@ -422,7 +424,7 @@ func (o *projectedTx) crossing(acc map[string]bool) (out, in bool) {
 	return src && !rcp, rcp && !src
 }
 
-func (p *projectedRead) TransfersByMonth(_ context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyTransferRow, error) {
+func (p *projectedRead) TransfersByMonth(_ context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlyTransferRow, error) {
 	type key struct{ month, currency string }
 	acc := idSet(accountIDs)
 	ins, outs := newSums[key](), newSums[key]()
@@ -432,7 +434,7 @@ func (p *projectedRead) TransfersByMonth(_ context.Context, accountIDs []vo.Id, 
 			continue
 		}
 		isOut, isIn := o.crossing(acc)
-		month := projectedMonth(o.filedAt)
+		month := projectedMonth(o.filedAt, startDay)
 		if isOut {
 			outs.add(key{month, o.currencyID}, o.amount)
 		}
@@ -469,7 +471,7 @@ func (p *projectedRead) TransfersByMonth(_ context.Context, accountIDs []vo.Id, 
 }
 
 // accountMonths sums per (month, account), sorted like sortedSavingsRows.
-func (p *projectedRead) accountMonths(accountIDs []vo.Id, from, to time.Time, transfers bool) []model.SavingsMonthRow {
+func (p *projectedRead) accountMonths(accountIDs []vo.Id, from, to time.Time, startDay int, transfers bool) []model.SavingsMonthRow {
 	type key struct{ month, account string }
 	acc := idSet(accountIDs)
 	s := newSums[key]()
@@ -478,7 +480,7 @@ func (p *projectedRead) accountMonths(accountIDs []vo.Id, from, to time.Time, tr
 		if !o.filedIn(from, to) || (!transfers && o.typ.IsTransfer()) {
 			continue
 		}
-		month := projectedMonth(o.filedAt)
+		month := projectedMonth(o.filedAt, startDay)
 		if acc[o.accountID] {
 			s.add(key{month, o.accountID}, o.signedOnSource())
 		}
@@ -499,12 +501,12 @@ func (p *projectedRead) accountMonths(accountIDs []vo.Id, from, to time.Time, tr
 	return out
 }
 
-func (p *projectedRead) AccountsNetByMonth(_ context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
-	return p.accountMonths(accountIDs, from, to, true), nil
+func (p *projectedRead) AccountsNetByMonth(_ context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.SavingsMonthRow, error) {
+	return p.accountMonths(accountIDs, from, to, startDay, true), nil
 }
 
-func (p *projectedRead) AccountsIncomeExpenseByMonth(_ context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
-	return p.accountMonths(accountIDs, from, to, false), nil
+func (p *projectedRead) AccountsIncomeExpenseByMonth(_ context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.SavingsMonthRow, error) {
+	return p.accountMonths(accountIDs, from, to, startDay, false), nil
 }
 
 // expenses lists the expense occurrences on the accounts in [start, end)

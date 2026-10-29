@@ -104,7 +104,7 @@ func (s *Service) buildPlanTransfers(ctx context.Context, budgetCurrencyID vo.Id
 		out[i] = model.PlanMonthTransfersResult{Period: m, Items: []model.PlanTransferResult{}}
 		monthIdx[m] = i
 	}
-	rows, err := s.read.TransfersByMonth(ctx, f.includedAccountIDs, from, windowEnd)
+	rows, err := s.read.TransfersByMonth(ctx, f.includedAccountIDs, from, windowEnd, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 		expenseCategoryIDs = append(expenseCategoryIDs, id)
 	}
-	spendRows, err := s.read.SpendingByMonth(ctx, expenseCategoryIDs, f.everydayAccountIDs, monthsList[0], windowEnd)
+	spendRows, err := s.read.SpendingByMonth(ctx, expenseCategoryIDs, f.everydayAccountIDs, monthsList[0], windowEnd, 1)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
@@ -247,7 +247,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
-	incomeRows, err := s.read.IncomeByMonth(ctx, f.everydayAccountIDs, monthsList[0], windowEnd)
+	incomeRows, err := s.read.IncomeByMonth(ctx, f.everydayAccountIDs, monthsList[0], windowEnd, 1)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}

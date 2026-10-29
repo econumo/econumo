@@ -105,44 +105,44 @@ func (w windowRead) CountSpending(ctx context.Context, categoryIDs, accountIDs [
 	return w.ReadModel.CountSpending(ctx, categoryIDs, accountIDs, start, end)
 }
 
-func (w windowRead) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlySpendingRow, error) {
+func (w windowRead) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlySpendingRow, error) {
 	from, to, ok := w.clamp(from, to)
 	if !ok {
 		return nil, nil
 	}
-	return w.ReadModel.SpendingByMonth(ctx, categoryIDs, accountIDs, from, to)
+	return w.ReadModel.SpendingByMonth(ctx, categoryIDs, accountIDs, from, to, startDay)
 }
 
-func (w windowRead) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyIncomeRow, error) {
+func (w windowRead) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlyIncomeRow, error) {
 	from, to, ok := w.clamp(from, to)
 	if !ok {
 		return nil, nil
 	}
-	return w.ReadModel.IncomeByMonth(ctx, accountIDs, from, to)
+	return w.ReadModel.IncomeByMonth(ctx, accountIDs, from, to, startDay)
 }
 
-func (w windowRead) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyTransferRow, error) {
+func (w windowRead) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlyTransferRow, error) {
 	from, to, ok := w.clamp(from, to)
 	if !ok {
 		return nil, nil
 	}
-	return w.ReadModel.TransfersByMonth(ctx, accountIDs, from, to)
+	return w.ReadModel.TransfersByMonth(ctx, accountIDs, from, to, startDay)
 }
 
-func (w windowRead) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
+func (w windowRead) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.SavingsMonthRow, error) {
 	from, to, ok := w.clamp(from, to)
 	if !ok {
 		return nil, nil
 	}
-	return w.ReadModel.AccountsNetByMonth(ctx, accountIDs, from, to)
+	return w.ReadModel.AccountsNetByMonth(ctx, accountIDs, from, to, startDay)
 }
 
-func (w windowRead) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
+func (w windowRead) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.SavingsMonthRow, error) {
 	from, to, ok := w.clamp(from, to)
 	if !ok {
 		return nil, nil
 	}
-	return w.ReadModel.AccountsIncomeExpenseByMonth(ctx, accountIDs, from, to)
+	return w.ReadModel.AccountsIncomeExpenseByMonth(ctx, accountIDs, from, to, startDay)
 }
 
 func (w windowRead) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.LabelSpendingRow, error) {
@@ -250,12 +250,12 @@ func (u unionRead) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 	}), nil
 }
 
-func (u unionRead) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlySpendingRow, error) {
-	a, err := u.ReadModel.SpendingByMonth(ctx, categoryIDs, accountIDs, from, to)
+func (u unionRead) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlySpendingRow, error) {
+	a, err := u.ReadModel.SpendingByMonth(ctx, categoryIDs, accountIDs, from, to, startDay)
 	if err != nil || u.rec == nil {
 		return a, err
 	}
-	b, err := u.rec.SpendingByMonth(ctx, categoryIDs, accountIDs, from, to)
+	b, err := u.rec.SpendingByMonth(ctx, categoryIDs, accountIDs, from, to, startDay)
 	if err != nil {
 		return nil, err
 	}
@@ -285,12 +285,12 @@ func (u unionRead) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id,
 	}), nil
 }
 
-func (u unionRead) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyIncomeRow, error) {
-	a, err := u.ReadModel.IncomeByMonth(ctx, accountIDs, from, to)
+func (u unionRead) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlyIncomeRow, error) {
+	a, err := u.ReadModel.IncomeByMonth(ctx, accountIDs, from, to, startDay)
 	if err != nil || u.rec == nil {
 		return a, err
 	}
-	b, err := u.rec.IncomeByMonth(ctx, accountIDs, from, to)
+	b, err := u.rec.IncomeByMonth(ctx, accountIDs, from, to, startDay)
 	if err != nil {
 		return nil, err
 	}
@@ -303,12 +303,12 @@ func (u unionRead) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, 
 	}), nil
 }
 
-func (u unionRead) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyTransferRow, error) {
-	a, err := u.ReadModel.TransfersByMonth(ctx, accountIDs, from, to)
+func (u unionRead) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlyTransferRow, error) {
+	a, err := u.ReadModel.TransfersByMonth(ctx, accountIDs, from, to, startDay)
 	if err != nil || u.rec == nil {
 		return a, err
 	}
-	b, err := u.rec.TransfersByMonth(ctx, accountIDs, from, to)
+	b, err := u.rec.TransfersByMonth(ctx, accountIDs, from, to, startDay)
 	if err != nil {
 		return nil, err
 	}
@@ -330,24 +330,24 @@ func mergeAccountMonths(a, b []model.SavingsMonthRow) []model.SavingsMonthRow {
 		})
 }
 
-func (u unionRead) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
-	a, err := u.ReadModel.AccountsNetByMonth(ctx, accountIDs, from, to)
+func (u unionRead) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.SavingsMonthRow, error) {
+	a, err := u.ReadModel.AccountsNetByMonth(ctx, accountIDs, from, to, startDay)
 	if err != nil || u.rec == nil {
 		return a, err
 	}
-	b, err := u.rec.AccountsNetByMonth(ctx, accountIDs, from, to)
+	b, err := u.rec.AccountsNetByMonth(ctx, accountIDs, from, to, startDay)
 	if err != nil {
 		return nil, err
 	}
 	return mergeAccountMonths(a, b), nil
 }
 
-func (u unionRead) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
-	a, err := u.ReadModel.AccountsIncomeExpenseByMonth(ctx, accountIDs, from, to)
+func (u unionRead) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.SavingsMonthRow, error) {
+	a, err := u.ReadModel.AccountsIncomeExpenseByMonth(ctx, accountIDs, from, to, startDay)
 	if err != nil || u.rec == nil {
 		return a, err
 	}
-	b, err := u.rec.AccountsIncomeExpenseByMonth(ctx, accountIDs, from, to)
+	b, err := u.rec.AccountsIncomeExpenseByMonth(ctx, accountIDs, from, to, startDay)
 	if err != nil {
 		return nil, err
 	}

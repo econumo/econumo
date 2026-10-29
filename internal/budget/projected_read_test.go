@@ -197,7 +197,7 @@ func TestProjectedRead_SpendingByMonthBuckets(t *testing.T) {
 	weekly := prTemplate(t, model.TransactionTypeExpense, prEveryday, "10", model.RecurringScheduleWeekly)
 	p := prRead(t, prService(&recurringSourceStub{templates: []*model.RecurringTransaction{weekly}}, nil), prEveryday)
 
-	rows, err := p.SpendingByMonth(context.Background(), nil, prIDs(t, prEveryday), prNov, prJan)
+	rows, err := p.SpendingByMonth(context.Background(), nil, prIDs(t, prEveryday), prNov, prJan, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +218,7 @@ func TestProjectedRead_TransfersBoundary(t *testing.T) {
 	inside.AccountRecipID = prIDp(t, prSavings)
 	p := prRead(t, prService(&recurringSourceStub{templates: []*model.RecurringTransaction{out, inside}}, &rateConvertor{rate: "1"}), prEveryday, prSavings)
 
-	rows, err := p.TransfersByMonth(context.Background(), prIDs(t, prEveryday, prSavings), prNov, prDec)
+	rows, err := p.TransfersByMonth(context.Background(), prIDs(t, prEveryday, prSavings), prNov, prDec, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func TestProjectedRead_CrossCurrencyTransfer(t *testing.T) {
 		t.Errorf("BulkConvert calls = %d, want 1", conv.calls)
 	}
 
-	rows, err := p.AccountsNetByMonth(context.Background(), prIDs(t, prSavings), prNov, prJan)
+	rows, err := p.AccountsNetByMonth(context.Background(), prIDs(t, prSavings), prNov, prJan, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +260,7 @@ func TestProjectedRead_CrossCurrencyTransfer(t *testing.T) {
 		t.Errorf("savings net = %v, want +50 in Nov and Dec", got)
 	}
 
-	rows, err = p.AccountsNetByMonth(context.Background(), prIDs(t, prEveryday), prNov, prDec)
+	rows, err = p.AccountsNetByMonth(context.Background(), prIDs(t, prEveryday), prNov, prDec, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -270,7 +270,7 @@ func TestProjectedRead_CrossCurrencyTransfer(t *testing.T) {
 
 	// Seen from the everyday side alone the transfer crosses into the
 	// savings account: In is measured in the recipient's currency.
-	trs, err := p.TransfersByMonth(context.Background(), prIDs(t, prSavings), prNov, prDec)
+	trs, err := p.TransfersByMonth(context.Background(), prIDs(t, prSavings), prNov, prDec, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +348,7 @@ func TestProjectedRead_LabelsAndListsMirrorSQL(t *testing.T) {
 		income[1].Direction != "in" || income[1].Type != "income" {
 		t.Errorf("income list = %+v", income)
 	}
-	inc, err := p.IncomeByMonth(ctx, acc, prNov, prJan)
+	inc, err := p.IncomeByMonth(ctx, acc, prNov, prJan, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -411,15 +411,15 @@ func TestProjectedRead_NoOccurrencesIsEmpty(t *testing.T) {
 	check("CountSpending", len(r1), err)
 	r2, err := p.CountSpendingByLabel(ctx, acc, prNov, prJan)
 	check("CountSpendingByLabel", len(r2), err)
-	r3, err := p.SpendingByMonth(ctx, nil, acc, prNov, prJan)
+	r3, err := p.SpendingByMonth(ctx, nil, acc, prNov, prJan, 1)
 	check("SpendingByMonth", len(r3), err)
-	r4, err := p.IncomeByMonth(ctx, acc, prNov, prJan)
+	r4, err := p.IncomeByMonth(ctx, acc, prNov, prJan, 1)
 	check("IncomeByMonth", len(r4), err)
-	r5, err := p.TransfersByMonth(ctx, acc, prNov, prJan)
+	r5, err := p.TransfersByMonth(ctx, acc, prNov, prJan, 1)
 	check("TransfersByMonth", len(r5), err)
-	r6, err := p.AccountsNetByMonth(ctx, acc, prNov, prJan)
+	r6, err := p.AccountsNetByMonth(ctx, acc, prNov, prJan, 1)
 	check("AccountsNetByMonth", len(r6), err)
-	r7, err := p.AccountsIncomeExpenseByMonth(ctx, acc, prNov, prJan)
+	r7, err := p.AccountsIncomeExpenseByMonth(ctx, acc, prNov, prJan, 1)
 	check("AccountsIncomeExpenseByMonth", len(r7), err)
 	r8, err := p.BudgetTransactionsUncategorized(ctx, acc, prNov, prJan)
 	check("BudgetTransactionsUncategorized", len(r8), err)
@@ -446,5 +446,59 @@ func TestUpcomingRead_NilWhenNothingUpcoming(t *testing.T) {
 	past := filters{includedAccountIDs: current.includedAccountIDs, periodStart: prNov.AddDate(0, -1, 0), periodEnd: prNov}
 	if p, err := s.upcomingRead(ctx, past, now); err != nil || p != nil {
 		t.Errorf("past window: read = %+v, err %v; want nil", p, err)
+	}
+}
+
+// An occurrence is bucketed by the period containing its filed day, so one
+// filed after the 28th belongs to the next key of a day-28 budget.
+func TestProjectedRead_ByMonthStartDay(t *testing.T) {
+	nov29 := time.Date(2026, 11, 29, 10, 0, 0, 0, time.UTC)
+	at29 := func(rt *model.RecurringTransaction) *model.RecurringTransaction {
+		rt.NextPaymentAt, rt.ScheduledDay = nov29, 29
+		return rt
+	}
+	expense := at29(prTemplate(t, model.TransactionTypeExpense, prEveryday, "30", model.RecurringScheduleMonthly))
+	income := at29(prTemplate(t, model.TransactionTypeIncome, prEveryday, "40", model.RecurringScheduleMonthly))
+	transfer := at29(prTemplate(t, model.TransactionTypeTransfer, prEveryday, "25", model.RecurringScheduleMonthly))
+	transfer.AccountRecipID = prIDp(t, prOutside)
+	p := prRead(t, prService(&recurringSourceStub{templates: []*model.RecurringTransaction{expense, income, transfer}}, &rateConvertor{rate: "1"}), prEveryday)
+	ctx, acc := context.Background(), prIDs(t, prEveryday)
+
+	for startDay, want := range map[int]string{28: "2026-12-01", 1: "2026-11-01"} {
+		spend, err := p.SpendingByMonth(ctx, nil, acc, prNov, prDec, startDay)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(spend) != 1 || spend[0].Month != want || vo.NewDecimal(spend[0].Amount).String() != "30" {
+			t.Errorf("d=%d spending = %+v, want %s 30", startDay, spend, want)
+		}
+		inc, err := p.IncomeByMonth(ctx, acc, prNov, prDec, startDay)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(inc) != 1 || inc[0].Month != want || vo.NewDecimal(inc[0].Amount).String() != "40" {
+			t.Errorf("d=%d income = %+v, want %s 40", startDay, inc, want)
+		}
+		trs, err := p.TransfersByMonth(ctx, acc, prNov, prDec, startDay)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(trs) != 1 || trs[0].Month != want || vo.NewDecimal(trs[0].Out).String() != "25" {
+			t.Errorf("d=%d transfers = %+v, want %s out 25", startDay, trs, want)
+		}
+		net, err := p.AccountsNetByMonth(ctx, acc, prNov, prDec, startDay)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(net) != 1 || net[0].Month != want || vo.NewDecimal(net[0].Amount).String() != "-15" {
+			t.Errorf("d=%d net = %+v, want %s -15", startDay, net, want)
+		}
+		ie, err := p.AccountsIncomeExpenseByMonth(ctx, acc, prNov, prDec, startDay)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ie) != 1 || ie[0].Month != want || vo.NewDecimal(ie[0].Amount).String() != "10" {
+			t.Errorf("d=%d income-expense = %+v, want %s 10", startDay, ie, want)
+		}
 	}
 }
