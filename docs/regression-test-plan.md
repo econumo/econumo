@@ -2164,8 +2164,11 @@ tag, and a budget with a planned limit on one category.
       range. Clicking the chart draws no outline around it.
 - [ ] Net worth: an account row (inside an opened folder, or a budget's
       savings account) opens its transactions over the shown period (or the
-      selected range), transfers in and out included; an account that is
-      not in my account list (a partner's, not shared) is not clickable.
+      selected range), transfers in and out included. In a budget, every
+      savings account opens, a partner's included (the budget's own
+      transaction list, as on the Budget page); "Everyday accounts" and
+      person rows do not. In My accounts an account that is not in my
+      account list is not clickable.
 - [ ] Net worth leaves deleted accounts out entirely, in both scopes: no row,
       none of their past balance in the chart or Total, and a deleted
       account's old transactions do not move the start of "All".

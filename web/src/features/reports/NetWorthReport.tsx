@@ -43,8 +43,9 @@ const sumAt = (rows: NetWorthAccountDto[], i: number) => rows.reduce((s, a) => a
 
 interface Line {
   icon?: ReactNode
-  /** an account the user can list the transactions of */
-  accountId?: string
+  /** an account the user can list the transactions of: a budget's savings
+   *  member through the budget's list, any other from the local store */
+  drill?: { id: string; kind: 'account' | 'savings' }
   id: string
   name: string
   start: string
@@ -71,7 +72,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const rangeKey = `${p.budgetId ?? MINE}|${p.period}`
   const [range, setRange] = useState<{ key: string; a: number; b: number } | null>(null)
   const [dragFrom, setDragFrom] = useState<number | null>(null)
-  const [drill, setDrill] = useState<{ id: string; name: string } | null>(null)
+  const [drill, setDrill] = useState<{ id: string; kind: 'account' | 'savings'; name: string } | null>(null)
   const preset = PRESETS.find((o) => o.value === p.period) ?? PRESETS[1]
 
   const scopePicker = (budgets ?? []).length === 0 ? null : (
@@ -130,7 +131,12 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const accountLine = (a: NetWorthAccountDto): Line => ({
     ...lineOf(a.id, a.name, a.balances[lo], a.balances[hi]),
     icon: <EntityIcon name={a.icon} className="text-base text-muted-foreground" />,
-    accountId: (accounts ?? []).some((x) => x.id === a.id) ? a.id : undefined,
+    drill:
+      p.budgetId && a.isSavings === 1
+        ? { id: a.id, kind: 'savings' }
+        : (accounts ?? []).some((x) => x.id === a.id)
+          ? { id: a.id, kind: 'account' }
+          : undefined,
   })
   const ownerName = (id: string) =>
     budget?.access.find((a) => a.user.id === id)?.user.name ??
@@ -228,10 +234,10 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       </div>,
       ...(isOpen
         ? g.accounts.map((acc) => {
-            const accountId = acc.accountId
-            const show = accountId
+            const target = acc.drill
+            const show = target
               ? () => {
-                  setDrill({ id: accountId, name: acc.name })
+                  setDrill({ ...target, name: acc.name })
                   trackEvent(METRICS.REPORTS_DRILL_DOWN, { scope: p.budgetId ? 'budget' : 'mine', mode: 'networth' })
                 }
               : undefined
@@ -468,7 +474,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       {drill && drillRange ? (
         <ReportTransactionsDialog
           scope={{ budgetId: p.budgetId }}
-          row={{ id: drill.id, kind: 'account', name: drill.name, side: 'expense' }}
+          row={{ id: drill.id, kind: drill.kind, name: drill.name, side: 'expense' }}
           from={drillRange[0]}
           to={drillRange[1]}
           onClose={() => setDrill(null)}

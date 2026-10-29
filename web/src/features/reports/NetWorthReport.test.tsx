@@ -193,6 +193,38 @@ it('budget scope: one row per person, partners first and me last; savings by nam
   expect(asked[asked.length - 1].get('budgetId')).toBe('b1')
 })
 
+it("budget scope: a savings account, a partner's too, lists its transactions from the budget's list", async () => {
+  const data = report([
+    acc('a1', 'Cash', ['1000', '1500', '2000']),
+    acc('b-sav', 'Bob savings', ['700', '800', '900'], { ownerUserId: 'u2', isSavings: 1 }),
+    acc('b-wal', 'Bob wallet', ['50', '60', '70'], { ownerUserId: 'u2' }),
+  ])
+  const listed: string[] = []
+  openNetWorth({ budgetId: 'b1' }, data, { budgets: [sharedBudget, fixtureBudgets[1]] })
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      const q = new URL(request.url).searchParams
+      listed.push(`${q.get('periodStart')}|${q.get('accountId')}`)
+      const items = q.get('periodStart') === '2026-07-01'
+        ? [{
+            id: 'w1', author: bob, currencyId: 'cur-usd', amount: '100', description: 'monthly saving',
+            category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-04 12:00:00',
+          }]
+        : []
+      return HttpResponse.json({ success: true, message: '', data: { items } })
+    }),
+  )
+  await screen.findByRole('table')
+  await userEvent.click(await screen.findByRole('button', { name: 'Show the accounts in Bob' }))
+  expect(screen.queryByRole('button', { name: 'Show the transactions of Everyday accounts' })).not.toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Show the transactions of Bob savings' }))
+  expect(await screen.findByText('monthly saving')).toBeInTheDocument()
+  // the change from Dec 2025 covers the months after it
+  expect(listed).toContain('2026-01-01|b-sav')
+  expect(listed).toContain('2026-10-01|b-sav')
+  expect(listed).not.toContain('2025-12-01|b-sav')
+})
+
 it('budget scope: a person without savings members is a single row', async () => {
   const data = report([acc('a1', 'Cash', ['1000', '1500', '2000']), acc('b-wal', 'Bob wallet', ['50', '60', '70'], { ownerUserId: 'u2' })])
   openNetWorth({ budgetId: 'b1' }, data, { budgets: [sharedBudget] })

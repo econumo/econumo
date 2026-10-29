@@ -49,6 +49,8 @@ export function budgetSelector(row: DrillRow): Omit<BudgetTransactionsParams, 'b
       return uncategorized ? null : { income: true, categoryId: row.id }
     case 'income_envelope':
       return { income: true, envelopeId: row.id }
+    case 'savings':
+      return { accountId: row.id }
     default:
       return null
   }
