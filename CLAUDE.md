@@ -1430,8 +1430,8 @@ data unreadable. Most are also asserted by the test suite.
   `months`, MCP `month`); only the date window it covers shifts. The rule lives in one helper
   per stack (`model.PeriodWindow` / `model.PeriodOf`, `web/src/features/budgets/period.ts`):
   day 1 = the calendar month; days 2-15 name the period after the month it starts in (day 5:
-  "October" = 5 Oct - 4 Nov); days 16-28 after the month it ends in (day 28: "November" = 28 Oct
-  - 27 Nov). Request dates that pick a period name a key (snapped to the first, day ignored),
+  "October" = 5 Oct to 4 Nov); days 16-28 after the month it ends in (day 28: "November" =
+  28 Oct to 27 Nov). Request dates that pick a period name a key (snapped to the first, day ignored),
   never "the period containing this date". `get-budget` `filters.periodStart/periodEnd` carry
   the real window (`currencyRates[]` still reports the calendar rate period). "Current month"
   everywhere (default period, Plan window, plan hints, removal window, overdue recurring) is
@@ -1439,7 +1439,8 @@ data unreadable. Most are also asserted by the test suite.
   `periodExpr`) keeps grouping by month for day 1, so a day-1 budget stays byte-identical, and
   groups by day and folds the rows onto keys in Go (`foldPeriods`) otherwise. Changing the day
   rewrites nothing: plans and comments stay on their keys and read against the new windows.
-  Reports, recurring schedules and account pages stay on calendar months. Changing the
+  Reports, recurring schedules and account pages stay on calendar months. The SPA hides the
+  day picker against a server whose budgets carry no day. Changing the
   naming rule after release needs a key migration (move `started_at`, `ended_at`, limit and
   comment periods of the affected budgets by one month).
 - **Budget savings**: savings is a per-budget MEMBERSHIP flag

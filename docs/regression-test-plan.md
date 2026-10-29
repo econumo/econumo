@@ -1514,7 +1514,10 @@ and on tablet/phone only with a hardware keyboard.
       stored day back hides it. Saving an unchanged day sends no day; a user
       who cannot configure the budget sees the picker disabled. A day the
       server refuses shows its message under the picker, and the dialog
-      stays open.
+      stays open. Against a server older than this setting (budgets carry no
+      day) neither dialog shows the picker; creating the first budget there
+      still shows it. After saving a new day, the transaction list a cell
+      opens shows the new window's rows straight away.
 - [ ] 📱 **Shifted budget — figures split at the boundary**: set a budget to
       day 28 and add two expenses in the same category, one dated 27 Oct and
       one dated 28 Oct. "October" (28 Sep - 27 Oct) counts only the 27 Oct
@@ -1536,7 +1539,8 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] 📱 **Shifted budget — default period**: on 30 Oct, opening a day-28
       budget with no month picked in this session opens "November" (the
       period containing today), with its spending, Available and plan hints
-      for November; Plan's current-month marker sits on November. Opening a
+      for November, loaded directly (no October flash before it); Plan's
+      current-month marker sits on November. Opening a
       day-1 budget afterwards opens October again, and the default does not
       move without the budget being opened. A month the user picked on the
       strip is kept when switching budgets in the same session, and a picked
@@ -1548,9 +1552,10 @@ and on tablet/phone only with a hardware keyboard.
       amounts and comments; only the dates each month covers change (the
       date range appears, spent/actuals re-split at the 28th). Changing back
       to day 1 restores the original figures exactly.
-- [ ] **Shifted budget — shared**: A sets a shared budget to day 28; B (any
+- [ ] 📱 **Shifted budget — shared**: A sets a shared budget to day 28; B (any
       role) sees the same day in the budget settings, the same date range,
-      the same period opened by default and the same figures per month.
+      the same period opened by default and the same figures per month, on
+      desktop and in the phone month view.
 - [ ] **Shifted budget — end month**: completing a day-28 budget with end
       month "November" stops the strip at November, refuses plans for
       December, and November's figures still cover 28 Oct - 27 Nov
