@@ -110,11 +110,13 @@ export function useDefaultPeriodSettled(budgetId: Id | null): boolean {
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const followedFor = useBudgetPeriodStore((s) => s.periodFollowedFor)
   const follows = useBudgetPeriodStore((s) => followsCurrentPeriod(s))
-  const { data: budgets, isPending } = useBudgets()
+  const { data: budgets, isPending, failureCount } = useBudgets()
   if (!budgetId || followedFor === budgetId || !follows) {
     return true
   }
-  if (isPending) {
+  // a list that failed once settles at once: waiting out its retries would hold
+  // the page for seconds, and the budget's own meta picks the period instead
+  if (isPending && failureCount === 0) {
     return false
   }
   const meta = budgets?.find((b) => b.id === budgetId)

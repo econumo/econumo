@@ -29,8 +29,9 @@ function mockViewport() {
   }))
 }
 
-function renderPage(initialPath: '/budget' | '/plan' = '/budget') {
+function renderPage(initialPath: '/budget' | '/plan' = '/budget', configure?: (queryClient: QueryClient) => void) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  configure?.(queryClient)
   const router = createMemoryRouter(
     [
       { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
@@ -1129,6 +1130,30 @@ describe('a budget whose months start on the 28th', () => {
     await waitFor(() => expect(requested).toContain('comments b2 2026-10-01'))
     expect(requested.filter((r) => r.includes(' b2 ') && !r.endsWith('2026-10-01'))).toEqual([])
     expect(screen.queryByTestId('period-dates')).not.toBeInTheDocument()
+  })
+
+  // a failing budget list must not hold the page through its retries: the budget's
+  // own meta then picks the period
+  it('does not wait for a failing budget list to retry', async () => {
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, periodFollowedFor: null })
+    const requested: string[] = []
+    server.use(
+      http.get('*/api/v1/budget/get-budget-list', () => {
+        requested.push('list')
+        return HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'Error' }, { status: 500 })
+      }),
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', ({ request }) => {
+        requested.push(`budget ${new URL(request.url).searchParams.get('date') ?? ''}`)
+        return HttpResponse.json({ success: true, message: '', data: { item: shifted } })
+      }),
+    )
+    // the app's three attempts, spaced far beyond the test's patience
+    renderPage('/budget', (qc) => qc.setQueryDefaults(queryKeys.budgets, { retry: 3, retryDelay: 60_000 }))
+    await waitFor(() => expect(requested.some((r) => r.startsWith('budget '))).toBe(true))
+    expect(requested.filter((r) => r === 'list')).toHaveLength(1)
+    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Oct 28 – Nov 27')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01')
   })
 
   it('keeps a month the user picked', async () => {

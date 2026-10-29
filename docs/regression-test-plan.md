@@ -1553,7 +1553,10 @@ and on tablet/phone only with a hardware keyboard.
       move without the budget being opened. A month the user picked on the
       strip is kept when switching budgets in the same session, and a picked
       month other than the calendar month (e.g. September) also survives a
-      reload.
+      reload. With the budget list request failing (DevTools: block
+      `get-budget-list`), the page still loads right after the first failure
+      instead of waiting out the list's retries, and settles on "November"
+      from the budget's own day.
 - [ ] **Shifted budget — changing the day keeps plans**: a budget with plans
       in October and November changed from day 1 to day 28 (after the
       warning): the plans stay on "October" and "November" with the same
