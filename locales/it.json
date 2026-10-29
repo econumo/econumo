@@ -1313,6 +1313,10 @@
         "end_month": {
           "label": "Mese finale",
           "none": "Nessuna data di fine"
+        },
+        "period_start_day": {
+          "label": "Il mese inizia il giorno",
+          "warning": "I piani esistenti restano sui loro mesi; le date coperte da ciascun mese cambieranno."
         }
       },
       "budget_envelope": {

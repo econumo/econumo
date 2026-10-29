@@ -1504,6 +1504,17 @@ and on tablet/phone only with a hardware keyboard.
       existing (even locked) member. Escape (desktop) closes only the picker,
       not the budget dialog. On a 320px phone in German or Ukrainian the rows
       truncate long name lists with "…" and the pickers open as bottom sheets.
+- [ ] 📱 **Budget settings — "Month starts on day"**: the create and edit
+      budget dialogs show a "Month starts on day" picker (1 to 28) between
+      Currency and Accounts, defaulting to 1 on create and to the budget's
+      stored day on edit (a dropdown on desktop and tablet, a bottom sheet on
+      a phone, no search). On edit, no note shows while the day equals the
+      stored one; picking another day shows "Existing plans stay on their
+      months; the dates each month covers will change." and picking the
+      stored day back hides it. Saving an unchanged day sends no day; a user
+      who cannot configure the budget sees the picker disabled. A day the
+      server refuses shows its message under the picker, and the dialog
+      stays open.
 - [ ] 📱 Turn off (or remove) a savings member that still carries plans or
       comments in that budget: saving asks "Delete planned savings?" —
       "Planned amounts and comments of the savings accounts you turned off or

@@ -486,6 +486,17 @@ describe('budget savings toggle metric', () => {
     expect(savingsToggles()).toBe(0)
   })
 
+  it('sends periodStartDay on create and reports it with the create metric', async () => {
+    const bodies = createHandler()
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.budgets, fixtureBudgets)
+    const { result } = renderHook(() => useCreateBudget(), { wrapper })
+    result.current.mutate({ id: 'b-new', name: 'Vacation', startDate: '', currencyId: 'cur-usd', accountIds: ['a1'], periodStartDay: 16, ownerUserId: 'u1' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(bodies[0].periodStartDay).toBe(16)
+    expect(trackEventMock).toHaveBeenCalledWith(METRICS.BUDGET_CREATE, { periodStartDay: 16 })
+  })
+
   function updateHandler(status = 200) {
     const bodies: Record<string, unknown>[] = []
     server.use(
@@ -533,6 +544,19 @@ describe('budget savings toggle metric', () => {
     })
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect(savingsToggles()).toBe(0)
+  })
+
+  it('fires the period start day metric once, with the day, only when the update carries one', async () => {
+    updateHandler()
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
+    const changes = () => trackEventMock.mock.calls.filter(([n]) => n === METRICS.BUDGET_PERIOD_START_DAY_CHANGE)
+    result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(changes()).toHaveLength(0)
+    result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd', periodStartDay: 5 })
+    await waitFor(() => expect(changes()).toHaveLength(1))
+    expect(changes()[0][1]).toEqual({ periodStartDay: 5 })
   })
 
   it('create and update both invalidate the budget and plan caches', async () => {

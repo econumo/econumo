@@ -1313,6 +1313,10 @@
         "end_month": {
           "label": "End month",
           "none": "No end date"
+        },
+        "period_start_day": {
+          "label": "Month starts on day",
+          "warning": "Existing plans stay on their months; the dates each month covers will change."
         }
       },
       "budget_envelope": {

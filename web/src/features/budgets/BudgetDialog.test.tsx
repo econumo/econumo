@@ -51,3 +51,27 @@ it('sends an empty savings set when no account is marked savings', async () => {
   await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
   expect(onSubmit.mock.calls[0][0].savingsAccountIds).toEqual([])
 })
+
+it('submits the default period start day 1', async () => {
+  const user = userEvent.setup()
+  const onSubmit = renderDialog()
+  await user.type(screen.getByLabelText('Name'), 'Vacation')
+  await toggleInPicker(user, 'accounts', 'include Cash')
+  expect(screen.getByRole('combobox', { name: 'Month starts on day' })).toHaveTextContent('1')
+  await user.click(screen.getByRole('button', { name: 'Create' }))
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+  expect(onSubmit.mock.calls[0][0].periodStartDay).toBe(1)
+})
+
+it('submits the picked period start day', async () => {
+  const user = userEvent.setup()
+  const onSubmit = renderDialog()
+  await user.type(screen.getByLabelText('Name'), 'Vacation')
+  await toggleInPicker(user, 'accounts', 'include Cash')
+  await user.click(screen.getByRole('combobox', { name: 'Month starts on day' }))
+  await user.click(await screen.findByRole('option', { name: '28' }))
+  await user.click(screen.getByRole('button', { name: 'Create' }))
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+  expect(onSubmit.mock.calls[0][0].periodStartDay).toBe(28)
+  expect(screen.queryByText(/Existing plans stay/)).toBeNull()
+})

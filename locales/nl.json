@@ -1313,6 +1313,10 @@
         "end_month": {
           "label": "Eindmaand",
           "none": "Geen einddatum"
+        },
+        "period_start_day": {
+          "label": "Maand begint op dag",
+          "warning": "Bestaande plannen blijven bij hun maanden; de data die elke maand beslaat, veranderen."
         }
       },
       "budget_envelope": {

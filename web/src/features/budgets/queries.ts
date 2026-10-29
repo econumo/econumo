@@ -56,14 +56,14 @@ export function useCreateBudget() {
       }
       return meta
     },
-    onSuccess: (meta) => {
+    onSuccess: (meta, variables) => {
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => {
         const items = prev ?? []
         return items.some((b) => b.id === meta.id) ? items : [...items, meta]
       })
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
       invalidate()
-      trackEvent(METRICS.BUDGET_CREATE)
+      trackEvent(METRICS.BUDGET_CREATE, { periodStartDay: variables.periodStartDay ?? 1 })
     },
   })
 }
@@ -489,6 +489,10 @@ export function useUpdateBudgetDetail() {
       invalidate()
       trackEvent(METRICS.BUDGET_UPDATE)
       if (variables.endDate !== undefined) trackEvent(METRICS.BUDGET_SET_END_DATE)
+      // the dialog sends the day only when it differs from the stored one
+      if (variables.periodStartDay !== undefined) {
+        trackEvent(METRICS.BUDGET_PERIOD_START_DAY_CHANGE, { periodStartDay: variables.periodStartDay })
+      }
       if (variables.savingsAccountIds !== undefined && !sameIdSet(variables.savingsAccountIds, variables.previousSavingsAccountIds ?? [])) {
         trackEvent(METRICS.BUDGET_SAVINGS_TOGGLE)
       }
