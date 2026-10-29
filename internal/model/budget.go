@@ -309,6 +309,51 @@ func FirstOfMonth(t time.Time) time.Time {
 	return time.Date(y, m, 1, 0, 0, 0, 0, t.Location())
 }
 
+const MinPeriodStartDay, MaxPeriodStartDay = 1, 28
+
+func ValidPeriodStartDay(d int) bool {
+	return d >= MinPeriodStartDay && d <= MaxPeriodStartDay
+}
+
+func clampPeriodStartDay(d int) int {
+	if !ValidPeriodStartDay(d) {
+		return MinPeriodStartDay
+	}
+	return d
+}
+
+// PeriodWindow returns the half-open [start, end) window of the budget period
+// named by key. From day 16 on the period is named after the month it ends in,
+// so a period never carries the name of a month it mostly misses.
+func PeriodWindow(key time.Time, startDay int) (start, end time.Time) {
+	startDay = clampPeriodStartDay(startDay)
+	start = FirstOfMonth(key)
+	if startDay >= 16 {
+		start = start.AddDate(0, -1, 0)
+	}
+	start = start.AddDate(0, 0, startDay-1)
+	return start, start.AddDate(0, 1, 0)
+}
+
+// PeriodOf returns the key (first of month) of the period containing t.
+func PeriodOf(t time.Time, startDay int) time.Time {
+	startDay = clampPeriodStartDay(startDay)
+	key := FirstOfMonth(t.AddDate(0, 0, -(startDay - 1)))
+	if startDay >= 16 {
+		key = key.AddDate(0, 1, 0)
+	}
+	return key
+}
+
+// PeriodKeyOfDay maps a "YYYY-MM-DD" day to its period key as "YYYY-MM-01".
+func PeriodKeyOfDay(day string, startDay int) (string, error) {
+	t, err := time.Parse("2006-01-02", day)
+	if err != nil {
+		return "", err
+	}
+	return PeriodOf(t, startDay).Format("2006-01-02"), nil
+}
+
 // idPtrEqual compares two optional ids for equality (both nil == equal).
 func idPtrEqual(a, b *vo.Id) bool {
 	if a == nil || b == nil {
