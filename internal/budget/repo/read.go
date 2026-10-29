@@ -207,8 +207,22 @@ func (r *ReadRepo) AccountsReport(ctx context.Context, accountIDs []vo.Id, start
 	var out []model.AccountReportRow
 	for rows.Next() {
 		var row model.AccountReportRow
-		if err := rows.Scan(&row.AccountID, &row.CurrencyID, &row.Incomes, &row.TransferIncomes, &row.ExchangeIncomes, &row.Expenses, &row.TransferExpenses, &row.ExchangeExpenses); err != nil {
-			return nil, err
+		cols := []*string{&row.Incomes, &row.TransferIncomes, &row.ExchangeIncomes, &row.Expenses, &row.TransferExpenses, &row.ExchangeExpenses}
+		if r.driver == "postgresql" {
+			if err := rows.Scan(&row.AccountID, &row.CurrencyID, cols[0], cols[1], cols[2], cols[3], cols[4], cols[5]); err != nil {
+				return nil, err
+			}
+		} else {
+			// SQLite's SUM is a float that can land off the exact total
+			// (1339.8899999999999 for 1339.89); amounts carry at most 8 decimals,
+			// so rounding the float to 8 gives back PostgreSQL's exact sum.
+			var sums [6]float64
+			if err := rows.Scan(&row.AccountID, &row.CurrencyID, &sums[0], &sums[1], &sums[2], &sums[3], &sums[4], &sums[5]); err != nil {
+				return nil, err
+			}
+			for i, v := range sums {
+				*cols[i] = strconv.FormatFloat(v, 'f', 8, 64)
+			}
 		}
 		out = append(out, row)
 	}
@@ -232,9 +246,24 @@ func (r *ReadRepo) HoldingsReport(ctx context.Context, accountIDs []vo.Id, start
 		defer rows.Close()
 		for rows.Next() {
 			var currencyID *string
-			var amount *string
-			if err := rows.Scan(&amount, &currencyID); err != nil {
-				return err
+			a := "0"
+			if r.driver == "postgresql" {
+				var amount *string
+				if err := rows.Scan(&amount, &currencyID); err != nil {
+					return err
+				}
+				if amount != nil {
+					a = *amount
+				}
+			} else {
+				// SQLite's float SUM, rounded back to the 8-decimal amount scale
+				var amount *float64
+				if err := rows.Scan(&amount, &currencyID); err != nil {
+					return err
+				}
+				if amount != nil {
+					a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				}
 			}
 			if currencyID == nil {
 				continue
@@ -243,10 +272,6 @@ func (r *ReadRepo) HoldingsReport(ctx context.Context, accountIDs []vo.Id, start
 			if m == nil {
 				m = &acc{from: "0", to: "0"}
 				merged[*currencyID] = m
-			}
-			a := "0"
-			if amount != nil {
-				a = *amount
 			}
 			set(m, a)
 		}

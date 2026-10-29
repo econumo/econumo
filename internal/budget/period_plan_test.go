@@ -392,10 +392,8 @@ func runPlanOracle(t *testing.T, d int) {
 		}
 
 		bal := res.Balances[0]
-		// The balances block's SQLite SUM is a float (report_sql.go), so it can
-		// read 1412.58999999 for 1412.59 on any start day; compare it in cents.
-		sameAmount(t, key+" get-budget income", vo.NewDecimal(*bal.Income).Round(2).String(), totals.get(key, "income").String())
-		sameAmount(t, key+" get-budget expenses", vo.NewDecimal(*bal.Expenses).Round(2).String(), totals.get(key, "expenses").String())
+		sameAmount(t, key+" get-budget income", *bal.Income, totals.get(key, "income").String())
+		sameAmount(t, key+" get-budget expenses", *bal.Expenses, totals.get(key, "expenses").String())
 		sameAmount(t, key+" get-budget start balance", *bal.StartBalance, balanceBefore(key).String())
 		net := totals.get(key, "in").Sub(totals.get(key, "out"))
 		sameAmount(t, key+" get-budget holdings", *bal.Holdings, net.String())
