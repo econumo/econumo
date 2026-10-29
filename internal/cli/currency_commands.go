@@ -137,9 +137,9 @@ type rateGapArgs struct {
 }
 
 // parseRateGapArgs reads up to two dates (YYYY-MM-DD or YYYY-MM) and the
-// --daily flag. Single-dash arguments are the global log flags (-v, -q) and are
-// skipped; any other double-dash flag is refused so a typo cannot silently
-// switch the granularity.
+// --daily flag. The log flags (-v, -q) are stripped before a command runs, so
+// any other flag is a typo and is refused: skipping it could run a backfill at
+// the wrong granularity.
 func parseRateGapArgs(args []string, usage string) (rateGapArgs, error) {
 	var a rateGapArgs
 	var dates []time.Time
@@ -149,9 +149,8 @@ func parseRateGapArgs(args []string, usage string) (rateGapArgs, error) {
 		case arg == "":
 		case arg == "--daily":
 			a.period = model.RatePeriodDay
-		case strings.HasPrefix(arg, "--"):
-			return a, usageErr(usage)
 		case strings.HasPrefix(arg, "-"):
+			return a, usageErr(usage)
 		default:
 			d, err := parseRateGapDate(arg)
 			if err != nil {

@@ -117,7 +117,7 @@ func TestCurrencyRateGapCommands(t *testing.T) {
 	if got := Run([]string{"currency:show-rate-gaps"}); got != 0 {
 		t.Fatalf("currency:show-rate-gaps = %d, want 0", got)
 	}
-	if got := Run([]string{"currency:show-rate-gaps", "2026-01", "--daily", "-v"}); got != 0 {
+	if got := Run([]string{"currency:show-rate-gaps", "2026-01", "--daily"}); got != 0 {
 		t.Fatalf("currency:show-rate-gaps --daily = %d, want 0", got)
 	}
 	if got := Run([]string{"currency:backfill-rates", "2026-01"}); got != 0 {

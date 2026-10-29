@@ -151,7 +151,7 @@ func TestIndexPanicsOnDuplicate(t *testing.T) {
 
 func TestParseRateGapArgs(t *testing.T) {
 	const usage = "currency:show-rate-gaps [start] [end] [--daily]"
-	a, err := parseRateGapArgs([]string{"-v", "2026-01", "2026-03-15", "--daily"}, usage)
+	a, err := parseRateGapArgs([]string{"2026-01", "2026-03-15", "--daily"}, usage)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -166,6 +166,7 @@ func TestParseRateGapArgs(t *testing.T) {
 
 	for _, bad := range [][]string{
 		{"--dialy"},
+		{"-daily"},
 		{"2026-01", "2026-02", "2026-03"},
 		{"2026/01/01"},
 	} {
