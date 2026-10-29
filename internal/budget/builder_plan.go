@@ -29,8 +29,6 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 // buildBudgetPlan is BuildBudgetPlan over filters the caller already built
 // for the window.
 func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f filters, months int) (model.BudgetPlanResult, error) {
-	from, windowEnd := f.periodKey, f.keyEnd
-
 	meta, err := s.buildMeta(ctx, b)
 	if err != nil {
 		return model.BudgetPlanResult{}, err
@@ -39,26 +37,27 @@ func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f fil
 	monthsList := make([]time.Time, months)
 	monthStrs := make([]string, months)
 	for i := range monthsList {
-		m := from.AddDate(0, i, 0)
+		m := f.periodKey.AddDate(0, i, 0)
 		monthsList[i] = m
 		monthStrs[i] = m.Format(datetime.DateLayout)
 	}
 
-	opening, err := s.buildOpeningBalances(ctx, b.budget.CurrencyID, f, from)
+	opening, err := s.buildOpeningBalances(ctx, b.budget.CurrencyID, f, f.periodStart)
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
 
 	rates := make([]model.PlanMonthRatesResult, 0, months)
 	for i, m := range monthsList {
-		monthRates, rerr := s.buildAverageRates(ctx, m, m.AddDate(0, 1, 0))
+		start, end := f.window(m)
+		monthRates, rerr := s.buildAverageRates(ctx, start, end)
 		if rerr != nil {
 			return model.BudgetPlanResult{}, rerr
 		}
 		rates = append(rates, model.PlanMonthRatesResult{Period: monthStrs[i], Rates: monthRates})
 	}
 
-	transfers, err := s.buildPlanTransfers(ctx, b.budget.CurrencyID, f, monthStrs, from, windowEnd)
+	transfers, err := s.buildPlanTransfers(ctx, b.budget.CurrencyID, f, monthStrs)
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
@@ -68,15 +67,15 @@ func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f fil
 		return model.BudgetPlanResult{}, err
 	}
 
-	savingsOpening, err := s.buildSavingsOpeningBalances(ctx, b.budget.CurrencyID, f, from)
+	savingsOpening, err := s.buildSavingsOpeningBalances(ctx, b.budget.CurrencyID, f, f.periodStart)
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
-	savingsFlows, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, from, windowEnd, s.read.AccountsNetByMonth)
+	savingsFlows, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, s.read.AccountsNetByMonth)
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
-	savingsIncomeExpense, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, from, windowEnd, s.read.AccountsIncomeExpenseByMonth)
+	savingsIncomeExpense, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, s.read.AccountsIncomeExpenseByMonth)
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
@@ -97,14 +96,14 @@ func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f fil
 // buildPlanTransfers files TransfersByMonth's rows under their window month,
 // one entry per month (empty Items when nothing crossed), items ordered
 // budget currency first then by currency id.
-func (s *Service) buildPlanTransfers(ctx context.Context, budgetCurrencyID vo.Id, f filters, monthStrs []string, from, windowEnd time.Time) ([]model.PlanMonthTransfersResult, error) {
+func (s *Service) buildPlanTransfers(ctx context.Context, budgetCurrencyID vo.Id, f filters, monthStrs []string) ([]model.PlanMonthTransfersResult, error) {
 	out := make([]model.PlanMonthTransfersResult, len(monthStrs))
 	monthIdx := map[string]int{}
 	for i, m := range monthStrs {
 		out[i] = model.PlanMonthTransfersResult{Period: m, Items: []model.PlanTransferResult{}}
 		monthIdx[m] = i
 	}
-	rows, err := s.read.TransfersByMonth(ctx, f.includedAccountIDs, from, windowEnd, 1)
+	rows, err := s.read.TransfersByMonth(ctx, f.includedAccountIDs, f.periodStart, f.periodEnd, f.startDay)
 	if err != nil {
 		return nil, err
 	}
@@ -135,9 +134,9 @@ func (s *Service) buildPlanTransfers(ctx context.Context, budgetCurrencyID vo.Id
 // buildOpeningBalances sums per-currency balances of the included accounts
 // strictly before the window start, ordered budget currency first then
 // discovery order — the same per-currency ordering rule as the budget page's
-// balances block, but a different date bound: month 0's actual cells cover
-// [from, from+1mo), so the seed must exclude spent_at == from exactly or the
-// Balance row (seed + monthly nets) would double-count that instant.
+// balances block, but a different date bound: month 0's actual cells start at
+// from (its window start), so the seed must exclude spent_at == from exactly or
+// the Balance row (seed + monthly nets) would double-count that instant.
 func (s *Service) buildOpeningBalances(ctx context.Context, budgetCurrencyID vo.Id, f filters, from time.Time) ([]model.OpeningBalanceResult, error) {
 	rows, err := s.read.AccountsBalancesBeforeDate(ctx, f.includedAccountIDs, from)
 	if err != nil {
@@ -218,10 +217,11 @@ func convertedGetter(converted map[string]vo.DecimalNumber) func(string) vo.Deci
 func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f filters, monthsList []time.Time) (model.PlanStructureResult, error) {
 	nMonths := len(monthsList)
 	monthIdx := map[string]int{}
+	windows := make([][2]time.Time, nMonths)
 	for i, m := range monthsList {
 		monthIdx[m.Format(datetime.DateLayout)] = i
+		windows[i][0], windows[i][1] = f.window(m)
 	}
-	windowEnd := monthsList[0].AddDate(0, nMonths, 0)
 
 	sorted := append([]*model.BudgetFolder(nil), b.folders...)
 	sortBudgetFolders(sorted)
@@ -239,15 +239,15 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 		expenseCategoryIDs = append(expenseCategoryIDs, id)
 	}
-	spendRows, err := s.read.SpendingByMonth(ctx, expenseCategoryIDs, f.everydayAccountIDs, monthsList[0], windowEnd, 1)
+	spendRows, err := s.read.SpendingByMonth(ctx, expenseCategoryIDs, f.everydayAccountIDs, f.periodStart, f.periodEnd, f.startDay)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
-	limitRows, err := s.read.LimitsByMonth(ctx, b.budget.ID, monthsList[0], windowEnd)
+	limitRows, err := s.read.LimitsByMonth(ctx, b.budget.ID, f.periodKey, f.keyEnd)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
-	incomeRows, err := s.read.IncomeByMonth(ctx, f.everydayAccountIDs, monthsList[0], windowEnd, 1)
+	incomeRows, err := s.read.IncomeByMonth(ctx, f.everydayAccountIDs, f.periodStart, f.periodEnd, f.startDay)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
@@ -321,7 +321,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	toConvert := map[string][]model.ConvertItem{}
 	addActual := func(el *planElement, i int, index string, amount vo.DecimalNumber, currencyID vo.Id, to vo.Id) {
 		item := model.ConvertItem{
-			PeriodStart: monthsList[i], PeriodEnd: monthsList[i].AddDate(0, 1, 0),
+			PeriodStart: windows[i][0], PeriodEnd: windows[i][1],
 			From: currencyID, To: to, Amount: amount,
 		}
 		toConvert[planKey(i, index)] = append(toConvert[planKey(i, index)], item)
@@ -342,7 +342,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 		subIndex := elementKey(child.id, child.typ)
 		toConvert[planChildKey(i, parentIndex, subIndex)] = append(toConvert[planChildKey(i, parentIndex, subIndex)], model.ConvertItem{
-			PeriodStart: monthsList[i], PeriodEnd: monthsList[i].AddDate(0, 1, 0),
+			PeriodStart: windows[i][0], PeriodEnd: windows[i][1],
 			From: currencyID, To: el.currencyID, Amount: amount,
 		})
 		for ci := range el.children {
@@ -482,7 +482,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 				addActual(parent, i, parentIndex, amount, cid, parent.currencyID)
 				subIndex := elementKey(catID, model.ElementCategory)
 				toConvert[planChildKey(i, parentIndex, subIndex)] = append(toConvert[planChildKey(i, parentIndex, subIndex)], model.ConvertItem{
-					PeriodStart: monthsList[i], PeriodEnd: monthsList[i].AddDate(0, 1, 0),
+					PeriodStart: windows[i][0], PeriodEnd: windows[i][1],
 					From: cid, To: parent.currencyID, Amount: amount,
 				})
 				for ci := range parent.children {
@@ -523,7 +523,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 			addActual(parent, i, parentIndex, amount, cid, parent.currencyID)
 			subIndex := elementKey(catID, model.ElementIncomeCategory)
 			toConvert[planChildKey(i, parentIndex, subIndex)] = append(toConvert[planChildKey(i, parentIndex, subIndex)], model.ConvertItem{
-				PeriodStart: monthsList[i], PeriodEnd: monthsList[i].AddDate(0, 1, 0),
+				PeriodStart: windows[i][0], PeriodEnd: windows[i][1],
 				From: cid, To: parent.currencyID, Amount: amount,
 			})
 			for ci := range parent.children {
@@ -536,21 +536,21 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 	}
 
-	savingsRows, savingsHasActual, err := s.addPlanSavings(ctx, f, options, monthsList, monthIdx, toConvert)
+	savingsRows, savingsHasActual, err := s.addPlanSavings(ctx, f, options, windows, monthIdx, toConvert)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
 
 	// BulkConvert's top-level (periodStart, periodEnd) doubles as month 0's rate
-	// range (its "currentKey" is monthKey(periodStart), so any item dated in
-	// that same month reuses this range instead of getting its own entry — see
-	// BulkConvert's needed-map construction). Passing the WHOLE window here
-	// would make month 0 use the window-wide snapped average (typically the
-	// LATEST month's rate) instead of its own month's average, while every
-	// other month in the window still gets its own correctly-scoped range.
-	// Bounding it to just month 0 keeps that implicit range consistent with
-	// what every other month already gets explicitly.
-	converted, err := s.convertor.BulkConvert(ctx, monthsList[0], monthsList[0].AddDate(0, 1, 0), toConvert)
+	// range (its "currentKey" is monthKey(periodStart), so any item whose
+	// PeriodStart falls in that same calendar month reuses this range instead
+	// of getting its own entry — see BulkConvert's needed-map construction).
+	// Passing the WHOLE window here would make month 0 use the window-wide
+	// snapped average (typically the LATEST month's rate) instead of its own
+	// month's average. Bounding it to month 0's window keeps that implicit
+	// range consistent with what every other month gets explicitly; windows
+	// are a month apart, so each starts in a distinct calendar month.
+	converted, err := s.convertor.BulkConvert(ctx, windows[0][0], windows[0][1], toConvert)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}

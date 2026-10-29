@@ -240,6 +240,10 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	}, nil
 }
 
+func (f filters) window(key time.Time) (start, end time.Time) {
+	return model.PeriodWindow(key, f.startDay)
+}
+
 func boolToInt(b bool) int {
 	if b {
 		return 1

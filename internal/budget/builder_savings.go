@@ -91,7 +91,7 @@ func (s *Service) addSavings(ctx context.Context, f filters, options map[string]
 	if err != nil {
 		return nil, nil, err
 	}
-	actual, err := s.read.AccountsNetByMonth(ctx, ids, from, to, 1)
+	actual, err := s.read.AccountsNetByMonth(ctx, ids, from, to, f.startDay)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -280,20 +280,19 @@ func emitMonthlySavings(ms monthlySavings, limits map[string]budgetedAmount, get
 // single bulk conversion, account currency -> element currency, under the
 // same planKey scheme as the elements. hasActual marks accounts with a
 // non-zero net in some window month.
-func (s *Service) addPlanSavings(ctx context.Context, f filters, options map[string]elementOption, monthsList []time.Time, monthIdx map[string]int, toConvert map[string][]model.ConvertItem) ([]savingsRow, map[string]bool, error) {
-	windowEnd := monthsList[0].AddDate(0, len(monthsList), 0)
-	rows, hasActual, err := s.addSavings(ctx, f, options, monthsList[0], windowEnd,
+func (s *Service) addPlanSavings(ctx context.Context, f filters, options map[string]elementOption, windows [][2]time.Time, monthIdx map[string]int, toConvert map[string][]model.ConvertItem) ([]savingsRow, map[string]bool, error) {
+	rows, hasActual, err := s.addSavings(ctx, f, options, f.periodStart, f.periodEnd,
 		func(a model.SavingsMonthRow) (string, time.Time, time.Time, bool) {
 			i, ok := monthIdx[a.Month]
 			if !ok {
 				return "", time.Time{}, time.Time{}, false
 			}
-			return planKey(i, elementKey(a.AccountID, model.ElementSavings)), monthsList[i], monthsList[i].AddDate(0, 1, 0), true
+			return planKey(i, elementKey(a.AccountID, model.ElementSavings)), windows[i][0], windows[i][1], true
 		}, toConvert)
 	if err != nil || len(rows) == 0 {
 		return rows, hasActual, err
 	}
-	if err := s.addPlanSavingsClosings(ctx, f, rows, monthsList, monthIdx, toConvert); err != nil {
+	if err := s.addPlanSavingsClosings(ctx, f, rows, windows, monthIdx, toConvert); err != nil {
 		return nil, nil, err
 	}
 	return rows, hasActual, nil
@@ -303,17 +302,16 @@ func (s *Service) addPlanSavings(ctx context.Context, f filters, options map[str
 // every window month: the balance before the window plus the net change of the
 // months through it. The client adds
 // the unmet plans of the current and later months on top.
-func (s *Service) addPlanSavingsClosings(ctx context.Context, f filters, rows []savingsRow, monthsList []time.Time, monthIdx map[string]int, toConvert map[string][]model.ConvertItem) error {
+func (s *Service) addPlanSavingsClosings(ctx context.Context, f filters, rows []savingsRow, windows [][2]time.Time, monthIdx map[string]int, toConvert map[string][]model.ConvertItem) error {
 	ids, err := savingsAccountIDs(f)
 	if err != nil {
 		return err
 	}
-	windowEnd := monthsList[0].AddDate(0, len(monthsList), 0)
-	balances, err := s.read.AccountsBalancesBeforeDate(ctx, ids, monthsList[0])
+	balances, err := s.read.AccountsBalancesBeforeDate(ctx, ids, f.periodStart)
 	if err != nil {
 		return err
 	}
-	nets, err := s.read.AccountsNetByMonth(ctx, ids, monthsList[0], windowEnd, 1)
+	nets, err := s.read.AccountsNetByMonth(ctx, ids, f.periodStart, f.periodEnd, f.startDay)
 	if err != nil {
 		return err
 	}
@@ -328,7 +326,7 @@ func (s *Service) addPlanSavingsClosings(ctx context.Context, f filters, rows []
 			continue
 		}
 		if netByMonth[n.AccountID] == nil {
-			netByMonth[n.AccountID] = make([]vo.DecimalNumber, len(monthsList))
+			netByMonth[n.AccountID] = make([]vo.DecimalNumber, len(windows))
 		}
 		netByMonth[n.AccountID][i] = vo.NewDecimal(n.Amount)
 	}
@@ -338,11 +336,11 @@ func (s *Service) addPlanSavingsClosings(ctx context.Context, f filters, rows []
 			running = vo.NewDecimal("0")
 		}
 		index := savingsClosingKey(r.account.ID)
-		for i, m := range monthsList {
+		for i, w := range windows {
 			if net := netByMonth[r.account.ID]; net != nil && !net[i].IsZero() {
 				running = running.Add(net[i])
 			}
-			if err := queueSavingsBalance(toConvert, planKey(i, index), m, m.AddDate(0, 1, 0), r, running); err != nil {
+			if err := queueSavingsBalance(toConvert, planKey(i, index), w[0], w[1], r, running); err != nil {
 				return err
 			}
 		}
@@ -432,14 +430,14 @@ func savingsCurrencies(f filters, budgetCurrencyID vo.Id) []string {
 // buildSavingsFlows sums byMonth's per-account rows over the savings accounts
 // per (month, account currency), ordered by month, then budget currency first,
 // then currency id. Months without activity have no entry.
-func (s *Service) buildSavingsFlows(ctx context.Context, budgetCurrencyID vo.Id, f filters, from, to time.Time,
+func (s *Service) buildSavingsFlows(ctx context.Context, budgetCurrencyID vo.Id, f filters,
 	byMonth func(context.Context, []vo.Id, time.Time, time.Time, int) ([]model.SavingsMonthRow, error)) ([]model.PlanSavingsFlowResult, error) {
 	out := []model.PlanSavingsFlowResult{}
 	ids, err := savingsAccountIDs(f)
 	if err != nil || len(ids) == 0 {
 		return out, err
 	}
-	rows, err := byMonth(ctx, ids, from, to, 1)
+	rows, err := byMonth(ctx, ids, f.periodStart, f.periodEnd, f.startDay)
 	if err != nil {
 		return nil, err
 	}
