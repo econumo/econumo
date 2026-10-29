@@ -108,6 +108,14 @@ it('the total row equals the sum of the groups', async () => {
   expect(cells(rowNamed('Total'))).toEqual(['Total', '3,100.00 $', '6,200.00 $', '+3,100.00 $'])
 })
 
+it('on a phone the table shows whole amounts in Now and Change; the headline keeps cents', async () => {
+  setViewport(true)
+  openNetWorth({}, report([acc('a1', 'Cash', ['1000.40', '1500', '27286.73'])]))
+  await screen.findByRole('table')
+  expect(cells(rowNamed('Total'))).toEqual(['Total', '1,000 $', '27,287 $', '+26,287 $'])
+  expect(plain(headline().textContent)).toContain('27,286.73 $')
+})
+
 it('a folder expands to its accounts', async () => {
   openNetWorth()
   await screen.findByRole('table')

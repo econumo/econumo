@@ -12,7 +12,8 @@ import type { ChartConfig } from '@/components/ui/chart'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useUserData } from '@/features/user/queries'
-import { add, cmp, isNegative, isZero, sub } from '@/lib/decimal'
+import { useIsPhone } from '@/hooks/useIsPhone'
+import { add, cmp, isNegative, isZero, round, sub } from '@/lib/decimal'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { netWorthGroupOf } from './reportMath'
 import { netWorthQueryArgs } from './reportPeriod'
@@ -62,6 +63,10 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const setParams = (patch: Partial<ReportParams>) => useReportTabs.getState().setParams(tab.id, patch)
   const report = useNetWorthReport(netWorthQueryArgs(p))
   const money = useMoney(report.data?.currencyId)
+  // on a phone the table's two figure columns hold whole amounts, so they never run together
+  const isPhone = useIsPhone()
+  const wholeMoney = useMoney(report.data?.currencyId, { whole: true })
+  const cellMoney = isPhone ? wholeMoney : money
   const compact = useMemo(() => compactNumber(i18n.language), [i18n.language])
   const { data: user } = useUserData()
   const { data: accounts } = useAccounts()
@@ -190,13 +195,17 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       return next
     })
   // Lines styled like the Budget/Plan rows: rounded hover, no rules between rows.
-  const figures = (l: Line, muted = false) => (
-    <>
-      <span role="cell" className={`hidden ${COL} text-muted-foreground sm:flex`}>{money(l.start)}</span>
-      <span role="cell" className={`${COL} ${muted ? '' : 'text-foreground'}`}>{money(l.now)}</span>
-      <span role="cell" className={`${COL} ${changeClass(l.change)}`}>{signedMoney(l.change, money)}</span>
-    </>
-  )
+  const figures = (l: Line, muted = false) => {
+    // whole amounts on a phone: the change is taken from the rounded figures, so the row adds up
+    const change = isPhone ? sub(round(l.now, 0), round(l.start, 0)) : l.change
+    return (
+      <>
+        <span role="cell" className={`hidden ${COL} text-muted-foreground sm:flex`}>{cellMoney(l.start)}</span>
+        <span role="cell" className={`${COL} ${muted ? '' : 'text-foreground'}`}>{cellMoney(l.now)}</span>
+        <span role="cell" className={`${COL} ${changeClass(change)}`}>{signedMoney(change, cellMoney)}</span>
+      </>
+    )
+  }
   const groupRows = (groups: { line: Line; accounts: Line[] }[]) => groups.flatMap((g) => {
     const isOpen = open.has(g.line.id)
     if (g.accounts.length === 0) {

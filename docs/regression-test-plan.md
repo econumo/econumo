@@ -2182,6 +2182,10 @@ tag, and a budget with a planned limit on one category.
 - [ ] All time over more than 20 years of history shows the last 240
       months instead of an error; a Custom range longer than 240 months is
       refused.
+- [ ] 📱 Net worth on a phone: the table's Now and Change show whole amounts
+      (no cents, the currency kept, e.g. "+48,450 CA$") and never run into
+      each other; Change equals Now minus Start as shown; the headline keeps
+      cents.
 - [ ] 📱 At 390px the Net worth header fits, the chart fits the width and
       the list shows the name, Now and Change; light and dark theme keep the
       line, the fill and the change colours readable.

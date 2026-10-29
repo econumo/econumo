@@ -1,13 +1,14 @@
 import type { Id } from '@/api/types'
 import { useCurrencies } from '@/features/currencies/queries'
-import { abs, isNegative, isZero } from '@/lib/decimal'
+import { abs, isNegative, isZero, round } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 
-export function useMoney(currencyId: Id | undefined) {
+/** `whole` rounds to whole units, for narrow columns on phones */
+export function useMoney(currencyId: Id | undefined, { whole = false }: { whole?: boolean } = {}) {
   const { data: currencies } = useCurrencies()
   const currency = currencies?.find((c) => c.id === currencyId)
-  return (amount: string) =>
-    moneyFormat(amount, currency ?? { symbol: '', fractionDigits: 2 }, { showCurrency: !!currency })
+  const shape = { symbol: currency?.symbol ?? '', fractionDigits: whole ? 0 : (currency?.fractionDigits ?? 2) }
+  return (amount: string) => moneyFormat(whole ? round(amount, 0) : amount, shape, { showCurrency: !!currency })
 }
 
 export function compactNumber(lang: string) {
