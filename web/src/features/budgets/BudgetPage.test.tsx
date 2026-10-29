@@ -1070,6 +1070,30 @@ describe('a budget whose months start on the 28th', () => {
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.BUDGET_CHANGE_DATE)
   })
 
+  // the list already names the day: the page asks for the adopted period only, so a
+  // cold open on 30 October never fetches (and flashes) October first
+  it('requests only the adopted period when the budget list carries the day', async () => {
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, periodFollowed: false })
+    const dates: string[] = []
+    const planFrom: string[] = []
+    server.use(
+      ...coreHandlers({ user: userWithBudget, budgets: fixtureBudgets.map((b) => (b.id === 'b1' ? { ...b, periodStartDay: 28 } : b)) }),
+      http.get('*/api/v1/budget/get-budget', ({ request }) => {
+        dates.push(new URL(request.url).searchParams.get('date') ?? '')
+        return HttpResponse.json({ success: true, message: '', data: { item: shifted } })
+      }),
+      http.get('*/api/v1/budget/get-budget-plan', ({ request }) => {
+        planFrom.push(new URL(request.url).searchParams.get('from') ?? '')
+        return HttpResponse.json({ success: true, message: '', data: { item: { ...fixtureWirePlan, meta: shifted.meta } } })
+      }),
+    )
+    renderPage()
+    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Oct 28 – Nov 27')
+    expect(dates).toEqual(['2026-11-01'])
+    await waitFor(() => expect(planFrom.length).toBeGreaterThan(0))
+    expect(new Set(planFrom).size).toBe(1)
+  })
+
   it('keeps a month the user picked', async () => {
     useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: true, adoptedPeriod: null })
     server.use(

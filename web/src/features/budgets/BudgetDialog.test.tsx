@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets } from '@/test/fixtures'
 import { BudgetDialog } from './BudgetDialog'
 import { toggleInPicker } from './budgetFormTestUtils'
 
@@ -74,4 +75,44 @@ it('submits the picked period start day', async () => {
   await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
   expect(onSubmit.mock.calls[0][0].periodStartDay).toBe(28)
   expect(screen.queryByText(/Existing plans stay/)).toBeNull()
+})
+
+describe('a server that does not know the period start day', () => {
+  // resolves once the list has been served, so a test can tell "still loading" from "loaded"
+  function budgetList(items: unknown[]) {
+    let served = false
+    server.use(
+      http.get('*/api/v1/budget/get-budget-list', () => {
+        served = true
+        return HttpResponse.json({ success: true, message: '', data: { items } })
+      }),
+    )
+    return () => served
+  }
+  const picker = () => screen.queryByRole('combobox', { name: 'Month starts on day' })
+  const settled = async (served: () => boolean) => {
+    await waitFor(() => expect(served()).toBe(true))
+    await new Promise((r) => setTimeout(r, 50))
+  }
+
+  it('hides the picker when the loaded budgets carry no day', async () => {
+    const served = budgetList(fixtureBudgets.map(({ periodStartDay: _d, ...b }) => b))
+    renderDialog()
+    await settled(served)
+    await waitFor(() => expect(picker()).toBeNull())
+  })
+
+  it('shows the picker when the budgets carry a day', async () => {
+    const served = budgetList(fixtureBudgets)
+    renderDialog()
+    await settled(served)
+    expect(picker()).toBeInTheDocument()
+  })
+
+  it('shows the picker when there is no budget yet', async () => {
+    const served = budgetList([])
+    renderDialog()
+    await settled(served)
+    expect(picker()).toBeInTheDocument()
+  })
 })

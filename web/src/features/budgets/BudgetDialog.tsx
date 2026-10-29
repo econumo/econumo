@@ -12,6 +12,7 @@ import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { BudgetAccountsField, BudgetSavingsField } from './BudgetAccountsField'
 import { PeriodStartDayField } from './PeriodStartDayField'
+import { useBudgets } from './queries'
 
 interface BudgetDialogProps {
   open: boolean
@@ -23,6 +24,10 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
+  const { data: budgets } = useBudgets()
+  // a server older than the setting sends budgets without a day and would ignore a
+  // chosen one; with no budget to tell by, assume a current server
+  const knowsPeriodStartDay = !budgets?.length || budgets.some((b) => b.periodStartDay !== undefined)
 
   const [name, setName] = useState('')
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
@@ -141,7 +146,9 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
           error={errors.currency}
         />
 
-        <PeriodStartDayField id="budget-period-start-day" value={periodStartDay} onChange={setPeriodStartDay} />
+        {knowsPeriodStartDay ? (
+          <PeriodStartDayField id="budget-period-start-day" value={periodStartDay} onChange={setPeriodStartDay} />
+        ) : null}
 
         {ownAccounts.length > 0 ? (
           <>

@@ -84,7 +84,15 @@ describe('the default period follows the budget', () => {
     const stored = JSON.parse(localStorage.getItem('budgetPeriod') ?? '{}') as { state: Record<string, unknown> }
     expect(stored.state.selectedDate).toBe('2026-09-01')
     expect(stored.state).not.toHaveProperty('periodChosen')
+    expect(stored.state).not.toHaveProperty('periodFollowed')
     expect(stored.state.adoptedPeriod).toBeNull()
+  })
+
+  it('marks the default as followed even when it does not move', () => {
+    useBudgetPeriodStore.setState({ periodFollowed: false })
+    useBudgetPeriodStore.getState().followCurrentPeriod(1)
+    expect(useBudgetPeriodStore.getState().periodFollowed).toBe(true)
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01')
   })
 
   it('stepping the plan window clears the adopted default too', () => {

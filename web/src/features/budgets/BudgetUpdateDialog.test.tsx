@@ -161,8 +161,19 @@ describe('period start day', () => {
     expect(bodies[0]).not.toHaveProperty('periodStartDay')
   })
 
-  it('defaults to day 1 for a server that sends no day', async () => {
+  it('hides the picker and sends no day for a server that sends none', async () => {
+    const bodies = captureUpdate()
+    const user = userEvent.setup()
     renderDialog(baseBudget)
+    await screen.findByText(/ of 4 included/)
+    expect(screen.queryByRole('combobox', { name: 'Month starts on day' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).not.toHaveProperty('periodStartDay')
+  })
+
+  it('shows the picker for a stored day 1', async () => {
+    renderDialog({ ...baseBudget, meta: { ...baseBudget.meta, periodStartDay: 1 } })
     await screen.findByText(/ of 4 included/)
     expect(screen.getByRole('combobox', { name: 'Month starts on day' })).toHaveTextContent('1')
   })

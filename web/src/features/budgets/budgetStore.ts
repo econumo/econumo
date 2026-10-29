@@ -25,6 +25,13 @@ export function normalizePeriod(date: string): string {
   return `${match[1]}-${match[2]}-01`
 }
 
+type FollowState = Pick<BudgetPeriodState, 'periodChosen' | 'selectedDate' | 'adoptedPeriod'>
+
+/** the month shown is a default, not a pick: the calendar month or one adopted earlier */
+export function followsCurrentPeriod(s: FollowState, now: Date = new Date()): boolean {
+  return !s.periodChosen && (s.selectedDate === currentPeriod(1, now) || s.selectedDate === s.adoptedPeriod)
+}
+
 function addMonthsToPeriod(period: string, delta: number): string {
   const [y, m] = period.split('-').map(Number)
   const d = new Date(y, m - 1 + delta, 1)
@@ -45,6 +52,9 @@ interface BudgetPeriodState {
   /** an unpicked default month moves to the opened budget's current period: a
    *  shifted budget can already be in next month's period */
   followCurrentPeriod: (startDay: number, now?: Date) => void
+  /** followCurrentPeriod ran this session (not persisted): until then a default month
+   *  may still move, so the budget page holds its period fetches */
+  periodFollowed: boolean
   /** element rows default folded; presence = unfolded (Vue semantics). The Budget
    *  view (and the phone) and the Plan grid each keep their own fold state, so
    *  folding a line in one view leaves the other as it was. */
@@ -94,15 +104,18 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       periodChosen: false,
       adoptedPeriod: null,
       followCurrentPeriod: (startDay, now = new Date()) => {
-        const { periodChosen, selectedDate, adoptedPeriod } = get()
-        if (periodChosen || (selectedDate !== currentPeriod(1, now) && selectedDate !== adoptedPeriod)) {
+        if (!get().periodFollowed) {
+          set({ periodFollowed: true })
+        }
+        if (!followsCurrentPeriod(get(), now)) {
           return
         }
         const target = currentPeriod(startDay, now)
-        if (target !== selectedDate) {
+        if (target !== get().selectedDate) {
           set({ selectedDate: target, adoptedPeriod: target })
         }
       },
+      periodFollowed: false,
       unfoldedElements: {},
       toggleElement: (id) => set((state) => ({ unfoldedElements: toggleKey(state.unfoldedElements, id) })),
       planUnfoldedElements: {},
@@ -132,7 +145,7 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
     {
       name: 'budgetPeriod',
       version: 1,
-      partialize: ({ periodChosen: _chosen, ...rest }): Partial<BudgetPeriodState> => rest,
+      partialize: ({ periodChosen: _chosen, periodFollowed: _followed, ...rest }): Partial<BudgetPeriodState> => rest,
       // version 0 shared one fold state between both views: each view starts from it
       migrate: (persisted, version) => {
         const state = (persisted ?? {}) as Partial<BudgetPeriodState>

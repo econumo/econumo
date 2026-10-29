@@ -46,6 +46,8 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
 
   const canConfigure = canConfigureBudget(budget.meta, user?.id)
   const storedDay = periodStartDayOf(budget.meta)
+  // a server older than the setting sends no day and would ignore a chosen one
+  const knowsPeriodStartDay = budget.meta.periodStartDay !== undefined
   // deleted members are permanent (they never disappear from filters.accounts) and
   // still count toward the locked rule, so they must round-trip even though the
   // live account list below has no row for them. A server older than the
@@ -209,17 +211,19 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           disabled={!canConfigure}
         />
 
-        <PeriodStartDayField
-          id="budget-upd-period-start-day"
-          value={periodStartDay}
-          onChange={(day) => {
-            setDayError(null)
-            setPeriodStartDay(day)
-          }}
-          disabled={!canConfigure}
-          warning={periodStartDay !== storedDay}
-          error={dayError}
-        />
+        {knowsPeriodStartDay ? (
+          <PeriodStartDayField
+            id="budget-upd-period-start-day"
+            value={periodStartDay}
+            onChange={(day) => {
+              setDayError(null)
+              setPeriodStartDay(day)
+            }}
+            disabled={!canConfigure}
+            warning={periodStartDay !== storedDay}
+            error={dayError}
+          />
+        ) : null}
 
         {ownAccounts.length > 0 ? (
           <>

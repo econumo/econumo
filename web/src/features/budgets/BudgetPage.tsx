@@ -75,7 +75,7 @@ import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { BudgetDialog } from './BudgetDialog'
-import { useCreateBudget } from './queries'
+import { useCreateBudget, useDefaultPeriodSettled } from './queries'
 import type { ElementContainer } from './elementMove'
 import { applyArrangement, arrangementFromBuckets, arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, moveElementInArrangement, placeFromEnvelope, withoutElement } from './elementMove'
 import type { DropIndicator } from './elementMove'
@@ -119,7 +119,10 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // this identical option internally — if it ever gains a non-option budget source,
   // this derivation must follow, or the markers below silently stop tracking writes.
   const budgetId = userOption(user, UserOptions.BUDGET)
-  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(mode === 'budget' || isPhone ? budgetId : null, selectedDate, 1)
+  // the month's own fetches wait, like the budget's, until the default month settles
+  const periodSettled = useDefaultPeriodSettled(budgetId)
+  const monthBudgetId = (mode === 'budget' || isPhone) && periodSettled ? budgetId : null
+  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(monthBudgetId, selectedDate, 1)
   // an element or a savings row: both dialogs need only the cell's id and name
   const [commentsTarget, setCommentsTarget] = useState<{ el: CellTarget; anchor: HTMLElement | null } | null>(null)
   const openComments = (el: CellTarget, anchor: HTMLElement | null = null) => setCommentsTarget({ el, anchor })
@@ -146,7 +149,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // what precedes the window, so a future month's Balance needs every unmet plan
   // from the current period on inside it.
   const monthPlanFirst = selectedDate < curPeriod ? selectedDate : curPeriod
-  const monthPlan = useBudgetPlan(mode === 'budget' || isPhone ? budgetId : null, monthPlanFirst, monthDiff(monthPlanFirst, selectedDate) + 1, startDay)
+  const monthPlan = useBudgetPlan(monthBudgetId, monthPlanFirst, monthDiff(monthPlanFirst, selectedDate) + 1, startDay)
   const planSetLimit = usePlanSetLimit(monthPlan.planKey)
   const planMonth = useMemo(
     () => (monthPlan.data && !monthPlan.isPlaceholderData ? planMonthFigures(monthPlan.data, currencies, selectedDate) : null),
