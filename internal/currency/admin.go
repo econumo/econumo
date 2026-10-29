@@ -1,6 +1,7 @@
 // Write side of the currency module. The HTTP API exposes no currency
 // mutations; these use cases exist only for the CLI admin commands
-// (currency:update-rates, currency:add). The read side (read.go) is unchanged.
+// (currency:update-rates, currency:add, currency:show-rate-gaps,
+// currency:backfill-rates). The read side (read.go) is unchanged.
 package currency
 
 import (
@@ -33,6 +34,15 @@ type WriteModel interface {
 	// LatestRateDate returns the newest stored rate date; ok=false when none
 	// exist yet.
 	LatestRateDate(ctx context.Context) (time.Time, bool, error)
+	// UsedCurrencyCodes returns the sorted global currency codes something
+	// converts from or to.
+	UsedCurrencyCodes(ctx context.Context) ([]string, error)
+	// RatedPeriods returns every (period, code) pair with a rate against
+	// baseID in [from, to).
+	RatedPeriods(ctx context.Context, baseID string, period model.RatePeriod, from, to time.Time) ([]model.RatedPeriod, error)
+	// EarliestTransactionDate returns the oldest transaction's date; ok=false
+	// when there are none.
+	EarliestTransactionDate(ctx context.Context) (time.Time, bool, error)
 }
 
 // WriteService is the currency write-use-case orchestrator.

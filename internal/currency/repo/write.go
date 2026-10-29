@@ -43,6 +43,28 @@ type writeQuerier interface {
 	UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p upsertRateP) error
 	GetLatestRateDate(ctx context.Context, db backend.DBTX) (time.Time, error)
 	GetLatestRateBase(ctx context.Context, db backend.DBTX) (string, error)
+	ListUsedGlobalCurrencyCodes(ctx context.Context, db backend.DBTX) ([]string, error)
+	ListRatedPeriods(ctx context.Context, db backend.DBTX, p ratedPeriodsP) ([]ratedPeriodRow, error)
+	GetEarliestTransactionDate(ctx context.Context, db backend.DBTX) (time.Time, error)
+}
+
+type ratedPeriodRow = sqlitegen.ListRatedPeriodsRow
+
+// ratedPeriodsP carries the bounds as time.Time and the period as the model
+// value; each adapter renders its own engine's date text and format layout.
+type ratedPeriodsP struct {
+	Period         model.RatePeriod
+	BaseCurrencyID string
+	From           time.Time
+	To             time.Time
+}
+
+// periodLayout is the Go layout of the period text ListRatedPeriods returns.
+func periodLayout(p model.RatePeriod) string {
+	if p == model.RatePeriodDay {
+		return datetime.DateLayout
+	}
+	return "2006-01"
 }
 
 // WriteRepo implements app/currency.WriteModel over the sqlc write queries.
@@ -141,6 +163,44 @@ func (r *WriteRepo) LatestRateBase(ctx context.Context) (string, bool, error) {
 	return id, true, nil
 }
 
+// UsedCurrencyCodes returns the global currency codes something converts from
+// or to, sorted.
+func (r *WriteRepo) UsedCurrencyCodes(ctx context.Context) ([]string, error) {
+	return r.q.ListUsedGlobalCurrencyCodes(ctx, r.db(ctx))
+}
+
+// RatedPeriods returns every (period, code) pair with a rate against baseID in
+// [from, to).
+func (r *WriteRepo) RatedPeriods(ctx context.Context, baseID string, period model.RatePeriod, from, to time.Time) ([]model.RatedPeriod, error) {
+	rows, err := r.q.ListRatedPeriods(ctx, r.db(ctx), ratedPeriodsP{Period: period, BaseCurrencyID: baseID, From: from, To: to})
+	if err != nil {
+		return nil, err
+	}
+	layout := periodLayout(period)
+	out := make([]model.RatedPeriod, 0, len(rows))
+	for _, row := range rows {
+		start, err := time.Parse(layout, row.Period)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, model.RatedPeriod{Start: start, Code: row.Code})
+	}
+	return out, nil
+}
+
+// EarliestTransactionDate returns the oldest transaction's spent_at; ok=false
+// when there are no transactions.
+func (r *WriteRepo) EarliestTransactionDate(ctx context.Context) (time.Time, bool, error) {
+	t, err := r.q.GetEarliestTransactionDate(ctx, r.db(ctx))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return time.Time{}, false, nil
+		}
+		return time.Time{}, false, err
+	}
+	return t, true, nil
+}
+
 // sqliteWriteQuerier is the native passthrough (canonical types ARE sqlite's).
 type sqliteWriteQuerier struct{}
 
@@ -175,6 +235,27 @@ func (sqliteWriteQuerier) GetLatestRateDate(ctx context.Context, db backend.DBTX
 
 func (sqliteWriteQuerier) GetLatestRateBase(ctx context.Context, db backend.DBTX) (string, error) {
 	return sqlitegen.New(db).GetLatestRateBase(ctx)
+}
+
+func (sqliteWriteQuerier) ListUsedGlobalCurrencyCodes(ctx context.Context, db backend.DBTX) ([]string, error) {
+	return sqlitegen.New(db).ListUsedGlobalCurrencyCodes(ctx)
+}
+
+func (sqliteWriteQuerier) ListRatedPeriods(ctx context.Context, db backend.DBTX, p ratedPeriodsP) ([]ratedPeriodRow, error) {
+	layout := "%Y-%m"
+	if p.Period == model.RatePeriodDay {
+		layout = "%Y-%m-%d"
+	}
+	return sqlitegen.New(db).ListRatedPeriods(ctx, sqlitegen.ListRatedPeriodsParams{
+		Layout:         layout,
+		BaseCurrencyID: p.BaseCurrencyID,
+		FromDate:       p.From.Format(datetime.DateLayout),
+		ToDate:         p.To.Format(datetime.DateLayout),
+	})
+}
+
+func (sqliteWriteQuerier) GetEarliestTransactionDate(ctx context.Context, db backend.DBTX) (time.Time, error) {
+	return sqlitegen.New(db).GetEarliestTransactionDate(ctx)
 }
 
 // pgsqlWriteQuerier is the thin whole-struct conversion shim.
@@ -213,4 +294,33 @@ func (pgsqlWriteQuerier) GetLatestRateDate(ctx context.Context, db backend.DBTX)
 
 func (pgsqlWriteQuerier) GetLatestRateBase(ctx context.Context, db backend.DBTX) (string, error) {
 	return pgsqlgen.New(db).GetLatestRateBase(ctx)
+}
+
+func (pgsqlWriteQuerier) ListUsedGlobalCurrencyCodes(ctx context.Context, db backend.DBTX) ([]string, error) {
+	return pgsqlgen.New(db).ListUsedGlobalCurrencyCodes(ctx)
+}
+
+func (pgsqlWriteQuerier) ListRatedPeriods(ctx context.Context, db backend.DBTX, p ratedPeriodsP) ([]ratedPeriodRow, error) {
+	layout := "YYYY-MM"
+	if p.Period == model.RatePeriodDay {
+		layout = "YYYY-MM-DD"
+	}
+	rows, err := pgsqlgen.New(db).ListRatedPeriods(ctx, pgsqlgen.ListRatedPeriodsParams{
+		Layout:         layout,
+		BaseCurrencyID: p.BaseCurrencyID,
+		FromDate:       p.From,
+		ToDate:         p.To,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ratedPeriodRow, len(rows))
+	for i, r := range rows {
+		out[i] = ratedPeriodRow(r)
+	}
+	return out, nil
+}
+
+func (pgsqlWriteQuerier) GetEarliestTransactionDate(ctx context.Context, db backend.DBTX) (time.Time, error) {
+	return pgsqlgen.New(db).GetEarliestTransactionDate(ctx)
 }
