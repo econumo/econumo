@@ -1535,7 +1535,15 @@ and on tablet/phone only with a hardware keyboard.
       the UI language) show at the right end of the period strip on desktop
       /budget and in the phone month view's strip row; the strip still names
       months ("Nov"). Switching months updates the range. A day-1 budget shows
-      no range. Desktop /plan (no strip) shows none.
+      no range.
+- [ ] **Shifted budget — date ranges in the Plan grid**: on desktop /plan, a
+      budget whose day is not 1 shows each month column's dates ("Oct 28 – Nov
+      27", in the UI language) as a small muted second line under the month
+      name, and the month header keeps its height. At the narrowest columns
+      (a wide name column, a narrow window) the month name stays whole on one
+      line; a range that does not fit ends in an ellipsis and shows in full on
+      hover. Paging the window updates the ranges. A day-1 budget shows only
+      the month names.
 - [ ] 📱 **Shifted budget — default period**: on 30 Oct, opening a day-28
       budget with no month picked in this session opens "November" (the
       period containing today), with its spending, Available and plan hints

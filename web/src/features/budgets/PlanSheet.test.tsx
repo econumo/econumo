@@ -146,6 +146,37 @@ it('/plan renders the sheet: months, income on top, cells', async () => {
   expect(within(cell).getByTestId('cell-planned')).toBeInTheDocument()
 })
 
+it('a budget whose months start on the 28th shows each month\'s dates under its name', async () => {
+  const shifted = { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, periodStartDay: 28 } }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: shifted } })),
+    planHandler(),
+  )
+  useBudgetPeriodStore.setState({ selectedDate: '2026-08-01', periodChosen: true })
+  renderPage()
+  const header = await screen.findByTestId('plan-month-header')
+  await waitFor(() => expect(within(header).getAllByTestId('plan-month-dates').length).toBeGreaterThan(0))
+  const cols = within(header).getAllByRole('columnheader')
+  expect(within(header).getAllByTestId('plan-month-dates')).toHaveLength(cols.length)
+  const aug = cols.find((c) => c.getAttribute('data-month') === '2026-08-01')!
+  expect(within(aug).getByTestId('plan-month-dates')).toHaveTextContent('Jul 28 – Aug 27')
+  expect(within(aug).getByTestId('plan-month-dates')).toHaveAttribute('title', 'Jul 28 – Aug 27')
+  // the name keeps its own line; the dates are the second
+  expect(aug.querySelector('[data-month-label]')).toHaveTextContent(/^August$/)
+  const jul = cols.find((c) => c.getAttribute('data-month') === '2026-07-01')!
+  expect(within(jul).getByTestId('plan-month-dates')).toHaveTextContent('Jun 28 – Jul 27')
+})
+
+it('a calendar-month budget shows no dates under the month names', async () => {
+  usePlanHandlers()
+  renderPage()
+  const header = await screen.findByTestId('plan-month-header')
+  await waitFor(() => expect(within(header).getAllByRole('columnheader').length).toBeGreaterThan(0))
+  expect(within(header).queryByTestId('plan-month-dates')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('plan-month-dates')).not.toBeInTheDocument()
+})
+
 it('a row is one line: actual · plan up to the selected month, plan alone after it', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })

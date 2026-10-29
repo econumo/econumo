@@ -48,3 +48,16 @@ export function periodOf(day: string, startDay: number): string {
 export function currentPeriod(startDay: number, now: Date = new Date()): string {
   return periodOf(isoDay(now), startDay)
 }
+
+/** the dates a shifted period covers, last day inclusive ("Oct 28 – Nov 27" in
+ *  `lang`); null for a calendar month, which needs no range */
+export function periodDatesLabel(key: string, startDay: number, lang: string): string | null {
+  if (clampDay(startDay) === MIN_DAY) {
+    return null
+  }
+  const { start, end } = periodWindow(key, startDay)
+  const last = localDate(end)
+  last.setDate(last.getDate() - 1)
+  const fmt = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short' })
+  return `${fmt.format(localDate(start))} – ${fmt.format(last)}`
+}

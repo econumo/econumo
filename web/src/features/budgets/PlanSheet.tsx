@@ -87,7 +87,7 @@ import {
 } from './planMath'
 import type { MonthExchange, PlanCellRef, PlanFolderSection, PlanRow, PlanRows } from './planMath'
 import type { LineControls, MenuAction } from './monthLayout'
-import { currentPeriod, periodStartDayOf } from './period'
+import { currentPeriod, periodDatesLabel, periodStartDayOf } from './period'
 import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
 import { ElementRow, PlanTagGroup, SumCell, cellDomId, commentsReadOnly, isEditableCell, pickedKey, sourceAmount } from './PlanRows'
@@ -650,6 +650,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     const label = periodLabeler(i18n.language)
     return (m: string) => label(monthDate(m))
   }, [i18n.language])
+  const dates = useMemo(
+    () => (startDay === 1 ? null : (m: string) => periodDatesLabel(m, startDay, i18n.language)),
+    [startDay, i18n.language],
+  )
   const layout = useMemo(
     () => ({ kind: 'plan' as const, cols: visible, selectedCol: -1, crosshairCol, months: visibleMonths, monthLabels: visibleMonths.map(monthLabel) }),
     [visible, crosshairCol, visibleMonths, monthLabel],
@@ -1834,6 +1838,15 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           {visibleMonths.map((m, i) => {
             const selected = i === selectedCol
             const current = m === cur
+            const label = (
+              <span
+                data-month-label=""
+                className={`block w-full px-2 text-right text-sm uppercase tracking-wide ${dates ? 'pt-1' : 'py-2'} ${current ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+              >
+                {monthLabel(m)}
+              </span>
+            )
+            const range = dates?.(m)
             return (
               <div
                 key={m}
@@ -1845,12 +1858,22 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
                 aria-current={current ? 'date' : undefined}
                 className={`${PLAN_FIGURE_COL}${i === crosshairCol ? ` ${PLAN_CROSSHAIR}` : ''} p-0!`}
               >
-                <span
-                  data-month-label=""
-                  className={`block w-full px-2 py-2 text-right text-sm uppercase tracking-wide ${current ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
-                >
-                  {monthLabel(m)}
-                </span>
+                {range ? (
+                  // a shifted budget's month is not the calendar month: its dates sit
+                  // under the name, inside the header's usual height
+                  <span className="flex w-full min-w-0 flex-col">
+                    {label}
+                    <span
+                      data-testid="plan-month-dates"
+                      title={range}
+                      className="block w-full truncate px-2 pb-1 text-right text-xs leading-4 text-muted-foreground tabular-nums"
+                    >
+                      {range}
+                    </span>
+                  </span>
+                ) : (
+                  label
+                )}
               </div>
             )
           })}
