@@ -153,13 +153,17 @@ it('dragging across the chart shows the change over the selected range', async (
   fireEvent.mouseDown(surface, { clientX: 45, clientY: 100 })
   await at(220)
   fireEvent.mouseUp(surface, { clientX: 220, clientY: 100 })
-  await waitFor(() => expect(plain(headline().textContent)).toContain('Dec 2025 – May 2026'))
+  await waitFor(() => expect(screen.getByText('Dec 2025 – May 2026')).toBeInTheDocument())
+  // the range replaces the period presets
+  expect(screen.queryByRole('radiogroup', { name: 'Period' })).not.toBeInTheDocument()
+  expect(plain(headline().textContent)).toContain('May 2026')
   expect(plain(headline().textContent)).toContain('4,100.00 $')
   expect(plain(headline().textContent)).toContain('+1,000.00 $ since Dec 2025')
   expect(cells(rowNamed('Total'))).toEqual(['Total', '3,100.00 $', '4,100.00 $', '+1,000.00 $'])
   expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_NETWORTH_RANGE, { scope: 'mine' })
   await userEvent.click(screen.getByRole('button', { name: 'Clear the selection' }))
   expect(plain(headline().textContent)).toContain('Today')
+  expect(screen.getByRole('radiogroup', { name: 'Period' })).toBeInTheDocument()
   expect(cells(rowNamed('Total'))).toEqual(['Total', '3,100.00 $', '6,200.00 $', '+3,100.00 $'])
 })
 

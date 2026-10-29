@@ -2156,11 +2156,12 @@ tag, and a budget with a planned limit on one category.
       a person without savings members is a single row. With "This year"
       figures on the report list's card, the card's total equals the
       report's latest total.
-- [ ] Net worth, desktop: dragging across the chart shades the range; the
-      headline shows "<from> – <to>", the balance at its end and the change
-      "since <from>", and the table's Start/Now/Change follow the range. A
-      plain click on the chart or the × next to the range goes back to the
-      whole period; changing the period or scope drops the range.
+- [ ] Net worth, desktop: dragging across the chart shades the range; a
+      "<from> – <to> ×" chip takes the place of 1y/3y/All, the headline shows
+      the end month, the balance there and the change "since <from>", and the
+      table's Start/Now/Change follow the range. A plain click on the chart or
+      the chip's × brings the presets back; changing the scope drops the
+      range. Clicking the chart draws no outline around it.
 - [ ] Net worth: an account row (inside an opened folder, or a budget's
       savings account) opens its transactions over the shown period (or the
       selected range), transfers in and out included; an account that is

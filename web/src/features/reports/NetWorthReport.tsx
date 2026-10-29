@@ -331,21 +331,9 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
         <section aria-label={t('reports.spending.headline')} className={`flex min-w-0 flex-col ${dim}`}>
-          {selected && data ? (
-            <span className="flex items-center gap-1 text-sm text-muted-foreground">
-              {t('reports.networth.range', { from: labels.month(data.months[lo]), to: labels.month(data.months[hi]) })}
-              <button
-                type="button"
-                aria-label={t('reports.networth.clear_range')}
-                onClick={() => setRange(null)}
-                className="grid size-5 place-items-center rounded hover:bg-accent hover:text-foreground"
-              >
-                <X className="size-3.5" />
-              </button>
-            </span>
-          ) : (
-            <span className="text-sm text-muted-foreground">{t('reports.networth.today')}</span>
-          )}
+          <span className="text-sm text-muted-foreground">
+            {selected && data ? labels.month(data.months[hi]) : t('reports.networth.today')}
+          </span>
           <span className="text-2xl tabular-nums sm:text-3xl">{data ? money(totalLine.now) : '…'}</span>
           {data && n > 1 ? (
             <span className="text-sm">
@@ -373,8 +361,26 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       ) : (
         <>
           <figure aria-label={t('reports.networth.chart')} className={`flex flex-col gap-1 ${dim}`}>
-            <div className="flex justify-end">{periodPicker}</div>
-            <ChartContainer config={config} className="aspect-auto h-56 w-full sm:h-64">
+            <div className="flex justify-end">
+              {selected && data ? (
+                // a selected range takes the presets' place, so it is clear what the figures cover
+                <span className="flex items-center gap-0.5 rounded-md bg-primary/15 py-0.5 pl-2 pr-0.5 text-xs text-primary">
+                  {t('reports.networth.range', { from: labels.month(data.months[lo]), to: labels.month(data.months[hi]) })}
+                  <button
+                    type="button"
+                    aria-label={t('reports.networth.clear_range')}
+                    onClick={() => setRange(null)}
+                    className="grid size-4 place-items-center rounded hover:bg-primary/20"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ) : (
+                periodPicker
+              )}
+            </div>
+            {/* the chart takes focus on click; its focus ring framed the whole plot */}
+            <ChartContainer config={config} className="aspect-auto h-56 w-full sm:h-64 [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none">
               <ComposedChart
                 data={chartData}
                 margin={{ top: 6, right: 4, left: 0, bottom: 0 }}
