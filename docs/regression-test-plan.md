@@ -2156,6 +2156,15 @@ tag, and a budget with a planned limit on one category.
       a person without savings members is a single row. With "This year"
       figures on the report list's card, the card's total equals the
       report's latest total.
+- [ ] Net worth, desktop: dragging across the chart shades the range; the
+      headline shows "<from> – <to>", the balance at its end and the change
+      "since <from>", and the table's Start/Now/Change follow the range. A
+      plain click on the chart or the × next to the range goes back to the
+      whole period; changing the period or scope drops the range.
+- [ ] Net worth: an account row (inside an opened folder, or a budget's
+      savings account) opens its transactions over the shown period (or the
+      selected range), transfers in and out included; an account that is
+      not in my account list (a partner's, not shared) is not clickable.
 - [ ] Net worth leaves deleted accounts out entirely, in both scopes: no row,
       none of their past balance in the chart or Total, and a deleted
       account's old transactions do not move the start of "All".

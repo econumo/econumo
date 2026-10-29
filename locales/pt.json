@@ -1716,7 +1716,11 @@
       "everyday": "Contas do dia a dia",
       "period_1y_words": "no último ano",
       "period_3y_words": "nos últimos 3 anos",
-      "period_all_words": "desde o início"
+      "period_all_words": "desde o início",
+      "range": "{from} – {to}",
+      "range_words": "desde {from}",
+      "clear_range": "Limpar a seleção",
+      "show_transactions": "Ver as transações de {name}"
     },
     "drill": {
       "unsupported": "Estas transações não podem ser listadas aqui. Abra a página Orçamento para vê-las.",

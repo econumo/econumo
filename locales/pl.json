@@ -1716,7 +1716,11 @@
       "everyday": "Konta codzienne",
       "period_1y_words": "w ostatnim roku",
       "period_3y_words": "w ostatnich 3 latach",
-      "period_all_words": "od początku"
+      "period_all_words": "od początku",
+      "range": "{from} – {to}",
+      "range_words": "od {from}",
+      "clear_range": "Wyczyść zaznaczenie",
+      "show_transactions": "Pokaż transakcje: {name}"
     },
     "drill": {
       "unsupported": "Tych transakcji nie można tu wyświetlić. Otwórz stronę Budżetu, aby je zobaczyć.",

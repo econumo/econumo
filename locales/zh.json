@@ -1716,7 +1716,11 @@
       "everyday": "日常账户",
       "period_1y_words": "过去一年",
       "period_3y_words": "过去 3 年",
-      "period_all_words": "自开始以来"
+      "period_all_words": "自开始以来",
+      "range": "{from} – {to}",
+      "range_words": "自 {from} 以来",
+      "clear_range": "清除选择",
+      "show_transactions": "查看 {name} 的交易"
     },
     "drill": {
       "unsupported": "这些交易无法在此列出。请打开预算页面查看。",

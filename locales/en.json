@@ -1716,7 +1716,11 @@
       "everyday": "Everyday accounts",
       "period_1y_words": "in the last year",
       "period_3y_words": "in the last 3 years",
-      "period_all_words": "since the start"
+      "period_all_words": "since the start",
+      "range": "{from} – {to}",
+      "range_words": "since {from}",
+      "clear_range": "Clear the selection",
+      "show_transactions": "Show the transactions of {name}"
     },
     "drill": {
       "unsupported": "These transactions can't be listed here. Open the Budget page to see them.",

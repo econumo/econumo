@@ -1716,7 +1716,11 @@
       "everyday": "Comptes courants",
       "period_1y_words": "sur la dernière année",
       "period_3y_words": "sur les 3 dernières années",
-      "period_all_words": "depuis le début"
+      "period_all_words": "depuis le début",
+      "range": "{from} – {to}",
+      "range_words": "depuis {from}",
+      "clear_range": "Effacer la sélection",
+      "show_transactions": "Voir les transactions de {name}"
     },
     "drill": {
       "unsupported": "Ces transactions ne peuvent pas être listées ici. Ouvrez la page Budget pour les voir.",

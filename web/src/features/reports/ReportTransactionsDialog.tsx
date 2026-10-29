@@ -16,6 +16,7 @@ import { useCategories, usePayees, useTags } from '@/features/classifications/qu
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useCurrencies } from '@/features/currencies/queries'
 import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
+import { compareTransactions } from '@/features/transactions/order'
 import { useDeleteTransaction, useTransactions } from '@/features/transactions/queries'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { enrichTransaction, groupByDay, separatorText, useTransactionLookups } from '@/features/transactions/useAccountTransactions'
@@ -70,9 +71,11 @@ function useMyRows(enabled: boolean, row: DrillRow, from: string, to: string) {
     const last = to.slice(0, 7)
     return (transactions ?? [])
       .filter((tx) => {
-        if (tx.type !== row.side || !owned.has(tx.accountId)) return false
         const month = tx.date.slice(0, 7)
         if (month < first || month > last) return false
+        // an account's own list: every transaction on either side, whoever owns it
+        if (row.kind === 'account') return tx.accountId === row.id || tx.accountRecipientId === row.id
+        if (tx.type !== row.side || !owned.has(tx.accountId)) return false
         switch (row.kind) {
           case 'category':
           case 'income_category':
@@ -85,6 +88,8 @@ function useMyRows(enabled: boolean, row: DrillRow, from: string, to: string) {
             return false
         }
       })
+      // the account page's order: day, then the account's own position within the day
+      .sort((a, b) => compareTransactions(a, b, row.kind === 'account' ? row.id : undefined))
       .map((tx) => ({ view: enrichTransaction(tx, lookups), currencyId: undefined as Id | undefined }))
   }, [enabled, user, transactions, lookups, row, from, to])
   return { supported: true, isLoading: enabled && isLoading, rows }
@@ -115,9 +120,11 @@ export function ReportTransactionsDialog({ scope, row, from, to, expected, onClo
 }) {
   const { t, i18n } = useTranslation()
   const labels = usePeriodLabels()
-  const budgetRows = useBudgetRows(scope.budgetId, row, from, to)
-  const myRows = useMyRows(scope.budgetId === null, row, from, to)
-  const { supported, isLoading, rows } = scope.budgetId ? budgetRows : myRows
+  // an account's transactions come from the local list in either scope
+  const local = scope.budgetId === null || row.kind === 'account'
+  const budgetRows = useBudgetRows(local ? null : scope.budgetId, row, from, to)
+  const myRows = useMyRows(local, row, from, to)
+  const { supported, isLoading, rows } = local ? myRows : budgetRows
   const { data: user } = useUserData()
   const { data: currencies = [] } = useCurrencies()
   const deleteTransaction = useDeleteTransaction()
@@ -133,7 +140,7 @@ export function ReportTransactionsDialog({ scope, row, from, to, expected, onClo
   const entries = groupByDay(rows.map((r) => ({ tx: r.view, groupDay: dayKey(r.view.date) })))
   const canChange = (tx: ViewTransaction) => canTouchTransaction(tx, !!tx.account && canWriteToAccount(tx.account, user?.id))
   const title = `${row.name} · ${labels.range([from, to])}`
-  const deletedNote = !scope.budgetId && !isLoading && missesDeleted(rows, expected)
+  const deletedNote = local && !isLoading && missesDeleted(rows, expected)
 
   return (
     <>

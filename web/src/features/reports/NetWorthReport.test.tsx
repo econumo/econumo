@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { onlineManager } from '@tanstack/react-query'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -119,6 +119,48 @@ it('a folder expands to its accounts', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Hide the accounts in Savings' }))
   expect(screen.queryByText('Euro Stash')).not.toBeInTheDocument()
   expect(vi.mocked(trackEvent).mock.calls.filter(([m]) => m === METRICS.REPORTS_NETWORTH_EXPAND)).toHaveLength(1)
+})
+
+it('an account opens its transactions over the shown period', async () => {
+  openNetWorth()
+  await screen.findByRole('table')
+  await userEvent.click(screen.getByRole('button', { name: 'Show the accounts in General' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Show the transactions of Cash' }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText(/^Cash · /)).toBeInTheDocument()
+  expect(await within(dialog).findByText('coffee beans')).toBeInTheDocument()
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_DRILL_DOWN, { scope: 'mine', mode: 'networth' })
+})
+
+it('an account outside my account list is not clickable', async () => {
+  openNetWorth()
+  await screen.findByRole('table')
+  await userEvent.click(screen.getByRole('button', { name: 'Show the accounts in No folder' }))
+  expect(rowNamed('Car loan')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Show the transactions of Car loan' })).not.toBeInTheDocument()
+})
+
+it('dragging across the chart shows the change over the selected range', async () => {
+  openNetWorth()
+  await screen.findByRole('table')
+  const surface = document.querySelector('.recharts-wrapper') as HTMLElement
+  // recharts resolves the hovered month on mouse move (on the next frame), then reports it on down/up
+  const at = async (clientX: number) => {
+    fireEvent.mouseMove(surface, { clientX, clientY: 100 })
+    await act(() => new Promise((r) => setTimeout(r, 50)))
+  }
+  await at(45)
+  fireEvent.mouseDown(surface, { clientX: 45, clientY: 100 })
+  await at(220)
+  fireEvent.mouseUp(surface, { clientX: 220, clientY: 100 })
+  await waitFor(() => expect(plain(headline().textContent)).toContain('Dec 2025 – May 2026'))
+  expect(plain(headline().textContent)).toContain('4,100.00 $')
+  expect(plain(headline().textContent)).toContain('+1,000.00 $ since Dec 2025')
+  expect(cells(rowNamed('Total'))).toEqual(['Total', '3,100.00 $', '4,100.00 $', '+1,000.00 $'])
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_NETWORTH_RANGE, { scope: 'mine' })
+  await userEvent.click(screen.getByRole('button', { name: 'Clear the selection' }))
+  expect(plain(headline().textContent)).toContain('Today')
+  expect(cells(rowNamed('Total'))).toEqual(['Total', '3,100.00 $', '6,200.00 $', '+3,100.00 $'])
 })
 
 it('budget scope: one row per person, partners first and me last; savings by name, the rest as Everyday accounts', async () => {

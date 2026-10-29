@@ -3,8 +3,9 @@ import type { ReactNode } from 'react'
 import { EntityIcon } from '@/components/EntityIcon'
 import { UserAvatar } from '@/components/UserAvatar'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from 'lucide-react'
-import { Area, CartesianGrid, ComposedChart, ReferenceLine, XAxis, YAxis } from 'recharts'
+import { ChevronRight, X } from 'lucide-react'
+import { Area, CartesianGrid, ComposedChart, ReferenceArea, ReferenceLine, XAxis, YAxis } from 'recharts'
+import type { MouseHandlerDataParam } from 'recharts'
 import type { NetWorthAccountDto } from '@/api/dto/report'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import type { ChartConfig } from '@/components/ui/chart'
@@ -20,6 +21,8 @@ import { useNetWorthReport, useReportBudgets } from './queries'
 import { compactNumber, signedMoney, useMoney } from './reportFormat'
 import { ReportUpdatedAt } from './ReportUpdatedAt'
 import { LINE, NAME_COL } from '@/features/budgets/monthLayout'
+import { addMonths } from '@/features/budgets/planMath'
+import { ReportTransactionsDialog } from './ReportTransactionsDialog'
 import { useReportTabs } from './reportTabs'
 import type { ReportParams, ReportTab } from './reportTabs'
 
@@ -40,6 +43,8 @@ const sumAt = (rows: NetWorthAccountDto[], i: number) => rows.reduce((s, a) => a
 
 interface Line {
   icon?: ReactNode
+  /** an account the user can list the transactions of */
+  accountId?: string
   id: string
   name: string
   start: string
@@ -62,6 +67,11 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const { data: budgets } = useReportBudgets()
   const { data: folders } = useFolders()
   const [open, setOpen] = useState<Set<string>>(new Set())
+  // a dragged range of month indices; `key` drops it when the scope or period changes
+  const rangeKey = `${p.budgetId ?? MINE}|${p.period}`
+  const [range, setRange] = useState<{ key: string; a: number; b: number } | null>(null)
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+  const [drill, setDrill] = useState<{ id: string; name: string } | null>(null)
   const preset = PRESETS.find((o) => o.value === p.period) ?? PRESETS[1]
 
   const scopePicker = (budgets ?? []).length === 0 ? null : (
@@ -118,8 +128,9 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       ? user?.avatar
       : (budget?.access.find((a) => a.user.id === id)?.user.avatar ?? (accounts ?? []).find((a) => a.owner.id === id)?.owner.avatar)
   const accountLine = (a: NetWorthAccountDto): Line => ({
-    ...lineOf(a.id, a.name, a.balances[0], a.balances[n - 1]),
+    ...lineOf(a.id, a.name, a.balances[lo], a.balances[hi]),
     icon: <EntityIcon name={a.icon} className="text-base text-muted-foreground" />,
+    accountId: (accounts ?? []).some((x) => x.id === a.id) ? a.id : undefined,
   })
   const ownerName = (id: string) =>
     budget?.access.find((a) => a.user.id === id)?.user.name ??
@@ -127,13 +138,18 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     t('reports.networth.other_owner')
 
   const n = data?.months.length ?? 0
+  const live = range && range.key === rangeKey && Math.max(range.a, range.b) < n ? range : null
+  const selected = live !== null && live.a !== live.b
+  // the figures run from `lo` to `hi`: the whole window, or the dragged range
+  const lo = selected ? Math.min(live.a, live.b) : 0
+  const hi = selected ? Math.max(live.a, live.b) : n - 1
   const total = data ? data.months.map((_, i) => sumAt(shown, i)) : []
-  const totalLine = lineOf('total', t('reports.spending.total'), total[0] ?? '0', total[n - 1] ?? '0')
+  const totalLine = lineOf('total', t('reports.spending.total'), total[lo] ?? '0', total[hi] ?? '0')
   const partnerIds = [...new Set(shown.filter((a) => a.ownerUserId !== me).map((a) => a.ownerUserId))]
   const partners = partnerIds
     .map((id) => {
       const rows = shown.filter((a) => a.ownerUserId === id)
-      return lineOf(id, ownerName(id), sumAt(rows, 0), sumAt(rows, n - 1))
+      return lineOf(id, ownerName(id), sumAt(rows, lo), sumAt(rows, hi))
     })
     .sort(byNow)
 
@@ -152,7 +168,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
           const rows = shown.filter((a) => groupOf(a).id === id)
           return {
             balances: Array.from({ length: n }, (_, i) => sumAt(rows, i)),
-            line: lineOf(id, groupOf(rows[0]).name, sumAt(rows, 0), sumAt(rows, n - 1)),
+            line: lineOf(id, groupOf(rows[0]).name, sumAt(rows, lo), sumAt(rows, hi)),
             accounts: rows.map(accountLine).sort(byNow),
           }
         })
@@ -211,12 +227,43 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
         {figures(g.line)}
       </div>,
       ...(isOpen
-        ? g.accounts.map((acc) => (
-            <div key={`${g.line.id}-${acc.id}`} role="row" className={`${LINE} min-h-8 rounded-md py-1 pl-12 text-sm text-muted-foreground hover:bg-accent/50`}>
-              <span role="cell" className={NAME_COL}>{acc.icon}<span className="truncate">{acc.name}</span></span>
-              {figures(acc, true)}
-            </div>
-          ))
+        ? g.accounts.map((acc) => {
+            const accountId = acc.accountId
+            const show = accountId
+              ? () => {
+                  setDrill({ id: accountId, name: acc.name })
+                  trackEvent(METRICS.REPORTS_DRILL_DOWN, { scope: p.budgetId ? 'budget' : 'mine', mode: 'networth' })
+                }
+              : undefined
+            return (
+              <div
+                key={`${g.line.id}-${acc.id}`}
+                role="row"
+                onClick={show}
+                className={`${LINE} min-h-8 rounded-md py-1 pl-12 text-sm text-muted-foreground hover:bg-accent/50 ${show ? 'cursor-pointer' : ''}`}
+              >
+                <span role="cell" className={NAME_COL}>
+                  {acc.icon}
+                  {show ? (
+                    <button
+                      type="button"
+                      aria-label={t('reports.networth.show_transactions', { name: acc.name })}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        show()
+                      }}
+                      className="truncate text-left"
+                    >
+                      {acc.name}
+                    </button>
+                  ) : (
+                    <span className="truncate">{acc.name}</span>
+                  )}
+                </span>
+                {figures(acc, true)}
+              </div>
+            )
+          })
         : []),
     ]
   })
@@ -243,10 +290,10 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     const saving = rows.filter((a) => a.isSavings === 1)
     const rest = rows.filter((a) => a.isSavings !== 1)
     const children = saving.map(accountLine).sort(byNow)
-    if (saving.length > 0 && rest.length > 0) children.push({ ...lineOf(`${id}-other`, t('reports.networth.everyday'), sumAt(rest, 0), sumAt(rest, n - 1)), icon: <EntityIcon name="account_balance_wallet" className="text-base text-muted-foreground" /> })
+    if (saving.length > 0 && rest.length > 0) children.push({ ...lineOf(`${id}-other`, t('reports.networth.everyday'), sumAt(rest, lo), sumAt(rest, hi)), icon: <EntityIcon name="account_balance_wallet" className="text-base text-muted-foreground" /> })
     const avatar = ownerAvatar(id)
     return {
-      line: { ...lineOf(id, name, sumAt(rows, 0), sumAt(rows, n - 1)), icon: avatar ? <UserAvatar avatar={avatar} size="xs" /> : undefined },
+      line: { ...lineOf(id, name, sumAt(rows, lo), sumAt(rows, hi)), icon: avatar ? <UserAvatar avatar={avatar} size="xs" /> : undefined },
       accounts: saving.length > 0 ? children : [],
     }
   }
@@ -272,18 +319,40 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   }
   const hasNegative = total.some((v) => isNegative(v))
   const dim = report.isPlaceholderData ? 'opacity-60 transition-opacity' : ''
+  const indexOf = (s: MouseHandlerDataParam) => {
+    const i = Number(s.activeTooltipIndex)
+    return s.activeTooltipIndex == null || !Number.isInteger(i) || i < 0 || i >= n ? null : i
+  }
+  // balances are month-end, so the change from `lo` to `hi` is the activity of the months after `lo`
+  const drillRange = data && n > 0 ? [addMonths(data.months[lo], n > 1 ? 1 : 0), data.months[hi]] as const : null
 
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
         <section aria-label={t('reports.spending.headline')} className={`flex min-w-0 flex-col ${dim}`}>
-          <span className="text-sm text-muted-foreground">{t('reports.networth.today')}</span>
+          {selected && data ? (
+            <span className="flex items-center gap-1 text-sm text-muted-foreground">
+              {t('reports.networth.range', { from: labels.month(data.months[lo]), to: labels.month(data.months[hi]) })}
+              <button
+                type="button"
+                aria-label={t('reports.networth.clear_range')}
+                onClick={() => setRange(null)}
+                className="grid size-5 place-items-center rounded hover:bg-accent hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+            </span>
+          ) : (
+            <span className="text-sm text-muted-foreground">{t('reports.networth.today')}</span>
+          )}
           <span className="text-2xl tabular-nums sm:text-3xl">{data ? money(totalLine.now) : '…'}</span>
           {data && n > 1 ? (
             <span className="text-sm">
               <span className={changeClass(totalLine.change)}>{signedMoney(totalLine.change, money)}</span>{' '}
-              <span className="text-muted-foreground">{t(`${preset.key}_words`)}</span>
+              <span className="text-muted-foreground">
+                {selected ? t('reports.networth.range_words', { from: labels.month(data.months[lo]) }) : t(`${preset.key}_words`)}
+              </span>
             </span>
           ) : null}
         </section>
@@ -306,10 +375,36 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
           <figure aria-label={t('reports.networth.chart')} className={`flex flex-col gap-1 ${dim}`}>
             <div className="flex justify-end">{periodPicker}</div>
             <ChartContainer config={config} className="aspect-auto h-56 w-full sm:h-64">
-              <ComposedChart data={chartData} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
+              <ComposedChart
+                data={chartData}
+                margin={{ top: 6, right: 4, left: 0, bottom: 0 }}
+                className="cursor-crosshair select-none"
+                onMouseDown={(s: MouseHandlerDataParam) => {
+                  const i = indexOf(s)
+                  if (i === null) return
+                  setDragFrom(i)
+                  setRange({ key: rangeKey, a: i, b: i })
+                }}
+                onMouseMove={(s: MouseHandlerDataParam) => {
+                  const i = indexOf(s)
+                  if (dragFrom === null || i === null) return
+                  setRange({ key: rangeKey, a: dragFrom, b: i })
+                }}
+                onMouseUp={() => {
+                  if (dragFrom === null) return
+                  setDragFrom(null)
+                  // a plain click (no drag) clears the selection
+                  if (live && live.a !== live.b) trackEvent(METRICS.REPORTS_NETWORTH_RANGE, { scope: p.budgetId ? 'budget' : 'mine' })
+                  else setRange(null)
+                }}
+                onMouseLeave={() => setDragFrom(null)}
+              >
                 <CartesianGrid vertical={false} strokeOpacity={0.5} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={40} />
                 <YAxis width={40} tickLine={false} axisLine={false} tickFormatter={compact} />
+                {selected ? (
+                  <ReferenceArea x1={chartData[lo].label} x2={chartData[hi].label} fill={STROKE} fillOpacity={0.08} stroke={STROKE} strokeOpacity={0.3} />
+                ) : null}
                 {hasNegative ? <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.6} /> : null}
                 <ChartTooltip
                   cursor={{ stroke: 'var(--muted-foreground)', strokeDasharray: '3 3' }}
@@ -364,6 +459,15 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
           </div>
         </>
       )}
+      {drill && drillRange ? (
+        <ReportTransactionsDialog
+          scope={{ budgetId: p.budgetId }}
+          row={{ id: drill.id, kind: 'account', name: drill.name, side: 'expense' }}
+          from={drillRange[0]}
+          to={drillRange[1]}
+          onClose={() => setDrill(null)}
+        />
+      ) : null}
     </div>
   )
 }

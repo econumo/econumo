@@ -189,6 +189,7 @@ export const METRICS = {
   REPORTS_DRILL_DOWN: 'appReportsDrillDown',
   REPORTS_CASHFLOW_VIEW: 'appReportsCashflowView',
   REPORTS_NETWORTH_EXPAND: 'appReportsNetworthExpand',
+  REPORTS_NETWORTH_RANGE: 'appReportsNetworthRange',
   REPORTS_SUGGEST: 'appReportsSuggest',
   FEEDBACK_OPEN: 'appFeedbackOpen',
   FEEDBACK_SEND: 'appFeedbackSend',

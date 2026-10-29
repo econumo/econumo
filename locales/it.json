@@ -1716,7 +1716,11 @@
       "everyday": "Conti di tutti i giorni",
       "period_1y_words": "nell'ultimo anno",
       "period_3y_words": "negli ultimi 3 anni",
-      "period_all_words": "dall'inizio"
+      "period_all_words": "dall'inizio",
+      "range": "{from} – {to}",
+      "range_words": "da {from}",
+      "clear_range": "Annulla la selezione",
+      "show_transactions": "Mostra le transazioni di {name}"
     },
     "drill": {
       "unsupported": "Queste transazioni non possono essere elencate qui. Apri la pagina Budget per vederle.",

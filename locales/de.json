@@ -1716,7 +1716,11 @@
       "everyday": "Alltagskonten",
       "period_1y_words": "im letzten Jahr",
       "period_3y_words": "in den letzten 3 Jahren",
-      "period_all_words": "seit Beginn"
+      "period_all_words": "seit Beginn",
+      "range": "{from} – {to}",
+      "range_words": "seit {from}",
+      "clear_range": "Auswahl aufheben",
+      "show_transactions": "Buchungen von {name} anzeigen"
     },
     "drill": {
       "unsupported": "Diese Transaktionen können hier nicht aufgelistet werden. Öffne die Budget-Seite, um sie zu sehen.",

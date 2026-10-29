@@ -1716,7 +1716,11 @@
       "everyday": "Звичайні рахунки",
       "period_1y_words": "за останній рік",
       "period_3y_words": "за останні 3 роки",
-      "period_all_words": "з самого початку"
+      "period_all_words": "з самого початку",
+      "range": "{from} – {to}",
+      "range_words": "з {from}",
+      "clear_range": "Скинути виділення",
+      "show_transactions": "Показати транзакції: {name}"
     },
     "drill": {
       "unsupported": "Ці операції не можна показати тут. Відкрийте сторінку Бюджету, щоб їх побачити.",
