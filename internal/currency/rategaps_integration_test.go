@@ -180,13 +180,15 @@ func TestBackfillRates(t *testing.T) {
 	if err := svc.BackfillRates(ctx, loader, report, func(r model.RateBackfill) { results = append(results, r) }); err != nil {
 		t.Fatalf("BackfillRates: %v", err)
 	}
-	wantCalls := []string{"2026-01-01 USD EUR,GBP", "2026-02-01 USD EUR"}
+	// Every global currency but the base, so a backfilled date is as complete
+	// as one the in-process updater writes.
+	wantCalls := []string{"2026-01-01 USD EUR,GBP,XTS", "2026-02-01 USD EUR,GBP,XTS"}
 	if !reflect.DeepEqual(loader.calls, wantCalls) {
 		t.Errorf("loader calls = %v, want %v", loader.calls, wantCalls)
 	}
 	wantResults := []model.RateBackfill{
-		{Date: day("2026-01-01"), Requested: []string{"EUR", "GBP"}, Stored: 1, Unavailable: []string{"GBP"}},
-		{Date: day("2026-02-01"), Requested: []string{"EUR"}, Stored: 1},
+		{Date: day("2026-01-01"), Missing: []string{"EUR", "GBP"}, Stored: 2, Unavailable: []string{"GBP"}},
+		{Date: day("2026-02-01"), Missing: []string{"EUR"}, Stored: 2},
 	}
 	if !reflect.DeepEqual(results, wantResults) {
 		t.Errorf("results = %+v, want %+v", results, wantResults)

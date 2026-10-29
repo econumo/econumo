@@ -1071,7 +1071,9 @@ oldest transaction (today when it is future-dated) and the end to today (UTC, a
 later end is clamped).
 `currency:backfill-rates` loads exactly those gaps from Open Exchange Rates, one
 request per gap, dated the gap's first day (the 1st of the month, or the day),
-requesting only the missing codes. Its start is required because every gap
+requesting every global currency like `currency:update-rates` (the in-process
+updater skips while the newest stored date is recent, so a backfilled date must
+be complete). Its start is required because every gap
 costs API quota; it stops at the first failed request, and a rerun resumes.
 
 `data:import-sqlite` copies every table from an existing SQLite database into

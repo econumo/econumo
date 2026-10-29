@@ -77,12 +77,24 @@ func (s *WriteService) FindRateGaps(ctx context.Context, base string, period mod
 	return report, nil
 }
 
-// BackfillRates loads the missing rates of every gap in the report, one
-// loader request per gap, dated the gap's first day. It stops at the first
-// failure; the gaps already filled stay stored, so running it again resumes.
+// BackfillRates loads the rates of every gap in the report, one loader
+// request per gap, dated the gap's first day. It stops at the first failure;
+// the gaps already filled stay stored, so running it again resumes.
+//
+// Each request asks for every global currency, not only the missing ones: the
+// in-process updater skips its fetch while the newest stored date is recent,
+// so a backfilled date must be as complete as one it would have written.
 func (s *WriteService) BackfillRates(ctx context.Context, loader RateLoader, report model.RateGapReport, progress func(model.RateBackfill)) error {
+	if len(report.Gaps) == 0 {
+		return nil
+	}
+	codes, err := s.AvailableCodes(ctx)
+	if err != nil {
+		return err
+	}
+	symbols := slices.DeleteFunc(codes, func(c string) bool { return c == report.Base })
 	for _, gap := range report.Gaps {
-		rates, err := loader.Load(ctx, gap.Start, report.Base, gap.Missing)
+		rates, err := loader.Load(ctx, gap.Start, report.Base, symbols)
 		if err != nil {
 			return fmt.Errorf("load rates for %s: %w", gap.Start.Format("2006-01-02"), err)
 		}
@@ -98,7 +110,7 @@ func (s *WriteService) BackfillRates(ctx context.Context, loader RateLoader, rep
 		if err != nil {
 			return fmt.Errorf("store rates for %s: %w", gap.Start.Format("2006-01-02"), err)
 		}
-		result := model.RateBackfill{Date: gap.Start, Requested: gap.Missing, Stored: stored}
+		result := model.RateBackfill{Date: gap.Start, Missing: gap.Missing, Stored: stored}
 		for _, code := range gap.Missing {
 			if !returned[code] {
 				result.Unavailable = append(result.Unavailable, code)

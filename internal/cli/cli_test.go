@@ -190,7 +190,7 @@ func TestPrintRateGaps(t *testing.T) {
 	}
 
 	buf.Reset()
-	printRateBackfill(&buf, model.RateBackfill{Date: mar, Requested: []string{"EUR", "GBP"}, Stored: 1, Unavailable: []string{"GBP"}})
+	printRateBackfill(&buf, model.RateBackfill{Date: mar, Missing: []string{"EUR", "GBP"}, Stored: 1, Unavailable: []string{"GBP"}})
 	if got := buf.String(); got != "2026-03-01  stored 1 rate(s); no rate returned for GBP\n" {
 		t.Errorf("backfill line = %q", got)
 	}

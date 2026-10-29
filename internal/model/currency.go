@@ -90,7 +90,7 @@ type RateGapReport struct {
 // RateBackfill is the outcome of loading the rates of one gap.
 type RateBackfill struct {
 	Date        time.Time
-	Requested   []string
+	Missing     []string
 	Stored      int
 	Unavailable []string
 }
