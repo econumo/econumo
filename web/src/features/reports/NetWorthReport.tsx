@@ -379,8 +379,8 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                 periodPicker
               )}
             </div>
-            {/* the chart takes focus on click; its focus ring framed the whole plot */}
-            <ChartContainer config={config} className="aspect-auto h-56 w-full sm:h-64 [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none">
+            {/* a click focuses the chart's svg or one of its layers, and browsers (Safari) frame it */}
+            <ChartContainer config={config} className="aspect-auto h-56 w-full sm:h-64 [&_*]:outline-none [&_*:focus]:outline-none">
               <ComposedChart
                 data={chartData}
                 margin={{ top: 6, right: 4, left: 0, bottom: 0 }}
