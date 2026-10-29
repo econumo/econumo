@@ -60,6 +60,11 @@ it ends in for days 16–28:
 Here `X-d` means day `d` of month `X` at 00:00. Because `d <= 28`, every month has that day
 and no clamping is ever needed.
 
+The naming rule must live in exactly one helper per stack (below), so it can be changed
+later. Changing it after release is a code change plus a migration: for budgets on the
+affected days, move `started_at`, `ended_at`, limit and comment periods by one month so each
+plan stays on the dates it was made for.
+
 The inverse, the period a date belongs to: subtract `d - 1` days, take the first of that
 month, and add one month when `d >= 16`. Example `d = 28`, 30 Oct: 30 Oct − 27 days = 3 Oct
 → October → +1 → November. ✓
