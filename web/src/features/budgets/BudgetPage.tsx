@@ -138,10 +138,10 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const curPeriod = currentPeriod(startDay)
   const followCurrentPeriod = useBudgetPeriodStore((s) => s.followCurrentPeriod)
   useEffect(() => {
-    if (periodMeta) {
-      followCurrentPeriod(periodStartDayOf(periodMeta))
+    if (budgetId && periodMeta) {
+      followCurrentPeriod(budgetId, periodStartDayOf(periodMeta))
     }
-  }, [periodMeta, followCurrentPeriod])
+  }, [budgetId, periodMeta, followCurrentPeriod])
   // the month view's income, Balance and Total savings (phone and desktop alike): the
   // Plan view's own figures for the selected month; null until that month's window
   // has really loaded.

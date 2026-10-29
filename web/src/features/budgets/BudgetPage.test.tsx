@@ -1073,7 +1073,7 @@ describe('a budget whose months start on the 28th', () => {
   // the list already names the day: the page asks for the adopted period only, so a
   // cold open on 30 October never fetches (and flashes) October first
   it('requests only the adopted period when the budget list carries the day', async () => {
-    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, periodFollowed: false })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, periodFollowedFor: null })
     const dates: string[] = []
     const planFrom: string[] = []
     server.use(
@@ -1092,6 +1092,43 @@ describe('a budget whose months start on the 28th', () => {
     expect(dates).toEqual(['2026-11-01'])
     await waitFor(() => expect(planFrom.length).toBeGreaterThan(0))
     expect(new Set(planFrom).size).toBe(1)
+  })
+
+  // the adopted November belongs to the day-28 budget: switching the default to a
+  // calendar-month budget holds its fetches until the default is back on October
+  it('a switch to a budget with another day requests only its own current period', async () => {
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, periodFollowedFor: null })
+    const requested: string[] = []
+    server.use(
+      ...coreHandlers({ user: userWithBudget, budgets: fixtureBudgets.map((b) => (b.id === 'b1' ? { ...b, periodStartDay: 28 } : b)) }),
+      http.get('*/api/v1/budget/get-budget', ({ request }) => {
+        const url = new URL(request.url)
+        const id = url.searchParams.get('id') ?? ''
+        requested.push(`budget ${id} ${url.searchParams.get('date') ?? ''}`)
+        const item = id === 'b1' ? shifted : { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, id } }
+        return HttpResponse.json({ success: true, message: '', data: { item } })
+      }),
+      http.get('*/api/v1/budget/get-comment-list', ({ request }) => {
+        const url = new URL(request.url)
+        requested.push(`comments ${url.searchParams.get('budgetId') ?? ''} ${url.searchParams.get('from') ?? ''}`)
+        return HttpResponse.json({ success: true, message: '', data: { items: [], truncated: false } })
+      }),
+    )
+    const { queryClient } = renderPage()
+    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Oct 28 – Nov 27')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01')
+
+    act(() => {
+      queryClient.setQueryData(queryKeys.user, {
+        ...userWithBudget,
+        options: userWithBudget.options.map((o) => (o.name === 'budget' ? { ...o, value: 'b2' } : o)),
+      })
+    })
+    await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01'))
+    await waitFor(() => expect(requested).toContain('budget b2 2026-10-01'))
+    await waitFor(() => expect(requested).toContain('comments b2 2026-10-01'))
+    expect(requested.filter((r) => r.includes(' b2 ') && !r.endsWith('2026-10-01'))).toEqual([])
+    expect(screen.queryByTestId('period-dates')).not.toBeInTheDocument()
   })
 
   it('keeps a month the user picked', async () => {

@@ -104,14 +104,14 @@ export function canDeleteEnvelope(meta: BudgetMetaDto | undefined | null, userId
 // The user's default budget for the selected period. No default -> data: null
 // (the Vue store rejects with 'Budget is not selected'; the page shows onboarding).
 /** false while an unpicked default month may still move to the budget's current
- *  period (the page's first followCurrentPeriod, fed by the day the budget list
- *  carries), so the first period fetches already ask for the month that is shown */
+ *  period (until the page's followCurrentPeriod ran for this budget, judged by the
+ *  day the budget list carries), so the period fetches ask for the month shown */
 export function useDefaultPeriodSettled(budgetId: Id | null): boolean {
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
-  const followed = useBudgetPeriodStore((s) => s.periodFollowed)
+  const followedFor = useBudgetPeriodStore((s) => s.periodFollowedFor)
   const follows = useBudgetPeriodStore((s) => followsCurrentPeriod(s))
   const { data: budgets, isPending } = useBudgets()
-  if (!budgetId || followed || !follows) {
+  if (!budgetId || followedFor === budgetId || !follows) {
     return true
   }
   if (isPending) {
