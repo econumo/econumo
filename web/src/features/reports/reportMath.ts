@@ -227,12 +227,12 @@ export function netWorthSeries(
 
 export interface NetWorthGrouping {
   me: Id
-  /** my accounts' folder, from my account list; deleted accounts are not in it */
+  /** my accounts' folder, from my account list */
   folderOf: Record<Id, Id | null>
   folders: { id: Id; name: string }[]
   /** budget participants' names by user id */
   owners: Record<Id, string>
-  names: { noFolder: string; deleted: string; otherOwner: string }
+  names: { noFolder: string; otherOwner: string }
 }
 
 // My accounts sit in my folders; anyone else's account is listed under its
@@ -241,7 +241,6 @@ export function netWorthGroupOf(g: NetWorthGrouping) {
   const folderName = new Map(g.folders.map((f) => [f.id, f.name]))
   return (a: NetWorthAccountDto): { id: string; name: string } => {
     if (a.ownerUserId !== g.me) return { id: `owner:${a.ownerUserId}`, name: g.owners[a.ownerUserId] ?? g.names.otherOwner }
-    if (a.isDeleted) return { id: 'deleted', name: g.names.deleted }
     const folderId = g.folderOf[a.id]
     const name = folderId ? folderName.get(folderId) : undefined
     return folderId && name !== undefined ? { id: `folder:${folderId}`, name } : { id: 'nofolder', name: g.names.noFolder }

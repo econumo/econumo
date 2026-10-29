@@ -59,7 +59,6 @@ type NetWorthAccountRow struct {
 	Icon        string   `json:"icon"`
 	CurrencyId  string   `json:"currencyId"`
 	OwnerUserId string   `json:"ownerUserId"`
-	IsDeleted   int      `json:"isDeleted"`
 	IsSavings   int      `json:"isSavings"`
 	Balances    []string `json:"balances"`
 }

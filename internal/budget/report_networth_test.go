@@ -69,10 +69,10 @@ func TestNetWorthReport_ForeignCurrencyConverted(t *testing.T) {
 	eqAmounts(t, row.Balances, "20", "40")
 }
 
-func TestNetWorthReport_DeletedAccountZeroAfterDeletion(t *testing.T) {
+func TestNetWorthReport_DeletedAccountsLeftOut(t *testing.T) {
 	h := newFlowHarness(t)
 	gone := h.f.Account(fixture.Account{UserID: h.user, Name: "Gone", Deleted: true})
-	h.tx(1, gone, "", "", "", "50", "2026-04-02 10:00:00")
+	h.tx(1, gone, "", "", "", "50", "2016-04-02 10:00:00")
 	err := h.accounts.SaveCorrection(h.ctx, model.AccountCorrection{
 		ID: vo.NewId(), UserID: vo.MustParseId(h.user), AccountID: vo.MustParseId(gone),
 		Description: "Balance adjustment (account deleted)", Type: 0, Amount: "50",
@@ -81,12 +81,15 @@ func TestNetWorthReport_DeletedAccountZeroAfterDeletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := h.netWorth(t, model.GetNetWorthReportRequest{From: "2026-04-01", To: "2026-05-01"})
-	row := accountRow(t, r, gone)
-	if row.IsDeleted != 1 {
-		t.Fatalf("row = %+v", row)
+	h.tx(1, h.acct, "", "", "", "5", "2026-05-02 10:00:00")
+	r := h.netWorth(t, model.GetNetWorthReportRequest{})
+	if len(r.Accounts) != 1 || r.Accounts[0].Id != h.acct {
+		t.Fatalf("accounts = %+v", r.Accounts)
 	}
-	eqAmounts(t, row.Balances, "50", "0")
+	// the all-time window opens before the live account's first transaction, not the deleted one's
+	if r.Months[0] != "2026-04-01" {
+		t.Fatalf("months = %v", r.Months)
+	}
 }
 
 func TestNetWorthReport_ZeroAccountsOmitted(t *testing.T) {

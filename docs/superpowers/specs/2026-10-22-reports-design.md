@@ -161,7 +161,8 @@ locally stored transaction list.
   so every budget-scope figure has a Plan figure to be tested against.
 - **My accounts** = accounts the user owns, hidden-folder accounts included, deleted
   accounts included for the months they had activity (so history doesn't shrink when an
-  account is deleted). Accounts shared with me are not mine; they appear through a
+  account is deleted). Net worth is the exception: it leaves deleted accounts out entirely,
+  past balances included (owner's ruling, 2026-10-28). Accounts shared with me are not mine; they appear through a
   budget's scope. Transfers between my own accounts are ignored. A transfer to or from an
   account outside the set is not spending or income; Cash flow shows it as a separate
   "transferred out / in" figure.

@@ -2143,8 +2143,8 @@ tag, and a budget with a planned limit on one category.
       unchanged). A report of a single month shows its total without a
       change line.
 - [ ] Net worth in My accounts: rows are my account folders, plus "No
-      folder" and "Deleted accounts" when such accounts carry a balance;
-      accounts that are zero in every month are not listed. Columns Start,
+      folder" when such accounts carry a balance; accounts that are zero in
+      every month are not listed. Columns Start,
       Now, Change (green up, red down) and a Total row equal to the
       headline; a folder opens (chevron or row tap) to its accounts, each
       with its sidebar icon, and closes again. Rows use the Budget page's
@@ -2156,6 +2156,9 @@ tag, and a budget with a planned limit on one category.
       a person without savings members is a single row. With "This year"
       figures on the report list's card, the card's total equals the
       report's latest total.
+- [ ] Net worth leaves deleted accounts out entirely, in both scopes: no row,
+      none of their past balance in the chart or Total, and a deleted
+      account's old transactions do not move the start of "All".
 - [ ] Archived budgets are not offered in any report's budget picker; with no
       active budget the picker is not shown and reports cover My accounts.
 - [ ] Offline (or after a failed refresh) a report shown from the cache

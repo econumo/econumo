@@ -21,7 +21,7 @@ vi.mock('@/lib/metrics', async (importOriginal) => ({
 const months = ['2025-12-01', '2026-05-01', '2026-10-01']
 
 const acc = (id: string, name: string, balances: string[], over: Partial<NetWorthAccountDto> = {}): NetWorthAccountDto => ({
-  id, name, icon: '', currencyId: 'cur-usd', ownerUserId: 'u1', isDeleted: 0, balances, ...over,
+  id, name, icon: '', currencyId: 'cur-usd', ownerUserId: 'u1', balances, ...over,
 })
 
 // a1 sits in my "General" folder, a2 and a3 in "Savings" (fixture account list)

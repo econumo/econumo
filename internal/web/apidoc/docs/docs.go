@@ -16277,9 +16277,6 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "isDeleted": {
-                    "type": "integer"
-                },
                 "isSavings": {
                     "type": "integer"
                 },

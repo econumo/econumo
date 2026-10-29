@@ -297,7 +297,7 @@ describe('flowGraph', () => {
 })
 
 describe('netWorthSeries', () => {
-  const acc = (id: string, currencyId: string, balances: string[]) => ({ id, name: id, icon: '', currencyId, ownerUserId: 'u', isDeleted: 0, balances })
+  const acc = (id: string, currencyId: string, balances: string[]) => ({ id, name: id, icon: '', currencyId, ownerUserId: 'u', balances })
   it('sums balances by group and in total', () => {
     const report: NetWorthReportDto = {
       currencyId: 'c',
@@ -317,21 +317,20 @@ describe('netWorthSeries', () => {
 })
 
 describe('netWorthGroupOf', () => {
-  const acc = (id: string, ownerUserId: string, isDeleted = 0) => ({ id, name: id, icon: '', currencyId: 'c', ownerUserId, isDeleted, balances: [] })
+  const acc = (id: string, ownerUserId: string) => ({ id, name: id, icon: '', currencyId: 'c', ownerUserId, balances: [] })
   const groupOf = netWorthGroupOf({
     me: 'me',
     folderOf: { cash: 'f1', card: 'f2', loose: null },
     folders: [{ id: 'f1', name: 'Cash' }, { id: 'f2', name: 'Credit cards' }],
     owners: { bob: 'Bob' },
-    names: { noFolder: 'No folder', deleted: 'Deleted accounts', otherOwner: 'Participant' },
+    names: { noFolder: 'No folder', otherOwner: 'Participant' },
   })
   it('puts my accounts in my folders', () => {
     expect(groupOf(acc('cash', 'me'))).toEqual({ id: 'folder:f1', name: 'Cash' })
     expect(groupOf(acc('card', 'me'))).toEqual({ id: 'folder:f2', name: 'Credit cards' })
   })
-  it('my accounts without a folder, and deleted ones, get their own groups', () => {
+  it('my accounts without a folder get their own group', () => {
     expect(groupOf(acc('loose', 'me'))).toEqual({ id: 'nofolder', name: 'No folder' })
-    expect(groupOf(acc('gone', 'me', 1))).toEqual({ id: 'deleted', name: 'Deleted accounts' })
   })
   it("a partner's accounts go under the partner's name, whatever folder they sit in", () => {
     expect(groupOf(acc('cash', 'bob'))).toEqual({ id: 'owner:bob', name: 'Bob' })

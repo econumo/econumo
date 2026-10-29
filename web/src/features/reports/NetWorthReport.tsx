@@ -143,7 +143,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     folderOf: Object.fromEntries((accounts ?? []).map((a) => [a.id, a.folderId])),
     folders: folders ?? [],
     owners: {},
-    names: { noFolder: t('reports.networth.no_folder'), deleted: t('reports.networth.deleted'), otherOwner: t('reports.networth.other_owner') },
+    names: { noFolder: t('reports.networth.no_folder'), otherOwner: t('reports.networth.other_owner') },
   })
   const folderGroups = p.budgetId
     ? []

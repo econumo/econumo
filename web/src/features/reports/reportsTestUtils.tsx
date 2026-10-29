@@ -27,7 +27,7 @@ export const flowReport = {
 export const netWorthReport = {
   currencyId: 'cur-usd',
   months,
-  accounts: [{ id: 'a1', name: 'Cash', icon: 'wallet', currencyId: 'cur-usd', ownerUserId: 'u1', isDeleted: 0, balances: ['1000', '1800', '2500'] }],
+  accounts: [{ id: 'a1', name: 'Cash', icon: 'wallet', currencyId: 'cur-usd', ownerUserId: 'u1', balances: ['1000', '1800', '2500'] }],
 }
 
 export function reportHandlers(flow: unknown = flowReport, netWorth: unknown = netWorthReport) {

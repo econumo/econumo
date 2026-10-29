@@ -2170,8 +2170,6 @@ definitions:
         type: string
       id:
         type: string
-      isDeleted:
-        type: integer
       isSavings:
         type: integer
       name:

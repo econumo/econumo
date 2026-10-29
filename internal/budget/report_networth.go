@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
@@ -11,14 +12,16 @@ import (
 )
 
 // GetNetWorthReport returns every account's month-end balance. Without a
-// budgetId it covers the accounts the caller owns, deleted ones included; with
-// one, every member account of the budget.
+// budgetId it covers the accounts the caller owns; with one, every member
+// account of the budget. Deleted accounts are left out entirely, their past
+// balances too, and do not move the start of an all-time window.
 func (s *Service) GetNetWorthReport(ctx context.Context, userID vo.Id, req model.GetNetWorthReportRequest) (*model.GetNetWorthReportResult, error) {
 	var (
 		accountIDs []vo.Id
 		currency   vo.Id
 		savings    = map[string]bool{}
 		window     reportWindow
+		endCap     *time.Time
 		err        error
 	)
 	if req.BudgetId != "" {
@@ -35,7 +38,7 @@ func (s *Service) GetNetWorthReport(ctx context.Context, userID vo.Id, req model
 			savings[m.AccountID.String()] = m.IsSavings
 		}
 		currency = b.budget.CurrencyID
-		window, err = s.resolveReportWindow(ctx, req.From, req.To, accountIDs, b.endMonth())
+		endCap = b.endMonth()
 	} else {
 		if accountIDs, err = s.accounts.OwnedAccountIDs(ctx, userID); err != nil {
 			return nil, err
@@ -43,9 +46,12 @@ func (s *Service) GetNetWorthReport(ctx context.Context, userID vo.Id, req model
 		if currency, err = s.personalReportCurrency(ctx, userID); err != nil {
 			return nil, err
 		}
-		window, err = s.resolveReportWindow(ctx, req.From, req.To, accountIDs, nil)
 	}
+	views, accountIDs, err := s.liveAccounts(ctx, accountIDs)
 	if err != nil {
+		return nil, err
+	}
+	if window, err = s.resolveReportWindow(ctx, req.From, req.To, accountIDs, endCap); err != nil {
 		return nil, err
 	}
 	// Balances are month-end, so an all-time window opens at the close of the
@@ -55,7 +61,7 @@ func (s *Service) GetNetWorthReport(ctx context.Context, userID vo.Id, req model
 		window.from = window.from.AddDate(0, -1, 0)
 		window.months++
 	}
-	item, err := s.buildNetWorth(ctx, userID, accountIDs, window, currency)
+	item, err := s.buildNetWorth(ctx, userID, views, accountIDs, window, currency)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +73,31 @@ func (s *Service) GetNetWorthReport(ctx context.Context, userID vo.Id, req model
 	return &model.GetNetWorthReportResult{Item: item}, nil
 }
 
-func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, accountIDs []vo.Id, w reportWindow, currency vo.Id) (model.NetWorthReportResult, error) {
+func (s *Service) liveAccounts(ctx context.Context, ids []vo.Id) ([]model.AccountView, []vo.Id, error) {
+	if len(ids) == 0 {
+		return nil, nil, nil
+	}
+	all, err := s.accounts.AccountsByIDs(ctx, ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	views := make([]model.AccountView, 0, len(all))
+	live := make([]vo.Id, 0, len(all))
+	for _, v := range all {
+		if v.IsDeleted {
+			continue
+		}
+		id, err := vo.ParseId(v.ID)
+		if err != nil {
+			return nil, nil, err
+		}
+		views = append(views, v)
+		live = append(live, id)
+	}
+	return views, live, nil
+}
+
+func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, views []model.AccountView, accountIDs []vo.Id, w reportWindow, currency vo.Id) (model.NetWorthReportResult, error) {
 	months := w.monthList()
 	monthStrs := make([]string, len(months))
 	monthIdx := map[string]int{}
@@ -80,10 +110,6 @@ func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, accountIDs []
 		return result, nil
 	}
 
-	views, err := s.accounts.AccountsByIDs(ctx, accountIDs)
-	if err != nil {
-		return result, err
-	}
 	opening, err := s.read.AccountsBalancesBeforeDate(ctx, accountIDs, w.from)
 	if err != nil {
 		return result, err
@@ -166,9 +192,6 @@ func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, accountIDs []
 		row := model.NetWorthAccountRow{
 			Id: v.ID, Name: v.Name, Icon: v.Icon, CurrencyId: v.CurrencyID,
 			OwnerUserId: v.OwnerID, Balances: balances,
-		}
-		if v.IsDeleted {
-			row.IsDeleted = 1
 		}
 		result.Accounts = append(result.Accounts, row)
 	}
