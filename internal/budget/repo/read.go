@@ -7,6 +7,7 @@ package repo
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sort"
 	"strconv"
 	"strings"
@@ -122,6 +123,17 @@ FROM accounts a LEFT JOIN (
 // regardless of how the connection formats a time.Time.
 func sqliteDatetime(t time.Time) string { return t.Format(datetime.Layout) }
 
+// sqliteSum renders a SQLite SUM, a float, as the exact 8-decimal sum
+// PostgreSQL's NUMERIC returns. Amounts carry at most 8 decimals, so the float
+// is the true sum plus rounding noise: rounding its SHORTEST decimal form to 8
+// places (half away from zero) drops the noise (1339.8899999999999 ->
+// 1339.89000000). The binary value itself would not do: past 2^26 a float64
+// holds no exact cent, and 123456789.01 prints as 123456789.01000001 at 'f', 8.
+func sqliteSum(v float64) string {
+	r, _ := new(big.Rat).SetString(strconv.FormatFloat(v, 'f', -1, 64))
+	return r.FloatString(8)
+}
+
 // phFrom is ph for pgsql numbered params starting at `start` (sqlite ignores start).
 func (r *ReadRepo) phFrom(start, n int) string { return r.ph(start, n) }
 
@@ -139,11 +151,8 @@ func (r *ReadRepo) accountBalances(ctx context.Context, accountIDs []vo.Id, date
 	var out []model.AccountBalanceRow
 	for rows.Next() {
 		var row model.AccountBalanceRow
-		// SQLite's SUM over NUMERIC is float; scanning it as a string yields the
-		// driver's full-precision rendering (e.g. "358.34999999999127"). Round to
-		// 8 decimals (the stored-balance scale) by scanning the float and
-		// formatting with 'f',8, giving "358.35". PostgreSQL's SUM is exact
-		// NUMERIC, so scan it as a string and pass through unchanged.
+		// SQLite's SUM over NUMERIC is a float (e.g. 358.34999999999127), read
+		// through sqliteSum; PostgreSQL's SUM is exact NUMERIC text.
 		if r.driver == "postgresql" {
 			var bal *string
 			if err := rows.Scan(&row.AccountID, &row.CurrencyID, &bal); err != nil {
@@ -160,7 +169,7 @@ func (r *ReadRepo) accountBalances(ctx context.Context, accountIDs []vo.Id, date
 				return nil, err
 			}
 			if bal != nil {
-				row.Balance = strconv.FormatFloat(*bal, 'f', 8, 64)
+				row.Balance = sqliteSum(*bal)
 			} else {
 				row.Balance = "0"
 			}
@@ -213,15 +222,13 @@ func (r *ReadRepo) AccountsReport(ctx context.Context, accountIDs []vo.Id, start
 				return nil, err
 			}
 		} else {
-			// SQLite's SUM is a float that can land off the exact total
-			// (1339.8899999999999 for 1339.89); amounts carry at most 8 decimals,
-			// so rounding the float to 8 gives back PostgreSQL's exact sum.
+			// SQLite's SUM is a float; sqliteSum gives back PostgreSQL's exact sum
 			var sums [6]float64
 			if err := rows.Scan(&row.AccountID, &row.CurrencyID, &sums[0], &sums[1], &sums[2], &sums[3], &sums[4], &sums[5]); err != nil {
 				return nil, err
 			}
 			for i, v := range sums {
-				*cols[i] = strconv.FormatFloat(v, 'f', 8, 64)
+				*cols[i] = sqliteSum(v)
 			}
 		}
 		out = append(out, row)
@@ -256,13 +263,12 @@ func (r *ReadRepo) HoldingsReport(ctx context.Context, accountIDs []vo.Id, start
 					a = *amount
 				}
 			} else {
-				// SQLite's float SUM, rounded back to the 8-decimal amount scale
 				var amount *float64
 				if err := rows.Scan(&amount, &currencyID); err != nil {
 					return err
 				}
 				if amount != nil {
-					a = strconv.FormatFloat(*amount, 'f', 8, 64)
+					a = sqliteSum(*amount)
 				}
 			}
 			if currencyID == nil {
@@ -395,10 +401,8 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 	var out []model.SpendingRow
 	for rows.Next() {
 		var categoryID, currencyID, tagID *string
-		// SQLite's SUM(amount) is a float; scan it as float and format with %.8f
-		// (round to 8 decimals) instead of the driver's full-precision text (e.g.
-		// "32.26999999"). PostgreSQL's SUM is exact NUMERIC, scanned as text and
-		// passed through.
+		// SQLite's SUM(amount) is a float, read through sqliteSum; PostgreSQL's
+		// SUM is exact NUMERIC text.
 		a := "0"
 		if r.driver == "postgresql" {
 			var amount *string
@@ -420,7 +424,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 				continue
 			}
 			if amount != nil {
-				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				a = sqliteSum(*amount)
 			}
 		}
 		out = append(out, model.SpendingRow{CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
@@ -470,10 +474,8 @@ func (r *ReadRepo) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id,
 		var labelID string
 		var categoryID *string
 		var currencyID *string
-		// SQLite's SUM(amount) is a float; scan it as float and format with
-		// 'f',8 (round to 8 decimals) instead of the driver's full-precision
-		// text. PostgreSQL's SUM is exact NUMERIC, scanned as text and passed
-		// through.
+		// SQLite's SUM(amount) is a float, read through sqliteSum; PostgreSQL's
+		// SUM is exact NUMERIC text.
 		a := "0"
 		if r.driver == "postgresql" {
 			var amount *string
@@ -495,7 +497,7 @@ func (r *ReadRepo) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id,
 				continue
 			}
 			if amount != nil {
-				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				a = sqliteSum(*amount)
 			}
 		}
 		out = append(out, model.LabelSpendingRow{LabelID: labelID, CategoryID: categoryID, CurrencyID: *currencyID, Amount: a})
@@ -550,10 +552,9 @@ func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, 
 	var out []model.SummarizedLimitRow
 	for rows.Next() {
 		var row model.SummarizedLimitRow
-		// SQLite's SUM(amount) over NUMERIC is a float; scanning it as a string
-		// yields full float precision (e.g. "155.56000000001"), which leaks a 1e-8
-		// into budgetedBefore. Scan as float and format with %.8f (round to 8
-		// decimals). PostgreSQL's SUM is exact NUMERIC text.
+		// SQLite's SUM(amount) over NUMERIC is a float (e.g. 155.56000000001),
+		// which as text would leak a 1e-8 into budgetedBefore; read it through
+		// sqliteSum. PostgreSQL's SUM is exact NUMERIC text.
 		if r.driver == "postgresql" {
 			var amount *string
 			if err := rows.Scan(&row.ExternalID, &row.Type, &amount); err != nil {
@@ -570,7 +571,7 @@ func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, 
 				return nil, err
 			}
 			if amount != nil {
-				row.Amount = strconv.FormatFloat(*amount, 'f', 8, 64)
+				row.Amount = sqliteSum(*amount)
 			} else {
 				row.Amount = "0"
 			}
@@ -692,7 +693,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 	for rows.Next() {
 		var monthStr string
 		var categoryID, tagID, currencyID *string
-		// SQLite's SUM is float (format 'f',8); PostgreSQL's is exact NUMERIC
+		// SQLite's SUM is float (sqliteSum); PostgreSQL's is exact NUMERIC
 		// text — same split as CountSpending.
 		a := "0"
 		if r.driver == "postgresql" {
@@ -715,7 +716,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 				continue
 			}
 			if amount != nil {
-				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				a = sqliteSum(*amount)
 			}
 		}
 		out = append(out, model.MonthlySpendingRow{Month: monthStr, CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
@@ -789,7 +790,7 @@ func (r *ReadRepo) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, 
 				continue
 			}
 			if amount != nil {
-				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				a = sqliteSum(*amount)
 			}
 		}
 		out = append(out, model.MonthlyIncomeRow{Month: monthStr, CategoryID: categoryID, CurrencyID: *currencyID, Amount: a})
@@ -825,7 +826,7 @@ func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, fro
 			var monthStr string
 			var currencyID *string
 			a := "0"
-			// SQLite's SUM is float (format 'f',8); PostgreSQL's is exact
+			// SQLite's SUM is float (sqliteSum); PostgreSQL's is exact
 			// NUMERIC text — same split as IncomeByMonth.
 			if r.driver == "postgresql" {
 				var amount *string
@@ -841,7 +842,7 @@ func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, fro
 					return err
 				}
 				if amount != nil {
-					a = strconv.FormatFloat(*amount, 'f', 8, 64)
+					a = sqliteSum(*amount)
 				}
 			}
 			if currencyID == nil {
@@ -1020,7 +1021,7 @@ func (r *ReadRepo) monthAccountAmounts(ctx context.Context, sql string, args []a
 				return nil, err
 			}
 			if amount != nil {
-				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				a = sqliteSum(*amount)
 			}
 		}
 		row.Amount = a
@@ -1089,7 +1090,7 @@ func (r *ReadRepo) LimitsByMonth(ctx context.Context, budgetID vo.Id, from, to t
 				return nil, err
 			}
 			if amount != nil {
-				row.Amount = strconv.FormatFloat(*amount, 'f', 8, 64)
+				row.Amount = sqliteSum(*amount)
 			} else {
 				row.Amount = "0"
 			}

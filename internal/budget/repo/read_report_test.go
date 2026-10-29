@@ -74,6 +74,23 @@ func TestBudgetReadRepo_AccountsReportSumsExactly(t *testing.T) {
 		f.Transaction(tx)
 	}
 
+	// past 2^26 a float64 cannot hold every cent: the double nearest 123456789.01
+	// prints as 123456789.01000001 at 8 decimals, so the sum must be rounded from
+	// its shortest decimal form, not from the binary value
+	large := "aaaa2222-0000-0000-0000-000000000999"
+	f.Account(fixture.Account{ID: large, CurrencyID: usdID, UserID: userA, Name: "Large", Icon: "x"})
+	ids = append(ids, vo.MustParseId(large))
+	for i, amount := range []string{"123456789.01", "1000000000.07", "876543210.39"} {
+		tx := fixture.Transaction{UserID: userA, AccountID: large, Amount: amount, SpentAt: day.Add(time.Duration(i) * time.Hour)}
+		if i == 0 {
+			tx.Type = 1
+			add(large, "incomes", amount)
+		} else {
+			add(large, "expenses", amount)
+		}
+		f.Transaction(tx)
+	}
+
 	rows, err := read.AccountsReport(context.Background(), ids, day, day.AddDate(0, 1, 0))
 	if err != nil {
 		t.Fatalf("AccountsReport: %v", err)
