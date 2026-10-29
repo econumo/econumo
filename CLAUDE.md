@@ -1067,7 +1067,8 @@ element or a user's display currency; never the base or a custom currency) has
 no rate against `ECONUMO_CURRENCY_BASE`. Conversions average each month's rates
 and a month without any borrows the latest earlier month, so one rate a month is
 enough for them. Dates are `YYYY-MM-DD` or `YYYY-MM`; the start defaults to the
-oldest transaction and the end to today (UTC, a later end is clamped).
+oldest transaction (today when it is future-dated) and the end to today (UTC, a
+later end is clamped).
 `currency:backfill-rates` loads exactly those gaps from Open Exchange Rates, one
 request per gap, dated the gap's first day (the 1st of the month, or the day),
 requesting only the missing codes. Its start is required because every gap

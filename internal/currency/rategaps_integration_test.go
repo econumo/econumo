@@ -120,6 +120,18 @@ func TestFindRateGaps_Range(t *testing.T) {
 	}
 }
 
+func TestFindRateGaps_FutureOnlyLedgerStartsToday(t *testing.T) {
+	db, _, _ := rateGapWorld(t)
+	svc := newGapSvc(db, "2025-12-20")
+	got, err := svc.FindRateGaps(context.Background(), "USD", model.RatePeriodMonth, time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatalf("FindRateGaps: %v", err)
+	}
+	if !got.From.Equal(day("2025-12-01")) || !got.To.Equal(day("2025-12-01")) {
+		t.Errorf("range = %s..%s, want 2025-12 only", got.From.Format("2006-01-02"), got.To.Format("2006-01-02"))
+	}
+}
+
 func TestFindRateGaps_NothingInUse(t *testing.T) {
 	db := dbtest.New(t)
 	svc := newGapSvc(db, "2026-03-20")

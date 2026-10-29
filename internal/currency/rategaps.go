@@ -11,8 +11,8 @@ import (
 
 // FindRateGaps lists the periods in [from, to] where a currency in use has no
 // rate against base. A zero from starts at the oldest transaction (today when
-// there are none), a zero to ends today, and a to past today is clamped to
-// today: future rates do not exist yet.
+// there are none or it is in the future), a zero to ends today, and a to past
+// today is clamped to today: future rates do not exist yet.
 func (s *WriteService) FindRateGaps(ctx context.Context, base string, period model.RatePeriod, from, to time.Time) (model.RateGapReport, error) {
 	base = normalizeCode(base)
 	codes, err := s.write.CurrencyCodes(ctx)
@@ -30,8 +30,10 @@ func (s *WriteService) FindRateGaps(ctx context.Context, base string, period mod
 		if err != nil {
 			return model.RateGapReport{}, err
 		}
+		// Future-dated transactions exist, so the oldest one can still be ahead
+		// of today; the range then starts today.
 		from = today
-		if ok {
+		if ok && first.Before(today) {
 			from = first
 		}
 	}
