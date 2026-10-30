@@ -10,9 +10,10 @@ import (
 )
 
 // upcomingShown reports whether a window ending at periodEnd reaches the
-// caller's current month: one that ended before it has no upcoming money.
-func upcomingShown(ctx context.Context, periodEnd, now time.Time) bool {
-	return periodEnd.After(localMonth(now, reqctx.Location(ctx)))
+// caller's current period: one that ended before it has no upcoming money.
+func upcomingShown(ctx context.Context, periodEnd, now time.Time, startDay int) bool {
+	start, _ := model.PeriodWindow(currentPeriod(now, reqctx.Location(ctx), startDay), startDay)
+	return periodEnd.After(start)
 }
 
 // addUpcoming fills result's upcoming fields: the same builder run a second

@@ -11,7 +11,17 @@ const EDGE_THRESHOLD_PX = 300
 // roughly a screenful of month chips per arrow click
 const SCROLL_STEP_PX = 320
 
-export function PeriodStrip({ startedAt, endedAt = null, leading }: { startedAt: string | null; endedAt?: string | null; leading?: ReactNode }) {
+export function PeriodStrip({
+  startedAt,
+  endedAt = null,
+  leading,
+  trailing,
+}: {
+  startedAt: string | null
+  endedAt?: string | null
+  leading?: ReactNode
+  trailing?: ReactNode
+}) {
   const { t, i18n } = useTranslation()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const setPeriod = useBudgetPeriodStore((s) => s.setPeriod)
@@ -148,6 +158,7 @@ export function PeriodStrip({ startedAt, endedAt = null, leading }: { startedAt:
         </button>
       ))}
       </div>
+      {trailing}
     </div>
   )
 }

@@ -24,10 +24,6 @@ func (s *Service) GetBudgetPlan(ctx context.Context, userID vo.Id, req model.Get
 	if err != nil {
 		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
-	from, err := parsePeriodDate(req.From, localMonth(s.clock.Now(), reqctx.Location(ctx)))
-	if err != nil {
-		return nil, err
-	}
 	months, err := parsePlanMonths(req.Months)
 	if err != nil {
 		return nil, err
@@ -36,8 +32,11 @@ func (s *Service) GetBudgetPlan(ctx context.Context, userID vo.Id, req model.Get
 	if err != nil {
 		return nil, err
 	}
-	from = b.clampPeriod(from)
-	f, err := s.buildFilters(ctx, userID, b, from, from.AddDate(0, months, 0))
+	from, err := parsePeriodDate(req.From, currentPeriod(s.clock.Now(), reqctx.Location(ctx), b.budget.PeriodStartDay))
+	if err != nil {
+		return nil, err
+	}
+	f, err := s.buildFilters(ctx, userID, b, b.clampPeriod(from), months)
 	if err != nil {
 		return nil, err
 	}

@@ -16,8 +16,9 @@ import { applyMove } from '@/lib/ordering'
 import type { ElementMoveItem } from './elementMove'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
-import { useBudgetPeriodStore } from './budgetStore'
-import { addMonths, currentMonth, monthDiff } from './planMath'
+import { followsCurrentPeriod, useBudgetPeriodStore } from './budgetStore'
+import { addMonths, monthDiff } from './planMath'
+import { currentPeriod, periodStartDayOf } from './period'
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -62,7 +63,7 @@ export function useCreateBudget() {
       })
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
       invalidate()
-      trackEvent(METRICS.BUDGET_CREATE)
+      trackEvent(METRICS.BUDGET_CREATE, { periodStartDay: periodStartDayOf(meta) })
     },
   })
 }
@@ -102,11 +103,32 @@ export function canDeleteEnvelope(meta: BudgetMetaDto | undefined | null, userId
 
 // The user's default budget for the selected period. No default -> data: null
 // (the Vue store rejects with 'Budget is not selected'; the page shows onboarding).
+/** false while an unpicked default month may still move to the budget's current
+ *  period (until the page's followCurrentPeriod ran for this budget, judged by the
+ *  day the budget list carries), so the period fetches ask for the month shown */
+export function useDefaultPeriodSettled(budgetId: Id | null): boolean {
+  const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
+  const followedFor = useBudgetPeriodStore((s) => s.periodFollowedFor)
+  const follows = useBudgetPeriodStore((s) => followsCurrentPeriod(s))
+  const { data: budgets, isPending, failureCount } = useBudgets()
+  if (!budgetId || followedFor === budgetId || !follows) {
+    return true
+  }
+  // a list that failed once settles at once: waiting out its retries would hold
+  // the page for seconds, and the budget's own meta picks the period instead
+  if (isPending && failureCount === 0) {
+    return false
+  }
+  const meta = budgets?.find((b) => b.id === budgetId)
+  return !meta || currentPeriod(periodStartDayOf(meta)) === selectedDate
+}
+
 export function useBudget() {
   const { data: user } = useUserData()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const resetFoldsFor = useBudgetPeriodStore((s) => s.resetFoldsFor)
   const budgetId = userOption(user, UserOptions.BUDGET)
+  const periodSettled = useDefaultPeriodSettled(budgetId)
 
   useEffect(() => {
     if (budgetId) {
@@ -117,7 +139,7 @@ export function useBudget() {
   return useQuery<BudgetDto | null>({
     queryKey: [...queryKeys.budget, budgetId ?? 'none', selectedDate],
     queryFn: () => (budgetId ? budgetApi.getBudget(budgetId, selectedDate) : Promise.resolve(null)),
-    enabled: user !== undefined,
+    enabled: user !== undefined && periodSettled,
     staleTime: TEN_MINUTES,
     // month switches keep showing the previous period instead of a blank page
     placeholderData: keepPreviousData,
@@ -143,7 +165,7 @@ export function useSetLimit() {
         const savings = prev.structure.savings
         // from the current month on a savings row's closing balance still expects
         // its unmet plan, so the edit moves it by the change in that gap
-        const projected = form.period >= currentMonth()
+        const projected = form.period >= currentPeriod(periodStartDayOf(prev.meta))
         const gap = (planned: string, spent: string) => (cmp(planned, spent) > 0 ? sub(planned, spent) : '0')
         return {
           ...prev,
@@ -195,7 +217,7 @@ export const PLAN_BUFFER = 2
 
 const PLAN_MONTHS_MAX = 24
 
-export function planFetchWindow(firstMonth: string, visibleMonths: number, now?: Date): { from: string; months: number } {
+export function planFetchWindow(firstMonth: string, visibleMonths: number, startDay: number, now?: Date): { from: string; months: number } {
   // buffer both sides so arrow navigation renders instantly
   const buffered = addMonths(firstMonth, -PLAN_BUFFER)
   const end = addMonths(firstMonth, visibleMonths + PLAN_BUFFER)
@@ -203,15 +225,15 @@ export function planFetchWindow(firstMonth: string, visibleMonths: number, now?:
   // unmet plans of the current and later months inside it, so a window ahead of
   // the current month must reach back to it, or every projected balance drops
   // the months in between. Past the server's month cap it cannot.
-  const cur = currentMonth(now)
+  const cur = currentPeriod(startDay, now)
   if (buffered > cur && monthDiff(cur, end) <= PLAN_MONTHS_MAX) {
     return { from: cur, months: monthDiff(cur, end) }
   }
   return { from: buffered, months: Math.min(visibleMonths + 2 * PLAN_BUFFER, PLAN_MONTHS_MAX) }
 }
 
-export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number) {
-  const { from, months } = planFetchWindow(firstMonth, visibleMonths)
+export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number, startDay: number) {
+  const { from, months } = planFetchWindow(firstMonth, visibleMonths, startDay)
   const planKey = [...queryKeys.budgetPlan, budgetId ?? 'none', from, months] as const
   const query = useQuery<BudgetPlanDto | null>({
     queryKey: planKey,
@@ -488,6 +510,15 @@ export function useUpdateBudgetDetail() {
       invalidate()
       trackEvent(METRICS.BUDGET_UPDATE)
       if (variables.endDate !== undefined) trackEvent(METRICS.BUDGET_SET_END_DATE)
+      // the dialog sends the day only when it differs from the stored one; the
+      // transaction lists are keyed by period key, so a new day changes their window
+      if (variables.periodStartDay !== undefined) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
+        // an older server ignores the day and answers without it: report only what was stored
+        if (meta.periodStartDay !== undefined) {
+          trackEvent(METRICS.BUDGET_PERIOD_START_DAY_CHANGE, { periodStartDay: meta.periodStartDay })
+        }
+      }
       if (variables.savingsAccountIds !== undefined && !sameIdSet(variables.savingsAccountIds, variables.previousSavingsAccountIds ?? [])) {
         trackEvent(METRICS.BUDGET_SAVINGS_TOGGLE)
       }

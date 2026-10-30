@@ -15,18 +15,19 @@ interface OptionSelectProps {
   onValueChange: (value: string) => void
   options: { value: string; label: string }[]
   className?: string
+  disabled?: boolean
 }
 
 /** A short, fixed list (a status, a schedule, a month): the dropdown on a
     desktop or tablet; on a phone the same picker sheet as every other picker,
     without a search, so a choice looks and works alike everywhere */
-export function OptionSelect({ id, 'aria-label': ariaLabel, title, value, onValueChange, options, className }: OptionSelectProps) {
+export function OptionSelect({ id, 'aria-label': ariaLabel, title, value, onValueChange, options, className, disabled }: OptionSelectProps) {
   const isPhone = useIsPhone()
   const [open, setOpen] = useState(false)
 
   if (!isPhone) {
     return (
-      <Select value={value} onValueChange={onValueChange}>
+      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
         <SelectTrigger id={id} aria-label={ariaLabel} className={className}>
           <SelectValue />
         </SelectTrigger>
@@ -49,6 +50,7 @@ export function OptionSelect({ id, 'aria-label': ariaLabel, title, value, onValu
         aria-label={ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
+        disabled={disabled}
         data-slot="select-trigger"
         data-size="default"
         className={cn(selectTriggerClass, className)}

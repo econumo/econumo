@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Id } from '@/api/types'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { currentPeriod } from './period'
 
 /** the reporting-tags folder exists only in rendering: no folder row stands behind
  *  it, so its fold state is keyed by a reserved literal no element id (a UUID) can
@@ -24,6 +25,13 @@ export function normalizePeriod(date: string): string {
   return `${match[1]}-${match[2]}-01`
 }
 
+type FollowState = Pick<BudgetPeriodState, 'periodChosen' | 'selectedDate' | 'adoptedPeriod'>
+
+/** the month shown is a default, not a pick: the calendar month or one adopted earlier */
+export function followsCurrentPeriod(s: FollowState, now: Date = new Date()): boolean {
+  return !s.periodChosen && (s.selectedDate === currentPeriod(1, now) || s.selectedDate === s.adoptedPeriod)
+}
+
 function addMonthsToPeriod(period: string, delta: number): string {
   const [y, m] = period.split('-').map(Number)
   const d = new Date(y, m - 1 + delta, 1)
@@ -36,6 +44,18 @@ interface BudgetPeriodState {
   setLastMode: (mode: BudgetMode) => void
   selectedDate: string
   setPeriod: (date: string) => void
+  /** the user picked a month this session (not persisted) */
+  periodChosen: boolean
+  /** the month followCurrentPeriod last moved the default to; persisted, so a reload
+   *  still knows the stored month was a default and not a pick */
+  adoptedPeriod: string | null
+  /** an unpicked default month moves to the opened budget's current period: a
+   *  shifted budget can already be in next month's period */
+  followCurrentPeriod: (budgetId: Id, startDay: number, now?: Date) => void
+  /** the budget followCurrentPeriod last ran for this session (not persisted): until
+   *  it names the open budget a default month may still move (another budget can
+   *  start its months on another day), so the budget page holds its period fetches */
+  periodFollowedFor: Id | null
   /** element rows default folded; presence = unfolded (Vue semantics). The Budget
    *  view (and the phone) and the Plan grid each keep their own fold state, so
    *  folding a line in one view leaves the other as it was. */
@@ -80,8 +100,23 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       selectedDate: firstOfCurrentMonth(),
       setPeriod: (date) => {
         trackEvent(METRICS.BUDGET_CHANGE_DATE)
-        set({ selectedDate: normalizePeriod(date) })
+        set({ selectedDate: normalizePeriod(date), periodChosen: true, adoptedPeriod: null })
       },
+      periodChosen: false,
+      adoptedPeriod: null,
+      followCurrentPeriod: (budgetId, startDay, now = new Date()) => {
+        if (get().periodFollowedFor !== budgetId) {
+          set({ periodFollowedFor: budgetId })
+        }
+        if (!followsCurrentPeriod(get(), now)) {
+          return
+        }
+        const target = currentPeriod(startDay, now)
+        if (target !== get().selectedDate) {
+          set({ selectedDate: target, adoptedPeriod: target })
+        }
+      },
+      periodFollowedFor: null,
       unfoldedElements: {},
       toggleElement: (id) => set((state) => ({ unfoldedElements: toggleKey(state.unfoldedElements, id) })),
       planUnfoldedElements: {},
@@ -94,7 +129,7 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       },
       stepPeriod: (delta) => {
         trackEvent(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
-        set((s) => ({ selectedDate: addMonthsToPeriod(s.selectedDate, delta) }))
+        set((s) => ({ selectedDate: addMonthsToPeriod(s.selectedDate, delta), periodChosen: true, adoptedPeriod: null }))
       },
       planNameWidth: null,
       setPlanNameWidth: (px) => set({ planNameWidth: px }),
@@ -111,6 +146,7 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
     {
       name: 'budgetPeriod',
       version: 1,
+      partialize: ({ periodChosen: _chosen, periodFollowedFor: _followed, ...rest }): Partial<BudgetPeriodState> => rest,
       // version 0 shared one fold state between both views: each view starts from it
       migrate: (persisted, version) => {
         const state = (persisted ?? {}) as Partial<BudgetPeriodState>

@@ -39,7 +39,7 @@ function makeWrapper() {
 
 function renderPlanHarness(budgetId: string | null, firstMonth: string, visibleMonths: number) {
   const { queryClient, wrapper } = makeWrapper()
-  const { result } = renderHook(() => useBudgetPlan(budgetId, firstMonth, visibleMonths), { wrapper })
+  const { result } = renderHook(() => useBudgetPlan(budgetId, firstMonth, visibleMonths, 1), { wrapper })
   return { result, queryClient }
 }
 
@@ -441,7 +441,8 @@ it('useUpdateBudgetDetail fires the end-date metric only when endDate is sent', 
 describe('budget savings toggle metric', () => {
   const savingsToggles = () => trackEventMock.mock.calls.filter(([name]) => name === METRICS.BUDGET_SAVINGS_TOGGLE).length
 
-  function createHandler() {
+  // legacy: a server older than the period setting, which answers without the day
+  function createHandler(legacy = false) {
     const bodies: Record<string, unknown>[] = []
     server.use(
       http.post('*/api/v1/budget/create-budget', async ({ request }) => {
@@ -454,6 +455,7 @@ describe('budget savings toggle metric', () => {
               meta: {
                 id: body.id, ownerUserId: 'u1', name: body.name, startedAt: '2026-07-01 00:00:00',
                 currencyId: body.currencyId, access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
+                ...(legacy ? {} : { periodStartDay: body.periodStartDay ?? 1 }),
               },
             },
           },
@@ -486,13 +488,37 @@ describe('budget savings toggle metric', () => {
     expect(savingsToggles()).toBe(0)
   })
 
-  function updateHandler(status = 200) {
+  it('sends periodStartDay on create and reports it with the create metric', async () => {
+    const bodies = createHandler()
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.budgets, fixtureBudgets)
+    const { result } = renderHook(() => useCreateBudget(), { wrapper })
+    result.current.mutate({ id: 'b-new', name: 'Vacation', startDate: '', currencyId: 'cur-usd', accountIds: ['a1'], periodStartDay: 16, ownerUserId: 'u1' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(bodies[0].periodStartDay).toBe(16)
+    expect(trackEventMock).toHaveBeenCalledWith(METRICS.BUDGET_CREATE, { periodStartDay: 16 })
+  })
+
+  it('reports the day the server stored on create: calendar months from an older server', async () => {
+    createHandler(true)
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.budgets, fixtureBudgets)
+    const { result } = renderHook(() => useCreateBudget(), { wrapper })
+    result.current.mutate({ id: 'b-new', name: 'Vacation', startDate: '', currencyId: 'cur-usd', accountIds: ['a1'], periodStartDay: 16, ownerUserId: 'u1' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(trackEventMock).toHaveBeenCalledWith(METRICS.BUDGET_CREATE, { periodStartDay: 1 })
+  })
+
+  function updateHandler(status = 200, legacy = false) {
     const bodies: Record<string, unknown>[] = []
     server.use(
       http.post('*/api/v1/budget/update-budget', async ({ request }) => {
-        bodies.push((await request.json()) as Record<string, unknown>)
+        const body = (await request.json()) as Record<string, unknown>
+        bodies.push(body)
+        const { periodStartDay: stored, ...legacyMeta } = fixtureBudgets[0]
+        const item = legacy ? legacyMeta : { ...fixtureBudgets[0], periodStartDay: body.periodStartDay ?? stored }
         return status === 200
-          ? HttpResponse.json({ success: true, message: '', data: { item: fixtureBudgets[0] } })
+          ? HttpResponse.json({ success: true, message: '', data: { item } })
           : HttpResponse.json(
               { success: false, message: 'Form validation error', code: 400, errors: { confirmSavingsRemoval: ['confirm'] } },
               { status },
@@ -535,6 +561,42 @@ describe('budget savings toggle metric', () => {
     expect(savingsToggles()).toBe(0)
   })
 
+  it('fires the period start day metric once, with the day, only when the update carries one', async () => {
+    updateHandler()
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
+    const changes = () => trackEventMock.mock.calls.filter(([n]) => n === METRICS.BUDGET_PERIOD_START_DAY_CHANGE)
+    result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(changes()).toHaveLength(0)
+    result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd', periodStartDay: 5 })
+    await waitFor(() => expect(changes()).toHaveLength(1))
+    expect(changes()[0][1]).toEqual({ periodStartDay: 5 })
+  })
+
+  it('does not report a day change an older server ignored', async () => {
+    updateHandler(200, true)
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
+    result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd', periodStartDay: 5 })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(trackEventMock.mock.calls.filter(([n]) => n === METRICS.BUDGET_PERIOD_START_DAY_CHANGE)).toHaveLength(0)
+    expect(trackEventMock).toHaveBeenCalledWith(METRICS.BUDGET_UPDATE)
+  })
+
+  it('a day change also invalidates the budget transaction lists; other updates leave them', async () => {
+    updateHandler()
+    const { queryClient, wrapper } = makeWrapper()
+    const txKey = [...queryKeys.budgetTransactions, { budgetId: 'b1', periodStart: '2026-09-01' }]
+    queryClient.setQueryData(txKey, null)
+    const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
+    result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryState(txKey)!.isInvalidated).toBe(false)
+    result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd', periodStartDay: 16 })
+    await waitFor(() => expect(queryClient.getQueryState(txKey)!.isInvalidated).toBe(true))
+  })
+
   it('create and update both invalidate the budget and plan caches', async () => {
     createHandler()
     updateHandler()
@@ -565,18 +627,23 @@ describe('planFetchWindow', () => {
   const now = new Date(2026, 9, 5) // October 2026
 
   it('buffers both sides of a window around the current month', () => {
-    expect(planFetchWindow('2026-09-01', 8, now)).toEqual({ from: '2026-07-01', months: 12 })
+    expect(planFetchWindow('2026-09-01', 8, 1, now)).toEqual({ from: '2026-07-01', months: 12 })
   })
 
   // the server books only what precedes the window, and the client projects unmet
   // plans only for the months inside it, so a later window must still reach back to
   // the current month or every projected balance loses the months in between
   it('starts no later than the current month when the window lies ahead', () => {
-    expect(planFetchWindow('2027-01-01', 8, now)).toEqual({ from: '2026-10-01', months: 13 })
-    expect(planFetchWindow('2027-09-01', 1, now)).toEqual({ from: '2026-10-01', months: 14 })
+    expect(planFetchWindow('2027-01-01', 8, 1, now)).toEqual({ from: '2026-10-01', months: 13 })
+    expect(planFetchWindow('2027-09-01', 1, 1, now)).toEqual({ from: '2026-10-01', months: 14 })
+  })
+
+  it('reaches back to the budget period holding today, not the calendar month', () => {
+    // on 5 October a day-10 budget is still in its September period
+    expect(planFetchWindow('2027-01-01', 8, 10, now)).toEqual({ from: '2026-09-01', months: 14 })
   })
 
   it('falls back to the buffered window once reaching back would pass the server cap', () => {
-    expect(planFetchWindow('2028-09-01', 8, now)).toEqual({ from: '2028-07-01', months: 12 })
+    expect(planFetchWindow('2028-09-01', 8, 1, now)).toEqual({ from: '2028-07-01', months: 12 })
   })
 })

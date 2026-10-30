@@ -475,3 +475,29 @@ func TestFolderSide(t *testing.T) {
 		t.Fatalf("default side = %q, want expense", f.Side)
 	}
 }
+
+func TestSetPeriodStartDay(t *testing.T) {
+	b := NewBudget(vo.NewId(), vo.NewId(), "B", vo.NewId(), t0, t0)
+	if b.PeriodStartDay != 1 {
+		t.Fatalf("new budget start day %d, want 1", b.PeriodStartDay)
+	}
+	for _, bad := range []int{0, 29, -3} {
+		err := b.SetPeriodStartDay(bad, t1)
+		var ve *errs.ValidationError
+		if !errors.As(err, &ve) {
+			t.Fatalf("day %d: err=%v, want a validation error", bad, err)
+		}
+		if len(ve.Fields) != 1 || ve.Fields[0].Key != "periodStartDay" || ve.Fields[0].Code != errs.CodeBudgetInvalidPeriodStartDay {
+			t.Fatalf("day %d: fields=%+v", bad, ve.Fields)
+		}
+		if b.PeriodStartDay != 1 || !b.UpdatedAt.Equal(t0) {
+			t.Fatalf("day %d: refused set changed the budget", bad)
+		}
+	}
+	if err := b.SetPeriodStartDay(28, t1); err != nil || b.PeriodStartDay != 28 || !b.UpdatedAt.Equal(t1) {
+		t.Fatalf("set 28: err=%v day=%d updated=%v", err, b.PeriodStartDay, b.UpdatedAt)
+	}
+	if err := b.SetPeriodStartDay(28, t1.Add(time.Hour)); err != nil || !b.UpdatedAt.Equal(t1) {
+		t.Fatalf("an unchanged day must not touch updated_at: err=%v updated=%v", err, b.UpdatedAt)
+	}
+}

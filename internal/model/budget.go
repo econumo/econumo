@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -31,8 +32,11 @@ type Budget struct {
 	// nil is open-ended.
 	EndedAt    *time.Time
 	IsArchived bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	// PeriodStartDay is the day of the month (MinPeriodStartDay..MaxPeriodStartDay)
+	// a budget month starts on; 1 is the calendar month.
+	PeriodStartDay int
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // NewBudget creates a budget. startDate is snapped to the first of its month.
@@ -46,7 +50,30 @@ func NewBudget(id, userID vo.Id, name string, currencyID vo.Id, startDate, now t
 		StartedAt:  FirstOfMonth(startDate),
 		CreatedAt:  now,
 		UpdatedAt:  now,
+
+		PeriodStartDay: MinPeriodStartDay,
 	}
+}
+
+// SetPeriodStartDay changes the day budget months start on, bumping updated_at
+// only on change.
+func (b *Budget) SetPeriodStartDay(d int, now time.Time) error {
+	if !ValidPeriodStartDay(d) {
+		return InvalidPeriodStartDayError()
+	}
+	if b.PeriodStartDay != d {
+		b.PeriodStartDay = d
+		b.UpdatedAt = now
+	}
+	return nil
+}
+
+// InvalidPeriodStartDayError is the coded field error for a start day outside
+// the allowed range.
+func InvalidPeriodStartDayError() error {
+	return errs.NewValidation("Validation failed", errs.FieldError{
+		Key: "periodStartDay", Message: "Choose a day from 1 to 28", Code: errs.CodeBudgetInvalidPeriodStartDay,
+	})
 }
 
 // UpdateName changes the name, bumping updated_at only on change.
@@ -307,6 +334,49 @@ func (l *BudgetElementLimit) UpdateAmount(amount vo.DecimalNumber, now time.Time
 func FirstOfMonth(t time.Time) time.Time {
 	y, m, _ := t.Date()
 	return time.Date(y, m, 1, 0, 0, 0, 0, t.Location())
+}
+
+const MinPeriodStartDay, MaxPeriodStartDay = 1, 28
+
+func ValidPeriodStartDay(d int) bool {
+	return d >= MinPeriodStartDay && d <= MaxPeriodStartDay
+}
+
+func clampPeriodStartDay(d int) int {
+	if !ValidPeriodStartDay(d) {
+		return MinPeriodStartDay
+	}
+	return d
+}
+
+// PeriodWindow returns the half-open [start, end) window of the budget period
+// named by key. From day 16 on the period is named after the month it ends in,
+// so a period never carries the name of a month it mostly misses.
+func PeriodWindow(key time.Time, startDay int) (start, end time.Time) {
+	startDay = clampPeriodStartDay(startDay)
+	start = FirstOfMonth(key)
+	if startDay >= 16 {
+		start = start.AddDate(0, -1, 0)
+	}
+	start = start.AddDate(0, 0, startDay-1)
+	return start, start.AddDate(0, 1, 0)
+}
+
+func PeriodOf(t time.Time, startDay int) time.Time {
+	startDay = clampPeriodStartDay(startDay)
+	key := FirstOfMonth(t.AddDate(0, 0, -(startDay - 1)))
+	if startDay >= 16 {
+		key = key.AddDate(0, 1, 0)
+	}
+	return key
+}
+
+func PeriodKeyOfDay(day string, startDay int) (string, error) {
+	t, err := time.Parse(datetime.DateLayout, day)
+	if err != nil {
+		return "", err
+	}
+	return PeriodOf(t, startDay).Format(datetime.DateLayout), nil
 }
 
 // idPtrEqual compares two optional ids for equality (both nil == equal).

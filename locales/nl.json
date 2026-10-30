@@ -1313,6 +1313,10 @@
         "end_month": {
           "label": "Eindmaand",
           "none": "Geen einddatum"
+        },
+        "period_start_day": {
+          "label": "Maand begint op dag",
+          "warning": "Bestaande plannen blijven bij hun maanden; de data die elke maand beslaat, veranderen."
         }
       },
       "budget_envelope": {
@@ -2073,6 +2077,7 @@
       "accounts_required": "Selecteer minstens één rekening",
       "archived": "Dit budget is gearchiveerd",
       "end_before_start": "De eindmaand ligt vóór de start van het budget",
+      "invalid_period_start_day": "Kies een dag van 1 tot 28",
       "comment_not_found": "Opmerking niet gevonden",
       "comment_forbidden": "Je kunt deze opmerking niet wijzigen"
     },

@@ -21,6 +21,8 @@ export interface BudgetMetaDto {
   currencyId: Id
   isArchived: 0 | 1
   access: BudgetAccessDto[]
+  /** the day (1-28) each budget month starts on; absent from older servers = 1 */
+  periodStartDay?: number
 }
 
 export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2, INCOME_CATEGORY: 3, INCOME_ENVELOPE: 4, SAVINGS: 5 } as const

@@ -24,6 +24,8 @@ export interface CreateBudgetForm {
   accountIds: Id[]
   /** must be a subset of accountIds */
   savingsAccountIds?: Id[]
+  /** 1-28; absent = 1 */
+  periodStartDay?: number
 }
 
 export interface UpdateBudgetForm {
@@ -38,6 +40,8 @@ export interface UpdateBudgetForm {
   savingsAccountIds?: Id[]
   /** required when the write drops a savings member that has plans or comments */
   confirmSavingsRemoval?: boolean
+  /** 1-28; absent = untouched */
+  periodStartDay?: number
 }
 
 export interface CloneBudgetForm {

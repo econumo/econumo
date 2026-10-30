@@ -47,7 +47,9 @@ import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetMode } from './budgetStore'
 import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
-import { currentMonth, monthDiff } from './planMath'
+import { monthDiff } from './planMath'
+import { currentPeriod, periodStartDayOf } from './period'
+import { PeriodDates } from './PeriodDates'
 import { BudgetTable, BudgetTotals } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
 import { PlanSheet } from './PlanSheet'
@@ -73,7 +75,7 @@ import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { BudgetDialog } from './BudgetDialog'
-import { useCreateBudget } from './queries'
+import { useCreateBudget, useDefaultPeriodSettled } from './queries'
 import type { ElementContainer } from './elementMove'
 import { applyArrangement, arrangementFromBuckets, arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, moveElementInArrangement, placeFromEnvelope, withoutElement } from './elementMove'
 import type { DropIndicator } from './elementMove'
@@ -117,7 +119,10 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // this identical option internally — if it ever gains a non-option budget source,
   // this derivation must follow, or the markers below silently stop tracking writes.
   const budgetId = userOption(user, UserOptions.BUDGET)
-  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(mode === 'budget' || isPhone ? budgetId : null, selectedDate, 1)
+  // the month's own fetches wait, like the budget's, until the default month settles
+  const periodSettled = useDefaultPeriodSettled(budgetId)
+  const monthBudgetId = (mode === 'budget' || isPhone) && periodSettled ? budgetId : null
+  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(monthBudgetId, selectedDate, 1)
   // an element or a savings row: both dialogs need only the cell's id and name
   const [commentsTarget, setCommentsTarget] = useState<{ el: CellTarget; anchor: HTMLElement | null } | null>(null)
   const openComments = (el: CellTarget, anchor: HTMLElement | null = null) => setCommentsTarget({ el, anchor })
@@ -127,14 +132,24 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const moveElement = useMoveElement()
   const moveIntoEnvelope = useMoveIntoEnvelope()
   const createBudget = useCreateBudget()
+  // the list carries the day too, so the plan window below need not wait for the budget
+  const periodMeta = budget?.meta.id === budgetId ? budget?.meta : budgetList?.find((b) => b.id === budgetId)
+  const startDay = periodMeta ? periodStartDayOf(periodMeta) : 1
+  const curPeriod = currentPeriod(startDay)
+  const followCurrentPeriod = useBudgetPeriodStore((s) => s.followCurrentPeriod)
+  useEffect(() => {
+    if (budgetId && periodMeta) {
+      followCurrentPeriod(budgetId, periodStartDayOf(periodMeta))
+    }
+  }, [budgetId, periodMeta, followCurrentPeriod])
   // the month view's income, Balance and Total savings (phone and desktop alike): the
   // Plan view's own figures for the selected month; null until that month's window
   // has really loaded.
-  // The window starts no later than the current month: the server books only
+  // The window starts no later than the current period: the server books only
   // what precedes the window, so a future month's Balance needs every unmet plan
-  // from the current month on inside it.
-  const monthPlanFirst = selectedDate < currentMonth() ? selectedDate : currentMonth()
-  const monthPlan = useBudgetPlan(mode === 'budget' || isPhone ? budgetId : null, monthPlanFirst, monthDiff(monthPlanFirst, selectedDate) + 1)
+  // from the current period on inside it.
+  const monthPlanFirst = selectedDate < curPeriod ? selectedDate : curPeriod
+  const monthPlan = useBudgetPlan(monthBudgetId, monthPlanFirst, monthDiff(monthPlanFirst, selectedDate) + 1, startDay)
   const planSetLimit = usePlanSetLimit(monthPlan.planKey)
   const planMonth = useMemo(
     () => (monthPlan.data && !monthPlan.isPlaceholderData ? planMonthFigures(monthPlan.data, currencies, selectedDate) : null),
@@ -305,7 +320,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           onClose={() => setCreateBudgetOpen(false)}
           onSubmit={(form) => {
             createBudget.mutate(
-              { id: uuidv7(), name: form.name, startDate: '', currencyId: form.currencyId, accountIds: form.accountIds, savingsAccountIds: form.savingsAccountIds, ownerUserId: user?.id },
+              { id: uuidv7(), name: form.name, startDate: '', currencyId: form.currencyId, accountIds: form.accountIds, savingsAccountIds: form.savingsAccountIds, periodStartDay: form.periodStartDay, ownerUserId: user?.id },
               { onSuccess: () => setCreateBudgetOpen(false) },
             )
           }}
@@ -487,7 +502,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const upcomingQueryOf = (target: SheetTarget): UpcomingQuery | null => {
     const spent = sheetSpent(target)
     const upcoming = sheetUpcoming(target)
-    const listTarget = wantsUpcomingPanel(selectedDate, spent, upcoming, target.kind === 'savings') ? sheetTransactionsTargetOf(target) : null
+    const listTarget = wantsUpcomingPanel(selectedDate, spent, upcoming, target.kind === 'savings', startDay) ? sheetTransactionsTargetOf(target) : null
     if (!listTarget) {
       return null
     }
@@ -611,6 +626,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     )
   }
 
+  // the shifted dates of the selected month; its spot is provisional
+  const periodDates = <PeriodDates periodKey={selectedDate} startDay={periodStartDayOf(budget.meta)} />
+
   return (
     <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
       <header className="flex items-center gap-2">
@@ -650,7 +668,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       {phoneView ? (
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
-          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} />
+          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} trailing={periodDates} />
           {isPlaceholderData || periodSwitching ? (
             <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
               <CoinLoader label={t('common.app.modal.loading.data_loading')} />
@@ -685,7 +703,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       ) : (
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
-          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} leading={viewSwitch} />
+          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} leading={viewSwitch} trailing={periodDates} />
 
           {isPlaceholderData || periodSwitching ? (
             // month switch in flight — the strip stays put, the stale table is
@@ -702,7 +720,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     budget={budget}
                     currencies={currencies}
                     planMonth={planMonth}
-                    future={selectedDate > currentMonth()}
+                    future={selectedDate > curPeriod}
                     actionsColumn={false}
                     renderPlanned={renderFlowPlanned}
                     onShowTransactions={setTransactionsTarget}
@@ -750,7 +768,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   <BudgetTable
                     budget={budget}
                     buckets={buckets}
-                    future={selectedDate > currentMonth()}
+                    future={selectedDate > curPeriod}
                     hideTotals
                     collapsedElementId={dragActiveId}
                     showEmptyNoFolder={dragActiveId !== null}
@@ -825,14 +843,14 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   <DragOverlay dropAnimation={null} modifiers={[besidePointer]}>{draggedItem ? <DragGhost icon={draggedItem.icon} name={draggedItem.name} /> : null}</DragOverlay>
                 </DndContext>
                 <div className="mt-1 mb-4 flex flex-col">
-                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={false} future={selectedDate > currentMonth()} /> : null}
+                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={false} future={selectedDate > curPeriod} /> : null}
                   {totals ? (
                     <MonthTotalsLines
                       budget={budget}
                       currencies={currencies}
                       planMonth={planMonth}
                       expensesSpent={totals.spent}
-                      future={selectedDate > currentMonth()}
+                      future={selectedDate > curPeriod}
                       actionsColumn={false}
                     />
                   ) : null}
@@ -866,6 +884,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       <ElementSheet
         target={sheetTarget}
         month={selectedDate}
+        startDay={periodStartDayOf(budget.meta)}
         baseCurrencyId={budget.meta.currencyId}
         currencies={currencies}
         exchange={makeBudgetExchange(budget, currencies)}

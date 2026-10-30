@@ -1313,6 +1313,10 @@
         "end_month": {
           "label": "Mês final",
           "none": "Sem data de fim"
+        },
+        "period_start_day": {
+          "label": "O mês começa no dia",
+          "warning": "Os planos existentes mantêm-se nos seus meses; as datas abrangidas por cada mês vão mudar."
         }
       },
       "budget_envelope": {
@@ -2073,6 +2077,7 @@
       "accounts_required": "Selecione pelo menos uma conta",
       "archived": "Este orçamento está arquivado",
       "end_before_start": "O mês final é anterior ao início do orçamento",
+      "invalid_period_start_day": "Escolha um dia de 1 a 28",
       "comment_not_found": "Comentário não encontrado",
       "comment_forbidden": "Você não pode alterar este comentário"
     },

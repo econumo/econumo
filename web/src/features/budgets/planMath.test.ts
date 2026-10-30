@@ -388,6 +388,19 @@ describe('totals + balance', () => {
     expect(totals[1].netPlanned).toBe('850')
     // effectiveNet = max(900,1000) - (max(120,100) + max(10,50)) = 1000 - (120 + 50) = 830
     expect(totals[1].effectiveNet).toBe('830')
+
+  })
+
+  it('a month is past once the budget period holding today is later', () => {
+    const under = mkEl({ id: 'exp', type: 1, name: 'Under', cells: [{ actual: '10', planned: '50' }, { actual: '0', planned: '0' }] })
+    const plan = mkPlan({ months: ['2026-07-01', '2026-08-01'], structure: { folders: [], elements: [under] } })
+    const ex = makePlanExchange(plan, [usd])
+    const now = new Date(2026, 6, 25)
+    // a calendar budget is still in July: its unmet plan counts
+    expect(planTotals(plan, ex, now)[0].effectiveExpense).toBe('50')
+    // a day-20 budget is in its August period on 25 July: July is past, only the actual counts
+    const shifted = { ...plan, meta: { ...plan.meta, periodStartDay: 20 } }
+    expect(planTotals(shifted, ex, now)[0].effectiveExpense).toBe('10')
   })
 
   it('exposes effectiveIncome/effectiveExpense; net is their difference', () => {
@@ -1063,8 +1076,26 @@ describe('projectSavingsClosings', () => {
         { actual: '0', planned: '', closingBalance: '1400' },
       ],
     })
-    const got = projectSavingsClosings(row, months, now).cells.map((c) => c.closingBalance)
+    const got = projectSavingsClosings(row, months, 1, now).cells.map((c) => c.closingBalance)
     expect(got.map(Number)).toEqual([1100, 1500, 1900, 1900])
+  })
+
+  it('counts from the budget period holding today: on 15 July a day-16 budget is still in July', () => {
+    const row = mkSavingsEl({
+      id: 'sav',
+      name: 'TFSA',
+      cells: [
+        { actual: '0', planned: '100', closingBalance: '1000' },
+        { actual: '0', planned: '100', closingBalance: '1000' },
+        { actual: '0', planned: '100', closingBalance: '1000' },
+        { actual: '0', planned: '100', closingBalance: '1000' },
+      ],
+    })
+    const at = (startDay: number, today: Date) => projectSavingsClosings(row, months, startDay, today).cells.map((c) => Number(c.closingBalance))
+    expect(at(16, now)).toEqual([1000, 1100, 1200, 1300])
+    // on 20 July a day-16 budget has moved on to its August period
+    expect(at(16, new Date(2026, 6, 20))).toEqual([1000, 1000, 1100, 1200])
+    expect(at(1, new Date(2026, 6, 20))).toEqual([1000, 1100, 1200, 1300])
   })
 
   it('an over-met plan adds nothing; a deleted account and a server without balances are left as sent', () => {
@@ -1073,7 +1104,7 @@ describe('projectSavingsClosings', () => {
       name: 'Over',
       cells: months.map(() => ({ actual: '500', planned: '100', closingBalance: '10' })),
     })
-    expect(projectSavingsClosings(over, months, now).cells.map((c) => Number(c.closingBalance))).toEqual([10, 10, 10, 10])
+    expect(projectSavingsClosings(over, months, 1, now).cells.map((c) => Number(c.closingBalance))).toEqual([10, 10, 10, 10])
 
     const deleted = mkSavingsEl({
       id: 'gone',
@@ -1081,10 +1112,10 @@ describe('projectSavingsClosings', () => {
       isArchived: 1,
       cells: months.map(() => ({ actual: '0', planned: '100', closingBalance: '5' })),
     })
-    expect(projectSavingsClosings(deleted, months, now)).toEqual(deleted)
+    expect(projectSavingsClosings(deleted, months, 1, now)).toEqual(deleted)
 
     const legacy = mkSavingsEl({ id: 'old', name: 'Old', cells: months.map(() => ({ actual: '0', planned: '100' })) })
-    expect(projectSavingsClosings(legacy, months, now)).toEqual(legacy)
+    expect(projectSavingsClosings(legacy, months, 1, now)).toEqual(legacy)
   })
 })
 

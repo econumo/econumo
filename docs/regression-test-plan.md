@@ -1504,6 +1504,73 @@ and on tablet/phone only with a hardware keyboard.
       existing (even locked) member. Escape (desktop) closes only the picker,
       not the budget dialog. On a 320px phone in German or Ukrainian the rows
       truncate long name lists with "…" and the pickers open as bottom sheets.
+- [ ] 📱 **Budget settings — "Month starts on day"**: the create and edit
+      budget dialogs show a "Month starts on day" picker (1 to 28) between
+      Currency and Accounts, defaulting to 1 on create and to the budget's
+      stored day on edit (a dropdown on desktop and tablet, a bottom sheet on
+      a phone, no search). On edit, no note shows while the day equals the
+      stored one; picking another day shows "Existing plans stay on their
+      months; the dates each month covers will change." and picking the
+      stored day back hides it. Saving an unchanged day sends no day; a user
+      who cannot configure the budget sees the picker disabled. A day the
+      server refuses shows its message under the picker, and the dialog
+      stays open. Against a server older than this setting (budgets carry no
+      day) neither dialog shows the picker; creating the first budget there
+      still shows it. After saving a new day, the transaction list a cell
+      opens shows the new window's rows straight away.
+- [ ] 📱 **Shifted budget — figures split at the boundary**: set a budget to
+      day 28 and add two expenses in the same category, one dated 27 Oct and
+      one dated 28 Oct. "October" (28 Sep - 27 Oct) counts only the 27 Oct
+      expense and "November" (28 Oct - 27 Nov) only the 28 Oct one: in the
+      Budget view's Spent (desktop and the phone month view), Available,
+      totals and Income/Savings lines, in the Plan grid's October and
+      November columns (actuals, plan hints, Total savings / Balance), and in
+      the transaction list a cell opens (Spent drilldown, phone item sheet,
+      Plan cell list) — each list shows exactly its period's rows with their
+      real dates. The account page still shows both expenses on their real
+      dates, and Reports still bucket them into calendar October. A day 5
+      budget behaves the same way with "October" = 5 Oct - 4 Nov.
+- [ ] 📱 **Shifted budget — date range next to the strip**: on a budget whose
+      day is not 1 the selected period's real dates ("Oct 28 – Nov 27", in
+      the UI language) show at the right end of the period strip on desktop
+      /budget and in the phone month view's strip row; the strip still names
+      months ("Nov"). Switching months updates the range. A day-1 budget shows
+      no range.
+- [ ] **Shifted budget — date ranges in the Plan grid**: on desktop /plan, a
+      budget whose day is not 1 shows each month column's dates ("Oct 28 – Nov
+      27", in the UI language) as a small muted second line under the month
+      name, and the month header keeps its height. At the narrowest columns
+      (a wide name column, a narrow window) the month name stays whole on one
+      line; a range that does not fit ends in an ellipsis and shows in full on
+      hover. Paging the window updates the ranges. A day-1 budget shows only
+      the month names.
+- [ ] 📱 **Shifted budget — default period**: on 30 Oct, opening a day-28
+      budget with no month picked in this session opens "November" (the
+      period containing today), with its spending, Available and plan hints
+      for November, loaded directly (no October flash before it); Plan's
+      current-month marker sits on November. Opening a
+      day-1 budget afterwards opens October again, and the default does not
+      move without the budget being opened. A month the user picked on the
+      strip is kept when switching budgets in the same session, and a picked
+      month other than the calendar month (e.g. September) also survives a
+      reload. With the budget list request failing (DevTools: block
+      `get-budget-list`), the page still loads right after the first failure
+      instead of waiting out the list's retries, and settles on "November"
+      from the budget's own day.
+- [ ] **Shifted budget — changing the day keeps plans**: a budget with plans
+      in October and November changed from day 1 to day 28 (after the
+      warning): the plans stay on "October" and "November" with the same
+      amounts and comments; only the dates each month covers change (the
+      date range appears, spent/actuals re-split at the 28th). Changing back
+      to day 1 restores the original figures exactly.
+- [ ] 📱 **Shifted budget — shared**: A sets a shared budget to day 28; B (any
+      role) sees the same day in the budget settings, the same date range,
+      the same period opened by default and the same figures per month, on
+      desktop and in the phone month view.
+- [ ] **Shifted budget — end month**: completing a day-28 budget with end
+      month "November" stops the strip at November, refuses plans for
+      December, and November's figures still cover 28 Oct - 27 Nov
+      (transactions from 28 Nov on are not counted).
 - [ ] 📱 Turn off (or remove) a savings member that still carries plans or
       comments in that budget: saving asks "Delete planned savings?" —
       "Planned amounts and comments of the savings accounts you turned off or

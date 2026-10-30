@@ -18,7 +18,13 @@ import (
 
 // filters is the internal filter set the builder derives.
 type filters struct {
+	// periodKey..keyEnd are the period keys covered ([periodKey, keyEnd));
+	// periodStart..periodEnd is the date window they span on a budget whose
+	// periods start on startDay. Limits and comments read keys, every money
+	// read reads the window.
+	periodKey, keyEnd      time.Time
 	periodStart, periodEnd time.Time
+	startDay               int
 	userIDs                []vo.Id
 	// accountFilters are the REQUESTER's own member accounts, with their
 	// removability; includedAccountIDs is every participant's member account.
@@ -37,11 +43,11 @@ type filters struct {
 	everydayAccountIDs []vo.Id
 }
 
-// BuildBudget assembles the full model.BudgetResult for a budget as of periodStart
-// (which the caller has already snapped to first-of-month). now is the clock
-// time (controls nullable balance fields).
-func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, now time.Time) (model.BudgetResult, error) {
-	f, err := s.buildFilters(ctx, userID, b, periodStart, periodStart.AddDate(0, 1, 0))
+// BuildBudget assembles the full model.BudgetResult for the budget period named
+// by key (first-of-month). now is the clock time (controls nullable balance
+// fields).
+func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggregate, key, now time.Time) (model.BudgetResult, error) {
+	f, err := s.buildFilters(ctx, userID, b, key, 1)
 	if err != nil {
 		return model.BudgetResult{}, err
 	}
@@ -115,18 +121,20 @@ func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (model.Meta
 		endedAt = b.budget.EndedAt.Format(datetime.Layout)
 	}
 	return model.MetaResult{
-		Id:          b.budget.ID.String(),
-		OwnerUserId: b.budget.UserID.String(),
-		Name:        b.budget.Name,
-		StartedAt:   b.budget.StartedAt.Format(datetime.Layout),
-		EndedAt:     endedAt,
-		CurrencyId:  b.budget.CurrencyID.String(),
-		IsArchived:  boolToInt(b.budget.IsArchived),
-		Access:      access,
+		Id:             b.budget.ID.String(),
+		OwnerUserId:    b.budget.UserID.String(),
+		Name:           b.budget.Name,
+		StartedAt:      b.budget.StartedAt.Format(datetime.Layout),
+		EndedAt:        endedAt,
+		CurrencyId:     b.budget.CurrencyID.String(),
+		IsArchived:     boolToInt(b.budget.IsArchived),
+		PeriodStartDay: b.budget.PeriodStartDay,
+		Access:         access,
 	}, nil
 }
 
-func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, periodEnd time.Time) (filters, error) {
+// buildFilters covers `months` periods, starting with the one keyed key.
+func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggregate, key time.Time, months int) (filters, error) {
 	// userIds = owner + accepted non-reader access users (reader == guest).
 	userIDs := []vo.Id{b.budget.UserID}
 	for _, a := range b.access {
@@ -213,13 +221,27 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 		return filters{}, err
 	}
 
+	// Repo by-month reads take only 1 as the calendar path, so a zero-value
+	// day (hand-built budgets) must not reach them as 0.
+	startDay := b.budget.PeriodStartDay
+	if !model.ValidPeriodStartDay(startDay) {
+		startDay = model.MinPeriodStartDay
+	}
+	keyEnd := key.AddDate(0, months, 0)
+	periodStart, _ := model.PeriodWindow(key, startDay)
+	_, periodEnd := model.PeriodWindow(keyEnd.AddDate(0, -1, 0), startDay)
 	return filters{
-		periodStart: periodStart, periodEnd: periodEnd,
+		periodKey: key, keyEnd: keyEnd,
+		periodStart: periodStart, periodEnd: periodEnd, startDay: startDay,
 		userIDs: userIDs, accountFilters: accountFilters,
 		includedAccountIDs: included, currencyIDs: currencyIDs,
 		categories: catMap, incomeCategories: incomeCatMap, tags: tagMap, labels: labels,
 		savingsAccounts: savings, everydayAccountIDs: everyday,
 	}, nil
+}
+
+func (f filters) window(key time.Time) (start, end time.Time) {
+	return model.PeriodWindow(key, f.startDay)
 }
 
 func boolToInt(b bool) int {

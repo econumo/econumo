@@ -15,6 +15,8 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useUserData } from '@/features/user/queries'
 import { useUpdateBudgetDetail, canConfigureBudget } from './queries'
 import { BudgetAccountsField, BudgetSavingsField } from './BudgetAccountsField'
+import { PeriodStartDayField } from './PeriodStartDayField'
+import { periodStartDayOf } from './period'
 
 interface BudgetUpdateDialogProps {
   open: boolean
@@ -37,10 +39,15 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   const [savingsTouched, setSavingsTouched] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [dayError, setDayError] = useState<string | null>(null)
+  const [periodStartDay, setPeriodStartDay] = useState(1)
   // the refused request, held while the user decides on the savings removal
   const [unconfirmed, setUnconfirmed] = useState<UpdateBudgetForm | null>(null)
 
   const canConfigure = canConfigureBudget(budget.meta, user?.id)
+  const storedDay = periodStartDayOf(budget.meta)
+  // a server older than the setting sends no day and would ignore a chosen one
+  const knowsPeriodStartDay = budget.meta.periodStartDay !== undefined
   // deleted members are permanent (they never disappear from filters.accounts) and
   // still count toward the locked rule, so they must round-trip even though the
   // live account list below has no row for them. A server older than the
@@ -57,8 +64,10 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
       setSelected(new Set((budget.filters?.accounts ?? []).map((a) => a.id)))
       setSavings(new Set((budget.filters?.accounts ?? []).filter((a) => a.isSavings === true).map((a) => a.id)))
       setSavingsTouched(false)
+      setPeriodStartDay(periodStartDayOf(budget.meta))
       setError(null)
       setServerError(null)
+      setDayError(null)
       setUnconfirmed(null)
     }
   }, [open, budget])
@@ -104,6 +113,7 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
 
   const send = (form: UpdateBudgetForm) => {
     setServerError(null)
+    setDayError(null)
     updateBudget.mutate(
       { ...form, previousSavingsAccountIds: initialSavings },
       {
@@ -113,6 +123,11 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           // plans or comments would be turned off or removed unconfirmed
           if (!form.confirmSavingsRemoval && apiFieldErrors(err, 'confirmSavingsRemoval')) {
             setUnconfirmed(form)
+            return
+          }
+          const dayMessage = apiFieldErrors(err, 'periodStartDay')?.[0]
+          if (dayMessage) {
+            setDayError(dayMessage)
             return
           }
           setServerError(apiErrorMessage(err))
@@ -144,6 +159,7 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
       name,
       currencyId,
       accountIds: [...selected],
+      ...(periodStartDay !== storedDay ? { periodStartDay } : {}),
       ...(knowsSavingsFlags || savingsTouched
         ? { savingsAccountIds: [...savings].filter((id) => selected.has(id)) }
         : {}),
@@ -194,6 +210,20 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           onChange={setCurrencyId}
           disabled={!canConfigure}
         />
+
+        {knowsPeriodStartDay ? (
+          <PeriodStartDayField
+            id="budget-upd-period-start-day"
+            value={periodStartDay}
+            onChange={(day) => {
+              setDayError(null)
+              setPeriodStartDay(day)
+            }}
+            disabled={!canConfigure}
+            warning={periodStartDay !== storedDay}
+            error={dayError}
+          />
+        ) : null}
 
         {ownAccounts.length > 0 ? (
           <>
