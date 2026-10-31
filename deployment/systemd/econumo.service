@@ -1,21 +1,27 @@
-# Reference unit for running the single-file Econumo binary without Docker.
-# Assumes: binary at /opt/econumo/econumo, env at /etc/econumo/env (modeled on
-# .env.example; at minimum DATABASE_URL and PORT), a dedicated system user
-# `econumo`, and SQLite data under /var/lib/econumo. See the README section
-# "Run without Docker (single binary)" for the setup walkthrough.
+# systemd unit TEMPLATE for the single-file Econumo binary, published to R2
+# with the release and rendered on the host by `ship install` / `ship adopt`
+# (https://github.com/dmtrkzntsv/ship). ship fills in the double-brace placeholders
+# for the service S it installs: user and group S, binary /opt/S/econumo,
+# env file /etc/S/econumo.env, data directory /var/lib/S. It creates the user
+# and directories itself, so this unit must not use DynamicUser=,
+# StateDirectory= or RuntimeDirectory=.
+#
+# It matches the unit the former econumo-deploy.sh wrote, so `ship adopt`
+# keeps an existing host's behaviour. Running without ship? See
+# docs/run-without-docker.md for a ready-to-copy rendered version.
 
 [Unit]
-Description=Econumo personal finance server
+Description={{SERVICE}} (econumo)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=econumo
-Group=econumo
-WorkingDirectory=/var/lib/econumo
-EnvironmentFile=/etc/econumo/env
-ExecStart=/opt/econumo/econumo serve
+User={{USER}}
+Group={{USER}}
+WorkingDirectory={{DATA_DIR}}
+EnvironmentFile={{ENV_FILE}}
+ExecStart={{BIN}} serve
 Restart=on-failure
 RestartSec=5
 
@@ -26,7 +32,7 @@ NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
-ReadWritePaths=/var/lib/econumo
+ReadWritePaths={{DATA_DIR}}
 
 [Install]
 WantedBy=multi-user.target
