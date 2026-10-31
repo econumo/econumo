@@ -245,13 +245,14 @@ jobs:
           if-no-files-found: error
 
       # Publish the binaries, unit template and env example to the private R2
-      # bucket with ship, via the Makefile target (same as `make cdn-upload`
-      # locally). The version is always published as an immutable release;
-      # the latest/dev channels gate exactly like the Docker image tags in
-      # create-tag, only when their checkbox is set.
+      # bucket with ship, via the Makefile targets (same as `make ship-dist`
+      # and `make ship-publish` locally; ship-dist takes the binaries built
+      # above instead of building). The version is always published as an
+      # immutable release; the latest/dev channels gate exactly like the
+      # Docker image tags in create-tag, only when their checkbox is set.
       # The source may be a release branch cut before the move to ship, whose
-      # Makefile has no ship target: publish with this workflow's own Makefile
-      # and unit template instead (sparse checkout of the workflow commit).
+      # Makefile has no ship targets: stage and publish with this workflow's own
+      # Makefile and unit template instead (sparse checkout of the workflow commit).
       - name: Checkout publishing files
         uses: actions/checkout@v7
         with:
@@ -259,7 +260,7 @@ jobs:
           path: .ship-tools
           sparse-checkout: |
             Makefile
-            deployment/systemd
+            deploy/ship
           sparse-checkout-cone-mode: false
 
       - name: Set up ship
@@ -270,7 +271,6 @@ jobs:
           SHIP_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           SHIP_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           SHIP_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          SHIP_R2_BUCKET: lab
           VERSION: ${{ needs.create-tag.outputs.version }}
           PUSH_LATEST: ${{ github.event.inputs.push_latest }}
           PUSH_DEV: ${{ github.event.inputs.push_dev }}
@@ -278,8 +278,8 @@ jobs:
           CHANNELS=""
           if [ "$PUSH_LATEST" = "true" ]; then CHANNELS="latest"; fi
           if [ "$PUSH_DEV" = "true" ]; then CHANNELS="${CHANNELS:+$CHANNELS,}dev"; fi
-          make -f .ship-tools/Makefile cdn-upload SHIP_TEMPLATES=.ship-tools/deployment/systemd \
-            VERSION="$VERSION" CHANNELS="$CHANNELS"
+          make -f .ship-tools/Makefile ship-dist SHIP_SKIP_BUILD=1 SHIP_TEMPLATES=.ship-tools/deploy/ship
+          make -f .ship-tools/Makefile ship-publish VERSION="$VERSION" CHANNELS="$CHANNELS"
 
   create-github-release:
     name: Create GitHub Release

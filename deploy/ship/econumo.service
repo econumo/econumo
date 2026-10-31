@@ -1,14 +1,14 @@
 # systemd unit TEMPLATE for the single-file Econumo binary, published to R2
-# with the release and rendered on the host by `ship install` / `ship adopt`
+# with the release and rendered on the host by `ship install`
 # (https://github.com/dmtrkzntsv/ship). ship fills in the double-brace placeholders
 # for the service S it installs: user and group S, binary /opt/S/econumo,
 # env file /etc/S/econumo.env, data directory /var/lib/S. It creates the user
 # and directories itself, so this unit must not use DynamicUser=,
 # StateDirectory= or RuntimeDirectory=.
 #
-# It matches the unit the former econumo-deploy.sh wrote, so `ship adopt`
-# keeps an existing host's behaviour. Running without ship? See
-# docs/run-without-docker.md for a ready-to-copy rendered version.
+# It matches the unit the former econumo-deploy.sh wrote, so a host moved to
+# ship (README, "Deploy with ship") keeps its behaviour. Running without ship?
+# See docs/run-without-docker.md for a ready-to-copy rendered version.
 
 [Unit]
 Description={{SERVICE}} (econumo)

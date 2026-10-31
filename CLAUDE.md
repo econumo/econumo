@@ -109,28 +109,31 @@ Everything publishes to `ghcr.io/econumo/econumo` only.
 
 **R2 release (ship).** Both `make publish-dev` and the release workflow also
 publish the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}`), the
-systemd unit template `deployment/systemd/econumo.service` and
-`deployment/systemd/econumo.env.example` to the **private** Cloudflare R2
-bucket `lab` with [ship](https://github.com/dmtrkzntsv/ship), via
-`make cdn-upload` (`ship publish econumo --path release-out/ship --version
-$(VERSION) --channels $(CHANNELS)`; the `ship-dir` target stages that flat
-folder, since ship rejects any other file). ship writes its own `SHA256SUMS`
-and moves the channels. A release publishes the immutable version `vX.Y.Z`
-plus `latest`/`dev` only when their checkbox is set (exactly like the image
-tags); `VERSION=dev` (`make publish-dev`, the Publish Dev workflow) publishes
-only the moving `dev` channel. Hosts run `ship install|adopt|update econumo`
-(see `docs/run-without-docker.md`). The unit is a TEMPLATE: only ship's
-placeholders (`{{SERVICE}} {{USER}} {{BIN}} {{BIN_DIR}} {{ENV_FILE}}
-{{DATA_DIR}} {{RUN_DIR}} {{UNIT}}`) are allowed, and it must not use
-`DynamicUser=`/`StateDirectory=`/`RuntimeDirectory=` (ship creates the user
+systemd unit template `deploy/ship/econumo.service` and
+`deploy/ship/econumo.env.example` to the **private** Cloudflare R2 bucket `lab`
+with [ship](https://github.com/dmtrkzntsv/ship). Two Makefile targets, the same
+names in every ship project: `make ship-dist` builds (`release-binaries`) and
+stages the flat folder `dist/ship/` (ship rejects any other file;
+`SHIP_SKIP_BUILD=1` takes already-built binaries from `release-out/`), and
+`make ship-publish VERSION=… CHANNELS=…` runs `ship publish econumo --path
+dist/ship [--version $(VERSION)] [--channels $(CHANNELS)]` without building.
+ship writes its own `SHA256SUMS` and moves the channels. A release publishes the
+immutable version `vX.Y.Z` plus `latest`/`dev` only when their checkbox is set
+(exactly like the image tags); `VERSION=dev` (`make publish-dev`, the Publish
+Dev workflow) publishes only the moving `dev` channel. Hosts run `ship
+install|update econumo` (README, "Deploy with ship"). The unit is a TEMPLATE:
+only ship's placeholders (`{{SERVICE}} {{USER}} {{BIN}} {{BIN_DIR}}
+{{ENV_FILE}} {{DATA_DIR}} {{RUN_DIR}} {{UNIT}}`) are allowed, and it must not
+use `DynamicUser=`/`StateDirectory=`/`RuntimeDirectory=` (ship creates the user
 and directories). Credentials come from ship's config or `SHIP_R2_ENDPOINT`,
-`SHIP_R2_ACCESS_KEY_ID`, `SHIP_R2_SECRET_ACCESS_KEY`, `SHIP_R2_BUCKET=lab`
-(Read & Write token); in CI the GitHub secrets `R2_ENDPOINT`,
+`SHIP_R2_ACCESS_KEY_ID`, `SHIP_R2_SECRET_ACCESS_KEY` (Read & Write token; the
+bucket defaults to `lab`); in CI the GitHub secrets `R2_ENDPOINT`,
 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are mapped to them and
-`dmtrkzntsv/ship@v0` puts `ship` on the PATH. The workflows run the
-`cdn-upload` target and unit template from the workflow's own commit
-(`make -f .ship-tools/Makefile … SHIP_TEMPLATES=…`), so hotfixes from release
-branches cut before ship still publish. Local use needs `ship` installed
+`dmtrkzntsv/ship@v0` puts `ship` on the PATH. The workflows run both targets
+and the unit template from the workflow's own commit (`make -f
+.ship-tools/Makefile ship-dist SHIP_SKIP_BUILD=1
+SHIP_TEMPLATES=.ship-tools/deploy/ship`, then `ship-publish`), so hotfixes from
+release branches cut before ship still publish. Local use needs `ship` installed
 (`brew install dmtrkzntsv/tap/ship`).
 
 ### Branch naming
@@ -1580,7 +1583,7 @@ data unreadable. Most are also asserted by the test suite.
 - Docker-free: each release attaches single-file linux binaries (SPA embedded)
   + `SHA256SUMS`; walkthrough in `docs/run-without-docker.md` (linked from the
   README). The same binaries plus the ship unit template
-  `deployment/systemd/econumo.service` go to R2 for hosts managed with ship.
+  `deploy/ship/econumo.service` go to R2 for hosts managed with ship.
   `make release-binaries` builds the same artifacts locally.
 - Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
   and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.

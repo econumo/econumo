@@ -68,49 +68,15 @@ ReadWritePaths=/var/lib/econumo
 WantedBy=multi-user.target
 ```
 
-[`deployment/systemd/econumo.service`](../deployment/systemd/econumo.service)
+[`deploy/ship/econumo.service`](../deploy/ship/econumo.service)
 is the same unit as a template for [ship](#hosts-managed-with-ship); its
 `{{...}}` placeholders are filled in by ship, so do not copy it as is.
 
 ## Hosts managed with ship
 
-The Econumo maintainers' own hosts install and update the binary with
-[ship](https://github.com/dmtrkzntsv/ship), which pulls each release from a
-private R2 bucket (it needs that bucket's read-only credentials in
-`/etc/ship/config.toml`), verifies it, installs the hardened unit above and
-rolls a failed update back. Every release publishes the binaries, the unit
-template and an env example
-([`deployment/systemd/econumo.env.example`](../deployment/systemd/econumo.env.example)).
-
-Install ship once per host, then install Econumo:
-
-```console
-$ curl -fsSL https://github.com/dmtrkzntsv/ship/releases/latest/download/install.sh | sudo sh
-$ sudo ship install econumo --version latest
-$ sudoedit /etc/econumo/econumo.env      # created from the env example
-$ sudo ship start econumo
-```
-
-The binary lands in `/opt/econumo/econumo`, the env file in
-`/etc/econumo/econumo.env`, the data in `/var/lib/econumo`; `--service NAME`
-installs a second instance (e.g. `econumo-beta` on `--version dev`) under its
-own name. Day to day:
-
-```console
-$ sudo ship update econumo                # to the newest build of its channel
-$ sudo ship rollback econumo
-$ sudo ship logs econumo
-$ sudo ship run econumo -- user:create "Name" user@example.com password
-```
-
-A host set up by the former `econumo-deploy.sh` script (binary
-`/opt/econumo/econumo`, env `/etc/econumo/env`, unit
-`/etc/systemd/system/econumo.service`) is taken over in place, keeping its
-user and data; its env file moves to `/etc/econumo/econumo.env`:
-
-```console
-$ sudo ship adopt econumo --service econumo --version latest
-```
+Installing, updating and moving hosts with
+[ship](https://github.com/dmtrkzntsv/ship) is described in the README section
+[Deploy with ship](../README.md#deploy-with-ship).
 
 ## Configuration
 

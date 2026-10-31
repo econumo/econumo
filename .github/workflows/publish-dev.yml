@@ -145,8 +145,8 @@ jobs:
       # template and env example as the moving "dev" channel; it writes its
       # own SHA256SUMS and skips a re-run of the identical build.
       # The source may be a release branch cut before the move to ship, whose
-      # Makefile has no ship target: publish with this workflow's own Makefile
-      # and unit template instead (sparse checkout of the workflow commit).
+      # Makefile has no ship targets: stage and publish with this workflow's own
+      # Makefile and unit template instead (sparse checkout of the workflow commit).
       - name: Checkout publishing files
         uses: actions/checkout@v7
         with:
@@ -154,7 +154,7 @@ jobs:
           path: .ship-tools
           sparse-checkout: |
             Makefile
-            deployment/systemd
+            deploy/ship
           sparse-checkout-cone-mode: false
 
       - name: Set up ship
@@ -165,5 +165,6 @@ jobs:
           SHIP_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           SHIP_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           SHIP_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          SHIP_R2_BUCKET: lab
-        run: make -f .ship-tools/Makefile cdn-upload SHIP_TEMPLATES=.ship-tools/deployment/systemd VERSION=dev CHANNELS=dev
+        run: |
+          make -f .ship-tools/Makefile ship-dist SHIP_SKIP_BUILD=1 SHIP_TEMPLATES=.ship-tools/deploy/ship
+          make -f .ship-tools/Makefile ship-publish VERSION=dev CHANNELS=dev

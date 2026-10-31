@@ -1,4 +1,4 @@
-.PHONY: help web-install web-run web-test web-bundle web-lint mobile-install mobile-sync mobile-ios mobile-android mobile-testflight mobile-testflight-guard go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries ship-dir cdn-upload
+.PHONY: help web-install web-run web-test web-bundle web-lint mobile-install mobile-sync mobile-ios mobile-android mobile-testflight mobile-testflight-guard go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries ship-dist ship-publish
 
 # Default target
 .DEFAULT_GOAL := help
@@ -27,7 +27,8 @@ help:
 	@echo ""
 	@echo "Releases:"
 	@echo "  make release-binaries - Cross-compile the downloadable release binaries (SPA embedded)"
-	@echo "  make cdn-upload VERSION=vX.Y.Z CHANNELS=latest - Publish release-out/ to R2 with ship (CHANNELS=dev alone for a dev publish)"
+	@echo "  make ship-dist        - Build the binaries and stage dist/ship/ (binaries + unit template + env example)"
+	@echo "  make ship-publish VERSION=vX.Y.Z CHANNELS=latest - Publish dist/ship/ to R2 with ship (CHANNELS=dev alone for a dev publish)"
 	@echo ""
 	@echo "Suite & stack:"
 	@echo "  make test         - ALL tests: Go smoke + sqlite-vs-pgsql regression + frontend"
@@ -290,7 +291,7 @@ publish-buildx-ensure:
 
 # Regenerates the OpenAPI docs (swagger) first so the image built from source
 # embeds the current spec. Also cross-compiles the release binaries and
-# publishes them as the "dev" channel to the private R2 bucket (see cdn-upload).
+# publishes them as the "dev" channel to the private R2 bucket (see ship-publish).
 publish-dev: swagger publish-buildx-ensure release-binaries
 	@echo "Publishing $(GHCR_IMAGE):$(PUBLISH_TAG) ($(PUBLISH_PLATFORMS))..."
 	docker buildx build \
@@ -303,51 +304,58 @@ publish-dev: swagger publish-buildx-ensure release-binaries
 		--tag $(GHCR_IMAGE):$(PUBLISH_TAG) \
 		--push \
 		.
-	@$(MAKE) cdn-upload VERSION=dev CHANNELS=dev
+	@$(MAKE) ship-dist SHIP_SKIP_BUILD=1
+	@$(MAKE) ship-publish VERSION=dev CHANNELS=dev
 
-# --- Cloudflare R2 release (ship) -------------------------------------------
+# --- ship (https://github.com/dmtrkzntsv/ship) -------------------------------
 
-# Publish the built release binaries, with the systemd unit template and env
-# example, to the private R2 bucket with ship
-# (https://github.com/dmtrkzntsv/ship), which hosts install and update from
-# (`ship install econumo`, `ship update econumo`). The upload logic, checksums
-# (ship writes its own SHA256SUMS) and channel moves all live in ship; this
-# target only stages the folder ship expects and calls it.
+# Publish the linux binaries with the systemd unit template and env example
+# (deploy/ship/) to the private R2 bucket with ship, which hosts install and
+# update from (`ship install econumo`, `ship update econumo`). Two targets:
 #
-#   make cdn-upload VERSION=v1.2.3 CHANNELS=latest      # immutable version (+ channels)
-#   make cdn-upload CHANNELS=dev                        # VERSION=dev: the moving dev channel only
+#   make ship-dist                                    # build + stage dist/ship/
+#   make ship-publish VERSION=v1.2.3 CHANNELS=latest  # immutable version (+ channels)
+#   make ship-publish CHANNELS=dev                    # the moving dev channel only
 #
-# VERSION=dev (the default) publishes no immutable version, only the channels
-# (dev): each dev publish replaces the channel's files, and a re-run of the
-# identical build is skipped. Any other VERSION is published as an immutable
-# version, refused if it already exists with different files. CHANNELS is a
-# comma-separated subset of latest,dev (may be empty for a version only).
-# Credentials come from ship's config file or the environment, never this
-# repo: SHIP_R2_ENDPOINT, SHIP_R2_ACCESS_KEY_ID, SHIP_R2_SECRET_ACCESS_KEY and
-# SHIP_R2_BUCKET (`lab`) — use a Read & Write token.
-CHANNELS   ?=
-comma      := ,
-CDN_SRC    ?= release-out
-SHIP_OUT   ?= release-out/ship
-# Where the unit template and env example come from (the publish workflows
-# point it at the workflow's own checkout to publish older release branches).
-SHIP_TEMPLATES ?= deployment/systemd
+# ship-dist runs release-binaries and stages the flat folder ship expects in
+# dist/ship/: econumo-linux-{amd64,arm64}, econumo.service and
+# econumo.env.example, nothing else (release-out/ also carries the GitHub
+# release's SHA256SUMS; ship writes its own). With SHIP_SKIP_BUILD=1 it builds
+# nothing: binaries are taken from release-out/ when present there (CI builds
+# them in their own step), else they must already be in dist/ship/.
+#
+# ship-publish does not build. VERSION=dev (the default) publishes no
+# immutable version, only the channels; any other VERSION is published as an
+# immutable version, refused if it already exists with different files.
+# CHANNELS is a comma-separated subset of latest,dev. Credentials come from
+# ship's config file or SHIP_R2_ENDPOINT, SHIP_R2_ACCESS_KEY_ID and
+# SHIP_R2_SECRET_ACCESS_KEY (Read & Write token); the bucket defaults to `lab`.
+#
+# The publish workflows run both targets from the workflow's own commit
+# (`make -f .ship-tools/Makefile … SHIP_TEMPLATES=.ship-tools/deploy/ship`), so
+# a hotfix from a release branch cut before ship still publishes.
+CHANNELS       ?=
+comma          := ,
+SHIP_DIST      := dist/ship
+SHIP_BIN_SRC   ?= release-out
+SHIP_TEMPLATES ?= deploy/ship
+SHIP_BINARIES  := econumo-linux-amd64 econumo-linux-arm64
 SHIP_VERSION_FLAG  = $(if $(filter-out dev,$(VERSION)),--version $(VERSION))
 SHIP_CHANNELS_FLAG = $(if $(strip $(CHANNELS)),--channels $(strip $(CHANNELS)))
 
-# ship's publish folder is flat and holds only <project>-linux-<arch>,
-# <project>.service and <project>.env.example, so stage those apart from
-# release-out/ (which also carries the GitHub release's SHA256SUMS).
-ship-dir:
-	@test -f "$(CDN_SRC)/econumo-linux-amd64" -a -f "$(CDN_SRC)/econumo-linux-arm64" || \
-		{ echo "ship-dir: build $(CDN_SRC)/econumo-linux-{amd64,arm64} first (make release-binaries)"; exit 1; }
-	rm -rf "$(SHIP_OUT)" && mkdir -p "$(SHIP_OUT)"
-	cp "$(CDN_SRC)/econumo-linux-amd64" "$(CDN_SRC)/econumo-linux-arm64" \
-		"$(SHIP_TEMPLATES)/econumo.service" "$(SHIP_TEMPLATES)/econumo.env.example" "$(SHIP_OUT)/"
+ship-dist: $(if $(SHIP_SKIP_BUILD),,release-binaries)
+	$(if $(SHIP_SKIP_BUILD),,rm -rf "$(SHIP_DIST)")
+	mkdir -p "$(SHIP_DIST)"
+	@for f in $(SHIP_BINARIES); do \
+		if [ -f "$(SHIP_BIN_SRC)/$$f" ]; then cp "$(SHIP_BIN_SRC)/$$f" "$(SHIP_DIST)/$$f" || exit 1; fi; \
+		test -f "$(SHIP_DIST)/$$f" || { echo "ship-dist: $$f missing (make release-binaries, or put it in $(SHIP_DIST)/)"; exit 1; }; \
+	done
+	cp "$(SHIP_TEMPLATES)/econumo.service" "$(SHIP_TEMPLATES)/econumo.env.example" "$(SHIP_DIST)/"
 
-cdn-upload: ship-dir
+ship-publish:
 	@test -n "$(SHIP_VERSION_FLAG)$(SHIP_CHANNELS_FLAG)" || \
-		{ echo "cdn-upload: set VERSION=vX.Y.Z and/or CHANNELS=latest|dev"; exit 1; }
+		{ echo "ship-publish: set VERSION=vX.Y.Z and/or CHANNELS=latest|dev (VERSION=dev needs CHANNELS)"; exit 1; }
 	@test -n "$(SHIP_VERSION_FLAG)" -o -z "$(filter latest,$(subst $(comma), ,$(CHANNELS)))" || \
-		{ echo "cdn-upload: CHANNELS=latest needs a release VERSION=vX.Y.Z"; exit 1; }
-	ship publish econumo --path "$(SHIP_OUT)" $(SHIP_VERSION_FLAG) $(SHIP_CHANNELS_FLAG)
+		{ echo "ship-publish: CHANNELS=latest needs a release VERSION=vX.Y.Z"; exit 1; }
+	@test -d "$(SHIP_DIST)" || { echo "ship-publish: $(SHIP_DIST)/ missing, run make ship-dist first"; exit 1; }
+	ship publish econumo --path "$(SHIP_DIST)" $(SHIP_VERSION_FLAG) $(SHIP_CHANNELS_FLAG)

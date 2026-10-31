@@ -66,8 +66,72 @@ $ docker compose exec econumo /app/econumo user:create "Name" user@example.com p
 Prefer not to use Docker? Every release also ships self-contained Linux
 binaries with the web UI embedded, runnable under systemd on a single host.
 See [docs/run-without-docker.md](docs/run-without-docker.md) for the full
-walkthrough, including hosts managed with
-[ship](https://github.com/dmtrkzntsv/ship) (`ship install econumo --version latest`).
+walkthrough. Hosts managed with [ship](https://github.com/dmtrkzntsv/ship) are
+covered in [Deploy with ship](#deploy-with-ship).
+
+## Deploy with ship
+
+The maintainers' own hosts install and update the single binary with
+[ship](https://github.com/dmtrkzntsv/ship), which pulls each build from a
+private R2 bucket, verifies it, renders the hardened systemd unit
+[`deploy/ship/econumo.service`](deploy/ship/econumo.service) and rolls a failed
+update back. The ship ref is `econumo`.
+
+**Publish.** The release workflow publishes every release (and the Publish Dev
+workflow the `dev` channel); by hand:
+
+```console
+$ make ship-dist && make ship-publish VERSION=v1.2.3 CHANNELS=latest
+$ make ship-dist && make ship-publish CHANNELS=dev
+```
+
+`ship-dist` builds the linux binaries and stages them with the unit template
+and [`deploy/ship/econumo.env.example`](deploy/ship/econumo.env.example) in
+`dist/ship/`; `ship-publish` uploads that folder (it needs
+`SHIP_R2_ENDPOINT`, `SHIP_R2_ACCESS_KEY_ID`, `SHIP_R2_SECRET_ACCESS_KEY` or
+ship's config file).
+
+**Install.** Install ship once per host (with the bucket's read-only key in
+`/etc/ship/config.toml`), then:
+
+```console
+$ sudo ship install econumo --version latest
+$ sudoedit /etc/econumo/econumo.env      # seeded from the env example
+$ sudo ship start econumo
+```
+
+The binary lands in `/opt/econumo/econumo` and the data in `/var/lib/econumo`
+(the default `DATABASE_URL=sqlite://db.sqlite` is relative to it).
+`--service NAME` installs another instance under its own name, e.g.
+`sudo ship install econumo --service econumo-beta --version dev`; pass the same
+`--service` to every command below.
+
+**Operate.**
+
+```console
+$ sudo ship update econumo                # newest build of its channel
+$ sudo ship rollback econumo
+$ sudo ship logs econumo
+$ sudo ship status econumo
+$ sudo ship run econumo -- user:create "Name" user@example.com password
+```
+
+**Moving an existing host.** A host set up by the former `econumo-deploy.sh`
+moves over once, with a minute of downtime, following ship's
+[Moving a hand-installed service to ship](https://github.com/dmtrkzntsv/ship#moving-a-hand-installed-service-to-ship).
+Keep the service name and the data directory is reused as it is: stop and
+disable the old unit, move its unit file, `/etc/S` and `/opt/S` aside, run
+`ship install`, then copy the old env file into place. The values for service
+`S` (`econumo`, or e.g. `econumo-beta`):
+
+| | old (`econumo-deploy.sh`) | ship |
+|---|---|---|
+| unit | `/etc/systemd/system/S.service` | same path, rendered by ship |
+| binary | `/opt/S/econumo` | `/opt/S/econumo` |
+| env file | `/etc/S/env` | `/etc/S/econumo.env` (copy from `/etc/S.pre-ship/env`) |
+| user | `S` | `S` |
+| data dir | `/var/lib/S` | `/var/lib/S`, reused as is |
+| key files | the Sign in with Apple `.p8`, if `ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE` points into `/etc/S` | copy it back from `/etc/S.pre-ship/` and `chgrp S` it |
 
 ### Localization
 
