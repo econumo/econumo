@@ -1,0 +1,2 @@
+-- No-op counterpart of the pgsql migration: SQLite's dynamic typing stores a
+-- 4-letter currency code without a schema change.

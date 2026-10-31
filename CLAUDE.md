@@ -1061,6 +1061,11 @@ unset `ECONUMO_DATA_SALT` and restart. It refuses to run with an empty salt,
 and is idempotent (already-plaintext rows are skipped).
 Back up the DB first — the decryption is one-way in practice.
 
+`currency:add` takes a 3- or 4-letter code: global codes may be 4 letters because
+Open Exchange Rates publishes some digital currencies that way (DASH, DOGE), and
+the rate loader always sends `show_alternative=1` so those (ETH, LTC, XMR, ...)
+get rates like any ISO currency. Users' own custom currencies stay at 3 letters.
+
 `currency:show-rate-gaps` lists the months (per day with `--daily`) in which a
 global currency in use (on an account, deleted ones included, a budget, a budget
 element or a user's display currency; never the base or a custom currency) has

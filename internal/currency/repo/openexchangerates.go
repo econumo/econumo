@@ -73,6 +73,10 @@ func (l *Loader) Load(ctx context.Context, date time.Time, base string, symbols 
 	if len(symbols) > 0 {
 		q.Set("symbols", strings.Join(symbols, ","))
 	}
+	// Digital currencies other than BTC (ETH, LTC, XMR, ...) are only returned
+	// with show_alternative. It adds rates and changes none, and `symbols` still
+	// limits the response to the stored codes, so it is always on.
+	q.Set("show_alternative", "1")
 
 	// Log the endpoint + non-secret params (NOT the full URL — that carries the
 	// app_id token in its query). Visible at -vv/-vvv; the full code list is shown
