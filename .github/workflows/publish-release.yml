@@ -249,6 +249,19 @@ jobs:
       # locally). The version is always published as an immutable release;
       # the latest/dev channels gate exactly like the Docker image tags in
       # create-tag, only when their checkbox is set.
+      # The source may be a release branch cut before the move to ship, whose
+      # Makefile has no ship target: publish with this workflow's own Makefile
+      # and unit template instead (sparse checkout of the workflow commit).
+      - name: Checkout publishing files
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: .ship-tools
+          sparse-checkout: |
+            Makefile
+            deployment/systemd
+          sparse-checkout-cone-mode: false
+
       - name: Set up ship
         uses: dmtrkzntsv/ship@v0
 
@@ -265,7 +278,8 @@ jobs:
           CHANNELS=""
           if [ "$PUSH_LATEST" = "true" ]; then CHANNELS="latest"; fi
           if [ "$PUSH_DEV" = "true" ]; then CHANNELS="${CHANNELS:+$CHANNELS,}dev"; fi
-          make cdn-upload VERSION="$VERSION" CHANNELS="$CHANNELS"
+          make -f .ship-tools/Makefile cdn-upload SHIP_TEMPLATES=.ship-tools/deployment/systemd \
+            VERSION="$VERSION" CHANNELS="$CHANNELS"
 
   create-github-release:
     name: Create GitHub Release

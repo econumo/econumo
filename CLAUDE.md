@@ -127,7 +127,10 @@ and directories). Credentials come from ship's config or `SHIP_R2_ENDPOINT`,
 `SHIP_R2_ACCESS_KEY_ID`, `SHIP_R2_SECRET_ACCESS_KEY`, `SHIP_R2_BUCKET=lab`
 (Read & Write token); in CI the GitHub secrets `R2_ENDPOINT`,
 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are mapped to them and
-`dmtrkzntsv/ship@v0` puts `ship` on the PATH. Local use needs `ship` installed
+`dmtrkzntsv/ship@v0` puts `ship` on the PATH. The workflows run the
+`cdn-upload` target and unit template from the workflow's own commit
+(`make -f .ship-tools/Makefile … SHIP_TEMPLATES=…`), so hotfixes from release
+branches cut before ship still publish. Local use needs `ship` installed
 (`brew install dmtrkzntsv/tap/ship`).
 
 ### Branch naming

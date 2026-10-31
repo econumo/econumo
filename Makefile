@@ -329,6 +329,9 @@ CHANNELS   ?=
 comma      := ,
 CDN_SRC    ?= release-out
 SHIP_OUT   ?= release-out/ship
+# Where the unit template and env example come from (the publish workflows
+# point it at the workflow's own checkout to publish older release branches).
+SHIP_TEMPLATES ?= deployment/systemd
 SHIP_VERSION_FLAG  = $(if $(filter-out dev,$(VERSION)),--version $(VERSION))
 SHIP_CHANNELS_FLAG = $(if $(strip $(CHANNELS)),--channels $(strip $(CHANNELS)))
 
@@ -340,7 +343,7 @@ ship-dir:
 		{ echo "ship-dir: build $(CDN_SRC)/econumo-linux-{amd64,arm64} first (make release-binaries)"; exit 1; }
 	rm -rf "$(SHIP_OUT)" && mkdir -p "$(SHIP_OUT)"
 	cp "$(CDN_SRC)/econumo-linux-amd64" "$(CDN_SRC)/econumo-linux-arm64" \
-		deployment/systemd/econumo.service deployment/systemd/econumo.env.example "$(SHIP_OUT)/"
+		"$(SHIP_TEMPLATES)/econumo.service" "$(SHIP_TEMPLATES)/econumo.env.example" "$(SHIP_OUT)/"
 
 cdn-upload: ship-dir
 	@test -n "$(SHIP_VERSION_FLAG)$(SHIP_CHANNELS_FLAG)" || \

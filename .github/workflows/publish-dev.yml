@@ -144,6 +144,19 @@ jobs:
       # ship (https://github.com/dmtrkzntsv/ship) uploads the binaries, unit
       # template and env example as the moving "dev" channel; it writes its
       # own SHA256SUMS and skips a re-run of the identical build.
+      # The source may be a release branch cut before the move to ship, whose
+      # Makefile has no ship target: publish with this workflow's own Makefile
+      # and unit template instead (sparse checkout of the workflow commit).
+      - name: Checkout publishing files
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: .ship-tools
+          sparse-checkout: |
+            Makefile
+            deployment/systemd
+          sparse-checkout-cone-mode: false
+
       - name: Set up ship
         uses: dmtrkzntsv/ship@v0
 
@@ -153,4 +166,4 @@ jobs:
           SHIP_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           SHIP_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           SHIP_R2_BUCKET: lab
-        run: make cdn-upload VERSION=dev CHANNELS=dev
+        run: make -f .ship-tools/Makefile cdn-upload SHIP_TEMPLATES=.ship-tools/deployment/systemd VERSION=dev CHANNELS=dev
