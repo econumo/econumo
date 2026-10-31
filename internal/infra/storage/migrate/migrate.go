@@ -24,6 +24,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"sort"
 	"strings"
@@ -128,6 +129,8 @@ func Run(ctx context.Context, db *sql.DB, migs []Migration, opts ...Option) erro
 	sort.Slice(ordered, func(i, j int) bool {
 		return ordered[i].Version < ordered[j].Version
 	})
+
+	warnOutOfOrder(ctx, ordered, applied, legacyVersions)
 
 	for _, m := range ordered {
 		if applied[m.Version] {
@@ -480,4 +483,41 @@ func validIdentifier(s string) bool {
 		}
 	}
 	return true
+}
+
+// warnOutOfOrder logs a migration that is about to be applied although a HIGHER
+// version is already recorded. That ordering is how issue #410 happened: a
+// migration merged after another but numbered before it reached released
+// instances in the wrong order, and its SQLite table rebuild dropped two
+// columns the higher-numbered migration had already added. Applying it is still
+// correct here (skipping it would leave the schema incomplete), so this warns
+// rather than refusing — a refusal would strand the instance with no way
+// forward, while the warning puts the cause in the boot log next to whatever
+// breaks.
+//
+// Legacy versions are excluded: a drop-in database records the whole legacy
+// range at once, so every genuinely new migration below that high-water mark
+// would warn. A command step that is merely re-registered later does not warn
+// either, since no version below it is being applied.
+func warnOutOfOrder(ctx context.Context, ordered []Migration, applied map[string]bool, legacy []string) {
+	var highest string
+	for v := range applied {
+		if v > highest {
+			highest = v
+		}
+	}
+	if highest == "" {
+		return
+	}
+	fromLegacy := make(map[string]bool, len(legacy))
+	for _, v := range legacy {
+		fromLegacy[v] = true
+	}
+	for _, m := range ordered {
+		if applied[m.Version] || m.Version > highest || fromLegacy[m.Version] {
+			continue
+		}
+		slog.WarnContext(ctx, "migrate: applying a migration out of order",
+			"version", m.Version, "latest_applied", highest)
+	}
 }

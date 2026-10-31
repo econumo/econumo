@@ -1770,6 +1770,14 @@ and on tablet/phone only with a hardware keyboard.
       column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
       they list and export at the UTC time after the upgrade instead of
       failing the list.
+- [ ] SQLite instance whose history passes through v1.5.x (v1.5.x -> v1.6.x ->
+      this release, and v1.5.x straight to this release): signing in with email
+      and password succeeds instead of failing with 500 / "no such column:
+      provider", and the boot log carries the `repair-access-tokens` WARN naming
+      each re-added column. Then sign in through a provider and check Settings ->
+      Sessions still lists the session. On a fresh install and on an instance
+      upgraded from v1.6.x or later, the same boot logs NO repair warning (the
+      columns were never dropped) and login works unchanged.
 - [ ] 📱 **Upcoming recurring payments mark a short plan**: with an active
       recurring expense on a budget account (category X, due later this month,
       nothing planned for X), the current month's Budget view (desktop, phone

@@ -1048,6 +1048,7 @@ migration:zero-deleted-accounts
 migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
 migration:seed-transaction-sort-keys
+migration:repair-access-tokens
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -1111,6 +1112,21 @@ lists used before keys existed (spent_at DESC, id), the rows it is the source of
 transfers it receives together. One account per DB transaction, with that account's revision
 bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
 migration step `20261024000001`, right after the SQL file that adds the columns.
+
+`migration:repair-access-tokens` re-adds `access_tokens.provider`/`id_token` when they
+are missing. They go missing on one upgrade path only: `20260907000000` (v1.5.0) adds
+them, while the lower-numbered `20260901000000` (v1.6.0) was released later and rebuilds
+the table to add a NOT NULL `scope` without carrying them over — so a v1.5.x instance
+applies that still-pending rebuild afterwards and loses them, and login then fails with
+`no such column: provider` because minting a session writes both. SQLite only (the pgsql
+`20260901000000` adds `scope` with ALTER TABLE instead of rebuilding). The lost VALUES are
+not recoverable, so a session from before the upgrade keeps no provider and skips the
+RP-initiated logout redirect. A command rather than SQL because SQLite has neither
+`ADD COLUMN IF NOT EXISTS` nor a conditional ALTER, so the add must be gated on
+`pragma_table_info`; idempotent, a no-op on PostgreSQL, and invoked automatically at boot
+as migration step `20261031000000`. The runner also logs a WARN when it applies any
+migration numbered below the highest already applied (the ordering that caused this),
+excluding the legacy drop-in range.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
