@@ -1,10 +1,11 @@
 name: Publish Dev
 
 # Publishes the "dev" channel from any branch without cutting a release: the
-# ghcr.io/econumo/econumo:dev image plus the dev/ linux binaries in the private
-# R2 bucket. The CI counterpart of `make publish-dev` — no git tag, no release
-# branch, no GitHub release. Both the image and the binaries report version
-# "dev", exactly like the local target.
+# ghcr.io/econumo/econumo:dev image plus the dev channel of the linux binaries
+# in the private R2 bucket (published with ship). The CI counterpart of
+# `make publish-dev` — no git tag, no release branch, no GitHub release. Both
+# the image and the binaries report version "dev", exactly like the local
+# target.
 # The code that gets built comes from the "branch" input; left empty, it is the
 # branch the workflow was dispatched from.
 
@@ -132,7 +133,6 @@ jobs:
               -ldflags "-s -w -X github.com/econumo/econumo/internal/version.Version=${VERSION} -X github.com/econumo/econumo/internal/version.Commit=${{ needs.resolve.outputs.sha }}" \
               -o "release-out/econumo-linux-${arch}" ./cmd/econumo
           done
-          cd release-out && sha256sum econumo-linux-amd64 econumo-linux-arm64 > SHA256SUMS
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -141,9 +141,16 @@ jobs:
           path: release-out/
           if-no-files-found: error
 
-      - name: Mirror binaries to R2
+      # ship (https://github.com/dmtrkzntsv/ship) uploads the binaries, unit
+      # template and env example as the moving "dev" channel; it writes its
+      # own SHA256SUMS and skips a re-run of the identical build.
+      - name: Set up ship
+        uses: dmtrkzntsv/ship@v0
+
+      - name: Publish dev channel to R2
         env:
-          ECONUMO_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          ECONUMO_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          ECONUMO_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: make cdn-upload CHANNEL=dev
+          SHIP_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          SHIP_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          SHIP_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          SHIP_R2_BUCKET: lab
+        run: make cdn-upload VERSION=dev CHANNELS=dev

@@ -244,22 +244,28 @@ jobs:
           path: release-out/
           if-no-files-found: error
 
-      # Mirror the binaries to the private R2 bucket via the Makefile target
-      # (same upload logic as `make cdn-upload` locally). Channels gate exactly
-      # like the Docker image tags in create-tag: the version channel always,
-      # latest/ and dev/ only when their checkbox is set.
-      - name: Mirror binaries to R2
+      # Publish the binaries, unit template and env example to the private R2
+      # bucket with ship, via the Makefile target (same as `make cdn-upload`
+      # locally). The version is always published as an immutable release;
+      # the latest/dev channels gate exactly like the Docker image tags in
+      # create-tag, only when their checkbox is set.
+      - name: Set up ship
+        uses: dmtrkzntsv/ship@v0
+
+      - name: Publish to R2
         env:
-          ECONUMO_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          ECONUMO_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          ECONUMO_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          SHIP_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          SHIP_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          SHIP_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          SHIP_R2_BUCKET: lab
           VERSION: ${{ needs.create-tag.outputs.version }}
           PUSH_LATEST: ${{ github.event.inputs.push_latest }}
           PUSH_DEV: ${{ github.event.inputs.push_dev }}
         run: |
-          make cdn-upload CHANNEL="$VERSION"
-          if [ "$PUSH_LATEST" = "true" ]; then make cdn-upload CHANNEL=latest; fi
-          if [ "$PUSH_DEV" = "true" ]; then make cdn-upload CHANNEL=dev; fi
+          CHANNELS=""
+          if [ "$PUSH_LATEST" = "true" ]; then CHANNELS="latest"; fi
+          if [ "$PUSH_DEV" = "true" ]; then CHANNELS="${CHANNELS:+$CHANNELS,}dev"; fi
+          make cdn-upload VERSION="$VERSION" CHANNELS="$CHANNELS"
 
   create-github-release:
     name: Create GitHub Release
