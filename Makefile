@@ -313,9 +313,9 @@ publish-dev: swagger publish-buildx-ensure release-binaries
 # (deploy/ship/) to the private R2 bucket with ship, which hosts install and
 # update from (`ship install econumo`, `ship update econumo`). Two targets:
 #
-#   make ship-dist                                    # build + stage dist/ship/
+#   make ship-dist VERSION=v1.2.3                     # build (version stamped) + stage dist/ship/
 #   make ship-publish VERSION=v1.2.3 CHANNELS=latest  # immutable version (+ channels)
-#   make ship-publish CHANNELS=dev                    # the moving dev channel only
+#   make ship-dist && make ship-publish CHANNELS=dev  # the moving dev channel only
 #
 # ship-dist runs release-binaries and stages the flat folder ship expects in
 # dist/ship/: econumo-linux-{amd64,arm64}, econumo.service and

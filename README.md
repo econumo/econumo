@@ -81,7 +81,7 @@ update back. The ship ref is `econumo`.
 workflow the `dev` channel); by hand:
 
 ```console
-$ make ship-dist && make ship-publish VERSION=v1.2.3 CHANNELS=latest
+$ make ship-dist VERSION=v1.2.3 && make ship-publish VERSION=v1.2.3 CHANNELS=latest
 $ make ship-dist && make ship-publish CHANNELS=dev
 ```
 
@@ -112,7 +112,7 @@ The binary lands in `/opt/econumo/econumo` and the data in `/var/lib/econumo`
 $ sudo ship update econumo                # newest build of its channel
 $ sudo ship rollback econumo
 $ sudo ship logs econumo
-$ sudo ship status econumo
+$ sudo ship status --service econumo
 $ sudo ship run econumo -- user:create "Name" user@example.com password
 ```
 
