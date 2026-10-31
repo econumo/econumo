@@ -66,7 +66,8 @@ $ docker compose exec econumo /app/econumo user:create "Name" user@example.com p
 Prefer not to use Docker? Every release also ships self-contained Linux
 binaries with the web UI embedded, runnable under systemd on a single host.
 See [docs/run-without-docker.md](docs/run-without-docker.md) for the full
-walkthrough.
+walkthrough, including hosts managed with
+[ship](https://github.com/dmtrkzntsv/ship) (`ship install econumo --version latest`).
 
 ### Localization
 

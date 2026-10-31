@@ -93,7 +93,7 @@ make mobile-android   # sync + open in Android Studio
 
 ```bash
 make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/econumo:dev
-                   # AND mirror the `dev` binaries to the private R2 bucket
+                   # AND publish the `dev` channel to the private R2 bucket with ship
 ```
 
 Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
@@ -107,23 +107,28 @@ workflow then creates no branch. `latest` only moves for the highest version
 released so far. See `.claude/skills/publish-release` for the full process.
 Everything publishes to `ghcr.io/econumo/econumo` only.
 
-**R2 binary mirror.** Both `make publish-dev` and the release workflow also
-upload the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}` +
-`SHA256SUMS`) to a **private** Cloudflare R2 bucket via `make cdn-upload`
-(aws S3 CLI). Keys are namespaced `s3://$(R2_BUCKET)/$(R2_PROJECT)/<channel>/`
-(defaults `econumo`/`econumo`; the bucket hosts several projects), channel ∈
-`dev` | `latest` | `vX.Y.Z`. The bucket has no public domain — objects are
-fetched via the S3 API / signed URLs. In the release workflow the channels gate
-exactly like the image tags: the version channel always, `latest/` and `dev/`
-only when their checkbox is set. Endpoint + credentials come from the
-environment, never committed, and are `ECONUMO_`-prefixed so several projects'
-R2 targets can coexist in one shell: `ECONUMO_R2_ENDPOINT`
-(`https://<acct>.r2.cloudflarestorage.com`, required) plus optional
-`ECONUMO_R2_ACCESS_KEY_ID` / `ECONUMO_R2_SECRET_ACCESS_KEY` (mapped to `AWS_*`
-for the aws subprocess only; unset falls back to the `~/.aws` profile). In CI
-the GitHub secrets `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are
-mapped to those `ECONUMO_R2_*` names in the step's `env:`. Local use needs the
-aws CLI installed.
+**R2 release (ship).** Both `make publish-dev` and the release workflow also
+publish the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}`), the
+systemd unit template `deployment/systemd/econumo.service` and
+`deployment/systemd/econumo.env.example` to the **private** Cloudflare R2
+bucket `lab` with [ship](https://github.com/dmtrkzntsv/ship), via
+`make cdn-upload` (`ship publish econumo --path release-out/ship --version
+$(VERSION) --channels $(CHANNELS)`; the `ship-dir` target stages that flat
+folder, since ship rejects any other file). ship writes its own `SHA256SUMS`
+and moves the channels. A release publishes the immutable version `vX.Y.Z`
+plus `latest`/`dev` only when their checkbox is set (exactly like the image
+tags); `VERSION=dev` (`make publish-dev`, the Publish Dev workflow) publishes
+only the moving `dev` channel. Hosts run `ship install|adopt|update econumo`
+(see `docs/run-without-docker.md`). The unit is a TEMPLATE: only ship's
+placeholders (`{{SERVICE}} {{USER}} {{BIN}} {{BIN_DIR}} {{ENV_FILE}}
+{{DATA_DIR}} {{RUN_DIR}} {{UNIT}}`) are allowed, and it must not use
+`DynamicUser=`/`StateDirectory=`/`RuntimeDirectory=` (ship creates the user
+and directories). Credentials come from ship's config or `SHIP_R2_ENDPOINT`,
+`SHIP_R2_ACCESS_KEY_ID`, `SHIP_R2_SECRET_ACCESS_KEY`, `SHIP_R2_BUCKET=lab`
+(Read & Write token); in CI the GitHub secrets `R2_ENDPOINT`,
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are mapped to them and
+`dmtrkzntsv/ship@v0` puts `ship` on the PATH. Local use needs `ship` installed
+(`brew install dmtrkzntsv/tap/ship`).
 
 ### Branch naming
 
@@ -1570,8 +1575,9 @@ data unreadable. Most are also asserted by the test suite.
   - `:dev` — published locally via `make publish-dev`, or by the release workflow's "Publish Dev" checkbox.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
 - Docker-free: each release attaches single-file linux binaries (SPA embedded)
-  + `SHA256SUMS`; reference systemd unit in `deployment/systemd/econumo.service`,
-  walkthrough in `docs/run-without-docker.md` (linked from the README).
+  + `SHA256SUMS`; walkthrough in `docs/run-without-docker.md` (linked from the
+  README). The same binaries plus the ship unit template
+  `deployment/systemd/econumo.service` go to R2 for hosts managed with ship.
   `make release-binaries` builds the same artifacts locally.
 - Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
   and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.
