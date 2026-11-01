@@ -5055,14 +5055,28 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Returns all currency rates published on the most-recent available date.",
+                "description": "Returns the latest published rate per currency. With from and to (both, YYYY-MM-DD, at most 366 days) it returns every rate published within that window plus, per currency, the latest one published before it. Each item carries its published day as date.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Currency"
                 ],
-                "summary": "Get the latest currency rates",
+                "summary": "Get currency rates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start day (YYYY-MM-DD); requires to",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End day (YYYY-MM-DD), inclusive; requires from",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -5080,6 +5094,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "401": {
@@ -14505,6 +14525,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "currencyId": {
+                    "type": "string"
+                },
+                "date": {
                     "type": "string"
                 },
                 "rate": {

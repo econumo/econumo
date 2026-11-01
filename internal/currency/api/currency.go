@@ -9,6 +9,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
+	"github.com/econumo/econumo/internal/web/httpx"
+	"github.com/econumo/econumo/internal/web/middleware"
 )
 
 // _ keeps the apidoc and model import aliases visible to swag's annotation
@@ -36,19 +38,49 @@ func (h *Handlers) GetCurrencyList(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetCurrencyRateList handles GET /api/v1/currency/get-currency-rate-list
-// (auth). No request body; returns every rate published on the most-recent date.
+// (auth). Without from/to it returns the latest rate per currency; with both,
+// the rates published in that window plus the latest one before it.
 //
-// @Summary     Get the latest currency rates
-// @Description Returns all currency rates published on the most-recent available date.
+// @Summary     Get currency rates
+// @Description Returns the latest published rate per currency. With from and to (both, YYYY-MM-DD, at most 366 days) it returns every rate published within that window plus, per currency, the latest one published before it. Each item carries its published day as date.
 // @Tags        Currency
 // @Produce     json
+// @Param       from query    string false "Start day (YYYY-MM-DD); requires to"
+// @Param       to   query    string false "End day (YYYY-MM-DD), inclusive; requires from"
 // @Success     200 {object} apidoc.JsonResponseOk{data=model.GetCurrencyRateListResult}
+// @Failure     400 {object} apidoc.JsonResponseError
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/currency/get-currency-rate-list [get]
 func (h *Handlers) GetCurrencyRateList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.read.GetCurrencyRateList)
+	userID, ok := middleware.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	req := model.CurrencyRateListRequest{
+		From: q.Get("from"), To: q.Get("to"),
+		HasFrom: q.Has("from"), HasTo: q.Has("to"),
+	}
+	if err := req.Validate(); err != nil {
+		httpx.WriteError(r.Context(), w, err)
+		return
+	}
+	var (
+		res *model.GetCurrencyRateListResult
+		err error
+	)
+	if from, to, ranged := req.Range(); ranged {
+		res, err = h.read.GetCurrencyRateHistory(r.Context(), userID, from, to)
+	} else {
+		res, err = h.read.GetCurrencyRateList(r.Context(), userID)
+	}
+	if err != nil {
+		httpx.WriteError(r.Context(), w, err)
+		return
+	}
+	httpx.OK(w, res)
 }
 
 // CreateCurrency handles POST /api/v1/currency/create-currency (auth).

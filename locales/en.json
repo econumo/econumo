@@ -2103,7 +2103,9 @@
       "not_available": "Currency is not available",
       "in_use": "Currency is in use and cannot be deleted",
       "base_immutable": "The base currency cannot be modified",
-      "cannot_be_hidden": "This currency cannot be hidden"
+      "cannot_be_hidden": "This currency cannot be hidden",
+      "rate_range_order": "The end date must not be before the start date",
+      "rate_range_too_long": "The date range must be at most {max} days"
     },
     "import": {
       "source_not_found": "Apple Wallet is not connected. Connect it in Settings → Apple Wallet first.",

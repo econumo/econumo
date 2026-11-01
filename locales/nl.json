@@ -2103,7 +2103,9 @@
       "not_available": "De valuta is niet beschikbaar.",
       "in_use": "De valuta is in gebruik en kan niet worden verwijderd.",
       "base_immutable": "De basisvaluta kan niet worden gewijzigd.",
-      "cannot_be_hidden": "Deze valuta kan niet worden verborgen."
+      "cannot_be_hidden": "Deze valuta kan niet worden verborgen.",
+      "rate_range_order": "De einddatum mag niet vóór de begindatum liggen",
+      "rate_range_too_long": "Het datumbereik mag maximaal {max} dagen zijn"
     },
     "import": {
       "source_not_found": "Apple Wallet is niet gekoppeld. Koppel het eerst via Instellingen → Apple Wallet.",

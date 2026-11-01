@@ -28,6 +28,23 @@ func init() {
 		}
 	}})
 
+	// Ranged rate reads. No dated rates are seeded, so the window holds the
+	// owner's fixed custom rate and the synthetic base row (both dated from);
+	// the dated-rate selection is pinned by the repo and endpoint tests.
+	register(Scenario{Name: "currency_rate_range", Calls: func() []Call {
+		const path = "/api/v1/currency/get-currency-rate-list"
+		return []Call{
+			{Label: "create-currency", Method: "POST", Path: "/api/v1/currency/create-currency", Auth: "owner",
+				Body: map[string]any{"id": "cc000000-0000-0000-0000-0000000000e1", "code": "PTS", "name": "Points", "symbol": "pts", "fractionDigits": 0, "rate": "100"}},
+			{Label: "plain", Method: "GET", Path: path, Auth: "owner"},
+			{Label: "range-31-days", Method: "GET", Path: path + "?from=2026-03-01&to=2026-03-31", Auth: "owner"},
+			{Label: "err:from-only", Method: "GET", Path: path + "?from=2026-03-01", Auth: "owner"},
+			{Label: "err:bad-format", Method: "GET", Path: path + "?from=2026-1-5&to=2026-03-01", Auth: "owner"},
+			{Label: "err:reversed", Method: "GET", Path: path + "?from=2026-03-02&to=2026-03-01", Auth: "owner"},
+			{Label: "err:367-days", Method: "GET", Path: path + "?from=2023-01-01&to=2024-01-02", Auth: "owner"},
+		}
+	}})
+
 	register(Scenario{Name: "category_reads", Calls: func() []Call {
 		return []Call{
 			{Label: "get-category-list", Method: "GET", Path: "/api/v1/category/get-category-list", Auth: "owner", Body: map[string]any{}},

@@ -85,6 +85,56 @@ func (q *Queries) GetCurrencyByIDView(ctx context.Context, id string) (GetCurren
 	return i, err
 }
 
+const getCurrencyRateRangeView = `-- name: GetCurrencyRateRangeView :many
+SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate
+FROM currencies_rates cr
+WHERE (date(cr.published_at) >= date(?1) AND date(cr.published_at) <= date(?2))
+   OR (date(cr.published_at) < date(?1)
+       AND cr.published_at = (
+           SELECT MAX(cr2.published_at) FROM currencies_rates cr2
+           WHERE cr2.currency_id = cr.currency_id AND cr2.base_currency_id = cr.base_currency_id
+             AND date(cr2.published_at) < date(?1)
+       ))
+ORDER BY cr.currency_id ASC, cr.base_currency_id ASC, cr.published_at ASC
+`
+
+type GetCurrencyRateRangeViewParams struct {
+	FromDay interface{}
+	ToDay   interface{}
+}
+
+// Rates published within [from, to] (inclusive days) plus, per (currency,
+// base) pair, the newest rate published before from. Bounds are 'Y-m-d'
+// strings compared through date().
+func (q *Queries) GetCurrencyRateRangeView(ctx context.Context, arg GetCurrencyRateRangeViewParams) ([]CurrenciesRate, error) {
+	rows, err := q.db.QueryContext(ctx, getCurrencyRateRangeView, arg.FromDay, arg.ToDay)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CurrenciesRate{}
+	for rows.Next() {
+		var i CurrenciesRate
+		if err := rows.Scan(
+			&i.ID,
+			&i.CurrencyID,
+			&i.BaseCurrencyID,
+			&i.PublishedAt,
+			&i.Rate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getHiddenCurrencyIDs = `-- name: GetHiddenCurrencyIDs :many
 SELECT currency_id FROM users_hidden_currencies WHERE user_id = ?
 `

@@ -2103,7 +2103,9 @@
       "not_available": "La moneda no está disponible.",
       "in_use": "La moneda está en uso y no se puede eliminar.",
       "base_immutable": "La moneda base no se puede modificar.",
-      "cannot_be_hidden": "Esta moneda no se puede ocultar."
+      "cannot_be_hidden": "Esta moneda no se puede ocultar.",
+      "rate_range_order": "La fecha de fin no puede ser anterior a la fecha de inicio",
+      "rate_range_too_long": "El intervalo de fechas puede ser de {max} días como máximo"
     },
     "import": {
       "source_not_found": "Apple Wallet no está conectado. Conéctalo primero en Ajustes → Apple Wallet.",

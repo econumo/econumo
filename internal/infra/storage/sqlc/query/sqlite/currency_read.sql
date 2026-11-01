@@ -71,3 +71,18 @@ WHERE cr.published_at = (
     WHERE cr2.currency_id = cr.currency_id AND cr2.base_currency_id = cr.base_currency_id
 )
 ORDER BY cr.currency_id ASC, cr.base_currency_id ASC;
+
+-- name: GetCurrencyRateRangeView :many
+-- Rates published within [from, to] (inclusive days) plus, per (currency,
+-- base) pair, the newest rate published before from. Bounds are 'Y-m-d'
+-- strings compared through date().
+SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate
+FROM currencies_rates cr
+WHERE (date(cr.published_at) >= date(sqlc.arg(from_day)) AND date(cr.published_at) <= date(sqlc.arg(to_day)))
+   OR (date(cr.published_at) < date(sqlc.arg(from_day))
+       AND cr.published_at = (
+           SELECT MAX(cr2.published_at) FROM currencies_rates cr2
+           WHERE cr2.currency_id = cr.currency_id AND cr2.base_currency_id = cr.base_currency_id
+             AND date(cr2.published_at) < date(sqlc.arg(from_day))
+       ))
+ORDER BY cr.currency_id ASC, cr.base_currency_id ASC, cr.published_at ASC;

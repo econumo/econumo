@@ -64,6 +64,7 @@ func init() {
 			{Label: "get-label-list", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "read"},
 			{Label: "get-currency-list", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "read"},
 			{Label: "get-currency-rate-list", Method: "GET", Path: "/api/v1/currency/get-currency-rate-list", Auth: "read"},
+			{Label: "get-currency-rate-list-ranged", Method: "GET", Path: "/api/v1/currency/get-currency-rate-list?from=2026-03-01&to=2026-03-31", Auth: "read"},
 			{Label: "get-account-transaction-list", Method: "GET", Path: "/api/v1/transaction/get-account-transaction-list", Auth: "read"},
 			{Label: "get-transaction-list", Method: "GET", Path: "/api/v1/transaction/get-transaction-list", Auth: "read"},
 			{Label: "err:get-session-list", Method: "GET", Path: "/api/v1/user/get-session-list", Auth: "read"},
