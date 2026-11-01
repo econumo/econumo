@@ -329,7 +329,7 @@ publish-dev: swagger publish-buildx-ensure release-binaries
 # immutable version, refused if it already exists with different files.
 # CHANNELS is a comma-separated subset of latest,dev. Credentials come from
 # ship's config file or SHIP_R2_ENDPOINT, SHIP_R2_ACCESS_KEY_ID and
-# SHIP_R2_SECRET_ACCESS_KEY (Read & Write token); the bucket defaults to `lab`.
+# SHIP_R2_SECRET_ACCESS_KEY (Read & Write token); the bucket defaults to `ship`.
 #
 # The publish workflows run both targets from the workflow's own commit
 # (`make -f .ship-tools/Makefile … SHIP_TEMPLATES=.ship-tools/deploy/ship`), so

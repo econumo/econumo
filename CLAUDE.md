@@ -110,7 +110,7 @@ Everything publishes to `ghcr.io/econumo/econumo` only.
 **R2 release (ship).** Both `make publish-dev` and the release workflow also
 publish the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}`), the
 systemd unit template `deploy/ship/econumo.service` and
-`deploy/ship/econumo.env.example` to the **private** Cloudflare R2 bucket `lab`
+`deploy/ship/econumo.env.example` to the **private** Cloudflare R2 bucket `ship`
 with [ship](https://github.com/dmtrkzntsv/ship). Two Makefile targets, the same
 names in every ship project: `make ship-dist` builds (`release-binaries`) and
 stages the flat folder `dist/ship/` (ship rejects any other file;
@@ -127,7 +127,7 @@ only ship's placeholders (`{{SERVICE}} {{USER}} {{BIN}} {{BIN_DIR}}
 use `DynamicUser=`/`StateDirectory=`/`RuntimeDirectory=` (ship creates the user
 and directories). Credentials come from ship's config or `SHIP_R2_ENDPOINT`,
 `SHIP_R2_ACCESS_KEY_ID`, `SHIP_R2_SECRET_ACCESS_KEY` (Read & Write token; the
-bucket defaults to `lab`); in CI the GitHub secrets `R2_ENDPOINT`,
+bucket defaults to `ship`); in CI the GitHub secrets `R2_ENDPOINT`,
 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are mapped to them and
 `dmtrkzntsv/ship@v0` puts `ship` on the PATH. The workflows run both targets
 and the unit template from the workflow's own commit (`make -f
