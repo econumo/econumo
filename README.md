@@ -68,3 +68,41 @@ binaries with the web UI embedded, runnable under systemd on a single host.
 See [docs/run-without-docker.md](docs/run-without-docker.md) for the full
 walkthrough.
 
+### Localization
+
+All translations live in [`locales/`](locales/) — one JSON catalogue per
+language, shared by the backend and the web app and managed right in the
+repository (no external translation platform). To contribute a language, copy
+[`locales/en.json`](locales/en.json), translate the values, and open a pull
+request — the test suite verifies key and placeholder parity between
+catalogues automatically.
+
+### Upgrading from v0.x (PHP)
+
+v1.x is a full rewrite — the PHP backend became the Go binary and the Vue.js
+frontend became a React app. The result: memory consumption dropped from
+~200 MB to ~10 MB, the app is much faster, and the new UI is a big step up.
+Your database is reused in place — accounts, passwords, and data keep
+working. See the
+**[migration guide](docs/migration-v0-to-v1.md)** for the step-by-step
+walkthrough (backup, new image, `.env` mapping, and the gotchas).
+
+### Next steps
+
+Everything else — self-hosting (multi-currency, backups, CLI commands,
+debugging), the API, MCP, and the user guide — lives in the
+**[Econumo documentation](https://econumo.com/docs)**.
+
+To connect Claude or Codex to your instance over MCP with a browser sign-in,
+see **[docs/mcp-setup.md](docs/mcp-setup.md)**.
+
+### Contact
+
+- For release announcements, please check [GitHub Releases](https://github.com/econumo/econumo/releases) or [Econumo Website](https://econumo.com/tags/release/).
+- For questions, issue reporting, or advice, please use [GitHub Issues](https://github.com/econumo/econumo/issues).
+
+---
+> [!NOTE]
+> Econumo is funded by our `GitHub Sponsors` and `Econumo` (cloud) subscribers.
+>
+> If you know someone who might [find Econumo useful](https://econumo.com/), we'd appreciate if you'd let them know.
