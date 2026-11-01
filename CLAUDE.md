@@ -1032,7 +1032,11 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   the boot runner invokes the named CLI command in version order between SQL files, records the
   version only on success, and gives it no surrounding transaction — every `migration:*` command
   must be idempotent. `serve` and `data:import-sqlite` pass `cli.MigrationCommandRunner`; test
-  databases pass `migrate.NoCommands`.
+  databases pass `migrate.NoCommands`. A command step runs TODAY's feature code against the schema
+  as it stands at its version, so on a database from an older release it must not write through a
+  path that needs a column a later migration adds: number it above every migration its code
+  depends on, and when a later migration changes what it writes, move the step to a new version and
+  leave a `SELECT 1;` no-op at the old one (as `20260817000001` -> `20261101000000`).
 
 ## CLI / management commands
 
@@ -1101,7 +1105,8 @@ schema-version mismatch between source and target.
 
 `migration:zero-deleted-accounts` writes a "Balance adjustment (account
 deleted)" correction so every deleted account's balance is zero; idempotent;
-also invoked automatically at boot as migration step `20260817000001`.
+also invoked automatically at boot as migration step `20261101000000` (it ran at
+`20260817000001` until that broke upgrades from v1.3.x, see command steps above).
 
 `migration:seed-analytics-option` backfills the per-user `analytics`
 `users_options` row for every user that has none, seeded from the deprecated
