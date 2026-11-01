@@ -490,7 +490,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		middleware.RequestID,
 		middleware.AccessLog,
 		middleware.Recover,
-		middleware.AdminAuth(cfg.AdminToken),
+		middleware.AdminAuth(cfg.AdminToken, cfg.AdminShareToken),
 	)(adminMux)
 
 	mcpRegister := webmcp.Compose(

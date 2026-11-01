@@ -25,6 +25,7 @@ func TestAdminRoutesAreNotOnThePublicMux(t *testing.T) {
 			{http.MethodPost, "/admin/set-access"},
 			{http.MethodGet, "/admin/user-context"},
 			{http.MethodGet, "/admin/user-context?userId=" + OwnerID},
+			{http.MethodGet, "/admin/user-status?userId=" + OwnerID},
 		} {
 			// Present the admin bearer: if the admin chain were mounted here it
 			// would authenticate and serve rather than fall through.
@@ -44,13 +45,14 @@ func TestAdminRoutesAreNotOnThePublicMux(t *testing.T) {
 			{http.MethodPost, "/api/v1/admin/set-access"},
 			{http.MethodGet, "/api/v1/admin/user-context"},
 			{http.MethodGet, "/api/v1/admin/user-context?userId=" + OwnerID},
+			{http.MethodGet, "/api/v1/admin/user-status?userId=" + OwnerID},
 		} {
 			status, body := h.Call(t, tc.method, tc.path, adminBearer, nil)
 			if status != http.StatusNotFound {
 				t.Fatalf("%s %s answered %d, want 404 — nothing should serve it: %s",
 					tc.method, tc.path, status, body)
 			}
-			if strings.Contains(string(body), `accessLevel`) {
+			if strings.Contains(string(body), `accessLevel`) || strings.Contains(string(body), `"active"`) {
 				t.Fatalf("%s %s returned admin data: %s", tc.method, tc.path, body)
 			}
 		}

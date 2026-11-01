@@ -49,5 +49,6 @@ func record(u *model.User, email string) appadmin.UserRecord {
 		Avatar:      u.Avatar,
 		AccessLevel: u.AccessLevel,
 		AccessUntil: u.AccessUntil,
+		IsActive:    u.IsActive,
 	}
 }

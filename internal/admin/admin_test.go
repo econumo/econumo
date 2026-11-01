@@ -312,3 +312,27 @@ func TestUserContextLogsTargetAndDisclosure(t *testing.T) {
 		t.Fatalf("connections attr = %q, want 1", got)
 	}
 }
+
+func TestUserStatus(t *testing.T) {
+	svc, users, self, _ := newFixture()
+	rec := users.byID[self.String()]
+	rec.IsActive = true
+	users.byID[self.String()] = rec
+
+	got, err := svc.UserStatus(context.Background(), self)
+	if err != nil || got.UserID != self.String() || !got.Active {
+		t.Fatalf("got %+v err %v", got, err)
+	}
+
+	rec.IsActive = false
+	users.byID[self.String()] = rec
+	got, err = svc.UserStatus(context.Background(), self)
+	if err != nil || got.Active {
+		t.Fatalf("after deactivate: got %+v err %v", got, err)
+	}
+
+	_, err = svc.UserStatus(context.Background(), vo.NewId())
+	if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("unknown user err = %v, want not-found", err)
+	}
+}

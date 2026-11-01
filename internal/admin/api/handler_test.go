@@ -52,7 +52,7 @@ var selfID = vo.NewId()
 
 func newMux() http.Handler {
 	users := &stubUsers{byID: map[string]admin.UserRecord{
-		selfID.String(): {ID: selfID.String(), Name: "Alex", Email: "alex@example.test", AccessLevel: model.AccessLevelFull},
+		selfID.String(): {ID: selfID.String(), Name: "Alex", Email: "alex@example.test", AccessLevel: model.AccessLevelFull, IsActive: true},
 	}}
 	svc := admin.NewService(users, &stubConns{ids: map[string][]vo.Id{}}, testClock{})
 	mux := http.NewServeMux()
@@ -146,5 +146,22 @@ func TestUserContextHandlerReturnsEnvelope(t *testing.T) {
 	}
 	if env.Data.Connections == nil {
 		t.Fatal("connections must serialize as [] rather than null")
+	}
+}
+
+func TestUserStatusHandler(t *testing.T) {
+	if rec := do(http.MethodGet, "/admin/user-status", ""); rec.Code != http.StatusBadRequest {
+		t.Fatalf("missing userId: status = %d, want 400", rec.Code)
+	}
+	if rec := do(http.MethodGet, "/admin/user-status?userId=nope", ""); rec.Code != http.StatusBadRequest {
+		t.Fatalf("malformed userId: status = %d, want 400", rec.Code)
+	}
+	if rec := do(http.MethodGet, "/admin/user-status?userId="+vo.NewId().String(), ""); rec.Code != http.StatusNotFound {
+		t.Fatalf("unknown user: status = %d, want 404", rec.Code)
+	}
+	rec := do(http.MethodGet, "/admin/user-status?userId="+selfID.String(), "")
+	want := `{"success":true,"message":"","data":{"userId":"` + selfID.String() + `","active":true}}`
+	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != want {
+		t.Fatalf("status %d body %s, want %s", rec.Code, rec.Body.String(), want)
 	}
 }
