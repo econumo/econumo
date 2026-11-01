@@ -513,6 +513,9 @@ type Querier interface {
 	// native DATE; the conflict target is the identifier_uniq_currencies_rates UNIQUE
 	// index. Mirrors CurrencyRatesUpdateService (get-or-create then updateRate).
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
+	// The share client is seeded from config at boot. last_used_at starts at
+	// created_at so the unused-client purge never takes it.
+	UpsertFirstPartyOAuthClient(ctx context.Context, arg UpsertFirstPartyOAuthClientParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error

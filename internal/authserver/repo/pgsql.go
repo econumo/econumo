@@ -21,6 +21,10 @@ func (pgsqlQuerier) GetOAuthClient(ctx context.Context, db backend.DBTX, id stri
 	return clientRow(row), err
 }
 
+func (pgsqlQuerier) UpsertFirstPartyOAuthClient(ctx context.Context, db backend.DBTX, p upsertFirstPartyParams) error {
+	return pgsqlgen.New(db).UpsertFirstPartyOAuthClient(ctx, pgsqlgen.UpsertFirstPartyOAuthClientParams(p))
+}
+
 func (pgsqlQuerier) MarkOAuthClientUsed(ctx context.Context, db backend.DBTX, p markClientUsedParams) error {
 	return pgsqlgen.New(db).MarkOAuthClientUsed(ctx, pgsqlgen.MarkOAuthClientUsedParams(p))
 }

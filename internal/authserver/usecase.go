@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/port"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 const (
@@ -27,6 +28,7 @@ type Service struct {
 	clock   port.Clock
 	limiter Limiter
 	issuer  string
+	share   *vo.Id // the configured share client; nil = none
 
 	hkMu   sync.Mutex
 	hkLast time.Time

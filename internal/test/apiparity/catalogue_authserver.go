@@ -48,4 +48,25 @@ func init() {
 			{Label: "get-connected-app-list-after", Method: "GET", Path: "/api/v1/authserver/get-connected-app-list", Auth: "owner"},
 		}
 	}})
+
+	// The share app's read-scoped token through the real handler: every
+	// allowlisted GET answers; anything else (a write, a non-allowlisted read)
+	// gets the frozen 401, never a 402 or 200.
+	register(Scenario{Name: "read_scope", Calls: func() []Call {
+		return []Call{
+			{Label: "get-user-data", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "read"},
+			{Label: "get-account-list", Method: "GET", Path: "/api/v1/account/get-account-list", Auth: "read"},
+			{Label: "get-category-list", Method: "GET", Path: "/api/v1/category/get-category-list", Auth: "read"},
+			{Label: "get-tag-list", Method: "GET", Path: "/api/v1/tag/get-tag-list", Auth: "read"},
+			{Label: "get-label-list", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "read"},
+			{Label: "get-currency-list", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "read"},
+			{Label: "get-currency-rate-list", Method: "GET", Path: "/api/v1/currency/get-currency-rate-list", Auth: "read"},
+			{Label: "get-account-transaction-list", Method: "GET", Path: "/api/v1/transaction/get-account-transaction-list", Auth: "read"},
+			{Label: "get-transaction-list", Method: "GET", Path: "/api/v1/transaction/get-transaction-list", Auth: "read"},
+			{Label: "err:get-session-list", Method: "GET", Path: "/api/v1/user/get-session-list", Auth: "read"},
+			{Label: "err:create-tag", Method: "POST", Path: "/api/v1/tag/create-tag", Auth: "read", Body: map[string]any{"id": "10000000-0000-0000-0000-0000000000fe", "name": "Urgent"}},
+			{Label: "err:update-name", Method: "POST", Path: "/api/v1/user/update-name", Auth: "read", Body: map[string]any{"name": "Renamed"}},
+			{Label: "err:get-budget-list", Method: "GET", Path: "/api/v1/budget/get-budget-list", Auth: "read"},
+		}
+	}})
 }

@@ -41,6 +41,9 @@ func (s *Service) validate(ctx context.Context, req model.AuthorizationRequest) 
 		}
 		return nil, nil, err
 	}
+	if !s.usableClient(c) {
+		return nil, nil, clientNotFound()
+	}
 	if !MatchRedirectURI(c.RedirectURIs, req.RedirectURI) {
 		return nil, nil, &errs.ValidationError{Msg: "This sign-in link is not valid for this app. Start the connection again from the app.", MsgCode: errs.CodeAuthServerRedirectMismatch}
 	}
@@ -144,7 +147,7 @@ func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.I
 		code := &model.OAuthAuthorizationCode{
 			CodeHash: hash, ClientID: c.ID, UserID: userID,
 			RedirectURI: req.RedirectURI, CodeChallenge: req.CodeChallenge, Resource: s.ResourceURL(),
-			CredentialsGeneration: gen, CreatedAt: now, ExpiresAt: now.Add(CodeTTL),
+			Scope: s.grantedScope(c), CredentialsGeneration: gen, CreatedAt: now, ExpiresAt: now.Add(CodeTTL),
 		}
 		if err := s.repo.InsertCode(ctx, code); err != nil {
 			return err

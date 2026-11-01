@@ -26,6 +26,7 @@ type fakeCreds struct {
 	locked     []vo.Id
 	deadTokens map[vo.Id]bool
 	purged     []time.Time
+	scopes     map[string]model.TokenScope // issued token -> scope
 }
 
 func (f *fakeCreds) LockForOAuth(_ context.Context, u vo.Id) (int64, error) {
@@ -39,12 +40,17 @@ func (f *fakeCreds) PurgeDeadOAuthTokens(_ context.Context, cutoff time.Time) (i
 	f.purged = append(f.purged, cutoff)
 	return 0, nil
 }
-func (f *fakeCreds) IssueOAuthAccessToken(_ context.Context, _, _ vo.Id, _ string, _ model.TokenScope, g int64, _ time.Duration) (string, bool, error) {
+func (f *fakeCreds) IssueOAuthAccessToken(_ context.Context, _, _ vo.Id, _ string, scope model.TokenScope, g int64, _ time.Duration) (string, bool, error) {
 	if f.failFence || g != f.gen {
 		return "", false, nil
 	}
 	f.issued++
-	return fmt.Sprintf("eco_oat_%d", f.issued), true, nil
+	tok := fmt.Sprintf("eco_oat_%d", f.issued)
+	if f.scopes == nil {
+		f.scopes = map[string]model.TokenScope{}
+	}
+	f.scopes[tok] = scope
+	return tok, true, nil
 }
 func (f *fakeCreds) RevokeOAuthGrantTokens(_ context.Context, id vo.Id) error {
 	f.revoked = append(f.revoked, id)

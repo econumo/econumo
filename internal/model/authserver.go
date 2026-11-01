@@ -13,6 +13,9 @@ type OAuthClient struct {
 	SecretHash   *string
 	CreatedAt    time.Time
 	LastUsedAt   *time.Time
+	// FirstParty marks the client seeded from config (the share app); it is
+	// usable only while it is the configured one.
+	FirstParty bool
 }
 
 type OAuthAuthorizationCode struct {
@@ -23,6 +26,7 @@ type OAuthAuthorizationCode struct {
 	Resource              string
 	CredentialsGeneration int64
 	CreatedAt, ExpiresAt  time.Time
+	Scope                 TokenScope
 }
 
 // OAuthGrant is one user approval of one client; it holds the rotating refresh
@@ -36,6 +40,7 @@ type OAuthGrant struct {
 	CreatedAt, LastUsedAt time.Time
 	ExpiresAt             time.Time
 	RevokedAt             *time.Time
+	Scope                 TokenScope
 }
 
 func (g *OAuthGrant) IsLive(now time.Time) bool { return g.RevokedAt == nil && g.ExpiresAt.After(now) }

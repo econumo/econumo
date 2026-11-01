@@ -728,9 +728,9 @@ func (b *Builder) BudgetAccount(budgetID, accountID string) {
 type AccessToken struct {
 	ID        string
 	UserID    string
-	Kind      string // "session" | "personal"
+	Kind      string // "session" | "personal" | "oauth"
 	TokenHash string
-	Scope     string // "full" | "ingest" ("" -> "full")
+	Scope     string // "full" | "ingest" | "mcp" | "read" ("" -> "full")
 	Name      string // PAT label ("" -> NULL)
 	UserAgent string // session UA ("" -> NULL)
 	ExpiresAt *time.Time
@@ -759,6 +759,7 @@ type OAuthClient struct {
 	ID           string
 	Name         string
 	RedirectURIs []string
+	FirstParty   bool
 }
 
 func (b *Builder) OAuthClient(c OAuthClient) string {
@@ -768,8 +769,8 @@ func (b *Builder) OAuthClient(c OAuthClient) string {
 	if err != nil {
 		b.t.Fatalf("fixture oauth client: %v", err)
 	}
-	b.insert(`INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at) VALUES (?, ?, ?, NULL, ?, NULL)`,
-		id, c.Name, string(uris), b.now())
+	b.insert(`INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at, first_party) VALUES (?, ?, ?, NULL, ?, NULL, ?)`,
+		id, c.Name, string(uris), b.now(), c.FirstParty)
 	return id
 }
 
@@ -780,14 +781,19 @@ type OAuthGrant struct {
 	UserID      string
 	ClientID    string
 	RefreshHash string
+	Scope       string // "" -> "mcp"
 }
 
 func (b *Builder) OAuthGrant(g OAuthGrant) string {
 	b.t.Helper()
 	id := b.orNewID(g.ID)
 	now := b.now()
-	b.insert(`INSERT INTO oauth_grants (id, user_id, client_id, refresh_token_hash, created_at, last_used_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		id, g.UserID, g.ClientID, g.RefreshHash, now, now, time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC))
+	scope := g.Scope
+	if scope == "" {
+		scope = "mcp"
+	}
+	b.insert(`INSERT INTO oauth_grants (id, user_id, client_id, refresh_token_hash, created_at, last_used_at, expires_at, scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, g.UserID, g.ClientID, g.RefreshHash, now, now, time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC), scope)
 	return id
 }
 

@@ -139,6 +139,9 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		RateLimitIngest:          60,
 		RateLimitClaimSetupToken: 5,
 		RateLimitSync:            10,
+		ShareClientID:            ShareClientID,
+		ShareClientSecret:        "share-secret-0123456789abcdef0123456789",
+		ShareRedirectURI:         "https://share.example.test/auth/callback",
 		// SimpleFIN is off by default; the catalogue covers it.
 		ImportSimpleFIN: true,
 		// Production matcher defaults so the seeded queued tap adopts Txn1 by
@@ -309,6 +312,8 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 			tok = readonlyTok
 		case "ingest":
 			tok = IngestToken
+		case "read":
+			tok = ReadToken
 		case "":
 			tok = ""
 		default:

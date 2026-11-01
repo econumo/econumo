@@ -20,6 +20,10 @@ func (sqliteQuerier) GetOAuthClient(ctx context.Context, db backend.DBTX, id str
 	return sqlitegen.New(db).GetOAuthClient(ctx, id)
 }
 
+func (sqliteQuerier) UpsertFirstPartyOAuthClient(ctx context.Context, db backend.DBTX, p upsertFirstPartyParams) error {
+	return sqlitegen.New(db).UpsertFirstPartyOAuthClient(ctx, p)
+}
+
 func (sqliteQuerier) MarkOAuthClientUsed(ctx context.Context, db backend.DBTX, p markClientUsedParams) error {
 	return sqlitegen.New(db).MarkOAuthClientUsed(ctx, p)
 }

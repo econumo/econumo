@@ -12,7 +12,7 @@ import (
 
 const consumeOAuthCode = `-- name: ConsumeOAuthCode :one
 DELETE FROM oauth_authorization_codes WHERE code_hash = $1
-RETURNING code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at
+RETURNING code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at, scope
 `
 
 // Single use: the DELETE is the read, so two concurrent exchanges of one code
@@ -30,6 +30,7 @@ func (q *Queries) ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthA
 		&i.CredentialsGeneration,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.Scope,
 	)
 	return i, err
 }
@@ -54,7 +55,7 @@ func (q *Queries) DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuth
 }
 
 const getOAuthClient = `-- name: GetOAuthClient :one
-SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at FROM oauth_clients WHERE id = $1
+SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at, first_party FROM oauth_clients WHERE id = $1
 `
 
 func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, error) {
@@ -67,12 +68,13 @@ func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, e
 		&i.SecretHash,
 		&i.CreatedAt,
 		&i.LastUsedAt,
+		&i.FirstParty,
 	)
 	return i, err
 }
 
 const getOAuthGrant = `-- name: GetOAuthGrant :one
-SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope
 FROM oauth_grants WHERE id = $1
 `
 
@@ -90,12 +92,13 @@ func (q *Queries) GetOAuthGrant(ctx context.Context, id string) (OauthGrant, err
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.Scope,
 	)
 	return i, err
 }
 
 const getOAuthGrantByRefreshHash = `-- name: GetOAuthGrantByRefreshHash :one
-SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope
 FROM oauth_grants WHERE refresh_token_hash = $1
 `
 
@@ -113,12 +116,13 @@ func (q *Queries) GetOAuthGrantByRefreshHash(ctx context.Context, refreshTokenHa
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.Scope,
 	)
 	return i, err
 }
 
 const getOAuthGrantBySpentRefreshHash = `-- name: GetOAuthGrantBySpentRefreshHash :one
-SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at, g.created_at, g.last_used_at, g.expires_at, g.revoked_at
+SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at, g.created_at, g.last_used_at, g.expires_at, g.revoked_at, g.scope
 FROM oauth_refresh_tokens_spent s
 JOIN oauth_grants g ON g.id = s.grant_id
 WHERE s.token_hash = $1
@@ -138,14 +142,15 @@ func (q *Queries) GetOAuthGrantBySpentRefreshHash(ctx context.Context, tokenHash
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.Scope,
 	)
 	return i, err
 }
 
 const insertOAuthClient = `-- name: InsertOAuthClient :exec
 
-INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at, first_party)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type InsertOAuthClientParams struct {
@@ -155,6 +160,7 @@ type InsertOAuthClientParams struct {
 	SecretHash   *string
 	CreatedAt    time.Time
 	LastUsedAt   *time.Time
+	FirstParty   bool
 }
 
 // OAuth authorization server (MCP clients): clients, codes, grants.
@@ -166,13 +172,14 @@ func (q *Queries) InsertOAuthClient(ctx context.Context, arg InsertOAuthClientPa
 		arg.SecretHash,
 		arg.CreatedAt,
 		arg.LastUsedAt,
+		arg.FirstParty,
 	)
 	return err
 }
 
 const insertOAuthCode = `-- name: InsertOAuthCode :exec
-INSERT INTO oauth_authorization_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO oauth_authorization_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at, scope)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 `
 
 type InsertOAuthCodeParams struct {
@@ -185,6 +192,7 @@ type InsertOAuthCodeParams struct {
 	CredentialsGeneration int64
 	CreatedAt             time.Time
 	ExpiresAt             time.Time
+	Scope                 string
 }
 
 func (q *Queries) InsertOAuthCode(ctx context.Context, arg InsertOAuthCodeParams) error {
@@ -198,13 +206,14 @@ func (q *Queries) InsertOAuthCode(ctx context.Context, arg InsertOAuthCodeParams
 		arg.CredentialsGeneration,
 		arg.CreatedAt,
 		arg.ExpiresAt,
+		arg.Scope,
 	)
 	return err
 }
 
 const insertOAuthGrant = `-- name: InsertOAuthGrant :exec
-INSERT INTO oauth_grants (id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO oauth_grants (id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 type InsertOAuthGrantParams struct {
@@ -218,6 +227,7 @@ type InsertOAuthGrantParams struct {
 	LastUsedAt           time.Time
 	ExpiresAt            time.Time
 	RevokedAt            *time.Time
+	Scope                string
 }
 
 func (q *Queries) InsertOAuthGrant(ctx context.Context, arg InsertOAuthGrantParams) error {
@@ -232,6 +242,7 @@ func (q *Queries) InsertOAuthGrant(ctx context.Context, arg InsertOAuthGrantPara
 		arg.LastUsedAt,
 		arg.ExpiresAt,
 		arg.RevokedAt,
+		arg.Scope,
 	)
 	return err
 }
@@ -254,7 +265,7 @@ func (q *Queries) InsertOAuthSpentRefreshHash(ctx context.Context, arg InsertOAu
 
 const listUnrevokedOAuthGrants = `-- name: ListUnrevokedOAuthGrants :many
 SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at,
-       g.created_at, g.last_used_at, g.expires_at, g.revoked_at, c.name, c.redirect_uris
+       g.created_at, g.last_used_at, g.expires_at, g.revoked_at, g.scope, c.name, c.redirect_uris
 FROM oauth_grants g
 JOIN oauth_clients c ON c.id = g.client_id
 WHERE g.user_id = $1 AND g.revoked_at IS NULL
@@ -272,6 +283,7 @@ type ListUnrevokedOAuthGrantsRow struct {
 	LastUsedAt           time.Time
 	ExpiresAt            time.Time
 	RevokedAt            *time.Time
+	Scope                string
 	Name                 string
 	RedirectUris         string
 }
@@ -296,6 +308,7 @@ func (q *Queries) ListUnrevokedOAuthGrants(ctx context.Context, userID string) (
 			&i.LastUsedAt,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.Scope,
 			&i.Name,
 			&i.RedirectUris,
 		); err != nil {
@@ -455,4 +468,32 @@ func (q *Queries) RotateOAuthGrant(ctx context.Context, arg RotateOAuthGrantPara
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const upsertFirstPartyOAuthClient = `-- name: UpsertFirstPartyOAuthClient :exec
+INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at, first_party)
+VALUES ($1, $2, $3, $4, $5, $5, TRUE)
+ON CONFLICT (id) DO UPDATE SET name = excluded.name, redirect_uris = excluded.redirect_uris,
+    secret_hash = excluded.secret_hash, first_party = TRUE
+`
+
+type UpsertFirstPartyOAuthClientParams struct {
+	ID           string
+	Name         string
+	RedirectUris string
+	SecretHash   *string
+	CreatedAt    time.Time
+}
+
+// The share client is seeded from config at boot. last_used_at starts at
+// created_at so the unused-client purge never takes it.
+func (q *Queries) UpsertFirstPartyOAuthClient(ctx context.Context, arg UpsertFirstPartyOAuthClientParams) error {
+	_, err := q.db.ExecContext(ctx, upsertFirstPartyOAuthClient,
+		arg.ID,
+		arg.Name,
+		arg.RedirectUris,
+		arg.SecretHash,
+		arg.CreatedAt,
+	)
+	return err
 }

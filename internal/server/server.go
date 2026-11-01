@@ -72,6 +72,7 @@ import (
 	handlerrecurring "github.com/econumo/econumo/internal/recurring/api"
 	recurringrepo "github.com/econumo/econumo/internal/recurring/repo"
 	"github.com/econumo/econumo/internal/shared/port"
+	"github.com/econumo/econumo/internal/shared/vo"
 	appsystem "github.com/econumo/econumo/internal/system"
 	handlersystem "github.com/econumo/econumo/internal/system/api"
 	apptag "github.com/econumo/econumo/internal/tag"
@@ -252,6 +253,17 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	userSvc.SetMCPGrantRevoker(authSrv)
 	if cfg.AppURL != "" && !authSrv.Enabled() {
 		slog.Warn("mcp oauth disabled: ECONUMO_URL must be an https origin with no path (plain http only on a loopback host)")
+	}
+	if cfg.ShareClientEnabled() {
+		id, err := vo.ParseId(cfg.ShareClientID)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("ECONUMO_SHARE_CLIENT_ID: %w", err)
+		}
+		if err := authSrv.ConfigureShareClient(context.Background(), appauthserver.ShareClient{
+			ID: id, Secret: cfg.ShareClientSecret, RedirectURI: cfg.ShareRedirectURI,
+		}); err != nil {
+			return nil, nil, nil, err
+		}
 	}
 
 	// Shared-account access resolver (account owner + connected-user grant role),
@@ -442,7 +454,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)
 
-	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
+	authn := NewReadScopeGate(NewTimezoneTrackingAuthenticator(userSvc, userSvc), authSrv.ShareClientEnabled())
 
 	// Disabled means unrouted: with SimpleFIN off its credential and sync
 	// routes 404.

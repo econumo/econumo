@@ -183,3 +183,74 @@ func TestRepo_RevokeOtherGrants(t *testing.T) {
 		t.Fatalf("already revoked grants must not be returned again: %v %v", ids, err)
 	}
 }
+
+func TestRepo_FirstPartyClientAndScopes(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+	r := authrepo.NewRepo(db.Engine, db.TX)
+	fixture.New(t, db).User(fixture.User{ID: userA, Name: "u"})
+	userID := vo.MustParseId(userA)
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+
+	secret := "h-secret"
+	c := &model.OAuthClient{ID: vo.NewId(), Name: "Econumo Share", RedirectURIs: []string{"https://share.test/cb"}, SecretHash: &secret, CreatedAt: now}
+	if err := r.UpsertFirstPartyClient(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+	secret2 := "h-secret-2"
+	c2 := &model.OAuthClient{ID: c.ID, Name: "Econumo Share 2", RedirectURIs: []string{"https://share2.test/cb"}, SecretHash: &secret2, CreatedAt: now.Add(time.Hour)}
+	if err := r.UpsertFirstPartyClient(ctx, c2); err != nil {
+		t.Fatal(err)
+	}
+	got, err := r.GetClient(ctx, c.ID)
+	if err != nil || !got.FirstParty || got.Name != "Econumo Share 2" || got.RedirectURIs[0] != "https://share2.test/cb" ||
+		*got.SecretHash != secret2 || !got.CreatedAt.Equal(now) || got.LastUsedAt == nil || !got.LastUsedAt.Equal(now) {
+		t.Fatalf("first-party client = %+v %v", got, err)
+	}
+	if n, err := r.PurgeUnusedClients(ctx, now.Add(100*365*24*time.Hour)); err != nil || n != 0 {
+		t.Fatalf("purge took the first-party client: %d %v", n, err)
+	}
+	if _, err := r.GetClient(ctx, c.ID); err != nil {
+		t.Fatalf("first-party client purged: %v", err)
+	}
+
+	dyn := &model.OAuthClient{ID: vo.NewId(), Name: "Claude", RedirectURIs: []string{"https://claude.ai/cb"}, CreatedAt: now}
+	if err := r.InsertClient(ctx, dyn); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := r.GetClient(ctx, dyn.ID); got.FirstParty {
+		t.Fatal("a registered client is not first-party")
+	}
+
+	if err := r.InsertCode(ctx, &model.OAuthAuthorizationCode{CodeHash: "cr", ClientID: c.ID, UserID: userID, RedirectURI: "x",
+		CodeChallenge: "c", Resource: "r", Scope: model.TokenScopeRead, CreatedAt: now, ExpiresAt: now.Add(time.Minute)}); err != nil {
+		t.Fatal(err)
+	}
+	if code, err := r.ConsumeCode(ctx, "cr"); err != nil || code.Scope != model.TokenScopeRead {
+		t.Fatalf("code = %+v %v", code, err)
+	}
+
+	g := &model.OAuthGrant{ID: vo.NewId(), UserID: userID, ClientID: c.ID, RefreshTokenHash: "rr", Scope: model.TokenScopeRead,
+		CreatedAt: now, LastUsedAt: now, ExpiresAt: now.Add(time.Hour)}
+	if err := r.InsertGrant(ctx, g); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := r.GetGrant(ctx, g.ID); err != nil || got.Scope != model.TokenScopeRead {
+		t.Fatalf("grant = %+v %v", got, err)
+	}
+	if got, err := r.GetGrantByRefreshHash(ctx, "rr"); err != nil || got.Scope != model.TokenScopeRead {
+		t.Fatalf("grant by hash = %+v %v", got, err)
+	}
+	if n, _ := r.RotateGrant(ctx, g.ID, "rr", "rr2", now, now.Add(time.Hour)); n != 1 {
+		t.Fatal("rotate")
+	}
+	if err := r.InsertSpentRefreshHash(ctx, g.ID, "rr", now); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := r.GetGrantBySpentRefreshHash(ctx, "rr"); err != nil || got.Scope != model.TokenScopeRead {
+		t.Fatalf("grant by spent = %+v %v", got, err)
+	}
+	if list, err := r.ListUnrevokedGrants(ctx, userID); err != nil || len(list) != 1 || list[0].Grant.Scope != model.TokenScopeRead {
+		t.Fatalf("list = %+v %v", list, err)
+	}
+}

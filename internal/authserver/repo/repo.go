@@ -30,11 +30,13 @@ type (
 	revokeOtherGrantsParam = sqlitegen.RevokeOtherOAuthGrantsParams
 	deleteDeadParams       = sqlitegen.DeleteDeadOAuthGrantsParams
 	insertSpentParams      = sqlitegen.InsertOAuthSpentRefreshHashParams
+	upsertFirstPartyParams = sqlitegen.UpsertFirstPartyOAuthClientParams
 )
 
 type querier interface {
 	InsertOAuthClient(ctx context.Context, db backend.DBTX, p insertClientParams) error
 	GetOAuthClient(ctx context.Context, db backend.DBTX, id string) (clientRow, error)
+	UpsertFirstPartyOAuthClient(ctx context.Context, db backend.DBTX, p upsertFirstPartyParams) error
 	MarkOAuthClientUsed(ctx context.Context, db backend.DBTX, p markClientUsedParams) error
 	PurgeUnusedOAuthClients(ctx context.Context, db backend.DBTX, createdBefore time.Time) (int64, error)
 
@@ -80,7 +82,17 @@ func (r *Repo) InsertClient(ctx context.Context, c *model.OAuthClient) error {
 	}
 	return r.q.InsertOAuthClient(ctx, r.db(ctx), insertClientParams{
 		ID: c.ID.String(), Name: c.Name, RedirectUris: string(uris),
-		SecretHash: c.SecretHash, CreatedAt: c.CreatedAt, LastUsedAt: c.LastUsedAt,
+		SecretHash: c.SecretHash, CreatedAt: c.CreatedAt, LastUsedAt: c.LastUsedAt, FirstParty: c.FirstParty,
+	})
+}
+
+func (r *Repo) UpsertFirstPartyClient(ctx context.Context, c *model.OAuthClient) error {
+	uris, err := json.Marshal(c.RedirectURIs)
+	if err != nil {
+		return err
+	}
+	return r.q.UpsertFirstPartyOAuthClient(ctx, r.db(ctx), upsertFirstPartyParams{
+		ID: c.ID.String(), Name: c.Name, RedirectUris: string(uris), SecretHash: c.SecretHash, CreatedAt: c.CreatedAt,
 	})
 }
 
@@ -101,7 +113,7 @@ func (r *Repo) GetClient(ctx context.Context, id vo.Id) (*model.OAuthClient, err
 		return nil, err
 	}
 	return &model.OAuthClient{ID: cid, Name: row.Name, RedirectURIs: uris, SecretHash: row.SecretHash,
-		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt}, nil
+		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, FirstParty: row.FirstParty}, nil
 }
 
 func (r *Repo) MarkClientUsed(ctx context.Context, id vo.Id, now time.Time) error {
@@ -117,6 +129,7 @@ func (r *Repo) InsertCode(ctx context.Context, c *model.OAuthAuthorizationCode) 
 		CodeHash: c.CodeHash, ClientID: c.ClientID.String(), UserID: c.UserID.String(),
 		RedirectUri: c.RedirectURI, CodeChallenge: c.CodeChallenge, Resource: c.Resource,
 		CredentialsGeneration: c.CredentialsGeneration, CreatedAt: c.CreatedAt, ExpiresAt: c.ExpiresAt,
+		Scope: string(c.Scope),
 	})
 }
 
@@ -139,7 +152,7 @@ func (r *Repo) ConsumeCode(ctx context.Context, codeHash string) (*model.OAuthAu
 	return &model.OAuthAuthorizationCode{
 		CodeHash: row.CodeHash, ClientID: clientID, UserID: userID, RedirectURI: row.RedirectUri,
 		CodeChallenge: row.CodeChallenge, Resource: row.Resource, CredentialsGeneration: row.CredentialsGeneration,
-		CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt,
+		CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt, Scope: model.TokenScope(row.Scope),
 	}, nil
 }
 
@@ -152,6 +165,7 @@ func (r *Repo) InsertGrant(ctx context.Context, g *model.OAuthGrant) error {
 		ID: g.ID.String(), UserID: g.UserID.String(), ClientID: g.ClientID.String(),
 		RefreshTokenHash: g.RefreshTokenHash, PrevRefreshTokenHash: g.PrevRefreshTokenHash, RotatedAt: g.RotatedAt,
 		CreatedAt: g.CreatedAt, LastUsedAt: g.LastUsedAt, ExpiresAt: g.ExpiresAt, RevokedAt: g.RevokedAt,
+		Scope: string(g.Scope),
 	})
 }
 
@@ -217,7 +231,7 @@ func (r *Repo) ListUnrevokedGrants(ctx context.Context, userID vo.Id) ([]model.C
 		g, err := hydrateGrant(grantRow{
 			ID: row.ID, UserID: row.UserID, ClientID: row.ClientID, RefreshTokenHash: row.RefreshTokenHash,
 			PrevRefreshTokenHash: row.PrevRefreshTokenHash, RotatedAt: row.RotatedAt, CreatedAt: row.CreatedAt,
-			LastUsedAt: row.LastUsedAt, ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
+			LastUsedAt: row.LastUsedAt, ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt, Scope: row.Scope,
 		})
 		if err != nil {
 			return nil, err
@@ -262,6 +276,7 @@ func hydrateGrant(row grantRow) (*model.OAuthGrant, error) {
 		ID: id, UserID: userID, ClientID: clientID,
 		RefreshTokenHash: row.RefreshTokenHash, PrevRefreshTokenHash: row.PrevRefreshTokenHash, RotatedAt: row.RotatedAt,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
+		Scope: model.TokenScope(row.Scope),
 	}, nil
 }
 
