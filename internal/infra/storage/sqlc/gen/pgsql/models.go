@@ -5,6 +5,7 @@
 package pgsqlgen
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -174,6 +175,41 @@ type Currency struct {
 	UserID         *string
 	Rate           *string
 	IsDeleted      bool
+}
+
+type Debt struct {
+	ID              string
+	UserID          string
+	Name            string
+	CurrencyID      string
+	CategoryID      string
+	PayeeID         *string
+	TagID           *string
+	StartDate       sql.NullTime
+	AsOf            time.Time
+	Balance         string
+	Payment         string
+	Schedule        string
+	LastPaymentDate time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+type DebtsPayment struct {
+	DebtID        string
+	TransactionID string
+	Interest      string
+}
+
+type DebtsSnapshot struct {
+	ID              string
+	DebtID          string
+	AsOf            time.Time
+	Balance         string
+	Payment         string
+	Schedule        string
+	LastPaymentDate time.Time
+	CreatedAt       time.Time
 }
 
 type Folder struct {
