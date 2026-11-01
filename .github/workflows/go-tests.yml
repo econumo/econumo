@@ -168,5 +168,12 @@ jobs:
               with:
                   go-version-file: go.mod
                   cache-dependency-path: go.sum
+            # Release binaries never change (each is checked against its
+            # SHA256SUMS on use), so the cache only ever gains new releases.
+            - name: Cache release binaries
+              uses: actions/cache@v6
+              with:
+                  path: ~/.cache/econumo-upgrade
+                  key: upgrade-release-binaries-${{ runner.os }}-${{ runner.arch }}-v1
             - name: Upgrade suite
               run: make test-upgrade

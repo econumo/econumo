@@ -54,9 +54,10 @@ func (v semver) less(o semver) bool {
 
 // sourceReleases picks the newest patch of every minor line from oldestRelease
 // on, read from the repository's tags, unless ECONUMO_UPGRADE_FROM lists them.
-// Tags above the newest release this checkout contains are left out: on a
-// hotfix branch of an older line they would be downgrades. A hotfix of an
-// older line released later still counts, as it sorts below.
+// Release lines above the newest one this checkout contains are left out: on
+// a hotfix branch of an older line they would be downgrades. Every patch of a
+// line at or below it counts, merged into HEAD or not, since a hotfix tagged
+// on a release branch is what an instance of that line runs.
 func sourceReleases(repoRoot string) ([]string, error) {
 	if env := strings.TrimSpace(os.Getenv("ECONUMO_UPGRADE_FROM")); env != "" {
 		var out []string
@@ -86,9 +87,10 @@ func sourceReleases(repoRoot string) ([]string, error) {
 		}
 	}
 	oldest, _ := parseSemver(oldestRelease)
+	newestLine := semver{ceiling.major, ceiling.minor + 1, 0}
 	newest := map[[2]int]semver{}
 	for _, v := range all {
-		if v.less(oldest) || ceiling.less(v) {
+		if v.less(oldest) || !v.less(newestLine) {
 			continue
 		}
 		line := [2]int{v.major, v.minor}
@@ -230,7 +232,7 @@ func checksumFor(sumsPath, asset string) (string, error) {
 			return strings.ToLower(fields[0]), nil
 		}
 	}
-	return "", fmt.Errorf("SHA256SUMS lists no %s", asset)
+	return "", fmt.Errorf("SHA256SUMS lists no %s: %w", asset, errNotPublished)
 }
 
 func fileSHA256(path string) (string, error) {

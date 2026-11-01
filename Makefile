@@ -268,7 +268,7 @@ test-repo-pgsql:
 # only (releases publish linux binaries); elsewhere it skips.
 test-upgrade:
 	CGO_ENABLED=0 DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
-		go test -tags upgrade -timeout 30m -count=1 ./internal/test/upgradetest/
+		go test -tags upgrade -v -timeout 30m -count=1 ./internal/test/upgradetest/
 
 # --- Suite & stack (full tests, docker, publishing) ------------------------
 

@@ -159,7 +159,8 @@ func runCLI(t *testing.T, bin, databaseURL string, args ...string) {
 
 func freePort(t *testing.T) int {
 	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	// serve binds ":PORT" on every interface, so probe the same.
+	l, err := net.Listen("tcp", ":0")
 	if err != nil {
 		t.Fatal(err)
 	}

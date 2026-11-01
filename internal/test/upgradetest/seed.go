@@ -3,7 +3,6 @@
 package upgradetest
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -137,9 +136,14 @@ func seed(t *testing.T, in *instance, from semver) seeded {
 	s.payee = created(t, owner, "/api/v1/payee/create-payee", map[string]any{"id": op(), "name": "Corner market"})
 	s.tag = created(t, owner, "/api/v1/tag/create-tag", map[string]any{"id": op(), "name": "trip"})
 	var labelIDs []string
-	if r := owner.do("POST", "/api/v1/label/create-label", map[string]any{"id": op(), "name": "Business"}); r.status != 404 {
-		s.label = itemID(t, r)
-		s.labels = true
+	var label struct {
+		Item struct{ Id string } `json:"item"`
+	}
+	if owner.tryPost("/api/v1/label/create-label", map[string]any{"id": op(), "name": "Business"}, &label) {
+		if label.Item.Id == "" {
+			t.Fatal("seed: create-label returned no id")
+		}
+		s.label, s.labels = label.Item.Id, true
 		labelIDs = []string{s.label}
 	}
 
@@ -207,17 +211,6 @@ func seed(t *testing.T, in *instance, from semver) seeded {
 	}
 	owner.post("/api/v1/account/delete-account", map[string]any{"id": s.cash}, nil)
 	return s
-}
-
-func itemID(t *testing.T, r response) string {
-	t.Helper()
-	var out struct {
-		Item struct{ Id string } `json:"item"`
-	}
-	if r.status != 200 || json.Unmarshal(r.data, &out) != nil || out.Item.Id == "" {
-		t.Fatalf("seed: HTTP %d: %s", r.status, r.raw)
-	}
-	return out.Item.Id
 }
 
 func createFolder(t *testing.T, c *client, name string) string {
