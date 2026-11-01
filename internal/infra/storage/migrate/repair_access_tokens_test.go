@@ -245,3 +245,65 @@ func TestFreshInstallDoesNotWarn(t *testing.T) {
 		t.Fatalf("fresh install warned: %v", *warnings)
 	}
 }
+
+// The repair rebuilds access_tokens, so it must carry each row's scope across
+// verbatim. An ingest PAT may only call /api/v1/import/ingest-*; silently
+// widening it to full would be a privilege escalation.
+func TestRepairPreservesIngestScope(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:scopepreserve?mode=memory&cache=shared")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+
+	// Everything up to just before the repair.
+	var before []migrate.Migration
+	for _, f := range migrations.SQLite() {
+		if f.Version >= "20261031000000" {
+			continue
+		}
+		before = append(before, migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command})
+	}
+	if err := migrate.Run(ctx, db, before, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatal(err)
+	}
+	u := "01a00000-0000-7000-8000-00000000000c"
+	if _, err := db.Exec(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
+		VALUES (?,?,?,'U','face:sky','x','s','argon2id','2026-01-01 00:00:00','2026-01-01 00:00:00',1)`, u, u, u+"@x.test"); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ id, scope string }{
+		{"tok-ingest", "ingest"},
+		{"tok-full", "full"},
+	} {
+		if _, err := db.Exec(`INSERT INTO access_tokens (id,user_id,kind,token_hash,scope,created_at,last_used_at)
+			VALUES (?,?,'personal',?,?,'2026-01-01 00:00:00','2026-01-01 00:00:00')`,
+			tc.id, u, "h-"+tc.id, tc.scope); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Now the repair.
+	var all []migrate.Migration
+	for _, f := range migrations.SQLite() {
+		all = append(all, migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command})
+	}
+	if err := migrate.Run(ctx, db, all, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatalf("repair: %v", err)
+	}
+
+	for _, tc := range []struct{ id, want string }{
+		{"tok-ingest", "ingest"},
+		{"tok-full", "full"},
+	} {
+		var got string
+		if err := db.QueryRow(`SELECT scope FROM access_tokens WHERE id = ?`, tc.id).Scan(&got); err != nil {
+			t.Fatalf("%s: %v", tc.id, err)
+		}
+		if got != tc.want {
+			t.Errorf("%s scope = %q, want %q (the rebuild must not widen a token's scope)", tc.id, got, tc.want)
+		}
+		t.Logf("%-12s scope preserved: %q", tc.id, got)
+	}
+}
