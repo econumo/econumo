@@ -2,6 +2,7 @@ package debt
 
 import (
 	"context"
+	"math"
 	"sort"
 	"strconv"
 	"time"
@@ -218,10 +219,20 @@ func (s *Service) syncDebts(ctx context.Context, categoryID vo.Id, debts []*mode
 		}
 	}
 
+	// A split of a payment dated after today is provisional: the terms may
+	// still be replaced before its date, so it is dropped and recomputed on
+	// every sync until the day arrives.
+	today := s.today(ctx)
+	future := map[vo.Id]bool{}
+	for _, c := range cands {
+		if day := time.Date(c.SpentAt.Year(), c.SpentAt.Month(), c.SpentAt.Day(), 0, 0, 0, 0, time.UTC); day.After(today) {
+			future[c.ID] = true
+		}
+	}
 	stored := map[vo.Id]vo.DecimalNumber{}
 	stale := map[vo.Id][]vo.Id{}
 	for _, sp := range splits {
-		if matchedTo[sp.TransactionID] == sp.DebtID {
+		if matchedTo[sp.TransactionID] == sp.DebtID && !future[sp.TransactionID] {
 			stored[sp.TransactionID] = sp.Interest
 			continue
 		}
@@ -281,7 +292,7 @@ func (s *Service) fillPayments(ctx context.Context, st *debtState, cands []Candi
 		}
 		p := payment{txID: c.ID, date: day, amount: roundTo(toFloat(amount), st.digits)}
 		if interest, ok := stored[c.ID]; ok {
-			p.interest = toFloat(interest)
+			p.interest = math.Max(0, math.Min(toFloat(interest), p.amount))
 		} else {
 			missing = true
 		}

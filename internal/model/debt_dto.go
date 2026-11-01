@@ -169,7 +169,7 @@ func debtValidation(fields []errs.FieldError) error {
 	return errs.NewValidation("Validation failed", fields...)
 }
 
-func debtInvaldebtIDField(key string) errs.FieldError {
+func debtInvalidField(key string) errs.FieldError {
 	return errs.FieldError{Key: key, Message: "This value is not valid.", Code: errs.CodeInvalidFormat}
 }
 
@@ -206,7 +206,7 @@ func debtFields(name, categoryID string, payeeID, tagID, startDate *string, bala
 	fields = append(fields, debtOptionalIDField("tagId", tagID)...)
 	if startDate != nil && strings.TrimSpace(*startDate) != "" {
 		if _, err := time.Parse(datetime.DateLayout, *startDate); err != nil {
-			fields = append(fields, debtInvaldebtIDField("startDate"))
+			fields = append(fields, debtInvalidField("startDate"))
 		}
 	}
 	fields = append(fields, debtAmountField("balance", balance.String(), true)...)
@@ -219,19 +219,19 @@ func debtFields(name, categoryID string, payeeID, tagID, startDate *string, bala
 	if strings.TrimSpace(lastPaymentDate) == "" {
 		fields = append(fields, blankField("lastPaymentDate"))
 	} else if _, err := time.Parse(datetime.DateLayout, lastPaymentDate); err != nil {
-		fields = append(fields, debtInvaldebtIDField("lastPaymentDate"))
+		fields = append(fields, debtInvalidField("lastPaymentDate"))
 	}
 	return fields
 }
 
-// amountField: a balance may be zero, a payment must be positive.
+// debtAmountField: a balance may be zero, a payment must be positive.
 func debtAmountField(key, v string, allowZero bool) []errs.FieldError {
 	if strings.TrimSpace(v) == "" {
 		return []errs.FieldError{blankField(key)}
 	}
 	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
 	if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
-		return []errs.FieldError{debtInvaldebtIDField(key)}
+		return []errs.FieldError{debtInvalidField(key)}
 	}
 	if f < 0 || (f == 0 && !allowZero) {
 		return []errs.FieldError{{Key: key, Message: "This value is out of range.", Code: errs.CodeOutOfRange}}

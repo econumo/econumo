@@ -128,6 +128,9 @@ func validateTerms(t model.DebtTerms) error {
 	if !t.LastPaymentDate.After(t.AsOf) {
 		return fieldError("lastPaymentDate", "The last payment date must be after today.", errs.CodeDebtLastPaymentInPast)
 	}
+	if !t.Payment.IsGreaterThan(vo.NewDecimal("0")) {
+		return fieldError("payment", "This value is out of range.", errs.CodeOutOfRange)
+	}
 	m := termsFloats(t)
 	n := len(model.DueDatesBetween(m.Schedule, m.Last, m.AsOf, m.Last))
 	if _, err := model.ImpliedRate(m.Balance, m.Payment, n); err != nil {

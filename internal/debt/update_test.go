@@ -215,3 +215,17 @@ func TestUpdateDebt_CurrencyIsNotEditable(t *testing.T) {
 		t.Fatalf("got %+v, %v", got, err)
 	}
 }
+
+func TestUpdateDebt_PaymentRoundingToZeroRefused(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	req := e.updateReq(res)
+	req.Payment = vo.NewFlexString("0.001")
+	_, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	requireCode(t, err, errs.CodeOutOfRange)
+
+	create := e.createReq()
+	create.Payment = vo.NewFlexString("0.004")
+	_, err = e.svc.CreateDebt(context.Background(), e.uid(), create)
+	requireCode(t, err, errs.CodeOutOfRange)
+}

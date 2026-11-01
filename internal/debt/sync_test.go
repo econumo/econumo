@@ -159,3 +159,70 @@ func TestSync_EditedAmountKeepsStoredInterest(t *testing.T) {
 		t.Fatalf("interest of the new payment = %s, want about %s", got[c], want)
 	}
 }
+
+func TestSync_StoredInterestCappedAtCorrectedAmount(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	res := e.create(t, nil)
+	e.clock.now = ymd(2026, 7, 1)
+	a := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+	e.sync(t)
+	if stored := vo.NewDecimal(e.splits(t, res.Id)[a]); !stored.IsGreaterThan(vo.NewDecimal("100")) {
+		t.Fatalf("stored interest = %s, want above 100", stored)
+	}
+
+	if _, err := e.db.Raw.ExecContext(ctx, e.db.Rebind("UPDATE transactions SET amount = ? WHERE id = ?"), "100", a); err != nil {
+		t.Fatal(err)
+	}
+	got, err := e.svc.GetDebt(ctx, e.uid(), model.GetDebtRequest{Id: res.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := got.Payments[0]
+	if p.Amount != "100" || p.Interest != "100" || p.Principal != "0" {
+		t.Fatalf("payment = %+v, want the interest capped at the amount", p)
+	}
+	if got.Item.OverpaidSoFar != "100" || got.Item.CurrentBalance != "10000" {
+		t.Fatalf("item = %+v, want overpaid 100 and the balance not risen", got.Item)
+	}
+}
+
+func TestSync_FutureDatedSplitIsProvisional(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	res := e.create(t, nil)
+	tx := e.expense(t, e.account, ymd(2026, 6, 1), "1000", "")
+	e.sync(t)
+	first := e.splits(t, res.Id)
+	if first[tx] == "" {
+		t.Fatalf("a future-dated payment keeps a provisional split row, got %v", first)
+	}
+
+	e.clock.now = ymd(2026, 3, 20)
+	req := e.updateReq(res)
+	req.Balance = vo.NewFlexString("9000")
+	updated, err := e.svc.UpdateDebt(ctx, e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.sync(t)
+	want := vo.NewDecimal("9000").Mul(vo.NewDecimal(updated.PeriodRate)).Round(2)
+	got := e.splits(t, res.Id)[tx]
+	if diff := vo.NewDecimal(got).Sub(want).Abs(); diff.IsGreaterThan(vo.NewDecimal("0.01")) || got == first[tx] {
+		t.Fatalf("interest = %s (first %s), want about %s under the new snapshot", got, first[tx], want)
+	}
+
+	// Once the day arrives the split is final.
+	e.clock.now = ymd(2026, 6, 2)
+	e.sync(t)
+	final := e.splits(t, res.Id)[tx]
+	req = e.updateReq(updated)
+	req.Balance = vo.NewFlexString("5000")
+	if _, err := e.svc.UpdateDebt(ctx, e.uid(), req); err != nil {
+		t.Fatal(err)
+	}
+	e.sync(t)
+	if after := e.splits(t, res.Id)[tx]; after != final || final != got {
+		t.Fatalf("split moved after its date: %s -> %s -> %s", got, final, after)
+	}
+}
