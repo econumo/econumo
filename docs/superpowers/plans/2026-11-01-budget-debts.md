@@ -47,7 +47,15 @@
       PayeeID    *vo.Id
       TagID      *vo.Id
       StartDate  *time.Time // date only, UTC midnight
+      Current    DebtTerms  // copy of the latest snapshot's values (agreed)
       CreatedAt, UpdatedAt time.Time
+  }
+  type DebtTerms struct {
+      AsOf            time.Time // date
+      Balance         vo.DecimalNumber
+      Payment         vo.DecimalNumber
+      Schedule        RecurringSchedule
+      LastPaymentDate time.Time // date
   }
   type DebtSnapshot struct {
       ID, DebtID      vo.Id
@@ -170,7 +178,7 @@ These algorithms are not determined by the signatures, so they are pinned here:
       ListByCategory(ctx context.Context, categoryID vo.Id) ([]*model.Debt, error)
       Save(ctx context.Context, d *model.Debt) error
       Delete(ctx context.Context, id vo.Id) error
-      AddSnapshot(ctx context.Context, s *model.DebtSnapshot) error
+      AddSnapshot(ctx context.Context, s *model.DebtSnapshot) error // the service always pairs it with Save of the same terms in one tx
       Snapshots(ctx context.Context, debtIDs []vo.Id) ([]*model.DebtSnapshot, error) // ordered debt_id, as_of, created_at
       Splits(ctx context.Context, debtIDs []vo.Id) ([]model.DebtSplit, error)
       InsertSplit(ctx context.Context, s model.DebtSplit) error // ON CONFLICT (transaction_id) DO NOTHING
@@ -185,14 +193,14 @@ These algorithms are not determined by the signatures, so they are pinned here:
   }
   ```
 - Tables:
-  - `debts(id, user_id → users CASCADE, name, currency_id → currencies, category_id → categories RESTRICT, payee_id → payees RESTRICT NULL, tag_id → tags RESTRICT NULL, start_date DATE NULL, created_at, updated_at)`
+  - `debts(id, user_id → users CASCADE, name, currency_id → currencies, category_id → categories RESTRICT, payee_id → payees RESTRICT NULL, tag_id → tags RESTRICT NULL, start_date DATE NULL, as_of DATE, balance NUMERIC(19,8), payment NUMERIC(19,8), schedule TEXT, last_payment_date DATE, created_at, updated_at)`. The five term columns are a copy of the latest snapshot, written together with every new snapshot.
   - `debts_snapshots(id, debt_id → debts CASCADE, as_of DATE, balance NUMERIC(19,8), payment NUMERIC(19,8), schedule TEXT, last_payment_date DATE, created_at)`
   - `debts_payments(debt_id → debts CASCADE, transaction_id → transactions CASCADE UNIQUE, interest NUMERIC(19,8))`
   - Indexes: `debts(user_id)`, `debts(category_id)`, `debts_snapshots(debt_id, as_of)`, `debts_payments(debt_id)`.
   - DATE columns are bound as `Y-m-d` text on sqlite, the same way `currencies_rates.published_at` is.
 
 - [ ] **Step 1: Write the failing tests** in `repo_test.go` (`dbtest.New(t)` + `fixture`):
-  - `TestRepo_SaveGetDebtRoundTrip`
+  - `TestRepo_SaveGetDebtRoundTrip` (including `Current` terms)
   - `TestRepo_SnapshotsOrdered`
   - `TestRepo_InsertSplitIsIdempotent`: inserting twice leaves one row
   - `TestRepo_SplitDeletedWithTransaction`: FK cascade
@@ -272,6 +280,7 @@ Rules the implementer cannot infer:
   5. Run `SplitPayments` with the stored interests as `Interest` and insert only the new ones, rounded.
 
   Read paths call `Sync` first.
+- **Current terms:** every write that adds a snapshot (create, update with changed values, mark paid off) sets `Debt.Current` to the same values and saves both inside one `WithTx`. Reads of current terms use `Debt.Current`; the snapshot history is read only for splits, backward estimates and the details view.
 - **Mark paid off:** adds a snapshot as of today with balance 0, keeping the latest payment, schedule and date (no rate solve, since r is irrelevant at 0).
 - **Create from a whole-category debt:** after saving, call `BudgetElements.TransferData(categoryID, 1, debtID, 6, currencyID)`.
 - **Delete:**
@@ -286,6 +295,7 @@ Rules the implementer cannot infer:
   - `TestCreateDebt_SameKeyNeedsDistinctStartDates`
   - `TestCreateDebt_WholeCategoryTransfersPlans`: the fake records `(cat,1,debt,6,cur)`
   - `TestUpdateDebt_SnapshotOnlyWhenValuesChange`
+  - `TestDebtCurrentMatchesLatestSnapshot`: after create, update, mark paid off and a no-op update, `Debt.Current` equals the latest snapshot's values
   - `TestUpdateDebt_RematchKeepsStoredSplits`
   - `TestDeleteDebt_PartialNeedsConfirmation`
   - `TestDeleteDebt_WholeCategoryTransfersBack`

@@ -280,7 +280,10 @@ next to Categories, where debts can also be created without a budget.
 
 ## Left to the builder
 
-- Schema (debts, snapshots, per-payment splits), endpoint names under
+- Schema details (debts, snapshots, per-payment splits). Agreed: the debt row also
+  carries a copy of the latest snapshot's values (balance, payment, schedule,
+  last payment date, as-of date), written with every new snapshot in the same
+  transaction; the snapshots stay the history. Endpoint names under
   `/api/v1/debt/`, and the additive `get-budget` / `get-budget-plan` fields.
 - When splits are computed (see above), numeric method for `r`.
 - English wording; "Overpayment" is the user's term for interest + fees.
