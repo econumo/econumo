@@ -86,8 +86,7 @@ var intended = []change{
 }
 
 // tolerated returns the path checks a diff from release may ignore.
-func tolerated(release string) func(path string) bool {
-	from, _ := parseSemver(release)
+func tolerated(from semver) func(path string) bool {
 	return func(path string) bool {
 		for _, c := range intended {
 			before, _ := parseSemver(c.before)

@@ -31,7 +31,8 @@ help:
 	@echo "  make ship-publish VERSION=vX.Y.Z CHANNELS=latest - Publish dist/ship/ to R2 with ship (CHANNELS=dev alone for a dev publish)"
 	@echo ""
 	@echo "Suite & stack:"
-	@echo "  make test         - ALL tests: Go smoke + sqlite-vs-pgsql regression + frontend"
+	@echo "  make test         - ALL tests: Go smoke + sqlite-vs-pgsql regression + release upgrades + frontend"
+	@echo "  make test-upgrade - upgrade databases written by published releases (linux, network, git tags)"
 	@echo "  make docker-up    - Start the stack (compose, builds from source)"
 	@echo "  make docker-down  - Stop the stack"
 	@echo "  make publish-dev  - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE) + publish the dev channel to R2 (ship)"
@@ -135,7 +136,8 @@ go-run: swagger
 #                    external dependencies. Run this constantly / before commit.
 #   make test        FULL: everything in go-test PLUS the sqlite-vs-pgsql
 #                    engine comparison against a real PostgreSQL PLUS the
-#                    frontend suite. Run before merging / releasing.
+#                    release upgrade suite (linux; needs network and the git
+#                    tags) PLUS the frontend suite. Run before merging / releasing.
 #
 # The granular targets below (test-cover, test-engines, go-lint) remain as the
 # building blocks the two tiers compose.
@@ -262,10 +264,11 @@ test-repo-pgsql:
 # credentials, reads and writes (internal/test/upgradetest). Needs the release
 # tags (git fetch --tags) and network for the first download of each release;
 # binaries are cached in ECONUMO_UPGRADE_CACHE (default: the user cache dir).
-# ECONUMO_UPGRADE_FROM=v1.5.2,v1.6.1 picks the source releases by hand.
+# ECONUMO_UPGRADE_FROM=v1.5.2,v1.6.1 picks the source releases by hand. Linux
+# only (releases publish linux binaries); elsewhere it skips.
 test-upgrade:
 	CGO_ENABLED=0 DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
-		go test -tags upgrade -count=1 ./internal/test/upgradetest/
+		go test -tags upgrade -timeout 30m -count=1 ./internal/test/upgradetest/
 
 # --- Suite & stack (full tests, docker, publishing) ------------------------
 

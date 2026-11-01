@@ -89,7 +89,7 @@ func created(t *testing.T, c *client, path string, body map[string]any) string {
 // transactions, budget limits and an envelope, a personal access token, and an
 // account deleted with a non-zero balance. Labels and recurring templates are
 // added on releases that have them.
-func seed(t *testing.T, in *instance, release string) seeded {
+func seed(t *testing.T, in *instance, from semver) seeded {
 	t.Helper()
 	anon := in.client(t, "")
 	var s seeded
@@ -202,7 +202,7 @@ func seed(t *testing.T, in *instance, release string) seeded {
 	// Releases before v1.4.0 had no explicit budget membership; its migration
 	// seeds a deleted account only when it was deleted after the budget was
 	// created, compared at one-second precision (PostgreSQL rounds to it).
-	if from, _ := parseSemver(release); from.less(semver{1, 4, 0}) {
+	if from.less(semver{1, 4, 0}) {
 		time.Sleep(time.Until(budgetCreated.Add(2 * time.Second)))
 	}
 	owner.post("/api/v1/account/delete-account", map[string]any{"id": s.cash}, nil)

@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -152,6 +153,10 @@ func (*pgsqlEngine) name() string { return "pgsql" }
 
 func (e *pgsqlEngine) newDatabase(ctx context.Context, label string) (string, error) {
 	name := "econumo_upgrade_" + strings.NewReplacer(".", "_", "-", "_").Replace(label)
+	dsn, err := withDatabase(e.url, name)
+	if err != nil {
+		return "", err
+	}
 	if _, err := e.admin.ExecContext(ctx, `DROP DATABASE IF EXISTS `+name+` WITH (FORCE)`); err != nil {
 		return "", err
 	}
@@ -159,7 +164,7 @@ func (e *pgsqlEngine) newDatabase(ctx context.Context, label string) (string, er
 		return "", err
 	}
 	e.dbs = append(e.dbs, name)
-	return withDatabase(e.url, name), nil
+	return dsn, nil
 }
 
 func (e *pgsqlEngine) cleanup(ctx context.Context) {
@@ -170,14 +175,13 @@ func (e *pgsqlEngine) cleanup(ctx context.Context) {
 }
 
 // withDatabase swaps the database name in a postgres:// URL.
-func withDatabase(url, name string) string {
-	base, query, _ := strings.Cut(url, "?")
-	slash := strings.LastIndex(base, "/")
-	out := base[:slash+1] + name
-	if query != "" {
-		out += "?" + query
+func withDatabase(raw, name string) (string, error) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return "", fmt.Errorf("DATABASE_TEST_PGSQL_URL must be a postgres://host/db URL")
 	}
-	return out
+	u.Path = "/" + name
+	return u.String(), nil
 }
 
 func (*pgsqlEngine) open(ctx context.Context, url string) (*sql.DB, error) {

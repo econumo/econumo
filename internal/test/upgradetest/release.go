@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -53,27 +54,41 @@ func (v semver) less(o semver) bool {
 
 // sourceReleases picks the newest patch of every minor line from oldestRelease
 // on, read from the repository's tags, unless ECONUMO_UPGRADE_FROM lists them.
+// Tags above the newest release this checkout contains are left out: on a
+// hotfix branch of an older line they would be downgrades. A hotfix of an
+// older line released later still counts, as it sorts below.
 func sourceReleases(repoRoot string) ([]string, error) {
 	if env := strings.TrimSpace(os.Getenv("ECONUMO_UPGRADE_FROM")); env != "" {
 		var out []string
 		for _, tag := range strings.Split(env, ",") {
-			if tag = strings.TrimSpace(tag); tag != "" {
-				out = append(out, tag)
+			if tag = strings.TrimSpace(tag); tag == "" {
+				continue
 			}
+			if _, ok := parseSemver(tag); !ok {
+				return nil, fmt.Errorf("ECONUMO_UPGRADE_FROM: %q is not a vX.Y.Z release", tag)
+			}
+			out = append(out, tag)
 		}
 		return out, nil
 	}
-	cmd := exec.Command("git", "tag", "--list", "v*")
-	cmd.Dir = repoRoot
-	raw, err := cmd.Output()
+	all, err := gitTags(repoRoot)
 	if err != nil {
-		return nil, fmt.Errorf("git tag: %w", err)
+		return nil, err
+	}
+	merged, err := gitTags(repoRoot, "--merged", "HEAD")
+	if err != nil {
+		return nil, err
+	}
+	var ceiling semver
+	for _, v := range merged {
+		if ceiling.less(v) {
+			ceiling = v
+		}
 	}
 	oldest, _ := parseSemver(oldestRelease)
 	newest := map[[2]int]semver{}
-	for _, tag := range strings.Fields(string(raw)) {
-		v, ok := parseSemver(tag)
-		if !ok || v.less(oldest) {
+	for _, v := range all {
+		if v.less(oldest) || ceiling.less(v) {
 			continue
 		}
 		line := [2]int{v.major, v.minor}
@@ -82,7 +97,7 @@ func sourceReleases(repoRoot string) ([]string, error) {
 		}
 	}
 	if len(newest) == 0 {
-		return nil, fmt.Errorf("no release tags from %s on; fetch tags (git fetch --tags) or set ECONUMO_UPGRADE_FROM", oldestRelease)
+		return nil, fmt.Errorf("no release tags from %s on in this checkout's history; fetch them (git fetch --tags, a full clone) or set ECONUMO_UPGRADE_FROM", oldestRelease)
 	}
 	versions := make([]semver, 0, len(newest))
 	for _, v := range newest {
@@ -91,15 +106,40 @@ func sourceReleases(repoRoot string) ([]string, error) {
 	sort.Slice(versions, func(i, j int) bool { return versions[i].less(versions[j]) })
 	out := make([]string, len(versions))
 	for i, v := range versions {
-		out[i] = fmt.Sprintf("v%d.%d.%d", v.major, v.minor, v.patch)
+		out[i] = v.String()
 	}
 	return out, nil
 }
+
+func gitTags(repoRoot string, args ...string) ([]semver, error) {
+	cmd := exec.Command("git", append([]string{"tag", "--list", "v*"}, args...)...)
+	cmd.Dir = repoRoot
+	raw, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git tag: %w", err)
+	}
+	var out []semver
+	for _, tag := range strings.Fields(string(raw)) {
+		if v, ok := parseSemver(tag); ok {
+			out = append(out, v)
+		}
+	}
+	return out, nil
+}
+
+func (v semver) String() string { return fmt.Sprintf("v%d.%d.%d", v.major, v.minor, v.patch) }
+
+// errNotPublished marks a release whose binaries are not (yet) attached: the
+// publish workflow pushes the tag before it uploads them.
+var errNotPublished = errors.New("release binaries not published")
 
 // releaseBinary returns the path of the release's linux binary for this
 // machine's architecture, downloading it into the cache on first use. The
 // binary must match the release's SHA256SUMS, cached or not.
 func releaseBinary(tag string) (string, error) {
+	if runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64" {
+		return "", fmt.Errorf("releases publish no linux/%s binary: %w", runtime.GOARCH, errNotPublished)
+	}
 	asset := "econumo-linux-" + runtime.GOARCH
 	dir, err := cacheDir()
 	if err != nil {
@@ -157,6 +197,9 @@ func download(url, dest string) error {
 		return fmt.Errorf("download %s: %w", url, err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("download %s: %w", url, errNotPublished)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download %s: HTTP %d", url, resp.StatusCode)
 	}

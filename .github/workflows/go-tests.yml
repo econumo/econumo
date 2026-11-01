@@ -139,6 +139,7 @@ jobs:
         name: Upgrade from published releases
         runs-on: ubuntu-latest
         needs: smoke
+        timeout-minutes: 40
         env:
             CGO_ENABLED: "0"
             # See smoke job: keep the toolchain locked to the SDK setup-go installs.

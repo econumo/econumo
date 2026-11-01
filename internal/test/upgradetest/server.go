@@ -108,6 +108,9 @@ func (in *instance) stop(t *testing.T) {
 	_ = in.cmd.Process.Signal(syscall.SIGTERM)
 	select {
 	case <-in.exited:
+		if in.waitErr != nil {
+			t.Fatalf("%s exited with %v on SIGTERM\n--- server log ---\n%s", in.label, in.waitErr, in.logs())
+		}
 	case <-time.After(20 * time.Second):
 		in.kill()
 		t.Fatalf("%s did not stop within 20s\n--- server log ---\n%s", in.label, in.logs())

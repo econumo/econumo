@@ -5,6 +5,7 @@ package upgradetest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -60,6 +61,9 @@ func TestUpgradeFromRelease(t *testing.T) {
 			for _, release := range releases {
 				t.Run(release, func(t *testing.T) {
 					bin, err := releaseBinary(release)
+					if errors.Is(err, errNotPublished) {
+						t.Skipf("%s: %v", release, err)
+					}
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -109,6 +113,10 @@ func readInstalled(t *testing.T, eng engine, url string) installed {
 
 func upgrade(t *testing.T, eng engine, release, oldBin, current string, fresh installed) {
 	ctx := context.Background()
+	from, ok := parseSemver(release)
+	if !ok {
+		t.Fatalf("%q is not a vX.Y.Z release", release)
+	}
 	url, err := eng.newDatabase(ctx, release)
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +127,7 @@ func upgrade(t *testing.T, eng engine, release, oldBin, current string, fresh in
 	startServer(t, release, oldBin, url).stop(t)
 	runCLI(t, oldBin, url, "currency:add", "EUR", "Euro", "2")
 	old := startServer(t, release, oldBin, url)
-	s := seed(t, old, release)
+	s := seed(t, old, from)
 	before := takeSnapshot(t, old, s)
 	old.stop(t)
 	released := readInstalled(t, eng, url).versions
@@ -140,7 +148,7 @@ func upgrade(t *testing.T, eng engine, release, oldBin, current string, fresh in
 	}
 	checkMigrationOrder(t, release, released, upgraded.versions)
 	checkCredentials(t, cur, s)
-	checkReads(t, cur, s, before, tolerated(release))
+	checkReads(t, cur, s, before, tolerated(from))
 	checkFigures(t, cur, s)
 	checkWrites(t, cur, s)
 
