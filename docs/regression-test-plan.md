@@ -1773,12 +1773,13 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] SQLite instance whose history passes through v1.5.x (v1.5.x -> v1.6.x ->
       this release, and v1.5.x straight to this release): signing in with email
       and password succeeds instead of failing with 500 / "no such column:
-      provider". Existing sessions and personal tokens still authenticate after
-      the upgrade (the repair rebuilds `access_tokens`, so its rows must survive),
-      and Settings -> Sessions lists them. Then sign in through a provider and
-      log out: the session carries the new provider value. On a fresh install and
-      on an instance upgraded from v1.6.x or later, login and the sessions list
-      work unchanged.
+      provider", and the boot log carries the `repair-access-tokens` WARN naming
+      each re-added column. Then sign in through a provider and check Settings ->
+      Sessions still lists the session. On a fresh install and on an instance
+      upgraded from v1.6.x or later, the same boot logs NO repair warning (the
+      columns were never dropped), login works unchanged, and a custom-OIDC
+      session signed in before the upgrade still logs out through the
+      provider's end-session page (its stored provider/id_token survive).
 - [ ] 📱 **Upcoming recurring payments mark a short plan**: with an active
       recurring expense on a budget account (category X, due later this month,
       nothing planned for X), the current month's Budget view (desktop, phone
