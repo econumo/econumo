@@ -1,0 +1,11 @@
+-- No-op counterpart to the SQLite migration of the same version, which repairs
+-- access_tokens.provider / id_token after the out-of-order 20260901000000
+-- rebuild dropped them. PostgreSQL never lost them: its 20260901000000 adds
+-- scope with ALTER TABLE instead of rebuilding the table.
+--
+-- It exists so both engines record the same version set. data:import-sqlite
+-- requires the source SQLite's schema_migrations to match the target
+-- PostgreSQL's EXACTLY (sqliteimport.sameVersionSet), so a version present on
+-- one engine only would abort every SQLite -> PostgreSQL import with a schema
+-- mismatch.
+SELECT 1;
