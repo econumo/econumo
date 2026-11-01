@@ -2121,6 +2121,14 @@
       "cannot_be_merged": "无法合并所选标签。",
       "list_empty": "标签列表为空。"
     },
+    "debt": {
+      "payments_dont_cover": "还款金额不足以还清余额。请提高每期还款额，或将最后还款日设得更晚。",
+      "key_conflict": "另一笔债务可能匹配相同的付款。请使用不同的收款人或标签，或使用相同的收款人和标签但起始日期不同。",
+      "start_date_taken": "已有另一笔债务使用相同的分类、收款人和标签，并且起始日期相同。",
+      "category_not_expense": "债务需要使用支出分类。",
+      "removal_unconfirmed": "这将删除此债务在你的预算中的计划金额和评论；请确认以继续。",
+      "last_payment_in_past": "最后还款日必须晚于今天。"
+    },
     "authserver": {
       "disabled": "此服务器不支持连接应用。",
       "client_not_found": "此应用的注册已过期或无法识别。请在应用中移除 Econumo，然后重新添加。",

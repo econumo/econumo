@@ -287,3 +287,48 @@ func TestProjectDebt_PastMonthClosesAtBookedBalance(t *testing.T) {
 	near(t, "February closing", p.Months["2026-02-01"].ClosingBalance, 300000-(2000-in["a"]), 1e-6)
 	near(t, "overpaid so far", p.OverpaidSoFar, in["a"], 1e-9)
 }
+
+func TestProjectDebt_OverdueDueCountsInCurrentMonth(t *testing.T) {
+	snap := MathSnapshot{AsOf: ymd(2026, time.August, 28), Balance: 1000, Payment: 250,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2026, time.December, 28)}
+	months := []time.Time{ymd(2026, time.September, 1), ymd(2026, time.October, 1), ymd(2026, time.November, 1)}
+	p := ProjectDebt(ProjectionInput{Snaps: []MathSnapshot{snap}, Today: ymd(2026, time.October, 5), Months: months})
+	sep, oct, nov := p.Months["2026-09-01"], p.Months["2026-10-01"], p.Months["2026-11-01"]
+	near(t, "October still due", oct.StillDue, 500, 1e-9)
+	if oct.PaymentsLeft != 2 {
+		t.Fatalf("October PaymentsLeft = %d, want 2", oct.PaymentsLeft)
+	}
+	near(t, "November still due", nov.StillDue, 250, 1e-9)
+	near(t, "September still due", sep.StillDue, 0, 1e-9)
+	if p.PaymentsLeft != 4 {
+		t.Fatalf("PaymentsLeft = %d, want 4", p.PaymentsLeft)
+	}
+	if !p.NextDueDate.Equal(ymd(2026, time.September, 28)) {
+		t.Fatalf("NextDueDate = %v, want the overdue Sep 28", p.NextDueDate)
+	}
+}
+
+func TestSplit_WindowContainingAsOfAlreadyAccrued(t *testing.T) {
+	snap := refLoan()
+	snap.AsOf = ymd(2026, time.February, 10)
+	snap.Last = ymd(2046, time.February, 1)
+
+	got := SplitPayments([]MathSnapshot{snap}, []MathPayment{pay("b", ymd(2026, time.February, 12), 2000)})
+	near(t, "interest without an earlier payment in the window", got["b"], 300000*mustRate(t, snap), 0.01)
+
+	ps := []MathPayment{pay("a", ymd(2026, time.February, 5), 2000), pay("b", ymd(2026, time.February, 12), 2000)}
+	got = SplitPayments([]MathSnapshot{snap}, ps)
+	near(t, "interest after a payment dated before the snapshot", got["b"], 0, 1e-9)
+}
+
+func TestSplit_MultipleSnapshotsResetBalance(t *testing.T) {
+	s1 := refLoan()
+	s2 := MathSnapshot{AsOf: ymd(2026, time.March, 1), Balance: 100000, Payment: 2000,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2036, time.March, 1)}
+	snaps := []MathSnapshot{s1, s2}
+	ps := []MathPayment{pay("a", ymd(2026, time.February, 1), 2000), pay("b", ymd(2026, time.April, 1), 2000)}
+	in := SplitPayments(snaps, ps)
+	near(t, "first payment under the first snapshot", in["a"], 1280.29, 0.01)
+	near(t, "second payment under the second snapshot", in["b"], 100000*mustRate(t, s2), 0.01)
+	near(t, "balance after the second payment", BalanceAt(snaps, ps, in, ymd(2026, time.April, 1)), 100000-(2000-in["b"]), 1e-6)
+}

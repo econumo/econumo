@@ -137,6 +137,13 @@ const (
 	CodeOAuthProviderAlreadyLinked  = "oauth.provider_already_linked"
 	CodeOAuthLastSignInMethod       = "oauth.last_sign_in_method"
 
+	CodeDebtPaymentsDontCover  = "debt.payments_dont_cover"
+	CodeDebtKeyConflict        = "debt.key_conflict"
+	CodeDebtStartDateTaken     = "debt.start_date_taken"
+	CodeDebtCategoryNotExpense = "debt.category_not_expense"
+	CodeDebtRemovalUnconfirmed = "debt.removal_unconfirmed"
+	CodeDebtLastPaymentInPast  = "debt.last_payment_in_past"
+
 	CodeAuthServerDisabled         = "authserver.disabled"
 	CodeAuthServerClientNotFound   = "authserver.client_not_found"
 	CodeAuthServerRedirectMismatch = "authserver.redirect_uri_mismatch"
@@ -276,4 +283,11 @@ var AllCodes = []string{
 	CodeAuthServerClientNotFound,
 	CodeAuthServerRedirectMismatch,
 	CodeAuthServerGrantNotFound,
+
+	CodeDebtPaymentsDontCover,
+	CodeDebtKeyConflict,
+	CodeDebtStartDateTaken,
+	CodeDebtCategoryNotExpense,
+	CodeDebtRemovalUnconfirmed,
+	CodeDebtLastPaymentInPast,
 }

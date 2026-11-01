@@ -2121,6 +2121,14 @@
       "cannot_be_merged": "As etiquetas selecionadas não podem ser mescladas.",
       "list_empty": "A lista de etiquetas está vazia."
     },
+    "debt": {
+      "payments_dont_cover": "Os pagamentos não cobrem o saldo. Aumente o pagamento ou defina uma data de último pagamento posterior.",
+      "key_conflict": "Outra dívida poderia corresponder aos mesmos pagamentos. Use beneficiários ou etiquetas diferentes, ou os mesmos com datas de início diferentes.",
+      "start_date_taken": "Já existe outra dívida com a mesma categoria, beneficiário e etiqueta que começa nesta data.",
+      "category_not_expense": "Uma dívida precisa de uma categoria de despesa.",
+      "removal_unconfirmed": "Isto elimina os montantes planeados e os comentários desta dívida nos seus orçamentos; confirme para continuar.",
+      "last_payment_in_past": "A data do último pagamento tem de ser posterior a hoje."
+    },
     "authserver": {
       "disabled": "A conexão de aplicações não está disponível neste servidor.",
       "client_not_found": "O registo desta aplicação expirou ou é desconhecido. Remova o Econumo da aplicação e adicione-o novamente.",

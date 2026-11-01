@@ -2121,6 +2121,14 @@
       "cannot_be_merged": "Die ausgewählten Tags können nicht zusammengeführt werden.",
       "list_empty": "Die Tag-Liste ist leer"
     },
+    "debt": {
+      "payments_dont_cover": "Die Zahlungen decken den Restbetrag nicht. Erhöhen Sie die Rate oder legen Sie ein späteres Datum der letzten Zahlung fest.",
+      "key_conflict": "Eine andere Schuld könnte dieselben Zahlungen erfassen. Wählen Sie unterschiedliche Zahlungsempfänger oder Tags oder dieselben mit unterschiedlichen Startdaten.",
+      "start_date_taken": "Eine andere Schuld mit derselben Kategorie, demselben Zahlungsempfänger und demselben Tag beginnt bereits an diesem Datum.",
+      "category_not_expense": "Eine Schuld benötigt eine Ausgabenkategorie.",
+      "removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare dieser Schuld in Ihren Budgets gelöscht; bestätigen Sie, um fortzufahren.",
+      "last_payment_in_past": "Das Datum der letzten Zahlung muss nach heute liegen."
+    },
     "authserver": {
       "disabled": "Das Verbinden von Apps ist auf diesem Server nicht verfügbar.",
       "client_not_found": "Die Registrierung dieser App ist abgelaufen oder unbekannt. Entfernen Sie Econumo aus der App und fügen Sie es erneut hinzu.",

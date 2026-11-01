@@ -44,10 +44,13 @@ type Projection struct {
 	PaymentsLeft                              int
 	MoneyLeft, OverpaymentLeft, OverpaidSoFar float64
 	PayoffDate, BasePayoffDate                time.Time
-	BaseOverpaymentLeft                       float64
-	Months                                    map[string]ProjectionMonth
-	PaidOff                                   bool
-	PayoffMonth                               time.Time
+	// NextDueDate is the first projected payment; an unpaid due already past
+	// stays itself (overdue).
+	NextDueDate         time.Time
+	BaseOverpaymentLeft float64
+	Months              map[string]ProjectionMonth
+	PaidOff             bool
+	PayoffMonth         time.Time
 }
 
 const (
@@ -180,6 +183,9 @@ func snapshotRate(s MathSnapshot) float64 {
 	}
 	return r
 }
+
+// PeriodRate is the implied rate per schedule period of a snapshot.
+func PeriodRate(s MathSnapshot) float64 { return snapshotRate(s) }
 
 func sortedSnaps(snaps []MathSnapshot) []MathSnapshot {
 	out := append([]MathSnapshot(nil), snaps...)
@@ -503,19 +509,29 @@ func ProjectDebt(in ProjectionInput) Projection {
 	out.MoneyLeft = run.moneyLeft()
 	out.OverpaymentLeft = out.MoneyLeft - current
 	out.PayoffDate = run.payoffDate
+	if len(run.steps) > 0 {
+		out.NextDueDate = run.steps[0].date
+	}
 	out.BasePayoffDate = base.payoffDate
 	out.BaseOverpaymentLeft = base.moneyLeft() - current
 
+	currentMonth := monthStart(today)
 	for _, m := range in.Months {
 		m = monthStart(m)
 		monthEnd := m.AddDate(0, 1, -1)
 		pm := ProjectionMonth{}
 		pm.ScheduledTotal = latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, m.AddDate(0, 0, -1), monthEnd)))
 		for _, st := range run.steps {
+			// An unpaid due before this month still has to be paid, so it
+			// counts in the current month.
+			date := st.date
+			if date.Before(currentMonth) {
+				date = currentMonth
+			}
 			switch {
-			case st.date.After(monthEnd):
+			case date.After(monthEnd):
 				pm.PaymentsLeft++
-			case !st.date.Before(m):
+			case !date.Before(m):
 				pm.StillDue += st.pay
 			}
 		}

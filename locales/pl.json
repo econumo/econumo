@@ -2121,6 +2121,14 @@
       "cannot_be_merged": "Nie można scalić wybranych tagów.",
       "list_empty": "Lista tagów jest pusta."
     },
+    "debt": {
+      "payments_dont_cover": "Płatności nie pokrywają salda. Zwiększ płatność lub ustaw późniejszą datę ostatniej płatności.",
+      "key_conflict": "Inny dług mógłby pasować do tych samych płatności. Użyj różnych odbiorców lub tagów albo tych samych z różnymi datami początku.",
+      "start_date_taken": "Inny dług z tą samą kategorią, odbiorcą i tagiem zaczyna się już w tym dniu.",
+      "category_not_expense": "Dług wymaga kategorii wydatków.",
+      "removal_unconfirmed": "Spowoduje to usunięcie zaplanowanych kwot i komentarzy tego długu w Twoich budżetach; potwierdź, aby kontynuować.",
+      "last_payment_in_past": "Data ostatniej płatności musi być późniejsza niż dzisiaj."
+    },
     "authserver": {
       "disabled": "Łączenie aplikacji nie jest dostępne na tym serwerze.",
       "client_not_found": "Rejestracja tej aplikacji wygasła lub jest nieznana. Usuń Econumo z aplikacji i dodaj je ponownie.",
