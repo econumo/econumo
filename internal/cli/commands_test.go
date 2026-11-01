@@ -110,6 +110,28 @@ func TestCurrencyAdd(t *testing.T) {
 }
 
 // TestCurrencyAddUsageError covers the arg-count usage-error branch.
+// Without a foreign currency in use there is nothing to load, so neither
+// command reaches Open Exchange Rates.
+func TestCurrencyRateGapCommands(t *testing.T) {
+	cliEnv(t)
+	if got := Run([]string{"currency:show-rate-gaps"}); got != 0 {
+		t.Fatalf("currency:show-rate-gaps = %d, want 0", got)
+	}
+	if got := Run([]string{"currency:show-rate-gaps", "2026-01", "--daily"}); got != 0 {
+		t.Fatalf("currency:show-rate-gaps --daily = %d, want 0", got)
+	}
+	if got := Run([]string{"currency:backfill-rates", "2026-01"}); got != 0 {
+		t.Fatalf("currency:backfill-rates = %d, want 0", got)
+	}
+	// The start is required: every gap costs an API request.
+	if got := Run([]string{"currency:backfill-rates", "--daily"}); got != 1 {
+		t.Fatalf("currency:backfill-rates without a start = %d, want 1", got)
+	}
+	if got := Run([]string{"currency:show-rate-gaps", "--monthly"}); got != 1 {
+		t.Fatalf("currency:show-rate-gaps --monthly = %d, want 1", got)
+	}
+}
+
 func TestCurrencyAddUsageError(t *testing.T) {
 	cliEnv(t)
 	if got := Run([]string{"currency:add"}); got != 1 {
@@ -509,5 +531,61 @@ func TestFreshDatabaseMigratesWithCommandSteps(t *testing.T) {
 	}
 	if err := migrate.Run(ctx, c.db, runnerMigs, migrate.WithCommandRunner(MigrationCommandRunner(c.cfg, c.db))); err != nil {
 		t.Fatalf("fresh boot migration: %v", err)
+	}
+}
+
+// TestMigrationCopyAccessTokens_CommandAndRunner drives step 2 of the
+// access_tokens repair by name: with access_tokens_new pending it copies every
+// row and a second run replaces rather than duplicates them; once the tables
+// are swapped it has nothing to do.
+func TestMigrationCopyAccessTokens_CommandAndRunner(t *testing.T) {
+	cliEnv(t)
+	ctx := context.Background()
+	c, err := newContainer(ctx)
+	if err != nil {
+		t.Fatalf("container: %v", err)
+	}
+	defer c.Close()
+
+	// The container's database is fully migrated, so the swap has happened.
+	if code := Run([]string{"migration:copy-access-tokens"}); code != 0 {
+		t.Fatalf("after the swap: exit code %d", code)
+	}
+
+	u := "01a00000-0000-7000-8000-0000000000c1"
+	if _, err := c.db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
+		VALUES (?, ?, 'copy@x.test', 'U', 'face:sky', 'x', 's', 'argon2id', '2026-01-01 00:00:00', '2026-01-01 00:00:00', 1)`, u, u); err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	if _, err := c.db.ExecContext(ctx, `INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, created_at, last_used_at, provider)
+		VALUES ('tok-1', ?, 'session', 'h-1', 'full', '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'oidc')`, u); err != nil {
+		t.Fatalf("seed token: %v", err)
+	}
+	var step1 string
+	for _, f := range migrations.SQLite() {
+		if f.Version == "20261031000010" {
+			step1 = f.SQL
+		}
+	}
+	if _, err := c.db.ExecContext(ctx, step1); err != nil {
+		t.Fatalf("create access_tokens_new: %v", err)
+	}
+
+	for run := 1; run <= 2; run++ {
+		if code := Run([]string{"migration:copy-access-tokens"}); code != 0 {
+			t.Fatalf("run %d: exit code %d", run, code)
+		}
+		var n int
+		var provider string
+		if err := c.db.QueryRowContext(ctx, `SELECT COUNT(*), MAX(provider) FROM access_tokens_new`).Scan(&n, &provider); err != nil {
+			t.Fatal(err)
+		}
+		if n != 1 || provider != "oidc" {
+			t.Fatalf("run %d: access_tokens_new holds %d row(s), provider %q; want 1, oidc", run, n, provider)
+		}
+	}
+
+	if err := MigrationCommandRunner(c.cfg, c.db)(ctx, "migration:copy-access-tokens"); err != nil {
+		t.Fatalf("runner: %v", err)
 	}
 }

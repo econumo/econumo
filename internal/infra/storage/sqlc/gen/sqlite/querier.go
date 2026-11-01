@@ -219,6 +219,9 @@ type Querier interface {
 	// Oldest published_at for a base currency: the rate month used for periods
 	// before the first stored rate.
 	GetEarliestCurrencyRateDate(ctx context.Context, baseCurrencyID string) (time.Time, error)
+	// Where a rate-gap check starts by default. ORDER BY ... LIMIT 1 so the
+	// result types as the column. sql.ErrNoRows = no transactions yet.
+	GetEarliestTransactionDate(ctx context.Context) (time.Time, error)
 	// Fixed custom-currency rates for the convertor overlay: one rate per custom,
 	// period-independent. Globals never carry a rate here.
 	GetFixedCurrencyRates(ctx context.Context) ([]GetFixedCurrencyRatesRow, error)
@@ -545,6 +548,11 @@ type Querier interface {
 	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
 	// engines return identical row order.
 	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	// Distinct (period, code) pairs with a rate against the base in [from, to).
+	// The period is published_at formatted with the bound strftime layout
+	// ('%Y-%m' per month, '%Y-%m-%d' per day). date() bounds as in
+	// GetAverageCurrencyRates, so a gap here is a gap for the conversions too.
+	ListRatedPeriods(ctx context.Context, arg ListRatedPeriodsParams) ([]ListRatedPeriodsRow, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// ids is a JSON array of tag ids: one round trip whoever owns them.
@@ -558,6 +566,10 @@ type Querier interface {
 	// id. The time of day takes no part.
 	ListTransactionsByAccount(ctx context.Context, accountID string) ([]Transaction, error)
 	ListUnrevokedOAuthGrants(ctx context.Context, userID string) ([]ListUnrevokedOAuthGrantsRow, error)
+	// Global currencies something converts from or to: an account (deleted ones
+	// too, their history still counts), a budget, a budget element, or a user's
+	// display currency. The rate-gap check looks at these only.
+	ListUsedGlobalCurrencyCodes(ctx context.Context) ([]string, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	// Ordered by id so the backfill is deterministic across engines and reruns.
 	// A LEFT JOIN + IS NULL, not NOT EXISTS: sqlc's sqlite parser fails to detect

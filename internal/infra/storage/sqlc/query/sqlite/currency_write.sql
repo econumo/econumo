@@ -49,6 +49,36 @@ SELECT published_at FROM currencies_rates ORDER BY published_at DESC LIMIT 1;
 -- ECONUMO_CURRENCY_BASE no longer matches what the rates were written against.
 SELECT base_currency_id FROM currencies_rates ORDER BY published_at DESC LIMIT 1;
 
+-- name: ListUsedGlobalCurrencyCodes :many
+-- Global currencies something converts from or to: an account (deleted ones
+-- too, their history still counts), a budget, a budget element, or a user's
+-- display currency. The rate-gap check looks at these only.
+SELECT c.code FROM currencies c
+WHERE c.user_id IS NULL AND (
+    EXISTS (SELECT 1 FROM accounts a WHERE a.currency_id = c.id)
+    OR EXISTS (SELECT 1 FROM budgets b WHERE b.currency_id = c.id)
+    OR EXISTS (SELECT 1 FROM budgets_elements e WHERE e.currency_id = c.id)
+    OR EXISTS (SELECT 1 FROM users_options o WHERE o.name = 'currency' AND o.value = c.id)
+)
+ORDER BY c.code;
+
+-- name: ListRatedPeriods :many
+-- Distinct (period, code) pairs with a rate against the base in [from, to).
+-- The period is published_at formatted with the bound strftime layout
+-- ('%Y-%m' per month, '%Y-%m-%d' per day). date() bounds as in
+-- GetAverageCurrencyRates, so a gap here is a gap for the conversions too.
+SELECT DISTINCT CAST(strftime(CAST(sqlc.arg(layout) AS TEXT), r.published_at) AS TEXT) AS period, c.code
+FROM currencies_rates r
+JOIN currencies c ON c.id = r.currency_id
+WHERE r.base_currency_id = sqlc.arg(base_currency_id)
+  AND date(r.published_at) >= date(CAST(sqlc.arg(from_date) AS TEXT))
+  AND date(r.published_at) < date(CAST(sqlc.arg(to_date) AS TEXT));
+
+-- name: GetEarliestTransactionDate :one
+-- Where a rate-gap check starts by default. ORDER BY ... LIMIT 1 so the
+-- result types as the column. sql.ErrNoRows = no transactions yet.
+SELECT spent_at FROM transactions ORDER BY spent_at ASC LIMIT 1;
+
 -- User currency management (per-user custom currencies). Global currencies
 -- have user_id NULL; custom currencies carry their owner id.
 

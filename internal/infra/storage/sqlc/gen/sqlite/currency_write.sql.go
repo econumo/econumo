@@ -120,6 +120,19 @@ func (q *Queries) GetCurrencyRecord(ctx context.Context, id string) (GetCurrency
 	return i, err
 }
 
+const getEarliestTransactionDate = `-- name: GetEarliestTransactionDate :one
+SELECT spent_at FROM transactions ORDER BY spent_at ASC LIMIT 1
+`
+
+// Where a rate-gap check starts by default. ORDER BY ... LIMIT 1 so the
+// result types as the column. sql.ErrNoRows = no transactions yet.
+func (q *Queries) GetEarliestTransactionDate(ctx context.Context) (time.Time, error) {
+	row := q.db.QueryRowContext(ctx, getEarliestTransactionDate)
+	var spent_at time.Time
+	err := row.Scan(&spent_at)
+	return spent_at, err
+}
+
 const getFixedCurrencyRates = `-- name: GetFixedCurrencyRates :many
 SELECT id, rate FROM currencies WHERE rate IS NOT NULL
 `
@@ -330,6 +343,96 @@ func (q *Queries) ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRatedPeriods = `-- name: ListRatedPeriods :many
+SELECT DISTINCT CAST(strftime(CAST(?1 AS TEXT), r.published_at) AS TEXT) AS period, c.code
+FROM currencies_rates r
+JOIN currencies c ON c.id = r.currency_id
+WHERE r.base_currency_id = ?2
+  AND date(r.published_at) >= date(CAST(?3 AS TEXT))
+  AND date(r.published_at) < date(CAST(?4 AS TEXT))
+`
+
+type ListRatedPeriodsParams struct {
+	Layout         string
+	BaseCurrencyID string
+	FromDate       string
+	ToDate         string
+}
+
+type ListRatedPeriodsRow struct {
+	Period string
+	Code   string
+}
+
+// Distinct (period, code) pairs with a rate against the base in [from, to).
+// The period is published_at formatted with the bound strftime layout
+// ('%Y-%m' per month, '%Y-%m-%d' per day). date() bounds as in
+// GetAverageCurrencyRates, so a gap here is a gap for the conversions too.
+func (q *Queries) ListRatedPeriods(ctx context.Context, arg ListRatedPeriodsParams) ([]ListRatedPeriodsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listRatedPeriods,
+		arg.Layout,
+		arg.BaseCurrencyID,
+		arg.FromDate,
+		arg.ToDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRatedPeriodsRow{}
+	for rows.Next() {
+		var i ListRatedPeriodsRow
+		if err := rows.Scan(&i.Period, &i.Code); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsedGlobalCurrencyCodes = `-- name: ListUsedGlobalCurrencyCodes :many
+SELECT c.code FROM currencies c
+WHERE c.user_id IS NULL AND (
+    EXISTS (SELECT 1 FROM accounts a WHERE a.currency_id = c.id)
+    OR EXISTS (SELECT 1 FROM budgets b WHERE b.currency_id = c.id)
+    OR EXISTS (SELECT 1 FROM budgets_elements e WHERE e.currency_id = c.id)
+    OR EXISTS (SELECT 1 FROM users_options o WHERE o.name = 'currency' AND o.value = c.id)
+)
+ORDER BY c.code
+`
+
+// Global currencies something converts from or to: an account (deleted ones
+// too, their history still counts), a budget, a budget element, or a user's
+// display currency. The rate-gap check looks at these only.
+func (q *Queries) ListUsedGlobalCurrencyCodes(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listUsedGlobalCurrencyCodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&code); err != nil {
+			return nil, err
+		}
+		items = append(items, code)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
