@@ -72,6 +72,26 @@ func migrationCommands() []command {
 				return nil
 			},
 		},
+		{
+			name:    "migration:copy-access-tokens",
+			summary: "copy access_tokens into access_tokens_new, step 2 of the access_tokens repair (idempotent; no-op on PostgreSQL)",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if c.cfg.DatabaseDriver != sqlite.Name {
+					fmt.Printf("nothing to copy on %s\n", c.cfg.DatabaseDriver)
+					return nil
+				}
+				copied, pending, err := sqlite.CopyAccessTokens(ctx, c.db)
+				if err != nil {
+					return err
+				}
+				if !pending {
+					fmt.Println("no access_tokens_new to fill: the repair has not started or is already complete")
+					return nil
+				}
+				fmt.Printf("copied %d access_tokens row(s)\n", copied)
+				return nil
+			},
+		},
 	}
 }
 

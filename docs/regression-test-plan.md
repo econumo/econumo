@@ -1770,6 +1770,16 @@ and on tablet/phone only with a hardware keyboard.
       column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
       they list and export at the UTC time after the upgrade instead of
       failing the list.
+- [ ] SQLite instance whose history passes through v1.5.x (v1.5.x -> v1.6.x ->
+      this release, and v1.5.x straight to this release): signing in with email
+      and password succeeds instead of failing with 500 / "no such column:
+      provider", and existing sessions and personal tokens (an ingest-only token
+      still limited to ingest) keep working after the upgrade. Then sign in
+      through a provider and check Settings -> Sessions lists the session. On a
+      fresh install and on an instance upgraded from v1.6.x or later, login works
+      unchanged, Settings -> Sessions still names each session's provider, and a
+      custom-OIDC session signed in before the upgrade still logs out through
+      the provider's end-session page (its stored provider/id_token survive).
 - [ ] 📱 **Upcoming recurring payments mark a short plan**: with an active
       recurring expense on a budget account (category X, due later this month,
       nothing planned for X), the current month's Budget view (desktop, phone

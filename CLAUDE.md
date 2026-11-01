@@ -1048,6 +1048,7 @@ migration:zero-deleted-accounts
 migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
 migration:seed-transaction-sort-keys
+migration:copy-access-tokens
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -1111,6 +1112,28 @@ lists used before keys existed (spent_at DESC, id), the rows it is the source of
 transfers it receives together. One account per DB transaction, with that account's revision
 bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
 migration step `20261024000001`, right after the SQL file that adds the columns.
+
+`migration:copy-access-tokens` is step 2 of the three-step `access_tokens` repair
+(`20261031000010` creates `access_tokens_new` in the final shape, `20261031000011` runs
+this command, `20261031000012` drops the old table and renames the new one; sqlite only,
+the pgsql files are no-ops that keep the version sets equal; `20261031000000`-`02` stay
+unused because unreleased builds of this fix recorded them for different steps).
+`provider`/`id_token` go missing on one upgrade path: `20260907000000` (v1.5.0) adds them,
+while the lower-numbered `20260901000000` (v1.6.0) was released later and rebuilds the
+table to add a NOT NULL `scope` without carrying them over, so a v1.5.x instance applies
+that still-pending rebuild afterwards and loses them, and login then fails with `no such
+column: provider` because minting a session writes both. The copy is a command because SQL
+cannot name a column that may be missing: it copies `provider`/`id_token` where the old
+table still has them (fresh installs, anything upgraded from v1.6.x) and writes NULL where
+they were dropped (those values are unrecoverable, so such a session skips the
+RP-initiated logout redirect); every other column, `scope` included, is copied verbatim.
+Idempotent: it replaces the copy in one transaction, and is a no-op once the swap has
+removed `access_tokens_new`. Step 1 drops a stale `access_tokens_new` before creating it.
+Step 3 only drops the old table, renames the new one and recreates the indexes (their
+names are taken until the old table is gone), so a write to `access_tokens` between steps
+2 and 3 would be lost; in a boot the two run back to back. The runner also logs a WARN
+when it applies any migration numbered below the highest already applied (the ordering
+that caused this), excluding anything at or below the newest legacy drop-in version.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
