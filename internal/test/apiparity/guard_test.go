@@ -150,22 +150,12 @@ func TestGuard_NoOrphanedGoldens(t *testing.T) {
 	}
 }
 
-// pendingReadScopePaths are allowlisted for the read scope ahead of their
-// route; each entry goes when the route lands.
-var pendingReadScopePaths = map[string]bool{"/api/v1/user/get-referral-stats": true}
-
 // TestReadScopePathsAreRegisteredGETRoutes fails when a path in
 // middleware.ReadScopePaths is not a registered GET route, e.g. after a rename,
 // which would silently cut the share app off from it.
 func TestReadScopePathsAreRegisteredGETRoutes(t *testing.T) {
 	routes := registeredRoutes(t)
 	for path := range middleware.ReadScopePaths {
-		if pendingReadScopePaths[path] {
-			if routes["GET "+path] {
-				t.Errorf("%q is registered now: drop it from pendingReadScopePaths", path)
-			}
-			continue
-		}
 		if !routes["GET "+path] {
 			t.Errorf("ReadScopePaths has %q, but no registered GET route matches it; the route was likely renamed", path)
 		}

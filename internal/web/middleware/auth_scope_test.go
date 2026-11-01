@@ -34,7 +34,6 @@ func TestAuth_ScopeGate(t *testing.T) {
 		{"empty scope fails closed", model.TokenScope(""), http.MethodGet, "/api/v1/user/get-user-data", http.StatusUnauthorized},
 		{"unknown scope on ingest route", model.TokenScope("admin"), http.MethodPost, "/api/v1/import/ingest-apple-wallet", http.StatusUnauthorized},
 		{"read on allowlisted GET", model.TokenScopeRead, http.MethodGet, "/api/v1/tag/get-tag-list", http.StatusOK},
-		{"read on referral stats", model.TokenScopeRead, http.MethodGet, "/api/v1/user/get-referral-stats", http.StatusOK},
 		{"read on non-allowlisted GET", model.TokenScopeRead, http.MethodGet, "/api/v1/user/get-session-list", http.StatusUnauthorized},
 		{"read POST on allowlisted path", model.TokenScopeRead, http.MethodPost, "/api/v1/tag/get-tag-list", http.StatusUnauthorized},
 		{"read POST write", model.TokenScopeRead, http.MethodPost, "/api/v1/tag/create-tag", http.StatusUnauthorized},
@@ -115,7 +114,7 @@ func TestReadScopePaths_ExactContract(t *testing.T) {
 		"/api/v1/label/get-label-list", "/api/v1/currency/get-currency-list",
 		"/api/v1/currency/get-currency-rate-list",
 		"/api/v1/transaction/get-account-transaction-list",
-		"/api/v1/transaction/get-transaction-list", "/api/v1/user/get-referral-stats",
+		"/api/v1/transaction/get-transaction-list",
 	}
 	if len(middleware.ReadScopePaths) != len(want) {
 		t.Fatalf("len = %d, want %d", len(middleware.ReadScopePaths), len(want))

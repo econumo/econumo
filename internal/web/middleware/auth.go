@@ -36,7 +36,6 @@ var ReadScopePaths = map[string]bool{
 	"/api/v1/currency/get-currency-rate-list":          true,
 	"/api/v1/transaction/get-account-transaction-list": true,
 	"/api/v1/transaction/get-transaction-list":         true,
-	"/api/v1/user/get-referral-stats":                  true,
 }
 
 // MCPPath is the only path an mcp-scoped token may reach.
