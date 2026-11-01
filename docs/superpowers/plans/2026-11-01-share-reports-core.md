@@ -320,6 +320,8 @@ Unset everything → `ShareURL == ""`, `ShareClientEnabled() == false`, `AdminSh
 ---
 
 ### Task 5: Referral captured at sign-up (password and provider paths)
+> **Moved to the separate referral-program PR (user decision 2026-11-01).** Not implemented on this branch; kept here as the starting design for that PR (WIP parked on branch `feature/referral-program`).
+
 
 **Files:**
 - Create: `internal/model/referral.go`, `internal/infra/storage/migrations/{sqlite,pgsql}/20261101000001.sql`
@@ -372,6 +374,8 @@ Unset everything → `ShareURL == ""`, `ShareClientEnabled() == false`, `AdminSh
 ---
 
 ### Task 6: `get-referral-stats`
+> **Moved to the separate referral-program PR (user decision 2026-11-01).** Not implemented on this branch; kept here as the starting design for that PR (WIP parked on branch `feature/referral-program`).
+
 
 **Files:**
 - Create: `internal/user/api/referral.go`
@@ -473,6 +477,8 @@ Unset everything → `ShareURL == ""`, `ShareClientEnabled() == false`, `AdminSh
 ---
 
 ### Task 9: SPA passes `?ref=` on register and provider sign-in
+> **Moved to the separate referral-program PR (user decision 2026-11-01).** Not implemented on this branch; kept here as the starting design for that PR (WIP parked on branch `feature/referral-program`).
+
 
 **Files:**
 - Create: `web/src/lib/referral.ts`, `web/src/lib/referral.test.ts`
