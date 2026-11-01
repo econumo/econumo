@@ -13310,10 +13310,17 @@ const docTemplate = `{
                     "description": "non-empty: navigate there instead of showing consent",
                     "type": "string"
                 },
+                "isFirstParty": {
+                    "type": "boolean"
+                },
                 "isLoopback": {
                     "type": "boolean"
                 },
                 "redirectHost": {
+                    "type": "string"
+                },
+                "scope": {
+                    "description": "\"mcp\" | \"read\"",
                     "type": "string"
                 }
             }

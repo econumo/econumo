@@ -1,6 +1,7 @@
 package authserver
 
 import (
+	"errors"
 	"net/url"
 	"strings"
 	"testing"
@@ -57,7 +58,7 @@ func shareAuthReq(clientID string) model.AuthorizationRequest {
 
 func (e *shareEnv) approveShare(t *testing.T, s *Service) string {
 	t.Helper()
-	res, err := s.ApproveAuthorization(ctx, e.user, session, shareAuthReq(shareID.String()))
+	res, err := s.ApproveAuthorization(ctx, e.user, session, true, shareAuthReq(shareID.String()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +176,7 @@ func TestDynamicClientAskingReadGetsMCP(t *testing.T) {
 	}
 	req := authReq(c.ClientID)
 	req.Scope = "read"
-	res, err := e.s.ApproveAuthorization(ctx, e.user, session, req)
+	res, err := e.s.ApproveAuthorization(ctx, e.user, session, true, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,12 +212,51 @@ func TestStaleFirstPartyClientIsUnknown(t *testing.T) {
 		if _, err := s.DescribeAuthorization(ctx, e.user, shareAuthReq(shareID.String())); !hasCode(err, errs.CodeAuthServerClientNotFound) {
 			t.Errorf("%s: describe err = %v", name, err)
 		}
-		if _, err := s.ApproveAuthorization(ctx, e.user, session, shareAuthReq(shareID.String())); !hasCode(err, errs.CodeAuthServerClientNotFound) {
+		if _, err := s.ApproveAuthorization(ctx, e.user, session, true, shareAuthReq(shareID.String())); !hasCode(err, errs.CodeAuthServerClientNotFound) {
 			t.Errorf("%s: approve err = %v", name, err)
 		}
 		_, err := shareExchange(s, code, shareSecret)
 		wantOAuth(t, err, "invalid_client")
 		_, err = s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: shareID.String(), ClientSecret: shareSecret, RefreshToken: tr.RefreshToken})
 		wantOAuth(t, err, "invalid_client")
+	}
+}
+
+func TestDescribeAuthorization_ReportsScope(t *testing.T) {
+	e := newShareEnv(t)
+	res, err := e.s.DescribeAuthorization(ctx, e.user, shareAuthReq(shareID.String()))
+	if err != nil || res.Scope != "read" || !res.IsFirstParty {
+		t.Fatalf("share client: %+v %v", res, err)
+	}
+	c := register(t, e.s, "Claude", "https://claude.ai/api/mcp/auth_callback")
+	res, err = e.s.DescribeAuthorization(ctx, e.user, authReq(c.ClientID))
+	if err != nil || res.Scope != "mcp" || res.IsFirstParty {
+		t.Fatalf("dynamic client: %+v %v", res, err)
+	}
+}
+
+func TestApprove_ReadonlyMayApproveRead(t *testing.T) {
+	e := newShareEnv(t)
+	res, err := e.s.ApproveAuthorization(ctx, e.user, session, false, shareAuthReq(shareID.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, _ := url.Parse(res.RedirectURL)
+	if u.Query().Get("code") == "" {
+		t.Fatalf("no code in %s", res.RedirectURL)
+	}
+}
+
+func TestApprove_ReadonlyRefusedForMCP(t *testing.T) {
+	e := newShareEnv(t)
+	c := register(t, e.s, "Claude", "https://claude.ai/api/mcp/auth_callback")
+	_, err := e.s.ApproveAuthorization(ctx, e.user, session, false, authReq(c.ClientID))
+	var pe *errs.PaymentRequiredError
+	if !errors.As(err, &pe) || pe.Code != errs.CodeReadonlyAccess {
+		t.Fatalf("err = %v", err)
+	}
+	var n int
+	if err := e.db.Raw.QueryRow(`SELECT COUNT(*) FROM oauth_authorization_codes`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("codes = %d %v", n, err)
 	}
 }

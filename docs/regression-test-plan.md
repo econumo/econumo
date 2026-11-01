@@ -2242,6 +2242,13 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       Deny buttons. Allow stays disabled for about half a second after the page
       appears (or until you move the mouse or press a key); Deny works at once.
       A double-click that lands on the page as it opens does not approve.
+- [ ] With the share app configured (`ECONUMO_SHARE_CLIENT_ID`), its consent
+      page shows "Econumo Share", "Made by Econumo", "wants to read your
+      Econumo data." and "It will be able to see your accounts, transactions,
+      categories, tags, labels and currencies. It can't change anything." (not
+      the read-and-change sentence); a third-party client shows no "Made by
+      Econumo". A read-only (lapsed trial) user can Allow the share app, but
+      Allow on a third-party MCP client shows the read-only message.
 - [ ] Switching to another window or tab and back (or clicking outside the
       browser window) disables Allow again; it re-enables about half a second
       after the consent page is visible and focused again, or on the next mouse

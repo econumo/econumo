@@ -25,7 +25,7 @@ const SEARCH =
   '?client_id=abc&redirect_uri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&response_type=code&code_challenge=x&code_challenge_method=S256&state=s'
 const CALLBACK = 'https://claude.ai/api/mcp/auth_callback?code=c&state=s'
 
-const claude = { clientName: 'Claude', redirectHost: 'claude.ai', isLoopback: false, errorRedirectUrl: '' }
+const claude = { clientName: 'Claude', redirectHost: 'claude.ai', isLoopback: false, scope: 'mcp' as const, isFirstParty: false, errorRedirectUrl: '' }
 
 function httpError(status: number, message: string) {
   return new AxiosError('failed', String(status), undefined, undefined, {
@@ -109,7 +109,7 @@ it('shows the client and where it will send the user, then approves', async () =
 })
 
 it('reads a loopback client as an app on this computer', async () => {
-  vi.mocked(getAuthorizationRequest).mockResolvedValue({ clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, errorRedirectUrl: '' })
+  vi.mocked(getAuthorizationRequest).mockResolvedValue({ clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, scope: 'mcp', isFirstParty: false, errorRedirectUrl: '' })
   renderPage()
   expect(await screen.findByText('Codex')).toBeInTheDocument()
   expect(screen.getByText(/app on this computer/)).toBeInTheDocument()
@@ -409,4 +409,23 @@ describe('double-clickjacking guard', () => {
     await userEvent.click(screen.getByRole('button', { name: /deny/i }))
     await waitFor(() => expect(assign).toHaveBeenCalledWith('https://claude.ai/api/mcp/auth_callback?error=access_denied&state=s'))
   })
+})
+
+it('a read-scoped first-party client says it only reads', async () => {
+  vi.mocked(getAuthorizationRequest).mockResolvedValue({
+    clientName: 'Econumo Share', redirectHost: 'share.example.test', isLoopback: false, scope: 'read', isFirstParty: true, errorRedirectUrl: '',
+  })
+  renderPage()
+  expect(await screen.findByText('Econumo Share')).toBeInTheDocument()
+  expect(screen.getByText('wants to read your Econumo data.')).toBeInTheDocument()
+  expect(screen.getByText(/It can't change anything\./)).toBeInTheDocument()
+  expect(screen.getByText('Made by Econumo')).toBeInTheDocument()
+  expect(screen.queryByText('It will be able to read and change all of your Econumo data.')).not.toBeInTheDocument()
+})
+
+it('an mcp-scoped third-party client keeps the full-access texts', async () => {
+  vi.mocked(getAuthorizationRequest).mockResolvedValue(claude)
+  renderPage()
+  expect(await screen.findByText('It will be able to read and change all of your Econumo data.')).toBeInTheDocument()
+  expect(screen.queryByText('Made by Econumo')).not.toBeInTheDocument()
 })

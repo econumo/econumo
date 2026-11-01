@@ -15,6 +15,8 @@ export interface AuthorizationRequestResultDto {
   clientName: string
   redirectHost: string
   isLoopback: boolean
+  scope: 'mcp' | 'read'
+  isFirstParty: boolean
   errorRedirectUrl: string
 }
 

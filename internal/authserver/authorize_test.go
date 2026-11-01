@@ -90,7 +90,7 @@ func TestApproveAndDecline(t *testing.T) {
 	s, creds, _, user := newTestService(t)
 	creds.gen = 7
 	c := register(t, s, "Claude", "https://claude.ai/api/mcp/auth_callback")
-	res, err := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
+	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestApproveAndDecline(t *testing.T) {
 
 	bad := authReq(c.ClientID)
 	bad.CodeChallengeMethod = "plain"
-	r, err := s.ApproveAuthorization(ctx, user, session, bad)
+	r, err := s.ApproveAuthorization(ctx, user, session, true, bad)
 	if err != nil || !strings.Contains(r.RedirectURL, "error=invalid_request") || strings.Contains(r.RedirectURL, "code=") {
 		t.Fatalf("invalid request must redirect with an error, not a code: %+v %v", r, err)
 	}
@@ -124,7 +124,7 @@ func TestApproveAndDecline(t *testing.T) {
 	}
 
 	off := NewService(s.repo, creds, s.tx, s.clock, nil, "")
-	if _, err := off.ApproveAuthorization(ctx, user, session, authReq(c.ClientID)); !hasCode(err, errs.CodeAuthServerDisabled) {
+	if _, err := off.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID)); !hasCode(err, errs.CodeAuthServerDisabled) {
 		t.Fatal(err)
 	}
 }
@@ -136,7 +136,7 @@ func TestApprove_RevokedPresenterGetsNoCode(t *testing.T) {
 	s, creds, _, user := newTestService(t)
 	c := register(t, s, "Claude", "https://claude.ai/api/mcp/auth_callback")
 	creds.deadTokens = map[vo.Id]bool{session: true}
-	res, err := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
+	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID))
 	if _, ok := errs.AsUnauthorized(err); !ok || res.RedirectURL != "" {
 		t.Fatalf("want unauthorized and no redirect, got %+v %v", res, err)
 	}
@@ -154,7 +154,7 @@ func TestRedirectKeepsExistingQuery(t *testing.T) {
 	c := register(t, s, "", "https://a.test/cb?app=1")
 	q := authReq(c.ClientID)
 	q.RedirectURI = "https://a.test/cb?app=1"
-	res, err := s.ApproveAuthorization(ctx, user, session, q)
+	res, err := s.ApproveAuthorization(ctx, user, session, true, q)
 	if err != nil {
 		t.Fatal(err)
 	}

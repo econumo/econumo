@@ -67,7 +67,7 @@ func do(h http.Handler, method, path, contentType string, body io.Reader) *httpt
 
 func approveCode(t *testing.T, svc *authserver.Service, user vo.Id, clientID string) string {
 	t.Helper()
-	res, err := svc.ApproveAuthorization(ctx, user, vo.NewId(), model.AuthorizationRequest{
+	res, err := svc.ApproveAuthorization(ctx, user, vo.NewId(), true, model.AuthorizationRequest{
 		ClientID: clientID, RedirectURI: callback, ResponseType: "code",
 		CodeChallenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", CodeChallengeMethod: "S256",
 		Resource: testURL + "/mcp",

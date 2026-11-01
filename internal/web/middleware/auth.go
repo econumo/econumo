@@ -96,7 +96,10 @@ var ctxKeyAccessLevel ctxKeyAccessLevelType
 // authserver/revoke-connected-app joins too: revoking a connected app removes
 // access, like revoking a token. authserver/decline-authorization joins as
 // well: declining writes nothing, and a restricted user must be able to send
-// the app back with a refusal.
+// the app back with a refusal. authserver/approve-authorization joins so a
+// restricted owner can still sign in to the read-only share app; the service
+// itself refuses every non-read approval for a restricted caller with the
+// same 402.
 //
 // Exported so a guard test (internal/test/apiparity) can assert every path
 // here is still a real registered route, catching a route rename that would
@@ -126,6 +129,7 @@ var ReadonlyAllowedPaths = map[string]bool{
 	"/api/v1/oauth/unlink-identity":            true,
 	"/api/v1/authserver/revoke-connected-app":  true,
 	"/api/v1/authserver/decline-authorization": true,
+	"/api/v1/authserver/approve-authorization": true,
 }
 
 // AuthWith builds the authentication middleware with optional configuration.
