@@ -45,7 +45,17 @@ function mockTrackGeometry(marker: HTMLElement, navigation: HTMLElement) {
   })
 }
 
+// The fixtures above anchor the newest month to October 2026, and the timeline
+// spans the oldest transaction to the current date — so the real clock would
+// stretch that span by a month on every rollover and shift the pixel-to-month
+// mapping these tests assert. Pin "now" to the fixtures' newest month. Real
+// timers stay in place so userEvent and waitFor are unaffected.
+beforeEach(() => {
+  vi.setSystemTime(new Date(2026, 9, 15, 12))
+})
+
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })

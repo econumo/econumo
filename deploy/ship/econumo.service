@@ -1,0 +1,38 @@
+# systemd unit TEMPLATE for the single-file Econumo binary, published to R2
+# with the release and rendered on the host by `ship install`
+# (https://github.com/dmtrkzntsv/ship). ship fills in the double-brace placeholders
+# for the service S it installs: user and group S, binary /opt/S/econumo,
+# env file /etc/S/econumo.env, data directory /var/lib/S. It creates the user
+# and directories itself, so this unit must not use DynamicUser=,
+# StateDirectory= or RuntimeDirectory=.
+#
+# It matches the unit the former econumo-deploy.sh wrote, so a host moved to
+# ship (README, "Deploy with ship") keeps its behaviour. Running without ship?
+# See docs/run-without-docker.md for a ready-to-copy rendered version.
+
+[Unit]
+Description={{SERVICE}} (econumo)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{USER}}
+Group={{USER}}
+WorkingDirectory={{DATA_DIR}}
+EnvironmentFile={{ENV_FILE}}
+ExecStart={{BIN}} serve
+Restart=on-failure
+RestartSec=5
+
+# Hardening: the process only ever writes its database directory. A Sign in
+# with Apple key (ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE) is read, not written,
+# so keep it outside ReadWritePaths; ProtectSystem=strict still permits reads.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths={{DATA_DIR}}
+
+[Install]
+WantedBy=multi-user.target
