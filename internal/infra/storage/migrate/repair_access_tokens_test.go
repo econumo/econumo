@@ -11,7 +11,6 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
-	"github.com/econumo/econumo/internal/infra/storage/sqlite"
 )
 
 // The two migrations whose release order inverted their version order: the
@@ -20,19 +19,22 @@ import (
 const (
 	oauthColumnsMigration = "20260907000000"
 	tableRebuildMigration = "20260901000000"
+	repairMigration       = "20261031000000"
 )
 
-// repairCommands dispatches the repair step the way serve does, so the boot
-// runner's own ordering decides when it runs.
-func repairCommands(t *testing.T, db *sql.DB) migrate.CommandRunner {
-	t.Helper()
-	return func(ctx context.Context, name string) error {
-		if name != "migration:repair-access-tokens" {
-			return nil
-		}
-		_, err := sqlite.RepairAccessTokensOAuthColumns(ctx, db)
-		return err
+func sqliteMigrations(upTo string, skip ...string) []migrate.Migration {
+	skipped := make(map[string]bool, len(skip))
+	for _, s := range skip {
+		skipped[s] = true
 	}
+	var out []migrate.Migration
+	for _, f := range migrations.SQLite() {
+		if skipped[f.Version] || (upTo != "" && f.Version > upTo) {
+			continue
+		}
+		out = append(out, migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command})
+	}
+	return out
 }
 
 func oauthColumnCount(t *testing.T, db *sql.DB) int {
@@ -43,6 +45,27 @@ func oauthColumnCount(t *testing.T, db *sql.DB) int {
 		t.Fatal(err)
 	}
 	return n
+}
+
+// seedToken writes a session row so the repair's rebuild is exercised with data
+// to carry over, not just an empty table. withScope is false before
+// 20260901000000 has run, where the column does not exist yet.
+func seedToken(t *testing.T, db *sql.DB, id string, withScope bool) {
+	t.Helper()
+	if _, err := db.Exec(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
+		VALUES (?, ?, ?, 'U', 'face:sky', 'x', 's', 'argon2id', '2026-01-01 00:00:00', '2026-01-01 00:00:00', 1)`,
+		id, id, id+"@x.test"); err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	stmt := `INSERT INTO access_tokens (id, user_id, kind, token_hash, created_at, last_used_at)
+		VALUES (?, ?, 'session', ?, '2026-01-01 00:00:00', '2026-01-01 00:00:00')`
+	if withScope {
+		stmt = `INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, created_at, last_used_at)
+		VALUES (?, ?, 'session', ?, 'full', '2026-01-01 00:00:00', '2026-01-01 00:00:00')`
+	}
+	if _, err := db.Exec(stmt, id, id, "hash-"+id); err != nil {
+		t.Fatalf("seed token: %v", err)
+	}
 }
 
 // TestUpgradeFromV15KeepsOAuthSessionColumns replays the upgrade that broke
@@ -59,25 +82,16 @@ func TestUpgradeFromV15KeepsOAuthSessionColumns(t *testing.T) {
 	defer db.Close()
 	ctx := context.Background()
 
-	var asShippedInV15 []migrate.Migration
-	for _, f := range migrations.SQLite() {
-		if f.Version > oauthColumnsMigration || f.Version == tableRebuildMigration {
-			continue
-		}
-		asShippedInV15 = append(asShippedInV15, migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command})
-	}
+	asShippedInV15 := sqliteMigrations(oauthColumnsMigration, tableRebuildMigration)
 	if err := migrate.Run(ctx, db, asShippedInV15, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("v1.5.x migrate: %v", err)
 	}
 	if got := oauthColumnCount(t, db); got != 2 {
 		t.Fatalf("v1.5.x should already have both columns, got %d/2", got)
 	}
+	seedToken(t, db, "01a00000-0000-7000-8000-000000000001", false)
 
-	var current []migrate.Migration
-	for _, f := range migrations.SQLite() {
-		current = append(current, migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command})
-	}
-	if err := migrate.Run(ctx, db, current, migrate.WithCommandRunner(repairCommands(t, db))); err != nil {
+	if err := migrate.Run(ctx, db, sqliteMigrations(""), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("upgrade migrate: %v", err)
 	}
 
@@ -88,11 +102,21 @@ func TestUpgradeFromV15KeepsOAuthSessionColumns(t *testing.T) {
 	if _, err := db.ExecContext(ctx, `SELECT provider, id_token FROM access_tokens LIMIT 1`); err != nil {
 		t.Fatalf("select provider/id_token: %v", err)
 	}
+	// The repair rebuilds the table, so the rows must survive it.
+	var scope string
+	if err := db.QueryRow(`SELECT scope FROM access_tokens WHERE token_hash = ?`,
+		"hash-01a00000-0000-7000-8000-000000000001").Scan(&scope); err != nil {
+		t.Fatalf("token lost in the rebuild: %v", err)
+	}
+	if scope != "full" {
+		t.Fatalf("scope = %q, want full", scope)
+	}
 }
 
-// A fresh database runs both migrations in version order, so the columns are
-// present and the repair must leave them alone rather than fail on a duplicate.
-func TestRepairIsNoOpOnFreshDatabase(t *testing.T) {
+// A fresh database runs every migration in version order, so the columns are
+// already present when the repair rebuilds the table: it must preserve both the
+// shape and the existing rows rather than fail or drop anything.
+func TestRepairIsHarmlessOnHealthyDatabase(t *testing.T) {
 	db, err := sql.Open("sqlite", "file:repair410fresh?mode=memory&cache=shared")
 	if err != nil {
 		t.Fatal(err)
@@ -100,23 +124,42 @@ func TestRepairIsNoOpOnFreshDatabase(t *testing.T) {
 	defer db.Close()
 	ctx := context.Background()
 
-	var current []migrate.Migration
-	for _, f := range migrations.SQLite() {
-		current = append(current, migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command})
-	}
-	if err := migrate.Run(ctx, db, current, migrate.WithCommandRunner(repairCommands(t, db))); err != nil {
-		t.Fatalf("fresh migrate: %v", err)
-	}
-
-	added, err := sqlite.RepairAccessTokensOAuthColumns(ctx, db)
-	if err != nil {
-		t.Fatalf("repair on a healthy database: %v", err)
-	}
-	if added != 0 {
-		t.Fatalf("repair added %d column(s) to a healthy database, want 0", added)
+	// Everything up to just before the repair, then seed, then the repair.
+	beforeRepair := sqliteMigrations("20261024000001")
+	if err := migrate.Run(ctx, db, beforeRepair, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatalf("pre-repair migrate: %v", err)
 	}
 	if got := oauthColumnCount(t, db); got != 2 {
+		t.Fatalf("healthy database should have both columns, got %d/2", got)
+	}
+	id := "01a00000-0000-7000-8000-000000000002"
+	seedToken(t, db, id, true)
+	if _, err := db.Exec(`UPDATE access_tokens SET provider = 'google', id_token = 'tok' WHERE id = ?`, id); err != nil {
+		t.Fatalf("set provider: %v", err)
+	}
+
+	if err := migrate.Run(ctx, db, sqliteMigrations(""), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatalf("repair migrate: %v", err)
+	}
+
+	if got := oauthColumnCount(t, db); got != 2 {
 		t.Fatalf("columns after repair: got %d/2", got)
+	}
+	// provider/id_token are rebuilt as NULL for everyone: the damaged databases
+	// this repairs have no values to read, so the column cannot be copied.
+	var provider, idToken sql.NullString
+	if err := db.QueryRow(`SELECT provider, id_token FROM access_tokens WHERE id = ?`, id).Scan(&provider, &idToken); err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if provider.Valid || idToken.Valid {
+		t.Fatalf("provider/id_token = %v/%v, want NULL on both", provider, idToken)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM access_tokens`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("token count after rebuild = %d, want 1", n)
 	}
 }
 
@@ -195,11 +238,7 @@ func TestFreshInstallDoesNotWarn(t *testing.T) {
 	defer db.Close()
 
 	warnings := captureWarnings(t)
-	var current []migrate.Migration
-	for _, f := range migrations.SQLite() {
-		current = append(current, migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command})
-	}
-	if err := migrate.Run(context.Background(), db, current, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+	if err := migrate.Run(context.Background(), db, sqliteMigrations(""), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatal(err)
 	}
 	if len(*warnings) != 0 {
