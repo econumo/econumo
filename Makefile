@@ -1,4 +1,4 @@
-.PHONY: help web-install web-run web-test web-bundle web-lint mobile-install mobile-sync mobile-ios mobile-android mobile-testflight mobile-testflight-guard go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries ship-dist ship-publish
+.PHONY: help web-install web-run web-test web-bundle web-lint mobile-install mobile-sync mobile-ios mobile-android mobile-testflight mobile-testflight-guard go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql test-upgrade pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries ship-dist ship-publish
 
 # Default target
 .DEFAULT_GOAL := help
@@ -255,14 +255,26 @@ test-repo-pgsql:
 	CGO_ENABLED=0 DBTEST_ENGINE=pgsql DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
 		go test -tags enginecompare -count=1 $(shell go list ./internal/... | grep -vE '/sqlc/gen/|/test/enginecompare')
 
+# Release upgrade suite: boots the newest patch of every minor line's published
+# linux binary on an empty database (SQLite, and PostgreSQL at
+# DATABASE_TEST_PGSQL_URL when it answers), seeds it through the API, then
+# upgrades it with this checkout's binary and checks schema, migration order,
+# credentials, reads and writes (internal/test/upgradetest). Needs the release
+# tags (git fetch --tags) and network for the first download of each release;
+# binaries are cached in ECONUMO_UPGRADE_CACHE (default: the user cache dir).
+# ECONUMO_UPGRADE_FROM=v1.5.2,v1.6.1 picks the source releases by hand.
+test-upgrade:
+	CGO_ENABLED=0 DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
+		go test -tags upgrade -count=1 ./internal/test/upgradetest/
+
 # --- Suite & stack (full tests, docker, publishing) ------------------------
 
 # Full suite: the Go smoke suite + the engine-comparison suite against a real
 # PostgreSQL + the frontend suite. Provide Postgres one of two ways: uncomment
 # the `postgres` service in docker-compose.yml (pg-ensure then starts it and
 # creates the test DB), or set DATABASE_TEST_PGSQL_URL to any reachable Postgres.
-test: go-test pg-ensure test-engines test-repo-pgsql web-test
-	@echo "FULL suite passed (Go smoke + sqlite-vs-pgsql comparison + repo suite on PostgreSQL + frontend)."
+test: go-test pg-ensure test-engines test-repo-pgsql test-upgrade web-test
+	@echo "FULL suite passed (Go smoke + sqlite-vs-pgsql comparison + repo suite on PostgreSQL + release upgrades + frontend)."
 
 # Start the stack locally, building the image from source (host port 8181).
 # Regenerates the OpenAPI docs first so the built image embeds the current spec.

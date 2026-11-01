@@ -28,7 +28,9 @@ required for the smoke tier.
 
 ```bash
 make go-test         # SMOKE: build + vet + gofmt + OpenAPI-docs-fresh + sqlite unit/integration + coverage gate
-make test            # FULL: go-test + the sqlite-vs-PostgreSQL engine-comparison suite + the frontend suite
+make test            # FULL: go-test + the sqlite-vs-PostgreSQL engine-comparison suite + the release
+                     #       upgrade suite + the frontend suite
+make test-upgrade    # upgrade databases written by published release binaries to this checkout
 make go-build        # Compile the binary to ./econumo (regenerates OpenAPI docs first)
 make go-run          # Run the server locally (reads .env; regenerates OpenAPI docs first)
 make go-lint         # build + vet + gofmt + OpenAPI-docs-fresh check
@@ -592,6 +594,22 @@ Tests live alongside the Go code:
 - `internal/test/enginecompare/` — the strongest contract: replays the same
   catalogue on BOTH SQLite and PostgreSQL and asserts byte-identical
   responses (build tag `enginecompare`).
+- `internal/test/upgradetest/` — the release upgrade suite (build tag `upgrade`, `make
+  test-upgrade`, its own CI job; linux only). Every other suite starts from an empty database, so
+  none can see a migration that misbehaves only on a database an older release left behind (#413).
+  For the newest patch of every minor line from v1.2.0 on (read from the git tags;
+  `ECONUMO_UPGRADE_FROM` overrides) and for SQLite and PostgreSQL, it downloads the release's
+  `econumo-linux-<arch>` from GitHub Releases (checked against `SHA256SUMS`, cached in
+  `ECONUMO_UPGRADE_CACHE`), boots it on an empty database, seeds a household through its HTTP API
+  (version-tolerant: fields an old release lacks are ignored, routes it lacks are skipped), records
+  its reads, then boots this checkout's binary on the same database (twice) and requires: a schema
+  equal to a fresh install's (columns by name, indexes, foreign keys), the same migration set, no
+  newly applied migration numbered below the release's newest one (the hazard behind #413; past
+  cases are allowlisted in `releasedOutOfOrder`), the release's sessions and PATs still valid and
+  login working, every value the release returned still returned (extra fields and rows allowed;
+  changes a release made on purpose are listed in `intended`, scoped to older sources), exact
+  balances and budget figures, working writes, and no ERROR log line. A new migration therefore
+  needs a version above every RELEASED one, a hotfix release included.
 - `internal/test/fixture` — shared fixture builder (users, accounts, access tokens, ...);
   `internal/test/authstub` — a stub `middleware.TokenAuthenticator` for feature api tests
   (the bearer token IS the user id string).
