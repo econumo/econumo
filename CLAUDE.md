@@ -152,8 +152,8 @@ release branches cut before ship still publish. Local use needs `ship` installed
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the sixteen features (`account`, `admin`, `authserver`, `budget`, `category`, `connection`,
-`currency`, `imports`, `label`, `oauth`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the seventeen features (`account`, `admin`, `authserver`, `budget`, `category`, `connection`,
+`currency`, `debt`, `imports`, `label`, `oauth`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree (`internal/version` is a build-info leaf that archtest also auto-detects, not a slice) holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -171,7 +171,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │                                one file per feature (account.go, account_dto.go, ...); imports only
 │   │                                the shared kernel; part of the archtest kernel alongside `shared`
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
-│   │   │                            currency, imports, payee, system, tag, transaction, user); root package holds only
+│   │   │                            currency, debt, imports, payee, system, tag, transaction, user); root package holds only
 │   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
 │   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
 │   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
@@ -232,6 +232,11 @@ currency / transaction-creation ports, wired in `internal/server/glue_imports.go
 `update-rule`, `delete-rule`, `preview-rule`, `apply-rule`).
 The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
+
+`debt` (loans the owner pays down through an expense category) exposes six routes under
+`/api/v1/debt/` (`get-debt-list`, `get-debt`, `create-debt`, `update-debt`, `delete-debt`,
+`mark-debt-paid-off`); a debt belongs to its owner alone, so another user gets not-found.
+Its ports (classification ownership, rates) are wired in `internal/server/glue_debt.go`.
 
 ### Dependency rule
 

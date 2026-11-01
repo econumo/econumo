@@ -843,6 +843,29 @@ definitions:
       item:
         $ref: '#/definitions/model.CurrencyListItem'
     type: object
+  model.CreateDebtRequest:
+    properties:
+      balance:
+        $ref: '#/definitions/vo.FlexString'
+      categoryId:
+        type: string
+      currencyId:
+        type: string
+      lastPaymentDate:
+        type: string
+      name:
+        type: string
+      payeeId:
+        type: string
+      payment:
+        $ref: '#/definitions/vo.FlexString'
+      schedule:
+        type: string
+      startDate:
+        type: string
+      tagId:
+        type: string
+    type: object
   model.CreateEnvelopeRequest:
     properties:
       budgetId:
@@ -1164,6 +1187,97 @@ definitions:
       reportPeriod:
         type: string
     type: object
+  model.DebtDetailsResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.DebtResult'
+      payments:
+        items:
+          $ref: '#/definitions/model.DebtPaymentResult'
+        type: array
+      snapshots:
+        items:
+          $ref: '#/definitions/model.DebtSnapshotResult'
+        type: array
+    type: object
+  model.DebtListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.DebtResult'
+        type: array
+    type: object
+  model.DebtPaymentResult:
+    properties:
+      amount:
+        type: string
+      date:
+        type: string
+      interest:
+        type: string
+      principal:
+        type: string
+      transactionId:
+        type: string
+    type: object
+  model.DebtResult:
+    properties:
+      balance:
+        type: string
+      categoryId:
+        type: string
+      currencyId:
+        type: string
+      currentBalance:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isPaidOff:
+        type: integer
+      lastPaymentDate:
+        type: string
+      moneyLeft:
+        type: string
+      name:
+        type: string
+      nextDueDate:
+        type: string
+      overpaidSoFar:
+        type: string
+      overpaymentLeft:
+        type: string
+      payeeId:
+        type: string
+      payment:
+        type: string
+      paymentsLeft:
+        type: integer
+      payoffDate:
+        type: string
+      periodRate:
+        type: string
+      schedule:
+        type: string
+      startDate:
+        type: string
+      tagId:
+        type: string
+    type: object
+  model.DebtSnapshotResult:
+    properties:
+      asOf:
+        type: string
+      balance:
+        type: string
+      lastPaymentDate:
+        type: string
+      payment:
+        type: string
+      schedule:
+        type: string
+    type: object
   model.DeclineAccessRequest:
     properties:
       budgetId:
@@ -1221,6 +1335,15 @@ definitions:
         type: string
     type: object
   model.DeleteCurrencyResult:
+    type: object
+  model.DeleteDebtRequest:
+    properties:
+      confirmDataRemoval:
+        type: boolean
+      id:
+        type: string
+    type: object
+  model.DeleteDebtResult:
     type: object
   model.DeleteEnvelopeRequest:
     properties:
@@ -1919,6 +2042,11 @@ definitions:
       provider:
         type: string
       result:
+        type: string
+    type: object
+  model.MarkDebtPaidOffRequest:
+    properties:
+      id:
         type: string
     type: object
   model.MergeCategoryRequest:
@@ -3174,6 +3302,31 @@ definitions:
     properties:
       item:
         $ref: '#/definitions/model.CurrencyListItem'
+    type: object
+  model.UpdateDebtRequest:
+    properties:
+      balance:
+        $ref: '#/definitions/vo.FlexString'
+      categoryId:
+        type: string
+      currencyId:
+        type: string
+      id:
+        type: string
+      lastPaymentDate:
+        type: string
+      name:
+        type: string
+      payeeId:
+        type: string
+      payment:
+        $ref: '#/definitions/vo.FlexString'
+      schedule:
+        type: string
+      startDate:
+        type: string
+      tagId:
+        type: string
     type: object
   model.UpdateEnvelopeRequest:
     properties:
@@ -6698,6 +6851,256 @@ paths:
       summary: Update a custom currency
       tags:
       - Currency
+  /api/v1/debt/create-debt:
+    post:
+      consumes:
+      - application/json
+      description: Creates a debt tracked through an expense category, optionally
+        narrowed by payee, tag and start date.
+      parameters:
+      - description: Create debt request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateDebtRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DebtResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a debt
+      tags:
+      - Debt
+  /api/v1/debt/delete-debt:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a debt. A narrowed debt that holds budget plans or comments
+        needs confirmDataRemoval.
+      parameters:
+      - description: Delete debt request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteDebtRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteDebtResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a debt
+      tags:
+      - Debt
+  /api/v1/debt/get-debt:
+    get:
+      description: Returns one debt with its terms history and the payments split
+        into interest and principal. A debt of another user is not found.
+      parameters:
+      - description: Debt id
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DebtDetailsResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get a debt
+      tags:
+      - Debt
+  /api/v1/debt/get-debt-list:
+    get:
+      description: Returns the authenticated user's debts with their projections.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DebtListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the debt list
+      tags:
+      - Debt
+  /api/v1/debt/mark-debt-paid-off:
+    post:
+      consumes:
+      - application/json
+      description: Writes a zero-balance snapshot as of today.
+      parameters:
+      - description: Mark debt paid off request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MarkDebtPaidOffRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DebtResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Mark a debt paid off
+      tags:
+      - Debt
+  /api/v1/debt/update-debt:
+    post:
+      consumes:
+      - application/json
+      description: Updates a debt's name, key and terms; changed terms start a new
+        snapshot. The currency never changes.
+      parameters:
+      - description: Update debt request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateDebtRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DebtResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a debt
+      tags:
+      - Debt
   /api/v1/import/apply-rule:
     post:
       consumes:

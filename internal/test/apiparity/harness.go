@@ -314,7 +314,11 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 		default:
 			t.Fatalf("[%s] unknown auth %q", c.Label, c.Auth)
 		}
-		statuses[i], bodies[i] = h.do(t, c.Method, c.Path, tok, c.Body, c.Form, c.RawBody, c.ContentType)
+		path := c.Path
+		if c.PathID != nil {
+			path += *c.PathID
+		}
+		statuses[i], bodies[i] = h.do(t, c.Method, path, tok, c.Body, c.Form, c.RawBody, c.ContentType)
 		if c.CaptureIDInto != nil {
 			*c.CaptureIDInto = extractItemID(bodies[i])
 		}
@@ -323,13 +327,15 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 }
 
 // extractItemID pulls "data.item.id" out of a create-endpoint response —
-// every CREATE result wraps the new entity as {item: {id, ...}}. Returns ""
+// almost every CREATE result wraps the new entity as {item: {id, ...}}; a
+// result that is the entity itself (debts) carries "data.id". Returns ""
 // (a deliberately invalid id for any later call that dereferences it) if the
 // call failed or the shape doesn't match, so a wiring mistake surfaces as a
 // downstream "not found" rather than silently reusing a stale id.
 func extractItemID(body []byte) string {
 	var env struct {
 		Data struct {
+			Id   string `json:"id"`
 			Item struct {
 				Id string `json:"id"`
 			} `json:"item"`
@@ -338,5 +344,8 @@ func extractItemID(body []byte) string {
 	if err := json.Unmarshal(body, &env); err != nil {
 		return ""
 	}
-	return env.Data.Item.Id
+	if env.Data.Item.Id != "" {
+		return env.Data.Item.Id
+	}
+	return env.Data.Id
 }
