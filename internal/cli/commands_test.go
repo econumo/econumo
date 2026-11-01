@@ -534,11 +534,11 @@ func TestFreshDatabaseMigratesWithCommandSteps(t *testing.T) {
 	}
 }
 
-// TestMigrationRepairAccessTokens_CommandAndRunner drives the repair end to
-// end over a database whose access_tokens was rebuilt without the oauth
-// columns (issue #410): the command re-adds them, a second run is a no-op, and
-// the boot runner reaches it by name.
-func TestMigrationRepairAccessTokens_CommandAndRunner(t *testing.T) {
+// TestMigrationCopyAccessTokens_CommandAndRunner drives step 2 of the
+// access_tokens repair by name: with access_tokens_new pending it copies every
+// row and a second run replaces rather than duplicates them; once the tables
+// are swapped it has nothing to do.
+func TestMigrationCopyAccessTokens_CommandAndRunner(t *testing.T) {
 	cliEnv(t)
 	ctx := context.Background()
 	c, err := newContainer(ctx)
@@ -547,46 +547,45 @@ func TestMigrationRepairAccessTokens_CommandAndRunner(t *testing.T) {
 	}
 	defer c.Close()
 
-	// Reproduce the damaged shape: the rebuild 20260901000000 performs, without
-	// provider/id_token.
-	for _, stmt := range []string{
-		`DROP TABLE access_tokens`,
-		`CREATE TABLE access_tokens (
-			id TEXT NOT NULL, user_id TEXT NOT NULL, kind TEXT NOT NULL,
-			token_hash TEXT NOT NULL, scope TEXT NOT NULL, name TEXT DEFAULT NULL,
-			user_agent TEXT DEFAULT NULL, created_at DATETIME NOT NULL,
-			last_used_at DATETIME NOT NULL, expires_at DATETIME DEFAULT NULL,
-			revoked_at DATETIME DEFAULT NULL, grant_id TEXT DEFAULT NULL,
-			PRIMARY KEY (id))`,
-	} {
-		if _, err := c.db.ExecContext(ctx, stmt); err != nil {
-			t.Fatalf("seed damaged schema: %v", err)
-		}
+	// The container's database is fully migrated, so the swap has happened.
+	if code := Run([]string{"migration:copy-access-tokens"}); code != 0 {
+		t.Fatalf("after the swap: exit code %d", code)
 	}
 
-	oauthColumns := func() int {
-		t.Helper()
-		var n int
-		if err := c.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('access_tokens')
-			WHERE name IN ('provider','id_token')`).Scan(&n); err != nil {
-			t.Fatal(err)
-		}
-		return n
+	u := "01a00000-0000-7000-8000-0000000000c1"
+	if _, err := c.db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
+		VALUES (?, ?, 'copy@x.test', 'U', 'face:sky', 'x', 's', 'argon2id', '2026-01-01 00:00:00', '2026-01-01 00:00:00', 1)`, u, u); err != nil {
+		t.Fatalf("seed user: %v", err)
 	}
-	if got := oauthColumns(); got != 0 {
-		t.Fatalf("seeded schema should be missing both columns, got %d/2", got)
+	if _, err := c.db.ExecContext(ctx, `INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, created_at, last_used_at, provider)
+		VALUES ('tok-1', ?, 'session', 'h-1', 'full', '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'oidc')`, u); err != nil {
+		t.Fatalf("seed token: %v", err)
+	}
+	var step1 string
+	for _, f := range migrations.SQLite() {
+		if f.Version == "20261031000000" {
+			step1 = f.SQL
+		}
+	}
+	if _, err := c.db.ExecContext(ctx, step1); err != nil {
+		t.Fatalf("create access_tokens_new: %v", err)
 	}
 
 	for run := 1; run <= 2; run++ {
-		if code := Run([]string{"migration:repair-access-tokens"}); code != 0 {
+		if code := Run([]string{"migration:copy-access-tokens"}); code != 0 {
 			t.Fatalf("run %d: exit code %d", run, code)
 		}
-		if got := oauthColumns(); got != 2 {
-			t.Fatalf("run %d: columns = %d/2", run, got)
+		var n int
+		var provider string
+		if err := c.db.QueryRowContext(ctx, `SELECT COUNT(*), MAX(provider) FROM access_tokens_new`).Scan(&n, &provider); err != nil {
+			t.Fatal(err)
+		}
+		if n != 1 || provider != "oidc" {
+			t.Fatalf("run %d: access_tokens_new holds %d row(s), provider %q; want 1, oidc", run, n, provider)
 		}
 	}
 
-	if err := MigrationCommandRunner(c.cfg, c.db)(ctx, "migration:repair-access-tokens"); err != nil {
+	if err := MigrationCommandRunner(c.cfg, c.db)(ctx, "migration:copy-access-tokens"); err != nil {
 		t.Fatalf("runner: %v", err)
 	}
 }

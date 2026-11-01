@@ -20,19 +20,31 @@ import (
 const (
 	oauthColumnsMigration = "20260907000000"
 	tableRebuildMigration = "20260901000000"
-	repairMigration       = "20261031000000"
+	// The repair's first step; the copy command and the swap follow it.
+	repairMigration = "20261031000000"
 )
 
-// repairCommands dispatches the repair step the way serve does, so the boot
+// repairCommands dispatches the copy step the way serve does, so the boot
 // runner's own ordering decides when it runs.
 func repairCommands(db *sql.DB) migrate.CommandRunner {
 	return func(ctx context.Context, name string) error {
-		if name != "migration:repair-access-tokens" {
+		if name != "migration:copy-access-tokens" {
 			return nil
 		}
-		_, err := sqlite.RepairAccessTokensOAuthColumns(ctx, db)
+		_, err := sqlite.CopyAccessTokens(ctx, db)
 		return err
 	}
+}
+
+// beforeRepair is every SQLite migration numbered below the repair's first step.
+func beforeRepair() []migrate.Migration {
+	var out []migrate.Migration
+	for _, m := range sqliteMigrations("") {
+		if m.Version < repairMigration {
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 func sqliteMigrations(upTo string, skip ...string) []migrate.Migration {
@@ -127,7 +139,7 @@ func TestUpgradeFromV15KeepsOAuthSessionColumns(t *testing.T) {
 }
 
 // A fresh install, or one upgraded from v1.6.x, has both columns when the repair
-// runs: it must leave them, and the values they hold, untouched. Clearing them
+// runs: the copy must carry the values they hold across. Clearing them
 // would drop every OIDC session's RP-initiated logout on the common upgrade
 // path to fix the rare one.
 func TestRepairKeepsValuesOnHealthyDatabase(t *testing.T) {
@@ -138,8 +150,7 @@ func TestRepairKeepsValuesOnHealthyDatabase(t *testing.T) {
 	defer db.Close()
 	ctx := context.Background()
 
-	beforeRepair := sqliteMigrations("", repairMigration)
-	if err := migrate.Run(ctx, db, beforeRepair, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+	if err := migrate.Run(ctx, db, beforeRepair(), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("pre-repair migrate: %v", err)
 	}
 	if got := oauthColumnCount(t, db); got != 2 {
@@ -162,9 +173,74 @@ func TestRepairKeepsValuesOnHealthyDatabase(t *testing.T) {
 	if provider.String != "oidc" || idToken.String != "tok" {
 		t.Fatalf("provider/id_token = %v/%v, want oidc/tok", provider, idToken)
 	}
-	added, err := sqlite.RepairAccessTokensOAuthColumns(ctx, db)
-	if err != nil || added != 0 {
-		t.Fatalf("repair on a healthy database: added %d, err %v", added, err)
+	if got := oauthColumnCount(t, db); got != 2 {
+		t.Fatalf("columns after repair: got %d/2", got)
+	}
+}
+
+// The copy rebuilds every row, so it must carry each token's scope across
+// verbatim. An ingest PAT may only call /api/v1/import/ingest-*; silently
+// widening it to full would be a privilege escalation.
+func TestRepairPreservesIngestScope(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:scopepreserve?mode=memory&cache=shared")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+
+	if err := migrate.Run(ctx, db, beforeRepair(), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatal(err)
+	}
+	u := "01a00000-0000-7000-8000-00000000000c"
+	seedToken(t, db, u, true)
+	if _, err := db.Exec(`INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, created_at, last_used_at)
+		VALUES ('tok-ingest', ?, 'personal', 'h-ingest', 'ingest', '2026-01-01 00:00:00', '2026-01-01 00:00:00')`, u); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := migrate.Run(ctx, db, sqliteMigrations(""), migrate.WithCommandRunner(repairCommands(db))); err != nil {
+		t.Fatalf("repair: %v", err)
+	}
+
+	for id, want := range map[string]string{"tok-ingest": "ingest", u: "full"} {
+		var got string
+		if err := db.QueryRow(`SELECT scope FROM access_tokens WHERE id = ?`, id).Scan(&got); err != nil {
+			t.Fatalf("%s: %v", id, err)
+		}
+		if got != want {
+			t.Errorf("%s scope = %q, want %q", id, got, want)
+		}
+	}
+}
+
+// The swap drops the old table, so it must refuse to run on an incomplete
+// copy. A runner that records the copy command without running it
+// (migrate.NoCommands) would otherwise leave access_tokens empty and sign
+// everyone out, PATs included.
+func TestRepairSwapRefusesAnIncompleteCopy(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:swapguard?mode=memory&cache=shared")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+
+	if err := migrate.Run(ctx, db, beforeRepair(), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatal(err)
+	}
+	id := "01a00000-0000-7000-8000-00000000000d"
+	seedToken(t, db, id, true)
+
+	if err := migrate.Run(ctx, db, sqliteMigrations(""), migrate.WithCommandRunner(migrate.NoCommands)); err == nil {
+		t.Fatal("the swap ran over an empty copy")
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM access_tokens WHERE id = ?`, id).Scan(&n); err != nil {
+		t.Fatalf("old table gone: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("token count after the refused swap = %d, want 1", n)
 	}
 }
 

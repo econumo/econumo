@@ -73,18 +73,18 @@ func migrationCommands() []command {
 			},
 		},
 		{
-			name:    "migration:repair-access-tokens",
-			summary: "re-add access_tokens.provider/id_token when an out-of-order migration dropped them (idempotent; no-op on PostgreSQL)",
+			name:    "migration:copy-access-tokens",
+			summary: "copy access_tokens into access_tokens_new, step 2 of the access_tokens repair (idempotent; no-op on PostgreSQL)",
 			run: func(ctx context.Context, c *container, args []string) error {
 				if c.cfg.DatabaseDriver != sqlite.Name {
-					fmt.Printf("nothing to repair on %s\n", c.cfg.DatabaseDriver)
+					fmt.Printf("nothing to copy on %s\n", c.cfg.DatabaseDriver)
 					return nil
 				}
-				added, err := sqlite.RepairAccessTokensOAuthColumns(ctx, c.db)
+				copied, err := sqlite.CopyAccessTokens(ctx, c.db)
 				if err != nil {
 					return err
 				}
-				fmt.Printf("re-added %d access_tokens column(s)\n", added)
+				fmt.Printf("copied %d access_tokens row(s)\n", copied)
 				return nil
 			},
 		},

@@ -1048,7 +1048,7 @@ migration:zero-deleted-accounts
 migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
 migration:seed-transaction-sort-keys
-migration:repair-access-tokens
+migration:copy-access-tokens
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -1113,23 +1113,26 @@ transfers it receives together. One account per DB transaction, with that accoun
 bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
 migration step `20261024000001`, right after the SQL file that adds the columns.
 
-`migration:repair-access-tokens` re-adds `access_tokens.provider`/`id_token` when they
-are missing. They go missing on one upgrade path only: `20260907000000` (v1.5.0) adds
-them, while the lower-numbered `20260901000000` (v1.6.0) was released later and rebuilds
-the table to add a NOT NULL `scope` without carrying them over — so a v1.5.x instance
-applies that still-pending rebuild afterwards and loses them, and login then fails with
-`no such column: provider` because minting a session writes both. SQLite only (the pgsql
-`20260901000000` adds `scope` with ALTER TABLE instead of rebuilding). The lost VALUES are
-not recoverable, so a session from before the upgrade keeps no provider and skips the
-RP-initiated logout redirect. A command rather than SQL because SQLite has neither
-`ADD COLUMN IF NOT EXISTS` nor a conditional ALTER, so the add must be gated on
-`pragma_table_info`. Not a table rebuild either: a rebuild cannot copy columns the
-damaged table lacks, so it would have to write them as NULL everywhere and wipe the
-values healthy databases (fresh installs, anything upgraded from v1.6.x) still hold.
-Idempotent, a no-op on PostgreSQL, and invoked automatically at boot as migration step
-`20261031000000`. The runner also logs a WARN when it applies any
-migration numbered below the highest already applied (the ordering that caused this),
-excluding the legacy drop-in range.
+`migration:copy-access-tokens` is step 2 of the three-step `access_tokens` repair
+(`20261031000000` creates `access_tokens_new` in the final shape, `20261031000001` runs
+this command, `20261031000002` drops the old table and renames the new one; sqlite only,
+the pgsql files are no-ops that keep the version sets equal). `provider`/`id_token` go
+missing on one upgrade path: `20260907000000` (v1.5.0) adds them, while the
+lower-numbered `20260901000000` (v1.6.0) was released later and rebuilds the table to add
+a NOT NULL `scope` without carrying them over, so a v1.5.x instance applies that
+still-pending rebuild afterwards and loses them, and login then fails with
+`no such column: provider` because minting a session writes both. The copy is a command
+because SQL cannot name a column that may be missing: it copies `provider`/`id_token`
+where the old table still has them (fresh installs, anything upgraded from v1.6.x) and
+writes NULL where they were dropped (those values are unrecoverable, so such a session
+skips the RP-initiated logout redirect). Every other column, `scope` included, is copied
+verbatim. Idempotent: it replaces the copy in one transaction, and is a no-op once the
+swap has removed `access_tokens_new`. The swap refuses to run (a CHECK on a temp table,
+rolling the step back) unless the copy holds as many rows as the old table, so a runner
+that records the command without running it (`migrate.NoCommands`) cannot drop every
+session and token. The runner also logs a WARN when it applies any migration numbered
+below the highest already applied (the ordering that caused this), excluding the legacy
+drop-in range.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.

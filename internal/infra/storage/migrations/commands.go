@@ -41,9 +41,9 @@ func init() {
 	// because the keys come from the Go sortkey package, the one generator every
 	// later write uses.
 	RegisterCommand("20261024000001", "migration:seed-transaction-sort-keys")
-	// Repairs the access_tokens columns that 20260901000000's table rebuild
-	// drops on an instance that already ran the higher-numbered 20260907000000
-	// (v1.5.x -> v1.6.x). A command because SQLite has no ADD COLUMN IF NOT
-	// EXISTS, so adding them must be conditional on the live schema.
-	RegisterCommand("20261031000000", "migration:repair-access-tokens")
+	// Step 2 of 3 of the access_tokens repair (sqlite/20261031000000.sql): copies
+	// the rows into access_tokens_new. A command because provider / id_token are
+	// copied where they still exist and written as NULL where an out-of-order
+	// migration dropped them, and SQL cannot name a column that may be missing.
+	RegisterCommand("20261031000001", "migration:copy-access-tokens")
 }
