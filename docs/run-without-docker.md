@@ -68,16 +68,6 @@ ReadWritePaths=/var/lib/econumo
 WantedBy=multi-user.target
 ```
 
-[`deploy/ship/econumo.service`](../deploy/ship/econumo.service)
-is the same unit as a template for [ship](#hosts-managed-with-ship); its
-`{{...}}` placeholders are filled in by ship, so do not copy it as is.
-
-## Hosts managed with ship
-
-Installing, updating and moving hosts with
-[ship](https://github.com/dmtrkzntsv/ship) is described in the README section
-[Deploy with ship](../README.md#deploy-with-ship).
-
 ## Configuration
 
 Everything is configured through environment variables — see

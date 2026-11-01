@@ -121,7 +121,7 @@ ship writes its own `SHA256SUMS` and moves the channels. A release publishes the
 immutable version `vX.Y.Z` plus `latest`/`dev` only when their checkbox is set
 (exactly like the image tags); `VERSION=dev` (`make publish-dev`, the Publish
 Dev workflow) publishes only the moving `dev` channel. Hosts run `ship
-install|update econumo` (README, "Deploy with ship"). The unit is a TEMPLATE:
+install|update econumo`. The unit is a TEMPLATE:
 only ship's placeholders (`{{SERVICE}} {{USER}} {{BIN}} {{BIN_DIR}}
 {{ENV_FILE}} {{DATA_DIR}} {{RUN_DIR}} {{UNIT}}`) are allowed, and it must not
 use `DynamicUser=`/`StateDirectory=`/`RuntimeDirectory=` (ship creates the user
