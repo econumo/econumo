@@ -2210,5 +2210,9 @@
       "subject": "Metodo di accesso rimosso",
       "body": "Ciao {name},\n\nIl tuo account {provider} è stato appena scollegato dal tuo account Econumo e non può più essere usato per accedere.\n\nSe non sei stato tu, cambia la tua password e controlla gli account collegati nelle Impostazioni.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
     }
+  },
+  "share": {
+    "tag_action": "Condividi come pagina di viaggio",
+    "settings_row": "Report condivisi"
   }
 }

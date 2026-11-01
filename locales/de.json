@@ -2210,5 +2210,9 @@
       "subject": "Anmeldemethode entfernt",
       "body": "Hallo {name},\n\nDie Verknüpfung Ihres {provider}-Kontos mit Ihrem Econumo-Konto wurde soeben aufgehoben und kann nicht mehr zur Anmeldung verwendet werden.\n\nFalls Sie das nicht waren, ändern Sie Ihr Passwort und prüfen Sie die verknüpften Konten in den Einstellungen.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
     }
+  },
+  "share": {
+    "tag_action": "Als Reiseseite teilen",
+    "settings_row": "Geteilte Berichte"
   }
 }

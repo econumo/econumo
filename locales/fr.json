@@ -2210,5 +2210,9 @@
       "subject": "Méthode de connexion supprimée",
       "body": "Bonjour {name},\n\nVotre compte {provider} vient d’être dissocié de votre compte Econumo et ne peut plus servir à vous connecter.\n\nSi ce n’était pas vous, changez votre mot de passe et vérifiez les comptes associés dans les Paramètres.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
     }
+  },
+  "share": {
+    "tag_action": "Partager comme page de voyage",
+    "settings_row": "Rapports partagés"
   }
 }

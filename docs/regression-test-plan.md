@@ -932,6 +932,12 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Search (inline on desktop, search dialog on compact) and empty states.
 - [ ] Creating from within the transaction dialog (create-on-type) lands the
       item in the settings list too.
+- [ ] With `ECONUMO_SHARE_URL` set, a tag's (not a label's) row menu on the Tags
+      page and a tag line's menu in a budget (own and shared tags alike; never
+      a category line) offer "Share as trip page", opening
+      `<share url>/new?kind=trip&tag=<tag id>` in a new tab; Settings > Data has
+      a "Shared reports" row opening `<share url>/app` in a new tab. With it
+      unset, none of the three appears. Each fires its analytics event.
 
 ## 7a. Global search
 

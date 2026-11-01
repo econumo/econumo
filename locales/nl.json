@@ -2210,5 +2210,9 @@
       "subject": "Aanmeldmethode verwijderd",
       "body": "Hallo {name},\n\nUw {provider}-account is zojuist ontkoppeld van uw Econumo-account en kan niet meer worden gebruikt om in te loggen.\n\nAls u dit niet was, wijzig dan uw wachtwoord en controleer de gekoppelde accounts in Instellingen.\n\n--\nEconumo — Geld beheren. Samen.\n"
     }
+  },
+  "share": {
+    "tag_action": "Delen als reispagina",
+    "settings_row": "Gedeelde rapporten"
   }
 }

@@ -221,3 +221,39 @@ it('dragging a label to the front of its own section anchors on null, never on a
   await waitFor(() => expect(moveLabelBody).toBeDefined())
   expect(moveLabelBody).toEqual({ id: 'label2', afterId: null })
 })
+
+describe('share as trip page', () => {
+  const tagRows = {
+    tags: [{ id: 'tag1', ownerUserId: 'u1', name: 'vacation', icon: 'flight', position: 0, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' }],
+    labels: [{ id: 'label1', ownerUserId: 'u1', name: 'health', icon: 'sell', position: 0, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' }],
+  }
+
+  it('opens the trip page for a tag, and is not offered for a label', async () => {
+    window.econumoConfig = { SHARE_URL: 'https://share.example.test' }
+    server.use(...coreHandlers(tagRows))
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('vacation')
+
+    await user.click(screen.getByRole('button', { name: 'actions health' }))
+    await screen.findByRole('menuitem', { name: 'Delete' })
+    expect(screen.queryByRole('menuitem', { name: 'Share as trip page' })).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    await user.click(screen.getByRole('button', { name: 'actions vacation' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Share as trip page' }))
+    expect(open).toHaveBeenCalledWith('https://share.example.test/new?kind=trip&tag=tag1', '_blank', 'noopener,noreferrer')
+    open.mockRestore()
+  })
+
+  it('is hidden without a share url', async () => {
+    server.use(...coreHandlers(tagRows))
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('vacation')
+    await user.click(screen.getByRole('button', { name: 'actions vacation' }))
+    await screen.findByRole('menuitem', { name: 'Delete' })
+    expect(screen.queryByRole('menuitem', { name: 'Share as trip page' })).not.toBeInTheDocument()
+  })
+})

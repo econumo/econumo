@@ -22,6 +22,7 @@ export interface EconumoConfig {
   FEEDBACK?: boolean
   BILLING_URL?: string
   MCP_URL?: string
+  SHARE_URL?: string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
   IMPORT_MATCHER?: { matchDays: number; tipDays: number; tipTolerancePct: number; tokenMinLength: number }
@@ -168,6 +169,18 @@ export function getBillingUrl(): string {
 // oauthFlowCanReturnHere.
 export function mcpUrl(): string {
   const url = window.econumoConfig?.MCP_URL || ''
+  if (!url || isNativeApp()) {
+    return url
+  }
+  try {
+    return new URL(backendHost()).origin === window.location.origin ? url : ''
+  } catch {
+    return ''
+  }
+}
+
+export function shareUrl(): string {
+  const url = window.econumoConfig?.SHARE_URL || ''
   if (!url || isNativeApp()) {
     return url
   }

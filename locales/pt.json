@@ -2210,5 +2210,9 @@
       "subject": "Método de início de sessão removido",
       "body": "Olá {name},\n\nA sua conta {provider} acabou de ser desassociada da sua conta Econumo e já não pode ser usada para iniciar sessão.\n\nSe não foi você, altere a sua palavra-passe e verifique as contas associadas nas Definições.\n\n--\nEconumo — Faça a gestão do dinheiro. Em conjunto.\n"
     }
+  },
+  "share": {
+    "tag_action": "Partilhar como página de viagem",
+    "settings_row": "Relatórios partilhados"
   }
 }
