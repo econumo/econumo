@@ -2255,6 +2255,10 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       the read-and-change sentence); a third-party client shows no "Made by
       Econumo". A read-only (lapsed trial) user can Allow the share app, but
       Allow on a third-party MCP client shows the read-only message.
+- [ ] After the share app is allowed, it appears under Settings > Profile >
+      Connected apps as "Econumo Share"; revoking it makes the share app's next
+      request fail, and its token answers 401 on any route other than the nine
+      read-only GETs (for example `get-budget`, or any POST).
 - [ ] Switching to another window or tab and back (or clicking outside the
       browser window) disables Allow again; it re-enables about half a second
       after the consent page is visible and focused again, or on the next mouse

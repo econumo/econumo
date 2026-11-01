@@ -327,7 +327,8 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   request fault yields an error `redirectUrl`, but the page shows a "Return to {host}"
   button instead of navigating on its own. `code_challenge` must be a 43-char base64url
   S256 challenge, `state` at most 1024 bytes. Any requested `scope` is accepted (on
-  authorize and refresh) and `mcp` is always granted. Approve takes the user row lock and
+  authorize and refresh); `mcp` is granted, except to the share client (below), which is
+  always granted `read`. Approve takes the user row lock and
   re-checks that the presenting session is unrevoked before storing the code with the
   generation read under that lock, so a reclaim racing the approval leaves no code behind.
   The Allow button stays disabled until a real pointer/key event or ~500 ms of the page
@@ -335,6 +336,25 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
 - `POST /oauth/token`: PKCE S256 only; `resource`, when sent, must be
   `<ECONUMO_URL>/mcp` (trailing slash tolerated), else `invalid_target`. Errors are RFC 6749
   JSON, not the envelope, with `Cache-Control: no-store`.
+- **Share client and the `read` scope.** The share app (a separate reports app) signs in
+  through this server as ONE pre-registered first-party client, seeded from
+  `ECONUMO_SHARE_CLIENT_ID`/`_SECRET`/`_REDIRECT_URI` at boot (`internal/authserver/share.go`;
+  boot fails when the OAuth server is off). Only that client is granted scope `read`,
+  whatever scope it asks for; a self-registered client asking for `read` gets `mcp`. A
+  first-party row left in the table after the share config was removed or its id changed
+  is treated as an unknown client, so its secret buys nothing. `read` tokens are `oauth`
+  tokens (same `eco_oat_` format, 1 h, rotating refresh) admitted only on `GET` of the nine
+  paths in `middleware.ReadScopePaths` (`get-user-data`, `get-account-list`,
+  `get-category-list`, `get-tag-list`, `get-label-list`, `get-currency-list`,
+  `get-currency-rate-list`, `get-account-transaction-list`, `get-transaction-list`); any
+  other path or method gets the frozen 401. While the share client is off, already-issued
+  `read` tokens stop being admitted (`server.NewReadScopeGate`, as `AllowMCPScope` does for
+  `mcp`). The consent page shows the requested scope (`get-authorization-request` carries
+  it, plus `isFirstParty`): "wants to read your Econumo data" with "Made by Econumo" for the
+  share client, the read-and-change sentence for `mcp`. A readonly (lapsed trial) user may
+  approve a `read` request: `approve-authorization` is on the readonly allowlist but still
+  answers 402 for an `mcp` approval. A read-token GET goes through the normal authenticator,
+  so it triggers the timezone and `last_used_at` write-through like any authenticated request.
 - Access tokens are `access_tokens` rows of kind `oauth` / scope `mcp` (`eco_oat_…`, fixed
   1 h, linked to their grant by `grant_id`), admitted only on `/mcp` — anywhere else they
   get the frozen 401. Turning OAuth off also stops admitting already-issued OAuth access
@@ -695,7 +715,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   registration; `serve` WARNs at boot when enabled with the console mail transport.
   Existing rows and CLI/admin-created users are always verified.
 - `ECONUMO_ADMIN_PORT` / `ECONUMO_ADMIN_TOKEN` — the private admin listener the payment
-  portal talks to (`POST /admin/set-access`, `GET /admin/user-context`). A **second**
+  portal talks to (`POST /admin/set-access`, `GET /admin/user-context`, `GET /admin/user-status`). A **second**
   `http.Server`, started by `serve` only when BOTH are set, so a self-hosted instance
   never serves those routes and they sit on no public mux at all (enforced by
   `TestAdminRoutesAreNotOnThePublicMux`). Auth is `Authorization: Bearer <ECONUMO_ADMIN_TOKEN>`
@@ -709,7 +729,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `user:set-access` emits the same `set-access` line. Ids and levels only — never emails. The port accepts a
   host-qualified value (`127.0.0.1:9090`) to pin the listener to loopback/an internal
   interface on bare-host deployments; a bare port binds all interfaces (the container
-  default, where compose controls exposure). Unlike the public API,
+  default, where compose controls exposure). `ECONUMO_ADMIN_SHARE_TOKEN` is a second
+  bearer for the share app, accepted ONLY for `GET /admin/user-status` (whether the user is
+  active); on any other admin route it gets the same 401. It requires the admin
+  pair, must be at least 32 characters and must differ from `ECONUMO_ADMIN_TOKEN`; unset
+  (default) leaves the route to the main token alone. Unlike the public API,
   this surface returns a real 404 for an unknown user: its consumer is a machine.
 - `ECONUMO_BILLING_URL` — payment portal URL (**https required** except loopback hosts —
   billing links carry signed identity tokens in the query string). Empty (default) means
@@ -755,6 +779,15 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   always treated as trusted (every Apple ID address is verified) but Google's `email_verified`
   claim is honoured, not trusted blindly — Google always sends it and documents `false` for
   unverified addresses. See `docs/oidc-setup.md`.
+- `ECONUMO_SHARE_URL` / `ECONUMO_SHARE_CLIENT_ID` / `ECONUMO_SHARE_CLIENT_SECRET` /
+  `ECONUMO_SHARE_REDIRECT_URI` — the companion share-reports app. `ECONUMO_SHARE_URL` is its
+  origin (absolute https, plain http only for loopback; no credentials, query or fragment;
+  trailing `/` trimmed), served as `SHARE_URL`; empty (default) hides every share link in
+  the SPA. The three `_CLIENT_*`/`_REDIRECT_URI` variables are all-or-nothing and register
+  the first-party OAuth client (see "Share client and the `read` scope"): the id is a UUID,
+  the secret at least 32 characters, the redirect URI absolute https (http only for
+  loopback), and they require `ECONUMO_URL` to enable the MCP OAuth server or boot fails.
+  `ECONUMO_ADMIN_SHARE_TOKEN` belongs to the same setup (see the admin listener above).
 - `ECONUMO_APP_LINKS_IOS` / `ECONUMO_APP_LINKS_ANDROID` — the mobile apps allowed to claim
   `<ECONUMO_URL>/oauth/app-return` as a verified Universal Link / App Link, which is how the
   OAuth app flow returns without the globally claimable private scheme. iOS: comma-separated
@@ -912,12 +945,16 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`,
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `SHARE_URL`,
   `IMPORT_SIMPLEFIN` and `FEEDBACK` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
   instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom
-  backend on another origin; the app uses the merged per-server value as is.
+  backend on another origin; the app uses the merged per-server value as is. `SHARE_URL`
+  (`""` when unset) follows the same rule through `shareUrl()` (`web/src/lib/config.ts`): on
+  the web it is `""` when the SPA is pointed at a custom backend on another origin; the SPA
+  shows "Share as trip page" (Tags page and budget tag menu, never labels or categories) and
+  Settings > Data > "Shared reports" only when it is non-empty.
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
   `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,
@@ -1190,6 +1227,10 @@ In the distroless image these run via the binary directly, e.g.
   200 comma-separated ids; ids the caller cannot access are omitted from `revisions` (never an
   error). `/api/v1/transaction/get-transaction-list` (the legacy full list, still used by MCP,
   older clients and the SPA's fallback against a server without revisions) is unchanged.
+- **Dated exchange rates:** `GET /api/v1/currency/get-currency-rate-list` takes optional
+  `from` and `to` (`YYYY-MM-DD`, both or neither, `from` <= `to`, inclusive): the response
+  then lists every rate published in that range plus, per currency, the newest one before `from`, instead of only the latest day's. Every item carries
+  an additive `date` field (`YYYY-MM-DD`), in the default response too.
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
@@ -1214,7 +1255,9 @@ In the distroless image these run via the binary directly, e.g.
   in the middleware's small allowlist (account security actions — logout, session/PAT
   revocation, password update, email change, `oauth/start-link`,
   `oauth/complete-link`, `oauth/unlink-identity`, `authserver/revoke-connected-app`
-  and `authserver/decline-authorization` (declining writes nothing) —
+  `authserver/decline-authorization` (declining writes nothing) and
+  `authserver/approve-authorization` (so a lapsed user can approve the share client's
+  `read` request; an `mcp` approval from such a user still answers 402) —
   plus `update-analytics`: withdrawing from product analytics is a privacy right, not a
   paid feature, so it must work regardless of access level, and `update-last-seen-version`,
   so the "what's new" card stays dismissable); `GET` reads are never restricted.
@@ -1229,7 +1272,8 @@ In the distroless image these run via the binary directly, e.g.
   Every token carries a scope: `full` (sessions, ordinary PATs) or `ingest` (a PAT
   that may ONLY call `/api/v1/import/ingest-*`; anywhere else it gets the frozen 401
   `"Invalid access token"`) or `mcp` (`oauth` tokens only; admitted solely on `/mcp`, the
-  frozen 401 elsewhere). `create-personal-token` requires `scope` and cannot mint `mcp`.
+  frozen 401 elsewhere) or `read` (`oauth` tokens of the share client only; `GET` of the
+  `middleware.ReadScopePaths` allowlist, the frozen 401 elsewhere). `create-personal-token` requires `scope` and cannot mint `mcp`.
 - The `user` feature owns everything: `Authenticate` (the per-request hot path),
   session/PAT use cases, and the revocation cascades. The middleware seam is
   `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
