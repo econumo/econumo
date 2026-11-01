@@ -124,7 +124,7 @@ These algorithms are not determined by the signatures, so they are pinned here:
     - `ClosingBalance` is `BalanceAt(monthEnd)` for months before Today's month, and the projected balance after the month's last projected step otherwise.
     - `PaymentsLeft` is the number of projected payments due after month end.
   - **Totals:** `MoneyLeft = Σ projected pays`; `OverpaymentLeft = MoneyLeft − CurrentBalance`; `OverpaidSoFar = Σ interest of payments ≤ Today`.
-  - **Paid off:** `PaidOff = round(CurrentBalance,2) ≤ 0`. `PayoffMonth` is the month of the payment, or of the zero snapshot, that took the balance to ≤ 0.
+  - **Paid off:** `PaidOff = round(CurrentBalance,2) ≤ 0` and no payment is dated after the payment or zero snapshot that took it there (a later payment reopens it). `PayoffMonth` is the month of the payment, or of the zero snapshot, that took the balance to ≤ 0.
   - A negative `CurrentBalance` is reported as 0.
 - **DebtMatches:** the category must be equal; a non-nil `PayeeID` / `TagID` must also be equal; and `From ≤ at < Until`.
 
@@ -143,6 +143,7 @@ These algorithms are not determined by the signatures, so they are pinned here:
   - `TestProjectDebt_PlannedExtraShortens`: plan 5000 in the current month → `PaymentsLeft 236`, `MoneyLeft ≈ 474754.34` (±1), `BasePayoffDate` 4 dues after `PayoffDate`
   - `TestProjectDebt_NoPaymentsYet`: first due next month → `StillDue` of the current month is 0, the next month's is 2000, and `ClosingBalance` of the current month is 300000
   - `TestProjectDebt_PaidOff`: a snapshot with balance 0 → `PaidOff`, `PayoffMonth` = the snapshot month, `PaymentsLeft 0`
+  - `TestProjectDebt_PaymentAfterZeroSnapshotReopens`: a zero snapshot, then a 500 payment → `PaidOff` is false
   - `TestDueDatesBetween_MonthEndClamp`: last = Mar 31 → includes Feb 28 and Jan 31
   - In `debt_test.go`, `TestDebtMatches`: table over category, payee and tag nil/set and the `From`/`Until` edges (`From` inclusive, `Until` exclusive).
 - [ ] **Step 2: Run them and confirm they fail.** Run `GOTOOLCHAIN=go1.27.1 /usr/local/go/bin/go test ./internal/model/ -run 'Debt|Implied|Split|Project|DueDates'`. Expected: FAIL (undefined).
@@ -509,7 +510,7 @@ Rules the implementer cannot infer:
 ### Task 11: Debts block in the month view, and "Track as debt"
 
 **Files:**
-- Modify: `web/src/features/budgets/{MonthFlows.tsx,PhoneMonthView.tsx,BudgetPage.tsx,useBudgetLineMenus.tsx,phoneMonth.ts,budgetMath.ts,planHint.ts}`, `locales/*.json` (`budgets.page.debts.*`)
+- Modify: `web/src/features/budgets/{MonthFlows.tsx,PhoneMonthView.tsx,BudgetPage.tsx,useBudgetLineMenus.tsx,phoneMonth.ts,budgetMath.ts,planHint.ts,BudgetAccountsField.tsx}`, `locales/*.json` (`budgets.page.debts.*`)
 - Test: `web/src/features/budgets/{MonthFlows.debts,PhoneMonthView.debts,useBudgetLineMenus.debts}.test.tsx`, `planHint.test.ts`
 
 **Behaviour:**
@@ -524,6 +525,7 @@ Rules the implementer cannot infer:
   - `expenseRowMenu` and `envelopeChildMenu` gain "Track as debt" for an owned, non-archived expense category. It calls `openDebtModal({categoryId, currencyId: element.currencyId, fromBudget: true})`.
   - The new `debtRowMenu` offers Details (owner: the details sheet), Edit (owner) and nothing for others.
   - A non-plannable row's planned cell is read-only.
+- **Visibility note:** the budget settings dialogs gain a note next to the savings one (`budgets.modal.budget_form.debts_note`): "Debts are shown by name, with their payments and balances, to everyone with access to this budget."
 
 - [ ] **Step 1: Write the failing tests:**
   - "renders the Debts section after Savings with Planned/Paid/Left"
