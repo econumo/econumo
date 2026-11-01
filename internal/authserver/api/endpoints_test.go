@@ -39,7 +39,7 @@ func (c *stubCreds) RevokeOAuthGrantTokens(context.Context, vo.Id) error     { r
 func (c *stubCreds) PurgeDeadOAuthTokens(context.Context, time.Time) (int64, error) {
 	return 0, nil
 }
-func (c *stubCreds) IssueOAuthAccessToken(context.Context, vo.Id, vo.Id, string, int64, time.Duration) (string, bool, error) {
+func (c *stubCreds) IssueOAuthAccessToken(context.Context, vo.Id, vo.Id, string, model.TokenScope, int64, time.Duration) (string, bool, error) {
 	c.issued++
 	return "eco_oat_stub", true, nil
 }

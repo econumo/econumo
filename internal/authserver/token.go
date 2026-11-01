@@ -102,7 +102,7 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 		}
 		// The generation captured at approval, not the current one: a reclaim
 		// that landed since then must make this write nothing.
-		access, ok, err := s.creds.IssueOAuthAccessToken(ctx, code.UserID, g.ID, c.Name, code.CredentialsGeneration, AccessTokenTTL)
+		access, ok, err := s.creds.IssueOAuthAccessToken(ctx, code.UserID, g.ID, c.Name, model.TokenScopeMCP, code.CredentialsGeneration, AccessTokenTTL)
 		if err != nil {
 			return err
 		}
@@ -213,7 +213,7 @@ func (s *Service) refresh(ctx context.Context, req model.TokenRequest) (model.To
 		if err := s.repo.InsertSpentRefreshHash(ctx, g.ID, hash, now); err != nil {
 			return err
 		}
-		access, ok, err := s.creds.IssueOAuthAccessToken(ctx, g.UserID, g.ID, c.Name, gen, AccessTokenTTL)
+		access, ok, err := s.creds.IssueOAuthAccessToken(ctx, g.UserID, g.ID, c.Name, model.TokenScopeMCP, gen, AccessTokenTTL)
 		if err != nil {
 			return err
 		}

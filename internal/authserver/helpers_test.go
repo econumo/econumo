@@ -39,7 +39,7 @@ func (f *fakeCreds) PurgeDeadOAuthTokens(_ context.Context, cutoff time.Time) (i
 	f.purged = append(f.purged, cutoff)
 	return 0, nil
 }
-func (f *fakeCreds) IssueOAuthAccessToken(_ context.Context, _, _ vo.Id, _ string, g int64, _ time.Duration) (string, bool, error) {
+func (f *fakeCreds) IssueOAuthAccessToken(_ context.Context, _, _ vo.Id, _ string, _ model.TokenScope, g int64, _ time.Duration) (string, bool, error) {
 	if f.failFence || g != f.gen {
 		return "", false, nil
 	}

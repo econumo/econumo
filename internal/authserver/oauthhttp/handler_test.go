@@ -36,7 +36,7 @@ func (f *fakeCreds) IsTokenLive(context.Context, vo.Id, vo.Id) (bool, error) { r
 func (f *fakeCreds) PurgeDeadOAuthTokens(context.Context, time.Time) (int64, error) {
 	return 0, nil
 }
-func (f *fakeCreds) IssueOAuthAccessToken(context.Context, vo.Id, vo.Id, string, int64, time.Duration) (string, bool, error) {
+func (f *fakeCreds) IssueOAuthAccessToken(context.Context, vo.Id, vo.Id, string, model.TokenScope, int64, time.Duration) (string, bool, error) {
 	f.issued++
 	return fmt.Sprintf("eco_oat_%d", f.issued), true, nil
 }
