@@ -1114,9 +1114,10 @@ bumped; idempotent (only rows with no key are touched), and invoked automaticall
 migration step `20261024000001`, right after the SQL file that adds the columns.
 
 `migration:copy-access-tokens` is step 2 of the three-step `access_tokens` repair
-(`20261031000000` creates `access_tokens_new` in the final shape, `20261031000001` runs
-this command, `20261031000002` drops the old table and renames the new one; sqlite only,
-the pgsql files are no-ops that keep the version sets equal). `provider`/`id_token` go
+(`20261031000010` creates `access_tokens_new` in the final shape, `20261031000011` runs
+this command, `20261031000012` drops the old table and renames the new one; sqlite only,
+the pgsql files are no-ops that keep the version sets equal; `20261031000000`-`02` stay
+unused because unreleased builds of this fix recorded them for different steps). `provider`/`id_token` go
 missing on one upgrade path: `20260907000000` (v1.5.0) adds them, while the
 lower-numbered `20260901000000` (v1.6.0) was released later and rebuilds the table to add
 a NOT NULL `scope` without carrying them over, so a v1.5.x instance applies that
@@ -1127,12 +1128,14 @@ where the old table still has them (fresh installs, anything upgraded from v1.6.
 writes NULL where they were dropped (those values are unrecoverable, so such a session
 skips the RP-initiated logout redirect). Every other column, `scope` included, is copied
 verbatim. Idempotent: it replaces the copy in one transaction, and is a no-op once the
-swap has removed `access_tokens_new`. The swap refuses to run (a CHECK on a temp table,
-rolling the step back) unless the copy holds as many rows as the old table, so a runner
-that records the command without running it (`migrate.NoCommands`) cannot drop every
-session and token. The runner also logs a WARN when it applies any migration numbered
-below the highest already applied (the ordering that caused this), excluding the legacy
-drop-in range.
+swap has removed `access_tokens_new`. The swap first brings the copy up to date with the
+old table for every column the two share (delete, update, insert by `id`), because step 2
+is recorded once and never reruns: a token purged, revoked or added after it (a CLI
+command while `serve` boots, or `migrate.NoCommands` skipping the command) still reaches
+the swapped table, and only `provider`/`id_token` depend on step 2 having run. The runner
+also logs a WARN when it applies any migration numbered below the highest already applied
+(the ordering that caused this), excluding anything at or below the newest legacy drop-in
+version.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.

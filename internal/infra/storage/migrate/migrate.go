@@ -495,9 +495,9 @@ func validIdentifier(s string) bool {
 // forward, while the warning puts the cause in the boot log next to whatever
 // breaks.
 //
-// Legacy versions are excluded: a drop-in database records the whole legacy
-// range at once, so every genuinely new migration below that high-water mark
-// would warn. A command step that is merely re-registered later does not warn
+// Migrations at or below the newest legacy version are excluded: a drop-in
+// database records the whole legacy range at once, so every genuinely new
+// migration below that high-water mark would warn. A command step that is merely re-registered later does not warn
 // either, since no version below it is being applied.
 func warnOutOfOrder(ctx context.Context, ordered []Migration, applied map[string]bool, legacy []string) {
 	var highest string
@@ -509,12 +509,14 @@ func warnOutOfOrder(ctx context.Context, ordered []Migration, applied map[string
 	if highest == "" {
 		return
 	}
-	fromLegacy := make(map[string]bool, len(legacy))
+	var legacyHigh string
 	for _, v := range legacy {
-		fromLegacy[v] = true
+		if v > legacyHigh {
+			legacyHigh = v
+		}
 	}
 	for _, m := range ordered {
-		if applied[m.Version] || m.Version > highest || fromLegacy[m.Version] {
+		if applied[m.Version] || m.Version > highest || m.Version <= legacyHigh {
 			continue
 		}
 		slog.WarnContext(ctx, "migrate: applying a migration out of order",

@@ -1,6 +1,8 @@
 -- Step 1 of 3 of the access_tokens repair: create the table in its final shape.
--- Step 2 (command migration:copy-access-tokens, 20261031000001) copies the rows,
--- step 3 (20261031000002) swaps the tables.
+-- Step 2 (command migration:copy-access-tokens, 20261031000011) copies the rows,
+-- step 3 (20261031000012) swaps the tables. Versions 20261031000000-02 are
+-- deliberately unused: unreleased builds of this fix recorded them for
+-- different steps, and a database that ran one must not skip a step here.
 --
 -- provider / id_token go missing on one upgrade path. 20260907000000 (v1.5.0)
 -- adds them with ALTER TABLE; 20260901000000 (v1.6.0) carries an EARLIER

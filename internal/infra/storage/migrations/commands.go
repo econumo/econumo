@@ -41,9 +41,9 @@ func init() {
 	// because the keys come from the Go sortkey package, the one generator every
 	// later write uses.
 	RegisterCommand("20261024000001", "migration:seed-transaction-sort-keys")
-	// Step 2 of 3 of the access_tokens repair (sqlite/20261031000000.sql): copies
+	// Step 2 of 3 of the access_tokens repair (sqlite/20261031000010.sql): copies
 	// the rows into access_tokens_new. A command because provider / id_token are
 	// copied where they still exist and written as NULL where an out-of-order
 	// migration dropped them, and SQL cannot name a column that may be missing.
-	RegisterCommand("20261031000001", "migration:copy-access-tokens")
+	RegisterCommand("20261031000011", "migration:copy-access-tokens")
 }

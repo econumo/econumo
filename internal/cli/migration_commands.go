@@ -80,9 +80,13 @@ func migrationCommands() []command {
 					fmt.Printf("nothing to copy on %s\n", c.cfg.DatabaseDriver)
 					return nil
 				}
-				copied, err := sqlite.CopyAccessTokens(ctx, c.db)
+				copied, pending, err := sqlite.CopyAccessTokens(ctx, c.db)
 				if err != nil {
 					return err
+				}
+				if !pending {
+					fmt.Println("no access_tokens_new to fill: the repair has not started or is already complete")
+					return nil
 				}
 				fmt.Printf("copied %d access_tokens row(s)\n", copied)
 				return nil

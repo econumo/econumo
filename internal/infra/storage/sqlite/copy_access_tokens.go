@@ -8,7 +8,7 @@ import (
 )
 
 // CopyAccessTokens is step 2 of the access_tokens repair (migrations
-// 20261031000000-20261031000002): it fills access_tokens_new from access_tokens.
+// 20261031000010-20261031000012): it fills access_tokens_new from access_tokens.
 //
 // provider / id_token are copied where the old table still has them (fresh
 // installs, anything upgraded from v1.6.x) and written as NULL where the
@@ -19,12 +19,13 @@ import (
 // be a privilege escalation.
 //
 // Idempotent: the copy is replaced in one transaction, so a run interrupted
-// before step 3 is simply redone, and once step 3 has swapped the tables there
-// is no access_tokens_new and nothing to do.
-func CopyAccessTokens(ctx context.Context, db *sql.DB) (int64, error) {
-	pending, err := tableExists(ctx, db, "access_tokens_new")
+// before step 3 is simply redone. pending is false when there is no
+// access_tokens_new to fill (step 1 not applied yet, or step 3 already swapped
+// the tables), so nothing was done.
+func CopyAccessTokens(ctx context.Context, db *sql.DB) (copied int64, pending bool, err error) {
+	pending, err = tableExists(ctx, db, "access_tokens_new")
 	if err != nil || !pending {
-		return 0, err
+		return 0, pending, err
 	}
 	columns := []string{"id", "user_id", "kind", "token_hash", "scope", "name", "user_agent",
 		"created_at", "last_used_at", "expires_at", "revoked_at", "provider", "id_token", "grant_id"}
@@ -36,7 +37,7 @@ func CopyAccessTokens(ctx context.Context, db *sql.DB) (int64, error) {
 		}
 		present, err := columnExists(ctx, db, "access_tokens", column)
 		if err != nil {
-			return 0, err
+			return 0, true, err
 		}
 		if !present {
 			selects[i] = "NULL"
@@ -45,25 +46,25 @@ func CopyAccessTokens(ctx context.Context, db *sql.DB) (int64, error) {
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, fmt.Errorf("copy access_tokens: begin: %w", err)
+		return 0, true, fmt.Errorf("copy access_tokens: begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 	if _, err := tx.ExecContext(ctx, `DELETE FROM access_tokens_new`); err != nil {
-		return 0, fmt.Errorf("copy access_tokens: clear: %w", err)
+		return 0, true, fmt.Errorf("copy access_tokens: clear: %w", err)
 	}
 	res, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO access_tokens_new (%s) SELECT %s FROM access_tokens`,
 		strings.Join(columns, ", "), strings.Join(selects, ", ")))
 	if err != nil {
-		return 0, fmt.Errorf("copy access_tokens: %w", err)
+		return 0, true, fmt.Errorf("copy access_tokens: %w", err)
 	}
-	copied, err := res.RowsAffected()
+	copied, err = res.RowsAffected()
 	if err != nil {
-		return 0, fmt.Errorf("copy access_tokens: %w", err)
+		return 0, true, fmt.Errorf("copy access_tokens: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("copy access_tokens: commit: %w", err)
+		return 0, true, fmt.Errorf("copy access_tokens: commit: %w", err)
 	}
-	return copied, nil
+	return copied, true, nil
 }
 
 func tableExists(ctx context.Context, db *sql.DB, table string) (bool, error) {

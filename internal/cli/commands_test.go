@@ -563,7 +563,7 @@ func TestMigrationCopyAccessTokens_CommandAndRunner(t *testing.T) {
 	}
 	var step1 string
 	for _, f := range migrations.SQLite() {
-		if f.Version == "20261031000000" {
+		if f.Version == "20261031000010" {
 			step1 = f.SQL
 		}
 	}

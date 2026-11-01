@@ -21,7 +21,7 @@ const (
 	oauthColumnsMigration = "20260907000000"
 	tableRebuildMigration = "20260901000000"
 	// The repair's first step; the copy command and the swap follow it.
-	repairMigration = "20261031000000"
+	repairMigration = "20261031000010"
 )
 
 // repairCommands dispatches the copy step the way serve does, so the boot
@@ -31,7 +31,7 @@ func repairCommands(db *sql.DB) migrate.CommandRunner {
 		if name != "migration:copy-access-tokens" {
 			return nil
 		}
-		_, err := sqlite.CopyAccessTokens(ctx, db)
+		_, _, err := sqlite.CopyAccessTokens(ctx, db)
 		return err
 	}
 }
@@ -214,12 +214,11 @@ func TestRepairPreservesIngestScope(t *testing.T) {
 	}
 }
 
-// The swap drops the old table, so it must refuse to run on an incomplete
-// copy. A runner that records the copy command without running it
-// (migrate.NoCommands) would otherwise leave access_tokens empty and sign
-// everyone out, PATs included.
-func TestRepairSwapRefusesAnIncompleteCopy(t *testing.T) {
-	db, err := sql.Open("sqlite", "file:swapguard?mode=memory&cache=shared")
+// A runner that records the copy command without running it
+// (migrate.NoCommands) reaches the swap with an empty copy. The swap fills it
+// from the old table, so no token is lost.
+func TestRepairSwapKeepsTokensTheCopyNeverSaw(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:swapskipped?mode=memory&cache=shared")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,15 +231,73 @@ func TestRepairSwapRefusesAnIncompleteCopy(t *testing.T) {
 	id := "01a00000-0000-7000-8000-00000000000d"
 	seedToken(t, db, id, true)
 
-	if err := migrate.Run(ctx, db, sqliteMigrations(""), migrate.WithCommandRunner(migrate.NoCommands)); err == nil {
-		t.Fatal("the swap ran over an empty copy")
+	if err := migrate.Run(ctx, db, sqliteMigrations(""), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatalf("repair with the copy skipped: %v", err)
+	}
+	var scope string
+	if err := db.QueryRow(`SELECT scope FROM access_tokens WHERE id = ?`, id).Scan(&scope); err != nil {
+		t.Fatalf("token lost: %v", err)
+	}
+	if scope != "full" {
+		t.Fatalf("scope = %q, want full", scope)
+	}
+}
+
+// Step 2 is recorded once it succeeds and never runs again, so a write to the
+// old table between it and the swap must still reach the swapped table: a
+// revocation must not be undone, a purge must not bring a row back.
+func TestRepairSwapKeepsWritesAfterTheCopy(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:swapwrites?mode=memory&cache=shared")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+
+	if err := migrate.Run(ctx, db, beforeRepair(), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatal(err)
+	}
+	revoked, purged, added := "01a00000-0000-7000-8000-0000000000e1", "01a00000-0000-7000-8000-0000000000e2", "01a00000-0000-7000-8000-0000000000e3"
+	seedToken(t, db, revoked, true)
+	seedToken(t, db, purged, true)
+	if _, err := db.Exec(`UPDATE access_tokens SET provider = 'oidc', id_token = 'tok' WHERE id = ?`, revoked); err != nil {
+		t.Fatal(err)
+	}
+
+	var throughCopy []migrate.Migration
+	for _, m := range sqliteMigrations("") {
+		if m.Version < "20261031000012" {
+			throughCopy = append(throughCopy, m)
+		}
+	}
+	if err := migrate.Run(ctx, db, throughCopy, migrate.WithCommandRunner(repairCommands(db))); err != nil {
+		t.Fatalf("steps 1-2: %v", err)
+	}
+	if _, err := db.Exec(`UPDATE access_tokens SET revoked_at = '2026-10-31 00:00:00' WHERE id = ?`, revoked); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM access_tokens WHERE id = ?`, purged); err != nil {
+		t.Fatal(err)
+	}
+	seedToken(t, db, added, true)
+
+	if err := migrate.Run(ctx, db, sqliteMigrations(""), migrate.WithCommandRunner(repairCommands(db))); err != nil {
+		t.Fatalf("step 3: %v", err)
+	}
+
+	var revokedAt, provider sql.NullString
+	if err := db.QueryRow(`SELECT revoked_at, provider FROM access_tokens WHERE id = ?`, revoked).Scan(&revokedAt, &provider); err != nil {
+		t.Fatal(err)
+	}
+	if !revokedAt.Valid || provider.String != "oidc" {
+		t.Fatalf("revoked token: revoked_at %v, provider %v; want revoked and oidc", revokedAt, provider)
 	}
 	var n int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM access_tokens WHERE id = ?`, id).Scan(&n); err != nil {
-		t.Fatalf("old table gone: %v", err)
+	if err := db.QueryRow(`SELECT COUNT(*) FROM access_tokens WHERE id = ?`, purged).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("purged token came back: count %d, err %v", n, err)
 	}
-	if n != 1 {
-		t.Fatalf("token count after the refused swap = %d, want 1", n)
+	if err := db.QueryRow(`SELECT COUNT(*) FROM access_tokens WHERE id = ?`, added).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("token added after the copy: count %d, err %v", n, err)
 	}
 }
 
@@ -306,6 +363,33 @@ func TestRunWarnsOnOutOfOrderMigration(t *testing.T) {
 	}
 	if len(*warnings) != 0 {
 		t.Fatalf("in-order migration warned: %v", *warnings)
+	}
+}
+
+// A drop-in database records the legacy range at once, so a genuinely new
+// migration numbered below its newest legacy version is expected, not odd.
+func TestRunDoesNotWarnBelowTheLegacyHighWaterMark(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:outoforderlegacy?mode=memory&cache=shared")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+
+	if _, err := db.ExecContext(ctx, `CREATE TABLE migration_versions (version VARCHAR(191) PRIMARY KEY, executed_at TIMESTAMP);
+		INSERT INTO migration_versions (version, executed_at) VALUES ('20260105000000', CURRENT_TIMESTAMP);`); err != nil {
+		t.Fatal(err)
+	}
+	warnings := captureWarnings(t)
+	migs := []migrate.Migration{
+		{Version: "20260101000000", SQL: `CREATE TABLE a (id TEXT)`},
+		{Version: "20260105000000", SQL: `CREATE TABLE b (id TEXT)`},
+	}
+	if err := migrate.Run(ctx, db, migs, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatal(err)
+	}
+	if len(*warnings) != 0 {
+		t.Fatalf("a migration below the legacy range warned: %v", *warnings)
 	}
 }
 
