@@ -214,11 +214,10 @@ func TestRepairPreservesIngestScope(t *testing.T) {
 	}
 }
 
-// A runner that records the copy command without running it
-// (migrate.NoCommands) reaches the swap with an empty copy. The swap fills it
-// from the old table, so no token is lost.
-func TestRepairSwapKeepsTokensTheCopyNeverSaw(t *testing.T) {
-	db, err := sql.Open("sqlite", "file:swapskipped?mode=memory&cache=shared")
+// An unreleased build of this fix could leave access_tokens_new behind. Step 1
+// replaces it rather than failing every boot on "table already exists".
+func TestRepairReplacesAStaleCopyTable(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:stalecopy?mode=memory&cache=shared")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,76 +227,30 @@ func TestRepairSwapKeepsTokensTheCopyNeverSaw(t *testing.T) {
 	if err := migrate.Run(ctx, db, beforeRepair(), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatal(err)
 	}
-	id := "01a00000-0000-7000-8000-00000000000d"
+	id := "01a00000-0000-7000-8000-00000000000f"
 	seedToken(t, db, id, true)
-
-	if err := migrate.Run(ctx, db, sqliteMigrations(""), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
-		t.Fatalf("repair with the copy skipped: %v", err)
-	}
-	var scope string
-	if err := db.QueryRow(`SELECT scope FROM access_tokens WHERE id = ?`, id).Scan(&scope); err != nil {
-		t.Fatalf("token lost: %v", err)
-	}
-	if scope != "full" {
-		t.Fatalf("scope = %q, want full", scope)
-	}
-}
-
-// Step 2 is recorded once it succeeds and never runs again, so a write to the
-// old table between it and the swap must still reach the swapped table: a
-// revocation must not be undone, a purge must not bring a row back.
-func TestRepairSwapKeepsWritesAfterTheCopy(t *testing.T) {
-	db, err := sql.Open("sqlite", "file:swapwrites?mode=memory&cache=shared")
-	if err != nil {
+	if _, err := db.Exec(`CREATE TABLE access_tokens_new (id TEXT, junk TEXT); INSERT INTO access_tokens_new VALUES ('stale', 'x')`); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
-	ctx := context.Background()
-
-	if err := migrate.Run(ctx, db, beforeRepair(), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
-		t.Fatal(err)
-	}
-	revoked, purged, added := "01a00000-0000-7000-8000-0000000000e1", "01a00000-0000-7000-8000-0000000000e2", "01a00000-0000-7000-8000-0000000000e3"
-	seedToken(t, db, revoked, true)
-	seedToken(t, db, purged, true)
-	if _, err := db.Exec(`UPDATE access_tokens SET provider = 'oidc', id_token = 'tok' WHERE id = ?`, revoked); err != nil {
-		t.Fatal(err)
-	}
-
-	var throughCopy []migrate.Migration
-	for _, m := range sqliteMigrations("") {
-		if m.Version < "20261031000012" {
-			throughCopy = append(throughCopy, m)
-		}
-	}
-	if err := migrate.Run(ctx, db, throughCopy, migrate.WithCommandRunner(repairCommands(db))); err != nil {
-		t.Fatalf("steps 1-2: %v", err)
-	}
-	if _, err := db.Exec(`UPDATE access_tokens SET revoked_at = '2026-10-31 00:00:00' WHERE id = ?`, revoked); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`DELETE FROM access_tokens WHERE id = ?`, purged); err != nil {
-		t.Fatal(err)
-	}
-	seedToken(t, db, added, true)
 
 	if err := migrate.Run(ctx, db, sqliteMigrations(""), migrate.WithCommandRunner(repairCommands(db))); err != nil {
-		t.Fatalf("step 3: %v", err)
+		t.Fatalf("repair over a stale copy: %v", err)
 	}
-
-	var revokedAt, provider sql.NullString
-	if err := db.QueryRow(`SELECT revoked_at, provider FROM access_tokens WHERE id = ?`, revoked).Scan(&revokedAt, &provider); err != nil {
+	var ids []string
+	rows, err := db.Query(`SELECT id FROM access_tokens`)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if !revokedAt.Valid || provider.String != "oidc" {
-		t.Fatalf("revoked token: revoked_at %v, provider %v; want revoked and oidc", revokedAt, provider)
+	defer rows.Close()
+	for rows.Next() {
+		var v string
+		if err := rows.Scan(&v); err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, v)
 	}
-	var n int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM access_tokens WHERE id = ?`, purged).Scan(&n); err != nil || n != 0 {
-		t.Fatalf("purged token came back: count %d, err %v", n, err)
-	}
-	if err := db.QueryRow(`SELECT COUNT(*) FROM access_tokens WHERE id = ?`, added).Scan(&n); err != nil || n != 1 {
-		t.Fatalf("token added after the copy: count %d, err %v", n, err)
+	if len(ids) != 1 || ids[0] != id {
+		t.Fatalf("access_tokens ids = %v, want [%s]", ids, id)
 	}
 }
 

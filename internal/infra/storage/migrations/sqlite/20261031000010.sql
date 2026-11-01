@@ -17,6 +17,10 @@
 -- still exist (every healthy database) and write NULL where they do not, and
 -- SQL cannot name a column that may be missing. PostgreSQL never lost the
 -- columns (its 20260901000000 uses ALTER TABLE), so its three steps are no-ops.
+--
+-- A stale access_tokens_new (left by an unreleased build of this fix) is
+-- dropped first: step 2 refills it completely, and this guarantees its shape.
+DROP TABLE IF EXISTS access_tokens_new;
 CREATE TABLE access_tokens_new
 (
     id           TEXT NOT NULL

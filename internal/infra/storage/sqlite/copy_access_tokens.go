@@ -14,9 +14,9 @@ import (
 // installs, anything upgraded from v1.6.x) and written as NULL where the
 // out-of-order 20260901000000 rebuild dropped them (a v1.5.x upgrade); those
 // values are gone and cannot be recovered, so such a session keeps no provider
-// and logout skips the RP-initiated redirect for it. Every other column,
-// scope included, is copied verbatim: widening an ingest token to full would
-// be a privilege escalation.
+// and logout skips the RP-initiated redirect for it.
+// Every other column, scope included, is copied verbatim: widening an ingest
+// token to full would be a privilege escalation.
 //
 // Idempotent: the copy is replaced in one transaction, so a run interrupted
 // before step 3 is simply redone. pending is false when there is no
