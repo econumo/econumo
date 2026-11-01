@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Config is the fully-resolved application configuration.
@@ -64,6 +66,13 @@ type Config struct {
 	AdminToken string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
 	BillingURL string // ECONUMO_BILLING_URL: payment portal; empty disables billing
 	AppURL     string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
+
+	// The separate share app (share.econumo.com) that reads a user's data over OAuth.
+	ShareURL          string // ECONUMO_SHARE_URL: the share app's origin, trailing "/" trimmed; empty = no share app
+	ShareClientID     string // ECONUMO_SHARE_CLIENT_ID: UUID of the first-party OAuth client the share app uses
+	ShareClientSecret string // ECONUMO_SHARE_CLIENT_SECRET
+	ShareRedirectURI  string // ECONUMO_SHARE_REDIRECT_URI: the share app's OAuth callback
+	AdminShareToken   string // ECONUMO_ADMIN_SHARE_TOKEN: bearer for the share app's narrow admin routes
 
 	// Verified Universal / App Links for the mobile app (RFC 8252 §7). Set
 	// either one and the OAuth app flow returns through an https URL on AppURL
@@ -372,6 +381,10 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	if err := loadShare(&c); err != nil {
+		return Config{}, err
+	}
+
 	if err := loadAppLinks(&c); err != nil {
 		return Config{}, err
 	}
@@ -481,6 +494,75 @@ func loadAppLinks(c *Config) error {
 // loadOAuth reads the three provider slots. A slot is all-or-nothing: the
 // first missing required variable of a partially set slot is named in the
 // error, and any enabled slot requires ECONUMO_URL (redirect URIs derive from it).
+func (c Config) ShareClientEnabled() bool { return c.ShareClientID != "" }
+
+func loadShare(c *Config) error {
+	if v := os.Getenv("ECONUMO_SHARE_URL"); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" ||
+			(u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname()))) {
+			return fmt.Errorf("ECONUMO_SHARE_URL: must be an absolute https URL without credentials, query or fragment (http only for loopback hosts): %q", v)
+		}
+		c.ShareURL = strings.TrimRight(v, "/")
+	}
+
+	vars := []string{"ECONUMO_SHARE_CLIENT_ID", "ECONUMO_SHARE_CLIENT_SECRET", "ECONUMO_SHARE_REDIRECT_URI"}
+	set := 0
+	for _, v := range vars {
+		if os.Getenv(v) != "" {
+			set++
+		}
+	}
+	if set > 0 {
+		for _, v := range vars {
+			if os.Getenv(v) == "" {
+				return fmt.Errorf("%s is required when the other ECONUMO_SHARE_CLIENT_* variables are set", v)
+			}
+		}
+		id := os.Getenv("ECONUMO_SHARE_CLIENT_ID")
+		if _, err := vo.ParseId(id); err != nil {
+			return fmt.Errorf("ECONUMO_SHARE_CLIENT_ID: must be a UUID")
+		}
+		secret := os.Getenv("ECONUMO_SHARE_CLIENT_SECRET")
+		if len(secret) < 32 {
+			return fmt.Errorf("ECONUMO_SHARE_CLIENT_SECRET: must be at least 32 characters")
+		}
+		if c.AppURL == "" {
+			return fmt.Errorf("ECONUMO_SHARE_CLIENT_ID requires ECONUMO_URL (the OAuth issuer)")
+		}
+		redirect := os.Getenv("ECONUMO_SHARE_REDIRECT_URI")
+		u, err := url.Parse(redirect)
+		if err != nil || u.Host == "" || !isASCII(redirect) ||
+			(u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname()))) {
+			return fmt.Errorf("ECONUMO_SHARE_REDIRECT_URI: must be an absolute https URL (http only for loopback hosts): %q", redirect)
+		}
+		c.ShareClientID, c.ShareClientSecret, c.ShareRedirectURI = id, secret, redirect
+	}
+
+	if v := os.Getenv("ECONUMO_ADMIN_SHARE_TOKEN"); v != "" {
+		if c.AdminToken == "" {
+			return fmt.Errorf("ECONUMO_ADMIN_SHARE_TOKEN requires the admin listener (ECONUMO_ADMIN_PORT and ECONUMO_ADMIN_TOKEN)")
+		}
+		if len(v) < 32 {
+			return fmt.Errorf("ECONUMO_ADMIN_SHARE_TOKEN: must be at least 32 characters")
+		}
+		if v == c.AdminToken {
+			return fmt.Errorf("ECONUMO_ADMIN_SHARE_TOKEN: must differ from ECONUMO_ADMIN_TOKEN")
+		}
+		c.AdminShareToken = v
+	}
+	return nil
+}
+
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
+}
+
 func loadOAuth(c *Config) error {
 	requireAll := func(slot string, vars ...string) (bool, error) {
 		set := 0
