@@ -10,9 +10,10 @@ import (
 )
 
 // ClientIP resolves the caller's IP into reqctx for the rate limiter; it is held
-// in memory only and never logged. The named header counts only on a request
-// from a trusted proxy: from anyone else it could be forged to dodge the limits
-// or spend another caller's, so direct traffic is the address it connected from.
+// in memory only and never logged. With a proxies list the named header counts
+// only on a request from one of them: from anyone else it could be forged to
+// dodge the limits or spend another caller's. With no list it counts from anyone,
+// for a server a firewall keeps reachable only through its proxy.
 func ClientIP(header string, trusted []netip.Prefix) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +28,7 @@ func ClientIP(header string, trusted []netip.Prefix) func(http.Handler) http.Han
 // caller sent. All trusted means the caller is one of those networks itself.
 func resolveClientIP(r *http.Request, header string, trusted []netip.Prefix) string {
 	peer := parseIP(r.RemoteAddr)
-	if !peer.IsValid() || !isTrusted(peer, trusted) {
+	if header == "" || !peer.IsValid() || (len(trusted) > 0 && !isTrusted(peer, trusted)) {
 		return bucket(peer)
 	}
 	found := peer

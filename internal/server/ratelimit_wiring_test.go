@@ -122,7 +122,9 @@ func TestIPRateCap_OneCallerNeverThrottlesAnother(t *testing.T) {
 }
 
 func TestIPRateCap_AnUntrustedPeerCannotForgeItsWayPast(t *testing.T) {
-	h := newLimitHarness(t, func(c *config.Config) { c.ClientIPTrustedProxies = nil })
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.ClientIPTrustedProxies = []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}
+	})
 	const path, body = "/api/v1/user/remind-password", `{"username":"anon@example.test"}`
 	h.post(path, strangerIP, "", body)
 	if got := h.post(path, ownerIP, "", body); got != http.StatusTooManyRequests {

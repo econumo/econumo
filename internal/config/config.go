@@ -442,8 +442,8 @@ func Load() (Config, error) {
 	return c, nil
 }
 
-// loadClientIP refuses a header with no trusted proxies: anyone reaching the
-// server directly could then forge it and spend another caller's rate limits.
+// loadClientIP: a header with no proxies list is believed from anyone, which is
+// only safe when a firewall lets nothing but the proxy reach the server.
 func loadClientIP(c *Config) error {
 	c.ClientIPHeader = strings.TrimSpace(os.Getenv("ECONUMO_CLIENT_IP_HEADER"))
 	if c.ClientIPHeader != "" && !clientIPHeaderRe.MatchString(c.ClientIPHeader) {
@@ -460,13 +460,7 @@ func loadClientIP(c *Config) error {
 		}
 		c.ClientIPTrustedProxies = append(c.ClientIPTrustedProxies, p.Masked())
 	}
-	if len(c.ClientIPTrustedProxies) == 0 {
-		if c.ClientIPHeader != "" {
-			return fmt.Errorf("ECONUMO_CLIENT_IP_HEADER requires ECONUMO_CLIENT_IP_TRUSTED_PROXIES")
-		}
-		return nil
-	}
-	if c.ClientIPHeader == "" {
+	if len(c.ClientIPTrustedProxies) > 0 && c.ClientIPHeader == "" {
 		c.ClientIPHeader = "X-Forwarded-For"
 	}
 	return nil

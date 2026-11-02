@@ -690,9 +690,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       rule preview from one IP stay past the cap.
 - [ ] Five wrong passwords for an email from one IP lock only that IP: the owner signs in from
       another IP at once. Past the ceiling (50 failures across IPs) that email is 429 from any IP.
-- [ ] With `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` and `ECONUMO_CLIENT_IP_HEADER` set for the proxy, two
-      clients through it are limited separately, and a direct request with a forged header is limited
-      by its real address. With the list empty, all the proxy's clients count as one IP.
+- [ ] With `ECONUMO_CLIENT_IP_HEADER` set for the proxy, two clients through it are limited
+      separately (unset, they count as one IP). With `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` also set, a
+      direct request with a forged header is limited by its real address.
 - [ ] A tap whose merchant name exceeds 255 characters is imported with the
       name cut to 255 (no failed row).
 - [ ] Manually importing a queued row whose card currency differs from the

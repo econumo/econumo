@@ -897,15 +897,17 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   invented addresses from many IPs cannot wipe them from the 10,000-entry counter map; the cost is
   that only a real account ever reaches one. Accepted residual: many accounts on many IPs have no
   overall ceiling on `accept-invite`, `request-email-change`, `claim-setup-token` and `sync-source`.
-  `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` — comma-separated IPs/CIDRs of your reverse proxies (for
+  `ECONUMO_CLIENT_IP_HEADER` — the header your reverse proxy puts the client IP in (e.g.
+  `CF-Connecting-IP`); a request without a valid value counts as its connecting address. Alone, it
+  is believed from anyone, which is safe only when a firewall lets nothing but the proxy reach the
+  server: a direct caller could otherwise forge it, dodging the limits or spending another IP's.
+  `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` — optional comma-separated IPs/CIDRs of those proxies (for
   Cloudflare, https://www.cloudflare.com/ips/ plus the `cloudflared` address when using a tunnel).
-  `ECONUMO_CLIENT_IP_HEADER` — the header they put the client IP in (default `X-Forwarded-For`, e.g.
-  `CF-Connecting-IP`; requires the proxies list, boot fails otherwise). The header counts only on a
-  request from a listed proxy, so direct and proxied traffic can share one instance and direct
-  callers cannot forge it. A list is walked from the nearest entry to the first address outside the
-  proxies. Empty (default): the client IP is the connecting address, so behind an unlisted proxy all
-  its users count as one IP. Resolved in `middleware.ClientIP`; IPv6 is grouped by /64; the IP stays
-  in memory and is never logged.
+  With it the header counts only on a request from a listed address (default header
+  `X-Forwarded-For`), so direct and proxied traffic can share one instance, and a list is walked
+  from the nearest entry to the first address outside the proxies. Neither set: the client IP is the
+  connecting address, so behind a proxy all its users count as one IP. Resolved in
+  `middleware.ClientIP`; IPv6 is grouped by /64; the IP stays in memory and is never logged.
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.

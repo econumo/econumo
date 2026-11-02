@@ -166,10 +166,14 @@ func TestLoad_ClientIP(t *testing.T) {
 		t.Fatalf("header = %q, err = %v", c.ClientIPHeader, err)
 	}
 
+	t.Setenv("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", "")
+	if c, err = Load(); err != nil || c.ClientIPHeader != "CF-Connecting-IP" || len(c.ClientIPTrustedProxies) != 0 {
+		t.Fatalf("header alone: header = %q, proxies = %v, err = %v", c.ClientIPHeader, c.ClientIPTrustedProxies, err)
+	}
+
 	for name, env := range map[string][2]string{
-		"bad header":         {"not a header", "127.0.0.1"},
-		"bad proxy":          {"CF-Connecting-IP", "cloudflare"},
-		"header, no proxies": {"CF-Connecting-IP", ""},
+		"bad header": {"not a header", "127.0.0.1"},
+		"bad proxy":  {"CF-Connecting-IP", "cloudflare"},
 	} {
 		t.Setenv("ECONUMO_CLIENT_IP_HEADER", env[0])
 		t.Setenv("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", env[1])
