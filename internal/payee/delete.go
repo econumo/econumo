@@ -28,6 +28,15 @@ func (s *Service) DeletePayee(ctx context.Context, userID vo.Id, req model.Delet
 			// the response can't probe which payee ids exist.
 			return errs.NewNotFound("Payee not found")
 		}
+		if s.debts != nil {
+			used, uerr := s.debts.InUse(txCtx, id)
+			if uerr != nil {
+				return uerr
+			}
+			if used {
+				return &errs.ValidationError{Msg: "A debt uses this payee. Delete or change the debt first.", MsgCode: errs.CodePayeeUsedByDebt}
+			}
+		}
 		return s.repo.Delete(txCtx, id)
 	}); err != nil {
 		return nil, err

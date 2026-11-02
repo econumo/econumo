@@ -2081,7 +2081,8 @@
       "type_invalid": "Ce type de catégorie n’existe pas.",
       "not_found": "Catégorie introuvable.",
       "cannot_be_merged": "Les catégories sélectionnées ne peuvent pas être fusionnées.",
-      "list_empty": "La liste des catégories est vide."
+      "list_empty": "La liste des catégories est vide.",
+      "used_by_debt": "Une dette utilise cette catégorie. Supprimez ou modifiez d'abord la dette."
     },
     "connection": {
       "invalid_uuid": "Ceci n’est pas un UUID valide.",
@@ -2149,13 +2150,15 @@
       "name_length": "Le nom du bénéficiaire doit contenir de {min} à {max} caractères.",
       "already_exists": "Ce bénéficiaire existe déjà.",
       "cannot_be_merged": "Les bénéficiaires sélectionnés ne peuvent pas être fusionnés.",
-      "list_empty": "La liste des bénéficiaires est vide."
+      "list_empty": "La liste des bénéficiaires est vide.",
+      "used_by_debt": "Une dette utilise ce bénéficiaire. Supprimez ou modifiez d'abord la dette."
     },
     "tag": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",
       "already_exists": "Ce tag existe déjà.",
       "cannot_be_merged": "Les tags sélectionnés ne peuvent pas être fusionnés.",
-      "list_empty": "La liste des tags est vide."
+      "list_empty": "La liste des tags est vide.",
+      "used_by_debt": "Une dette utilise ce tag. Supprimez ou modifiez d'abord la dette."
     },
     "token": {
       "name_length": "Le nom du jeton doit contenir de {min} à {max} caractères.",

@@ -6,10 +6,13 @@ import (
 	"context"
 	"time"
 
+	appcategory "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/debt"
 	"github.com/econumo/econumo/internal/model"
+	apppayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	apptag "github.com/econumo/econumo/internal/tag"
 )
 
 type debtCategories interface {
@@ -102,7 +105,34 @@ func (r *DebtRates) FractionDigits(ctx context.Context, currencyID vo.Id) (int, 
 	return r.rates.FractionDigits(ctx, currencyID)
 }
 
+type debtClassificationUsage interface {
+	InUse(ctx context.Context, kind string, id vo.Id) (bool, error)
+	ReassignClassification(ctx context.Context, kind string, oldID, newID vo.Id) error
+}
+
+// DebtUsage adapts the debt service to the DebtUsage port the category, payee
+// and tag services declare; one instance serves one classification kind.
+type DebtUsage struct {
+	debts debtClassificationUsage
+	kind  string
+}
+
+func NewDebtUsage(debts debtClassificationUsage, kind string) *DebtUsage {
+	return &DebtUsage{debts: debts, kind: kind}
+}
+
+func (u *DebtUsage) InUse(ctx context.Context, id vo.Id) (bool, error) {
+	return u.debts.InUse(ctx, u.kind, id)
+}
+
+func (u *DebtUsage) Reassign(ctx context.Context, oldID, newID vo.Id) error {
+	return u.debts.ReassignClassification(ctx, u.kind, oldID, newID)
+}
+
 var (
-	_ debt.Classifications = (*DebtClassifications)(nil)
-	_ debt.Rates           = (*DebtRates)(nil)
+	_ appcategory.DebtUsage = (*DebtUsage)(nil)
+	_ apppayee.DebtUsage    = (*DebtUsage)(nil)
+	_ apptag.DebtUsage      = (*DebtUsage)(nil)
+	_ debt.Classifications  = (*DebtClassifications)(nil)
+	_ debt.Rates            = (*DebtRates)(nil)
 )

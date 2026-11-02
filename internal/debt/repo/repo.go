@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -206,6 +207,39 @@ func (r *Repo) ReassignPayee(ctx context.Context, oldID, newID vo.Id) error {
 func (r *Repo) ReassignTag(ctx context.Context, oldID, newID vo.Id) error {
 	n, o := newID.String(), oldID.String()
 	return r.q.ReassignDebtTag(ctx, r.db(ctx), reassignTagParam{TagID: &n, TagID_2: &o})
+}
+
+// ListByClassification returns the debts keyed on a payee or a tag.
+func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) ([]*model.Debt, error) {
+	var column string
+	switch kind {
+	case "payee":
+		column = "payee_id"
+	case "tag":
+		column = "tag_id"
+	default:
+		return nil, fmt.Errorf("debtrepo: unknown classification kind %q", kind)
+	}
+	query := "SELECT " + debtCols + " FROM debts WHERE " + column + " = " + placeholders(r.driver, 1) + " ORDER BY created_at, id"
+	rows, err := r.db(ctx).QueryContext(ctx, query, id.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var scanned []debtRow
+	for rows.Next() {
+		var row debtRow
+		if err := rows.Scan(&row.ID, &row.UserID, &row.Name, &row.CurrencyID, &row.CategoryID, &row.PayeeID, &row.TagID,
+			&row.StartDate, &row.AsOf, &row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate,
+			&row.CreatedAt, &row.UpdatedAt); err != nil {
+			return nil, err
+		}
+		scanned = append(scanned, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return hydrateAll(scanned)
 }
 
 const debtCols = "id, user_id, name, currency_id, category_id, payee_id, tag_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at"

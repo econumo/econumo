@@ -31,6 +31,16 @@ func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req model.De
 			return &errs.ValidationError{Msg: "Category not found", MsgCode: errs.CodeCategoryNotFound}
 		}
 
+		if s.debts != nil {
+			used, uerr := s.debts.InUse(ctx, id)
+			if uerr != nil {
+				return uerr
+			}
+			if used {
+				return &errs.ValidationError{Msg: "A debt uses this category. Delete or change the debt first.", MsgCode: errs.CodeCategoryUsedByDebt}
+			}
+		}
+
 		return s.repo.Delete(ctx, id)
 	}); err != nil {
 		return nil, err

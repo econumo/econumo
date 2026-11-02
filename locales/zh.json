@@ -2081,7 +2081,8 @@
       "type_invalid": "指定的分类类型不存在。",
       "not_found": "未找到该分类。",
       "cannot_be_merged": "无法合并所选分类。",
-      "list_empty": "分类列表为空。"
+      "list_empty": "分类列表为空。",
+      "used_by_debt": "有债务正在使用此类别。请先删除或修改该债务。"
     },
     "connection": {
       "invalid_uuid": "这不是有效的 UUID。",
@@ -2149,13 +2150,15 @@
       "name_length": "收款人名称需为 {min}-{max} 个字符。",
       "already_exists": "该收款人已存在。",
       "cannot_be_merged": "无法合并所选收款人。",
-      "list_empty": "收款人列表为空。"
+      "list_empty": "收款人列表为空。",
+      "used_by_debt": "有债务正在使用此收款方。请先删除或修改该债务。"
     },
     "tag": {
       "name_length": "标签名称需为 {min}-{max} 个字符。",
       "already_exists": "该标签已存在。",
       "cannot_be_merged": "无法合并所选标签。",
-      "list_empty": "标签列表为空。"
+      "list_empty": "标签列表为空。",
+      "used_by_debt": "有债务正在使用此标签。请先删除或修改该债务。"
     },
     "token": {
       "name_length": "令牌名称需为 {min}-{max} 个字符。",

@@ -57,6 +57,7 @@ const (
 	CodeCategoryNotFound       = "category.not_found"
 	CodeCategoryCannotBeMerged = "category.cannot_be_merged"
 	CodeCategoryListEmpty      = "category.list_empty"
+	CodeCategoryUsedByDebt     = "category.used_by_debt"
 
 	CodeConnectionInvalidUUID      = "connection.invalid_uuid"
 	CodeConnectionInvalidRoleAlias = "connection.invalid_role_alias"
@@ -69,11 +70,13 @@ const (
 	CodePayeeAlreadyExists  = "payee.already_exists"
 	CodePayeeCannotBeMerged = "payee.cannot_be_merged"
 	CodePayeeListEmpty      = "payee.list_empty"
+	CodePayeeUsedByDebt     = "payee.used_by_debt"
 
 	CodeTagNameLength     = "tag.name_length"
 	CodeTagAlreadyExists  = "tag.already_exists"
 	CodeTagCannotBeMerged = "tag.cannot_be_merged"
 	CodeTagListEmpty      = "tag.list_empty"
+	CodeTagUsedByDebt     = "tag.used_by_debt"
 
 	CodeLabelNameLength     = "label.name_length"
 	CodeLabelCannotBeMerged = "label.cannot_be_merged"
@@ -199,6 +202,7 @@ var AllCodes = []string{
 	CodeCategoryNotFound,
 	CodeCategoryCannotBeMerged,
 	CodeCategoryListEmpty,
+	CodeCategoryUsedByDebt,
 
 	CodeConnectionInvalidUUID,
 	CodeConnectionInvalidRoleAlias,
@@ -211,11 +215,13 @@ var AllCodes = []string{
 	CodePayeeAlreadyExists,
 	CodePayeeCannotBeMerged,
 	CodePayeeListEmpty,
+	CodePayeeUsedByDebt,
 
 	CodeTagNameLength,
 	CodeTagAlreadyExists,
 	CodeTagCannotBeMerged,
 	CodeTagListEmpty,
+	CodeTagUsedByDebt,
 
 	CodeLabelNameLength,
 	CodeLabelCannotBeMerged,

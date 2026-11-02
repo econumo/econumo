@@ -59,6 +59,11 @@ func (s *Service) MergeTag(ctx context.Context, userID vo.Id, req model.MergeTag
 		if berr := s.budget.MergeElements(txCtx, sourceID, targetID); berr != nil {
 			return berr
 		}
+		if s.debts != nil {
+			if derr := s.debts.Reassign(txCtx, sourceID, targetID); derr != nil {
+				return derr
+			}
+		}
 		return s.repo.Delete(txCtx, sourceID)
 	}); err != nil {
 		return nil, err

@@ -265,6 +265,15 @@ func TestRepo_UsesAndReassign(t *testing.T) {
 	if err := e.repo.Save(ctx, d); err != nil {
 		t.Fatal(err)
 	}
+	for kind, id := range map[string]vo.Id{"payee": pid, "tag": tid} {
+		got, err := e.repo.ListByClassification(ctx, kind, id)
+		if err != nil || len(got) != 1 || got[0].ID != d.ID {
+			t.Errorf("ListByClassification(%s) = %v, %v", kind, got, err)
+		}
+	}
+	if _, err := e.repo.ListByClassification(ctx, "label", pid); err == nil {
+		t.Error("an unknown kind must be refused")
+	}
 	newCat := e.f.Category(fixture.Category{UserID: e.user, Name: "Loan 2"})
 	newPayee := e.f.Payee(fixture.Payee{UserID: e.user, Name: "Bank 2"})
 	newTag := e.f.Tag(fixture.Tag{UserID: e.user, Name: "Car 2"})

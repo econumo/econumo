@@ -2081,7 +2081,8 @@
       "type_invalid": "El tipo de categoría no existe.",
       "not_found": "Categoría no encontrada.",
       "cannot_be_merged": "Las categorías seleccionadas no se pueden combinar.",
-      "list_empty": "La lista de categorías está vacía."
+      "list_empty": "La lista de categorías está vacía.",
+      "used_by_debt": "Una deuda usa esta categoría. Elimina o cambia primero la deuda."
     },
     "connection": {
       "invalid_uuid": "Esto no es un UUID válido.",
@@ -2149,13 +2150,15 @@
       "name_length": "El nombre del beneficiario debe tener entre {min} y {max} caracteres.",
       "already_exists": "El beneficiario ya existe.",
       "cannot_be_merged": "Los beneficiarios seleccionados no se pueden combinar.",
-      "list_empty": "La lista de beneficiarios está vacía."
+      "list_empty": "La lista de beneficiarios está vacía.",
+      "used_by_debt": "Una deuda usa este beneficiario. Elimina o cambia primero la deuda."
     },
     "tag": {
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",
       "already_exists": "La etiqueta ya existe.",
       "cannot_be_merged": "Las etiquetas seleccionadas no se pueden combinar.",
-      "list_empty": "La lista de etiquetas está vacía."
+      "list_empty": "La lista de etiquetas está vacía.",
+      "used_by_debt": "Una deuda usa esta etiqueta. Elimina o cambia primero la deuda."
     },
     "token": {
       "name_length": "El nombre del token debe tener entre {min} y {max} caracteres.",

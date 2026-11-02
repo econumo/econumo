@@ -19,7 +19,13 @@ type Service struct {
 	clock  port.Clock
 	read   ReadModel
 	access AccountAccess
+	debts  DebtUsage
 }
+
+// SetDebtUsage installs the debt peer; the debt service is built after this
+// one, so it cannot be a constructor argument. Nil leaves debts out of the
+// checks.
+func (s *Service) SetDebtUsage(d DebtUsage) { s.debts = d }
 
 // NewService wires the payee service. read is the own+shared payee view (the
 // same ReadModel get-payee-list uses); order-payee-list returns that full

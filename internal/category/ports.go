@@ -26,3 +26,12 @@ type AccountAccess interface {
 type BudgetElementMerger interface {
 	MergeElements(ctx context.Context, oldExternalID, newExternalID vo.Id) error
 }
+
+// DebtUsage is backed by the debt feature: a debt keyed on this category must
+// block its deletion, and follows a merge to the target. Reassign returns the
+// coded debt.key_conflict refusal when the merge would leave two debts that
+// can match the same payment.
+type DebtUsage interface {
+	InUse(ctx context.Context, id vo.Id) (bool, error)
+	Reassign(ctx context.Context, oldID, newID vo.Id) error
+}

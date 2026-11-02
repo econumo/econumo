@@ -1,0 +1,102 @@
+package debt
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
+)
+
+const (
+	KindCategory = "category"
+	KindPayee    = "payee"
+	KindTag      = "tag"
+)
+
+// InUse reports whether any debt is keyed on the classification.
+func (s *Service) InUse(ctx context.Context, kind string, id vo.Id) (bool, error) {
+	switch kind {
+	case KindCategory:
+		return s.repo.UsesCategory(ctx, id)
+	case KindPayee:
+		return s.repo.UsesPayee(ctx, id)
+	case KindTag:
+		return s.repo.UsesTag(ctx, id)
+	}
+	return false, fmt.Errorf("debt: unknown classification kind %q", kind)
+}
+
+// ReassignClassification moves the debts keyed on oldID to newID for a merge
+// and refuses the merge when that would leave two debts of an owner able to
+// match the same payment. It runs inside the merge's transaction, after the
+// transactions have been re-pointed, so the payment splits are recomputed
+// against the merged data.
+func (s *Service) ReassignClassification(ctx context.Context, kind string, oldID, newID vo.Id) error {
+	moved, err := s.keyedOn(ctx, kind, oldID)
+	if err != nil {
+		return err
+	}
+	if len(moved) == 0 {
+		return nil
+	}
+	locked := map[vo.Id]bool{}
+	for _, d := range moved {
+		if locked[d.OwnerID] {
+			continue
+		}
+		locked[d.OwnerID] = true
+		if err := s.repo.LockOwner(ctx, d.OwnerID); err != nil {
+			return err
+		}
+	}
+	switch kind {
+	case KindCategory:
+		err = s.repo.ReassignCategory(ctx, oldID, newID)
+	case KindPayee:
+		err = s.repo.ReassignPayee(ctx, oldID, newID)
+	default:
+		err = s.repo.ReassignTag(ctx, oldID, newID)
+	}
+	if err != nil {
+		return err
+	}
+
+	categories := map[vo.Id]bool{}
+	for _, m := range moved {
+		d, err := s.repo.GetByID(ctx, m.ID)
+		if err != nil {
+			return err
+		}
+		others, err := s.repo.ListByCategory(ctx, d.CategoryID)
+		if err != nil {
+			return err
+		}
+		if checkKeys(d, others) != nil {
+			return &errs.ValidationError{Msg: "Another debt could match the same payments.", MsgCode: errs.CodeDebtKeyConflict}
+		}
+		if kind == KindCategory && isWholeCategory(d) {
+			if err := s.transferData(ctx, d.CategoryID, elementCategory, d.ID, elementDebt, d.CurrencyID); err != nil {
+				return err
+			}
+		}
+		categories[d.CategoryID] = true
+	}
+	for c := range categories {
+		if _, err := s.syncCategory(ctx, c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) keyedOn(ctx context.Context, kind string, id vo.Id) ([]*model.Debt, error) {
+	switch kind {
+	case KindCategory:
+		return s.repo.ListByCategory(ctx, id)
+	case KindPayee, KindTag:
+		return s.repo.ListByClassification(ctx, kind, id)
+	}
+	return nil, fmt.Errorf("debt: unknown classification kind %q", kind)
+}

@@ -2081,7 +2081,8 @@
       "type_invalid": "CategoryType not exists",
       "not_found": "Category not found",
       "cannot_be_merged": "The selected categories cannot be merged",
-      "list_empty": "Categories list is empty"
+      "list_empty": "Categories list is empty",
+      "used_by_debt": "A debt uses this category. Delete or change the debt first."
     },
     "connection": {
       "invalid_uuid": "This is not a valid UUID.",
@@ -2149,13 +2150,15 @@
       "name_length": "Payee name must be {min}-{max} characters",
       "already_exists": "Payee already exists.",
       "cannot_be_merged": "The selected payees cannot be merged",
-      "list_empty": "Payees list is empty"
+      "list_empty": "Payees list is empty",
+      "used_by_debt": "A debt uses this payee. Delete or change the debt first."
     },
     "tag": {
       "name_length": "Tag name must be {min}-{max} characters",
       "already_exists": "Tag already exists.",
       "cannot_be_merged": "The selected tags cannot be merged",
-      "list_empty": "Tags list is empty"
+      "list_empty": "Tags list is empty",
+      "used_by_debt": "A debt uses this tag. Delete or change the debt first."
     },
     "token": {
       "name_length": "Token name must be {min}-{max} characters",

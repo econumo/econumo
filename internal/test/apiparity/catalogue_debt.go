@@ -88,6 +88,76 @@ func init() {
 		}
 	}})
 
+	// debt_classification_guard: a category, payee or tag a debt uses cannot be
+	// deleted, and a merge moves the debt to the target unless that would leave
+	// two debts able to match the same payment.
+	register(Scenario{Name: "debt_classification_guard", Calls: func() []Call {
+		op := func(n string) string { return "d1000000-0000-0000-0000-0000000000" + n }
+		var srcCat, dstCat, catA, catB, srcPayee, dstPayee, srcTag, dstTag string
+		var debtA, debtB, debtC, debtD, debtE, debtF string
+		post := func(label, path string, body map[string]any) Call {
+			return Call{Label: label, Method: "POST", Path: path, Auth: "owner", Body: body}
+		}
+		createCat := func(label, id, name string, into *string) Call {
+			c := post(label, "/api/v1/category/create-category", map[string]any{"id": id, "name": name, "type": "expense", "icon": "food"})
+			c.CaptureIDInto = into
+			return c
+		}
+		createNamed := func(label, path, id, name string, into *string) Call {
+			c := post(label, path, map[string]any{"id": id, "name": name})
+			c.CaptureIDInto = into
+			return c
+		}
+		createDebt := func(label string, into *string, extra map[string]any) Call {
+			c := post(label, "/api/v1/debt/create-debt", debtBody(extra))
+			c.CaptureIDInto = into
+			return c
+		}
+		getDebt := func(label string, id *string) Call {
+			return Call{Label: label, Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: id}
+		}
+		return []Call{
+			createCat("create-source-category", op("a1"), "Loan source", &srcCat),
+			createCat("create-target-category", op("a2"), "Loan target", &dstCat),
+			createCat("create-category-a", op("a3"), "Loan a", &catA),
+			createCat("create-category-b", op("a4"), "Loan b", &catB),
+			createNamed("create-source-payee", "/api/v1/payee/create-payee", op("b1"), "Bank one", &srcPayee),
+			createNamed("create-target-payee", "/api/v1/payee/create-payee", op("b2"), "Bank two", &dstPayee),
+			createNamed("create-source-tag", "/api/v1/tag/create-tag", op("c1"), "Loan one", &srcTag),
+			createNamed("create-target-tag", "/api/v1/tag/create-tag", op("c2"), "Loan two", &dstTag),
+
+			createDebt("create-debt-whole-source", &debtA, map[string]any{"categoryId": &srcCat}),
+			{Label: "err:delete-used-category", Method: "POST", Path: "/api/v1/category/delete-category", Auth: "owner",
+				Body: map[string]any{"id": &srcCat, "mode": "delete"}},
+			createDebt("create-debt-keyed-target", &debtB, map[string]any{"categoryId": &dstCat, "payeeId": &srcPayee}),
+			{Label: "err:merge-category-key-conflict", Method: "POST", Path: "/api/v1/category/merge-category", Auth: "owner",
+				Body: map[string]any{"sourceId": &srcCat, "targetId": &dstCat}},
+			post("delete-debt-keyed-target", "/api/v1/debt/delete-debt", map[string]any{"id": &debtB}),
+			post("merge-category", "/api/v1/category/merge-category", map[string]any{"sourceId": &srcCat, "targetId": &dstCat}),
+			getDebt("get-debt-after-category-merge", &debtA),
+
+			createDebt("create-debt-payee-source", &debtC, map[string]any{"categoryId": &catA, "payeeId": &srcPayee}),
+			{Label: "err:delete-used-payee", Method: "POST", Path: "/api/v1/payee/delete-payee", Auth: "owner",
+				Body: map[string]any{"id": &srcPayee}},
+			createDebt("create-debt-payee-target", &debtD, map[string]any{"categoryId": &catA, "payeeId": &dstPayee}),
+			{Label: "err:merge-payee-key-conflict", Method: "POST", Path: "/api/v1/payee/merge-payee", Auth: "owner",
+				Body: map[string]any{"sourceId": &srcPayee, "targetId": &dstPayee}},
+			post("delete-debt-payee-target", "/api/v1/debt/delete-debt", map[string]any{"id": &debtD}),
+			post("merge-payee", "/api/v1/payee/merge-payee", map[string]any{"sourceId": &srcPayee, "targetId": &dstPayee}),
+			getDebt("get-debt-after-payee-merge", &debtC),
+
+			createDebt("create-debt-tag-source", &debtE, map[string]any{"categoryId": &catB, "tagId": &srcTag}),
+			{Label: "err:delete-used-tag", Method: "POST", Path: "/api/v1/tag/delete-tag", Auth: "owner",
+				Body: map[string]any{"id": &srcTag}},
+			createDebt("create-debt-tag-target", &debtF, map[string]any{"categoryId": &catB, "tagId": &dstTag}),
+			{Label: "err:merge-tag-key-conflict", Method: "POST", Path: "/api/v1/tag/merge-tag", Auth: "owner",
+				Body: map[string]any{"sourceId": &srcTag, "targetId": &dstTag}},
+			post("delete-debt-tag-target", "/api/v1/debt/delete-debt", map[string]any{"id": &debtF}),
+			post("merge-tag", "/api/v1/tag/merge-tag", map[string]any{"sourceId": &srcTag, "targetId": &dstTag}),
+			getDebt("get-debt-after-tag-merge", &debtE),
+		}
+	}})
+
 	// debt_guest_access: a debt belongs to its owner alone; a connected guest
 	// gets the same not-found as for an unknown id, on reads and writes.
 	register(Scenario{Name: "debt_guest_access", Calls: func() []Call {

@@ -2081,7 +2081,8 @@
       "type_invalid": "Podany typ kategorii nie istnieje.",
       "not_found": "Nie znaleziono kategorii.",
       "cannot_be_merged": "Nie można scalić wybranych kategorii.",
-      "list_empty": "Lista kategorii jest pusta."
+      "list_empty": "Lista kategorii jest pusta.",
+      "used_by_debt": "Dług używa tej kategorii. Najpierw usuń lub zmień dług."
     },
     "connection": {
       "invalid_uuid": "To nie jest prawidłowy UUID.",
@@ -2149,13 +2150,15 @@
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki odbiorca już istnieje.",
       "cannot_be_merged": "Nie można scalić wybranych odbiorców.",
-      "list_empty": "Lista odbiorców jest pusta."
+      "list_empty": "Lista odbiorców jest pusta.",
+      "used_by_debt": "Dług używa tego odbiorcy. Najpierw usuń lub zmień dług."
     },
     "tag": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki tag już istnieje.",
       "cannot_be_merged": "Nie można scalić wybranych tagów.",
-      "list_empty": "Lista tagów jest pusta."
+      "list_empty": "Lista tagów jest pusta.",
+      "used_by_debt": "Dług używa tego tagu. Najpierw usuń lub zmień dług."
     },
     "token": {
       "name_length": "Nazwa tokena musi mieć od {min} do {max} znaków.",

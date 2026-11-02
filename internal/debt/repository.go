@@ -28,6 +28,8 @@ type Repository interface {
 	GetByID(ctx context.Context, id vo.Id) (*model.Debt, error)
 	ListByOwners(ctx context.Context, ownerIDs []vo.Id) ([]*model.Debt, error)
 	ListByCategory(ctx context.Context, categoryID vo.Id) ([]*model.Debt, error)
+	// ListByClassification: kind is "payee" or "tag".
+	ListByClassification(ctx context.Context, kind string, id vo.Id) ([]*model.Debt, error)
 	Save(ctx context.Context, d *model.Debt) error
 	Delete(ctx context.Context, id vo.Id) error
 	// AddSnapshot is always paired with a Save of the same terms in one transaction.
