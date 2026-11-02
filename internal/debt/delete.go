@@ -27,8 +27,11 @@ func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 			return err
 		}
 		category = d.CategoryID
+		if err := s.lockRows(ctx, d.ID); err != nil {
+			return err
+		}
 		if isWholeCategory(d) {
-			left, err := s.transferData(ctx, d.ID, elementDebt, d.CategoryID, elementCategory, d.CurrencyID)
+			left, err := s.moveToCategory(ctx, d)
 			if err != nil {
 				return err
 			}

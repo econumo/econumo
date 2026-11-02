@@ -428,6 +428,9 @@ type Querier interface {
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
 	LockDebtOwner(ctx context.Context, id string) (string, error)
+	// Locks every budget's row of an external id, in id order, before a removal
+	// guard reads the rows' data (the debt counterpart of LockSavingsElement).
+	LockElementsByExternal(ctx context.Context, arg LockElementsByExternalParams) ([]string, error)
 	// Locks the savings element a removal is about to drop, before its guard
 	// reads the element's data: a limit or comment writer that share-locked the
 	// row first has committed by the time the guard's EXISTS runs, and one that
@@ -469,6 +472,7 @@ type Querier interface {
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
+	RepointBudgetCommentsBetween(ctx context.Context, arg RepointBudgetCommentsBetweenParams) error
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
 	RevokeAccessTokensByGrant(ctx context.Context, arg RevokeAccessTokensByGrantParams) error

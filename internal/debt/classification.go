@@ -77,7 +77,7 @@ func (s *Service) ReassignClassification(ctx context.Context, kind string, oldID
 			return &errs.ValidationError{Msg: "Another debt could match the same payments.", MsgCode: errs.CodeDebtKeyConflict}
 		}
 		if kind == KindCategory && isWholeCategory(d) {
-			if _, err := s.transferData(ctx, d.CategoryID, elementCategory, d.ID, elementDebt, d.CurrencyID); err != nil {
+			if err := s.moveToDebt(ctx, d); err != nil {
 				return err
 			}
 		}

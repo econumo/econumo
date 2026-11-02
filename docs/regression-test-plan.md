@@ -2058,7 +2058,8 @@ member account in USD, before running these.
 - [ ] **Mark as paid off** (details → asks first): current balance becomes 0,
       "Paid off" shows in the list and the row, the payment list keeps its
       history. A later matching payment or a new snapshot with a balance
-      reopens the debt.
+      reopens the debt; marking it paid off again then settles it (a new zero
+      snapshot), even when the balance already showed 0.
 - [ ] **Delete** a debt (details → asks first): its transactions stay
       untouched and return to their category row. When the debt carries plans
       or comments in a budget (it is not a whole-category debt, or the
@@ -2091,8 +2092,11 @@ member account in USD, before running these.
       date, same currency): the category row's plans and comments of every
       budget move to the debt row in the same save, the category row shows no
       spending afterwards, and Expenses / Available / Balance are unchanged.
-      With another currency, or a payee/tag/start date, the plans and comments
-      stay on the category row.
+      Plans and comments of months before the debt starts (or after its last
+      payment) stay on the category row. With another currency, or a
+      payee/tag/start date, the plans and comments stay on the category row.
+      Editing a payee-narrowed debt to cover the whole category moves the
+      category's plans the same way; a month both rows plan adds up.
 - [ ] A partial debt (payee set): payments to that payee leave the category
       row's Spent (and its drill-down) and count on the debt row, payments to
       other payees stay in the category row.
@@ -2151,7 +2155,9 @@ member account in USD, before running these.
       payments exactly as a category row would.
 - [ ] A category, payee or tag used by a debt cannot be deleted (a message
       names the debt); archiving it is allowed. Merging category/payee/tag A
-      into B moves the debt to B and its payments follow; a merge that would
+      into B moves the debt to B and its payments follow; for a whole-category
+      debt B's plans move onto the debt row, adding up with the debt's plan in
+      a month both plan (nothing is lost); a merge that would
       overlap another debt's key (or reuse its start date) is refused. A
       whole-category debt deleted from Settings returns its plans and
       comments to the category row, or asks first when the category row can

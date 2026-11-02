@@ -142,7 +142,7 @@ func matchViews(debts []*model.Debt) map[vo.Id]model.DebtView {
 		for i, d := range g {
 			v := model.DebtView{
 				ID: d.ID.String(), OwnerID: d.OwnerID.String(), CurrencyID: d.CurrencyID.String(),
-				CategoryID: d.CategoryID.String(), Name: d.Name, WholeCategory: isWholeCategory(d),
+				CategoryID: d.CategoryID.String(), Name: d.Name,
 			}
 			if d.PayeeID != nil {
 				p := d.PayeeID.String()

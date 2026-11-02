@@ -9,12 +9,17 @@ import (
 )
 
 type recordingBudgetElements struct {
-	from, to, has model.ElementType
+	from, to, has, locked model.ElementType
 }
 
-func (r *recordingBudgetElements) TransferElementData(_ context.Context, _ vo.Id, fromType model.ElementType, _ vo.Id, toType model.ElementType, _ vo.Id) (bool, error) {
-	r.from, r.to = fromType, toType
+func (r *recordingBudgetElements) TransferElementData(_ context.Context, t model.ElementDataTransfer) (bool, error) {
+	r.from, r.to = t.FromType, t.ToType
 	return true, nil
+}
+
+func (r *recordingBudgetElements) LockElements(_ context.Context, _ vo.Id, typ model.ElementType) error {
+	r.locked = typ
+	return nil
 }
 
 func (r *recordingBudgetElements) ElementHasData(_ context.Context, _ vo.Id, typ model.ElementType) (bool, error) {
@@ -25,7 +30,8 @@ func (r *recordingBudgetElements) ElementHasData(_ context.Context, _ vo.Id, typ
 func TestDebtBudgetElements_PassesTheStoredTypes(t *testing.T) {
 	rec := &recordingBudgetElements{}
 	a := NewDebtBudgetElements(rec)
-	left, err := a.TransferData(context.Background(), vo.NewId(), 1, vo.NewId(), 6, vo.NewId())
+	left, err := a.TransferData(context.Background(), model.ElementDataTransfer{FromID: vo.NewId(), FromType: model.ElementCategory,
+		ToID: vo.NewId(), ToType: model.ElementDebt, CurrencyID: vo.NewId()})
 	if err != nil || !left {
 		t.Fatalf("TransferData = %v, %v; want the budget's leftBehind passed through", left, err)
 	}
@@ -37,5 +43,8 @@ func TestDebtBudgetElements_PassesTheStoredTypes(t *testing.T) {
 	}
 	if rec.has != model.ElementDebt {
 		t.Errorf("has-data type = %d, want debt", rec.has)
+	}
+	if err := a.LockRows(context.Background(), vo.NewId(), 6); err != nil || rec.locked != model.ElementDebt {
+		t.Errorf("LockRows = %v, locked type %d; want debt", err, rec.locked)
 	}
 }

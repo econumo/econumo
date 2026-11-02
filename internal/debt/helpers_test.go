@@ -80,25 +80,46 @@ func (c *fakeCurrencies) EnsureUsable(_ context.Context, _, currencyID string) e
 func formatFloat(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 
 type transferCall struct {
-	from     string
-	fromType int16
-	to       string
-	toType   int16
-	currency string
+	from        string
+	fromType    model.ElementType
+	to          string
+	toType      model.ElementType
+	currency    string
+	sum         bool
+	first, last string // Y-m-d, "" = open
 }
 
 type fakeBudget struct {
 	transfers  []transferCall
 	hasData    bool
 	leftBehind bool
+	// calls is the order of the budget calls: "lock", "transfer", "has-data".
+	calls []string
 }
 
-func (b *fakeBudget) TransferData(_ context.Context, from vo.Id, fromType int16, to vo.Id, toType int16, currency vo.Id) (bool, error) {
-	b.transfers = append(b.transfers, transferCall{from.String(), fromType, to.String(), toType, currency.String()})
+func monthString(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format("2006-01-02")
+}
+
+func (b *fakeBudget) TransferData(_ context.Context, t model.ElementDataTransfer) (bool, error) {
+	b.calls = append(b.calls, "transfer")
+	b.transfers = append(b.transfers, transferCall{t.FromID.String(), t.FromType, t.ToID.String(), t.ToType, t.CurrencyID.String(),
+		t.SumOnClash, monthString(t.FirstMonth), monthString(t.LastMonth)})
 	return b.leftBehind, nil
 }
 
-func (b *fakeBudget) HasData(context.Context, vo.Id, int16) (bool, error) { return b.hasData, nil }
+func (b *fakeBudget) HasData(context.Context, vo.Id, int16) (bool, error) {
+	b.calls = append(b.calls, "has-data")
+	return b.hasData, nil
+}
+
+func (b *fakeBudget) LockRows(context.Context, vo.Id, int16) error {
+	b.calls = append(b.calls, "lock")
+	return nil
+}
 
 type env struct {
 	svc      *debt.Service

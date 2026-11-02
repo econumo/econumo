@@ -1629,10 +1629,16 @@ data unreadable. Most are also asserted by the test suite.
   owner-row locks can never invert inside a budget write. **Converting**: "Track as debt" on an
   expense category row (also inside an envelope) opens the form; creating a WHOLE-category
   debt (no payee/tag/start date) moves the category row's plans and comments (`TransferData`,
-  only where the target row's currency matches) to the debt row in every budget in the same
-  transaction; deleting it moves them back, and a delete that would leave data behind (or a
+  only where the target row's currency matches, only for the months of the debt's planning
+  life: the rest stays on the category row, whose Available keeps counting it) to the debt row
+  in every budget in the same transaction; an edit that makes a debt whole-category (or moves a
+  whole-category debt to another category) and a category merge onto a whole-category debt do
+  the same, a month both rows plan adding up; deleting it moves them back (the category's plan
+  wins a clash), and a delete that would leave data behind (or a
   partial debt's plans) needs `confirmDataRemoval` (`debt.removal_unconfirmed`, a field error on
-  that field). Payments are never touched by a delete. **Classifications**: deleting a
+  that field); the delete write-locks the debt's rows first (`LockElementsByExternal`, like the
+  savings guard), so a concurrent plan is either seen or refused. Payments are never touched by
+  a delete. **Classifications**: deleting a
   category, payee or tag a debt uses is refused (`*.used_by_debt`); a merge moves the debt to
   the target and refuses with `debt.key_conflict` when that would overlap another debt. No MCP
   tool of its own: `get_budget` lists `structure.debts` and `set_limit` accepts a debt id.

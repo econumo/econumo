@@ -10,8 +10,9 @@ import (
 )
 
 type debtBudgetElements interface {
-	TransferElementData(ctx context.Context, fromID vo.Id, fromType model.ElementType, toID vo.Id, toType model.ElementType, currencyID vo.Id) (bool, error)
+	TransferElementData(ctx context.Context, t model.ElementDataTransfer) (bool, error)
 	ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error)
+	LockElements(ctx context.Context, externalID vo.Id, typ model.ElementType) error
 }
 
 // DebtBudgetElements adapts the budget service to debt.BudgetElements; the
@@ -27,8 +28,12 @@ func NewDebtBudgetElements(budget debtBudgetElements) *DebtBudgetElements {
 	return &DebtBudgetElements{budget: budget}
 }
 
-func (a *DebtBudgetElements) TransferData(ctx context.Context, fromID vo.Id, fromType int16, toID vo.Id, toType int16, currencyID vo.Id) (bool, error) {
-	return a.budget.TransferElementData(ctx, fromID, model.ElementType(fromType), toID, model.ElementType(toType), currencyID)
+func (a *DebtBudgetElements) TransferData(ctx context.Context, t model.ElementDataTransfer) (bool, error) {
+	return a.budget.TransferElementData(ctx, t)
+}
+
+func (a *DebtBudgetElements) LockRows(ctx context.Context, externalID vo.Id, typ int16) error {
+	return a.budget.LockElements(ctx, externalID, model.ElementType(typ))
 }
 
 func (a *DebtBudgetElements) HasData(ctx context.Context, externalID vo.Id, typ int16) (bool, error) {

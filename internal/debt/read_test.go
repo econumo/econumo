@@ -96,10 +96,10 @@ func TestViews_RangesAndPlanningBounds(t *testing.T) {
 	if !n.StartMonth.Equal(ymd(2026, 6, 1)) {
 		t.Errorf("newer start = %v, want the start date's month", n.StartMonth)
 	}
-	if nr.WholeCategory || nr.PayeeID == nil || *nr.PayeeID != payee || !nr.StartMonth.Equal(ymd(2026, 4, 1)) {
+	if nr.PayeeID == nil || *nr.PayeeID != payee || !nr.StartMonth.Equal(ymd(2026, 4, 1)) {
 		t.Errorf("narrow = %+v (start is the first matched payment's month)", nr)
 	}
-	if !o.WholeCategory && o.From != nil {
+	if o.PayeeID != nil || o.TagID != nil || o.From != nil {
 		t.Errorf("old should be the whole-category debt: %+v", o)
 	}
 }

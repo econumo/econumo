@@ -36,6 +36,10 @@ type BudgetStore interface {
 	// ElementHasData reports whether the external id's element of this type
 	// holds a limit or a comment in any budget.
 	ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error)
+	// LockElementsByExternal takes the write lock on every budget's row of the
+	// external id, so a removal guard sees every plan or comment a concurrent
+	// writer committed, and later writers wait and then find the source gone.
+	LockElementsByExternal(ctx context.Context, externalID vo.Id, typ model.ElementType) error
 	RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error
 	// RemoveAccountsOwnedBy drops every membership row for accounts owned by
 	// ownerID — a departing participant takes their accounts with them.
@@ -147,6 +151,8 @@ type CommentStore interface {
 	ListCommentsFrom(ctx context.Context, budgetID vo.Id, from time.Time) ([]*model.BudgetElementComment, error)
 	// RepointComments moves every comment from one element to another (merge).
 	RepointComments(ctx context.Context, srcElementID, dstElementID vo.Id) error
+	// RepointCommentsBetween moves the comments of the months in [from, to].
+	RepointCommentsBetween(ctx context.Context, srcElementID, dstElementID vo.Id, from, to time.Time) error
 	// DeleteCommentsByBudget removes every comment of every element of a budget (reset).
 	DeleteCommentsByBudget(ctx context.Context, budgetID vo.Id) error
 }

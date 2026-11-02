@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -34,6 +35,9 @@ type Currencies interface {
 type BudgetElements interface {
 	// TransferData reports leftBehind when some budget held source data that
 	// was not moved (another currency, or a month the target already plans).
-	TransferData(ctx context.Context, fromID vo.Id, fromType int16, toID vo.Id, toType int16, currencyID vo.Id) (leftBehind bool, err error)
+	TransferData(ctx context.Context, t model.ElementDataTransfer) (leftBehind bool, err error)
 	HasData(ctx context.Context, externalID vo.Id, typ int16) (bool, error)
+	// LockRows write-locks the rows of the external id in every budget, so a
+	// guard that then reads their data cannot miss a concurrent plan.
+	LockRows(ctx context.Context, externalID vo.Id, typ int16) error
 }

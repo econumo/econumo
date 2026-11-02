@@ -299,8 +299,8 @@ func TestTransferElementData_MovesLimitsAndComments(t *testing.T) {
 	if err != nil || has {
 		t.Fatalf("debt has data before the transfer: %v %v", has, err)
 	}
-	left, err := h.svc.TransferElementData(h.ctx, vo.MustParseId(cat), model.ElementCategory,
-		vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(fixture.USD))
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD)})
 	if err != nil || left {
 		t.Fatalf("TransferElementData = %v, %v; want everything moved", left, err)
 	}
@@ -336,8 +336,8 @@ func TestTransferElementData_SkipsOtherCurrency(t *testing.T) {
 	debt := h.addDebt(h.owner, h.eur)
 
 	// The category row is in the budget's currency (USD), the debt in EUR.
-	left, err := h.svc.TransferElementData(h.ctx, vo.MustParseId(cat), model.ElementCategory,
-		vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(h.eur))
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(h.eur)})
 	if err != nil || !left {
 		t.Fatalf("TransferElementData = %v, %v; want the plans reported left behind", left, err)
 	}
@@ -359,8 +359,8 @@ func TestTransferElementData_KeepsTargetOnPeriodClash(t *testing.T) {
 	h.mustSetLimit(t, cat, "2026-06-01", "70")
 	h.mustSetLimit(t, debt, "2026-05-01", "50")
 
-	left, err := h.svc.TransferElementData(h.ctx, vo.MustParseId(cat), model.ElementCategory,
-		vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(fixture.USD))
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD)})
 	if err != nil || !left {
 		t.Fatalf("TransferElementData = %v, %v; want the dropped plan reported", left, err)
 	}
@@ -404,8 +404,8 @@ func TestTransferElementData_SkipsTargetInOtherCurrency(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	left, err := h.svc.TransferElementData(h.ctx, vo.MustParseId(debt), model.ElementDebt,
-		vo.MustParseId(cat), model.ElementCategory, vo.MustParseId(fixture.USD))
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(debt), FromType: model.ElementDebt,
+		ToID: vo.MustParseId(cat), ToType: model.ElementCategory, CurrencyID: vo.MustParseId(fixture.USD)})
 	if err != nil || !left {
 		t.Fatalf("TransferElementData = %v, %v; want the plans reported left behind", left, err)
 	}
@@ -427,8 +427,8 @@ func TestTransferElementData_NothingLeftWithoutSourceData(t *testing.T) {
 	debt := h.addDebt(h.owner, h.eur)
 	h.sync(t)
 
-	left, err := h.svc.TransferElementData(h.ctx, vo.MustParseId(cat), model.ElementCategory,
-		vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(h.eur))
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(h.eur)})
 	if err != nil || left {
 		t.Fatalf("TransferElementData = %v, %v; an empty row leaves nothing behind", left, err)
 	}
@@ -463,5 +463,62 @@ func TestSetLimit_DebtClearOutsideBoundsAllowed(t *testing.T) {
 	}
 	if got := h.limits(t, h.element(t, debt).ID); len(got) != 0 {
 		t.Errorf("limits = %v, want the August plan cleared", got)
+	}
+}
+
+// A merge must not lose the target's plan for a month both rows plan: the
+// two add up, like a category merge.
+func TestTransferElementData_SumsOnClashWhenAsked(t *testing.T) {
+	h := newDebtHarness(t)
+	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
+	debt := h.addDebt(h.owner, fixture.USD)
+	h.mustSetLimit(t, cat, "2026-05-01", "100")
+	h.mustSetLimit(t, cat, "2026-06-01", "70")
+	h.mustSetLimit(t, debt, "2026-05-01", "50")
+
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD), SumOnClash: true})
+	if err != nil || left {
+		t.Fatalf("TransferElementData = %v, %v; want everything moved", left, err)
+	}
+	got := h.limits(t, h.element(t, debt).ID)
+	if got["2026-05-01"] != amount("150") || got["2026-06-01"] != amount("70") || len(got) != 2 {
+		t.Errorf("debt limits = %v, want 05=150 (summed), 06=70", got)
+	}
+}
+
+// Plans and comments outside the debt's months stay on the category row,
+// where its Available keeps counting them.
+func TestTransferElementData_MovesOnlyTheBoundedMonths(t *testing.T) {
+	h := newDebtHarness(t)
+	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
+	debt := h.addDebt(h.owner, fixture.USD)
+	h.mustSetLimit(t, cat, "2026-04-01", "10")
+	h.mustSetLimit(t, cat, "2026-05-01", "100")
+	h.mustSetLimit(t, cat, "2026-06-01", "70")
+	for _, m := range []string{"2026-04-01", "2026-05-01"} {
+		if err := h.comment(cat, m); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD),
+		FirstMonth: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), LastMonth: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)})
+	if err != nil || left {
+		t.Fatalf("TransferElementData = %v, %v; want nothing reported left behind", left, err)
+	}
+	catEl, debtEl := h.element(t, cat), h.element(t, debt)
+	if got := h.limits(t, debtEl.ID); got["2026-05-01"] != amount("100") || len(got) != 1 {
+		t.Errorf("debt limits = %v, want only 05=100", got)
+	}
+	if got := h.limits(t, catEl.ID); got["2026-04-01"] != amount("10") || got["2026-06-01"] != amount("70") || len(got) != 2 {
+		t.Errorf("category limits = %v, want 04 and 06 kept", got)
+	}
+	if n := h.commentCount(t, debtEl.ID); n != 1 {
+		t.Errorf("debt has %d comments, want the May one", n)
+	}
+	if n := h.commentCount(t, catEl.ID); n != 1 {
+		t.Errorf("category has %d comments, want the April one kept", n)
 	}
 }

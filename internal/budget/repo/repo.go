@@ -131,6 +131,10 @@ func (r *Repo) SavingsElementHasData(ctx context.Context, budgetID, accountID vo
 	return r.q.SavingsElementHasData(ctx, r.db(ctx), budgetID.String(), accountID.String())
 }
 
+func (r *Repo) LockElementsByExternal(ctx context.Context, externalID vo.Id, typ model.ElementType) error {
+	return r.q.LockElementsByExternal(ctx, r.db(ctx), externalID.String(), typ.Int16())
+}
+
 func (r *Repo) ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error) {
 	return r.q.ElementHasData(ctx, r.db(ctx), externalID.String(), typ.Int16())
 }
@@ -454,6 +458,10 @@ func (r *Repo) ListCommentsFrom(ctx context.Context, budgetID vo.Id, from time.T
 
 func (r *Repo) RepointComments(ctx context.Context, srcElementID, dstElementID vo.Id) error {
 	return r.q.RepointBudgetComments(ctx, r.db(ctx), dstElementID.String(), srcElementID.String())
+}
+
+func (r *Repo) RepointCommentsBetween(ctx context.Context, srcElementID, dstElementID vo.Id, from, to time.Time) error {
+	return r.q.RepointBudgetCommentsBetween(ctx, r.db(ctx), dstElementID.String(), srcElementID.String(), from, to)
 }
 
 func (r *Repo) DeleteCommentsByBudget(ctx context.Context, budgetID vo.Id) error {

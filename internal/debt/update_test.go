@@ -253,3 +253,38 @@ func TestMarkPaidOff_ReopenedDebtCanBeMarkedAgain(t *testing.T) {
 		t.Fatalf("second mark: %+v, %d snapshots; want paid off with a new zero snapshot", got, len(e.snapshots(t, res.Id)))
 	}
 }
+
+// An edit that makes a debt cover its whole category takes the category's
+// plans, as creating it that way would; narrowing it back keeps them.
+func TestUpdateDebt_BecomingWholeCategoryTakesItsPlans(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	payee := e.newPayee()
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.PayeeId = &payee })
+	e.budget.transfers = nil
+
+	req := e.updateReq(res)
+	req.PayeeId = nil
+	whole, err := e.svc.UpdateDebt(ctx, e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt, currency: fixture.USD,
+		sum: true, first: "2026-03-01", last: "2027-03-01"}
+	if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
+		t.Fatalf("transfers = %+v, want [%+v]", e.budget.transfers, want)
+	}
+
+	e.budget.transfers = nil
+	if _, err := e.svc.UpdateDebt(ctx, e.uid(), e.updateReq(whole)); err != nil {
+		t.Fatal(err)
+	}
+	narrowed := e.updateReq(whole)
+	narrowed.PayeeId = &payee
+	if _, err := e.svc.UpdateDebt(ctx, e.uid(), narrowed); err != nil {
+		t.Fatal(err)
+	}
+	if len(e.budget.transfers) != 0 {
+		t.Fatalf("an edit that keeps or narrows the key moved data: %+v", e.budget.transfers)
+	}
+}

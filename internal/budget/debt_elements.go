@@ -33,13 +33,14 @@ func (s *Service) checkDebtPeriod(ctx context.Context, b *budgetAggregate, el *m
 	return errs.NewNotFound("BudgetElement not found")
 }
 
-// TransferElementData moves the plans and comments of the (fromID, fromType)
-// row to the (toID, toType) row in every budget where both rows are in
-// currencyID. Each budget's rows are synced first, so a target row that does
-// not exist yet is created. A plan for a month the target already plans is
-// dropped: the target's wins. leftBehind reports source data that was not
-// moved: a budget skipped for its currencies, or a plan dropped on a clash.
-func (s *Service) TransferElementData(ctx context.Context, fromID vo.Id, fromType model.ElementType, toID vo.Id, toType model.ElementType, currencyID vo.Id) (leftBehind bool, err error) {
+// TransferElementData moves the source row's plans and comments to the target
+// row in every budget where both rows are in t.CurrencyID. Each budget's rows
+// are synced first, so a target row that does not exist yet is created.
+// leftBehind reports source data that was not moved: a budget skipped for its
+// currencies, or a plan dropped on a clash. Months outside t's bounds stay on
+// the source by design and are not reported.
+func (s *Service) TransferElementData(ctx context.Context, t model.ElementDataTransfer) (leftBehind bool, err error) {
+	fromID, fromType, toID, toType, currencyID := t.FromID, t.FromType, t.ToID, t.ToType, t.CurrencyID
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		sources, err := s.elements.ListElementsByExternal(ctx, fromID)
 		if err != nil {
@@ -85,7 +86,7 @@ func (s *Service) TransferElementData(ctx context.Context, fromID vo.Id, fromTyp
 				}
 				continue
 			}
-			dropped, err := s.moveElementData(ctx, from, to, now)
+			dropped, err := s.moveElementData(ctx, from, to, t, now)
 			if err != nil {
 				return err
 			}
@@ -124,6 +125,11 @@ func (s *Service) rowHasData(ctx context.Context, el *model.BudgetElement) (bool
 	return false, nil
 }
 
+// LockElements write-locks every budget's row of the external id.
+func (s *Service) LockElements(ctx context.Context, externalID vo.Id, typ model.ElementType) error {
+	return s.budgets.LockElementsByExternal(ctx, externalID, typ)
+}
+
 // ElementHasData reports whether the row holds a plan or a comment in any
 // budget.
 func (s *Service) ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error) {
@@ -146,31 +152,54 @@ func (s *Service) elementOfType(ctx context.Context, budgetID, externalID vo.Id,
 }
 
 // moveElementData reports whether a source plan was dropped on a clash.
-func (s *Service) moveElementData(ctx context.Context, from, to *model.BudgetElement, now time.Time) (dropped bool, err error) {
+func (s *Service) moveElementData(ctx context.Context, from, to *model.BudgetElement, t model.ElementDataTransfer, now time.Time) (dropped bool, err error) {
 	limits, err := s.limits.ListLimitsByElement(ctx, from.ID)
 	if err != nil {
 		return false, err
 	}
 	for _, l := range limits {
-		_, gerr := s.limits.GetLimit(ctx, to.ID, l.Period)
-		taken := gerr == nil
+		if !inMonths(t, l.Period) {
+			continue
+		}
+		existing, gerr := s.limits.GetLimit(ctx, to.ID, l.Period)
 		if gerr != nil {
 			if _, ok := errs.AsNotFound(gerr); !ok {
 				return false, gerr
 			}
+			existing = nil
 		}
 		if err := s.limits.DeleteLimit(ctx, l.ID); err != nil {
 			return false, err
 		}
-		if taken {
+		switch {
+		case existing == nil:
+			err = s.limits.SaveLimit(ctx, &model.BudgetElementLimit{
+				ID: s.limits.NextIdentity(), ElementID: to.ID, Amount: l.Amount, Period: l.Period, CreatedAt: l.CreatedAt, UpdatedAt: now,
+			})
+		case t.SumOnClash:
+			existing.Amount = existing.Amount.Add(l.Amount)
+			existing.UpdatedAt = now
+			err = s.limits.SaveLimit(ctx, existing)
+		default:
 			dropped = true
-			continue
 		}
-		if err := s.limits.SaveLimit(ctx, &model.BudgetElementLimit{
-			ID: s.limits.NextIdentity(), ElementID: to.ID, Amount: l.Amount, Period: l.Period, CreatedAt: l.CreatedAt, UpdatedAt: now,
-		}); err != nil {
+		if err != nil {
 			return false, err
 		}
 	}
-	return dropped, s.comments.RepointComments(ctx, from.ID, to.ID)
+	if t.FirstMonth.IsZero() && t.LastMonth.IsZero() {
+		return dropped, s.comments.RepointComments(ctx, from.ID, to.ID)
+	}
+	first, last := t.FirstMonth, t.LastMonth
+	if first.IsZero() {
+		first = time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+	if last.IsZero() {
+		last = time.Date(9999, 12, 1, 0, 0, 0, 0, time.UTC)
+	}
+	return dropped, s.comments.RepointCommentsBetween(ctx, from.ID, to.ID, first, last)
+}
+
+func inMonths(t model.ElementDataTransfer, period time.Time) bool {
+	return (t.FirstMonth.IsZero() || !period.Before(t.FirstMonth)) && (t.LastMonth.IsZero() || !period.After(t.LastMonth))
 }

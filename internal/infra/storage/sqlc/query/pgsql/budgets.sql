@@ -193,6 +193,14 @@ SELECT EXISTS(
     AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
       OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)));
 
+-- name: LockElementsByExternal :many
+-- Locks every budget's row of an external id, in id order, before a removal
+-- guard reads the rows' data (the debt counterpart of LockSavingsElement).
+SELECT id FROM budgets_elements
+WHERE external_id = $1 AND type = $2
+ORDER BY id
+FOR UPDATE;
+
 -- name: ElementHasData :one
 -- Whether the external id's element of this type carries a limit or a comment
 -- in any budget.
@@ -258,6 +266,10 @@ DELETE FROM budgets_elements_comments WHERE id = $1;
 
 -- name: RepointBudgetComments :exec
 UPDATE budgets_elements_comments SET element_id = $1 WHERE element_id = $2;
+
+-- name: RepointBudgetCommentsBetween :exec
+UPDATE budgets_elements_comments SET element_id = $1
+WHERE element_id = $2 AND period >= $3 AND period <= $4;
 
 -- name: DeleteBudgetCommentsByBudget :exec
 DELETE FROM budgets_elements_comments

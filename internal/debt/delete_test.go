@@ -27,8 +27,12 @@ func TestDeleteDebt_PartialNeedsConfirmation(t *testing.T) {
 	res := e.create(t, func(r *model.CreateDebtRequest) { r.PayeeId = &payee })
 	e.budget.hasData = true
 
+	e.budget.calls = nil
 	_, err := e.svc.DeleteDebt(ctx, e.uid(), model.DeleteDebtRequest{Id: res.Id})
 	requireCode(t, err, errs.CodeDebtRemovalUnconfirmed)
+	if got := e.budget.calls; len(got) != 2 || got[0] != "lock" || got[1] != "has-data" {
+		t.Fatalf("budget calls = %v, want the rows locked before the data check", got)
+	}
 	if !e.exists(t, res.Id) {
 		t.Fatal("the unconfirmed delete removed the debt")
 	}
@@ -65,9 +69,12 @@ func TestDeleteDebt_WholeCategoryTransfersBack(t *testing.T) {
 	if _, err := e.svc.DeleteDebt(context.Background(), e.uid(), model.DeleteDebtRequest{Id: res.Id}); err != nil {
 		t.Fatal(err)
 	}
-	want := transferCall{from: res.Id, fromType: 6, to: e.category, toType: 1, currency: fixture.USD}
+	want := transferCall{from: res.Id, fromType: model.ElementDebt, to: e.category, toType: model.ElementCategory, currency: fixture.USD}
 	if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
 		t.Fatalf("transfers = %+v, want [%+v]", e.budget.transfers, want)
+	}
+	if got := e.budget.calls; len(got) < 2 || got[len(got)-2] != "lock" || got[len(got)-1] != "transfer" {
+		t.Fatalf("budget calls = %v, want the rows locked before the transfer", got)
 	}
 	if e.exists(t, res.Id) {
 		t.Fatal("debt not deleted")

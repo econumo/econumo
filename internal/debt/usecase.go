@@ -14,10 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-const (
-	elementCategory int16 = 1
-	elementDebt     int16 = 6
-)
+const elementDebt int16 = 6
 
 type Service struct {
 	repo       Repository
@@ -37,11 +34,42 @@ func NewService(repo Repository, tx port.TxRunner, clock port.Clock, class Class
 // after this one, so it cannot be a constructor argument.
 func (s *Service) SetBudgetElements(b BudgetElements) { s.budget = b }
 
-func (s *Service) transferData(ctx context.Context, fromID vo.Id, fromType int16, toID vo.Id, toType int16, currencyID vo.Id) (bool, error) {
+// moveToDebt hands the category row's plans and comments to a whole-category
+// debt's row, only for the months the debt can be planned in: the rest stays
+// on the category, whose Available keeps counting it. A month both rows plan
+// adds up, so nothing is lost.
+func (s *Service) moveToDebt(ctx context.Context, d *model.Debt) error {
+	if s.budget == nil {
+		return nil
+	}
+	st, err := s.stateNow(ctx, d)
+	if err != nil {
+		return err
+	}
+	first, last := planningBounds(st, st.project(s.today(ctx), nil, nil))
+	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
+		FromID: d.CategoryID, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
+		CurrencyID: d.CurrencyID, SumOnClash: true, FirstMonth: first, LastMonth: last,
+	})
+	return err
+}
+
+// moveToCategory hands a deleted whole-category debt's row back to its
+// category; a month the category already plans keeps the category's plan.
+func (s *Service) moveToCategory(ctx context.Context, d *model.Debt) (leftBehind bool, err error) {
 	if s.budget == nil {
 		return false, nil
 	}
-	return s.budget.TransferData(ctx, fromID, fromType, toID, toType, currencyID)
+	return s.budget.TransferData(ctx, model.ElementDataTransfer{
+		FromID: d.ID, FromType: model.ElementDebt, ToID: d.CategoryID, ToType: model.ElementCategory, CurrencyID: d.CurrencyID,
+	})
+}
+
+func (s *Service) lockRows(ctx context.Context, id vo.Id) error {
+	if s.budget == nil {
+		return nil
+	}
+	return s.budget.LockRows(ctx, id, elementDebt)
 }
 
 func (s *Service) hasData(ctx context.Context, id vo.Id) (bool, error) {

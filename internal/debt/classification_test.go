@@ -54,7 +54,9 @@ func TestReassignClassification_CategoryFollowsTarget(t *testing.T) {
 	if got := e.debtOf(t, res.Id).CategoryID.String(); got != target {
 		t.Fatalf("category = %s, want %s", got, target)
 	}
-	want := transferCall{from: target, fromType: 1, to: res.Id, toType: 6, currency: res.CurrencyId}
+	// the merge must not drop the target's plans: a clash adds up
+	want := transferCall{from: target, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt, currency: res.CurrencyId,
+		sum: true, first: "2026-03-01", last: "2027-03-01"}
 	if len(e.budget.transfers) != 2 || e.budget.transfers[1] != want {
 		t.Fatalf("a whole-category debt must take the target category's budget data: %+v", e.budget.transfers)
 	}

@@ -126,7 +126,9 @@ func TestCreateDebt_SameKeyNeedsDistinctStartDates(t *testing.T) {
 func TestCreateDebt_WholeCategoryTransfersPlans(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
-	want := transferCall{from: e.category, fromType: 1, to: res.Id, toType: 6, currency: fixture.USD}
+	// only the debt's months move: from its first snapshot's to its last payment's
+	want := transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt, currency: fixture.USD,
+		sum: true, first: "2026-03-01", last: "2027-03-01"}
 	if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
 		t.Fatalf("transfers = %+v, want [%+v]", e.budget.transfers, want)
 	}

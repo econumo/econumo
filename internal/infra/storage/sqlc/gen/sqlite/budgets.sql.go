@@ -968,6 +968,41 @@ func (q *Queries) ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID 
 	return items, nil
 }
 
+const lockElementsByExternal = `-- name: LockElementsByExternal :many
+SELECT id FROM budgets_elements
+WHERE external_id = ? AND type = ?
+`
+
+type LockElementsByExternalParams struct {
+	ExternalID string
+	Type       int16
+}
+
+// Plain read: SQLite serializes writers, so there is no concurrent limit or
+// comment for a lock to order against.
+func (q *Queries) LockElementsByExternal(ctx context.Context, arg LockElementsByExternalParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, lockElementsByExternal, arg.ExternalID, arg.Type)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockSavingsElement = `-- name: LockSavingsElement :many
 SELECT id FROM budgets_elements
 WHERE budget_id = ? AND external_id = ? AND type = 5
@@ -1057,6 +1092,28 @@ type RepointBudgetCommentsParams struct {
 
 func (q *Queries) RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error {
 	_, err := q.db.ExecContext(ctx, repointBudgetComments, arg.ElementID, arg.ElementID_2)
+	return err
+}
+
+const repointBudgetCommentsBetween = `-- name: RepointBudgetCommentsBetween :exec
+UPDATE budgets_elements_comments SET element_id = ?
+WHERE element_id = ? AND datetime(period) >= datetime(?) AND datetime(period) <= datetime(?)
+`
+
+type RepointBudgetCommentsBetweenParams struct {
+	ElementID   string
+	ElementID_2 string
+	Datetime    interface{}
+	Datetime_2  interface{}
+}
+
+func (q *Queries) RepointBudgetCommentsBetween(ctx context.Context, arg RepointBudgetCommentsBetweenParams) error {
+	_, err := q.db.ExecContext(ctx, repointBudgetCommentsBetween,
+		arg.ElementID,
+		arg.ElementID_2,
+		arg.Datetime,
+		arg.Datetime_2,
+	)
 	return err
 }
 

@@ -2,9 +2,9 @@ package debt
 
 import (
 	"context"
-	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -46,6 +46,7 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		if err != nil {
 			return err
 		}
+		wasWhole, wasCategory := isWholeCategory(cur), cur.CategoryID
 		keyChanged := !cur.CategoryID.Equal(in.category) || !sameIdPtr(cur.PayeeID, in.payee) ||
 			!sameIdPtr(cur.TagID, in.tag) || !sameDay(cur.StartDate, in.start)
 		cur.Name, cur.CategoryID, cur.PayeeID, cur.TagID, cur.StartDate = in.name, in.category, in.payee, in.tag, in.start
@@ -72,6 +73,14 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		}
 		if changed {
 			if err := s.repo.AddSnapshot(ctx, s.snapshotOf(cur, now)); err != nil {
+				return err
+			}
+		}
+		// Now covering a whole category it did not cover before, the debt
+		// takes that category's plans, as a conversion does. Going the other
+		// way the debt keeps its own: they plan the loan's payments.
+		if isWholeCategory(cur) && (!wasWhole || !cur.CategoryID.Equal(wasCategory)) {
+			if err := s.moveToDebt(ctx, cur); err != nil {
 				return err
 			}
 		}
@@ -115,11 +124,11 @@ func (s *Service) MarkDebtPaidOff(ctx context.Context, userID vo.Id, req model.M
 		}
 		// A zero snapshot followed by a payment is reopened: only a debt
 		// that is paid off right now needs nothing written.
-		paidOff, err := s.paidOffNow(ctx, cur, today)
+		st, err := s.stateNow(ctx, cur)
 		if err != nil {
 			return err
 		}
-		if paidOff {
+		if st.project(today, nil, nil).PaidOff {
 			d = cur
 			return nil
 		}
@@ -137,19 +146,21 @@ func (s *Service) MarkDebtPaidOff(ctx context.Context, userID vo.Id, req model.M
 	return s.resultOf(ctx, d)
 }
 
-func (s *Service) paidOffNow(ctx context.Context, d *model.Debt, today time.Time) (bool, error) {
+// stateNow is the debt's state from what is stored, splitting new payments
+// in memory: it writes nothing, so it can run inside a write's transaction.
+func (s *Service) stateNow(ctx context.Context, d *model.Debt) (*debtState, error) {
 	debts, err := s.repo.ListByCategory(ctx, d.CategoryID)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	states, err := s.computeDebts(ctx, d.CategoryID, debts, false)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	for _, st := range states {
 		if st.debt.ID.Equal(d.ID) {
-			return st.project(today, nil, nil).PaidOff, nil
+			return st, nil
 		}
 	}
-	return false, nil
+	return nil, errs.NewNotFound("Debt not found")
 }

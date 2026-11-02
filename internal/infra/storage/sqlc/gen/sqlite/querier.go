@@ -583,6 +583,9 @@ type Querier interface {
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
 	// Plain read: SQLite serializes writers, so there is no concurrent limit or
 	// comment for a lock to order against.
+	LockElementsByExternal(ctx context.Context, arg LockElementsByExternalParams) ([]string, error)
+	// Plain read: SQLite serializes writers, so there is no concurrent limit or
+	// comment for a lock to order against.
 	LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error)
 	// The row lock behind every existing-row write and credential mint (see
 	// user.Repository.LockRow). SQLite has no row-level lock modes, so this stays
@@ -629,6 +632,7 @@ type Querier interface {
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
+	RepointBudgetCommentsBetween(ctx context.Context, arg RepointBudgetCommentsBetweenParams) error
 	// Merge, no-conflict branch: hand the element to another classification instead
 	// of deleting and recreating it, which keeps its folder and sort position so the
 	// budget row stays where the user put it. UpsertBudgetElement deliberately does

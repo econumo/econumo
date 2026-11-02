@@ -48,9 +48,22 @@ type DebtView struct {
 	PayeeID, TagID                      *string
 	From                                *time.Time // inclusive; nil = unbounded
 	Until                               *time.Time // exclusive (next same-key debt's start); nil = unbounded
-	WholeCategory                       bool       // no payee, no tag, no start date
 	StartMonth, EndMonth                time.Time  // planning bounds (first-of-month)
 	PaidOff                             bool
+}
+
+// ElementDataTransfer moves one budget row's plans and comments onto another
+// row in every budget where both are in CurrencyID.
+type ElementDataTransfer struct {
+	FromID, ToID     vo.Id
+	FromType, ToType ElementType
+	CurrencyID       vo.Id
+	// SumOnClash adds a moved plan to the target's plan for that month;
+	// otherwise the target's wins and the moved one is dropped.
+	SumOnClash bool
+	// FirstMonth and LastMonth bound the months moved (zero = open); data
+	// outside them stays on the source row.
+	FirstMonth, LastMonth time.Time
 }
 
 func DebtMatches(d DebtView, categoryID, payeeID, tagID *string, at time.Time) bool {
