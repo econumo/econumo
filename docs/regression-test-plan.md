@@ -2174,8 +2174,14 @@ tag, and a budget with a planned limit on one category.
       a person without savings members is a single row. With "This year"
       figures on the report list's card, the card's total equals the
       report's latest total.
-- [ ] Net worth, desktop: dragging across the chart shades the range; a
-      "<from> – <to> ×" chip takes the place of 1y/3y/All, the headline shows
+- [ ] Net worth, desktop: before any selection a quiet hint under the chart
+      reads "Drag across the chart to pick a period" (not on touch screens).
+      Dragging across the chart shades the range; a chip naming the months
+      whose transactions make the change ("Apr – Dec 2025 · Transactions ×",
+      matching the list's title) takes the place of 1y/3y/All. Transactions
+      lists every transaction of the report's accounts in those months
+      (accounts not on this device, e.g. a partner's unshared ones, are not
+      listed). The headline shows
       the end month, the balance there and the change "since <from>", and the
       table's Start/Now/Change follow the range. A plain click on the chart or
       the chip's × brings the presets back; changing the scope drops the
