@@ -1720,7 +1720,9 @@
       "range": "{from} – {to}",
       "range_words": "з {from}",
       "clear_range": "Скинути виділення",
-      "show_transactions": "Показати транзакції: {name}"
+      "show_transactions": "Показати транзакції: {name}",
+      "drag_hint": "Проведіть по графіку, щоб вибрати період",
+      "range_transactions": "Транзакції"
     },
     "drill": {
       "unsupported": "Ці операції не можна показати тут. Відкрийте сторінку Бюджету, щоб їх побачити.",

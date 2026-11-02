@@ -1720,7 +1720,9 @@
       "range": "{from} – {to}",
       "range_words": "since {from}",
       "clear_range": "Clear the selection",
-      "show_transactions": "Show the transactions of {name}"
+      "show_transactions": "Show the transactions of {name}",
+      "drag_hint": "Drag across the chart to pick a period",
+      "range_transactions": "Transactions"
     },
     "drill": {
       "unsupported": "These transactions can't be listed here. Open the Budget page to see them.",

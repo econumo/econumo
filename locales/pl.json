@@ -1720,7 +1720,9 @@
       "range": "{from} – {to}",
       "range_words": "od {from}",
       "clear_range": "Wyczyść zaznaczenie",
-      "show_transactions": "Pokaż transakcje: {name}"
+      "show_transactions": "Pokaż transakcje: {name}",
+      "drag_hint": "Przeciągnij po wykresie, aby wybrać okres",
+      "range_transactions": "Transakcje"
     },
     "drill": {
       "unsupported": "Tych transakcji nie można tu wyświetlić. Otwórz stronę Budżetu, aby je zobaczyć.",

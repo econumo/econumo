@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { EntityIcon } from '@/components/EntityIcon'
 import { UserAvatar } from '@/components/UserAvatar'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, X } from 'lucide-react'
+import { ChevronRight, List, X } from 'lucide-react'
 import { Area, CartesianGrid, ComposedChart, ReferenceArea, ReferenceLine, XAxis, YAxis } from 'recharts'
 import type { MouseHandlerDataParam } from 'recharts'
 import type { NetWorthAccountDto } from '@/api/dto/report'
@@ -77,7 +77,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const rangeKey = `${p.budgetId ?? MINE}|${p.period}`
   const [range, setRange] = useState<{ key: string; a: number; b: number } | null>(null)
   const [dragFrom, setDragFrom] = useState<number | null>(null)
-  const [drill, setDrill] = useState<{ id: string; kind: 'account' | 'savings'; name: string } | null>(null)
+  const [drill, setDrill] = useState<{ id: string; kind: 'account' | 'savings' | 'accounts'; name: string; accountIds?: string[] } | null>(null)
   const preset = PRESETS.find((o) => o.value === p.period) ?? PRESETS[1]
 
   const scopePicker = (budgets ?? []).length === 0 ? null : (
@@ -129,6 +129,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const shown = data ? data.accounts.filter((a) => !allZero(a)) : []
   const me = user?.id ?? ''
   const budget = budgets?.find((b) => b.id === p.budgetId)
+  const scopeName = budget?.name ?? t('reports.list.scope_mine')
   const ownerAvatar = (id: string) =>
     id === me
       ? user?.avatar
@@ -383,6 +384,17 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                   {t('reports.networth.range', { from: labels.month(data.months[lo]), to: labels.month(data.months[hi]) })}
                   <button
                     type="button"
+                    onClick={() => {
+                      setDrill({ id: 'range', kind: 'accounts', name: scopeName, accountIds: shown.map((a) => a.id) })
+                      trackEvent(METRICS.REPORTS_DRILL_DOWN, { scope: p.budgetId ? 'budget' : 'mine', mode: 'networth_range' })
+                    }}
+                    className="ml-1 flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-primary/20"
+                  >
+                    <List className="size-3" />
+                    {t('reports.networth.range_transactions')}
+                  </button>
+                  <button
+                    type="button"
                     aria-label={t('reports.networth.clear_range')}
                     onClick={() => setRange(null)}
                     className="grid size-4 place-items-center rounded hover:bg-primary/20"
@@ -461,6 +473,10 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                 <Area dataKey="value" type="monotone" stroke={STROKE} strokeWidth={2.5} fill="url(#nw-fill)" isAnimationActive={false} />
               </ComposedChart>
             </ChartContainer>
+            {selected ? null : (
+              // dragging needs a mouse, so the hint stays off touch screens
+              <p className="hidden text-right text-xs text-muted-foreground [@media(hover:hover)]:block">{t('reports.networth.drag_hint')}</p>
+            )}
           </figure>
 
           <div role="table" aria-label={t('reports.list.networth_q')} className={`-mx-2 flex flex-col ${dim}`}>
@@ -483,7 +499,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       {drill && drillRange ? (
         <ReportTransactionsDialog
           scope={{ budgetId: p.budgetId }}
-          row={{ id: drill.id, kind: drill.kind, name: drill.name, side: 'expense' }}
+          row={{ id: drill.id, kind: drill.kind, name: drill.name, side: 'expense', accountIds: drill.accountIds }}
           from={drillRange[0]}
           to={drillRange[1]}
           onClose={() => setDrill(null)}

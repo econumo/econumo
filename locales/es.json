@@ -1720,7 +1720,9 @@
       "range": "{from} – {to}",
       "range_words": "desde {from}",
       "clear_range": "Quitar la selección",
-      "show_transactions": "Ver las transacciones de {name}"
+      "show_transactions": "Ver las transacciones de {name}",
+      "drag_hint": "Arrastra sobre el gráfico para elegir un periodo",
+      "range_transactions": "Transacciones"
     },
     "drill": {
       "unsupported": "Estas transacciones no se pueden listar aquí. Abre la página de Presupuesto para verlas.",

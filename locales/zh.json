@@ -1720,7 +1720,9 @@
       "range": "{from} – {to}",
       "range_words": "自 {from} 以来",
       "clear_range": "清除选择",
-      "show_transactions": "查看 {name} 的交易"
+      "show_transactions": "查看 {name} 的交易",
+      "drag_hint": "在图表上拖动以选择时间段",
+      "range_transactions": "交易"
     },
     "drill": {
       "unsupported": "这些交易无法在此列出。请打开预算页面查看。",

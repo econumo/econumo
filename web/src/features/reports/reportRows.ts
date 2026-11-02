@@ -28,6 +28,8 @@ export interface DrillRow {
   side: 'expense' | 'income'
   /** set on an envelope's or a tag's child row */
   parent?: { id: Id; kind: string }
+  /** kind 'accounts': every transaction touching one of these accounts */
+  accountIds?: Id[]
 }
 
 export const matches = (value: Id | null, id: Id) => (id === UNCATEGORIZED_ID ? !value : value === id)

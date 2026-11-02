@@ -1720,7 +1720,9 @@
       "range": "{from} – {to}",
       "range_words": "seit {from}",
       "clear_range": "Auswahl aufheben",
-      "show_transactions": "Buchungen von {name} anzeigen"
+      "show_transactions": "Transaktionen von {name} anzeigen",
+      "drag_hint": "Ziehen Sie über das Diagramm, um einen Zeitraum zu wählen",
+      "range_transactions": "Transaktionen"
     },
     "drill": {
       "unsupported": "Diese Transaktionen können hier nicht aufgelistet werden. Öffne die Budget-Seite, um sie zu sehen.",

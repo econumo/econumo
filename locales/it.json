@@ -1720,7 +1720,9 @@
       "range": "{from} – {to}",
       "range_words": "da {from}",
       "clear_range": "Annulla la selezione",
-      "show_transactions": "Mostra le transazioni di {name}"
+      "show_transactions": "Mostra le transazioni di {name}",
+      "drag_hint": "Trascina sul grafico per scegliere un periodo",
+      "range_transactions": "Transazioni"
     },
     "drill": {
       "unsupported": "Queste transazioni non possono essere elencate qui. Apri la pagina Budget per vederle.",

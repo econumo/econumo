@@ -151,6 +151,7 @@ it('an account outside my account list is not clickable', async () => {
 it('dragging across the chart shows the change over the selected range', async () => {
   openNetWorth()
   await screen.findByRole('table')
+  expect(screen.getByText('Drag across the chart to pick a period')).toBeInTheDocument()
   const surface = document.querySelector('.recharts-wrapper') as HTMLElement
   // recharts resolves the hovered month on mouse move (on the next frame), then reports it on down/up
   const at = async (clientX: number) => {
@@ -169,9 +170,17 @@ it('dragging across the chart shows the change over the selected range', async (
   expect(plain(headline().textContent)).toContain('+1,000.00 $ since Dec 2025')
   expect(cells(rowNamed('Total'))).toEqual(['Total', '3,100.00 $', '4,100.00 $', '+1,000.00 $'])
   expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_NETWORTH_RANGE, { scope: 'mine' })
+  // the range's own transaction list: every account of the report over the selected months
+  await userEvent.click(screen.getByRole('button', { name: 'Transactions' }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText(/^My accounts · /)).toBeInTheDocument()
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_DRILL_DOWN, { scope: 'mine', mode: 'networth_range' })
+  await userEvent.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   await userEvent.click(screen.getByRole('button', { name: 'Clear the selection' }))
   expect(plain(headline().textContent)).toContain('Today')
   expect(screen.getByRole('radiogroup', { name: 'Period' })).toBeInTheDocument()
+  expect(screen.getByText('Drag across the chart to pick a period')).toBeInTheDocument()
   expect(cells(rowNamed('Total'))).toEqual(['Total', '3,100.00 $', '6,200.00 $', '+3,100.00 $'])
 })
 

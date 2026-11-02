@@ -75,6 +75,10 @@ function useMyRows(enabled: boolean, row: DrillRow, from: string, to: string) {
         if (month < first || month > last) return false
         // an account's own list: every transaction on either side, whoever owns it
         if (row.kind === 'account') return tx.accountId === row.id || tx.accountRecipientId === row.id
+        if (row.kind === 'accounts') {
+          const ids = row.accountIds ?? []
+          return ids.includes(tx.accountId) || (tx.accountRecipientId !== null && ids.includes(tx.accountRecipientId))
+        }
         if (tx.type !== row.side || !owned.has(tx.accountId)) return false
         switch (row.kind) {
           case 'category':
@@ -121,7 +125,7 @@ export function ReportTransactionsDialog({ scope, row, from, to, expected, onClo
   const { t, i18n } = useTranslation()
   const labels = usePeriodLabels()
   // an account's transactions come from the local list in either scope
-  const local = scope.budgetId === null || row.kind === 'account'
+  const local = scope.budgetId === null || row.kind === 'account' || row.kind === 'accounts'
   const budgetRows = useBudgetRows(local ? null : scope.budgetId, row, from, to)
   const myRows = useMyRows(local, row, from, to)
   const { supported, isLoading, rows } = local ? myRows : budgetRows
