@@ -1784,6 +1784,12 @@ and on tablet/phone only with a hardware keyboard.
       unchanged, Settings -> Sessions still names each session's provider, and a
       custom-OIDC session signed in before the upgrade still logs out through
       the provider's end-session page (its stored provider/id_token survive).
+- [ ] Instance on v1.3.x or older (SQLite AND PostgreSQL) holding a deleted
+      account with a non-zero balance, upgraded straight to this release: the
+      first boot completes instead of failing with "no such column:
+      recipient_sort_key" at migration 20260817000001; the deleted account's
+      history now ends with one "Balance adjustment (account deleted)"
+      correction, and budgets still count its earlier transactions.
 - [ ] 📱 **Upcoming recurring payments mark a short plan**: with an active
       recurring expense on a budget account (category X, due later this month,
       nothing planned for X), the current month's Budget view (desktop, phone
