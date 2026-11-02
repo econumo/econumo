@@ -93,6 +93,7 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
   // Plan keeps the gone row until a manual sync.
   const invalidateBudgetViews = () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetComments })

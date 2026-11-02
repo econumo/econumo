@@ -91,8 +91,21 @@ it('Edit hands the debt to the form and closes the sheet', async () => {
 
   await user.click(screen.getByRole('button', { name: 'Edit' }))
 
+  await waitFor(() => expect(useUiStore.getState().debtModal?.debt?.id).toBe('d1'))
   expect(useUiStore.getState().debtDetailsId).toBeNull()
-  expect(useUiStore.getState().debtModal?.debt?.id).toBe('d1')
+})
+
+it('Edit pre-fills from the debt as it is now, not as the sheet loaded it', async () => {
+  const user = userEvent.setup()
+  renderSheet()
+  await openSheet()
+  // a payment landed since the sheet loaded
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, currentBalance: '990' } })))
+
+  await user.click(screen.getByRole('button', { name: 'Edit' }))
+
+  await waitFor(() => expect(useUiStore.getState().debtModal?.debt?.currentBalance).toBe('990'))
+  expect(useUiStore.getState().debtDetailsId).toBeNull()
 })
 
 it('marking a debt paid off asks first, then posts', async () => {

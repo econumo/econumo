@@ -1614,7 +1614,7 @@
         "paid": "Pagato",
         "left": "Residuo",
         "left_hint": "Ancora da pagare a fine mese.",
-        "payoff_on": "Estinto a {date}",
+        "payoff_by": "Estinzione prevista: {date}",
         "payments_left": "{count} pagamento rimasto | {count} pagamenti rimasti",
         "extra_effect": "Estinto {months} mese prima, {amount} di costo aggiuntivo in meno | Estinto {months} mesi prima, {amount} di costo aggiuntivo in meno",
         "extra_effect_earlier": "Estinto {months} mese prima | Estinto {months} mesi prima",

@@ -1614,7 +1614,7 @@
         "paid": "Payé",
         "left": "Restant",
         "left_hint": "Reste à payer en fin de mois.",
-        "payoff_on": "Remboursée en {date}",
+        "payoff_by": "Remboursement prévu : {date}",
         "payments_left": "{count} paiement restant | {count} paiements restants",
         "extra_effect": "Remboursée {months} mois plus tôt, {amount} de surcoût en moins | Remboursée {months} mois plus tôt, {amount} de surcoût en moins",
         "extra_effect_earlier": "Remboursée {months} mois plus tôt | Remboursée {months} mois plus tôt",

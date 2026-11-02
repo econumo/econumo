@@ -19,6 +19,7 @@ import {
   useImportRules,
   useImportSources,
   useLinkImportAccount,
+  useRetryImportEvent,
   useSkipQueuedEvent,
   useSyncImportSource,
   useUnlinkImportAccount,
@@ -90,11 +91,14 @@ it('useLinkImportAccount replaces the source in the cache and refetches the ledg
   const { queryClient, wrapper } = makeWrapper()
   queryClient.setQueryData<ImportSourceDto[]>(queryKeys.importSources, [wireSource])
   queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, [])
+  queryClient.setQueryData(queryKeys.debt('d1'), null)
   const { result } = renderHook(() => useLinkImportAccount(), { wrapper })
   result.current.mutate({ sourceId: 's1', externalAccountId: 'wallet', accountId: 'a1' })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(queryClient.getQueryData<ImportSourceDto[]>(queryKeys.importSources)![0].cards[0].state).toBe('mapped')
   expect(queryClient.getQueryState(queryKeys.transactions)?.isInvalidated).toBe(true)
+  // imported payments move a debt's balance, which Edit pre-fills from
+  expect(queryClient.getQueryState(queryKeys.debt('d1'))?.isInvalidated).toBe(true)
 })
 
 it('a link fires map, remap or nothing extra depending on the card it replaces', async () => {
@@ -176,10 +180,12 @@ it('useSyncImportSource refreshes ledger caches only when the run wrote somethin
   }))
   const { queryClient, wrapper } = makeWrapper()
   queryClient.setQueryData(queryKeys.transactions, { stale: true })
+  queryClient.setQueryData(queryKeys.debts, [])
   const { result } = renderHook(() => useSyncImportSource(), { wrapper })
   await act(() => result.current.mutateAsync({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' }))
   expect(body).toEqual({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' })
   expect(queryClient.getQueryState(queryKeys.transactions)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(queryKeys.debts)?.isInvalidated).toBe(true)
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SYNC, { trigger: 'manual', imported: 2, matched: 1 })
 })
 
@@ -269,8 +275,20 @@ it('useApplyImportRule posts the scope and invalidates the ledger caches', async
   expect(out).toEqual({ updated: 3, skipped: 2 })
   expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.transactions })
   expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.budget })
+  // a recategorized row can become, or stop being, a debt payment
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
   // an apply rewrites applied_* on the rows it touched; that cache holds them
   // for ten minutes and the post-edit rule prompt compares against it
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ['transactionImports'] })
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_RULE_APPLY, { updated: 3, skipped: 2 })
+})
+
+it('useRetryImportEvent refreshes the ledger caches, debts included', async () => {
+  server.use(http.post('*/api/v1/import/retry-event', () => HttpResponse.json({ success: true, message: '', data: {} })))
+  const { queryClient, wrapper } = makeWrapper()
+  const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+  const { result } = renderHook(() => useRetryImportEvent(), { wrapper })
+  await act(() => result.current.mutateAsync('e1'))
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.budget })
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
 })

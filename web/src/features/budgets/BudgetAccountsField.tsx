@@ -96,13 +96,15 @@ export function BudgetSavingsField({ accounts, selected, savings, onToggle }: Bu
         itemLabel={(a) => t('budgets.modal.budget_form.savings.toggle', { name: a.name })}
         onToggle={onToggle}
         onClose={() => setOpen(false)}
-        notes={
-          <>
-            <p>{t('budgets.modal.budget_form.savings.note')}</p>
-            <p>{t('budgets.modal.budget_form.debts_note')}</p>
-          </>
-        }
+        notes={<p>{t('budgets.modal.budget_form.savings.note')}</p>}
       />
     </>
   )
+}
+
+/** Debts join a budget with their owner, not through a picker, so the
+ *  settings say who sees them in the dialog itself. */
+export function BudgetDebtsNote() {
+  const { t } = useTranslation()
+  return <p className="px-1 text-xs text-muted-foreground">{t('budgets.modal.budget_form.debts_note')}</p>
 }

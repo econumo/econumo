@@ -18,6 +18,14 @@ export function useDebt(id: Id | undefined) {
   })
 }
 
+/** Loads the debt afresh for Edit: the form pre-fills the balance with the
+ *  current one, and a cached balance from before a payment would store a
+ *  snapshot that loses the payment's principal. */
+export function useFetchDebtForEdit() {
+  const queryClient = useQueryClient()
+  return (id: Id) => queryClient.fetchQuery({ queryKey: queryKeys.debt(id), queryFn: () => debtApi.getDebt(id), staleTime: 0 })
+}
+
 // a debt write moves its budget row, the plan and every total that sums them,
 // and the budget's transaction drill-downs, which list a debt row's payments
 function useInvalidateDebts() {

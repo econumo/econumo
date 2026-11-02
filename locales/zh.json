@@ -1614,7 +1614,7 @@
         "paid": "已还",
         "left": "剩余",
         "left_hint": "月末待还金额。",
-        "payoff_on": "{date}还清",
+        "payoff_by": "预计{date}还清",
         "payments_left": "还剩 {count} 笔还款",
         "extra_effect": "提前 {months} 个月还清，少付 {amount} 利息与费用",
         "extra_effect_earlier": "提前 {months} 个月还清",

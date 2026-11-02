@@ -191,11 +191,12 @@ it('a planned extra shows the earlier payoff', async () => {
   renderPage()
   const section = await screen.findByTestId('plan-section-debts')
   const mortgageRow = section.querySelector('[data-row-id="debt-1:6"]') as HTMLElement
-  expect(within(mortgageRow).getByTestId('debt-payoff')).toHaveTextContent('Paid off Mar 2028')
+  // a projected payoff reads as one, not as a payoff that happened
+  expect(within(mortgageRow).getByTestId('debt-payoff')).toHaveTextContent(/^Paid off by Mar 2028$/)
   expect(within(mortgageRow).getByTestId('debt-extra-effect')).toHaveTextContent(/^Paid off 7 months earlier, 500\.00 \$ less overpayment$/)
   // with nothing extra planned, the payoff stands alone
   const carRow = section.querySelector('[data-row-id="debt-2:6"]') as HTMLElement
-  expect(within(carRow).getByTestId('debt-payoff')).toHaveTextContent('Paid off Jun 2026')
+  expect(within(carRow).getByTestId('debt-payoff')).toHaveTextContent(/^Paid off$/)
   expect(within(carRow).queryByTestId('debt-extra-effect')).toBeNull()
 })
 

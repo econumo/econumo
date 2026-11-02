@@ -7,6 +7,7 @@ import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { coreHandlers, fixtureDebtRow, fixtureWireBudget } from '@/test/fixtures'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 import { useUiStore } from '@/app/uiStore'
+import { queryKeys } from '@/app/queryKeys'
 import { wireDebt } from '@/features/debts/testDebt'
 import { toast } from 'sonner'
 import { useBudgetLineMenus } from './useBudgetLineMenus'
@@ -20,7 +21,7 @@ function renderMenus(userId = 'u1', adjust?: (b: BudgetDto) => void) {
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   const { result } = renderHook(() => useBudgetLineMenus({ budget, plan: null, userId, onOpenSettings: vi.fn() }), { wrapper })
   const element = (id: string) => budget.structure.elements.find((el) => el.id === id) as BudgetElementDto
-  return { result, budget, element }
+  return { result, budget, element, queryClient }
 }
 
 const labels = (actions: { label: string }[]) => actions.map((a) => a.label)
@@ -88,6 +89,15 @@ describe('the debt row menu', () => {
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
     act(() => actions[1].onSelect())
     await waitFor(() => expect(useUiStore.getState().debtModal?.debt?.id).toBe('debt-1'))
+  })
+
+  it('Edit loads the debt afresh rather than from the cache', async () => {
+    server.use(http.get('*/api/v1/debt/get-debt', () => HttpResponse.json({ success: true, message: '', data: { item: { ...wireDebt, id: 'debt-1', currentBalance: '990' }, snapshots: [], payments: [] } })))
+    const { result, queryClient } = renderMenus()
+    // cached before a payment moved the balance
+    queryClient.setQueryData(queryKeys.debt('debt-1'), { item: { ...wireDebt, id: 'debt-1', currentBalance: '1090' }, snapshots: [], payments: [] })
+    act(() => result.current.debtRowMenu(fixtureDebtRow())[1].onSelect())
+    await waitFor(() => expect(useUiStore.getState().debtModal?.debt?.currentBalance).toBe('990'))
   })
 
   it('Edit says why when the debt cannot be loaded', async () => {

@@ -118,8 +118,8 @@ describe('BudgetSavingsField', () => {
     expect(
       within(picker).getByText('Savings accounts are shown by name, with their saved amounts and balances, to everyone with access to this budget.'),
     ).toBeInTheDocument()
-    // debts are shown to the same people, and the settings say so next to it
-    expect(within(picker).getByText('Debts are shown by name, with their payments and balances, to everyone with access to this budget.')).toBeInTheDocument()
+    // the debts note sits in the dialog body, not in the savings picker
+    expect(within(picker).queryByText('Debts are shown by name, with their payments and balances, to everyone with access to this budget.')).toBeNull()
     expect(within(picker).getByRole('option', { name: 'Cash is a savings account' })).toHaveAttribute('data-checked', 'false')
     const rainy = within(picker).getByRole('option', { name: 'Rainy day is a savings account' })
     expect(rainy).toHaveAttribute('data-checked', 'true')

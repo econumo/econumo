@@ -28,15 +28,15 @@ export function DebtExtraNote({ row, currency, className = 'text-xs text-muted-f
   )
 }
 
-/** A Plan row's payoff under its name: "Paid off Mar 2028", then what the planned
- *  extras buy when they move it. */
+/** A Plan row's payoff under its name: the projected "Paid off by Mar 2028" (or
+ *  "Paid off" once it is), then what the planned extras buy when they move it. */
 export function DebtPayoff({ debt, currency }: { debt: PayoffFigures & Pick<BudgetDebtElementDto, 'isPaidOff'>; currency: CurrencyDto | undefined }) {
   const { t, i18n } = useTranslation()
   const payoff =
-    debt.payoffDate !== ''
-      ? t('budgets.page.debts.payoff_on', { date: payoffMonth(debt.payoffDate, i18n.language) })
-      : debt.isPaidOff === 1
-        ? t('debts.list.paid_off')
+    debt.isPaidOff === 1
+      ? t('debts.list.paid_off')
+      : debt.payoffDate !== ''
+        ? t('budgets.page.debts.payoff_by', { date: payoffMonth(debt.payoffDate, i18n.language) })
         : null
   if (payoff === null) {
     return null

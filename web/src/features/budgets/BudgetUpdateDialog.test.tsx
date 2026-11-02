@@ -128,6 +128,12 @@ it('renders when the server omits filters.accounts', async () => {
   await waitFor(() => expect(screen.getByDisplayValue('Main budget')).toBeInTheDocument())
 })
 
+it('says in the dialog body, without opening a picker, who sees the debts', async () => {
+  renderDialog(baseBudget)
+  await waitFor(() => expect(screen.getByDisplayValue('Main budget')).toBeInTheDocument())
+  expect(screen.getByText('Debts are shown by name, with their payments and balances, to everyone with access to this budget.')).toBeInTheDocument()
+})
+
 it('renders when the server omits filters entirely', async () => {
   const legacy = { ...baseBudget, filters: undefined } as unknown as BudgetDto
   renderDialog(legacy)

@@ -202,6 +202,7 @@ const budgetCaches = {
   budgetPlan: [...queryKeys.budgetPlan, 'b1', '2026-08-01', 7],
   budgetTransactions: [...queryKeys.budgetTransactions, { budgetId: 'b1' }],
   budgetComments: [...queryKeys.budgetComments, 'b1', '2026-08-01', 7],
+  debts: queryKeys.debts,
 }
 
 function seedBudgetCaches(queryClient: QueryClient) {
@@ -214,7 +215,7 @@ function invalidatedCaches(queryClient: QueryClient) {
   return Object.fromEntries(Object.entries(budgetCaches).map(([name, key]) => [name, queryClient.getQueryState(key)?.isInvalidated]))
 }
 
-const allInvalidated = { budget: true, budgetPlan: true, budgetTransactions: true, budgetComments: true }
+const allInvalidated = { budget: true, budgetPlan: true, budgetTransactions: true, budgetComments: true, debts: true }
 
 it.each([
   ['category', '*/api/v1/category/merge-category', useMergeCategory],

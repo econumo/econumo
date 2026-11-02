@@ -1614,7 +1614,7 @@
         "paid": "Zapłacono",
         "left": "Pozostało",
         "left_hint": "Do zapłaty na koniec miesiąca.",
-        "payoff_on": "Spłata: {date}",
+        "payoff_by": "Planowana spłata: {date}",
         "payments_left": "Została {count} płatność | Zostały {count} płatności | Zostało {count} płatności",
         "extra_effect": "Spłata {months} miesiąc wcześniej, {amount} mniej kosztu długu | Spłata {months} miesiące wcześniej, {amount} mniej kosztu długu | Spłata {months} miesięcy wcześniej, {amount} mniej kosztu długu",
         "extra_effect_earlier": "Spłata {months} miesiąc wcześniej | Spłata {months} miesiące wcześniej | Spłata {months} miesięcy wcześniej",

@@ -9,7 +9,7 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { useUiStore } from '@/app/uiStore'
 import type { DebtDto } from '@/api/dto/debt'
-import { useDebt, useDeleteDebt, useMarkDebtPaidOff } from './queries'
+import { useDebt, useDeleteDebt, useFetchDebtForEdit, useMarkDebtPaidOff } from './queries'
 import { useDebtMoney, usePaymentsLeft } from './useDebtMoney'
 
 function Figure({ label, children }: { label: string; children: ReactNode }) {
@@ -33,6 +33,7 @@ function DebtDetails({ debtId, onClose }: { debtId: string; onClose: () => void 
   const money = useDebtMoney()
   const paymentsLeft = usePaymentsLeft()
   const openDebtModal = useUiStore((s) => s.openDebtModal)
+  const fetchDebtForEdit = useFetchDebtForEdit()
   const markPaidOff = useMarkDebtPaidOff()
   const deleteDebt = useDeleteDebt()
   const [confirm, setConfirm] = useState<Confirm>(null)
@@ -43,11 +44,13 @@ function DebtDetails({ debtId, onClose }: { debtId: string; onClose: () => void 
   const item: DebtDto | undefined = data?.item
 
   const edit = () => {
-    if (!item) {
-      return
-    }
-    onClose()
-    openDebtModal({ debt: item })
+    setError(null)
+    fetchDebtForEdit(debtId)
+      .then((fresh) => {
+        onClose()
+        openDebtModal({ debt: fresh.item })
+      })
+      .catch((err: unknown) => setError(apiErrorMessage(err)))
   }
 
   const sendDelete = (confirmDataRemoval: boolean) => {
