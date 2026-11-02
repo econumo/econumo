@@ -10,14 +10,16 @@ import (
 )
 
 // Timelines projects each debt over the requested months, with the plans as
-// extra payments. Unknown debts are left out of the result.
+// extra payments. Unknown debts are left out of the result. It writes
+// nothing: the caller has already run Sync, and splits not stored yet are
+// computed in memory.
 func (s *Service) Timelines(ctx context.Context, req model.DebtTimelineRequest) (map[string]model.DebtTimeline, error) {
 	today := req.Today
 	if today.IsZero() {
 		today = s.today(ctx)
 	}
 	out := make(map[string]model.DebtTimeline, len(req.DebtIDs))
-	synced := map[vo.Id][]*debtState{}
+	byCategory := map[vo.Id][]*debtState{}
 	for _, raw := range req.DebtIDs {
 		id, err := vo.ParseId(raw)
 		if err != nil {
@@ -30,12 +32,16 @@ func (s *Service) Timelines(ctx context.Context, req model.DebtTimelineRequest) 
 			}
 			return nil, err
 		}
-		states, ok := synced[d.CategoryID]
+		states, ok := byCategory[d.CategoryID]
 		if !ok {
-			if states, err = s.syncCategory(ctx, d.CategoryID); err != nil {
+			debts, lerr := s.repo.ListByCategory(ctx, d.CategoryID)
+			if lerr != nil {
+				return nil, lerr
+			}
+			if states, err = s.computeDebts(ctx, d.CategoryID, debts, false); err != nil {
 				return nil, err
 			}
-			synced[d.CategoryID] = states
+			byCategory[d.CategoryID] = states
 		}
 		for _, st := range states {
 			if st.debt.ID.Equal(id) {

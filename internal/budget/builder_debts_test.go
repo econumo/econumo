@@ -257,6 +257,16 @@ func TestGetBudgetPlan_OutOfBoundsCellsNotPlannable(t *testing.T) {
 			t.Errorf("cell %d plannable = %d, want %d", i, row.Cells[i].IsPlannable, want)
 		}
 	}
+	// June's due falls before the debt's start: nothing scheduled, due or
+	// owed is shown there yet.
+	for i := 0; i < 2; i++ {
+		if c := row.Cells[i]; c.ScheduledTotal != "0" || c.Upcoming != "0" || c.ClosingBalance != "0" {
+			t.Errorf("cell %d before the start = %+v, want nothing scheduled, due or owed", i, c)
+		}
+	}
+	if c := row.Cells[2]; c.ScheduledTotal != "2000" || c.Upcoming != "2000" {
+		t.Errorf("August cell = %+v, want 2000 scheduled and due", c)
+	}
 	if row.Cells[1].Planned != "" {
 		t.Errorf("July's stored plan is out of range, planned = %q", row.Cells[1].Planned)
 	}

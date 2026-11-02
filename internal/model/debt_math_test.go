@@ -332,3 +332,23 @@ func TestSplit_MultipleSnapshotsResetBalance(t *testing.T) {
 	near(t, "second payment under the second snapshot", in["b"], 100000*mustRate(t, s2), 0.01)
 	near(t, "balance after the second payment", BalanceAt(snaps, ps, in, ymd(2026, time.April, 1)), 100000-(2000-in["b"]), 1e-6)
 }
+
+func TestProjectDebt_NothingScheduledAfterProjectedPayoff(t *testing.T) {
+	asOf := ymd(2026, time.October, 10)
+	snap := MathSnapshot{AsOf: asOf, Balance: 10000, Payment: 1000,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2027, time.September, 20)}
+	months := []time.Time{ymd(2026, time.September, 1), ymd(2026, time.October, 1), ymd(2026, time.November, 1), ymd(2026, time.December, 1)}
+	p := ProjectDebt(ProjectionInput{Snaps: []MathSnapshot{snap}, Today: asOf, Months: months,
+		Plans: map[string]float64{"2026-11-01": 20000}})
+	if !p.PayoffDate.Equal(ymd(2026, time.November, 20)) {
+		t.Fatalf("PayoffDate = %v, want the November due", p.PayoffDate)
+	}
+	for key, want := range map[string]float64{"2026-09-01": 1000, "2026-10-01": 1000, "2026-11-01": 1000, "2026-12-01": 0} {
+		near(t, key+" scheduled", p.Months[key].ScheduledTotal, want, 1e-9)
+	}
+
+	paid := ProjectDebt(ProjectionInput{Snaps: []MathSnapshot{{AsOf: asOf, Balance: 0, Payment: 1000,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2027, time.September, 20)}}, Today: asOf, Months: months})
+	near(t, "paid off: September scheduled", paid.Months["2026-09-01"].ScheduledTotal, 1000, 1e-9)
+	near(t, "paid off: October scheduled", paid.Months["2026-10-01"].ScheduledTotal, 0, 1e-9)
+}

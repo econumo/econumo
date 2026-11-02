@@ -521,6 +521,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 		monthEnd := m.AddDate(0, 1, -1)
 		pm := ProjectionMonth{}
 		pm.ScheduledTotal = latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, m.AddDate(0, 0, -1), monthEnd)))
+		stepsReach := false
 		for _, st := range run.steps {
 			// An unpaid due before this month still has to be paid, so it
 			// counts in the current month.
@@ -528,12 +529,20 @@ func ProjectDebt(in ProjectionInput) Projection {
 			if date.Before(currentMonth) {
 				date = currentMonth
 			}
+			if !date.Before(m) {
+				stepsReach = true
+			}
 			switch {
 			case date.After(monthEnd):
 				pm.PaymentsLeft++
 			case !date.Before(m):
 				pm.StillDue += st.pay
 			}
+		}
+		// From the current month on, nothing is scheduled once the projection
+		// has paid the debt off, whatever the term says.
+		if !m.Before(currentMonth) && !stepsReach {
+			pm.ScheduledTotal = 0
 		}
 		switch {
 		case m.Before(monthStart(today)):

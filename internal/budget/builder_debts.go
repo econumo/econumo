@@ -88,10 +88,18 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 }
 
 // timelineMonth is the debt's projection for month, zero when there is none.
-func timelineMonth(tl model.DebtTimeline, month time.Time) model.DebtTimelineMonth {
+// Outside the debt's life nothing is scheduled or due, and before its start
+// there is no balance to show yet.
+func timelineMonth(tl model.DebtTimeline, v model.DebtView, month time.Time) model.DebtTimelineMonth {
 	m, ok := tl.Months[month.Format(datetime.DateLayout)]
 	if !ok {
-		return model.DebtTimelineMonth{ClosingBalance: "0", ScheduledTotal: "0", StillDue: "0"}
+		m = model.DebtTimelineMonth{ClosingBalance: "0"}
+	}
+	if !plannable(v, month) {
+		m.ScheduledTotal, m.StillDue = "0", "0"
+	}
+	if month.Before(v.StartMonth) {
+		m.ClosingBalance = "0"
 	}
 	return m
 }
@@ -118,7 +126,7 @@ func emitMonthlyDebts(rows []debtRow, month time.Time, limits map[string]budgete
 		}
 		available := orZero(lim.budgetedBefore, zero).Sub(paidBefore).Add(budgeted).Sub(paidNow)
 		tl := timelines[v.ID]
-		tm := timelineMonth(tl, month)
+		tm := timelineMonth(tl, v, month)
 		out = append(out, model.DebtElementResult{
 			Id: v.ID, Type: int(model.ElementDebt.Int16()), Name: v.Name, Icon: v.Icon,
 			CurrencyId: v.CurrencyID, OwnerUserId: v.OwnerID, Position: len(out),
@@ -154,7 +162,7 @@ func emitPlanDebts(rows []debtRow, months []time.Time, plannedFor func(string) [
 			if !in {
 				plan = ""
 			}
-			tm := timelineMonth(tl, m)
+			tm := timelineMonth(tl, v, m)
 			cells[i] = model.PlanDebtCellResult{
 				Actual: actual.String(), Planned: plan,
 				ClosingBalance: decimalString(tm.ClosingBalance), PaymentsLeft: tm.PaymentsLeft,

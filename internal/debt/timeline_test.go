@@ -53,3 +53,26 @@ func TestTimelines_UnknownDebtIsLeftOut(t *testing.T) {
 		t.Fatalf("got %v, %v", got, err)
 	}
 }
+
+func TestTimelines_ReadOnly(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	tx := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+	april := []time.Time{ymd(2026, 4, 1)}
+
+	got, err := e.svc.Timelines(context.Background(), model.DebtTimelineRequest{DebtIDs: []string{res.Id}, Months: april, Today: ymd(2026, 4, 15)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The unsynced payment still counts: April's due is paid.
+	if m := got[res.Id].Months["2026-04-01"]; m.StillDue != "0" {
+		t.Errorf("April = %+v, want the payment counted in memory", m)
+	}
+	if s := e.splits(t, res.Id); len(s) != 0 {
+		t.Errorf("Timelines stored splits %v", s)
+	}
+	e.sync(t)
+	if s := e.splits(t, res.Id); s[tx] == "" {
+		t.Errorf("Sync stored no split for the payment: %v", s)
+	}
+}
