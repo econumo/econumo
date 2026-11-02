@@ -2023,6 +2023,14 @@ member account in USD, before running these.
       payment can never pay the balance off, a message under the payment says
       so and the date stays. Saving with a payment that cannot cover the
       balance, or a last payment date before today, shows a field error.
+      Creating a debt in a deleted custom currency is refused with a field
+      error on the currency.
+- [ ] 📱 Edit after a payment: with the details or the budget open, add a
+      matching expense (or import one, or merge a category into the debt's),
+      then open Edit (Settings → details → Edit, the budget row's ⋮ → Edit, or
+      the phone sheet's pencil): the balance field shows the balance after
+      that payment, not the one from before it, and saving without changes
+      writes no snapshot that undoes the payment.
 - [ ] 📱 A rename saves without a new snapshot (the history in the details does
       not grow); changing the balance, payment, schedule or last payment date
       adds a snapshot as of today and leaves the older ones untouched. The
@@ -2067,8 +2075,8 @@ member account in USD, before running these.
       payments left and, for the debt's owner, a "Details" button). Every
       participant, guests included, sees the row's name and figures; only the
       owner gets Details / Edit (a guest's menu is empty). The budget
-      settings' Savings picker says debts are visible to everyone with
-      access.
+      settings dialog (create and edit) says under its fields, without
+      opening any picker, that debts are visible to everyone with access.
 - [ ] Paid is the month's matching payments from the budget's member
       accounts, in the debt's currency; Left is the balance at the month's
       end (booked for past months, projected from the current month on).
@@ -2098,8 +2106,13 @@ member account in USD, before running these.
       scheduled payments that month): the plan editor says what it buys
       ("Paid off 14 months earlier, 21,000.00 $ less overpayment"), the
       payments left, projected payoff and overpayment left shorten from that
-      month on (Plan grid row shows "Paid off Mar 2028"; plans in the past
-      months do not change the future). With no plan, or a plan below the
+      month on (Plan grid row shows the projection as "Paid off by Mar 2028",
+      a paid-off debt plain "Paid off"; plans in the past months do not change
+      the future). In the current month, an extra already paid counts against
+      the plan: pay 7,000.00 on a 2,000.00 schedule, plan 7,000.00 for this
+      month, and Left, payments left and the payoff equal those with no plan
+      (nothing is projected twice), and they do not jump on the 1st of the
+      next month. With no plan, or a plan below the
       scheduled amount, the scheduled payments are still projected; a plan
       below it shows red in the current and future months (income, savings and
       a past month never turn red).
@@ -2113,7 +2126,9 @@ member account in USD, before running these.
 - [ ] After the debt is paid off, its row disappears from months after the
       last payment, unless it still carries a balance (an unspent plan or an
       overspend from unplanned payments): then the row stays, read-only, like
-      an overspent category row.
+      an overspent category row. Plans stored for months after an early
+      payoff do not count: they neither raise the row's Available nor keep it
+      on screen.
 - [ ] Changing a debt row's currency (change element currency) is refused; the
       row is in the debt's currency.
 - [ ] A debt row cannot be dragged into a folder; it keeps its own ordering in

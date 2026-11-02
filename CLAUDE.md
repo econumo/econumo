@@ -1560,10 +1560,11 @@ data unreadable. Most are also asserted by the test suite.
   before the next one's; empty = from the beginning; a shared start date is refused); keys that
   could both match one transaction (category alone vs category + payee) are refused
   (`debt.key_conflict`, `debt.start_date_taken`), so a payment belongs to at most one debt.
-  `debts_payments` (one row per matched transaction: debt, interest, debt part) is
-  materialized by `Service.Sync` on read, in date order, under the owner's user row lock and one
+  `debts_payments` (one row per matched transaction: debt and interest; the debt part is the
+  amount less the interest, never stored) is materialized by the debt sync on read, in date order, under the owner's user row lock and one
   DB transaction per category: stale splits of payments that stopped matching are deleted, newly
-  matching ones are split as late entries, stored splits are never recomputed (a corrected
+  matching ones are split as late entries (a payment that moved to another debt's category takes
+  its row with it, the insert upserts on the transaction), stored splits are never recomputed (a corrected
   amount keeps its interest, capped at the new amount). Splits of payments dated after today are
   provisional (every Sync recomputes them, so a payment takes the terms in force on its date once
   it arrives). **Snapshots** (`debts_snapshots`: balance after the as-of day's payments, payment,
@@ -1571,7 +1572,9 @@ data unreadable. Most are also asserted by the test suite.
   latest snapshot's values ("current terms"), written with every new snapshot in the same
   transaction. Create makes the first snapshot; an update writes a new one only when balance,
   payment, schedule or last payment date differ (a rename does not); `mark-debt-paid-off` writes
-  a balance-0 snapshot. Currency is not editable; category, payee, tag and start date are,
+  a balance-0 snapshot. Create refuses a currency the user may not use (deleted, or another
+  user's custom one: `currency.not_available`, the same `EnsureUsable` check budgets use).
+  Currency is not editable; category, payee, tag and start date are,
   rechecked by the same key checks. **Splitting is bank-style** (`internal/model/debt_math.go`):
   the implied periodic rate `r` is solved from the snapshot (annuity over the schedule, `r = 0`
   when payment x n = balance, payments that cannot cover the balance are refused); interest
@@ -1584,8 +1587,10 @@ data unreadable. Most are also asserted by the test suite.
   currency's fraction digits. **Projection**: current balance = latest snapshot's balance less the
   debt parts after its as-of date (a due is "unpaid" only strictly after the snapshot day);
   payments left, money left, overpayment left and the payoff date amortize the balance forward;
-  the planned extra in a month (plan above regular payment x scheduled payments that month) is
-  applied with that month's first projected payment, fully to the debt; no plan or a plan
+  the planned extra in a month (plan above regular payment x scheduled payments that month; in
+  the current month, plan above what was already paid this month plus the regular payments
+  still due in it, so a planned extra already paid is not projected twice) is applied with that
+  month's first projected payment, fully to the debt; no plan or a plan
   below the scheduled amount still projects the scheduled payments; an overdue unpaid due counts
   in today's month. Paid off = balance rounded to the currency is 0 or below (display state: it
   does not end matching, and a later payment or snapshot reopens the debt).
@@ -1604,7 +1609,8 @@ data unreadable. Most are also asserted by the test suite.
   (`budget.debt_period_out_of_range`, field `period`), but clearing a plan (`amount: null`) is
   allowed; stored plans outside the life stay in the database, show as not plannable and never reach
   the projection; a row outside its life is emitted only when something was paid or its available
-  is non-zero. **Attribution**: a matched payment (joined through `debts_payments`, valid only
+  is non-zero; a debt row's carried Available sums only the plans of months in its life, so plans
+  left past an early payoff neither grow it nor keep the row on screen. **Attribution**: a matched payment (joined through `debts_payments`, valid only
   while the row still carries the debt's category and tag) leaves its category, tag and
   envelope rows and their drill-downs and counts on the debt row (the debt row has its own
   drill-down, `debtId` on `get-transaction-list`); labels keep counting it (they overlap and
@@ -1614,8 +1620,10 @@ data unreadable. Most are also asserted by the test suite.
   them, so the SPA adds the debt rows to its expense sums (`debtTotals`, `planTotals`) and the
   Expenses SECTION heading no longer equals the Totals Expenses line. The red plan hint on a
   debt row is only "plan below the scheduled amount" (current and future months). **Reads**:
-  `Service.Sync` writes splits and runs only from the budget's read paths (`GetBudget`,
-  `GetBudgetPlan`, build results), outside any budget transaction; `Views` and `Timelines`
+  the sync writes splits and runs from the budget's read paths (`Service.Sync`: `GetBudget`,
+  `GetBudgetPlan`, build results), outside any budget transaction, and from the debt
+  service's own reads and writes (`get-debt`, update, delete, a classification merge) for the
+  debt's category; `Views` and `Timelines`
   are read-only (no owner lock, no writes: stale splits ignored, missing ones split in memory),
   which is what `syncElements`, `set-limit` and the transaction lists call, so partners'
   owner-row locks can never invert inside a budget write. **Converting**: "Track as debt" on an
