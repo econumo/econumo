@@ -8,20 +8,52 @@ import { debtExtraEffect } from './budgetMath'
 import type { PayoffFigures } from './budgetMath'
 
 /** "Paid off 14 months earlier, $21,000.00 less overpayment", or nothing */
-export function DebtExtraNote({ row, currency }: { row: PayoffFigures; currency: CurrencyDto | undefined }) {
+export function DebtExtraNote({ row, currency, className = 'text-xs text-muted-foreground' }: { row: PayoffFigures; currency: CurrencyDto | undefined; className?: string }) {
   const { t, i18n } = useTranslation()
   const effect = debtExtraEffect(row)
   if (!effect) {
     return null
   }
-  const text = isZero(effect.saved)
-    ? t('budgets.page.debts.extra_effect_earlier', { months: effect.months })
-    : t('budgets.page.debts.extra_effect', { months: effect.months, amount: moneyFormat(effect.saved, currency) })
+  const text = pluralPick(
+    isZero(effect.saved)
+      ? t('budgets.page.debts.extra_effect_earlier', { months: effect.months })
+      : t('budgets.page.debts.extra_effect', { months: effect.months, amount: moneyFormat(effect.saved, currency) }),
+    effect.months,
+    i18n.language,
+  )
   return (
-    <p className="text-xs text-muted-foreground" data-testid="debt-extra-effect">
-      {pluralPick(text, effect.months, i18n.language)}
+    <p className={className} data-testid="debt-extra-effect" title={text}>
+      {text}
     </p>
   )
+}
+
+/** A Plan row's payoff under its name: "Paid off Mar 2028", then what the planned
+ *  extras buy when they move it. */
+export function DebtPayoff({ debt, currency }: { debt: PayoffFigures & Pick<BudgetDebtElementDto, 'isPaidOff'>; currency: CurrencyDto | undefined }) {
+  const { t, i18n } = useTranslation()
+  const payoff =
+    debt.payoffDate !== ''
+      ? t('budgets.page.debts.payoff_on', { date: payoffMonth(debt.payoffDate, i18n.language) })
+      : debt.isPaidOff === 1
+        ? t('debts.list.paid_off')
+        : null
+  if (payoff === null) {
+    return null
+  }
+  return (
+    <>
+      <span className="min-w-0 truncate text-[11px] text-muted-foreground" data-testid="debt-payoff" title={payoff}>
+        {payoff}
+      </span>
+      <DebtExtraNote row={debt} currency={currency} className="min-w-0 truncate text-[11px] text-muted-foreground" />
+    </>
+  )
+}
+
+function payoffMonth(date: string, lang: string): string {
+  const [y, m] = date.split('-').map(Number)
+  return new Intl.DateTimeFormat(lang, { month: 'short', year: 'numeric' }).format(new Date(y, m - 1, 1))
 }
 
 /** a debt row's Left: what is owed at the month's end, and how many payments remain */

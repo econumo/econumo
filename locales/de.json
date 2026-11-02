@@ -1614,6 +1614,7 @@
         "paid": "Gezahlt",
         "left": "Offen",
         "left_hint": "Am Monatsende noch zu zahlen.",
+        "payoff_on": "Abbezahlt im {date}",
         "payments_left": "{count} Zahlung übrig | {count} Zahlungen übrig",
         "extra_effect": "{months} Monat früher abbezahlt, {amount} weniger Mehrkosten | {months} Monate früher abbezahlt, {amount} weniger Mehrkosten",
         "extra_effect_earlier": "{months} Monat früher abbezahlt | {months} Monate früher abbezahlt",

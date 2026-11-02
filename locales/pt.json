@@ -1614,6 +1614,7 @@
         "paid": "Pago",
         "left": "Em falta",
         "left_hint": "Falta pagar no fim do mês.",
+        "payoff_on": "Liquidada em {date}",
         "payments_left": "Falta {count} pagamento | Faltam {count} pagamentos",
         "extra_effect": "Liquidada {months} mês mais cedo, menos {amount} de custo adicional | Liquidada {months} meses mais cedo, menos {amount} de custo adicional",
         "extra_effect_earlier": "Liquidada {months} mês mais cedo | Liquidada {months} meses mais cedo",

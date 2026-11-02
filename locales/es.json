@@ -1614,6 +1614,7 @@
         "paid": "Pagado",
         "left": "Pendiente",
         "left_hint": "Lo que falta por pagar al final del mes.",
+        "payoff_on": "Pagada en {date}",
         "payments_left": "Queda {count} pago | Quedan {count} pagos",
         "extra_effect": "Pagada {months} mes antes, {amount} menos de sobrecoste | Pagada {months} meses antes, {amount} menos de sobrecoste",
         "extra_effect_earlier": "Pagada {months} mes antes | Pagada {months} meses antes",

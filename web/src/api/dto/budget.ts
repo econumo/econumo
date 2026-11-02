@@ -279,6 +279,10 @@ export interface PlanCellDto {
   /** the month's recurring payments not yet posted, filed like actual; absent
    *  from older servers */
   upcoming?: string
+  /** debt rows only (PlanDebtCellDto) */
+  paymentsLeft?: number
+  scheduledTotal?: string
+  isPlannable?: 0 | 1
 }
 
 /** per-month cell on a plan-view child row: children never carry their own limit. */

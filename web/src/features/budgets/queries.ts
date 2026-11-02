@@ -229,20 +229,21 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
 function patchPlanCells(
   plan: BudgetPlanDto | null | undefined,
   elementId: Id,
-  patch: (cell: PlanCellDto, monthIndex: number) => PlanCellDto,
+  patch: <C extends PlanCellDto>(cell: C, monthIndex: number) => C,
 ): BudgetPlanDto | null | undefined {
   if (!plan) {
     return plan
   }
-  const patchRow = <T extends { id: Id; cells: PlanCellDto[] }>(row: T): T =>
-    row.id === elementId ? { ...row, cells: row.cells.map(patch) } : row
-  const { savings } = plan.structure
+  const patchRow = <C extends PlanCellDto, T extends { id: Id; cells: C[] }>(row: T): T =>
+    row.id === elementId ? { ...row, cells: row.cells.map((c, i) => patch(c, i)) } : row
+  const { savings, debts } = plan.structure
   return {
     ...plan,
     structure: {
       ...plan.structure,
       elements: plan.structure.elements.map(patchRow),
       ...(savings ? { savings: savings.map(patchRow) } : {}),
+      ...(debts ? { debts: debts.map(patchRow) } : {}),
     },
   }
 }

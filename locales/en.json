@@ -1614,6 +1614,7 @@
         "paid": "Paid",
         "left": "Left",
         "left_hint": "Left to pay at the end of the month.",
+        "payoff_on": "Paid off {date}",
         "payments_left": "{count} payment left | {count} payments left",
         "extra_effect": "Paid off {months} month earlier, {amount} less overpayment | Paid off {months} months earlier, {amount} less overpayment",
         "extra_effect_earlier": "Paid off {months} month earlier | Paid off {months} months earlier",

@@ -23,6 +23,7 @@ import { BudgetElementType, isIncomeType, isPlannedType, UNCATEGORIZED_ID } from
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useUiStore } from '@/app/uiStore'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
@@ -82,6 +83,8 @@ import {
   PLAN_NAME_COL_MIN_PX,
   PLAN_NAME_COL_PX,
   clampPlanNameWidth,
+  debtAsPlanElement,
+  planDebtMonthRow,
   planWindow,
   savingsAsPlanElement,
   savingsBalanceRow,
@@ -96,6 +99,8 @@ import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
 import type { GridCtx, PlanCellEdit, PlanLimitTarget, PlanSelection } from './PlanRows'
 import type { CellMove } from './PlanCellInput'
 import { wantsUpcomingPanel } from './planHint'
+import { DebtExtraNote } from './debtRow'
+import type { SheetTarget } from './phoneMonth'
 
 export interface PlanSheetProps {
   /** the ALREADY-LOADED budget (meta for permissions/currency); plan data is fetched inside */
@@ -184,8 +189,10 @@ function PlanRowList({ rows, ctx, indicator, scope }: { rows: PlanRow[]; ctx: Gr
 const draggableIds = (rows: PlanRow[]): string[] => rows.filter(isDraggableRow).map((r) => r.element.id)
 
 // Uncategorized is a synthetic bucket with no stored position, and an archived row
-// is out of the ordering entirely — neither can be dropped anywhere meaningful.
-const isDraggableRow = (r: PlanRow): boolean => r.element.id !== UNCATEGORIZED_ID && r.element.isArchived === 0
+// is out of the ordering entirely — neither can be dropped anywhere meaningful. Debt
+// rows keep their server order.
+const isDraggableRow = (r: PlanRow): boolean =>
+  r.element.id !== UNCATEGORIZED_ID && r.element.isArchived === 0 && r.element.type !== BudgetElementType.DEBT
 
 // A folder-like group of rows: a real folder, or the No folder group that names a
 // section's folder-less rows once the section has folders. Its line folds the rows
@@ -296,8 +303,8 @@ function FolderRows({
   )
 }
 
-// Same flattening the renderer walks (folders -> loose, income then savings then
-// neutral folders then expense, then archived), so Up/Down can never reach a row that isn't on
+// Same flattening the renderer walks (folders -> loose, income then savings then debts
+// then neutral folders then expense, then archived), so Up/Down can never reach a row that isn't on
 // screen. Section and folder lines are no stops; a folder contributes its visible
 // members only. Only root element rows — the ones a limit can be set on — are in the order: an expanded envelope's
 // children are read-only breakdown lines and are stepped over.
@@ -337,6 +344,7 @@ interface DragState {
 function buildFlatRows(
   rows: PlanRows,
   savingsRows: PlanRow[],
+  debtRows: PlanRow[],
   folded: (key: string) => boolean,
   drag: DragState,
   groupOpen: (key: string) => boolean,
@@ -380,6 +388,9 @@ function buildFlatRows(
   if (!folded('savings')) {
     savingsRows.forEach(pushRow)
   }
+  if (!folded('debts')) {
+    debtRows.forEach(pushRow)
+  }
   rows.neutral.forEach((f) => pushGroup(f.folder.id, f.rows, 'neutral', f.folder.id))
   if (!folded('expense')) {
     pushSide('expense')
@@ -393,6 +404,7 @@ function buildFlatRows(
 export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings, viewSwitch }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
+  const openDebtDetails = useUiStore((s) => s.openDebtDetails)
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
   const [sheetCellTarget, setSheetCellTarget] = useState<PlanLimitTarget | null>(null)
   const openSheet = useCallback((target: PlanLimitTarget) => setSheetCellTarget(target), [])
@@ -653,7 +665,21 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     () => ({ kind: 'plan' as const, cols: visible, selectedCol: -1, crosshairCol, months: visibleMonths, monthLabels: visibleMonths.map(monthLabel) }),
     [visible, crosshairCol, visibleMonths, monthLabel],
   )
-  const sheetPlanTarget = sheetCellTarget ? { kind: 'plan' as const, cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null
+  // a debt row's sheet is the month view's: Planned, Paid, Left and what an extra buys
+  const sheetDebt = sheetCellTarget?.el.type === BudgetElementType.DEBT ? plan?.structure.debts?.find((d) => d.id === sheetCellTarget.el.id) : undefined
+  const sheetDebtRow =
+    sheetDebt && plan && sheetCellTarget
+      ? planDebtMonthRow(
+          sheetDebt,
+          sheetCellTarget.monthIndex,
+          planMonthExchange(plan, currencies, sheetCellTarget.monthIndex)(sheetDebt.currencyId, plan.meta.currencyId, sheetDebt.cells[sheetCellTarget.monthIndex]?.actual ?? '0'),
+        )
+      : null
+  const sheetPlanTarget: SheetTarget | null = sheetDebtRow
+    ? { kind: 'debt', row: sheetDebtRow }
+    : sheetCellTarget
+      ? { kind: 'plan', cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) }
+      : null
   const sheetEdit = sheetPlanTarget ? menus.editAccess(sheetPlanTarget) : null
   // With a mouse every line's ⋮ menu shows on hover; a touch screen has no hover, so
   // there they show on every line while edit mode is on, and not at all without it.
@@ -698,21 +724,25 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       return
     }
     if (fillDrag.targetCol > fillDrag.startCol) {
+      // a debt's months past its life take no plan: the fill steps over them
+      const cells = plan?.structure.debts?.find((d) => d.id === fillDrag.elementId)?.cells
       const targets: { period: string; monthIndex: number }[] = []
       for (let c = fillDrag.startCol + 1; c <= fillDrag.targetCol; c++) {
         const period = visibleMonths[c]
         const idx = period !== undefined ? monthIndex(period) : -1
-        if (period !== undefined && idx >= 0) {
+        if (period !== undefined && idx >= 0 && cells?.[idx]?.isPlannable !== 0) {
           targets.push({ period, monthIndex: idx })
         }
       }
-      fillCells.mutate({ budgetId: budget.meta.id, elementId: fillDrag.elementId, amount: fillDrag.amount, targets })
+      if (targets.length > 0) {
+        fillCells.mutate({ budgetId: budget.meta.id, elementId: fillDrag.elementId, amount: fillDrag.amount, targets })
+      }
     }
     setFillDrag(null)
     // the drag may have started from a merely hovered cell: the cell whose value was
     // copied becomes the selection, so the keyboard picks up from where the mouse left
     select(fillDrag.rowKey, fillDrag.startCol)
-  }, [fillDrag, visibleMonths, monthIndex, fillCells, budget.meta.id, select])
+  }, [fillDrag, plan, visibleMonths, monthIndex, fillCells, budget.meta.id, select])
 
   const fillCancel = useCallback(() => setFillDrag(null), [])
 
@@ -752,6 +782,13 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       ...placed.filter((el) => el.isArchived !== 0).sort(byPosition),
     ].map((element) => ({ element }))
   }, [plan, dragArrangement])
+
+  // Debt rows by position: never in a folder, never dragged
+  const debtRows = useMemo(
+    (): PlanRow[] =>
+      [...(plan?.structure.debts ?? [])].sort((a, b) => a.position - b.position).map((debt) => ({ element: debtAsPlanElement(debt), debt })),
+    [plan],
+  )
 
   // Rows that earn their place per VISIBLE window, not per fetched cells (the fetch
   // carries buffer months either side): an uncategorized row is dropped when every
@@ -806,8 +843,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     [balance, savingsBalance],
   )
   const flatRows = useMemo(
-    () => (shownRows ? buildFlatRows(shownRows, savingsRows, folded, dragState, (key) => !!planUnfolded[key]) : []),
-    [shownRows, savingsRows, folded, dragState, planUnfolded],
+    () => (shownRows ? buildFlatRows(shownRows, savingsRows, debtRows, folded, dragState, (key) => !!planUnfolded[key]) : []),
+    [shownRows, savingsRows, debtRows, folded, dragState, planUnfolded],
   )
 
   // Touch keeps the item sheet (and its amount dialog); a read-only cell never opens an editor.
@@ -857,9 +894,12 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       sums.set(side, sumOf([...band.folders.flatMap((f) => f.rows), ...band.loose, ...(band.uncategorized ? [band.uncategorized] : [])]))
     }
     sums.set('savings', planGroupSums(savingsRows.map((r) => r.element), visibleMonths, monthIndex, ex, 'balance'))
+    // what is owed at each month's end, as each row shows it; the payments themselves
+    // count in the expense totals
+    sums.set('debts', planGroupSums(debtRows.map((r) => r.element), visibleMonths, monthIndex, ex, 'balance'))
     sums.set('archived', sumOf(shownRows.archived))
     return sums
-  }, [shownRows, savingsRows, visibleMonths, monthIndex, ex])
+  }, [shownRows, savingsRows, debtRows, visibleMonths, monthIndex, ex])
 
   const rowOrder = useMemo(() => flatRows.map((r) => r.rowKey), [flatRows])
   // Excel's model: Shift+click spans the rectangle from the active cell, which stays
@@ -1054,6 +1094,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
 
   const planCurrency = currencies.find((c) => c.id === plan.meta.currencyId)
   const dialogCell = planLimitTarget ? planLimitTarget.el.cells[planLimitTarget.monthIndex] : undefined
+  const dialogIsDebt = planLimitTarget?.el.type === BudgetElementType.DEBT
+  const dialogDebt = dialogIsDebt ? debtRows.find((r) => r.element.id === planLimitTarget?.el.id)?.debt : undefined
 
   const incomeFolded = folded('income')
   const expenseFolded = folded('expense')
@@ -1923,6 +1965,27 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           </section>
         ) : null}
 
+        {debtRows.length > 0 ? (
+          // Debt payments are expenses: the section's line sums what is still owed, and
+          // the payments count in the expense totals below
+          <section role="rowgroup" data-testid="plan-section-debts" className={`plan-band flex flex-col ${PLAN_SECTION_RULE}`}>
+            <MonthSectionHeader
+              foldKey="debts"
+              sumsOnDemand
+              testId="plan-section-line-debts"
+              label={t('budgets.page.debts.title')}
+              headings={[]}
+              sums={sumCells(groupSums.get('debts'), true)}
+              actionsColumn={false}
+            />
+            {!folded('debts') ? (
+              <RowLevelContext.Provider value="top">
+                <PlanRowList rows={debtRows} ctx={ctx} indicator={null} scope={null} />
+              </RowLevelContext.Provider>
+            ) : null}
+          </section>
+        ) : null}
+
         {shownRows.neutral.length > 0 ? (
           // Member-less folders belong to neither side yet, so they sit between the
           // bands rather than defaulting into one. Their own drag context keeps folder
@@ -2035,9 +2098,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
-        plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) : false}
+        plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) || dialogIsDebt : false}
+        note={dialogDebt ? <DebtExtraNote row={dialogDebt} currency={currencies.find((c) => c.id === dialogDebt.currencyId)} /> : null}
         upcoming={
-          planLimitTarget && dialogCell && wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming, planLimitTarget.el.type === BudgetElementType.SAVINGS)
+          // a debt's dues are collected whatever is planned: no list of them to fill from
+          planLimitTarget && dialogCell && !dialogIsDebt && wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming, planLimitTarget.el.type === BudgetElementType.SAVINGS)
             ? {
                 budget,
                 target: {
@@ -2083,6 +2148,15 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           sheetCellTarget && sheetCellTarget.el.id !== UNCATEGORIZED_ID
             ? () => {
                 openTransactions(sheetCellTarget.el, sheetCellTarget.month)
+                setSheetCellTarget(null)
+              }
+            : undefined
+        }
+        onDetails={
+          // a debt's details are its owner's alone, as its Edit is
+          sheetPlanTarget?.kind === 'debt' && sheetEdit === true
+            ? () => {
+                openDebtDetails(sheetPlanTarget.row.id)
                 setSheetCellTarget(null)
               }
             : undefined

@@ -5,7 +5,11 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { act } from 'react'
-import { coreHandlers, fixtureBudgets, fixtureCategories, fixtureDebtRow, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureCategories, fixtureDebtRow, fixtureEur, fixtureUsd, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import type { BudgetPlanDto } from '@/api/dto/budget'
+import { sub } from '@/lib/decimal'
+import { moneyFormat } from '@/lib/money'
+import { planMonthFigures } from './phoneMonth'
 import { BudgetPage } from './BudgetPage'
 import { HomePage } from '@/features/home/HomePage'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -621,6 +625,41 @@ it('the Debts block sits between Savings and Expenses, and the expense totals in
   expect(totals).toHaveTextContent('945.50')
   expect(totals).toHaveTextContent('1,154.50')
   expect(screen.getByTestId('month-total-expenses')).toHaveTextContent('945.50')
+})
+
+it('the Balance at month end counts the debt payments and plans as expenses, as their category did', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  try {
+    const debtCell = (actual: string, planned: string) => ({ actual, planned, closingBalance: '20000', paymentsLeft: 20, scheduledTotal: '1000', upcoming: '0', isPlannable: 1 })
+    const withDebt = JSON.parse(JSON.stringify(fixtureWirePlan))
+    withDebt.structure.debts = [
+      {
+        id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', ownerUserId: 'u1', position: 0,
+        payoffDate: '2028-10-05', basePayoffDate: '2028-10-05', overpaymentLeft: '0', baseOverpaymentLeft: '0', isPaidOff: 0,
+        // June (past) paid 1000; July (current) paid 1000 of a 1200 plan
+        cells: [debtCell('0', ''), debtCell('1000', '1000'), debtCell('1000', '1200'), debtCell('0', '1200')],
+      },
+    ]
+    const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
+    budget.structure.debts = [fixtureDebtRow({ budgeted: '1200', spent: '1000', budgetSpent: '1000' })]
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+      planHandler(withDebt),
+    )
+    renderPage()
+    await screen.findByTestId('month-debts')
+    const now = new Date(2026, 6, 15, 12, 0, 0)
+    const without = planMonthFigures(fixtureWirePlan as unknown as BudgetPlanDto, [fixtureUsd, fixtureEur], '2026-07-01', now)
+    // June's 1000 paid, then July's max(1000 paid, 1200 planned)
+    const expected = sub(without?.balance ?? '0', '2200')
+    await waitFor(() =>
+      expect(screen.getByTestId('month-total-balance')).toHaveTextContent(moneyFormat(expected, fixtureUsd, { showCurrency: false, useNativePrecision: false })),
+    )
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 it('a debt row\'s plan is set inline with the debt id and says what an extra buys; outside the debt\'s life it is read-only', async () => {

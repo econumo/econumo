@@ -55,17 +55,20 @@ import { planCellFigures, sheetElement } from './phoneMonth'
 import type { PlanCellFigures, SheetTarget } from './phoneMonth'
 import { folderSides } from './planMath'
 
+/** what a debt row's menu reads: a month-view row or a Plan grid row */
+type DebtRef = Pick<BudgetDebtElementDto, 'id'> & { ownerUserId: Id | null }
+
 export interface BudgetLineMenus {
   /** a row of the Budget view (get-budget) */
   expenseRowMenu: (element: BudgetElementDto) => MenuAction[]
   incomeRowMenu: (cell: PlanCellFigures) => MenuAction[]
-  /** a row of the Plan grid: any side, envelopes and savings included */
+  /** a row of the Plan grid: any side, envelopes, savings and debts included */
   planRowMenu: (el: PlanElementDto, monthIndex: number) => MenuAction[]
   /** parent: the envelope, whose currency a debt made from the category starts in */
   envelopeChildMenu: (child: EnvelopeChild, parent?: { currencyId: Id | null }) => MenuAction[]
   savingsRowMenu: (row: BudgetSavingsElementDto) => MenuAction[]
   /** a Debts row: Details and Edit for the debt's owner, nothing for anyone else */
-  debtRowMenu: (row: BudgetDebtElementDto) => MenuAction[]
+  debtRowMenu: (row: DebtRef) => MenuAction[]
   labelMenu: (label: LabelSpendDto) => MenuAction[]
   folderActionsFor: (folder: { id: Id; name: string } | null, empty: boolean, side: BudgetFolderSide) => MenuAction[] | undefined
   sectionMenu: (side: BudgetFolderSide) => MenuAction[] | undefined
@@ -142,7 +145,7 @@ export function useBudgetLineMenus({
   }
 
   // a debt is its owner's alone: everyone else sees its row and nothing more
-  const ownsDebt = (row: BudgetDebtElementDto) => !!userId && row.ownerUserId === userId
+  const ownsDebt = (row: DebtRef) => !!userId && row.ownerUserId === userId
   const editDebt = (id: Id) => {
     void queryClient
       .fetchQuery({ queryKey: queryKeys.debt(id), queryFn: () => getDebt(id), staleTime: TEN_MINUTES })
@@ -259,6 +262,9 @@ export function useBudgetLineMenus({
     if (el.id === UNCATEGORIZED_ID) {
       return []
     }
+    if (el.type === BudgetElementType.DEBT) {
+      return debtRowMenu(el)
+    }
     // a savings row is an account: it lives in its own section, never in a folder
     if (el.type === BudgetElementType.SAVINGS) {
       return editAction({ kind: 'plan', cell: planCellFigures(el, monthIndex) })
@@ -286,7 +292,7 @@ export function useBudgetLineMenus({
     ]
   }
   const savingsRowMenu = (row: BudgetSavingsElementDto): MenuAction[] => editAction({ kind: 'savings', row })
-  const debtRowMenu = (row: BudgetDebtElementDto): MenuAction[] =>
+  const debtRowMenu = (row: DebtRef): MenuAction[] =>
     ownsDebt(row)
       ? [
           { label: t('budgets.page.debts.details'), onSelect: () => openDebtDetails(row.id) },

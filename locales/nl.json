@@ -1614,6 +1614,7 @@
         "paid": "Betaald",
         "left": "Resterend",
         "left_hint": "Nog te betalen aan het einde van de maand.",
+        "payoff_on": "Afbetaald in {date}",
         "payments_left": "{count} betaling resterend | {count} betalingen resterend",
         "extra_effect": "{months} maand eerder afbetaald, {amount} minder meerkosten | {months} maanden eerder afbetaald, {amount} minder meerkosten",
         "extra_effect_earlier": "{months} maand eerder afbetaald | {months} maanden eerder afbetaald",
