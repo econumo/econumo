@@ -50,6 +50,11 @@ func (s *Service) MergeTag(ctx context.Context, userID vo.Id, req model.MergeTag
 			return cannotMerge
 		}
 
+		if s.debts != nil {
+			if derr := s.debts.PrepareMerge(txCtx, sourceID, targetID); derr != nil {
+				return derr
+			}
+		}
 		if rerr := s.repo.ReassignTransactions(txCtx, sourceID, targetID); rerr != nil {
 			return rerr
 		}

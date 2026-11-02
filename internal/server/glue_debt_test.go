@@ -119,3 +119,31 @@ func TestDebtRates_ConvertOnDay(t *testing.T) {
 		t.Fatalf("FractionDigits = %d, %v", d, err)
 	}
 }
+
+type recordingDebtUsage struct{ calls []string }
+
+func (r *recordingDebtUsage) InUse(context.Context, string, vo.Id) (bool, error) { return false, nil }
+
+func (r *recordingDebtUsage) ReassignClassification(_ context.Context, kind string, _, _ vo.Id) error {
+	r.calls = append(r.calls, "reassign "+kind)
+	return nil
+}
+
+func (r *recordingDebtUsage) LockForMerge(_ context.Context, kind string, _, _ vo.Id) error {
+	r.calls = append(r.calls, "lock "+kind)
+	return nil
+}
+
+func TestDebtUsage_PassesItsKind(t *testing.T) {
+	rec := &recordingDebtUsage{}
+	u := NewDebtUsage(rec, "tag")
+	if err := u.PrepareMerge(context.Background(), vo.NewId(), vo.NewId()); err != nil {
+		t.Fatal(err)
+	}
+	if err := u.Reassign(context.Background(), vo.NewId(), vo.NewId()); err != nil {
+		t.Fatal(err)
+	}
+	if len(rec.calls) != 2 || rec.calls[0] != "lock tag" || rec.calls[1] != "reassign tag" {
+		t.Fatalf("calls = %v", rec.calls)
+	}
+}

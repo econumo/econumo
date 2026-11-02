@@ -3,6 +3,7 @@ package debt
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -103,6 +104,33 @@ func (s *Service) ReassignClassification(ctx context.Context, kind string, oldID
 	}
 	for c := range categories {
 		if _, err := s.syncCategory(ctx, c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// LockForMerge locks, in id order, the owners of the debts keyed on either
+// side of a merge. The merge takes them before writing anything, so its order
+// matches every debt write's: the owner row first, then budget rows.
+func (s *Service) LockForMerge(ctx context.Context, kind string, oldID, newID vo.Id) error {
+	var owners []vo.Id
+	seen := map[vo.Id]bool{}
+	for _, id := range []vo.Id{oldID, newID} {
+		debts, err := s.keyedOn(ctx, kind, id)
+		if err != nil {
+			return err
+		}
+		for _, d := range debts {
+			if !seen[d.OwnerID] {
+				seen[d.OwnerID] = true
+				owners = append(owners, d.OwnerID)
+			}
+		}
+	}
+	sort.Slice(owners, func(i, j int) bool { return owners[i].String() < owners[j].String() })
+	for _, o := range owners {
+		if err := s.repo.LockOwner(ctx, o); err != nil {
 			return err
 		}
 	}

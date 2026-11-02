@@ -21,16 +21,24 @@ import (
 // fakeDebtUsage records the calls and, at Reassign time, whether the source
 // still exists, so the test pins that the debt moves before the source goes.
 type fakeDebtUsage struct {
-	used           bool
-	reassignErr    error
-	reassigned     [][2]vo.Id
+	used        bool
+	reassignErr error
+	reassigned  [][2]vo.Id
+	// calls is the order of the merge's debt calls: "prepare", "reassign".
+	calls          []string
 	sourceExistsAt func(ctx context.Context) bool
 	sourceExisted  bool
 }
 
 func (f *fakeDebtUsage) InUse(context.Context, vo.Id) (bool, error) { return f.used, nil }
 
+func (f *fakeDebtUsage) PrepareMerge(context.Context, vo.Id, vo.Id) error {
+	f.calls = append(f.calls, "prepare")
+	return nil
+}
+
 func (f *fakeDebtUsage) Reassign(ctx context.Context, oldID, newID vo.Id) error {
+	f.calls = append(f.calls, "reassign")
 	f.reassigned = append(f.reassigned, [2]vo.Id{oldID, newID})
 	if f.sourceExistsAt != nil {
 		f.sourceExisted = f.sourceExistsAt(ctx)
@@ -110,6 +118,11 @@ func TestMergeTag_DebtFollowsTarget(t *testing.T) {
 	}
 	if len(debts.reassigned) != 1 || debts.reassigned[0] != [2]vo.Id{vo.MustParseId(src), vo.MustParseId(dst)} {
 		t.Fatalf("Reassign calls = %v", debts.reassigned)
+	}
+	// the debt owners are locked before the merge writes any budget row:
+	// owner row, then budget rows, the order every debt write takes
+	if len(debts.calls) != 2 || debts.calls[0] != "prepare" || debts.calls[1] != "reassign" {
+		t.Fatalf("debt calls = %v, want prepare then reassign", debts.calls)
 	}
 	if !debts.sourceExisted {
 		t.Error("Reassign ran after the source was deleted")

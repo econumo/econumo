@@ -64,6 +64,13 @@ func (s *Service) moveToCategory(ctx context.Context, d *model.Debt) (leftBehind
 	})
 }
 
+func (s *Service) removeRows(ctx context.Context, id vo.Id) error {
+	if s.budget == nil {
+		return nil
+	}
+	return s.budget.RemoveRows(ctx, id, model.ElementDebt)
+}
+
 func (s *Service) lockRows(ctx context.Context, id vo.Id) error {
 	if s.budget == nil {
 		return nil

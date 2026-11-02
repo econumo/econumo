@@ -47,6 +47,11 @@ func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 				return removalUnconfirmed()
 			}
 		}
+		// The rows go now, not on each budget's next structure sync: their
+		// data is confirmed gone (or moved back) by this point.
+		if err := s.removeRows(ctx, d.ID); err != nil {
+			return err
+		}
 		return s.repo.Delete(ctx, d.ID)
 	})
 	if err != nil {

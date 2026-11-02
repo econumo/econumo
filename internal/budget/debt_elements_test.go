@@ -545,3 +545,29 @@ func TestTransferElementData_EnvelopeChildCannotTakeTheData(t *testing.T) {
 		t.Errorf("debt limits = %v, want them kept on the debt row", got)
 	}
 }
+
+// A deleted debt's rows go with it, plans and comments included, not on the
+// budget's next structure sync.
+func TestRemoveElements_DropsTheDebtRowsAndTheirData(t *testing.T) {
+	h := newDebtHarness(t)
+	debt := h.addDebt(h.owner, fixture.USD)
+	keep := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Food"})
+	h.mustSetLimit(t, debt, "2026-05-01", "50")
+	h.mustSetLimit(t, keep, "2026-05-01", "20")
+	if err := h.comment(debt, "2026-05-01"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := h.svc.RemoveElements(h.ctx, vo.MustParseId(debt), model.ElementDebt); err != nil {
+		t.Fatalf("RemoveElements: %v", err)
+	}
+	if h.hasElement(t, debt) {
+		t.Fatal("the debt row is still there")
+	}
+	if has, err := h.svc.ElementHasData(h.ctx, vo.MustParseId(debt), model.ElementDebt); err != nil || has {
+		t.Fatalf("debt data left: %v, %v", has, err)
+	}
+	if got := h.limits(t, h.element(t, keep).ID); got["2026-05-01"] != amount("20") {
+		t.Errorf("another row lost its plan: %v", got)
+	}
+}

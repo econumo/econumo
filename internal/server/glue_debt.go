@@ -109,6 +109,7 @@ func (r *DebtRates) FractionDigits(ctx context.Context, currencyID vo.Id) (int, 
 type debtClassificationUsage interface {
 	InUse(ctx context.Context, kind string, id vo.Id) (bool, error)
 	ReassignClassification(ctx context.Context, kind string, oldID, newID vo.Id) error
+	LockForMerge(ctx context.Context, kind string, oldID, newID vo.Id) error
 }
 
 // DebtUsage adapts the debt service to the DebtUsage port the category, payee
@@ -124,6 +125,10 @@ func NewDebtUsage(debts debtClassificationUsage, kind string) *DebtUsage {
 
 func (u *DebtUsage) InUse(ctx context.Context, id vo.Id) (bool, error) {
 	return u.debts.InUse(ctx, u.kind, id)
+}
+
+func (u *DebtUsage) PrepareMerge(ctx context.Context, oldID, newID vo.Id) error {
+	return u.debts.LockForMerge(ctx, u.kind, oldID, newID)
 }
 
 func (u *DebtUsage) Reassign(ctx context.Context, oldID, newID vo.Id) error {

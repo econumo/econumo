@@ -43,6 +43,9 @@ func TestDeleteDebt_PartialNeedsConfirmation(t *testing.T) {
 	if e.exists(t, res.Id) {
 		t.Fatal("the confirmed delete kept the debt")
 	}
+	if got := e.budget.calls; got[len(got)-1] != "remove" || got[len(got)-2] != "lock" {
+		t.Fatalf("budget calls = %v, want the confirmed delete to remove the rows at once", got)
+	}
 	if len(e.budget.transfers) != 0 {
 		t.Fatalf("a partial debt must not hand data back: %+v", e.budget.transfers)
 	}
@@ -73,8 +76,8 @@ func TestDeleteDebt_WholeCategoryTransfersBack(t *testing.T) {
 	if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
 		t.Fatalf("transfers = %+v, want [%+v]", e.budget.transfers, want)
 	}
-	if got := e.budget.calls; len(got) < 2 || got[len(got)-2] != "lock" || got[len(got)-1] != "transfer" {
-		t.Fatalf("budget calls = %v, want the rows locked before the transfer", got)
+	if got := e.budget.calls; len(got) < 3 || got[len(got)-3] != "lock" || got[len(got)-2] != "transfer" || got[len(got)-1] != "remove" {
+		t.Fatalf("budget calls = %v, want the rows locked, the data moved back, then the rows removed", got)
 	}
 	if e.exists(t, res.Id) {
 		t.Fatal("debt not deleted")

@@ -165,6 +165,26 @@ func (s *Service) LockElements(ctx context.Context, externalID vo.Id, typ model.
 	return s.budgets.LockElementsByExternal(ctx, externalID, typ)
 }
 
+// RemoveElements deletes the external id's rows of this type in every budget;
+// their plans and comments go with them.
+func (s *Service) RemoveElements(ctx context.Context, externalID vo.Id, typ model.ElementType) error {
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		rows, err := s.elements.ListElementsByExternal(ctx, externalID)
+		if err != nil {
+			return err
+		}
+		for _, el := range rows {
+			if el.Type != typ {
+				continue
+			}
+			if err := s.elements.DeleteElement(ctx, el.ID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // ElementHasData reports whether the row holds a plan or a comment in any
 // budget.
 func (s *Service) ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error) {

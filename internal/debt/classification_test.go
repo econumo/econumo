@@ -186,3 +186,14 @@ func TestReassignClassification_MergeIntoWholeCategoryDebtMovesThePlans(t *testi
 		t.Fatalf("a narrowed debt took the category's plans: %+v", e.budget.transfers)
 	}
 }
+
+func TestLockForMerge_LocksTheOwnersOfBothSides(t *testing.T) {
+	e := newEnv(t)
+	e.create(t, nil)
+	other := e.newCategory(e.user, true)
+	for _, kind := range []string{debt.KindCategory, debt.KindPayee, debt.KindTag} {
+		if err := e.svc.LockForMerge(context.Background(), kind, vo.MustParseId(other), vo.MustParseId(e.category)); err != nil {
+			t.Fatalf("LockForMerge(%s): %v", kind, err)
+		}
+	}
+}

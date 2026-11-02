@@ -1640,8 +1640,11 @@ data unreadable. Most are also asserted by the test suite.
   envelope takes nothing, its child row showing no plan), and a delete that would leave data behind (or a
   partial debt's plans) needs `confirmDataRemoval` (`debt.removal_unconfirmed`, a field error on
   that field); the delete write-locks the debt's rows first (`LockElementsByExternal`, like the
-  savings guard), so a concurrent plan is either seen or refused. Payments are never touched by
-  a delete. **Classifications**: deleting a
+  savings guard), so a concurrent plan is either seen or refused, and deletes the debt's budget
+  rows (plans and comments) in the same transaction rather than leaving them to the next
+  structure sync. Payments are never touched by a delete. **Lock order**: the debt owner's
+  user row before any budget row, everywhere; a category/payee/tag merge therefore locks the
+  owners of the debts on either side first (`DebtUsage.PrepareMerge`), before it writes. **Classifications**: deleting a
   category, payee or tag a debt uses is refused (`*.used_by_debt`); a merge moves the debt to
   the target and refuses with `debt.key_conflict` when that would overlap another debt. No MCP
   tool of its own: `get_budget` lists `structure.debts` and `set_limit` accepts a debt id.

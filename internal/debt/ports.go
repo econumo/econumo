@@ -40,4 +40,7 @@ type BudgetElements interface {
 	// LockRows write-locks the rows of the external id in every budget, so a
 	// guard that then reads their data cannot miss a concurrent plan.
 	LockRows(ctx context.Context, externalID vo.Id, typ model.ElementType) error
+	// RemoveRows deletes the rows of the external id in every budget, with
+	// their plans and comments.
+	RemoveRows(ctx context.Context, externalID vo.Id, typ model.ElementType) error
 }

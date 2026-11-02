@@ -93,7 +93,7 @@ type fakeBudget struct {
 	transfers  []transferCall
 	hasData    bool
 	leftBehind bool
-	// calls is the order of the budget calls: "lock", "transfer", "has-data".
+	// calls is the order of the budget calls: "lock", "transfer", "has-data", "remove".
 	calls []string
 }
 
@@ -114,6 +114,11 @@ func (b *fakeBudget) TransferData(_ context.Context, t model.ElementDataTransfer
 func (b *fakeBudget) HasData(context.Context, vo.Id, model.ElementType) (bool, error) {
 	b.calls = append(b.calls, "has-data")
 	return b.hasData, nil
+}
+
+func (b *fakeBudget) RemoveRows(context.Context, vo.Id, model.ElementType) error {
+	b.calls = append(b.calls, "remove")
+	return nil
 }
 
 func (b *fakeBudget) LockRows(context.Context, vo.Id, model.ElementType) error {

@@ -34,4 +34,8 @@ type BudgetElementMerger interface {
 type DebtUsage interface {
 	InUse(ctx context.Context, id vo.Id) (bool, error)
 	Reassign(ctx context.Context, oldID, newID vo.Id) error
+	// PrepareMerge locks the owners of the debts a merge touches. The merge
+	// calls it before any write: a debt write takes the owner row before the
+	// budget rows, and a merge must take them in the same order.
+	PrepareMerge(ctx context.Context, oldID, newID vo.Id) error
 }

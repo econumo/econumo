@@ -9,12 +9,17 @@ import (
 )
 
 type recordingBudgetElements struct {
-	from, to, has, locked model.ElementType
+	from, to, has, locked, removed model.ElementType
 }
 
 func (r *recordingBudgetElements) TransferElementData(_ context.Context, t model.ElementDataTransfer) (bool, error) {
 	r.from, r.to = t.FromType, t.ToType
 	return true, nil
+}
+
+func (r *recordingBudgetElements) RemoveElements(_ context.Context, _ vo.Id, typ model.ElementType) error {
+	r.removed = typ
+	return nil
 }
 
 func (r *recordingBudgetElements) LockElements(_ context.Context, _ vo.Id, typ model.ElementType) error {
@@ -46,5 +51,8 @@ func TestDebtBudgetElements_PassesTheStoredTypes(t *testing.T) {
 	}
 	if err := a.LockRows(context.Background(), vo.NewId(), model.ElementDebt); err != nil || rec.locked != model.ElementDebt {
 		t.Errorf("LockRows = %v, locked type %d; want debt", err, rec.locked)
+	}
+	if err := a.RemoveRows(context.Background(), vo.NewId(), model.ElementDebt); err != nil || rec.removed != model.ElementDebt {
+		t.Errorf("RemoveRows = %v, removed type %d; want debt", err, rec.removed)
 	}
 }
