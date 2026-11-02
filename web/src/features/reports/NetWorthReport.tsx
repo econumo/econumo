@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { EntityIcon } from '@/components/EntityIcon'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -7,6 +7,7 @@ import { ChevronRight, List, X } from 'lucide-react'
 import { Area, CartesianGrid, ComposedChart, ReferenceArea, ReferenceLine, XAxis, YAxis } from 'recharts'
 import type { MouseHandlerDataParam } from 'recharts'
 import type { NetWorthAccountDto } from '@/api/dto/report'
+import { Button } from '@/components/ui/button'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import type { ChartConfig } from '@/components/ui/chart'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -335,22 +336,6 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   }
   const hasNegative = total.some((v) => isNegative(v))
   const dim = report.isPlaceholderData ? 'opacity-60 transition-opacity' : ''
-  // where the selection's actions go: centred over the shaded range, read from the drawn area
-  const chartBox = useRef<HTMLDivElement>(null)
-  const [pill, setPill] = useState<{ left: number; top: number } | null>(null)
-  useLayoutEffect(() => {
-    const box = chartBox.current
-    const area = box?.querySelector('.recharts-reference-area-rect, .recharts-reference-area')
-    if (!box || !area || !selected) {
-      setPill(null)
-      return
-    }
-    const b = box.getBoundingClientRect()
-    const a = area.getBoundingClientRect()
-    // keep the pill inside the chart when the range hugs an edge (~70px each side of its centre)
-    const centre = Math.min(Math.max(a.left + a.width / 2 - b.left, 70), Math.max(70, b.width - 70))
-    setPill({ left: centre, top: a.top - b.top + 6 })
-  }, [selected, lo, hi, dragFrom, n])
   const indexOf = (s: MouseHandlerDataParam) => {
     const i = Number(s.activeTooltipIndex)
     return s.activeTooltipIndex == null || !Number.isInteger(i) || i < 0 || i >= n ? null : i
@@ -363,17 +348,46 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
         <section aria-label={t('reports.spending.headline')} className={`flex min-w-0 flex-col ${dim}`}>
-          <span className="text-sm text-muted-foreground">
-            {/* the months whose transactions make the change, as the Transactions list titles them */}
-            {selected && drillRange ? labels.range([drillRange[0], drillRange[1]]) : t('reports.networth.today')}
-          </span>
+          {selected && drillRange ? (
+            // the months whose transactions make the change, as the Transactions list titles them
+            <span className="flex h-6 w-fit items-center gap-0.5 rounded-md bg-primary/15 pl-2 pr-0.5 text-sm text-primary">
+              {labels.range([drillRange[0], drillRange[1]])}
+              <button
+                type="button"
+                aria-label={t('reports.networth.clear_range')}
+                onClick={() => setRange(null)}
+                className="grid size-5 place-items-center rounded hover:bg-primary/20"
+              >
+                <X className="size-3.5" />
+              </button>
+            </span>
+          ) : (
+            // the same height as the range chip, so selecting moves nothing below
+            <span className="flex h-6 items-center text-sm text-muted-foreground">{t('reports.networth.today')}</span>
+          )}
           <span className="text-2xl tabular-nums sm:text-3xl">{data ? money(totalLine.now) : '…'}</span>
           {data && n > 1 ? (
-            <span className="text-sm">
-              <span className={changeClass(totalLine.change)}>{signedMoney(totalLine.change, money)}</span>{' '}
-              <span className="text-muted-foreground">
-                {selected ? t('reports.networth.range_words', { from: labels.month(data.months[lo]) }) : t(`${preset.key}_words`)}
+            // the range's Transactions button ends this line, so selecting moves nothing below
+            <span className="flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <span>
+                <span className={changeClass(totalLine.change)}>{signedMoney(totalLine.change, money)}</span>{' '}
+                <span className="text-muted-foreground">
+                  {selected ? t('reports.networth.range_words', { from: labels.month(data.months[lo]) }) : t(`${preset.key}_words`)}
+                </span>
               </span>
+              {selected ? (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => {
+                    setDrill({ id: 'range', kind: 'accounts', name: scopeName, accountIds: shown.map((a) => a.id) })
+                    trackEvent(METRICS.REPORTS_DRILL_DOWN, { scope: p.budgetId ? 'budget' : 'mine', mode: 'networth_range' })
+                  }}
+                >
+                  <List />
+                  {t('reports.networth.range_transactions')}
+                </Button>
+              ) : null}
             </span>
           ) : null}
         </section>
@@ -397,7 +411,6 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
             <div className="flex justify-end">
               {periodPicker}
             </div>
-            <div ref={chartBox} className="relative">
             {/* a click focuses the chart's svg or one of its layers, and browsers (Safari) frame it */}
             <ChartContainer config={config} className="aspect-auto h-56 w-full sm:h-64 [&_*]:outline-none [&_*:focus]:outline-none">
               <ComposedChart
@@ -465,34 +478,6 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                 <Area dataKey="value" type="monotone" stroke={STROKE} strokeWidth={2.5} fill="url(#nw-fill)" isAnimationActive={false} />
               </ComposedChart>
             </ChartContainer>
-            {selected && dragFrom === null && pill ? (
-              // the selection's own actions sit on top of the shaded range
-              <div
-                className="absolute flex -translate-x-1/2 items-center gap-0.5 rounded-md border bg-background py-0.5 pl-0.5 pr-0.5 text-xs text-primary shadow-sm"
-                style={{ left: pill.left, top: pill.top }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDrill({ id: 'range', kind: 'accounts', name: scopeName, accountIds: shown.map((a) => a.id) })
-                    trackEvent(METRICS.REPORTS_DRILL_DOWN, { scope: p.budgetId ? 'budget' : 'mine', mode: 'networth_range' })
-                  }}
-                  className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-primary/15"
-                >
-                  <List className="size-3" />
-                  {t('reports.networth.range_transactions')}
-                </button>
-                <button
-                  type="button"
-                  aria-label={t('reports.networth.clear_range')}
-                  onClick={() => setRange(null)}
-                  className="grid size-5 place-items-center rounded hover:bg-primary/15"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
-            ) : null}
-            </div>
             {selected ? null : (
               // dragging needs a mouse, so the hint stays off touch screens
               <p className="hidden text-right text-xs text-muted-foreground [@media(hover:hover)]:block">{t('reports.networth.drag_hint')}</p>
