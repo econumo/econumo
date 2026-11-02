@@ -39,6 +39,8 @@ func TestAuth_ScopeGate(t *testing.T) {
 		{"read POST write", model.TokenScopeRead, http.MethodPost, "/api/v1/tag/create-tag", http.StatusUnauthorized},
 		{"read HEAD", model.TokenScopeRead, http.MethodHead, "/api/v1/tag/get-tag-list", http.StatusUnauthorized},
 		{"read on ingest", model.TokenScopeRead, http.MethodPost, "/api/v1/import/ingest-apple-wallet", http.StatusUnauthorized},
+		{"read POST on /mcp", model.TokenScopeRead, http.MethodPost, "/mcp", http.StatusUnauthorized},
+		{"read GET on /mcp", model.TokenScopeRead, http.MethodGet, "/mcp", http.StatusUnauthorized},
 		{"empty scope on ingest route", model.TokenScope(""), http.MethodPost, "/api/v1/import/ingest-apple-wallet", http.StatusUnauthorized},
 	}
 	for _, tc := range cases {
