@@ -348,23 +348,9 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
         <section aria-label={t('reports.spending.headline')} className={`flex min-w-0 flex-col ${dim}`}>
-          {selected && drillRange ? (
-            // the months whose transactions make the change, as the Transactions list titles them
-            <span className="flex h-6 w-fit items-center gap-0.5 rounded-md bg-primary/15 pl-2 pr-0.5 text-sm text-primary">
-              {labels.range([drillRange[0], drillRange[1]])}
-              <button
-                type="button"
-                aria-label={t('reports.networth.clear_range')}
-                onClick={() => setRange(null)}
-                className="grid size-5 place-items-center rounded hover:bg-primary/20"
-              >
-                <X className="size-3.5" />
-              </button>
-            </span>
-          ) : (
-            // the same height as the range chip, so selecting moves nothing below
-            <span className="flex h-6 items-center text-sm text-muted-foreground">{t('reports.networth.today')}</span>
-          )}
+          <span className="text-sm text-muted-foreground">
+            {selected && data ? labels.month(data.months[hi]) : t('reports.networth.today')}
+          </span>
           <span className="text-2xl tabular-nums sm:text-3xl">{data ? money(totalLine.now) : '…'}</span>
           {data && n > 1 ? (
             <span className="text-sm">
@@ -409,7 +395,22 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
               ) : (
                 <span />
               )}
-              {periodPicker}
+              {selected && drillRange ? (
+                // a selected range takes the presets' place; it names the months whose transactions make the change
+                <span className="flex h-6 items-center gap-0.5 rounded-md bg-primary/15 pl-2 pr-0.5 text-xs text-primary">
+                  {labels.range([drillRange[0], drillRange[1]])}
+                  <button
+                    type="button"
+                    aria-label={t('reports.networth.clear_range')}
+                    onClick={() => setRange(null)}
+                    className="grid size-5 place-items-center rounded hover:bg-primary/20"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ) : (
+                periodPicker
+              )}
             </div>
             {/* a click focuses the chart's svg or one of its layers, and browsers (Safari) frame it */}
             <ChartContainer config={config} className="aspect-auto h-56 w-full sm:h-64 [&_*]:outline-none [&_*:focus]:outline-none">

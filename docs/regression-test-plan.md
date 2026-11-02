@@ -2176,13 +2176,12 @@ tag, and a budget with a planned limit on one category.
       report's latest total.
 - [ ] Net worth, desktop: before any selection a quiet hint under the chart
       reads "Drag across the chart to pick a period" (not on touch screens).
-      Dragging across the chart shades the range; 1y/3y/All stay. In the
-      headline, a purple chip with × takes the place of "Today" and names the
-      months whose transactions make the change ("Apr – Dec 2025", the
-      Transactions list's own title); below it the balance at the range's
-      end and the change "since <the month before>". A Transactions button
-      appears under it, at the left of the 1y/3y/All row. Selecting moves
-      nothing below the headline. The
+      Dragging across the chart shades the range; a chip with × takes the
+      place of 1y/3y/All and names the months whose transactions make the
+      change ("Apr – Dec 2025", the Transactions list's own title). The
+      headline shows the end month, the balance there and the change "since
+      <the month before>"; a Transactions button appears under it, in the same
+      row as the chip. Selecting moves nothing below the headline. The
       table's Start/Now/Change follow the range. Transactions lists every transaction of the report's
       accounts in those months (accounts not on this device, e.g. a
       partner's unshared ones, are not listed). A plain click on the chart or

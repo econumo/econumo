@@ -163,9 +163,9 @@ it('dragging across the chart shows the change over the selected range', async (
   await at(220)
   fireEvent.mouseUp(surface, { clientX: 220, clientY: 100 })
   await waitFor(() => expect(screen.getByText('Jan – May 2026')).toBeInTheDocument())
-  // the headline names the range; the period presets stay
-  expect(plain(headline().textContent)).toMatch(/^Jan\s*–\s*May 2026/)
-  expect(screen.getByRole('radiogroup', { name: 'Period' })).toBeInTheDocument()
+  // the range takes the period presets' place; the headline names its end month
+  expect(screen.queryByRole('radiogroup', { name: 'Period' })).not.toBeInTheDocument()
+  expect(plain(headline().textContent)).toMatch(/^May 2026/)
   expect(plain(headline().textContent)).toContain('4,100.00 $')
   expect(plain(headline().textContent)).toContain('+1,000.00 $ since Dec 2025')
   expect(cells(rowNamed('Total'))).toEqual(['Total', '3,100.00 $', '4,100.00 $', '+1,000.00 $'])
