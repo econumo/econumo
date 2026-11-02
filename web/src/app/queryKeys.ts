@@ -16,6 +16,8 @@ export const queryKeys = {
   budgetTransactions: ['budgetTransactions'] as const,
   budgetComments: ['budgetComments'] as const,
   recurring: ['recurring'] as const,
+  debts: ['debts'] as const,
+  debt: (id: string) => ['debts', id] as const,
   sessions: ['sessions'] as const,
   personalTokens: ['personalTokens'] as const,
   updateInfo: ['updateInfo'] as const,
