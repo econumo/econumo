@@ -323,12 +323,15 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       )
     : []
 
+  // All opens at the zero close before the first transaction: the figures start
+  // from it, but the chart starts at the first month that has transactions.
+  const chartFrom = p.period === 'all' && n > 2 && isZero(total[0]) ? 1 : 0
   const chartData = data
     ? data.months.map((m, i) => ({
         label: labels.month(m),
         value: Number(total[i]),
         ...Object.fromEntries(bands.map((b, bi) => [`b${bi}`, Number(b.balances[i])])),
-      }))
+      })).slice(chartFrom)
     : []
   const config: ChartConfig = {
     value: { label: t('reports.spending.total'), color: STROKE },
@@ -337,7 +340,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const hasNegative = total.some((v) => isNegative(v))
   const dim = report.isPlaceholderData ? 'opacity-60 transition-opacity' : ''
   const indexOf = (s: MouseHandlerDataParam) => {
-    const i = Number(s.activeTooltipIndex)
+    const i = Number(s.activeTooltipIndex) + chartFrom
     return s.activeTooltipIndex == null || !Number.isInteger(i) || i < 0 || i >= n ? null : i
   }
   // balances are month-end, so the change from `lo` to `hi` is the activity of the months after `lo`
@@ -441,7 +444,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                 <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={40} />
                 <YAxis width={40} tickLine={false} axisLine={false} tickFormatter={compact} />
                 {selected ? (
-                  <ReferenceArea x1={chartData[lo].label} x2={chartData[hi].label} fill={STROKE} fillOpacity={0.08} stroke={STROKE} strokeOpacity={0.3} />
+                  <ReferenceArea x1={chartData[lo - chartFrom].label} x2={chartData[hi - chartFrom].label} fill={STROKE} fillOpacity={0.08} stroke={STROKE} strokeOpacity={0.3} />
                 ) : null}
                 {hasNegative ? <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.6} /> : null}
                 <ChartTooltip

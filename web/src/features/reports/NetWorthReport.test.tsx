@@ -116,6 +116,36 @@ it('on a phone the table shows whole amounts in Now and Change; the headline kee
   expect(plain(headline().textContent)).toContain('27,286.73 $')
 })
 
+it('All: the chart starts at the first month with transactions; the change still counts from zero', async () => {
+  const all = { currencyId: 'cur-usd', months: ['2025-12-01', '2026-01-01', '2026-02-01', '2026-03-01'], accounts: [acc('a1', 'Cash', ['0', '100', '200', '300'])] }
+  openNetWorth({ period: 'all' }, all)
+  await screen.findByRole('table')
+  expect(plain(headline().textContent)).toMatch(/^Q1 2026/)
+  expect(plain(headline().textContent)).toContain('+300.00 $ since the start')
+  expect(cells(rowNamed('Total'))).toEqual(['Total', '0.00 $', '300.00 $', '+300.00 $'])
+  const axis = () => [...document.querySelectorAll('svg text')].map((e) => e.textContent)
+  await waitFor(() => expect(axis()).toContain('Jan 2026'))
+  expect(axis()).not.toContain('Dec 2025')
+})
+
+it('All: a range dragged on the shortened chart keeps its months', async () => {
+  const all = { currencyId: 'cur-usd', months: ['2025-12-01', '2026-01-01', '2026-02-01', '2026-03-01'], accounts: [acc('a1', 'Cash', ['0', '100', '200', '300'])] }
+  openNetWorth({ period: 'all' }, all)
+  await screen.findByRole('table')
+  const surface = document.querySelector('.recharts-wrapper') as HTMLElement
+  const at = async (clientX: number) => {
+    fireEvent.mouseMove(surface, { clientX, clientY: 100 })
+    await act(() => new Promise((r) => setTimeout(r, 50)))
+  }
+  await at(45)
+  fireEvent.mouseDown(surface, { clientX: 45, clientY: 100 })
+  await at(390)
+  fireEvent.mouseUp(surface, { clientX: 390, clientY: 100 })
+  // from January's close to March's: the change comes from February and March
+  await waitFor(() => expect(plain(headline().textContent)).toMatch(/^Feb\s*–\s*Mar 2026/))
+  expect(cells(rowNamed('Total'))).toEqual(['Total', '100.00 $', '300.00 $', '+200.00 $'])
+})
+
 it('a folder expands to its accounts', async () => {
   openNetWorth()
   await screen.findByRole('table')

@@ -2153,9 +2153,9 @@ tag, and a budget with a planned limit on one category.
       corner; the scope picker is a quiet "{budget} ▾" top-right. The headline
       shows the months the period covers (e.g. "Jan 2024 – Nov 2026"), the
       latest total, and "+/-{amount} in the last year /
-      in the last 3 years / since the start". All starts at the end of the
-      month before the first transaction, so its change equals the latest
-      total. Amounts show cents.
+      in the last 3 years / since the start". All's label and chart start at
+      the month of the first transaction, and its change and Start column count
+      from zero, so the change equals the latest total. Amounts show cents.
 - [ ] Net worth's latest total counts transactions through the end of today in
       the device's timezone: a transaction dated later this month is left
       out of the current month until its day comes (earlier months are
