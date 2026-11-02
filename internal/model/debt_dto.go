@@ -2,7 +2,7 @@
 package model
 
 import (
-	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -224,13 +224,18 @@ func debtFields(name, categoryID string, payeeID, tagID, startDate *string, bala
 	return fields
 }
 
+// plainDecimal is the form the stored decimal reads; ParseFloat also takes
+// "1_000", hex floats and exponents, which would be stored as 0.
+var plainDecimal = regexp.MustCompile(`^[+-]?(\d+\.?\d*|\.\d+)$`)
+
 // debtAmountField: a balance may be zero, a payment must be positive.
 func debtAmountField(key, v string, allowZero bool) []errs.FieldError {
 	if strings.TrimSpace(v) == "" {
 		return []errs.FieldError{blankField(key)}
 	}
-	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
-	if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
+	v = strings.TrimSpace(v)
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil || !plainDecimal.MatchString(v) {
 		return []errs.FieldError{debtInvalidField(key)}
 	}
 	if f < 0 || (f == 0 && !allowZero) {

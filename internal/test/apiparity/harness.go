@@ -316,6 +316,9 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 		}
 		path := c.Path
 		if c.PathID != nil {
+			if *c.PathID == "" {
+				t.Fatalf("[%s] PathID is empty: the call that captures it failed or its response changed shape", c.Label)
+			}
 			path += *c.PathID
 		}
 		statuses[i], bodies[i] = h.do(t, c.Method, path, tok, c.Body, c.Form, c.RawBody, c.ContentType)

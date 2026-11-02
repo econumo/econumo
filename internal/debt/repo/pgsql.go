@@ -21,18 +21,7 @@ func (pgsqlQuerier) LockOwner(ctx context.Context, db backend.DBTX, ownerID stri
 	return nil
 }
 
-func toDebtRow(d pgsqlgen.Debt) debtRow {
-	row := debtRow{
-		ID: d.ID, UserID: d.UserID, Name: d.Name, CurrencyID: d.CurrencyID, CategoryID: d.CategoryID,
-		PayeeID: d.PayeeID, TagID: d.TagID, AsOf: d.AsOf, Balance: d.Balance, Payment: d.Payment,
-		Schedule: d.Schedule, LastPaymentDate: d.LastPaymentDate, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
-	}
-	if d.StartDate.Valid {
-		t := d.StartDate.Time
-		row.StartDate = &t
-	}
-	return row
-}
+func toDebtRow(d pgsqlgen.Debt) debtRow { return debtRow(d) }
 
 func (pgsqlQuerier) GetDebtByID(ctx context.Context, db backend.DBTX, id string) (debtRow, error) {
 	d, err := pgsqlgen.New(db).GetDebtByID(ctx, id)

@@ -286,12 +286,7 @@ func (s *Service) validateEnvelopeCategories(ctx context.Context, b *budgetAggre
 	if len(categoryIDs) == 0 {
 		return nil
 	}
-	userIDs := []vo.Id{b.budget.UserID}
-	for _, a := range b.access {
-		if a.IsAccepted && a.Role != roleGuest() {
-			userIDs = append(userIDs, a.UserID)
-		}
-	}
+	userIDs := b.participantIDs()
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
 	if err != nil {
 		return err
@@ -327,12 +322,7 @@ func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, cate
 	if len(categoryIDs) == 0 {
 		return []model.ChildElementResult{}, nil
 	}
-	userIDs := []vo.Id{b.budget.UserID}
-	for _, a := range b.access {
-		if a.IsAccepted && a.Role != roleGuest() {
-			userIDs = append(userIDs, a.UserID)
-		}
-	}
+	userIDs := b.participantIDs()
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
 	if err != nil {
 		return nil, err

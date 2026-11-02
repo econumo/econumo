@@ -30,6 +30,8 @@ CREATE TABLE debts
 );
 CREATE INDEX debts_user_idx ON debts (user_id);
 CREATE INDEX debts_category_idx ON debts (category_id);
+CREATE INDEX debts_payee_idx ON debts (payee_id);
+CREATE INDEX debts_tag_idx ON debts (tag_id);
 
 CREATE TABLE debts_snapshots
 (

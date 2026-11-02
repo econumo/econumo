@@ -87,3 +87,22 @@ func TestDebtRequests_ValidateIds(t *testing.T) {
 }
 
 func ptrTo(s string) *string { return &s }
+
+// The amount is stored as a decimal: forms ParseFloat takes but the decimal
+// type cannot read would be stored as 0.
+func TestCreateDebtRequest_RejectsNonDecimalAmounts(t *testing.T) {
+	for _, v := range []string{"1_000", "0x1p3", "1e3", "Inf"} {
+		req := validDebtRequest()
+		req.Balance = vo.NewFlexString(v)
+		if got := debtFieldCodes(t, req.Validate()); got["balance"] != errs.CodeInvalidFormat {
+			t.Errorf("balance %q: code %q, want invalid format", v, got["balance"])
+		}
+	}
+	for _, v := range []string{"1000", "1000.5", ".5", "0"} {
+		req := validDebtRequest()
+		req.Balance = vo.NewFlexString(v)
+		if err := req.Validate(); err != nil {
+			t.Errorf("balance %q: %v", v, err)
+		}
+	}
+}

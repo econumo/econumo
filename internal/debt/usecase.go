@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -287,7 +288,7 @@ func parseInput(name, currencyID, categoryID string, payeeID, tagID, startDate *
 	if in.tag, err = parseOptionalID(tagID); err != nil {
 		return in, err
 	}
-	if startDate != nil && *startDate != "" {
+	if startDate != nil && strings.TrimSpace(*startDate) != "" {
 		start, err := time.Parse(datetime.DateLayout, *startDate)
 		if err != nil {
 			return in, err

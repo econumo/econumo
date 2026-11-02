@@ -178,13 +178,7 @@ func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (model.Meta
 }
 
 func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, periodEnd time.Time) (filters, error) {
-	// userIds = owner + accepted non-reader access users (reader == guest).
-	userIDs := []vo.Id{b.budget.UserID}
-	for _, a := range b.access {
-		if a.IsAccepted && a.Role != roleGuest() {
-			userIDs = append(userIDs, a.UserID)
-		}
-	}
+	userIDs := b.participantIDs()
 
 	// The budget counts every member account of every participant, deleted or
 	// not; the filters block reports only the requester's own, with the

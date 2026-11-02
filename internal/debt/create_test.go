@@ -146,3 +146,13 @@ func TestCreateDebt_WorksWithoutBudgetPeer(t *testing.T) {
 	e.svc.SetBudgetElements(nil)
 	e.create(t, nil)
 }
+
+// A blank start date passes the request's validation, so the service must
+// read it as none rather than fail to parse it.
+func TestCreateDebt_BlankStartDateIsNone(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr(" ") })
+	if res.StartDate != "" {
+		t.Fatalf("start date = %q, want none", res.StartDate)
+	}
+}

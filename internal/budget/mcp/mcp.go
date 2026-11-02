@@ -473,7 +473,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "move_element",
-			Description: "Move one budget element (an envelope, tag or category) into a folder and/or reorder it, or put a category into an envelope (envelope_id). Use get_budget for element_id, folder_id, after_element_id and envelope_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first. A category moved to a folder or the ungrouped area leaves the envelope it was in; a category put into an envelope leaves any other envelope. A savings row (id = savings account id) reorders only among savings rows and cannot be put into a folder."},
+			Description: "Move one budget element (an envelope, tag or category) into a folder and/or reorder it, or put a category into an envelope (envelope_id). Use get_budget for element_id, folder_id, after_element_id and envelope_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first. A category moved to a folder or the ungrouped area leaves the envelope it was in; a category put into an envelope leaves any other envelope. A savings row (id = savings account id) reorders only among savings rows and cannot be put into a folder; likewise a debt row (id = debt id) reorders only among debt rows."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in moveElementInput) (*sdk.CallToolResult, moveElementResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "move_element")
 				userID, err := webmcp.UserID(ctx)

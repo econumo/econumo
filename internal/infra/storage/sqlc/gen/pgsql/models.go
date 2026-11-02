@@ -5,7 +5,6 @@
 package pgsqlgen
 
 import (
-	"database/sql"
 	"time"
 )
 
@@ -185,7 +184,7 @@ type Debt struct {
 	CategoryID      string
 	PayeeID         *string
 	TagID           *string
-	StartDate       sql.NullTime
+	StartDate       *time.Time
 	AsOf            time.Time
 	Balance         string
 	Payment         string
