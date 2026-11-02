@@ -331,7 +331,9 @@ func TestCurrencyReadRepo_RateRangeView(t *testing.T) {
 	gbp := "2be5bfd5-03e8-412b-80d2-c0ecf3ce32ff"
 	f.Currency(fixture.Currency{ID: eur, Code: "EUR", Symbol: "E"})
 	f.Currency(fixture.Currency{ID: gbp, Code: "GBP", Symbol: "G"})
-	for i, day := range []string{"2026-02-20", "2026-02-27", "2026-03-03", "2026-04-02"} {
+	// 03-01 and 03-31 sit exactly on the bounds (both in the window, and 03-01
+	// must not count as "before from"); 04-01 is the day after to.
+	for i, day := range []string{"2026-02-20", "2026-02-27", "2026-03-01", "2026-03-03", "2026-03-31", "2026-04-01", "2026-04-02"} {
 		f.Rate(fixture.Rate{ID: "10000000-0000-7000-8000-00000000010" + string(rune('0'+i)), CurrencyID: eur, BaseCurrencyID: seededUSD, Rate: "0.92000000", PublishedAt: day})
 	}
 	f.Rate(fixture.Rate{ID: "10000000-0000-7000-8000-000000000110", CurrencyID: gbp, BaseCurrencyID: seededUSD, Rate: "0.80000000", PublishedAt: "2026-01-10"})
@@ -346,7 +348,7 @@ func TestCurrencyReadRepo_RateRangeView(t *testing.T) {
 	for _, r := range rows {
 		got = append(got, r.CurrencyID[:2]+" "+r.Date)
 	}
-	want := []string{"1a 2026-02-27", "1a 2026-03-03", "2b 2026-01-10"}
+	want := []string{"1a 2026-02-27", "1a 2026-03-01", "1a 2026-03-03", "1a 2026-03-31", "2b 2026-01-10"}
 	if len(got) != len(want) {
 		t.Fatalf("rows = %v, want %v", got, want)
 	}

@@ -214,8 +214,11 @@ type Querier interface {
 	// the same code, and LIMIT 1 would otherwise pick between them arbitrarily.
 	GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error)
 	// Rates published within [from, to] (inclusive days) plus, per (currency,
-	// base) pair, the newest rate published before from. Bounds are 'Y-m-d'
-	// strings compared through date().
+	// base) pair, the newest rate published before from. published_at is stored
+	// as bare 'Y-m-d' text and the bounds are bound as 'Y-m-d' strings, so the raw
+	// column is compared (no date() wrap) and the published_at indexes stay usable.
+	// The CASTs keep sqlc from typing the bounds as time.Time, which would bind a
+	// 'Y-m-d H:i:s' string and push a rate on from out of the window.
 	GetCurrencyRateRangeView(ctx context.Context, arg GetCurrencyRateRangeViewParams) ([]CurrenciesRate, error)
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.

@@ -82,14 +82,20 @@ func (q *Queries) GetCurrencyByIDView(ctx context.Context, id string) (GetCurren
 const getCurrencyRateRangeView = `-- name: GetCurrencyRateRangeView :many
 SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate
 FROM currencies_rates cr
-WHERE (cr.published_at >= $1::date AND cr.published_at <= $2::date)
-   OR (cr.published_at < $1::date
-       AND cr.published_at = (
-           SELECT MAX(cr2.published_at) FROM currencies_rates cr2
-           WHERE cr2.currency_id = cr.currency_id AND cr2.base_currency_id = cr.base_currency_id
-             AND cr2.published_at < $1::date
-       ))
-ORDER BY cr.currency_id ASC, cr.base_currency_id ASC, cr.published_at ASC
+WHERE cr.published_at >= $1::date
+  AND cr.published_at <= $2::date
+UNION ALL
+SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate
+FROM currencies_rates cr
+JOIN (
+    SELECT currency_id, base_currency_id, MAX(published_at) AS published_at
+    FROM currencies_rates
+    WHERE published_at < $1::date
+    GROUP BY currency_id, base_currency_id
+) latest ON latest.currency_id = cr.currency_id
+    AND latest.base_currency_id = cr.base_currency_id
+    AND latest.published_at = cr.published_at
+ORDER BY currency_id ASC, base_currency_id ASC, published_at ASC
 `
 
 type GetCurrencyRateRangeViewParams struct {
@@ -106,7 +112,7 @@ type GetCurrencyRateRangeViewRow struct {
 }
 
 // Rates published within [from, to] (inclusive days) plus, per (currency,
-// base) pair, the newest rate published before from.
+// base) pair, the newest rate published before from. See the sqlite variant.
 func (q *Queries) GetCurrencyRateRangeView(ctx context.Context, arg GetCurrencyRateRangeViewParams) ([]GetCurrencyRateRangeViewRow, error) {
 	rows, err := q.db.QueryContext(ctx, getCurrencyRateRangeView, arg.FromDay, arg.ToDay)
 	if err != nil {
