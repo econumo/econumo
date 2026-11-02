@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
@@ -8,6 +9,7 @@ import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type {
+  BudgetDebtElementDto,
   BudgetDto,
   BudgetElementDto,
   BudgetFolderSide,
@@ -19,6 +21,8 @@ import type {
 import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
+import { getDebt } from '@/api/debt'
+import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import { useAccounts } from '@/features/accounts/queries'
 import { CategoryDialog } from '@/features/classifications/CategoryDialog'
@@ -55,8 +59,11 @@ export interface BudgetLineMenus {
   incomeRowMenu: (cell: PlanCellFigures) => MenuAction[]
   /** a row of the Plan grid: any side, envelopes and savings included */
   planRowMenu: (el: PlanElementDto, monthIndex: number) => MenuAction[]
-  envelopeChildMenu: (child: { id: Id; type: BudgetElementType; name: string; icon: string; ownerUserId: Id | null }) => MenuAction[]
+  /** parent: the envelope, whose currency a debt made from the category starts in */
+  envelopeChildMenu: (child: EnvelopeChild, parent?: { currencyId: Id | null }) => MenuAction[]
   savingsRowMenu: (row: BudgetSavingsElementDto) => MenuAction[]
+  /** a Debts row: Details and Edit for the debt's owner, nothing for anyone else */
+  debtRowMenu: (row: BudgetDebtElementDto) => MenuAction[]
   labelMenu: (label: LabelSpendDto) => MenuAction[]
   folderActionsFor: (folder: { id: Id; name: string } | null, empty: boolean, side: BudgetFolderSide) => MenuAction[] | undefined
   sectionMenu: (side: BudgetFolderSide) => MenuAction[] | undefined
@@ -70,6 +77,8 @@ export interface BudgetLineMenus {
   /** every dialog the menus open; render once */
   dialogs: ReactNode
 }
+
+type EnvelopeChild = { id: Id; type: BudgetElementType; name: string; icon: string; ownerUserId: Id | null; isArchived?: 0 | 1 }
 
 export function useBudgetLineMenus({
   budget,
@@ -87,6 +96,9 @@ export function useBudgetLineMenus({
   const { t } = useTranslation()
   const { data: accounts = [] } = useAccounts()
   const openAccountModal = useUiStore((s) => s.openAccountModal)
+  const openDebtModal = useUiStore((s) => s.openDebtModal)
+  const openDebtDetails = useUiStore((s) => s.openDebtDetails)
+  const queryClient = useQueryClient()
   const classificationMenu = useClassificationMenu(budget?.meta.id ?? '')
   const createEnvelope = useCreateEnvelope()
   const updateEnvelope = useUpdateEnvelope()
@@ -127,16 +139,31 @@ export function useBudgetLineMenus({
     return null
   }
 
+  // a debt is its owner's alone: everyone else sees its row and nothing more
+  const ownsDebt = (row: BudgetDebtElementDto) => !!userId && row.ownerUserId === userId
+  const editDebt = (id: Id) => {
+    void queryClient
+      .fetchQuery({ queryKey: queryKeys.debt(id), queryFn: () => getDebt(id), staleTime: TEN_MINUTES })
+      .then((details) => openDebtModal({ debt: details.item }))
+      .catch(() => undefined)
+  }
   const editAccess = (target: SheetTarget): boolean | null => {
     if (target.kind === 'label') {
       // update-label answers anyone but the tag's owner with NotFound
       return !!userId && target.label.ownerUserId === userId
+    }
+    if (target.kind === 'debt') {
+      return ownsDebt(target.row) ? true : null
     }
     return elementEditAccess(sheetElement(target), userId, editDetails, accounts)
   }
   const editFromSheet = (target: SheetTarget) => {
     if (target.kind === 'label') {
       setTagTarget({ id: target.label.id, name: target.label.name, kind: 'label', icon: target.label.icon })
+      return
+    }
+    if (target.kind === 'debt') {
+      editDebt(target.row.id)
       return
     }
     const el = sheetElement(target)
@@ -197,11 +224,27 @@ export function useBudgetLineMenus({
     const ref = el.id === UNCATEGORIZED_ID ? null : classificationOf(el)
     return ref ? classificationMenu.actionsFor(ref) : []
   }
+  // the caller's own live expense category becomes a debt: the debt form, with the
+  // category and the row's currency filled in
+  const trackAsDebt = (category: { id: Id; type: BudgetElementType; ownerUserId: Id | null; isArchived?: 0 | 1 }, currencyId: Id | null): MenuAction[] =>
+    budget && category.type === BudgetElementType.CATEGORY && category.id !== UNCATEGORIZED_ID && category.isArchived !== 1 && !!userId && category.ownerUserId === userId
+      ? [
+          {
+            label: t('budgets.page.debts.track'),
+            onSelect: () => openDebtModal({ categoryId: category.id, currencyId: currencyId ?? budget.meta.currencyId, fromBudget: true }),
+          },
+        ]
+      : []
   // the transaction list opens from a row's figures (Spent, Received, Saved), not from the menu
   const expenseRowMenu = (element: BudgetElementDto): MenuAction[] =>
     element.id === UNCATEGORIZED_ID
       ? []
-      : [...editAction({ kind: 'expense', element }), ...structureActions(element, 'expense'), ...classificationActions(element)]
+      : [
+          ...editAction({ kind: 'expense', element }),
+          ...structureActions(element, 'expense'),
+          ...trackAsDebt(element, element.currencyId),
+          ...classificationActions(element),
+        ]
   const incomeRowMenu = (cell: PlanCellFigures): MenuAction[] => {
     const target: SheetTarget = { kind: 'plan', cell }
     // income Uncategorized has nothing to edit and no list of its own
@@ -219,10 +262,15 @@ export function useBudgetLineMenus({
       return editAction({ kind: 'plan', cell: planCellFigures(el, monthIndex) })
     }
     const side: BudgetFolderSide = isIncomeType(el.type) ? 'income' : 'expense'
-    return [...editAction({ kind: 'plan', cell: planCellFigures(el, monthIndex) }), ...structureActions(el, side), ...classificationActions(el)]
+    return [
+      ...editAction({ kind: 'plan', cell: planCellFigures(el, monthIndex) }),
+      ...structureActions(el, side),
+      ...trackAsDebt(el, el.currencyId),
+      ...classificationActions(el),
+    ]
   }
   // a category inside an envelope: edited, archived, merged or deleted in place
-  const envelopeChildMenu = (child: { id: Id; type: BudgetElementType; name: string; icon: string; ownerUserId: Id | null }): MenuAction[] => {
+  const envelopeChildMenu = (child: EnvelopeChild, parent?: { currencyId: Id | null }): MenuAction[] => {
     const own = !!userId && child.ownerUserId === userId
     return [
       {
@@ -231,10 +279,18 @@ export function useBudgetLineMenus({
         reason: own ? undefined : t('budgets.page.plan.menu.no_access'),
         onSelect: () => setCategoryTarget({ id: child.id, name: child.name, icon: child.icon, type: isIncomeType(child.type) ? 'income' : 'expense' }),
       },
+      ...trackAsDebt(child, parent?.currencyId ?? null),
       ...classificationActions(child),
     ]
   }
   const savingsRowMenu = (row: BudgetSavingsElementDto): MenuAction[] => editAction({ kind: 'savings', row })
+  const debtRowMenu = (row: BudgetDebtElementDto): MenuAction[] =>
+    ownsDebt(row)
+      ? [
+          { label: t('budgets.page.debts.details'), onSelect: () => openDebtDetails(row.id) },
+          { label: t('common.button.edit.label'), onSelect: () => editDebt(row.id) },
+        ]
+      : []
   const labelMenu = (label: LabelSpendDto): MenuAction[] => editAction({ kind: 'label', label })
   const newEnvelopeAction = (folderId: Id | null, side: BudgetFolderSide): MenuAction => ({
     label: t('budgets.modal.create_envelope_form.header'),
@@ -466,6 +522,7 @@ export function useBudgetLineMenus({
     planRowMenu,
     envelopeChildMenu,
     savingsRowMenu,
+    debtRowMenu,
     labelMenu,
     folderActionsFor,
     sectionMenu,

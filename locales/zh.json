@@ -1301,6 +1301,7 @@
         "accounts_included": "已包含 {count} 个，共 {total} 个",
         "accounts_hidden": "在隐藏文件夹中",
         "accounts_locked_hint": "在过去月份中有交易的账户无法移除",
+        "debts_note": "债务会以名称连同还款和余额显示给所有有权访问此预算的人。",
         "savings": {
           "label": "储蓄账户",
           "description": "转入这些账户的钱计为储蓄，而不是支出。",
@@ -1608,11 +1609,23 @@
         "saved": "已储蓄",
         "balance_hint": "月末余额。"
       },
+      "debts": {
+        "title": "债务",
+        "paid": "已还",
+        "left": "剩余",
+        "left_hint": "月末待还金额。",
+        "payments_left": "还剩 {count} 笔还款",
+        "extra_effect": "提前 {months} 个月还清，少付 {amount} 利息与费用",
+        "extra_effect_earlier": "提前 {months} 个月还清",
+        "track": "作为债务跟踪",
+        "details": "详情"
+      },
       "phone": {
         "row_aria": "{name}，预算 {budget}，已支出 {spent}",
         "child_aria": "{name}，已支出 {spent}",
         "income_row_aria": "{name}，计划 {planned}，已收款 {received}",
         "savings_row_aria": "{name}，计划 {planned}，已储蓄 {saved}",
+        "debt_row_aria": "{name}，计划 {planned}，已还 {paid}",
         "available": "可用 {amount}",
         "actual": "实际",
         "balance": "月末余额"

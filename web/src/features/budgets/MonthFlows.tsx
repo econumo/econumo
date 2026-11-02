@@ -8,14 +8,15 @@ import { afterIdFromDrop } from '@/lib/ordering'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
-import { cmp, isZero } from '@/lib/decimal'
+import { add, cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
-import type { BudgetDto, BudgetSavingsElementDto, PlanChildDto } from '@/api/dto/budget'
+import type { BudgetDebtElementDto, BudgetDto, BudgetSavingsElementDto, PlanChildDto } from '@/api/dto/budget'
 import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
-import { elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
+import { debtTotals, elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
+import { DebtLeft } from './debtRow'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu, TotalLine } from './monthLines'
@@ -29,7 +30,7 @@ import type { DropIndicator, ElementContainer, ElementMoveItem } from './element
 import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, EnvelopeHeadDrop, FolderGrip } from './MonthDrag'
 import { isEnvelopeType } from './elementEdit'
 
-export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' }>
+export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' } | { kind: 'debt' }>
 
 const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
   showCurrency: false,
@@ -132,6 +133,7 @@ interface MonthFlowsProps {
   /** the ⋮ menu of a category inside an unfolded income envelope */
   incomeChildMenu?: (child: PlanChildDto) => MenuAction[] | undefined
   savingsMenu?: (row: BudgetSavingsElementDto) => MenuAction[] | undefined
+  debtMenu?: (row: BudgetDebtElementDto) => MenuAction[] | undefined
   incomeSectionMenu?: MenuAction[]
   savingsSectionMenu?: MenuAction[]
   /** drag and drop on hover, for anyone who may configure the budget */
@@ -145,8 +147,9 @@ interface MonthFlowsProps {
   }
 }
 
-/** Income and Savings for one month, above the expenses table, in the table's columns:
- *  Planned · Received · To receive, and Planned · Saved · Balance. */
+/** Income, Savings and Debts for one month, above the expenses table, in the table's
+ *  columns: Planned · Received · To receive, Planned · Saved · Balance, and Planned ·
+ *  Paid · Left. */
 export function MonthFlows({
   budget,
   currencies,
@@ -159,6 +162,7 @@ export function MonthFlows({
   incomeChildMenu,
   incomeFolderMenu,
   savingsMenu,
+  debtMenu,
   incomeSectionMenu,
   savingsSectionMenu,
   drag,
@@ -170,8 +174,9 @@ export function MonthFlows({
     const c = currencyOf(currencyId)
     return moneyFormat(amount, c, cellOpts(c))
   }
+  const month = budget.filters.periodStart.slice(0, 10)
   const planned = (target: FlowTarget, amount: string, currencyId: Id) => {
-    const hint = sheetPlanHint(target)
+    const hint = sheetPlanHint(target, month)
     return renderPlanned(target, amount === '' ? EMPTY_CELL : fmt(amount, currencyId), hint)
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
@@ -182,6 +187,7 @@ export function MonthFlows({
   const toggleBudgetFold = useBudgetPeriodStore((s) => s.toggleBudgetFold)
   const incomeFolded = !!budgetFolds.income
   const savingsFolded = !!budgetFolds.savings
+  const debtsFolded = !!budgetFolds.debts
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   // a dropped order holds until the refetched figures replace it, so nothing snaps back
   const [incomePreview, setIncomePreview] = useState<{ containers: ElementContainer[]; folderIds: string[] } | null>(null)
@@ -394,6 +400,22 @@ export function MonthFlows({
     />
   )
 
+  const debtRow = (row: BudgetDebtElementDto) => (
+    <FlowRow
+      key={row.id}
+      testId={`month-debts-row-${row.id}`}
+      icon={row.icon}
+      name={row.name}
+      tag={tagOf(row.currencyId)}
+      muted={row.isPaidOff === 1}
+      planned={planned({ kind: 'debt', row }, row.budgeted, row.currencyId)}
+      actual={actualCell({ id: row.id, type: BudgetElementType.DEBT, name: row.name, icon: row.icon, currencyId: row.currencyId }, row.spent, row.currencyId)}
+      third={<DebtLeft row={row} amount={fmt(row.closingBalance, row.currencyId)} />}
+      actionsColumn={actionsColumn}
+      menu={debtMenu?.(row)}
+    />
+  )
+
   const incomeGroups: IncomeGroup[] = (planMonth?.income.groups ?? []).map((g) =>
     pendingMemberId && g.rows.some((r) => r.element.id === pendingMemberId) ? { ...g, rows: g.rows.filter((r) => r.element.id !== pendingMemberId) } : g,
   )
@@ -549,6 +571,9 @@ export function MonthFlows({
     drag.onMoveSavings(activeId, afterIdFromDrop(reordered, activeId))
   }
   const savingsSum = totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, exchangeFn)
+  const debtRows = [...(budget.structure.debts ?? [])].sort((a, b) => a.position - b.position)
+  const debtSum = debtTotals(budget, exchangeFn)
+  const debtLeft = debtRows.reduce((sum, row) => add(sum, exchangeFn(row.currencyId, base, row.closingBalance)), '0')
 
   return (
     <>
@@ -635,6 +660,20 @@ export function MonthFlows({
             savingsRows.map(savingsRow)
           )}
           </RowLevelContext.Provider>
+        </section>
+      ) : null}
+      {debtRows.length > 0 ? (
+        <section className="border-t pt-1 pb-1" data-testid="month-debts">
+          <MonthSectionHeader
+            foldKey="debts"
+            testId="month-debts-header"
+            label={t('budgets.page.debts.title')}
+            headings={[t('budgets.page.savings.planned'), t('budgets.page.debts.paid'), t('budgets.page.debts.left')]}
+            sums={[fmt(debtSum.budgeted), future ? <Dash key="dash-debts-paid" /> : fmt(debtSum.spent), fmt(debtLeft)]}
+            actionsColumn={actionsColumn}
+          />
+          {/* debts have no folders: their rows sit at a folder line's step */}
+          <RowLevelContext.Provider value="top">{debtsFolded ? null : debtRows.map(debtRow)}</RowLevelContext.Provider>
         </section>
       ) : null}
     </>

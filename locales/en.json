@@ -1301,6 +1301,7 @@
         "accounts_included": "{count} of {total} included",
         "accounts_hidden": "In hidden folders",
         "accounts_locked_hint": "Accounts with transactions in past months can't be removed",
+        "debts_note": "Debts are shown by name, with their payments and balances, to everyone with access to this budget.",
         "savings": {
           "label": "Savings accounts",
           "description": "Money moved into these accounts counts as saved, not spent.",
@@ -1608,11 +1609,23 @@
         "saved": "Saved",
         "balance_hint": "Balance at the end of the month."
       },
+      "debts": {
+        "title": "Debts",
+        "paid": "Paid",
+        "left": "Left",
+        "left_hint": "Left to pay at the end of the month.",
+        "payments_left": "{count} payment left | {count} payments left",
+        "extra_effect": "Paid off {months} month earlier, {amount} less overpayment | Paid off {months} months earlier, {amount} less overpayment",
+        "extra_effect_earlier": "Paid off {months} month earlier | Paid off {months} months earlier",
+        "track": "Track as debt",
+        "details": "Details"
+      },
       "phone": {
         "row_aria": "{name}, budget {budget}, spent {spent}",
         "child_aria": "{name}, spent {spent}",
         "income_row_aria": "{name}, planned {planned}, received {received}",
         "savings_row_aria": "{name}, planned {planned}, saved {saved}",
+        "debt_row_aria": "{name}, planned {planned}, paid {paid}",
         "available": "{amount} available",
         "actual": "Actual",
         "balance": "Balance at month end"

@@ -1,6 +1,6 @@
 import { isIncomeType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { BudgetElementType } from '@/api/dto/budget'
-import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, LabelSpendDto, PlanElementDto } from '@/api/dto/budget'
+import type { BudgetDebtElementDto, BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, LabelSpendDto, PlanElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { add, cmp, isZero, sub } from '@/lib/decimal'
@@ -134,6 +134,7 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
 export type SheetTarget =
   | { kind: 'expense'; element: BudgetElementDto }
   | { kind: 'savings'; row: BudgetSavingsElementDto }
+  | { kind: 'debt'; row: BudgetDebtElementDto }
   | { kind: 'plan'; cell: PlanCellFigures }
   | { kind: 'label'; label: LabelSpendDto }
 
@@ -149,6 +150,7 @@ export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell {
     case 'expense':
       return { id: target.element.id, name: target.element.name, currencyId: target.element.currencyId ?? baseCurrencyId, amount: target.element.budgeted }
     case 'savings':
+    case 'debt':
       return { id: target.row.id, name: target.row.name, currencyId: target.row.currencyId, amount: target.row.budgeted }
     case 'plan':
       return { id: target.cell.element.id, name: target.cell.element.name, currencyId: target.cell.element.currencyId, amount: target.cell.planned }
@@ -158,8 +160,9 @@ export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell {
   }
 }
 
-/** the hint on the target's plan figure; Uncategorized and reporting tags hold no plan */
-export function sheetPlanHint(target: SheetTarget): PlanHint {
+/** the hint on the target's plan figure; Uncategorized and reporting tags hold no plan.
+ *  `month` ('YYYY-MM-01'): the month the figure is for, which a debt row's hint needs. */
+export function sheetPlanHint(target: SheetTarget, month?: string): PlanHint {
   switch (target.kind) {
     case 'expense': {
       const el = target.element
@@ -168,6 +171,8 @@ export function sheetPlanHint(target: SheetTarget): PlanHint {
     }
     case 'savings':
       return planHint({ planned: target.row.budgeted, spent: target.row.spent, upcoming: target.row.upcoming, kind: 'savings' })
+    case 'debt':
+      return planHint({ planned: target.row.budgeted, spent: target.row.spent, scheduled: target.row.scheduledTotal, month, kind: 'debt' })
     case 'plan': {
       const { element, planned, actual, upcoming } = target.cell
       if (element.id === UNCATEGORIZED_ID) return null
@@ -184,6 +189,7 @@ export function sheetUpcoming(target: SheetTarget): string | undefined {
     case 'expense':
       return target.element.upcoming
     case 'savings':
+    case 'debt':
       return target.row.upcoming
     case 'plan':
       return target.cell.upcoming
@@ -198,6 +204,7 @@ export function sheetSpent(target: SheetTarget): string {
     case 'expense':
       return target.element.spent
     case 'savings':
+    case 'debt':
       return target.row.spent
     case 'plan':
       return target.cell.actual
@@ -211,6 +218,7 @@ export function sheetSetsPlan(target: SheetTarget): boolean {
     case 'expense':
       return false
     case 'savings':
+    case 'debt':
       return true
     case 'plan':
       return isPlannedType(target.cell.element.type)
@@ -236,6 +244,7 @@ export function sheetIcon(target: SheetTarget): string {
     case 'expense':
       return target.element.icon
     case 'savings':
+    case 'debt':
       return target.row.icon
     case 'plan':
       return target.cell.element.icon
@@ -244,8 +253,8 @@ export function sheetIcon(target: SheetTarget): string {
   }
 }
 
-/** a reporting tag is not a budget element: it edits through its own dialog */
-export function sheetElement(target: Exclude<SheetTarget, { kind: 'label' }>): SheetElement {
+/** a reporting tag is not a budget element, nor a debt: each edits through its own dialog */
+export function sheetElement(target: Exclude<SheetTarget, { kind: 'label' } | { kind: 'debt' }>): SheetElement {
   switch (target.kind) {
     case 'expense':
       return target.element

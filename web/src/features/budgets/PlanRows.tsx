@@ -158,8 +158,8 @@ export interface GridCtx {
   cancelEdit: () => void
   /** a row's ⋮ menu; undefined while the line controls are off (touch, no edit mode) */
   rowMenu?: (el: PlanElementDto) => MenuAction[] | undefined
-  /** the ⋮ menu of a category inside an envelope */
-  childMenu?: (child: PlanChildDto) => MenuAction[] | undefined
+  /** the ⋮ menu of a category inside an envelope (parent: that envelope) */
+  childMenu?: (child: PlanChildDto, parent: PlanElementDto) => MenuAction[] | undefined
 }
 
 const figureClass = (ctx: GridCtx, col: number): string =>
@@ -343,7 +343,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
         <p className={`${CHILD_INDENT[level]} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
       ) : null}
       {el.children.map((child) => {
-        const line = <ChildRow key={child.id} child={child} parentCurrency={currency} ctx={ctx} menu={isEnvelopeType(el.type) ? ctx.childMenu?.(child) : undefined} />
+        const line = <ChildRow key={child.id} child={child} parentCurrency={currency} ctx={ctx} menu={isEnvelopeType(el.type) ? ctx.childMenu?.(child, el) : undefined} />
         return childDrag ? (
           <DragChild key={child.id} id={child.id}>
             {line}

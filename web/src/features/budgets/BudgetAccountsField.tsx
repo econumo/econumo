@@ -96,7 +96,12 @@ export function BudgetSavingsField({ accounts, selected, savings, onToggle }: Bu
         itemLabel={(a) => t('budgets.modal.budget_form.savings.toggle', { name: a.name })}
         onToggle={onToggle}
         onClose={() => setOpen(false)}
-        notes={<p>{t('budgets.modal.budget_form.savings.note')}</p>}
+        notes={
+          <>
+            <p>{t('budgets.modal.budget_form.savings.note')}</p>
+            <p>{t('budgets.modal.budget_form.debts_note')}</p>
+          </>
+        }
       />
     </>
   )

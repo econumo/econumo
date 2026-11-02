@@ -1301,6 +1301,7 @@
         "accounts_included": "{count} von {total} einbezogen",
         "accounts_hidden": "In ausgeblendeten Ordnern",
         "accounts_locked_hint": "Konten mit Buchungen in vergangenen Monaten können nicht entfernt werden",
+        "debts_note": "Schulden werden allen mit Zugriff auf dieses Budget mit Namen, Zahlungen und Salden angezeigt.",
         "savings": {
           "label": "Sparkonten",
           "description": "Geld, das auf diese Konten fließt, gilt als gespart, nicht als ausgegeben.",
@@ -1608,11 +1609,23 @@
         "saved": "Gespart",
         "balance_hint": "Saldo am Monatsende."
       },
+      "debts": {
+        "title": "Schulden",
+        "paid": "Gezahlt",
+        "left": "Offen",
+        "left_hint": "Am Monatsende noch zu zahlen.",
+        "payments_left": "{count} Zahlung übrig | {count} Zahlungen übrig",
+        "extra_effect": "{months} Monat früher abbezahlt, {amount} weniger Mehrkosten | {months} Monate früher abbezahlt, {amount} weniger Mehrkosten",
+        "extra_effect_earlier": "{months} Monat früher abbezahlt | {months} Monate früher abbezahlt",
+        "track": "Als Schuld verfolgen",
+        "details": "Details"
+      },
       "phone": {
         "row_aria": "{name}, Budget {budget}, ausgegeben {spent}",
         "child_aria": "{name}, ausgegeben {spent}",
         "income_row_aria": "{name}, geplant {planned}, empfangen {received}",
         "savings_row_aria": "{name}, geplant {planned}, gespart {saved}",
+        "debt_row_aria": "{name}, geplant {planned}, gezahlt {paid}",
         "available": "{amount} verfügbar",
         "actual": "Ist",
         "balance": "Saldo am Monatsende"

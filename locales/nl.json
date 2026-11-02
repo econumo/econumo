@@ -1301,6 +1301,7 @@
         "accounts_included": "{count} van {total} opgenomen",
         "accounts_hidden": "In verborgen mappen",
         "accounts_locked_hint": "Rekeningen met transacties in eerdere maanden kunnen niet worden verwijderd",
+        "debts_note": "Schulden worden met naam, betalingen en saldi getoond aan iedereen met toegang tot dit budget.",
         "savings": {
           "label": "Spaarrekeningen",
           "description": "Geld dat naar deze rekeningen gaat, telt als gespaard, niet als uitgegeven.",
@@ -1608,11 +1609,23 @@
         "saved": "Gespaard",
         "balance_hint": "Saldo aan het einde van de maand."
       },
+      "debts": {
+        "title": "Schulden",
+        "paid": "Betaald",
+        "left": "Resterend",
+        "left_hint": "Nog te betalen aan het einde van de maand.",
+        "payments_left": "{count} betaling resterend | {count} betalingen resterend",
+        "extra_effect": "{months} maand eerder afbetaald, {amount} minder meerkosten | {months} maanden eerder afbetaald, {amount} minder meerkosten",
+        "extra_effect_earlier": "{months} maand eerder afbetaald | {months} maanden eerder afbetaald",
+        "track": "Volgen als schuld",
+        "details": "Details"
+      },
       "phone": {
         "row_aria": "{name}, budget {budget}, uitgegeven {spent}",
         "child_aria": "{name}, uitgegeven {spent}",
         "income_row_aria": "{name}, gepland {planned}, ontvangen {received}",
         "savings_row_aria": "{name}, gepland {planned}, gespaard {saved}",
+        "debt_row_aria": "{name}, gepland {planned}, betaald {paid}",
         "available": "{amount} beschikbaar",
         "actual": "Werkelijk",
         "balance": "Saldo aan het einde van de maand"

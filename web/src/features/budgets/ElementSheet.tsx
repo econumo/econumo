@@ -10,6 +10,8 @@ import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/bud
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { carryOver, displayAvailable, elementDisplayName, rowState } from './budgetMath'
+import { DebtExtraNote } from './debtRow'
+import { pluralPick } from '@/lib/plural'
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
 import { sheetCell, sheetIcon, sheetPlanHint, sheetSetsPlan } from './phoneMonth'
@@ -84,7 +86,7 @@ export function ElementSheet({
   // the sheet repeats a foreign item's code beside every amount (the row only tags its name)
   const fmt = (amount: string) => `${fmtIn(amount, currency)}${foreign && currency ? ` ${currency.code}` : ''}`
   const actual = (amount: string) => (future ? EMPTY : fmt(amount))
-  const hint = sheetPlanHint(target)
+  const hint = sheetPlanHint(target, month)
   const planFigure = (key: string, figureLabel: string, planned: string): Figure => ({
     key,
     label: figureLabel,
@@ -119,6 +121,13 @@ export function ElementSheet({
       }
     }
     actualInBase = el.budgetSpent
+  } else if (target.kind === 'debt') {
+    const row = target.row
+    figures.push(planFigure('planned', label.planned, row.budgeted))
+    figures.push({ key: 'paid', label: t('budgets.page.debts.paid'), value: actual(row.spent) })
+    figures.push({ key: 'left', label: t('budgets.page.debts.left'), value: fmt(row.closingBalance) })
+    stateSentence = row.isPaidOff === 1 ? t('debts.list.paid_off') : pluralPick(t('budgets.page.debts.payments_left'), row.paymentsLeft, i18n.language)
+    actualInBase = row.budgetSpent
   } else if (target.kind === 'label') {
     figures.push({ key: 'spent', label: label.spent, value: actual(target.label.spent) })
     actualInBase = target.label.spent
@@ -174,6 +183,7 @@ export function ElementSheet({
             {stateSentence}
           </p>
         ) : null}
+        {target.kind === 'debt' ? <DebtExtraNote row={target.row} currency={currency} /> : null}
         {foreign && baseCurrency ? (
           <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
             {!future ? (

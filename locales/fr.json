@@ -1301,6 +1301,7 @@
         "accounts_included": "{count} sur {total} inclus",
         "accounts_hidden": "Dans des dossiers masqués",
         "accounts_locked_hint": "Les comptes ayant des transactions dans des mois passés ne peuvent pas être retirés",
+        "debts_note": "Les dettes sont affichées par nom, avec leurs paiements et leurs soldes, à toutes les personnes ayant accès à ce budget.",
         "savings": {
           "label": "Comptes d'épargne",
           "description": "L'argent versé sur ces comptes compte comme épargné, pas comme dépensé.",
@@ -1608,11 +1609,23 @@
         "saved": "Épargné",
         "balance_hint": "Solde en fin de mois."
       },
+      "debts": {
+        "title": "Dettes",
+        "paid": "Payé",
+        "left": "Restant",
+        "left_hint": "Reste à payer en fin de mois.",
+        "payments_left": "{count} paiement restant | {count} paiements restants",
+        "extra_effect": "Remboursée {months} mois plus tôt, {amount} de surcoût en moins | Remboursée {months} mois plus tôt, {amount} de surcoût en moins",
+        "extra_effect_earlier": "Remboursée {months} mois plus tôt | Remboursée {months} mois plus tôt",
+        "track": "Suivre comme dette",
+        "details": "Détails"
+      },
       "phone": {
         "row_aria": "{name}, budget {budget}, dépensé {spent}",
         "child_aria": "{name}, dépensé {spent}",
         "income_row_aria": "{name}, prévu {planned}, reçu {received}",
         "savings_row_aria": "{name}, prévu {planned}, épargné {saved}",
+        "debt_row_aria": "{name}, prévu {planned}, payé {paid}",
         "available": "{amount} disponible",
         "actual": "Réel",
         "balance": "Solde en fin de mois"

@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { act } from 'react'
-import { coreHandlers, fixtureBudgets, fixtureCategories, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureCategories, fixtureDebtRow, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { HomePage } from '@/features/home/HomePage'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -601,6 +601,57 @@ it('the Budget view follows the phone order: Income, Savings, Expenses, then the
   expect(screen.getByTestId('month-total-balance')).toBeInTheDocument()
 })
 
+it('the Debts block sits between Savings and Expenses, and the expense totals include debt rows', async () => {
+  const budget = budgetWithSavings()
+  budget.structure.debts = [fixtureDebtRow()]
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    planHandler(),
+  )
+  renderPage()
+  const debts = await screen.findByTestId('month-debts')
+  expect(screen.getByTestId('month-savings').compareDocumentPosition(debts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(debts.compareDocumentPosition(screen.getByTestId('budget-table')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // the Expenses header sums its own rows only: the Debts block has its own
+  expect(screen.getByTestId('column-headers')).not.toHaveTextContent('945.50')
+  // the Total row: expenses 300.00 / 45.50 / 554.50 plus the debt's 1,500.00 / 900.00 / 600.00
+  const totals = screen.getByTestId('budget-totals')
+  expect(totals).toHaveTextContent('1,800.00')
+  expect(totals).toHaveTextContent('945.50')
+  expect(totals).toHaveTextContent('1,154.50')
+  expect(screen.getByTestId('month-total-expenses')).toHaveTextContent('945.50')
+})
+
+it('a debt row\'s plan is set inline with the debt id and says what an extra buys; outside the debt\'s life it is read-only', async () => {
+  let body: unknown
+  const budget = budgetWithSavings()
+  budget.structure.debts = [
+    fixtureDebtRow({ payoffDate: '2027-08-05', overpaymentLeft: '1500' }),
+    fixtureDebtRow({ id: 'debt-2', name: 'Car', position: 1, budgeted: '', isBudgeted: 0, isPlannable: 0 }),
+  ]
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  const debts = await screen.findByTestId('month-debts')
+  expect(within(within(debts).getByTestId('month-debts-row-debt-2')).queryByRole('button', { name: 'limit Car' })).toBeNull()
+  await user.click(within(within(debts).getByTestId('month-debts-row-debt-1')).getByRole('button', { name: 'limit Mortgage' }))
+  expect(await screen.findByTestId('debt-extra-effect')).toHaveTextContent('Paid off 14 months earlier')
+  const input = await screen.findByLabelText('Budget')
+  await user.clear(input)
+  await user.type(input, '2000')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'debt-1', period: '2026-07-01', amount: '2000' }))
+})
+
 it('the Budget view\'s Total and totals lines take the element rows\' hover tint', async () => {
   const budget = budgetWithSavings()
   server.use(
@@ -711,7 +762,7 @@ describe('the ⋮ menus on the Budget view', () => {
     await waitFor(() => expect(queryClient.getQueryData(queryKeys.categories)).toBeTruthy())
     await user.click(within(food).getByRole('button', { name: 'menu Food' }))
     const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
-    expect(items).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Archive', 'Merge into…', 'Delete'])
+    expect(items).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Track as debt', 'Archive', 'Merge into…', 'Delete'])
   })
 
   it('a greyed-out action says why: Edit on another member\'s category, Delete on a folder with items', async () => {
@@ -750,7 +801,7 @@ describe('the ⋮ menus on the Budget view', () => {
     await user.click(within(food).getByRole('button', { name: 'menu Food' }))
     const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
     // a category is personal: its owner manages it in any budget
-    expect(items).toEqual(['Edit', 'Archive', 'Merge into…', 'Delete'])
+    expect(items).toEqual(['Edit', 'Track as debt', 'Archive', 'Merge into…', 'Delete'])
     // and the Expenses line has no Create folder for a guest
     expect(within(screen.getByTestId('column-headers')).queryByRole('button', { name: 'menu Expenses' })).toBeNull()
   })

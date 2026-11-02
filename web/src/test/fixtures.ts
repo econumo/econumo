@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type { ConnectionDto } from '@/api/dto/connection'
+import type { BudgetDebtElementDto } from '@/api/dto/budget'
 
 export const fixtureUser = {
   id: 'u1',
@@ -142,6 +143,19 @@ export const fixtureWireBudget = {
     ],
     labels: [],
   },
+}
+
+/** a get-budget debt row owed by the fixture owner (u1): 1,000 a month, planned
+ *  1,500 (500 extra), 900 paid so far, 24 payments left */
+export function fixtureDebtRow(overrides: Partial<BudgetDebtElementDto> = {}): BudgetDebtElementDto {
+  return {
+    id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
+    budgeted: '1500', isBudgeted: 1, spent: '900', budgetSpent: '900', available: '600',
+    closingBalance: '23000', paymentsLeft: 24, scheduledTotal: '1000', upcoming: '100',
+    payoffDate: '2028-10-05', basePayoffDate: '2028-10-05', overpaymentLeft: '2000', baseOverpaymentLeft: '2000',
+    isPaidOff: 0, isPlannable: 1,
+    ...overrides,
+  }
 }
 
 // Shared fixture for the budget plan-view sheet: 4 months, one of every element

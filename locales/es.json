@@ -1301,6 +1301,7 @@
         "accounts_included": "{count} de {total} incluidas",
         "accounts_hidden": "En carpetas ocultas",
         "accounts_locked_hint": "Las cuentas con transacciones en meses anteriores no se pueden quitar",
+        "debts_note": "Las deudas se muestran por nombre, con sus pagos y saldos, a todas las personas con acceso a este presupuesto.",
         "savings": {
           "label": "Cuentas de ahorro",
           "description": "El dinero que pasa a estas cuentas cuenta como ahorrado, no como gastado.",
@@ -1608,11 +1609,23 @@
         "saved": "Ahorrado",
         "balance_hint": "Saldo al final del mes."
       },
+      "debts": {
+        "title": "Deudas",
+        "paid": "Pagado",
+        "left": "Pendiente",
+        "left_hint": "Lo que falta por pagar al final del mes.",
+        "payments_left": "Queda {count} pago | Quedan {count} pagos",
+        "extra_effect": "Pagada {months} mes antes, {amount} menos de sobrecoste | Pagada {months} meses antes, {amount} menos de sobrecoste",
+        "extra_effect_earlier": "Pagada {months} mes antes | Pagada {months} meses antes",
+        "track": "Seguir como deuda",
+        "details": "Detalles"
+      },
       "phone": {
         "row_aria": "{name}, presupuesto {budget}, gastado {spent}",
         "child_aria": "{name}, gastado {spent}",
         "income_row_aria": "{name}, previsto {planned}, recibido {received}",
         "savings_row_aria": "{name}, previsto {planned}, ahorrado {saved}",
+        "debt_row_aria": "{name}, previsto {planned}, pagado {paid}",
         "available": "{amount} disponible",
         "actual": "Real",
         "balance": "Saldo a fin de mes"

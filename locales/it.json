@@ -1301,6 +1301,7 @@
         "accounts_included": "{count} di {total} inclusi",
         "accounts_hidden": "In cartelle nascoste",
         "accounts_locked_hint": "I conti con transazioni nei mesi passati non possono essere rimossi",
+        "debts_note": "I debiti sono mostrati per nome, con pagamenti e saldi, a tutti coloro che hanno accesso a questo budget.",
         "savings": {
           "label": "Conti di risparmio",
           "description": "Il denaro trasferito su questi conti conta come risparmiato, non come speso.",
@@ -1608,11 +1609,23 @@
         "saved": "Risparmiato",
         "balance_hint": "Saldo a fine mese."
       },
+      "debts": {
+        "title": "Debiti",
+        "paid": "Pagato",
+        "left": "Residuo",
+        "left_hint": "Ancora da pagare a fine mese.",
+        "payments_left": "{count} pagamento rimasto | {count} pagamenti rimasti",
+        "extra_effect": "Estinto {months} mese prima, {amount} di costo aggiuntivo in meno | Estinto {months} mesi prima, {amount} di costo aggiuntivo in meno",
+        "extra_effect_earlier": "Estinto {months} mese prima | Estinto {months} mesi prima",
+        "track": "Segui come debito",
+        "details": "Dettagli"
+      },
       "phone": {
         "row_aria": "{name}, budget {budget}, speso {spent}",
         "child_aria": "{name}, speso {spent}",
         "income_row_aria": "{name}, previsto {planned}, ricevuto {received}",
         "savings_row_aria": "{name}, previsto {planned}, risparmiato {saved}",
+        "debt_row_aria": "{name}, previsto {planned}, pagato {paid}",
         "available": "{amount} disponibile",
         "actual": "Effettivo",
         "balance": "Saldo a fine mese"
