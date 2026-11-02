@@ -19,13 +19,14 @@ export function useDebt(id: Id | undefined) {
 }
 
 // a debt write moves its budget row, the plan and every total that sums them,
-// and the category/payee/tag it converts or pays through
+// and the budget's transaction drill-downs, which list a debt row's payments
 function useInvalidateDebts() {
   const queryClient = useQueryClient()
   return () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
   }
 }
 

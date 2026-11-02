@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Debiti",
+    "settings": {
+      "header": "Debiti",
+      "info": "Prestiti e crediti tracciati senza un conto. Le spese della categoria del debito si sottraggono a ciò che devi, e i budget le mostrano in una sezione Debiti.",
+      "empty": "Ancora nessun debito",
+      "create": "Aggiungi debito"
+    },
+    "list": {
+      "payments_left": "{count} pagamento rimasto | {count} pagamenti rimasti",
+      "paid_off": "Estinto"
+    },
+    "form": {
+      "header": "Debito",
+      "name": {
+        "label": "Nome"
+      },
+      "currency": {
+        "label": "Valuta"
+      },
+      "category": {
+        "label": "Categoria"
+      },
+      "payee": {
+        "label": "Beneficiario (facoltativo)"
+      },
+      "tag": {
+        "label": "Tag (facoltativo)"
+      },
+      "start_date": {
+        "label": "Data di inizio (facoltativa)",
+        "hint": "I pagamenti precedenti non contano",
+        "none": "Nessuna data",
+        "clear": "Cancella la data di inizio"
+      },
+      "balance": {
+        "label": "Saldo attuale"
+      },
+      "payment": {
+        "label": "Pagamento"
+      },
+      "schedule": {
+        "label": "Si ripete"
+      },
+      "last_payment_date": {
+        "label": "Data dell'ultimo pagamento",
+        "hint": "Quando finisce il debito",
+        "choose": "Scegli una data"
+      },
+      "never_pays_off": "Questo pagamento non copre gli interessi, quindi il debito non si estingue mai."
+    },
+    "details": {
+      "header": "Debito",
+      "current_balance": "Saldo attuale",
+      "payments_left": "Pagamenti rimasti",
+      "money_left": "Ancora da pagare",
+      "overpayment_left": "Costo aggiuntivo rimasto",
+      "overpaid_so_far": "Costo aggiuntivo già pagato",
+      "payoff_date": "Data di estinzione",
+      "snapshots": "Storico delle condizioni",
+      "snapshot_terms": "{payment} · {schedule} · fino al {date}",
+      "payments": "Pagamenti",
+      "payments_empty": "Ancora nessun pagamento",
+      "column": {
+        "date": "Data",
+        "amount": "Pagamento",
+        "interest": "Interessi",
+        "principal": "Capitale"
+      },
+      "mark_paid_off": "Segna come estinto",
+      "paid_off_confirm": {
+        "title": "Segnare come estinto?",
+        "question": "Il saldo viene impostato a 0 da oggi. I tuoi pagamenti restano invariati."
+      },
+      "delete_confirm": {
+        "title": "Eliminare questo debito?",
+        "question": "Il debito esce dai tuoi budget. I tuoi pagamenti non vengono toccati."
+      },
+      "removal_confirm": {
+        "title": "Eliminare importi pianificati e commenti?",
+        "action": "Elimina debito"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {

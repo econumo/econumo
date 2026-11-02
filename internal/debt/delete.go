@@ -56,7 +56,12 @@ func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 	return &model.DeleteDebtResult{}, nil
 }
 
+// The field key is the SPA's handle on this refusal: the envelope carries no
+// catalogue code, so the client recognises the error by field.
 func removalUnconfirmed() error {
-	return &errs.ValidationError{Msg: "This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.",
-		MsgCode: errs.CodeDebtRemovalUnconfirmed}
+	return errs.NewValidation("Validation failed", errs.FieldError{
+		Key:     "confirmDataRemoval",
+		Message: "This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.",
+		Code:    errs.CodeDebtRemovalUnconfirmed,
+	})
 }

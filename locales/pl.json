@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Długi",
+    "settings": {
+      "header": "Długi",
+      "info": "Pożyczki i kredyty bez osobnego konta. Wydatki z kategorii długu pomniejszają kwotę, którą jesteś winien, a budżety pokazują je w sekcji Długi.",
+      "empty": "Nie masz jeszcze długów",
+      "create": "Dodaj dług"
+    },
+    "list": {
+      "payments_left": "Została {count} płatność | Zostały {count} płatności | Zostało {count} płatności",
+      "paid_off": "Spłacony"
+    },
+    "form": {
+      "header": "Dług",
+      "name": {
+        "label": "Nazwa"
+      },
+      "currency": {
+        "label": "Waluta"
+      },
+      "category": {
+        "label": "Kategoria"
+      },
+      "payee": {
+        "label": "Odbiorca (opcjonalnie)"
+      },
+      "tag": {
+        "label": "Tag (opcjonalnie)"
+      },
+      "start_date": {
+        "label": "Data rozpoczęcia (opcjonalnie)",
+        "hint": "Wcześniejsze płatności się nie liczą",
+        "none": "Brak daty",
+        "clear": "Wyczyść datę rozpoczęcia"
+      },
+      "balance": {
+        "label": "Aktualne saldo"
+      },
+      "payment": {
+        "label": "Płatność"
+      },
+      "schedule": {
+        "label": "Powtarzanie"
+      },
+      "last_payment_date": {
+        "label": "Data ostatniej płatności",
+        "hint": "Kiedy kończy się dług",
+        "choose": "Wybierz datę"
+      },
+      "never_pays_off": "Ta płatność nie pokrywa odsetek, więc dług nigdy się nie spłaci."
+    },
+    "details": {
+      "header": "Dług",
+      "current_balance": "Aktualne saldo",
+      "payments_left": "Pozostałe płatności",
+      "money_left": "Do zapłaty",
+      "overpayment_left": "Pozostały koszt długu",
+      "overpaid_so_far": "Dotychczasowy koszt długu",
+      "payoff_date": "Data spłaty",
+      "snapshots": "Historia warunków",
+      "snapshot_terms": "{payment} · {schedule} · do {date}",
+      "payments": "Płatności",
+      "payments_empty": "Brak płatności",
+      "column": {
+        "date": "Data",
+        "amount": "Płatność",
+        "interest": "Odsetki",
+        "principal": "Kapitał"
+      },
+      "mark_paid_off": "Oznacz jako spłacony",
+      "paid_off_confirm": {
+        "title": "Oznaczyć jako spłacony?",
+        "question": "Saldo zostanie ustawione na 0 od dziś. Twoje płatności pozostają bez zmian."
+      },
+      "delete_confirm": {
+        "title": "Usunąć ten dług?",
+        "question": "Dług zniknie z Twoich budżetów. Twoje płatności nie zostaną zmienione."
+      },
+      "removal_confirm": {
+        "title": "Usunąć zaplanowane kwoty i komentarze?",
+        "action": "Usuń dług"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {

@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Deudas",
+    "settings": {
+      "header": "Deudas",
+      "info": "Préstamos y créditos sin necesidad de una cuenta. Los gastos de la categoría de la deuda se descuentan de lo que debes, y los presupuestos los muestran en una sección Deudas.",
+      "empty": "Aún no hay deudas",
+      "create": "Añadir deuda"
+    },
+    "list": {
+      "payments_left": "Queda {count} pago | Quedan {count} pagos",
+      "paid_off": "Pagada"
+    },
+    "form": {
+      "header": "Deuda",
+      "name": {
+        "label": "Nombre"
+      },
+      "currency": {
+        "label": "Moneda"
+      },
+      "category": {
+        "label": "Categoría"
+      },
+      "payee": {
+        "label": "Beneficiario (opcional)"
+      },
+      "tag": {
+        "label": "Etiqueta (opcional)"
+      },
+      "start_date": {
+        "label": "Fecha de inicio (opcional)",
+        "hint": "Los pagos anteriores no cuentan",
+        "none": "Sin fecha",
+        "clear": "Quitar la fecha de inicio"
+      },
+      "balance": {
+        "label": "Saldo actual"
+      },
+      "payment": {
+        "label": "Pago"
+      },
+      "schedule": {
+        "label": "Se repite"
+      },
+      "last_payment_date": {
+        "label": "Fecha del último pago",
+        "hint": "Cuándo termina la deuda",
+        "choose": "Elegir fecha"
+      },
+      "never_pays_off": "Este pago no cubre los intereses, así que la deuda nunca se salda."
+    },
+    "details": {
+      "header": "Deuda",
+      "current_balance": "Saldo actual",
+      "payments_left": "Pagos restantes",
+      "money_left": "Falta por pagar",
+      "overpayment_left": "Sobrecoste restante",
+      "overpaid_so_far": "Sobrecoste pagado hasta ahora",
+      "payoff_date": "Fecha de liquidación",
+      "snapshots": "Historial de condiciones",
+      "snapshot_terms": "{payment} · {schedule} · hasta {date}",
+      "payments": "Pagos",
+      "payments_empty": "Aún no hay pagos",
+      "column": {
+        "date": "Fecha",
+        "amount": "Pago",
+        "interest": "Intereses",
+        "principal": "Capital"
+      },
+      "mark_paid_off": "Marcar como pagada",
+      "paid_off_confirm": {
+        "title": "¿Marcar como pagada?",
+        "question": "El saldo pasa a 0 desde hoy. Tus pagos se quedan como están."
+      },
+      "delete_confirm": {
+        "title": "¿Eliminar esta deuda?",
+        "question": "La deuda desaparece de tus presupuestos. Tus pagos no se tocan."
+      },
+      "removal_confirm": {
+        "title": "¿Eliminar importes planificados y comentarios?",
+        "action": "Eliminar deuda"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {

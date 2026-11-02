@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { persist } from 'zustand/middleware'
 import type { AccountDto } from '@/api/dto/account'
+import type { DebtDto } from '@/api/dto/debt'
 import type { TransactionImportLinkDto } from '@/api/dto/imports'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionPrefill, TransactionType } from '@/api/dto/transaction'
@@ -45,6 +46,16 @@ export interface OpenRecurringParams {
   accountId?: Id
 }
 
+export interface OpenDebtParams {
+  /** edit this debt; absent = a new one */
+  debt?: DebtDto
+  /** prefills a new debt (the budget row's "Track as debt") */
+  categoryId?: Id
+  currencyId?: Id
+  /** the debt is created from a budget row, which analytics counts as a conversion */
+  fromBudget?: boolean
+}
+
 export interface RulePromptParams {
   link: TransactionImportLinkDto
   diff: RuleDiff
@@ -60,6 +71,12 @@ interface UiState {
   recurringModal: OpenRecurringParams | null
   openRecurringModal: (params: OpenRecurringParams) => void
   closeRecurringModal: () => void
+  debtModal: OpenDebtParams | null
+  openDebtModal: (params: OpenDebtParams) => void
+  closeDebtModal: () => void
+  debtDetailsId: Id | null
+  openDebtDetails: (id: Id) => void
+  closeDebtDetails: () => void
   switchAccountPrompt: Id | null
   setSwitchAccountPrompt: (id: Id | null) => void
   rulePrompt: RulePromptParams | null
@@ -82,6 +99,12 @@ export const useUiStore = create<UiState>()((set) => ({
   recurringModal: null,
   openRecurringModal: (params) => set({ recurringModal: params }),
   closeRecurringModal: () => set({ recurringModal: null }),
+  debtModal: null,
+  openDebtModal: (params) => set({ debtModal: params }),
+  closeDebtModal: () => set({ debtModal: null }),
+  debtDetailsId: null,
+  openDebtDetails: (id) => set({ debtDetailsId: id }),
+  closeDebtDetails: () => set({ debtDetailsId: null }),
   switchAccountPrompt: null,
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),
   rulePrompt: null,

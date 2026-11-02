@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Schulden",
+    "settings": {
+      "header": "Schulden",
+      "info": "Leningen en krediet zonder rekening bijhouden. Uitgaven in de categorie van de schuld tellen mee voor wat u nog moet betalen, en budgetten tonen ze in een sectie Schulden.",
+      "empty": "Nog geen schulden",
+      "create": "Schuld toevoegen"
+    },
+    "list": {
+      "payments_left": "{count} betaling resterend | {count} betalingen resterend",
+      "paid_off": "Afbetaald"
+    },
+    "form": {
+      "header": "Schuld",
+      "name": {
+        "label": "Naam"
+      },
+      "currency": {
+        "label": "Valuta"
+      },
+      "category": {
+        "label": "Categorie"
+      },
+      "payee": {
+        "label": "Begunstigde (optioneel)"
+      },
+      "tag": {
+        "label": "Tag (optioneel)"
+      },
+      "start_date": {
+        "label": "Startdatum (optioneel)",
+        "hint": "Eerdere betalingen tellen niet mee",
+        "none": "Geen datum",
+        "clear": "Startdatum wissen"
+      },
+      "balance": {
+        "label": "Huidig saldo"
+      },
+      "payment": {
+        "label": "Betaling"
+      },
+      "schedule": {
+        "label": "Herhaling"
+      },
+      "last_payment_date": {
+        "label": "Datum van de laatste betaling",
+        "hint": "Wanneer de schuld eindigt",
+        "choose": "Kies een datum"
+      },
+      "never_pays_off": "Deze betaling dekt de rente niet, dus de schuld wordt nooit afbetaald."
+    },
+    "details": {
+      "header": "Schuld",
+      "current_balance": "Huidig saldo",
+      "payments_left": "Resterende betalingen",
+      "money_left": "Nog te betalen",
+      "overpayment_left": "Resterende meerkosten",
+      "overpaid_so_far": "Tot nu toe betaalde meerkosten",
+      "payoff_date": "Einddatum van de schuld",
+      "snapshots": "Geschiedenis van de voorwaarden",
+      "snapshot_terms": "{payment} · {schedule} · tot {date}",
+      "payments": "Betalingen",
+      "payments_empty": "Nog geen betalingen",
+      "column": {
+        "date": "Datum",
+        "amount": "Betaling",
+        "interest": "Rente",
+        "principal": "Aflossing"
+      },
+      "mark_paid_off": "Markeren als afbetaald",
+      "paid_off_confirm": {
+        "title": "Markeren als afbetaald?",
+        "question": "Het saldo wordt vanaf vandaag op 0 gezet. Uw betalingen blijven ongewijzigd."
+      },
+      "delete_confirm": {
+        "title": "Deze schuld verwijderen?",
+        "question": "De schuld verdwijnt uit uw budgetten. Uw betalingen blijven ongemoeid."
+      },
+      "removal_confirm": {
+        "title": "Geplande bedragen en opmerkingen verwijderen?",
+        "action": "Schuld verwijderen"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {

@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Schulden",
+    "settings": {
+      "header": "Schulden",
+      "info": "Kredite und Schulden ohne eigenes Konto verfolgen. Ausgaben in der Kategorie der Schuld werden auf den offenen Betrag angerechnet, und die Budgets zeigen sie im Bereich Schulden.",
+      "empty": "Noch keine Schulden",
+      "create": "Schuld hinzufügen"
+    },
+    "list": {
+      "payments_left": "{count} Zahlung übrig | {count} Zahlungen übrig",
+      "paid_off": "Abbezahlt"
+    },
+    "form": {
+      "header": "Schuld",
+      "name": {
+        "label": "Name"
+      },
+      "currency": {
+        "label": "Währung"
+      },
+      "category": {
+        "label": "Kategorie"
+      },
+      "payee": {
+        "label": "Zahlungsempfänger (optional)"
+      },
+      "tag": {
+        "label": "Tag (optional)"
+      },
+      "start_date": {
+        "label": "Startdatum (optional)",
+        "hint": "Frühere Zahlungen zählen nicht",
+        "none": "Kein Datum",
+        "clear": "Startdatum entfernen"
+      },
+      "balance": {
+        "label": "Aktueller Saldo"
+      },
+      "payment": {
+        "label": "Rate"
+      },
+      "schedule": {
+        "label": "Wiederholung"
+      },
+      "last_payment_date": {
+        "label": "Datum der letzten Zahlung",
+        "hint": "Wann die Schuld endet",
+        "choose": "Datum wählen"
+      },
+      "never_pays_off": "Diese Rate deckt die Zinsen nicht, daher wird die Schuld nie abbezahlt."
+    },
+    "details": {
+      "header": "Schuld",
+      "current_balance": "Aktueller Saldo",
+      "payments_left": "Verbleibende Zahlungen",
+      "money_left": "Noch zu zahlen",
+      "overpayment_left": "Verbleibende Mehrkosten",
+      "overpaid_so_far": "Bisherige Mehrkosten",
+      "payoff_date": "Voraussichtlich abbezahlt am",
+      "snapshots": "Verlauf der Konditionen",
+      "snapshot_terms": "{payment} · {schedule} · bis {date}",
+      "payments": "Zahlungen",
+      "payments_empty": "Noch keine Zahlungen",
+      "column": {
+        "date": "Datum",
+        "amount": "Zahlung",
+        "interest": "Zinsen",
+        "principal": "Tilgung"
+      },
+      "mark_paid_off": "Als abbezahlt markieren",
+      "paid_off_confirm": {
+        "title": "Als abbezahlt markieren?",
+        "question": "Der Saldo wird ab heute auf 0 gesetzt. Ihre Zahlungen bleiben unverändert."
+      },
+      "delete_confirm": {
+        "title": "Diese Schuld löschen?",
+        "question": "Die Schuld verschwindet aus Ihren Budgets. Ihre Zahlungen bleiben unberührt."
+      },
+      "removal_confirm": {
+        "title": "Planbeträge und Kommentare löschen?",
+        "action": "Schuld löschen"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {

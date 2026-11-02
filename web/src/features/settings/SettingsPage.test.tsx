@@ -47,6 +47,7 @@ function renderPage(retry: boolean | number = false) {
       { path: '/settings', element: <><SettingsPage /><TransactionsMounted /><Toaster /></> },
       { path: '/settings/profile', element: <div>PROFILE PAGE</div> },
       { path: '/settings/budgets', element: <div>BUDGETS PAGE</div> },
+      { path: '/settings/debts', element: <div>DEBTS PAGE</div> },
       { path: '/settings/data', element: <div>DATA PAGE</div> },
       { path: '/settings/apple-wallet', element: <div>WALLET PAGE</div> },
       { path: '/logout', element: <div>LOGOUT ROUTE</div> },
@@ -378,4 +379,17 @@ describe('Clear cache and reload', () => {
     await waitFor(() => expect(queryClient.getQueryState(queryKeys.transactions)?.fetchStatus).toBe('paused'))
     await waitFor(() => expect(row).toBeEnabled())
   })
+})
+
+it('lists Debts right after Categories in the classification group', async () => {
+  const user = userEvent.setup()
+  mockViewport(false)
+  renderPage()
+
+  const debts = await screen.findByRole('link', { name: /Debts/ })
+  const links = screen.getAllByRole('link')
+  expect(links[links.indexOf(debts) - 1]).toBe(screen.getByRole('link', { name: /Categories/ }))
+
+  await user.click(debts)
+  expect(await screen.findByText('DEBTS PAGE')).toBeInTheDocument()
 })

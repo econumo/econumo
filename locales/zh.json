@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "债务",
+    "settings": {
+      "header": "债务",
+      "info": "无需账户即可跟踪贷款和信用。该债务分类下的支出会冲减你的欠款，预算中会在“债务”部分显示。",
+      "empty": "暂无债务",
+      "create": "添加债务"
+    },
+    "list": {
+      "payments_left": "还剩 {count} 笔还款",
+      "paid_off": "已还清"
+    },
+    "form": {
+      "header": "债务",
+      "name": {
+        "label": "名称"
+      },
+      "currency": {
+        "label": "币种"
+      },
+      "category": {
+        "label": "分类"
+      },
+      "payee": {
+        "label": "收款人（可选）"
+      },
+      "tag": {
+        "label": "标签（可选）"
+      },
+      "start_date": {
+        "label": "开始日期（可选）",
+        "hint": "此前的还款不计入",
+        "none": "无日期",
+        "clear": "清除开始日期"
+      },
+      "balance": {
+        "label": "当前余额"
+      },
+      "payment": {
+        "label": "还款额"
+      },
+      "schedule": {
+        "label": "重复周期"
+      },
+      "last_payment_date": {
+        "label": "最后还款日",
+        "hint": "债务何时结束",
+        "choose": "选择日期"
+      },
+      "never_pays_off": "这笔还款不足以支付利息，因此债务永远无法还清。"
+    },
+    "details": {
+      "header": "债务",
+      "current_balance": "当前余额",
+      "payments_left": "剩余还款次数",
+      "money_left": "待还金额",
+      "overpayment_left": "剩余利息与费用",
+      "overpaid_so_far": "已付利息与费用",
+      "payoff_date": "还清日期",
+      "snapshots": "条款历史",
+      "snapshot_terms": "{payment} · {schedule} · 至 {date}",
+      "payments": "还款记录",
+      "payments_empty": "暂无还款",
+      "column": {
+        "date": "日期",
+        "amount": "还款额",
+        "interest": "利息",
+        "principal": "本金"
+      },
+      "mark_paid_off": "标记为已还清",
+      "paid_off_confirm": {
+        "title": "标记为已还清？",
+        "question": "从今天起余额将设为 0。你的还款记录保持不变。"
+      },
+      "delete_confirm": {
+        "title": "删除此债务？",
+        "question": "该债务将从你的预算中移除。你的还款记录不受影响。"
+      },
+      "removal_confirm": {
+        "title": "删除计划金额和评论？",
+        "action": "删除债务"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {

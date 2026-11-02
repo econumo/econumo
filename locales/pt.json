@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Dívidas",
+    "settings": {
+      "header": "Dívidas",
+      "info": "Empréstimos e créditos acompanhados sem uma conta. As despesas da categoria da dívida abatem o que deve, e os orçamentos mostram-nas numa secção Dívidas.",
+      "empty": "Ainda não existem dívidas",
+      "create": "Adicionar dívida"
+    },
+    "list": {
+      "payments_left": "Falta {count} pagamento | Faltam {count} pagamentos",
+      "paid_off": "Liquidada"
+    },
+    "form": {
+      "header": "Dívida",
+      "name": {
+        "label": "Nome"
+      },
+      "currency": {
+        "label": "Moeda"
+      },
+      "category": {
+        "label": "Categoria"
+      },
+      "payee": {
+        "label": "Beneficiário (opcional)"
+      },
+      "tag": {
+        "label": "Etiqueta (opcional)"
+      },
+      "start_date": {
+        "label": "Data de início (opcional)",
+        "hint": "Os pagamentos anteriores não contam",
+        "none": "Sem data",
+        "clear": "Limpar a data de início"
+      },
+      "balance": {
+        "label": "Saldo atual"
+      },
+      "payment": {
+        "label": "Pagamento"
+      },
+      "schedule": {
+        "label": "Repetição"
+      },
+      "last_payment_date": {
+        "label": "Data do último pagamento",
+        "hint": "Quando termina a dívida",
+        "choose": "Escolher uma data"
+      },
+      "never_pays_off": "Este pagamento não cobre os juros, por isso a dívida nunca fica liquidada."
+    },
+    "details": {
+      "header": "Dívida",
+      "current_balance": "Saldo atual",
+      "payments_left": "Pagamentos em falta",
+      "money_left": "Falta pagar",
+      "overpayment_left": "Custo adicional em falta",
+      "overpaid_so_far": "Custo adicional já pago",
+      "payoff_date": "Data de liquidação",
+      "snapshots": "Histórico das condições",
+      "snapshot_terms": "{payment} · {schedule} · até {date}",
+      "payments": "Pagamentos",
+      "payments_empty": "Ainda não existem pagamentos",
+      "column": {
+        "date": "Data",
+        "amount": "Pagamento",
+        "interest": "Juros",
+        "principal": "Capital"
+      },
+      "mark_paid_off": "Marcar como liquidada",
+      "paid_off_confirm": {
+        "title": "Marcar como liquidada?",
+        "question": "O saldo passa a 0 a partir de hoje. Os seus pagamentos ficam como estão."
+      },
+      "delete_confirm": {
+        "title": "Eliminar esta dívida?",
+        "question": "A dívida sai dos seus orçamentos. Os seus pagamentos não são alterados."
+      },
+      "removal_confirm": {
+        "title": "Eliminar montantes planeados e comentários?",
+        "action": "Eliminar dívida"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {

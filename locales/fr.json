@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Dettes",
+    "settings": {
+      "header": "Dettes",
+      "info": "Suivez prêts et crédits sans compte. Les dépenses de la catégorie de la dette sont déduites de ce que vous devez, et les budgets les affichent dans une section Dettes.",
+      "empty": "Aucune dette pour l’instant",
+      "create": "Ajouter une dette"
+    },
+    "list": {
+      "payments_left": "{count} paiement restant | {count} paiements restants",
+      "paid_off": "Remboursée"
+    },
+    "form": {
+      "header": "Dette",
+      "name": {
+        "label": "Nom"
+      },
+      "currency": {
+        "label": "Devise"
+      },
+      "category": {
+        "label": "Catégorie"
+      },
+      "payee": {
+        "label": "Bénéficiaire (facultatif)"
+      },
+      "tag": {
+        "label": "Tag (facultatif)"
+      },
+      "start_date": {
+        "label": "Date de début (facultatif)",
+        "hint": "Les paiements antérieurs ne comptent pas",
+        "none": "Aucune date",
+        "clear": "Effacer la date de début"
+      },
+      "balance": {
+        "label": "Solde actuel"
+      },
+      "payment": {
+        "label": "Paiement"
+      },
+      "schedule": {
+        "label": "Répétition"
+      },
+      "last_payment_date": {
+        "label": "Date du dernier paiement",
+        "hint": "Quand la dette prend fin",
+        "choose": "Choisir une date"
+      },
+      "never_pays_off": "Ce paiement ne couvre pas les intérêts : la dette ne sera donc jamais remboursée."
+    },
+    "details": {
+      "header": "Dette",
+      "current_balance": "Solde actuel",
+      "payments_left": "Paiements restants",
+      "money_left": "Reste à payer",
+      "overpayment_left": "Surcoût restant",
+      "overpaid_so_far": "Surcoût déjà payé",
+      "payoff_date": "Date de remboursement",
+      "snapshots": "Historique des conditions",
+      "snapshot_terms": "{payment} · {schedule} · jusqu’au {date}",
+      "payments": "Paiements",
+      "payments_empty": "Aucun paiement pour l’instant",
+      "column": {
+        "date": "Date",
+        "amount": "Paiement",
+        "interest": "Intérêts",
+        "principal": "Capital"
+      },
+      "mark_paid_off": "Marquer comme remboursée",
+      "paid_off_confirm": {
+        "title": "Marquer comme remboursée ?",
+        "question": "Le solde passe à 0 à compter d’aujourd’hui. Vos paiements restent inchangés."
+      },
+      "delete_confirm": {
+        "title": "Supprimer cette dette ?",
+        "question": "La dette disparaît de vos budgets. Vos paiements ne sont pas modifiés."
+      },
+      "removal_confirm": {
+        "title": "Supprimer les montants prévus et les commentaires ?",
+        "action": "Supprimer la dette"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
