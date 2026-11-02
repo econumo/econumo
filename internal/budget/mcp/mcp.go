@@ -163,7 +163,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 		}
 
 		sdk.AddTool(s, &sdk.Tool{Name: "get_budget",
-			Description: "Full monthly budget state: folders, envelopes, categories, tags, limits, spent and available amounts."},
+			Description: "Full monthly budget state: folders, envelopes, categories, tags, limits, spent and available amounts. Savings and debt rows are listed apart (structure.savings, structure.debts); a loan payment a debt matches counts on the debt row, not on its category or tag, and is still an expense."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in getBudgetInput) (*sdk.CallToolResult, model.GetBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "get_budget")
 				userID, err := webmcp.UserID(ctx)
@@ -351,7 +351,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_limit",
-			Description: "Set or clear an envelope/category/tag's limit for one month. Use get_budget for element_id. Savings rows (structure.savings) take limits too: element_id is the savings account id."},
+			Description: "Set or clear an envelope/category/tag's limit for one month. Use get_budget for element_id. Savings rows (structure.savings) take limits too: element_id is the savings account id. So do debt rows (structure.debts), in the months the debt runs: element_id is the debt id."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in setLimitInput) (*sdk.CallToolResult, setLimitResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_limit")
 				userID, err := webmcp.UserID(ctx)

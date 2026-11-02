@@ -20,7 +20,8 @@ func upcomingShown(ctx context.Context, periodEnd, now time.Time) bool {
 func (s *Service) addUpcoming(ctx context.Context, b *budgetAggregate, now time.Time, pr ReadModel, f filters, result *model.BudgetResult) error {
 	sp := *s
 	sp.read = pr
-	up, _, err := sp.buildBudget(ctx, b, f, now)
+	sp.debts = nil // debt rows take their upcoming money from the debt's schedule
+	up, err := sp.buildBudget(ctx, b, f, now)
 	if err != nil {
 		return err
 	}
@@ -215,7 +216,8 @@ func (s *Service) addPlanUpcoming(ctx context.Context, b *budgetAggregate, f fil
 	}
 	sp := *s
 	sp.read = pr
-	up, _, err := sp.buildBudgetPlan(ctx, b, f, months)
+	sp.debts = nil // debt rows take their upcoming money from the debt's schedule
+	up, err := sp.buildBudgetPlan(ctx, b, f, months)
 	if err != nil {
 		return err
 	}

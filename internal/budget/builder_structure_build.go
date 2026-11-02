@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/sortkey"
@@ -46,16 +47,16 @@ type structChild struct {
 // debtPaid is what a debt's matched payments on the budget's everyday
 // accounts add up to: paid in the period and paidBefore over the months from
 // the budget's start to the period, both in the debt's currency, and
-// budgetPaid, the period's in the budget's currency. Expense totals stay what
-// they were only when these are added back to the element rows' spent.
+// budgetPaid, the period's in the budget's currency: the expense totals add
+// it to the element rows' spent.
 type debtPaid struct {
 	paid, budgetPaid, paidBefore vo.DecimalNumber
 }
 
 // buildStructure walks envelopes -> tags -> standalone categories, accumulates a
 // toConvert map, runs one bulkConvert, then emits the pruned, sorted parent
-// elements, and returns every debt's paid figures keyed by debt id.
-func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filters, limits map[string]budgetedAmount, spending map[string]*elementSpending) (model.StructureResult, map[string]debtPaid, error) {
+// elements and the savings and debt rows.
+func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filters, limits map[string]budgetedAmount, spending map[string]*elementSpending) (model.StructureResult, error) {
 	options := s.elementOptions(b)
 
 	// Income-sided envelopes and folders exist only in the plan view; the
@@ -95,7 +96,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	// expense-only, so envelope children reference it.
 	envelopeCats, err := s.envelopeCategories(ctx, b)
 	if err != nil {
-		return model.StructureResult{}, nil, err
+		return model.StructureResult{}, err
 	}
 
 	// --- Envelopes ---
@@ -197,7 +198,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	// elements loop below reads) ---
 	labelSpending, err := s.buildLabelSpending(ctx, f)
 	if err != nil {
-		return model.StructureResult{}, nil, err
+		return model.StructureResult{}, err
 	}
 	// Labels convert into the BUDGET currency only: a label has no per-element
 	// currency option because it has no element.
@@ -281,18 +282,18 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	}
 
 	if err := addDebtPaidConvert(toConvert, f.debtViews, spending, budgetCurrencyID); err != nil {
-		return model.StructureResult{}, nil, err
+		return model.StructureResult{}, err
 	}
 
 	savings, err := s.addMonthlySavings(ctx, b, f, options, toConvert)
 	if err != nil {
-		return model.StructureResult{}, nil, err
+		return model.StructureResult{}, err
 	}
 
 	// One bulk conversion for everything.
 	amounts, err := s.convertor.BulkConvert(ctx, f.periodStart, f.periodEnd, toConvert)
 	if err != nil {
-		return model.StructureResult{}, nil, err
+		return model.StructureResult{}, err
 	}
 	get := func(key string) vo.DecimalNumber {
 		if v, ok := amounts[key]; ok {
@@ -400,16 +401,24 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		func(l model.LabelSpendResult) string { return f.labels[l.Id].SortKey },
 		func(l model.LabelSpendResult) string { return l.Id })
 
-	debts := make(map[string]debtPaid, len(f.debtViews))
+	paid := make(map[string]debtPaid, len(f.debtViews))
 	for _, d := range f.debtViews {
 		index := elementKey(d.ID, model.ElementDebt)
-		debts[d.ID] = debtPaid{
+		paid[d.ID] = debtPaid{
 			paid:       get(fmt.Sprintf("spent_%s", index)),
 			budgetPaid: get(fmt.Sprintf("spent-budget_%s", index)),
 			paidBefore: get(fmt.Sprintf("spent-before_%s", index)),
 		}
 	}
-	return model.StructureResult{Folders: folders, Elements: result, Labels: labels, Savings: emitMonthlySavings(savings, limits, get)}, debts, nil
+	timelines, err := s.debtTimelines(ctx, b, f, []time.Time{f.periodStart})
+	if err != nil {
+		return model.StructureResult{}, err
+	}
+	return model.StructureResult{
+		Folders: folders, Elements: result, Labels: labels,
+		Savings: emitMonthlySavings(savings, limits, get),
+		Debts:   emitMonthlyDebts(debtRows(f, options), f.periodStart, limits, paid, timelines),
+	}, nil
 }
 
 // addDebtPaidConvert files each debt's attributed spending under the debt's

@@ -96,32 +96,31 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 	if err != nil {
 		return model.BudgetResult{}, err
 	}
-	result, _, err := s.asOfTomorrow(ctx).buildBudget(ctx, b, f, now)
-	return result, err
+	return s.asOfTomorrow(ctx).buildBudget(ctx, b, f, now)
 }
 
 // buildBudget is BuildBudget over filters the caller already built for the
-// period. It also returns what each debt's matched payments add up to.
-func (s *Service) buildBudget(ctx context.Context, b *budgetAggregate, f filters, now time.Time) (model.BudgetResult, map[string]debtPaid, error) {
+// period.
+func (s *Service) buildBudget(ctx context.Context, b *budgetAggregate, f filters, now time.Time) (model.BudgetResult, error) {
 	meta, err := s.buildMeta(ctx, b)
 	if err != nil {
-		return model.BudgetResult{}, nil, err
+		return model.BudgetResult{}, err
 	}
 	balances, rates, err := s.buildFinancialSummary(ctx, b.budget.CurrencyID, f, now)
 	if err != nil {
-		return model.BudgetResult{}, nil, err
+		return model.BudgetResult{}, err
 	}
 	limits, err := s.buildElementsLimits(ctx, b, f)
 	if err != nil {
-		return model.BudgetResult{}, nil, err
+		return model.BudgetResult{}, err
 	}
 	spending, err := s.buildElementsSpending(ctx, b, f)
 	if err != nil {
-		return model.BudgetResult{}, nil, err
+		return model.BudgetResult{}, err
 	}
-	structure, debts, err := s.buildStructure(ctx, b, f, limits, spending)
+	structure, err := s.buildStructure(ctx, b, f, limits, spending)
 	if err != nil {
-		return model.BudgetResult{}, nil, err
+		return model.BudgetResult{}, err
 	}
 
 	result := model.BudgetResult{
@@ -136,7 +135,7 @@ func (s *Service) buildBudget(ctx context.Context, b *budgetAggregate, f filters
 		Structure:     structure,
 	}
 	mergeBudgetUpcoming(&result, model.BudgetResult{})
-	return result, debts, nil
+	return result, nil
 }
 
 // buildMeta builds the access list plus a synthetic owner entry.

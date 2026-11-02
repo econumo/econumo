@@ -126,6 +126,7 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 // @Param    transfers     query boolean false "Transfers across the budget boundary (mutually exclusive with every other selector)"
 // @Param    income        query boolean false "Income of categoryId or envelopeId (exactly one), or with uncategorized the income Uncategorized row; composes with nothing else"
 // @Param    accountId     query string  false "Every transaction on this account; currently only the budget's savings accounts are accepted (composes with nothing)"
+// @Param    debtId        query string  false "The payments a debt row of this budget counts, from its everyday accounts (composes with nothing)"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetTransactionListResult}
 // @Failure  401 {object} apidoc.JsonResponseUnauthorized
 // @Failure  500 {object} apidoc.JsonResponseException
@@ -148,6 +149,7 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 		Transfers:     boolQuery(q.Get("transfers")),
 		Income:        boolQuery(q.Get("income")),
 		AccountId:     optQuery(q.Get("accountId")),
+		DebtId:        optQuery(q.Get("debtId")),
 	}
 	res, err := h.svc.GetTransactionList(r.Context(), userID, req)
 	if err != nil {

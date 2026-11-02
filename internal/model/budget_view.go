@@ -122,6 +122,9 @@ type BudgetTransactionRow struct {
 	// Type ("expense", "income" or "transfer") is set only on rows from
 	// BudgetTransactionsIncome and BudgetTransactionsOnAccount.
 	Type string
+	// DebtID is the debt the stored payment split names, read only by
+	// BudgetTransactionsByCategories, ByTag and ByDebt.
+	DebtID *string
 }
 
 // LabelSpendingRow is one (label, category, currency) spending total in a

@@ -23,18 +23,17 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
-	result, _, err := s.asOfTomorrow(ctx).buildBudgetPlan(ctx, b, f, months)
-	return result, err
+	return s.asOfTomorrow(ctx).buildBudgetPlan(ctx, b, f, months)
 }
 
 // buildBudgetPlan is BuildBudgetPlan over filters the caller already built
-// for the window. It also returns each debt's matched payments per month.
-func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f filters, months int) (model.BudgetPlanResult, map[string][]vo.DecimalNumber, error) {
+// for the window.
+func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f filters, months int) (model.BudgetPlanResult, error) {
 	from, windowEnd := f.periodStart, f.periodEnd
 
 	meta, err := s.buildMeta(ctx, b)
 	if err != nil {
-		return model.BudgetPlanResult{}, nil, err
+		return model.BudgetPlanResult{}, err
 	}
 
 	monthsList := make([]time.Time, months)
@@ -47,39 +46,39 @@ func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f fil
 
 	opening, err := s.buildOpeningBalances(ctx, b.budget.CurrencyID, f, from)
 	if err != nil {
-		return model.BudgetPlanResult{}, nil, err
+		return model.BudgetPlanResult{}, err
 	}
 
 	rates := make([]model.PlanMonthRatesResult, 0, months)
 	for i, m := range monthsList {
 		monthRates, rerr := s.buildAverageRates(ctx, m, m.AddDate(0, 1, 0))
 		if rerr != nil {
-			return model.BudgetPlanResult{}, nil, rerr
+			return model.BudgetPlanResult{}, rerr
 		}
 		rates = append(rates, model.PlanMonthRatesResult{Period: monthStrs[i], Rates: monthRates})
 	}
 
 	transfers, err := s.buildPlanTransfers(ctx, b.budget.CurrencyID, f, monthStrs, from, windowEnd)
 	if err != nil {
-		return model.BudgetPlanResult{}, nil, err
+		return model.BudgetPlanResult{}, err
 	}
 
-	structure, debts, err := s.buildPlanStructure(ctx, b, f, monthsList)
+	structure, err := s.buildPlanStructure(ctx, b, f, monthsList)
 	if err != nil {
-		return model.BudgetPlanResult{}, nil, err
+		return model.BudgetPlanResult{}, err
 	}
 
 	savingsOpening, err := s.buildSavingsOpeningBalances(ctx, b.budget.CurrencyID, f, from)
 	if err != nil {
-		return model.BudgetPlanResult{}, nil, err
+		return model.BudgetPlanResult{}, err
 	}
 	savingsFlows, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, from, windowEnd, s.read.AccountsNetByMonth)
 	if err != nil {
-		return model.BudgetPlanResult{}, nil, err
+		return model.BudgetPlanResult{}, err
 	}
 	savingsIncomeExpense, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, from, windowEnd, s.read.AccountsIncomeExpenseByMonth)
 	if err != nil {
-		return model.BudgetPlanResult{}, nil, err
+		return model.BudgetPlanResult{}, err
 	}
 
 	return model.BudgetPlanResult{
@@ -92,7 +91,7 @@ func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f fil
 		SavingsFlows:           savingsFlows,
 		SavingsIncomeExpense:   savingsIncomeExpense,
 		Structure:              structure,
-	}, debts, nil
+	}, nil
 }
 
 // buildPlanTransfers files TransfersByMonth's rows under their window month,
@@ -215,9 +214,8 @@ func convertedGetter(converted map[string]vo.DecimalNumber) func(string) vo.Deci
 	}
 }
 
-// buildPlanStructure emits all folders plus every plan row, and returns each
-// debt's matched payments per month in the debt's currency.
-func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f filters, monthsList []time.Time) (model.PlanStructureResult, map[string][]vo.DecimalNumber, error) {
+// buildPlanStructure emits all folders plus every plan row.
+func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f filters, monthsList []time.Time) (model.PlanStructureResult, error) {
 	nMonths := len(monthsList)
 	monthIdx := map[string]int{}
 	for i, m := range monthsList {
@@ -237,21 +235,21 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	for idStr := range f.categories {
 		id, err := vo.ParseId(idStr)
 		if err != nil {
-			return model.PlanStructureResult{}, nil, err
+			return model.PlanStructureResult{}, err
 		}
 		expenseCategoryIDs = append(expenseCategoryIDs, id)
 	}
 	spendRows, err := s.read.SpendingByMonth(ctx, expenseCategoryIDs, f.everydayAccountIDs, monthsList[0], windowEnd)
 	if err != nil {
-		return model.PlanStructureResult{}, nil, err
+		return model.PlanStructureResult{}, err
 	}
 	limitRows, err := s.read.LimitsByMonth(ctx, b.budget.ID, monthsList[0], windowEnd)
 	if err != nil {
-		return model.PlanStructureResult{}, nil, err
+		return model.PlanStructureResult{}, err
 	}
 	incomeRows, err := s.read.IncomeByMonth(ctx, f.everydayAccountIDs, monthsList[0], windowEnd)
 	if err != nil {
-		return model.PlanStructureResult{}, nil, err
+		return model.PlanStructureResult{}, err
 	}
 
 	// planned lookup: elementKey -> per-month amount strings.
@@ -288,7 +286,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	// envelope membership + stored envelope side (default expense when no row).
 	envelopeCats, err := s.envelopeCategories(ctx, b)
 	if err != nil {
-		return model.PlanStructureResult{}, nil, err
+		return model.PlanStructureResult{}, err
 	}
 	envelopeType := map[string]model.ElementType{}
 	for _, e := range b.elements {
@@ -462,12 +460,12 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 		cid, perr := vo.ParseId(row.CurrencyID)
 		if perr != nil {
-			return model.PlanStructureResult{}, nil, perr
+			return model.PlanStructureResult{}, perr
 		}
 		amount := vo.NewDecimal(row.Amount)
 		if d, ok := f.debtOf(row.DebtID, row.CategoryID, row.TagID); ok {
 			if err := addDebtActual(toConvert, monthsList, i, d, amount, cid); err != nil {
-				return model.PlanStructureResult{}, nil, err
+				return model.PlanStructureResult{}, err
 			}
 			continue
 		}
@@ -511,7 +509,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 		cid, perr := vo.ParseId(row.CurrencyID)
 		if perr != nil {
-			return model.PlanStructureResult{}, nil, perr
+			return model.PlanStructureResult{}, perr
 		}
 		amount := vo.NewDecimal(row.Amount)
 		// Rows with no category — or a category that is not a participant
@@ -546,7 +544,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 
 	savingsRows, savingsHasActual, err := s.addPlanSavings(ctx, f, options, monthsList, monthIdx, toConvert)
 	if err != nil {
-		return model.PlanStructureResult{}, nil, err
+		return model.PlanStructureResult{}, err
 	}
 
 	// BulkConvert's top-level (periodStart, periodEnd) doubles as month 0's rate
@@ -560,13 +558,20 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	// what every other month already gets explicitly.
 	converted, err := s.convertor.BulkConvert(ctx, monthsList[0], monthsList[0].AddDate(0, 1, 0), toConvert)
 	if err != nil {
-		return model.PlanStructureResult{}, nil, err
+		return model.PlanStructureResult{}, err
 	}
 
-	result := s.emitPlanElements(elements, converted, nMonths)
-	savings := emitPlanSavings(savingsRows, plannedFor, savingsHasActual, convertedGetter(converted), nMonths)
-	return model.PlanStructureResult{Folders: folders, Elements: result, Savings: savings},
-		debtActuals(f.debtViews, convertedGetter(converted), nMonths), nil
+	timelines, err := s.debtTimelines(ctx, b, f, monthsList)
+	if err != nil {
+		return model.PlanStructureResult{}, err
+	}
+	get := convertedGetter(converted)
+	return model.PlanStructureResult{
+		Folders:  folders,
+		Elements: s.emitPlanElements(elements, converted, nMonths),
+		Savings:  emitPlanSavings(savingsRows, plannedFor, savingsHasActual, get, nMonths),
+		Debts:    emitPlanDebts(debtRows(f, options), monthsList, plannedFor, get, timelines),
+	}, nil
 }
 
 // addDebtActual files a debt's matched payments of month i under the debt's
@@ -582,21 +587,6 @@ func addDebtActual(toConvert map[string][]model.ConvertItem, monthsList []time.T
 		From: currencyID, To: to, Amount: amount,
 	})
 	return nil
-}
-
-// debtActuals reads every debt's per-month payments back from the
-// conversion, zero for a month without any.
-func debtActuals(views []model.DebtView, get func(string) vo.DecimalNumber, nMonths int) map[string][]vo.DecimalNumber {
-	out := make(map[string][]vo.DecimalNumber, len(views))
-	for _, d := range views {
-		index := elementKey(d.ID, model.ElementDebt)
-		cells := make([]vo.DecimalNumber, nMonths)
-		for i := range cells {
-			cells[i] = get(planKey(i, index))
-		}
-		out[d.ID] = cells
-	}
-	return out
 }
 
 // emitPlanElements prunes, renders and positions the accumulated rows.

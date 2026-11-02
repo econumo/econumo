@@ -81,7 +81,7 @@ func labelFixture(t *testing.T, rows []model.LabelSpendingRow) ([]model.LabelSpe
 			lblB: {ID: lblB, OwnerID: lblOwner, Name: "Kid B", Icon: "face", SortKey: "b"},
 		},
 	}
-	res, _, err := s.buildStructure(context.Background(), b, f, map[string]budgetedAmount{}, map[string]*elementSpending{})
+	res, err := s.buildStructure(context.Background(), b, f, map[string]budgetedAmount{}, map[string]*elementSpending{})
 	if err != nil {
 		return nil, err
 	}

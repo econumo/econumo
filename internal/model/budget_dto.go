@@ -164,13 +164,52 @@ type SavingsElementResult struct {
 	Upcoming string `json:"upcoming"`
 }
 
+// DebtElementResult is one debt's row in get-budget's structure.debts, kept
+// out of elements like savings rows. Amounts are in CurrencyId, the debt's
+// currency. Spent is what the matched payments from the budget's everyday
+// accounts paid in the month (BudgetSpent the same in the budget's currency,
+// for the expense totals); Available carries over like an element's:
+// plans before the month minus payments before it, plus Budgeted - Spent.
+// ClosingBalance, PaymentsLeft, ScheduledTotal and Upcoming (the scheduled
+// payments still due in the month) come from the debt's projection, which
+// takes the plans above the scheduled amount as extra payments. A month
+// outside the debt's life has IsPlannable 0 and Budgeted "0" whatever is
+// stored. PayoffDate and BasePayoffDate ("" when none) are with and without
+// the planned extras, and so are OverpaymentLeft and BaseOverpaymentLeft.
+type DebtElementResult struct {
+	Id                  string `json:"id"`
+	Type                int    `json:"type"`
+	Name                string `json:"name"`
+	Icon                string `json:"icon"`
+	CurrencyId          string `json:"currencyId"`
+	OwnerUserId         string `json:"ownerUserId"`
+	IsArchived          int    `json:"isArchived"`
+	Position            int    `json:"position"`
+	Budgeted            string `json:"budgeted"`
+	IsBudgeted          int    `json:"isBudgeted"`
+	Spent               string `json:"spent"`
+	BudgetSpent         string `json:"budgetSpent"`
+	Available           string `json:"available"`
+	ClosingBalance      string `json:"closingBalance"`
+	PaymentsLeft        int    `json:"paymentsLeft"`
+	ScheduledTotal      string `json:"scheduledTotal"`
+	Upcoming            string `json:"upcoming"`
+	PayoffDate          string `json:"payoffDate"`
+	BasePayoffDate      string `json:"basePayoffDate"`
+	OverpaymentLeft     string `json:"overpaymentLeft"`
+	BaseOverpaymentLeft string `json:"baseOverpaymentLeft"`
+	IsPaidOff           int    `json:"isPaidOff"`
+	IsPlannable         int    `json:"isPlannable"`
+}
+
 // StructureResult is the budget's folders + ordered elements + labels +
-// savings rows.
+// savings and debt rows.
 type StructureResult struct {
 	Folders  []BudgetFolderResult   `json:"folders"`
 	Elements []ParentElementResult  `json:"elements"`
 	Labels   []LabelSpendResult     `json:"labels"`
 	Savings  []SavingsElementResult `json:"savings"`
+	Debts    []DebtElementResult    `json:"debts"`
 }
 
 // BudgetResult is the full get-budget shape.
@@ -452,12 +491,46 @@ type PlanSavingsFlowResult struct {
 	Amount     string `json:"amount"`
 }
 
+// PlanDebtElementResult is one debt's plan row, in the debt's currency. Cells
+// align with BudgetPlanResult.Months. The payoff and overpayment figures are
+// get-budget's, over every plan of the debt from the current month on.
+type PlanDebtElementResult struct {
+	Id                  string               `json:"id"`
+	Type                int                  `json:"type"`
+	Name                string               `json:"name"`
+	Icon                string               `json:"icon"`
+	CurrencyId          string               `json:"currencyId"`
+	OwnerUserId         string               `json:"ownerUserId"`
+	Position            int                  `json:"position"`
+	PayoffDate          string               `json:"payoffDate"`
+	BasePayoffDate      string               `json:"basePayoffDate"`
+	OverpaymentLeft     string               `json:"overpaymentLeft"`
+	BaseOverpaymentLeft string               `json:"baseOverpaymentLeft"`
+	IsPaidOff           int                  `json:"isPaidOff"`
+	Cells               []PlanDebtCellResult `json:"cells"`
+}
+
+// PlanDebtCellResult is a debt row's month: Actual is the matched payments
+// from the everyday accounts, Planned "" with no plan or outside the debt's
+// life (IsPlannable 0), and the rest the month of the debt's projection, as
+// on get-budget's debt row.
+type PlanDebtCellResult struct {
+	Actual         string `json:"actual"`
+	Planned        string `json:"planned"`
+	ClosingBalance string `json:"closingBalance"`
+	PaymentsLeft   int    `json:"paymentsLeft"`
+	ScheduledTotal string `json:"scheduledTotal"`
+	Upcoming       string `json:"upcoming"`
+	IsPlannable    int    `json:"isPlannable"`
+}
+
 // PlanStructureResult is all folders (both sides, each carrying its side) +
-// all plan rows; savings rows are listed apart from the elements.
+// all plan rows; savings and debt rows are listed apart from the elements.
 type PlanStructureResult struct {
 	Folders  []BudgetFolderResult       `json:"folders"`
 	Elements []PlanElementResult        `json:"elements"`
 	Savings  []PlanSavingsElementResult `json:"savings"`
+	Debts    []PlanDebtElementResult    `json:"debts"`
 }
 
 // BudgetPlanResult is the full get-budget-plan shape. SavingsOpeningBalances
@@ -791,6 +864,10 @@ type BudgetTransactionListRequest struct {
 	// currently only its savings accounts are accepted — a savings row's
 	// drill-down. Composes with nothing.
 	AccountId *string `json:"accountId"`
+	// DebtId selects the payments a debt row counts: the ones its matching
+	// attributed to it, from the everyday accounts. It must be one of the
+	// budget's debts. Composes with nothing.
+	DebtId *string `json:"debtId"`
 }
 
 // TxCategoryResult / TxPayeeResult / TxTagResult are the optional embeds.

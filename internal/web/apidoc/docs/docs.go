@@ -2923,6 +2923,12 @@ const docTemplate = `{
                         "description": "Every transaction on this account; currently only the budget's savings accounts are accepted (composes with nothing)",
                         "name": "accountId",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "The payments a debt row of this budget counts, from its everyday accounts (composes with nothing)",
+                        "name": "debtId",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -15037,6 +15043,80 @@ const docTemplate = `{
                 }
             }
         },
+        "model.DebtElementResult": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "string"
+                },
+                "baseOverpaymentLeft": {
+                    "type": "string"
+                },
+                "basePayoffDate": {
+                    "type": "string"
+                },
+                "budgetSpent": {
+                    "type": "string"
+                },
+                "budgeted": {
+                    "type": "string"
+                },
+                "closingBalance": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "isBudgeted": {
+                    "type": "integer"
+                },
+                "isPaidOff": {
+                    "type": "integer"
+                },
+                "isPlannable": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "overpaymentLeft": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "paymentsLeft": {
+                    "type": "integer"
+                },
+                "payoffDate": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "scheduledTotal": {
+                    "type": "string"
+                },
+                "spent": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "integer"
+                },
+                "upcoming": {
+                    "type": "string"
+                }
+            }
+        },
         "model.DebtListResult": {
             "type": "object",
             "properties": {
@@ -16841,6 +16921,79 @@ const docTemplate = `{
                 }
             }
         },
+        "model.PlanDebtCellResult": {
+            "type": "object",
+            "properties": {
+                "actual": {
+                    "type": "string"
+                },
+                "closingBalance": {
+                    "type": "string"
+                },
+                "isPlannable": {
+                    "type": "integer"
+                },
+                "paymentsLeft": {
+                    "type": "integer"
+                },
+                "planned": {
+                    "type": "string"
+                },
+                "scheduledTotal": {
+                    "type": "string"
+                },
+                "upcoming": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.PlanDebtElementResult": {
+            "type": "object",
+            "properties": {
+                "baseOverpaymentLeft": {
+                    "type": "string"
+                },
+                "basePayoffDate": {
+                    "type": "string"
+                },
+                "cells": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanDebtCellResult"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isPaidOff": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "overpaymentLeft": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "payoffDate": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.PlanElementResult": {
             "type": "object",
             "properties": {
@@ -16982,6 +17135,12 @@ const docTemplate = `{
         "model.PlanStructureResult": {
             "type": "object",
             "properties": {
+                "debts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanDebtElementResult"
+                    }
+                },
                 "elements": {
                     "type": "array",
                     "items": {
@@ -17676,6 +17835,12 @@ const docTemplate = `{
         "model.StructureResult": {
             "type": "object",
             "properties": {
+                "debts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.DebtElementResult"
+                    }
+                },
                 "elements": {
                     "type": "array",
                     "items": {

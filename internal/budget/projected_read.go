@@ -539,17 +539,25 @@ func (p *projectedRead) expenses(accountIDs []vo.Id, start, end time.Time, keep 
 	return out
 }
 
+// The category and tag lists leave out what a debt matches, as their figures
+// do (see spending); the debt's own list has it.
 func (p *projectedRead) BudgetTransactionsByCategories(_ context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	cats := idSet(categoryIDs)
 	return p.expenses(accountIDs, start, end, func(o *projectedTx) bool {
-		return o.tagID == nil && o.categoryID != nil && cats[*o.categoryID]
+		return o.tagID == nil && o.categoryID != nil && cats[*o.categoryID] && !p.paysDebt(o)
+	}), nil
+}
+
+func (p *projectedRead) BudgetTransactionsByDebt(_ context.Context, debt model.DebtView, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	return p.expenses(accountIDs, start, end, func(o *projectedTx) bool {
+		return model.DebtMatches(debt, o.categoryID, o.payeeID, o.tagID, o.dueAt)
 	}), nil
 }
 
 func (p *projectedRead) BudgetTransactionsByTag(_ context.Context, tagID vo.Id, categoryID *vo.Id, uncategorized bool, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	tag := tagID.String()
 	return p.expenses(accountIDs, start, end, func(o *projectedTx) bool {
-		if o.tagID == nil || *o.tagID != tag {
+		if o.tagID == nil || *o.tagID != tag || p.paysDebt(o) {
 			return false
 		}
 		if categoryID != nil {

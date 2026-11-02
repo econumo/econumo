@@ -143,11 +143,17 @@ func (h *attrHarness) createDebt(t *testing.T) string {
 	return res.Id
 }
 
-func (h *attrHarness) getBudget(t *testing.T) (*model.GetBudgetResult, map[string]appbudget.DebtPaidForTest) {
+type debtPaidOnWire struct{ Paid, BudgetPaid, Available string }
+
+func (h *attrHarness) getBudget(t *testing.T) (*model.GetBudgetResult, map[string]debtPaidOnWire) {
 	t.Helper()
-	res, paid, err := h.svc.GetBudgetWithDebtsForTest(h.ctx, h.owner, model.GetBudgetRequest{Id: h.budgetID, Date: "2026-06-01"})
+	res, err := h.svc.GetBudget(h.ctx, h.owner, model.GetBudgetRequest{Id: h.budgetID, Date: "2026-06-01"})
 	if err != nil {
 		t.Fatalf("GetBudget: %v", err)
+	}
+	paid := map[string]debtPaidOnWire{}
+	for _, d := range res.Item.Structure.Debts {
+		paid[d.Id] = debtPaidOnWire{Paid: d.Spent, BudgetPaid: d.BudgetSpent, Available: d.Available}
 	}
 	return res, paid
 }
@@ -194,8 +200,9 @@ func TestGetBudget_DebtPaymentLeavesCategoryRow(t *testing.T) {
 		t.Errorf("food spent = %s, want 50", got)
 	}
 	p := paid[debtID]
-	if p.Paid != "1000" || p.BudgetPaid != "1000" || p.PaidBefore != "1000" {
-		t.Errorf("debt paid = %+v, want 1000 / 1000 / before 1000", p)
+	// Nothing planned, 1000 paid in May and 1000 in June.
+	if p.Paid != "1000" || p.BudgetPaid != "1000" || p.Available != "-2000" {
+		t.Errorf("debt paid = %+v, want 1000 / 1000 / available -2000", p)
 	}
 
 	// Entered after the debt: the read syncs its split before summing.
@@ -287,12 +294,19 @@ func TestGetBudgetPlan_DebtActualPerMonth(t *testing.T) {
 	h.spend(h.usd, h.food, "", "25", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
 
 	debtID := h.createDebt(t)
-	res, actual, err := h.svc.GetBudgetPlanWithDebtsForTest(h.ctx, h.owner, model.GetBudgetPlanRequest{Id: h.budgetID, From: "2026-04-01", Months: "3"})
+	res, err := h.svc.GetBudgetPlan(h.ctx, h.owner, model.GetBudgetPlanRequest{Id: h.budgetID, From: "2026-04-01", Months: "3"})
 	if err != nil {
 		t.Fatalf("GetBudgetPlan: %v", err)
 	}
 	want := []string{"0", "1000", "1000"}
-	got := actual[debtID]
+	var got []string
+	for _, d := range res.Item.Structure.Debts {
+		if d.Id == debtID {
+			for _, c := range d.Cells {
+				got = append(got, c.Actual)
+			}
+		}
+	}
 	if len(got) != 3 || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
 		t.Errorf("debt actual = %v, want %v", got, want)
 	}
