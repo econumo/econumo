@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -15,26 +16,59 @@ import (
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
-func TestGlobalRateCap_ExemptsOnlyEndpointsThatStayInsideTheAccount(t *testing.T) {
+const (
+	strangerIP = "198.51.100.1"
+	ownerIP    = "203.0.113.7"
+)
+
+type limitHarness struct {
+	t        *testing.T
+	ts       *httptest.Server
+	rawToken string
+}
+
+// The test server's peer is loopback, so X-Forwarded-For names the caller the
+// way it does behind a reverse proxy.
+func (h limitHarness) post(path, ip, token, body string) int {
+	h.t.Helper()
+	req, err := http.NewRequest(http.MethodPost, h.ts.URL+path, strings.NewReader(body))
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-For", ip)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	resp.Body.Close()
+	return resp.StatusCode
+}
+
+func newLimitHarness(t *testing.T, mutate func(*config.Config)) limitHarness {
+	t.Helper()
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
+	h := limitHarness{t: t, rawToken: "eco_ses_ratelimit-wiring-token"}
 	userID := f.User(fixture.User{})
-	rawToken := "eco_ses_ratelimit-wiring-token"
 	exp := time.Now().UTC().Add(24 * time.Hour)
 	f.AccessToken(fixture.AccessToken{
 		UserID:    userID,
 		Kind:      "session",
-		TokenHash: appuser.HashAccessToken(rawToken),
+		TokenHash: appuser.HashAccessToken(h.rawToken),
 		UserAgent: "ratelimit-test",
 		ExpiresAt: &exp,
 	})
-
 	const perKey = 100
-	handler := server.BuildAPI(config.Config{
+	cfg := config.Config{
 		DatabaseDriver:              db.Engine,
 		CurrencyBase:                "USD",
 		AllowRegistration:           true,
 		ImportSimpleFIN:             true,
+		AppURL:                      "https://app.example.test",
 		RateLimitLogin:              perKey,
 		RateLimitReset:              perKey,
 		RateLimitRemind:             perKey,
@@ -47,60 +81,107 @@ func TestGlobalRateCap_ExemptsOnlyEndpointsThatStayInsideTheAccount(t *testing.T
 		RateLimitSync:               perKey,
 		RateLimitPreviewRule:        perKey,
 		RateLimitWindow:             15 * time.Minute,
-		RateLimitGlobal:             1,
-	}, db.Raw, server.Seams{Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar)})
-	ts := httptest.NewServer(handler)
-	defer ts.Close()
-
-	post := func(t *testing.T, path, token, body string) int {
-		t.Helper()
-		req, err := http.NewRequest(http.MethodPost, ts.URL+path, strings.NewReader(body))
-		if err != nil {
-			t.Fatal(err)
-		}
-		req.Header.Set("Content-Type", "application/json")
-		if token != "" {
-			req.Header.Set("Authorization", "Bearer "+token)
-		}
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		resp.Body.Close()
-		return resp.StatusCode
+		RateLimitIP:                 1,
 	}
+	if mutate != nil {
+		mutate(&cfg)
+	}
+	h.ts = httptest.NewServer(server.BuildAPI(cfg, db.Raw, server.Seams{Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar)}))
+	t.Cleanup(h.ts.Close)
+	return h
+}
 
+func TestIPRateCap_OneCallerNeverThrottlesAnother(t *testing.T) {
+	h := newLimitHarness(t, nil)
+	capped := []struct{ name, path, token, bodyFormat string }{
+		{"login", "/api/v1/user/login-user", "", `{"username":"anon%d@example.test","password":"wrong"}`},
+		{"remind", "/api/v1/user/remind-password", "", `{"username":"anon%d@example.test"}`},
+		{"register", "/api/v1/user/register-user", "", `{"email":"anon%d@example.test","password":"long-enough-password","name":"Anon"}`},
+		{"reset", "/api/v1/user/reset-password", "", `{"username":"anon%d@example.test","code":"000000","password":"irrelevant-pw"}`},
+		{"oauth-start", "/api/v1/oauth/start-login", "", `{"provider":"google","client":"web","attempt":%d}`},
+		{"oauth-register", "/oauth/register", "", `{"redirect_uris":["https://client%d.example.test/cb"],"client_name":"x","token_endpoint_auth_method":"none"}`},
+		{"accept-invite", "/api/v1/connection/accept-invite", h.rawToken, `{"code":"00000%d"}`},
+		{"request-email-change", "/api/v1/user/request-email-change", h.rawToken, `{"newEmail":"new%d@example.test","password":"wrong-password"}`},
+		{"claim-setup-token", "/api/v1/import/claim-setup-token", h.rawToken, `{"setupToken":"aGVsbG8%d"}`},
+		{"sync-source", "/api/v1/import/sync-source", h.rawToken, `{"sourceId":"0190a000-0000-7000-8000-00000000000%d","accessUrl":"https://bridge.invalid/simplefin","startDate":"2026-10-01"}`},
+	}
+	for _, tc := range capped {
+		t.Run(tc.name, func(t *testing.T) {
+			h.post(tc.path, strangerIP, tc.token, fmt.Sprintf(tc.bodyFormat, 1))
+			if got := h.post(tc.path, strangerIP, tc.token, fmt.Sprintf(tc.bodyFormat, 2)); got != http.StatusTooManyRequests {
+				t.Fatalf("same IP's second call = %d, want 429", got)
+			}
+			if got := h.post(tc.path, ownerIP, tc.token, fmt.Sprintf(tc.bodyFormat, 3)); got == http.StatusTooManyRequests {
+				t.Fatalf("another IP was throttled by the first one")
+			}
+		})
+	}
+}
+
+func TestIPRateCap_ExemptsEndpointsAHouseholdCanFillAlone(t *testing.T) {
+	h := newLimitHarness(t, nil)
 	exempt := []struct{ name, path, body string }{
 		{"ingest", "/api/v1/import/ingest-apple-wallet-event", `{"account":"x","amount":"1","currency":"USD"}`},
 		{"preview-rule", "/api/v1/import/preview-rule", `{"action":"skip","matchField":"external_payee","matchType":"contains","matchValue":"Blue Bottle","scope":"all"}`},
 	}
 	for _, tc := range exempt {
-		t.Run("exempt/"+tc.name, func(t *testing.T) {
-			post(t, tc.path, rawToken, tc.body)
-			if got := post(t, tc.path, rawToken, tc.body); got == http.StatusTooManyRequests {
-				t.Fatalf("second call = 429, want it past the global cap")
+		t.Run(tc.name, func(t *testing.T) {
+			h.post(tc.path, ownerIP, h.rawToken, tc.body)
+			if got := h.post(tc.path, ownerIP, h.rawToken, tc.body); got == http.StatusTooManyRequests {
+				t.Fatalf("second call from one IP = 429, want it past the cap")
 			}
 		})
+	}
+}
+
+func TestEmailLimits_AStrangerCannotLockOutTheOwner(t *testing.T) {
+	const password = "correct-horse-battery"
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.RateLimitLogin = 2
+		c.RateLimitIP = 0
+	})
+	if got := h.post("/api/v1/user/register-user", ownerIP, "",
+		fmt.Sprintf(`{"email":"victim@example.test","password":%q,"name":"Victim"}`, password)); got != http.StatusOK {
+		t.Fatalf("register = %d", got)
+	}
+	login := func(ip, pw string) int {
+		body, _ := json.Marshal(map[string]string{"username": "victim@example.test", "password": pw})
+		return h.post("/api/v1/user/login-user", ip, "", string(body))
 	}
 
-	// Each of these reaches past the caller's own account, so many accounts
-	// together must still hit one ceiling.
-	capped := []struct{ name, path, token, bodyFormat string }{
-		{"login", "/api/v1/user/login-user", "", `{"username":"anon%d@example.test","password":"wrong"}`},
-		{"remind", "/api/v1/user/remind-password", "", `{"username":"anon%d@example.test"}`},
-		{"register", "/api/v1/user/register-user", "", `{"email":"anon%d@example.test","password":"long-enough-password","name":"Anon"}`},
-		{"reset", "/api/v1/user/reset-password", "", `{"username":"anon%d@example.test","code":"00000000-0000-0000-0000-000000000000","password":"irrelevant-pw"}`},
-		{"accept-invite", "/api/v1/connection/accept-invite", rawToken, `{"code":"00000%d"}`},
-		{"request-email-change", "/api/v1/user/request-email-change", rawToken, `{"newEmail":"new%d@example.test","password":"wrong-password"}`},
-		{"claim-setup-token", "/api/v1/import/claim-setup-token", rawToken, `{"setupToken":"aGVsbG8%d"}`},
-		{"sync-source", "/api/v1/import/sync-source", rawToken, `{"sourceId":"0190a000-0000-7000-8000-00000000000%d","accessUrl":"https://bridge.invalid/simplefin","startDate":"2026-10-01"}`},
+	for range 2 {
+		login(strangerIP, "wrong")
 	}
-	for _, tc := range capped {
-		t.Run("capped/"+tc.name, func(t *testing.T) {
-			post(t, tc.path, tc.token, fmt.Sprintf(tc.bodyFormat, 1))
-			if got := post(t, tc.path, tc.token, fmt.Sprintf(tc.bodyFormat, 2)); got != http.StatusTooManyRequests {
-				t.Fatalf("second call = %d, want 429 from the global cap", got)
-			}
-		})
+	if got := login(strangerIP, password); got != http.StatusTooManyRequests {
+		t.Fatalf("stranger's IP after its limit = %d, want 429", got)
+	}
+	if got := login(ownerIP, password); got != http.StatusOK {
+		t.Fatalf("owner from their own IP = %d, want 200", got)
+	}
+
+	// The ceiling across IPs (10x login) still stops guessing from many of them.
+	for i := range 20 {
+		login(fmt.Sprintf("198.51.100.%d", i+10), "wrong")
+	}
+	if got := login("198.51.100.200", "wrong"); got != http.StatusTooManyRequests {
+		t.Fatalf("past the ceiling = %d, want 429", got)
+	}
+}
+
+func TestEmailLimits_ResetCodeGuessesStayNearTheirLimitAcrossIPs(t *testing.T) {
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.RateLimitReset = 2
+		c.RateLimitIP = 0
+	})
+	reset := func(ip string) int {
+		return h.post("/api/v1/user/reset-password", ip, "", `{"username":"victim@example.test","code":"000000","password":"irrelevant-pw"}`)
+	}
+	for i := range 4 { // 2x the limit
+		if got := reset(fmt.Sprintf("198.51.100.%d", i+10)); got == http.StatusTooManyRequests {
+			t.Fatalf("guess %d = 429 before the ceiling", i)
+		}
+	}
+	if got := reset("198.51.100.200"); got != http.StatusTooManyRequests {
+		t.Fatalf("past the ceiling = %d, want 429", got)
 	}
 }

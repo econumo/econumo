@@ -306,7 +306,7 @@ type limiter struct {
 	deny        error
 }
 
-func (l *limiter) Allow(scope, key string) error {
+func (l *limiter) Allow(_ context.Context, scope, key string) error {
 	l.allow++
 	if l.deny != nil {
 		return l.deny

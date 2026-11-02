@@ -317,7 +317,7 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   `client_secret_post`/`client_secret_basic`). Redirect URIs must be https (ASCII host
   only) or http on a loopback host (`127.0.0.1`, `[::1]`, `localhost`; the port is
   ignored when matching), at most 2048 bytes; clients never approved are purged
-  on the next registration once 30 days old. Registration is behind the global per-endpoint rate cap; the token
+  on the next registration once 30 days old. Registration is behind the per-IP per-endpoint rate cap; the token
   endpoint has no limiter of its own.
 - Consent lives at the SPA route `/oauth/authorize`. The session is a localStorage
   bearer token, so the browser cannot carry it to a Go-rendered page: the SPA calls
@@ -883,13 +883,25 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_SYNC` — `import/sync-source` calls per user per window (default `10`; every request counts — a sync is a real bridge round trip).
   `ECONUMO_RATE_LIMIT_PREVIEW_RULE` — `import/preview-rule` calls per user per window (default `120`; every request counts — the rule editors fire it from a 300 ms typing debounce, and each call walks every matching link).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
-  `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`). Only
-  `ingest` and `preview-rule` are exempt (`GlobalExempt` in `internal/server/server.go`): one user's
-  own limit could fill the cap there, and their effects stay inside that user's account. Every
-  other endpoint keeps it, per-user ones included, because accounts can be cheap and many together
-  must not guess invite codes, mail arbitrary addresses or drive outbound bridge requests freely.
-  No limiter reads the client IP, so a reverse proxy or CDN in front changes nothing; per-IP limits
-  belong at that proxy.
+  `ECONUMO_RATE_LIMIT_IP` — per-endpoint cap per minute per client IP (default `60`), replacing the
+  former cap shared by all callers (`ECONUMO_RATE_LIMIT_GLOBAL`, now ignored), which any one caller
+  could fill to lock everyone out. **No limit may be shared by unrelated callers.** `ingest` and
+  `preview-rule` are exempt (`IPExempt` in `internal/server/server.go`): one user's own limit could
+  fill the cap for a household behind one IP, and their effects stay inside that account. The cap
+  also keeps a spray of unique keys from churning the 10,000-entry counter map, where eviction
+  would wipe a real account's failure count.
+  The limits keyed by an email address (`login`, `reset`, `remind`, `register`, `verify-email`,
+  `confirm-email`) count per address AND client IP (`allowEmailAttempt`), so a stranger locks out
+  only their own IP, under a per-address ceiling across all IPs: 10x the limit, but 2x for `reset`
+  and `confirm-email`, because a 6-digit code must not get many more guesses. Enough IPs can still
+  reach a ceiling and lock that one address.
+  `ECONUMO_CLIENT_IP_HEADER` — the header your reverse proxy puts the client IP in (e.g.
+  `CF-Connecting-IP`, `X-Real-IP`; a list keeps its last entry). Set it ONLY when the proxy
+  overwrites that header, or clients can forge it. Unset, the client IP is the peer address, or the
+  `X-Forwarded-For` chain when the peer is on a private network (a proxy on the same host or
+  Docker network works with no setting). A proxy with a public address needs the variable, or all
+  its users count as one IP. Resolved in `middleware.ClientIP`; IPv6 is grouped by /64; the IP stays
+  in memory and is never logged.
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.

@@ -1,10 +1,12 @@
 // Package ratelimit is the in-memory brute-force limiter for the public auth
-// endpoints: per-key sliding-window attempt counters plus a per-scope global
-// backstop. State is process-local and resets on restart by design (single
+// endpoints: per-key sliding-window attempt counters plus a per-client-IP
+// backstop. There is deliberately no counter shared by every caller of an
+// endpoint: anyone could fill it and lock everyone else out. State is process-local and resets on restart by design (single
 // binary; see the 2026-07-09 auth-rate-limiting spec).
 package ratelimit
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"strings"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
 // Message is the frozen 429 envelope message.
@@ -21,19 +24,21 @@ const Message = "Too many attempts. Try again later."
 const (
 	defaultMaxKeys = 10000
 	defaultWindow  = 15 * time.Minute
-	// The global backstop counts every request in its own fixed window so a
-	// spray of unique keys is caught quickly, independent of the per-key window.
-	globalWindow = time.Minute
+	// The IP backstop counts every request in its own fixed window so a spray of
+	// unique keys is caught quickly, independent of the per-key window. It also
+	// keeps a spray from churning the per-key map: at MaxKeys the stalest entry
+	// is evicted, which would otherwise wipe the failure count of a real account.
+	ipWindow = time.Minute
 )
 
 // Config holds the limiter policy. A limit of 0 (or an absent scope) disables
 // that check.
 type Config struct {
-	Limits       map[string]int  // per-scope max attempts per key per Window
-	Window       time.Duration   // per-key sliding window (default 15m)
-	Global       int             // per-scope cap per minute across ALL keys; 0 disables
-	MaxKeys      int             // per-key map size cap (default 10000)
-	GlobalExempt map[string]bool // scopes the Global cap does not count
+	Limits   map[string]int  // per-scope max attempts per key per Window
+	Window   time.Duration   // per-key sliding window (default 15m)
+	IP       int             // per-scope cap per minute per client IP; 0 disables
+	MaxKeys  int             // size cap of the counter map (default 10000)
+	IPExempt map[string]bool // scopes the IP cap does not count
 }
 
 type Limiter struct {
@@ -53,9 +58,9 @@ func New(cfg Config, clk port.Clock) *Limiter {
 	return &Limiter{cfg: cfg, clock: clk, attempts: map[string][]time.Time{}}
 }
 
-// Key layouts: per-key entries are "k\x00<scope>\x00<key>", global counters are
-// "g\x00<scope>". The prefixes keep a caller-supplied key from ever colliding
-// with a global counter.
+// Key layouts: per-key entries are "k\x00<scope>\x00<key>", IP counters are
+// "i\x00<scope>\x00<ip>". The prefixes keep a caller-supplied key from ever
+// colliding with an IP counter.
 //
 // maxKeyLen bounds the bytes retained per attempt key: an attacker submitting
 // unique multi-megabyte usernames must not turn the failure map into a memory
@@ -69,12 +74,12 @@ func attemptKey(scope, key string) string {
 	}
 	return "k\x00" + scope + "\x00" + key
 }
-func globalKey(scope string) string { return "g\x00" + scope }
+func ipKey(scope, ip string) string { return "i\x00" + scope + "\x00" + ip }
 
 // Allow reports whether another attempt may proceed. The per-key check runs
-// first and rejects without consuming the global budget, so an attack on one
-// key cannot starve every other caller of the endpoint.
-func (l *Limiter) Allow(scope, key string) error {
+// first and rejects without consuming the IP budget. A request with no resolved
+// client IP (nothing but a non-TCP listener produces one) skips the IP cap.
+func (l *Limiter) Allow(ctx context.Context, scope, key string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := l.clock.Now()
@@ -87,12 +92,15 @@ func (l *Limiter) Allow(scope, key string) error {
 			return errs.NewTooManyRequestsRetryAfter(Message, retryAfterSeconds(hits, now, l.cfg.Window))
 		}
 	}
-	if l.cfg.Global > 0 && !l.cfg.GlobalExempt[scope] {
-		k := globalKey(scope)
-		hits := prune(l.attempts[k], now, globalWindow)
-		if len(hits) >= l.cfg.Global {
+	if ip := reqctx.ClientIP(ctx); ip != "" && l.cfg.IP > 0 && !l.cfg.IPExempt[scope] {
+		k := ipKey(scope, ip)
+		hits := prune(l.attempts[k], now, ipWindow)
+		if len(hits) >= l.cfg.IP {
 			l.attempts[k] = hits
-			return errs.NewTooManyRequestsRetryAfter(Message, retryAfterSeconds(hits, now, globalWindow))
+			return errs.NewTooManyRequestsRetryAfter(Message, retryAfterSeconds(hits, now, ipWindow))
+		}
+		if _, exists := l.attempts[k]; !exists && len(l.attempts) >= l.cfg.MaxKeys {
+			l.evict(now)
 		}
 		l.attempts[k] = append(hits, now)
 	}
@@ -190,17 +198,17 @@ func prune(hits []time.Time, now time.Time, window time.Duration) []time.Time {
 	return hits[i:]
 }
 
-// evict makes room under MaxKeys: drop fully-expired per-key entries; if the
-// map is still full, drop the entry with the oldest most-recent attempt.
-// Global counters (a handful, one per scope) are never evicted.
+// evict makes room under MaxKeys: drop fully-expired entries; if the map is
+// still full, drop the entry with the oldest most-recent attempt.
 func (l *Limiter) evict(now time.Time) {
 	var stalest string
 	var stalestAt time.Time
 	for k, hits := range l.attempts {
-		if strings.HasPrefix(k, "g\x00") {
-			continue
+		window := l.cfg.Window
+		if strings.HasPrefix(k, "i\x00") {
+			window = ipWindow
 		}
-		pruned := prune(hits, now, l.cfg.Window)
+		pruned := prune(hits, now, window)
 		if len(pruned) == 0 {
 			delete(l.attempts, k)
 			continue

@@ -16,7 +16,7 @@ import (
 // keeps it.
 func (s *Service) ClaimSetupToken(ctx context.Context, userID vo.Id, req model.ClaimSetupTokenRequest) (*model.ClaimSetupTokenResult, error) {
 	if s.limiter != nil {
-		if err := s.limiter.Allow(RateScopeClaimSetupToken, userID.String()); err != nil {
+		if err := s.limiter.Allow(ctx, RateScopeClaimSetupToken, userID.String()); err != nil {
 			return nil, err
 		}
 		s.limiter.Fail(RateScopeClaimSetupToken, userID.String())

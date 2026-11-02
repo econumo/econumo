@@ -205,22 +205,37 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
 			appimports.RateScopeSync:            cfg.RateLimitSync,
 			appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
+			// Ceilings per email address across all client IPs, above the
+			// per-address-and-IP limits. Reset and confirm-email take a 6-digit code,
+			// so their guess budget stays close to the plain limit; the others can
+			// afford a ceiling that takes many IPs to reach.
+			appuser.RateScopeLogin + appuser.EmailCeilingScopeSuffix:        10 * cfg.RateLimitLogin,
+			appuser.RateScopeRemind + appuser.EmailCeilingScopeSuffix:       10 * cfg.RateLimitRemind,
+			appuser.RateScopeRegister + appuser.EmailCeilingScopeSuffix:     10 * cfg.RateLimitRegister,
+			appuser.RateScopeVerifyEmail + appuser.EmailCeilingScopeSuffix:  10 * cfg.RateLimitVerifyEmail,
+			appuser.RateScopeReset + appuser.EmailCeilingScopeSuffix:        2 * cfg.RateLimitReset,
+			appuser.RateScopeConfirmEmail + appuser.EmailCeilingScopeSuffix: 2 * cfg.RateLimitConfirmEmail,
 			// No per-key cap: the caller of start-login/start-link is anonymous
-			// until the provider answers. The global per-minute cap applies.
+			// until the provider answers. The per-IP per-minute cap applies.
 			appoauth.RateScopeOAuthStart: 0,
 			// No per-key cap: dynamic client registration is anonymous. Only
-			// the global per-minute cap applies.
+			// the per-IP per-minute cap applies.
 			appauthserver.RateScopeRegister: 0,
 		},
 		Window: cfg.RateLimitWindow,
-		Global: cfg.RateLimitGlobal,
-		// Only scopes whose per-user limit alone can fill the global cap and whose
-		// effects stay inside the caller's account. The rest keep the ceiling:
-		// accounts can be cheap, so many of them together must not guess invite
-		// codes, mail arbitrary addresses or drive outbound bridge requests freely.
-		GlobalExempt: map[string]bool{
+		IP:     cfg.RateLimitIP,
+		IPExempt: map[string]bool{
+			// One user's own limit could fill the cap for a household behind one
+			// IP, and their effects stay inside the caller's account.
 			appimports.RateScopeIngest:      true,
 			appimports.RateScopePreviewRule: true,
+			// allowEmailAttempt already counted the request under its base scope.
+			appuser.RateScopeLogin + appuser.EmailCeilingScopeSuffix:        true,
+			appuser.RateScopeRemind + appuser.EmailCeilingScopeSuffix:       true,
+			appuser.RateScopeRegister + appuser.EmailCeilingScopeSuffix:     true,
+			appuser.RateScopeVerifyEmail + appuser.EmailCeilingScopeSuffix:  true,
+			appuser.RateScopeReset + appuser.EmailCeilingScopeSuffix:        true,
+			appuser.RateScopeConfirmEmail + appuser.EmailCeilingScopeSuffix: true,
 		},
 	}, clk)
 	userSvc := appuser.NewService(

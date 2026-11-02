@@ -42,7 +42,7 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 		return nil, err
 	}
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
-	if err := s.allowAttempt(RateScopeConfirmEmail, lowered); err != nil {
+	if err := s.allowEmailAttempt(ctx, RateScopeConfirmEmail, lowered); err != nil {
 		return nil, err
 	}
 	invalid := &errs.ValidationError{Msg: "The confirmation code is not valid.", MsgCode: errs.CodeUserVerificationCodeInvalid}
@@ -52,7 +52,7 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 	found, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
-			s.failAttempt(RateScopeConfirmEmail, lowered)
+			s.failEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
 			return nil, invalid
 		}
 		return nil, err
@@ -69,7 +69,7 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 		u, gerr := s.repo.GetByID(ctx, userID)
 		if gerr != nil {
 			if isNotFound(gerr) {
-				s.failAttempt(RateScopeConfirmEmail, lowered)
+				s.failEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
 				return invalid
 			}
 			return gerr
@@ -77,17 +77,17 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 		ev, verr := s.emailVerifications.GetByUser(ctx, userID)
 		if verr != nil {
 			if isNotFound(verr) {
-				s.failAttempt(RateScopeConfirmEmail, lowered)
+				s.failEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
 				return invalid
 			}
 			return verr
 		}
 		if HashResetCode(strings.TrimSpace(req.Code)) != ev.Code {
-			s.failAttempt(RateScopeConfirmEmail, lowered)
+			s.failEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
 			return invalid
 		}
 		if ev.IsExpired(s.clock.Now()) {
-			s.failAttempt(RateScopeConfirmEmail, lowered)
+			s.failEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
 			return &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
 		}
 		// The code is this confirmation's authority, so consuming it is what
@@ -107,7 +107,7 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 	}); err != nil {
 		return nil, err
 	}
-	s.clearAttempt(RateScopeConfirmEmail, lowered)
+	s.clearEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
 	return &model.ConfirmEmailResult{}, nil
 }
 
@@ -141,10 +141,10 @@ func (s *Service) ResendVerificationCode(ctx context.Context, req model.ResendVe
 	// any other value proof that such an account exists.
 	wait := s.resendCooldown(lowered, now)
 
-	if err := s.allowAttempt(RateScopeVerifyEmail, lowered); err != nil {
+	if err := s.allowEmailAttempt(ctx, RateScopeVerifyEmail, lowered); err != nil {
 		return nil, 0, err
 	}
-	s.failAttempt(RateScopeVerifyEmail, lowered) // every resend counts, like remind
+	s.failEmailAttempt(ctx, RateScopeVerifyEmail, lowered) // every resend counts, like remind
 
 	result := &model.ResendVerificationCodeResult{}
 	if wait > 0 {
@@ -263,10 +263,10 @@ func (s *Service) ensureVerificationCode(ctx context.Context, u *model.User, ema
 		}
 		return live.RetryAfter(now), nil
 	}
-	if err := s.allowAttempt(RateScopeVerifyEmail, limitKey); err != nil {
+	if err := s.allowEmailAttempt(ctx, RateScopeVerifyEmail, limitKey); err != nil {
 		return 0, err
 	}
-	s.failAttempt(RateScopeVerifyEmail, limitKey)
+	s.failEmailAttempt(ctx, RateScopeVerifyEmail, limitKey)
 	if err := s.issueVerificationCode(ctx, u, email, now); err != nil {
 		return 0, err
 	}

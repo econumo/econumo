@@ -69,7 +69,7 @@ func newChangeEmailSvc(t *testing.T, db *dbtest.DB, repo appuser.Repository, ecR
 			appuser.RateScopeConfirmEmailChange: 1000,
 		},
 		Window: time.Hour,
-		Global: 0,
+		IP:     0,
 	}, clk)
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets,
 		prRepo, nil,

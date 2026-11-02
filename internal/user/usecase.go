@@ -21,6 +21,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -298,11 +299,39 @@ func newSalt() (string, error) {
 
 // allowAttempt / failAttempt / clearAttempt guard the optional limiter (nil in
 // the CLI and most tests), mirroring the nil-mailer pattern in RemindPassword.
-func (s *Service) allowAttempt(scope, key string) error {
+func (s *Service) allowAttempt(ctx context.Context, scope, key string) error {
 	if s.limiter == nil {
 		return nil
 	}
-	return s.limiter.Allow(scope, key)
+	return s.limiter.Allow(ctx, scope, key)
+}
+
+// allowEmailAttempt / failEmailAttempt / clearEmailAttempt count an attempt that
+// names someone's email address per address AND client IP, so a stranger who
+// knows the address locks out only their own IP, not its owner. The per-address
+// ceiling, counted across all IPs, is what still bounds guessing from many IPs.
+func (s *Service) allowEmailAttempt(ctx context.Context, scope, email string) error {
+	if err := s.allowAttempt(ctx, scope, emailIPKey(ctx, email)); err != nil {
+		return err
+	}
+	return s.allowAttempt(ctx, scope+EmailCeilingScopeSuffix, email)
+}
+
+func (s *Service) failEmailAttempt(ctx context.Context, scope, email string) {
+	s.failAttempt(scope, emailIPKey(ctx, email))
+	s.failAttempt(scope+EmailCeilingScopeSuffix, email)
+}
+
+func (s *Service) clearEmailAttempt(ctx context.Context, scope, email string) {
+	s.clearAttempt(scope, emailIPKey(ctx, email))
+	s.clearAttempt(scope+EmailCeilingScopeSuffix, email)
+}
+
+func emailIPKey(ctx context.Context, email string) string {
+	if ip := reqctx.ClientIP(ctx); ip != "" {
+		return email + "\x00" + ip
+	}
+	return email
 }
 
 func (s *Service) failAttempt(scope, key string) {

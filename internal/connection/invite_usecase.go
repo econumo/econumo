@@ -64,7 +64,7 @@ func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req model.Acce
 	// window. Every attempt counts (successful accepts are rare, one per invite),
 	// keyed by the caller so one user's guessing can't lock others out.
 	if s.limiter != nil {
-		if lerr := s.limiter.Allow(RateScopeAcceptInvite, userID.String()); lerr != nil {
+		if lerr := s.limiter.Allow(ctx, RateScopeAcceptInvite, userID.String()); lerr != nil {
 			return nil, lerr
 		}
 		s.limiter.Fail(RateScopeAcceptInvite, userID.String())

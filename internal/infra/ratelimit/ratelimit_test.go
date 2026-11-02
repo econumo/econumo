@@ -1,6 +1,7 @@
 package ratelimit_test
 
 import (
+	"context"
 	"strings"
 	"sync"
 	"testing"
@@ -8,7 +9,12 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/ratelimit"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 )
+
+var ctx = reqctx.WithClientIP(context.Background(), "203.0.113.1")
+
+func fromIP(ip string) context.Context { return reqctx.WithClientIP(context.Background(), ip) }
 
 // fakeClock is a mutable clock so tests can slide the window.
 type fakeClock struct{ t time.Time }
@@ -26,14 +32,14 @@ func cfgLogin(limit int) ratelimit.Config {
 
 func mustAllowed(t *testing.T, l *ratelimit.Limiter, scope, key string) {
 	t.Helper()
-	if err := l.Allow(scope, key); err != nil {
+	if err := l.Allow(ctx, scope, key); err != nil {
 		t.Fatalf("Allow(%s,%s) = %v, want nil", scope, key, err)
 	}
 }
 
 func mustBlocked(t *testing.T, l *ratelimit.Limiter, scope, key string) {
 	t.Helper()
-	err := l.Allow(scope, key)
+	err := l.Allow(ctx, scope, key)
 	if err == nil {
 		t.Fatalf("Allow(%s,%s) = nil, want TooManyRequestsError", scope, key)
 	}
@@ -48,7 +54,7 @@ func mustBlocked(t *testing.T, l *ratelimit.Limiter, scope, key string) {
 // retryAfterOf asserts the call was blocked and returns the reported wait.
 func retryAfterOf(t *testing.T, l *ratelimit.Limiter, scope, key string) int {
 	t.Helper()
-	v, ok := errs.AsTooManyRequests(l.Allow(scope, key))
+	v, ok := errs.AsTooManyRequests(l.Allow(ctx, scope, key))
 	if !ok {
 		t.Fatalf("Allow(%s,%s) did not block", scope, key)
 	}
@@ -98,9 +104,9 @@ func TestAllow_RetryAfterIsNeverZeroWhileBlocked(t *testing.T) {
 
 // The global backstop rejects on its own one-minute window, so its advertised
 // wait must come from that window, not the per-key one.
-func TestAllow_GlobalCapCarriesItsOwnRetryAfter(t *testing.T) {
+func TestAllow_IPCapCarriesItsOwnRetryAfter(t *testing.T) {
 	l, clk := newLimiter(ratelimit.Config{
-		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, Global: 2,
+		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, IP: 2,
 	})
 	mustAllowed(t, l, "login", "a@example.test")
 	clk.t = clk.t.Add(20 * time.Second)
@@ -235,9 +241,9 @@ func TestMark_PrunesItsOwnStaleEntries(t *testing.T) {
 	}
 }
 
-func TestGlobalCap_BlocksAcrossKeys(t *testing.T) {
+func TestIPCap_BlocksAcrossKeysFromOneIP(t *testing.T) {
 	l, _ := newLimiter(ratelimit.Config{
-		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, Global: 3,
+		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, IP: 3,
 	})
 	mustAllowed(t, l, "login", "a@example.test")
 	mustAllowed(t, l, "login", "b@example.test")
@@ -245,26 +251,64 @@ func TestGlobalCap_BlocksAcrossKeys(t *testing.T) {
 	mustBlocked(t, l, "login", "d@example.test") // 4th request, distinct key
 }
 
-func TestGlobalCap_ExemptScopeKeepsItsPerKeyLimitOnly(t *testing.T) {
+func TestIPCap_OneIPFillingItLeavesEveryOtherCallerAlone(t *testing.T) {
 	l, _ := newLimiter(ratelimit.Config{
-		Limits:       map[string]int{"sync": 1, "login": 100},
-		Window:       15 * time.Minute,
-		Global:       1,
-		GlobalExempt: map[string]bool{"sync": true},
+		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, IP: 1,
+	})
+	mustAllowed(t, l, "login", "a@example.test")
+	mustBlocked(t, l, "login", "b@example.test")
+	if err := l.Allow(fromIP("198.51.100.7"), "login", "c@example.test"); err != nil {
+		t.Fatalf("another IP = %v, want allowed", err)
+	}
+}
+
+func TestIPCap_ScopesAreIndependent(t *testing.T) {
+	l, _ := newLimiter(ratelimit.Config{Window: 15 * time.Minute, IP: 1})
+	mustAllowed(t, l, "oauth-start", "")
+	mustBlocked(t, l, "oauth-start", "")
+	mustAllowed(t, l, "register", "")
+}
+
+func TestIPCap_ExemptScopeKeepsItsPerKeyLimitOnly(t *testing.T) {
+	l, _ := newLimiter(ratelimit.Config{
+		Limits:   map[string]int{"sync": 1},
+		Window:   15 * time.Minute,
+		IP:       1,
+		IPExempt: map[string]bool{"sync": true},
 	})
 	mustAllowed(t, l, "sync", "user-a")
-	mustAllowed(t, l, "sync", "user-b") // past Global, distinct key
+	mustAllowed(t, l, "sync", "user-b") // past IP, distinct key
 	l.Fail("sync", "user-a")
 	mustBlocked(t, l, "sync", "user-a")
 	mustAllowed(t, l, "sync", "user-b")
-
-	mustAllowed(t, l, "login", "a@example.test")
-	mustBlocked(t, l, "login", "b@example.test")
 }
 
-func TestGlobalCap_SlidesOnItsOwnMinuteWindow(t *testing.T) {
+func TestIPCap_NoResolvedIPIsNotCounted(t *testing.T) {
+	l, _ := newLimiter(ratelimit.Config{Window: 15 * time.Minute, IP: 1})
+	for range 3 {
+		if err := l.Allow(context.Background(), "login", "a@example.test"); err != nil {
+			t.Fatalf("no client IP = %v, want allowed", err)
+		}
+	}
+}
+
+func TestIPCap_CountersAreEvictedLikeAnyOther(t *testing.T) {
+	l, clk := newLimiter(ratelimit.Config{Window: 15 * time.Minute, IP: 1, MaxKeys: 2})
+	mustAllowed(t, l, "login", "")
+	clk.t = clk.t.Add(time.Second)
+	for _, ip := range []string{"198.51.100.1", "198.51.100.2", "198.51.100.3"} {
+		if err := l.Allow(fromIP(ip), "login", ""); err != nil {
+			t.Fatalf("Allow from %s = %v", ip, err)
+		}
+		clk.t = clk.t.Add(time.Second)
+	}
+	// The stalest counter, ctx's IP, made room: it starts over rather than block.
+	mustAllowed(t, l, "login", "")
+}
+
+func TestIPCap_SlidesOnItsOwnMinuteWindow(t *testing.T) {
 	l, clk := newLimiter(ratelimit.Config{
-		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, Global: 2,
+		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, IP: 2,
 	})
 	mustAllowed(t, l, "login", "a@example.test")
 	mustAllowed(t, l, "login", "b@example.test")
@@ -273,9 +317,9 @@ func TestGlobalCap_SlidesOnItsOwnMinuteWindow(t *testing.T) {
 	mustAllowed(t, l, "login", "c@example.test")
 }
 
-func TestGlobalCap_ZeroDisables(t *testing.T) {
+func TestIPCap_ZeroDisables(t *testing.T) {
 	l, _ := newLimiter(ratelimit.Config{
-		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, Global: 0,
+		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, IP: 0,
 	})
 	for i := 0; i < 200; i++ {
 		mustAllowed(t, l, "login", "u@example.test")
@@ -286,7 +330,7 @@ func TestGlobalCap_ZeroDisables(t *testing.T) {
 // global budget — an attack on one account must not starve everyone else.
 func TestBlockedKey_DoesNotConsumeGlobal(t *testing.T) {
 	l, _ := newLimiter(ratelimit.Config{
-		Limits: map[string]int{"login": 1}, Window: 15 * time.Minute, Global: 3,
+		Limits: map[string]int{"login": 1}, Window: 15 * time.Minute, IP: 3,
 	})
 	l.Fail("login", "victim@example.test")
 	for i := 0; i < 50; i++ {
@@ -361,7 +405,7 @@ func TestAllow_TwoHugeKeysAreIndependent(t *testing.T) {
 // go test -race exercises the mutex.
 func TestConcurrentAccess(t *testing.T) {
 	l, _ := newLimiter(ratelimit.Config{
-		Limits: map[string]int{"login": 3}, Window: 15 * time.Minute, Global: 1000,
+		Limits: map[string]int{"login": 3}, Window: 15 * time.Minute, IP: 1000,
 	})
 	var wg sync.WaitGroup
 	for g := 0; g < 8; g++ {
@@ -371,7 +415,7 @@ func TestConcurrentAccess(t *testing.T) {
 			keys := []string{"a@example.test", "b@example.test", "c@example.test"}
 			for i := 0; i < 200; i++ {
 				k := keys[(g+i)%len(keys)]
-				_ = l.Allow("login", k)
+				_ = l.Allow(ctx, "login", k)
 				l.Fail("login", k)
 				if i%10 == 0 {
 					l.Clear("login", k)

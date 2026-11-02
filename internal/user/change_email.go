@@ -19,7 +19,7 @@ import (
 // code to the new address, and notifies the old address.
 func (s *Service) RequestEmailChange(ctx context.Context, userID vo.Id, req model.RequestEmailChangeRequest) (*model.RequestEmailChangeResult, error) {
 	key := userID.String()
-	if err := s.allowAttempt(RateScopeRequestEmailChange, key); err != nil {
+	if err := s.allowAttempt(ctx, RateScopeRequestEmailChange, key); err != nil {
 		return nil, err
 	}
 	s.failAttempt(RateScopeRequestEmailChange, key) // every send counts toward the cap
@@ -70,7 +70,7 @@ func (s *Service) RequestEmailChange(ctx context.Context, userID vo.Id, req mode
 func (s *Service) ConfirmEmailChange(ctx context.Context, userID, currentTokenID vo.Id, req model.ConfirmEmailChangeRequest) (model.CurrentUserResult, error) {
 	key := userID.String()
 	var empty model.CurrentUserResult
-	if err := s.allowAttempt(RateScopeConfirmEmailChange, key); err != nil {
+	if err := s.allowAttempt(ctx, RateScopeConfirmEmailChange, key); err != nil {
 		return empty, err
 	}
 	invalid := &errs.ValidationError{Msg: "The confirmation code is not valid.", MsgCode: errs.CodeUserVerificationCodeInvalid}
@@ -158,7 +158,7 @@ func (s *Service) ResendEmailChangeCode(ctx context.Context, userID vo.Id) (*mod
 	now := s.clock.Now()
 	wait := s.emailChangeSentCooldown(key, now)
 
-	if err := s.allowAttempt(RateScopeRequestEmailChange, key); err != nil {
+	if err := s.allowAttempt(ctx, RateScopeRequestEmailChange, key); err != nil {
 		return nil, 0, err
 	}
 	s.failAttempt(RateScopeRequestEmailChange, key)

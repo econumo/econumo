@@ -22,7 +22,7 @@ const accountFailedMessage = "Import failed for this account"
 // transaction so one bad account cannot roll back the others.
 func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSourceRequest) (*model.SyncImportSourceResult, error) {
 	if s.limiter != nil {
-		if err := s.limiter.Allow(RateScopeSync, userID.String()); err != nil {
+		if err := s.limiter.Allow(ctx, RateScopeSync, userID.String()); err != nil {
 			return nil, err
 		}
 		s.limiter.Fail(RateScopeSync, userID.String())

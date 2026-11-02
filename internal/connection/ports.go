@@ -40,7 +40,7 @@ type UserLookup interface {
 // *errs.TooManyRequestsError, HTTP 429, when over the cap); Fail records an
 // attempt. A nil limiter disables protection (CLI, tests).
 type AttemptLimiter interface {
-	Allow(scope, key string) error
+	Allow(ctx context.Context, scope, key string) error
 	Fail(scope, key string)
 }
 

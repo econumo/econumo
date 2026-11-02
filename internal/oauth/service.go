@@ -75,11 +75,11 @@ func (s *Service) sweepExpired(ctx context.Context, now time.Time) error {
 }
 
 // allowStart guards the optional limiter, mirroring the user feature's pattern.
-func (s *Service) allowStart() error {
+func (s *Service) allowStart(ctx context.Context) error {
 	if s.limiter == nil {
 		return nil
 	}
-	return s.limiter.Allow(RateScopeOAuthStart, "")
+	return s.limiter.Allow(ctx, RateScopeOAuthStart, "")
 }
 
 func (s *Service) ListProviders() []model.ProviderItem {

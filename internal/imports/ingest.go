@@ -16,7 +16,7 @@ import (
 // one transaction: a failed create leaves no event, no ledger row.
 func (s *Service) IngestAppleWallet(ctx context.Context, userID vo.Id, payload []byte) (*model.IngestEventResult, error) {
 	if s.limiter != nil {
-		if err := s.limiter.Allow(RateScopeIngest, userID.String()); err != nil {
+		if err := s.limiter.Allow(ctx, RateScopeIngest, userID.String()); err != nil {
 			return nil, err
 		}
 		s.limiter.Fail(RateScopeIngest, userID.String())

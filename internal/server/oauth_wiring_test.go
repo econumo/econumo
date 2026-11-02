@@ -98,7 +98,7 @@ func TestOAuthUsers_FullyHydratesFromRealUserService(t *testing.T) {
 	txm := backend.NewTxManager(db.Raw)
 	userRepo := userrepo.NewRepo(db.Engine, txm)
 	accessTokens := userrepo.NewAccessTokenRepo(db.Engine, txm)
-	authLimiter := ratelimit.New(ratelimit.Config{Window: 15 * time.Minute, Global: 60}, clock.New())
+	authLimiter := ratelimit.New(ratelimit.Config{Window: 15 * time.Minute, IP: 60}, clock.New())
 	userSvc := appuser.NewService(
 		userRepo, txm, auth.NewEncodeService(""), auth.NewPasswordHasher(), accessTokens,
 		nil, nil, nil, nil, nil, nil, nil, nil,
@@ -138,7 +138,7 @@ func TestRecovery_ReclaimsAnAccountFromASquatter(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AllowRegistration: true,
 		AppURL: "https://app.example.test", OAuthGoogleClientID: "g", OAuthGoogleClientSecret: "s",
-		RateLimitWindow: 15 * time.Minute, RateLimitGlobal: 60}
+		RateLimitWindow: 15 * time.Minute, RateLimitIP: 60}
 	mail := &captureMailer{}
 	srv := httptest.NewServer(BuildAPI(cfg, db.Raw, Seams{Mailer: mail}))
 	t.Cleanup(srv.Close)
@@ -378,7 +378,7 @@ func TestBuildAPI_OAuthSignInMintsAUsableSession(t *testing.T) {
 	f := oidctest.New(t)
 	f.Email, f.EmailVerified = "sso-user@example.test", true
 	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AllowRegistration: true,
-		AppURL: "https://app.example.test", RateLimitWindow: 15 * time.Minute, RateLimitGlobal: 60}
+		AppURL: "https://app.example.test", RateLimitWindow: 15 * time.Minute, RateLimitIP: 60}
 	injected := []appoauth.Provider{{Name: "SSO", Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, false), f.Server.Client())}}
 	srv := httptest.NewServer(BuildAPI(cfg, db.Raw, Seams{OAuthProviders: injected}))
 	t.Cleanup(srv.Close)

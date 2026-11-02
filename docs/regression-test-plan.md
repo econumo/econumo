@@ -685,9 +685,13 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       already linked from this source is never adopted twice.
 - [ ] Rate limit: the 61st ingest within the window from one user is 429 with the
       frozen envelope.
-- [ ] With `ECONUMO_RATE_LIMIT_GLOBAL=1`, a second user's ingest and rule preview in the
-      same minute still succeed (both skip the global cap), while a second failed login
-      with another email, or a second `accept-invite` by another user, in that minute is 429.
+- [ ] With `ECONUMO_RATE_LIMIT_IP=1`, a second failed login with another email from one IP in
+      the same minute is 429, while a login from a different IP still gets through; ingest and
+      rule preview from one IP stay past the cap.
+- [ ] Five wrong passwords for an email from one IP lock only that IP: the owner signs in from
+      another IP at once. Past the ceiling (50 failures across IPs) that email is 429 from any IP.
+- [ ] Behind a reverse proxy on a public address with `ECONUMO_CLIENT_IP_HEADER` set, two clients
+      are limited separately (unset, they count as one IP).
 - [ ] A tap whose merchant name exceeds 255 characters is imported with the
       name cut to 255 (no failed row).
 - [ ] Manually importing a queued row whose card currency differs from the

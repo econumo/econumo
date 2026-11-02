@@ -103,7 +103,8 @@ type Config struct {
 	RateLimitSync               int           // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
 	RateLimitPreviewRule        int           // ECONUMO_RATE_LIMIT_PREVIEW_RULE: rule previews per user (fired from a typing debounce; every request counts)
 	RateLimitWindow             time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
-	RateLimitGlobal             int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
+	RateLimitIP                 int           // ECONUMO_RATE_LIMIT_IP: per-endpoint cap per minute per client IP
+	ClientIPHeader              string        // ECONUMO_CLIENT_IP_HEADER: header the reverse proxy puts the client IP in
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
 	// (empty/console/log -> console to stdout; resend://<key> -> Resend;
@@ -414,7 +415,7 @@ func Load() (Config, error) {
 		{&c.RateLimitClaimSetupToken, "ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", 5},
 		{&c.RateLimitSync, "ECONUMO_RATE_LIMIT_SYNC", 10},
 		{&c.RateLimitPreviewRule, "ECONUMO_RATE_LIMIT_PREVIEW_RULE", 120},
-		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
+		{&c.RateLimitIP, "ECONUMO_RATE_LIMIT_IP", 60},
 	} {
 		n, err := getIntStrict(p.key, p.def)
 		if err != nil {
@@ -428,6 +429,11 @@ func Load() (Config, error) {
 	}
 	c.RateLimitWindow = window
 
+	c.ClientIPHeader = strings.TrimSpace(os.Getenv("ECONUMO_CLIENT_IP_HEADER"))
+	if c.ClientIPHeader != "" && !clientIPHeaderRe.MatchString(c.ClientIPHeader) {
+		return Config{}, fmt.Errorf("ECONUMO_CLIENT_IP_HEADER must be a header name, got %q", c.ClientIPHeader)
+	}
+
 	// PORT is required by the HTTP server only and is validated at server
 	// startup; it is intentionally NOT required here because config.Load is also
 	// the CLI's composition entry point, and those commands never bind a port.
@@ -436,6 +442,8 @@ func Load() (Config, error) {
 }
 
 var (
+	clientIPHeaderRe = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
+
 	// An Apple app ID is the ten-character Team ID, a dot, then the bundle id.
 	iosAppIDRe = regexp.MustCompile(`^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$`)
 	// A Digital Asset Links fingerprint is the certificate's SHA-256 digest as
