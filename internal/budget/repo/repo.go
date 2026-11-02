@@ -131,6 +131,10 @@ func (r *Repo) SavingsElementHasData(ctx context.Context, budgetID, accountID vo
 	return r.q.SavingsElementHasData(ctx, r.db(ctx), budgetID.String(), accountID.String())
 }
 
+func (r *Repo) ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error) {
+	return r.q.ElementHasData(ctx, r.db(ctx), externalID.String(), typ.Int16())
+}
+
 func (r *Repo) RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error {
 	return r.q.RemoveBudgetAccount(ctx, r.db(ctx), budgetID.String(), accountID.String())
 }

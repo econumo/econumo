@@ -97,6 +97,9 @@ type Querier interface {
 	// Password-reset request queries (users_password_requests). See the sqlite
 	// sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
+	// Whether the external id's element of this type carries a limit or a comment
+	// in any budget.
+	ElementHasData(ctx context.Context, arg ElementHasDataParams) (bool, error)
 	ExistsUserByEmail(ctx context.Context, lower string) (bool, error)
 	// Joins users for access_level/access_until; see the sqlite sibling for why
 	// provider/id_token are deliberately omitted here.

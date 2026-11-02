@@ -100,3 +100,11 @@ type RecurringSource interface {
 	// its owner, or a non-guest write grant on it.
 	CanEdit(ctx context.Context, userID, accountID vo.Id) (bool, error)
 }
+
+// DebtSource reads the debts shown as budget rows. Satisfied by the debt
+// feature at wiring time. Callers pass only budget participants as owners.
+type DebtSource interface {
+	Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView, error)
+	Sync(ctx context.Context, ownerIDs []vo.Id) error
+	Timelines(ctx context.Context, req model.DebtTimelineRequest) (map[string]model.DebtTimeline, error)
+}

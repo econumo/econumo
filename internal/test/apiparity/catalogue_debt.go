@@ -1,10 +1,15 @@
 package apiparity
 
+import "time"
+
 // Debts run on a weekly schedule whose last payment is a fixed number of days
 // after the (wall-clock) ClockTime, so the number of payments left, and with
 // it every amount in the golden, does not depend on the day the suite runs.
 func init() {
 	day := func(offset int) string { return ClockTime.AddDate(0, 0, offset).Format("2006-01-02") }
+	month := func(offset int) string {
+		return time.Date(ClockTime.Year(), ClockTime.Month()+time.Month(offset), 1, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+	}
 	debtBody := func(extra map[string]any) map[string]any {
 		body := map[string]any{
 			"name": "Car loan", "currencyId": USD, "categoryId": CatFood,
@@ -46,7 +51,7 @@ func init() {
 		create := func(label string, extra map[string]any) Call {
 			return Call{Label: "err:" + label, Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner", Body: debtBody(extra)}
 		}
-		var debtID string
+		var debtID, keyedID string
 		return []Call{
 			create("blank-name", map[string]any{"name": " "}),
 			create("bad-category-id", map[string]any{"categoryId": "nope"}),
@@ -85,6 +90,23 @@ func init() {
 				Body: map[string]any{"id": unknownDebt}},
 			{Label: "err:delete-unknown", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",
 				Body: map[string]any{"id": unknownDebt}},
+
+			// A debt keyed on a payee keeps its budget data when deleted, so
+			// deleting it with plans needs a confirmation.
+			{Label: "delete-whole-debt", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",
+				Body: map[string]any{"id": &debtID}},
+			{Label: "create-keyed-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: debtBody(map[string]any{"payeeId": PayeeShop}), CaptureIDInto: &keyedID},
+			{Label: "set-debt-limit", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "elementId": &keyedID, "period": month(0), "amount": "10"}},
+			{Label: "err:set-debt-limit-out-of-range", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "elementId": &keyedID, "period": month(3), "amount": "10"}},
+			{Label: "err:move-debt-into-folder", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "id": &keyedID, "folderId": BudgetFolder1}},
+			{Label: "err:delete-removal-unconfirmed", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",
+				Body: map[string]any{"id": &keyedID}},
+			{Label: "delete-confirmed", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",
+				Body: map[string]any{"id": &keyedID, "confirmDataRemoval": true}},
 		}
 	}})
 

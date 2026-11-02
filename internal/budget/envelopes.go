@@ -64,7 +64,7 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	// A new envelope element lands at the FRONT of its group. With sort keys that
 	// is a single write -- a key below the group's current first -- so no sibling
 	// is touched.
-	newKey, kerr := sortkey.Prepend(groupElements(b.elements, folderID, vo.Id{}, false), func(i sortkey.Item) sortkey.Item { return i }, sortkey.GrowsDown)
+	newKey, kerr := sortkey.Prepend(groupElements(b.elements, folderID, vo.Id{}, sortGroupRows), func(i sortkey.Item) sortkey.Item { return i }, sortkey.GrowsDown)
 	if kerr != nil {
 		return nil, kerr
 	}

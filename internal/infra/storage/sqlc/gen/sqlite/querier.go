@@ -119,6 +119,9 @@ type Querier interface {
 	// it. Expiry is compared in the app layer (Go time.Time), not in SQL, to avoid
 	// engine date-format differences.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
+	// Whether the external id's element of this type carries a limit or a comment
+	// in any budget.
+	ElementHasData(ctx context.Context, arg ElementHasDataParams) (int64, error)
 	ExistsUserByEmail(ctx context.Context, lower string) (int64, error)
 	// Joins users for access_level/access_until so per-request auth can report
 	// the caller's effective access level in the same round trip. This does NOT

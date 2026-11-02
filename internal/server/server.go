@@ -453,6 +453,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	categorySvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindCategory))
 	payeeSvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindPayee))
 	tagSvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindTag))
+	budgetSvc.SetDebts(debtSvc)
+	debtSvc.SetBudgetElements(NewDebtBudgetElements(budgetSvc))
 	debtHandlers := handlerdebt.NewHandlers(debtSvc)
 
 	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)

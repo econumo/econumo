@@ -265,6 +265,9 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req model.SetLimit
 		if gerr != nil {
 			return gerr
 		}
+		if derr := s.checkDebtPeriod(txCtx, b, element, period); derr != nil {
+			return derr
+		}
 		elementID := element.ID
 
 		existing, gerr := s.limits.GetLimit(txCtx, elementID, period)

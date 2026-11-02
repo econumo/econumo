@@ -2067,6 +2067,8 @@
       "folder_side_mixed": "Uma pasta não pode conter ao mesmo tempo receitas e despesas.",
       "envelope_member_not_category": "Só é possível adicionar uma categoria a um envelope",
       "savings_folder_not_allowed": "As contas poupança não podem ser colocadas numa pasta",
+      "debt_folder_not_allowed": "As dívidas não podem ser colocadas numa pasta",
+      "debt_period_out_of_range": "Esta dívida não pode ser planeada neste mês",
       "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
       "savings_account_not_member": "As contas poupança têm de ser contas suas neste orçamento",
       "savings_removal_unconfirmed": "Isto elimina os montantes planeados e os comentários das contas poupança que desativou ou removeu deste orçamento; confirme para continuar",

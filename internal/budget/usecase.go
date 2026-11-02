@@ -41,6 +41,7 @@ type Service struct {
 
 	txLabels  TransactionLabels
 	recurring RecurringSource
+	debts     DebtSource
 }
 
 // SetTransactionLabels wires the reporting-label lookup. It is a setter rather
@@ -52,6 +53,10 @@ func (s *Service) SetTransactionLabels(l TransactionLabels) { s.txLabels = l }
 // projection; a setter for the same reason as SetTransactionLabels. Unset, the
 // projection is empty.
 func (s *Service) SetRecurring(r RecurringSource) { s.recurring = r }
+
+// SetDebts wires the debt source behind the debt rows; the debt service is
+// built after this one. Unset, a budget has no debt rows.
+func (s *Service) SetDebts(d DebtSource) { s.debts = d }
 
 func NewService(
 	repo Repository,
@@ -113,6 +118,26 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 		return nil, err
 	}
 	return &budgetAggregate{budget: b, access: access, accounts: accounts, folders: folders, envelopes: envelopes, elements: elements}, nil
+}
+
+// participantIDs are the users whose categories, tags and debts the budget
+// shows: the owner and every accepted non-guest participant.
+func (a *budgetAggregate) participantIDs() []vo.Id {
+	ids := []vo.Id{a.budget.UserID}
+	for _, ac := range a.access {
+		if ac.IsAccepted && ac.Role != roleGuest() {
+			ids = append(ids, ac.UserID)
+		}
+	}
+	return ids
+}
+
+// debtViews returns the participants' debts, none while no source is wired.
+func (s *Service) debtViews(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView, error) {
+	if s.debts == nil {
+		return nil, nil
+	}
+	return s.debts.Views(ctx, ownerIDs)
 }
 
 // hasFolder reports whether folderID is one of this budget's folders. Child

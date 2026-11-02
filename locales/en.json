@@ -2067,6 +2067,8 @@
       "folder_side_mixed": "A folder cannot contain both income and expenses",
       "envelope_member_not_category": "Only a category can go into an envelope",
       "savings_folder_not_allowed": "Savings cannot be put into a folder",
+      "debt_folder_not_allowed": "Debts cannot be put into a folder",
+      "debt_period_out_of_range": "This debt cannot be planned in this month",
       "account_not_removable": "This account has transactions in past months and can no longer be removed from the budget",
       "savings_account_not_member": "Savings accounts must be your own accounts in this budget",
       "savings_removal_unconfirmed": "This deletes the planned amounts and comments of savings accounts you turned off or removed from this budget; confirm to continue",

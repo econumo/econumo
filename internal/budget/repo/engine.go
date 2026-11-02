@@ -60,6 +60,7 @@ type querier interface {
 	SetBudgetAccountSavings(ctx context.Context, db backend.DBTX, budgetID, accountID string, isSavings bool) error
 	LockSavingsElement(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
 	SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error)
+	ElementHasData(ctx context.Context, db backend.DBTX, externalID string, typ int16) (bool, error)
 	RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error
 
@@ -213,6 +214,10 @@ func (sqliteQuerier) LockSavingsElement(ctx context.Context, db backend.DBTX, bu
 }
 func (sqliteQuerier) SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error) {
 	n, err := sqlitegen.New(db).SavingsElementHasData(ctx, sqlitegen.SavingsElementHasDataParams{BudgetID: budgetID, ExternalID: accountID})
+	return n != 0, err
+}
+func (sqliteQuerier) ElementHasData(ctx context.Context, db backend.DBTX, externalID string, typ int16) (bool, error) {
+	n, err := sqlitegen.New(db).ElementHasData(ctx, sqlitegen.ElementHasDataParams{ExternalID: externalID, Type: typ})
 	return n != 0, err
 }
 func (sqliteQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
@@ -482,6 +487,9 @@ func (pgsqlQuerier) LockSavingsElement(ctx context.Context, db backend.DBTX, bud
 }
 func (pgsqlQuerier) SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error) {
 	return pgsqlgen.New(db).SavingsElementHasData(ctx, pgsqlgen.SavingsElementHasDataParams{BudgetID: budgetID, ExternalID: accountID})
+}
+func (pgsqlQuerier) ElementHasData(ctx context.Context, db backend.DBTX, externalID string, typ int16) (bool, error) {
+	return pgsqlgen.New(db).ElementHasData(ctx, pgsqlgen.ElementHasDataParams{ExternalID: externalID, Type: typ})
 }
 func (pgsqlQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
 	return pgsqlgen.New(db).RemoveBudgetAccount(ctx, pgsqlgen.RemoveBudgetAccountParams{BudgetID: budgetID, AccountID: accountID})

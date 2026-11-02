@@ -33,6 +33,9 @@ type BudgetStore interface {
 	// SavingsElementHasData reports whether the budget's savings element for
 	// the account holds a limit or a comment, which dropping the element loses.
 	SavingsElementHasData(ctx context.Context, budgetID, accountID vo.Id) (bool, error)
+	// ElementHasData reports whether the external id's element of this type
+	// holds a limit or a comment in any budget.
+	ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error)
 	RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error
 	// RemoveAccountsOwnedBy drops every membership row for accounts owned by
 	// ownerID — a departing participant takes their accounts with them.

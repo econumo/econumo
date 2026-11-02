@@ -170,6 +170,17 @@ func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, m
 		}
 		owned[id] = true
 	}
+	debts, err := s.debtViews(ctx, []vo.Id{memberID})
+	if err != nil {
+		return err
+	}
+	for _, d := range debts {
+		id, perr := vo.ParseId(d.ID)
+		if perr != nil {
+			return perr
+		}
+		owned[id] = true
+	}
 	for _, el := range b.elements {
 		if el.Type == model.ElementEnvelope || !owned[el.ExternalID] {
 			continue

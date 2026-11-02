@@ -135,6 +135,28 @@ func (q *Queries) DeleteBudgetLimitsByBudget(ctx context.Context, budgetID strin
 	return err
 }
 
+const elementHasData = `-- name: ElementHasData :one
+SELECT EXISTS(
+  SELECT 1 FROM budgets_elements e
+  WHERE e.external_id = $1 AND e.type = $2
+    AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
+      OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)))
+`
+
+type ElementHasDataParams struct {
+	ExternalID string
+	Type       int16
+}
+
+// Whether the external id's element of this type carries a limit or a comment
+// in any budget.
+func (q *Queries) ElementHasData(ctx context.Context, arg ElementHasDataParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, elementHasData, arg.ExternalID, arg.Type)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const getBudgetAccess = `-- name: GetBudgetAccess :one
 SELECT budget_id, user_id, role, is_accepted, created_at, updated_at
 FROM budgets_access WHERE budget_id = $1 AND user_id = $2

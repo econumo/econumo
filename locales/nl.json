@@ -2067,6 +2067,8 @@
       "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten.",
       "envelope_member_not_category": "Alleen een categorie kan aan een envelop worden toegevoegd",
       "savings_folder_not_allowed": "Spaarrekeningen kunnen niet in een map worden geplaatst",
+      "debt_folder_not_allowed": "Schulden kunnen niet in een map worden geplaatst",
+      "debt_period_out_of_range": "Deze schuld kan niet in deze maand worden gepland",
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
       "savings_account_not_member": "Spaarrekeningen moeten je eigen rekeningen in dit budget zijn",
       "savings_removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen verwijderd van de spaarrekeningen die je in dit budget hebt uitgeschakeld of eruit hebt verwijderd; bevestig om door te gaan",

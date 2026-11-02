@@ -201,6 +201,15 @@ SELECT EXISTS(
     AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
       OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)));
 
+-- name: ElementHasData :one
+-- Whether the external id's element of this type carries a limit or a comment
+-- in any budget.
+SELECT EXISTS(
+  SELECT 1 FROM budgets_elements e
+  WHERE e.external_id = ? AND e.type = ?
+    AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
+      OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)));
+
 -- name: RemoveBudgetAccount :exec
 DELETE FROM budgets_accounts WHERE budget_id = ? AND account_id = ?;
 
