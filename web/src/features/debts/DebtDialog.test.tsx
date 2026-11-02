@@ -88,6 +88,21 @@ it('a payment that never covers the interest says so and keeps the date', async 
   expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
 })
 
+it('an unusable balance or payment is not called a payment that never covers the interest', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  await openEdit({ ...wireDebt, periodRate: '0.05' })
+
+  const balance = screen.getByLabelText('Balance now')
+  await user.clear(balance)
+  await user.type(balance, '-100')
+  const payment = screen.getByLabelText('Payment')
+  await user.clear(payment)
+  await user.type(payment, '0')
+
+  expect(screen.queryByText(/never pays off/)).toBeNull()
+})
+
 it('editing the last payment date leaves the other fields', async () => {
   const user = userEvent.setup()
   renderDialog()
@@ -122,6 +137,32 @@ it('saving an untouched debt sends the stored snapshot, not the balance shown no
   await waitFor(() => expect(body).toBeDefined())
   expect(body).toMatchObject({ id: 'd1', name: 'Auto loan', balance: '1200', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05', startDate: null })
   await waitFor(() => expect(useUiStore.getState().debtModal).toBeNull())
+})
+
+it('a balance typed and put back is untouched: no new snapshot', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/debt/update-debt', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return ok(wireDebt)
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  // payments since the snapshot: the projection of what is owed now ends
+  // earlier than the stored last payment date
+  await openEdit({ ...wireDebt, currentBalance: '900' })
+
+  const balance = screen.getByLabelText('Balance now')
+  await user.clear(balance)
+  await user.type(balance, '500')
+  await user.clear(balance)
+  await user.type(balance, '900')
+  expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body).toMatchObject({ balance: '1200', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05' })
 })
 
 it('a changed balance is sent as typed', async () => {

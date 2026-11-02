@@ -27,7 +27,8 @@ export function useFetchDebtForEdit() {
 }
 
 // a debt write moves its budget row, the plan and every total that sums them,
-// and the budget's transaction drill-downs, which list a debt row's payments
+// the budget's transaction drill-downs, which list a debt row's payments, and
+// (converting or deleting a whole-category debt) comments between the rows
 function useInvalidateDebts() {
   const queryClient = useQueryClient()
   return () => {
@@ -35,6 +36,7 @@ function useInvalidateDebts() {
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetComments })
   }
 }
 

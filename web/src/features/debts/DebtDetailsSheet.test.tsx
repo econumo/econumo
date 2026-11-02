@@ -177,3 +177,14 @@ it('a delete the server accepts closes the sheet without a second question', asy
   await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBeNull())
   expect(bodies).toEqual([{ id: 'd1' }])
 })
+
+it('a debt that fails to load says why instead of showing an empty sheet', async () => {
+  server.use(
+    http.get('*/api/v1/debt/get-debt', () =>
+      HttpResponse.json({ success: false, message: 'Debt not found', code: 0, errors: {} }, { status: 404 }),
+    ),
+  )
+  renderSheet()
+  useUiStore.getState().openDebtDetails('d1')
+  expect(await screen.findByRole('alert')).toHaveTextContent('Debt not found')
+})

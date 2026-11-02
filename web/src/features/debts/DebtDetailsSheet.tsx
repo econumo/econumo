@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
+import { dayKey } from '@/lib/datetime'
 import { useUiStore } from '@/app/uiStore'
 import type { DebtDto } from '@/api/dto/debt'
 import { useDebt, useDeleteDebt, useFetchDebtForEdit, useMarkDebtPaidOff } from './queries'
@@ -29,7 +30,7 @@ type Confirm = 'paid-off' | 'delete' | null
 
 function DebtDetails({ debtId, onClose }: { debtId: string; onClose: () => void }) {
   const { t } = useTranslation()
-  const { data } = useDebt(debtId)
+  const { data, error: loadError } = useDebt(debtId)
   const money = useDebtMoney()
   const paymentsLeft = usePaymentsLeft()
   const openDebtModal = useUiStore((s) => s.openDebtModal)
@@ -154,7 +155,7 @@ function DebtDetails({ debtId, onClose }: { debtId: string; onClose: () => void 
               <tbody>
                 {data.payments.map((payment) => (
                   <tr key={payment.transactionId} data-testid="debt-payment" className="border-t border-border">
-                    <td className="py-1.5 text-left">{payment.date.split(' ')[0]}</td>
+                    <td className="py-1.5 text-left">{dayKey(payment.date)}</td>
                     <td className="py-1.5 text-right">{money(payment.amount, item)}</td>
                     <td className="py-1.5 text-right">{money(payment.interest, item)}</td>
                     <td className="py-1.5 text-right">{money(payment.principal, item)}</td>
@@ -170,6 +171,11 @@ function DebtDetails({ debtId, onClose }: { debtId: string; onClose: () => void 
             </p>
           ) : null}
         </div>
+      ) : null}
+      {!data && loadError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {apiErrorMessage(loadError)}
+        </p>
       ) : null}
 
       <ConfirmDialog

@@ -74,8 +74,8 @@ const DAY = /^\d{4}-\d{2}-(\d{2})/
 
 /** The date the debt clears under the form's balance and payment, at the debt's
     own implied rate. 'unknown' while the inputs cannot be projected (a half-typed
-    amount, a debt with no next due date); 'never' when the payment does not cover
-    the interest. */
+    amount, a debt with no next due date, a negative balance, no payment); 'never'
+    when the payment does not cover the interest. */
 export function projectForm(form: DebtFormState, debt: DebtDto): Projection {
   const balance = amountOf(form.balance)
   const payment = amountOf(form.payment)
@@ -83,15 +83,29 @@ export function projectForm(form: DebtFormState, debt: DebtDto): Projection {
   if (balance === null || payment === null || !Number.isFinite(rate) || !DAY.test(debt.nextDueDate)) {
     return { status: 'unknown' }
   }
+  // a negative balance or a payment of nothing is an input error, not a debt
+  // that never pays off
+  if (balance < 0 || payment <= 0 || rate < 0) {
+    return { status: 'unknown' }
+  }
   // the server anchors month-based schedules on the last payment date's day
   const anchor = DAY.exec(debt.lastPaymentDate)
   const date = projectLastPaymentDate(balance, payment, rate, form.schedule, debt.nextDueDate, anchor ? Number(anchor[1]) : undefined)
-  return date === null ? { status: 'never' } : { status: 'date', date }
+  if (date !== null) {
+    return { status: 'date', date }
+  }
+  // past the projection's horizon is not "never"
+  return payment <= balance * rate ? { status: 'never' } : { status: 'unknown' }
 }
 
-function withProjection(form: DebtFormState, debt: DebtDto | undefined): DebtFormState {
+function withProjection(form: DebtFormState, initial: DebtFormState, debt: DebtDto | undefined): DebtFormState {
   if (!debt) {
     return form
+  }
+  // terms typed back to what they were are untouched: the stored date returns,
+  // so saving writes no snapshot
+  if (form.balance === initial.balance && form.payment === initial.payment && form.schedule === initial.schedule) {
+    return { ...form, lastPaymentDate: initial.lastPaymentDate }
   }
   const projection = projectForm(form, debt)
   return projection.status === 'date' ? { ...form, lastPaymentDate: projection.date } : form
@@ -145,8 +159,8 @@ export function useDebtForm(params: OpenDebtParams, categories: CategoryDto[], d
 
   // Balance and payment re-fill the last payment date from the debt's own
   // rate; the date itself and the schedule recalculate nothing.
-  const setBalance = (balance: string) => setForm((prev) => withProjection({ ...prev, balance }, debt))
-  const setPayment = (payment: string) => setForm((prev) => withProjection({ ...prev, payment }, debt))
+  const setBalance = (balance: string) => setForm((prev) => withProjection({ ...prev, balance }, initial, debt))
+  const setPayment = (payment: string) => setForm((prev) => withProjection({ ...prev, payment }, initial, debt))
 
   const projection: Projection = debt ? projectForm(form, debt) : { status: 'unknown' }
 

@@ -93,7 +93,7 @@ import type { MonthExchange, PlanCellRef, PlanFolderSection, PlanRow, PlanRows }
 import type { LineControls, MenuAction } from './monthLayout'
 import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
-import { ElementRow, PlanTagGroup, SumCell, cellDomId, commentsReadOnly, isEditableCell, pickedKey, sourceAmount } from './PlanRows'
+import { ElementRow, PlanTagGroup, SumCell, cellCommentsReadOnly, cellDomId, isEditableCell, pickedKey, sourceAmount } from './PlanRows'
 import { PlanSelectionHint } from './PlanSelectionHint'
 import { PlanBalanceRow, PlanTotals } from './PlanTotalsLines'
 import type { GridCtx, PlanCellEdit, PlanLimitTarget, PlanSelection } from './PlanRows'
@@ -2129,7 +2129,9 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         currencies={currencies}
         exchange={plan && sheetCellTarget ? planMonthExchange(plan, currencies, sheetCellTarget.monthIndex) : (_from, _to, amount) => amount}
         comments={sheetCellTarget ? commentsByCell.get(commentCellKey(sheetCellTarget.el.id, sheetCellTarget.month)) ?? [] : []}
-        commentsReadOnly={sheetCellTarget ? commentsReadOnly(budget.meta, sheetCellTarget.month) : true}
+        commentsReadOnly={
+          sheetCellTarget ? cellCommentsReadOnly(budget.meta, sheetCellTarget.el, sheetCellTarget.month, sheetCellTarget.monthIndex) : true
+        }
         canSetAmount={sheetCellTarget ? isEditableCell(sheetCellTarget.el, sheetCellTarget.month, sheetCellTarget.monthIndex, budget.meta, userId) : false}
         onClose={() => setSheetCellTarget(null)}
         onSetAmount={() => {
@@ -2184,7 +2186,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         comments={commentsDialogTarget ? commentsByCell.get(commentCellKey(commentsDialogTarget.el.id, commentsDialogTarget.month)) ?? [] : []}
         currentUserId={userId}
         canModerate={canConfigureBudget(budget.meta, userId)}
-        readOnly={commentsDialogTarget ? commentsReadOnly(budget.meta, commentsDialogTarget.month) : true}
+        readOnly={
+          commentsDialogTarget
+            ? cellCommentsReadOnly(budget.meta, commentsDialogTarget.el, commentsDialogTarget.month, commentsDialogTarget.monthIndex)
+            : true
+        }
         truncated={commentsTruncated}
       />
 

@@ -140,7 +140,7 @@ export function useSetLimit() {
         }
         const budgeted = form.amount ?? ''
         const isBudgeted = form.amount === null ? (0 as const) : (1 as const)
-        const savings = prev.structure.savings
+        const { savings, debts } = prev.structure
         // from the current month on a savings row's closing balance still expects
         // its unmet plan, so the edit moves it by the change in that gap
         const projected = form.period >= currentMonth()
@@ -164,6 +164,16 @@ export function useSetLimit() {
                             ? { closingBalance: add(sub(row.closingBalance, gap(row.budgeted, row.spent)), gap(budgeted, row.spent)) }
                             : {}),
                         }
+                      : row,
+                  ),
+                }
+              : {}),
+            // a debt row's available carries over: it moves by the change in plan
+            ...(debts
+              ? {
+                  debts: debts.map((row) =>
+                    row.id === form.elementId
+                      ? { ...row, budgeted, isBudgeted, available: add(row.available, sub(budgeted || '0', row.budgeted || '0')) }
                       : row,
                   ),
                 }
@@ -224,8 +234,8 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
   return { ...query, fetchFrom: from, planKey }
 }
 
-// A plan row's id is either an element's or, for a savings row, the savings
-// account's; the two sets never collide, so one patch covers both arrays.
+// A plan row's id is an element's, a savings row's savings account's or a debt
+// row's debt's; the sets never collide, so one patch covers every array.
 function patchPlanCells(
   plan: BudgetPlanDto | null | undefined,
   elementId: Id,

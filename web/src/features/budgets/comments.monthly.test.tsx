@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
+import { coreHandlers, fixtureDebtRow, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 
@@ -455,4 +455,23 @@ it('lets a desktop user start a thread on an archived element with no comments, 
   expect(within(row).queryByLabelText(/^comments /)).toBeNull()
   await user.click(within(row).getByTestId('comment-marker-add'))
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
+})
+
+it('offers no add-comment corner on a debt row in a month outside the debt\'s life (the server refuses it)', async () => {
+  registerMonthlyHandlers({
+    ...fixtureWireBudget,
+    structure: {
+      ...fixtureWireBudget.structure,
+      debts: [
+        fixtureDebtRow(),
+        fixtureDebtRow({ id: 'debt-2', name: 'Car', isPlannable: 0, isPaidOff: 1, budgeted: '', isBudgeted: 0, spent: '40', available: '-40' }),
+      ],
+    },
+  })
+  mockViewport()
+  renderPage('/budget')
+
+  const open = await screen.findByTestId('month-debts-row-debt-1')
+  expect(within(open).getByTestId('comment-marker-add')).toBeInTheDocument()
+  expect(within(screen.getByTestId('month-debts-row-debt-2')).queryByTestId('comment-marker-add')).toBeNull()
 })

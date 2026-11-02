@@ -44,7 +44,8 @@ function makeWrapper() {
 
 function expectInvalidated(spy: ReturnType<typeof makeWrapper>['invalidated']) {
   const keys = spy.mock.calls.map((c) => JSON.stringify((c[0] as { queryKey: unknown }).queryKey))
-  for (const key of [queryKeys.debts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
+  // a whole-category debt write moves comments between the category and debt rows
+  for (const key of [queryKeys.debts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions, queryKeys.budgetComments]) {
     expect(keys).toContain(JSON.stringify(key))
   }
 }

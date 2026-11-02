@@ -91,6 +91,14 @@ export function commentsReadOnly(meta: BudgetMetaDto, month: string): boolean {
   return !!meta.endedAt && month > `${meta.endedAt.slice(0, 7)}-01`
 }
 
+/** commentsReadOnly for one Plan cell: a debt also takes no comment outside its life */
+export function cellCommentsReadOnly(meta: BudgetMetaDto, el: PlanElementDto, month: string, monthIndex: number): boolean {
+  if (el.type === BudgetElementType.DEBT && el.cells[monthIndex]?.isPlannable === 0) {
+    return true
+  }
+  return commentsReadOnly(meta, month)
+}
+
 /** the cell whose in-cell editor is open. `month` pins it: the editor stays on the
  *  month it was opened for even if the window moves under it. */
 export interface PlanCellEdit {
@@ -573,7 +581,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
               ) : (
                 figuresNode
               )}
-              {!editing && (commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
+              {!editing && (commentCount > 0 || (!ctx.editMode && !cellCommentsReadOnly(ctx.meta, el, m, idx))) && !isUncategorized ? (
                 <CommentMarker count={commentCount} onOpen={(anchor) => ctx.openComments(target, { anchor })} />
               ) : null}
               {showFillHandle ? (

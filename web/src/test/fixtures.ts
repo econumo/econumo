@@ -146,7 +146,9 @@ export const fixtureWireBudget = {
 }
 
 /** a get-budget debt row owed by the fixture owner (u1): 1,000 a month, planned
- *  1,500 (500 extra), 900 paid so far, 24 payments left */
+ *  1,500, 900 paid so far, 24 payments left. Its payoff figures equal the base
+ *  ones (as if the plans changed nothing): override payoffDate/overpaymentLeft
+ *  to give the extra an effect. */
 export function fixtureDebtRow(overrides: Partial<BudgetDebtElementDto> = {}): BudgetDebtElementDto {
   return {
     id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,

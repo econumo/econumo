@@ -104,6 +104,8 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       if (touchesBudget) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
         void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+        // a debt shows its category's icon
+        void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       }
     },
     setArchived: (id: Id, isArchived: 0 | 1) => {
@@ -111,6 +113,8 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       if (touchesBudget) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
         void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+        // a debt shows its category's icon
+        void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       }
     },
     remove: (id: Id, txField: 'categoryId' | 'payeeId' | 'tagId') => {

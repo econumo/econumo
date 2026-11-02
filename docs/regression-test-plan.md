@@ -2126,7 +2126,9 @@ member account in USD, before running these.
       `set-limit` there is refused. The start is the start date's month (else
       the first matched payment's, else the first snapshot's); the end is the
       last payment date's month, or the payoff month once paid off.
-      Clearing a stale plan outside the debt's life is allowed.
+      Clearing a stale plan outside the debt's life is allowed. Those cells
+      (Plan grid and month view) offer no "Add comment" corner, and an
+      existing thread there opens read-only.
 - [ ] After the debt is paid off, its row disappears from months after the
       last payment, unless it still carries a balance (an unspent plan or an
       overspend from unplanned payments): then the row stays, read-only, like

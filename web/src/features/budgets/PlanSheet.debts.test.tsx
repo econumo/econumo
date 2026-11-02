@@ -181,6 +181,9 @@ it('cells outside the debt\'s months are read-only', async () => {
   await user.keyboard('{Enter}')
   await user.keyboard('5')
   expect(screen.queryByRole('textbox')).toBeNull()
+  // the server refuses a comment there too: no marker offers a new one
+  expect(within(screen.getByTestId('plan-cell-debt-2:0')).getByTestId('comment-marker-add')).toBeInTheDocument()
+  expect(within(jul).queryByTestId('comment-marker-add')).toBeNull()
   // no balance or payments line where the debt no longer runs
   expect(within(jul).queryByTestId('cell-actual')).toBeNull()
   expect(within(jul).queryByTestId('cell-payments-left')).toBeNull()

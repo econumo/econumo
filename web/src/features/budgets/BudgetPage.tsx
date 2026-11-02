@@ -560,6 +560,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const cellActionsDisabled = isPhone || editMode
   // the hover-only corner that starts a thread on a cell with none yet
   const canAddComment = !cellActionsDisabled && !commentsReadOnly(budget.meta, selectedDate)
+  // a debt row takes no comment in a month outside the debt's life
+  const closedDebtIds = new Set((budget.structure.debts ?? []).filter((d) => d.isPlannable === 0).map((d) => d.id))
+  const threadReadOnly = (id: string) => commentsReadOnly(budget.meta, selectedDate) || closedDebtIds.has(id)
   const wrapBudgetCell = (element: BudgetElementDto, cell: ReactElement) => (
     <CellShell
       comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
@@ -620,7 +623,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               {text}
             </button>
           )}
-          {cellComments.length > 0 || canAddComment ? (
+          {cellComments.length > 0 || (canAddComment && !closedDebtIds.has(cell.id)) ? (
             <CommentMarker count={cellComments.length} placement="outset" onOpen={(anchor) => openComments(thread, anchor)} />
           ) : null}
         </span>
@@ -889,7 +892,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         currencies={currencies}
         exchange={makeBudgetExchange(budget, currencies)}
         comments={sheetTarget ? commentsByCell.get(commentCellKey(sheetCell(sheetTarget, budget.meta.currencyId).id, selectedDate)) ?? [] : []}
-        commentsReadOnly={commentsReadOnly(budget.meta, selectedDate)}
+        commentsReadOnly={sheetTarget ? threadReadOnly(sheetCell(sheetTarget, budget.meta.currencyId).id) : true}
         canSetAmount={sheetTarget ? sheetCanSetAmount(sheetTarget) : false}
         onClose={() => setSheetTarget(null)}
         onSetAmount={() => {
@@ -950,7 +953,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         comments={commentsTarget ? commentsByCell.get(commentCellKey(commentsTarget.el.id, selectedDate)) ?? [] : []}
         currentUserId={user?.id}
         canModerate={canConfigureBudget(budget.meta, user?.id)}
-        readOnly={commentsTarget ? commentsReadOnly(budget.meta, selectedDate) : true}
+        readOnly={commentsTarget ? threadReadOnly(commentsTarget.el.id) : true}
         truncated={commentsTruncated}
       />
 
