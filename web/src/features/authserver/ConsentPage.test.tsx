@@ -419,6 +419,8 @@ it('a read-scoped first-party client says it only reads', async () => {
   expect(await screen.findByText('Econumo Share')).toBeInTheDocument()
   expect(screen.getByText('wants to read your Econumo data.')).toBeInTheDocument()
   expect(screen.getByText(/It can't change anything\./)).toBeInTheDocument()
+  expect(screen.getByText(/your profile \(name and email\)/)).toBeInTheDocument()
+  expect(screen.getByText(/names of people you share accounts with/)).toBeInTheDocument()
   expect(screen.getByText('Made by Econumo')).toBeInTheDocument()
   expect(screen.queryByText('It will be able to read and change all of your Econumo data.')).not.toBeInTheDocument()
 })

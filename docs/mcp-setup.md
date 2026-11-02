@@ -68,9 +68,11 @@ again.
 
 An instance that sets `ECONUMO_SHARE_CLIENT_ID` (with its secret and redirect URI) also
 serves the companion share-reports app. That app signs in through the same consent page,
-but is the only client that receives the read-only `read` scope: it can read your accounts,
-transactions, categories, tags, labels and currencies, and change nothing. It shows under
-Connected apps and is revoked there like any other. Other clients cannot obtain `read`.
+but is the only client that receives the read-only `read` scope: it can read your profile
+(name and email), accounts, transactions, categories, tags, labels and currencies, and
+change nothing. Transaction lists include the names of people you share accounts with. It
+shows under Connected apps and is revoked there like any other. Other clients cannot obtain
+`read`.
 
 ## Revoking an app
 

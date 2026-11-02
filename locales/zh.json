@@ -1968,7 +1968,7 @@
       "redirect": "允许后，您将被转到 {host}。",
       "loopback": "允许后，您将返回此电脑上的应用。",
       "wantsRead": "请求读取您的 Econumo 数据。",
-      "readAccess": "它将能够查看您的账户、交易、分类、标签、标记和货币，但无法更改任何内容。",
+      "readAccess": "它将能够查看您的个人资料（姓名和邮箱）、账户、交易、分类、标签、标记和货币。交易列表包含与您共享账户的人的姓名。它无法更改任何内容。",
       "firstParty": "由 Econumo 制作",
       "fullAccess": "它将能够读取并更改您所有的 Econumo 数据。",
       "signedInAs": "当前登录账户：{email}",

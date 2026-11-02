@@ -2250,9 +2250,10 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       A double-click that lands on the page as it opens does not approve.
 - [ ] With the share app configured (`ECONUMO_SHARE_CLIENT_ID`), its consent
       page shows "Econumo Share", "Made by Econumo", "wants to read your
-      Econumo data." and "It will be able to see your accounts, transactions,
-      categories, tags, labels and currencies. It can't change anything." (not
-      the read-and-change sentence); a third-party client shows no "Made by
+      Econumo data." and "It will be able to see your profile (name and email),
+      accounts, transactions, categories, tags, labels and currencies.
+      Transaction lists include the names of people you share accounts with.
+      It can't change anything." (not the read-and-change sentence); a third-party client shows no "Made by
       Econumo". A read-only (lapsed trial) user can Allow the share app, but
       Allow on a third-party MCP client shows the read-only message.
 - [ ] After the share app is allowed, it appears under Settings > Profile >
