@@ -74,12 +74,17 @@ const DAY = /^\d{4}-\d{2}-(\d{2})/
 
 /** The date the debt clears under the form's balance and payment, at the debt's
     own implied rate. 'unknown' while the inputs cannot be projected (a half-typed
-    amount, a debt with no next due date, a negative balance, no payment); 'never'
+    amount, a debt with no next due date, a negative balance, no payment, another
+    schedule than the stored one); 'never'
     when the payment does not cover the interest. */
 export function projectForm(form: DebtFormState, debt: DebtDto): Projection {
   const balance = amountOf(form.balance)
   const payment = amountOf(form.payment)
   const rate = Number(debt.periodRate)
+  // the stored rate and next due date are per period of the stored schedule
+  if (form.schedule !== debt.schedule) {
+    return { status: 'unknown' }
+  }
   if (balance === null || payment === null || !Number.isFinite(rate) || !DAY.test(debt.nextDueDate)) {
     return { status: 'unknown' }
   }
