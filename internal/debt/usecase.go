@@ -36,9 +36,9 @@ func NewService(repo Repository, tx port.TxRunner, clock port.Clock, class Class
 // after this one, so it cannot be a constructor argument.
 func (s *Service) SetBudgetElements(b BudgetElements) { s.budget = b }
 
-func (s *Service) transferData(ctx context.Context, fromID vo.Id, fromType int16, toID vo.Id, toType int16, currencyID vo.Id) error {
+func (s *Service) transferData(ctx context.Context, fromID vo.Id, fromType int16, toID vo.Id, toType int16, currencyID vo.Id) (bool, error) {
 	if s.budget == nil {
-		return nil
+		return false, nil
 	}
 	return s.budget.TransferData(ctx, fromID, fromType, toID, toType, currencyID)
 }

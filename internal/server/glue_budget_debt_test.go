@@ -12,9 +12,9 @@ type recordingBudgetElements struct {
 	from, to, has model.ElementType
 }
 
-func (r *recordingBudgetElements) TransferElementData(_ context.Context, _ vo.Id, fromType model.ElementType, _ vo.Id, toType model.ElementType, _ vo.Id) error {
+func (r *recordingBudgetElements) TransferElementData(_ context.Context, _ vo.Id, fromType model.ElementType, _ vo.Id, toType model.ElementType, _ vo.Id) (bool, error) {
 	r.from, r.to = fromType, toType
-	return nil
+	return true, nil
 }
 
 func (r *recordingBudgetElements) ElementHasData(_ context.Context, _ vo.Id, typ model.ElementType) (bool, error) {
@@ -25,8 +25,9 @@ func (r *recordingBudgetElements) ElementHasData(_ context.Context, _ vo.Id, typ
 func TestDebtBudgetElements_PassesTheStoredTypes(t *testing.T) {
 	rec := &recordingBudgetElements{}
 	a := NewDebtBudgetElements(rec)
-	if err := a.TransferData(context.Background(), vo.NewId(), 1, vo.NewId(), 6, vo.NewId()); err != nil {
-		t.Fatal(err)
+	left, err := a.TransferData(context.Background(), vo.NewId(), 1, vo.NewId(), 6, vo.NewId())
+	if err != nil || !left {
+		t.Fatalf("TransferData = %v, %v; want the budget's leftBehind passed through", left, err)
 	}
 	if rec.from != model.ElementCategory || rec.to != model.ElementDebt {
 		t.Errorf("transfer types = %d -> %d, want category -> debt", rec.from, rec.to)

@@ -62,6 +62,23 @@ func (s *Service) Sync(ctx context.Context, ownerIDs []vo.Id) error {
 // loadStates syncs every category the owners have debts in and returns the
 // debts' states in creation order.
 func (s *Service) loadStates(ctx context.Context, ownerIDs []vo.Id) ([]*debtState, error) {
+	return s.statesOf(ctx, ownerIDs, s.syncCategory)
+}
+
+// readStates is loadStates without a write or a lock: splits not stored yet
+// are computed in memory, and stale stored ones are ignored.
+func (s *Service) readStates(ctx context.Context, ownerIDs []vo.Id) ([]*debtState, error) {
+	return s.statesOf(ctx, ownerIDs, func(ctx context.Context, categoryID vo.Id) ([]*debtState, error) {
+		debts, err := s.repo.ListByCategory(ctx, categoryID)
+		if err != nil {
+			return nil, err
+		}
+		return s.computeDebts(ctx, categoryID, debts, false)
+	})
+}
+
+func (s *Service) statesOf(ctx context.Context, ownerIDs []vo.Id,
+	byCategory func(context.Context, vo.Id) ([]*debtState, error)) ([]*debtState, error) {
 	debts, err := s.repo.ListByOwners(ctx, ownerIDs)
 	if err != nil {
 		return nil, err
@@ -76,7 +93,7 @@ func (s *Service) loadStates(ctx context.Context, ownerIDs []vo.Id) ([]*debtStat
 	}
 	var out []*debtState
 	for _, c := range categories {
-		states, err := s.syncCategory(ctx, c)
+		states, err := byCategory(ctx, c)
 		if err != nil {
 			return nil, err
 		}
@@ -166,7 +183,7 @@ func (s *Service) syncCategory(ctx context.Context, categoryID vo.Id) ([]*debtSt
 		if err != nil {
 			return err
 		}
-		states, err = s.syncDebts(ctx, categoryID, debts)
+		states, err = s.computeDebts(ctx, categoryID, debts, true)
 		return err
 	})
 	if err != nil {
@@ -175,7 +192,9 @@ func (s *Service) syncCategory(ctx context.Context, categoryID vo.Id) ([]*debtSt
 	return states, nil
 }
 
-func (s *Service) syncDebts(ctx context.Context, categoryID vo.Id, debts []*model.Debt) ([]*debtState, error) {
+// computeDebts matches the category's expenses to its debts and builds their
+// states. With persist it also drops stale splits and stores the new ones.
+func (s *Service) computeDebts(ctx context.Context, categoryID vo.Id, debts []*model.Debt, persist bool) ([]*debtState, error) {
 	if len(debts) == 0 {
 		return nil, nil
 	}
@@ -239,6 +258,9 @@ func (s *Service) syncDebts(ctx context.Context, categoryID vo.Id, debts []*mode
 		stale[sp.DebtID] = append(stale[sp.DebtID], sp.TransactionID)
 	}
 	for _, d := range debts {
+		if !persist {
+			break
+		}
 		if err := s.repo.DeleteSplits(ctx, d.ID, stale[d.ID]); err != nil {
 			return nil, err
 		}
@@ -259,7 +281,7 @@ func (s *Service) syncDebts(ctx context.Context, categoryID vo.Id, debts []*mode
 			digitsByCurrency[d.CurrencyID] = digits
 		}
 		st := &debtState{debt: d, view: views[d.ID], snaps: snapsByDebt[d.ID], digits: digits}
-		if err := s.fillPayments(ctx, st, assigned[d.ID], stored); err != nil {
+		if err := s.fillPayments(ctx, st, assigned[d.ID], stored, persist); err != nil {
 			return nil, err
 		}
 		states = append(states, st)
@@ -267,10 +289,10 @@ func (s *Service) syncDebts(ctx context.Context, categoryID vo.Id, debts []*mode
 	return states, nil
 }
 
-// fillPayments converts the debt's matched expenses and stores the split of
-// those without one. Stored interests are fed to the split as they are, so
-// payments split earlier never change.
-func (s *Service) fillPayments(ctx context.Context, st *debtState, cands []CandidateTx, stored map[vo.Id]vo.DecimalNumber) error {
+// fillPayments converts the debt's matched expenses and splits those without
+// a stored split, storing it when persist is set. Stored interests are fed to
+// the split as they are, so payments split earlier never change.
+func (s *Service) fillPayments(ctx context.Context, st *debtState, cands []CandidateTx, stored map[vo.Id]vo.DecimalNumber, persist bool) error {
 	d := st.debt
 	sort.SliceStable(cands, func(i, j int) bool {
 		if !cands[i].SpentAt.Equal(cands[j].SpentAt) {
@@ -319,6 +341,9 @@ func (s *Service) fillPayments(ctx context.Context, st *debtState, cands []Candi
 			continue
 		}
 		p.interest = roundTo(split[p.txID.String()], st.digits)
+		if !persist {
+			continue
+		}
 		err := s.repo.InsertSplit(ctx, model.DebtSplit{DebtID: d.ID, TransactionID: p.txID,
 			Interest: vo.NewDecimal(strconv.FormatFloat(p.interest, 'f', st.digits, 64))})
 		if err != nil {

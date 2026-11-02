@@ -2069,6 +2069,7 @@
       "savings_folder_not_allowed": "储蓄账户不能放入文件夹",
       "debt_folder_not_allowed": "债务不能放入文件夹",
       "debt_period_out_of_range": "此债务不能在该月份进行计划",
+      "debt_currency_fixed": "债务只能以其自身币种进行计划",
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
       "savings_account_not_member": "储蓄账户必须是您在此预算中的账户",
       "savings_removal_unconfirmed": "这将删除你在此预算中关闭或移除的储蓄账户的计划金额和评论；请确认以继续",

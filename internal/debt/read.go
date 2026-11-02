@@ -143,9 +143,10 @@ func (s *Service) GetDebt(ctx context.Context, userID vo.Id, req model.GetDebtRe
 }
 
 // Views returns the matching key, range and planning bounds of the owners'
-// debts, in creation order.
+// debts, in creation order. It writes nothing and takes no lock, so the budget
+// can call it inside its own transactions.
 func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView, error) {
-	states, err := s.loadStates(ctx, ownerIDs)
+	states, err := s.readStates(ctx, ownerIDs)
 	if err != nil {
 		return nil, err
 	}

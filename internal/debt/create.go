@@ -46,7 +46,8 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 			return err
 		}
 		if isWholeCategory(d) {
-			return s.transferData(ctx, d.CategoryID, elementCategory, d.ID, elementDebt, d.CurrencyID)
+			_, err := s.transferData(ctx, d.CategoryID, elementCategory, d.ID, elementDebt, d.CurrencyID)
+			return err
 		}
 		return nil
 	})

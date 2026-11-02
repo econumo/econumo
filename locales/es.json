@@ -2069,6 +2069,7 @@
       "savings_folder_not_allowed": "Las cuentas de ahorro no se pueden colocar en una carpeta",
       "debt_folder_not_allowed": "Las deudas no se pueden colocar en una carpeta",
       "debt_period_out_of_range": "Esta deuda no se puede planificar en este mes",
+      "debt_currency_fixed": "Una deuda se planifica en su propia moneda",
       "account_not_removable": "Esta cuenta tiene transacciones en meses anteriores y ya no se puede quitar del presupuesto",
       "savings_account_not_member": "Las cuentas de ahorro deben ser tus propias cuentas en este presupuesto",
       "savings_removal_unconfirmed": "Esto elimina los importes planificados y los comentarios de las cuentas de ahorro que desactivaste o quitaste de este presupuesto; confirma para continuar",

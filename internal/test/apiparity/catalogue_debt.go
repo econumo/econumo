@@ -101,6 +101,8 @@ func init() {
 				Body: map[string]any{"budgetId": Budget, "elementId": &keyedID, "period": month(0), "amount": "10"}},
 			{Label: "err:set-debt-limit-out-of-range", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "elementId": &keyedID, "period": month(3), "amount": "10"}},
+			{Label: "err:change-debt-currency", Method: "POST", Path: "/api/v1/budget/change-element-currency", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "elementId": &keyedID, "currencyId": USD}},
 			{Label: "err:move-debt-into-folder", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "id": &keyedID, "folderId": BudgetFolder1}},
 			{Label: "err:delete-removal-unconfirmed", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",

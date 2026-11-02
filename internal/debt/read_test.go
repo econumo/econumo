@@ -119,3 +119,29 @@ func TestViews_PaidOffEndsAtPayoffMonth(t *testing.T) {
 		t.Fatalf("view = %+v", v)
 	}
 }
+
+// Views runs inside budget transactions, so it must neither write nor lock:
+// a new matching payment counts in the view but gets no stored split until a
+// Sync.
+func TestViews_WritesNothing(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	e.clock.now = ymd(2026, 4, 20)
+	tx := e.expense(t, e.account, ymd(2026, 2, 20), "105", "")
+
+	views, err := e.svc.Views(context.Background(), []vo.Id{e.uid()})
+	if err != nil || len(views) != 1 {
+		t.Fatalf("views = %+v, %v", views, err)
+	}
+	if !views[0].StartMonth.Equal(ymd(2026, 2, 1)) {
+		t.Errorf("start = %v, want the unsplit payment's month", views[0].StartMonth)
+	}
+	if got := e.splits(t, res.Id); len(got) != 0 {
+		t.Fatalf("Views stored splits: %v", got)
+	}
+
+	e.sync(t)
+	if _, ok := e.splits(t, res.Id)[tx]; !ok {
+		t.Fatal("Sync stored no split for the payment")
+	}
+}

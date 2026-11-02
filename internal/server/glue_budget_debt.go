@@ -10,7 +10,7 @@ import (
 )
 
 type debtBudgetElements interface {
-	TransferElementData(ctx context.Context, fromID vo.Id, fromType model.ElementType, toID vo.Id, toType model.ElementType, currencyID vo.Id) error
+	TransferElementData(ctx context.Context, fromID vo.Id, fromType model.ElementType, toID vo.Id, toType model.ElementType, currencyID vo.Id) (bool, error)
 	ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error)
 }
 
@@ -27,7 +27,7 @@ func NewDebtBudgetElements(budget debtBudgetElements) *DebtBudgetElements {
 	return &DebtBudgetElements{budget: budget}
 }
 
-func (a *DebtBudgetElements) TransferData(ctx context.Context, fromID vo.Id, fromType int16, toID vo.Id, toType int16, currencyID vo.Id) error {
+func (a *DebtBudgetElements) TransferData(ctx context.Context, fromID vo.Id, fromType int16, toID vo.Id, toType int16, currencyID vo.Id) (bool, error) {
 	return a.budget.TransferElementData(ctx, fromID, model.ElementType(fromType), toID, model.ElementType(toType), currencyID)
 }
 

@@ -92,3 +92,25 @@ func TestDeleteDebt_WidensNeighbourRange(t *testing.T) {
 		t.Fatalf("old splits after the delete = %v", got)
 	}
 }
+
+// Data the category cannot take back (another currency, a month it already
+// plans) is dropped only after the caller confirms.
+func TestDeleteDebt_WholeCategoryLeftBehindNeedsConfirmation(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	res := e.create(t, nil)
+	e.budget.leftBehind = true
+
+	_, err := e.svc.DeleteDebt(ctx, e.uid(), model.DeleteDebtRequest{Id: res.Id})
+	requireCode(t, err, errs.CodeDebtRemovalUnconfirmed)
+	if !e.exists(t, res.Id) {
+		t.Fatal("the unconfirmed delete removed the debt")
+	}
+
+	if _, err := e.svc.DeleteDebt(ctx, e.uid(), model.DeleteDebtRequest{Id: res.Id, ConfirmDataRemoval: true}); err != nil {
+		t.Fatal(err)
+	}
+	if e.exists(t, res.Id) {
+		t.Fatal("the confirmed delete kept the debt")
+	}
+}

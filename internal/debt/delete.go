@@ -9,8 +9,9 @@ import (
 )
 
 // DeleteDebt hands a whole-category debt's plans and comments back to the
-// category; any other debt's budget data is dropped, after the caller
-// confirms.
+// category; budget data that cannot go back (another currency, a month the
+// category already plans) and any other debt's budget data are dropped, after
+// the caller confirms.
 func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.DeleteDebtRequest) (*model.DeleteDebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -27,8 +28,12 @@ func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 		}
 		category = d.CategoryID
 		if isWholeCategory(d) {
-			if err := s.transferData(ctx, d.ID, elementDebt, d.CategoryID, elementCategory, d.CurrencyID); err != nil {
+			left, err := s.transferData(ctx, d.ID, elementDebt, d.CategoryID, elementCategory, d.CurrencyID)
+			if err != nil {
 				return err
+			}
+			if left && !req.ConfirmDataRemoval {
+				return removalUnconfirmed()
 			}
 		} else if !req.ConfirmDataRemoval {
 			has, err := s.hasData(ctx, d.ID)
@@ -36,8 +41,7 @@ func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 				return err
 			}
 			if has {
-				return &errs.ValidationError{Msg: "This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.",
-					MsgCode: errs.CodeDebtRemovalUnconfirmed}
+				return removalUnconfirmed()
 			}
 		}
 		return s.repo.Delete(ctx, d.ID)
@@ -50,4 +54,9 @@ func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 		return nil, err
 	}
 	return &model.DeleteDebtResult{}, nil
+}
+
+func removalUnconfirmed() error {
+	return &errs.ValidationError{Msg: "This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.",
+		MsgCode: errs.CodeDebtRemovalUnconfirmed}
 }

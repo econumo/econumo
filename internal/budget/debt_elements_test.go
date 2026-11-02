@@ -299,9 +299,10 @@ func TestTransferElementData_MovesLimitsAndComments(t *testing.T) {
 	if err != nil || has {
 		t.Fatalf("debt has data before the transfer: %v %v", has, err)
 	}
-	if err := h.svc.TransferElementData(h.ctx, vo.MustParseId(cat), model.ElementCategory,
-		vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(fixture.USD)); err != nil {
-		t.Fatalf("TransferElementData: %v", err)
+	left, err := h.svc.TransferElementData(h.ctx, vo.MustParseId(cat), model.ElementCategory,
+		vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(fixture.USD))
+	if err != nil || left {
+		t.Fatalf("TransferElementData = %v, %v; want everything moved", left, err)
 	}
 
 	catEl, debtEl := h.element(t, cat), h.element(t, debt)
@@ -335,9 +336,10 @@ func TestTransferElementData_SkipsOtherCurrency(t *testing.T) {
 	debt := h.addDebt(h.owner, h.eur)
 
 	// The category row is in the budget's currency (USD), the debt in EUR.
-	if err := h.svc.TransferElementData(h.ctx, vo.MustParseId(cat), model.ElementCategory,
-		vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(h.eur)); err != nil {
-		t.Fatalf("TransferElementData: %v", err)
+	left, err := h.svc.TransferElementData(h.ctx, vo.MustParseId(cat), model.ElementCategory,
+		vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(h.eur))
+	if err != nil || !left {
+		t.Fatalf("TransferElementData = %v, %v; want the plans reported left behind", left, err)
 	}
 	if got := h.limits(t, h.element(t, cat).ID); got["2026-05-01"] != amount("100") {
 		t.Errorf("category limits = %v, want them untouched", got)
@@ -357,9 +359,10 @@ func TestTransferElementData_KeepsTargetOnPeriodClash(t *testing.T) {
 	h.mustSetLimit(t, cat, "2026-06-01", "70")
 	h.mustSetLimit(t, debt, "2026-05-01", "50")
 
-	if err := h.svc.TransferElementData(h.ctx, vo.MustParseId(cat), model.ElementCategory,
-		vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(fixture.USD)); err != nil {
-		t.Fatalf("TransferElementData: %v", err)
+	left, err := h.svc.TransferElementData(h.ctx, vo.MustParseId(cat), model.ElementCategory,
+		vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(fixture.USD))
+	if err != nil || !left {
+		t.Fatalf("TransferElementData = %v, %v; want the dropped plan reported", left, err)
 	}
 	got := h.limits(t, h.element(t, debt).ID)
 	if got["2026-05-01"] != amount("50") || got["2026-06-01"] != amount("70") || len(got) != 2 {
@@ -384,5 +387,81 @@ func TestRemoveMember_DropsTheirDebtRows(t *testing.T) {
 	}
 	if !h.hasElement(t, own) {
 		t.Error("the owner's debt row went too")
+	}
+}
+
+func TestTransferElementData_SkipsTargetInOtherCurrency(t *testing.T) {
+	h := newDebtHarness(t)
+	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
+	debt := h.addDebt(h.owner, fixture.USD)
+	h.mustSetLimit(t, debt, "2026-05-01", "50")
+	if err := h.comment(debt, "2026-05-01"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.svc.ChangeElementCurrency(h.ctx, h.owner, model.ChangeElementCurrencyRequest{
+		BudgetId: h.budgetID.String(), ElementId: cat, CurrencyId: h.eur,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	left, err := h.svc.TransferElementData(h.ctx, vo.MustParseId(debt), model.ElementDebt,
+		vo.MustParseId(cat), model.ElementCategory, vo.MustParseId(fixture.USD))
+	if err != nil || !left {
+		t.Fatalf("TransferElementData = %v, %v; want the plans reported left behind", left, err)
+	}
+	debtEl, catEl := h.element(t, debt), h.element(t, cat)
+	if got := h.limits(t, debtEl.ID); got["2026-05-01"] != amount("50") {
+		t.Errorf("debt limits = %v, want them untouched", got)
+	}
+	if got := h.limits(t, catEl.ID); len(got) != 0 {
+		t.Errorf("EUR category got USD plans: %v", got)
+	}
+	if n := h.commentCount(t, debtEl.ID); n != 1 {
+		t.Errorf("debt has %d comments, want its 1 kept", n)
+	}
+}
+
+func TestTransferElementData_NothingLeftWithoutSourceData(t *testing.T) {
+	h := newDebtHarness(t)
+	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
+	debt := h.addDebt(h.owner, h.eur)
+	h.sync(t)
+
+	left, err := h.svc.TransferElementData(h.ctx, vo.MustParseId(cat), model.ElementCategory,
+		vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(h.eur))
+	if err != nil || left {
+		t.Fatalf("TransferElementData = %v, %v; an empty row leaves nothing behind", left, err)
+	}
+}
+
+func TestChangeElementCurrency_DebtRowRefused(t *testing.T) {
+	h := newDebtHarness(t)
+	debt := h.addDebt(h.owner, fixture.USD)
+	h.sync(t)
+
+	_, err := h.svc.ChangeElementCurrency(h.ctx, h.owner, model.ChangeElementCurrencyRequest{
+		BudgetId: h.budgetID.String(), ElementId: debt, CurrencyId: h.eur,
+	})
+	wantFieldCode(t, err, "currencyId", errs.CodeBudgetDebtCurrencyFixed)
+	if el := h.element(t, debt); el.CurrencyID == nil || el.CurrencyID.String() != fixture.USD {
+		t.Fatalf("currency = %v, want USD kept", el.CurrencyID)
+	}
+}
+
+// A plan stored before the debt's months moved stays clearable.
+func TestSetLimit_DebtClearOutsideBoundsAllowed(t *testing.T) {
+	h := newDebtHarness(t)
+	debt := h.addDebt(h.owner, fixture.USD)
+	h.mustSetLimit(t, debt, "2026-08-01", "20")
+	h.debts.views[0].EndMonth = month(2026, time.July)
+
+	wantFieldCode(t, h.setLimit(h.owner, debt, "2026-08-01", "30"), "period", errs.CodeBudgetDebtPeriodOutOfRange)
+	if _, err := h.svc.SetLimit(h.ctx, h.owner, model.SetLimitRequest{
+		BudgetId: h.budgetID.String(), ElementId: debt, Period: "2026-08-01",
+	}); err != nil {
+		t.Fatalf("clearing outside the bounds: %v", err)
+	}
+	if got := h.limits(t, h.element(t, debt).ID); len(got) != 0 {
+		t.Errorf("limits = %v, want the August plan cleared", got)
 	}
 }

@@ -306,13 +306,6 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 	if err != nil {
 		return err
 	}
-	if len(debts) > 0 {
-		// Reading the debts waited for their owners' locks, so a debt row a
-		// concurrent debt write added meanwhile is only seen by a fresh read.
-		if b.elements, err = s.elements.ListElements(ctx, budgetID); err != nil {
-			return err
-		}
-	}
 
 	// Index existing elements by "<externalId>-<typeAlias>" AND by external id.
 	// The external index is what makes a type (side) change an in-place update:

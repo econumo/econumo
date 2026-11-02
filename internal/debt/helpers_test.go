@@ -77,13 +77,14 @@ type transferCall struct {
 }
 
 type fakeBudget struct {
-	transfers []transferCall
-	hasData   bool
+	transfers  []transferCall
+	hasData    bool
+	leftBehind bool
 }
 
-func (b *fakeBudget) TransferData(_ context.Context, from vo.Id, fromType int16, to vo.Id, toType int16, currency vo.Id) error {
+func (b *fakeBudget) TransferData(_ context.Context, from vo.Id, fromType int16, to vo.Id, toType int16, currency vo.Id) (bool, error) {
 	b.transfers = append(b.transfers, transferCall{from.String(), fromType, to.String(), toType, currency.String()})
-	return nil
+	return b.leftBehind, nil
 }
 
 func (b *fakeBudget) HasData(context.Context, vo.Id, int16) (bool, error) { return b.hasData, nil }

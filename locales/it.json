@@ -2069,6 +2069,7 @@
       "savings_folder_not_allowed": "I conti di risparmio non possono essere inseriti in una cartella",
       "debt_folder_not_allowed": "I debiti non possono essere inseriti in una cartella",
       "debt_period_out_of_range": "Questo debito non può essere pianificato in questo mese",
+      "debt_currency_fixed": "Un debito viene pianificato nella sua valuta",
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
       "savings_account_not_member": "I conti di risparmio devono essere tuoi conti in questo budget",
       "savings_removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti dei conti di risparmio che hai disattivato o rimosso da questo budget; conferma per continuare",

@@ -25,6 +25,8 @@ type Rates interface {
 // BudgetElements is backed by the budget service. It is installed late and
 // the service tolerates its absence.
 type BudgetElements interface {
-	TransferData(ctx context.Context, fromID vo.Id, fromType int16, toID vo.Id, toType int16, currencyID vo.Id) error
+	// TransferData reports leftBehind when some budget held source data that
+	// was not moved (another currency, or a month the target already plans).
+	TransferData(ctx context.Context, fromID vo.Id, fromType int16, toID vo.Id, toType int16, currencyID vo.Id) (leftBehind bool, err error)
 	HasData(ctx context.Context, externalID vo.Id, typ int16) (bool, error)
 }

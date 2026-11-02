@@ -45,6 +45,7 @@ const (
 	CodeBudgetSavingsFolderNotAllowed   = "budget.savings_folder_not_allowed"
 	CodeBudgetDebtFolderNotAllowed      = "budget.debt_folder_not_allowed"
 	CodeBudgetDebtPeriodOutOfRange      = "budget.debt_period_out_of_range"
+	CodeBudgetDebtCurrencyFixed         = "budget.debt_currency_fixed"
 	CodeBudgetAccountNotRemovable       = "budget.account_not_removable"
 	CodeBudgetSavingsAccountNotMember   = "budget.savings_account_not_member"
 	CodeBudgetSavingsRemovalUnconfirmed = "budget.savings_removal_unconfirmed"
@@ -192,6 +193,7 @@ var AllCodes = []string{
 	CodeBudgetSavingsFolderNotAllowed,
 	CodeBudgetDebtFolderNotAllowed,
 	CodeBudgetDebtPeriodOutOfRange,
+	CodeBudgetDebtCurrencyFixed,
 	CodeBudgetAccountNotRemovable,
 	CodeBudgetSavingsAccountNotMember,
 	CodeBudgetSavingsRemovalUnconfirmed,

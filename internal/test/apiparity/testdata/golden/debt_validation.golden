@@ -79,6 +79,9 @@
 == err:set-debt-limit-out-of-range POST /api/v1/budget/set-limit [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"period":["This debt cannot be planned in this month"]}}
 
+== err:change-debt-currency POST /api/v1/budget/change-element-currency [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"currencyId":["A debt is planned in its own currency"]}}
+
 == err:move-debt-into-folder POST /api/v1/budget/move-element [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"folderId":["Debts cannot be put into a folder"]}}
 

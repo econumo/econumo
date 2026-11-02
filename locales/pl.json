@@ -2069,6 +2069,7 @@
       "savings_folder_not_allowed": "Kont oszczędnościowych nie można umieścić w folderze",
       "debt_folder_not_allowed": "Długów nie można umieścić w folderze",
       "debt_period_out_of_range": "Tego długu nie można zaplanować w tym miesiącu",
+      "debt_currency_fixed": "Dług planuje się w jego własnej walucie",
       "account_not_removable": "To konto ma transakcje w poprzednich miesiącach i nie można go już usunąć z budżetu",
       "savings_account_not_member": "Konta oszczędnościowe muszą być Twoimi kontami w tym budżecie",
       "savings_removal_unconfirmed": "Spowoduje to usunięcie zaplanowanych kwot i komentarzy kont oszczędnościowych, które wyłączono lub usunięto z tego budżetu; potwierdź, aby kontynuować",
