@@ -153,6 +153,9 @@ type Querier interface {
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
+	// Where a rate-gap check starts by default. ORDER BY ... LIMIT 1 so the
+	// result types as the column. sql.ErrNoRows = no transactions yet.
+	GetEarliestTransactionDate(ctx context.Context) (time.Time, error)
 	// Fixed custom-currency rates for the convertor overlay: one rate per custom,
 	// period-independent. Globals never carry a rate here.
 	GetFixedCurrencyRates(ctx context.Context) ([]GetFixedCurrencyRatesRow, error)
@@ -387,6 +390,10 @@ type Querier interface {
 	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
 	// engines return identical row order.
 	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	// Distinct (period, code) pairs with a rate against the base in [from, to).
+	// The period is published_at formatted with the bound to_char layout
+	// ('YYYY-MM' per month, 'YYYY-MM-DD' per day).
+	ListRatedPeriods(ctx context.Context, arg ListRatedPeriodsParams) ([]ListRatedPeriodsRow, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
@@ -396,6 +403,10 @@ type Querier interface {
 	// id. The time of day takes no part.
 	ListTransactionsByAccount(ctx context.Context, accountID string) ([]ListTransactionsByAccountRow, error)
 	ListUnrevokedOAuthGrants(ctx context.Context, userID string) ([]ListUnrevokedOAuthGrantsRow, error)
+	// Global currencies something converts from or to: an account (deleted ones
+	// too, their history still counts), a budget, a budget element, or a user's
+	// display currency. The rate-gap check looks at these only.
+	ListUsedGlobalCurrencyCodes(ctx context.Context) ([]string, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	// Ordered by id so the backfill is deterministic across engines and reruns.
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across

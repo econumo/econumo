@@ -20,6 +20,7 @@ node_modules/
 # Go build/test artifacts
 /econumo
 /release-out/
+/dist/
 coverage.out
 
 # Local dev-machine -> homelab transfer script (contains the homelab host/path).

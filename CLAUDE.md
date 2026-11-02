@@ -28,7 +28,9 @@ required for the smoke tier.
 
 ```bash
 make go-test         # SMOKE: build + vet + gofmt + OpenAPI-docs-fresh + sqlite unit/integration + coverage gate
-make test            # FULL: go-test + the sqlite-vs-PostgreSQL engine-comparison suite + the frontend suite
+make test            # FULL: go-test + the sqlite-vs-PostgreSQL engine-comparison suite + the release
+                     #       upgrade suite + the frontend suite
+make test-upgrade    # upgrade databases written by published release binaries to this checkout
 make go-build        # Compile the binary to ./econumo (regenerates OpenAPI docs first)
 make go-run          # Run the server locally (reads .env; regenerates OpenAPI docs first)
 make go-lint         # build + vet + gofmt + OpenAPI-docs-fresh check
@@ -93,7 +95,7 @@ make mobile-android   # sync + open in Android Studio
 
 ```bash
 make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/econumo:dev
-                   # AND mirror the `dev` binaries to the private R2 bucket
+                   # AND publish the `dev` channel to the private R2 bucket with ship
 ```
 
 Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
@@ -107,23 +109,34 @@ workflow then creates no branch. `latest` only moves for the highest version
 released so far. See `.claude/skills/publish-release` for the full process.
 Everything publishes to `ghcr.io/econumo/econumo` only.
 
-**R2 binary mirror.** Both `make publish-dev` and the release workflow also
-upload the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}` +
-`SHA256SUMS`) to a **private** Cloudflare R2 bucket via `make cdn-upload`
-(aws S3 CLI). Keys are namespaced `s3://$(R2_BUCKET)/$(R2_PROJECT)/<channel>/`
-(defaults `econumo`/`econumo`; the bucket hosts several projects), channel ∈
-`dev` | `latest` | `vX.Y.Z`. The bucket has no public domain — objects are
-fetched via the S3 API / signed URLs. In the release workflow the channels gate
-exactly like the image tags: the version channel always, `latest/` and `dev/`
-only when their checkbox is set. Endpoint + credentials come from the
-environment, never committed, and are `ECONUMO_`-prefixed so several projects'
-R2 targets can coexist in one shell: `ECONUMO_R2_ENDPOINT`
-(`https://<acct>.r2.cloudflarestorage.com`, required) plus optional
-`ECONUMO_R2_ACCESS_KEY_ID` / `ECONUMO_R2_SECRET_ACCESS_KEY` (mapped to `AWS_*`
-for the aws subprocess only; unset falls back to the `~/.aws` profile). In CI
-the GitHub secrets `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are
-mapped to those `ECONUMO_R2_*` names in the step's `env:`. Local use needs the
-aws CLI installed.
+**R2 release (ship).** Both `make publish-dev` and the release workflow also
+publish the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}`), the
+systemd unit template `deploy/ship/econumo.service` and
+`deploy/ship/econumo.env.example` to the **private** Cloudflare R2 bucket `ship`
+with [ship](https://github.com/dmtrkzntsv/ship). Two Makefile targets, the same
+names in every ship project: `make ship-dist` builds (`release-binaries`) and
+stages the flat folder `dist/ship/` (ship rejects any other file;
+`SHIP_SKIP_BUILD=1` takes already-built binaries from `release-out/`), and
+`make ship-publish VERSION=… CHANNELS=…` runs `ship publish econumo --path
+dist/ship [--version $(VERSION)] [--channels $(CHANNELS)]` without building.
+ship writes its own `SHA256SUMS` and moves the channels. A release publishes the
+immutable version `vX.Y.Z` plus `latest`/`dev` only when their checkbox is set
+(exactly like the image tags); `VERSION=dev` (`make publish-dev`, the Publish
+Dev workflow) publishes only the moving `dev` channel. Hosts run `ship
+install|update econumo`. The unit is a TEMPLATE:
+only ship's placeholders (`{{SERVICE}} {{USER}} {{BIN}} {{BIN_DIR}}
+{{ENV_FILE}} {{DATA_DIR}} {{RUN_DIR}} {{UNIT}}`) are allowed, and it must not
+use `DynamicUser=`/`StateDirectory=`/`RuntimeDirectory=` (ship creates the user
+and directories). Credentials come from ship's config or `SHIP_R2_ENDPOINT`,
+`SHIP_R2_ACCESS_KEY_ID`, `SHIP_R2_SECRET_ACCESS_KEY` (Read & Write token; the
+bucket defaults to `ship`); in CI the GitHub secrets `R2_ENDPOINT`,
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are mapped to them and
+`dmtrkzntsv/ship@v0` puts `ship` on the PATH. The workflows run both targets
+and the unit template from the workflow's own commit (`make -f
+.ship-tools/Makefile ship-dist SHIP_SKIP_BUILD=1
+SHIP_TEMPLATES=.ship-tools/deploy/ship`, then `ship-publish`), so hotfixes from
+release branches cut before ship still publish. Local use needs `ship` installed
+(`brew install dmtrkzntsv/tap/ship`).
 
 ### Branch naming
 
@@ -581,6 +594,22 @@ Tests live alongside the Go code:
 - `internal/test/enginecompare/` — the strongest contract: replays the same
   catalogue on BOTH SQLite and PostgreSQL and asserts byte-identical
   responses (build tag `enginecompare`).
+- `internal/test/upgradetest/` — the release upgrade suite (build tag `upgrade`, `make
+  test-upgrade`, its own CI job; linux only). Every other suite starts from an empty database, so
+  none can see a migration that misbehaves only on a database an older release left behind (#413).
+  For the newest patch of every minor line from v1.2.0 on (read from the git tags;
+  `ECONUMO_UPGRADE_FROM` overrides) and for SQLite and PostgreSQL, it downloads the release's
+  `econumo-linux-<arch>` from GitHub Releases (checked against `SHA256SUMS`, cached in
+  `ECONUMO_UPGRADE_CACHE`), boots it on an empty database, seeds a household through its HTTP API
+  (version-tolerant: fields an old release lacks are ignored, routes it lacks are skipped), records
+  its reads, then boots this checkout's binary on the same database (twice) and requires: a schema
+  equal to a fresh install's (columns by name, indexes, foreign keys), the same migration set, no
+  newly applied migration numbered below the release's newest one (the hazard behind #413; past
+  cases are allowlisted in `releasedOutOfOrder`), the release's sessions and PATs still valid and
+  login working, every value the release returned still returned (extra fields and rows allowed;
+  changes a release made on purpose are listed in `intended`, scoped to older sources), exact
+  balances and budget figures, working writes, and no ERROR log line. A new migration therefore
+  needs a version above every RELEASED one, a hotfix release included.
 - `internal/test/fixture` — shared fixture builder (users, accounts, access tokens, ...);
   `internal/test/authstub` — a stub `middleware.TokenAuthenticator` for feature api tests
   (the bearer token IS the user id string).
@@ -1021,7 +1050,11 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   the boot runner invokes the named CLI command in version order between SQL files, records the
   version only on success, and gives it no surrounding transaction — every `migration:*` command
   must be idempotent. `serve` and `data:import-sqlite` pass `cli.MigrationCommandRunner`; test
-  databases pass `migrate.NoCommands`.
+  databases pass `migrate.NoCommands`. A command step runs TODAY's feature code against the schema
+  as it stands at its version, so on a database from an older release it must not write through a
+  path that needs a column a later migration adds: number it above every migration its code
+  depends on, and when a later migration changes what it writes, move the step to a new version and
+  leave a `SELECT 1;` no-op at the old one (as `20260817000001` -> `20261101000000`).
 
 ## CLI / management commands
 
@@ -1038,6 +1071,8 @@ user:verify-email <email>
 user:set-access <email> <full|readonly> [YYYY-MM-DD]
 user:show <email>
 currency:update-rates [date]
+currency:show-rate-gaps [start] [end] [--daily]
+currency:backfill-rates <start> [end] [--daily]
 currency:add <code> [name] [fraction-digits]
 token:purge [days]
 data:remove-salt
@@ -1046,6 +1081,7 @@ migration:zero-deleted-accounts
 migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
 migration:seed-transaction-sort-keys
+migration:copy-access-tokens
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -1058,6 +1094,21 @@ Run it **while the old salt is still set** (it needs it to decrypt), then
 unset `ECONUMO_DATA_SALT` and restart. It refuses to run with an empty salt,
 and is idempotent (already-plaintext rows are skipped).
 Back up the DB first — the decryption is one-way in practice.
+
+`currency:show-rate-gaps` lists the months (per day with `--daily`) in which a
+global currency in use (on an account, deleted ones included, a budget, a budget
+element or a user's display currency; never the base or a custom currency) has
+no rate against `ECONUMO_CURRENCY_BASE`. Conversions average each month's rates
+and a month without any borrows the latest earlier month, so one rate a month is
+enough for them. Dates are `YYYY-MM-DD` or `YYYY-MM`; the start defaults to the
+oldest transaction (today when it is future-dated) and the end to today (UTC, a
+later end is clamped).
+`currency:backfill-rates` loads exactly those gaps from Open Exchange Rates, one
+request per gap, dated the gap's first day (the 1st of the month, or the day),
+requesting every global currency like `currency:update-rates` (the in-process
+updater skips while the newest stored date is recent, so a backfilled date must
+be complete). Its start is required because every gap
+costs API quota; it stops at the first failed request, and a rerun resumes.
 
 `data:import-sqlite` copies every table from an existing SQLite database into
 the configured PostgreSQL (`DATABASE_URL` must be a `postgres://` URL). It runs
@@ -1072,7 +1123,8 @@ schema-version mismatch between source and target.
 
 `migration:zero-deleted-accounts` writes a "Balance adjustment (account
 deleted)" correction so every deleted account's balance is zero; idempotent;
-also invoked automatically at boot as migration step `20260817000001`.
+also invoked automatically at boot as migration step `20261101000000` (it ran at
+`20260817000001` until that broke upgrades from v1.3.x, see command steps above).
 
 `migration:seed-analytics-option` backfills the per-user `analytics`
 `users_options` row for every user that has none, seeded from the deprecated
@@ -1094,6 +1146,28 @@ lists used before keys existed (spent_at DESC, id), the rows it is the source of
 transfers it receives together. One account per DB transaction, with that account's revision
 bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
 migration step `20261024000001`, right after the SQL file that adds the columns.
+
+`migration:copy-access-tokens` is step 2 of the three-step `access_tokens` repair
+(`20261031000010` creates `access_tokens_new` in the final shape, `20261031000011` runs
+this command, `20261031000012` drops the old table and renames the new one; sqlite only,
+the pgsql files are no-ops that keep the version sets equal; `20261031000000`-`02` stay
+unused because unreleased builds of this fix recorded them for different steps).
+`provider`/`id_token` go missing on one upgrade path: `20260907000000` (v1.5.0) adds them,
+while the lower-numbered `20260901000000` (v1.6.0) was released later and rebuilds the
+table to add a NOT NULL `scope` without carrying them over, so a v1.5.x instance applies
+that still-pending rebuild afterwards and loses them, and login then fails with `no such
+column: provider` because minting a session writes both. The copy is a command because SQL
+cannot name a column that may be missing: it copies `provider`/`id_token` where the old
+table still has them (fresh installs, anything upgraded from v1.6.x) and writes NULL where
+they were dropped (those values are unrecoverable, so such a session skips the
+RP-initiated logout redirect); every other column, `scope` included, is copied verbatim.
+Idempotent: it replaces the copy in one transaction, and is a no-op once the swap has
+removed `access_tokens_new`. Step 1 drops a stale `access_tokens_new` before creating it.
+Step 3 only drops the old table, renames the new one and recreates the indexes (their
+names are taken until the old table is gone), so a write to `access_tokens` between steps
+2 and 3 would be lost; in a boot the two run back to back. The runner also logs a WARN
+when it applies any migration numbered below the highest already applied (the ordering
+that caused this), excluding anything at or below the newest legacy drop-in version.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
@@ -1573,8 +1647,9 @@ data unreadable. Most are also asserted by the test suite.
   - `:dev` — published locally via `make publish-dev`, or by the release workflow's "Publish Dev" checkbox.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
 - Docker-free: each release attaches single-file linux binaries (SPA embedded)
-  + `SHA256SUMS`; reference systemd unit in `deployment/systemd/econumo.service`,
-  walkthrough in `docs/run-without-docker.md` (linked from the README).
+  + `SHA256SUMS`; walkthrough in `docs/run-without-docker.md` (linked from the
+  README). The same binaries plus the ship unit template
+  `deploy/ship/econumo.service` go to R2 for hosts managed with ship.
   `make release-binaries` builds the same artifacts locally.
 - Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
   and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.

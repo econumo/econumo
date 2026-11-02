@@ -20,8 +20,7 @@ Binaries are published for `linux/amd64` and `linux/arm64`.
 
 ## Install as a systemd service
 
-A reference unit lives in
-[`deployment/systemd/econumo.service`](../deployment/systemd/econumo.service):
+Create the user and directories, install the binary and write the env file:
 
 ```console
 $ sudo useradd --system --home-dir /var/lib/econumo --shell /usr/sbin/nologin econumo
@@ -29,8 +28,6 @@ $ sudo mkdir -p /opt/econumo /var/lib/econumo /etc/econumo
 $ sudo chown econumo:econumo /var/lib/econumo
 $ sudo install -m 0755 econumo-linux-amd64 /opt/econumo/econumo
 $ sudoedit /etc/econumo/env
-$ sudo cp deployment/systemd/econumo.service /etc/systemd/system/
-$ sudo systemctl daemon-reload && sudo systemctl enable --now econumo
 ```
 
 A minimal `/etc/econumo/env` (all other settings from
@@ -39,6 +36,36 @@ A minimal `/etc/econumo/env` (all other settings from
 ```
 DATABASE_URL=sqlite:///var/lib/econumo/db.sqlite
 PORT=8181
+```
+
+Then save this unit as `/etc/systemd/system/econumo.service` and start it with
+`sudo systemctl daemon-reload && sudo systemctl enable --now econumo`:
+
+```ini
+[Unit]
+Description=Econumo personal finance server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=econumo
+Group=econumo
+WorkingDirectory=/var/lib/econumo
+EnvironmentFile=/etc/econumo/env
+ExecStart=/opt/econumo/econumo serve
+Restart=on-failure
+RestartSec=5
+
+# Hardening: the process only ever writes its database directory.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/econumo
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 ## Configuration

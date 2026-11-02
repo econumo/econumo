@@ -1819,6 +1819,14 @@ and on tablet/phone only with a hardware keyboard.
       account in a budget-currency category counts in the category's spent at
       the converted amount (not 1:1), in both the table and the Plan grid, and
       `get-budget` `currencyRates` lists the global rates, not only custom ones.
+- [ ] `currency:show-rate-gaps` on an instance with a foreign-currency account
+      and a month with no rates: that month is listed with the account's
+      currency; `--daily` lists days instead; currencies nobody uses, custom
+      currencies and the base are never listed.
+- [ ] `currency:backfill-rates <start>` fills those gaps (one Open Exchange
+      Rates request each, dated the 1st, or each day with `--daily`):
+      `currency:show-rate-gaps` then reports no gaps for the range, and the
+      budget converts that month's foreign amounts at the loaded rate.
 - [ ] Transaction dated exactly 00:00 on the 1st of the budget month (e.g. a
       date-only CSV import row), on SQLite AND PostgreSQL: it counts ONCE, in
       that month's income/expenses, not also in its starting balance; every
@@ -1829,6 +1837,22 @@ and on tablet/phone only with a hardware keyboard.
       column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
       they list and export at the UTC time after the upgrade instead of
       failing the list.
+- [ ] SQLite instance whose history passes through v1.5.x (v1.5.x -> v1.6.x ->
+      this release, and v1.5.x straight to this release): signing in with email
+      and password succeeds instead of failing with 500 / "no such column:
+      provider", and existing sessions and personal tokens (an ingest-only token
+      still limited to ingest) keep working after the upgrade. Then sign in
+      through a provider and check Settings -> Sessions lists the session. On a
+      fresh install and on an instance upgraded from v1.6.x or later, login works
+      unchanged, Settings -> Sessions still names each session's provider, and a
+      custom-OIDC session signed in before the upgrade still logs out through
+      the provider's end-session page (its stored provider/id_token survive).
+- [ ] Instance on v1.3.x or older (SQLite AND PostgreSQL) holding a deleted
+      account with a non-zero balance, upgraded straight to this release: the
+      first boot completes instead of failing with "no such column:
+      recipient_sort_key" at migration 20260817000001; the deleted account's
+      history now ends with one "Balance adjustment (account deleted)"
+      correction, and budgets still count its earlier transactions.
 - [ ] 📱 **Upcoming recurring payments mark a short plan**: with an active
       recurring expense on a budget account (category X, due later this month,
       nothing planned for X), the current month's Budget view (desktop, phone

@@ -24,10 +24,6 @@ func RegisterCommand(version, name string) {
 func commandSteps() []commandStep { return registry }
 
 func init() {
-	// 20260817000000.sql creates budgets_accounts; this step zeroes every
-	// deleted account; 20260817000002.sql seeds membership and drops the
-	// blacklist. See docs/superpowers/specs/2026-08-16-budget-account-membership-design.md §2.
-	RegisterCommand("20260817000001", "migration:zero-deleted-accounts")
 	// No SQL file: the value comes from the deprecated ECONUMO_ANALYTICS, which
 	// SQL cannot read, and each row needs a UUIDv7 id SQLite cannot mint.
 	RegisterCommand("20260903000000", "migration:seed-analytics-option")
@@ -41,4 +37,16 @@ func init() {
 	// because the keys come from the Go sortkey package, the one generator every
 	// later write uses.
 	RegisterCommand("20261024000001", "migration:seed-transaction-sort-keys")
+	// Step 2 of 3 of the access_tokens repair (sqlite/20261031000010.sql): copies
+	// the rows into access_tokens_new. A command because provider / id_token are
+	// copied where they still exist and written as NULL where an out-of-order
+	// migration dropped them, and SQL cannot name a column that may be missing.
+	RegisterCommand("20261031000011", "migration:copy-access-tokens")
+	// Zeroes every deleted account (it ran at 20260817000001, now a no-op). It
+	// writes corrections with the current transaction write path, which needs
+	// the final transactions schema, so it must stay numbered above every
+	// migration that changes the tables that path writes. Zeroing never touches
+	// accounts.updated_at, so the membership seed (20260817000002) reads the
+	// same deletion times either way.
+	RegisterCommand("20261101000000", "migration:zero-deleted-accounts")
 }

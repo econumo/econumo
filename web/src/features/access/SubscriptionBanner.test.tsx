@@ -262,7 +262,9 @@ describe('sale variant', () => {
     renderBanner()
     await user.click(await screen.findByRole('button', { name: 'Get the deal' }))
     expect(window.open).toHaveBeenCalled()
-    await waitFor(() => expect(tab.location.href).toBe('https://pay.example.test/?t=abc'))
+    // The signed-in user's analytics handoff may follow as a #a= fragment
+    // (useOpenBillingPortal.test.tsx covers it); this test is about the link.
+    await waitFor(() => expect(tab.location.href.split('#')[0]).toBe('https://pay.example.test/?t=abc'))
     expect(minted).toBe(true)
   })
 
