@@ -156,3 +156,18 @@ func TestCreateDebt_BlankStartDateIsNone(t *testing.T) {
 		t.Fatalf("start date = %q, want none", res.StartDate)
 	}
 }
+
+// The projection covers 100 years; a longer term (a mistyped year) is refused
+// rather than projected partially.
+func TestCreateDebt_TermBeyondTheProjectionIsRefused(t *testing.T) {
+	e := newEnv(t)
+	req := e.createReq()
+	req.LastPaymentDate = "2126-04-01"
+	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	requireCode(t, err, errs.CodeOutOfRange)
+	req.LastPaymentDate = "2126-03-01"
+	req.Balance = vo.NewFlexString("1200000")
+	if _, err := e.svc.CreateDebt(context.Background(), e.uid(), req); err != nil {
+		t.Fatalf("a 100-year term is allowed: %v", err)
+	}
+}

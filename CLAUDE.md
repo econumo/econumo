@@ -1577,9 +1577,11 @@ data unreadable. Most are also asserted by the test suite.
   Currency is not editable; category, payee, tag and start date are,
   rechecked by the same key checks. **Splitting is bank-style** (`internal/model/debt_math.go`):
   the implied periodic rate `r` is solved from the snapshot (annuity over the schedule, `r = 0`
-  when payment x n = balance, payments that cannot cover the balance are refused); interest
+  when payment x n = balance, payments that cannot cover the balance are refused, and so is a last
+  payment date more than 100 years out, past the projection's horizon); interest
   accrues per schedule period (a window from halfway after the previous due date to halfway
-  before the next) as balance at period start x `r`, payments in the window consume it first
+  before the next) as balance at period start x `r`, payments in the window consume it first (a stored split's interest is reserved, so a payment
+  entered later in that window takes only what is left)
   and everything else, an extra payment included, goes fully to the debt; a missed period (or a
   payment below the interest) adds nothing, the balance never rises on its own; payments before
   the first snapshot are estimated backward with its `r`; foreign payments convert at their day's

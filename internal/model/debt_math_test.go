@@ -442,6 +442,11 @@ func TestProjectDebt_NoPayoffDateBeyondTheHorizon(t *testing.T) {
 	if !p.PayoffDate.IsZero() || !p.BasePayoffDate.IsZero() {
 		t.Fatalf("payoff dates = %v / %v, want none: the projection never clears the balance", p.PayoffDate, p.BasePayoffDate)
 	}
+	// what the horizon leaves unpaid is still owed: money left never falls
+	// below the balance, so the overpayment is never negative
+	near(t, "money left", p.MoneyLeft, 180000, 1e-6)
+	near(t, "overpayment left", p.OverpaymentLeft, 0, 1e-6)
+	near(t, "base overpayment left", p.BaseOverpaymentLeft, 0, 1e-6)
 }
 
 // The payoff rule rounds to the debt currency: 0.4 yen is nothing, 0.004
@@ -522,4 +527,32 @@ func TestProjectDebt_OverduePayoffIsNotInThePast(t *testing.T) {
 	if extra.PayoffDate.Before(today) {
 		t.Fatalf("PayoffDate = %v, an extra clearing the debt cannot pay it off before today", extra.PayoffDate)
 	}
+}
+
+// A payment entered late, dated before one already split in the same window,
+// takes only what the stored split left of the window's interest.
+func TestSplit_LateEntryInASplitWindowReservesTheStoredInterest(t *testing.T) {
+	stored := 1280.29
+	later := pay("b", ymd(2026, time.February, 5), 2000)
+	later.Interest = &stored
+	got := SplitPayments([]MathSnapshot{refLoan()}, []MathPayment{pay("a", ymd(2026, time.February, 3), 500), later})
+	near(t, "stored kept", got["b"], 1280.29, 1e-9)
+	near(t, "late entry", got["a"], 0, 1e-9)
+
+	partial := 1000.0
+	later.Interest = &partial
+	got = SplitPayments([]MathSnapshot{refLoan()}, []MathPayment{pay("a", ymd(2026, time.February, 3), 500), later})
+	near(t, "window total", got["a"]+got["b"], 1280.29, 0.01)
+
+	// the same before the first snapshot
+	snap := refLoan()
+	snap.AsOf = ymd(2026, time.March, 1)
+	snap.Last = snap.AsOf.AddDate(20, 0, 0)
+	fresh := SplitPayments([]MathSnapshot{snap}, []MathPayment{pay("b", ymd(2026, time.February, 5), 2000)})["b"]
+	backStored := fresh
+	back := pay("b", ymd(2026, time.February, 5), 2000)
+	back.Interest = &backStored
+	got = SplitPayments([]MathSnapshot{snap}, []MathPayment{pay("a", ymd(2026, time.February, 3), 500), back})
+	r := mustRate(t, snap)
+	near(t, "backward window total", got["a"]+got["b"], (snap.Balance+2500)/(1+r)*r, 1e-6)
 }

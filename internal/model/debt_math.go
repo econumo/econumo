@@ -63,6 +63,12 @@ const (
 	windowSearchWidth = 370
 )
 
+// DebtTermTooLong reports a last payment date past the projection's horizon,
+// which could never be projected to the end.
+func DebtTermTooLong(asOf, last time.Time) bool {
+	return debtDay(last).After(debtDay(asOf).AddDate(0, maxProjectMonths, 0))
+}
+
 func debtDay(t time.Time) time.Time {
 	y, m, d := t.Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
@@ -231,18 +237,21 @@ func groupByWindow(s MathSnapshot, pays []MathPayment) []payGroup {
 	return groups
 }
 
-// allocate hands the window's interest to its payments in date order; stored
-// interest wins and is capped at the amount.
+// allocate hands the window's interest to its payments: a stored interest is
+// kept (capped at the amount) and reserved first, so a payment split later
+// takes only what is left of the window's interest, whatever its date.
 func allocate(pays []MathPayment, due float64, out map[string]float64) float64 {
 	for _, p := range pays {
-		var interest float64
 		if p.Interest != nil {
-			interest = math.Min(math.Max(*p.Interest, 0), p.Amount)
-		} else {
-			interest = math.Min(math.Max(due, 0), p.Amount)
+			out[p.ID] = math.Min(math.Max(*p.Interest, 0), p.Amount)
+			due -= out[p.ID]
 		}
-		due -= interest
-		out[p.ID] = interest
+	}
+	for _, p := range pays {
+		if p.Interest == nil {
+			out[p.ID] = math.Min(math.Max(due, 0), p.Amount)
+			due -= out[p.ID]
+		}
 	}
 	return due
 }
@@ -294,8 +303,8 @@ func splitForward(s MathSnapshot, seg, all []MathPayment, out map[string]float64
 		if accruedBefore && g.due.Equal(accrued) {
 			due = 0
 		}
+		allocate(g.pays, due, out)
 		for _, p := range g.pays {
-			due = allocate([]MathPayment{p}, due, out)
 			balance -= p.Amount - out[p.ID]
 		}
 	}
@@ -383,8 +392,10 @@ type projRun struct {
 	payoffDate time.Time
 }
 
+// moneyLeft is what the projected payments pay; a run cut off by the horizon
+// adds the balance it left, which is still owed (a lower bound then).
 func (r projRun) moneyLeft() float64 {
-	total := r.extraTotal
+	total := r.extraTotal + r.endBalance
 	for _, s := range r.steps {
 		total += s.pay
 	}

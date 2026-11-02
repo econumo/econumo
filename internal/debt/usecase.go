@@ -156,6 +156,9 @@ func validateTerms(t model.DebtTerms) error {
 	if !t.LastPaymentDate.After(t.AsOf) {
 		return fieldError("lastPaymentDate", "The last payment date must be after today.", errs.CodeDebtLastPaymentInPast)
 	}
+	if model.DebtTermTooLong(t.AsOf, t.LastPaymentDate) {
+		return fieldError("lastPaymentDate", "This value is out of range.", errs.CodeOutOfRange)
+	}
 	if !t.Payment.IsGreaterThan(vo.NewDecimal("0")) {
 		return fieldError("payment", "This value is out of range.", errs.CodeOutOfRange)
 	}
