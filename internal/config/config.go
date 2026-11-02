@@ -450,20 +450,40 @@ func loadClientIP(c *Config) error {
 		return fmt.Errorf("ECONUMO_CLIENT_IP_HEADER must be a header name, got %q", c.ClientIPHeader)
 	}
 	for _, v := range getStringList("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", nil) {
-		p, err := netip.ParsePrefix(v)
+		p, err := parseProxyRange(v)
 		if err != nil {
-			addr, aerr := netip.ParseAddr(v)
-			if aerr != nil {
-				return fmt.Errorf("ECONUMO_CLIENT_IP_TRUSTED_PROXIES: %q is not an IP or CIDR range", v)
-			}
-			p = netip.PrefixFrom(addr.Unmap(), addr.Unmap().BitLen())
+			return fmt.Errorf("ECONUMO_CLIENT_IP_TRUSTED_PROXIES: %q is not an IP or CIDR range", v)
 		}
-		c.ClientIPTrustedProxies = append(c.ClientIPTrustedProxies, p.Masked())
+		c.ClientIPTrustedProxies = append(c.ClientIPTrustedProxies, p)
 	}
 	if len(c.ClientIPTrustedProxies) > 0 && c.ClientIPHeader == "" {
 		c.ClientIPHeader = "X-Forwarded-For"
 	}
 	return nil
+}
+
+// parseProxyRange normalizes the way a request's address is before comparison
+// (middleware.parseIP), or a range could silently never match: an IPv4-mapped
+// range is unmapped, and a zone, which a netip.Prefix cannot hold, is refused.
+func parseProxyRange(v string) (netip.Prefix, error) {
+	p, err := netip.ParsePrefix(v)
+	if err != nil {
+		addr, aerr := netip.ParseAddr(v)
+		if aerr != nil {
+			return netip.Prefix{}, aerr
+		}
+		if addr.Zone() != "" {
+			return netip.Prefix{}, errors.New("zone")
+		}
+		p = netip.PrefixFrom(addr, addr.BitLen())
+	}
+	if p.Addr().Is4In6() {
+		if p.Bits() < 96 {
+			return netip.Prefix{}, errors.New("mapped range wider than IPv4")
+		}
+		p = netip.PrefixFrom(p.Addr().Unmap(), p.Bits()-96)
+	}
+	return p.Masked(), nil
 }
 
 var (

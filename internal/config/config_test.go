@@ -183,6 +183,25 @@ func TestLoad_ClientIP(t *testing.T) {
 	}
 }
 
+func TestParseProxyRange(t *testing.T) {
+	for in, want := range map[string]string{
+		"173.245.48.7/20":     "173.245.48.0/20",
+		"127.0.0.1":           "127.0.0.1/32",
+		"2400:cb00::/32":      "2400:cb00::/32",
+		"::ffff:127.0.0.1":    "127.0.0.1/32",
+		"::ffff:10.0.0.0/104": "10.0.0.0/8",
+	} {
+		if p, err := parseProxyRange(in); err != nil || p.String() != want {
+			t.Errorf("%s = %v, %v, want %s", in, p, err, want)
+		}
+	}
+	for _, in := range []string{"fe80::1%eth0", "::ffff:0:0/90", "cloudflare"} {
+		if p, err := parseProxyRange(in); err == nil {
+			t.Errorf("%s = %v, want an error", in, p)
+		}
+	}
+}
+
 func TestLoad_RateLimitDefaults(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 	c, err := Load()

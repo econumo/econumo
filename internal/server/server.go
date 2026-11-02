@@ -190,60 +190,62 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	verifyMailer := mailer.NewVerifySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	changeMailer := mailer.NewChangeEmailSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	identityMailer := mailer.NewIdentitySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	limiterLimits := map[string]int{
+		appuser.RateScopeLogin:              cfg.RateLimitLogin,
+		appuser.RateScopeReset:              cfg.RateLimitReset,
+		appuser.RateScopeRemind:             cfg.RateLimitRemind,
+		appuser.RateScopeRegister:           cfg.RateLimitRegister,
+		appuser.RateScopeVerifyEmail:        cfg.RateLimitVerifyEmail,
+		appuser.RateScopeConfirmEmail:       cfg.RateLimitConfirmEmail,
+		appuser.RateScopeRequestEmailChange: cfg.RateLimitRequestEmailChange,
+		appuser.RateScopeConfirmEmailChange: cfg.RateLimitConfirmEmailChange,
+		appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
+		appimports.RateScopeIngest:          cfg.RateLimitIngest,
+		appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
+		appimports.RateScopeSync:            cfg.RateLimitSync,
+		appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
+		// No per-key cap: the caller of start-login/start-link is anonymous
+		// until the provider answers. The per-IP per-minute cap applies.
+		appoauth.RateScopeOAuthStart: 0,
+		// No per-key cap: dynamic client registration is anonymous. Only
+		// the per-IP per-minute cap applies.
+		appauthserver.RateScopeRegister: 0,
+	}
+	limiterIPExempt := map[string]bool{
+		// One user's own limit could fill the cap for a household behind one IP, and
+		// their effects stay inside the caller's account.
+		appimports.RateScopeIngest:      true,
+		appimports.RateScopePreviewRule: true,
+	}
+	// Ceilings per email address across all client IPs, above the per-address-and-IP
+	// limits. Reset and confirm-email take a 6-digit code, so their guess budget stays
+	// close to the plain limit; the others can afford one that takes many IPs to reach.
+	for scope, factor := range map[string]int{
+		appuser.RateScopeLogin:        10,
+		appuser.RateScopeRemind:       10,
+		appuser.RateScopeRegister:     10,
+		appuser.RateScopeVerifyEmail:  10,
+		appuser.RateScopeReset:        2,
+		appuser.RateScopeConfirmEmail: 2,
+	} {
+		ceiling := scope + appuser.EmailCeilingScopeSuffix
+		limiterLimits[ceiling] = factor * limiterLimits[scope]
+		limiterIPExempt[ceiling] = true // allowEmailAttempt counted it under its base scope
+	}
 	authLimiter := ratelimit.New(ratelimit.Config{
-		Limits: map[string]int{
-			appuser.RateScopeLogin:              cfg.RateLimitLogin,
-			appuser.RateScopeReset:              cfg.RateLimitReset,
-			appuser.RateScopeRemind:             cfg.RateLimitRemind,
-			appuser.RateScopeRegister:           cfg.RateLimitRegister,
-			appuser.RateScopeVerifyEmail:        cfg.RateLimitVerifyEmail,
-			appuser.RateScopeConfirmEmail:       cfg.RateLimitConfirmEmail,
-			appuser.RateScopeRequestEmailChange: cfg.RateLimitRequestEmailChange,
-			appuser.RateScopeConfirmEmailChange: cfg.RateLimitConfirmEmailChange,
-			appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
-			appimports.RateScopeIngest:          cfg.RateLimitIngest,
-			appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
-			appimports.RateScopeSync:            cfg.RateLimitSync,
-			appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
-			// Ceilings per email address across all client IPs, above the
-			// per-address-and-IP limits. Reset and confirm-email take a 6-digit code,
-			// so their guess budget stays close to the plain limit; the others can
-			// afford a ceiling that takes many IPs to reach.
-			appuser.RateScopeLogin + appuser.EmailCeilingScopeSuffix:        10 * cfg.RateLimitLogin,
-			appuser.RateScopeRemind + appuser.EmailCeilingScopeSuffix:       10 * cfg.RateLimitRemind,
-			appuser.RateScopeRegister + appuser.EmailCeilingScopeSuffix:     10 * cfg.RateLimitRegister,
-			appuser.RateScopeVerifyEmail + appuser.EmailCeilingScopeSuffix:  10 * cfg.RateLimitVerifyEmail,
-			appuser.RateScopeReset + appuser.EmailCeilingScopeSuffix:        2 * cfg.RateLimitReset,
-			appuser.RateScopeConfirmEmail + appuser.EmailCeilingScopeSuffix: 2 * cfg.RateLimitConfirmEmail,
-			// No per-key cap: the caller of start-login/start-link is anonymous
-			// until the provider answers. The per-IP per-minute cap applies.
-			appoauth.RateScopeOAuthStart: 0,
-			// No per-key cap: dynamic client registration is anonymous. Only
-			// the per-IP per-minute cap applies.
-			appauthserver.RateScopeRegister: 0,
-		},
+		Limits: limiterLimits,
 		Window: cfg.RateLimitWindow,
 		IP:     cfg.RateLimitIP,
-		// The ceilings on guessing a password or a 6-digit code. Only real accounts
-		// write them (failUnknownEmailAttempt), so their keys cannot be invented.
+		// Guess counters a spray of invented keys must not evict. Their keys are real
+		// accounts only: user ids, and addresses via failUnknownEmailAttempt.
 		Pinned: map[string]bool{
 			appuser.RateScopeLogin + appuser.EmailCeilingScopeSuffix:        true,
 			appuser.RateScopeReset + appuser.EmailCeilingScopeSuffix:        true,
 			appuser.RateScopeConfirmEmail + appuser.EmailCeilingScopeSuffix: true,
+			appuser.RateScopeConfirmEmailChange:                             true,
+			appconnection.RateScopeAcceptInvite:                             true,
 		},
-		IPExempt: map[string]bool{
-			// One user's own limit could fill the cap for a household behind one
-			// IP, and their effects stay inside the caller's account.
-			appimports.RateScopeIngest:      true,
-			appimports.RateScopePreviewRule: true,
-			// allowEmailAttempt already counted the request under its base scope.
-			appuser.RateScopeLogin + appuser.EmailCeilingScopeSuffix:        true,
-			appuser.RateScopeRemind + appuser.EmailCeilingScopeSuffix:       true,
-			appuser.RateScopeRegister + appuser.EmailCeilingScopeSuffix:     true,
-			appuser.RateScopeVerifyEmail + appuser.EmailCeilingScopeSuffix:  true,
-			appuser.RateScopeReset + appuser.EmailCeilingScopeSuffix:        true,
-			appuser.RateScopeConfirmEmail + appuser.EmailCeilingScopeSuffix: true,
-		},
+		IPExempt: limiterIPExempt,
 	}, clk)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, accessTokens, NewUserCurrencyLookup(currencyLookup), budgetAccess,
