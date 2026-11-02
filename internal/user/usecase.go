@@ -322,6 +322,14 @@ func (s *Service) failEmailAttempt(ctx context.Context, scope, email string) {
 	s.failAttempt(scope+EmailCeilingScopeSuffix, email)
 }
 
+// failUnknownEmailAttempt keeps a pinned ceiling free of invented addresses, so
+// a spray of them cannot grow the limiter without bound. It does mean only real
+// accounts ever reach a ceiling; login timing and registration already tell the
+// two apart, and getting here takes many IPs and locks the account being probed.
+func (s *Service) failUnknownEmailAttempt(ctx context.Context, scope, email string) {
+	s.failAttempt(scope, emailIPKey(ctx, email))
+}
+
 func (s *Service) clearEmailAttempt(ctx context.Context, scope, email string) {
 	s.clearAttempt(scope, emailIPKey(ctx, email))
 	s.clearAttempt(scope+EmailCeilingScopeSuffix, email)

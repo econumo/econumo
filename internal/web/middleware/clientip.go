@@ -10,46 +10,35 @@ import (
 )
 
 // ClientIP resolves the caller's IP into reqctx for the rate limiter; it is held
-// in memory only and never logged. A header named by the operator wins, since
-// only they know their proxy sets it (a client could otherwise forge it, which
-// is why it is opt-in). Without one, X-Forwarded-For is read only when the peer
-// is on a private network, where a reverse proxy would be; a request directly
-// from the internet cannot forge its way past its own address.
-func ClientIP(header string) func(http.Handler) http.Handler {
+// in memory only and never logged. The named header counts only on a request
+// from a trusted proxy: from anyone else it could be forged to dodge the limits
+// or spend another caller's, so direct traffic is the address it connected from.
+func ClientIP(header string, trusted []netip.Prefix) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := reqctx.WithClientIP(r.Context(), resolveClientIP(r, header))
+			ctx := reqctx.WithClientIP(r.Context(), resolveClientIP(r, header, trusted))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func resolveClientIP(r *http.Request, header string) string {
+// resolveClientIP walks a forwarded list from the nearest hop back to the first
+// address that is not a trusted proxy. Anything further left is whatever that
+// caller sent. All trusted means the caller is one of those networks itself.
+func resolveClientIP(r *http.Request, header string, trusted []netip.Prefix) string {
 	peer := parseIP(r.RemoteAddr)
-	if header != "" {
-		// A list keeps the entry the nearest proxy appended: earlier ones are
-		// whatever the client sent.
-		if list := forwardedEntries(r, header); len(list) > 0 {
-			if ip := parseIP(list[len(list)-1]); ip.IsValid() {
-				return bucket(ip)
-			}
-		}
+	if !peer.IsValid() || !isTrusted(peer, trusted) {
 		return bucket(peer)
 	}
-	if !peer.IsValid() || !isInternal(peer) {
-		return bucket(peer)
-	}
-	// Walk back through the proxies to the first address outside them. All
-	// internal means a client on the same network, the leftmost one.
 	found := peer
-	list := forwardedEntries(r, "X-Forwarded-For")
+	list := forwardedEntries(r, header)
 	for i := len(list) - 1; i >= 0; i-- {
 		ip := parseIP(list[i])
 		if !ip.IsValid() {
 			break
 		}
 		found = ip
-		if !isInternal(ip) {
+		if !isTrusted(ip, trusted) {
 			break
 		}
 	}
@@ -77,8 +66,13 @@ func parseIP(value string) netip.Addr {
 	return ip.Unmap().WithZone("")
 }
 
-func isInternal(ip netip.Addr) bool {
-	return ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast()
+func isTrusted(ip netip.Addr, trusted []netip.Prefix) bool {
+	for _, p := range trusted {
+		if p.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 // bucket groups an IPv6 address by its /64: one home or VPS is handed the whole

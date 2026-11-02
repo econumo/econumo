@@ -166,6 +166,11 @@ func run(serveArgs []string) error {
 		"version", version.Version,
 		"version_ref", version.Ref(),
 	)
+	if os.Getenv("ECONUMO_RATE_LIMIT_GLOBAL") != "" {
+		slog.Warn("ECONUMO_RATE_LIMIT_GLOBAL is ignored; the cap is now per client IP: use ECONUMO_RATE_LIMIT_IP, " +
+			"and ECONUMO_CLIENT_IP_TRUSTED_PROXIES behind a reverse proxy, or all its users count as one IP")
+	}
+
 	// The API ignores ECONUMO_DATA_SALT (it always runs salt-free). If the salt is
 	// still set, a database written with it has unreadable emails / mismatched
 	// identifiers, so those users cannot authenticate until migrated.

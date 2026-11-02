@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"regexp"
@@ -89,22 +90,23 @@ type Config struct {
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
-	RateLimitLogin              int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
-	RateLimitReset              int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
-	RateLimitRemind             int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
-	RateLimitRegister           int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
-	RateLimitAccept             int           // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
-	RateLimitVerifyEmail        int           // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
-	RateLimitConfirmEmail       int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
-	RateLimitRequestEmailChange int           // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
-	RateLimitConfirmEmailChange int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
-	RateLimitIngest             int           // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
-	RateLimitClaimSetupToken    int           // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
-	RateLimitSync               int           // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
-	RateLimitPreviewRule        int           // ECONUMO_RATE_LIMIT_PREVIEW_RULE: rule previews per user (fired from a typing debounce; every request counts)
-	RateLimitWindow             time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
-	RateLimitIP                 int           // ECONUMO_RATE_LIMIT_IP: per-endpoint cap per minute per client IP
-	ClientIPHeader              string        // ECONUMO_CLIENT_IP_HEADER: header the reverse proxy puts the client IP in
+	RateLimitLogin              int            // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
+	RateLimitReset              int            // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
+	RateLimitRemind             int            // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
+	RateLimitRegister           int            // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
+	RateLimitAccept             int            // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
+	RateLimitVerifyEmail        int            // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
+	RateLimitConfirmEmail       int            // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
+	RateLimitRequestEmailChange int            // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
+	RateLimitConfirmEmailChange int            // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
+	RateLimitIngest             int            // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
+	RateLimitClaimSetupToken    int            // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
+	RateLimitSync               int            // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
+	RateLimitPreviewRule        int            // ECONUMO_RATE_LIMIT_PREVIEW_RULE: rule previews per user (fired from a typing debounce; every request counts)
+	RateLimitWindow             time.Duration  // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
+	RateLimitIP                 int            // ECONUMO_RATE_LIMIT_IP: per-endpoint cap per minute per client IP
+	ClientIPHeader              string         // ECONUMO_CLIENT_IP_HEADER: header trusted proxies put the client IP in
+	ClientIPTrustedProxies      []netip.Prefix // ECONUMO_CLIENT_IP_TRUSTED_PROXIES: peers whose header is believed
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
 	// (empty/console/log -> console to stdout; resend://<key> -> Resend;
@@ -429,9 +431,8 @@ func Load() (Config, error) {
 	}
 	c.RateLimitWindow = window
 
-	c.ClientIPHeader = strings.TrimSpace(os.Getenv("ECONUMO_CLIENT_IP_HEADER"))
-	if c.ClientIPHeader != "" && !clientIPHeaderRe.MatchString(c.ClientIPHeader) {
-		return Config{}, fmt.Errorf("ECONUMO_CLIENT_IP_HEADER must be a header name, got %q", c.ClientIPHeader)
+	if err := loadClientIP(&c); err != nil {
+		return Config{}, err
 	}
 
 	// PORT is required by the HTTP server only and is validated at server
@@ -441,8 +442,38 @@ func Load() (Config, error) {
 	return c, nil
 }
 
+// loadClientIP refuses a header with no trusted proxies: anyone reaching the
+// server directly could then forge it and spend another caller's rate limits.
+func loadClientIP(c *Config) error {
+	c.ClientIPHeader = strings.TrimSpace(os.Getenv("ECONUMO_CLIENT_IP_HEADER"))
+	if c.ClientIPHeader != "" && !clientIPHeaderRe.MatchString(c.ClientIPHeader) {
+		return fmt.Errorf("ECONUMO_CLIENT_IP_HEADER must be a header name, got %q", c.ClientIPHeader)
+	}
+	for _, v := range getStringList("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", nil) {
+		p, err := netip.ParsePrefix(v)
+		if err != nil {
+			addr, aerr := netip.ParseAddr(v)
+			if aerr != nil {
+				return fmt.Errorf("ECONUMO_CLIENT_IP_TRUSTED_PROXIES: %q is not an IP or CIDR range", v)
+			}
+			p = netip.PrefixFrom(addr.Unmap(), addr.Unmap().BitLen())
+		}
+		c.ClientIPTrustedProxies = append(c.ClientIPTrustedProxies, p.Masked())
+	}
+	if len(c.ClientIPTrustedProxies) == 0 {
+		if c.ClientIPHeader != "" {
+			return fmt.Errorf("ECONUMO_CLIENT_IP_HEADER requires ECONUMO_CLIENT_IP_TRUSTED_PROXIES")
+		}
+		return nil
+	}
+	if c.ClientIPHeader == "" {
+		c.ClientIPHeader = "X-Forwarded-For"
+	}
+	return nil
+}
+
 var (
-	clientIPHeaderRe = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
+	clientIPHeaderRe = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 	// An Apple app ID is the ten-character Team ID, a dot, then the bundle id.
 	iosAppIDRe = regexp.MustCompile(`^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$`)

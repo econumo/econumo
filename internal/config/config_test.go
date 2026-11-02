@@ -146,19 +146,36 @@ func TestGetStringList(t *testing.T) {
 	}
 }
 
-func TestLoad_ClientIPHeader(t *testing.T) {
+func TestLoad_ClientIP(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
-	t.Setenv("ECONUMO_CLIENT_IP_HEADER", "CF-Connecting-IP")
+
+	t.Setenv("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", "173.245.48.0/20, 2400:cb00::/32, 127.0.0.1")
 	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.ClientIPHeader != "CF-Connecting-IP" {
-		t.Fatalf("header = %q", c.ClientIPHeader)
+	if c.ClientIPHeader != "X-Forwarded-For" {
+		t.Fatalf("default header = %q", c.ClientIPHeader)
 	}
-	t.Setenv("ECONUMO_CLIENT_IP_HEADER", "not a header")
-	if _, err := Load(); err == nil {
-		t.Fatal("a malformed header name must fail at boot")
+	if len(c.ClientIPTrustedProxies) != 3 || c.ClientIPTrustedProxies[2].String() != "127.0.0.1/32" {
+		t.Fatalf("proxies = %v", c.ClientIPTrustedProxies)
+	}
+
+	t.Setenv("ECONUMO_CLIENT_IP_HEADER", "CF-Connecting-IP")
+	if c, err = Load(); err != nil || c.ClientIPHeader != "CF-Connecting-IP" {
+		t.Fatalf("header = %q, err = %v", c.ClientIPHeader, err)
+	}
+
+	for name, env := range map[string][2]string{
+		"bad header":         {"not a header", "127.0.0.1"},
+		"bad proxy":          {"CF-Connecting-IP", "cloudflare"},
+		"header, no proxies": {"CF-Connecting-IP", ""},
+	} {
+		t.Setenv("ECONUMO_CLIENT_IP_HEADER", env[0])
+		t.Setenv("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", env[1])
+		if _, err := Load(); err == nil {
+			t.Fatalf("%s must fail at boot", name)
+		}
 	}
 }
 

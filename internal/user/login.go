@@ -27,7 +27,7 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	u, err := s.repo.GetByEmail(ctx, req.Username)
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
-			s.failEmailAttempt(ctx, RateScopeLogin, limitKey)
+			s.failUnknownEmailAttempt(ctx, RateScopeLogin, limitKey)
 			return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 		}
 		return nil, err

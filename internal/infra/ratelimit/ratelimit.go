@@ -26,8 +26,8 @@ const (
 	defaultWindow  = 15 * time.Minute
 	// The IP backstop counts every request in its own fixed window so a spray of
 	// unique keys is caught quickly, independent of the per-key window. It also
-	// keeps a spray from churning the per-key map: at MaxKeys the stalest entry
-	// is evicted, which would otherwise wipe the failure count of a real account.
+	// slows a spray from churning the per-key map, where the stalest entry is evicted
+	// at MaxKeys; Config.Pinned is what protects the counters that must survive one.
 	ipWindow = time.Minute
 )
 
@@ -39,6 +39,10 @@ type Config struct {
 	IP       int             // per-scope cap per minute per client IP; 0 disables
 	MaxKeys  int             // size cap of the counter map (default 10000)
 	IPExempt map[string]bool // scopes the IP cap does not count
+	// Pinned scopes are never evicted before they expire. Only for scopes whose
+	// keys a caller cannot invent (one per real account), since they can hold
+	// the map past MaxKeys: a spray must not be able to wipe these counters.
+	Pinned map[string]bool
 }
 
 type Limiter struct {
@@ -198,6 +202,14 @@ func prune(hits []time.Time, now time.Time, window time.Duration) []time.Time {
 	return hits[i:]
 }
 
+func (l *Limiter) pinned(k string) bool {
+	if !strings.HasPrefix(k, "k\x00") {
+		return false
+	}
+	scope, _, _ := strings.Cut(k[len("k\x00"):], "\x00")
+	return l.cfg.Pinned[scope]
+}
+
 // evict makes room under MaxKeys: drop fully-expired entries; if the map is
 // still full, drop the entry with the oldest most-recent attempt.
 func (l *Limiter) evict(now time.Time) {
@@ -209,6 +221,10 @@ func (l *Limiter) evict(now time.Time) {
 			window = ipWindow
 		}
 		pruned := prune(hits, now, window)
+		if len(pruned) > 0 && l.pinned(k) {
+			l.attempts[k] = pruned
+			continue
+		}
 		if len(pruned) == 0 {
 			delete(l.attempts, k)
 			continue

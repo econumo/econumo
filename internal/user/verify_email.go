@@ -52,7 +52,7 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 	found, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
-			s.failEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
+			s.failUnknownEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
 			return nil, invalid
 		}
 		return nil, err

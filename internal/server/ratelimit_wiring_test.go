@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -27,8 +28,8 @@ type limitHarness struct {
 	rawToken string
 }
 
-// The test server's peer is loopback, so X-Forwarded-For names the caller the
-// way it does behind a reverse proxy.
+// The test server's peer is loopback and trusted, so X-Forwarded-For names the
+// caller the way it does behind a reverse proxy.
 func (h limitHarness) post(path, ip, token, body string) int {
 	h.t.Helper()
 	req, err := http.NewRequest(http.MethodPost, h.ts.URL+path, strings.NewReader(body))
@@ -82,6 +83,8 @@ func newLimitHarness(t *testing.T, mutate func(*config.Config)) limitHarness {
 		RateLimitPreviewRule:        perKey,
 		RateLimitWindow:             15 * time.Minute,
 		RateLimitIP:                 1,
+		ClientIPHeader:              "X-Forwarded-For",
+		ClientIPTrustedProxies:      []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")},
 	}
 	if mutate != nil {
 		mutate(&cfg)
@@ -115,6 +118,15 @@ func TestIPRateCap_OneCallerNeverThrottlesAnother(t *testing.T) {
 				t.Fatalf("another IP was throttled by the first one")
 			}
 		})
+	}
+}
+
+func TestIPRateCap_AnUntrustedPeerCannotForgeItsWayPast(t *testing.T) {
+	h := newLimitHarness(t, func(c *config.Config) { c.ClientIPTrustedProxies = nil })
+	const path, body = "/api/v1/user/remind-password", `{"username":"anon@example.test"}`
+	h.post(path, strangerIP, "", body)
+	if got := h.post(path, ownerIP, "", body); got != http.StatusTooManyRequests {
+		t.Fatalf("second call with a different forged IP = %d, want 429", got)
 	}
 }
 
@@ -173,6 +185,9 @@ func TestEmailLimits_ResetCodeGuessesStayNearTheirLimitAcrossIPs(t *testing.T) {
 		c.RateLimitReset = 2
 		c.RateLimitIP = 0
 	})
+	if got := h.post("/api/v1/user/register-user", ownerIP, "", `{"email":"victim@example.test","password":"long-enough-password","name":"Victim"}`); got != http.StatusOK {
+		t.Fatalf("register = %d", got)
+	}
 	reset := func(ip string) int {
 		return h.post("/api/v1/user/reset-password", ip, "", `{"username":"victim@example.test","code":"000000","password":"irrelevant-pw"}`)
 	}

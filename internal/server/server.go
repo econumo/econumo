@@ -224,6 +224,13 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		},
 		Window: cfg.RateLimitWindow,
 		IP:     cfg.RateLimitIP,
+		// The ceilings on guessing a password or a 6-digit code. Only real accounts
+		// write them (failUnknownEmailAttempt), so their keys cannot be invented.
+		Pinned: map[string]bool{
+			appuser.RateScopeLogin + appuser.EmailCeilingScopeSuffix:        true,
+			appuser.RateScopeReset + appuser.EmailCeilingScopeSuffix:        true,
+			appuser.RateScopeConfirmEmail + appuser.EmailCeilingScopeSuffix: true,
+		},
 		IPExempt: map[string]bool{
 			// One user's own limit could fill the cap for a household behind one
 			// IP, and their effects stay inside the caller's account.

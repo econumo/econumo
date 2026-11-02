@@ -306,6 +306,24 @@ func TestIPCap_CountersAreEvictedLikeAnyOther(t *testing.T) {
 	mustAllowed(t, l, "login", "")
 }
 
+func TestPinnedScope_SurvivesASprayOfUniqueKeys(t *testing.T) {
+	l, clk := newLimiter(ratelimit.Config{
+		Limits:  map[string]int{"reset": 2, "reset-ceiling": 1},
+		Window:  15 * time.Minute,
+		MaxKeys: 5,
+		Pinned:  map[string]bool{"reset-ceiling": true},
+	})
+	l.Fail("reset-ceiling", "victim@example.test")
+	for i := range 50 {
+		clk.t = clk.t.Add(time.Second)
+		l.Fail("reset", "spray"+strings.Repeat("x", i)+"@example.test")
+	}
+	mustBlocked(t, l, "reset-ceiling", "victim@example.test")
+
+	clk.t = clk.t.Add(15 * time.Minute)
+	mustAllowed(t, l, "reset-ceiling", "victim@example.test")
+}
+
 func TestIPCap_SlidesOnItsOwnMinuteWindow(t *testing.T) {
 	l, clk := newLimiter(ratelimit.Config{
 		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, IP: 2,

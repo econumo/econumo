@@ -2,40 +2,49 @@ package middleware
 
 import (
 	"net/http"
+	"net/netip"
 	"testing"
 )
 
 func TestResolveClientIP(t *testing.T) {
+	const cf, xff = "Cf-Connecting-Ip", "X-Forwarded-For"
+	proxies := []string{"173.245.48.0/20", "172.18.0.0/16"}
 	cases := []struct {
 		name, peer, header string
 		headers            map[string][]string
+		noProxies          bool
 		want               string
 	}{
 		{name: "direct IPv4", peer: "203.0.113.9:4000", want: "203.0.113.9"},
 		{name: "IPv4-mapped peer", peer: "[::ffff:203.0.113.9]:4000", want: "203.0.113.9"},
 		{name: "IPv6 is grouped by /64", peer: "[2001:db8:1:2:3:4:5:6]:4000", want: "2001:db8:1:2::/64"},
 		{name: "unparsable peer resolves to nothing", peer: "@", want: ""},
-		{name: "public peer's forwarded header is forged",
-			peer: "203.0.113.9:4000", headers: map[string][]string{"X-Forwarded-For": {"198.51.100.1"}}, want: "203.0.113.9"},
-		{name: "proxy on a private network",
-			peer: "172.18.0.2:4000", headers: map[string][]string{"X-Forwarded-For": {"198.51.100.1"}}, want: "198.51.100.1"},
-		{name: "a client's own entry cannot replace the one its proxy appended",
-			peer: "127.0.0.1:4000", headers: map[string][]string{"X-Forwarded-For": {"1.1.1.1, 198.51.100.1"}}, want: "198.51.100.1"},
-		{name: "chain of internal proxies is skipped",
-			peer: "10.0.0.2:4000", headers: map[string][]string{"X-Forwarded-For": {"198.51.100.1, 10.0.0.9", "10.0.0.8"}}, want: "198.51.100.1"},
-		{name: "client on the proxy's own network",
-			peer: "10.0.0.2:4000", headers: map[string][]string{"X-Forwarded-For": {"192.168.1.5"}}, want: "192.168.1.5"},
-		{name: "garbage entry stops the walk",
-			peer: "10.0.0.2:4000", headers: map[string][]string{"X-Forwarded-For": {"not-an-ip"}}, want: "10.0.0.2"},
-		{name: "private peer with no header is the proxy itself", peer: "10.0.0.2:4000", want: "10.0.0.2"},
-		{name: "configured header wins, public peer included",
-			peer: "173.245.48.1:4000", header: "CF-Connecting-IP", headers: map[string][]string{"Cf-Connecting-Ip": {"198.51.100.1"}}, want: "198.51.100.1"},
-		{name: "configured header ignores X-Forwarded-For",
-			peer: "10.0.0.2:4000", header: "CF-Connecting-IP", headers: map[string][]string{"X-Forwarded-For": {"1.1.1.1"}}, want: "10.0.0.2"},
-		{name: "configured list header keeps the nearest entry",
-			peer: "10.0.0.2:4000", header: "X-Forwarded-For", headers: map[string][]string{"X-Forwarded-For": {"1.1.1.1, 198.51.100.1"}}, want: "198.51.100.1"},
-		{name: "configured header with a bad value falls back to the peer",
-			peer: "10.0.0.2:4000", header: "X-Real-IP", headers: map[string][]string{"X-Real-Ip": {"nonsense"}}, want: "10.0.0.2"},
+
+		{name: "Cloudflare traffic uses the header", peer: "173.245.48.1:4000", header: "CF-Connecting-IP",
+			headers: map[string][]string{cf: {"198.51.100.1"}}, want: "198.51.100.1"},
+		{name: "Cloudflare traffic over IPv6", peer: "173.245.48.1:4000", header: "CF-Connecting-IP",
+			headers: map[string][]string{cf: {"2001:db8:1:2:3:4:5:6"}}, want: "2001:db8:1:2::/64"},
+		{name: "Cloudflare Tunnel from a trusted private peer", peer: "172.18.0.5:4000", header: "CF-Connecting-IP",
+			headers: map[string][]string{cf: {"198.51.100.1"}, xff: {"1.1.1.1"}}, want: "198.51.100.1"},
+		{name: "direct traffic without the header uses the peer", peer: "203.0.113.9:4000", header: "CF-Connecting-IP", want: "203.0.113.9"},
+		{name: "direct traffic forging the header uses the peer", peer: "203.0.113.9:4000", header: "CF-Connecting-IP",
+			headers: map[string][]string{cf: {"198.51.100.1"}}, want: "203.0.113.9"},
+		{name: "private peer that is not trusted cannot forge", peer: "192.168.1.5:4000", header: xff,
+			headers: map[string][]string{xff: {"198.51.100.1"}}, want: "192.168.1.5"},
+		{name: "no proxies configured", peer: "172.18.0.5:4000", header: "", noProxies: true,
+			headers: map[string][]string{xff: {"198.51.100.1"}}, want: "172.18.0.5"},
+
+		{name: "a caller's own entry cannot replace the one its proxy appended", peer: "172.18.0.2:4000", header: xff,
+			headers: map[string][]string{xff: {"1.1.1.1, 198.51.100.1"}}, want: "198.51.100.1"},
+		{name: "a private caller behind the proxy cannot forge either", peer: "172.18.0.2:4000", header: xff,
+			headers: map[string][]string{xff: {"1.1.1.1, 192.168.1.5"}}, want: "192.168.1.5"},
+		{name: "CDN then own proxy walks to the visitor", peer: "172.18.0.2:4000", header: xff,
+			headers: map[string][]string{xff: {"198.51.100.1, 173.245.48.1", "172.18.0.9"}}, want: "198.51.100.1"},
+		{name: "every entry trusted is the leftmost", peer: "172.18.0.2:4000", header: xff,
+			headers: map[string][]string{xff: {"172.18.0.7"}}, want: "172.18.0.7"},
+		{name: "garbage stops the walk", peer: "172.18.0.2:4000", header: xff,
+			headers: map[string][]string{xff: {"nonsense"}}, want: "172.18.0.2"},
+		{name: "trusted proxy sending no header is the peer", peer: "172.18.0.2:4000", header: xff, want: "172.18.0.2"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -43,7 +52,13 @@ func TestResolveClientIP(t *testing.T) {
 			if r.Header == nil {
 				r.Header = http.Header{}
 			}
-			if got := resolveClientIP(r, tc.header); got != tc.want {
+			var trusted []netip.Prefix
+			if !tc.noProxies {
+				for _, p := range proxies {
+					trusted = append(trusted, netip.MustParsePrefix(p))
+				}
+			}
+			if got := resolveClientIP(r, tc.header, trusted); got != tc.want {
 				t.Fatalf("got %q, want %q", got, tc.want)
 			}
 		})

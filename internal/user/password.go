@@ -172,7 +172,7 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	u, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
-			s.failEmailAttempt(ctx, RateScopeReset, lowered)
+			s.failUnknownEmailAttempt(ctx, RateScopeReset, lowered)
 			return nil, &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		return nil, err
