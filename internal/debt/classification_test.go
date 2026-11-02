@@ -154,3 +154,35 @@ func TestReassignClassification_NothingToMove(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// A category with no debt merged into one a whole-category debt covers: its
+// plans, merged onto the target's category row, follow the payments onto the
+// debt row.
+func TestReassignClassification_MergeIntoWholeCategoryDebtMovesThePlans(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	res := e.create(t, nil)
+	source := e.newCategory(e.user, true)
+	e.budget.transfers = nil
+
+	if err := e.svc.ReassignClassification(ctx, debt.KindCategory, vo.MustParseId(source), vo.MustParseId(e.category)); err != nil {
+		t.Fatal(err)
+	}
+	want := transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt, currency: res.CurrencyId,
+		sum: true, first: "2026-03-01", last: "2027-03-01"}
+	if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
+		t.Fatalf("transfers = %+v, want [%+v]", e.budget.transfers, want)
+	}
+
+	// a payee-narrowed debt on the target takes nothing
+	payee := e.newPayee()
+	narrowCat := e.newCategory(e.user, true)
+	e.create(t, func(r *model.CreateDebtRequest) { r.CategoryId = narrowCat; r.PayeeId = &payee })
+	e.budget.transfers = nil
+	if err := e.svc.ReassignClassification(ctx, debt.KindCategory, vo.MustParseId(e.newCategory(e.user, true)), vo.MustParseId(narrowCat)); err != nil {
+		t.Fatal(err)
+	}
+	if len(e.budget.transfers) != 0 {
+		t.Fatalf("a narrowed debt took the category's plans: %+v", e.budget.transfers)
+	}
+}

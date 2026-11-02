@@ -31,18 +31,26 @@ func (s *Service) InUse(ctx context.Context, kind string, id vo.Id) (bool, error
 // ReassignClassification moves the debts keyed on oldID to newID for a merge
 // and refuses the merge when that would leave two debts of an owner able to
 // match the same payment. It runs inside the merge's transaction, after the
-// transactions have been re-pointed, so the payment splits are recomputed
-// against the merged data.
+// transactions have been re-pointed and the budget rows merged, so the
+// payment splits are recomputed against the merged data. A whole-category
+// debt on the target category takes the merged category row's plans, whether
+// it moved or was there already.
 func (s *Service) ReassignClassification(ctx context.Context, kind string, oldID, newID vo.Id) error {
 	moved, err := s.keyedOn(ctx, kind, oldID)
 	if err != nil {
 		return err
 	}
-	if len(moved) == 0 {
+	var present []*model.Debt
+	if kind == KindCategory {
+		if present, err = s.repo.ListByCategory(ctx, newID); err != nil {
+			return err
+		}
+	}
+	if len(moved) == 0 && len(present) == 0 {
 		return nil
 	}
 	locked := map[vo.Id]bool{}
-	for _, d := range moved {
+	for _, d := range append(append([]*model.Debt{}, moved...), present...) {
 		if locked[d.OwnerID] {
 			continue
 		}
@@ -51,16 +59,18 @@ func (s *Service) ReassignClassification(ctx context.Context, kind string, oldID
 			return err
 		}
 	}
-	switch kind {
-	case KindCategory:
-		err = s.repo.ReassignCategory(ctx, oldID, newID)
-	case KindPayee:
-		err = s.repo.ReassignPayee(ctx, oldID, newID)
-	default:
-		err = s.repo.ReassignTag(ctx, oldID, newID)
-	}
-	if err != nil {
-		return err
+	if len(moved) > 0 {
+		switch kind {
+		case KindCategory:
+			err = s.repo.ReassignCategory(ctx, oldID, newID)
+		case KindPayee:
+			err = s.repo.ReassignPayee(ctx, oldID, newID)
+		default:
+			err = s.repo.ReassignTag(ctx, oldID, newID)
+		}
+		if err != nil {
+			return err
+		}
 	}
 
 	categories := map[vo.Id]bool{}
@@ -77,6 +87,14 @@ func (s *Service) ReassignClassification(ctx context.Context, kind string, oldID
 			return &errs.ValidationError{Msg: "Another debt could match the same payments.", MsgCode: errs.CodeDebtKeyConflict}
 		}
 		if kind == KindCategory && isWholeCategory(d) {
+			if err := s.moveToDebt(ctx, d); err != nil {
+				return err
+			}
+		}
+		categories[d.CategoryID] = true
+	}
+	for _, d := range present {
+		if isWholeCategory(d) {
 			if err := s.moveToDebt(ctx, d); err != nil {
 				return err
 			}

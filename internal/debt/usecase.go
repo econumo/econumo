@@ -15,8 +15,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-const elementDebt int16 = 6
-
 type Service struct {
 	repo       Repository
 	tx         port.TxRunner
@@ -70,14 +68,14 @@ func (s *Service) lockRows(ctx context.Context, id vo.Id) error {
 	if s.budget == nil {
 		return nil
 	}
-	return s.budget.LockRows(ctx, id, elementDebt)
+	return s.budget.LockRows(ctx, id, model.ElementDebt)
 }
 
 func (s *Service) hasData(ctx context.Context, id vo.Id) (bool, error) {
 	if s.budget == nil {
 		return false, nil
 	}
-	return s.budget.HasData(ctx, id, elementDebt)
+	return s.budget.HasData(ctx, id, model.ElementDebt)
 }
 
 // today is the caller's calendar day as a UTC midnight, the form every debt

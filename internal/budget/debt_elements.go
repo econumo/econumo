@@ -86,6 +86,16 @@ func (s *Service) TransferElementData(ctx context.Context, t model.ElementDataTr
 				}
 				continue
 			}
+			hidden, err := s.inEnvelope(ctx, src.BudgetID, to)
+			if err != nil {
+				return err
+			}
+			if hidden {
+				if err := skip(from); err != nil {
+					return err
+				}
+				continue
+			}
 			dropped, err := s.moveElementData(ctx, from, to, t, now)
 			if err != nil {
 				return err
@@ -98,6 +108,31 @@ func (s *Service) TransferElementData(ctx context.Context, t model.ElementDataTr
 		return false, err
 	}
 	return leftBehind, nil
+}
+
+// inEnvelope reports whether a category row sits in one of the budget's
+// envelopes: such a row never shows its own plans, so data moved onto it would
+// vanish from every row and total.
+func (s *Service) inEnvelope(ctx context.Context, budgetID vo.Id, el *model.BudgetElement) (bool, error) {
+	if el.Type != model.ElementCategory {
+		return false, nil
+	}
+	b, err := s.loadAggregate(ctx, budgetID)
+	if err != nil {
+		return false, err
+	}
+	children, err := s.envelopeCategories(ctx, b)
+	if err != nil {
+		return false, err
+	}
+	for _, ids := range children {
+		for _, id := range ids {
+			if id == el.ExternalID.String() {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 // rowCurrency is the row's own currency, else the budget's.

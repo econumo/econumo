@@ -1603,8 +1603,8 @@ data unreadable. Most are also asserted by the test suite.
   `budgetSpent`, available with the element carry-over, `closingBalance`, payments left, payoff
   figures with and without the planned extras, `upcoming` = the unpaid scheduled dues, `isPlannable`)
   and on `get-budget-plan` (per-cell figures, `scheduledTotal`, `isPaidOff`). **Planning bounds**:
-  a month is plannable from the start month (start date's month, else the first matched payment's,
-  else the first snapshot's) to the end month (latest snapshot's last payment date's month, the
+  a month is plannable from the start month (start date's month, else the earlier of the first
+  matched payment's and the first snapshot's) to the end month (latest snapshot's last payment date's month, the
   payoff month once paid off); `set-limit` and `create-comment` outside it are refused
   (`budget.debt_period_out_of_range`, field `period`), but clearing a plan (`amount: null`) is
   allowed; stored plans outside the life stay in the database, show as not plannable and never reach
@@ -1632,9 +1632,10 @@ data unreadable. Most are also asserted by the test suite.
   only where the target row's currency matches, only for the months of the debt's planning
   life: the rest stays on the category row, whose Available keeps counting it) to the debt row
   in every budget in the same transaction; an edit that makes a debt whole-category (or moves a
-  whole-category debt to another category) and a category merge onto a whole-category debt do
-  the same, a month both rows plan adding up; deleting it moves them back (the category's plan
-  wins a clash), and a delete that would leave data behind (or a
+  whole-category debt to another category) and a category merge onto a whole-category debt (the
+  source's debt moving there, or one already on the target) do the same, a month both rows plan
+  adding up; deleting it moves them back (the category's plan wins a clash; a category inside an
+  envelope takes nothing, its child row showing no plan), and a delete that would leave data behind (or a
   partial debt's plans) needs `confirmDataRemoval` (`debt.removal_unconfirmed`, a field error on
   that field); the delete write-locks the debt's rows first (`LockElementsByExternal`, like the
   savings guard), so a concurrent plan is either seen or refused. Payments are never touched by

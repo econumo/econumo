@@ -220,8 +220,9 @@ scheduled amount shows in red, like the existing plan hints. *(my call)*
 month before it starts or after it ends; `set-limit` refuses such a month with
 a coded error, the way it refuses months past a budget's end month, and the UI
 shows those cells as not plannable. *(my calls on the bounds:)*
-- **Start**: the month of the start date; with no start date, the month of the
-  first matched payment, or the first snapshot's month if there is none.
+- **Start**: the month of the start date; with no start date, the earlier of
+  the first matched payment's month and the first snapshot's month (a first
+  payment after the snapshot must not drop plans moved at conversion).
 - **End**: the month of the latest snapshot's last payment date (the loan's
   term, so planning an extra payment never locks later months). Once the debt
   is paid off, the end is its payoff month instead. If the end moves earlier

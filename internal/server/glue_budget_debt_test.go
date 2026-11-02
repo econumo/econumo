@@ -38,13 +38,13 @@ func TestDebtBudgetElements_PassesTheStoredTypes(t *testing.T) {
 	if rec.from != model.ElementCategory || rec.to != model.ElementDebt {
 		t.Errorf("transfer types = %d -> %d, want category -> debt", rec.from, rec.to)
 	}
-	if has, err := a.HasData(context.Background(), vo.NewId(), 6); err != nil || !has {
+	if has, err := a.HasData(context.Background(), vo.NewId(), model.ElementDebt); err != nil || !has {
 		t.Fatalf("HasData = %v, %v", has, err)
 	}
 	if rec.has != model.ElementDebt {
 		t.Errorf("has-data type = %d, want debt", rec.has)
 	}
-	if err := a.LockRows(context.Background(), vo.NewId(), 6); err != nil || rec.locked != model.ElementDebt {
+	if err := a.LockRows(context.Background(), vo.NewId(), model.ElementDebt); err != nil || rec.locked != model.ElementDebt {
 		t.Errorf("LockRows = %v, locked type %d; want debt", err, rec.locked)
 	}
 }

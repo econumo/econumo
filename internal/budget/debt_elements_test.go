@@ -522,3 +522,26 @@ func TestTransferElementData_MovesOnlyTheBoundedMonths(t *testing.T) {
 		t.Errorf("category has %d comments, want the April one kept", n)
 	}
 }
+
+// A category inside an envelope never shows its own plans: handing a deleted
+// debt's plans to its hidden row would make them vanish, so they are reported
+// left behind and the delete asks first.
+func TestTransferElementData_EnvelopeChildCannotTakeTheData(t *testing.T) {
+	h := newDebtHarness(t)
+	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
+	debt := h.addDebt(h.owner, fixture.USD)
+	if _, err := h.svc.CreateEnvelope(h.ctx, h.owner, model.CreateEnvelopeRequest{BudgetId: h.budgetID.String(), Id: vo.NewId().String(),
+		Name: "Bills", Icon: "cart", CurrencyId: fixture.USD, Categories: []string{cat}}); err != nil {
+		t.Fatal(err)
+	}
+	h.mustSetLimit(t, debt, "2026-05-01", "50")
+
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(debt), FromType: model.ElementDebt,
+		ToID: vo.MustParseId(cat), ToType: model.ElementCategory, CurrencyID: vo.MustParseId(fixture.USD)})
+	if err != nil || !left {
+		t.Fatalf("TransferElementData = %v, %v; want the plans reported left behind", left, err)
+	}
+	if got := h.limits(t, h.element(t, debt).ID); got["2026-05-01"] != amount("50") {
+		t.Errorf("debt limits = %v, want them kept on the debt row", got)
+	}
+}

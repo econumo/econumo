@@ -96,8 +96,10 @@ func TestViews_RangesAndPlanningBounds(t *testing.T) {
 	if !n.StartMonth.Equal(ymd(2026, 6, 1)) {
 		t.Errorf("newer start = %v, want the start date's month", n.StartMonth)
 	}
-	if nr.PayeeID == nil || *nr.PayeeID != payee || !nr.StartMonth.Equal(ymd(2026, 4, 1)) {
-		t.Errorf("narrow = %+v (start is the first matched payment's month)", nr)
+	// a first payment after the first snapshot does not move the start past
+	// the snapshot's month: plans moved there at conversion stay in the life
+	if nr.PayeeID == nil || *nr.PayeeID != payee || !nr.StartMonth.Equal(ymd(2026, 3, 1)) {
+		t.Errorf("narrow = %+v (start is the earlier of the first payment's and the first snapshot's month)", nr)
 	}
 	if o.PayeeID != nil || o.TagID != nil || o.From != nil {
 		t.Errorf("old should be the whole-category debt: %+v", o)
@@ -143,5 +145,19 @@ func TestViews_WritesNothing(t *testing.T) {
 	e.sync(t)
 	if _, ok := e.splits(t, res.Id)[tx]; !ok {
 		t.Fatal("Sync stored no split for the payment")
+	}
+}
+
+// A payment before the first snapshot (the loan's history) starts the life.
+func TestViews_StartAtAnEarlierFirstPayment(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	e.expense(t, e.account, ymd(2026, 1, 20), "1000", "")
+	views, err := e.svc.Views(context.Background(), []vo.Id{e.uid()})
+	if err != nil || len(views) != 1 {
+		t.Fatalf("views = %v, %v", views, err)
+	}
+	if views[0].ID != res.Id || !views[0].StartMonth.Equal(ymd(2026, 1, 1)) {
+		t.Fatalf("start = %v, want January", views[0].StartMonth)
 	}
 }

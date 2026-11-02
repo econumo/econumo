@@ -2124,7 +2124,9 @@ member account in USD, before running these.
       cell cannot be edited, filled, pasted into (a fill over a mixed range
       skips those months), the phone/tablet sheet has no Set plan, and a
       `set-limit` there is refused. The start is the start date's month (else
-      the first matched payment's, else the first snapshot's); the end is the
+      the earlier of the first matched payment's and the first snapshot's: a
+      category planned in the month it is converted keeps that plan on the
+      debt row after the first payment lands next month); the end is the
       last payment date's month, or the payoff month once paid off.
       Clearing a stale plan outside the debt's life is allowed. Those cells
       (Plan grid and month view) offer no "Add comment" corner, and an
@@ -2163,7 +2165,10 @@ member account in USD, before running these.
       overlap another debt's key (or reuse its start date) is refused. A
       whole-category debt deleted from Settings returns its plans and
       comments to the category row, or asks first when the category row can
-      no longer take them (other currency).
+      no longer take them (other currency, or the category sits inside an
+      envelope, whose child rows show no plan of their own). Merging a
+      category with no debt into one a whole-category debt covers moves the
+      merged plans onto the debt row too (a month both plan adds up).
 - [ ] Removing a participant who owns a debt drops that debt's row (plans and
       comments) from the budget; their payments are untouched.
 - [ ] MCP `get_budget` lists the debt rows under `structure.debts` (in the

@@ -111,12 +111,12 @@ func (b *fakeBudget) TransferData(_ context.Context, t model.ElementDataTransfer
 	return b.leftBehind, nil
 }
 
-func (b *fakeBudget) HasData(context.Context, vo.Id, int16) (bool, error) {
+func (b *fakeBudget) HasData(context.Context, vo.Id, model.ElementType) (bool, error) {
 	b.calls = append(b.calls, "has-data")
 	return b.hasData, nil
 }
 
-func (b *fakeBudget) LockRows(context.Context, vo.Id, int16) error {
+func (b *fakeBudget) LockRows(context.Context, vo.Id, model.ElementType) error {
 	b.calls = append(b.calls, "lock")
 	return nil
 }

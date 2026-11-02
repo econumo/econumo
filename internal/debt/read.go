@@ -168,16 +168,17 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 	return views, nil
 }
 
-// planningBounds: a debt can be planned from the month of its start date (else
-// of its first matched payment, else of its first snapshot) to the month of
-// its last payment date, or of its payoff once paid off.
+// planningBounds: a debt can be planned from the month of its start date
+// (else of the earlier of its first matched payment and its first snapshot)
+// to the month of its last payment date, or of its payoff once paid off. A
+// first payment dated after the first snapshot does not move the start later:
+// plans a conversion moved into the snapshot's month would drop out of the
+// life.
 func planningBounds(st *debtState, proj model.Projection) (start, end time.Time) {
 	d := st.debt
 	switch {
 	case d.StartDate != nil:
 		start = monthOf(*d.StartDate)
-	case len(st.pays) > 0:
-		start = monthOf(st.pays[0].date)
 	case len(st.snaps) > 0:
 		first := st.snaps[0].AsOf
 		for _, sn := range st.snaps {
@@ -185,7 +186,12 @@ func planningBounds(st *debtState, proj model.Projection) (start, end time.Time)
 				first = sn.AsOf
 			}
 		}
+		if len(st.pays) > 0 && st.pays[0].date.Before(first) {
+			first = st.pays[0].date
+		}
 		start = monthOf(first)
+	case len(st.pays) > 0:
+		start = monthOf(st.pays[0].date)
 	default:
 		start = monthOf(d.Current.AsOf)
 	}

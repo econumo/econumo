@@ -15,8 +15,8 @@ type debtBudgetElements interface {
 	LockElements(ctx context.Context, externalID vo.Id, typ model.ElementType) error
 }
 
-// DebtBudgetElements adapts the budget service to debt.BudgetElements; the
-// debt feature names element types by their stored value.
+// DebtBudgetElements adapts the budget service's method names to
+// debt.BudgetElements.
 type DebtBudgetElements struct{ budget debtBudgetElements }
 
 var (
@@ -32,10 +32,10 @@ func (a *DebtBudgetElements) TransferData(ctx context.Context, t model.ElementDa
 	return a.budget.TransferElementData(ctx, t)
 }
 
-func (a *DebtBudgetElements) LockRows(ctx context.Context, externalID vo.Id, typ int16) error {
-	return a.budget.LockElements(ctx, externalID, model.ElementType(typ))
+func (a *DebtBudgetElements) LockRows(ctx context.Context, externalID vo.Id, typ model.ElementType) error {
+	return a.budget.LockElements(ctx, externalID, typ)
 }
 
-func (a *DebtBudgetElements) HasData(ctx context.Context, externalID vo.Id, typ int16) (bool, error) {
-	return a.budget.ElementHasData(ctx, externalID, model.ElementType(typ))
+func (a *DebtBudgetElements) HasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error) {
+	return a.budget.ElementHasData(ctx, externalID, typ)
 }
