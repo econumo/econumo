@@ -275,6 +275,10 @@ navigation (single-pane vs sidebar).
       (no OER token) there are no global currencies besides USD — create a
       custom currency in Settings → Currencies first (name, code, symbol,
       rate); that is the normal manual path.
+- [ ] Digital currency (self-hosted, OER token set): `currency:add ETH Ethereum 8`
+      and `currency:add DOGE Dogecoin 8`, then `currency:update-rates` — both
+      get a rate, show in the currency picker, and can be picked as the
+      display currency in Settings → Profile.
 - [ ] Folders: create, rename, collapse/expand, hide/show (hidden folder
       disappears from sidebar but its accounts stay reachable via settings and
       keep their transactions),

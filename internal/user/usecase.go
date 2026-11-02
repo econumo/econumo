@@ -253,11 +253,12 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 	}, nil
 }
 
-// newCurrencyCode enforces the currency-code invariant: trim, uppercase, must be
-// exactly 3 chars. Returns a *ValidationError on failure (HTTP 400).
+// newCurrencyCode enforces the currency-code invariant: trim, uppercase, 3 or 4
+// chars (a global digital currency such as DOGE has 4). Returns a
+// *ValidationError on failure (HTTP 400).
 func newCurrencyCode(v string) (string, error) {
 	c := strings.ToUpper(strings.TrimSpace(v))
-	if len([]rune(c)) != 3 {
+	if n := len([]rune(c)); n < 3 || n > 4 {
 		return "", errs.NewValidation("CurrencyCode is incorrect",
 			errs.FieldError{Key: "currency", Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
 	}
