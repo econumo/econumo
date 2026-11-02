@@ -105,6 +105,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const { data: accounts = [] } = useAccounts()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
+  const openDebtDetails = useUiStore((s) => s.openDebtDetails)
   const [editMode, setEditMode] = useState(false)
   const phoneView = isPhone && !editMode
   // the monthly view's own one-month window (also the phone view's, on both
@@ -913,6 +914,15 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           sheetTransactions
             ? () => {
                 setTransactionsTarget(sheetTransactions)
+                setSheetTarget(null)
+              }
+            : undefined
+        }
+        onDetails={
+          // a debt's details are its owner's alone, as its Edit is
+          sheetTarget?.kind === 'debt' && sheetEdit === true
+            ? () => {
+                openDebtDetails(sheetTarget.row.id)
                 setSheetTarget(null)
               }
             : undefined

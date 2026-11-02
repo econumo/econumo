@@ -8,7 +8,10 @@ import { coreHandlers, fixtureDebtRow, fixtureWireBudget } from '@/test/fixtures
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 import { useUiStore } from '@/app/uiStore'
 import { wireDebt } from '@/features/debts/testDebt'
+import { toast } from 'sonner'
 import { useBudgetLineMenus } from './useBudgetLineMenus'
+
+vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
 function renderMenus(userId = 'u1', adjust?: (b: BudgetDto) => void) {
   const budget = coerceBudgetFixture(fixtureWireBudget)
@@ -66,6 +69,15 @@ it('the Plan grid\'s expense category row offers it too', () => {
   expect(labels(result.current.planRowMenu(food as never, 0))).toContain('Track as debt')
 })
 
+it('an archived budget offers no Track as debt', () => {
+  const { result, element } = renderMenus('u1', (b) => {
+    b.meta.isArchived = 1
+  })
+  expect(labels(result.current.expenseRowMenu(element('cat-food')))).not.toContain('Track as debt')
+  const envelope = element('env-1')
+  expect(labels(result.current.envelopeChildMenu(envelope.children[0], envelope))).not.toContain('Track as debt')
+})
+
 describe('the debt row menu', () => {
   it('the owner gets Details and Edit', async () => {
     server.use(http.get('*/api/v1/debt/get-debt', () => HttpResponse.json({ success: true, message: '', data: { item: { ...wireDebt, id: 'debt-1' }, snapshots: [], payments: [] } })))
@@ -76,6 +88,14 @@ describe('the debt row menu', () => {
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
     act(() => actions[1].onSelect())
     await waitFor(() => expect(useUiStore.getState().debtModal?.debt?.id).toBe('debt-1'))
+  })
+
+  it('Edit says why when the debt cannot be loaded', async () => {
+    server.use(http.get('*/api/v1/debt/get-debt', () => HttpResponse.json({ success: false, message: 'Debt not found', code: 400, errors: {} }, { status: 400 })))
+    const { result } = renderMenus()
+    act(() => result.current.debtRowMenu(fixtureDebtRow())[1].onSelect())
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Debt not found'))
+    expect(useUiStore.getState().debtModal).toBeNull()
   })
 
   it('a guest sees no Edit in the debt row menu', () => {

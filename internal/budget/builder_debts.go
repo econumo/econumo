@@ -107,7 +107,8 @@ func timelineMonth(tl model.DebtTimeline, v model.DebtView, month time.Time) mod
 func decimalString(s string) string { return vo.NewDecimal(s).String() }
 
 // emitMonthlyDebts renders get-budget's debt rows. A row shows in a month of
-// the debt's life, and outside it only when something was paid then.
+// the debt's life, and outside it only when something was paid then or earlier
+// months left something over: the Available total counts that carry.
 func emitMonthlyDebts(rows []debtRow, month time.Time, limits map[string]budgetedAmount, paid map[string]debtPaid, timelines map[string]model.DebtTimeline) []model.DebtElementResult {
 	zero := vo.NewDecimal("0")
 	out := []model.DebtElementResult{}
@@ -116,15 +117,15 @@ func emitMonthlyDebts(rows []debtRow, month time.Time, limits map[string]budgete
 		p := paid[v.ID]
 		paidNow, budgetPaid, paidBefore := orZero(p.paid, zero), orZero(p.budgetPaid, zero), orZero(p.paidBefore, zero)
 		in := plannable(v, month)
-		if !in && paidNow.IsZero() {
-			continue
-		}
 		lim := limits[elementKey(v.ID, model.ElementDebt)]
 		budgeted, hasLimit := orZero(lim.budgeted, zero), lim.hasLimit
 		if !in {
 			budgeted, hasLimit = zero, false
 		}
 		available := orZero(lim.budgetedBefore, zero).Sub(paidBefore).Add(budgeted).Sub(paidNow)
+		if !in && paidNow.IsZero() && available.IsZero() {
+			continue
+		}
 		tl := timelines[v.ID]
 		tm := timelineMonth(tl, v, month)
 		out = append(out, model.DebtElementResult{

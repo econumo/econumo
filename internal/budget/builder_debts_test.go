@@ -157,6 +157,8 @@ func TestGetBudget_DebtRowHiddenAfterPayoff(t *testing.T) {
 	h := newAttrHarness(t)
 	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
 	debtID := h.createDebt(t)
+	// the payment was planned, so nothing carries past the payoff month
+	h.setLimit(t, debtID, "2026-06-01", "1000")
 	if _, err := h.debts.MarkDebtPaidOff(h.ctx, h.owner, model.MarkDebtPaidOffRequest{Id: debtID}); err != nil {
 		t.Fatalf("MarkDebtPaidOff: %v", err)
 	}
@@ -170,6 +172,38 @@ func TestGetBudget_DebtRowHiddenAfterPayoff(t *testing.T) {
 	}
 	if july := debtRow(h.budgetAt(t, h.owner, "2026-07-01"), debtID); july != nil {
 		t.Errorf("July row after payoff = %+v, want none", july)
+	}
+}
+
+func TestGetBudget_DebtRowWithOverspendStaysAfterPayoff(t *testing.T) {
+	h := newAttrHarness(t)
+	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
+	debtID := h.createDebt(t)
+	if _, err := h.debts.MarkDebtPaidOff(h.ctx, h.owner, model.MarkDebtPaidOffRequest{Id: debtID}); err != nil {
+		t.Fatalf("MarkDebtPaidOff: %v", err)
+	}
+	// an unplanned payment carries, like any expense row's overspend
+	july := debtRow(h.budgetAt(t, h.owner, "2026-07-01"), debtID)
+	if july == nil || july.Available != "-1000" || july.IsPlannable != 0 {
+		t.Errorf("July row = %+v, want -1000 carried, not plannable", july)
+	}
+}
+
+func TestGetBudget_DebtRowWithCarryStaysAfterPayoff(t *testing.T) {
+	h := newAttrHarness(t)
+	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
+	debtID := h.createDebt(t)
+	h.setLimit(t, debtID, "2026-06-01", "1500")
+	if _, err := h.debts.MarkDebtPaidOff(h.ctx, h.owner, model.MarkDebtPaidOffRequest{Id: debtID}); err != nil {
+		t.Fatalf("MarkDebtPaidOff: %v", err)
+	}
+
+	july := debtRow(h.budgetAt(t, h.owner, "2026-07-01"), debtID)
+	if july == nil {
+		t.Fatal("July after payoff dropped the row while June's unspent plan still counts in Available")
+	}
+	if july.Available != "500" || july.IsPlannable != 0 || july.Budgeted != "0" || july.IsBudgeted != 0 || july.Spent != "0" {
+		t.Errorf("July row = %+v, want 500 carried, not plannable, no plan, nothing paid", july)
 	}
 }
 

@@ -2,11 +2,13 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { v7 as uuidv7 } from 'uuid'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { apiErrorMessage } from '@/lib/apiError'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type {
   BudgetDebtElementDto,
@@ -145,7 +147,7 @@ export function useBudgetLineMenus({
     void queryClient
       .fetchQuery({ queryKey: queryKeys.debt(id), queryFn: () => getDebt(id), staleTime: TEN_MINUTES })
       .then((details) => openDebtModal({ debt: details.item }))
-      .catch(() => undefined)
+      .catch((err: unknown) => toast.error(apiErrorMessage(err)))
   }
   const editAccess = (target: SheetTarget): boolean | null => {
     if (target.kind === 'label') {
@@ -225,9 +227,9 @@ export function useBudgetLineMenus({
     return ref ? classificationMenu.actionsFor(ref) : []
   }
   // the caller's own live expense category becomes a debt: the debt form, with the
-  // category and the row's currency filled in
+  // category and the row's currency filled in; an archived budget is read-only
   const trackAsDebt = (category: { id: Id; type: BudgetElementType; ownerUserId: Id | null; isArchived?: 0 | 1 }, currencyId: Id | null): MenuAction[] =>
-    budget && category.type === BudgetElementType.CATEGORY && category.id !== UNCATEGORIZED_ID && category.isArchived !== 1 && !!userId && category.ownerUserId === userId
+    budget && !archived && category.type === BudgetElementType.CATEGORY && category.id !== UNCATEGORIZED_ID && category.isArchived !== 1 && !!userId && category.ownerUserId === userId
       ? [
           {
             label: t('budgets.page.debts.track'),

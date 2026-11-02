@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import type { HttpHandler } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureDebtRow, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import { queryKeys } from '@/app/queryKeys'
 import { BudgetPage } from './BudgetPage'
@@ -442,4 +442,36 @@ it('someone else’s reporting tag shows Edit inactive', async () => {
   await user.click(await screen.findByRole('button', { name: 'Reporting tags' }))
   await user.click(await screen.findByRole('button', { name: /^kid-A, spent/ }))
   expect(within(await screen.findByRole('dialog', { name: /^kid-A · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
+})
+
+describe('a debt row\'s item sheet', () => {
+  const debtBudget = (ownerUserId: string) => ({
+    ...fixtureWireBudget,
+    structure: { ...fixtureWireBudget.structure, debts: [fixtureDebtRow({ ownerUserId })] },
+  })
+
+  it('offers the debt\'s owner its details', async () => {
+    handlers({ budget: debtBudget('u1') })
+    useUiStore.setState({ debtDetailsId: null })
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+    renderPage()
+    await user.click(await screen.findByTestId('phone-debts-summary'))
+    await user.click(await screen.findByRole('button', { name: 'Mortgage, planned 1,500.00, paid 900.00' }))
+    const sheet = await screen.findByTestId('element-sheet')
+    expect(within(sheet).getByTestId('sheet-figure-left')).toHaveTextContent('23,000.00')
+    await user.click(within(sheet).getByRole('button', { name: 'Details' }))
+    expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
+    await waitFor(() => expect(screen.queryByTestId('element-sheet')).toBeNull())
+  })
+
+  it('offers anyone else no details and no edit', async () => {
+    handlers({ budget: debtBudget('u9') })
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+    renderPage()
+    await user.click(await screen.findByTestId('phone-debts-summary'))
+    await user.click(await screen.findByRole('button', { name: 'Mortgage, planned 1,500.00, paid 900.00' }))
+    const sheet = await screen.findByTestId('element-sheet')
+    expect(within(sheet).queryByRole('button', { name: 'Details' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+  })
 })

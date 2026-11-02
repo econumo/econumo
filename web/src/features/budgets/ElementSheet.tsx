@@ -36,6 +36,8 @@ export interface ElementSheetProps {
   onOpenComments: () => void
   /** absent: no transaction list for this target */
   onShowTransactions?: () => void
+  /** a debt's own details (terms history, payments with their split); its owner's only */
+  onDetails?: () => void
   /** absent: nothing to edit (Uncategorized) */
   onEdit?: () => void
   /** false keeps the edit button visible but inactive */
@@ -64,6 +66,7 @@ export function ElementSheet({
   onSetAmount,
   onOpenComments,
   onShowTransactions,
+  onDetails,
   onEdit,
   canEdit = false,
 }: ElementSheetProps) {
@@ -224,12 +227,17 @@ export function ElementSheet({
             ) : null}
           </div>
         ) : null}
-        {canSetAmount || onShowTransactions ? (
+        {canSetAmount || onShowTransactions || onDetails ? (
           <div className="flex gap-3 [&>button]:h-11 [&>button]:flex-1">
             {/* the primary action on the right, as in every other dialog's action row */}
             {onShowTransactions ? (
               <Button type="button" variant="secondary" onClick={onShowTransactions}>
                 {t('budgets.page.sheet.transactions')}
+              </Button>
+            ) : null}
+            {onDetails ? (
+              <Button type="button" variant="secondary" onClick={onDetails}>
+                {t('budgets.page.debts.details')}
               </Button>
             ) : null}
             {canSetAmount ? (
