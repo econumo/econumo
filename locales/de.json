@@ -1717,7 +1717,6 @@
       "period_1y_words": "im letzten Jahr",
       "period_3y_words": "in den letzten 3 Jahren",
       "period_all_words": "seit Beginn",
-      "range": "{from} – {to}",
       "range_words": "seit {from}",
       "clear_range": "Auswahl aufheben",
       "show_transactions": "Transaktionen von {name} anzeigen",

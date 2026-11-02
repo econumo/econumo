@@ -1717,7 +1717,6 @@
       "period_1y_words": "за последний год",
       "period_3y_words": "за последние 3 года",
       "period_all_words": "с самого начала",
-      "range": "{from} – {to}",
       "range_words": "с {from}",
       "clear_range": "Сбросить выделение",
       "show_transactions": "Показать транзакции: {name}",

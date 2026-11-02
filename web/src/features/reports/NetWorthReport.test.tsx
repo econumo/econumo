@@ -162,7 +162,7 @@ it('dragging across the chart shows the change over the selected range', async (
   fireEvent.mouseDown(surface, { clientX: 45, clientY: 100 })
   await at(220)
   fireEvent.mouseUp(surface, { clientX: 220, clientY: 100 })
-  await waitFor(() => expect(screen.getByText('Dec 2025 – May 2026')).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText('Jan – May 2026')).toBeInTheDocument())
   // the range replaces the period presets
   expect(screen.queryByRole('radiogroup', { name: 'Period' })).not.toBeInTheDocument()
   expect(plain(headline().textContent)).toContain('May 2026')

@@ -1717,7 +1717,6 @@
       "period_1y_words": "in het afgelopen jaar",
       "period_3y_words": "in de afgelopen 3 jaar",
       "period_all_words": "sinds het begin",
-      "range": "{from} – {to}",
       "range_words": "sinds {from}",
       "clear_range": "Selectie wissen",
       "show_transactions": "Transacties van {name} tonen",

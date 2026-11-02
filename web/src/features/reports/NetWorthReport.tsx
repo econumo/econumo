@@ -381,7 +381,8 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
               {selected && data ? (
                 // a selected range takes the presets' place, so it is clear what the figures cover
                 <span className="flex items-center gap-0.5 rounded-md bg-primary/15 py-0.5 pl-2 pr-0.5 text-xs text-primary">
-                  {t('reports.networth.range', { from: labels.month(data.months[lo]), to: labels.month(data.months[hi]) })}
+                  {/* the months whose transactions make the change, as the Transactions list titles them */}
+                  {drillRange ? labels.range([drillRange[0], drillRange[1]]) : null}
                   <button
                     type="button"
                     onClick={() => {
