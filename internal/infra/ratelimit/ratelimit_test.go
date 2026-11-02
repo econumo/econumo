@@ -245,6 +245,23 @@ func TestGlobalCap_BlocksAcrossKeys(t *testing.T) {
 	mustBlocked(t, l, "login", "d@example.test") // 4th request, distinct key
 }
 
+func TestGlobalCap_ExemptScopeKeepsItsPerKeyLimitOnly(t *testing.T) {
+	l, _ := newLimiter(ratelimit.Config{
+		Limits:       map[string]int{"sync": 1, "login": 100},
+		Window:       15 * time.Minute,
+		Global:       1,
+		GlobalExempt: map[string]bool{"sync": true},
+	})
+	mustAllowed(t, l, "sync", "user-a")
+	mustAllowed(t, l, "sync", "user-b") // past Global, distinct key
+	l.Fail("sync", "user-a")
+	mustBlocked(t, l, "sync", "user-a")
+	mustAllowed(t, l, "sync", "user-b")
+
+	mustAllowed(t, l, "login", "a@example.test")
+	mustBlocked(t, l, "login", "b@example.test")
+}
+
 func TestGlobalCap_SlidesOnItsOwnMinuteWindow(t *testing.T) {
 	l, clk := newLimiter(ratelimit.Config{
 		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, Global: 2,

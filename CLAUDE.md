@@ -883,7 +883,13 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_SYNC` — `import/sync-source` calls per user per window (default `10`; every request counts — a sync is a real bridge round trip).
   `ECONUMO_RATE_LIMIT_PREVIEW_RULE` — `import/preview-rule` calls per user per window (default `120`; every request counts — the rule editors fire it from a 300 ms typing debounce, and each call walks every matching link).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
-  `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
+  `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`). Only
+  `ingest` and `preview-rule` are exempt (`GlobalExempt` in `internal/server/server.go`): one user's
+  own limit could fill the cap there, and their effects stay inside that user's account. Every
+  other endpoint keeps it, per-user ones included, because accounts can be cheap and many together
+  must not guess invite codes, mail arbitrary addresses or drive outbound bridge requests freely.
+  No limiter reads the client IP, so a reverse proxy or CDN in front changes nothing; per-IP limits
+  belong at that proxy.
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.

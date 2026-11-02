@@ -29,10 +29,11 @@ const (
 // Config holds the limiter policy. A limit of 0 (or an absent scope) disables
 // that check.
 type Config struct {
-	Limits  map[string]int // per-scope max attempts per key per Window
-	Window  time.Duration  // per-key sliding window (default 15m)
-	Global  int            // per-scope cap per minute across ALL keys; 0 disables
-	MaxKeys int            // per-key map size cap (default 10000)
+	Limits       map[string]int  // per-scope max attempts per key per Window
+	Window       time.Duration   // per-key sliding window (default 15m)
+	Global       int             // per-scope cap per minute across ALL keys; 0 disables
+	MaxKeys      int             // per-key map size cap (default 10000)
+	GlobalExempt map[string]bool // scopes the Global cap does not count
 }
 
 type Limiter struct {
@@ -86,7 +87,7 @@ func (l *Limiter) Allow(scope, key string) error {
 			return errs.NewTooManyRequestsRetryAfter(Message, retryAfterSeconds(hits, now, l.cfg.Window))
 		}
 	}
-	if l.cfg.Global > 0 {
+	if l.cfg.Global > 0 && !l.cfg.GlobalExempt[scope] {
 		k := globalKey(scope)
 		hits := prune(l.attempts[k], now, globalWindow)
 		if len(hits) >= l.cfg.Global {

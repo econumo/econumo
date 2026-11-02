@@ -214,6 +214,14 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		},
 		Window: cfg.RateLimitWindow,
 		Global: cfg.RateLimitGlobal,
+		// Only scopes whose per-user limit alone can fill the global cap and whose
+		// effects stay inside the caller's account. The rest keep the ceiling:
+		// accounts can be cheap, so many of them together must not guess invite
+		// codes, mail arbitrary addresses or drive outbound bridge requests freely.
+		GlobalExempt: map[string]bool{
+			appimports.RateScopeIngest:      true,
+			appimports.RateScopePreviewRule: true,
+		},
 	}, clk)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, accessTokens, NewUserCurrencyLookup(currencyLookup), budgetAccess,

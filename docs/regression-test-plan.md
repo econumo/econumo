@@ -685,6 +685,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       already linked from this source is never adopted twice.
 - [ ] Rate limit: the 61st ingest within the window from one user is 429 with the
       frozen envelope.
+- [ ] With `ECONUMO_RATE_LIMIT_GLOBAL=1`, a second user's ingest and rule preview in the
+      same minute still succeed (both skip the global cap), while a second failed login
+      with another email, or a second `accept-invite` by another user, in that minute is 429.
 - [ ] A tap whose merchant name exceeds 255 characters is imported with the
       name cut to 255 (no failed row).
 - [ ] Manually importing a queued row whose card currency differs from the
