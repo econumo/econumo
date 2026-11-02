@@ -481,3 +481,45 @@ func TestProjectDebt_ZeroSnapshotAfterAnOverpaymentIsPaidOff(t *testing.T) {
 		t.Fatalf("got %+v, want paid off in February", p)
 	}
 }
+
+// A due paid early, in the previous month, still counts as this month's
+// scheduled payment: planning that amount is no extra.
+func TestProjectDebt_DuePaidEarlyLastMonthIsNoExtra(t *testing.T) {
+	snap := MathSnapshot{AsOf: ymd(2026, time.October, 1), Balance: 20000, Payment: 2000,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2027, time.August, 1)}
+	pays := []MathPayment{pay("early", ymd(2026, time.October, 30), 2000)}
+	in := SplitPayments([]MathSnapshot{snap}, pays)
+	months := []time.Time{ymd(2026, time.November, 1)}
+	project := func(plans map[string]float64) Projection {
+		return ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{snap}, Pays: pays, Interest: in,
+			Today: ymd(2026, time.November, 5), Months: months, Plans: plans})
+	}
+	none, planned := project(nil), project(map[string]float64{"2026-11-01": 2000})
+	near(t, "November closing vs no plan", planned.Months["2026-11-01"].ClosingBalance, none.Months["2026-11-01"].ClosingBalance, 1e-6)
+	if !planned.PayoffDate.Equal(none.PayoffDate) {
+		t.Fatalf("PayoffDate = %v, want %v: the plan is the scheduled amount, not an extra", planned.PayoffDate, none.PayoffDate)
+	}
+	more := project(map[string]float64{"2026-11-01": 3000})
+	near(t, "November closing with 1000 above the schedule", more.Months["2026-11-01"].ClosingBalance, none.Months["2026-11-01"].ClosingBalance-1000, 1e-6)
+}
+
+// An overdue last installment clears the balance in the projection, but the
+// debt is not paid off before today: the overdue date stays the next due.
+func TestProjectDebt_OverduePayoffIsNotInThePast(t *testing.T) {
+	snap := MathSnapshot{AsOf: ymd(2026, time.August, 28), Balance: 250, Payment: 250,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2026, time.September, 28)}
+	today := ymd(2026, time.October, 5)
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{snap}, Today: today})
+	if !p.NextDueDate.Equal(ymd(2026, time.September, 28)) {
+		t.Fatalf("NextDueDate = %v, want the overdue Sep 28", p.NextDueDate)
+	}
+	if !p.PayoffDate.Equal(today) || !p.BasePayoffDate.Equal(today) {
+		t.Fatalf("payoff dates = %v / %v, want today", p.PayoffDate, p.BasePayoffDate)
+	}
+	extra := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{{AsOf: snap.AsOf, Balance: 500, Payment: 250,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2026, time.October, 28)}}, Today: today,
+		Plans: map[string]float64{"2026-10-01": 500}})
+	if extra.PayoffDate.Before(today) {
+		t.Fatalf("PayoffDate = %v, an extra clearing the debt cannot pay it off before today", extra.PayoffDate)
+	}
+}

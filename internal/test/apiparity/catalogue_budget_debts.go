@@ -11,9 +11,9 @@ import "time"
 // The current month then has 105 scheduled, nothing still due and a balance
 // of 100 with one payment left; the next month has the 105 due and closes at
 // 0. The owner's 50 payment today counts on the debt row, not on the
-// category's, and against the owner's plan of 105 for the current month: the
-// other 55 is a projected extra, so the owner's debt closes the current month
-// at 45 and owes 47.25 next month. The plan window runs from the previous month, before the debts
+// category's. The owner's plan of 105 for the current month is the scheduled
+// amount, so it projects no extra: the debt still closes the current month at
+// 100 and owes 105 next month. The plan window runs from the previous month, before the debts
 // start, to the month after the last payment, so its first and last cells are
 // not plannable. Months stay out of the recorded paths (see
 // budget_upcoming_recurring).

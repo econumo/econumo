@@ -414,7 +414,7 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 			balance = balance + interest - pay
 			run.steps = append(run.steps, projStep{date: due, pay: pay})
 			if balance <= eps {
-				balance, run.payoffDate = 0, due
+				balance, run.payoffDate = 0, laterOf(due, today)
 				break
 			}
 			if !stepped && extra > 0 {
@@ -422,7 +422,7 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 				balance -= applied
 				run.extraTotal += applied
 				if balance <= eps {
-					balance, run.payoffDate = 0, due
+					balance, run.payoffDate = 0, laterOf(due, today)
 					break
 				}
 			}
@@ -443,6 +443,15 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 	}
 	run.endBalance = balance
 	return run
+}
+
+// laterOf keeps a projected payoff from landing before today: an overdue due
+// that clears the balance has still to be paid.
+func laterOf(due, today time.Time) time.Time {
+	if due.Before(today) {
+		return today
+	}
+	return due
 }
 
 // payoffEvent finds the event (a payment or a snapshot) that took the balance
@@ -525,11 +534,11 @@ func ProjectDebt(in ProjectionInput) Projection {
 		if err != nil || m.Before(currentMonth) {
 			continue
 		}
-		var covered float64
+		covered := latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, m.AddDate(0, 0, -1), m.AddDate(0, 1, -1))))
+		// This month's plan is also met by what was paid and is still due in
+		// it; a due paid early last month keeps counting as scheduled here.
 		if m.Equal(currentMonth) {
-			covered = paidBetween(pays, currentMonth, today) + stillDueBefore(base, currentMonth.AddDate(0, 1, 0))
-		} else {
-			covered = latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, m.AddDate(0, 0, -1), m.AddDate(0, 1, -1))))
+			covered = math.Max(covered, paidBetween(pays, currentMonth, today)+stillDueBefore(base, currentMonth.AddDate(0, 1, 0)))
 		}
 		if extra := planned - covered; extra > 0 {
 			extras[key] = extra
