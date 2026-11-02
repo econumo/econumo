@@ -228,9 +228,10 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		appuser.RateScopeReset:        2,
 		appuser.RateScopeConfirmEmail: 2,
 	} {
-		ceiling := scope + appuser.EmailCeilingScopeSuffix
-		limiterLimits[ceiling] = factor * limiterLimits[scope]
-		limiterIPExempt[ceiling] = true // allowEmailAttempt counted it under its base scope
+		for _, suffix := range []string{appuser.EmailCeilingScopeSuffix, appuser.UnknownEmailCeilingScopeSuffix} {
+			limiterLimits[scope+suffix] = factor * limiterLimits[scope]
+			limiterIPExempt[scope+suffix] = true // allowEmailAttempt counts it under its base scope
+		}
 	}
 	authLimiter := ratelimit.New(ratelimit.Config{
 		Limits: limiterLimits,

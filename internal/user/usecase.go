@@ -311,10 +311,15 @@ func (s *Service) allowAttempt(ctx context.Context, scope, key string) error {
 // knows the address locks out only their own IP, not its owner. The per-address
 // ceiling, counted across all IPs, is what still bounds guessing from many IPs.
 func (s *Service) allowEmailAttempt(ctx context.Context, scope, email string) error {
-	if err := s.allowAttempt(ctx, scope, emailIPKey(ctx, email)); err != nil {
+	// The ceilings first: they spend no IP budget, so retrying a locked address
+	// cannot use up what others behind the same IP share.
+	if err := s.allowAttempt(ctx, scope+EmailCeilingScopeSuffix, email); err != nil {
 		return err
 	}
-	return s.allowAttempt(ctx, scope+EmailCeilingScopeSuffix, email)
+	if err := s.allowAttempt(ctx, scope+UnknownEmailCeilingScopeSuffix, email); err != nil {
+		return err
+	}
+	return s.allowAttempt(ctx, scope, emailIPKey(ctx, email))
 }
 
 func (s *Service) failEmailAttempt(ctx context.Context, scope, email string) {
@@ -322,17 +327,18 @@ func (s *Service) failEmailAttempt(ctx context.Context, scope, email string) {
 	s.failAttempt(scope+EmailCeilingScopeSuffix, email)
 }
 
-// failUnknownEmailAttempt keeps a pinned ceiling free of invented addresses, so
-// a spray of them cannot grow the limiter without bound. It does mean only real
-// accounts ever reach a ceiling; login timing and registration already tell the
-// two apart, and getting here takes many IPs and locks the account being probed.
+// failUnknownEmailAttempt counts an address with no account in its own evictable
+// ceiling: it answers 429 at the same point as a real one, so the limit reveals
+// nothing, while a spray of invented addresses cannot grow the pinned ceiling.
 func (s *Service) failUnknownEmailAttempt(ctx context.Context, scope, email string) {
 	s.failAttempt(scope, emailIPKey(ctx, email))
+	s.failAttempt(scope+UnknownEmailCeilingScopeSuffix, email)
 }
 
 func (s *Service) clearEmailAttempt(ctx context.Context, scope, email string) {
 	s.clearAttempt(scope, emailIPKey(ctx, email))
 	s.clearAttempt(scope+EmailCeilingScopeSuffix, email)
+	s.clearAttempt(scope+UnknownEmailCeilingScopeSuffix, email)
 }
 
 func emailIPKey(ctx context.Context, email string) string {

@@ -892,11 +892,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `confirm-email`) count per address AND client IP (`allowEmailAttempt`), so a stranger locks out
   only their own IP, under a per-address ceiling across all IPs: 10x the limit, but 2x for `reset`
   and `confirm-email`, because a 6-digit code must not get many more guesses. Enough IPs can still
-  reach a ceiling and lock that one address. The `login`, `reset` and `confirm-email` ceilings are
-  written for real accounts only and, with the per-user `accept-invite` and `confirm-email-change`
-  counters, are `Pinned` (never evicted before they expire), so a spray of invented addresses from
-  many IPs cannot wipe them from the 10,000-entry counter map; the cost is that only a real account
-  ever reaches one. Accepted residual: many accounts on many IPs have no
+  reach a ceiling and lock that one address. The `login`, `reset` and `confirm-email` ceilings of real
+  accounts and the per-user `accept-invite` and `confirm-email-change` counters are `Pinned` (never
+  evicted before they expire), so a spray of invented addresses from many IPs cannot wipe them from
+  the 10,000-entry counter map. Addresses with no account count in a separate evictable ceiling
+  that answers 429 at the same point, so the limit does not reveal which accounts exist, unless a
+  spray happens to evict it first. Accepted residual: many accounts on many IPs have no
   overall ceiling on `accept-invite`, `request-email-change`, `claim-setup-token` and `sync-source`.
   `ECONUMO_CLIENT_IP_HEADER` — the header your reverse proxy puts the client IP in (e.g.
   `CF-Connecting-IP`); a request without a valid value counts as its connecting address. Alone, it

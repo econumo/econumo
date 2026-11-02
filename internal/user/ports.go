@@ -82,6 +82,9 @@ const (
 	// EmailCeilingScopeSuffix names the per-address ceiling of an email-keyed
 	// scope (see allowEmailAttempt): RateScopeLogin+EmailCeilingScopeSuffix.
 	EmailCeilingScopeSuffix = "-email-ceiling"
+	// UnknownEmailCeilingScopeSuffix is the same ceiling for addresses with no
+	// account, kept apart so invented ones cannot crowd out the real ones.
+	UnknownEmailCeilingScopeSuffix = "-unknown-email-ceiling"
 
 	RateScopeRequestEmailChange = "request-email-change"
 	RateScopeConfirmEmailChange = "confirm-email-change"

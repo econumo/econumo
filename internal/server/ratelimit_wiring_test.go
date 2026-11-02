@@ -182,6 +182,50 @@ func TestEmailLimits_AStrangerCannotLockOutTheOwner(t *testing.T) {
 	}
 }
 
+func TestEmailLimits_RetryingALockedAddressSpendsNoIPBudget(t *testing.T) {
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.RateLimitLogin = 1
+		c.RateLimitIP = 2
+	})
+	login := func(ip, email string) int {
+		return h.post("/api/v1/user/login-user", ip, "", fmt.Sprintf(`{"username":%q,"password":"wrong"}`, email))
+	}
+	for i := range 10 { // the ceiling, 10x login
+		login(fmt.Sprintf("198.51.100.%d", i+10), "locked@example.test")
+	}
+	for range 5 {
+		if got := login(ownerIP, "locked@example.test"); got != http.StatusTooManyRequests {
+			t.Fatalf("locked address = %d, want 429", got)
+		}
+	}
+	if got := login(ownerIP, "someone-else@example.test"); got == http.StatusTooManyRequests {
+		t.Fatal("retries against a locked address used up the IP's budget")
+	}
+}
+
+func TestEmailLimits_ACeilingDoesNotRevealWhichAccountsExist(t *testing.T) {
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.RateLimitReset = 2
+		c.RateLimitIP = 0
+	})
+	if got := h.post("/api/v1/user/register-user", ownerIP, "", `{"email":"real@example.test","password":"long-enough-password","name":"Real"}`); got != http.StatusOK {
+		t.Fatalf("register = %d", got)
+	}
+	for _, email := range []string{"real@example.test", "nobody@example.test"} {
+		reset := func(ip string) int {
+			return h.post("/api/v1/user/reset-password", ip, "", fmt.Sprintf(`{"username":%q,"code":"000000","password":"irrelevant-pw"}`, email))
+		}
+		for i := range 4 { // 2x the limit
+			if got := reset(fmt.Sprintf("198.51.100.%d", i+10)); got == http.StatusTooManyRequests {
+				t.Fatalf("%s: guess %d = 429 before the ceiling", email, i)
+			}
+		}
+		if got := reset("198.51.100.200"); got != http.StatusTooManyRequests {
+			t.Fatalf("%s: past the ceiling = %d, want 429", email, got)
+		}
+	}
+}
+
 func TestEmailLimits_ResetCodeGuessesStayNearTheirLimitAcrossIPs(t *testing.T) {
 	h := newLimitHarness(t, func(c *config.Config) {
 		c.RateLimitReset = 2
