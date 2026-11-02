@@ -37,7 +37,7 @@ type Repository interface {
 	// Snapshots are ordered by debt, as_of, created_at.
 	Snapshots(ctx context.Context, debtIDs []vo.Id) ([]*model.DebtSnapshot, error)
 	Splits(ctx context.Context, debtIDs []vo.Id) ([]model.DebtSplit, error)
-	// InsertSplit is idempotent on the transaction id.
+	// InsertSplit upserts on the transaction id: a payment has one split.
 	InsertSplit(ctx context.Context, s model.DebtSplit) error
 	DeleteSplits(ctx context.Context, debtID vo.Id, transactionIDs []vo.Id) error
 	// CandidateTransactions returns expenses only (type 0).

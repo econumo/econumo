@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -64,8 +65,7 @@ func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f
 	if err != nil {
 		return nil, err
 	}
-	for _, sl := range summed {
-		key := elementKey(sl.ExternalID, model.ElementType(sl.Type))
+	addBefore := func(key, amount string) {
 		amt := data[key]
 		if amt.budgeted.String() == "" {
 			amt.budgeted = vo.NewDecimal("0")
@@ -74,10 +74,43 @@ func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f
 		if before.String() == "" {
 			before = vo.NewDecimal("0")
 		}
-		amt.budgetedBefore = before.Add(vo.NewDecimal(sl.Amount))
+		amt.budgetedBefore = before.Add(vo.NewDecimal(amount))
 		data[key] = amt
 	}
+	debtPlans := false
+	for _, sl := range summed {
+		if _, ok := f.debtByID[sl.ExternalID]; ok && model.ElementType(sl.Type) == model.ElementDebt {
+			debtPlans = true
+			continue
+		}
+		addBefore(elementKey(sl.ExternalID, model.ElementType(sl.Type)), sl.Amount)
+	}
+	if debtPlans {
+		if err := s.addDebtPlansBefore(ctx, b, f, addBefore); err != nil {
+			return nil, err
+		}
+	}
 	return data, nil
+}
+
+// addDebtPlansBefore sums a debt's prior plans over the months of its life
+// only: a plan left in a month the debt no longer reaches (an early payoff)
+// is ignored, as the row ignores it in its own month.
+func (s *Service) addDebtPlansBefore(ctx context.Context, b *budgetAggregate, f filters, add func(key, amount string)) error {
+	rows, err := s.read.LimitsByMonth(ctx, b.budget.ID, b.budget.StartedAt, f.periodStart)
+	if err != nil {
+		return err
+	}
+	for _, l := range rows {
+		v, ok := f.debtByID[l.ExternalID]
+		if !ok || model.ElementType(l.Type) != model.ElementDebt {
+			continue
+		}
+		if m, perr := time.Parse(datetime.DateLayout, l.Month); perr == nil && plannable(v, m) {
+			add(elementKey(v.ID, model.ElementDebt), l.Amount)
+		}
+	}
+	return nil
 }
 
 // categorySpending holds a category's spending split into current + before.

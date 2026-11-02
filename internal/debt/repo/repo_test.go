@@ -211,6 +211,33 @@ func TestRepo_InsertSplitIsIdempotent(t *testing.T) {
 	}
 }
 
+// A payment that moved to another debt's category takes its split with it at
+// once, even before the old debt's category is synced again.
+func TestRepo_InsertSplitMovesToAnotherDebt(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	a, b := e.debt(fixture.NewID()), e.debt(fixture.NewID())
+	for _, d := range []*model.Debt{a, b} {
+		if err := e.repo.Save(ctx, d); err != nil {
+			t.Fatal(err)
+		}
+	}
+	txID := vo.MustParseId(e.expense(t, 0, "50"))
+	if err := e.repo.InsertSplit(ctx, model.DebtSplit{DebtID: a.ID, TransactionID: txID, Interest: vo.NewDecimal("12.5")}); err != nil {
+		t.Fatalf("InsertSplit a: %v", err)
+	}
+	if err := e.repo.InsertSplit(ctx, model.DebtSplit{DebtID: b.ID, TransactionID: txID, Interest: vo.NewDecimal("7")}); err != nil {
+		t.Fatalf("InsertSplit b: %v", err)
+	}
+	got, err := e.repo.Splits(ctx, []vo.Id{b.ID})
+	if err != nil || len(got) != 1 || got[0].TransactionID != txID || got[0].Interest.String() != "7" {
+		t.Fatalf("Splits of b = %v, %v", got, err)
+	}
+	if got, _ := e.repo.Splits(ctx, []vo.Id{a.ID}); len(got) != 0 {
+		t.Errorf("Splits of a = %v, want none", got)
+	}
+}
+
 func TestRepo_SplitDeletedWithTransaction(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()

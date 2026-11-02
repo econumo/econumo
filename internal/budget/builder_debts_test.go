@@ -175,6 +175,26 @@ func TestGetBudget_DebtRowHiddenAfterPayoff(t *testing.T) {
 	}
 }
 
+// Plans stored for months the debt no longer reaches after an early payoff
+// do not carry into Available.
+func TestGetBudget_DebtRowIgnoresPlansPastEarlyPayoff(t *testing.T) {
+	h := newAttrHarness(t)
+	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
+	debtID := h.createDebt(t)
+	h.setLimit(t, debtID, "2026-06-01", "1000")
+	h.setLimit(t, debtID, "2026-07-01", "1000")
+	h.setLimit(t, debtID, "2026-08-01", "1000")
+	if _, err := h.debts.MarkDebtPaidOff(h.ctx, h.owner, model.MarkDebtPaidOffRequest{Id: debtID}); err != nil {
+		t.Fatalf("MarkDebtPaidOff: %v", err)
+	}
+
+	for _, month := range []string{"2026-07-01", "2026-08-01", "2026-09-01"} {
+		if row := debtRow(h.budgetAt(t, h.owner, month), debtID); row != nil {
+			t.Errorf("%s row after payoff = %+v, want none (later plans are outside the debt's life)", month, row)
+		}
+	}
+}
+
 func TestGetBudget_DebtRowWithOverspendStaysAfterPayoff(t *testing.T) {
 	h := newAttrHarness(t)
 	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))

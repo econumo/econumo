@@ -352,3 +352,47 @@ func TestProjectDebt_NothingScheduledAfterProjectedPayoff(t *testing.T) {
 	near(t, "paid off: September scheduled", paid.Months["2026-09-01"].ScheduledTotal, 1000, 1e-9)
 	near(t, "paid off: October scheduled", paid.Months["2026-10-01"].ScheduledTotal, 0, 1e-9)
 }
+
+// A current-month plan already met by this month's payments projects no
+// further extra: the balance already holds them.
+func TestProjectDebt_CurrentMonthExtraAlreadyPaid(t *testing.T) {
+	snap := MathSnapshot{AsOf: ymd(2026, time.October, 20), Balance: 300000, Payment: 2000,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2046, time.September, 25)}
+	pays := []MathPayment{pay("a", ymd(2026, time.October, 25), 7000)}
+	in := SplitPayments([]MathSnapshot{snap}, pays)
+	months := []time.Time{ymd(2026, time.October, 1), ymd(2026, time.November, 1)}
+	project := func(plans map[string]float64) Projection {
+		return ProjectDebt(ProjectionInput{Snaps: []MathSnapshot{snap}, Pays: pays, Interest: in,
+			Today: ymd(2026, time.October, 26), Months: months, Plans: plans})
+	}
+	none, planned := project(nil), project(map[string]float64{"2026-10-01": 7000})
+	near(t, "October closing", planned.Months["2026-10-01"].ClosingBalance, 300000-(7000-in["a"]), 0.01)
+	near(t, "October closing vs no plan", planned.Months["2026-10-01"].ClosingBalance, none.Months["2026-10-01"].ClosingBalance, 1e-6)
+	near(t, "MoneyLeft vs no plan", planned.MoneyLeft, none.MoneyLeft, 1e-6)
+	near(t, "OverpaymentLeft vs no plan", planned.OverpaymentLeft, none.OverpaymentLeft, 1e-6)
+	if !planned.PayoffDate.Equal(none.PayoffDate) {
+		t.Fatalf("PayoffDate = %v, want %v", planned.PayoffDate, none.PayoffDate)
+	}
+
+	// Only the part of the plan above what was paid and what is still due
+	// this month is a further extra.
+	more := project(map[string]float64{"2026-10-01": 10000})
+	near(t, "October closing with 3000 more planned", more.Months["2026-10-01"].ClosingBalance, none.Months["2026-10-01"].ClosingBalance-3000, 1e-6)
+}
+
+// A regular due still to come this month counts against the plan, next to
+// what was already paid.
+func TestProjectDebt_CurrentMonthPlanCountsPaidAndStillDue(t *testing.T) {
+	snap := MathSnapshot{AsOf: ymd(2026, time.September, 1), Balance: 300000, Payment: 2000,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2046, time.September, 28)}
+	pays := []MathPayment{pay("sep", ymd(2026, time.September, 28), 2000), pay("x", ymd(2026, time.October, 5), 5000)}
+	in := SplitPayments([]MathSnapshot{snap}, pays)
+	months := []time.Time{ymd(2026, time.October, 1)}
+	project := func(plans map[string]float64) Projection {
+		return ProjectDebt(ProjectionInput{Snaps: []MathSnapshot{snap}, Pays: pays, Interest: in,
+			Today: ymd(2026, time.October, 10), Months: months, Plans: plans})
+	}
+	none, planned := project(nil), project(map[string]float64{"2026-10-01": 7000})
+	near(t, "October closing vs no plan", planned.Months["2026-10-01"].ClosingBalance, none.Months["2026-10-01"].ClosingBalance, 1e-6)
+	near(t, "MoneyLeft vs no plan", planned.MoneyLeft, none.MoneyLeft, 1e-6)
+}

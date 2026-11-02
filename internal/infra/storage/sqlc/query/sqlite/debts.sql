@@ -42,7 +42,7 @@ VALUES (sqlc.arg(id), sqlc.arg(debt_id), CAST(sqlc.arg(as_of) AS TEXT), sqlc.arg
 -- name: InsertDebtSplit :exec
 INSERT INTO debts_payments (debt_id, transaction_id, interest)
 VALUES (?, ?, ?)
-ON CONFLICT (transaction_id) DO NOTHING;
+ON CONFLICT (transaction_id) DO UPDATE SET debt_id = excluded.debt_id, interest = excluded.interest;
 
 -- name: CandidateDebtTransactions :many
 -- Expenses only (type 0); the currency is the account's.

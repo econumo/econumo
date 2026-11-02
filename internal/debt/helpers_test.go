@@ -66,6 +66,17 @@ func (r *fakeRates) ConvertOnDay(_ context.Context, from, to vo.Id, amount vo.De
 
 func (r *fakeRates) FractionDigits(context.Context, vo.Id) (int, error) { return 2, nil }
 
+// fakeCurrencies refuses the currencies listed as unusable.
+type fakeCurrencies struct{ unusable map[string]bool }
+
+func (c *fakeCurrencies) EnsureUsable(_ context.Context, _, currencyID string) error {
+	if c.unusable[currencyID] {
+		return errs.NewValidation("Validation failed",
+			errs.FieldError{Key: "currencyId", Message: "Currency is not available", Code: errs.CodeCurrencyNotAvailable})
+	}
+	return nil
+}
+
 func formatFloat(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 
 type transferCall struct {
@@ -97,6 +108,7 @@ type env struct {
 	clock    *fakeClock
 	class    *fakeClass
 	rates    *fakeRates
+	currency *fakeCurrencies
 	budget   *fakeBudget
 	user     string
 	category string
@@ -112,14 +124,15 @@ func newEnv(t *testing.T) *env {
 	user := f.User(fixture.User{Name: "u"})
 	e := &env{
 		repo: debtrepo.NewRepo(db.Engine, db.TX), db: db, f: f, user: user,
-		clock:  &fakeClock{now: march10},
-		class:  &fakeClass{categories: map[string]fakeCategory{}, payees: map[string]string{}, tags: map[string]string{}},
-		rates:  &fakeRates{multiplier: map[string]float64{}},
-		budget: &fakeBudget{},
+		clock:    &fakeClock{now: march10},
+		class:    &fakeClass{categories: map[string]fakeCategory{}, payees: map[string]string{}, tags: map[string]string{}},
+		rates:    &fakeRates{multiplier: map[string]float64{}},
+		currency: &fakeCurrencies{unusable: map[string]bool{}},
+		budget:   &fakeBudget{},
 	}
 	e.category = e.newCategory(user, true)
 	e.account = f.Account(fixture.Account{UserID: user})
-	e.svc = debt.NewService(e.repo, db.TX, e.clock, e.class, e.rates)
+	e.svc = debt.NewService(e.repo, db.TX, e.clock, e.class, e.rates, e.currency)
 	e.svc.SetBudgetElements(e.budget)
 	return e
 }

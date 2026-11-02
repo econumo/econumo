@@ -491,19 +491,25 @@ func ProjectDebt(in ProjectionInput) Projection {
 	}
 
 	firstDue := firstUnpaidDue(latest, pays, today)
+	base := runProjection(latest, rate, current, today, firstDue, nil)
+	currentMonth := monthStart(today)
 	extras := map[string]float64{}
 	for key, planned := range in.Plans {
 		m, err := time.Parse(monthKeyLayout, key)
-		if err != nil || m.Before(monthStart(today)) {
+		if err != nil || m.Before(currentMonth) {
 			continue
 		}
-		scheduled := latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, m.AddDate(0, 0, -1), m.AddDate(0, 1, -1))))
-		if extra := planned - scheduled; extra > 0 {
+		var covered float64
+		if m.Equal(currentMonth) {
+			covered = paidBetween(pays, currentMonth, today) + stillDueBefore(base, currentMonth.AddDate(0, 1, 0))
+		} else {
+			covered = latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, m.AddDate(0, 0, -1), m.AddDate(0, 1, -1))))
+		}
+		if extra := planned - covered; extra > 0 {
 			extras[key] = extra
 		}
 	}
 	run := runProjection(latest, rate, current, today, firstDue, extras)
-	base := runProjection(latest, rate, current, today, firstDue, nil)
 
 	out.PaymentsLeft = len(run.steps)
 	out.MoneyLeft = run.moneyLeft()
@@ -515,7 +521,6 @@ func ProjectDebt(in ProjectionInput) Projection {
 	out.BasePayoffDate = base.payoffDate
 	out.BaseOverpaymentLeft = base.moneyLeft() - current
 
-	currentMonth := monthStart(today)
 	for _, m := range in.Months {
 		m = monthStart(m)
 		monthEnd := m.AddDate(0, 1, -1)
@@ -557,6 +562,29 @@ func ProjectDebt(in ProjectionInput) Projection {
 		out.Months[monthKey(m)] = pm
 	}
 	return out
+}
+
+// paidBetween sums the payments dated in [from, to].
+func paidBetween(pays []MathPayment, from, to time.Time) float64 {
+	var total float64
+	for _, p := range pays {
+		if !p.Date.Before(from) && !p.Date.After(to) {
+			total += p.Amount
+		}
+	}
+	return total
+}
+
+// stillDueBefore sums the projected regular payments dated before end,
+// overdue ones included.
+func stillDueBefore(run projRun, end time.Time) float64 {
+	var total float64
+	for _, st := range run.steps {
+		if st.date.Before(end) {
+			total += st.pay
+		}
+	}
+	return total
 }
 
 // firstUnpaidDue is the earliest due, from the one whose window holds today,

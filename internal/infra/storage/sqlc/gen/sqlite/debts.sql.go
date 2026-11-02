@@ -166,7 +166,7 @@ func (q *Queries) InsertDebtSnapshot(ctx context.Context, arg InsertDebtSnapshot
 const insertDebtSplit = `-- name: InsertDebtSplit :exec
 INSERT INTO debts_payments (debt_id, transaction_id, interest)
 VALUES (?, ?, ?)
-ON CONFLICT (transaction_id) DO NOTHING
+ON CONFLICT (transaction_id) DO UPDATE SET debt_id = excluded.debt_id, interest = excluded.interest
 `
 
 type InsertDebtSplitParams struct {

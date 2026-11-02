@@ -13,6 +13,9 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 	if err != nil {
 		return nil, err
 	}
+	if err := s.currencies.EnsureUsable(ctx, userID.String(), in.currency.String()); err != nil {
+		return nil, err
+	}
 	digits, err := s.rates.FractionDigits(ctx, in.currency)
 	if err != nil {
 		return nil, err

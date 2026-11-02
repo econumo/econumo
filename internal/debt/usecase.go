@@ -20,16 +20,17 @@ const (
 )
 
 type Service struct {
-	repo   Repository
-	tx     port.TxRunner
-	clock  port.Clock
-	class  Classifications
-	rates  Rates
-	budget BudgetElements
+	repo       Repository
+	tx         port.TxRunner
+	clock      port.Clock
+	class      Classifications
+	rates      Rates
+	currencies Currencies
+	budget     BudgetElements
 }
 
-func NewService(repo Repository, tx port.TxRunner, clock port.Clock, class Classifications, rates Rates) *Service {
-	return &Service{repo: repo, tx: tx, clock: clock, class: class, rates: rates}
+func NewService(repo Repository, tx port.TxRunner, clock port.Clock, class Classifications, rates Rates, currencies Currencies) *Service {
+	return &Service{repo: repo, tx: tx, clock: clock, class: class, rates: rates, currencies: currencies}
 }
 
 // SetBudgetElements installs the budget peer; the budget service is built

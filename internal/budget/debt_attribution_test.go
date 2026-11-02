@@ -110,7 +110,7 @@ func newAttrHarness(t *testing.T) *attrHarness {
 	)
 	debts := appdebt.NewService(debtrepo.NewRepo(engine, txm), txm, clk,
 		server.NewDebtClassifications(categoryRepo, payeeRepo, tagRepo),
-		server.NewDebtRates(rateProvider, convertor))
+		server.NewDebtRates(rateProvider, convertor), currencyLookup)
 	svc.SetDebts(debts)
 	debts.SetBudgetElements(server.NewDebtBudgetElements(svc))
 	rec := &attrRecurring{}

@@ -22,6 +22,13 @@ type Rates interface {
 	FractionDigits(ctx context.Context, currencyID vo.Id) (int, error)
 }
 
+// Currencies is backed by the currency lookup.
+type Currencies interface {
+	// EnsureUsable refuses a currency the user may not denominate a new
+	// entity in: deleted, or another user's custom one.
+	EnsureUsable(ctx context.Context, userID, currencyID string) error
+}
+
 // BudgetElements is backed by the budget service. It is installed late and
 // the service tolerates its absence.
 type BudgetElements interface {

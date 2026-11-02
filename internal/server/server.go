@@ -449,6 +449,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		debtrepo.NewRepo(cfg.DatabaseDriver, txm), txm, clk,
 		NewDebtClassifications(categoryRepo, payeeRepo, tagRepo),
 		NewDebtRates(rateProvider, convertor),
+		currencyLookup,
 	)
 	categorySvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindCategory))
 	payeeSvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindPayee))

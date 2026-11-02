@@ -7,6 +7,7 @@ import (
 	"time"
 
 	appcategory "github.com/econumo/econumo/internal/category"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/debt"
 	"github.com/econumo/econumo/internal/model"
 	apppayee "github.com/econumo/econumo/internal/payee"
@@ -135,4 +136,5 @@ var (
 	_ apptag.DebtUsage      = (*DebtUsage)(nil)
 	_ debt.Classifications  = (*DebtClassifications)(nil)
 	_ debt.Rates            = (*DebtRates)(nil)
+	_ debt.Currencies       = (*currencyrepo.Lookup)(nil)
 )

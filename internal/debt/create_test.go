@@ -61,6 +61,16 @@ func TestCreateDebt_RefusesForeignCategory(t *testing.T) {
 	requireNotFound(t, err)
 }
 
+func TestCreateDebt_RefusesUnusableCurrency(t *testing.T) {
+	e := newEnv(t)
+	e.currency.unusable[fixture.USD] = true
+	_, err := e.svc.CreateDebt(context.Background(), e.uid(), e.createReq())
+	requireCode(t, err, errs.CodeCurrencyNotAvailable)
+	if got, err := e.repo.ListByCategory(context.Background(), vo.MustParseId(e.category)); err != nil || len(got) != 0 {
+		t.Errorf("debts after a refused create = %v, %v", got, err)
+	}
+}
+
 func TestCreateDebt_RefusesPaymentsDontCover(t *testing.T) {
 	e := newEnv(t)
 	req := e.createReq()
