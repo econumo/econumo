@@ -2151,11 +2151,12 @@ tag, and a budget with a planned limit on one category.
       accounts) or person (budget) with its amount and the Total at the
       bottom. Period buttons 1y / 3y / All sit small on the chart's top-right
       corner; the scope picker is a quiet "{budget} ▾" top-right. The headline
-      shows "Today", the latest total, and "+/-{amount} in the last year /
+      shows the months the period covers (e.g. "Jan 2024 – Nov 2026"), the
+      latest total, and "+/-{amount} in the last year /
       in the last 3 years / since the start". All starts at the end of the
       month before the first transaction, so its change equals the latest
       total. Amounts show cents.
-- [ ] Net worth "Today" counts transactions through the end of today in
+- [ ] Net worth's latest total counts transactions through the end of today in
       the device's timezone: a transaction dated later this month is left
       out of the current month until its day comes (earlier months are
       unchanged). A report of a single month shows its total without a
@@ -2179,7 +2180,7 @@ tag, and a budget with a planned limit on one category.
       Dragging across the chart shades the range; a chip with × takes the
       place of 1y/3y/All and names the months whose transactions make the
       change ("Apr – Dec 2025", the Transactions list's own title). The
-      headline shows the end month, the balance there and the change "since
+      headline names the same months, then the balance at their end and the change "since
       <the month before>"; a Transactions button appears under it, in the same
       row as the chip. Selecting moves nothing below the headline. The
       table's Start/Now/Change follow the range. Transactions lists every transaction of the report's

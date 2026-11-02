@@ -348,9 +348,8 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
         <section aria-label={t('reports.spending.headline')} className={`flex min-w-0 flex-col ${dim}`}>
-          <span className="text-sm text-muted-foreground">
-            {selected && data ? labels.month(data.months[hi]) : t('reports.networth.today')}
-          </span>
+          {/* the months the figures cover, the whole window or the dragged range; the space holds the line while loading */}
+          <span className="text-sm text-muted-foreground">{drillRange ? labels.range([drillRange[0], drillRange[1]]) : '\u00a0'}</span>
           <span className="text-2xl tabular-nums sm:text-3xl">{data ? money(totalLine.now) : '…'}</span>
           {data && n > 1 ? (
             <span className="text-sm">
