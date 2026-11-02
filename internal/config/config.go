@@ -491,9 +491,6 @@ func loadAppLinks(c *Config) error {
 	return nil
 }
 
-// loadOAuth reads the three provider slots. A slot is all-or-nothing: the
-// first missing required variable of a partially set slot is named in the
-// error, and any enabled slot requires ECONUMO_URL (redirect URIs derive from it).
 func (c Config) ShareClientEnabled() bool { return c.ShareClientID != "" }
 
 func loadShare(c *Config) error {
@@ -563,6 +560,9 @@ func isASCII(s string) bool {
 	return true
 }
 
+// loadOAuth reads the three provider slots. A slot is all-or-nothing: the
+// first missing required variable of a partially set slot is named in the
+// error, and any enabled slot requires ECONUMO_URL (redirect URIs derive from it).
 func loadOAuth(c *Config) error {
 	requireAll := func(slot string, vars ...string) (bool, error) {
 		set := 0
