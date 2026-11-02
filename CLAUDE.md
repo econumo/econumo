@@ -357,7 +357,8 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   so it triggers the timezone and `last_used_at` write-through like any authenticated request.
 - Access tokens are `access_tokens` rows of kind `oauth` / scope `mcp` (`eco_oat_…`, fixed
   1 h, linked to their grant by `grant_id`), admitted only on `/mcp` — anywhere else they
-  get the frozen 401. Turning OAuth off also stops admitting already-issued OAuth access
+  get the frozen 401. The share client's tokens carry scope `read` instead and are admitted
+  only on the nine `GET` paths above, never on `/mcp`. Turning OAuth off also stops admitting already-issued OAuth access
   tokens on `/mcp` (the chain passes `AllowMCPScope: authSrv.Enabled()`). Refresh tokens
   rotate on every use; a grant idles out 90 days after its last refresh. Every rotated-away
   hash is kept in `oauth_refresh_tokens_spent` for as long as the grant row lives. Replaying
@@ -1228,7 +1229,8 @@ In the distroless image these run via the binary directly, e.g.
   error). `/api/v1/transaction/get-transaction-list` (the legacy full list, still used by MCP,
   older clients and the SPA's fallback against a server without revisions) is unchanged.
 - **Dated exchange rates:** `GET /api/v1/currency/get-currency-rate-list` takes optional
-  `from` and `to` (`YYYY-MM-DD`, both or neither, `from` <= `to`, inclusive): the response
+  `from` and `to` (`YYYY-MM-DD`, both or neither, `from` <= `to`, inclusive, spanning at
+  most 366 days inclusive): the response
   then lists every rate published in that range plus, per currency, the newest one before `from`, instead of only the latest day's. Every item carries
   an additive `date` field (`YYYY-MM-DD`), in the default response too.
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
@@ -1268,7 +1270,8 @@ In the distroless image these run via the binary directly, e.g.
   Three kinds: `session` (minted at login; sliding 30-day TTL — expiry renews on use, with
   last-used persistence throttled to once per 5 minutes), `personal` (user-created
   PATs with an optional fixed expiry, shown exactly once at creation) and `oauth`
-  (minted by the MCP OAuth server, see "MCP endpoint"; 1 h fixed expiry, scope `mcp`).
+  (minted by the MCP OAuth server, see "MCP endpoint"; 1 h fixed expiry, scope `mcp`, or
+  `read` for the first-party share client only).
   Every token carries a scope: `full` (sessions, ordinary PATs) or `ingest` (a PAT
   that may ONLY call `/api/v1/import/ingest-*`; anywhere else it gets the frozen 401
   `"Invalid access token"`) or `mcp` (`oauth` tokens only; admitted solely on `/mcp`, the
@@ -1425,7 +1428,10 @@ data unreadable. Most are also asserted by the test suite.
 - Sessions: sliding `expires_at = last_used_at + 30d`, touched at most every 5 minutes.
   PAT `expires_at` never moves (NULL = never expires).
 - `scope`: `"full"` | `"ingest"` on `create-personal-token` (required; blank → `common.is_blank`,
-  unknown → `common.invalid_choice`) and echoed on `get-personal-token-list`.
+  unknown → `common.invalid_choice`) and echoed on `get-personal-token-list`. `oauth` tokens
+  carry `"mcp"` (admitted only on `/mcp`) or, for the first-party share client only, `"read"`
+  (admitted only on `GET` of the nine `middleware.ReadScopePaths`); neither can be minted
+  through `create-personal-token`.
 
 ### Encodings, messages, routes
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.
