@@ -229,3 +229,27 @@ func TestUpdateDebt_PaymentRoundingToZeroRefused(t *testing.T) {
 	_, err = e.svc.CreateDebt(context.Background(), e.uid(), create)
 	requireCode(t, err, errs.CodeOutOfRange)
 }
+
+// A payment after a zero snapshot reopens the debt; marking it paid off again
+// must then write a new zero snapshot rather than do nothing.
+func TestMarkPaidOff_ReopenedDebtCanBeMarkedAgain(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	res := e.create(t, nil)
+	if _, err := e.svc.MarkDebtPaidOff(ctx, e.uid(), model.MarkDebtPaidOffRequest{Id: res.Id}); err != nil {
+		t.Fatal(err)
+	}
+	e.expense(t, e.account, march10.AddDate(0, 0, 2), "50", "")
+	e.clock.now = e.clock.now.AddDate(0, 0, 5)
+	reopened, err := e.svc.GetDebt(ctx, e.uid(), model.GetDebtRequest{Id: res.Id})
+	if err != nil || reopened.Item.IsPaidOff != 0 {
+		t.Fatalf("after a later payment: %+v, %v; want reopened", reopened, err)
+	}
+	got, err := e.svc.MarkDebtPaidOff(ctx, e.uid(), model.MarkDebtPaidOffRequest{Id: res.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.IsPaidOff != 1 || len(e.snapshots(t, res.Id)) != 3 {
+		t.Fatalf("second mark: %+v, %d snapshots; want paid off with a new zero snapshot", got, len(e.snapshots(t, res.Id)))
+	}
+}
