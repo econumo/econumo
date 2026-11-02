@@ -906,7 +906,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   With it the header counts only on a request from a listed address (default header
   `X-Forwarded-For`), so direct and proxied traffic can share one instance, and a list is walked
   from the nearest entry to the first address outside the proxies. Neither set: the client IP is the
-  connecting address, so behind a proxy all its users count as one IP. Resolved in
+  connecting address, so behind a proxy all its users count as one IP (logged once as a WARN when
+  a forwarding header arrives). Resolved in
   `middleware.ClientIP`; IPv6 is grouped by /64; the IP stays in memory and is never logged.
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on

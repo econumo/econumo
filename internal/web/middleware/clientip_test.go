@@ -1,10 +1,46 @@
 package middleware
 
 import (
+	"bytes"
+	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"net/netip"
+	"strings"
 	"testing"
 )
+
+func TestClientIP_WarnsOnceWhenProxiedWithoutAHeader(t *testing.T) {
+	var logs bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	const msg = "ECONUMO_CLIENT_IP_HEADER is not set"
+
+	serve := func(header string, forwarded bool, times int) {
+		h := ClientIP(header, nil)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+		for range times {
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			if forwarded {
+				r.Header.Set("X-Forwarded-For", "198.51.100.1")
+			}
+			h.ServeHTTP(httptest.NewRecorder(), r)
+		}
+	}
+
+	serve("", false, 2)
+	if strings.Contains(logs.String(), msg) {
+		t.Fatalf("direct traffic warned: %s", logs.String())
+	}
+	serve("CF-Connecting-IP", true, 2)
+	if strings.Contains(logs.String(), msg) {
+		t.Fatalf("configured header warned: %s", logs.String())
+	}
+	serve("", true, 3)
+	if got := strings.Count(logs.String(), msg); got != 1 {
+		t.Fatalf("warned %d times, want once:\n%s", got, logs.String())
+	}
+}
 
 func TestResolveClientIP(t *testing.T) {
 	const cf, xff = "Cf-Connecting-Ip", "X-Forwarded-For"

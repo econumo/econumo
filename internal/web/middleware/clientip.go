@@ -1,10 +1,12 @@
 package middleware
 
 import (
+	"log/slog"
 	"net"
 	"net/http"
 	"net/netip"
 	"strings"
+	"sync"
 
 	"github.com/econumo/econumo/internal/shared/reqctx"
 )
@@ -15,8 +17,17 @@ import (
 // dodge the limits or spend another caller's. With no list it counts from anyone,
 // for a server a firewall keeps reachable only through its proxy.
 func ClientIP(header string, trusted []netip.Prefix) func(http.Handler) http.Handler {
+	// Unconfigured behind a proxy, all its users share one rate-limit bucket and
+	// nothing else would point at the cause. A forged header costs one log line.
+	var warnOnce sync.Once
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if header == "" && looksProxied(r) {
+				warnOnce.Do(func() {
+					slog.Warn("request carries a forwarding header but ECONUMO_CLIENT_IP_HEADER is not set; " +
+						"behind a reverse proxy all its users count as one IP for rate limits")
+				})
+			}
 			ctx := reqctx.WithClientIP(r.Context(), resolveClientIP(r, header, trusted))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -44,6 +55,15 @@ func resolveClientIP(r *http.Request, header string, trusted []netip.Prefix) str
 		}
 	}
 	return bucket(found)
+}
+
+func looksProxied(r *http.Request) bool {
+	for _, h := range []string{"X-Forwarded-For", "X-Real-IP", "CF-Connecting-IP", "Forwarded"} {
+		if r.Header.Get(h) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func forwardedEntries(r *http.Request, header string) []string {
