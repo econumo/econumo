@@ -143,7 +143,7 @@ it('an invalid request shows an error card and only navigates when the user asks
 
 it('an invalid request from a loopback client offers a return to the app', async () => {
   vi.mocked(getAuthorizationRequest).mockResolvedValue({
-    clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true,
+    clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, scope: 'mcp', isFirstParty: false,
     errorRedirectUrl: 'http://127.0.0.1:1455/cb?error=invalid_request',
   })
   renderPage()
