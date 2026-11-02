@@ -31,6 +31,9 @@ type ProjectionInput struct {
 	Today    time.Time
 	Months   []time.Time        // first-of-month, ascending
 	Plans    map[string]float64 // "YYYY-MM-01" -> planned
+	// Digits are the debt currency's fraction digits: a balance is paid off
+	// when it rounds to 0 in them.
+	Digits int
 }
 
 type ProjectionMonth struct {
@@ -162,11 +165,15 @@ func ImpliedRate(balance, payment float64, n int) (float64, error) {
 	if total < balance {
 		return 0, ErrPaymentsDontCover
 	}
+	pv := func(r float64) float64 { return payment * (-math.Expm1(-float64(n) * math.Log1p(r))) / r }
 	lo, hi := 0.0, 1.0
+	// pv falls as r grows: widen until the bracket holds the solution.
+	for hi < 1e9 && pv(hi) > balance {
+		lo, hi = hi, hi*2
+	}
 	for i := 0; i < 200; i++ {
 		mid := (lo + hi) / 2
-		pv := payment * (-math.Expm1(-float64(n) * math.Log1p(mid))) / mid
-		if pv > balance {
+		if pv(mid) > balance {
 			lo = mid
 		} else {
 			hi = mid
@@ -306,13 +313,16 @@ func splitBackward(s MathSnapshot, seg []MathPayment, out map[string]float64) {
 		for _, p := range groups[i].pays {
 			total += p.Amount
 		}
-		start := (end + total) / (1 + r)
-		due := start * r
+		due := (end + total) / (1 + r) * r
 		if total < due {
-			due, start = total, end
+			due = total
 		}
 		allocate(groups[i].pays, due, out)
-		end = start
+		// A stored interest may differ from the fresh one: the earlier window
+		// ends where the debt parts actually allocated leave the balance.
+		for _, p := range groups[i].pays {
+			end += p.Amount - out[p.ID]
+		}
 	}
 }
 
@@ -345,7 +355,14 @@ func BalanceAt(snaps []MathSnapshot, pays []MathPayment, interest map[string]flo
 	return balance
 }
 
-func round2(x float64) float64 { return math.Round(x*100) / 100 }
+func roundDigits(x float64, digits int) float64 {
+	p := math.Pow10(digits)
+	return math.Round(x*p) / p
+}
+
+// halfUnit is half the currency's smallest unit: a balance at or below it
+// rounds to 0.
+func halfUnit(digits int) float64 { return math.Pow10(-digits) / 2 }
 
 func monthKey(m time.Time) string { return m.Format(monthKeyLayout) }
 
@@ -378,46 +395,45 @@ func (r projRun) moneyLeft() float64 {
 // to principal right after the month's first projected payment (the regular
 // payment already took that period's interest), or at month end when the
 // month has no projected payment.
-func runProjection(s MathSnapshot, rate, balance float64, today, firstDue time.Time, extras map[string]float64) projRun {
+func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue time.Time, extras map[string]float64) projRun {
 	run := projRun{closing: map[string]float64{}, endBalance: balance}
-	if balance <= debtEpsilon {
+	if balance <= eps {
 		run.endBalance = 0
 		return run
 	}
 	anchor := int16(debtDay(s.Last).Day())
 	due := firstDue
 	month := monthStart(today)
-	for i := 0; i < maxProjectMonths && balance > debtEpsilon; i++ {
+	for i := 0; i < maxProjectMonths && balance > eps; i++ {
 		next := month.AddDate(0, 1, 0)
 		extra := extras[monthKey(month)]
 		stepped := false
-		for balance > debtEpsilon && due.Before(next) {
+		for balance > eps && due.Before(next) {
 			interest := balance * rate
 			pay := math.Min(s.Payment, balance+interest)
 			balance = balance + interest - pay
 			run.steps = append(run.steps, projStep{date: due, pay: pay})
-			run.payoffDate = due
-			if balance <= debtEpsilon {
-				balance = 0
+			if balance <= eps {
+				balance, run.payoffDate = 0, due
 				break
 			}
 			if !stepped && extra > 0 {
 				applied := math.Min(extra, balance)
 				balance -= applied
 				run.extraTotal += applied
-				if balance <= debtEpsilon {
-					balance = 0
+				if balance <= eps {
+					balance, run.payoffDate = 0, due
 					break
 				}
 			}
 			stepped = true
 			due = NextOccurrence(due, s.Schedule, anchor)
 		}
-		if !stepped && balance > debtEpsilon && extra > 0 {
+		if !stepped && balance > eps && extra > 0 {
 			applied := math.Min(extra, balance)
 			balance -= applied
 			run.extraTotal += applied
-			if balance <= debtEpsilon {
+			if balance <= eps {
 				balance = 0
 				run.payoffDate = next.AddDate(0, 0, -1)
 			}
@@ -430,12 +446,18 @@ func runProjection(s MathSnapshot, rate, balance float64, today, firstDue time.T
 }
 
 // payoffEvent finds the event (a payment or a snapshot) that took the balance
-// to zero, provided nothing was paid after it.
-func payoffEvent(snaps []MathSnapshot, pays []MathPayment, interest map[string]float64, today time.Time) (time.Time, bool) {
+// to zero, provided nothing was paid after it. A zero snapshot settles the
+// debt as of its day, whatever was paid before it.
+func payoffEvent(snaps []MathSnapshot, pays []MathPayment, interest map[string]float64, today time.Time, digits int) (time.Time, bool) {
 	seen := map[time.Time]bool{}
+	zeroSnap := map[time.Time]bool{}
 	var times []time.Time
 	for _, s := range snaps {
-		if !s.AsOf.After(today) && !seen[s.AsOf] {
+		if s.AsOf.After(today) {
+			continue
+		}
+		zeroSnap[s.AsOf] = roundDigits(s.Balance, digits) <= 0
+		if !seen[s.AsOf] {
 			seen[s.AsOf] = true
 			times = append(times, s.AsOf)
 		}
@@ -450,10 +472,13 @@ func payoffEvent(snaps []MathSnapshot, pays []MathPayment, interest map[string]f
 	var at time.Time
 	found := false
 	for i := len(times) - 1; i >= 0; i-- {
-		if round2(BalanceAt(snaps, pays, interest, times[i])) > 0 {
+		if roundDigits(BalanceAt(snaps, pays, interest, times[i]), digits) > 0 {
 			break
 		}
 		at, found = times[i], true
+		if zeroSnap[times[i]] {
+			break
+		}
 	}
 	if !found {
 		return time.Time{}, false
@@ -477,7 +502,8 @@ func ProjectDebt(in ProjectionInput) Projection {
 	rate := snapshotRate(latest)
 	current := BalanceAt(snaps, pays, in.Interest, today)
 
-	if at, ok := payoffEvent(snaps, pays, in.Interest, today); ok && round2(current) <= 0 {
+	eps := halfUnit(in.Digits)
+	if at, ok := payoffEvent(snaps, pays, in.Interest, today, in.Digits); ok && roundDigits(current, in.Digits) <= 0 {
 		out.PaidOff, out.PayoffMonth = true, monthStart(at)
 	}
 	if current < 0 {
@@ -491,7 +517,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 	}
 
 	firstDue := firstUnpaidDue(latest, pays, today)
-	base := runProjection(latest, rate, current, today, firstDue, nil)
+	base := runProjection(latest, rate, current, eps, today, firstDue, nil)
 	currentMonth := monthStart(today)
 	extras := map[string]float64{}
 	for key, planned := range in.Plans {
@@ -509,7 +535,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 			extras[key] = extra
 		}
 	}
-	run := runProjection(latest, rate, current, today, firstDue, extras)
+	run := runProjection(latest, rate, current, eps, today, firstDue, extras)
 
 	out.PaymentsLeft = len(run.steps)
 	out.MoneyLeft = run.moneyLeft()
@@ -552,6 +578,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 		switch {
 		case m.Before(monthStart(today)):
 			pm.ClosingBalance = math.Max(BalanceAt(snaps, pays, in.Interest, monthEnd), 0)
+			pm.PaymentsLeft = paymentsLeftAt(snaps, pm.ClosingBalance, monthEnd, eps)
 		default:
 			closing, ok := run.closing[monthKey(m)]
 			if !ok {
@@ -562,6 +589,30 @@ func ProjectDebt(in ProjectionInput) Projection {
 		out.Months[monthKey(m)] = pm
 	}
 	return out
+}
+
+// paymentsLeftAt counts the regular payments that clear balance under the
+// terms in force on day t (the first snapshot's before it).
+func paymentsLeftAt(snaps []MathSnapshot, balance float64, t time.Time, eps float64) int {
+	terms := snaps[0]
+	for _, s := range snaps {
+		if !s.AsOf.After(t) {
+			terms = s
+		}
+	}
+	if terms.Payment <= 0 {
+		return 0
+	}
+	rate := snapshotRate(terms)
+	n := 0
+	for ; balance > eps && n < maxProjectMonths; n++ {
+		interest := balance * rate
+		if terms.Payment <= interest {
+			return maxProjectMonths
+		}
+		balance += interest - math.Min(terms.Payment, balance+interest)
+	}
+	return n
 }
 
 // paidBetween sums the payments dated in [from, to].

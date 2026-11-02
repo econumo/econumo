@@ -50,7 +50,7 @@ func (st *debtState) mathPays() ([]model.MathPayment, map[string]float64) {
 func (st *debtState) project(today time.Time, months []time.Time, plans map[string]float64) model.Projection {
 	pays, interest := st.mathPays()
 	return model.ProjectDebt(model.ProjectionInput{Snaps: st.mathSnaps(), Pays: pays, Interest: interest,
-		Today: today, Months: months, Plans: plans})
+		Today: today, Months: months, Plans: plans, Digits: st.digits})
 }
 
 // Sync brings the stored payment splits of the owners' debts up to date.

@@ -89,7 +89,7 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 
 // timelineMonth is the debt's projection for month, zero when there is none.
 // Outside the debt's life nothing is scheduled or due, and before its start
-// there is no balance to show yet.
+// there is no balance or payment count to show yet.
 func timelineMonth(tl model.DebtTimeline, v model.DebtView, month time.Time) model.DebtTimelineMonth {
 	m, ok := tl.Months[month.Format(datetime.DateLayout)]
 	if !ok {
@@ -99,7 +99,7 @@ func timelineMonth(tl model.DebtTimeline, v model.DebtView, month time.Time) mod
 		m.ScheduledTotal, m.StillDue = "0", "0"
 	}
 	if month.Before(v.StartMonth) {
-		m.ClosingBalance = "0"
+		m.ClosingBalance, m.PaymentsLeft = "0", 0
 	}
 	return m
 }
