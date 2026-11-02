@@ -391,7 +391,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
         </div>
       ) : (
         <>
-          <figure aria-label={t('reports.networth.chart')} className={`flex flex-col gap-1 ${dim}`}>
+          <figure aria-label={t('reports.networth.chart')} className={`-mt-2 flex flex-col gap-2 ${dim}`}>
             {/* the row the presets already hold, so the range's button moves nothing below */}
             <div className="flex min-h-6 items-center justify-between gap-2">
               {selected ? (
