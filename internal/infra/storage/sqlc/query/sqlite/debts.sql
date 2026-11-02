@@ -40,8 +40,11 @@ VALUES (sqlc.arg(id), sqlc.arg(debt_id), CAST(sqlc.arg(as_of) AS TEXT), sqlc.arg
     CAST(sqlc.arg(last_payment_date) AS TEXT), sqlc.arg(created_at));
 
 -- name: InsertDebtSplit :exec
+-- Through the transaction row: a payment deleted since it was read inserts
+-- nothing instead of failing the foreign key.
 INSERT INTO debts_payments (debt_id, transaction_id, interest)
-VALUES (?, ?, ?)
+SELECT CAST(sqlc.arg(debt_id) AS TEXT), t.id, CAST(sqlc.arg(interest) AS TEXT)
+FROM transactions t WHERE t.id = sqlc.arg(transaction_id)
 ON CONFLICT (transaction_id) DO UPDATE SET debt_id = excluded.debt_id, interest = excluded.interest;
 
 -- name: CandidateDebtTransactions :many

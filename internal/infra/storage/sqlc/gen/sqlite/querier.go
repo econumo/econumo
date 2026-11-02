@@ -388,6 +388,8 @@ type Querier interface {
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	InsertDebtSnapshot(ctx context.Context, arg InsertDebtSnapshotParams) error
+	// Through the transaction row: a payment deleted since it was read inserts
+	// nothing instead of failing the foreign key.
 	InsertDebtSplit(ctx context.Context, arg InsertDebtSplitParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
 	// Same fence as InsertAccessTokenIfGeneration: a callback that resolved its

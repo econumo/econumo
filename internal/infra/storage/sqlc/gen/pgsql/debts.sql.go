@@ -165,18 +165,21 @@ func (q *Queries) InsertDebtSnapshot(ctx context.Context, arg InsertDebtSnapshot
 
 const insertDebtSplit = `-- name: InsertDebtSplit :exec
 INSERT INTO debts_payments (debt_id, transaction_id, interest)
-VALUES ($1, $2, $3)
+SELECT CAST($1 AS UUID), t.id, CAST($2 AS NUMERIC(19,8))
+FROM transactions t WHERE t.id = $3
 ON CONFLICT (transaction_id) DO UPDATE SET debt_id = excluded.debt_id, interest = excluded.interest
 `
 
 type InsertDebtSplitParams struct {
 	DebtID        string
-	TransactionID string
 	Interest      string
+	TransactionID string
 }
 
+// Through the transaction row: a payment deleted since it was read inserts
+// nothing instead of failing the foreign key.
 func (q *Queries) InsertDebtSplit(ctx context.Context, arg InsertDebtSplitParams) error {
-	_, err := q.db.ExecContext(ctx, insertDebtSplit, arg.DebtID, arg.TransactionID, arg.Interest)
+	_, err := q.db.ExecContext(ctx, insertDebtSplit, arg.DebtID, arg.Interest, arg.TransactionID)
 	return err
 }
 

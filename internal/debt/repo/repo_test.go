@@ -352,3 +352,20 @@ func TestRepo_LockOwner(t *testing.T) {
 		t.Fatalf("LockOwner: %v", err)
 	}
 }
+
+// A payment deleted between the sync's read and its split insert writes
+// nothing instead of failing the foreign key (and the read with it).
+func TestRepo_InsertSplitForAGoneTransactionIsANoOp(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	d := e.debt(fixture.NewID())
+	if err := e.repo.Save(ctx, d); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.repo.InsertSplit(ctx, model.DebtSplit{DebtID: d.ID, TransactionID: vo.NewId(), Interest: vo.NewDecimal("1")}); err != nil {
+		t.Fatalf("InsertSplit for a gone transaction: %v", err)
+	}
+	if got, err := e.repo.Splits(ctx, []vo.Id{d.ID}); err != nil || len(got) != 0 {
+		t.Errorf("Splits = %v, %v; want none", got, err)
+	}
+}
