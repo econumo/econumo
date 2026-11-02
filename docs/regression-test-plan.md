@@ -2180,8 +2180,9 @@ tag, and a budget with a planned limit on one category.
       headline, a purple chip with × takes the place of "Today" and names the
       months whose transactions make the change ("Apr – Dec 2025", the
       Transactions list's own title); below it the balance at the range's
-      end, then the change "since <the month before>" followed by a
-      Transactions button. Selecting moves nothing below the headline. The
+      end and the change "since <the month before>". A Transactions button
+      appears under it, at the left of the 1y/3y/All row. Selecting moves
+      nothing below the headline. The
       table's Start/Now/Change follow the range. Transactions lists every transaction of the report's
       accounts in those months (accounts not on this device, e.g. a
       partner's unshared ones, are not listed). A plain click on the chart or

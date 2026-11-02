@@ -367,27 +367,11 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
           )}
           <span className="text-2xl tabular-nums sm:text-3xl">{data ? money(totalLine.now) : '…'}</span>
           {data && n > 1 ? (
-            // the range's Transactions button ends this line, so selecting moves nothing below
-            <span className="flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-              <span>
-                <span className={changeClass(totalLine.change)}>{signedMoney(totalLine.change, money)}</span>{' '}
-                <span className="text-muted-foreground">
-                  {selected ? t('reports.networth.range_words', { from: labels.month(data.months[lo]) }) : t(`${preset.key}_words`)}
-                </span>
+            <span className="text-sm">
+              <span className={changeClass(totalLine.change)}>{signedMoney(totalLine.change, money)}</span>{' '}
+              <span className="text-muted-foreground">
+                {selected ? t('reports.networth.range_words', { from: labels.month(data.months[lo]) }) : t(`${preset.key}_words`)}
               </span>
-              {selected ? (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={() => {
-                    setDrill({ id: 'range', kind: 'accounts', name: scopeName, accountIds: shown.map((a) => a.id) })
-                    trackEvent(METRICS.REPORTS_DRILL_DOWN, { scope: p.budgetId ? 'budget' : 'mine', mode: 'networth_range' })
-                  }}
-                >
-                  <List />
-                  {t('reports.networth.range_transactions')}
-                </Button>
-              ) : null}
             </span>
           ) : null}
         </section>
@@ -408,7 +392,23 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       ) : (
         <>
           <figure aria-label={t('reports.networth.chart')} className={`flex flex-col gap-1 ${dim}`}>
-            <div className="flex justify-end">
+            {/* the row the presets already hold, so the range's button moves nothing below */}
+            <div className="flex min-h-6 items-center justify-between gap-2">
+              {selected ? (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => {
+                    setDrill({ id: 'range', kind: 'accounts', name: scopeName, accountIds: shown.map((a) => a.id) })
+                    trackEvent(METRICS.REPORTS_DRILL_DOWN, { scope: p.budgetId ? 'budget' : 'mine', mode: 'networth_range' })
+                  }}
+                >
+                  <List />
+                  {t('reports.networth.range_transactions')}
+                </Button>
+              ) : (
+                <span />
+              )}
               {periodPicker}
             </div>
             {/* a click focuses the chart's svg or one of its layers, and browsers (Safari) frame it */}
