@@ -30,12 +30,16 @@ type HoldingsRow struct {
 	ToHoldings   string
 }
 
-// SpendingRow is one (category, optional tag, currency) spending total in a
-// period (grouped by category_id, tag_id, currency_id).
+// SpendingRow is one (category, optional tag, optional debt, currency)
+// spending total in a period (grouped by category_id, tag_id, debt_id,
+// currency_id).
 type SpendingRow struct {
 	// nil when the transaction has no category (shown as Uncategorized).
 	CategoryID *string
 	TagID      *string
+	// DebtID is the debt whose stored payment split covers these
+	// transactions; nil for the ones no debt matched.
+	DebtID     *string
 	CurrencyID string
 	Amount     string
 }
@@ -48,13 +52,14 @@ type SummarizedLimitRow struct {
 	Amount     string
 }
 
-// MonthlySpendingRow is one (month, category?, tag?, currency) expense total
+// MonthlySpendingRow is one (month, category?, tag?, debt?, currency) expense total
 // for the plan sheet. Month is the first-of-month TEXT "YYYY-MM-01", rendered
 // identically by both engines so the wire output stays byte-identical.
 type MonthlySpendingRow struct {
 	Month      string
 	CategoryID *string
 	TagID      *string
+	DebtID     *string
 	CurrencyID string
 	Amount     string
 }

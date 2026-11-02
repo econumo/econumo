@@ -23,12 +23,14 @@ type ReadModel interface {
 	// HoldingsReport: per-currency from/to holdings (same-amount transfers in/out
 	// of the account set) in [start, end).
 	HoldingsReport(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.HoldingsRow, error)
-	// CountSpending: per (category, tag, currency) spending over [start, end) for
-	// the given categories + included accounts.
+	// CountSpending: per (category, tag, debt, currency) spending over
+	// [start, end) for the given categories + included accounts. The debt is
+	// the one whose stored payment split covers the transactions (one at
+	// most: a split is unique per transaction).
 	CountSpending(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error)
 	// SummarizedLimits: summed element limits over [start, end) (for budgetedBefore).
 	SummarizedLimits(ctx context.Context, budgetID vo.Id, start, end time.Time) ([]model.SummarizedLimitRow, error)
-	// SpendingByMonth: expense spending per (month, category/tag, currency)
+	// SpendingByMonth: expense spending per (month, category/tag/debt, currency)
 	// over [from, to) — the plan sheet's actual-expense cells in ONE query for
 	// the whole window. Bucketing matches CountSpending (rows outside the
 	// category set are dropped except NULL-category rows; a tag_id row keeps

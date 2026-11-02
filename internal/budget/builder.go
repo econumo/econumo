@@ -35,41 +35,93 @@ type filters struct {
 	// expenses booked on a savings account belong to its savings row.
 	savingsAccounts    []model.AccountView
 	everydayAccountIDs []vo.Id
+	// debtViews are the participants' debts, in creation order; the payments
+	// they matched count on their rows instead of category and tag rows.
+	// Empty on the reads that show no debt rows.
+	debtViews []model.DebtView
+	debtByID  map[string]model.DebtView
+}
+
+// debtOf returns the debt a spending row is attributed to: the debt its
+// stored payment split names, when that debt is one of the budget's and the
+// row still carries the debt's category (and tag). A split a recategorised
+// payment left behind therefore keeps counting on the category and tag rows.
+func (f filters) debtOf(debtID, categoryID, tagID *string) (model.DebtView, bool) {
+	if debtID == nil || categoryID == nil {
+		return model.DebtView{}, false
+	}
+	d, ok := f.debtByID[*debtID]
+	if !ok || d.CategoryID != *categoryID {
+		return model.DebtView{}, false
+	}
+	if d.TagID != nil && (tagID == nil || *tagID != *d.TagID) {
+		return model.DebtView{}, false
+	}
+	return d, true
+}
+
+// filtersWithDebts is buildFilters plus the participants' debts. Their
+// payment splits are synced first so the spending reads see current ones;
+// the sync takes the debt owners' row locks, so it must run outside any
+// budget transaction.
+func (s *Service) filtersWithDebts(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, periodEnd time.Time) (filters, error) {
+	var views []model.DebtView
+	if s.debts != nil {
+		owners := b.participantIDs()
+		if err := s.debts.Sync(ctx, owners); err != nil {
+			return filters{}, err
+		}
+		var err error
+		if views, err = s.debts.Views(ctx, owners); err != nil {
+			return filters{}, err
+		}
+	}
+	f, err := s.buildFilters(ctx, userID, b, periodStart, periodEnd)
+	if err != nil {
+		return filters{}, err
+	}
+	f.debtViews = views
+	f.debtByID = make(map[string]model.DebtView, len(views))
+	for _, v := range views {
+		f.debtByID[v.ID] = v
+	}
+	return f, nil
 }
 
 // BuildBudget assembles the full model.BudgetResult for a budget as of periodStart
 // (which the caller has already snapped to first-of-month). now is the clock
 // time (controls nullable balance fields).
 func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, now time.Time) (model.BudgetResult, error) {
-	f, err := s.buildFilters(ctx, userID, b, periodStart, periodStart.AddDate(0, 1, 0))
+	f, err := s.filtersWithDebts(ctx, userID, b, periodStart, periodStart.AddDate(0, 1, 0))
 	if err != nil {
 		return model.BudgetResult{}, err
 	}
-	return s.asOfTomorrow(ctx).buildBudget(ctx, b, f, now)
+	result, _, err := s.asOfTomorrow(ctx).buildBudget(ctx, b, f, now)
+	return result, err
 }
 
 // buildBudget is BuildBudget over filters the caller already built for the
-// period.
-func (s *Service) buildBudget(ctx context.Context, b *budgetAggregate, f filters, now time.Time) (model.BudgetResult, error) {
+// period. It also returns what each debt's matched payments add up to.
+func (s *Service) buildBudget(ctx context.Context, b *budgetAggregate, f filters, now time.Time) (model.BudgetResult, map[string]debtPaid, error) {
 	meta, err := s.buildMeta(ctx, b)
 	if err != nil {
-		return model.BudgetResult{}, err
+		return model.BudgetResult{}, nil, err
 	}
 	balances, rates, err := s.buildFinancialSummary(ctx, b.budget.CurrencyID, f, now)
 	if err != nil {
-		return model.BudgetResult{}, err
+		return model.BudgetResult{}, nil, err
 	}
 	limits, err := s.buildElementsLimits(ctx, b, f)
 	if err != nil {
-		return model.BudgetResult{}, err
+		return model.BudgetResult{}, nil, err
 	}
 	spending, err := s.buildElementsSpending(ctx, b, f)
 	if err != nil {
-		return model.BudgetResult{}, err
+		return model.BudgetResult{}, nil, err
 	}
-	structure, err := s.buildStructure(ctx, b, f, limits, spending)
+	structure, debts, err := s.buildStructure(ctx, b, f, limits, spending)
 	if err != nil {
-		return model.BudgetResult{}, err
+		return model.BudgetResult{}, nil, err
 	}
 
 	result := model.BudgetResult{
@@ -84,7 +136,7 @@ func (s *Service) buildBudget(ctx context.Context, b *budgetAggregate, f filters
 		Structure:     structure,
 	}
 	mergeBudgetUpcoming(&result, model.BudgetResult{})
-	return result, nil
+	return result, debts, nil
 }
 
 // buildMeta builds the access list plus a synthetic owner entry.

@@ -346,7 +346,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 		// params sit after both lists (and catArgs contributes 0 when empty).
 		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
 		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
-		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY t.category_id, t.tag_id, dp.debt_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		args = append(args, start, end)
@@ -357,7 +357,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 			catWhere = "(t.category_id IN (" + r.ph(1, len(catArgs)) + ") OR t.category_id IS NULL)"
 		}
 		// See sqliteDatetime.
-		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, dp.debt_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
@@ -369,7 +369,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 	defer rows.Close()
 	var out []model.SpendingRow
 	for rows.Next() {
-		var categoryID, currencyID, tagID *string
+		var categoryID, currencyID, tagID, debtID *string
 		// SQLite's SUM(amount) is a float; scan it as float and format with %.8f
 		// (round to 8 decimals) instead of the driver's full-precision text (e.g.
 		// "32.26999999"). PostgreSQL's SUM is exact NUMERIC, scanned as text and
@@ -377,7 +377,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 		a := "0"
 		if r.driver == "postgresql" {
 			var amount *string
-			if err := rows.Scan(&amount, &categoryID, &tagID, &currencyID); err != nil {
+			if err := rows.Scan(&amount, &categoryID, &tagID, &debtID, &currencyID); err != nil {
 				return nil, err
 			}
 			if currencyID == nil {
@@ -388,7 +388,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 			}
 		} else {
 			var amount *float64
-			if err := rows.Scan(&amount, &categoryID, &tagID, &currencyID); err != nil {
+			if err := rows.Scan(&amount, &categoryID, &tagID, &debtID, &currencyID); err != nil {
 				return nil, err
 			}
 			if currencyID == nil {
@@ -398,7 +398,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 				a = strconv.FormatFloat(*amount, 'f', 8, 64)
 			}
 		}
-		out = append(out, model.SpendingRow{CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
+		out = append(out, model.SpendingRow{CategoryID: categoryID, TagID: tagID, DebtID: debtID, CurrencyID: *currencyID, Amount: a})
 	}
 	return out, rows.Err()
 }
@@ -592,7 +592,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 		}
 		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
 		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
-		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, t.category_id, t.tag_id, dp.debt_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		args = append(args, from, to)
@@ -602,7 +602,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 		if len(catArgs) > 0 {
 			catWhere = "(t.category_id IN (" + r.ph(1, len(catArgs)) + ") OR t.category_id IS NULL)"
 		}
-		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY month, t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY month, t.category_id, t.tag_id, dp.debt_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		// See sqliteDatetime.
@@ -616,13 +616,13 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 	var out []model.MonthlySpendingRow
 	for rows.Next() {
 		var monthStr string
-		var categoryID, tagID, currencyID *string
+		var categoryID, tagID, debtID, currencyID *string
 		// SQLite's SUM is float (format 'f',8); PostgreSQL's is exact NUMERIC
 		// text — same split as CountSpending.
 		a := "0"
 		if r.driver == "postgresql" {
 			var amount *string
-			if err := rows.Scan(&monthStr, &amount, &categoryID, &tagID, &currencyID); err != nil {
+			if err := rows.Scan(&monthStr, &amount, &categoryID, &tagID, &debtID, &currencyID); err != nil {
 				return nil, err
 			}
 			if currencyID == nil {
@@ -633,7 +633,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 			}
 		} else {
 			var amount *float64
-			if err := rows.Scan(&monthStr, &amount, &categoryID, &tagID, &currencyID); err != nil {
+			if err := rows.Scan(&monthStr, &amount, &categoryID, &tagID, &debtID, &currencyID); err != nil {
 				return nil, err
 			}
 			if currencyID == nil {
@@ -643,7 +643,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 				a = strconv.FormatFloat(*amount, 'f', 8, 64)
 			}
 		}
-		out = append(out, model.MonthlySpendingRow{Month: monthStr, CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
+		out = append(out, model.MonthlySpendingRow{Month: monthStr, CategoryID: categoryID, TagID: tagID, DebtID: debtID, CurrencyID: *currencyID, Amount: a})
 	}
 	return out, rows.Err()
 }

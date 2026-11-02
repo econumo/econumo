@@ -20,35 +20,42 @@ const (
 // snaps to first-of-month with the same tolerant fallback as get-budget's
 // date param; `months` is strict (see parsePlanMonths).
 func (s *Service) GetBudgetPlan(ctx context.Context, userID vo.Id, req model.GetBudgetPlanRequest) (*model.GetBudgetPlanResult, error) {
+	result, _, err := s.getBudgetPlan(ctx, userID, req)
+	return result, err
+}
+
+// getBudgetPlan is GetBudgetPlan plus each debt's matched payments per window
+// month.
+func (s *Service) getBudgetPlan(ctx context.Context, userID vo.Id, req model.GetBudgetPlanRequest) (*model.GetBudgetPlanResult, map[string][]vo.DecimalNumber, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
-		return nil, model.ValidateBlank(map[string]string{"id": ""})
+		return nil, nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
 	from, err := parsePeriodDate(req.From, localMonth(s.clock.Now(), reqctx.Location(ctx)))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	months, err := parsePlanMonths(req.Months)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	b, err := s.requireBudget(ctx, userID, budgetID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	from = b.clampPeriod(from)
-	f, err := s.buildFilters(ctx, userID, b, from, from.AddDate(0, months, 0))
+	f, err := s.filtersWithDebts(ctx, userID, b, from, from.AddDate(0, months, 0))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	result, err := s.asOfTomorrow(ctx).buildBudgetPlan(ctx, b, f, months)
+	result, debts, err := s.asOfTomorrow(ctx).buildBudgetPlan(ctx, b, f, months)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := s.addPlanUpcoming(ctx, b, f, months, &result); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &model.GetBudgetPlanResult{Item: result}, nil
+	return &model.GetBudgetPlanResult{Item: result}, debts, nil
 }
 
 // parsePlanMonths parses the months query param: empty defaults to 12. Unlike

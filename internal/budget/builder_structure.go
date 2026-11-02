@@ -87,8 +87,8 @@ type categorySpending struct {
 	currenciesSpentBefore []amountSpent
 }
 
-// elementSpending is per-element (category or tag) spending broken down by
-// category.
+// elementSpending is per-element (category, tag or debt) spending broken
+// down by category.
 type elementSpending struct {
 	spendingInCategories map[string]*categorySpending // keyed category id
 }
@@ -118,7 +118,11 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 				catKey = *row.CategoryID
 			}
 			var key string
-			switch {
+			switch d, isDebt := f.debtOf(row.DebtID, row.CategoryID, row.TagID); {
+			case isDebt:
+				// A matched payment counts on its debt row only, never on the
+				// tag or category row it would otherwise land in.
+				key = elementKey(d.ID, model.ElementDebt)
 			case row.TagID != nil && *row.TagID != "":
 				// A tag wins over the category, and over having none: a tagged
 				// but uncategorized expense belongs to its tag, surfacing as an

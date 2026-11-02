@@ -34,38 +34,44 @@ func (s *Service) GetBudgetList(ctx context.Context, userID vo.Id) (*model.GetBu
 // GetBudget returns the full budget for the period containing `date` (snapped to
 // first-of-month). Requires read access.
 func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req model.GetBudgetRequest) (*model.GetBudgetResult, error) {
+	result, _, err := s.getBudget(ctx, userID, req)
+	return result, err
+}
+
+// getBudget is GetBudget plus what each debt's matched payments add up to.
+func (s *Service) getBudget(ctx context.Context, userID vo.Id, req model.GetBudgetRequest) (*model.GetBudgetResult, map[string]debtPaid, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
-		return nil, model.ValidateBlank(map[string]string{"id": ""})
+		return nil, nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
 	periodStart, err := parsePeriodDate(req.Date, localMonth(s.clock.Now(), reqctx.Location(ctx)))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	b, err := s.requireBudget(ctx, userID, budgetID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	periodStart = b.clampPeriod(periodStart)
 	now := s.clock.Now()
-	f, err := s.buildFilters(ctx, userID, b, periodStart, periodStart.AddDate(0, 1, 0))
+	f, err := s.filtersWithDebts(ctx, userID, b, periodStart, periodStart.AddDate(0, 1, 0))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pr, err := s.upcomingRead(ctx, f, now)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	result, err := s.asOfTomorrow(ctx).buildBudget(ctx, b, f, now)
+	result, debts, err := s.asOfTomorrow(ctx).buildBudget(ctx, b, f, now)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if pr != nil {
 		if err := s.addUpcoming(ctx, b, now, pr, f, &result); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return &model.GetBudgetResult{Item: result}, nil
+	return &model.GetBudgetResult{Item: result}, debts, nil
 }
 
 // parsePeriodDate parses the get-budget date and snaps it to first-of-month. An

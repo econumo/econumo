@@ -50,6 +50,10 @@ type projectedRead struct {
 	currencyOf map[string]string
 	nameOf     map[string]string
 	byKey      map[occurrenceKey]*projectedTx
+	// debts are the budget's debts: an expense occurrence one of them matches
+	// is left out of the spending reads, since the debt's own schedule is its
+	// upcoming money.
+	debts []model.DebtView
 }
 
 type occurrenceKey struct{ templateID, dueAt string }
@@ -71,7 +75,7 @@ func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Ti
 	if len(templates) == 0 {
 		return nil, nil
 	}
-	p := &projectedRead{ReadModel: s.read, currencyOf: map[string]string{}, nameOf: map[string]string{}}
+	p := &projectedRead{ReadModel: s.read, currencyOf: map[string]string{}, nameOf: map[string]string{}, debts: f.debtViews}
 
 	var accountIDs []vo.Id
 	add := func(id vo.Id) {
@@ -319,10 +323,21 @@ func (p *projectedRead) SummarizedLimits(context.Context, vo.Id, time.Time, time
 	return nil, nil
 }
 
-type spendingKey struct{ month, category, tag, currency string }
+type spendingKey struct{ month, category, tag, debt, currency string }
+
+// paysDebt reports whether one of the budget's debts matches the occurrence.
+func (p *projectedRead) paysDebt(o *projectedTx) bool {
+	for _, d := range p.debts {
+		if model.DebtMatches(d, o.categoryID, o.payeeID, o.tagID, o.dueAt) {
+			return true
+		}
+	}
+	return false
+}
 
 // spending is the CountSpending/SpendingByMonth filter: expenses on the
-// accounts, in the category set or with no category at all.
+// accounts, in the category set or with no category at all, that no debt
+// matches.
 func (p *projectedRead) spending(categoryIDs, accountIDs []vo.Id, start, end time.Time, byMonth bool) *sums[spendingKey] {
 	acc, cats := idSet(accountIDs), idSet(categoryIDs)
 	out := newSums[spendingKey]()
@@ -332,6 +347,9 @@ func (p *projectedRead) spending(categoryIDs, accountIDs []vo.Id, start, end tim
 			continue
 		}
 		if o.categoryID != nil && !cats[*o.categoryID] {
+			continue
+		}
+		if p.paysDebt(o) {
 			continue
 		}
 		k := spendingKey{category: deref(o.categoryID), tag: deref(o.tagID), currency: o.currencyID}
