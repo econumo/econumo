@@ -2076,7 +2076,9 @@ member account in USD, before running these.
       also inside an envelope, on a Plan row, and not offered in an archived
       budget or for a partner's category) opens the debt form with the
       category, name and the row's currency filled in. On save the Debts
-      block gets the debt.
+      block gets the debt. Known gaps (not new bugs): it is still offered for
+      a category already covered by a whole-category debt and for a category
+      inside an archived envelope.
 - [ ] Convert from the budget, whole category (no payee, tag or start
       date, same currency): the category row's plans and comments of every
       budget move to the debt row in the same save, the category row shows no
@@ -2120,9 +2122,12 @@ member account in USD, before running these.
       differs from the Totals "Expenses" line, which adds the debts' payments
       (and plans); Balance, Available and the month's Balance at month end
       equal the figures with the loan as an ordinary category.
-- [ ] A future-dated matching transaction and a due recurring payment of the
-      debt appear as the debt row's upcoming money (not in the category's),
-      counted once per scheduled date.
+- [ ] A future-dated matching transaction and a recurring template matching
+      the debt leave the category's upcoming money; the debt row's own
+      upcoming is its unpaid scheduled payments, counted once per scheduled
+      date whether or not a template exists for it (the matching future rows
+      are not added on top). The debt's Paid drill-down still lists the
+      matching future-dated rows.
 - [ ] 📱 Plan grid: a "Debts" section sits after Savings; each cell shows the
       balance, the plan and "N payments left" / "Paid off", the row shows the
       projected payoff; a past month's balance opens the Paid drill-down;
