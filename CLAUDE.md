@@ -317,7 +317,8 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   `client_secret_post`/`client_secret_basic`). Redirect URIs must be https (ASCII host
   only) or http on a loopback host (`127.0.0.1`, `[::1]`, `localhost`; the port is
   ignored when matching), at most 2048 bytes; clients never approved are purged
-  on the next registration once 30 days old. Registration is behind the per-IP per-endpoint rate cap; the token
+  on the next registration once 30 days old, and at most 1000 are kept, oldest out first, so
+  anonymous registration cannot grow the database without bound. Registration is behind the per-IP per-endpoint rate cap; the token
   endpoint has no limiter of its own.
 - Consent lives at the SPA route `/oauth/authorize`. The session is a localStorage
   bearer token, so the browser cannot carry it to a Go-rendered page: the SPA calls

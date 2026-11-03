@@ -1,0 +1,7 @@
+{
+  "name": "econumo-release-tools",
+  "private": true,
+  "dependencies": {
+    "changelogithub": "15.0.5"
+  }
+}

@@ -2293,7 +2293,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       registered shows the server's error and no buttons, and does not redirect;
       for an unknown client the error reads "This app's registration has expired
       or is unknown. Remove Econumo from the app and add it again." A client that
-      registered up to 30 days ago and was never approved is still known.
+      registered up to 30 days ago and was never approved is still known, unless
+      1,000 newer unapproved registrations arrived since: the oldest then make room,
+      and a client that was ever approved is never removed this way.
       An unusual `scope` value (for example `scope=openid`) does not fail: the
       app is connected with full MCP access as usual.
       One with only a malformed parameter (missing PKCE challenge, wrong

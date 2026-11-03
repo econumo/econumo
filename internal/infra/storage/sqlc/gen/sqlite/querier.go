@@ -586,6 +586,7 @@ type Querier interface {
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
+	PurgeExcessUnusedOAuthClients(ctx context.Context, limit int64) (int64, error)
 	PurgeExpiredOAuthCodes(ctx context.Context, expiresAt time.Time) error
 	PurgeUnusedOAuthClients(ctx context.Context, createdAt time.Time) (int64, error)
 	// The operation_requests_ids idempotency queries moved to operations.sql (shared

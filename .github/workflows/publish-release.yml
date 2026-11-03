@@ -264,7 +264,10 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Set up ship
-        uses: dmtrkzntsv/ship@v0
+        # v0.2.1. Pinned, as is the binary it installs: the next step hands it the R2 keys.
+        uses: dmtrkzntsv/ship@03650abe336054342cbd8dcc43274cf8fc180c10
+        with:
+          version: v0.2.1
 
       - name: Publish to R2
         env:
@@ -300,8 +303,14 @@ jobs:
           registry-url: https://registry.npmjs.org/
           node-version: lts/*
 
+      # Locked with integrity hashes and no install scripts: this job holds a
+      # contents-write token.
+      - name: Install the release notes tool
+        working-directory: .github/release-tools
+        run: npm ci --ignore-scripts
+
       - name: Generate release notes and create release
-        run: npx changelogithub
+        run: .github/release-tools/node_modules/.bin/changelogithub
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -83,6 +83,9 @@ func (s *Service) Register(ctx context.Context, req model.ClientRegistrationRequ
 	if _, err := s.repo.PurgeUnusedClients(ctx, now.Add(-UnusedClientTTL)); err != nil {
 		slog.WarnContext(ctx, "purge unused oauth clients failed", "err", err.Error())
 	}
+	if _, err := s.repo.PurgeExcessUnusedClients(ctx, MaxUnusedClients-1); err != nil {
+		slog.WarnContext(ctx, "purge excess oauth clients failed", "err", err.Error())
+	}
 
 	client := &model.OAuthClient{ID: vo.NewId(), Name: name, RedirectURIs: req.RedirectURIs, CreatedAt: now}
 	res := model.ClientRegistrationResult{
