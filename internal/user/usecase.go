@@ -297,7 +297,7 @@ func newSalt() (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-// allowAttempt / failAttempt / clearAttempt guard the optional limiter (nil in
+// allowAttempt / reserveAttempt / clearAttempt guard the optional limiter (nil in
 // the CLI and most tests), mirroring the nil-mailer pattern in RemindPassword.
 func (s *Service) allowAttempt(ctx context.Context, scope, key string) error {
 	if s.limiter == nil {
@@ -371,12 +371,38 @@ func (s *Service) reserveEmailAttemptIn(ctx context.Context, scope, ceilingScope
 	}}, nil
 }
 
-// allowEmailAttempt / failEmailAttempt / clearEmailAttempt count an attempt that
-// names someone's email address per address AND client IP, so a stranger who
-// knows the address locks out only their own IP, not its owner. The per-address
-// ceiling, counted across all IPs, is what still bounds guessing from many IPs.
-// allowEmailAttempt only reads those counters, so anything that tests a guess
-// must also take reserveEmailAttempt.
+// countAttempt is for a limit where every request counts, whatever it turns out
+// to be: past the check, the attempt stays counted.
+func (s *Service) countAttempt(ctx context.Context, scope, key string) error {
+	if err := s.allowAttempt(ctx, scope, key); err != nil {
+		return err
+	}
+	attempt, err := s.reserveAttempt(scope, key)
+	if err != nil {
+		return err
+	}
+	attempt.keep()
+	return nil
+}
+
+// countEmailAttempt is countAttempt for a limit keyed by an email address.
+func (s *Service) countEmailAttempt(ctx context.Context, scope, email string) error {
+	if err := s.allowEmailAttempt(ctx, scope, email); err != nil {
+		return err
+	}
+	attempt, err := s.reserveEmailAttempt(ctx, scope, email)
+	if err != nil {
+		return err
+	}
+	attempt.keep()
+	return nil
+}
+
+// allowEmailAttempt / clearEmailAttempt guard an attempt that names someone's
+// email address per address AND client IP, so a stranger who knows the address
+// locks out only their own IP, not its owner. The per-address ceiling, counted
+// across all IPs, is what still bounds guessing from many IPs. allowEmailAttempt
+// only reads those counters, so every attempt must also reserve its count.
 func (s *Service) allowEmailAttempt(ctx context.Context, scope, email string) error {
 	// The ceilings first: they spend no IP budget, so retrying a locked address
 	// cannot use up what others behind the same IP share.
@@ -387,11 +413,6 @@ func (s *Service) allowEmailAttempt(ctx context.Context, scope, email string) er
 		return err
 	}
 	return s.allowAttempt(ctx, scope, emailIPKey(ctx, email))
-}
-
-func (s *Service) failEmailAttempt(ctx context.Context, scope, email string) {
-	s.failAttempt(scope, emailIPKey(ctx, email))
-	s.failAttempt(scope+EmailCeilingScopeSuffix, email)
 }
 
 func (s *Service) clearEmailAttempt(ctx context.Context, scope, email string) {
@@ -405,12 +426,6 @@ func emailIPKey(ctx context.Context, email string) string {
 		return email + "\x00" + ip
 	}
 	return email
-}
-
-func (s *Service) failAttempt(scope, key string) {
-	if s.limiter != nil {
-		s.limiter.Fail(scope, key)
-	}
 }
 
 func (s *Service) clearAttempt(scope, key string) {

@@ -52,10 +52,8 @@ type AttemptLimiter interface {
 	// Allow reports whether another attempt may proceed; over-limit yields an
 	// *errs.TooManyRequestsError (HTTP 429).
 	Allow(ctx context.Context, scope, key string) error
-	// Fail records a failed attempt.
-	Fail(scope, key string)
-	// Reserve is Allow and Fail in one step, without the IP cap, for guesses that
-	// must see each other when they arrive together.
+	// Reserve checks the limit and counts the attempt in one step, without the IP
+	// cap, so that attempts arriving together see each other.
 	Reserve(scope, key string) error
 	// Release gives back an attempt Reserve counted that was not a failure.
 	Release(scope, key string)

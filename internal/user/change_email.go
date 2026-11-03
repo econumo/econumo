@@ -19,10 +19,9 @@ import (
 // code to the new address, and notifies the old address.
 func (s *Service) RequestEmailChange(ctx context.Context, userID vo.Id, req model.RequestEmailChangeRequest) (*model.RequestEmailChangeResult, error) {
 	key := userID.String()
-	if err := s.allowAttempt(ctx, RateScopeRequestEmailChange, key); err != nil {
+	if err := s.countAttempt(ctx, RateScopeRequestEmailChange, key); err != nil {
 		return nil, err
 	}
-	s.failAttempt(RateScopeRequestEmailChange, key) // every send counts toward the cap
 
 	u, err := s.repo.GetByID(ctx, userID)
 	if err != nil {
@@ -164,10 +163,9 @@ func (s *Service) ResendEmailChangeCode(ctx context.Context, userID vo.Id) (*mod
 	now := s.clock.Now()
 	wait := s.emailChangeSentCooldown(key, now)
 
-	if err := s.allowAttempt(ctx, RateScopeRequestEmailChange, key); err != nil {
+	if err := s.countAttempt(ctx, RateScopeRequestEmailChange, key); err != nil {
 		return nil, 0, err
 	}
-	s.failAttempt(RateScopeRequestEmailChange, key)
 
 	result := &model.ResendEmailChangeCodeResult{}
 	fullGap := model.EmailVerificationResendGap

@@ -15,11 +15,8 @@ import (
 // URL and hands it straight back: the browser encrypts it, the server never
 // keeps it.
 func (s *Service) ClaimSetupToken(ctx context.Context, userID vo.Id, req model.ClaimSetupTokenRequest) (*model.ClaimSetupTokenResult, error) {
-	if s.limiter != nil {
-		if err := s.limiter.Allow(ctx, RateScopeClaimSetupToken, userID.String()); err != nil {
-			return nil, err
-		}
-		s.limiter.Fail(RateScopeClaimSetupToken, userID.String())
+	if err := s.countAttempt(ctx, RateScopeClaimSetupToken, userID); err != nil {
+		return nil, err
 	}
 	c, ok := s.claimer(model.ImportProviderSimpleFIN)
 	if !ok {

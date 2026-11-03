@@ -693,6 +693,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
 - [ ] Wrong guesses sent all at once count the same as one by one: with a 64-request burst of
       wrong passwords for an email from one IP, only 5 are answered as invalid credentials and the
       rest are 429, and the owner still signs in from another IP.
+- [ ] Limits where every request counts hold under a burst too: 64 `remind-password` requests at
+      once for one email from one IP send 3 emails and answer the rest with 429.
 - [ ] A successful login does not reset the ceiling (SQLite): with accounts `JÖRG@…` and `jörg@…`,
       signing in to one while sending wrong passwords to the other from many IPs still reaches 429
       after 50 failures. A success still forgives that IP's own typos.

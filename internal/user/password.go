@@ -115,10 +115,10 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 		return nil, err
 	}
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
-	if err := s.allowEmailAttempt(ctx, RateScopeRemind, lowered); err != nil {
+	// Every remind sends an email, so every request counts.
+	if err := s.countEmailAttempt(ctx, RateScopeRemind, lowered); err != nil {
 		return nil, err
 	}
-	s.failEmailAttempt(ctx, RateScopeRemind, lowered) // every remind sends an email, so every request counts
 
 	u, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {

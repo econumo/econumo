@@ -127,25 +127,10 @@ func retryAfterSeconds(hits []time.Time, now time.Time, window time.Duration) in
 	return int((remaining + time.Second - 1) / time.Second)
 }
 
-// Fail records a failed attempt against the key.
-func (l *Limiter) Fail(scope, key string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if l.cfg.Limits[scope] <= 0 {
-		return
-	}
-	now := l.clock.Now()
-	k := attemptKey(scope, key)
-	if _, exists := l.attempts[k]; !exists && len(l.attempts) >= l.cfg.MaxKeys {
-		l.evict(now)
-	}
-	l.attempts[k] = append(prune(l.attempts[k], now, l.cfg.Window), now)
-}
-
-// Reserve checks the per-key limit and counts the attempt in one step. Allow then
-// Fail leaves a gap in which simultaneous attempts cannot see each other, so a
-// burst gets all its guesses tested however low the limit is; nothing else bounds
-// guesses from many IPs. It spends no IP budget: the caller has passed Allow.
+// Reserve checks the per-key limit and counts the attempt in one step. Allow only
+// reads that counter: counted any later, simultaneous attempts could not see each
+// other, and a burst would get all its guesses tested however low the limit is. It
+// spends no IP budget: the caller has passed Allow.
 func (l *Limiter) Reserve(scope, key string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -181,7 +166,7 @@ func (l *Limiter) Release(scope, key string) {
 
 // Mark records an event timestamp for the key WITHOUT any cap check, for
 // scopes used purely as a per-key clock (e.g. "when was a code last emailed").
-// Fail is not usable for that: it no-ops on a scope with no configured limit.
+// Reserve is not usable for that: it no-ops on a scope with no configured limit.
 // Marked keys share the per-key map and its eviction, so the memory bound is
 // the same as for counted scopes.
 func (l *Limiter) Mark(scope, key string) {
@@ -196,7 +181,7 @@ func (l *Limiter) Mark(scope, key string) {
 }
 
 // LastAttempt reports when the key last recorded an attempt in this scope, and
-// whether any is on record. It reads the same per-key counter Fail writes, so
+// whether any is on record. It reads the same per-key counter Reserve writes, so
 // the answer is identical for every caller — including usernames that do not
 // exist. Endpoints that report a cooldown use this rather than their own
 // storage, which would only ever have a row for a real account and would turn

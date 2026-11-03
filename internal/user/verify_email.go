@@ -151,10 +151,10 @@ func (s *Service) ResendVerificationCode(ctx context.Context, req model.ResendVe
 	// any other value proof that such an account exists.
 	wait := s.resendCooldown(lowered, now)
 
-	if err := s.allowEmailAttempt(ctx, RateScopeVerifyEmail, lowered); err != nil {
+	// Every resend counts, like remind.
+	if err := s.countEmailAttempt(ctx, RateScopeVerifyEmail, lowered); err != nil {
 		return nil, 0, err
 	}
-	s.failEmailAttempt(ctx, RateScopeVerifyEmail, lowered) // every resend counts, like remind
 
 	result := &model.ResendVerificationCodeResult{}
 	if wait > 0 {
@@ -273,10 +273,9 @@ func (s *Service) ensureVerificationCode(ctx context.Context, u *model.User, ema
 		}
 		return live.RetryAfter(now), nil
 	}
-	if err := s.allowEmailAttempt(ctx, RateScopeVerifyEmail, limitKey); err != nil {
+	if err := s.countEmailAttempt(ctx, RateScopeVerifyEmail, limitKey); err != nil {
 		return 0, err
 	}
-	s.failEmailAttempt(ctx, RateScopeVerifyEmail, limitKey)
 	if err := s.issueVerificationCode(ctx, u, email, now); err != nil {
 		return 0, err
 	}

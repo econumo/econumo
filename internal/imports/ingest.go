@@ -15,11 +15,8 @@ import (
 // event the user can see and discard — never a lost tap. Everything runs in
 // one transaction: a failed create leaves no event, no ledger row.
 func (s *Service) IngestAppleWallet(ctx context.Context, userID vo.Id, payload []byte) (*model.IngestEventResult, error) {
-	if s.limiter != nil {
-		if err := s.limiter.Allow(ctx, RateScopeIngest, userID.String()); err != nil {
-			return nil, err
-		}
-		s.limiter.Fail(RateScopeIngest, userID.String())
+	if err := s.countAttempt(ctx, RateScopeIngest, userID); err != nil {
+		return nil, err
 	}
 	var res *model.IngestEventResult
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {

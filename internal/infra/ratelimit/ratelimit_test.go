@@ -30,6 +30,8 @@ func cfgLogin(limit int) ratelimit.Config {
 	return ratelimit.Config{Limits: map[string]int{"login": limit}, Window: 15 * time.Minute}
 }
 
+func count(l *ratelimit.Limiter, scope, key string) { _ = l.Reserve(scope, key) }
+
 func mustAllowed(t *testing.T, l *ratelimit.Limiter, scope, key string) {
 	t.Helper()
 	if err := l.Allow(ctx, scope, key); err != nil {
@@ -67,9 +69,9 @@ func TestAllow_BlockedCarriesRetryAfter(t *testing.T) {
 	l, clk := newLimiter(cfgLogin(2))
 	const key = "u@example.test"
 
-	l.Fail("login", key) // t0
+	count(l, "login", key) // t0
 	clk.t = clk.t.Add(4 * time.Minute)
-	l.Fail("login", key) // t0+4m -> at the cap
+	count(l, "login", key) // t0+4m -> at the cap
 
 	// The oldest hit (t0) expires 15m after it was recorded, i.e. in 11 more min.
 	if got := retryAfterOf(t, l, "login", key); got != 11*60 {
@@ -93,7 +95,7 @@ func TestAllow_RetryAfterIsNeverZeroWhileBlocked(t *testing.T) {
 	l, clk := newLimiter(cfgLogin(1))
 	const key = "u@example.test"
 
-	l.Fail("login", key)
+	count(l, "login", key)
 	// A hair before the window closes: the true remainder is a sub-second
 	// fraction, which must round up to 1 rather than down to 0.
 	clk.t = clk.t.Add(15*time.Minute - 100*time.Millisecond)
@@ -123,7 +125,7 @@ func TestAllow_UnderLimit(t *testing.T) {
 	l, _ := newLimiter(cfgLogin(3))
 	for i := 0; i < 2; i++ {
 		mustAllowed(t, l, "login", "user@example.test")
-		l.Fail("login", "user@example.test")
+		count(l, "login", "user@example.test")
 	}
 	mustAllowed(t, l, "login", "user@example.test") // 2 failures < 3
 }
@@ -132,14 +134,14 @@ func TestAllow_BlocksAtLimit(t *testing.T) {
 	l, _ := newLimiter(cfgLogin(3))
 	for i := 0; i < 3; i++ {
 		mustAllowed(t, l, "login", "user@example.test")
-		l.Fail("login", "user@example.test")
+		count(l, "login", "user@example.test")
 	}
 	mustBlocked(t, l, "login", "user@example.test")
 }
 
 func TestAllow_KeysAreIndependent(t *testing.T) {
 	l, _ := newLimiter(cfgLogin(1))
-	l.Fail("login", "a@example.test")
+	count(l, "login", "a@example.test")
 	mustBlocked(t, l, "login", "a@example.test")
 	mustAllowed(t, l, "login", "b@example.test")
 }
@@ -148,16 +150,16 @@ func TestAllow_ScopesAreIndependent(t *testing.T) {
 	l, _ := newLimiter(ratelimit.Config{
 		Limits: map[string]int{"login": 1, "reset": 1}, Window: 15 * time.Minute,
 	})
-	l.Fail("login", "u@example.test")
+	count(l, "login", "u@example.test")
 	mustBlocked(t, l, "login", "u@example.test")
 	mustAllowed(t, l, "reset", "u@example.test")
 }
 
 func TestAllow_WindowSlides(t *testing.T) {
 	l, clk := newLimiter(cfgLogin(2))
-	l.Fail("login", "u@example.test")
+	count(l, "login", "u@example.test")
 	clk.t = clk.t.Add(10 * time.Minute)
-	l.Fail("login", "u@example.test")
+	count(l, "login", "u@example.test")
 	mustBlocked(t, l, "login", "u@example.test")
 	clk.t = clk.t.Add(6 * time.Minute) // first failure now 16m old -> expired
 	mustAllowed(t, l, "login", "u@example.test")
@@ -167,7 +169,7 @@ func TestAllow_WindowSlides(t *testing.T) {
 
 func TestClear_ResetsCounter(t *testing.T) {
 	l, _ := newLimiter(cfgLogin(1))
-	l.Fail("login", "u@example.test")
+	count(l, "login", "u@example.test")
 	mustBlocked(t, l, "login", "u@example.test")
 	l.Clear("login", "u@example.test")
 	mustAllowed(t, l, "login", "u@example.test")
@@ -176,7 +178,7 @@ func TestClear_ResetsCounter(t *testing.T) {
 func TestZeroLimit_Disables(t *testing.T) {
 	l, _ := newLimiter(cfgLogin(0))
 	for i := 0; i < 100; i++ {
-		l.Fail("login", "u@example.test")
+		count(l, "login", "u@example.test")
 		mustAllowed(t, l, "login", "u@example.test")
 	}
 }
@@ -184,7 +186,7 @@ func TestZeroLimit_Disables(t *testing.T) {
 func TestUnknownScope_Disabled(t *testing.T) {
 	l, _ := newLimiter(cfgLogin(1))
 	for i := 0; i < 10; i++ {
-		l.Fail("nope", "u@example.test")
+		count(l, "nope", "u@example.test")
 		mustAllowed(t, l, "nope", "u@example.test")
 	}
 }
@@ -200,7 +202,7 @@ func TestMark_RecordsOnAnUnlimitedScopeAndNeverBlocks(t *testing.T) {
 		t.Fatal("LastAttempt on a fresh key must report no record")
 	}
 	// Fail cannot serve this role — the scope has no limit, so it stores nothing.
-	l.Fail(scope, key)
+	count(l, scope, key)
 	if _, ok := l.LastAttempt(scope, key); ok {
 		t.Fatal("Fail must no-op on an unlimited scope (Mark exists precisely because of this)")
 	}
@@ -278,7 +280,7 @@ func TestIPCap_ExemptScopeKeepsItsPerKeyLimitOnly(t *testing.T) {
 	})
 	mustAllowed(t, l, "sync", "user-a")
 	mustAllowed(t, l, "sync", "user-b") // past IP, distinct key
-	l.Fail("sync", "user-a")
+	count(l, "sync", "user-a")
 	mustBlocked(t, l, "sync", "user-a")
 	mustAllowed(t, l, "sync", "user-b")
 }
@@ -313,10 +315,10 @@ func TestPinnedScope_SurvivesASprayOfUniqueKeys(t *testing.T) {
 		MaxKeys: 5,
 		Pinned:  map[string]bool{"reset-ceiling": true},
 	})
-	l.Fail("reset-ceiling", "victim@example.test")
+	count(l, "reset-ceiling", "victim@example.test")
 	for i := range 50 {
 		clk.t = clk.t.Add(time.Second)
-		l.Fail("reset", "spray"+strings.Repeat("x", i)+"@example.test")
+		count(l, "reset", "spray"+strings.Repeat("x", i)+"@example.test")
 	}
 	mustBlocked(t, l, "reset-ceiling", "victim@example.test")
 
@@ -350,7 +352,7 @@ func TestBlockedKey_DoesNotConsumeGlobal(t *testing.T) {
 	l, _ := newLimiter(ratelimit.Config{
 		Limits: map[string]int{"login": 1}, Window: 15 * time.Minute, IP: 3,
 	})
-	l.Fail("login", "victim@example.test")
+	count(l, "login", "victim@example.test")
 	for i := 0; i < 50; i++ {
 		mustBlocked(t, l, "login", "victim@example.test")
 	}
@@ -365,19 +367,19 @@ func TestEviction_CapsKeyCount(t *testing.T) {
 	l, clk := newLimiter(ratelimit.Config{
 		Limits: map[string]int{"login": 5}, Window: 15 * time.Minute, MaxKeys: 3,
 	})
-	l.Fail("login", "a@example.test")
+	count(l, "login", "a@example.test")
 	clk.t = clk.t.Add(time.Second)
-	l.Fail("login", "b@example.test")
+	count(l, "login", "b@example.test")
 	clk.t = clk.t.Add(time.Second)
-	l.Fail("login", "c@example.test")
+	count(l, "login", "c@example.test")
 	clk.t = clk.t.Add(time.Second)
 	// Map full (3 keys); inserting a 4th evicts the stalest key (a).
-	l.Fail("login", "d@example.test")
+	count(l, "login", "d@example.test")
 	// a's counter was evicted: 5 fresh failures needed again to block it.
 	mustAllowed(t, l, "login", "a@example.test")
 	// d's failure was recorded.
 	for i := 0; i < 4; i++ {
-		l.Fail("login", "d@example.test")
+		count(l, "login", "d@example.test")
 	}
 	mustBlocked(t, l, "login", "d@example.test")
 }
@@ -386,12 +388,12 @@ func TestEviction_PrefersExpiredEntries(t *testing.T) {
 	l, clk := newLimiter(ratelimit.Config{
 		Limits: map[string]int{"login": 2}, Window: time.Minute, MaxKeys: 2,
 	})
-	l.Fail("login", "old@example.test")
+	count(l, "login", "old@example.test")
 	clk.t = clk.t.Add(2 * time.Minute) // old@ expires
-	l.Fail("login", "fresh@example.test")
-	l.Fail("login", "fresh@example.test")
+	count(l, "login", "fresh@example.test")
+	count(l, "login", "fresh@example.test")
 	// Map at cap; the expired old@ entry is dropped, fresh@ keeps its 2 failures.
-	l.Fail("login", "new@example.test")
+	count(l, "login", "new@example.test")
 	mustBlocked(t, l, "login", "fresh@example.test")
 	mustAllowed(t, l, "login", "new@example.test")
 }
@@ -403,7 +405,7 @@ func TestAllow_HugeKeyIsLimitedLikeShortKey(t *testing.T) {
 	huge := strings.Repeat("a", 5*1024*1024) + "@example.test"
 	for i := 0; i < 3; i++ {
 		mustAllowed(t, l, "login", huge)
-		l.Fail("login", huge)
+		count(l, "login", huge)
 	}
 	mustBlocked(t, l, "login", huge)
 	l.Clear("login", huge)
@@ -415,7 +417,7 @@ func TestAllow_TwoHugeKeysAreIndependent(t *testing.T) {
 	l, _ := newLimiter(cfgLogin(1))
 	hugeA := strings.Repeat("a", 300*1024)
 	hugeB := strings.Repeat("b", 300*1024)
-	l.Fail("login", hugeA)
+	count(l, "login", hugeA)
 	mustBlocked(t, l, "login", hugeA)
 	mustAllowed(t, l, "login", hugeB)
 }
@@ -434,7 +436,7 @@ func TestConcurrentAccess(t *testing.T) {
 			for i := 0; i < 200; i++ {
 				k := keys[(g+i)%len(keys)]
 				_ = l.Allow(ctx, "login", k)
-				l.Fail("login", k)
+				count(l, "login", k)
 				if i%10 == 0 {
 					l.Clear("login", k)
 				}
@@ -495,5 +497,31 @@ func TestReserve_SpendsNoIPBudgetAndNoUnconfiguredScope(t *testing.T) {
 	mustAllowed(t, l, "login", "bob")
 	if _, ok := l.LastAttempt("no-limit", "alice"); ok {
 		t.Fatal("a scope with no limit recorded an attempt")
+	}
+}
+
+func TestAllowThenReserve_AStressedBurstStopsAtTheLimit(t *testing.T) {
+	const limit = 5
+	for range 50 {
+		l, _ := newLimiter(cfgLogin(limit))
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+		admitted := 0
+		start := make(chan struct{})
+		for range 1000 {
+			wg.Go(func() {
+				<-start
+				if l.Allow(ctx, "login", "alice") == nil && l.Reserve("login", "alice") == nil {
+					mu.Lock()
+					admitted++
+					mu.Unlock()
+				}
+			})
+		}
+		close(start)
+		wg.Wait()
+		if admitted != limit {
+			t.Fatalf("admitted = %d, want %d", admitted, limit)
+		}
 	}
 }

@@ -268,3 +268,13 @@ func optionalTime(t *time.Time) string {
 	}
 	return t.Format(datetime.Layout)
 }
+
+func (s *Service) countAttempt(ctx context.Context, scope string, userID vo.Id) error {
+	if s.limiter == nil {
+		return nil
+	}
+	if err := s.limiter.Allow(ctx, scope, userID.String()); err != nil {
+		return err
+	}
+	return s.limiter.Reserve(scope, userID.String())
+}

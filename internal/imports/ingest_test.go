@@ -316,7 +316,10 @@ func (l *limiter) Allow(_ context.Context, scope, key string) error {
 	}
 	return nil
 }
-func (l *limiter) Fail(scope, key string) { l.fail++ }
+func (l *limiter) Reserve(scope, key string) error {
+	l.fail++
+	return nil
+}
 
 type harness struct {
 	svc      *imports.Service

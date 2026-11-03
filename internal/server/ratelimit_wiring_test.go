@@ -493,3 +493,47 @@ func TestEmailLimits_SuccessfulLoginsDoNotFillTheCeiling(t *testing.T) {
 		}
 	}
 }
+
+func TestEveryRequestLimits_ABurstAcrossIPsStopsAtTheLimit(t *testing.T) {
+	const limit = 3
+	cases := []struct {
+		name, path, body string
+		authed           bool
+		mutate           func(*config.Config)
+		want             int
+	}{
+		{"remind", "/api/v1/user/remind-password", `{"username":"anon@example.test"}`, false,
+			func(c *config.Config) { c.RateLimitRemind = limit }, limit * 10},
+		{"register", "/api/v1/user/register-user", `{"email":"anon@example.test","password":"long-enough-password","name":"Anon"}`, false,
+			func(c *config.Config) { c.RateLimitRegister = limit }, limit * 10},
+		{"resend-verification-code", "/api/v1/user/resend-verification-code", `{"username":"anon@example.test"}`, false,
+			func(c *config.Config) { c.RateLimitVerifyEmail = limit }, limit * 10},
+		{"request-email-change", "/api/v1/user/request-email-change", `{"newEmail":"new@example.test","password":"wrong-password"}`, true,
+			func(c *config.Config) { c.RateLimitRequestEmailChange = limit }, limit},
+		{"resend-email-change-code", "/api/v1/user/resend-email-change-code", `{}`, true,
+			func(c *config.Config) { c.RateLimitRequestEmailChange = limit }, limit},
+		{"claim-setup-token", "/api/v1/import/claim-setup-token", `{"setupToken":"aGVsbG8"}`, true,
+			func(c *config.Config) { c.RateLimitClaimSetupToken = limit }, limit},
+		{"sync-source", "/api/v1/import/sync-source", `{"sourceId":"0190a000-0000-7000-8000-000000000001","accessUrl":"https://bridge.invalid/simplefin","startDate":"2026-10-01"}`, true,
+			func(c *config.Config) { c.RateLimitSync = limit }, limit},
+		{"ingest", "/api/v1/import/ingest-apple-wallet-event", `{"account":"x","amount":"1","currency":"USD"}`, true,
+			func(c *config.Config) { c.RateLimitIngest = limit }, limit},
+		{"preview-rule", "/api/v1/import/preview-rule", `{"action":"skip","matchField":"external_payee","matchType":"contains","matchValue":"Blue Bottle","scope":"all"}`, true,
+			func(c *config.Config) { c.RateLimitPreviewRule = limit }, limit},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newLimitHarness(t, func(c *config.Config) {
+				c.RateLimitIP = 0
+				tc.mutate(c)
+			})
+			token := ""
+			if tc.authed {
+				token = h.rawToken
+			}
+			if got := h.burst(tc.path, token, tc.body, manyIPs(tc.want*8)); got != tc.want {
+				t.Fatalf("requests admitted = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}

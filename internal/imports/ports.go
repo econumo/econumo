@@ -72,11 +72,11 @@ type Completer interface {
 	Complete(ctx context.Context, userID, system, user string) (string, error)
 }
 
-// AttemptLimiter caps ingest per user; every request counts (Allow then
-// Fail). A nil limiter disables protection (tests).
+// AttemptLimiter caps the unbounded import endpoints per user; every request
+// counts. A nil limiter disables protection (tests).
 type AttemptLimiter interface {
 	Allow(ctx context.Context, scope, key string) error
-	Fail(scope, key string)
+	Reserve(scope, key string) error
 }
 
 const (
