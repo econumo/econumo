@@ -79,14 +79,16 @@ navigation (single-pane vs sidebar).
       server stdout in dev) → enter code + new password → old password rejected,
       new one works; all other sessions of the user are revoked.
 - [ ] Recovery with a wrong/expired code → clear error, password unchanged.
-- [ ] An address with uppercase non-ASCII letters (`JÖRG@…`) works everywhere in any case: it signs
-      in as `jörg@…`, Forgot password from either spelling sends the code to the stored `JÖRG@…`
-      and the reset succeeds, and registering `jörg@…` is refused as already existing.
+- [ ] Registering `JÖRG@…` stores and shows `jörg@…`. Signing in and Forgot password work from any
+      case, the code goes to the stored `jörg@…` and the reset succeeds, and registering `JÖRG@…`
+      again is refused as already existing. Changing an email to `NEW@…` stores `new@…`.
 - [ ] Forgot password for a look-alike of a real address (`admin@gmaİl.…` when `admin@gmail.…`
       exists) sends no email at all, and that address cannot sign in with the real password.
-- [ ] Upgrading a SQLite instance that holds both `JÖRG@…` and `jörg@…` boots, logs one WARN with
-      the newer account's user id, and each spelling still signs in to its own account. After
-      `user:change-email` moves the newer one, both behave like any other account.
+- [ ] Upgrading rewrites stored addresses to lowercase (`Alice@…` shows as `alice@…` and still signs
+      in). An instance holding both `JÖRG@…` and `jörg@…` boots, logs one WARN with the user id of the
+      account left as `JÖRG@…`, and each spelling still signs in to its own account. After
+      `user:change-email` moves that one, it behaves like any other account. A still-salted instance
+      keeps its encrypted emails intact until `data:remove-salt`, which stores them lowercase.
 - [ ] With `MAILER_DSN=smtp://user:pass@host:587?from=…` (STARTTLS) and with
       `smtps://…:465` (implicit TLS) pointed at a real relay, the reset code
       email arrives with the right From/Reply-To and a readable non-English

@@ -44,14 +44,14 @@ func migrationCommands() []command {
 			},
 		},
 		{
-			name:    "migration:seed-email-keys",
-			summary: "fill users.email_key, the normalized address accounts are looked up by; the older account of a colliding pair takes it (idempotent)",
+			name:    "migration:normalize-emails",
+			summary: "rewrite stored addresses to their normalized form; one that would collide keeps its spelling and is logged (idempotent)",
 			run: func(ctx context.Context, c *container, args []string) error {
-				n, err := c.user.SeedEmailKeys(ctx)
+				n, err := c.user.NormalizeEmails(ctx)
 				if err != nil {
 					return err
 				}
-				fmt.Printf("seeded %d email key(s)\n", n)
+				fmt.Printf("normalized %d address(es)\n", n)
 				return nil
 			},
 		},

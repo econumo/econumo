@@ -44,30 +44,26 @@ type (
 		// from the generated row types are positional.
 		CredentialsGeneration int64
 	}
-	optionRow            = sqlitegen.UsersOption
-	userParams           = sqlitegen.UpsertUserParams
-	optionParams         = sqlitegen.UpsertUserOptionParams
-	languageParams       = sqlitegen.UpdateUserLanguageParams
-	timezoneParams       = sqlitegen.UpdateUserTimezoneParams
-	passwordIfGenParams  = sqlitegen.UpdateUserPasswordIfGenerationParams
-	emailIfGenParams     = sqlitegen.UpdateUserEmailIfPasswordlessAndGenerationParams
-	emailGenParams       = sqlitegen.UpdateUserEmailIfGenerationParams
-	emailLookupParams    = sqlitegen.GetUserByEmailParams
-	emailKeyRow          = sqlitegen.ListUsersWithoutEmailKeyRow
-	emailKeyParams       = sqlitegen.SetUserEmailKeyParams
-	decryptedEmailParams = sqlitegen.SetUserDecryptedEmailParams
+	optionRow           = sqlitegen.UsersOption
+	userParams          = sqlitegen.UpsertUserParams
+	optionParams        = sqlitegen.UpsertUserOptionParams
+	languageParams      = sqlitegen.UpdateUserLanguageParams
+	timezoneParams      = sqlitegen.UpdateUserTimezoneParams
+	passwordIfGenParams = sqlitegen.UpdateUserPasswordIfGenerationParams
+	emailIfGenParams    = sqlitegen.UpdateUserEmailIfPasswordlessAndGenerationParams
+	emailGenParams      = sqlitegen.UpdateUserEmailIfGenerationParams
+	emailLookupParams   = sqlitegen.GetUserByEmailParams
+	userEmailRow        = sqlitegen.ListUserEmailsOldestFirstRow
+	setEmailParams      = sqlitegen.SetUserEmailParams
 )
 
 type querier interface {
 	GetUserByID(ctx context.Context, db backend.DBTX, id string) (userRow, error)
 	GetUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (userRow, error)
 	ExistsUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (bool, error)
-	ListUsersWithoutEmailKey(ctx context.Context, db backend.DBTX) ([]emailKeyRow, error)
-	SetUserDecryptedEmail(ctx context.Context, db backend.DBTX, p decryptedEmailParams) error
-	ClearUserEmailKeys(ctx context.Context, db backend.DBTX) error
-	ListUsersSharingAnEmail(ctx context.Context, db backend.DBTX) ([]string, error)
-	EmailKeyTaken(ctx context.Context, db backend.DBTX, key *string) (bool, error)
-	SetUserEmailKey(ctx context.Context, db backend.DBTX, p emailKeyParams) error
+	ListUserEmailsOldestFirst(ctx context.Context, db backend.DBTX) ([]userEmailRow, error)
+	GetUserIDByExactEmail(ctx context.Context, db backend.DBTX, email string) (string, error)
+	SetUserEmail(ctx context.Context, db backend.DBTX, p setEmailParams) error
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
 	ListUserIDsMissingOption(ctx context.Context, db backend.DBTX, name string) ([]string, error)
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
@@ -146,12 +142,7 @@ func (r *Repo) GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error
 }
 
 func emailLookup(email string) emailLookupParams {
-	return emailLookupParams{EmailKey: emailKeyOf(email), Email: strings.TrimSpace(email)}
-}
-
-func emailKeyOf(email string) *string {
-	key := model.NormalizeEmail(email)
-	return &key
+	return emailLookupParams{Normalized: model.NormalizeEmail(email), Exact: strings.TrimSpace(email)}
 }
 
 func (r *Repo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
@@ -169,53 +160,38 @@ func (r *Repo) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	return r.q.ExistsUserByEmail(ctx, r.db(ctx), emailLookup(email))
 }
 
-// ListWithoutEmailKey returns the users holding no key, oldest first.
-func (r *Repo) ListWithoutEmailKey(ctx context.Context) ([]user.EmailKeyCandidate, error) {
-	rows, err := r.q.ListUsersWithoutEmailKey(ctx, r.db(ctx))
+// ListEmailsOldestFirst returns every user's stored address, oldest account first.
+func (r *Repo) ListEmailsOldestFirst(ctx context.Context) ([]user.StoredEmail, error) {
+	rows, err := r.q.ListUserEmailsOldestFirst(ctx, r.db(ctx))
 	if err != nil {
 		return nil, err
 	}
-	out := make([]user.EmailKeyCandidate, 0, len(rows))
+	out := make([]user.StoredEmail, 0, len(rows))
 	for _, row := range rows {
 		id, perr := vo.ParseId(row.ID)
 		if perr != nil {
 			return nil, perr
 		}
-		out = append(out, user.EmailKeyCandidate{ID: id, Email: row.Email})
+		out = append(out, user.StoredEmail{ID: id, Email: row.Email})
 	}
 	return out, nil
 }
 
-func (r *Repo) SetDecryptedEmail(ctx context.Context, userID vo.Id, email string, now time.Time) error {
-	return r.q.SetUserDecryptedEmail(ctx, r.db(ctx), decryptedEmailParams{Email: email, UpdatedAt: now, ID: userID.String()})
-}
-
-func (r *Repo) ClearEmailKeys(ctx context.Context) error {
-	return r.q.ClearUserEmailKeys(ctx, r.db(ctx))
-}
-
-func (r *Repo) ListSharingAnEmail(ctx context.Context) ([]vo.Id, error) {
-	raw, err := r.q.ListUsersSharingAnEmail(ctx, r.db(ctx))
+// HolderOfExactEmail returns the user storing exactly this address.
+// Missing -> *errs.NotFoundError.
+func (r *Repo) HolderOfExactEmail(ctx context.Context, email string) (vo.Id, error) {
+	raw, err := r.q.GetUserIDByExactEmail(ctx, r.db(ctx), email)
 	if err != nil {
-		return nil, err
-	}
-	ids := make([]vo.Id, 0, len(raw))
-	for _, s := range raw {
-		id, perr := vo.ParseId(s)
-		if perr != nil {
-			return nil, perr
+		if errors.Is(err, sql.ErrNoRows) {
+			return vo.Id{}, errs.NewNotFound("User not found")
 		}
-		ids = append(ids, id)
+		return vo.Id{}, err
 	}
-	return ids, nil
+	return vo.ParseId(raw)
 }
 
-func (r *Repo) EmailKeyTaken(ctx context.Context, key string) (bool, error) {
-	return r.q.EmailKeyTaken(ctx, r.db(ctx), &key)
-}
-
-func (r *Repo) SetEmailKey(ctx context.Context, userID vo.Id, key string) error {
-	return r.q.SetUserEmailKey(ctx, r.db(ctx), emailKeyParams{EmailKey: &key, ID: userID.String()})
+func (r *Repo) SetEmail(ctx context.Context, userID vo.Id, email string) error {
+	return r.q.SetUserEmail(ctx, r.db(ctx), setEmailParams{Email: email, ID: userID.String()})
 }
 
 func (r *Repo) ListIDs(ctx context.Context) ([]vo.Id, error) {
@@ -281,7 +257,6 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 		ID:            u.ID.String(),
 		Identifier:    u.ID.String(),
 		Email:         u.Email,
-		EmailKey:      emailKeyOf(u.Email),
 		Name:          u.Name,
 		Avatar:        u.Avatar,
 		Password:      u.Password,
@@ -340,7 +315,6 @@ func (r *Repo) UpdatePasswordIfGeneration(ctx context.Context, userID vo.Id, has
 func (r *Repo) ReplaceEmailIfPasswordless(ctx context.Context, userID vo.Id, encryptedEmail string, now time.Time, generation int64) (int64, error) {
 	return r.q.UpdateUserEmailIfPasswordlessAndGeneration(ctx, r.db(ctx), emailIfGenParams{
 		Email:                 encryptedEmail,
-		EmailKey:              emailKeyOf(encryptedEmail),
 		UpdatedAt:             now,
 		ID:                    userID.String(),
 		CredentialsGeneration: generation,
@@ -352,7 +326,6 @@ func (r *Repo) ReplaceEmailIfPasswordless(ctx context.Context, userID vo.Id, enc
 func (r *Repo) ReplaceEmailIfGeneration(ctx context.Context, userID vo.Id, encryptedEmail string, now time.Time, generation int64) (int64, error) {
 	return r.q.UpdateUserEmailIfGeneration(ctx, r.db(ctx), emailGenParams{
 		Email:                 encryptedEmail,
-		EmailKey:              emailKeyOf(encryptedEmail),
 		UpdatedAt:             now,
 		ID:                    userID.String(),
 		CredentialsGeneration: generation,

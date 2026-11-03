@@ -70,7 +70,7 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 		return nil, cerr
 	}
 	// A success forgives only the caller's own counter, never the ceiling: accounts
-	// that collided when the email key was seeded still share a counter key, so
+	// that collided when addresses were normalized still share a counter key, so
 	// signing in to one must not reset the guesses at the other.
 	attempt.giveBack()
 	s.clearAttempt(RateScopeLogin, emailIPKey(ctx, limitKey))

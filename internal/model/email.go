@@ -6,9 +6,8 @@ import (
 	"unicode/utf8"
 )
 
-// NormalizeEmail returns the key an address is looked up, compared and rate
-// limited by (users.email_key). It is computed in Go because the engines'
-// lower() disagree: SQLite's folds ASCII only, PostgreSQL's depends on the
+// NormalizeEmail returns the form an address is stored, looked up, compared and rate
+// limited by. It is computed in Go because the engines' lower() disagree: SQLite's folds ASCII only, PostgreSQL's depends on the
 // database locale.
 //
 // A non-ASCII letter whose lowercase is ASCII keeps its form (U+0130 would become

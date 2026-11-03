@@ -69,7 +69,7 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 		case gerr != nil && !isNotFound(gerr):
 			return gerr
 		}
-		encryptedEmail, eerr := s.encode.Encode(strings.TrimSpace(newEmail))
+		encryptedEmail, eerr := s.encode.Encode(model.NormalizeEmail(newEmail))
 		if eerr != nil {
 			return eerr
 		}

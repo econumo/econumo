@@ -27,36 +27,24 @@ func (pgsqlQuerier) ExistsUserByEmail(ctx context.Context, db backend.DBTX, p em
 	return pgsqlgen.New(db).ExistsUserByEmail(ctx, pgsqlgen.ExistsUserByEmailParams(p))
 }
 
-func (pgsqlQuerier) ListUsersWithoutEmailKey(ctx context.Context, db backend.DBTX) ([]emailKeyRow, error) {
-	rows, err := pgsqlgen.New(db).ListUsersWithoutEmailKey(ctx)
+func (pgsqlQuerier) ListUserEmailsOldestFirst(ctx context.Context, db backend.DBTX) ([]userEmailRow, error) {
+	rows, err := pgsqlgen.New(db).ListUserEmailsOldestFirst(ctx)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]emailKeyRow, 0, len(rows))
+	out := make([]userEmailRow, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, emailKeyRow(row))
+		out = append(out, userEmailRow(row))
 	}
 	return out, nil
 }
 
-func (pgsqlQuerier) SetUserDecryptedEmail(ctx context.Context, db backend.DBTX, p decryptedEmailParams) error {
-	return pgsqlgen.New(db).SetUserDecryptedEmail(ctx, pgsqlgen.SetUserDecryptedEmailParams(p))
+func (pgsqlQuerier) GetUserIDByExactEmail(ctx context.Context, db backend.DBTX, email string) (string, error) {
+	return pgsqlgen.New(db).GetUserIDByExactEmail(ctx, email)
 }
 
-func (pgsqlQuerier) ClearUserEmailKeys(ctx context.Context, db backend.DBTX) error {
-	return pgsqlgen.New(db).ClearUserEmailKeys(ctx)
-}
-
-func (pgsqlQuerier) ListUsersSharingAnEmail(ctx context.Context, db backend.DBTX) ([]string, error) {
-	return pgsqlgen.New(db).ListUsersSharingAnEmail(ctx)
-}
-
-func (pgsqlQuerier) EmailKeyTaken(ctx context.Context, db backend.DBTX, key *string) (bool, error) {
-	return pgsqlgen.New(db).EmailKeyTaken(ctx, key)
-}
-
-func (pgsqlQuerier) SetUserEmailKey(ctx context.Context, db backend.DBTX, p emailKeyParams) error {
-	return pgsqlgen.New(db).SetUserEmailKey(ctx, pgsqlgen.SetUserEmailKeyParams(p))
+func (pgsqlQuerier) SetUserEmail(ctx context.Context, db backend.DBTX, p setEmailParams) error {
+	return pgsqlgen.New(db).SetUserEmail(ctx, pgsqlgen.SetUserEmailParams(p))
 }
 
 func (pgsqlQuerier) ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error) {

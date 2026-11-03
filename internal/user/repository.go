@@ -8,8 +8,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// EmailKeyCandidate is a user row the email key seed still has to place.
-type EmailKeyCandidate struct {
+// StoredEmail is a user's address as the column holds it.
+type StoredEmail struct {
 	ID    vo.Id
 	Email string
 }
@@ -25,33 +25,24 @@ type Repository interface {
 	// GetByID loads a user (with options) by id. Missing -> *errs.NotFoundError.
 	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
 
-	// GetByEmail loads a user (with options) by the address as typed, resolved
-	// through model.NormalizeEmail. Missing -> *errs.NotFoundError.
+	// GetByEmail loads a user (with options) by the address as typed: the row storing
+	// that exact spelling, else the one storing its model.NormalizeEmail form.
+	// Missing -> *errs.NotFoundError.
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 
 	// ExistsByEmail reports whether GetByEmail would find a user. Used by
 	// registration/change-email dup-checks.
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
 
-	// ListWithoutEmailKey returns the users holding no email key, oldest first.
-	ListWithoutEmailKey(ctx context.Context) ([]EmailKeyCandidate, error)
+	// ListEmailsOldestFirst returns every user's stored address, oldest account first.
+	ListEmailsOldestFirst(ctx context.Context) ([]StoredEmail, error)
 
-	// SetDecryptedEmail writes only the address, leaving the key to ClearEmailKeys
-	// and SeedEmailKeys, so decrypted addresses that collide cannot fail mid-sweep.
-	SetDecryptedEmail(ctx context.Context, userID vo.Id, email string, now time.Time) error
+	// HolderOfExactEmail returns the user storing exactly this address.
+	// Missing -> *errs.NotFoundError.
+	HolderOfExactEmail(ctx context.Context, email string) (vo.Id, error)
 
-	// ClearEmailKeys empties the key of every user.
-	ClearEmailKeys(ctx context.Context) error
-
-	// ListSharingAnEmail returns the users whose stored address is byte-identical
-	// to another user's.
-	ListSharingAnEmail(ctx context.Context) ([]vo.Id, error)
-
-	// EmailKeyTaken reports whether some user holds the key.
-	EmailKeyTaken(ctx context.Context, key string) (bool, error)
-
-	// SetEmailKey writes only the key column.
-	SetEmailKey(ctx context.Context, userID vo.Id, key string) error
+	// SetEmail writes only the address column.
+	SetEmail(ctx context.Context, userID vo.Id, email string) error
 
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error

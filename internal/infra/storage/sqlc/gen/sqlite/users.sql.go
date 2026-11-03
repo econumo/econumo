@@ -22,37 +22,17 @@ func (q *Queries) BumpUserCredentialsGeneration(ctx context.Context, id string) 
 	return result.RowsAffected()
 }
 
-const clearUserEmailKeys = `-- name: ClearUserEmailKeys :exec
-UPDATE users SET email_key = NULL
-`
-
-func (q *Queries) ClearUserEmailKeys(ctx context.Context) error {
-	_, err := q.db.ExecContext(ctx, clearUserEmailKeys)
-	return err
-}
-
-const emailKeyTaken = `-- name: EmailKeyTaken :one
-SELECT EXISTS(SELECT 1 FROM users WHERE email_key = ?1)
-`
-
-func (q *Queries) EmailKeyTaken(ctx context.Context, emailKey *string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, emailKeyTaken, emailKey)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const existsUserByEmail = `-- name: ExistsUserByEmail :one
-SELECT EXISTS(SELECT 1 FROM users WHERE email_key = ?1 OR (email_key IS NULL AND email = ?2))
+SELECT EXISTS(SELECT 1 FROM users WHERE email = ?1 OR email = ?2)
 `
 
 type ExistsUserByEmailParams struct {
-	EmailKey *string
-	Email    string
+	Normalized string
+	Exact      string
 }
 
 func (q *Queries) ExistsUserByEmail(ctx context.Context, arg ExistsUserByEmailParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, existsUserByEmail, arg.EmailKey, arg.Email)
+	row := q.db.QueryRowContext(ctx, existsUserByEmail, arg.Normalized, arg.Exact)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -61,14 +41,14 @@ func (q *Queries) ExistsUserByEmail(ctx context.Context, arg ExistsUserByEmailPa
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
-WHERE email_key = ?1 OR (email_key IS NULL AND email = ?2)
-ORDER BY email_key IS NULL DESC
+WHERE email = ?1 OR email = ?2
+ORDER BY email = ?2 DESC
 LIMIT 1
 `
 
 type GetUserByEmailParams struct {
-	EmailKey *string
-	Email    string
+	Normalized string
+	Exact      string
 }
 
 type GetUserByEmailRow struct {
@@ -89,10 +69,10 @@ type GetUserByEmailRow struct {
 	CredentialsGeneration int64
 }
 
-// A NULL key row matched on its exact spelling, which the row holding the key
-// does not share, so the account that spelling names wins.
+// A row that collided when addresses were normalized keeps its own spelling, so the
+// account that exact spelling names wins over the normalized one.
 func (q *Queries) GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserByEmail, arg.EmailKey, arg.Email)
+	row := q.db.QueryRowContext(ctx, getUserByEmail, arg.Normalized, arg.Exact)
 	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
@@ -161,6 +141,17 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 	return i, err
 }
 
+const getUserIDByExactEmail = `-- name: GetUserIDByExactEmail :one
+SELECT id FROM users WHERE email = ?1
+`
+
+func (q *Queries) GetUserIDByExactEmail(ctx context.Context, email string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getUserIDByExactEmail, email)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getUserLanguage = `-- name: GetUserLanguage :one
 SELECT language FROM users WHERE id = ?
 `
@@ -219,6 +210,38 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
 	return err
 }
 
+const listUserEmailsOldestFirst = `-- name: ListUserEmailsOldestFirst :many
+SELECT id, email FROM users ORDER BY created_at, id
+`
+
+type ListUserEmailsOldestFirstRow struct {
+	ID    string
+	Email string
+}
+
+func (q *Queries) ListUserEmailsOldestFirst(ctx context.Context) ([]ListUserEmailsOldestFirstRow, error) {
+	rows, err := q.db.QueryContext(ctx, listUserEmailsOldestFirst)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUserEmailsOldestFirstRow{}
+	for rows.Next() {
+		var i ListUserEmailsOldestFirstRow
+		if err := rows.Scan(&i.ID, &i.Email); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserIDs = `-- name: ListUserIDs :many
 SELECT id FROM users
 `
@@ -246,67 +269,6 @@ func (q *Queries) ListUserIDs(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
-const listUsersSharingAnEmail = `-- name: ListUsersSharingAnEmail :many
-SELECT id FROM users
-WHERE email IN (SELECT email FROM users GROUP BY email HAVING COUNT(*) > 1)
-ORDER BY id
-`
-
-func (q *Queries) ListUsersSharingAnEmail(ctx context.Context) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listUsersSharingAnEmail)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []string{}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listUsersWithoutEmailKey = `-- name: ListUsersWithoutEmailKey :many
-SELECT id, email FROM users WHERE email_key IS NULL ORDER BY created_at, id
-`
-
-type ListUsersWithoutEmailKeyRow struct {
-	ID    string
-	Email string
-}
-
-func (q *Queries) ListUsersWithoutEmailKey(ctx context.Context) ([]ListUsersWithoutEmailKeyRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUsersWithoutEmailKey)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListUsersWithoutEmailKeyRow{}
-	for rows.Next() {
-		var i ListUsersWithoutEmailKeyRow
-		if err := rows.Scan(&i.ID, &i.Email); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const lockUserRow = `-- name: LockUserRow :exec
 UPDATE users SET updated_at = updated_at WHERE id = ?
 `
@@ -322,43 +284,27 @@ func (q *Queries) LockUserRow(ctx context.Context, id string) error {
 	return err
 }
 
-const setUserDecryptedEmail = `-- name: SetUserDecryptedEmail :exec
-UPDATE users SET email = ?1, updated_at = ?2 WHERE id = ?3
+const setUserEmail = `-- name: SetUserEmail :exec
+UPDATE users SET email = ?1 WHERE id = ?2
 `
 
-type SetUserDecryptedEmailParams struct {
-	Email     string
-	UpdatedAt time.Time
-	ID        string
+type SetUserEmailParams struct {
+	Email string
+	ID    string
 }
 
-func (q *Queries) SetUserDecryptedEmail(ctx context.Context, arg SetUserDecryptedEmailParams) error {
-	_, err := q.db.ExecContext(ctx, setUserDecryptedEmail, arg.Email, arg.UpdatedAt, arg.ID)
-	return err
-}
-
-const setUserEmailKey = `-- name: SetUserEmailKey :exec
-UPDATE users SET email_key = ?1 WHERE id = ?2
-`
-
-type SetUserEmailKeyParams struct {
-	EmailKey *string
-	ID       string
-}
-
-func (q *Queries) SetUserEmailKey(ctx context.Context, arg SetUserEmailKeyParams) error {
-	_, err := q.db.ExecContext(ctx, setUserEmailKey, arg.EmailKey, arg.ID)
+func (q *Queries) SetUserEmail(ctx context.Context, arg SetUserEmailParams) error {
+	_, err := q.db.ExecContext(ctx, setUserEmail, arg.Email, arg.ID)
 	return err
 }
 
 const updateUserEmailIfGeneration = `-- name: UpdateUserEmailIfGeneration :execrows
-UPDATE users SET email = ?, email_key = ?, email_verified = 1, updated_at = ?
+UPDATE users SET email = ?, email_verified = 1, updated_at = ?
 WHERE id = ? AND credentials_generation = ?
 `
 
 type UpdateUserEmailIfGenerationParams struct {
 	Email                 string
-	EmailKey              *string
 	UpdatedAt             time.Time
 	ID                    string
 	CredentialsGeneration int64
@@ -370,7 +316,6 @@ type UpdateUserEmailIfGenerationParams struct {
 func (q *Queries) UpdateUserEmailIfGeneration(ctx context.Context, arg UpdateUserEmailIfGenerationParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updateUserEmailIfGeneration,
 		arg.Email,
-		arg.EmailKey,
 		arg.UpdatedAt,
 		arg.ID,
 		arg.CredentialsGeneration,
@@ -382,13 +327,12 @@ func (q *Queries) UpdateUserEmailIfGeneration(ctx context.Context, arg UpdateUse
 }
 
 const updateUserEmailIfPasswordlessAndGeneration = `-- name: UpdateUserEmailIfPasswordlessAndGeneration :execrows
-UPDATE users SET email = ?, email_key = ?, email_verified = 1, updated_at = ?
+UPDATE users SET email = ?, email_verified = 1, updated_at = ?
 WHERE id = ? AND credentials_generation = ? AND algorithm = 'none'
 `
 
 type UpdateUserEmailIfPasswordlessAndGenerationParams struct {
 	Email                 string
-	EmailKey              *string
 	UpdatedAt             time.Time
 	ID                    string
 	CredentialsGeneration int64
@@ -401,7 +345,6 @@ type UpdateUserEmailIfPasswordlessAndGenerationParams struct {
 func (q *Queries) UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, arg UpdateUserEmailIfPasswordlessAndGenerationParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updateUserEmailIfPasswordlessAndGeneration,
 		arg.Email,
-		arg.EmailKey,
 		arg.UpdatedAt,
 		arg.ID,
 		arg.CredentialsGeneration,
@@ -473,14 +416,11 @@ func (q *Queries) UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezone
 }
 
 const upsertUser = `-- name: UpsertUser :exec
-INSERT INTO users (id, identifier, email, email_key, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until, email_verified)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until, email_verified)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     identifier = excluded.identifier,
     email      = excluded.email,
-    -- Only an address that changes moves the key, so a save leaves alone the NULL
-    -- of an account that collided when the key was seeded.
-    email_key  = CASE WHEN users.email = excluded.email THEN users.email_key ELSE excluded.email_key END,
     name       = excluded.name,
     avatar = excluded.avatar,
     password   = excluded.password,
@@ -497,7 +437,6 @@ type UpsertUserParams struct {
 	ID            string
 	Identifier    string
 	Email         string
-	EmailKey      *string
 	Name          string
 	Avatar        string
 	Password      string
@@ -516,7 +455,6 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
 		arg.ID,
 		arg.Identifier,
 		arg.Email,
-		arg.EmailKey,
 		arg.Name,
 		arg.Avatar,
 		arg.Password,

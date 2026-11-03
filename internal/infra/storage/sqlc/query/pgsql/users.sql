@@ -11,14 +11,11 @@ INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorith
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 
 -- name: UpsertUser :exec
-INSERT INTO users (id, identifier, email, email_key, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until, email_verified)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until, email_verified)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 ON CONFLICT (id) DO UPDATE SET
     identifier = excluded.identifier,
     email      = excluded.email,
-    -- Only an address that changes moves the key, so a save leaves alone the NULL
-    -- of an account that collided when the key was seeded.
-    email_key  = CASE WHEN users.email = excluded.email THEN users.email_key ELSE excluded.email_key END,
     name       = excluded.name,
     avatar = excluded.avatar,
     password   = excluded.password,
@@ -57,14 +54,14 @@ WHERE id = $5 AND credentials_generation = $6;
 -- primary email only while the account is still passwordless and still at the
 -- generation the callback resolved it under: a password reset committing after
 -- those checks must keep the recovered account's own address.
-UPDATE users SET email = $1, email_key = $2, email_verified = TRUE, updated_at = $3
-WHERE id = $4 AND credentials_generation = $5 AND algorithm = 'none';
+UPDATE users SET email = $1, email_verified = TRUE, updated_at = $2
+WHERE id = $3 AND credentials_generation = $4 AND algorithm = 'none';
 
 -- name: UpdateUserEmailIfGeneration :execrows
 -- See the sqlite sibling: the confirm-email-change path writes only the email
 -- columns, under the generation read after the row lock.
-UPDATE users SET email = $1, email_key = $2, email_verified = TRUE, updated_at = $3
-WHERE id = $4 AND credentials_generation = $5;
+UPDATE users SET email = $1, email_verified = TRUE, updated_at = $2
+WHERE id = $3 AND credentials_generation = $4;
 
 -- name: UpdateUserLanguage :exec
 UPDATE users SET language = $1 WHERE id = $2;
@@ -81,31 +78,20 @@ SELECT language FROM users WHERE id = $1;
 -- name: GetUserByEmail :one
 SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
-WHERE email_key = sqlc.arg(email_key) OR (email_key IS NULL AND email = sqlc.arg(email))
--- A NULL key row matched on its exact spelling, which the row holding the key
--- does not share, so the account that spelling names wins.
-ORDER BY email_key IS NULL DESC
+WHERE email = sqlc.arg(normalized) OR email = sqlc.arg(exact)
+-- A row that collided when addresses were normalized keeps its own spelling, so the
+-- account that exact spelling names wins over the normalized one.
+ORDER BY email = sqlc.arg(exact) DESC
 LIMIT 1;
 
 -- name: ExistsUserByEmail :one
-SELECT EXISTS(SELECT 1 FROM users WHERE email_key = sqlc.arg(email_key) OR (email_key IS NULL AND email = sqlc.arg(email)));
+SELECT EXISTS(SELECT 1 FROM users WHERE email = sqlc.arg(normalized) OR email = sqlc.arg(exact));
 
--- name: ListUsersWithoutEmailKey :many
-SELECT id, email FROM users WHERE email_key IS NULL ORDER BY created_at, id;
+-- name: ListUserEmailsOldestFirst :many
+SELECT id, email FROM users ORDER BY created_at, id;
 
--- name: SetUserDecryptedEmail :exec
-UPDATE users SET email = sqlc.arg(email), updated_at = sqlc.arg(updated_at) WHERE id = sqlc.arg(id);
+-- name: GetUserIDByExactEmail :one
+SELECT id FROM users WHERE email = sqlc.arg(email);
 
--- name: ClearUserEmailKeys :exec
-UPDATE users SET email_key = NULL;
-
--- name: ListUsersSharingAnEmail :many
-SELECT id FROM users
-WHERE email IN (SELECT email FROM users GROUP BY email HAVING COUNT(*) > 1)
-ORDER BY id;
-
--- name: EmailKeyTaken :one
-SELECT EXISTS(SELECT 1 FROM users WHERE email_key = sqlc.arg(email_key));
-
--- name: SetUserEmailKey :exec
-UPDATE users SET email_key = sqlc.arg(email_key) WHERE id = sqlc.arg(id);
+-- name: SetUserEmail :exec
+UPDATE users SET email = sqlc.arg(email) WHERE id = sqlc.arg(id);

@@ -479,7 +479,6 @@ type User struct {
 	AccessUntil           *time.Time
 	EmailVerified         bool
 	CredentialsGeneration int64
-	EmailKey              *string
 }
 
 type UsersConnection struct {

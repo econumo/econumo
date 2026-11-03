@@ -15,7 +15,6 @@ type Querier interface {
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
-	ClearUserEmailKeys(ctx context.Context) error
 	// Single use: the DELETE is the read, so two concurrent exchanges of one code
 	// cannot both get a row.
 	ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
@@ -114,7 +113,6 @@ type Querier interface {
 	// it. Expiry is compared in the app layer (Go time.Time), not in SQL, to avoid
 	// engine date-format differences.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
-	EmailKeyTaken(ctx context.Context, emailKey *string) (int64, error)
 	ExistsUserByEmail(ctx context.Context, arg ExistsUserByEmailParams) (int64, error)
 	// Joins users for access_level/access_until so per-request auth can report
 	// the caller's effective access level in the same round trip. This does NOT
@@ -310,8 +308,8 @@ type Querier interface {
 	// category/payee/tag (non-transfers). Listing filters by account id sets the
 	// app layer computes (excluding deleted/hidden-folder accounts).
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
-	// A NULL key row matched on its exact spelling, which the row holding the key
-	// does not share, so the account that spelling names wins.
+	// A row that collided when addresses were normalized keeps its own spelling, so the
+	// account that exact spelling names wins over the normalized one.
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
 	// Read-model queries for the currency module (CQRS read side). Both currency
@@ -325,6 +323,7 @@ type Querier interface {
 	GetUserCurrencyListView(ctx context.Context, arg GetUserCurrencyListViewParams) ([]GetUserCurrencyListViewRow, error)
 	GetUserEmailChangeRequestByUser(ctx context.Context, userID string) (UsersEmailChangeRequest, error)
 	GetUserEmailVerificationByUser(ctx context.Context, userID string) (UsersEmailVerification, error)
+	GetUserIDByExactEmail(ctx context.Context, email string) (string, error)
 	GetUserLanguage(ctx context.Context, id string) (string, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
@@ -563,6 +562,7 @@ type Querier interface {
 	// too, their history still counts), a budget, a budget element, or a user's
 	// display currency. The rate-gap check looks at these only.
 	ListUsedGlobalCurrencyCodes(ctx context.Context) ([]string, error)
+	ListUserEmailsOldestFirst(ctx context.Context) ([]ListUserEmailsOldestFirstRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	// Ordered by id so the backfill is deterministic across engines and reruns.
 	// A LEFT JOIN + IS NULL, not NOT EXISTS: sqlc's sqlite parser fails to detect
@@ -570,8 +570,6 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
-	ListUsersSharingAnEmail(ctx context.Context) ([]string, error)
-	ListUsersWithoutEmailKey(ctx context.Context) ([]ListUsersWithoutEmailKeyRow, error)
 	// Plain read: SQLite serializes writers, so there is no concurrent limit or
 	// comment for a lock to order against.
 	LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error)
@@ -642,8 +640,7 @@ type Querier interface {
 	// comment: dropping the element (flag off or member removed) deletes both.
 	SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (int64, error)
 	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
-	SetUserDecryptedEmail(ctx context.Context, arg SetUserDecryptedEmailParams) error
-	SetUserEmailKey(ctx context.Context, arg SetUserEmailKeyParams) error
+	SetUserEmail(ctx context.Context, arg SetUserEmailParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.

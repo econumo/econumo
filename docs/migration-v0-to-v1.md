@@ -124,7 +124,7 @@ The Symfony variables are gone; start from the new
   `smtp://user:pass@host:587?from=…` / `smtps://…:465` for any SMTP server. A
   leftover v0.x value will **fail at boot**, so clear it or set the new form.
 - **`ECONUMO_DATA_SALT`** is deprecated, and v1.x runs **salt-free** — it no
-  longer decrypts salted data. Users are looked up by a normalized copy of their plaintext email, which
+  longer decrypts salted data. Users are looked up by their normalized plaintext email, which
   only works once emails are plaintext. If your v0.x instance never set it (or
   set it empty), do nothing. **If it was set, you must migrate the data once**,
   or those users can't log in (their emails are unreadable, so they can't be

@@ -3,7 +3,6 @@ package user
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -78,7 +77,7 @@ func (s *Service) persistNewUser(ctx context.Context, name, email string,
 	if exists {
 		return nil, &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
 	}
-	encryptedEmail, eerr := s.encode.Encode(strings.TrimSpace(email))
+	encryptedEmail, eerr := s.encode.Encode(model.NormalizeEmail(email))
 	if eerr != nil {
 		return nil, eerr
 	}

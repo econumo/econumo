@@ -436,7 +436,7 @@ func TestLogin_AnAddressWithUppercaseNonASCIICanStillSignIn(t *testing.T) {
 	}
 }
 
-// Accounts that collided before the email key existed still share one counter key.
+// Accounts that collided before addresses were normalized still share one counter key.
 // Signing in to the one you own must not wipe the ceiling that protects the other.
 func TestEmailLimits_SigningInToACollidingAccountDoesNotResetTheCeiling(t *testing.T) {
 	h := newLimitHarness(t, func(c *config.Config) {
@@ -449,7 +449,7 @@ func TestEmailLimits_SigningInToACollidingAccountDoesNotResetTheCeiling(t *testi
 			t.Fatalf("register %s = %d", email, got)
 		}
 	}
-	if _, err := h.db.Raw.Exec(h.db.Rebind(`UPDATE users SET email = 'JÖRG@example.test', email_key = NULL WHERE email = 'placeholder@example.test'`)); err != nil {
+	if _, err := h.db.Raw.Exec(h.db.Rebind(`UPDATE users SET email = 'JÖRG@example.test' WHERE email = 'placeholder@example.test'`)); err != nil {
 		t.Fatal(err)
 	}
 	admitted := 0

@@ -100,8 +100,8 @@ func TestAdminCreateUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode email: %v", err)
 	}
-	if email != "Synth@Econumo.test" {
-		t.Errorf("decoded email = %q, want original case preserved", email)
+	if email != "synth@econumo.test" {
+		t.Errorf("decoded email = %q, want the normalized form", email)
 	}
 
 	// Duplicate (same address, any case) -> validation error, regardless of the
@@ -414,7 +414,7 @@ func TestAdminChangeEmail_MovesACollidingAccountOffTheAddress(t *testing.T) {
 	f := fixture.New(t, db)
 	holder := f.User(fixture.User{Email: "jörg@example.test"})
 	other := f.User(fixture.User{Email: "placeholder@example.test"})
-	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET email = 'JÖRG@example.test', email_key = NULL WHERE id = ?`), other); err != nil {
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET email = 'JÖRG@example.test' WHERE id = ?`), other); err != nil {
 		t.Fatal(err)
 	}
 

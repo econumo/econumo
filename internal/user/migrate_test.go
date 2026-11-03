@@ -72,15 +72,14 @@ func TestMigrateRemoveDataSalt(t *testing.T) {
 		t.Fatalf("migrated=%d skipped=%d, want %d/0", migrated, skipped, len(emails))
 	}
 
-	// Each row is now plaintext, and findable by GetByEmail (its post-migration
-	// lookup key).
+	// Each row is now plaintext in its normalized form, and findable by GetByEmail.
 	for _, e := range emails {
 		u, err := repo.GetByID(ctx, vo.MustParseId(ids[e]))
 		if err != nil {
 			t.Fatalf("post-migration lookup by id %s: %v", e, err)
 		}
-		if u.Email != e {
-			t.Errorf("email = %q, want plaintext %q (case preserved)", u.Email, e)
+		if want := model.NormalizeEmail(e); u.Email != want {
+			t.Errorf("email = %q, want plaintext %q", u.Email, want)
 		}
 		byEmail, err := repo.GetByEmail(ctx, e)
 		if err != nil {
@@ -239,7 +238,7 @@ func TestSeedAnalyticsOptionWritesOnlyTheOptionRow(t *testing.T) {
 	}
 }
 
-func TestSeedEmailKeys(t *testing.T) {
+func TestNormalizeEmails(t *testing.T) {
 	db := dbtest.New(t)
 	svc, _, _ := newUserSvc(t, db)
 	ctx := context.Background()
@@ -250,35 +249,60 @@ func TestSeedEmailKeys(t *testing.T) {
 			t.Fatalf("seed %s: %v", email, err)
 		}
 	}
-	const older, newer, plain = "01a00000-0000-7000-8000-0000000000a1", "01a00000-0000-7000-8000-0000000000a2", "01a00000-0000-7000-8000-0000000000a3"
-	seed(newer, "jörg@example.test", "2026-02-01 00:00:00")
-	seed(older, "JÖRG@example.test", "2026-01-01 00:00:00")
-	seed(plain, " Plain@Example.test", "2026-03-01 00:00:00")
+	const ciphertext = "QUJDREVGR0hJSktMTU5PUA+/AbC="
+	want := map[string]string{}
+	add := func(id, email, createdAt, after string) {
+		t.Helper()
+		seed(id, email, createdAt)
+		want[id] = after
+	}
+	add("01a00000-0000-7000-8000-0000000000a1", "JÖRG@example.test", "2026-01-01 00:00:00", "JÖRG@example.test")
+	add("01a00000-0000-7000-8000-0000000000a2", "jörg@example.test", "2026-02-01 00:00:00", "jörg@example.test")
+	add("01a00000-0000-7000-8000-0000000000a3", "Üö@example.test", "2026-02-01 00:00:00", "Üö@example.test")
+	add("01a00000-0000-7000-8000-0000000000a4", "ÜÖ@example.test", "2026-01-01 00:00:00", "üö@example.test")
+	add("01a00000-0000-7000-8000-0000000000a5", " Plain@Example.test", "2026-03-01 00:00:00", "plain@example.test")
+	add("01a00000-0000-7000-8000-0000000000a6", ciphertext, "2026-03-01 00:00:00", ciphertext)
 
-	for run, want := range []int{2, 0} {
-		n, err := svc.SeedEmailKeys(ctx)
+	for run, wantChanged := range []int{2, 0} {
+		n, err := svc.NormalizeEmails(ctx)
 		if err != nil {
 			t.Fatalf("run %d: %v", run, err)
 		}
-		if n != want {
-			t.Fatalf("run %d seeded %d, want %d", run, n, want)
+		if n != wantChanged {
+			t.Fatalf("run %d changed %d, want %d", run, n, wantChanged)
 		}
-		for id, wantKey := range map[string]string{older: "jörg@example.test", plain: "plain@example.test"} {
-			var got *string
-			if err := db.Raw.QueryRow(db.Rebind(`SELECT email_key FROM users WHERE id = ?`), id).Scan(&got); err != nil {
+		for id, after := range want {
+			var got string
+			if err := db.Raw.QueryRow(db.Rebind(`SELECT email FROM users WHERE id = ?`), id).Scan(&got); err != nil {
 				t.Fatal(err)
 			}
-			if got == nil || *got != wantKey {
-				t.Fatalf("email_key of %s = %v, want %q", id, got, wantKey)
+			if got != after {
+				t.Fatalf("email of %s = %q, want %q", id, got, after)
 			}
 		}
-		var got *string
-		if err := db.Raw.QueryRow(db.Rebind(`SELECT email_key FROM users WHERE id = ?`), newer).Scan(&got); err != nil {
-			t.Fatal(err)
-		}
-		if got != nil {
-			t.Fatalf("the newer account took the key %q", *got)
-		}
+	}
+}
+
+// Rerunning repairs a colliding account once the address it wanted is free.
+func TestNormalizeEmails_ACollidingAccountIsNormalizedOnceTheHolderMoves(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	holder := f.User(fixture.User{Email: "jörg@example.test"})
+	other := f.User(fixture.User{Email: "JÖRG@example.test"})
+	if _, err := svc.NormalizeEmails(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.AdminChangeEmail(ctx, "jörg@example.test", "moved@example.test"); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := svc.NormalizeEmails(ctx); err != nil || n != 1 {
+		t.Fatalf("rerun: %d, %v", n, err)
+	}
+	u, err := userrepo.NewRepo(db.Engine, db.TX).GetByEmail(ctx, "JöRG@example.test")
+	if err != nil || u.ID.String() != other {
+		t.Fatalf("lookup: %v, %v (holder %s)", u, err, holder)
 	}
 }
 
@@ -289,12 +313,8 @@ func TestMigrateRemoveDataSalt_AddressesThatNormalizeAlikeDoNotStopTheSweep(t *t
 	f := fixture.New(t, db).WithCrypto(testSalt)
 	older := f.User(fixture.User{Email: "JÖRG@example.test"})
 	newer := f.User(fixture.User{Email: "jörg@example.test"})
-	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET created_at = '2026-02-01 00:00:00' WHERE id = ?`), newer); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET created_at = '2026-01-01 00:00:00' WHERE id = ?`), older); err != nil {
-		t.Fatal(err)
-	}
+	setUserCreatedAt(t, db, older, "2026-01-01 00:00:00")
+	setUserCreatedAt(t, db, newer, "2026-02-01 00:00:00")
 
 	migrated, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt)
 	if err != nil {
@@ -313,18 +333,28 @@ func TestMigrateRemoveDataSalt_AddressesThatNormalizeAlikeDoNotStopTheSweep(t *t
 			t.Fatalf("%s resolved to %s (%s), want its own account %s", email, u.ID, u.Email, id)
 		}
 	}
-	var key *string
-	if err := db.Raw.QueryRow(db.Rebind(`SELECT email_key FROM users WHERE id = ?`), newer).Scan(&key); err != nil {
+}
+
+func TestMigrateRemoveDataSalt_StoresTheNormalizedForm(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	id := fixture.New(t, db).WithCrypto(testSalt).User(fixture.User{Email: "JÖRG@Example.test"})
+	if _, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt); err != nil {
 		t.Fatal(err)
 	}
-	if key != nil {
-		t.Fatalf("the newer account took the key %q", *key)
+	var got string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT email FROM users WHERE id = ?`), id).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got != "jörg@example.test" {
+		t.Fatalf("email = %q", got)
 	}
 }
 
-// A database can hold both kinds of row: the boot step already keyed the plaintext
-// one, yet the older encrypted account must still end up with the key.
-func TestMigrateRemoveDataSalt_TheOldestAccountTakesTheKeyAcrossMixedRows(t *testing.T) {
+// A database can hold both kinds of row. A plaintext address already normalized has no
+// other spelling to fall back to, so it keeps its place over an older encrypted one.
+func TestMigrateRemoveDataSalt_AnAddressAlreadyNormalizedKeepsItsPlace(t *testing.T) {
 	db := dbtest.New(t)
 	svc, _, _ := newUserSvc(t, db)
 	ctx := context.Background()
@@ -336,15 +366,14 @@ func TestMigrateRemoveDataSalt_TheOldestAccountTakesTheKeyAcrossMixedRows(t *tes
 	if _, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt); err != nil {
 		t.Fatalf("MigrateRemoveDataSalt: %v", err)
 	}
-	var olderKey, newerKey *string
-	if err := db.Raw.QueryRow(db.Rebind(`SELECT email_key FROM users WHERE id = ?`), older).Scan(&olderKey); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Raw.QueryRow(db.Rebind(`SELECT email_key FROM users WHERE id = ?`), newer).Scan(&newerKey); err != nil {
-		t.Fatal(err)
-	}
-	if olderKey == nil || *olderKey != "jörg@example.test" || newerKey != nil {
-		t.Fatalf("keys: older = %v, newer = %v", olderKey, newerKey)
+	for id, want := range map[string]string{older: "JÖRG@example.test", newer: "jörg@example.test"} {
+		var got string
+		if err := db.Raw.QueryRow(db.Rebind(`SELECT email FROM users WHERE id = ?`), id).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Fatalf("email of %s = %q, want %q", id, got, want)
+		}
 	}
 }
 

@@ -5,7 +5,6 @@ package user
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -60,7 +59,7 @@ func (s *Service) CreateExternalSession(ctx context.Context, userID vo.Id, userA
 // after those checks leaves the recovered account's address alone. Returns the
 // rows affected.
 func (s *Service) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email string, generation int64) (int64, error) {
-	encrypted, err := s.encode.Encode(strings.TrimSpace(email))
+	encrypted, err := s.encode.Encode(model.NormalizeEmail(email))
 	if err != nil {
 		return 0, err
 	}

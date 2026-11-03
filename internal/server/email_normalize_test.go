@@ -20,7 +20,7 @@ import (
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
-const emailKeyPassword = "correct-horse-battery"
+const emailPassword = "correct-horse-battery"
 
 type sentMail struct {
 	mu   sync.Mutex
@@ -42,14 +42,14 @@ func (m *sentMail) take() []mailer.Message {
 	return out
 }
 
-type emailKeyHarness struct {
+type emailHarness struct {
 	t    *testing.T
 	db   *dbtest.DB
 	ts   *httptest.Server
 	mail *sentMail
 }
 
-func newEmailKeyHarness(t *testing.T) emailKeyHarness {
+func newEmailHarness(t *testing.T) emailHarness {
 	t.Helper()
 	db := dbtest.New(t)
 	mail := &sentMail{}
@@ -60,10 +60,10 @@ func newEmailKeyHarness(t *testing.T) emailKeyHarness {
 		RateLimitWindow:   15 * time.Minute,
 	}, db.Raw, server.Seams{Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar), Mailer: mail}))
 	t.Cleanup(ts.Close)
-	return emailKeyHarness{t: t, db: db, ts: ts, mail: mail}
+	return emailHarness{t: t, db: db, ts: ts, mail: mail}
 }
 
-func (h emailKeyHarness) post(path string, body map[string]string) (int, string) {
+func (h emailHarness) post(path string, body map[string]string) (int, string) {
 	h.t.Helper()
 	raw, err := json.Marshal(body)
 	if err != nil {
@@ -81,25 +81,37 @@ func (h emailKeyHarness) post(path string, body map[string]string) (int, string)
 	return resp.StatusCode, string(out)
 }
 
-func (h emailKeyHarness) register(email string) (int, string) {
+func (h emailHarness) register(email string) (int, string) {
 	h.t.Helper()
-	return h.post("/api/v1/user/register-user", map[string]string{"email": email, "password": emailKeyPassword, "name": "Owner"})
+	return h.post("/api/v1/user/register-user", map[string]string{"email": email, "password": emailPassword, "name": "Owner"})
 }
 
-func (h emailKeyHarness) mustRegister(email string) {
+func (h emailHarness) mustRegister(email string) {
 	h.t.Helper()
 	if got, body := h.register(email); got != http.StatusOK {
 		h.t.Fatalf("register %s = %d: %s", email, got, body)
 	}
 }
 
-func (h emailKeyHarness) login(email, password string) int {
+func (h emailHarness) login(email, password string) int {
 	h.t.Helper()
 	got, _ := h.post("/api/v1/user/login-user", map[string]string{"username": email, "password": password})
 	return got
 }
 
 var resetCode = regexp.MustCompile(`\b\d{6}\b`)
+
+func TestRegister_StoresTheNormalizedAddress(t *testing.T) {
+	h := newEmailHarness(t)
+	h.mustRegister("  JÖRG@Example.TEST ")
+	var stored string
+	if err := h.db.Raw.QueryRow(`SELECT email FROM users`).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored != "jörg@example.test" {
+		t.Fatalf("stored %q", stored)
+	}
+}
 
 func TestRegister_RefusesAnAddressDifferingOnlyInNonASCIICase(t *testing.T) {
 	cases := []struct{ first, second string }{
@@ -110,7 +122,7 @@ func TestRegister_RefusesAnAddressDifferingOnlyInNonASCIICase(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.first+"/"+c.second, func(t *testing.T) {
-			h := newEmailKeyHarness(t)
+			h := newEmailHarness(t)
 			h.mustRegister(c.first)
 			if got, _ := h.register(c.second); got != http.StatusBadRequest {
 				t.Fatalf("second spelling registered with %d, want 400", got)
@@ -120,11 +132,11 @@ func TestRegister_RefusesAnAddressDifferingOnlyInNonASCIICase(t *testing.T) {
 }
 
 func TestPasswordReset_WorksForAnAddressWithUppercaseNonASCII(t *testing.T) {
-	const stored = "JÖRG@example.test"
-	for _, typed := range []string{stored, "jörg@example.test", "  Jörg@EXAMPLE.test "} {
+	const registered, stored = "JÖRG@example.test", "jörg@example.test"
+	for _, typed := range []string{registered, stored, "  Jörg@EXAMPLE.test "} {
 		t.Run(typed, func(t *testing.T) {
-			h := newEmailKeyHarness(t)
-			h.mustRegister(stored)
+			h := newEmailHarness(t)
+			h.mustRegister(registered)
 			if got, body := h.post("/api/v1/user/remind-password", map[string]string{"username": typed}); got != http.StatusOK {
 				t.Fatalf("remind = %d: %s", got, body)
 			}
@@ -141,7 +153,7 @@ func TestPasswordReset_WorksForAnAddressWithUppercaseNonASCII(t *testing.T) {
 			}); got != http.StatusOK {
 				t.Fatalf("reset = %d: %s", got, body)
 			}
-			if got := h.login(stored, newPassword); got != http.StatusOK {
+			if got := h.login(registered, newPassword); got != http.StatusOK {
 				t.Fatalf("login with the new password = %d", got)
 			}
 		})
@@ -157,7 +169,7 @@ func TestPasswordReset_ALookAlikeAddressNeverReachesTheAccount(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.lookAlike, func(t *testing.T) {
-			h := newEmailKeyHarness(t)
+			h := newEmailHarness(t)
 			h.mustRegister(c.owner)
 			if got, _ := h.post("/api/v1/user/remind-password", map[string]string{"username": c.lookAlike}); got != http.StatusOK {
 				t.Fatalf("remind = %d", got)
@@ -165,7 +177,7 @@ func TestPasswordReset_ALookAlikeAddressNeverReachesTheAccount(t *testing.T) {
 			if msgs := h.mail.take(); len(msgs) != 0 {
 				t.Fatalf("a code went to %q", msgs[0].To)
 			}
-			if got := h.login(c.lookAlike, emailKeyPassword); got != http.StatusUnauthorized {
+			if got := h.login(c.lookAlike, emailPassword); got != http.StatusUnauthorized {
 				t.Fatalf("login through the look-alike = %d, want 401", got)
 			}
 		})
@@ -173,9 +185,9 @@ func TestPasswordReset_ALookAlikeAddressNeverReachesTheAccount(t *testing.T) {
 }
 
 func TestConfirmEmailChange_CaseOfTheNewAddressStillResolvesTheAccount(t *testing.T) {
-	h := newEmailKeyHarness(t)
+	h := newEmailHarness(t)
 	h.mustRegister("old@example.test")
-	got, body := h.post("/api/v1/user/login-user", map[string]string{"username": "old@example.test", "password": emailKeyPassword})
+	got, body := h.post("/api/v1/user/login-user", map[string]string{"username": "old@example.test", "password": emailPassword})
 	if got != http.StatusOK {
 		t.Fatalf("login = %d: %s", got, body)
 	}
@@ -201,8 +213,8 @@ func TestConfirmEmailChange_CaseOfTheNewAddressStillResolvesTheAccount(t *testin
 		resp.Body.Close()
 		return resp.StatusCode
 	}
-	const moved = "NEW-Ö@example.test"
-	if got := authed("/api/v1/user/request-email-change", map[string]string{"newEmail": moved, "password": emailKeyPassword}); got != http.StatusOK {
+	const moved = "new-ö@example.test"
+	if got := authed("/api/v1/user/request-email-change", map[string]string{"newEmail": "NEW-Ö@example.test", "password": emailPassword}); got != http.StatusOK {
 		t.Fatalf("request change = %d", got)
 	}
 	var code string
@@ -217,31 +229,31 @@ func TestConfirmEmailChange_CaseOfTheNewAddressStillResolvesTheAccount(t *testin
 	if got := authed("/api/v1/user/confirm-email-change", map[string]string{"code": code}); got != http.StatusOK {
 		t.Fatalf("confirm change = %d", got)
 	}
-	if got := h.login("new-ö@EXAMPLE.test", emailKeyPassword); got != http.StatusOK {
+	if got := h.login("new-ö@EXAMPLE.test", emailPassword); got != http.StatusOK {
 		t.Fatalf("login after the change, other case = %d", got)
 	}
 	if got, _ := h.register("new-ö@example.test"); got != http.StatusBadRequest {
 		t.Fatalf("registering the moved-to address = %d, want 400", got)
 	}
-	if got := h.login("old@example.test", emailKeyPassword); got != http.StatusUnauthorized {
+	if got := h.login("old@example.test", emailPassword); got != http.StatusUnauthorized {
 		t.Fatalf("login with the old address = %d, want 401", got)
 	}
 	h.mustRegister("old@example.test")
 }
 
-// A pair registered before the key existed: the older account holds the key and the
-// newer one keeps NULL, the state the migration leaves it in.
-func (h emailKeyHarness) seedCollidingPair(holder, other string) {
+// A pair registered before addresses were normalized: one holds the normalized form and
+// the other keeps its spelling, the state the migration leaves them in.
+func (h emailHarness) seedCollidingPair(holder, other string) {
 	h.t.Helper()
 	h.mustRegister(holder)
 	const placeholder = "placeholder@example.test"
 	h.mustRegister(placeholder)
-	if _, err := h.db.Raw.Exec(h.db.Rebind(`UPDATE users SET email = ?, email_key = NULL WHERE email = ?`), other, placeholder); err != nil {
+	if _, err := h.db.Raw.Exec(h.db.Rebind(`UPDATE users SET email = ? WHERE email = ?`), other, placeholder); err != nil {
 		h.t.Fatal(err)
 	}
 }
 
-func (h emailKeyHarness) signedInID(email, password string) (id, token string) {
+func (h emailHarness) signedInID(email, password string) (id, token string) {
 	h.t.Helper()
 	got, body := h.post("/api/v1/user/login-user", map[string]string{"username": email, "password": password})
 	if got != http.StatusOK {
@@ -261,15 +273,15 @@ func (h emailKeyHarness) signedInID(email, password string) (id, token string) {
 
 func TestCollidingAccounts_EachSpellingKeepsItsOwnAccount(t *testing.T) {
 	const holder, other = "jörg@example.test", "JÖRG@example.test"
-	h := newEmailKeyHarness(t)
+	h := newEmailHarness(t)
 	h.seedCollidingPair(holder, other)
 
-	holderID, _ := h.signedInID(holder, emailKeyPassword)
-	otherID, otherToken := h.signedInID(other, emailKeyPassword)
+	holderID, _ := h.signedInID(holder, emailPassword)
+	otherID, otherToken := h.signedInID(other, emailPassword)
 	if holderID == otherID {
 		t.Fatal("both spellings resolved to one account")
 	}
-	if variantID, _ := h.signedInID("JöRG@example.test", emailKeyPassword); variantID != holderID {
+	if variantID, _ := h.signedInID("JöRG@example.test", emailPassword); variantID != holderID {
 		t.Fatal("another spelling must resolve to the account holding the key")
 	}
 
@@ -288,7 +300,7 @@ func TestCollidingAccounts_EachSpellingKeepsItsOwnAccount(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("saving the colliding account = %d", resp.StatusCode)
 	}
-	if again, _ := h.signedInID(other, emailKeyPassword); again != otherID {
+	if again, _ := h.signedInID(other, emailPassword); again != otherID {
 		t.Fatal("the colliding account lost its spelling after a save")
 	}
 
@@ -308,7 +320,7 @@ func TestCollidingAccounts_EachSpellingKeepsItsOwnAccount(t *testing.T) {
 
 func TestCollidingAccounts_AResetChangesOnlyTheAccountThatProvedItsAddress(t *testing.T) {
 	const holder, other, newPassword = "jörg@example.test", "JÖRG@example.test", "a-brand-new-password"
-	h := newEmailKeyHarness(t)
+	h := newEmailHarness(t)
 	h.seedCollidingPair(holder, other)
 	if got, _ := h.post("/api/v1/user/remind-password", map[string]string{"username": other}); got != http.StatusOK {
 		t.Fatalf("remind = %d", got)
@@ -325,7 +337,7 @@ func TestCollidingAccounts_AResetChangesOnlyTheAccountThatProvedItsAddress(t *te
 	if got := h.login(other, newPassword); got != http.StatusOK {
 		t.Fatalf("login to the reset account = %d", got)
 	}
-	if got := h.login(holder, emailKeyPassword); got != http.StatusOK {
+	if got := h.login(holder, emailPassword); got != http.StatusOK {
 		t.Fatalf("the other account's password moved: login = %d", got)
 	}
 }
