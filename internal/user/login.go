@@ -24,9 +24,10 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if err := s.allowEmailAttempt(ctx, RateScopeLogin, limitKey); err != nil {
 		return nil, err
 	}
-	// The same address the counters use: a lookup that disagreed with them would
-	// count a padded attempt on a real address as an unknown one.
-	u, err := s.repo.GetByEmail(ctx, limitKey)
+	// Trimmed like the counters' key, or a padded attempt on a real address would
+	// count as an unknown one. Not lowered: SQLite's lower() folds ASCII only, so a
+	// Go-lowered address would miss a row stored with uppercase non-ASCII letters.
+	u, err := s.repo.GetByEmail(ctx, strings.TrimSpace(req.Username))
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			if lerr := s.countUnknownEmailAttempt(ctx, RateScopeLogin, limitKey); lerr != nil {

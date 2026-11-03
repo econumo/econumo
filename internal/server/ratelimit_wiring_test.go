@@ -421,3 +421,18 @@ func TestEmailLimits_APaddedLoginCannotRevealWhichAccountsExist(t *testing.T) {
 		}
 	}
 }
+
+// SQLite's lower() folds ASCII only, so the lookup must carry the address as typed
+// for both sides of `lower(email) = lower(?)` to fold it the same way.
+func TestLogin_AnAddressWithUppercaseNonASCIICanStillSignIn(t *testing.T) {
+	const email, password = "JÖRG@example.test", "correct-horse-battery"
+	h := newLimitHarness(t, nil)
+	if got := h.post("/api/v1/user/register-user", ownerIP, "",
+		fmt.Sprintf(`{"email":%q,"password":%q,"name":"Jorg"}`, email, password)); got != http.StatusOK {
+		t.Fatalf("register = %d", got)
+	}
+	if got := h.post("/api/v1/user/login-user", "198.51.100.9", "",
+		fmt.Sprintf(`{"username":%q,"password":%q}`, email, password)); got != http.StatusOK {
+		t.Fatalf("login = %d, want 200", got)
+	}
+}
