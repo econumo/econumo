@@ -134,8 +134,8 @@ func identicalEmailsError(a, b vo.Id) error {
 // its spelling, still signs in by it, and is logged for the operator to move with
 // user:change-email: the data cannot be merged, and failing the boot would take the
 // instance down. Addresses already normalized therefore keep their place, then the
-// oldest account wins. Rows without an @ are still encrypted (base64 has none) and are
-// left for data:remove-salt: lowercasing ciphertext would destroy it. Idempotent.
+// oldest account wins. Rows still encrypted are left for data:remove-salt: lowercasing
+// ciphertext would destroy it. Idempotent.
 func (s *Service) NormalizeEmails(ctx context.Context) (int, error) {
 	var changed int
 	var collided []vo.Id
@@ -146,7 +146,7 @@ func (s *Service) NormalizeEmails(ctx context.Context) (int, error) {
 		}
 		for _, row := range rows {
 			normalized := model.NormalizeEmail(row.Email)
-			if normalized == row.Email || !strings.Contains(row.Email, "@") {
+			if normalized == row.Email || auth.LooksEncrypted(row.Email) {
 				continue
 			}
 			_, herr := s.repo.HolderOfExactEmail(ctx, normalized)

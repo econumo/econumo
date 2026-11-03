@@ -421,6 +421,10 @@ func TestAdminChangeEmail_MovesACollidingAccountOffTheAddress(t *testing.T) {
 	if err := svc.AdminChangeEmail(ctx, "JÖRG@example.test", "JöRG@example.test"); err == nil {
 		t.Fatal("moving onto the address the other account holds must be refused")
 	}
+	var validation *errs.ValidationError
+	if err := svc.AdminChangeEmail(ctx, "JÖRG@example.test", "JÖRG@example.test"); !errors.As(err, &validation) {
+		t.Fatalf("a change to its own spelling normalizes onto the other account: %v", err)
+	}
 	if err := svc.AdminChangeEmail(ctx, "JÖRG@example.test", "moved@example.test"); err != nil {
 		t.Fatalf("move: %v", err)
 	}

@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"database/sql"
+	"github.com/econumo/econumo/internal/infra/auth"
 	"path/filepath"
 	"testing"
 
@@ -604,7 +605,10 @@ func TestEmailNormalizingUpgrade_CollidingAccountsDoNotStopTheBoot(t *testing.T)
 	if err := migrate.Run(ctx, c.db, released, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("released schema: %v", err)
 	}
-	const ciphertext = "QUJDREVGR0hJSktMTU5PUA+/AbC="
+	ciphertext, err := auth.NewEncodeService("0123456789abcdef").Encode("Encrypted@Example.test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	type row struct{ id, email, createdAt, want string }
 	rows := []row{
 		{vo.NewId().String(), "JÖRG@example.test", "2026-01-01 00:00:00", "JÖRG@example.test"},

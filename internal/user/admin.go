@@ -62,7 +62,7 @@ func (s *Service) mutateByEmail(ctx context.Context, email string, fn func(ctx c
 // current email. The avatar is left unchanged.
 func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail string) error {
 	_, err := s.mutateByEmail(ctx, oldEmail, func(ctx context.Context, u *model.User) error {
-		holder, gerr := s.repo.GetByEmail(ctx, newEmail)
+		holder, gerr := s.repo.GetByEmail(ctx, model.NormalizeEmail(newEmail))
 		switch {
 		case gerr == nil && holder.ID != u.ID:
 			return &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}

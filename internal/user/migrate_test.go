@@ -249,7 +249,10 @@ func TestNormalizeEmails(t *testing.T) {
 			t.Fatalf("seed %s: %v", email, err)
 		}
 	}
-	const ciphertext = "QUJDREVGR0hJSktMTU5PUA+/AbC="
+	ciphertext, err := auth.NewEncodeService(testSalt).Encode("Encrypted@Example.test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := map[string]string{}
 	add := func(id, email, createdAt, after string) {
 		t.Helper()
@@ -262,8 +265,10 @@ func TestNormalizeEmails(t *testing.T) {
 	add("01a00000-0000-7000-8000-0000000000a4", "ÜÖ@example.test", "2026-01-01 00:00:00", "üö@example.test")
 	add("01a00000-0000-7000-8000-0000000000a5", " Plain@Example.test", "2026-03-01 00:00:00", "plain@example.test")
 	add("01a00000-0000-7000-8000-0000000000a6", ciphertext, "2026-03-01 00:00:00", ciphertext)
+	// user:create does not check the format, so plaintext without an @ can exist.
+	add("01a00000-0000-7000-8000-0000000000a7", "Admin", "2026-03-01 00:00:00", "admin")
 
-	for run, wantChanged := range []int{2, 0} {
+	for run, wantChanged := range []int{3, 0} {
 		n, err := svc.NormalizeEmails(ctx)
 		if err != nil {
 			t.Fatalf("run %d: %v", run, err)

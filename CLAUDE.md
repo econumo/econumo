@@ -1192,8 +1192,8 @@ their spelling, each logged once at WARN by user id, because their data cannot b
 the boot would take the instance down. Such an account signs in by its exact spelling (lookups try it
 before the normalized form), a save leaves its spelling alone, and it still shares rate-limit counters
 with the other account until the operator moves it with `user:change-email`. Idempotent, and rerunning
-it by hand normalizes such an account once the other has moved away. Rows without an `@` are still
-encrypted and are skipped, because lowercasing ciphertext would destroy it; `data:remove-salt` stores
+it by hand normalizes such an account once the other has moved away. Rows with the shape of ciphertext
+(`auth.LooksEncrypted`) are skipped, because lowercasing ciphertext would destroy it; `data:remove-salt` stores
 what it decrypts normalized by the same rule, and refuses, naming both user ids, when two accounts
 decrypt to byte-identical addresses.
 
