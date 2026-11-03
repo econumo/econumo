@@ -264,10 +264,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Set up ship
-        # v0.2.1. Pinned, as is the binary it installs: the next step hands it the R2 keys.
-        uses: dmtrkzntsv/ship@03650abe336054342cbd8dcc43274cf8fc180c10
-        with:
-          version: v0.2.1
+        uses: dmtrkzntsv/ship@v0
 
       - name: Publish to R2
         env:
