@@ -304,13 +304,23 @@ jobs:
           node-version: lts/*
 
       # Locked with integrity hashes and no install scripts: this job holds a
-      # contents-write token.
+      # contents-write token. From the workflow's own commit, because the tag may
+      # come from a release branch cut before this lockfile existed.
+      - name: Checkout the release notes lockfile
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: .release-tools
+          sparse-checkout: |
+            .github/release-tools
+          sparse-checkout-cone-mode: false
+
       - name: Install the release notes tool
-        working-directory: .github/release-tools
+        working-directory: .release-tools/.github/release-tools
         run: npm ci --ignore-scripts
 
       - name: Generate release notes and create release
-        run: .github/release-tools/node_modules/.bin/changelogithub
+        run: .release-tools/.github/release-tools/node_modules/.bin/changelogithub
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
