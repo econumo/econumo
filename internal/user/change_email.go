@@ -73,23 +73,28 @@ func (s *Service) ConfirmEmailChange(ctx context.Context, userID, currentTokenID
 	if err := s.allowAttempt(ctx, RateScopeConfirmEmailChange, key); err != nil {
 		return empty, err
 	}
+	attempt, err := s.reserveAttempt(RateScopeConfirmEmailChange, key)
+	if err != nil {
+		return empty, err
+	}
+	defer attempt.giveBack()
 	invalid := &errs.ValidationError{Msg: "The confirmation code is not valid.", MsgCode: errs.CodeUserVerificationCodeInvalid}
 
 	cr, err := s.emailChangeRequests.GetByUser(ctx, userID)
 	if err != nil {
 		if isNotFound(err) {
-			s.failAttempt(RateScopeConfirmEmailChange, key)
+			attempt.keep()
 			return empty, invalid
 		}
 		return empty, err
 	}
 	if HashResetCode(strings.TrimSpace(req.Code)) != cr.Code {
-		s.failAttempt(RateScopeConfirmEmailChange, key)
+		attempt.keep()
 		return empty, invalid
 	}
 	now := s.clock.Now()
 	if cr.IsExpired(now) {
-		s.failAttempt(RateScopeConfirmEmailChange, key)
+		attempt.keep()
 		return empty, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
 	}
 	encrypted, eerr := s.encode.Encode(cr.NewEmail)
@@ -144,6 +149,7 @@ func (s *Service) ConfirmEmailChange(ctx context.Context, userID, currentTokenID
 		return empty, err
 	}
 	s.clearAttempt(RateScopeConfirmEmailChange, key)
+	attempt.keep()
 	if err := s.revokeSessions(ctx, userID, currentTokenID, now); err != nil {
 		return empty, err
 	}

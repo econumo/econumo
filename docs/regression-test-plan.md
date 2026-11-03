@@ -690,6 +690,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       rule preview from one IP stay past the cap.
 - [ ] Five wrong passwords for an email from one IP lock only that IP: the owner signs in from
       another IP at once. Past the ceiling (50 failures across IPs) that email is 429 from any IP.
+- [ ] Wrong guesses sent all at once count the same as one by one: with a 64-request burst of
+      wrong passwords for an email from one IP, only 5 are answered as invalid credentials and the
+      rest are 429, and the owner still signs in from another IP.
 - [ ] With `ECONUMO_CLIENT_IP_HEADER` set for the proxy, two clients through it are limited
       separately (unset, they count as one IP). With `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` also set, a
       direct request with a forged header is limited by its real address.

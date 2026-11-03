@@ -52,12 +52,21 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 	found, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
-			s.failUnknownEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
+			if lerr := s.countUnknownEmailAttempt(ctx, RateScopeConfirmEmail, lowered); lerr != nil {
+				return nil, lerr
+			}
 			return nil, invalid
 		}
 		return nil, err
 	}
 	userID := found.ID
+	// Counted before the row lock: guesses queueing on it would otherwise all be
+	// tested before the first failure was recorded.
+	attempt, err := s.reserveEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
+	if err != nil {
+		return nil, err
+	}
+	defer attempt.giveBack()
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		// The row lock first, then the read the whole-aggregate Save is built
@@ -69,7 +78,7 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 		u, gerr := s.repo.GetByID(ctx, userID)
 		if gerr != nil {
 			if isNotFound(gerr) {
-				s.failEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
+				attempt.keep()
 				return invalid
 			}
 			return gerr
@@ -77,17 +86,17 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 		ev, verr := s.emailVerifications.GetByUser(ctx, userID)
 		if verr != nil {
 			if isNotFound(verr) {
-				s.failEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
+				attempt.keep()
 				return invalid
 			}
 			return verr
 		}
 		if HashResetCode(strings.TrimSpace(req.Code)) != ev.Code {
-			s.failEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
+			attempt.keep()
 			return invalid
 		}
 		if ev.IsExpired(s.clock.Now()) {
-			s.failEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
+			attempt.keep()
 			return &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
 		}
 		// The code is this confirmation's authority, so consuming it is what
@@ -108,6 +117,7 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 		return nil, err
 	}
 	s.clearEmailAttempt(ctx, RateScopeConfirmEmail, lowered)
+	attempt.keep()
 	return &model.ConfirmEmailResult{}, nil
 }
 

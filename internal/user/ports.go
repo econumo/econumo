@@ -54,6 +54,11 @@ type AttemptLimiter interface {
 	Allow(ctx context.Context, scope, key string) error
 	// Fail records a failed attempt.
 	Fail(scope, key string)
+	// Reserve is Allow and Fail in one step, without the IP cap, for guesses that
+	// must see each other when they arrive together.
+	Reserve(scope, key string) error
+	// Release gives back an attempt Reserve counted that was not a failure.
+	Release(scope, key string)
 	// Clear wipes the key's failure counter after a successful attempt.
 	Clear(scope, key string)
 	// Mark records an event timestamp for the key with no cap check, for scopes
@@ -80,7 +85,7 @@ const (
 	RateScopeVerifySent = "verify-email-sent"
 
 	// EmailCeilingScopeSuffix names the per-address ceiling of an email-keyed
-	// scope (see allowEmailAttempt): RateScopeLogin+EmailCeilingScopeSuffix.
+	// scope (see reserveEmailAttempt): RateScopeLogin+EmailCeilingScopeSuffix.
 	EmailCeilingScopeSuffix = "-email-ceiling"
 	// UnknownEmailCeilingScopeSuffix is the same ceiling for addresses with no
 	// account, kept apart so invented ones cannot crowd out the real ones.

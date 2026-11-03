@@ -172,23 +172,30 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	u, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
-			s.failUnknownEmailAttempt(ctx, RateScopeReset, lowered)
+			if lerr := s.countUnknownEmailAttempt(ctx, RateScopeReset, lowered); lerr != nil {
+				return nil, lerr
+			}
 			return nil, &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		return nil, err
 	}
+	attempt, err := s.reserveEmailAttempt(ctx, RateScopeReset, lowered)
+	if err != nil {
+		return nil, err
+	}
+	defer attempt.giveBack()
 
 	hashedCode := HashResetCode(strings.TrimSpace(req.Code))
 	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, hashedCode)
 	if err != nil {
 		if isNotFound(err) {
-			s.failEmailAttempt(ctx, RateScopeReset, lowered)
+			attempt.keep()
 			return nil, &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		return nil, err
 	}
 	if pr.IsExpired(s.clock.Now()) {
-		s.failEmailAttempt(ctx, RateScopeReset, lowered)
+		attempt.keep()
 		return nil, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserResetCodeExpired}
 	}
 
@@ -259,5 +266,6 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		return nil, err
 	}
 	s.clearEmailAttempt(ctx, RateScopeReset, lowered)
+	attempt.keep()
 	return &model.ResetPasswordResult{}, nil
 }

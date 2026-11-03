@@ -443,3 +443,57 @@ func TestConcurrentAccess(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestReserve_ConcurrentAttemptsCannotOverrunTheLimit(t *testing.T) {
+	const limit = 5
+	l, _ := newLimiter(cfgLogin(limit))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	admitted := 0
+	for range limit * 20 {
+		wg.Go(func() {
+			if l.Reserve("login", "alice") == nil {
+				mu.Lock()
+				admitted++
+				mu.Unlock()
+			}
+		})
+	}
+	wg.Wait()
+	if admitted != limit {
+		t.Fatalf("admitted = %d, want %d", admitted, limit)
+	}
+	mustBlocked(t, l, "login", "alice")
+}
+
+func TestReserve_ReleaseGivesTheAttemptBack(t *testing.T) {
+	l, _ := newLimiter(cfgLogin(1))
+	if err := l.Reserve("login", "alice"); err != nil {
+		t.Fatalf("Reserve = %v", err)
+	}
+	if err := l.Reserve("login", "alice"); err == nil {
+		t.Fatal("second Reserve = nil, want 429")
+	}
+	l.Release("login", "alice")
+	mustAllowed(t, l, "login", "alice")
+	l.Release("login", "alice") // nothing left to give back
+	if err := l.Reserve("login", "alice"); err != nil {
+		t.Fatalf("Reserve after release = %v", err)
+	}
+}
+
+func TestReserve_SpendsNoIPBudgetAndNoUnconfiguredScope(t *testing.T) {
+	l, _ := newLimiter(ratelimit.Config{Limits: map[string]int{"login": 5}, IP: 1, Window: 15 * time.Minute})
+	for range 3 {
+		if err := l.Reserve("login", "alice"); err != nil {
+			t.Fatalf("Reserve = %v", err)
+		}
+		if err := l.Reserve("no-limit", "alice"); err != nil {
+			t.Fatalf("Reserve on a scope with no limit = %v", err)
+		}
+	}
+	mustAllowed(t, l, "login", "bob")
+	if _, ok := l.LastAttempt("no-limit", "alice"); ok {
+		t.Fatal("a scope with no limit recorded an attempt")
+	}
+}

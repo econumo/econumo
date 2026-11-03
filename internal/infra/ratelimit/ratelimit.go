@@ -142,6 +142,43 @@ func (l *Limiter) Fail(scope, key string) {
 	l.attempts[k] = append(prune(l.attempts[k], now, l.cfg.Window), now)
 }
 
+// Reserve checks the per-key limit and counts the attempt in one step. Allow then
+// Fail leaves a gap in which simultaneous attempts cannot see each other, so a
+// burst gets all its guesses tested however low the limit is; nothing else bounds
+// guesses from many IPs. It spends no IP budget: the caller has passed Allow.
+func (l *Limiter) Reserve(scope, key string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	limit := l.cfg.Limits[scope]
+	if limit <= 0 {
+		return nil
+	}
+	now := l.clock.Now()
+	k := attemptKey(scope, key)
+	hits := prune(l.attempts[k], now, l.cfg.Window)
+	if len(hits) >= limit {
+		l.store(k, hits)
+		return errs.NewTooManyRequestsRetryAfter(Message, retryAfterSeconds(hits, now, l.cfg.Window))
+	}
+	if _, exists := l.attempts[k]; !exists && len(l.attempts) >= l.cfg.MaxKeys {
+		l.evict(now)
+	}
+	l.attempts[k] = append(hits, now)
+	return nil
+}
+
+// Release gives back an attempt Reserve counted that turned out not to be a
+// failure. Attempts are timestamps, so dropping the newest is close enough to
+// dropping that one.
+func (l *Limiter) Release(scope, key string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	k := attemptKey(scope, key)
+	if hits := l.attempts[k]; len(hits) > 0 {
+		l.store(k, hits[:len(hits)-1])
+	}
+}
+
 // Mark records an event timestamp for the key WITHOUT any cap check, for
 // scopes used purely as a per-key clock (e.g. "when was a code last emailed").
 // Fail is not usable for that: it no-ops on a scope with no configured limit.

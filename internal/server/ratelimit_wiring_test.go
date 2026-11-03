@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -222,6 +224,140 @@ func TestEmailLimits_ACeilingDoesNotRevealWhichAccountsExist(t *testing.T) {
 		}
 		if got := reset("198.51.100.200"); got != http.StatusTooManyRequests {
 			t.Fatalf("%s: past the ceiling = %d, want 429", email, got)
+		}
+	}
+}
+
+// burst fires every request at once and counts those that were not refused with
+// a 429, each of which got its guess tested.
+func (h limitHarness) burst(path, token, body string, ips []string) int {
+	h.t.Helper()
+	var wg sync.WaitGroup
+	var admitted atomic.Int64
+	start := make(chan struct{})
+	for _, ip := range ips {
+		wg.Go(func() {
+			<-start
+			req, err := http.NewRequest(http.MethodPost, h.ts.URL+path, strings.NewReader(body))
+			if err != nil {
+				h.t.Error(err)
+				return
+			}
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-Forwarded-For", ip)
+			if token != "" {
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				h.t.Error(err)
+				return
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusTooManyRequests {
+				admitted.Add(1)
+			}
+		})
+	}
+	close(start)
+	wg.Wait()
+	return int(admitted.Load())
+}
+
+func manyIPs(n int) []string {
+	ips := make([]string, n)
+	for i := range ips {
+		ips[i] = fmt.Sprintf("198.51.%d.%d", 100+i/250, i%250+1)
+	}
+	return ips
+}
+
+func TestEmailLimits_ABurstAcrossIPsGetsNoMoreGuessesThanTheCeiling(t *testing.T) {
+	const victim = "victim@example.test"
+	cases := []struct {
+		name, path, body string
+		mutate           func(*config.Config)
+		ceiling          int
+	}{
+		{"login", "/api/v1/user/login-user", `{"username":"victim@example.test","password":"wrong"}`,
+			func(c *config.Config) { c.RateLimitLogin = 2 }, 20},
+		{"reset", "/api/v1/user/reset-password", `{"username":"victim@example.test","code":"000000","password":"irrelevant-pw"}`,
+			func(c *config.Config) { c.RateLimitReset = 2 }, 4},
+		{"confirm-email", "/api/v1/user/confirm-email", `{"username":"victim@example.test","code":"000000"}`,
+			func(c *config.Config) { c.RateLimitConfirmEmail = 2 }, 4},
+		// An address with no account hits the same limit at the same point.
+		{"reset, unknown address", "/api/v1/user/reset-password", `{"username":"nobody@example.test","code":"000000","password":"irrelevant-pw"}`,
+			func(c *config.Config) { c.RateLimitReset = 2 }, 4},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newLimitHarness(t, func(c *config.Config) {
+				c.RateLimitIP = 0
+				tc.mutate(c)
+			})
+			if got := h.post("/api/v1/user/register-user", ownerIP, "",
+				fmt.Sprintf(`{"email":%q,"password":"long-enough-password","name":"Victim"}`, victim)); got != http.StatusOK {
+				t.Fatalf("register = %d", got)
+			}
+			if got := h.burst(tc.path, "", tc.body, manyIPs(tc.ceiling*8)); got != tc.ceiling {
+				t.Fatalf("guesses admitted = %d, want the ceiling %d", got, tc.ceiling)
+			}
+		})
+	}
+}
+
+func TestConfirmEmailChange_ABurstAcrossIPsGetsNoMoreGuessesThanItsLimit(t *testing.T) {
+	const limit = 3
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.RateLimitIP = 0
+		c.RateLimitConfirmEmailChange = limit
+	})
+	if got := h.burst("/api/v1/user/confirm-email-change", h.rawToken, `{"code":"000000"}`, manyIPs(limit*8)); got != limit {
+		t.Fatalf("guesses admitted = %d, want the limit %d", got, limit)
+	}
+}
+
+func TestEmailLimits_ABurstFromOneIPCannotLockOutTheOwner(t *testing.T) {
+	const password = "correct-horse-battery"
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.RateLimitLogin = 2
+		c.RateLimitIP = 0
+	})
+	if got := h.post("/api/v1/user/register-user", ownerIP, "",
+		fmt.Sprintf(`{"email":"victim@example.test","password":%q,"name":"Victim"}`, password)); got != http.StatusOK {
+		t.Fatalf("register = %d", got)
+	}
+	ips := make([]string, 64)
+	for i := range ips {
+		ips[i] = strangerIP
+	}
+	if got := h.burst("/api/v1/user/login-user", "", `{"username":"victim@example.test","password":"wrong"}`, ips); got != 2 {
+		t.Fatalf("guesses admitted from one IP = %d, want its limit 2", got)
+	}
+	body := fmt.Sprintf(`{"username":"victim@example.test","password":%q}`, password)
+	if got := h.post("/api/v1/user/login-user", ownerIP, "", body); got != http.StatusOK {
+		t.Fatalf("owner from their own IP = %d, want 200", got)
+	}
+}
+
+// A correct password held at the email-verification gate is no failed guess, so
+// retrying it must not use up the attempt it reserved.
+func TestEmailLimits_AnAttemptThatIsNotAFailureGivesItsCountBack(t *testing.T) {
+	const password = "correct-horse-battery"
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.RateLimitLogin = 1
+		c.RateLimitVerifyEmail = 100
+		c.RateLimitIP = 0
+		c.EmailVerification = true
+	})
+	if got := h.post("/api/v1/user/register-user", ownerIP, "",
+		fmt.Sprintf(`{"email":"unverified@example.test","password":%q,"name":"Unverified"}`, password)); got != http.StatusOK {
+		t.Fatalf("register = %d", got)
+	}
+	body := fmt.Sprintf(`{"username":"unverified@example.test","password":%q}`, password)
+	for i := range 3 {
+		if got := h.post("/api/v1/user/login-user", ownerIP, "", body); got == http.StatusTooManyRequests || got == http.StatusOK {
+			t.Fatalf("login %d = %d, want the verification denial", i, got)
 		}
 	}
 }

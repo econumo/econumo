@@ -306,10 +306,75 @@ func (s *Service) allowAttempt(ctx context.Context, scope, key string) error {
 	return s.limiter.Allow(ctx, scope, key)
 }
 
+// reservedAttempt is a guess already counted before it was tested. Unless keep
+// says it stays counted, giveBack returns it, so that only real failures add up.
+type reservedAttempt struct {
+	release func()
+	kept    bool
+}
+
+func (a *reservedAttempt) keep() { a.kept = true }
+
+func (a *reservedAttempt) giveBack() {
+	if !a.kept {
+		a.release()
+	}
+}
+
+func (s *Service) reserveAttempt(scope, key string) (*reservedAttempt, error) {
+	if s.limiter == nil {
+		return &reservedAttempt{release: func() {}}, nil
+	}
+	if err := s.limiter.Reserve(scope, key); err != nil {
+		return nil, err
+	}
+	return &reservedAttempt{release: func() { s.limiter.Release(scope, key) }}, nil
+}
+
+// reserveEmailAttempt counts a guess at an account's credential before it is
+// tested, or refuses it, so a burst cannot get past the limits by arriving before
+// the first failures are recorded. It runs after the account lookup because only
+// real accounts may write the pinned ceiling. The IP's own counter goes first, so
+// a burst from one IP stops at its limit and cannot spend the ceiling that would
+// lock out the owner.
+func (s *Service) reserveEmailAttempt(ctx context.Context, scope, email string) (*reservedAttempt, error) {
+	return s.reserveEmailAttemptIn(ctx, scope, scope+EmailCeilingScopeSuffix, email)
+}
+
+// countUnknownEmailAttempt counts an address with no account in its own evictable
+// ceiling: it answers 429 at the same point as a real one, so the limit reveals
+// nothing, while a spray of invented addresses cannot grow the pinned ceiling.
+func (s *Service) countUnknownEmailAttempt(ctx context.Context, scope, email string) error {
+	attempt, err := s.reserveEmailAttemptIn(ctx, scope, scope+UnknownEmailCeilingScopeSuffix, email)
+	if err != nil {
+		return err
+	}
+	attempt.keep()
+	return nil
+}
+
+func (s *Service) reserveEmailAttemptIn(ctx context.Context, scope, ceilingScope, email string) (*reservedAttempt, error) {
+	perIP, err := s.reserveAttempt(scope, emailIPKey(ctx, email))
+	if err != nil {
+		return nil, err
+	}
+	ceiling, err := s.reserveAttempt(ceilingScope, email)
+	if err != nil {
+		perIP.giveBack()
+		return nil, err
+	}
+	return &reservedAttempt{release: func() {
+		perIP.giveBack()
+		ceiling.giveBack()
+	}}, nil
+}
+
 // allowEmailAttempt / failEmailAttempt / clearEmailAttempt count an attempt that
 // names someone's email address per address AND client IP, so a stranger who
 // knows the address locks out only their own IP, not its owner. The per-address
 // ceiling, counted across all IPs, is what still bounds guessing from many IPs.
+// allowEmailAttempt only reads those counters, so anything that tests a guess
+// must also take reserveEmailAttempt.
 func (s *Service) allowEmailAttempt(ctx context.Context, scope, email string) error {
 	// The ceilings first: they spend no IP budget, so retrying a locked address
 	// cannot use up what others behind the same IP share.
@@ -325,14 +390,6 @@ func (s *Service) allowEmailAttempt(ctx context.Context, scope, email string) er
 func (s *Service) failEmailAttempt(ctx context.Context, scope, email string) {
 	s.failAttempt(scope, emailIPKey(ctx, email))
 	s.failAttempt(scope+EmailCeilingScopeSuffix, email)
-}
-
-// failUnknownEmailAttempt counts an address with no account in its own evictable
-// ceiling: it answers 429 at the same point as a real one, so the limit reveals
-// nothing, while a spray of invented addresses cannot grow the pinned ceiling.
-func (s *Service) failUnknownEmailAttempt(ctx context.Context, scope, email string) {
-	s.failAttempt(scope, emailIPKey(ctx, email))
-	s.failAttempt(scope+UnknownEmailCeilingScopeSuffix, email)
 }
 
 func (s *Service) clearEmailAttempt(ctx context.Context, scope, email string) {

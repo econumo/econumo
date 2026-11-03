@@ -238,7 +238,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		Window: cfg.RateLimitWindow,
 		IP:     cfg.RateLimitIP,
 		// Guess counters a spray of invented keys must not evict. Their keys are real
-		// accounts only: user ids, and addresses via failUnknownEmailAttempt.
+		// accounts only: user ids, and addresses via countUnknownEmailAttempt.
 		Pinned: map[string]bool{
 			appuser.RateScopeLogin + appuser.EmailCeilingScopeSuffix:        true,
 			appuser.RateScopeReset + appuser.EmailCeilingScopeSuffix:        true,
