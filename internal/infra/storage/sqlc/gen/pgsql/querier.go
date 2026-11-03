@@ -15,6 +15,7 @@ type Querier interface {
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
+	ClearUserEmailKeys(ctx context.Context) error
 	// Single use: the DELETE is the read, so two concurrent exchanges of one code
 	// cannot both get a row.
 	ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
@@ -415,6 +416,7 @@ type Querier interface {
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	ListUsersSharingAnEmail(ctx context.Context) ([]string, error)
 	ListUsersWithoutEmailKey(ctx context.Context) ([]ListUsersWithoutEmailKeyRow, error)
 	// Locks the savings element a removal is about to drop, before its guard
 	// reads the element's data: a limit or comment writer that share-locked the

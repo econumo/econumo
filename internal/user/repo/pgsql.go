@@ -43,6 +43,14 @@ func (pgsqlQuerier) SetUserDecryptedEmail(ctx context.Context, db backend.DBTX, 
 	return pgsqlgen.New(db).SetUserDecryptedEmail(ctx, pgsqlgen.SetUserDecryptedEmailParams(p))
 }
 
+func (pgsqlQuerier) ClearUserEmailKeys(ctx context.Context, db backend.DBTX) error {
+	return pgsqlgen.New(db).ClearUserEmailKeys(ctx)
+}
+
+func (pgsqlQuerier) ListUsersSharingAnEmail(ctx context.Context, db backend.DBTX) ([]string, error) {
+	return pgsqlgen.New(db).ListUsersSharingAnEmail(ctx)
+}
+
 func (pgsqlQuerier) EmailKeyTaken(ctx context.Context, db backend.DBTX, key *string) (bool, error) {
 	return pgsqlgen.New(db).EmailKeyTaken(ctx, key)
 }

@@ -1190,7 +1190,9 @@ merged and failing the boot would take the instance down. A NULL-key account sig
 exact spelling, its saves leave the NULL alone (the upsert moves the key only when the address
 changes) and it still shares rate-limit counters with the key holder until the operator moves it
 with `user:change-email`; list them with `SELECT id FROM users WHERE email_key IS NULL`.
-Idempotent. `data:remove-salt` applies the same rule when decrypted addresses collide.
+Idempotent, and rerunning it by hand gives such an account the key once the holder has moved
+away. `data:remove-salt` rebuilds every key by the same rule when it decrypts anything, and
+refuses, naming both user ids, when two accounts decrypt to byte-identical addresses.
 
 `migration:copy-access-tokens` is step 2 of the three-step `access_tokens` repair
 (`20261031000010` creates `access_tokens_new` in the final shape, `20261031000011` runs

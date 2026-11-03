@@ -6,6 +6,7 @@ package user
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -28,8 +29,9 @@ import (
 // concurrent logins, resets and profile writes block behind it, so run it while
 // writes are quiet.
 //
-// Each decrypted row's email key is rebuilt from the plaintext with SeedEmailKeys, so
-// addresses that normalize alike follow its rule instead of failing the sweep.
+// Email keys are rebuilt from the plaintext with SeedEmailKeys, so addresses that
+// normalize alike follow its rule instead of failing the sweep. Addresses that are
+// byte-identical do fail it, naming both accounts: no lookup could tell them apart.
 //
 // It is idempotent and mixed-state safe: a row whose email is already plaintext
 // fails the salted Decode (bad base64 / HMAC mismatch) and is counted as
@@ -75,6 +77,21 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 				return serr
 			}
 			migrated++
+		}
+		if migrated == 0 {
+			return nil
+		}
+		sharing, lerr := s.repo.ListSharingAnEmail(ctx)
+		if lerr != nil {
+			return lerr
+		}
+		if len(sharing) > 0 {
+			return fmt.Errorf("users %v hold the same address: move one with user:change-email, then run this again", sharing)
+		}
+		// Every key is rebuilt, not only the decrypted rows': the boot step already
+		// keyed any plaintext row, which may be the newer of a colliding pair.
+		if cerr := s.repo.ClearEmailKeys(ctx); cerr != nil {
+			return cerr
 		}
 		_, serr := s.SeedEmailKeys(ctx)
 		return serr

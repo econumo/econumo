@@ -36,9 +36,16 @@ type Repository interface {
 	// ListWithoutEmailKey returns the users holding no email key, oldest first.
 	ListWithoutEmailKey(ctx context.Context) ([]EmailKeyCandidate, error)
 
-	// SetDecryptedEmail writes the plaintext address and clears the key, which
-	// SeedEmailKeys then fills, so decrypted addresses that collide cannot fail.
+	// SetDecryptedEmail writes only the address, leaving the key to ClearEmailKeys
+	// and SeedEmailKeys, so decrypted addresses that collide cannot fail mid-sweep.
 	SetDecryptedEmail(ctx context.Context, userID vo.Id, email string, now time.Time) error
+
+	// ClearEmailKeys empties the key of every user.
+	ClearEmailKeys(ctx context.Context) error
+
+	// ListSharingAnEmail returns the users whose stored address is byte-identical
+	// to another user's.
+	ListSharingAnEmail(ctx context.Context) ([]vo.Id, error)
 
 	// EmailKeyTaken reports whether some user holds the key.
 	EmailKeyTaken(ctx context.Context, key string) (bool, error)

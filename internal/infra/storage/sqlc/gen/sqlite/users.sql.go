@@ -22,6 +22,15 @@ func (q *Queries) BumpUserCredentialsGeneration(ctx context.Context, id string) 
 	return result.RowsAffected()
 }
 
+const clearUserEmailKeys = `-- name: ClearUserEmailKeys :exec
+UPDATE users SET email_key = NULL
+`
+
+func (q *Queries) ClearUserEmailKeys(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, clearUserEmailKeys)
+	return err
+}
+
 const emailKeyTaken = `-- name: EmailKeyTaken :one
 SELECT EXISTS(SELECT 1 FROM users WHERE email_key = ?1)
 `
@@ -237,6 +246,35 @@ func (q *Queries) ListUserIDs(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const listUsersSharingAnEmail = `-- name: ListUsersSharingAnEmail :many
+SELECT id FROM users
+WHERE email IN (SELECT email FROM users GROUP BY email HAVING COUNT(*) > 1)
+ORDER BY id
+`
+
+func (q *Queries) ListUsersSharingAnEmail(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersSharingAnEmail)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsersWithoutEmailKey = `-- name: ListUsersWithoutEmailKey :many
 SELECT id, email FROM users WHERE email_key IS NULL ORDER BY created_at, id
 `
@@ -285,7 +323,7 @@ func (q *Queries) LockUserRow(ctx context.Context, id string) error {
 }
 
 const setUserDecryptedEmail = `-- name: SetUserDecryptedEmail :exec
-UPDATE users SET email = ?1, email_key = NULL, updated_at = ?2 WHERE id = ?3
+UPDATE users SET email = ?1, updated_at = ?2 WHERE id = ?3
 `
 
 type SetUserDecryptedEmailParams struct {

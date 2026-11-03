@@ -15,6 +15,7 @@ type Querier interface {
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
+	ClearUserEmailKeys(ctx context.Context) error
 	// Single use: the DELETE is the read, so two concurrent exchanges of one code
 	// cannot both get a row.
 	ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
@@ -569,6 +570,7 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	ListUsersSharingAnEmail(ctx context.Context) ([]string, error)
 	ListUsersWithoutEmailKey(ctx context.Context) ([]ListUsersWithoutEmailKeyRow, error)
 	// Plain read: SQLite serializes writers, so there is no concurrent limit or
 	// comment for a lock to order against.

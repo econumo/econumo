@@ -64,6 +64,8 @@ type querier interface {
 	ExistsUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (bool, error)
 	ListUsersWithoutEmailKey(ctx context.Context, db backend.DBTX) ([]emailKeyRow, error)
 	SetUserDecryptedEmail(ctx context.Context, db backend.DBTX, p decryptedEmailParams) error
+	ClearUserEmailKeys(ctx context.Context, db backend.DBTX) error
+	ListUsersSharingAnEmail(ctx context.Context, db backend.DBTX) ([]string, error)
 	EmailKeyTaken(ctx context.Context, db backend.DBTX, key *string) (bool, error)
 	SetUserEmailKey(ctx context.Context, db backend.DBTX, p emailKeyParams) error
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
@@ -186,6 +188,26 @@ func (r *Repo) ListWithoutEmailKey(ctx context.Context) ([]user.EmailKeyCandidat
 
 func (r *Repo) SetDecryptedEmail(ctx context.Context, userID vo.Id, email string, now time.Time) error {
 	return r.q.SetUserDecryptedEmail(ctx, r.db(ctx), decryptedEmailParams{Email: email, UpdatedAt: now, ID: userID.String()})
+}
+
+func (r *Repo) ClearEmailKeys(ctx context.Context) error {
+	return r.q.ClearUserEmailKeys(ctx, r.db(ctx))
+}
+
+func (r *Repo) ListSharingAnEmail(ctx context.Context) ([]vo.Id, error) {
+	raw, err := r.q.ListUsersSharingAnEmail(ctx, r.db(ctx))
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]vo.Id, 0, len(raw))
+	for _, s := range raw {
+		id, perr := vo.ParseId(s)
+		if perr != nil {
+			return nil, perr
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func (r *Repo) EmailKeyTaken(ctx context.Context, key string) (bool, error) {

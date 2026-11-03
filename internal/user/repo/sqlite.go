@@ -34,6 +34,14 @@ func (sqliteQuerier) SetUserDecryptedEmail(ctx context.Context, db backend.DBTX,
 	return sqlitegen.New(db).SetUserDecryptedEmail(ctx, p)
 }
 
+func (sqliteQuerier) ClearUserEmailKeys(ctx context.Context, db backend.DBTX) error {
+	return sqlitegen.New(db).ClearUserEmailKeys(ctx)
+}
+
+func (sqliteQuerier) ListUsersSharingAnEmail(ctx context.Context, db backend.DBTX) ([]string, error) {
+	return sqlitegen.New(db).ListUsersSharingAnEmail(ctx)
+}
+
 func (sqliteQuerier) EmailKeyTaken(ctx context.Context, db backend.DBTX, key *string) (bool, error) {
 	n, err := sqlitegen.New(db).EmailKeyTaken(ctx, key)
 	return n != 0, err

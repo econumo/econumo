@@ -92,7 +92,15 @@ SELECT EXISTS(SELECT 1 FROM users WHERE email_key = sqlc.arg(email_key) OR (emai
 SELECT id, email FROM users WHERE email_key IS NULL ORDER BY created_at, id;
 
 -- name: SetUserDecryptedEmail :exec
-UPDATE users SET email = sqlc.arg(email), email_key = NULL, updated_at = sqlc.arg(updated_at) WHERE id = sqlc.arg(id);
+UPDATE users SET email = sqlc.arg(email), updated_at = sqlc.arg(updated_at) WHERE id = sqlc.arg(id);
+
+-- name: ClearUserEmailKeys :exec
+UPDATE users SET email_key = NULL;
+
+-- name: ListUsersSharingAnEmail :many
+SELECT id FROM users
+WHERE email IN (SELECT email FROM users GROUP BY email HAVING COUNT(*) > 1)
+ORDER BY id;
 
 -- name: EmailKeyTaken :one
 SELECT EXISTS(SELECT 1 FROM users WHERE email_key = sqlc.arg(email_key));

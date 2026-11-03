@@ -2,6 +2,7 @@ package user_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
@@ -318,5 +319,76 @@ func TestMigrateRemoveDataSalt_AddressesThatNormalizeAlikeDoNotStopTheSweep(t *t
 	}
 	if key != nil {
 		t.Fatalf("the newer account took the key %q", *key)
+	}
+}
+
+// A database can hold both kinds of row: the boot step already keyed the plaintext
+// one, yet the older encrypted account must still end up with the key.
+func TestMigrateRemoveDataSalt_TheOldestAccountTakesTheKeyAcrossMixedRows(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	older := fixture.New(t, db).WithCrypto(testSalt).User(fixture.User{Email: "JÖRG@example.test"})
+	newer := fixture.New(t, db).User(fixture.User{Email: "jörg@example.test"})
+	setUserCreatedAt(t, db, older, "2026-01-01 00:00:00")
+	setUserCreatedAt(t, db, newer, "2026-02-01 00:00:00")
+
+	if _, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt); err != nil {
+		t.Fatalf("MigrateRemoveDataSalt: %v", err)
+	}
+	var olderKey, newerKey *string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT email_key FROM users WHERE id = ?`), older).Scan(&olderKey); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT email_key FROM users WHERE id = ?`), newer).Scan(&newerKey); err != nil {
+		t.Fatal(err)
+	}
+	if olderKey == nil || *olderKey != "jörg@example.test" || newerKey != nil {
+		t.Fatalf("keys: older = %v, newer = %v", olderKey, newerKey)
+	}
+}
+
+// A user locked out of a salted database can register the same address again. Two
+// rows with identical bytes cannot be told apart by any lookup, so the operator
+// decides, and nothing is half-done until then.
+func TestMigrateRemoveDataSalt_RefusesTwoAccountsWithTheSameAddress(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	const email = "same@example.test"
+	encrypted := fixture.New(t, db).WithCrypto(testSalt).User(fixture.User{Email: email})
+	plain := fixture.New(t, db).User(fixture.User{Email: email})
+
+	_, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt)
+	if err == nil {
+		t.Fatal("the sweep must refuse two accounts with one address")
+	}
+	if !strings.Contains(err.Error(), encrypted) || !strings.Contains(err.Error(), plain) {
+		t.Fatalf("error %q must name both accounts", err)
+	}
+	var stored string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT email FROM users WHERE id = ?`), encrypted).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored == email {
+		t.Fatal("the refused sweep left a decrypted row behind")
+	}
+
+	if err := svc.AdminChangeEmail(ctx, email, "moved@example.test"); err != nil {
+		t.Fatalf("moving the plaintext account: %v", err)
+	}
+	if _, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt); err != nil {
+		t.Fatalf("rerun after the move: %v", err)
+	}
+	u, err := userrepo.NewRepo(db.Engine, db.TX).GetByEmail(ctx, email)
+	if err != nil || u.ID.String() != encrypted {
+		t.Fatalf("the address must resolve to the decrypted account: %v, %v", u, err)
+	}
+}
+
+func setUserCreatedAt(t *testing.T, db *dbtest.DB, id, at string) {
+	t.Helper()
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET created_at = '`+at+`' WHERE id = ?`), id); err != nil {
+		t.Fatal(err)
 	}
 }
