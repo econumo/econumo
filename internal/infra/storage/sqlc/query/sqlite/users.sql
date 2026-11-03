@@ -91,6 +91,9 @@ SELECT EXISTS(SELECT 1 FROM users WHERE email_key = sqlc.arg(email_key) OR (emai
 -- name: ListUsersWithoutEmailKey :many
 SELECT id, email FROM users WHERE email_key IS NULL ORDER BY created_at, id;
 
+-- name: SetUserDecryptedEmail :exec
+UPDATE users SET email = sqlc.arg(email), email_key = NULL, updated_at = sqlc.arg(updated_at) WHERE id = sqlc.arg(id);
+
 -- name: EmailKeyTaken :one
 SELECT EXISTS(SELECT 1 FROM users WHERE email_key = sqlc.arg(email_key));
 

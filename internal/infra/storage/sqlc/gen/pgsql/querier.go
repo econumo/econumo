@@ -472,6 +472,7 @@ type Querier interface {
 	// comment: dropping the element (flag off or member removed) deletes both.
 	SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (bool, error)
 	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
+	SetUserDecryptedEmail(ctx context.Context, arg SetUserDecryptedEmailParams) error
 	SetUserEmailKey(ctx context.Context, arg SetUserEmailKeyParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id

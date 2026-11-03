@@ -284,6 +284,21 @@ func (q *Queries) LockUserRow(ctx context.Context, id string) error {
 	return err
 }
 
+const setUserDecryptedEmail = `-- name: SetUserDecryptedEmail :exec
+UPDATE users SET email = ?1, email_key = NULL, updated_at = ?2 WHERE id = ?3
+`
+
+type SetUserDecryptedEmailParams struct {
+	Email     string
+	UpdatedAt time.Time
+	ID        string
+}
+
+func (q *Queries) SetUserDecryptedEmail(ctx context.Context, arg SetUserDecryptedEmailParams) error {
+	_, err := q.db.ExecContext(ctx, setUserDecryptedEmail, arg.Email, arg.UpdatedAt, arg.ID)
+	return err
+}
+
 const setUserEmailKey = `-- name: SetUserEmailKey :exec
 UPDATE users SET email_key = ?1 WHERE id = ?2
 `

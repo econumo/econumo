@@ -44,17 +44,18 @@ type (
 		// from the generated row types are positional.
 		CredentialsGeneration int64
 	}
-	optionRow           = sqlitegen.UsersOption
-	userParams          = sqlitegen.UpsertUserParams
-	optionParams        = sqlitegen.UpsertUserOptionParams
-	languageParams      = sqlitegen.UpdateUserLanguageParams
-	timezoneParams      = sqlitegen.UpdateUserTimezoneParams
-	passwordIfGenParams = sqlitegen.UpdateUserPasswordIfGenerationParams
-	emailIfGenParams    = sqlitegen.UpdateUserEmailIfPasswordlessAndGenerationParams
-	emailGenParams      = sqlitegen.UpdateUserEmailIfGenerationParams
-	emailLookupParams   = sqlitegen.GetUserByEmailParams
-	emailKeyRow         = sqlitegen.ListUsersWithoutEmailKeyRow
-	emailKeyParams      = sqlitegen.SetUserEmailKeyParams
+	optionRow            = sqlitegen.UsersOption
+	userParams           = sqlitegen.UpsertUserParams
+	optionParams         = sqlitegen.UpsertUserOptionParams
+	languageParams       = sqlitegen.UpdateUserLanguageParams
+	timezoneParams       = sqlitegen.UpdateUserTimezoneParams
+	passwordIfGenParams  = sqlitegen.UpdateUserPasswordIfGenerationParams
+	emailIfGenParams     = sqlitegen.UpdateUserEmailIfPasswordlessAndGenerationParams
+	emailGenParams       = sqlitegen.UpdateUserEmailIfGenerationParams
+	emailLookupParams    = sqlitegen.GetUserByEmailParams
+	emailKeyRow          = sqlitegen.ListUsersWithoutEmailKeyRow
+	emailKeyParams       = sqlitegen.SetUserEmailKeyParams
+	decryptedEmailParams = sqlitegen.SetUserDecryptedEmailParams
 )
 
 type querier interface {
@@ -62,6 +63,7 @@ type querier interface {
 	GetUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (userRow, error)
 	ExistsUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (bool, error)
 	ListUsersWithoutEmailKey(ctx context.Context, db backend.DBTX) ([]emailKeyRow, error)
+	SetUserDecryptedEmail(ctx context.Context, db backend.DBTX, p decryptedEmailParams) error
 	EmailKeyTaken(ctx context.Context, db backend.DBTX, key *string) (bool, error)
 	SetUserEmailKey(ctx context.Context, db backend.DBTX, p emailKeyParams) error
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
@@ -180,6 +182,10 @@ func (r *Repo) ListWithoutEmailKey(ctx context.Context) ([]user.EmailKeyCandidat
 		out = append(out, user.EmailKeyCandidate{ID: id, Email: row.Email})
 	}
 	return out, nil
+}
+
+func (r *Repo) SetDecryptedEmail(ctx context.Context, userID vo.Id, email string, now time.Time) error {
+	return r.q.SetUserDecryptedEmail(ctx, r.db(ctx), decryptedEmailParams{Email: email, UpdatedAt: now, ID: userID.String()})
 }
 
 func (r *Repo) EmailKeyTaken(ctx context.Context, key string) (bool, error) {

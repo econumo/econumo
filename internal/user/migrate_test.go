@@ -280,3 +280,43 @@ func TestSeedEmailKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestMigrateRemoveDataSalt_AddressesThatNormalizeAlikeDoNotStopTheSweep(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	f := fixture.New(t, db).WithCrypto(testSalt)
+	older := f.User(fixture.User{Email: "JÖRG@example.test"})
+	newer := f.User(fixture.User{Email: "jörg@example.test"})
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET created_at = '2026-02-01 00:00:00' WHERE id = ?`), newer); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET created_at = '2026-01-01 00:00:00' WHERE id = ?`), older); err != nil {
+		t.Fatal(err)
+	}
+
+	migrated, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt)
+	if err != nil {
+		t.Fatalf("MigrateRemoveDataSalt: %v", err)
+	}
+	if migrated != 2 {
+		t.Fatalf("migrated = %d, want 2", migrated)
+	}
+	repo := userrepo.NewRepo(db.Engine, db.TX)
+	for email, id := range map[string]string{"JÖRG@example.test": older, "jörg@example.test": newer} {
+		u, err := repo.GetByEmail(ctx, email)
+		if err != nil {
+			t.Fatalf("GetByEmail(%s): %v", email, err)
+		}
+		if u.ID.String() != id || u.Email != email {
+			t.Fatalf("%s resolved to %s (%s), want its own account %s", email, u.ID, u.Email, id)
+		}
+	}
+	var key *string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT email_key FROM users WHERE id = ?`), newer).Scan(&key); err != nil {
+		t.Fatal(err)
+	}
+	if key != nil {
+		t.Fatalf("the newer account took the key %q", *key)
+	}
+}

@@ -1182,15 +1182,15 @@ transfers it receives together. One account per DB transaction, with that accoun
 bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
 migration step `20261024000001`, right after the SQL file that adds the columns.
 
-`migration:seed-email-keys` fills `users.email_key` (boot step `20261103000001`, between the
-SQL files that add the column and make it unique). A pair of addresses that normalize alike
+`migration:seed-email-keys` fills `users.email_key` (boot step `20261103000001`, right after the
+SQL file that adds the column and its unique index). A pair of addresses that normalize alike
 could already exist, since SQLite's `lower()` folds ASCII only: the oldest account takes the key
 and the others keep NULL, each logged once at WARN by user id, because their data cannot be
 merged and failing the boot would take the instance down. A NULL-key account signs in by its
 exact spelling, its saves leave the NULL alone (the upsert moves the key only when the address
 changes) and it still shares rate-limit counters with the key holder until the operator moves it
 with `user:change-email`; list them with `SELECT id FROM users WHERE email_key IS NULL`.
-Idempotent.
+Idempotent. `data:remove-salt` applies the same rule when decrypted addresses collide.
 
 `migration:copy-access-tokens` is step 2 of the three-step `access_tokens` repair
 (`20261031000010` creates `access_tokens_new` in the final shape, `20261031000011` runs

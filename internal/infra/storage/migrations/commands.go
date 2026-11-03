@@ -49,8 +49,8 @@ func init() {
 	// accounts.updated_at, so the membership seed (20260817000002) reads the
 	// same deletion times either way.
 	RegisterCommand("20261101000000", "migration:zero-deleted-accounts")
-	// 20261103000000.sql adds users.email_key; this step fills it, and
-	// 20261103000002.sql makes it unique. A command because the key is computed by
-	// model.NormalizeEmail, which SQLite's ASCII-only lower() cannot reproduce.
+	// 20261103000000.sql adds users.email_key; this step fills it. A command because
+	// the key is computed by model.NormalizeEmail, which SQLite's ASCII-only lower()
+	// cannot reproduce.
 	RegisterCommand("20261103000001", "migration:seed-email-keys")
 }

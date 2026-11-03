@@ -30,6 +30,10 @@ func (sqliteQuerier) ListUsersWithoutEmailKey(ctx context.Context, db backend.DB
 	return sqlitegen.New(db).ListUsersWithoutEmailKey(ctx)
 }
 
+func (sqliteQuerier) SetUserDecryptedEmail(ctx context.Context, db backend.DBTX, p decryptedEmailParams) error {
+	return sqlitegen.New(db).SetUserDecryptedEmail(ctx, p)
+}
+
 func (sqliteQuerier) EmailKeyTaken(ctx context.Context, db backend.DBTX, key *string) (bool, error) {
 	n, err := sqlitegen.New(db).EmailKeyTaken(ctx, key)
 	return n != 0, err

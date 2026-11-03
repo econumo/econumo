@@ -39,6 +39,10 @@ func (pgsqlQuerier) ListUsersWithoutEmailKey(ctx context.Context, db backend.DBT
 	return out, nil
 }
 
+func (pgsqlQuerier) SetUserDecryptedEmail(ctx context.Context, db backend.DBTX, p decryptedEmailParams) error {
+	return pgsqlgen.New(db).SetUserDecryptedEmail(ctx, pgsqlgen.SetUserDecryptedEmailParams(p))
+}
+
 func (pgsqlQuerier) EmailKeyTaken(ctx context.Context, db backend.DBTX, key *string) (bool, error) {
 	return pgsqlgen.New(db).EmailKeyTaken(ctx, key)
 }

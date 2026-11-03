@@ -28,6 +28,9 @@ import (
 // concurrent logins, resets and profile writes block behind it, so run it while
 // writes are quiet.
 //
+// Each decrypted row's email key is rebuilt from the plaintext with SeedEmailKeys, so
+// addresses that normalize alike follow its rule instead of failing the sweep.
+//
 // It is idempotent and mixed-state safe: a row whose email is already plaintext
 // fails the salted Decode (bad base64 / HMAC mismatch) and is counted as
 // "skipped" rather than corrupted, so a re-run reports migrated==0.
@@ -68,13 +71,13 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 				skipped++
 				continue
 			}
-			u.UpdateEmail(plain, s.clock.Now())
-			if serr := s.repo.Save(ctx, u); serr != nil {
+			if serr := s.repo.SetDecryptedEmail(ctx, id, plain, s.clock.Now()); serr != nil {
 				return serr
 			}
 			migrated++
 		}
-		return nil
+		_, serr := s.SeedEmailKeys(ctx)
+		return serr
 	})
 	if err != nil {
 		return 0, 0, err
