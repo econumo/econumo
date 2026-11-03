@@ -317,7 +317,7 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   `client_secret_post`/`client_secret_basic`). Redirect URIs must be https (ASCII host
   only) or http on a loopback host (`127.0.0.1`, `[::1]`, `localhost`; the port is
   ignored when matching), at most 2048 bytes; clients never approved are purged
-  on the next registration once 30 days old. Registration is behind the global per-endpoint rate cap; the token
+  on the next registration once 30 days old. Registration is behind the per-IP per-endpoint rate cap; the token
   endpoint has no limiter of its own.
 - Consent lives at the SPA route `/oauth/authorize`. The session is a localStorage
   bearer token, so the browser cannot carry it to a Go-rendered page: the SPA calls
@@ -870,7 +870,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
   max attempts per username/email per window (defaults 5/5/3/5; login and reset count
-  only FAILED attempts and clear on success, remind and register count every request).
+  only FAILED attempts and clear on success, remind and register count every request). A successful
+  login clears only the caller's own per-address-and-IP counter, never the per-address ceiling: two
+  SQLite accounts can differ only by the case of a non-ASCII letter and share that key.
   `ECONUMO_RATE_LIMIT_ACCEPT_INVITE` — cap on `connection/accept-invite` attempts per
   authenticated user per window (default `10`; every attempt counts), guarding the short
   invite code against online brute force.
@@ -883,7 +885,34 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_SYNC` — `import/sync-source` calls per user per window (default `10`; every request counts — a sync is a real bridge round trip).
   `ECONUMO_RATE_LIMIT_PREVIEW_RULE` — `import/preview-rule` calls per user per window (default `120`; every request counts — the rule editors fire it from a 300 ms typing debounce, and each call walks every matching link).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
-  `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
+  `ECONUMO_RATE_LIMIT_IP` — per-endpoint cap per minute per client IP (default `60`), replacing the
+  former cap shared by all callers (`ECONUMO_RATE_LIMIT_GLOBAL`, now ignored with a boot WARN), which
+  any one caller could fill to lock everyone out. **No limit may be shared by unrelated callers.**
+  `ingest` and `preview-rule` are exempt (`IPExempt` in `internal/server/server.go`): one user's own
+  limit could fill the cap for a household behind one IP, and their effects stay inside that account.
+  The limits keyed by an email address (`login`, `reset`, `remind`, `register`, `verify-email`,
+  `confirm-email`) count per address AND client IP (`allowEmailAttempt`), so a stranger locks out
+  only their own IP, under a per-address ceiling across all IPs: 10x the limit, but 2x for `reset`
+  and `confirm-email`, because a 6-digit code must not get many more guesses. Enough IPs can still
+  reach a ceiling and lock that one address. The `login`, `reset` and `confirm-email` ceilings of real
+  accounts and the per-user `accept-invite` and `confirm-email-change` counters are `Pinned` (never
+  evicted before they expire), so a spray of invented addresses from many IPs cannot wipe them from
+  the 10,000-entry counter map. Addresses with no account count in a separate evictable ceiling
+  that answers 429 at the same point, so the limit does not reveal which accounts exist, unless a
+  spray happens to evict it first. Accepted residual: many accounts on many IPs have no
+  overall ceiling on `accept-invite`, `request-email-change`, `claim-setup-token` and `sync-source`.
+  `ECONUMO_CLIENT_IP_HEADER` — the header your reverse proxy puts the client IP in (e.g.
+  `CF-Connecting-IP`); a request without a valid value counts as its connecting address. Alone, it
+  is believed from anyone, which is safe only when a firewall lets nothing but the proxy reach the
+  server: a direct caller could otherwise forge it, dodging the limits or spending another IP's.
+  `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` — optional comma-separated IPs/CIDRs of those proxies (for
+  Cloudflare, https://www.cloudflare.com/ips/ plus the `cloudflared` address when using a tunnel).
+  With it the header counts only on a request from a listed address (default header
+  `X-Forwarded-For`), so direct and proxied traffic can share one instance, and a list is walked
+  from the nearest entry to the first address outside the proxies. Neither set: the client IP is the
+  connecting address, so behind a proxy all its users count as one IP (logged once as a WARN when
+  a forwarding header arrives). Resolved in
+  `middleware.ClientIP`; IPv6 is grouped by /64; the IP stays in memory and is never logged.
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.

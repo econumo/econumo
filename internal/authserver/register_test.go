@@ -1,6 +1,7 @@
 package authserver
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -13,7 +14,7 @@ import (
 
 type stubLimiter struct{ err error }
 
-func (l stubLimiter) Allow(string, string) error { return l.err }
+func (l stubLimiter) Allow(context.Context, string, string) error { return l.err }
 
 func TestRegister(t *testing.T) {
 	s, _, _, _ := newTestService(t)

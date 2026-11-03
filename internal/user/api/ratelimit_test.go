@@ -9,7 +9,7 @@ import (
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
-// tight per-key limits so a handful of calls trips the 429; global generous so
+// tight per-key limits so a handful of calls trips the 429; the IP cap generous so
 // only the per-key path is under test here.
 func newLimitedHarness(t *testing.T) *harness {
 	t.Helper()
@@ -21,7 +21,7 @@ func newLimitedHarness(t *testing.T) *harness {
 			appuser.RateScopeRegister: 2,
 		},
 		Window: 15 * time.Minute,
-		Global: 1000,
+		IP:     1000,
 	}, realClock{})
 	return newHarnessWithLimiter(t, limiter)
 }

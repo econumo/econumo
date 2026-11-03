@@ -51,9 +51,12 @@ type AvatarPicker interface {
 type AttemptLimiter interface {
 	// Allow reports whether another attempt may proceed; over-limit yields an
 	// *errs.TooManyRequestsError (HTTP 429).
-	Allow(scope, key string) error
-	// Fail records a failed attempt.
-	Fail(scope, key string)
+	Allow(ctx context.Context, scope, key string) error
+	// Reserve checks the limit and counts the attempt in one step, without the IP
+	// cap, so that attempts arriving together see each other.
+	Reserve(scope, key string) error
+	// Release gives back an attempt Reserve counted that was not a failure.
+	Release(scope, key string)
 	// Clear wipes the key's failure counter after a successful attempt.
 	Clear(scope, key string)
 	// Mark records an event timestamp for the key with no cap check, for scopes
@@ -78,6 +81,13 @@ const (
 	// can be reported identically for real and unknown usernames. It carries no
 	// configured limit, so it never rejects anything itself.
 	RateScopeVerifySent = "verify-email-sent"
+
+	// EmailCeilingScopeSuffix names the per-address ceiling of an email-keyed
+	// scope (see reserveEmailAttempt): RateScopeLogin+EmailCeilingScopeSuffix.
+	EmailCeilingScopeSuffix = "-email-ceiling"
+	// UnknownEmailCeilingScopeSuffix is the same ceiling for addresses with no
+	// account, kept apart so invented ones cannot crowd out the real ones.
+	UnknownEmailCeilingScopeSuffix = "-unknown-email-ceiling"
 
 	RateScopeRequestEmailChange = "request-email-change"
 	RateScopeConfirmEmailChange = "confirm-email-change"

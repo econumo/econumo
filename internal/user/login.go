@@ -21,19 +21,29 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 		return nil, err
 	}
 	limitKey := strings.ToLower(strings.TrimSpace(req.Username))
-	if err := s.allowAttempt(RateScopeLogin, limitKey); err != nil {
+	if err := s.allowEmailAttempt(ctx, RateScopeLogin, limitKey); err != nil {
 		return nil, err
 	}
-	u, err := s.repo.GetByEmail(ctx, req.Username)
+	// Trimmed like the counters' key, or a padded attempt on a real address would
+	// count as an unknown one. Not lowered: SQLite's lower() folds ASCII only, so a
+	// Go-lowered address would miss a row stored with uppercase non-ASCII letters.
+	u, err := s.repo.GetByEmail(ctx, strings.TrimSpace(req.Username))
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
-			s.failAttempt(RateScopeLogin, limitKey)
+			if lerr := s.countUnknownEmailAttempt(ctx, RateScopeLogin, limitKey); lerr != nil {
+				return nil, lerr
+			}
 			return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 		}
 		return nil, err
 	}
+	attempt, err := s.reserveEmailAttempt(ctx, RateScopeLogin, limitKey)
+	if err != nil {
+		return nil, err
+	}
+	defer attempt.giveBack()
 	if !u.IsActive || !s.hasher.Verify(u.Algorithm, u.Password, req.Password, u.Salt) {
-		s.failAttempt(RateScopeLogin, limitKey)
+		attempt.keep()
 		return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 	}
 	// Transparently upgrade a legacy (sha512) hash to argon2id now that we hold the
@@ -63,7 +73,11 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if cerr != nil {
 		return nil, cerr
 	}
-	s.clearAttempt(RateScopeLogin, limitKey)
+	// A success forgives only the caller's own counter, never the ceiling. Two
+	// accounts can share a key (SQLite's lower() lets them differ by the case of a
+	// non-ASCII letter), so signing in to one would reset the guesses at the other.
+	attempt.giveBack()
+	s.clearAttempt(RateScopeLogin, emailIPKey(ctx, limitKey))
 	// Best-effort: the language preference must never block a login.
 	_ = s.repo.UpdateLanguage(ctx, u.ID, reqctx.Language(ctx))
 	return &model.LoginResult{Token: token, User: cur}, nil

@@ -37,7 +37,7 @@ func buildOAuthTestAPIWithMailer(t *testing.T, appURL string, m mailer.Mailer) h
 		RateLimitRemind:    3,
 		RateLimitRegister:  5,
 		RateLimitWindow:    15 * time.Minute,
-		RateLimitGlobal:    60,
+		RateLimitIP:        60,
 		AppURL:             appURL,
 	}, db.Raw, server.Seams{Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar), Mailer: m})
 }
@@ -300,7 +300,7 @@ func TestMCPOAuth_DisabledStopsAdmittingIssuedOAuthTokens(t *testing.T) {
 		return server.BuildAPI(config.Config{
 			DatabaseDriver: db.Engine, CurrencyBase: "USD", AllowRegistration: true,
 			RateLimitLogin: 5, RateLimitReset: 5, RateLimitRemind: 3, RateLimitRegister: 5,
-			RateLimitWindow: 15 * time.Minute, RateLimitGlobal: 60, AppURL: appURL,
+			RateLimitWindow: 15 * time.Minute, RateLimitIP: 60, AppURL: appURL,
 		}, db.Raw, server.Seams{Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar)})
 	}
 	on := build("https://econumo.example.test")

@@ -689,6 +689,22 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       already linked from this source is never adopted twice.
 - [ ] Rate limit: the 61st ingest within the window from one user is 429 with the
       frozen envelope.
+- [ ] With `ECONUMO_RATE_LIMIT_IP=1`, a second failed login with another email from one IP in
+      the same minute is 429, while a login from a different IP still gets through; ingest and
+      rule preview from one IP stay past the cap.
+- [ ] Five wrong passwords for an email from one IP lock only that IP: the owner signs in from
+      another IP at once. Past the ceiling (50 failures across IPs) that email is 429 from any IP.
+- [ ] Wrong guesses sent all at once count the same as one by one: with a 64-request burst of
+      wrong passwords for an email from one IP, only 5 are answered as invalid credentials and the
+      rest are 429, and the owner still signs in from another IP.
+- [ ] Limits where every request counts hold under a burst too: 64 `remind-password` requests at
+      once for one email from one IP send 3 emails and answer the rest with 429.
+- [ ] A successful login does not reset the ceiling (SQLite): with accounts `JÖRG@…` and `jörg@…`,
+      signing in to one while sending wrong passwords to the other from many IPs still reaches 429
+      after 50 failures. A success still forgives that IP's own typos.
+- [ ] With `ECONUMO_CLIENT_IP_HEADER` set for the proxy, two clients through it are limited
+      separately (unset, they count as one IP). With `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` also set, a
+      direct request with a forged header is limited by its real address.
 - [ ] A tap whose merchant name exceeds 255 characters is imported with the
       name cut to 255 (no failed row).
 - [ ] Manually importing a queued row whose card currency differs from the

@@ -115,10 +115,10 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 		return nil, err
 	}
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
-	if err := s.allowAttempt(RateScopeRemind, lowered); err != nil {
+	// Every remind sends an email, so every request counts.
+	if err := s.countEmailAttempt(ctx, RateScopeRemind, lowered); err != nil {
 		return nil, err
 	}
-	s.failAttempt(RateScopeRemind, lowered) // every remind sends an email, so every request counts
 
 	u, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
@@ -166,29 +166,36 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		return nil, err
 	}
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
-	if err := s.allowAttempt(RateScopeReset, lowered); err != nil {
+	if err := s.allowEmailAttempt(ctx, RateScopeReset, lowered); err != nil {
 		return nil, err
 	}
 	u, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
-			s.failAttempt(RateScopeReset, lowered)
+			if lerr := s.countUnknownEmailAttempt(ctx, RateScopeReset, lowered); lerr != nil {
+				return nil, lerr
+			}
 			return nil, &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		return nil, err
 	}
+	attempt, err := s.reserveEmailAttempt(ctx, RateScopeReset, lowered)
+	if err != nil {
+		return nil, err
+	}
+	defer attempt.giveBack()
 
 	hashedCode := HashResetCode(strings.TrimSpace(req.Code))
 	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, hashedCode)
 	if err != nil {
 		if isNotFound(err) {
-			s.failAttempt(RateScopeReset, lowered)
+			attempt.keep()
 			return nil, &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		return nil, err
 	}
 	if pr.IsExpired(s.clock.Now()) {
-		s.failAttempt(RateScopeReset, lowered)
+		attempt.keep()
 		return nil, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserResetCodeExpired}
 	}
 
@@ -258,6 +265,7 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	}); err != nil {
 		return nil, err
 	}
-	s.clearAttempt(RateScopeReset, lowered)
+	s.clearEmailAttempt(ctx, RateScopeReset, lowered)
+	attempt.keep()
 	return &model.ResetPasswordResult{}, nil
 }

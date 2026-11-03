@@ -26,7 +26,7 @@ func (s *Service) Register(ctx context.Context, req model.ClientRegistrationRequ
 		return model.ClientRegistrationResult{}, &OAuthError{Status: 404, Code: "invalid_request", Description: "not available"}
 	}
 	if s.limiter != nil {
-		if err := s.limiter.Allow(RateScopeRegister, ""); err != nil {
+		if err := s.limiter.Allow(ctx, RateScopeRegister, ""); err != nil {
 			if _, ok := errs.AsTooManyRequests(err); ok {
 				return model.ClientRegistrationResult{}, &OAuthError{Status: 429, Code: "temporarily_unavailable", Description: "Too many registrations"}
 			}

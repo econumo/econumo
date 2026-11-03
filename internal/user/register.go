@@ -19,10 +19,9 @@ func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*mod
 		return nil, err
 	}
 	limitKey := strings.ToLower(strings.TrimSpace(req.Email))
-	if err := s.allowAttempt(RateScopeRegister, limitKey); err != nil {
+	if err := s.countEmailAttempt(ctx, RateScopeRegister, limitKey); err != nil {
 		return nil, err
 	}
-	s.failAttempt(RateScopeRegister, limitKey) // every attempt counts toward the cap
 
 	if !s.allowRegistration {
 		return nil, &errs.ValidationError{Msg: "Registration disabled", MsgCode: errs.CodeUserRegistrationDisabled}
