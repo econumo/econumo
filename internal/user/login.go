@@ -24,7 +24,9 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if err := s.allowEmailAttempt(ctx, RateScopeLogin, limitKey); err != nil {
 		return nil, err
 	}
-	u, err := s.repo.GetByEmail(ctx, req.Username)
+	// The same address the counters use: a lookup that disagreed with them would
+	// count a padded attempt on a real address as an unknown one.
+	u, err := s.repo.GetByEmail(ctx, limitKey)
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			if lerr := s.countUnknownEmailAttempt(ctx, RateScopeLogin, limitKey); lerr != nil {

@@ -382,3 +382,42 @@ func TestEmailLimits_ResetCodeGuessesStayNearTheirLimitAcrossIPs(t *testing.T) {
 		t.Fatalf("past the ceiling = %d, want 429", got)
 	}
 }
+
+func TestAcceptInvite_ABurstAcrossIPsGetsNoMoreGuessesThanItsLimit(t *testing.T) {
+	const limit = 3
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.RateLimitIP = 0
+		c.RateLimitAccept = limit
+	})
+	if got := h.burst("/api/v1/connection/accept-invite", h.rawToken, `{"code":"00000"}`, manyIPs(limit*30)); got != limit {
+		t.Fatalf("guesses admitted = %d, want the limit %d", got, limit)
+	}
+}
+
+// Padding must not move an attempt on a real address into the ceiling kept for
+// unknown ones: the two would then fill at different points and tell them apart.
+func TestEmailLimits_APaddedLoginCannotRevealWhichAccountsExist(t *testing.T) {
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.RateLimitLogin = 1
+		c.RateLimitIP = 0
+	})
+	if got := h.post("/api/v1/user/register-user", ownerIP, "", `{"email":"real@example.test","password":"long-enough-password","name":"Real"}`); got != http.StatusOK {
+		t.Fatalf("register = %d", got)
+	}
+	for _, email := range []string{"real@example.test", "nobody@example.test"} {
+		ip := 10
+		login := func(username string) int {
+			ip++
+			return h.post("/api/v1/user/login-user", fmt.Sprintf("198.51.100.%d", ip), "", fmt.Sprintf(`{"username":%q,"password":"wrong"}`, username))
+		}
+		for range 9 { // one short of the ceiling, 10x login
+			login(" " + email)
+		}
+		if got := login(email); got == http.StatusTooManyRequests {
+			t.Fatalf("%s: last guess under the ceiling = 429", email)
+		}
+		if got := login(email); got != http.StatusTooManyRequests {
+			t.Fatalf("%s: past the ceiling = %d, want 429", email, got)
+		}
+	}
+}

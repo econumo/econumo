@@ -37,11 +37,12 @@ type UserLookup interface {
 // AttemptLimiter is the brute-force-protection seam for accept-invite: the
 // invite code is short, so an authenticated caller must not be able to spray
 // guesses. Allow reports whether another attempt may proceed (an
-// *errs.TooManyRequestsError, HTTP 429, when over the cap); Fail records an
-// attempt. A nil limiter disables protection (CLI, tests).
+// *errs.TooManyRequestsError, HTTP 429, when over the cap) and spends the IP
+// budget; Reserve counts the attempt, refusing it when simultaneous guesses have
+// filled the cap. A nil limiter disables protection (CLI, tests).
 type AttemptLimiter interface {
 	Allow(ctx context.Context, scope, key string) error
-	Fail(scope, key string)
+	Reserve(scope, key string) error
 }
 
 // RateScopeAcceptInvite keys the accept-invite limiter config in internal/server.

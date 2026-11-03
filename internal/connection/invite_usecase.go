@@ -67,7 +67,9 @@ func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req model.Acce
 		if lerr := s.limiter.Allow(ctx, RateScopeAcceptInvite, userID.String()); lerr != nil {
 			return nil, lerr
 		}
-		s.limiter.Fail(RateScopeAcceptInvite, userID.String())
+		if lerr := s.limiter.Reserve(RateScopeAcceptInvite, userID.String()); lerr != nil {
+			return nil, lerr
+		}
 	}
 	code, err := model.NewConnectionCode(req.Code)
 	if err != nil {
