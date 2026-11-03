@@ -73,8 +73,11 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if cerr != nil {
 		return nil, cerr
 	}
-	s.clearEmailAttempt(ctx, RateScopeLogin, limitKey)
-	attempt.keep()
+	// A success forgives only the caller's own counter, never the ceiling. Two
+	// accounts can share a key (SQLite's lower() lets them differ by the case of a
+	// non-ASCII letter), so signing in to one would reset the guesses at the other.
+	attempt.giveBack()
+	s.clearAttempt(RateScopeLogin, emailIPKey(ctx, limitKey))
 	// Best-effort: the language preference must never block a login.
 	_ = s.repo.UpdateLanguage(ctx, u.ID, reqctx.Language(ctx))
 	return &model.LoginResult{Token: token, User: cur}, nil

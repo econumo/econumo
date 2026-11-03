@@ -307,7 +307,8 @@ func (s *Service) allowAttempt(ctx context.Context, scope, key string) error {
 }
 
 // reservedAttempt is a guess already counted before it was tested. Unless keep
-// says it stays counted, giveBack returns it, so that only real failures add up.
+// says it stays counted, giveBack returns it (once), so that only real failures
+// add up.
 type reservedAttempt struct {
 	release func()
 	kept    bool
@@ -317,6 +318,7 @@ func (a *reservedAttempt) keep() { a.kept = true }
 
 func (a *reservedAttempt) giveBack() {
 	if !a.kept {
+		a.kept = true
 		a.release()
 	}
 }

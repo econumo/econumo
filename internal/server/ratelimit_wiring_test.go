@@ -436,3 +436,60 @@ func TestLogin_AnAddressWithUppercaseNonASCIICanStillSignIn(t *testing.T) {
 		t.Fatalf("login = %d, want 200", got)
 	}
 }
+
+// SQLite's lower() lets two accounts differ only in the case of a non-ASCII letter,
+// and both share one counter key. Signing in to the one you own must not wipe the
+// ceiling that protects the other.
+func TestEmailLimits_SigningInToATwinAccountDoesNotResetTheCeiling(t *testing.T) {
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.RateLimitLogin = 1
+		c.RateLimitIP = 0
+	})
+	for _, email := range []string{"JÖRG@example.test", "jörg@example.test"} {
+		if got := h.post("/api/v1/user/register-user", ownerIP, "",
+			fmt.Sprintf(`{"email":%q,"password":"long-enough-password","name":"Twin"}`, email)); got != http.StatusOK {
+			t.Fatalf("register %s = %d", email, got)
+		}
+	}
+	admitted := 0
+	for i, ip := range manyIPs(40) {
+		if h.post("/api/v1/user/login-user", ip, "", `{"username":"JÖRG@example.test","password":"wrong"}`) != http.StatusTooManyRequests {
+			admitted++
+		}
+		if i%5 == 4 {
+			h.post("/api/v1/user/login-user", "192.0.2.5", "", `{"username":"jörg@example.test","password":"long-enough-password"}`)
+		}
+	}
+	if admitted > 10 { // the ceiling, 10x login
+		t.Fatalf("guesses admitted = %d, want at most the ceiling 10", admitted)
+	}
+}
+
+func TestEmailLimits_SuccessfulLoginsDoNotFillTheCeiling(t *testing.T) {
+	const password = "correct-horse-battery"
+	h := newLimitHarness(t, func(c *config.Config) {
+		c.RateLimitLogin = 2
+		c.RateLimitIP = 0
+	})
+	if got := h.post("/api/v1/user/register-user", ownerIP, "",
+		fmt.Sprintf(`{"email":"owner@example.test","password":%q,"name":"Owner"}`, password)); got != http.StatusOK {
+		t.Fatalf("register = %d", got)
+	}
+	login := func(pw string) int {
+		return h.post("/api/v1/user/login-user", ownerIP, "", fmt.Sprintf(`{"username":"owner@example.test","password":%q}`, pw))
+	}
+	for i := range 30 { // past the ceiling, 10x login
+		if got := login(password); got != http.StatusOK {
+			t.Fatalf("login %d = %d, want 200", i, got)
+		}
+	}
+	// A success still forgives the caller's own typos: the limit is 2 from one IP.
+	for i := range 3 {
+		if got := login("wrong"); got == http.StatusTooManyRequests {
+			t.Fatalf("typo %d = 429", i)
+		}
+		if got := login(password); got != http.StatusOK {
+			t.Fatalf("login after typo %d = %d, want 200", i, got)
+		}
+	}
+}

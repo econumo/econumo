@@ -870,7 +870,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
   max attempts per username/email per window (defaults 5/5/3/5; login and reset count
-  only FAILED attempts and clear on success, remind and register count every request).
+  only FAILED attempts and clear on success, remind and register count every request). A successful
+  login clears only the caller's own per-address-and-IP counter, never the per-address ceiling: two
+  SQLite accounts can differ only by the case of a non-ASCII letter and share that key.
   `ECONUMO_RATE_LIMIT_ACCEPT_INVITE` — cap on `connection/accept-invite` attempts per
   authenticated user per window (default `10`; every attempt counts), guarding the short
   invite code against online brute force.
