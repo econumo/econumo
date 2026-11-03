@@ -6,10 +6,12 @@ package user
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // MigrateRemoveDataSalt decrypts every user's email back to plaintext (AES
@@ -78,6 +80,45 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 		return 0, 0, err
 	}
 	return migrated, skipped, nil
+}
+
+// SeedEmailKeys fills users.email_key for every user that has none and returns how
+// many it filled. The oldest account of a set whose addresses normalize alike takes
+// the key. The others keep NULL, sign in by their exact spelling, and are logged for
+// the operator to move with user:change-email: their data cannot be merged and
+// failing the boot would take the instance down over them. Idempotent.
+func (s *Service) SeedEmailKeys(ctx context.Context) (int, error) {
+	var seeded int
+	var collided []vo.Id
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		rows, err := s.repo.ListWithoutEmailKey(ctx)
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			key := model.NormalizeEmail(row.Email)
+			taken, terr := s.repo.EmailKeyTaken(ctx, key)
+			if terr != nil {
+				return terr
+			}
+			if taken {
+				collided = append(collided, row.ID)
+				continue
+			}
+			if serr := s.repo.SetEmailKey(ctx, row.ID, key); serr != nil {
+				return serr
+			}
+			seeded++
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	for _, id := range collided {
+		slog.WarnContext(ctx, "user address collides with an older account, move it with user:change-email", "user_id", id.String())
+	}
+	return seeded, nil
 }
 
 // SeedAnalyticsOption writes the analytics preference row for every user that

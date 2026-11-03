@@ -79,6 +79,14 @@ navigation (single-pane vs sidebar).
       server stdout in dev) → enter code + new password → old password rejected,
       new one works; all other sessions of the user are revoked.
 - [ ] Recovery with a wrong/expired code → clear error, password unchanged.
+- [ ] An address with uppercase non-ASCII letters (`JÖRG@…`) works everywhere in any case: it signs
+      in as `jörg@…`, Forgot password from either spelling sends the code to the stored `JÖRG@…`
+      and the reset succeeds, and registering `jörg@…` is refused as already existing.
+- [ ] Forgot password for a look-alike of a real address (`admin@gmaİl.…` when `admin@gmail.…`
+      exists) sends no email at all, and that address cannot sign in with the real password.
+- [ ] Upgrading a SQLite instance that holds both `JÖRG@…` and `jörg@…` boots, logs one WARN with
+      the newer account's user id, and each spelling still signs in to its own account. After
+      `user:change-email` moves the newer one, both behave like any other account.
 - [ ] With `MAILER_DSN=smtp://user:pass@host:587?from=…` (STARTTLS) and with
       `smtps://…:465` (implicit TLS) pointed at a real relay, the reset code
       email arrives with the right From/Reply-To and a readable non-English
@@ -699,9 +707,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       rest are 429, and the owner still signs in from another IP.
 - [ ] Limits where every request counts hold under a burst too: 64 `remind-password` requests at
       once for one email from one IP send 3 emails and answer the rest with 429.
-- [ ] A successful login does not reset the ceiling (SQLite): with accounts `JÖRG@…` and `jörg@…`,
-      signing in to one while sending wrong passwords to the other from many IPs still reaches 429
-      after 50 failures. A success still forgives that IP's own typos.
+- [ ] A successful login does not reset the ceiling: signing in to an account while wrong
+      passwords reach it from many IPs still ends in 429 after 50 failures. A success still forgives
+      that IP's own typos.
 - [ ] With `ECONUMO_CLIENT_IP_HEADER` set for the proxy, two clients through it are limited
       separately (unset, they count as one IP). With `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` also set, a
       direct request with a forged header is limited by its real address.

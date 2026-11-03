@@ -406,3 +406,35 @@ func TestAdminSetAccessByIDLogsOldStateWithoutPII(t *testing.T) {
 		}
 	}
 }
+
+func TestAdminChangeEmail_MovesACollidingAccountOffTheAddress(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	holder := f.User(fixture.User{Email: "jörg@example.test"})
+	other := f.User(fixture.User{Email: "placeholder@example.test"})
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET email = 'JÖRG@example.test', email_key = NULL WHERE id = ?`), other); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.AdminChangeEmail(ctx, "JÖRG@example.test", "JöRG@example.test"); err == nil {
+		t.Fatal("moving onto the address the other account holds must be refused")
+	}
+	if err := svc.AdminChangeEmail(ctx, "JÖRG@example.test", "moved@example.test"); err != nil {
+		t.Fatalf("move: %v", err)
+	}
+	repo := userrepo.NewRepo(db.Engine, db.TX)
+	moved, err := repo.GetByEmail(ctx, "MOVED@example.test")
+	if err != nil || moved.ID.String() != other {
+		t.Fatalf("moved account lookup: %v, %v", moved, err)
+	}
+	kept, err := repo.GetByEmail(ctx, "JÖRG@example.test")
+	if err != nil || kept.ID.String() != holder {
+		t.Fatalf("the address must now resolve to the holder: %v, %v", kept, err)
+	}
+	// A case-only change of one's own address is not a collision.
+	if err := svc.AdminChangeEmail(ctx, "moved@example.test", "MOVED@example.test"); err != nil {
+		t.Fatalf("case-only change: %v", err)
+	}
+}

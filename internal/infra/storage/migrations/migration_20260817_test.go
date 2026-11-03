@@ -62,8 +62,8 @@ func TestMigration20260817_SeedsMembershipAndDropsBlacklist(t *testing.T) {
 	// datetime rewrite (20260915000001), the transaction sort keys
 	// (20261024000001), the access_tokens copy (20261031000011) and
 	// zero-deleted-accounts (20261101000000, after every schema change its
-	// writes depend on).
-	wantCalls := []string{"migration:seed-analytics-option", "migration:normalize-sqlite-datetimes", "migration:seed-transaction-sort-keys", "migration:copy-access-tokens", "migration:zero-deleted-accounts"}
+	// writes depend on), then the email keys (20261103000001).
+	wantCalls := []string{"migration:seed-analytics-option", "migration:normalize-sqlite-datetimes", "migration:seed-transaction-sort-keys", "migration:copy-access-tokens", "migration:zero-deleted-accounts", "migration:seed-email-keys"}
 	if !slices.Equal(calls, wantCalls) {
 		t.Fatalf("command steps = %v, want %v", calls, wantCalls)
 	}

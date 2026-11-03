@@ -16,14 +16,27 @@ func (sqliteQuerier) GetUserByID(ctx context.Context, db backend.DBTX, id string
 	return userRow(row), err
 }
 
-func (sqliteQuerier) GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error) {
-	row, err := sqlitegen.New(db).GetUserByEmail(ctx, email)
+func (sqliteQuerier) GetUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (userRow, error) {
+	row, err := sqlitegen.New(db).GetUserByEmail(ctx, p)
 	return userRow(row), err
 }
 
-func (sqliteQuerier) ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error) {
-	n, err := sqlitegen.New(db).ExistsUserByEmail(ctx, email)
+func (sqliteQuerier) ExistsUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (bool, error) {
+	n, err := sqlitegen.New(db).ExistsUserByEmail(ctx, sqlitegen.ExistsUserByEmailParams(p))
 	return n != 0, err
+}
+
+func (sqliteQuerier) ListUsersWithoutEmailKey(ctx context.Context, db backend.DBTX) ([]emailKeyRow, error) {
+	return sqlitegen.New(db).ListUsersWithoutEmailKey(ctx)
+}
+
+func (sqliteQuerier) EmailKeyTaken(ctx context.Context, db backend.DBTX, key *string) (bool, error) {
+	n, err := sqlitegen.New(db).EmailKeyTaken(ctx, key)
+	return n != 0, err
+}
+
+func (sqliteQuerier) SetUserEmailKey(ctx context.Context, db backend.DBTX, p emailKeyParams) error {
+	return sqlitegen.New(db).SetUserEmailKey(ctx, p)
 }
 
 func (sqliteQuerier) ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error) {

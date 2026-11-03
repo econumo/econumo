@@ -44,6 +44,18 @@ func migrationCommands() []command {
 			},
 		},
 		{
+			name:    "migration:seed-email-keys",
+			summary: "fill users.email_key, the normalized address accounts are looked up by; the older account of a colliding pair takes it (idempotent)",
+			run: func(ctx context.Context, c *container, args []string) error {
+				n, err := c.user.SeedEmailKeys(ctx)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("seeded %d email key(s)\n", n)
+				return nil
+			},
+		},
+		{
 			name:    "migration:seed-transaction-sort-keys",
 			summary: "give every transaction without one a sort key on each account side, in the order lists showed before keys existed (idempotent)",
 			run: func(ctx context.Context, c *container, args []string) error {

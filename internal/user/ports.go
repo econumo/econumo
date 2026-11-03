@@ -46,7 +46,7 @@ type AvatarPicker interface {
 }
 
 // AttemptLimiter is the brute-force-protection seam for the public auth use
-// cases. Keys are the lowercased+trimmed submitted username/email; scopes are
+// cases. Keys are the submitted username/email through model.NormalizeEmail; scopes are
 // the RateScope* constants. A nil limiter disables protection (CLI, tests).
 type AttemptLimiter interface {
 	// Allow reports whether another attempt may proceed; over-limit yields an

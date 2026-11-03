@@ -80,5 +80,5 @@ func (s *Service) GetByID(ctx context.Context, id vo.Id) (*model.User, error) {
 }
 
 func (s *Service) GetByEmail(ctx context.Context, email string) (*model.User, error) {
-	return s.repo.GetByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
+	return s.repo.GetByEmail(ctx, email)
 }

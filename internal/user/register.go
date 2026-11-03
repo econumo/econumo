@@ -18,7 +18,7 @@ func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*mod
 	if err := s.requirePasswordLogin(); err != nil {
 		return nil, err
 	}
-	limitKey := strings.ToLower(strings.TrimSpace(req.Email))
+	limitKey := model.NormalizeEmail(req.Email)
 	if err := s.countEmailAttempt(ctx, RateScopeRegister, limitKey); err != nil {
 		return nil, err
 	}
@@ -71,8 +71,7 @@ func (s *Service) persistNewUser(ctx context.Context, name, email string,
 	build func(id vo.Id, encryptedEmail, avatar string, now time.Time) *model.User,
 	selfService, requireVerification bool,
 ) (*model.User, error) {
-	loweredEmail := strings.ToLower(strings.TrimSpace(email))
-	exists, err := s.repo.ExistsByEmail(ctx, loweredEmail)
+	exists, err := s.repo.ExistsByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}

@@ -26,6 +26,7 @@ const (
 
 type limitHarness struct {
 	t        *testing.T
+	db       *dbtest.DB
 	ts       *httptest.Server
 	rawToken string
 }
@@ -55,7 +56,7 @@ func newLimitHarness(t *testing.T, mutate func(*config.Config)) limitHarness {
 	t.Helper()
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
-	h := limitHarness{t: t, rawToken: "eco_ses_ratelimit-wiring-token"}
+	h := limitHarness{t: t, db: db, rawToken: "eco_ses_ratelimit-wiring-token"}
 	userID := f.User(fixture.User{})
 	exp := time.Now().UTC().Add(24 * time.Hour)
 	f.AccessToken(fixture.AccessToken{
@@ -422,8 +423,6 @@ func TestEmailLimits_APaddedLoginCannotRevealWhichAccountsExist(t *testing.T) {
 	}
 }
 
-// SQLite's lower() folds ASCII only, so the lookup must carry the address as typed
-// for both sides of `lower(email) = lower(?)` to fold it the same way.
 func TestLogin_AnAddressWithUppercaseNonASCIICanStillSignIn(t *testing.T) {
 	const email, password = "JÖRG@example.test", "correct-horse-battery"
 	h := newLimitHarness(t, nil)
@@ -437,19 +436,21 @@ func TestLogin_AnAddressWithUppercaseNonASCIICanStillSignIn(t *testing.T) {
 	}
 }
 
-// SQLite's lower() lets two accounts differ only in the case of a non-ASCII letter,
-// and both share one counter key. Signing in to the one you own must not wipe the
-// ceiling that protects the other.
-func TestEmailLimits_SigningInToATwinAccountDoesNotResetTheCeiling(t *testing.T) {
+// Accounts that collided before the email key existed still share one counter key.
+// Signing in to the one you own must not wipe the ceiling that protects the other.
+func TestEmailLimits_SigningInToACollidingAccountDoesNotResetTheCeiling(t *testing.T) {
 	h := newLimitHarness(t, func(c *config.Config) {
 		c.RateLimitLogin = 1
 		c.RateLimitIP = 0
 	})
-	for _, email := range []string{"JÖRG@example.test", "jörg@example.test"} {
+	for _, email := range []string{"jörg@example.test", "placeholder@example.test"} {
 		if got := h.post("/api/v1/user/register-user", ownerIP, "",
 			fmt.Sprintf(`{"email":%q,"password":"long-enough-password","name":"Twin"}`, email)); got != http.StatusOK {
 			t.Fatalf("register %s = %d", email, got)
 		}
+	}
+	if _, err := h.db.Raw.Exec(h.db.Rebind(`UPDATE users SET email = 'JÖRG@example.test', email_key = NULL WHERE email = 'placeholder@example.test'`)); err != nil {
+		t.Fatal(err)
 	}
 	admitted := 0
 	for i, ip := range manyIPs(40) {

@@ -659,7 +659,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   no token-related configuration. Persist the `/app/var` volume (the db) to keep data and
   logins valid. Leftover `ECONUMO_JWT_*` variables from older builds are ignored.
 - `ECONUMO_DATA_SALT` — **Deprecated and IGNORED by the API/repositories**, which always run
-  salt-free (plaintext emails, `lower(email)` as the lookup key). It is consumed by exactly one
+  salt-free (plaintext emails, `email_key` as the lookup key). It is consumed by exactly one
   code path, the `data:remove-salt` migration (below), which reads it to decrypt existing data.
   Set it to your old salt, run that command, then unset it. Until you migrate, a still-salted
   database has unreadable emails, so those users cannot log in (the intended push to migrate);
@@ -1111,11 +1111,12 @@ migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
 migration:seed-transaction-sort-keys
 migration:copy-access-tokens
+migration:seed-email-keys
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
-back to plaintext, so `ECONUMO_DATA_SALT` can be removed. `lower(email)` is the
-unique lookup key (unique expression index `users_email_lower_uniq`), so a
+back to plaintext, so `ECONUMO_DATA_SALT` can be removed. `email_key` is the
+unique lookup key (unique index `users_email_key_uniq`), so a
 still-salted instance MUST run this command after upgrading, before that index
 is relied on — otherwise emails stay encrypted and those users can't log in
 (they are already login-broken pre-migration, so this is not a regression).
@@ -1180,6 +1181,16 @@ lists used before keys existed (spent_at DESC, id), the rows it is the source of
 transfers it receives together. One account per DB transaction, with that account's revision
 bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
 migration step `20261024000001`, right after the SQL file that adds the columns.
+
+`migration:seed-email-keys` fills `users.email_key` (boot step `20261103000001`, between the
+SQL files that add the column and make it unique). A pair of addresses that normalize alike
+could already exist, since SQLite's `lower()` folds ASCII only: the oldest account takes the key
+and the others keep NULL, each logged once at WARN by user id, because their data cannot be
+merged and failing the boot would take the instance down. A NULL-key account signs in by its
+exact spelling, its saves leave the NULL alone (the upsert moves the key only when the address
+changes) and it still shares rate-limit counters with the key holder until the operator moves it
+with `user:change-email`; list them with `SELECT id FROM users WHERE email_key IS NULL`.
+Idempotent.
 
 `migration:copy-access-tokens` is step 2 of the three-step `access_tokens` repair
 (`20261031000010` creates `access_tokens_new` in the final shape, `20261031000011` runs
@@ -1402,7 +1413,7 @@ data unreadable. Most are also asserted by the test suite.
 
 ### Auth crypto (`internal/infra/auth/`)
 - **Password hash**: versioned by `users.algorithm`. `sha512` (legacy, all pre-existing rows): sha512, 500 iterations, base64 (88 chars), salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`; verify rejects len≠88 or a `$`, constant-time. `argon2id` (every new hash: registration and all password changes): PHC string `$argon2id$v=19$m=19456,t=2,p=1$…$…` (OWASP params), salt embedded in the hash — the `salt` column persists for sha512 rows. Verification dispatches on the column; unknown values fail closed.
-- **User lookup key**: `lower(email)` — enforced unique by the expression index `users_email_lower_uniq`; repo lookups are `GetByEmail`/`ExistsByEmail` (`WHERE lower(email) = lower(?)`). The legacy `identifier` column is retained (dropping a NOT NULL UNIQUE column would force a SQLite table rebuild) but retired: it now holds the row's own `id` as a unique non-null placeholder, no longer derived from email. `EncodeService.Hash` (the md5 identifier derivation) was removed — nothing computes it anymore.
+- **User lookup key**: `users.email_key`, `model.NormalizeEmail(email)` computed in Go (the one form every lookup, comparison and rate-limit key goes through) because the engines' `lower()` disagree; enforced unique by `users_email_key_uniq`. Trim plus Unicode lowercase, except that a non-ASCII letter whose lowercase is ASCII (`İ`, the Kelvin sign) keeps its form, since it spells a different mailbox. Callers hand `GetByEmail`/`ExistsByEmail` the address as typed; the repo derives the key, and writes it with every email write. The legacy `identifier` column is retained (dropping a NOT NULL UNIQUE column would force a SQLite table rebuild) but retired: it now holds the row's own `id` as a unique non-null placeholder, no longer derived from email. `EncodeService.Hash` (the md5 identifier derivation) was removed — nothing computes it anymore.
 - **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
 - **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy email data to plaintext (the repo writes the row `id` into `identifier` automatically, so no re-derivation is needed).
 
@@ -1608,7 +1619,7 @@ data unreadable. Most are also asserted by the test suite.
   importer's own rules never apply there, and the owner's "all" apply reaches those rows.
 - **OAuth/OIDC auto-link and email verification**: a callback with a verified (or
   `ECONUMO_OIDC_TRUST_EMAIL`-trusted) email auto-links to an existing **passwordless**
-  account by `lower(email)` (no matching identity yet) — no confirmation screen, since both
+  account by `email_key` (no matching identity yet) — no confirmation screen, since both
   the account's address and the new claim were proven by providers. A match on an account
   that has a password is refused (`account_exists_password`), never merged. An unverified
   email is rejected (`email_unverified`) for every intent, including an already-linked

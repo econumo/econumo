@@ -237,3 +237,46 @@ func TestSeedAnalyticsOptionWritesOnlyTheOptionRow(t *testing.T) {
 		t.Error("analytics option not written correctly by UpsertOption")
 	}
 }
+
+func TestSeedEmailKeys(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	seed := func(id, email, createdAt string) {
+		t.Helper()
+		if _, err := db.Raw.Exec(db.Rebind(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at) VALUES (?,?,?,'U','','x','',?,?)`),
+			id, id, email, createdAt, createdAt); err != nil {
+			t.Fatalf("seed %s: %v", email, err)
+		}
+	}
+	const older, newer, plain = "01a00000-0000-7000-8000-0000000000a1", "01a00000-0000-7000-8000-0000000000a2", "01a00000-0000-7000-8000-0000000000a3"
+	seed(newer, "jörg@example.test", "2026-02-01 00:00:00")
+	seed(older, "JÖRG@example.test", "2026-01-01 00:00:00")
+	seed(plain, " Plain@Example.test", "2026-03-01 00:00:00")
+
+	for run, want := range []int{2, 0} {
+		n, err := svc.SeedEmailKeys(ctx)
+		if err != nil {
+			t.Fatalf("run %d: %v", run, err)
+		}
+		if n != want {
+			t.Fatalf("run %d seeded %d, want %d", run, n, want)
+		}
+		for id, wantKey := range map[string]string{older: "jörg@example.test", plain: "plain@example.test"} {
+			var got *string
+			if err := db.Raw.QueryRow(db.Rebind(`SELECT email_key FROM users WHERE id = ?`), id).Scan(&got); err != nil {
+				t.Fatal(err)
+			}
+			if got == nil || *got != wantKey {
+				t.Fatalf("email_key of %s = %v, want %q", id, got, wantKey)
+			}
+		}
+		var got *string
+		if err := db.Raw.QueryRow(db.Rebind(`SELECT email_key FROM users WHERE id = ?`), newer).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != nil {
+			t.Fatalf("the newer account took the key %q", *got)
+		}
+	}
+}

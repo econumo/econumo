@@ -18,13 +18,33 @@ func (pgsqlQuerier) GetUserByID(ctx context.Context, db backend.DBTX, id string)
 	return userRow(u), err
 }
 
-func (pgsqlQuerier) GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error) {
-	u, err := pgsqlgen.New(db).GetUserByEmail(ctx, email)
+func (pgsqlQuerier) GetUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (userRow, error) {
+	u, err := pgsqlgen.New(db).GetUserByEmail(ctx, pgsqlgen.GetUserByEmailParams(p))
 	return userRow(u), err
 }
 
-func (pgsqlQuerier) ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error) {
-	return pgsqlgen.New(db).ExistsUserByEmail(ctx, email)
+func (pgsqlQuerier) ExistsUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (bool, error) {
+	return pgsqlgen.New(db).ExistsUserByEmail(ctx, pgsqlgen.ExistsUserByEmailParams(p))
+}
+
+func (pgsqlQuerier) ListUsersWithoutEmailKey(ctx context.Context, db backend.DBTX) ([]emailKeyRow, error) {
+	rows, err := pgsqlgen.New(db).ListUsersWithoutEmailKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]emailKeyRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, emailKeyRow(row))
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) EmailKeyTaken(ctx context.Context, db backend.DBTX, key *string) (bool, error) {
+	return pgsqlgen.New(db).EmailKeyTaken(ctx, key)
+}
+
+func (pgsqlQuerier) SetUserEmailKey(ctx context.Context, db backend.DBTX, p emailKeyParams) error {
+	return pgsqlgen.New(db).SetUserEmailKey(ctx, pgsqlgen.SetUserEmailKeyParams(p))
 }
 
 func (pgsqlQuerier) ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error) {

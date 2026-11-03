@@ -4,7 +4,6 @@ package user
 import (
 	"context"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -20,14 +19,11 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if err := s.requirePasswordLogin(); err != nil {
 		return nil, err
 	}
-	limitKey := strings.ToLower(strings.TrimSpace(req.Username))
+	limitKey := model.NormalizeEmail(req.Username)
 	if err := s.allowEmailAttempt(ctx, RateScopeLogin, limitKey); err != nil {
 		return nil, err
 	}
-	// Trimmed like the counters' key, or a padded attempt on a real address would
-	// count as an unknown one. Not lowered: SQLite's lower() folds ASCII only, so a
-	// Go-lowered address would miss a row stored with uppercase non-ASCII letters.
-	u, err := s.repo.GetByEmail(ctx, strings.TrimSpace(req.Username))
+	u, err := s.repo.GetByEmail(ctx, req.Username)
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			if lerr := s.countUnknownEmailAttempt(ctx, RateScopeLogin, limitKey); lerr != nil {
@@ -73,9 +69,9 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if cerr != nil {
 		return nil, cerr
 	}
-	// A success forgives only the caller's own counter, never the ceiling. Two
-	// accounts can share a key (SQLite's lower() lets them differ by the case of a
-	// non-ASCII letter), so signing in to one would reset the guesses at the other.
+	// A success forgives only the caller's own counter, never the ceiling: accounts
+	// that collided when the email key was seeded still share a counter key, so
+	// signing in to one must not reset the guesses at the other.
 	attempt.giveBack()
 	s.clearAttempt(RateScopeLogin, emailIPKey(ctx, limitKey))
 	// Best-effort: the language preference must never block a login.

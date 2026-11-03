@@ -36,7 +36,7 @@ func (s *Service) RequestEmailChange(ctx context.Context, userID vo.Id, req mode
 	if derr != nil {
 		return nil, derr
 	}
-	if strings.EqualFold(newEmail, strings.TrimSpace(currentEmail)) {
+	if model.NormalizeEmail(newEmail) == model.NormalizeEmail(currentEmail) {
 		return nil, &errs.ValidationError{Msg: "The new email is the same as your current email.", MsgCode: errs.CodeUserEmailUnchanged}
 	}
 	exists, err := s.repo.ExistsByEmail(ctx, newEmail)

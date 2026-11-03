@@ -8,6 +8,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/txorder"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -83,9 +84,9 @@ func (b *Builder) User(u User) string {
 	if level == "" {
 		level = "full"
 	}
-	b.insert(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, `+active+`, ?, ?)`,
-		id, identifier, email, u.Name, u.Avatar, password, u.Salt, orDefault(u.Algorithm, "sha512"), now, now, level, u.AccessUntil)
+	b.insert(`INSERT INTO users (id, identifier, email, email_key, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, `+active+`, ?, ?)`,
+		id, identifier, email, model.NormalizeEmail(email), u.Name, u.Avatar, password, u.Salt, orDefault(u.Algorithm, "sha512"), now, now, level, u.AccessUntil)
 	return id
 }
 

@@ -581,6 +581,61 @@ func TestPreMembershipDatabaseMigratesWithCommandSteps(t *testing.T) {
 	}
 }
 
+// TestEmailKeyUpgrade_CollidingAccountsDoNotStopTheBoot upgrades a database holding a
+// pair SQLite's lower() let through: failing on it would take the instance down.
+func TestEmailKeyUpgrade_CollidingAccountsDoNotStopTheBoot(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "db.sqlite")
+	t.Setenv("DATABASE_URL", "sqlite://"+dbPath)
+	ctx := context.Background()
+	c, err := newContainer(ctx)
+	if err != nil {
+		t.Fatalf("container: %v", err)
+	}
+	defer c.Close()
+	var all, released []migrate.Migration
+	for _, m := range migrations.SQLite() {
+		mig := migrate.Migration{Version: m.Version, SQL: m.SQL, Command: m.Command}
+		all = append(all, mig)
+		if m.Version < "20261103000000" {
+			released = append(released, mig)
+		}
+	}
+	if err := migrate.Run(ctx, c.db, released, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatalf("released schema: %v", err)
+	}
+	older, newer, plain := vo.NewId().String(), vo.NewId().String(), vo.NewId().String()
+	for _, u := range []struct{ id, email, createdAt string }{
+		{newer, "jörg@example.test", "2026-02-01 00:00:00"},
+		{older, "JÖRG@example.test", "2026-01-01 00:00:00"},
+		{plain, "Plain@Example.test", "2026-03-01 00:00:00"},
+	} {
+		if _, err := c.db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at) VALUES (?,?,?,'U','','x','',?,?)`,
+			u.id, u.id, u.email, u.createdAt, u.createdAt); err != nil {
+			t.Fatalf("seed %s: %v", u.email, err)
+		}
+	}
+	if err := migrate.Run(ctx, c.db, all, migrate.WithCommandRunner(MigrationCommandRunner(c.cfg, c.db))); err != nil {
+		t.Fatalf("upgrade boot migration: %v", err)
+	}
+	assertKeys := func() {
+		t.Helper()
+		for id, want := range map[string]*string{older: new("jörg@example.test"), newer: nil, plain: new("plain@example.test")} {
+			var got *string
+			if err := c.db.QueryRowContext(ctx, `SELECT email_key FROM users WHERE id = ?`, id).Scan(&got); err != nil {
+				t.Fatal(err)
+			}
+			if (got == nil) != (want == nil) || (got != nil && *got != *want) {
+				t.Fatalf("email_key of %s = %v, want %v", id, got, want)
+			}
+		}
+	}
+	assertKeys()
+	if err := MigrationCommandRunner(c.cfg, c.db)(ctx, "migration:seed-email-keys"); err != nil {
+		t.Fatalf("rerun: %v", err)
+	}
+	assertKeys()
+}
+
 // TestMigrationCopyAccessTokens_CommandAndRunner drives step 2 of the
 // access_tokens repair by name: with access_tokens_new pending it copies every
 // row and a second run replaces rather than duplicates them; once the tables

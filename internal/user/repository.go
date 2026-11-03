@@ -8,6 +8,12 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
+// EmailKeyCandidate is a user row the email key seed still has to place.
+type EmailKeyCandidate struct {
+	ID    vo.Id
+	Email string
+}
+
 // Repository is the user aggregate's persistence port; the application service
 // depends only on this interface. Methods that look up a missing user return an
 // *errs.NotFoundError so the HTTP layer maps it consistently. Save upserts the
@@ -19,13 +25,22 @@ type Repository interface {
 	// GetByID loads a user (with options) by id. Missing -> *errs.NotFoundError.
 	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
 
-	// GetByEmail loads a user (with options) by email, case-insensitively.
-	// Missing -> *errs.NotFoundError.
+	// GetByEmail loads a user (with options) by the address as typed, resolved
+	// through model.NormalizeEmail. Missing -> *errs.NotFoundError.
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 
-	// ExistsByEmail reports whether a user with that email exists
-	// (case-insensitive). Used by registration/change-email dup-checks.
+	// ExistsByEmail reports whether GetByEmail would find a user. Used by
+	// registration/change-email dup-checks.
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
+
+	// ListWithoutEmailKey returns the users holding no email key, oldest first.
+	ListWithoutEmailKey(ctx context.Context) ([]EmailKeyCandidate, error)
+
+	// EmailKeyTaken reports whether some user holds the key.
+	EmailKeyTaken(ctx context.Context, key string) (bool, error)
+
+	// SetEmailKey writes only the key column.
+	SetEmailKey(ctx context.Context, userID vo.Id, key string) error
 
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error
