@@ -24,8 +24,8 @@ importers:
         specifier: ^5.3.0
         version: 5.3.0
       '@shadcn/react':
-        specifier: ^0.2.1
-        version: 0.2.1(@types/react@19.3.0)(react@19.3.1)
+        specifier: ^0.3.1
+        version: 0.3.1(@types/react@19.3.0)(react@19.3.1)
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.3.5(@types/node@26.5.1)(jiti@2.7.0))
@@ -1559,8 +1559,8 @@ packages:
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
 
-  '@shadcn/react@0.2.1':
-    resolution: {integrity: sha512-5krgi3dRMKb5jH6a+qPzVJUy/54s0kKE4Rw4LjDfLqOdVQTWKUgxWf1kW8r912I0jX/Lzxqc+pgjkjWxUIK5BQ==}
+  '@shadcn/react@0.3.1':
+    resolution: {integrity: sha512-2gOR0HDMtWeRsCZfNDaU0YDFdgH3zsDQ6lz67Fv/y/qjY9y+R8kJqAn6q56phqv7/zHi0wqURjntrNO9zL7vnQ==}
     peerDependencies:
       '@types/react': '>=19'
       react: '>=19'
@@ -5382,7 +5382,7 @@ snapshots:
 
   '@sec-ant/readable-stream@0.4.1': {}
 
-  '@shadcn/react@0.2.1(@types/react@19.3.0)(react@19.3.1)':
+  '@shadcn/react@0.3.1(@types/react@19.3.0)(react@19.3.1)':
     optionalDependencies:
       '@types/react': 19.3.0
       react: 19.3.1
