@@ -23,12 +23,14 @@ type ReadModel interface {
 	// HoldingsReport: per-currency from/to holdings (same-amount transfers in/out
 	// of the account set) in [start, end).
 	HoldingsReport(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.HoldingsRow, error)
-	// CountSpending: per (category, tag, currency) spending over [start, end) for
-	// the given categories + included accounts.
+	// CountSpending: per (category, tag, debt, currency) spending over
+	// [start, end) for the given categories + included accounts. The debt is
+	// the one whose stored payment split covers the transactions (one at
+	// most: a split is unique per transaction).
 	CountSpending(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error)
 	// SummarizedLimits: summed element limits over [start, end) (for budgetedBefore).
 	SummarizedLimits(ctx context.Context, budgetID vo.Id, start, end time.Time) ([]model.SummarizedLimitRow, error)
-	// SpendingByMonth: expense spending per (month, category/tag, currency)
+	// SpendingByMonth: expense spending per (month, category/tag/debt, currency)
 	// over [from, to) — the plan sheet's actual-expense cells in ONE query for
 	// the whole window. Bucketing matches CountSpending (rows outside the
 	// category set are dropped except NULL-category rows; a tag_id row keeps
@@ -69,6 +71,12 @@ type ReadModel interface {
 	// narrows to that category; uncategorized true narrows to category_id IS
 	// NULL; both nil/false leaves the tag's transactions unnarrowed by category.
 	BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, categoryID *vo.Id, uncategorized bool, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsByDebt returns the expense transactions (type=0) in
+	// [start, end) on the given accounts whose stored payment split names the
+	// debt and that still carry its category (and tag, when it has one),
+	// newest first. Backs a debt row's drill-down. ByCategories and ByTag
+	// carry the split's debt on DebtID so the caller can leave those out.
+	BudgetTransactionsByDebt(ctx context.Context, debt model.DebtView, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
 	// BudgetTransactionsUncategorized returns expense transactions (type=0) in
 	// [start, end) on the given accounts with no category and no tag, newest
 	// first. Backs the top-level "uncategorized" element's drill-down.

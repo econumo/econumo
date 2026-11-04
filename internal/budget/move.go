@@ -80,6 +80,9 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 	if moved != nil && moved.Type == model.ElementSavings && folderID != nil {
 		return nil, savingsFolderNotAllowedErr()
 	}
+	if moved != nil && moved.Type == model.ElementDebt && folderID != nil {
+		return nil, debtFolderNotAllowedErr()
+	}
 
 	if moved != nil && folderID != nil {
 		if err := b.placeInFolder(*folderID, moved.Type); err != nil {
@@ -97,7 +100,7 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 		if moved != nil {
 			// Siblings are the elements already in the TARGET group, excluding the
 			// moved one -- which may be arriving from another folder.
-			siblings := groupElements(b.elements, folderID, moved.ExternalID, moved.Type == model.ElementSavings)
+			siblings := groupElements(b.elements, folderID, moved.ExternalID, sortGroupOf(moved.Type))
 			key, kerr := sortkey.Place(siblings, afterID, sortkey.GrowsDown)
 			if kerr != nil {
 				return kerr
@@ -117,19 +120,19 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 
 // groupElements returns the key-ordered siblings sharing a folder, skipping
 // unset (archived / envelope-child / non-participant) rows and the moved row.
-// Savings rows form their own no-folder group: savings selects that group, and
-// every other group excludes them, so an anchor from the other group is unknown
-// and Place appends.
+// Savings rows and debt rows each form their own no-folder group: group selects
+// one, and every other group's rows are left out, so an anchor from another
+// group is unknown and Place appends.
 //
 // Siblings are keyed by EXTERNAL id, not by the budgets_elements row id, because
 // that is the id the wire carries: get-budget reports an element as its
 // envelope/category/tag id, so move-element's afterId is one of those. Keying
 // them by row id makes every anchor lookup miss, and Place then silently appends
 // -- which reads as rows jumping to the end of the group.
-func groupElements(elements []*model.BudgetElement, folderID *vo.Id, exclude vo.Id, savings bool) []sortkey.Item {
+func groupElements(elements []*model.BudgetElement, folderID *vo.Id, exclude vo.Id, group sortGroup) []sortkey.Item {
 	out := make([]sortkey.Item, 0, len(elements))
 	for _, e := range elements {
-		if e.ExternalID.Equal(exclude) || e.IsSortKeyUnset() || !inFolder(e, folderID) || (e.Type == model.ElementSavings) != savings {
+		if e.ExternalID.Equal(exclude) || e.IsSortKeyUnset() || !inFolder(e, folderID) || sortGroupOf(e.Type) != group {
 			continue
 		}
 		out = append(out, sortkey.Item{ID: e.ExternalID.String(), Key: e.SortKey})
@@ -141,6 +144,25 @@ func groupElements(elements []*model.BudgetElement, folderID *vo.Id, exclude vo.
 		return out[i].ID < out[j].ID
 	})
 	return out
+}
+
+// sortGroup is an ordering group of the no-folder area.
+type sortGroup int
+
+const (
+	sortGroupRows sortGroup = iota
+	sortGroupSavings
+	sortGroupDebts
+)
+
+func sortGroupOf(t model.ElementType) sortGroup {
+	switch t {
+	case model.ElementSavings:
+		return sortGroupSavings
+	case model.ElementDebt:
+		return sortGroupDebts
+	}
+	return sortGroupRows
 }
 
 func inFolder(e *model.BudgetElement, folderID *vo.Id) bool {
@@ -238,6 +260,12 @@ func folderSideMixedErr() error {
 	})
 }
 
+func debtFolderNotAllowedErr() error {
+	return errs.NewValidation("Validation failed", errs.FieldError{
+		Key: "folderId", Message: "Debts cannot be put into a folder", Code: errs.CodeBudgetDebtFolderNotAllowed,
+	})
+}
+
 func savingsFolderNotAllowedErr() error {
 	return errs.NewValidation("Validation failed", errs.FieldError{
 		Key: "folderId", Message: "Savings cannot be put into a folder", Code: errs.CodeBudgetSavingsFolderNotAllowed,
@@ -255,6 +283,8 @@ func savingsFolderNotAllowedErr() error {
 //   - keep one live, folder-less savings row per savings-account member
 //     (deleted members included), keyed in its own no-folder group, with the
 //     account's currency on creation;
+//   - the same for every debt of a participant, in the debts' own group, with
+//     the debt's currency on creation;
 //   - force archived elements and envelope-child categories to the unset key
 //     (and, for children, no folder) so they drop out of the listing;
 //   - give a live element that has no key one, which is how an unarchived
@@ -271,12 +301,10 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 	if err != nil {
 		return err
 	}
-	// Participant users = owner + accepted non-reader access.
-	userIDs := []vo.Id{b.budget.UserID}
-	for _, a := range b.access {
-		if a.IsAccepted && a.Role != roleGuest() {
-			userIDs = append(userIDs, a.UserID)
-		}
+	userIDs := b.participantIDs()
+	debts, err := s.debtViews(ctx, userIDs)
+	if err != nil {
+		return err
 	}
 
 	// Index existing elements by "<externalId>-<typeAlias>" AND by external id.
@@ -429,6 +457,26 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 		live[key] = true
 	}
 
+	for _, d := range debts {
+		did, perr := vo.ParseId(d.ID)
+		if perr != nil {
+			return perr
+		}
+		e, key := ensure(did, model.ElementDebt)
+		if _, isNew := created[key]; isNew && e.CurrencyID == nil {
+			cid, perr := vo.ParseId(d.CurrencyID)
+			if perr != nil {
+				return perr
+			}
+			e.UpdateCurrency(&cid, now)
+		}
+		if e.FolderID != nil {
+			e.UpdateFolder(nil, now)
+			mark(e)
+		}
+		live[key] = true
+	}
+
 	if aerr := s.assignMissingKeys(byKey, live, mark, now); aerr != nil {
 		return aerr
 	}
@@ -455,13 +503,13 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 }
 
 // assignMissingKeys gives every live element that has no key one, appending to
-// the end of its no-folder group -- there are two: savings rows, and everything
-// else. That covers rows just created for a new participant and rows that were
-// archived (key cleared) and have come back. Ordering is by element id so the
-// result does not depend on map iteration.
+// the end of its no-folder group -- there are three: savings rows, debt rows,
+// and everything else. That covers rows just created for a new participant and
+// rows that were archived (key cleared) and have come back. Ordering is by
+// element id so the result does not depend on map iteration.
 func (s *Service) assignMissingKeys(byKey map[string]*model.BudgetElement, live map[string]bool, mark func(*model.BudgetElement), now time.Time) error {
 	needsKey := make([]*model.BudgetElement, 0)
-	tails := map[bool]sortkey.Key{} // keyed by "is a savings row"
+	tails := map[sortGroup]sortkey.Key{}
 	for key, e := range byKey {
 		if !live[key] {
 			continue
@@ -470,7 +518,7 @@ func (s *Service) assignMissingKeys(byKey map[string]*model.BudgetElement, live 
 			needsKey = append(needsKey, e)
 			continue
 		}
-		g := e.Type == model.ElementSavings
+		g := sortGroupOf(e.Type)
 		if e.FolderID == nil && e.SortKey > tails[g] {
 			tails[g] = e.SortKey
 		}
@@ -480,7 +528,7 @@ func (s *Service) assignMissingKeys(byKey map[string]*model.BudgetElement, live 
 	}
 	sort.SliceStable(needsKey, func(i, j int) bool { return needsKey[i].ID.String() < needsKey[j].ID.String() })
 	for _, e := range needsKey {
-		g := e.Type == model.ElementSavings
+		g := sortGroupOf(e.Type)
 		tail := tails[g]
 		var k sortkey.Key
 		var err error

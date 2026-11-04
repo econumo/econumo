@@ -243,7 +243,7 @@ func (u unionRead) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 		return nil, err
 	}
 	return mergeRows(a, b, func(r model.SpendingRow) spendingKey {
-		return spendingKey{category: deref(r.CategoryID), tag: deref(r.TagID), currency: r.CurrencyID}
+		return spendingKey{category: deref(r.CategoryID), tag: deref(r.TagID), debt: deref(r.DebtID), currency: r.CurrencyID}
 	}, func(x, y model.SpendingRow) model.SpendingRow {
 		x.Amount = addAmounts(x.Amount, y.Amount)
 		return x
@@ -260,7 +260,7 @@ func (u unionRead) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 		return nil, err
 	}
 	return mergeRows(a, b, func(r model.MonthlySpendingRow) spendingKey {
-		return spendingKey{month: r.Month, category: deref(r.CategoryID), tag: deref(r.TagID), currency: r.CurrencyID}
+		return spendingKey{month: r.Month, category: deref(r.CategoryID), tag: deref(r.TagID), debt: deref(r.DebtID), currency: r.CurrencyID}
 	}, func(x, y model.MonthlySpendingRow) model.MonthlySpendingRow {
 		x.Amount = addAmounts(x.Amount, y.Amount)
 		return x

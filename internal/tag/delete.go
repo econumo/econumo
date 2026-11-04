@@ -28,6 +28,15 @@ func (s *Service) DeleteTag(ctx context.Context, userID vo.Id, req model.DeleteT
 			// the response can't probe which tag ids exist.
 			return errs.NewNotFound("Tag not found")
 		}
+		if s.debts != nil {
+			used, uerr := s.debts.InUse(ctx, id)
+			if uerr != nil {
+				return uerr
+			}
+			if used {
+				return &errs.ValidationError{Msg: "A debt uses this tag. Delete or change the debt first.", MsgCode: errs.CodeTagUsedByDebt}
+			}
+		}
 		return s.repo.Delete(ctx, id)
 	}); err != nil {
 		return nil, err

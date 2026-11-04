@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Debiti",
+    "settings": {
+      "header": "Debiti",
+      "info": "Prestiti e crediti tracciati senza un conto. Le spese della categoria del debito si sottraggono a ciò che devi, e i budget le mostrano in una sezione Debiti.",
+      "empty": "Ancora nessun debito",
+      "create": "Aggiungi debito"
+    },
+    "list": {
+      "payments_left": "{count} pagamento rimasto | {count} pagamenti rimasti",
+      "paid_off": "Estinto"
+    },
+    "form": {
+      "header": "Debito",
+      "name": {
+        "label": "Nome"
+      },
+      "currency": {
+        "label": "Valuta"
+      },
+      "category": {
+        "label": "Categoria"
+      },
+      "payee": {
+        "label": "Beneficiario (facoltativo)"
+      },
+      "tag": {
+        "label": "Tag (facoltativo)"
+      },
+      "start_date": {
+        "label": "Data di inizio (facoltativa)",
+        "hint": "I pagamenti precedenti non contano",
+        "none": "Nessuna data",
+        "clear": "Cancella la data di inizio"
+      },
+      "balance": {
+        "label": "Saldo attuale"
+      },
+      "payment": {
+        "label": "Pagamento"
+      },
+      "schedule": {
+        "label": "Si ripete"
+      },
+      "last_payment_date": {
+        "label": "Data dell'ultimo pagamento",
+        "hint": "Quando finisce il debito",
+        "choose": "Scegli una data"
+      },
+      "never_pays_off": "Questo pagamento non copre gli interessi, quindi il debito non si estingue mai."
+    },
+    "details": {
+      "header": "Debito",
+      "current_balance": "Saldo attuale",
+      "payments_left": "Pagamenti rimasti",
+      "money_left": "Ancora da pagare",
+      "overpayment_left": "Costo aggiuntivo rimasto",
+      "overpaid_so_far": "Costo aggiuntivo già pagato",
+      "payoff_date": "Data di estinzione",
+      "snapshots": "Storico delle condizioni",
+      "snapshot_terms": "{payment} · {schedule} · fino al {date}",
+      "payments": "Pagamenti",
+      "payments_empty": "Ancora nessun pagamento",
+      "column": {
+        "date": "Data",
+        "amount": "Pagamento",
+        "interest": "Interessi",
+        "principal": "Capitale"
+      },
+      "mark_paid_off": "Segna come estinto",
+      "paid_off_confirm": {
+        "title": "Segnare come estinto?",
+        "question": "Il saldo viene impostato a 0 da oggi. I tuoi pagamenti restano invariati."
+      },
+      "delete_confirm": {
+        "title": "Eliminare questo debito?",
+        "question": "Il debito esce dai tuoi budget. I tuoi pagamenti non vengono toccati."
+      },
+      "removal_confirm": {
+        "title": "Eliminare importi pianificati e commenti?",
+        "action": "Elimina debito"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1217,6 +1301,7 @@
         "accounts_included": "{count} di {total} inclusi",
         "accounts_hidden": "In cartelle nascoste",
         "accounts_locked_hint": "I conti con transazioni nei mesi passati non possono essere rimossi",
+        "debts_note": "I debiti sono mostrati per nome, con pagamenti e saldi, a tutti coloro che hanno accesso a questo budget.",
         "savings": {
           "label": "Conti di risparmio",
           "description": "Il denaro trasferito su questi conti conta come risparmiato, non come speso.",
@@ -1524,11 +1609,24 @@
         "saved": "Risparmiato",
         "balance_hint": "Saldo a fine mese."
       },
+      "debts": {
+        "title": "Debiti",
+        "paid": "Pagato",
+        "left": "Residuo",
+        "left_hint": "Ancora da pagare a fine mese.",
+        "payoff_by": "Estinzione prevista: {date}",
+        "payments_left": "{count} pagamento rimasto | {count} pagamenti rimasti",
+        "extra_effect": "Estinto {months} mese prima, {amount} di costo aggiuntivo in meno | Estinto {months} mesi prima, {amount} di costo aggiuntivo in meno",
+        "extra_effect_earlier": "Estinto {months} mese prima | Estinto {months} mesi prima",
+        "track": "Segui come debito",
+        "details": "Dettagli"
+      },
       "phone": {
         "row_aria": "{name}, budget {budget}, speso {spent}",
         "child_aria": "{name}, speso {spent}",
         "income_row_aria": "{name}, previsto {planned}, ricevuto {received}",
         "savings_row_aria": "{name}, previsto {planned}, risparmiato {saved}",
+        "debt_row_aria": "{name}, previsto {planned}, pagato {paid}",
         "available": "{amount} disponibile",
         "actual": "Effettivo",
         "balance": "Saldo a fine mese"
@@ -2067,6 +2165,9 @@
       "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite",
       "envelope_member_not_category": "Solo una categoria può essere aggiunta a una busta",
       "savings_folder_not_allowed": "I conti di risparmio non possono essere inseriti in una cartella",
+      "debt_folder_not_allowed": "I debiti non possono essere inseriti in una cartella",
+      "debt_period_out_of_range": "Questo debito non può essere pianificato in questo mese",
+      "debt_currency_fixed": "Un debito viene pianificato nella sua valuta",
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
       "savings_account_not_member": "I conti di risparmio devono essere tuoi conti in questo budget",
       "savings_removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti dei conti di risparmio che hai disattivato o rimosso da questo budget; conferma per continuare",
@@ -2081,7 +2182,8 @@
       "type_invalid": "Il tipo di categoria non esiste",
       "not_found": "Categoria non trovata",
       "cannot_be_merged": "Le categorie selezionate non possono essere unite.",
-      "list_empty": "L'elenco delle categorie è vuoto"
+      "list_empty": "L'elenco delle categorie è vuoto",
+      "used_by_debt": "Un debito usa questa categoria. Elimina o modifica prima il debito."
     },
     "connection": {
       "invalid_uuid": "Questo non è un UUID valido.",
@@ -2121,6 +2223,14 @@
       "cannot_be_merged": "I tag selezionati non possono essere uniti.",
       "list_empty": "L'elenco dei tag è vuoto"
     },
+    "debt": {
+      "payments_dont_cover": "I pagamenti non coprono il saldo. Aumenta il pagamento o imposta una data dell'ultimo pagamento successiva.",
+      "key_conflict": "Un altro debito potrebbe corrispondere agli stessi pagamenti. Usa beneficiari o tag diversi, oppure gli stessi con date di inizio diverse.",
+      "start_date_taken": "Un altro debito con la stessa categoria, lo stesso beneficiario e lo stesso tag inizia già in questa data.",
+      "category_not_expense": "Un debito richiede una categoria di spesa.",
+      "removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti di questo debito nei tuoi budget; conferma per continuare.",
+      "last_payment_in_past": "La data dell'ultimo pagamento deve essere successiva a oggi."
+    },
     "authserver": {
       "disabled": "Il collegamento di app non è disponibile su questo server.",
       "client_not_found": "La registrazione di questa app è scaduta o non è riconosciuta. Rimuovi Econumo dall'app e aggiungilo di nuovo.",
@@ -2141,13 +2251,15 @@
       "name_length": "Il nome del beneficiario deve contenere da {min} a {max} caratteri",
       "already_exists": "Il beneficiario esiste già.",
       "cannot_be_merged": "I beneficiari selezionati non possono essere uniti.",
-      "list_empty": "L'elenco dei beneficiari è vuoto"
+      "list_empty": "L'elenco dei beneficiari è vuoto",
+      "used_by_debt": "Un debito usa questo beneficiario. Elimina o modifica prima il debito."
     },
     "tag": {
       "name_length": "Il nome del tag deve contenere da {min} a {max} caratteri",
       "already_exists": "Il tag esiste già.",
       "cannot_be_merged": "I tag selezionati non possono essere uniti.",
-      "list_empty": "L'elenco dei tag è vuoto"
+      "list_empty": "L'elenco dei tag è vuoto",
+      "used_by_debt": "Un debito usa questo tag. Elimina o modifica prima il debito."
     },
     "token": {
       "name_length": "Il nome del token deve contenere da {min} a {max} caratteri",

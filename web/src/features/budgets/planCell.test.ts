@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import { planCellView, shownActual } from './planCell'
 
@@ -102,5 +102,44 @@ describe('planCellView for a savings account', () => {
   })
   it('without balances from the server it falls back to what was saved', () => {
     expect(planCellView({ type: sav, cell: { actual: '30', planned: '50' }, month: sel, selected: sel })).toMatchObject({ actual: '30', balance: false, hint: null })
+  })
+})
+
+describe('planCellView for a debt', () => {
+  const debt = BudgetElementType.DEBT
+  // the debt hint reads today's month from the clock
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 15, 12, 0, 0))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+  const cell = (over: Partial<{ actual: string; planned: string; closingBalance: string; paymentsLeft: number; scheduledTotal: string; isPlannable: 0 | 1 }> = {}) => ({
+    actual: '1000', planned: '1500', closingBalance: '23000', paymentsLeft: 23, scheduledTotal: '1000', upcoming: '0', isPlannable: 1 as const, ...over,
+  })
+
+  it('shows the month-end balance and the payments left beside the plan', () => {
+    expect(planCellView({ type: debt, cell: cell(), month: sel, selected: sel })).toEqual({
+      actual: '23000', dash: false, plan: '1500', over: false, balance: true, hint: null, paymentsLeft: 23,
+    })
+    // ahead of today it is the projection
+    expect(planCellView({ type: debt, cell: cell({ actual: '0' }), month: '2026-12-01', selected: sel })).toMatchObject({ actual: '23000', balance: true })
+  })
+
+  it('a paid-off month leaves no payments', () => {
+    expect(planCellView({ type: debt, cell: cell({ closingBalance: '0', paymentsLeft: 0 }), month: sel, selected: sel })).toMatchObject({ actual: '0', paymentsLeft: 0 })
+  })
+
+  it('a plan below the scheduled dues is red from the current month on, never before', () => {
+    expect(planCellView({ type: debt, cell: cell({ planned: '800' }), month: sel, selected: sel }).hint).toEqual({ kind: 'short' })
+    expect(planCellView({ type: debt, cell: cell({ planned: '800' }), month: '2026-09-01', selected: sel }).hint).toBeNull()
+    expect(planCellView({ type: debt, cell: cell({ planned: '' }), month: sel, selected: sel }).hint).toBeNull()
+  })
+
+  it('outside the debt\'s life with nothing owed the cell is blank', () => {
+    expect(planCellView({ type: debt, cell: cell({ actual: '0', planned: '', closingBalance: '0', paymentsLeft: 0, isPlannable: 0 }), month: sel, selected: sel })).toEqual({
+      actual: null, dash: false, plan: null, over: false, balance: false, hint: null, paymentsLeft: null,
+    })
   })
 })

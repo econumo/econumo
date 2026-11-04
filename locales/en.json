@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Debts",
+    "settings": {
+      "header": "Debts",
+      "info": "Loans and credit tracked without an account. Expense payments in the debt's category count against what you owe, and budgets show them in a Debts section.",
+      "empty": "No debts yet",
+      "create": "Add debt"
+    },
+    "list": {
+      "payments_left": "{count} payment left | {count} payments left",
+      "paid_off": "Paid off"
+    },
+    "form": {
+      "header": "Debt",
+      "name": {
+        "label": "Name"
+      },
+      "currency": {
+        "label": "Currency"
+      },
+      "category": {
+        "label": "Category"
+      },
+      "payee": {
+        "label": "Payee (optional)"
+      },
+      "tag": {
+        "label": "Tag (optional)"
+      },
+      "start_date": {
+        "label": "Start date (optional)",
+        "hint": "Earlier payments don't count",
+        "none": "None",
+        "clear": "Clear the start date"
+      },
+      "balance": {
+        "label": "Balance now"
+      },
+      "payment": {
+        "label": "Payment"
+      },
+      "schedule": {
+        "label": "Repeats"
+      },
+      "last_payment_date": {
+        "label": "Last payment date",
+        "hint": "When the debt ends",
+        "choose": "Choose a date"
+      },
+      "never_pays_off": "This payment doesn't cover the interest, so the debt never pays off."
+    },
+    "details": {
+      "header": "Debt",
+      "current_balance": "Balance now",
+      "payments_left": "Payments left",
+      "money_left": "Left to pay",
+      "overpayment_left": "Overpayment left",
+      "overpaid_so_far": "Overpaid so far",
+      "payoff_date": "Payoff date",
+      "snapshots": "History of terms",
+      "snapshot_terms": "{payment} · {schedule} · until {date}",
+      "payments": "Payments",
+      "payments_empty": "No payments yet",
+      "column": {
+        "date": "Date",
+        "amount": "Payment",
+        "interest": "Interest",
+        "principal": "Principal"
+      },
+      "mark_paid_off": "Mark as paid off",
+      "paid_off_confirm": {
+        "title": "Mark as paid off?",
+        "question": "The balance is set to 0 as of today. Your payments stay as they are."
+      },
+      "delete_confirm": {
+        "title": "Delete this debt?",
+        "question": "The debt leaves your budgets. Your payments are not touched."
+      },
+      "removal_confirm": {
+        "title": "Delete plans and comments?",
+        "action": "Delete debt"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1217,6 +1301,7 @@
         "accounts_included": "{count} of {total} included",
         "accounts_hidden": "In hidden folders",
         "accounts_locked_hint": "Accounts with transactions in past months can't be removed",
+        "debts_note": "Debts are shown by name, with their payments and balances, to everyone with access to this budget.",
         "savings": {
           "label": "Savings accounts",
           "description": "Money moved into these accounts counts as saved, not spent.",
@@ -1524,11 +1609,24 @@
         "saved": "Saved",
         "balance_hint": "Balance at the end of the month."
       },
+      "debts": {
+        "title": "Debts",
+        "paid": "Paid",
+        "left": "Left",
+        "left_hint": "Left to pay at the end of the month.",
+        "payoff_by": "Paid off by {date}",
+        "payments_left": "{count} payment left | {count} payments left",
+        "extra_effect": "Paid off {months} month earlier, {amount} less overpayment | Paid off {months} months earlier, {amount} less overpayment",
+        "extra_effect_earlier": "Paid off {months} month earlier | Paid off {months} months earlier",
+        "track": "Track as debt",
+        "details": "Details"
+      },
       "phone": {
         "row_aria": "{name}, budget {budget}, spent {spent}",
         "child_aria": "{name}, spent {spent}",
         "income_row_aria": "{name}, planned {planned}, received {received}",
         "savings_row_aria": "{name}, planned {planned}, saved {saved}",
+        "debt_row_aria": "{name}, planned {planned}, paid {paid}",
         "available": "{amount} available",
         "actual": "Actual",
         "balance": "Balance at month end"
@@ -2067,6 +2165,9 @@
       "folder_side_mixed": "A folder cannot contain both income and expenses",
       "envelope_member_not_category": "Only a category can go into an envelope",
       "savings_folder_not_allowed": "Savings cannot be put into a folder",
+      "debt_folder_not_allowed": "Debts cannot be put into a folder",
+      "debt_period_out_of_range": "This debt cannot be planned in this month",
+      "debt_currency_fixed": "A debt is planned in its own currency",
       "account_not_removable": "This account has transactions in past months and can no longer be removed from the budget",
       "savings_account_not_member": "Savings accounts must be your own accounts in this budget",
       "savings_removal_unconfirmed": "This deletes the planned amounts and comments of savings accounts you turned off or removed from this budget; confirm to continue",
@@ -2081,7 +2182,8 @@
       "type_invalid": "CategoryType not exists",
       "not_found": "Category not found",
       "cannot_be_merged": "The selected categories cannot be merged",
-      "list_empty": "Categories list is empty"
+      "list_empty": "Categories list is empty",
+      "used_by_debt": "A debt uses this category. Delete or change the debt first."
     },
     "connection": {
       "invalid_uuid": "This is not a valid UUID.",
@@ -2121,6 +2223,14 @@
       "cannot_be_merged": "The selected tags cannot be merged",
       "list_empty": "Tags list is empty"
     },
+    "debt": {
+      "payments_dont_cover": "The payments do not cover the balance. Raise the payment or set a later last payment date.",
+      "key_conflict": "Another debt could match the same payments. Give the debts different payees or tags, or the same ones with different start dates.",
+      "start_date_taken": "Another debt with the same category, payee and tag already starts on this date.",
+      "category_not_expense": "A debt needs an expense category.",
+      "removal_unconfirmed": "This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.",
+      "last_payment_in_past": "The last payment date must be after today."
+    },
     "authserver": {
       "disabled": "Connecting apps is not available on this server.",
       "client_not_found": "This app's registration has expired or is unknown. Remove Econumo from the app and add it again.",
@@ -2141,13 +2251,15 @@
       "name_length": "Payee name must be {min}-{max} characters",
       "already_exists": "Payee already exists.",
       "cannot_be_merged": "The selected payees cannot be merged",
-      "list_empty": "Payees list is empty"
+      "list_empty": "Payees list is empty",
+      "used_by_debt": "A debt uses this payee. Delete or change the debt first."
     },
     "tag": {
       "name_length": "Tag name must be {min}-{max} characters",
       "already_exists": "Tag already exists.",
       "cannot_be_merged": "The selected tags cannot be merged",
-      "list_empty": "Tags list is empty"
+      "list_empty": "Tags list is empty",
+      "used_by_debt": "A debt uses this tag. Delete or change the debt first."
     },
     "token": {
       "name_length": "Token name must be {min}-{max} characters",

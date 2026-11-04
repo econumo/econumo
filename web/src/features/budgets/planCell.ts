@@ -27,6 +27,8 @@ export interface PlanCellView {
   balance: boolean
   /** display only: an expense plan short of spent + the month's upcoming payments */
   hint: PlanHint
+  /** debt rows only: payments left after the month, null where the debt does not run */
+  paymentsLeft?: number | null
 }
 
 /** A zero actual is only worth a mark next to a plan, as "— · 55"; on its own the
@@ -46,6 +48,19 @@ function shownPlan(planned: string): string | null {
 export function planCellView({ type, id, cell, month, selected }: PlanCellViewInput): PlanCellView {
   if (!cell) {
     return { actual: null, dash: false, plan: null, over: false, balance: false, hint: null }
+  }
+  // a debt shows what is still owed at the month's end (projected ahead), as savings
+  // shows its balance; outside its life, with nothing owed, only a payment made then
+  // shows. Its one hint: a plan below the month's scheduled dues.
+  if (type === BudgetElementType.DEBT) {
+    const runs = cell.isPlannable !== 0 || !isZero(cell.closingBalance ?? '0')
+    const plan = shownPlan(cell.planned)
+    const debtHint = month < selected ? null : planHint({ planned: cell.planned, spent: cell.actual, scheduled: cell.scheduledTotal, month, kind: 'debt' })
+    if (!runs || cell.closingBalance === undefined) {
+      const paid = month <= selected ? cell.actual : null
+      return { ...shownActual(paid, plan !== null), plan, over: false, balance: false, hint: debtHint, paymentsLeft: null }
+    }
+    return { actual: cell.closingBalance, dash: false, plan, over: false, balance: true, hint: debtHint, paymentsLeft: cell.paymentsLeft ?? null }
   }
   const past = month <= selected
   // the hint compares the plan with what the month needs (saved, for savings), never a balance

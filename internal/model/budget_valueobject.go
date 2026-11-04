@@ -8,7 +8,7 @@ package model
 import "github.com/econumo/econumo/internal/shared/errs"
 
 // ElementType is a budget element's kind: envelope=0, category=1, tag=2,
-// income category=3, income envelope=4, savings=5.
+// income category=3, income envelope=4, savings=5, debt=6.
 type ElementType int16
 
 const (
@@ -22,6 +22,9 @@ const (
 	// One row per savings account member of the budget; external id = the
 	// account id. Persisted, therefore frozen.
 	ElementSavings ElementType = 5
+	// One row per debt of a budget participant; external id = the debt id.
+	// Persisted, therefore frozen.
+	ElementDebt ElementType = 6
 )
 
 // UncategorizedID is the wire id of the presentation-only budget element that
@@ -43,7 +46,7 @@ const (
 var elementAliases = [...]string{
 	ElementEnvelope: "envelope", ElementCategory: "category", ElementTag: "tag",
 	ElementIncomeCategory: "income_category", ElementIncomeEnvelope: "income_envelope",
-	ElementSavings: "savings",
+	ElementSavings: "savings", ElementDebt: "debt",
 }
 
 // ElementTypeFromAlias parses an element type alias. Only the original three

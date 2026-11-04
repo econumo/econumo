@@ -15,6 +15,8 @@ type Querier interface {
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
+	// Expenses only (type 0); the currency is the account's.
+	CandidateDebtTransactions(ctx context.Context, categoryID *string) ([]CandidateDebtTransactionsRow, error)
 	// Single use: the DELETE is the read, so two concurrent exchanges of one code
 	// cannot both get a row.
 	ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
@@ -40,6 +42,9 @@ type Querier interface {
 	CountLabelsByOwner(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
+	DebtUsesCategory(ctx context.Context, categoryID string) (int64, error)
+	DebtUsesPayee(ctx context.Context, payeeID *string) (int64, error)
+	DebtUsesTag(ctx context.Context, tagID *string) (int64, error)
 	DeleteAccessToken(ctx context.Context, id string) error
 	DeleteAccountAccess(ctx context.Context, arg DeleteAccountAccessParams) error
 	DeleteAccountOptionForUser(ctx context.Context, arg DeleteAccountOptionForUserParams) error
@@ -61,6 +66,7 @@ type Querier interface {
 	// pile up far faster than sessions and are swept set-based, not per user.
 	DeleteDeadOAuthAccessTokens(ctx context.Context, arg DeleteDeadOAuthAccessTokensParams) (int64, error)
 	DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuthGrantsParams) (int64, error)
+	DeleteDebt(ctx context.Context, id string) error
 	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
@@ -113,6 +119,9 @@ type Querier interface {
 	// it. Expiry is compared in the app layer (Go time.Time), not in SQL, to avoid
 	// engine date-format differences.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
+	// Whether the external id's element of this type carries a limit or a comment
+	// in any budget.
+	ElementHasData(ctx context.Context, arg ElementHasDataParams) (int64, error)
 	ExistsUserByEmail(ctx context.Context, lower string) (int64, error)
 	// Joins users for access_level/access_until so per-request auth can report
 	// the caller's effective access level in the same round trip. This does NOT
@@ -216,6 +225,9 @@ type Querier interface {
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
+	// Budget debts. DATE columns are bound as 'Y-m-d' text (CAST ... AS TEXT):
+	// the driver would otherwise store a time part, like currencies_rates.published_at.
+	GetDebtByID(ctx context.Context, id string) (Debt, error)
 	// Where a rate-gap check starts by default. ORDER BY ... LIMIT 1 so the
 	// result types as the column. sql.ErrNoRows = no transactions yet.
 	GetEarliestTransactionDate(ctx context.Context) (time.Time, error)
@@ -375,6 +387,10 @@ type Querier interface {
 	InsertCorrectionTransaction(ctx context.Context, arg InsertCorrectionTransactionParams) error
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
+	InsertDebtSnapshot(ctx context.Context, arg InsertDebtSnapshotParams) error
+	// Through the transaction row: a payment deleted since it was read inserts
+	// nothing instead of failing the foreign key.
+	InsertDebtSplit(ctx context.Context, arg InsertDebtSplitParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
 	// Same fence as InsertAccessTokenIfGeneration: a callback that resolved its
 	// user before an account reclaim must not land an identity after it. A plain
@@ -493,6 +509,7 @@ type Querier interface {
 	// list and the code->id map. Custom (per-user) currencies must never reach the
 	// CLI/OXR path. Mirrors CurrencyRepository::getAll() (code projection only).
 	ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow, error)
+	ListDebtsByCategory(ctx context.Context, categoryID string) ([]Debt, error)
 	ListDeletedAccounts(ctx context.Context) ([]Account, error)
 	ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID string) ([]string, error)
 	// Read-side query for the transaction CSV export (SQLite). Returns the user's
@@ -568,6 +585,9 @@ type Querier interface {
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
 	// Plain read: SQLite serializes writers, so there is no concurrent limit or
 	// comment for a lock to order against.
+	LockElementsByExternal(ctx context.Context, arg LockElementsByExternalParams) ([]string, error)
+	// Plain read: SQLite serializes writers, so there is no concurrent limit or
+	// comment for a lock to order against.
 	LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error)
 	// The row lock behind every existing-row write and credential mint (see
 	// user.Repository.LockRow). SQLite has no row-level lock modes, so this stays
@@ -591,6 +611,9 @@ type Querier interface {
 	// Replace-mode: point every transaction on the old category at the new one
 	// before the old category is deleted (mirrors TransactionRepository::replaceCategory).
 	ReassignCategoryTransactions(ctx context.Context, arg ReassignCategoryTransactionsParams) error
+	ReassignDebtCategory(ctx context.Context, arg ReassignDebtCategoryParams) error
+	ReassignDebtPayee(ctx context.Context, arg ReassignDebtPayeeParams) error
+	ReassignDebtTag(ctx context.Context, arg ReassignDebtTagParams) error
 	ReassignPayeeRecurring(ctx context.Context, arg ReassignPayeeRecurringParams) error
 	// Merge: point every transaction on the old payee at the new one before the old
 	// payee is deleted. Deliberately not scoped by user, because a shared account
@@ -611,6 +634,7 @@ type Querier interface {
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
+	RepointBudgetCommentsBetween(ctx context.Context, arg RepointBudgetCommentsBetweenParams) error
 	// Merge, no-conflict branch: hand the element to another classification instead
 	// of deleting and recreating it, which keeps its folder and sort position so the
 	// budget row stays where the user put it. UpsertBudgetElement deliberately does
@@ -686,6 +710,7 @@ type Querier interface {
 	// time.Time would store a time part, splitting one day into distinct keys of
 	// the ON CONFLICT (identifier_uniq_currencies_rates) upsert.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
+	UpsertDebt(ctx context.Context, arg UpsertDebtParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error

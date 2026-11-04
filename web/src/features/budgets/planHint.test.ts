@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BudgetElementType } from '@/api/dto/budget'
 import { planHint, planHintKind, planNeed } from './planHint'
+import { currentMonth } from './planMath'
 
 describe('planHint', () => {
   it('an empty plan stays empty', () => {
@@ -67,5 +68,32 @@ describe('planHintKind', () => {
 
   it('maps savings', () => {
     expect(planHintKind(BudgetElementType.SAVINGS)).toBe('savings')
+  })
+
+  it('maps debts', () => {
+    expect(planHintKind(BudgetElementType.DEBT)).toBe('debt')
+  })
+})
+
+describe('planHint on a debt row', () => {
+  const thisMonth = currentMonth()
+
+  it('a plan below the scheduled amount is red, from the current month on', () => {
+    expect(planHint({ planned: '500', spent: '0', upcoming: '1000', scheduled: '1000', month: thisMonth, kind: 'debt' })).toEqual({ kind: 'short' })
+    expect(planHint({ planned: '500', spent: '0', scheduled: '1000', month: '2999-01-01', kind: 'debt' })).toEqual({ kind: 'short' })
+  })
+
+  it('a past month is never red', () => {
+    expect(planHint({ planned: '500', spent: '500', scheduled: '1000', month: '2000-01-01', kind: 'debt' })).toBeNull()
+  })
+
+  it('no plan, or a plan at or above the scheduled amount, is not red', () => {
+    expect(planHint({ planned: '', spent: '0', scheduled: '1000', month: thisMonth, kind: 'debt' })).toBeNull()
+    expect(planHint({ planned: '1000', spent: '0', scheduled: '1000', month: thisMonth, kind: 'debt' })).toBeNull()
+    expect(planHint({ planned: '1500', spent: '0', scheduled: '1000', month: thisMonth, kind: 'debt' })).toBeNull()
+  })
+
+  it('what was paid and is still due does not matter: only the scheduled amount does', () => {
+    expect(planHint({ planned: '1000', spent: '900', upcoming: '600', scheduled: '1000', month: thisMonth, kind: 'debt' })).toBeNull()
   })
 })

@@ -43,6 +43,9 @@ const (
 	CodeBudgetFolderSideMixed           = "budget.folder_side_mixed"
 	CodeBudgetEnvelopeMemberNotCategory = "budget.envelope_member_not_category"
 	CodeBudgetSavingsFolderNotAllowed   = "budget.savings_folder_not_allowed"
+	CodeBudgetDebtFolderNotAllowed      = "budget.debt_folder_not_allowed"
+	CodeBudgetDebtPeriodOutOfRange      = "budget.debt_period_out_of_range"
+	CodeBudgetDebtCurrencyFixed         = "budget.debt_currency_fixed"
 	CodeBudgetAccountNotRemovable       = "budget.account_not_removable"
 	CodeBudgetSavingsAccountNotMember   = "budget.savings_account_not_member"
 	CodeBudgetSavingsRemovalUnconfirmed = "budget.savings_removal_unconfirmed"
@@ -57,6 +60,7 @@ const (
 	CodeCategoryNotFound       = "category.not_found"
 	CodeCategoryCannotBeMerged = "category.cannot_be_merged"
 	CodeCategoryListEmpty      = "category.list_empty"
+	CodeCategoryUsedByDebt     = "category.used_by_debt"
 
 	CodeConnectionInvalidUUID      = "connection.invalid_uuid"
 	CodeConnectionInvalidRoleAlias = "connection.invalid_role_alias"
@@ -69,11 +73,13 @@ const (
 	CodePayeeAlreadyExists  = "payee.already_exists"
 	CodePayeeCannotBeMerged = "payee.cannot_be_merged"
 	CodePayeeListEmpty      = "payee.list_empty"
+	CodePayeeUsedByDebt     = "payee.used_by_debt"
 
 	CodeTagNameLength     = "tag.name_length"
 	CodeTagAlreadyExists  = "tag.already_exists"
 	CodeTagCannotBeMerged = "tag.cannot_be_merged"
 	CodeTagListEmpty      = "tag.list_empty"
+	CodeTagUsedByDebt     = "tag.used_by_debt"
 
 	CodeLabelNameLength     = "label.name_length"
 	CodeLabelCannotBeMerged = "label.cannot_be_merged"
@@ -137,6 +143,13 @@ const (
 	CodeOAuthProviderAlreadyLinked  = "oauth.provider_already_linked"
 	CodeOAuthLastSignInMethod       = "oauth.last_sign_in_method"
 
+	CodeDebtPaymentsDontCover  = "debt.payments_dont_cover"
+	CodeDebtKeyConflict        = "debt.key_conflict"
+	CodeDebtStartDateTaken     = "debt.start_date_taken"
+	CodeDebtCategoryNotExpense = "debt.category_not_expense"
+	CodeDebtRemovalUnconfirmed = "debt.removal_unconfirmed"
+	CodeDebtLastPaymentInPast  = "debt.last_payment_in_past"
+
 	CodeAuthServerDisabled         = "authserver.disabled"
 	CodeAuthServerClientNotFound   = "authserver.client_not_found"
 	CodeAuthServerRedirectMismatch = "authserver.redirect_uri_mismatch"
@@ -178,6 +191,9 @@ var AllCodes = []string{
 	CodeBudgetFolderSideMixed,
 	CodeBudgetEnvelopeMemberNotCategory,
 	CodeBudgetSavingsFolderNotAllowed,
+	CodeBudgetDebtFolderNotAllowed,
+	CodeBudgetDebtPeriodOutOfRange,
+	CodeBudgetDebtCurrencyFixed,
 	CodeBudgetAccountNotRemovable,
 	CodeBudgetSavingsAccountNotMember,
 	CodeBudgetSavingsRemovalUnconfirmed,
@@ -192,6 +208,7 @@ var AllCodes = []string{
 	CodeCategoryNotFound,
 	CodeCategoryCannotBeMerged,
 	CodeCategoryListEmpty,
+	CodeCategoryUsedByDebt,
 
 	CodeConnectionInvalidUUID,
 	CodeConnectionInvalidRoleAlias,
@@ -204,11 +221,13 @@ var AllCodes = []string{
 	CodePayeeAlreadyExists,
 	CodePayeeCannotBeMerged,
 	CodePayeeListEmpty,
+	CodePayeeUsedByDebt,
 
 	CodeTagNameLength,
 	CodeTagAlreadyExists,
 	CodeTagCannotBeMerged,
 	CodeTagListEmpty,
+	CodeTagUsedByDebt,
 
 	CodeLabelNameLength,
 	CodeLabelCannotBeMerged,
@@ -276,4 +295,11 @@ var AllCodes = []string{
 	CodeAuthServerClientNotFound,
 	CodeAuthServerRedirectMismatch,
 	CodeAuthServerGrantNotFound,
+
+	CodeDebtPaymentsDontCover,
+	CodeDebtKeyConflict,
+	CodeDebtStartDateTaken,
+	CodeDebtCategoryNotExpense,
+	CodeDebtRemovalUnconfirmed,
+	CodeDebtLastPaymentInPast,
 }

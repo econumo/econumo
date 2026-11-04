@@ -152,8 +152,8 @@ release branches cut before ship still publish. Local use needs `ship` installed
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the sixteen features (`account`, `admin`, `authserver`, `budget`, `category`, `connection`,
-`currency`, `imports`, `label`, `oauth`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the seventeen features (`account`, `admin`, `authserver`, `budget`, `category`, `connection`,
+`currency`, `debt`, `imports`, `label`, `oauth`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree (`internal/version` is a build-info leaf that archtest also auto-detects, not a slice) holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -171,7 +171,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │                                one file per feature (account.go, account_dto.go, ...); imports only
 │   │                                the shared kernel; part of the archtest kernel alongside `shared`
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
-│   │   │                            currency, imports, payee, system, tag, transaction, user); root package holds only
+│   │   │                            currency, debt, imports, payee, system, tag, transaction, user); root package holds only
 │   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
 │   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
 │   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
@@ -232,6 +232,12 @@ currency / transaction-creation ports, wired in `internal/server/glue_imports.go
 `update-rule`, `delete-rule`, `preview-rule`, `apply-rule`).
 The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
+
+`debt` (loans the owner pays down through an expense category) exposes six routes under
+`/api/v1/debt/` (`get-debt-list`, `get-debt`, `create-debt`, `update-debt`, `delete-debt`,
+`mark-debt-paid-off`); a debt belongs to its owner alone, so another user gets not-found.
+Its ports (classification ownership, rates, the budget's element rows) are wired in
+`internal/server/glue_debt.go` and `glue_budget_debt.go`; budget reads debts through its own `DebtSource` port.
 
 ### Dependency rule
 
@@ -1574,6 +1580,103 @@ data unreadable. Most are also asserted by the test suite.
   Balance/Savings-balance split follows the savings DATA rather than only the visible
   rows, so a deleted savings account with a balance but no row in the window still
   moves its money out of the everyday Balance.
+- **Budget debts** (`internal/debt`; spec `docs/superpowers/specs/2026-10-29-budget-debts-design.md`):
+  a loan paid down through an expense category, deliberately NOT an account (in no account list,
+  total or report). **Matching** is by data, never a field on the transaction: an EXPENSE
+  (transfers never) is a payment when its category is the debt's, its payee/tag match when the
+  debt names one, and it is dated inside the debt's range. Debts with the same
+  category/payee/tag are partitioned by start date (a debt owns its start date up to the day
+  before the next one's; empty = from the beginning; a shared start date is refused); keys that
+  could both match one transaction (category alone vs category + payee) are refused
+  (`debt.key_conflict`, `debt.start_date_taken`), so a payment belongs to at most one debt.
+  `debts_payments` (one row per matched transaction: debt and interest; the debt part is the
+  amount less the interest, never stored) is materialized by the debt sync on read, in date order, under the owner's user row lock and one
+  DB transaction per category: stale splits of payments that stopped matching are deleted, newly
+  matching ones are split as late entries (a payment that moved to another debt's category takes
+  its row with it, the insert upserts on the transaction), stored splits are never recomputed (a corrected
+  amount keeps its interest, capped at the new amount). Splits of payments dated after today are
+  provisional (every Sync recomputes them, so a payment takes the terms in force on its date once
+  it arrives). **Snapshots** (`debts_snapshots`: balance after the as-of day's payments, payment,
+  schedule, last payment date) are append-only history; the debt row also carries a copy of the
+  latest snapshot's values ("current terms"), written with every new snapshot in the same
+  transaction. Create makes the first snapshot; an update writes a new one only when balance,
+  payment, schedule or last payment date differ (a rename does not); `mark-debt-paid-off` writes
+  a balance-0 snapshot. Create refuses a currency the user may not use (deleted, or another
+  user's custom one: `currency.not_available`, the same `EnsureUsable` check budgets use).
+  Currency is not editable; category, payee, tag and start date are,
+  rechecked by the same key checks. **Splitting is bank-style** (`internal/model/debt_math.go`):
+  the implied periodic rate `r` is solved from the snapshot (annuity over the schedule, `r = 0`
+  when payment x n = balance, payments that cannot cover the balance are refused, and so is a last
+  payment date more than 100 years out, past the projection's horizon); interest
+  accrues per schedule period (a window from halfway after the previous due date to halfway
+  before the next) as balance at period start x `r`, payments in the window consume it first (a stored split's interest is reserved, so a payment
+  entered later in that window takes only what is left)
+  and everything else, an extra payment included, goes fully to the debt; a missed period (or a
+  payment below the interest) adds nothing, the balance never rises on its own; payments before
+  the first snapshot are estimated backward with its `r`; foreign payments convert at their day's
+  rate (1:1 when no rate is stored). Every stored or emitted amount is rounded to the debt
+  currency's fraction digits. **Projection**: current balance = latest snapshot's balance less the
+  debt parts after its as-of date (a due is "unpaid" only strictly after the snapshot day);
+  payments left, money left, overpayment left and the payoff date amortize the balance forward;
+  the planned extra in a month (plan above regular payment x scheduled payments that month; in
+  the current month, plan above what was already paid this month plus the regular payments
+  still due in it, so a planned extra already paid is not projected twice) is applied with that
+  month's first projected payment, fully to the debt; no plan or a plan
+  below the scheduled amount still projects the scheduled payments; an overdue unpaid due counts
+  in today's month. Paid off = balance rounded to the currency is 0 or below (display state: it
+  does not end matching, and a later payment or snapshot reopens the debt).
+  **Budget rows**: element type `ElementDebt = 6` / alias `"debt"` is persisted and frozen
+  (the wire parser, like savings, rejects it); the row's external id is the debt id, it lives in its
+  own ordering group (never a folder: `budget.debt_folder_not_allowed`), is in the debt's
+  currency (`change-element-currency` is refused), exists in every budget whose participants
+  include the owner, and is visible to every participant, guests included (details and edits stay
+  owner-only). The rows ride additively on `structure.debts` in `get-budget` (planned, paid,
+  `budgetSpent`, available with the element carry-over, `closingBalance`, payments left, payoff
+  figures with and without the planned extras, `upcoming` = the unpaid scheduled dues, `isPlannable`)
+  and on `get-budget-plan` (per-cell figures, `scheduledTotal`, `isPaidOff`). **Planning bounds**:
+  a month is plannable from the start month (start date's month, else the earlier of the first
+  matched payment's and the first snapshot's) to the end month (latest snapshot's last payment date's month, the
+  payoff month once paid off); `set-limit` and `create-comment` outside it are refused
+  (`budget.debt_period_out_of_range`, field `period`), but clearing a plan (`amount: null`) is
+  allowed; stored plans outside the life stay in the database, show as not plannable and never reach
+  the projection; a row outside its life is emitted only when something was paid or its available
+  is non-zero; a debt row's carried Available sums only the plans of months in its life, so plans
+  left past an early payoff neither grow it nor keep the row on screen. **Attribution**: a matched payment (joined through `debts_payments`, valid only
+  while the row still carries the debt's category and tag) leaves its category, tag and
+  envelope rows and their drill-downs and counts on the debt row (the debt row has its own
+  drill-down, `debtId` on `get-transaction-list`); labels keep counting it (they overlap and
+  never sum); a payment booked on a savings member stays in the savings row; Paid is the
+  month's matched payments from the budget's everyday member accounts. Debt payments stay
+  expenses: every total, Available and Balance is unchanged, the Debts block only regroups
+  them, so the SPA adds the debt rows to its expense sums (`debtTotals`, `planTotals`) and the
+  Expenses SECTION heading no longer equals the Totals Expenses line. The red plan hint on a
+  debt row is only "plan below the scheduled amount" (current and future months). **Reads**:
+  the sync writes splits and runs from the budget's read paths (`Service.Sync`: `GetBudget`,
+  `GetBudgetPlan`, build results), outside any budget transaction, and from the debt
+  service's own reads and writes (`get-debt`, update, delete, a classification merge) for the
+  debt's category; `Views` and `Timelines`
+  are read-only (no owner lock, no writes: stale splits ignored, missing ones split in memory),
+  which is what `syncElements`, `set-limit` and the transaction lists call, so partners'
+  owner-row locks can never invert inside a budget write. **Converting**: "Track as debt" on an
+  expense category row (also inside an envelope) opens the form; creating a WHOLE-category
+  debt (no payee/tag/start date) moves the category row's plans and comments (`TransferData`,
+  only where the target row's currency matches, only for the months of the debt's planning
+  life: the rest stays on the category row, whose Available keeps counting it) to the debt row
+  in every budget in the same transaction; an edit that makes a debt whole-category (or moves a
+  whole-category debt to another category) and a category merge onto a whole-category debt (the
+  source's debt moving there, or one already on the target) do the same, a month both rows plan
+  adding up; deleting it moves them back (the category's plan wins a clash; a category inside an
+  envelope takes nothing, its child row showing no plan), and a delete that would leave data behind (or a
+  partial debt's plans) needs `confirmDataRemoval` (`debt.removal_unconfirmed`, a field error on
+  that field); the delete write-locks the debt's rows first (`LockElementsByExternal`, like the
+  savings guard), so a concurrent plan is either seen or refused, and deletes the debt's budget
+  rows (plans and comments) in the same transaction rather than leaving them to the next
+  structure sync. Payments are never touched by a delete. **Lock order**: the debt owner's
+  user row before any budget row, everywhere; a category/payee/tag merge therefore locks the
+  owners of the debts on either side first (`DebtUsage.PrepareMerge`), before it writes. **Classifications**: deleting a
+  category, payee or tag a debt uses is refused (`*.used_by_debt`); a merge moves the debt to
+  the target and refuses with `debt.key_conflict` when that would overlap another debt. No MCP
+  tool of its own: `get_budget` lists `structure.debts` and `set_limit` accepts a debt id.
 - **Transaction import (Apple Wallet)**: one `import_sources` row per user per
   provider (`create-source` is idempotent on the pair); a Wallet card is keyed by its
   normalized name and starts `unmapped` — its events queue (`import_transaction_links`

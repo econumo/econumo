@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Schulden",
+    "settings": {
+      "header": "Schulden",
+      "info": "Kredite und Schulden ohne eigenes Konto verfolgen. Ausgaben in der Kategorie der Schuld werden auf den offenen Betrag angerechnet, und die Budgets zeigen sie im Bereich Schulden.",
+      "empty": "Noch keine Schulden",
+      "create": "Schuld hinzufügen"
+    },
+    "list": {
+      "payments_left": "{count} Zahlung übrig | {count} Zahlungen übrig",
+      "paid_off": "Abbezahlt"
+    },
+    "form": {
+      "header": "Schuld",
+      "name": {
+        "label": "Name"
+      },
+      "currency": {
+        "label": "Währung"
+      },
+      "category": {
+        "label": "Kategorie"
+      },
+      "payee": {
+        "label": "Zahlungsempfänger (optional)"
+      },
+      "tag": {
+        "label": "Tag (optional)"
+      },
+      "start_date": {
+        "label": "Startdatum (optional)",
+        "hint": "Frühere Zahlungen zählen nicht",
+        "none": "Kein Datum",
+        "clear": "Startdatum entfernen"
+      },
+      "balance": {
+        "label": "Aktueller Saldo"
+      },
+      "payment": {
+        "label": "Rate"
+      },
+      "schedule": {
+        "label": "Wiederholung"
+      },
+      "last_payment_date": {
+        "label": "Datum der letzten Zahlung",
+        "hint": "Wann die Schuld endet",
+        "choose": "Datum wählen"
+      },
+      "never_pays_off": "Diese Rate deckt die Zinsen nicht, daher wird die Schuld nie abbezahlt."
+    },
+    "details": {
+      "header": "Schuld",
+      "current_balance": "Aktueller Saldo",
+      "payments_left": "Verbleibende Zahlungen",
+      "money_left": "Noch zu zahlen",
+      "overpayment_left": "Verbleibende Mehrkosten",
+      "overpaid_so_far": "Bisherige Mehrkosten",
+      "payoff_date": "Voraussichtlich abbezahlt am",
+      "snapshots": "Verlauf der Konditionen",
+      "snapshot_terms": "{payment} · {schedule} · bis {date}",
+      "payments": "Zahlungen",
+      "payments_empty": "Noch keine Zahlungen",
+      "column": {
+        "date": "Datum",
+        "amount": "Zahlung",
+        "interest": "Zinsen",
+        "principal": "Tilgung"
+      },
+      "mark_paid_off": "Als abbezahlt markieren",
+      "paid_off_confirm": {
+        "title": "Als abbezahlt markieren?",
+        "question": "Der Saldo wird ab heute auf 0 gesetzt. Ihre Zahlungen bleiben unverändert."
+      },
+      "delete_confirm": {
+        "title": "Diese Schuld löschen?",
+        "question": "Die Schuld verschwindet aus Ihren Budgets. Ihre Zahlungen bleiben unberührt."
+      },
+      "removal_confirm": {
+        "title": "Planbeträge und Kommentare löschen?",
+        "action": "Schuld löschen"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1217,6 +1301,7 @@
         "accounts_included": "{count} von {total} einbezogen",
         "accounts_hidden": "In ausgeblendeten Ordnern",
         "accounts_locked_hint": "Konten mit Buchungen in vergangenen Monaten können nicht entfernt werden",
+        "debts_note": "Schulden werden allen mit Zugriff auf dieses Budget mit Namen, Zahlungen und Salden angezeigt.",
         "savings": {
           "label": "Sparkonten",
           "description": "Geld, das auf diese Konten fließt, gilt als gespart, nicht als ausgegeben.",
@@ -1524,11 +1609,24 @@
         "saved": "Gespart",
         "balance_hint": "Saldo am Monatsende."
       },
+      "debts": {
+        "title": "Schulden",
+        "paid": "Gezahlt",
+        "left": "Offen",
+        "left_hint": "Am Monatsende noch zu zahlen.",
+        "payoff_by": "Voraussichtlich abbezahlt im {date}",
+        "payments_left": "{count} Zahlung übrig | {count} Zahlungen übrig",
+        "extra_effect": "{months} Monat früher abbezahlt, {amount} weniger Mehrkosten | {months} Monate früher abbezahlt, {amount} weniger Mehrkosten",
+        "extra_effect_earlier": "{months} Monat früher abbezahlt | {months} Monate früher abbezahlt",
+        "track": "Als Schuld verfolgen",
+        "details": "Details"
+      },
       "phone": {
         "row_aria": "{name}, Budget {budget}, ausgegeben {spent}",
         "child_aria": "{name}, ausgegeben {spent}",
         "income_row_aria": "{name}, geplant {planned}, empfangen {received}",
         "savings_row_aria": "{name}, geplant {planned}, gespart {saved}",
+        "debt_row_aria": "{name}, geplant {planned}, gezahlt {paid}",
         "available": "{amount} verfügbar",
         "actual": "Ist",
         "balance": "Saldo am Monatsende"
@@ -2067,6 +2165,9 @@
       "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten",
       "envelope_member_not_category": "Nur Kategorien können zu einem Umschlag hinzugefügt werden",
       "savings_folder_not_allowed": "Sparkonten können nicht in einen Ordner verschoben werden",
+      "debt_folder_not_allowed": "Schulden können nicht in einen Ordner verschoben werden",
+      "debt_period_out_of_range": "Diese Schuld kann in diesem Monat nicht geplant werden",
+      "debt_currency_fixed": "Eine Schuld wird in ihrer eigenen Währung geplant",
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
       "savings_account_not_member": "Sparkonten müssen deine eigenen Konten in diesem Budget sein",
       "savings_removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare der Sparkonten gelöscht, die du in diesem Budget ausgeschaltet oder daraus entfernt hast; bestätige, um fortzufahren",
@@ -2081,7 +2182,8 @@
       "type_invalid": "CategoryType existiert nicht",
       "not_found": "Kategorie nicht gefunden",
       "cannot_be_merged": "Die ausgewählten Kategorien können nicht zusammengeführt werden.",
-      "list_empty": "Die Kategorienliste ist leer"
+      "list_empty": "Die Kategorienliste ist leer",
+      "used_by_debt": "Eine Schuld verwendet diese Kategorie. Löschen oder ändern Sie zuerst die Schuld."
     },
     "connection": {
       "invalid_uuid": "Dies ist keine gültige UUID.",
@@ -2121,6 +2223,14 @@
       "cannot_be_merged": "Die ausgewählten Tags können nicht zusammengeführt werden.",
       "list_empty": "Die Tag-Liste ist leer"
     },
+    "debt": {
+      "payments_dont_cover": "Die Zahlungen decken den Restbetrag nicht. Erhöhen Sie die Rate oder legen Sie ein späteres Datum der letzten Zahlung fest.",
+      "key_conflict": "Eine andere Schuld könnte dieselben Zahlungen erfassen. Wählen Sie unterschiedliche Zahlungsempfänger oder Tags oder dieselben mit unterschiedlichen Startdaten.",
+      "start_date_taken": "Eine andere Schuld mit derselben Kategorie, demselben Zahlungsempfänger und demselben Tag beginnt bereits an diesem Datum.",
+      "category_not_expense": "Eine Schuld benötigt eine Ausgabenkategorie.",
+      "removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare dieser Schuld in Ihren Budgets gelöscht; bestätigen Sie, um fortzufahren.",
+      "last_payment_in_past": "Das Datum der letzten Zahlung muss nach heute liegen."
+    },
     "authserver": {
       "disabled": "Das Verbinden von Apps ist auf diesem Server nicht verfügbar.",
       "client_not_found": "Die Registrierung dieser App ist abgelaufen oder unbekannt. Entfernen Sie Econumo aus der App und fügen Sie es erneut hinzu.",
@@ -2141,13 +2251,15 @@
       "name_length": "Der Name des Zahlungsempfängers muss {min}-{max} Zeichen lang sein",
       "already_exists": "Der Zahlungsempfänger existiert bereits.",
       "cannot_be_merged": "Die ausgewählten Zahlungsempfänger können nicht zusammengeführt werden.",
-      "list_empty": "Die Liste der Zahlungsempfänger ist leer"
+      "list_empty": "Die Liste der Zahlungsempfänger ist leer",
+      "used_by_debt": "Eine Schuld verwendet diesen Zahlungsempfänger. Löschen oder ändern Sie zuerst die Schuld."
     },
     "tag": {
       "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",
       "already_exists": "Das Tag existiert bereits.",
       "cannot_be_merged": "Die ausgewählten Tags können nicht zusammengeführt werden.",
-      "list_empty": "Die Tag-Liste ist leer"
+      "list_empty": "Die Tag-Liste ist leer",
+      "used_by_debt": "Eine Schuld verwendet diesen Tag. Löschen oder ändern Sie zuerst die Schuld."
     },
     "token": {
       "name_length": "Der Token-Name muss {min}-{max} Zeichen lang sein",

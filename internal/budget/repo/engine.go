@@ -60,6 +60,8 @@ type querier interface {
 	SetBudgetAccountSavings(ctx context.Context, db backend.DBTX, budgetID, accountID string, isSavings bool) error
 	LockSavingsElement(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
 	SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error)
+	ElementHasData(ctx context.Context, db backend.DBTX, externalID string, typ int16) (bool, error)
+	LockElementsByExternal(ctx context.Context, db backend.DBTX, externalID string, typ int16) error
 	RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error
 
@@ -70,6 +72,7 @@ type querier interface {
 	UpdateBudgetCommentText(ctx context.Context, db backend.DBTX, id, text string, updatedAt time.Time) error
 	DeleteBudgetComment(ctx context.Context, db backend.DBTX, id string) error
 	RepointBudgetComments(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string) error
+	RepointBudgetCommentsBetween(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string, from, to time.Time) error
 	DeleteBudgetCommentsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error
 }
 
@@ -215,6 +218,14 @@ func (sqliteQuerier) SavingsElementHasData(ctx context.Context, db backend.DBTX,
 	n, err := sqlitegen.New(db).SavingsElementHasData(ctx, sqlitegen.SavingsElementHasDataParams{BudgetID: budgetID, ExternalID: accountID})
 	return n != 0, err
 }
+func (sqliteQuerier) LockElementsByExternal(ctx context.Context, db backend.DBTX, externalID string, typ int16) error {
+	_, err := sqlitegen.New(db).LockElementsByExternal(ctx, sqlitegen.LockElementsByExternalParams{ExternalID: externalID, Type: typ})
+	return err
+}
+func (sqliteQuerier) ElementHasData(ctx context.Context, db backend.DBTX, externalID string, typ int16) (bool, error) {
+	n, err := sqlitegen.New(db).ElementHasData(ctx, sqlitegen.ElementHasDataParams{ExternalID: externalID, Type: typ})
+	return n != 0, err
+}
 func (sqliteQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
 	return sqlitegen.New(db).RemoveBudgetAccount(ctx, sqlitegen.RemoveBudgetAccountParams{BudgetID: budgetID, AccountID: accountID})
 }
@@ -262,6 +273,10 @@ func (sqliteQuerier) DeleteBudgetComment(ctx context.Context, db backend.DBTX, i
 }
 func (sqliteQuerier) RepointBudgetComments(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string) error {
 	return sqlitegen.New(db).RepointBudgetComments(ctx, sqlitegen.RepointBudgetCommentsParams{ElementID: dstElementID, ElementID_2: srcElementID})
+}
+func (sqliteQuerier) RepointBudgetCommentsBetween(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string, from, to time.Time) error {
+	return sqlitegen.New(db).RepointBudgetCommentsBetween(ctx, sqlitegen.RepointBudgetCommentsBetweenParams{
+		ElementID: dstElementID, ElementID_2: srcElementID, Datetime: limitPeriodArg(from), Datetime_2: limitPeriodArg(to)})
 }
 func (sqliteQuerier) DeleteBudgetCommentsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error {
 	return sqlitegen.New(db).DeleteBudgetCommentsByBudget(ctx, budgetID)
@@ -483,6 +498,13 @@ func (pgsqlQuerier) LockSavingsElement(ctx context.Context, db backend.DBTX, bud
 func (pgsqlQuerier) SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error) {
 	return pgsqlgen.New(db).SavingsElementHasData(ctx, pgsqlgen.SavingsElementHasDataParams{BudgetID: budgetID, ExternalID: accountID})
 }
+func (pgsqlQuerier) LockElementsByExternal(ctx context.Context, db backend.DBTX, externalID string, typ int16) error {
+	_, err := pgsqlgen.New(db).LockElementsByExternal(ctx, pgsqlgen.LockElementsByExternalParams{ExternalID: externalID, Type: typ})
+	return err
+}
+func (pgsqlQuerier) ElementHasData(ctx context.Context, db backend.DBTX, externalID string, typ int16) (bool, error) {
+	return pgsqlgen.New(db).ElementHasData(ctx, pgsqlgen.ElementHasDataParams{ExternalID: externalID, Type: typ})
+}
 func (pgsqlQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
 	return pgsqlgen.New(db).RemoveBudgetAccount(ctx, pgsqlgen.RemoveBudgetAccountParams{BudgetID: budgetID, AccountID: accountID})
 }
@@ -542,6 +564,10 @@ func (pgsqlQuerier) DeleteBudgetComment(ctx context.Context, db backend.DBTX, id
 }
 func (pgsqlQuerier) RepointBudgetComments(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string) error {
 	return pgsqlgen.New(db).RepointBudgetComments(ctx, pgsqlgen.RepointBudgetCommentsParams{ElementID: dstElementID, ElementID_2: srcElementID})
+}
+func (pgsqlQuerier) RepointBudgetCommentsBetween(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string, from, to time.Time) error {
+	return pgsqlgen.New(db).RepointBudgetCommentsBetween(ctx, pgsqlgen.RepointBudgetCommentsBetweenParams{
+		ElementID: dstElementID, ElementID_2: srcElementID, Period: from, Period_2: to})
 }
 func (pgsqlQuerier) DeleteBudgetCommentsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error {
 	return pgsqlgen.New(db).DeleteBudgetCommentsByBudget(ctx, budgetID)

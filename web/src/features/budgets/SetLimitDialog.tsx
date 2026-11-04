@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { CalculatorInput } from '@/components/CalculatorInput'
@@ -16,10 +17,12 @@ interface SetLimitDialogProps {
   plan?: boolean
   /** set only for a cell that can have money still to come, so other cells fetch nothing */
   upcoming?: UpcomingQuery | null
+  /** a line under the amount: what the plan buys (a debt's earlier payoff) */
+  note?: ReactNode
 }
 
 // Compact viewports' amount dialog (Vue's BudgetSetLimitModal), same unified amount rule.
-export function SetLimitDialog({ target, onClose, onCommit, plan = false, upcoming = null }: SetLimitDialogProps) {
+export function SetLimitDialog({ target, onClose, onCommit, plan = false, upcoming = null, note = null }: SetLimitDialogProps) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -76,6 +79,7 @@ export function SetLimitDialog({ target, onClose, onCommit, plan = false, upcomi
             <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
           </div>
         </CardField>
+        {note}
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}

@@ -346,7 +346,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 		// params sit after both lists (and catArgs contributes 0 when empty).
 		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
 		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
-		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY t.category_id, t.tag_id, dp.debt_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		args = append(args, start, end)
@@ -357,7 +357,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 			catWhere = "(t.category_id IN (" + r.ph(1, len(catArgs)) + ") OR t.category_id IS NULL)"
 		}
 		// See sqliteDatetime.
-		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, dp.debt_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
@@ -369,7 +369,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 	defer rows.Close()
 	var out []model.SpendingRow
 	for rows.Next() {
-		var categoryID, currencyID, tagID *string
+		var categoryID, currencyID, tagID, debtID *string
 		// SQLite's SUM(amount) is a float; scan it as float and format with %.8f
 		// (round to 8 decimals) instead of the driver's full-precision text (e.g.
 		// "32.26999999"). PostgreSQL's SUM is exact NUMERIC, scanned as text and
@@ -377,7 +377,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 		a := "0"
 		if r.driver == "postgresql" {
 			var amount *string
-			if err := rows.Scan(&amount, &categoryID, &tagID, &currencyID); err != nil {
+			if err := rows.Scan(&amount, &categoryID, &tagID, &debtID, &currencyID); err != nil {
 				return nil, err
 			}
 			if currencyID == nil {
@@ -388,7 +388,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 			}
 		} else {
 			var amount *float64
-			if err := rows.Scan(&amount, &categoryID, &tagID, &currencyID); err != nil {
+			if err := rows.Scan(&amount, &categoryID, &tagID, &debtID, &currencyID); err != nil {
 				return nil, err
 			}
 			if currencyID == nil {
@@ -398,7 +398,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 				a = strconv.FormatFloat(*amount, 'f', 8, 64)
 			}
 		}
-		out = append(out, model.SpendingRow{CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
+		out = append(out, model.SpendingRow{CategoryID: categoryID, TagID: tagID, DebtID: debtID, CurrencyID: *currencyID, Amount: a})
 	}
 	return out, rows.Err()
 }
@@ -592,7 +592,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 		}
 		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
 		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
-		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, t.category_id, t.tag_id, dp.debt_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		args = append(args, from, to)
@@ -602,7 +602,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 		if len(catArgs) > 0 {
 			catWhere = "(t.category_id IN (" + r.ph(1, len(catArgs)) + ") OR t.category_id IS NULL)"
 		}
-		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY month, t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY month, t.category_id, t.tag_id, dp.debt_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		// See sqliteDatetime.
@@ -616,13 +616,13 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 	var out []model.MonthlySpendingRow
 	for rows.Next() {
 		var monthStr string
-		var categoryID, tagID, currencyID *string
+		var categoryID, tagID, debtID, currencyID *string
 		// SQLite's SUM is float (format 'f',8); PostgreSQL's is exact NUMERIC
 		// text — same split as CountSpending.
 		a := "0"
 		if r.driver == "postgresql" {
 			var amount *string
-			if err := rows.Scan(&monthStr, &amount, &categoryID, &tagID, &currencyID); err != nil {
+			if err := rows.Scan(&monthStr, &amount, &categoryID, &tagID, &debtID, &currencyID); err != nil {
 				return nil, err
 			}
 			if currencyID == nil {
@@ -633,7 +633,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 			}
 		} else {
 			var amount *float64
-			if err := rows.Scan(&monthStr, &amount, &categoryID, &tagID, &currencyID); err != nil {
+			if err := rows.Scan(&monthStr, &amount, &categoryID, &tagID, &debtID, &currencyID); err != nil {
 				return nil, err
 			}
 			if currencyID == nil {
@@ -643,7 +643,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 				a = strconv.FormatFloat(*amount, 'f', 8, 64)
 			}
 		}
-		out = append(out, model.MonthlySpendingRow{Month: monthStr, CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
+		out = append(out, model.MonthlySpendingRow{Month: monthStr, CategoryID: categoryID, TagID: tagID, DebtID: debtID, CurrencyID: *currencyID, Amount: a})
 	}
 	return out, rows.Err()
 }
@@ -995,6 +995,14 @@ func (r *ReadRepo) LimitsByMonth(ctx context.Context, budgetID vo.Id, from, to t
 // currency joined in).
 const budgetTxCols = "t.id, t.user_id, a.currency_id, t.amount, t.description, t.spent_at, t.category_id, t.payee_id, t.tag_id"
 
+// budgetTxDebtCols is budgetTxCols plus the debt a stored payment split names
+// (debtPaymentsJoin).
+const budgetTxDebtCols = budgetTxCols + ", dp.debt_id"
+
+// debtPaymentsJoin adds a transaction's payment split; transaction_id is the
+// key, so it never fans a row out.
+const debtPaymentsJoin = " LEFT JOIN debts_payments dp ON dp.transaction_id = t.id"
+
 // dayKeyOrder is the transaction-list order: day, then the row's place in it,
 // then id; the time of day takes no part.
 func (r *ReadRepo) dayKeyOrder(spentAt, key, id string) string {
@@ -1029,6 +1037,69 @@ func scanBudgetTxRows(rows interface {
 	return out, rows.Err()
 }
 
+// scanBudgetTxDebtRows scans budgetTxDebtCols.
+func scanBudgetTxDebtRows(rows interface {
+	Next() bool
+	Scan(...any) error
+	Err() error
+}) ([]model.BudgetTransactionRow, error) {
+	var out []model.BudgetTransactionRow
+	for rows.Next() {
+		var r model.BudgetTransactionRow
+		var currencyID, desc *string
+		if err := rows.Scan(&r.ID, &r.UserID, &currencyID, &r.Amount, &desc, &r.SpentAt, &r.CategoryID, &r.PayeeID, &r.TagID, &r.DebtID); err != nil {
+			return nil, err
+		}
+		if currencyID != nil {
+			r.CurrencyID = *currencyID
+		}
+		if desc != nil {
+			r.Description = *desc
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// BudgetTransactionsByDebt implements ReadModel.
+func (r *ReadRepo) BudgetTransactionsByDebt(ctx context.Context, debt model.DebtView, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	accArgs := idArgs(accountIDs)
+	args := append([]any{}, accArgs...)
+	args = append(args, debt.ID, debt.CategoryID)
+	next := 1 + len(accArgs)
+	ph := func() string {
+		if r.driver != "postgresql" {
+			return "?"
+		}
+		next++
+		return "$" + itoa(next-1)
+	}
+	accIn := r.ph(1, len(accArgs))
+	where := "t.account_id IN (" + accIn + ") AND t.type = 0 AND dp.debt_id = " + ph() + " AND t.category_id = " + ph()
+	if debt.TagID != nil {
+		where += " AND t.tag_id = " + ph()
+		args = append(args, *debt.TagID)
+	}
+	where += " AND t.spent_at >= " + ph() + " AND t.spent_at < " + ph()
+	if r.driver == "postgresql" {
+		args = append(args, start, end)
+	} else {
+		// See sqliteDatetime.
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
+	}
+	sql := "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id JOIN debts_payments dp ON dp.transaction_id = t.id WHERE " + where +
+		r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanBudgetTxDebtRows(rows)
+}
+
 // BudgetTransactionsByCategories implements ReadModel.
 func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	if len(categoryIDs) == 0 || len(accountIDs) == 0 {
@@ -1045,12 +1116,12 @@ func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryI
 		catIn := r.ph(1+len(accArgs), len(catArgs))
 		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
 		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
-		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
+		sql = "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id" + debtPaymentsJoin + " WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 		args = append(args, start, end)
 	} else {
 		accIn := r.ph(1, len(accArgs))
 		catIn := r.ph(1, len(catArgs))
-		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= ? AND t.spent_at < ?" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
+		sql = "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id" + debtPaymentsJoin + " WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= ? AND t.spent_at < ?" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 	}
@@ -1059,7 +1130,7 @@ func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryI
 		return nil, err
 	}
 	defer rows.Close()
-	return scanBudgetTxRows(rows)
+	return scanBudgetTxDebtRows(rows)
 }
 
 // BudgetTransactionsByTag implements ReadModel. categoryID and uncategorized
@@ -1090,7 +1161,7 @@ func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, cat
 		}
 		where += " AND t.spent_at >= $" + itoa(next) + " AND t.spent_at < $" + itoa(next+1)
 		args = append(args, start, end)
-		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
+		sql = "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id" + debtPaymentsJoin + " WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	} else {
 		accIn := r.ph(1, len(accArgs))
 		where := "t.account_id IN (" + accIn + ") AND t.tag_id = ? AND t.type = 0"
@@ -1105,14 +1176,14 @@ func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, cat
 		where += " AND t.spent_at >= ? AND t.spent_at < ?"
 		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
-		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
+		sql = "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id" + debtPaymentsJoin + " WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanBudgetTxRows(rows)
+	return scanBudgetTxDebtRows(rows)
 }
 
 // BudgetTransactionsByLabel implements ReadModel. JOIN rather than a tag_id

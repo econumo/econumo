@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "债务",
+    "settings": {
+      "header": "债务",
+      "info": "无需账户即可跟踪贷款和信用。该债务分类下的支出会冲减你的欠款，预算中会在“债务”部分显示。",
+      "empty": "暂无债务",
+      "create": "添加债务"
+    },
+    "list": {
+      "payments_left": "还剩 {count} 笔还款",
+      "paid_off": "已还清"
+    },
+    "form": {
+      "header": "债务",
+      "name": {
+        "label": "名称"
+      },
+      "currency": {
+        "label": "币种"
+      },
+      "category": {
+        "label": "分类"
+      },
+      "payee": {
+        "label": "收款人（可选）"
+      },
+      "tag": {
+        "label": "标签（可选）"
+      },
+      "start_date": {
+        "label": "开始日期（可选）",
+        "hint": "此前的还款不计入",
+        "none": "无日期",
+        "clear": "清除开始日期"
+      },
+      "balance": {
+        "label": "当前余额"
+      },
+      "payment": {
+        "label": "还款额"
+      },
+      "schedule": {
+        "label": "重复周期"
+      },
+      "last_payment_date": {
+        "label": "最后还款日",
+        "hint": "债务何时结束",
+        "choose": "选择日期"
+      },
+      "never_pays_off": "这笔还款不足以支付利息，因此债务永远无法还清。"
+    },
+    "details": {
+      "header": "债务",
+      "current_balance": "当前余额",
+      "payments_left": "剩余还款次数",
+      "money_left": "待还金额",
+      "overpayment_left": "剩余利息与费用",
+      "overpaid_so_far": "已付利息与费用",
+      "payoff_date": "还清日期",
+      "snapshots": "条款历史",
+      "snapshot_terms": "{payment} · {schedule} · 至 {date}",
+      "payments": "还款记录",
+      "payments_empty": "暂无还款",
+      "column": {
+        "date": "日期",
+        "amount": "还款额",
+        "interest": "利息",
+        "principal": "本金"
+      },
+      "mark_paid_off": "标记为已还清",
+      "paid_off_confirm": {
+        "title": "标记为已还清？",
+        "question": "从今天起余额将设为 0。你的还款记录保持不变。"
+      },
+      "delete_confirm": {
+        "title": "删除此债务？",
+        "question": "该债务将从你的预算中移除。你的还款记录不受影响。"
+      },
+      "removal_confirm": {
+        "title": "删除计划金额和评论？",
+        "action": "删除债务"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1217,6 +1301,7 @@
         "accounts_included": "已包含 {count} 个，共 {total} 个",
         "accounts_hidden": "在隐藏文件夹中",
         "accounts_locked_hint": "在过去月份中有交易的账户无法移除",
+        "debts_note": "债务会以名称连同还款和余额显示给所有有权访问此预算的人。",
         "savings": {
           "label": "储蓄账户",
           "description": "转入这些账户的钱计为储蓄，而不是支出。",
@@ -1524,11 +1609,24 @@
         "saved": "已储蓄",
         "balance_hint": "月末余额。"
       },
+      "debts": {
+        "title": "债务",
+        "paid": "已还",
+        "left": "剩余",
+        "left_hint": "月末待还金额。",
+        "payoff_by": "预计{date}还清",
+        "payments_left": "还剩 {count} 笔还款",
+        "extra_effect": "提前 {months} 个月还清，少付 {amount} 利息与费用",
+        "extra_effect_earlier": "提前 {months} 个月还清",
+        "track": "作为债务跟踪",
+        "details": "详情"
+      },
       "phone": {
         "row_aria": "{name}，预算 {budget}，已支出 {spent}",
         "child_aria": "{name}，已支出 {spent}",
         "income_row_aria": "{name}，计划 {planned}，已收款 {received}",
         "savings_row_aria": "{name}，计划 {planned}，已储蓄 {saved}",
+        "debt_row_aria": "{name}，计划 {planned}，已还 {paid}",
         "available": "可用 {amount}",
         "actual": "实际",
         "balance": "月末余额"
@@ -2067,6 +2165,9 @@
       "folder_side_mixed": "文件夹中不能同时包含收入和支出。",
       "envelope_member_not_category": "只能将分类添加到信封中",
       "savings_folder_not_allowed": "储蓄账户不能放入文件夹",
+      "debt_folder_not_allowed": "债务不能放入文件夹",
+      "debt_period_out_of_range": "此债务不能在该月份进行计划",
+      "debt_currency_fixed": "债务只能以其自身币种进行计划",
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
       "savings_account_not_member": "储蓄账户必须是您在此预算中的账户",
       "savings_removal_unconfirmed": "这将删除你在此预算中关闭或移除的储蓄账户的计划金额和评论；请确认以继续",
@@ -2081,7 +2182,8 @@
       "type_invalid": "指定的分类类型不存在。",
       "not_found": "未找到该分类。",
       "cannot_be_merged": "无法合并所选分类。",
-      "list_empty": "分类列表为空。"
+      "list_empty": "分类列表为空。",
+      "used_by_debt": "有债务正在使用此类别。请先删除或修改该债务。"
     },
     "connection": {
       "invalid_uuid": "这不是有效的 UUID。",
@@ -2121,6 +2223,14 @@
       "cannot_be_merged": "无法合并所选标签。",
       "list_empty": "标签列表为空。"
     },
+    "debt": {
+      "payments_dont_cover": "还款金额不足以还清余额。请提高每期还款额，或将最后还款日设得更晚。",
+      "key_conflict": "另一笔债务可能匹配相同的付款。请使用不同的收款人或标签，或使用相同的收款人和标签但起始日期不同。",
+      "start_date_taken": "已有另一笔债务使用相同的分类、收款人和标签，并且起始日期相同。",
+      "category_not_expense": "债务需要使用支出分类。",
+      "removal_unconfirmed": "这将删除此债务在你的预算中的计划金额和评论；请确认以继续。",
+      "last_payment_in_past": "最后还款日必须晚于今天。"
+    },
     "authserver": {
       "disabled": "此服务器不支持连接应用。",
       "client_not_found": "此应用的注册已过期或无法识别。请在应用中移除 Econumo，然后重新添加。",
@@ -2141,13 +2251,15 @@
       "name_length": "收款人名称需为 {min}-{max} 个字符。",
       "already_exists": "该收款人已存在。",
       "cannot_be_merged": "无法合并所选收款人。",
-      "list_empty": "收款人列表为空。"
+      "list_empty": "收款人列表为空。",
+      "used_by_debt": "有债务正在使用此收款方。请先删除或修改该债务。"
     },
     "tag": {
       "name_length": "标签名称需为 {min}-{max} 个字符。",
       "already_exists": "该标签已存在。",
       "cannot_be_merged": "无法合并所选标签。",
-      "list_empty": "标签列表为空。"
+      "list_empty": "标签列表为空。",
+      "used_by_debt": "有债务正在使用此标签。请先删除或修改该债务。"
     },
     "token": {
       "name_length": "令牌名称需为 {min}-{max} 个字符。",

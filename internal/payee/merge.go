@@ -52,11 +52,21 @@ func (s *Service) MergePayee(ctx context.Context, userID vo.Id, req model.MergeP
 			return &errs.ValidationError{Msg: "The selected payees cannot be merged", MsgCode: errs.CodePayeeCannotBeMerged}
 		}
 
+		if s.debts != nil {
+			if derr := s.debts.PrepareMerge(txCtx, sourceID, targetID); derr != nil {
+				return derr
+			}
+		}
 		if rerr := s.repo.ReassignTransactions(txCtx, sourceID, targetID); rerr != nil {
 			return rerr
 		}
 		if rerr := s.repo.ReassignRecurring(txCtx, sourceID, targetID); rerr != nil {
 			return rerr
+		}
+		if s.debts != nil {
+			if derr := s.debts.Reassign(txCtx, sourceID, targetID); derr != nil {
+				return derr
+			}
 		}
 		return s.repo.Delete(txCtx, sourceID)
 	}); err != nil {

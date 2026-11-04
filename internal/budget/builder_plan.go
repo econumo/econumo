@@ -19,7 +19,7 @@ import (
 // window size; only the rate lookups are per-month, and those read the small
 // rates table).
 func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAggregate, from time.Time, months int) (model.BudgetPlanResult, error) {
-	f, err := s.buildFilters(ctx, userID, b, from, from.AddDate(0, months, 0))
+	f, err := s.filtersWithDebts(ctx, userID, b, from, from.AddDate(0, months, 0))
 	if err != nil {
 		return model.BudgetPlanResult{}, err
 	}
@@ -463,6 +463,12 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 			return model.PlanStructureResult{}, perr
 		}
 		amount := vo.NewDecimal(row.Amount)
+		if d, ok := f.debtOf(row.DebtID, row.CategoryID, row.TagID); ok {
+			if err := addDebtActual(toConvert, monthsList, i, d, amount, cid); err != nil {
+				return model.PlanStructureResult{}, err
+			}
+			continue
+		}
 		switch {
 		case row.TagID != nil && *row.TagID != "":
 			// The tag wins over the category — a tagged expense belongs to its
@@ -555,9 +561,32 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		return model.PlanStructureResult{}, err
 	}
 
-	result := s.emitPlanElements(elements, converted, nMonths)
-	savings := emitPlanSavings(savingsRows, plannedFor, savingsHasActual, convertedGetter(converted), nMonths)
-	return model.PlanStructureResult{Folders: folders, Elements: result, Savings: savings}, nil
+	timelines, err := s.debtTimelines(ctx, b, f, monthsList)
+	if err != nil {
+		return model.PlanStructureResult{}, err
+	}
+	get := convertedGetter(converted)
+	return model.PlanStructureResult{
+		Folders:  folders,
+		Elements: s.emitPlanElements(elements, converted, nMonths),
+		Savings:  emitPlanSavings(savingsRows, plannedFor, savingsHasActual, get, nMonths),
+		Debts:    emitPlanDebts(debtRows(f, options), monthsList, plannedFor, get, timelines),
+	}, nil
+}
+
+// addDebtActual files a debt's matched payments of month i under the debt's
+// own key, in the debt's currency.
+func addDebtActual(toConvert map[string][]model.ConvertItem, monthsList []time.Time, i int, d model.DebtView, amount vo.DecimalNumber, currencyID vo.Id) error {
+	to, err := vo.ParseId(d.CurrencyID)
+	if err != nil {
+		return err
+	}
+	key := planKey(i, elementKey(d.ID, model.ElementDebt))
+	toConvert[key] = append(toConvert[key], model.ConvertItem{
+		PeriodStart: monthsList[i], PeriodEnd: monthsList[i].AddDate(0, 1, 0),
+		From: currencyID, To: to, Amount: amount,
+	})
+	return nil
 }
 
 // emitPlanElements prunes, renders and positions the accumulated rows.

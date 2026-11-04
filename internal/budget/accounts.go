@@ -208,6 +208,12 @@ func (s *Service) ChangeElementCurrency(ctx context.Context, userID vo.Id, req m
 		if gerr != nil {
 			return gerr
 		}
+		// A debt's plans are amounts in the debt's currency.
+		if el.Type == model.ElementDebt {
+			return errs.NewValidation("Validation failed", errs.FieldError{
+				Key: "currencyId", Message: "A debt is planned in its own currency", Code: errs.CodeBudgetDebtCurrencyFixed,
+			})
+		}
 		if el.CurrencyID == nil || !el.CurrencyID.Equal(curID) {
 			if eerr := s.currency.EnsureUsable(txCtx, userID.String(), curID.String()); eerr != nil {
 				return eerr
@@ -264,6 +270,13 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req model.SetLimit
 		element, gerr := s.getElementSelfHeal(txCtx, budgetID, externalID, now)
 		if gerr != nil {
 			return gerr
+		}
+		// Clearing stays open everywhere: a plan the debt's months no longer
+		// cover is hidden, and this is the only way to remove it.
+		if req.Amount != nil {
+			if derr := s.checkDebtPeriod(txCtx, b, element, period); derr != nil {
+				return derr
+			}
 		}
 		elementID := element.ID
 

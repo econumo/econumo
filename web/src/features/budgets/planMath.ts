@@ -1,7 +1,9 @@
 import type {
+  BudgetDebtElementDto,
   BudgetFolderDto,
   BudgetPlanDto,
   PlanCellDto,
+  PlanDebtElementDto,
   PlanElementDto,
   PlanSavingsElementDto,
   PlanSavingsFlowDto,
@@ -92,6 +94,8 @@ export function planWindow(selected: string, visible: number, startedAt: string,
 
 export interface PlanRow {
   element: PlanElementDto
+  /** a debt row: its payoff figures for the row's header */
+  debt?: PlanDebtElementDto
 }
 export interface PlanFolderSection {
   folder: BudgetFolderDto
@@ -111,6 +115,59 @@ export interface PlanRows {
 // marker serve it unchanged.
 export function savingsAsPlanElement(s: PlanSavingsElementDto): PlanElementDto {
   return { ...s, folderId: null, children: [] }
+}
+
+// A debt row, like a savings row, is never in a folder and has no breakdown. It is
+// never archived: a month outside the debt's life is read-only through its cell's
+// isPlannable instead.
+export function debtAsPlanElement(d: PlanDebtElementDto): PlanElementDto {
+  return {
+    id: d.id,
+    type: d.type,
+    name: d.name,
+    icon: d.icon,
+    currencyId: d.currencyId,
+    ownerUserId: d.ownerUserId,
+    position: d.position,
+    isArchived: 0,
+    folderId: null,
+    cells: d.cells,
+    children: [],
+  }
+}
+
+/** One month of a plan debt row in the month view's shape, for the item sheet. The
+ *  plan carries no carry-over, so `available` is the month's own plan less its payments. */
+export function planDebtMonthRow(d: PlanDebtElementDto, index: number, budgetSpent: string): BudgetDebtElementDto | null {
+  const cell = d.cells[index]
+  if (!cell) {
+    return null
+  }
+  return {
+    id: d.id,
+    type: d.type,
+    name: d.name,
+    icon: d.icon,
+    currencyId: d.currencyId,
+    ownerUserId: d.ownerUserId,
+    isArchived: 0,
+    position: d.position,
+    budgeted: cell.planned,
+    isBudgeted: cell.planned === '' ? 0 : 1,
+    spent: cell.actual,
+    budgetSpent,
+    available: sub(cell.planned === '' ? '0' : cell.planned, cell.actual),
+    closingBalance: cell.closingBalance,
+    paymentsLeft: cell.paymentsLeft,
+    scheduledTotal: cell.scheduledTotal,
+    upcoming: cell.upcoming,
+    payoffDate: d.payoffDate,
+    basePayoffDate: d.basePayoffDate,
+    overpaymentLeft: d.overpaymentLeft,
+    baseOverpaymentLeft: d.baseOverpaymentLeft,
+    isPaidOff: d.isPaidOff,
+    isPlannable: cell.isPlannable,
+  }
 }
 
 /** A savings row's closing balances as the plan shows them. The server sends what
@@ -314,6 +371,20 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
         if (el.id === UNCATEGORIZED_ID) uncatExpense = add(uncatExpense, actual)
       }
     }
+    // Debt payments are expenses taken off their category rows, so they count here
+    // as they did there; a plan outside the debt's life counts nowhere.
+    for (const d of plan.structure.debts ?? []) {
+      const cell = d.cells[i]
+      if (!cell) {
+        continue
+      }
+      const actual = ex(d.currencyId, cell.actual, i)
+      const planned = ex(d.currencyId, cell.planned === '' || cell.isPlannable === 0 ? '0' : cell.planned, i)
+      const effective = month < cur ? actual : cmp(actual, planned) >= 0 ? actual : planned
+      expenseActual = add(expenseActual, actual)
+      expensePlanned = add(expensePlanned, planned)
+      effExpense = add(effExpense, effective)
+    }
     let savingsActual = '0'
     let savingsPlanned = '0'
     let effSavings = '0'
@@ -369,7 +440,7 @@ export function planGroupSums(
   months: string[],
   monthIndex: (m: string) => number,
   ex: MonthExchange,
-  /** 'balance': savings rows add their month-end balance in place of what was saved */
+  /** 'balance': savings and debt rows add their month-end balance in place of what moved */
   figure: 'actual' | 'balance' = 'actual',
 ): { actual: string; planned: string }[] {
   return months.map((m) => {
@@ -382,8 +453,9 @@ export function planGroupSums(
         if (cell) {
           const figureValue = figure === 'balance' && cell.closingBalance !== undefined ? cell.closingBalance : cell.actual
           actual = add(actual, ex(el.currencyId, figureValue, i))
-          // a deleted savings account keeps its plan, as in the Savings total
-          if (el.isArchived === 0 || el.type === BudgetElementType.SAVINGS) {
+          // a deleted savings account keeps its plan, as in the Savings total; a debt's
+          // month outside its life has none
+          if ((el.isArchived === 0 || el.type === BudgetElementType.SAVINGS) && cell.isPlannable !== 0) {
             planned = add(planned, ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i))
           }
         }

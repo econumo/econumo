@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Dívidas",
+    "settings": {
+      "header": "Dívidas",
+      "info": "Empréstimos e créditos acompanhados sem uma conta. As despesas da categoria da dívida abatem o que deve, e os orçamentos mostram-nas numa secção Dívidas.",
+      "empty": "Ainda não existem dívidas",
+      "create": "Adicionar dívida"
+    },
+    "list": {
+      "payments_left": "Falta {count} pagamento | Faltam {count} pagamentos",
+      "paid_off": "Liquidada"
+    },
+    "form": {
+      "header": "Dívida",
+      "name": {
+        "label": "Nome"
+      },
+      "currency": {
+        "label": "Moeda"
+      },
+      "category": {
+        "label": "Categoria"
+      },
+      "payee": {
+        "label": "Beneficiário (opcional)"
+      },
+      "tag": {
+        "label": "Etiqueta (opcional)"
+      },
+      "start_date": {
+        "label": "Data de início (opcional)",
+        "hint": "Os pagamentos anteriores não contam",
+        "none": "Sem data",
+        "clear": "Limpar a data de início"
+      },
+      "balance": {
+        "label": "Saldo atual"
+      },
+      "payment": {
+        "label": "Pagamento"
+      },
+      "schedule": {
+        "label": "Repetição"
+      },
+      "last_payment_date": {
+        "label": "Data do último pagamento",
+        "hint": "Quando termina a dívida",
+        "choose": "Escolher uma data"
+      },
+      "never_pays_off": "Este pagamento não cobre os juros, por isso a dívida nunca fica liquidada."
+    },
+    "details": {
+      "header": "Dívida",
+      "current_balance": "Saldo atual",
+      "payments_left": "Pagamentos em falta",
+      "money_left": "Falta pagar",
+      "overpayment_left": "Custo adicional em falta",
+      "overpaid_so_far": "Custo adicional já pago",
+      "payoff_date": "Data de liquidação",
+      "snapshots": "Histórico das condições",
+      "snapshot_terms": "{payment} · {schedule} · até {date}",
+      "payments": "Pagamentos",
+      "payments_empty": "Ainda não existem pagamentos",
+      "column": {
+        "date": "Data",
+        "amount": "Pagamento",
+        "interest": "Juros",
+        "principal": "Capital"
+      },
+      "mark_paid_off": "Marcar como liquidada",
+      "paid_off_confirm": {
+        "title": "Marcar como liquidada?",
+        "question": "O saldo passa a 0 a partir de hoje. Os seus pagamentos ficam como estão."
+      },
+      "delete_confirm": {
+        "title": "Eliminar esta dívida?",
+        "question": "A dívida sai dos seus orçamentos. Os seus pagamentos não são alterados."
+      },
+      "removal_confirm": {
+        "title": "Eliminar montantes planeados e comentários?",
+        "action": "Eliminar dívida"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1217,6 +1301,7 @@
         "accounts_included": "{count} de {total} incluídas",
         "accounts_hidden": "Em pastas ocultas",
         "accounts_locked_hint": "Contas com transações em meses anteriores não podem ser removidas",
+        "debts_note": "As dívidas são mostradas pelo nome, com os pagamentos e saldos, a todos os que têm acesso a este orçamento.",
         "savings": {
           "label": "Contas poupança",
           "description": "O dinheiro transferido para estas contas conta como poupado, não como gasto.",
@@ -1524,11 +1609,24 @@
         "saved": "Poupado",
         "balance_hint": "Saldo no fim do mês."
       },
+      "debts": {
+        "title": "Dívidas",
+        "paid": "Pago",
+        "left": "Em falta",
+        "left_hint": "Falta pagar no fim do mês.",
+        "payoff_by": "Liquidação prevista: {date}",
+        "payments_left": "Falta {count} pagamento | Faltam {count} pagamentos",
+        "extra_effect": "Liquidada {months} mês mais cedo, menos {amount} de custo adicional | Liquidada {months} meses mais cedo, menos {amount} de custo adicional",
+        "extra_effect_earlier": "Liquidada {months} mês mais cedo | Liquidada {months} meses mais cedo",
+        "track": "Acompanhar como dívida",
+        "details": "Detalhes"
+      },
       "phone": {
         "row_aria": "{name}, orçamento {budget}, gasto {spent}",
         "child_aria": "{name}, gasto {spent}",
         "income_row_aria": "{name}, planeado {planned}, recebido {received}",
         "savings_row_aria": "{name}, planeado {planned}, poupado {saved}",
+        "debt_row_aria": "{name}, planeado {planned}, pago {paid}",
         "available": "{amount} disponível",
         "actual": "Real",
         "balance": "Saldo no fim do mês"
@@ -2067,6 +2165,9 @@
       "folder_side_mixed": "Uma pasta não pode conter ao mesmo tempo receitas e despesas.",
       "envelope_member_not_category": "Só é possível adicionar uma categoria a um envelope",
       "savings_folder_not_allowed": "As contas poupança não podem ser colocadas numa pasta",
+      "debt_folder_not_allowed": "As dívidas não podem ser colocadas numa pasta",
+      "debt_period_out_of_range": "Esta dívida não pode ser planeada neste mês",
+      "debt_currency_fixed": "Uma dívida é planeada na sua própria moeda",
       "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
       "savings_account_not_member": "As contas poupança têm de ser contas suas neste orçamento",
       "savings_removal_unconfirmed": "Isto elimina os montantes planeados e os comentários das contas poupança que desativou ou removeu deste orçamento; confirme para continuar",
@@ -2081,7 +2182,8 @@
       "type_invalid": "O tipo de categoria não existe.",
       "not_found": "Categoria não encontrada.",
       "cannot_be_merged": "As categorias selecionadas não podem ser mescladas.",
-      "list_empty": "A lista de categorias está vazia."
+      "list_empty": "A lista de categorias está vazia.",
+      "used_by_debt": "Uma dívida usa esta categoria. Elimine ou altere primeiro a dívida."
     },
     "connection": {
       "invalid_uuid": "Isto não é um UUID válido.",
@@ -2121,6 +2223,14 @@
       "cannot_be_merged": "As etiquetas selecionadas não podem ser mescladas.",
       "list_empty": "A lista de etiquetas está vazia."
     },
+    "debt": {
+      "payments_dont_cover": "Os pagamentos não cobrem o saldo. Aumente o pagamento ou defina uma data de último pagamento posterior.",
+      "key_conflict": "Outra dívida poderia corresponder aos mesmos pagamentos. Use beneficiários ou etiquetas diferentes, ou os mesmos com datas de início diferentes.",
+      "start_date_taken": "Já existe outra dívida com a mesma categoria, beneficiário e etiqueta que começa nesta data.",
+      "category_not_expense": "Uma dívida precisa de uma categoria de despesa.",
+      "removal_unconfirmed": "Isto elimina os montantes planeados e os comentários desta dívida nos seus orçamentos; confirme para continuar.",
+      "last_payment_in_past": "A data do último pagamento tem de ser posterior a hoje."
+    },
     "authserver": {
       "disabled": "A conexão de aplicações não está disponível neste servidor.",
       "client_not_found": "O registo desta aplicação expirou ou é desconhecido. Remova o Econumo da aplicação e adicione-o novamente.",
@@ -2141,13 +2251,15 @@
       "name_length": "O nome do beneficiário deve ter entre {min} e {max} caracteres.",
       "already_exists": "O beneficiário já existe.",
       "cannot_be_merged": "Os beneficiários selecionados não podem ser mesclados.",
-      "list_empty": "A lista de beneficiários está vazia."
+      "list_empty": "A lista de beneficiários está vazia.",
+      "used_by_debt": "Uma dívida usa este beneficiário. Elimine ou altere primeiro a dívida."
     },
     "tag": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",
       "already_exists": "A etiqueta já existe.",
       "cannot_be_merged": "As etiquetas selecionadas não podem ser mescladas.",
-      "list_empty": "A lista de etiquetas está vazia."
+      "list_empty": "A lista de etiquetas está vazia.",
+      "used_by_debt": "Uma dívida usa esta etiqueta. Elimine ou altere primeiro a dívida."
     },
     "token": {
       "name_length": "O nome do token deve ter entre {min} e {max} caracteres.",

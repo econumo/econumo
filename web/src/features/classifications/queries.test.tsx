@@ -18,9 +18,11 @@ import {
   useMergeCategory,
   useMergePayee,
   useMergeTag,
+  useArchiveCategory,
   useMoveLabel,
   useSortLabels,
   useUnarchiveLabel,
+  useUpdateCategory,
   useUpdateLabel,
 } from './queries'
 import { trackEvent } from '@/lib/metrics'
@@ -202,6 +204,7 @@ const budgetCaches = {
   budgetPlan: [...queryKeys.budgetPlan, 'b1', '2026-08-01', 7],
   budgetTransactions: [...queryKeys.budgetTransactions, { budgetId: 'b1' }],
   budgetComments: [...queryKeys.budgetComments, 'b1', '2026-08-01', 7],
+  debts: queryKeys.debts,
 }
 
 function seedBudgetCaches(queryClient: QueryClient) {
@@ -214,7 +217,7 @@ function invalidatedCaches(queryClient: QueryClient) {
   return Object.fromEntries(Object.entries(budgetCaches).map(([name, key]) => [name, queryClient.getQueryState(key)?.isInvalidated]))
 }
 
-const allInvalidated = { budget: true, budgetPlan: true, budgetTransactions: true, budgetComments: true }
+const allInvalidated = { budget: true, budgetPlan: true, budgetTransactions: true, budgetComments: true, debts: true }
 
 it.each([
   ['category', '*/api/v1/category/merge-category', useMergeCategory],
@@ -245,4 +248,25 @@ it.each([
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
   expect(invalidatedCaches(queryClient)).toEqual(allInvalidated)
+})
+
+// A debt shows its category's icon, so renaming, re-iconing or archiving a
+// category must refetch the debt list too.
+it('updating or archiving a category refreshes the debt list', async () => {
+  server.use(
+    http.post('*/api/v1/category/update-category', () => HttpResponse.json({ success: true, message: '', data: {} })),
+    http.post('*/api/v1/category/archive-category', () => HttpResponse.json({ success: true, message: '', data: {} })),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.debts, [])
+  const update = renderHook(() => useUpdateCategory(), { wrapper })
+  update.result.current.mutate({ id: 'c1', name: 'Car', icon: 'directions_car' })
+  await waitFor(() => expect(update.result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryState(queryKeys.debts)?.isInvalidated).toBe(true)
+
+  queryClient.setQueryData(queryKeys.debts, [])
+  const archive = renderHook(() => useArchiveCategory(), { wrapper })
+  archive.result.current.mutate('c1')
+  await waitFor(() => expect(archive.result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryState(queryKeys.debts)?.isInvalidated).toBe(true)
 })

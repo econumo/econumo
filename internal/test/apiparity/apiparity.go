@@ -19,6 +19,11 @@ type Call struct {
 	// periodStart) would otherwise bake today's date into the golden.
 	GoldenPath string
 
+	// PathID, when set, is appended to Path as the call runs: the id a
+	// CaptureIDInto of an earlier call filled in (Path ends at "?id="). The
+	// golden records Path without it, since a generated id is not stable.
+	PathID *string
+
 	// Auth selects which seeded user's token to attach: "owner", "guest",
 	// "readonly" (the lapsed-trial user), "ingest" (the owner's ingest-scoped
 	// PAT), or "" (public/no token).

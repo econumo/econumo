@@ -2923,6 +2923,12 @@ const docTemplate = `{
                         "description": "Every transaction on this account; currently only the budget's savings accounts are accepted (composes with nothing)",
                         "name": "accountId",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "The payments a debt row of this budget counts, from its everyday accounts (composes with nothing)",
+                        "name": "debtId",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5425,6 +5431,419 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/debt/create-debt": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Creates a debt tracked through an expense category, optionally narrowed by payee, tag and start date.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Create a debt",
+                "parameters": [
+                    {
+                        "description": "Create debt request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateDebtRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/debt/delete-debt": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deletes a debt. A narrowed debt that holds budget plans or comments needs confirmDataRemoval.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Delete a debt",
+                "parameters": [
+                    {
+                        "description": "Delete debt request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DeleteDebtRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DeleteDebtResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/debt/get-debt": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns one debt with its terms history and the payments split into interest and principal. A debt of another user is not found.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Get a debt",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Debt id",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtDetailsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/debt/get-debt-list": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the authenticated user's debts with their projections.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Get the debt list",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtListResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/debt/mark-debt-paid-off": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Writes a zero-balance snapshot as of today.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Mark a debt paid off",
+                "parameters": [
+                    {
+                        "description": "Mark debt paid off request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MarkDebtPaidOffRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/debt/update-debt": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Updates a debt's name, key and terms; changed terms start a new snapshot. The currency never changes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Update a debt",
+                "parameters": [
+                    {
+                        "description": "Update debt request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateDebtRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
@@ -14093,6 +14512,41 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CreateDebtRequest": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "$ref": "#/definitions/vo.FlexString"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "lastPaymentDate": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "payment": {
+                    "$ref": "#/definitions/vo.FlexString"
+                },
+                "schedule": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                }
+            }
+        },
         "model.CreateEnvelopeRequest": {
             "type": "object",
             "properties": {
@@ -14569,6 +15023,219 @@ const docTemplate = `{
                 }
             }
         },
+        "model.DebtDetailsResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.DebtResult"
+                },
+                "payments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.DebtPaymentResult"
+                    }
+                },
+                "snapshots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.DebtSnapshotResult"
+                    }
+                }
+            }
+        },
+        "model.DebtElementResult": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "string"
+                },
+                "baseOverpaymentLeft": {
+                    "type": "string"
+                },
+                "basePayoffDate": {
+                    "type": "string"
+                },
+                "budgetSpent": {
+                    "type": "string"
+                },
+                "budgeted": {
+                    "type": "string"
+                },
+                "closingBalance": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "isBudgeted": {
+                    "type": "integer"
+                },
+                "isPaidOff": {
+                    "type": "integer"
+                },
+                "isPlannable": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "overpaymentLeft": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "paymentsLeft": {
+                    "type": "integer"
+                },
+                "payoffDate": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "scheduledTotal": {
+                    "type": "string"
+                },
+                "spent": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "integer"
+                },
+                "upcoming": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DebtListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.DebtResult"
+                    }
+                }
+            }
+        },
+        "model.DebtPaymentResult": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "interest": {
+                    "type": "string"
+                },
+                "principal": {
+                    "type": "string"
+                },
+                "transactionId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DebtResult": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "currentBalance": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isPaidOff": {
+                    "type": "integer"
+                },
+                "lastPaymentDate": {
+                    "type": "string"
+                },
+                "moneyLeft": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nextDueDate": {
+                    "type": "string"
+                },
+                "overpaidSoFar": {
+                    "type": "string"
+                },
+                "overpaymentLeft": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "payment": {
+                    "type": "string"
+                },
+                "paymentsLeft": {
+                    "type": "integer"
+                },
+                "payoffDate": {
+                    "type": "string"
+                },
+                "periodRate": {
+                    "type": "string"
+                },
+                "schedule": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DebtSnapshotResult": {
+            "type": "object",
+            "properties": {
+                "asOf": {
+                    "type": "string"
+                },
+                "balance": {
+                    "type": "string"
+                },
+                "lastPaymentDate": {
+                    "type": "string"
+                },
+                "payment": {
+                    "type": "string"
+                },
+                "schedule": {
+                    "type": "string"
+                }
+            }
+        },
         "model.DeclineAccessRequest": {
             "type": "object",
             "properties": {
@@ -14658,6 +15325,20 @@ const docTemplate = `{
             }
         },
         "model.DeleteCurrencyResult": {
+            "type": "object"
+        },
+        "model.DeleteDebtRequest": {
+            "type": "object",
+            "properties": {
+                "confirmDataRemoval": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeleteDebtResult": {
             "type": "object"
         },
         "model.DeleteEnvelopeRequest": {
@@ -15743,6 +16424,14 @@ const docTemplate = `{
                 }
             }
         },
+        "model.MarkDebtPaidOffRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
         "model.MergeCategoryRequest": {
             "type": "object",
             "properties": {
@@ -16232,6 +16921,79 @@ const docTemplate = `{
                 }
             }
         },
+        "model.PlanDebtCellResult": {
+            "type": "object",
+            "properties": {
+                "actual": {
+                    "type": "string"
+                },
+                "closingBalance": {
+                    "type": "string"
+                },
+                "isPlannable": {
+                    "type": "integer"
+                },
+                "paymentsLeft": {
+                    "type": "integer"
+                },
+                "planned": {
+                    "type": "string"
+                },
+                "scheduledTotal": {
+                    "type": "string"
+                },
+                "upcoming": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.PlanDebtElementResult": {
+            "type": "object",
+            "properties": {
+                "baseOverpaymentLeft": {
+                    "type": "string"
+                },
+                "basePayoffDate": {
+                    "type": "string"
+                },
+                "cells": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanDebtCellResult"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isPaidOff": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "overpaymentLeft": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "payoffDate": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.PlanElementResult": {
             "type": "object",
             "properties": {
@@ -16373,6 +17135,12 @@ const docTemplate = `{
         "model.PlanStructureResult": {
             "type": "object",
             "properties": {
+                "debts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanDebtElementResult"
+                    }
+                },
                 "elements": {
                     "type": "array",
                     "items": {
@@ -17067,6 +17835,12 @@ const docTemplate = `{
         "model.StructureResult": {
             "type": "object",
             "properties": {
+                "debts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.DebtElementResult"
+                    }
+                },
                 "elements": {
                     "type": "array",
                     "items": {
@@ -17616,6 +18390,44 @@ const docTemplate = `{
             "properties": {
                 "item": {
                     "$ref": "#/definitions/model.CurrencyListItem"
+                }
+            }
+        },
+        "model.UpdateDebtRequest": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "$ref": "#/definitions/vo.FlexString"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastPaymentDate": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "payment": {
+                    "$ref": "#/definitions/vo.FlexString"
+                },
+                "schedule": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
                 }
             }
         },

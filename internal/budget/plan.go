@@ -37,7 +37,7 @@ func (s *Service) GetBudgetPlan(ctx context.Context, userID vo.Id, req model.Get
 		return nil, err
 	}
 	from = b.clampPeriod(from)
-	f, err := s.buildFilters(ctx, userID, b, from, from.AddDate(0, months, 0))
+	f, err := s.filtersWithDebts(ctx, userID, b, from, from.AddDate(0, months, 0))
 	if err != nil {
 		return nil, err
 	}

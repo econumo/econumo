@@ -100,3 +100,35 @@ it('budget transactions pass the element param and amounts through (own wire sha
   expect(items[0].spentAt).toBe('2026-07-02 09:30:00')
   expect(items[0].category?.name).toBe('Food')
 })
+
+it('get-budget maps a debt row with isBudgeted 0 to an empty plan and keeps a plan of 0', async () => {
+  const debt = {
+    id: 'd1', type: 6, name: 'Car loan', icon: 'directions_car', currencyId: 'cur-usd', ownerUserId: fixtureOwner.id,
+    isArchived: 0, position: 0, budgeted: '0', isBudgeted: 0, spent: '2000', budgetSpent: '2000', available: '0',
+    closingBalance: '298000', paymentsLeft: 239, scheduledTotal: '2000', upcoming: '2000', payoffDate: '2046-05-20',
+    basePayoffDate: '2046-05-20', overpaymentLeft: '180000', baseOverpaymentLeft: '180000', isPaidOff: 0, isPlannable: 1,
+  }
+  server.use(
+    http.get('*/api/v1/budget/get-budget', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { item: { ...wireBudget, structure: { ...wireBudget.structure, debts: [debt, { ...debt, id: 'd2', isBudgeted: 1 }] } } },
+      })),
+  )
+  const budget = await budgetApi.getBudget('b1', '2026-07-01')
+  expect(budget.structure.debts![0].budgeted).toBe('')
+  expect(budget.structure.debts![1].budgeted).toBe('0')
+  expect(budget.structure.debts![0].paymentsLeft).toBe(239)
+})
+
+it('get-transaction-list sends debtId for a debt row', async () => {
+  let url = ''
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      url = request.url
+      return HttpResponse.json({ success: true, message: '', data: { items: [], upcoming: [] } })
+    }),
+  )
+  await budgetApi.getBudgetTransactions({ budgetId: 'b1', periodStart: '2026-07-01', debtId: 'd1' })
+  expect(new URL(url).searchParams.get('debtId')).toBe('d1')
+})

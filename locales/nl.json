@@ -464,6 +464,90 @@
       }
     }
   },
+  "debts": {
+    "menu_item": "Schulden",
+    "settings": {
+      "header": "Schulden",
+      "info": "Leningen en krediet zonder rekening bijhouden. Uitgaven in de categorie van de schuld tellen mee voor wat u nog moet betalen, en budgetten tonen ze in een sectie Schulden.",
+      "empty": "Nog geen schulden",
+      "create": "Schuld toevoegen"
+    },
+    "list": {
+      "payments_left": "{count} betaling resterend | {count} betalingen resterend",
+      "paid_off": "Afbetaald"
+    },
+    "form": {
+      "header": "Schuld",
+      "name": {
+        "label": "Naam"
+      },
+      "currency": {
+        "label": "Valuta"
+      },
+      "category": {
+        "label": "Categorie"
+      },
+      "payee": {
+        "label": "Begunstigde (optioneel)"
+      },
+      "tag": {
+        "label": "Tag (optioneel)"
+      },
+      "start_date": {
+        "label": "Startdatum (optioneel)",
+        "hint": "Eerdere betalingen tellen niet mee",
+        "none": "Geen datum",
+        "clear": "Startdatum wissen"
+      },
+      "balance": {
+        "label": "Huidig saldo"
+      },
+      "payment": {
+        "label": "Betaling"
+      },
+      "schedule": {
+        "label": "Herhaling"
+      },
+      "last_payment_date": {
+        "label": "Datum van de laatste betaling",
+        "hint": "Wanneer de schuld eindigt",
+        "choose": "Kies een datum"
+      },
+      "never_pays_off": "Deze betaling dekt de rente niet, dus de schuld wordt nooit afbetaald."
+    },
+    "details": {
+      "header": "Schuld",
+      "current_balance": "Huidig saldo",
+      "payments_left": "Resterende betalingen",
+      "money_left": "Nog te betalen",
+      "overpayment_left": "Resterende meerkosten",
+      "overpaid_so_far": "Tot nu toe betaalde meerkosten",
+      "payoff_date": "Einddatum van de schuld",
+      "snapshots": "Geschiedenis van de voorwaarden",
+      "snapshot_terms": "{payment} · {schedule} · tot {date}",
+      "payments": "Betalingen",
+      "payments_empty": "Nog geen betalingen",
+      "column": {
+        "date": "Datum",
+        "amount": "Betaling",
+        "interest": "Rente",
+        "principal": "Aflossing"
+      },
+      "mark_paid_off": "Markeren als afbetaald",
+      "paid_off_confirm": {
+        "title": "Markeren als afbetaald?",
+        "question": "Het saldo wordt vanaf vandaag op 0 gezet. Uw betalingen blijven ongewijzigd."
+      },
+      "delete_confirm": {
+        "title": "Deze schuld verwijderen?",
+        "question": "De schuld verdwijnt uit uw budgetten. Uw betalingen blijven ongemoeid."
+      },
+      "removal_confirm": {
+        "title": "Geplande bedragen en opmerkingen verwijderen?",
+        "action": "Schuld verwijderen"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1217,6 +1301,7 @@
         "accounts_included": "{count} van {total} opgenomen",
         "accounts_hidden": "In verborgen mappen",
         "accounts_locked_hint": "Rekeningen met transacties in eerdere maanden kunnen niet worden verwijderd",
+        "debts_note": "Schulden worden met naam, betalingen en saldi getoond aan iedereen met toegang tot dit budget.",
         "savings": {
           "label": "Spaarrekeningen",
           "description": "Geld dat naar deze rekeningen gaat, telt als gespaard, niet als uitgegeven.",
@@ -1524,11 +1609,24 @@
         "saved": "Gespaard",
         "balance_hint": "Saldo aan het einde van de maand."
       },
+      "debts": {
+        "title": "Schulden",
+        "paid": "Betaald",
+        "left": "Resterend",
+        "left_hint": "Nog te betalen aan het einde van de maand.",
+        "payoff_by": "Naar verwachting afbetaald in {date}",
+        "payments_left": "{count} betaling resterend | {count} betalingen resterend",
+        "extra_effect": "{months} maand eerder afbetaald, {amount} minder meerkosten | {months} maanden eerder afbetaald, {amount} minder meerkosten",
+        "extra_effect_earlier": "{months} maand eerder afbetaald | {months} maanden eerder afbetaald",
+        "track": "Volgen als schuld",
+        "details": "Details"
+      },
       "phone": {
         "row_aria": "{name}, budget {budget}, uitgegeven {spent}",
         "child_aria": "{name}, uitgegeven {spent}",
         "income_row_aria": "{name}, gepland {planned}, ontvangen {received}",
         "savings_row_aria": "{name}, gepland {planned}, gespaard {saved}",
+        "debt_row_aria": "{name}, gepland {planned}, betaald {paid}",
         "available": "{amount} beschikbaar",
         "actual": "Werkelijk",
         "balance": "Saldo aan het einde van de maand"
@@ -2067,6 +2165,9 @@
       "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten.",
       "envelope_member_not_category": "Alleen een categorie kan aan een envelop worden toegevoegd",
       "savings_folder_not_allowed": "Spaarrekeningen kunnen niet in een map worden geplaatst",
+      "debt_folder_not_allowed": "Schulden kunnen niet in een map worden geplaatst",
+      "debt_period_out_of_range": "Deze schuld kan niet in deze maand worden gepland",
+      "debt_currency_fixed": "Een schuld wordt in haar eigen valuta gepland",
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
       "savings_account_not_member": "Spaarrekeningen moeten je eigen rekeningen in dit budget zijn",
       "savings_removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen verwijderd van de spaarrekeningen die je in dit budget hebt uitgeschakeld of eruit hebt verwijderd; bevestig om door te gaan",
@@ -2081,7 +2182,8 @@
       "type_invalid": "Het opgegeven categorietype bestaat niet.",
       "not_found": "Categorie niet gevonden.",
       "cannot_be_merged": "De geselecteerde categorieën kunnen niet worden samengevoegd.",
-      "list_empty": "De lijst met categorieën is leeg."
+      "list_empty": "De lijst met categorieën is leeg.",
+      "used_by_debt": "Een schuld gebruikt deze categorie. Verwijder of wijzig eerst de schuld."
     },
     "connection": {
       "invalid_uuid": "Dit is geen geldige UUID.",
@@ -2121,6 +2223,14 @@
       "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met tags is leeg."
     },
+    "debt": {
+      "payments_dont_cover": "De betalingen dekken het saldo niet. Verhoog de betaling of kies een latere datum voor de laatste betaling.",
+      "key_conflict": "Een andere schuld zou met dezelfde betalingen kunnen overeenkomen. Gebruik verschillende begunstigden of tags, of dezelfde met andere startdata.",
+      "start_date_taken": "Een andere schuld met dezelfde categorie, begunstigde en tag begint al op deze datum.",
+      "category_not_expense": "Een schuld heeft een uitgavencategorie nodig.",
+      "removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen van deze schuld in uw budgetten verwijderd; bevestig om door te gaan.",
+      "last_payment_in_past": "De datum van de laatste betaling moet na vandaag liggen."
+    },
     "authserver": {
       "disabled": "Apps koppelen is niet beschikbaar op deze server.",
       "client_not_found": "De registratie van deze app is verlopen of onbekend. Verwijder Econumo uit de app en voeg het opnieuw toe.",
@@ -2141,13 +2251,15 @@
       "name_length": "Naam van begunstigde moet {min}-{max} tekens bevatten.",
       "already_exists": "Deze begunstigde bestaat al.",
       "cannot_be_merged": "De geselecteerde begunstigden kunnen niet worden samengevoegd.",
-      "list_empty": "De lijst met begunstigden is leeg."
+      "list_empty": "De lijst met begunstigden is leeg.",
+      "used_by_debt": "Een schuld gebruikt deze begunstigde. Verwijder of wijzig eerst de schuld."
     },
     "tag": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
       "already_exists": "Deze tag bestaat al.",
       "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
-      "list_empty": "De lijst met tags is leeg."
+      "list_empty": "De lijst met tags is leeg.",
+      "used_by_debt": "Een schuld gebruikt deze tag. Verwijder of wijzig eerst de schuld."
     },
     "token": {
       "name_length": "Tokennaam moet {min}-{max} tekens bevatten.",

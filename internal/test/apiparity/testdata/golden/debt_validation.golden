@@ -1,0 +1,93 @@
+== err:blank-name POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"name":["This value should not be blank."]}}
+
+== err:bad-category-id POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"categoryId":["This value is not a valid UUID."]}}
+
+== err:bad-balance POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"balance":["This value is out of range."]}}
+
+== err:zero-payment POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"payment":["This value is out of range."]}}
+
+== err:bad-schedule POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"schedule":["The value you selected is not a valid choice."]}}
+
+== err:bad-last-date POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"lastPaymentDate":["This value is not valid."]}}
+
+== err:bad-start-date POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"startDate":["This value is not valid."]}}
+
+== err:last-payment-in-past POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"lastPaymentDate":["The last payment date must be after today."]}}
+
+== err:payments-dont-cover POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"payment":["The payments do not cover the balance. Raise the payment or set a later last payment date."]}}
+
+== err:category-not-expense POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"categoryId":["A debt needs an expense category."]}}
+
+== err:unknown-category POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Category not found","code":0,"errors":{}}
+
+== err:unknown-payee POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Payee not found","code":0,"errors":{}}
+
+== create-debt POST /api/v1/debt/create-debt [owner] -> 200
+{"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Car loan","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"c0000000-0000-0000-0000-000000000001","payeeId":null,"tagId":null,"startDate":"","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"5.36","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0}}
+
+== err:start-date-taken POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"startDate":["Another debt with the same category, payee and tag already starts on this date."]}}
+
+== err:key-conflict POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"categoryId":["Another debt could match the same payments. Give the debts different payees or tags, or the same ones with different start dates."]}}
+
+== err:update-payment-dont-cover POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"payment":["The payments do not cover the balance. Raise the payment or set a later last payment date."]}}
+
+== err:update-unknown POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== err:update-blank-id POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+
+== err:get-unknown GET /api/v1/debt/get-debt?id=d0000000-0000-0000-0000-0000000000ff [owner] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== err:get-bad-id GET /api/v1/debt/get-debt?id=nope [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value is not a valid UUID."]}}
+
+== err:get-missing-id GET /api/v1/debt/get-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+
+== err:paid-off-unknown POST /api/v1/debt/mark-debt-paid-off [owner] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== err:delete-unknown POST /api/v1/debt/delete-debt [owner] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== delete-whole-debt POST /api/v1/debt/delete-debt [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== create-keyed-debt POST /api/v1/debt/create-debt [owner] -> 200
+{"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Car loan","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"c0000000-0000-0000-0000-000000000001","payeeId":"20000000-0000-0000-0000-000000000001","tagId":null,"startDate":"","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"5.36","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0}}
+
+== set-debt-limit POST /api/v1/budget/set-limit [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== err:set-debt-limit-out-of-range POST /api/v1/budget/set-limit [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"period":["This debt cannot be planned in this month"]}}
+
+== err:change-debt-currency POST /api/v1/budget/change-element-currency [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"currencyId":["A debt is planned in its own currency"]}}
+
+== err:move-debt-into-folder POST /api/v1/budget/move-element [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"folderId":["Debts cannot be put into a folder"]}}
+
+== err:delete-removal-unconfirmed POST /api/v1/debt/delete-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"confirmDataRemoval":["This deletes the planned amounts and comments of this debt in your budgets; confirm to continue."]}}
+
+== delete-confirmed POST /api/v1/debt/delete-debt [owner] -> 200
+{"success":true,"message":"","data":{}}
+

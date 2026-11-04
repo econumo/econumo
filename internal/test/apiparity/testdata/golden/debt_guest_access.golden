@@ -1,0 +1,21 @@
+== create-debt POST /api/v1/debt/create-debt [owner] -> 200
+{"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Car loan","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"c0000000-0000-0000-0000-000000000001","payeeId":null,"tagId":null,"startDate":"","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"5.36","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0}}
+
+== err:guest-get GET /api/v1/debt/get-debt?id= [guest] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== err:guest-update POST /api/v1/debt/update-debt [guest] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== err:guest-paid-off POST /api/v1/debt/mark-debt-paid-off [guest] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== err:guest-delete POST /api/v1/debt/delete-debt [guest] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== guest-list-empty GET /api/v1/debt/get-debt-list [guest] -> 200
+{"success":true,"message":"","data":{"items":[]}}
+
+== owner-list GET /api/v1/debt/get-debt-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","name":"Car loan","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"c0000000-0000-0000-0000-000000000001","payeeId":null,"tagId":null,"startDate":"","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"5.36","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0}]}}
+

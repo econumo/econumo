@@ -23,7 +23,7 @@ export interface BudgetMetaDto {
   access: BudgetAccessDto[]
 }
 
-export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2, INCOME_CATEGORY: 3, INCOME_ENVELOPE: 4, SAVINGS: 5 } as const
+export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2, INCOME_CATEGORY: 3, INCOME_ENVELOPE: 4, SAVINGS: 5, DEBT: 6 } as const
 export type BudgetElementType = (typeof BudgetElementType)[keyof typeof BudgetElementType]
 
 export const isIncomeType = (t: BudgetElementType): boolean =>
@@ -206,6 +206,41 @@ export interface BudgetSavingsElementDto {
   upcoming?: string
 }
 
+/** a debt's monthly row; id is the debt id. Amounts are in currencyId (the
+ *  debt's currency) except budgetSpent, which is in the budget currency. Dates
+ *  are Y-m-d, '' when none. */
+export interface BudgetDebtElementDto {
+  id: Id
+  type: BudgetElementType
+  name: string
+  icon: string
+  currencyId: Id
+  ownerUserId: Id
+  isArchived: 0 | 1
+  position: number
+  /** '' = no plan (getBudget maps isBudgeted 0 to it) */
+  budgeted: string
+  isBudgeted?: 0 | 1
+  /** Paid */
+  spent: string
+  budgetSpent: string
+  available: string
+  /** the debt left at the end of the month */
+  closingBalance: string
+  paymentsLeft: number
+  /** the month's scheduled dues */
+  scheduledTotal: string
+  /** scheduled dues still to pay */
+  upcoming: string
+  payoffDate: string
+  basePayoffDate: string
+  overpaymentLeft: string
+  baseOverpaymentLeft: string
+  isPaidOff: 0 | 1
+  /** 0 outside the debt's life or after its projected payoff: no plan to edit */
+  isPlannable: 0 | 1
+}
+
 /** one of the requester's own member accounts */
 export interface BudgetAccountFilterDto {
   id: Id
@@ -229,6 +264,8 @@ export interface BudgetDto {
     labels?: LabelSpendDto[]
     /** optional: cached data from a server older than the savings release lacks it */
     savings?: BudgetSavingsElementDto[]
+    /** optional: cached data from a server older than the debts release lacks it */
+    debts?: BudgetDebtElementDto[]
   }
 }
 
@@ -242,6 +279,10 @@ export interface PlanCellDto {
   /** the month's recurring payments not yet posted, filed like actual; absent
    *  from older servers */
   upcoming?: string
+  /** debt rows only (PlanDebtCellDto) */
+  paymentsLeft?: number
+  scheduledTotal?: string
+  isPlannable?: 0 | 1
 }
 
 /** per-month cell on a plan-view child row: children never carry their own limit. */
@@ -304,6 +345,35 @@ export interface PlanSavingsElementDto {
   cells: PlanCellDto[]
 }
 
+/** per-month cell on a plan-view debt row, index-aligned with months */
+export interface PlanDebtCellDto {
+  actual: string
+  /** '' = no plan, or the month is out of the debt's life */
+  planned: string
+  closingBalance: string
+  paymentsLeft: number
+  scheduledTotal: string
+  upcoming: string
+  isPlannable: 0 | 1
+}
+
+/** a debt's plan-view row; id is the debt id */
+export interface PlanDebtElementDto {
+  id: Id
+  type: BudgetElementType
+  name: string
+  icon: string
+  currencyId: Id
+  ownerUserId: Id
+  position: number
+  payoffDate: string
+  basePayoffDate: string
+  overpaymentLeft: string
+  baseOverpaymentLeft: string
+  isPaidOff: 0 | 1
+  cells: PlanDebtCellDto[]
+}
+
 export interface PlanOpeningBalanceDto {
   currencyId: Id
   amount: string
@@ -333,6 +403,8 @@ export interface BudgetPlanDto {
     elements: PlanElementDto[]
     /** optional: cached data from a server older than the savings release lacks it */
     savings?: PlanSavingsElementDto[]
+    /** optional for the same reason as structure.debts above */
+    debts?: PlanDebtElementDto[]
   }
   /** optional for the same reason as structure.savings */
   savingsOpeningBalances?: PlanOpeningBalanceDto[]

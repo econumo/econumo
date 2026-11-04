@@ -117,6 +117,7 @@ UPDATE currencies SET is_deleted = 1 WHERE id = ?;
 SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = ? AND accounts.is_deleted = 0)
      + (SELECT COUNT(*) FROM budgets WHERE budgets.currency_id = ?)
      + (SELECT COUNT(*) FROM budgets_elements WHERE budgets_elements.currency_id = ?)
+     + (SELECT COUNT(*) FROM debts WHERE debts.currency_id = ?)
      + (SELECT COUNT(*) FROM users_options WHERE users_options.name = 'currency' AND users_options.value = ?) AS usage_count;
 
 -- name: InsertHiddenCurrency :exec

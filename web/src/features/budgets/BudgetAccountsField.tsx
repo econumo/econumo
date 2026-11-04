@@ -101,3 +101,10 @@ export function BudgetSavingsField({ accounts, selected, savings, onToggle }: Bu
     </>
   )
 }
+
+/** Debts join a budget with their owner, not through a picker, so the
+ *  settings say who sees them in the dialog itself. */
+export function BudgetDebtsNote() {
+  const { t } = useTranslation()
+  return <p className="px-1 text-xs text-muted-foreground">{t('budgets.modal.budget_form.debts_note')}</p>
+}

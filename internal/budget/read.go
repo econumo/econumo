@@ -48,7 +48,7 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req model.GetBudg
 	}
 	periodStart = b.clampPeriod(periodStart)
 	now := s.clock.Now()
-	f, err := s.buildFilters(ctx, userID, b, periodStart, periodStart.AddDate(0, 1, 0))
+	f, err := s.filtersWithDebts(ctx, userID, b, periodStart, periodStart.AddDate(0, 1, 0))
 	if err != nil {
 		return nil, err
 	}

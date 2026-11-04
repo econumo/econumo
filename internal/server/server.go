@@ -41,6 +41,9 @@ import (
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
 	currencymcp "github.com/econumo/econumo/internal/currency/mcp"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
+	appdebt "github.com/econumo/econumo/internal/debt"
+	handlerdebt "github.com/econumo/econumo/internal/debt/api"
+	debtrepo "github.com/econumo/econumo/internal/debt/repo"
 	appimports "github.com/econumo/econumo/internal/imports"
 	handlerimports "github.com/econumo/econumo/internal/imports/api"
 	"github.com/econumo/econumo/internal/imports/applewallet"
@@ -475,6 +478,19 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)
 
+	debtSvc := appdebt.NewService(
+		debtrepo.NewRepo(cfg.DatabaseDriver, txm), txm, clk,
+		NewDebtClassifications(categoryRepo, payeeRepo, tagRepo),
+		NewDebtRates(rateProvider, convertor),
+		currencyLookup,
+	)
+	categorySvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindCategory))
+	payeeSvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindPayee))
+	tagSvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindTag))
+	budgetSvc.SetDebts(debtSvc)
+	debtSvc.SetBudgetElements(NewDebtBudgetElements(budgetSvc))
+	debtHandlers := handlerdebt.NewHandlers(debtSvc)
+
 	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
 
 	// Disabled means unrouted: with SimpleFIN off its credential and sync
@@ -497,6 +513,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		handlerrecurring.RegisterAPI(recurringHandlers, authn),
 		handlerconnection.RegisterAPI(connectionHandlers, authn),
 		handlerbudget.RegisterAPI(budgetHandlers, authn),
+		handlerdebt.RegisterAPI(debtHandlers, authn),
 		importsAPI,
 		handlersystem.RegisterAPI(systemHandlers, authn),
 		apidoc.RegisterAPI(),

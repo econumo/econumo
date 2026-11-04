@@ -67,6 +67,7 @@ function useApplyImportAccount() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
     }
   }
@@ -189,6 +190,7 @@ export function useRetryImportEvent() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
     },
   })
 }
@@ -244,6 +246,7 @@ export function useSyncImportSource() {
         void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
         void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+        void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
         void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
       }
       trackEvent(METRICS.IMPORT_SYNC, { trigger: result.run.trigger, imported: result.run.importedCount, matched: result.run.matchedCount })
@@ -338,6 +341,7 @@ export function useApplyImportRule() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       // an apply rewrote the rows' applied_* snapshots; the per-transaction
       // link caches hold them for ten minutes, and a stale snapshot is what
       // the post-edit rule prompt compares against

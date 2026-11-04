@@ -8,12 +8,21 @@ import { useIsPhone } from '@/hooks/useIsPhone'
 import { calendarLocale } from '@/lib/calendarLocale'
 import { parseDateTime } from '@/lib/datetime'
 
-export function TransactionDatePicker({ value, onChange }: { value: string; onChange: (day: Date) => void }) {
+interface TransactionDatePickerProps {
+  value: string
+  onChange: (day: Date) => void
+  /** names the chip when a form holds several dates */
+  ariaLabel?: string
+  /** shown on the chip while `value` is empty (an optional date) */
+  placeholder?: string
+}
+
+export function TransactionDatePicker({ value, onChange, ariaLabel = 'date', placeholder }: TransactionDatePickerProps) {
   const { t, i18n } = useTranslation()
   const isPhone = useIsPhone()
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const selectedDate = parseDateTime(value)
+  const selectedDate = value ? parseDateTime(value) : new Date()
   const currentYear = new Date().getFullYear()
   const trigger = (
     <Button
@@ -21,12 +30,12 @@ export function TransactionDatePicker({ value, onChange }: { value: string; onCh
       type="button"
       variant="secondary"
       className="h-7 rounded-lg bg-econumo-card px-2 text-xs font-normal max-sm:h-11 max-sm:px-3"
-      aria-label="date"
+      aria-label={ariaLabel}
       aria-haspopup="dialog"
       aria-expanded={open}
       onClick={isPhone ? () => setOpen(true) : undefined}
     >
-      {value}
+      {value || placeholder}
     </Button>
   )
   const calendar = (
@@ -38,7 +47,7 @@ export function TransactionDatePicker({ value, onChange }: { value: string; onCh
       endMonth={new Date(Math.max(currentYear + 100, selectedDate.getFullYear()), 11)}
       weekStartsOn={1}
       locale={calendarLocale(i18n.language)}
-      selected={selectedDate}
+      selected={value ? selectedDate : undefined}
       className={isPhone ? 'mx-auto bg-transparent p-0 [--cell-size:min(2.75rem,calc((100vw-2rem)/7))] [&_button[data-day]]:text-base' : undefined}
       classNames={isPhone ? {
         dropdown_root: 'relative rounded-md bg-econumo-card focus-within:ring-2 focus-within:ring-ring',

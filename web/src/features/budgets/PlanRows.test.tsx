@@ -54,4 +54,10 @@ describe('isEditableCell', () => {
     expect(isEditableCell(row(5, 0), sel, 0, meta, 'u1')).toBe(true)
     expect(isEditableCell(row(5, 1), sel, 0, meta, 'u1')).toBe(false)
   })
+
+  it('a debt plans only the months of its life', () => {
+    const debt = { id: 'd', type: 6, isArchived: 0, cells: [{ actual: '0', planned: '', isPlannable: 1 }, { actual: '0', planned: '', isPlannable: 0 }] } as PlanElementDto
+    expect(isEditableCell(debt, sel, 0, meta, 'u1')).toBe(true)
+    expect(isEditableCell(debt, sel, 1, meta, 'u1')).toBe(false)
+  })
 })
