@@ -360,7 +360,9 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
 
 Directory structure in `web/src/`: `pages/` (routes), `features/`, `components/`
 (shadcn-style UI), `api/` (typed API clients), `hooks/`, `app/` (providers,
-router, i18n setup), `lib/`, `locales/`, `test/`. Anything that waits on the
+router, i18n setup), `lib/`, `locales/`, `test/`. The shadcn CLI is not a dependency (its tree
+brought unpatchable advisories into the lockfile): add components with `pnpm dlx shadcn add`;
+its Tailwind helpers are a copy in `src/shadcn-tailwind.css`. Anything that waits on the
 user (share invites, imported transactions to review, failed imports, failing
 syncs) surfaces in the Inbox (`web/src/features/inbox`, `/inbox`), fed by one
 `useInbox()` hook that also drives the sidebar badge; new attention items go
