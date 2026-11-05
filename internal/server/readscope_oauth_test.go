@@ -3,6 +3,7 @@ package server_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,5 +47,36 @@ func TestReadTokenFollowsTheOAuthServer(t *testing.T) {
 				t.Fatalf("status = %d, want %d: %s", rec.Code, tc.want, rec.Body.String())
 			}
 		})
+	}
+}
+
+// A read token is valid, so this pins the scope switch rather than the token
+// lookup: /mcp refuses it with the frozen 401 and the OAuth challenge.
+func TestReadTokenOnMCPIsRefusedWithChallenge(t *testing.T) {
+	const token = "eco_oat_read-token-refused-on-the-mcp-endpoint-000000"
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	user := f.User(fixture.User{Email: "a@example.test", Name: "Alex"})
+	expires := time.Now().Add(time.Hour)
+	f.AccessToken(fixture.AccessToken{UserID: user, Kind: model.TokenKindOAuth, TokenHash: appuser.HashAccessToken(token),
+		Name: "Reports", Scope: string(model.TokenScopeRead), ExpiresAt: &expires})
+
+	h, _, _, err := server.Build(config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AppURL: "https://app.example.test"}, db.Raw, server.Seams{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), "Invalid access token") {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	want := `Bearer resource_metadata="https://app.example.test/.well-known/oauth-protected-resource/mcp", scope="mcp"`
+	if got := rec.Header().Get("WWW-Authenticate"); got != want {
+		t.Fatalf("WWW-Authenticate = %q, want %q", got, want)
 	}
 }
