@@ -77,8 +77,8 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const { data: budgets } = useReportBudgets()
   const { data: folders } = useFolders()
   const [open, setOpen] = useState<Set<string>>(new Set())
-  // a dragged range of months (a refetch can move their indices); `key` drops it
-  // when the scope or period changes
+  // a dragged range of months (a refetch can move their indices); `key` ignores it
+  // on a tab whose scope or period just changed from elsewhere
   const rangeKey = `${p.budgetId ?? MINE}|${p.period}`
   const [range, setRange] = useState<{ key: string; a: string; b: string } | null>(null)
   const [dragFrom, setDragFrom] = useState<number | null>(null)
@@ -90,6 +90,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       value={p.budgetId ?? MINE}
       onValueChange={(v) => {
         const budgetId = v === MINE ? null : v
+        setRange(null)
         setParams({ budgetId })
         trackEvent(METRICS.REPORTS_CHANGE_SCOPE, { scope: budgetId ? 'budget' : 'mine' })
       }}
@@ -119,6 +120,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
           aria-checked={preset.value === o.value}
           onClick={() => {
             if (preset.value === o.value) return
+            setRange(null)
             setParams({ period: o.value })
             trackEvent(METRICS.REPORTS_CHANGE_PERIOD, { period: o.value })
           }}
