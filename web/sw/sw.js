@@ -4,13 +4,14 @@ const { buildHash, files } = self.__ECONUMO_SW__
 // The shell is cached under "/": Go's file server redirects /index.html to it,
 // and Safari refuses a redirected response for a navigation.
 const SHELL_URL = '/'
-// The cached copy is always the config the app last ran with, never a newer
-// one: its VERSION_REF keys the data on disk (getCacheBuster), and an offline
-// launch under a config the app never ran with would discard that data with
-// nothing able to download it again.
 const CONFIG_URL = '/econumo-config.js'
 const PREFIX = 'econumo-'
 const SHELL = `${PREFIX}shell-${buildHash}`
+// In a cache of its own that outlives every worker, always holding the config
+// the app last ran with, never a newer one: its VERSION_REF keys the data on
+// disk (getCacheBuster), and an offline launch under a config the app never ran
+// with would discard that data with nothing able to download it again.
+const CONFIG = `${PREFIX}config`
 const RUNTIME = `${PREFIX}runtime`
 // A launch on a dead connection (a tunnel, captive wifi) would otherwise hang
 // on the network until the browser gives up, and econumo-config.js blocks the
@@ -57,7 +58,7 @@ self.addEventListener('fetch', (event) => {
     }
     // Not kept: the offline shell is the precached one, whose bundle is known
     // to be cached. A newer build's page kept here would open blank offline.
-    event.respondWith(networkFirst(event, SHELL_URL, false))
+    event.respondWith(networkFirst(event, SHELL_URL))
     return
   }
   if (url.pathname.startsWith('/assets/')) {
@@ -66,29 +67,54 @@ self.addEventListener('fetch', (event) => {
   }
   // the runtime config, manifest, icons: keep their names across deploys, so
   // the network wins and the cache only covers being offline
-  event.respondWith(networkFirst(event, request, true))
+  event.respondWith(networkFirst(event, request))
 })
 
 async function activate() {
-  const others = (await caches.keys()).filter((k) => k.startsWith(PREFIX) && k !== SHELL)
-  // The previous worker served until now, so a reload during the install left
-  // a newer config in its cache than the one this worker found at install.
-  let config
-  for (const name of others) {
-    config = (await (await caches.open(name)).match(CONFIG_URL)) ?? config
-  }
-  if (config) {
-    await (await caches.open(SHELL)).put(CONFIG_URL, config)
-  }
-  await Promise.all(others.map((name) => caches.delete(name)))
+  const keys = await caches.keys()
+  await Promise.all(keys.filter((k) => k.startsWith(PREFIX) && k !== SHELL && k !== CONFIG).map((k) => caches.delete(k)))
   await self.clients.claim()
 }
 
-async function precache() {
+// Every shell file but the config, fresh from the server. Rejects unless all of
+// them arrived and belong to this build: a redirect is a sign-in gateway, a page
+// naming no asset a proxy's answer to every path, and one naming other assets a
+// server already on another build, whose own worker brings it.
+async function downloadShell() {
+  const downloads = await Promise.all(
+    files
+      .filter((f) => f !== CONFIG_URL)
+      .map(async (f) => {
+        const response = await fetch(new Request(f, { cache: 'reload' }))
+        if (!response.ok || response.redirected) {
+          throw new Error(`shell: ${f} ${response.status}`)
+        }
+        return [f, response]
+      }),
+  )
+  const [, shell] = downloads.find(([f]) => f === SHELL_URL)
+  const assets = (await shell.clone().text()).match(/\/assets\/[^"'\s>]+/g) ?? []
+  if (assets.length === 0 || !assets.every((a) => files.includes(a))) {
+    throw new Error('shell: not the page of this build')
+  }
+  return downloads
+}
+
+async function storeShell(downloads) {
   const cache = await caches.open(SHELL)
-  // with a config already cached, activation brings it over instead
-  const download = (await caches.match(CONFIG_URL)) ? files.filter((f) => f !== CONFIG_URL) : files
-  await cache.addAll(download.map((f) => new Request(f, { cache: 'reload' })))
+  await Promise.all(downloads.map(([f, response]) => cache.put(f, response)))
+}
+
+async function precache() {
+  await storeShell(await downloadShell())
+  const config = await caches.open(CONFIG)
+  if (!(await config.match(CONFIG_URL))) {
+    const response = await fetch(new Request(CONFIG_URL, { cache: 'reload' }))
+    if (!response.ok) {
+      throw new Error(`shell: ${CONFIG_URL} ${response.status}`)
+    }
+    await config.put(CONFIG_URL, response)
+  }
 }
 
 // "Clear cache and reload": download this build's shell again. Nothing is
@@ -96,27 +122,7 @@ async function precache() {
 // unreachable) leaves the app still able to start offline. Other workers'
 // caches are not ours to drop: a newer one may be installing right now.
 async function refresh() {
-  const downloads = await Promise.all(
-    files
-      .filter((f) => f !== CONFIG_URL)
-      .map(async (f) => {
-        const response = await fetch(new Request(f, { cache: 'reload' }))
-        if (!response.ok || response.redirected) {
-          throw new Error(`refresh: ${f} ${response.status}`)
-        }
-        return [f, response]
-      }),
-  )
-  // A server already on another build answers "/" with that build's page: a
-  // new worker brings it, and it must not land in this build's cache. A page
-  // naming no asset at all is a proxy's, answering every path the same way.
-  const [, shell] = downloads.find(([f]) => f === SHELL_URL)
-  const assets = (await shell.clone().text()).match(/\/assets\/[^"'\s>]+/g) ?? []
-  if (assets.length === 0 || !assets.every((a) => files.includes(a))) {
-    throw new Error('refresh: the server runs another build')
-  }
-  const cache = await caches.open(SHELL)
-  await Promise.all(downloads.map(([f, response]) => cache.put(f, response)))
+  await storeShell(await downloadShell())
   await caches.delete(RUNTIME)
 }
 
@@ -155,8 +161,16 @@ function within(promise, ms) {
   })
 }
 
-async function networkFirst(event, cacheKey, keepResponse) {
+function cacheFor(pathname) {
+  if (pathname === CONFIG_URL) {
+    return CONFIG
+  }
+  return files.includes(pathname) ? SHELL : RUNTIME
+}
+
+async function networkFirst(event, cacheKey) {
   const request = event.request
+  const navigation = request.mode === 'navigate'
   // no RequestInit: a navigation Request cannot be re-constructed with one,
   // and the server's Cache-Control: no-cache already forces revalidation
   // The whole body counts: headers followed by a stall would otherwise block
@@ -166,15 +180,15 @@ async function networkFirst(event, cacheKey, keepResponse) {
     return response
   })
   const response = await within(network, NETWORK_TIMEOUT_MS)
-  // A 5xx is a server that is down behind its proxy, which is being offline
-  // as far as the app can tell. A late response is never kept: the page has
-  // already moved on with the cached copy.
-  if (response && response.status < 500) {
-    if (keepResponse && response.ok && !response.redirected) {
-      const shellFile = files.includes(new URL(request.url).pathname)
-      keep(event, shellFile ? SHELL : RUNTIME, cacheKey, response)
-    }
-    return response
+  // A 5xx is a server that is down behind its proxy, which is being offline as
+  // far as the app can tell. So is a 404 for a navigation, which the server
+  // answers with the shell: some proxies say 404 for a stopped upstream.
+  if (!response || response.status >= 500 || (navigation && response.status === 404)) {
+    return (await caches.match(cacheKey)) ?? network
   }
-  return (await caches.match(cacheKey)) ?? network
+  // A late response is never kept: the page has moved on with the cached copy.
+  if (!navigation && response.ok && !response.redirected) {
+    keep(event, cacheFor(new URL(request.url).pathname), cacheKey, response)
+  }
+  return response
 }

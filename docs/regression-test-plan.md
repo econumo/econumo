@@ -2347,15 +2347,15 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       surface they sit on, as in the light theme. 📱
 - [ ] 📱 Offline start of the installed app: open the app online once (in
       DevTools → Application → Service workers, `/sw.js` is activated and Cache
-      storage holds one `econumo-shell-…` cache), then go offline (airplane
+      storage holds `econumo-config` and one `econumo-shell-…` cache), then go offline (airplane
       mode on the phone) and launch it from the Home Screen or reload a deep
       link such as `/settings` — the app opens with its data instead of the
       browser's "can't connect" page. `/api/doc` still loads from the server,
       never the app shell.
 - [ ] After a deploy, a dev one from `main` included (its version label stays
       `dev`), the next online launch runs the new build with no reinstall:
-      Cache storage holds a single `econumo-shell-…` cache with a new hash and
-      no `econumo-runtime`.
+      Cache storage holds `econumo-config` and a single `econumo-shell-…` cache
+      with a new hash, and no `econumo-runtime`.
 - [ ] Offline launch after a deploy the app has not run yet: keep the app open
       while a new build deploys, let the worker update (DevTools → Service
       workers → Update), go offline and reload — every transaction is still
@@ -2364,7 +2364,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       custom profile with a 30 s latency) opens the cached app after about 8 s
       instead of waiting for the network.
 - [ ] A launch while the server is down behind its proxy (a Cloudflare 502/530
-      page) opens the cached app, not the proxy's error page.
+      page, or a proxy's 404) opens the cached app, not the proxy's error page.
 - [ ] 📱 iOS (Safari tab and Home Screen app), light and dark: pulling down
       at the top or up at the bottom of the home screen (account list) and of
       any other page never drags the whole app away to show a strip of
@@ -2484,8 +2484,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       only shows "You're offline. Clear the cache and reload when you're back online."
       and an offline reload afterwards still shows every transaction.
       Online, it also downloads every app file again: DevTools → Cache
-      storage then holds only the `econumo-shell-…` cache, refreshed (no
-      `econumo-runtime`). With the server unreachable it keeps the old copy, so
+      storage then holds `econumo-config` and the `econumo-shell-…` cache,
+      refreshed (no `econumo-runtime`). With the server unreachable it keeps the old copy, so
       an offline launch afterwards still opens the app.
 - [ ] Cross-device edit: with the app open on devices A and B, edit or add a
       transaction on A, then tap sync on B (or refocus B after 10 minutes) —

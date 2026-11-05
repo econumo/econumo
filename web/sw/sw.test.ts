@@ -3,6 +3,14 @@ import path from 'node:path'
 
 const ORIGIN = 'https://econumo.test'
 const FILES = ['/', '/assets/index-abc.js', '/econumo-config.js']
+const CONFIG_CACHE = 'econumo-config'
+const page = (label: string) => `${label}<script src="/assets/index-abc.js"></script>`
+// what the server answers while it runs this build
+const sameBuild = (label: string) =>
+  vi.fn(async (r: Req) => {
+    const pathname = new URL(r.url, ORIGIN).pathname
+    return new Response(pathname === '/' ? page(label) : `${label}:${pathname}`)
+  })
 const source = fs.readFileSync(path.resolve(import.meta.dirname, 'sw.js'), 'utf8')
 
 type Req = { url: string; method?: string; mode?: string }
@@ -94,13 +102,14 @@ const offline = () => vi.fn(async () => Promise.reject(new TypeError('Failed to 
 beforeEach(async () => {
   immediateTimers = false
   caches = undefined as unknown as ReturnType<typeof makeCaches>
-  fetchMock = vi.fn(async (r: Req) => new Response(`v1:${new URL(r.url, ORIGIN).pathname}`))
+  fetchMock = sameBuild('v1')
   boot()
   await lifecycle('install')
 })
 
 it('precaches every shell file on install', async () => {
-  expect([...caches.store.get('econumo-shell-v1')!.keys()]).toEqual(FILES.map((f) => ORIGIN + f))
+  const cached = [...caches.store.get('econumo-shell-v1')!.keys(), ...caches.store.get(CONFIG_CACHE)!.keys()]
+  expect(cached.sort()).toEqual(FILES.map((f) => ORIGIN + f).sort())
 })
 
 it('opens the network copy of the shell when online, leaving the offline copy to the precache', async () => {
@@ -109,13 +118,13 @@ it('opens the network copy of the shell when online, leaving the offline copy to
   expect(await (await event.response!).text()).toBe('newer build')
   await new Promise((r) => setTimeout(r, 0))
   // its bundle is not cached yet: kept, the next offline launch would be blank
-  expect(await (await caches.api.match('/'))!.text()).toBe('v1:/')
+  expect(await (await caches.api.match('/'))!.text()).toBe(page('v1'))
 })
 
 it('opens the cached shell offline', async () => {
   fetchMock = offline()
   const event = fetchEvent('/account/1', 'navigate')
-  expect(await (await event.response!).text()).toBe('v1:/')
+  expect(await (await event.response!).text()).toBe(page('v1'))
 })
 
 it('opens the cached shell when the network hangs', async () => {
@@ -124,13 +133,20 @@ it('opens the cached shell when the network hangs', async () => {
   await lifecycle('install')
   fetchMock = vi.fn(() => new Promise<Response>(() => {}))
   const event = fetchEvent('/', 'navigate')
-  expect(await (await event.response!).text()).toBe('v1:/')
+  expect(await (await event.response!).text()).toBe(page('v1'))
 })
 
 it('opens the cached shell when the server answers a 5xx', async () => {
   fetchMock = vi.fn(async () => new Response('bad gateway', { status: 502 }))
   const event = fetchEvent('/account/1', 'navigate')
-  expect(await (await event.response!).text()).toBe('v1:/')
+  expect(await (await event.response!).text()).toBe(page('v1'))
+})
+
+it('opens the cached shell when a proxy answers a navigation with a 404', async () => {
+  // the server answers every client route with the shell, so this 404 is from in front of it
+  fetchMock = vi.fn(async () => new Response('404 page not found', { status: 404 }))
+  const event = fetchEvent('/account/1', 'navigate')
+  expect(await (await event.response!).text()).toBe(page('v1'))
 })
 
 it('passes a 404 through instead of hiding it behind the cache', async () => {
@@ -212,45 +228,62 @@ it('drops the caches of older builds on activate, and nothing else', async () =>
   caches.store.set('econumo-shell-v0', new Map())
   caches.store.set('someone-else', new Map())
   await lifecycle('activate')
-  expect([...caches.store.keys()].sort()).toEqual(['econumo-shell-v1', 'someone-else'])
+  expect([...caches.store.keys()].sort()).toEqual([CONFIG_CACHE, 'econumo-shell-v1', 'someone-else'])
 })
 
 it('drops the runtime cache on activate', async () => {
   await (await caches.api.open('econumo-runtime')).put('/assets/old.js', new Response('old'))
   await lifecycle('activate')
-  expect([...caches.store.keys()]).toEqual(['econumo-shell-v1'])
+  expect(caches.store.has('econumo-runtime')).toBe(false)
 })
 
 it('a new worker takes the new shell but keeps the runtime config the app last ran with', async () => {
   // the transactions on disk are keyed by that config's revision; the new one
   // would discard them on an offline launch, before anything can be downloaded
   await new Promise((r) => setTimeout(r, 0))
-  fetchMock = vi.fn(async (r: Req) => new Response(`v2:${new URL(r.url, ORIGIN).pathname}`))
+  fetchMock = sameBuild('v2')
   boot('v2')
   await lifecycle('install')
   await lifecycle('activate')
-  expect([...caches.store.keys()]).toEqual(['econumo-shell-v2'])
-  expect(await (await caches.api.match('/'))!.text()).toBe('v2:/')
+  expect([...caches.store.keys()].sort()).toEqual([CONFIG_CACHE, 'econumo-shell-v2'])
+  expect(await (await caches.api.match('/'))!.text()).toBe(page('v2'))
   expect(await (await caches.api.match('/econumo-config.js'))!.text()).toBe('v1:/econumo-config.js')
   expect(fetchMock).not.toHaveBeenCalledWith(expect.objectContaining({ url: `${ORIGIN}/econumo-config.js` }))
 })
 
-it('activation takes the config a reload stored in the old cache while the new worker installed', async () => {
-  fetchMock = vi.fn(async (r: Req) => new Response(`v2:${new URL(r.url, ORIGIN).pathname}`))
+it('a config the old worker stores after the new one activated still counts', async () => {
+  fetchMock = sameBuild('v2')
+  const oldWorkerFetch = handlers.fetch
+  const late = { resolve: (_: Response) => {} }
   boot('v2')
   await lifecycle('install')
-  await (await caches.api.open('econumo-shell-v1')).put('/econumo-config.js', new Response('config the app runs with'))
   await lifecycle('activate')
-  expect([...caches.store.keys()]).toEqual(['econumo-shell-v2'])
+  fetchMock = vi.fn(() => new Promise<Response>((resolve) => (late.resolve = resolve)))
+  const event = { request: { url: `${ORIGIN}/econumo-config.js`, method: 'GET', mode: 'cors' }, response: undefined as Promise<Response> | undefined, respondWith(p: Promise<Response>) { this.response = p }, waitUntil() {} }
+  oldWorkerFetch(event)
+  late.resolve(new Response('config the app runs with'))
+  await event.response
+  await new Promise((r) => setTimeout(r, 0))
   expect(await (await caches.api.match('/econumo-config.js'))!.text()).toBe('config the app runs with')
 })
 
-// what the server answers while it still runs this build
-const sameBuild = (label: string) =>
-  vi.fn(async (r: Req) => {
-    const pathname = new URL(r.url, ORIGIN).pathname
-    return new Response(pathname === '/' ? `${label}<script src="/assets/index-abc.js"></script>` : `${label}:${pathname}`)
+it('fails an install when a proxy answers the shell with its own page, keeping the old worker', async () => {
+  fetchMock = vi.fn(async () => new Response('<h1>Back soon</h1>'))
+  boot('v2')
+  await expect(lifecycle('install')).rejects.toThrow()
+  expect(caches.store.get('econumo-shell-v2')?.size ?? 0).toBe(0)
+  expect(await (await caches.api.match('/'))!.text()).toBe(page('v1'))
+})
+
+it('fails an install redirected elsewhere', async () => {
+  fetchMock = vi.fn(async (r: Req) => {
+    const response = await sameBuild('v2')(r)
+    Object.defineProperty(response, 'redirected', { value: new URL(r.url, ORIGIN).pathname === '/assets/index-abc.js' })
+    return response
   })
+  boot('v2')
+  await expect(lifecycle('install')).rejects.toThrow()
+})
 
 async function refresh(): Promise<{ ok: boolean }> {
   let done: Promise<unknown> = Promise.resolve()
@@ -268,8 +301,8 @@ it('refresh downloads the shell again and drops every other cached file', async 
   await (await caches.api.open('econumo-runtime')).put('/assets/old.js', new Response('old'))
   fetchMock = sameBuild('v2')
   expect(await refresh()).toEqual({ ok: true })
-  expect([...caches.store.keys()]).toEqual(['econumo-shell-v1'])
-  expect(await (await caches.api.match('/'))!.text()).toContain('v2')
+  expect([...caches.store.keys()].sort()).toEqual([CONFIG_CACHE, 'econumo-shell-v1'])
+  expect(await (await caches.api.match('/'))!.text()).toBe(page('v2'))
 })
 
 it('refresh keeps the runtime config the app is running with', async () => {
@@ -282,7 +315,7 @@ it('refresh leaves the cache of a newer worker installing beside it', async () =
   caches.store.set('econumo-shell-v2', new Map())
   fetchMock = sameBuild('v2')
   expect(await refresh()).toEqual({ ok: true })
-  expect([...caches.store.keys()].sort()).toEqual(['econumo-shell-v1', 'econumo-shell-v2'])
+  expect([...caches.store.keys()].sort()).toEqual([CONFIG_CACHE, 'econumo-shell-v1', 'econumo-shell-v2'])
 })
 
 it('refuses a refresh once the server has moved to another build', async () => {
@@ -292,7 +325,7 @@ it('refuses a refresh once the server has moved to another build', async () => {
       : new Response(`v2:${new URL(r.url).pathname}`),
   )
   expect(await refresh()).toEqual({ ok: false })
-  expect(await (await caches.api.match('/'))!.text()).toBe('v1:/')
+  expect(await (await caches.api.match('/'))!.text()).toBe(page('v1'))
 })
 
 it('refuses a refresh when a proxy answers every path with its own page', async () => {
@@ -308,11 +341,11 @@ it('refuses a refresh redirected elsewhere, such as to a sign-in gateway', async
     return response
   })
   expect(await refresh()).toEqual({ ok: false })
-  expect(await (await caches.api.match('/')!)!.text()).toBe('v1:/')
+  expect(await (await caches.api.match('/')!)!.text()).toBe(page('v1'))
 })
 
 it('a failed refresh keeps the offline copy', async () => {
   fetchMock = vi.fn(async (r: Req) => (new URL(r.url).pathname === '/' ? new Response('down', { status: 502 }) : new Response('v2')))
   expect(await refresh()).toEqual({ ok: false })
-  expect(await (await caches.api.match('/'))!.text()).toBe('v1:/')
+  expect(await (await caches.api.match('/'))!.text()).toBe(page('v1'))
 })

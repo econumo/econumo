@@ -409,26 +409,28 @@ plugin in `web/vite.config.ts` writes `dist/sw.js` after the build, prepending t
 list (the bundle, `econumo-config.js`, the manifest and the icons it and `index.html` name)
 and a build hash, a digest of the worker and those files rather than the release version (every
 dev deploy reports `dev`), so a deploy that changes any of them installs a new worker
-(`skipWaiting` + `clients.claim`, every other `econumo-*` cache dropped on activate).
+(`skipWaiting` + `clients.claim`, every other shell and the runtime cache dropped on activate).
 Navigations are network-first with the shell cached under `/` (Go's file server redirects
 `/index.html`); `/assets/*` is cache-first; other shell files network-first. Network-first falls
-back to the cache after 4 s per request, so a dead connection opens the app in about 8 s
-(`econumo-config.js` blocks the parser, so a hang on it would otherwise leave a blank page) and on a 5xx (a server down behind its proxy). `/api`,
+back to the cache after 4 s per request, body included, so a dead connection opens the app in
+about 8 s (`econumo-config.js` blocks the parser, so a hang on it would otherwise leave a blank
+page), and on a 5xx (a server down behind its proxy) or, for a navigation, a 404 (the server
+answers those with the shell, so it is the proxy's). `/api`,
 `/mcp`, the OAuth server routes, `/.well-known`, `/health`, `/_` and liltag are never intercepted,
 and nothing user-specific is cached (the data lives in IndexedDB, below). Two rules keep an
 offline launch consistent: the offline `/` is only ever the precached one (a newer build's page
-would name a bundle that is not cached), and the cached `econumo-config.js` is always the one the
-app last ran with, so a new worker carries it over (on activate, as a reload during the install
-may have changed it) and a late response is not kept. Its
+would name a bundle that is not cached), and `econumo-config.js` lives in the `econumo-config`
+cache, which outlives every worker and always holds the config the app last ran with (a worker
+fetches it only when that cache is empty, and a late response is not kept). Its
 `VERSION_REF` keys the stored data (`getCacheBuster`), so a worker that updates while the page
 stays open must not make the next offline launch discard the transactions; the price is that
 such a launch runs the new bundle over data the previous build stored, until it is next online,
 so a change that breaks reading stored data must bump `FORMAT_VERSION`, which both the store and
 the query cache key on. "Clear cache and reload" also asks
-the worker to download its shell files again (not the config); nothing changes until all of them
-arrived, so an unreachable server leaves the offline copy in place, and a redirect, a page naming
-no asset (a proxy's) or a server already on another build fail the refresh, the last because the
-new worker brings that build. The hook's lock
+the worker to download its shell files again (not the config). Install and refresh share one
+check: nothing changes until every file has arrived and belongs to this build, so an unreachable
+server, a redirect, a page naming no asset (a proxy's) or a server already on another build leave
+the offline copy in place. The hook's lock
 then lasts until that answer too (at most 60 s).
 
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One
