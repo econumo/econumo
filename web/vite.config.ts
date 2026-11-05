@@ -25,7 +25,6 @@ function backendPort(): string {
   return '8181'
 }
 
-
 // Shell files the service worker precaches so the installed app starts
 // offline: the bundle, the runtime config, and what index.html and the
 // manifest reference. Skipped: legacy .woff (every browser that runs a
@@ -40,9 +39,10 @@ function listFiles(dir: string, base = ''): string[] {
   })
 }
 
-// Writes dist/sw.js from sw/sw.js once the bundle is on disk. The version is
-// a digest of the precached files, so a deploy that changes any of them
-// installs a new worker, and one that changes none keeps the cache.
+// Writes dist/sw.js from sw/sw.js once the bundle is on disk. The build hash is
+// a digest of the worker and the precached files, not the release version (every
+// dev deploy reports `dev`): a deploy that changes any of them installs a new
+// worker with a cache of its own, and one that changes none keeps the cache.
 function serviceWorker(): Plugin {
   let outDir = ''
   return {
@@ -53,12 +53,12 @@ function serviceWorker(): Plugin {
     },
     closeBundle() {
       const files = listFiles(outDir).filter((f) => PRECACHE.test(f)).sort()
-      const hash = crypto.createHash('sha256')
+      const body = fs.readFileSync(path.resolve(import.meta.dirname, 'sw/sw.js'), 'utf8')
+      const hash = crypto.createHash('sha256').update(body)
       for (const f of files) {
         hash.update(f).update(fs.readFileSync(path.join(outDir, f)))
       }
-      const header = `self.__ECONUMO_SW__ = ${JSON.stringify({ version: hash.digest('hex').slice(0, 16), files: files.map((f) => (f === 'index.html' ? '/' : `/${f}`)) })};\n`
-      const body = fs.readFileSync(path.resolve(import.meta.dirname, 'sw/sw.js'), 'utf8')
+      const header = `self.__ECONUMO_SW__ = ${JSON.stringify({ buildHash: hash.digest('hex').slice(0, 16), files: files.map((f) => (f === 'index.html' ? '/' : `/${f}`)) })};\n`
       fs.writeFileSync(path.join(outDir, 'sw.js'), header + body)
     },
   }

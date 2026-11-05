@@ -2352,12 +2352,19 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       link such as `/settings` — the app opens with its data instead of the
       browser's "can't connect" page. `/api/doc` still loads from the server,
       never the app shell.
-- [ ] After a deploy, the next online launch runs the new version (the
-      sidebar version label changes) with no reinstall, and Cache storage
-      holds only the new build's `econumo-shell-…` cache.
+- [ ] After a deploy, a dev one from `main` included (its version label stays
+      `dev`), the next online launch runs the new build with no reinstall:
+      Cache storage holds a single `econumo-shell-…` cache with a new hash and
+      no `econumo-runtime`.
+- [ ] Offline launch after a deploy the app has not run yet: keep the app open
+      while a new build deploys, let the worker update (DevTools → Service
+      workers → Update), go offline and reload — every transaction is still
+      there. Back online, the app moves to the new build and downloads again.
 - [ ] A launch on a connection that hangs (DevTools throttling "Offline" off,
-      custom profile with a 30 s latency) opens the cached app after about 4 s
+      custom profile with a 30 s latency) opens the cached app after about 8 s
       instead of waiting for the network.
+- [ ] A launch while the server is down behind its proxy (a Cloudflare 502/530
+      page) opens the cached app, not the proxy's error page.
 - [ ] 📱 iOS (Safari tab and Home Screen app), light and dark: pulling down
       at the top or up at the bottom of the home screen (account list) and of
       any other page never drags the whole app away to show a strip of
