@@ -29,7 +29,7 @@ func baseTestConfig(engine string) config.Config {
 		RateLimitRemind:    3,
 		RateLimitRegister:  5,
 		RateLimitWindow:    15 * time.Minute,
-		RateLimitGlobal:    60,
+		RateLimitIP:        60,
 	}
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -253,11 +254,12 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 	}, nil
 }
 
-// newCurrencyCode enforces the currency-code invariant: trim, uppercase, must be
-// exactly 3 chars. Returns a *ValidationError on failure (HTTP 400).
+// newCurrencyCode enforces the currency-code invariant: trim, uppercase, 3 or 4
+// chars (a global digital currency such as DOGE has 4). Returns a
+// *ValidationError on failure (HTTP 400).
 func newCurrencyCode(v string) (string, error) {
 	c := strings.ToUpper(strings.TrimSpace(v))
-	if len([]rune(c)) != 3 {
+	if n := len([]rune(c)); n < 3 || n > 4 {
 		return "", errs.NewValidation("CurrencyCode is incorrect",
 			errs.FieldError{Key: "currency", Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
 	}
@@ -296,19 +298,135 @@ func newSalt() (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-// allowAttempt / failAttempt / clearAttempt guard the optional limiter (nil in
+// allowAttempt / reserveAttempt / clearAttempt guard the optional limiter (nil in
 // the CLI and most tests), mirroring the nil-mailer pattern in RemindPassword.
-func (s *Service) allowAttempt(scope, key string) error {
+func (s *Service) allowAttempt(ctx context.Context, scope, key string) error {
 	if s.limiter == nil {
 		return nil
 	}
-	return s.limiter.Allow(scope, key)
+	return s.limiter.Allow(ctx, scope, key)
 }
 
-func (s *Service) failAttempt(scope, key string) {
-	if s.limiter != nil {
-		s.limiter.Fail(scope, key)
+// reservedAttempt is a guess already counted before it was tested. Unless keep
+// says it stays counted, giveBack returns it (once), so that only real failures
+// add up.
+type reservedAttempt struct {
+	release func()
+	kept    bool
+}
+
+func (a *reservedAttempt) keep() { a.kept = true }
+
+func (a *reservedAttempt) giveBack() {
+	if !a.kept {
+		a.kept = true
+		a.release()
 	}
+}
+
+func (s *Service) reserveAttempt(scope, key string) (*reservedAttempt, error) {
+	if s.limiter == nil {
+		return &reservedAttempt{release: func() {}}, nil
+	}
+	if err := s.limiter.Reserve(scope, key); err != nil {
+		return nil, err
+	}
+	return &reservedAttempt{release: func() { s.limiter.Release(scope, key) }}, nil
+}
+
+// reserveEmailAttempt counts a guess at an account's credential before it is
+// tested, or refuses it, so a burst cannot get past the limits by arriving before
+// the first failures are recorded. It runs after the account lookup because only
+// real accounts may write the pinned ceiling. The IP's own counter goes first, so
+// a burst from one IP stops at its limit and cannot spend the ceiling that would
+// lock out the owner.
+func (s *Service) reserveEmailAttempt(ctx context.Context, scope, email string) (*reservedAttempt, error) {
+	return s.reserveEmailAttemptIn(ctx, scope, scope+EmailCeilingScopeSuffix, email)
+}
+
+// countUnknownEmailAttempt counts an address with no account in its own evictable
+// ceiling: it answers 429 at the same point as a real one, so the limit reveals
+// nothing, while a spray of invented addresses cannot grow the pinned ceiling.
+func (s *Service) countUnknownEmailAttempt(ctx context.Context, scope, email string) error {
+	attempt, err := s.reserveEmailAttemptIn(ctx, scope, scope+UnknownEmailCeilingScopeSuffix, email)
+	if err != nil {
+		return err
+	}
+	attempt.keep()
+	return nil
+}
+
+func (s *Service) reserveEmailAttemptIn(ctx context.Context, scope, ceilingScope, email string) (*reservedAttempt, error) {
+	perIP, err := s.reserveAttempt(scope, emailIPKey(ctx, email))
+	if err != nil {
+		return nil, err
+	}
+	ceiling, err := s.reserveAttempt(ceilingScope, email)
+	if err != nil {
+		perIP.giveBack()
+		return nil, err
+	}
+	return &reservedAttempt{release: func() {
+		perIP.giveBack()
+		ceiling.giveBack()
+	}}, nil
+}
+
+// countAttempt is for a limit where every request counts, whatever it turns out
+// to be: past the check, the attempt stays counted.
+func (s *Service) countAttempt(ctx context.Context, scope, key string) error {
+	if err := s.allowAttempt(ctx, scope, key); err != nil {
+		return err
+	}
+	attempt, err := s.reserveAttempt(scope, key)
+	if err != nil {
+		return err
+	}
+	attempt.keep()
+	return nil
+}
+
+// countEmailAttempt is countAttempt for a limit keyed by an email address.
+func (s *Service) countEmailAttempt(ctx context.Context, scope, email string) error {
+	if err := s.allowEmailAttempt(ctx, scope, email); err != nil {
+		return err
+	}
+	attempt, err := s.reserveEmailAttempt(ctx, scope, email)
+	if err != nil {
+		return err
+	}
+	attempt.keep()
+	return nil
+}
+
+// allowEmailAttempt / clearEmailAttempt guard an attempt that names someone's
+// email address per address AND client IP, so a stranger who knows the address
+// locks out only their own IP, not its owner. The per-address ceiling, counted
+// across all IPs, is what still bounds guessing from many IPs. allowEmailAttempt
+// only reads those counters, so every attempt must also reserve its count.
+func (s *Service) allowEmailAttempt(ctx context.Context, scope, email string) error {
+	// The ceilings first: they spend no IP budget, so retrying a locked address
+	// cannot use up what others behind the same IP share.
+	if err := s.allowAttempt(ctx, scope+EmailCeilingScopeSuffix, email); err != nil {
+		return err
+	}
+	if err := s.allowAttempt(ctx, scope+UnknownEmailCeilingScopeSuffix, email); err != nil {
+		return err
+	}
+	return s.allowAttempt(ctx, scope, emailIPKey(ctx, email))
+}
+
+func (s *Service) clearEmailAttempt(ctx context.Context, scope, email string) {
+	s.clearAttempt(scope, emailIPKey(ctx, email))
+	s.clearAttempt(scope+EmailCeilingScopeSuffix, email)
+	s.clearAttempt(scope+UnknownEmailCeilingScopeSuffix, email)
+}
+
+func emailIPKey(ctx context.Context, email string) string {
+	if ip := reqctx.ClientIP(ctx); ip != "" {
+		return email + "\x00" + ip
+	}
+	return email
 }
 
 func (s *Service) clearAttempt(scope, key string) {

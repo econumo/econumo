@@ -123,6 +123,26 @@ func TestRepo_ClientCodeGrantLifecycle(t *testing.T) {
 		t.Fatalf("MarkClientUsed not persisted: %+v", got)
 	}
 
+	var unused []vo.Id
+	for i := range 3 {
+		u := &model.OAuthClient{ID: vo.NewId(), Name: "x", RedirectURIs: []string{"https://a.test/cb"}, CreatedAt: now.Add(time.Duration(i) * time.Minute)}
+		if err := r.InsertClient(ctx, u); err != nil {
+			t.Fatal(err)
+		}
+		unused = append(unused, u.ID)
+	}
+	if n, err := r.PurgeExcessUnusedClients(ctx, 2); err != nil || n != 1 {
+		t.Fatalf("excess purge = %d %v", n, err)
+	}
+	if _, err := r.GetClient(ctx, unused[0]); !errors.As(err, new(*errs.NotFoundError)) {
+		t.Fatalf("the oldest unused client must go: %v", err)
+	}
+	for _, id := range unused[1:] {
+		if _, err := r.GetClient(ctx, id); err != nil {
+			t.Fatalf("the newest unused clients must stay: %v", err)
+		}
+	}
+
 	if err := r.InsertCode(ctx, &model.OAuthAuthorizationCode{CodeHash: "old", ClientID: c.ID, UserID: userID, RedirectURI: "x",
 		CodeChallenge: "c", Resource: "r", CreatedAt: now.Add(-time.Hour), ExpiresAt: now.Add(-time.Hour)}); err != nil {
 		t.Fatal(err)

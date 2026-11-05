@@ -28,6 +28,10 @@ func (sqliteQuerier) MarkOAuthClientUsed(ctx context.Context, db backend.DBTX, p
 	return sqlitegen.New(db).MarkOAuthClientUsed(ctx, p)
 }
 
+func (sqliteQuerier) PurgeExcessUnusedOAuthClients(ctx context.Context, db backend.DBTX, keep int64) (int64, error) {
+	return sqlitegen.New(db).PurgeExcessUnusedOAuthClients(ctx, keep)
+}
+
 func (sqliteQuerier) PurgeUnusedOAuthClients(ctx context.Context, db backend.DBTX, createdBefore time.Time) (int64, error) {
 	return sqlitegen.New(db).PurgeUnusedOAuthClients(ctx, createdBefore)
 }

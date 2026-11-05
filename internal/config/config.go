@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"regexp"
@@ -98,21 +99,23 @@ type Config struct {
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
-	RateLimitLogin              int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
-	RateLimitReset              int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
-	RateLimitRemind             int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
-	RateLimitRegister           int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
-	RateLimitAccept             int           // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
-	RateLimitVerifyEmail        int           // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
-	RateLimitConfirmEmail       int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
-	RateLimitRequestEmailChange int           // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
-	RateLimitConfirmEmailChange int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
-	RateLimitIngest             int           // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
-	RateLimitClaimSetupToken    int           // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
-	RateLimitSync               int           // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
-	RateLimitPreviewRule        int           // ECONUMO_RATE_LIMIT_PREVIEW_RULE: rule previews per user (fired from a typing debounce; every request counts)
-	RateLimitWindow             time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
-	RateLimitGlobal             int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
+	RateLimitLogin              int            // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
+	RateLimitReset              int            // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
+	RateLimitRemind             int            // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
+	RateLimitRegister           int            // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
+	RateLimitAccept             int            // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
+	RateLimitVerifyEmail        int            // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
+	RateLimitConfirmEmail       int            // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
+	RateLimitRequestEmailChange int            // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
+	RateLimitConfirmEmailChange int            // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
+	RateLimitIngest             int            // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
+	RateLimitClaimSetupToken    int            // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
+	RateLimitSync               int            // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
+	RateLimitPreviewRule        int            // ECONUMO_RATE_LIMIT_PREVIEW_RULE: rule previews per user (fired from a typing debounce; every request counts)
+	RateLimitWindow             time.Duration  // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
+	RateLimitIP                 int            // ECONUMO_RATE_LIMIT_IP: per-endpoint cap per minute per client IP
+	ClientIPHeader              string         // ECONUMO_CLIENT_IP_HEADER: header trusted proxies put the client IP in
+	ClientIPTrustedProxies      []netip.Prefix // ECONUMO_CLIENT_IP_TRUSTED_PROXIES: peers whose header is believed
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
 	// (empty/console/log -> console to stdout; resend://<key> -> Resend;
@@ -427,7 +430,7 @@ func Load() (Config, error) {
 		{&c.RateLimitClaimSetupToken, "ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", 5},
 		{&c.RateLimitSync, "ECONUMO_RATE_LIMIT_SYNC", 10},
 		{&c.RateLimitPreviewRule, "ECONUMO_RATE_LIMIT_PREVIEW_RULE", 120},
-		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
+		{&c.RateLimitIP, "ECONUMO_RATE_LIMIT_IP", 60},
 	} {
 		n, err := getIntStrict(p.key, p.def)
 		if err != nil {
@@ -441,6 +444,10 @@ func Load() (Config, error) {
 	}
 	c.RateLimitWindow = window
 
+	if err := loadClientIP(&c); err != nil {
+		return Config{}, err
+	}
+
 	// PORT is required by the HTTP server only and is validated at server
 	// startup; it is intentionally NOT required here because config.Load is also
 	// the CLI's composition entry point, and those commands never bind a port.
@@ -448,7 +455,53 @@ func Load() (Config, error) {
 	return c, nil
 }
 
+// loadClientIP: a header with no proxies list is believed from anyone, which is
+// only safe when a firewall lets nothing but the proxy reach the server.
+func loadClientIP(c *Config) error {
+	c.ClientIPHeader = strings.TrimSpace(os.Getenv("ECONUMO_CLIENT_IP_HEADER"))
+	if c.ClientIPHeader != "" && !clientIPHeaderRe.MatchString(c.ClientIPHeader) {
+		return fmt.Errorf("ECONUMO_CLIENT_IP_HEADER must be a header name, got %q", c.ClientIPHeader)
+	}
+	for _, v := range getStringList("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", nil) {
+		p, err := parseProxyRange(v)
+		if err != nil {
+			return fmt.Errorf("ECONUMO_CLIENT_IP_TRUSTED_PROXIES: %q is not an IP or CIDR range", v)
+		}
+		c.ClientIPTrustedProxies = append(c.ClientIPTrustedProxies, p)
+	}
+	if len(c.ClientIPTrustedProxies) > 0 && c.ClientIPHeader == "" {
+		c.ClientIPHeader = "X-Forwarded-For"
+	}
+	return nil
+}
+
+// parseProxyRange normalizes the way a request's address is before comparison
+// (middleware.parseIP), or a range could silently never match: an IPv4-mapped
+// range is unmapped, and a zone, which a netip.Prefix cannot hold, is refused.
+func parseProxyRange(v string) (netip.Prefix, error) {
+	p, err := netip.ParsePrefix(v)
+	if err != nil {
+		addr, aerr := netip.ParseAddr(v)
+		if aerr != nil {
+			return netip.Prefix{}, aerr
+		}
+		if addr.Zone() != "" {
+			return netip.Prefix{}, errors.New("zone")
+		}
+		p = netip.PrefixFrom(addr, addr.BitLen())
+	}
+	if p.Addr().Is4In6() {
+		if p.Bits() < 96 {
+			return netip.Prefix{}, errors.New("mapped range wider than IPv4")
+		}
+		p = netip.PrefixFrom(p.Addr().Unmap(), p.Bits()-96)
+	}
+	return p.Masked(), nil
+}
+
 var (
+	clientIPHeaderRe = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+
 	// An Apple app ID is the ten-character Team ID, a dot, then the bundle id.
 	iosAppIDRe = regexp.MustCompile(`^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$`)
 	// A Digital Asset Links fingerprint is the certificate's SHA-256 digest as

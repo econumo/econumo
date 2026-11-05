@@ -21,12 +21,13 @@ func TestLoad_ParsesAndSelectsEndpoint(t *testing.T) {
 	// 2025-04-09 12:00:00 UTC -> the published date must collapse to 2025-04-09.
 	ts := time.Date(2025, 4, 9, 12, 0, 0, 0, time.UTC).Unix()
 
-	var gotPath, gotAppID, gotBase, gotSymbols string
+	var gotPath, gotAppID, gotBase, gotSymbols, gotAlternative string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotAppID = r.URL.Query().Get("app_id")
 		gotBase = r.URL.Query().Get("base")
 		gotSymbols = r.URL.Query().Get("symbols")
+		gotAlternative = r.URL.Query().Get("show_alternative")
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"timestamp":` + strconv.FormatInt(ts, 10) + `,"base":"USD","rates":{"EUR":0.92,"GBP":0.8}}`))
 	}))
@@ -49,6 +50,9 @@ func TestLoad_ParsesAndSelectsEndpoint(t *testing.T) {
 	}
 	if gotSymbols != "EUR,GBP" {
 		t.Errorf("symbols = %q, want EUR,GBP", gotSymbols)
+	}
+	if gotAlternative != "1" {
+		t.Errorf("show_alternative = %q, want 1", gotAlternative)
 	}
 
 	byCode := map[string]string{}

@@ -105,7 +105,8 @@ with or without `ECONUMO_URL`.
   and start the connection again.
 - "This app's registration has expired or is unknown" on the approval page: the
   app is holding a client registration Econumo no longer has (a registration
-  that is never approved is deleted after 30 days, or the app was registered
+  that is never approved is deleted after 30 days, or sooner once 1,000 such
+  registrations are waiting, or the app was registered
   against another Econumo instance). Make the app register again:
   - Claude Code: run `/mcp`, pick `econumo` and choose Clear authentication,
     then Authenticate; or `claude mcp remove econumo` and add it again.

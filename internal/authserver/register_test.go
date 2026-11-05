@@ -1,6 +1,7 @@
 package authserver
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -13,7 +14,7 @@ import (
 
 type stubLimiter struct{ err error }
 
-func (l stubLimiter) Allow(string, string) error { return l.err }
+func (l stubLimiter) Allow(context.Context, string, string) error { return l.err }
 
 func TestRegister(t *testing.T) {
 	s, _, _, _ := newTestService(t)
@@ -88,6 +89,37 @@ func TestRegisterPurgesUnusedClients(t *testing.T) {
 	}
 	if _, err := s.DescribeAuthorization(ctx, vo.NewId(), authReq(old.ClientID)); !hasCode(err, errs.CodeAuthServerClientNotFound) {
 		t.Fatalf("unused client must be purged: %v", err)
+	}
+}
+
+func TestRegisterBoundsTheClientsNobodyApproved(t *testing.T) {
+	s, _, _, _ := newTestService(t)
+	register := func() model.ClientRegistrationResult {
+		t.Helper()
+		res, err := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"https://a.test/cb"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res
+	}
+	approved := register()
+	id := vo.MustParseId(approved.ClientID)
+	if err := s.repo.MarkClientUsed(ctx, id, s.clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	oldest := register()
+	var newest model.ClientRegistrationResult
+	for range MaxUnusedClients {
+		newest = register()
+	}
+	if _, err := s.repo.GetClient(ctx, vo.MustParseId(oldest.ClientID)); err == nil {
+		t.Fatal("the oldest unapproved client must make room")
+	}
+	if _, err := s.repo.GetClient(ctx, vo.MustParseId(newest.ClientID)); err != nil {
+		t.Fatalf("the newest client must stay: %v", err)
+	}
+	if _, err := s.repo.GetClient(ctx, id); err != nil {
+		t.Fatalf("an approved client must never be evicted: %v", err)
 	}
 }
 

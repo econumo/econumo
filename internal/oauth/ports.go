@@ -40,13 +40,13 @@ type Users interface {
 // there is no per-key counter to fail or clear. A nil limiter disables the
 // check (tests, CLI).
 type AttemptLimiter interface {
-	Allow(scope, key string) error
+	Allow(ctx context.Context, scope, key string) error
 }
 
 // RateScopeOAuthStart caps the rate at which authorization requests (and their
 // state rows) may be created. It carries no per-key limit — the key is empty
-// because the caller is anonymous — so only the global per-minute cap
-// (ECONUMO_RATE_LIMIT_GLOBAL) applies.
+// because the caller is anonymous — so only the per-IP per-minute cap
+// (ECONUMO_RATE_LIMIT_IP) applies.
 const RateScopeOAuthStart = "oauth-start"
 
 // Notifier tells the account owner their account's set of sign-in methods

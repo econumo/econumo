@@ -69,7 +69,7 @@ func (s *Service) Callback(ctx context.Context, provider string, in CallbackInpu
 	if !claims.EmailVerified && !p.Client.Issuer().TrustEmail {
 		return s.errorURLFor(st, "email_unverified")
 	}
-	email := strings.ToLower(strings.TrimSpace(claims.Email))
+	email := model.NormalizeEmail(claims.Email)
 	issuer := p.Client.Issuer().IssuerURL
 
 	if st.Intent == model.OAuthIntentLink {
@@ -315,7 +315,7 @@ func orReclaimed(err error) error {
 
 // mirrorEmailDrift applies the spec's email-drift rule for an existing identity.
 func (s *Service) mirrorEmailDrift(ctx context.Context, u *model.User, email, provider string) {
-	if strings.EqualFold(strings.TrimSpace(u.Email), email) {
+	if model.NormalizeEmail(u.Email) == email {
 		return
 	}
 	if u.HasPassword() {

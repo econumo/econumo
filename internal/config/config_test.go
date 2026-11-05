@@ -146,6 +146,62 @@ func TestGetStringList(t *testing.T) {
 	}
 }
 
+func TestLoad_ClientIP(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+
+	t.Setenv("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", "173.245.48.0/20, 2400:cb00::/32, 127.0.0.1")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ClientIPHeader != "X-Forwarded-For" {
+		t.Fatalf("default header = %q", c.ClientIPHeader)
+	}
+	if len(c.ClientIPTrustedProxies) != 3 || c.ClientIPTrustedProxies[2].String() != "127.0.0.1/32" {
+		t.Fatalf("proxies = %v", c.ClientIPTrustedProxies)
+	}
+
+	t.Setenv("ECONUMO_CLIENT_IP_HEADER", "CF-Connecting-IP")
+	if c, err = Load(); err != nil || c.ClientIPHeader != "CF-Connecting-IP" {
+		t.Fatalf("header = %q, err = %v", c.ClientIPHeader, err)
+	}
+
+	t.Setenv("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", "")
+	if c, err = Load(); err != nil || c.ClientIPHeader != "CF-Connecting-IP" || len(c.ClientIPTrustedProxies) != 0 {
+		t.Fatalf("header alone: header = %q, proxies = %v, err = %v", c.ClientIPHeader, c.ClientIPTrustedProxies, err)
+	}
+
+	for name, env := range map[string][2]string{
+		"bad header": {"not a header", "127.0.0.1"},
+		"bad proxy":  {"CF-Connecting-IP", "cloudflare"},
+	} {
+		t.Setenv("ECONUMO_CLIENT_IP_HEADER", env[0])
+		t.Setenv("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", env[1])
+		if _, err := Load(); err == nil {
+			t.Fatalf("%s must fail at boot", name)
+		}
+	}
+}
+
+func TestParseProxyRange(t *testing.T) {
+	for in, want := range map[string]string{
+		"173.245.48.7/20":     "173.245.48.0/20",
+		"127.0.0.1":           "127.0.0.1/32",
+		"2400:cb00::/32":      "2400:cb00::/32",
+		"::ffff:127.0.0.1":    "127.0.0.1/32",
+		"::ffff:10.0.0.0/104": "10.0.0.0/8",
+	} {
+		if p, err := parseProxyRange(in); err != nil || p.String() != want {
+			t.Errorf("%s = %v, %v, want %s", in, p, err, want)
+		}
+	}
+	for _, in := range []string{"fe80::1%eth0", "::ffff:0:0/90", "cloudflare"} {
+		if p, err := parseProxyRange(in); err == nil {
+			t.Errorf("%s = %v, want an error", in, p)
+		}
+	}
+}
+
 func TestLoad_RateLimitDefaults(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 	c, err := Load()
@@ -159,8 +215,8 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 	if c.RateLimitWindow != 15*time.Minute {
 		t.Fatalf("window = %v, want 15m", c.RateLimitWindow)
 	}
-	if c.RateLimitGlobal != 60 {
-		t.Fatalf("global = %d, want 60", c.RateLimitGlobal)
+	if c.RateLimitIP != 60 {
+		t.Fatalf("ip = %d, want 60", c.RateLimitIP)
 	}
 	if c.RateLimitIngest != 60 {
 		t.Fatalf("ingest = %d, want 60", c.RateLimitIngest)
@@ -178,7 +234,7 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	t.Setenv("ECONUMO_RATE_LIMIT_REMIND", "7")
 	t.Setenv("ECONUMO_RATE_LIMIT_REGISTER", "8")
 	t.Setenv("ECONUMO_RATE_LIMIT_WINDOW", "1h30m")
-	t.Setenv("ECONUMO_RATE_LIMIT_GLOBAL", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_IP", "0")
 	t.Setenv("ECONUMO_RATE_LIMIT_INGEST", "0")
 	t.Setenv("ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", "0")
 	t.Setenv("ECONUMO_RATE_LIMIT_SYNC", "2")
@@ -189,8 +245,8 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	if c.RateLimitLogin != 10 || c.RateLimitReset != 0 || c.RateLimitRemind != 7 || c.RateLimitRegister != 8 {
 		t.Fatalf("overrides not applied: %+v", c)
 	}
-	if c.RateLimitWindow != 90*time.Minute || c.RateLimitGlobal != 0 || c.RateLimitIngest != 0 {
-		t.Fatalf("window/global/ingest overrides not applied: %v / %d / %d", c.RateLimitWindow, c.RateLimitGlobal, c.RateLimitIngest)
+	if c.RateLimitWindow != 90*time.Minute || c.RateLimitIP != 0 || c.RateLimitIngest != 0 {
+		t.Fatalf("window/ip/ingest overrides not applied: %v / %d / %d", c.RateLimitWindow, c.RateLimitIP, c.RateLimitIngest)
 	}
 	if c.RateLimitClaimSetupToken != 0 || c.RateLimitSync != 2 {
 		t.Fatalf("claim/sync overrides not applied: %d / %d", c.RateLimitClaimSetupToken, c.RateLimitSync)
@@ -204,7 +260,7 @@ func TestLoad_RateLimitBadValuesFailBoot(t *testing.T) {
 		bad  string
 	}{
 		{"LOGIN_non-numeric", "ECONUMO_RATE_LIMIT_LOGIN", "five"},
-		{"GLOBAL_negative", "ECONUMO_RATE_LIMIT_GLOBAL", "-1"},
+		{"IP_negative", "ECONUMO_RATE_LIMIT_IP", "-1"},
 		{"WINDOW_unparseable", "ECONUMO_RATE_LIMIT_WINDOW", "15minutes"},
 		{"WINDOW_zero", "ECONUMO_RATE_LIMIT_WINDOW", "0"},
 		{"WINDOW_negative", "ECONUMO_RATE_LIMIT_WINDOW", "-5m"},

@@ -29,6 +29,10 @@ func (pgsqlQuerier) MarkOAuthClientUsed(ctx context.Context, db backend.DBTX, p 
 	return pgsqlgen.New(db).MarkOAuthClientUsed(ctx, pgsqlgen.MarkOAuthClientUsedParams(p))
 }
 
+func (pgsqlQuerier) PurgeExcessUnusedOAuthClients(ctx context.Context, db backend.DBTX, keep int64) (int64, error) {
+	return pgsqlgen.New(db).PurgeExcessUnusedOAuthClients(ctx, int32(keep))
+}
+
 func (pgsqlQuerier) PurgeUnusedOAuthClients(ctx context.Context, db backend.DBTX, createdBefore time.Time) (int64, error) {
 	return pgsqlgen.New(db).PurgeUnusedOAuthClients(ctx, createdBefore)
 }

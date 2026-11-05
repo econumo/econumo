@@ -18,7 +18,9 @@ type Credentials interface {
 	PurgeDeadOAuthTokens(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
-type Limiter interface{ Allow(scope, key string) error }
+type Limiter interface {
+	Allow(ctx context.Context, scope, key string) error
+}
 
 const (
 	RateScopeRegister = "oauth-register"

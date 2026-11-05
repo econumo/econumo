@@ -40,7 +40,7 @@ func newTestUserSvc(db *dbtest.DB) (*appuser.Service, *userrepo.Repo) {
 	txm := backend.NewTxManager(db.Raw)
 	userRepo := userrepo.NewRepo(db.Engine, txm)
 	accessTokens := userrepo.NewAccessTokenRepo(db.Engine, txm)
-	authLimiter := ratelimit.New(ratelimit.Config{Window: 15 * time.Minute, Global: 60}, clock.New())
+	authLimiter := ratelimit.New(ratelimit.Config{Window: 15 * time.Minute, IP: 60}, clock.New())
 	userSvc := appuser.NewService(
 		userRepo, txm, auth.NewEncodeService(""), auth.NewPasswordHasher(), accessTokens,
 		nil, nil, nil, nil, nil, nil, nil, nil,
