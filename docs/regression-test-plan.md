@@ -2106,12 +2106,12 @@ shared with a partner.
       look: rounded hover on every row, no lines between rows.
 - [ ] Net worth in a budget shared with a partner: one row per person with
       their avatar, partners first and me last; no folder names appear.
-      The response names a partner's account only when it is a savings member
-      or shared with me (check the network tab: their other accounts come as
-      one nameless row).
-      A person with savings members in the budget opens to those savings
-      accounts by name plus "Everyday accounts" (wallet icon) for the rest;
-      a person without savings members is a single row. With "This year"
+      Each person's row opens to their savings members by name plus "Everyday
+      accounts" (wallet icon), one total for all their other accounts in the
+      budget, shared ones included; no other account is named. A partner's
+      unshared accounts have no name or individual balance in the network
+      response either (one nameless row per person). A person without savings
+      members is a single row. With "This year"
       figures on the report list's card, the card's total equals the
       report's latest total.
 - [ ] Net worth, desktop: before any selection a quiet hint under the chart

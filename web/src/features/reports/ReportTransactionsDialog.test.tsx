@@ -121,3 +121,14 @@ it('a range lists the savings only the budget knows next to the local rows, and 
   expect(await screen.findByText('coffee beans')).toBeInTheDocument()
   expect(screen.getByText(/not shared with you are counted but not listed/)).toBeInTheDocument()
 })
+
+it('a transfer between two listed savings accounts is listed once', async () => {
+  server.use(
+    ...coreHandlers({ accounts, transactions }),
+    http.get('*/api/v1/budget/get-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { items: [
+      { id: 'w-t', author: partner, currencyId: 'cur-usd', amount: '100', direction: 'in', description: 'between savings', category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-04 12:00:00' },
+    ] } })),
+  )
+  renderDialog({ budgetId: 'b1', row: { id: 'range', kind: 'accounts', name: 'Family', accountIds: [], savingsIds: ['s1', 's2'] }, from: '2026-07-01', to: '2026-07-01' })
+  expect(await screen.findAllByText('between savings')).toHaveLength(1)
+})

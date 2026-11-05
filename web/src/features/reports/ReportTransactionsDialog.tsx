@@ -60,7 +60,8 @@ function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: 
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
   const { data: currencies } = useCurrencies()
-  const wire = results.flatMap((r) => r.data?.items ?? [])
+  // a transfer between two listed accounts comes back once per account
+  const wire = [...new Map(results.flatMap((r) => r.data?.items ?? []).map((w) => [w.id, w])).values()]
   const rows = wire.map((w) => {
     const view = budgetTransactionView(w, { transactions, accounts, categories, payees, tags })
     const currency = currencies?.find((c) => c.id === w.currencyId)

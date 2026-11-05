@@ -94,6 +94,8 @@ function NetWorthCard({ budgetId, year, onChoose }: { budgetId: Id | null; year:
   const { t } = useTranslation()
   // balances are month-end: last December's closing balance is where this year started
   const report = useNetWorthReport({ budgetId, from: `${year - 1}-12-01` })
+  // offline with nothing cached for this scope: never the previous scope's figures
+  const unavailable = report.fetchStatus === 'paused' && (report.isPending || report.isPlaceholderData)
   const money = useMoney(report.data?.currencyId)
   const total = report.data ? netWorthSeries(report.data, (a) => ({ id: a.id, name: a.name })).total : []
   const change = total.length >= 2 ? sub(total[total.length - 1], total[0]) : '0'
@@ -101,8 +103,8 @@ function NetWorthCard({ budgetId, year, onChoose }: { budgetId: Id | null; year:
   return (
     <Card question={t(REPORT_QUESTION.networth)} onClick={onChoose}>
       <Figure
-        isPending={report.isPending && report.fetchStatus !== 'paused'}
-        isError={!report.data && (report.isError || report.fetchStatus === 'paused')}
+        isPending={report.isPending && !unavailable}
+        isError={unavailable || (report.isError && !report.data)}
         empty={(report.data?.accounts.length ?? 0) === 0}
         amount={money(total[total.length - 1] ?? '0')}
         caption={t('reports.list.networth_caption')}

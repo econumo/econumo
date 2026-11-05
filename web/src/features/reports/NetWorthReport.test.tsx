@@ -281,12 +281,13 @@ it('dragging across the chart shows the change over the selected range', async (
   expect(cells(rowNamed('Total'))).toEqual(['Total', '3,100.00 $', '6,200.00 $', '+3,100.00 $'])
 })
 
-it('budget scope: one row per person, partners first and me last; savings by name, the rest as Everyday accounts', async () => {
+it('budget scope: one row per person, partners first and me last; a partner opens to savings by name and one Everyday total', async () => {
   const data = report([
     acc('a1', 'Cash', ['1000', '1500', '2000']),
     acc('dep', 'Deposit', ['200', '300', '400'], { isSavings: 1 }),
     acc('b-sav', 'Bob savings', ['700', '800', '900'], { ownerUserId: 'u2', isSavings: 1 }),
-    acc('b-wal', 'Bob wallet', ['50', '60', '70'], { ownerUserId: 'u2' }),
+    acc('b-shared', 'Bob shared', ['5', '5', '5'], { ownerUserId: 'u2' }),
+    acc('everyday-u2', '', ['50', '60', '70'], { ownerUserId: 'u2' }),
   ])
   openNetWorth({ budgetId: 'b1' }, data, { budgets: [sharedBudget, fixtureBudgets[1]] })
   await screen.findByRole('table')
@@ -302,8 +303,9 @@ it('budget scope: one row per person, partners first and me last; savings by nam
 
   await userEvent.click(screen.getByRole('button', { name: 'Show the accounts in Bob' }))
   expect(cells(rowNamed('Bob savings')).slice(1)).toEqual(['700.00 $', '900.00 $', '+200.00 $'])
-  expect(cells(rowNamed('Everyday accounts')).slice(1)).toEqual(['50.00 $', '70.00 $', '+20.00 $'])
-  expect(screen.queryByText('Bob wallet')).not.toBeInTheDocument()
+  // a shared account counts in the group, not by name
+  expect(hasRow('Bob shared')).toBe(false)
+  expect(cells(rowNamed('Everyday accounts')).slice(1)).toEqual(['55.00 $', '75.00 $', '+20.00 $'])
   expect(asked[asked.length - 1].get('budgetId')).toBe('b1')
 })
 
@@ -311,7 +313,7 @@ it("budget scope: a savings account, a partner's too, lists its transactions fro
   const data = report([
     acc('a1', 'Cash', ['1000', '1500', '2000']),
     acc('b-sav', 'Bob savings', ['700', '800', '900'], { ownerUserId: 'u2', isSavings: 1 }),
-    acc('b-wal', 'Bob wallet', ['50', '60', '70'], { ownerUserId: 'u2' }),
+    acc('everyday-u2', '', ['50', '60', '70'], { ownerUserId: 'u2' }),
   ])
   const listed: string[] = []
   openNetWorth({ budgetId: 'b1' }, data, { budgets: [sharedBudget, fixtureBudgets[1]] })
@@ -339,8 +341,8 @@ it("budget scope: a savings account, a partner's too, lists its transactions fro
   expect(listed).not.toContain('2025-12-01|b-sav')
 })
 
-it('budget scope: a person without savings members is a single row', async () => {
-  const data = report([acc('a1', 'Cash', ['1000', '1500', '2000']), acc('b-wal', 'Bob wallet', ['50', '60', '70'], { ownerUserId: 'u2' })])
+it('budget scope: a person with nothing to name is a single row', async () => {
+  const data = report([acc('a1', 'Cash', ['1000', '1500', '2000']), acc('everyday-u2', '', ['50', '60', '70'], { ownerUserId: 'u2' })])
   openNetWorth({ budgetId: 'b1' }, data, { budgets: [sharedBudget] })
   await screen.findByRole('table')
   await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(4))
@@ -379,6 +381,19 @@ it('a single-month report shows the balance without a change line', async () => 
   await screen.findByRole('table')
   expect(plain(headline().textContent)).toContain('2,000.00 $')
   expect(plain(headline().textContent)).not.toContain('in the last')
+})
+
+it('offline: a period with nothing cached shows an error, not the previous figures', async () => {
+  openNetWorth()
+  await screen.findByRole('table')
+  onlineManager.setOnline(false)
+  try {
+    await userEvent.click(screen.getByRole('radio', { name: 'All' }))
+    expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).toBeNull()
+  } finally {
+    onlineManager.setOnline(true)
+  }
 })
 
 it('offline: cached figures say when they were fetched', async () => {

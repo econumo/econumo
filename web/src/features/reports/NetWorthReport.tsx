@@ -41,6 +41,8 @@ const STROKE = 'var(--primary)'
 const BANDS = ['#a78bfa', '#7dd3fc', '#6ee7b7', '#fcd34d', '#f9a8d4', '#cbd5e1']
 
 const changeClass = (v: string) => (isZero(v) ? 'text-muted-foreground' : isNegative(v) ? 'text-expense' : 'text-income')
+// another member's unshared everyday accounts: one nameless sum per owner
+const isEverydaySum = (a: NetWorthAccountDto) => a.id === `everyday-${a.ownerUserId}`
 const allZero = (a: NetWorthAccountDto) => a.balances.every((b) => isZero(b))
 const sumAt = (rows: NetWorthAccountDto[], i: number) => rows.reduce((s, a) => add(s, a.balances[i] ?? '0'), '0')
 
@@ -128,7 +130,10 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     </div>
   )
 
-  const data = report.data
+  // offline, a period or scope with nothing cached has no figures: never the
+  // previous report's under this one's labels
+  const unavailable = report.fetchStatus === 'paused' && (report.isPending || report.isPlaceholderData)
+  const data = unavailable ? undefined : report.data
   const shown = data ? data.accounts.filter((a) => !allZero(a)) : []
   const me = user?.id ?? ''
   const budget = budgets?.find((b) => b.id === p.budgetId)
@@ -309,14 +314,16 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   // partners first, the user last.
   const personGroup = (id: string, name: string) => {
     const rows = shown.filter((a) => a.ownerUserId === id)
-    const saving = rows.filter((a) => a.isSavings === 1)
+    // savings members by name, everything else as one total: all the server
+    // sends of a partner's unshared accounts, and shared ones join them here
+    const listed = rows.filter((a) => a.isSavings === 1)
     const rest = rows.filter((a) => a.isSavings !== 1)
-    const children = saving.map(accountLine).sort(byNow)
-    if (saving.length > 0 && rest.length > 0) children.push({ ...lineOf(`${id}-other`, t('reports.networth.everyday'), sumAt(rest, lo), sumAt(rest, hi)), icon: <EntityIcon name="account_balance_wallet" className="text-base text-muted-foreground" /> })
+    const children = listed.map(accountLine).sort(byNow)
+    if (listed.length > 0 && rest.length > 0) children.push({ ...lineOf(`${id}-other`, t('reports.networth.everyday'), sumAt(rest, lo), sumAt(rest, hi)), icon: <EntityIcon name="account_balance_wallet" className="text-base text-muted-foreground" /> })
     const avatar = ownerAvatar(id)
     return {
       line: { ...lineOf(id, name, sumAt(rows, lo), sumAt(rows, hi)), icon: avatar ? <UserAvatar avatar={avatar} size="xs" /> : undefined },
-      accounts: saving.length > 0 ? children : [],
+      accounts: listed.length > 0 ? children : [],
     }
   }
   const personRows = p.budgetId
@@ -372,9 +379,9 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       </div>
       <ReportUpdatedAt query={report} />
 
-      {report.isPending && report.fetchStatus !== 'paused' ? (
+      {report.isPending && !unavailable ? (
         <div className="h-64 animate-pulse rounded-xl bg-econumo-hover" />
-      ) : !data && (report.isError || report.fetchStatus === 'paused') ? (
+      ) : unavailable || (report.isError && !data) ? (
         <p className="text-sm text-muted-foreground">{t('common.app.error')}</p>
       ) : shown.length === 0 ? (
         // the period stays switchable: an empty 1y window may hide balances All would show
@@ -397,10 +404,10 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                       id: 'range',
                       kind: 'accounts',
                       name: scopeName,
-                      accountIds: shown.map((a) => a.id),
+                      accountIds: shown.filter((a) => !isEverydaySum(a)).map((a) => a.id),
                       savingsIds: shown.filter((a) => a.isSavings === 1 && !onDevice(a.id)).map((a) => a.id),
                       // another member's own accounts count in the figures but are theirs to list
-                      partial: shown.some((a) => a.isSavings !== 1 && !onDevice(a.id)),
+                      partial: shown.some(isEverydaySum),
                     })
                     trackEvent(METRICS.REPORTS_DRILL_DOWN, { scope: p.budgetId ? 'budget' : 'mine', mode: 'networth_range' })
                   }}

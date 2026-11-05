@@ -78,7 +78,7 @@ type importsCurrencyCodeLookup interface {
 
 type importsRateSource interface {
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)
-	AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error)
+	StoredRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error)
 	SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error)
 }
 
@@ -129,7 +129,7 @@ func (c *ImportsCurrencyConverter) Convert(ctx context.Context, userID vo.Id, fr
 	if realStart.Year() != atUTC.Year() || realStart.Month() != atUTC.Month() {
 		return "", false, nil
 	}
-	rates, err := c.rates.AverageRates(ctx, start, end)
+	rates, err := c.rates.StoredRates(ctx, start, end)
 	if err != nil {
 		return "", false, err
 	}

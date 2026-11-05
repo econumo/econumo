@@ -1253,9 +1253,9 @@ In the distroless image these run via the binary directly, e.g.
   older clients and the SPA's fallback against a server without revisions) is unchanged.
 - **Reports:** `GET /api/v1/report/get-net-worth-report`, hosted by the budget feature
   (`internal/budget/report_*.go`, `internal/budget/api/report.go`; no `report` package). Scope is
-  a budget (every member account; another member's accounts are named only when they are savings
-  members or shared with the caller, the rest come as one nameless sum per owner) or the caller's
-  own accounts. It is the
+  a budget (every member account; another member's are named only when they are savings members
+  or shared with the caller, the rest come as one nameless sum per owner, and the page lists
+  only savings members by name) or the caller's own accounts. It is the
   opening balance plus `AccountsNetByMonth`, converted at each month's average rate, over live
   accounts only (deleted ones are left out entirely, history included); the current month stops
   at the end of the caller's today (as the account balance does), an all-time window opens one
@@ -1546,7 +1546,8 @@ data unreadable. Most are also asserted by the test suite.
   month (`RateProvider.snapPeriod`), and a currency that month has no rate for takes its latest
   earlier rate, else its first (`AverageRates`), never face value, so a long report window or an
   old budget month does not count 40,000 RUB as 40,000 CAD. Server conversions and the budget's
-  `currencyRates` block read the same rates.
+  `currencyRates` block read the same rates. The import converter alone reads `StoredRates`, with
+  nothing filled: a transaction with no rate for its month queues as no-rate.
 - **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,
   never removes the row — `accounts.currency_id` and `transactions.account_id` cascade from it,
   so a hard delete would silently destroy every account and transaction in that currency. A

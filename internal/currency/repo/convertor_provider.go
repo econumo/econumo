@@ -85,26 +85,24 @@ func (p *RateProvider) FractionDigits(ctx context.Context, currencyID vo.Id) (in
 	return v.FractionDigits, nil
 }
 
-// AverageRates snaps the period to the rate month and averages each currency's
-// rate over it for the base currency.
+// AverageRates is every conversion's rate set: the rate month's average per
+// currency, its gaps filled. Rate histories start and stop at different dates, so
+// a month can hold rates for some currencies only; the others take their latest
+// earlier rate, else their first. With none a foreign amount would count at face
+// value.
 func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error) {
 	baseID, err := p.BaseCurrencyID(ctx)
 	if err != nil {
 		return nil, err
 	}
-
 	realStart, realEnd, err := p.snapPeriod(ctx, baseID, start, end)
 	if err != nil {
 		return nil, err
 	}
-
 	rows, err := p.q.GetAverage(ctx, p.db(ctx), realStart, realEnd, baseID.String())
 	if err != nil {
 		return nil, err
 	}
-	// Rate histories start and stop at different dates, so a month can hold rates
-	// for some currencies only. The others take their latest earlier rate, else
-	// their first: with none a foreign amount would count at face value.
 	nearest, err := p.q.GetNearestRates(ctx, p.db(ctx), baseID.String(), end)
 	if err != nil {
 		return nil, err
@@ -118,6 +116,36 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 			rows = append(rows, r)
 		}
 	}
+	return p.withFixedRates(ctx, rows)
+}
+
+// StoredRates holds only the rates actually published for the month of the
+// latest rate at or before end, with no gap filled and nothing before the first
+// rate: the import no-rate guard queues what this does not cover, rather than
+// save a bank transaction at a rate from another time.
+func (p *RateProvider) StoredRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error) {
+	baseID, err := p.BaseCurrencyID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	realStart, realEnd, found, err := p.latestRateMonth(ctx, baseID, end)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		realStart, realEnd = start, end
+	}
+	rows, err := p.q.GetAverage(ctx, p.db(ctx), realStart, realEnd, baseID.String())
+	if err != nil {
+		return nil, err
+	}
+	return p.withFixedRates(ctx, rows)
+}
+
+// Custom currencies carry ONE fixed rate on the currency row, applied to any
+// requested period (changing it re-values history by design). They never appear
+// in the AVG result: their dated rows were removed by the 20260801000000 migration.
+func (p *RateProvider) withFixedRates(ctx context.Context, rows []avgRow) ([]model.FullRate, error) {
 	out := make([]model.FullRate, 0, len(rows))
 	for _, r := range rows {
 		id, perr := vo.ParseId(r.CurrencyID)
@@ -126,10 +154,6 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 		}
 		out = append(out, model.FullRate{CurrencyID: id, Rate: vo.NewDecimal(r.Rate)})
 	}
-	// Custom currencies carry ONE fixed rate on the currency row, applied to
-	// any requested period (changing it re-values history by design). They
-	// never appear in the AVG result: their dated rows were removed by the
-	// 20260801000000 migration.
 	fixed, err := p.q.GetFixedRates(ctx, p.db(ctx))
 	if err != nil {
 		return nil, err
@@ -161,32 +185,40 @@ func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Ti
 // earliest-rate month for a period before the first rate, or the request
 // unchanged when no rate is stored at all.
 func (p *RateProvider) snapPeriod(ctx context.Context, baseID vo.Id, start, end time.Time) (time.Time, time.Time, error) {
-	month := func(t time.Time) (time.Time, time.Time, error) {
-		realStart := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
-		return realStart, realStart.AddDate(0, 1, 0), nil
+	realStart, realEnd, found, err := p.latestRateMonth(ctx, baseID, end)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
 	}
-	notFound := func(err error) bool {
-		var nf *errs.NotFoundError
-		return errors.Is(err, sql.ErrNoRows) || errors.As(err, &nf)
+	if found {
+		return realStart, realEnd, nil
 	}
-	last, derr := p.q.GetLatestDate(ctx, p.db(ctx), baseID.String(), end)
-	if derr == nil {
-		return month(last)
-	}
-	if !notFound(derr) {
-		return time.Time{}, time.Time{}, derr
-	}
-	// A period before the first stored rate takes the earliest rates rather than
-	// none: without rates every foreign amount would count at face value
-	// (40,000 RUB as 40,000 CAD).
 	first, ferr := p.q.GetEarliestDate(ctx, p.db(ctx), baseID.String())
 	if ferr == nil {
-		return month(first)
+		realStart = time.Date(first.Year(), first.Month(), 1, 0, 0, 0, 0, first.Location())
+		return realStart, realStart.AddDate(0, 1, 0), nil
 	}
-	if !notFound(ferr) {
+	if !rateNotFound(ferr) {
 		return time.Time{}, time.Time{}, ferr
 	}
 	return start, end, nil
+}
+
+// latestRateMonth is the month of the latest published rate before end.
+func (p *RateProvider) latestRateMonth(ctx context.Context, baseID vo.Id, end time.Time) (time.Time, time.Time, bool, error) {
+	last, err := p.q.GetLatestDate(ctx, p.db(ctx), baseID.String(), end)
+	if err != nil {
+		if rateNotFound(err) {
+			return time.Time{}, time.Time{}, false, nil
+		}
+		return time.Time{}, time.Time{}, false, err
+	}
+	realStart := time.Date(last.Year(), last.Month(), 1, 0, 0, 0, 0, last.Location())
+	return realStart, realStart.AddDate(0, 1, 0), true, nil
+}
+
+func rateNotFound(err error) bool {
+	var nf *errs.NotFoundError
+	return errors.Is(err, sql.ErrNoRows) || errors.As(err, &nf)
 }
 
 type sqliteProviderQuerier struct{}
