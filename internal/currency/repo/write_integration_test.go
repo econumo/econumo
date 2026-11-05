@@ -74,9 +74,9 @@ func TestWriteRepo_UpsertedRateIsUsedByRateProvider(t *testing.T) {
 	}
 
 	p := currencyrepo.NewRateProvider(db.Engine, db.TX, currencyrepo.New(db.Engine, db.TX), seededUSD)
-	// A quarter-long request: the period must snap to September, the month of
-	// the latest stored rate, rather than fall back to the raw request.
-	start := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	// A request holding no rate: the period must snap to September, the month
+	// of the latest stored rate, rather than fall back to the raw request.
+	start := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)
 
 	rs, re, err := p.SnappedRatePeriod(ctx, start, end)

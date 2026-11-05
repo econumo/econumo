@@ -91,7 +91,8 @@ the figures were computed over (e.g. `2026-10-28 00:00:00` / `2026-11-28 00:00:0
 "October" at `d = 28`); for a day-1 budget they are unchanged. They are the one place a
 client or an MCP agent can read the real dates, and the SPA can show the range from them
 instead of computing it. `currencyRates[].periodStart/periodEnd` keep reporting the rate
-period as today.
+period: the calendar month for a day-1 budget, the shifted window itself once it holds rates
+(see Currency conversion below).
 
 ### "Today" and the current period
 
@@ -184,8 +185,15 @@ Today period *keys* and date *windows* are the same `time.Time` (`periodStart` a
 - `buildFilters` and everything handed to the repo should carry window bounds; keys stay for
   limits/comments lookups and the response.
 - Currency conversion: pass the shifted window as `PeriodStart`/`PeriodEnd` to
-  `BulkConvert` (average rates over the window). `SnappedRatePeriod` may keep snapping to a
-  calendar month; that only affects which rate period the `currencyRates` block reports.
+  `BulkConvert` (average rates over the window). The rate provider snaps a requested range
+  to the calendar month of the latest rate before its end, and that snap decides the rates
+  used for conversion, not only the reported `currencyRates` period: a day-5 "October"
+  (5 Oct – 4 Nov) would be converted at November's average once a November rate exists.
+  So a range that crosses a month boundary and holds rates averages exactly the rates
+  inside it, and `SnappedRatePeriod` reports that range (review fix, 2026-11-04). A range
+  inside one calendar month (every day-1 period, an import's single day) keeps the month
+  snap, so day-1 budgets and imports convert exactly as before; a shifted range holding no
+  rate still falls back to the latest rate's month.
 
 ### SQL month grouping
 

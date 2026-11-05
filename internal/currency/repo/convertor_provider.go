@@ -2,6 +2,8 @@
 // [start,end) to the rate month (the latest published rate's month -> first of
 // that month .. next month; fall back to the raw range when no rates exist),
 // then AVG(rate) per currency over that snapped period for the base currency.
+// A range crossing a month boundary (a budget period starting on a day other
+// than the 1st) that holds rates averages exactly those instead.
 package repo
 
 import (
@@ -127,9 +129,10 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 }
 
 // SnappedRatePeriod returns the [start, end) AverageRates actually uses for the
-// requested period: the month of the latest published rate at or before `end`,
-// or the requested period when no rate exists. The budget currencyRates block
-// reports THIS period.
+// requested period: the requested period itself when it crosses a month
+// boundary and holds a rate, else the month of the latest published rate before
+// `end`, or the requested period when no rate exists. The budget currencyRates
+// block reports THIS period.
 func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error) {
 	baseID, err := p.BaseCurrencyID(ctx)
 	if err != nil {
@@ -139,10 +142,18 @@ func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Ti
 }
 
 // snapPeriod resolves [start,end) to the latest-rate month, or returns the
-// request unchanged when no rate is found.
+// request unchanged when no rate is found. A shifted budget period ("October"
+// = 5 Oct - 4 Nov) snapped to the latest rate's month would be converted at
+// November's average once a November rate exists, so a range crossing a month
+// boundary that holds a rate keeps its own dates. A range inside one month
+// (a calendar month, an import's single day) keeps the month snap: if it holds
+// a rate, the latest one before `end` is in that month anyway.
 func (p *RateProvider) snapPeriod(ctx context.Context, baseID vo.Id, start, end time.Time) (time.Time, time.Time, error) {
 	last, derr := p.q.GetLatestDate(ctx, p.db(ctx), baseID.String(), end)
 	if derr == nil {
+		if crossesMonth(start, end) && rateDayWithin(last, start, end) {
+			return start, end, nil
+		}
 		realStart := time.Date(last.Year(), last.Month(), 1, 0, 0, 0, 0, last.Location())
 		return realStart, realStart.AddDate(0, 1, 0), nil
 	}
@@ -153,6 +164,16 @@ func (p *RateProvider) snapPeriod(ctx context.Context, baseID vo.Id, start, end 
 		}
 	}
 	return start, end, nil
+}
+
+func crossesMonth(start, end time.Time) bool {
+	return end.After(model.FirstOfMonth(start).AddDate(0, 1, 0))
+}
+
+// rateDayWithin compares days the way GetAverage bounds them ('Y-m-d').
+func rateDayWithin(rate, start, end time.Time) bool {
+	day := rate.Format(datetime.DateLayout)
+	return day >= start.Format(datetime.DateLayout) && day < end.Format(datetime.DateLayout)
 }
 
 type sqliteProviderQuerier struct{}
