@@ -98,7 +98,7 @@ func TestOAuthUsers_FullyHydratesFromRealUserService(t *testing.T) {
 	txm := backend.NewTxManager(db.Raw)
 	userRepo := userrepo.NewRepo(db.Engine, txm)
 	accessTokens := userrepo.NewAccessTokenRepo(db.Engine, txm)
-	authLimiter := ratelimit.New(ratelimit.Config{Window: 15 * time.Minute, Global: 60}, clock.New())
+	authLimiter := ratelimit.New(ratelimit.Config{Window: 15 * time.Minute, IP: 60}, clock.New())
 	userSvc := appuser.NewService(
 		userRepo, txm, auth.NewEncodeService(""), auth.NewPasswordHasher(), accessTokens,
 		nil, nil, nil, nil, nil, nil, nil, nil,
@@ -138,7 +138,7 @@ func TestRecovery_ReclaimsAnAccountFromASquatter(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AllowRegistration: true,
 		AppURL: "https://app.example.test", OAuthGoogleClientID: "g", OAuthGoogleClientSecret: "s",
-		RateLimitWindow: 15 * time.Minute, RateLimitGlobal: 60}
+		RateLimitWindow: 15 * time.Minute, RateLimitIP: 60}
 	mail := &captureMailer{}
 	srv := httptest.NewServer(BuildAPI(cfg, db.Raw, Seams{Mailer: mail}))
 	t.Cleanup(srv.Close)
@@ -378,7 +378,7 @@ func TestBuildAPI_OAuthSignInMintsAUsableSession(t *testing.T) {
 	f := oidctest.New(t)
 	f.Email, f.EmailVerified = "sso-user@example.test", true
 	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AllowRegistration: true,
-		AppURL: "https://app.example.test", RateLimitWindow: 15 * time.Minute, RateLimitGlobal: 60}
+		AppURL: "https://app.example.test", RateLimitWindow: 15 * time.Minute, RateLimitIP: 60}
 	injected := []appoauth.Provider{{Name: "SSO", Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, false), f.Server.Client())}}
 	srv := httptest.NewServer(BuildAPI(cfg, db.Raw, Seams{OAuthProviders: injected}))
 	t.Cleanup(srv.Close)
@@ -444,5 +444,56 @@ func TestBuildAPI_OAuthSignInMintsAUsableSession(t *testing.T) {
 	body, _ := io.ReadAll(who.Body)
 	if who.StatusCode != 200 || !strings.Contains(string(body), "sso-user@example.test") {
 		t.Fatalf("the minted session must authenticate: %d %s", who.StatusCode, body)
+	}
+}
+
+// İ lowercases to an ASCII i but spells a different mailbox.
+func TestOAuthSignIn_ALookAlikeAddressDoesNotLinkToTheRealAccount(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := oidctest.New(t)
+	f.Email, f.EmailVerified = "admin@gmaİl.test", true
+	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AllowRegistration: true,
+		AppURL: "https://app.example.test", RateLimitWindow: 15 * time.Minute}
+	injected := []appoauth.Provider{{Name: "SSO", Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, false), f.Server.Client())}}
+	srv := httptest.NewServer(BuildAPI(cfg, db.Raw, Seams{OAuthProviders: injected}))
+	t.Cleanup(srv.Close)
+	owner := fixture.New(t, db).User(fixture.User{Email: "admin@gmail.test", Algorithm: "none", Password: "-"})
+
+	resp, err := http.Post(srv.URL+"/api/v1/oauth/start-login", "application/json", strings.NewReader(`{"provider":"oidc","client":"web"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var env struct {
+		Data struct{ Url string } `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
+		t.Fatal(err)
+	}
+	authorize, err := url.Parse(env.Data.Url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := authorize.Query()
+	noRedirect := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	cb, err := noRedirect.Get(srv.URL + "/api/v1/oauth/callback-oidc?code=" + url.QueryEscape(f.IssueCode(q.Get("nonce"), q.Get("code_challenge"))) + "&state=" + url.QueryEscape(q.Get("state")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cb.Body.Close()
+
+	var linked int
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT COUNT(*) FROM users_identities WHERE user_id = ?`), owner).Scan(&linked); err != nil {
+		t.Fatal(err)
+	}
+	if linked != 0 {
+		t.Fatalf("the identity linked to the other address's account (%d rows)", linked)
+	}
+	var email string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT email FROM users WHERE id = ?`), owner).Scan(&email); err != nil {
+		t.Fatal(err)
+	}
+	if email != "admin@gmail.test" {
+		t.Fatalf("the account's address became %q", email)
 	}
 }

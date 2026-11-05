@@ -41,23 +41,32 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 	if err := s.requirePasswordLogin(); err != nil {
 		return nil, err
 	}
-	lowered := strings.ToLower(strings.TrimSpace(req.Username))
-	if err := s.allowAttempt(RateScopeConfirmEmail, lowered); err != nil {
+	emailKey := model.NormalizeEmail(req.Username)
+	if err := s.allowEmailAttempt(ctx, RateScopeConfirmEmail, emailKey); err != nil {
 		return nil, err
 	}
 	invalid := &errs.ValidationError{Msg: "The confirmation code is not valid.", MsgCode: errs.CodeUserVerificationCodeInvalid}
 
 	// This lookup only resolves WHOSE row to lock; everything the confirmation
 	// decides on is read again inside the transaction, under that lock.
-	found, err := s.repo.GetByEmail(ctx, lowered)
+	found, err := s.repo.GetByEmail(ctx, req.Username)
 	if err != nil {
 		if isNotFound(err) {
-			s.failAttempt(RateScopeConfirmEmail, lowered)
+			if lerr := s.countUnknownEmailAttempt(ctx, RateScopeConfirmEmail, emailKey); lerr != nil {
+				return nil, lerr
+			}
 			return nil, invalid
 		}
 		return nil, err
 	}
 	userID := found.ID
+	// Counted before the row lock: guesses queueing on it would otherwise all be
+	// tested before the first failure was recorded.
+	attempt, err := s.reserveEmailAttempt(ctx, RateScopeConfirmEmail, emailKey)
+	if err != nil {
+		return nil, err
+	}
+	defer attempt.giveBack()
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		// The row lock first, then the read the whole-aggregate Save is built
@@ -69,7 +78,7 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 		u, gerr := s.repo.GetByID(ctx, userID)
 		if gerr != nil {
 			if isNotFound(gerr) {
-				s.failAttempt(RateScopeConfirmEmail, lowered)
+				attempt.keep()
 				return invalid
 			}
 			return gerr
@@ -77,17 +86,17 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 		ev, verr := s.emailVerifications.GetByUser(ctx, userID)
 		if verr != nil {
 			if isNotFound(verr) {
-				s.failAttempt(RateScopeConfirmEmail, lowered)
+				attempt.keep()
 				return invalid
 			}
 			return verr
 		}
 		if HashResetCode(strings.TrimSpace(req.Code)) != ev.Code {
-			s.failAttempt(RateScopeConfirmEmail, lowered)
+			attempt.keep()
 			return invalid
 		}
 		if ev.IsExpired(s.clock.Now()) {
-			s.failAttempt(RateScopeConfirmEmail, lowered)
+			attempt.keep()
 			return &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
 		}
 		// The code is this confirmation's authority, so consuming it is what
@@ -107,7 +116,8 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 	}); err != nil {
 		return nil, err
 	}
-	s.clearAttempt(RateScopeConfirmEmail, lowered)
+	s.clearEmailAttempt(ctx, RateScopeConfirmEmail, emailKey)
+	attempt.keep()
 	return &model.ConfirmEmailResult{}, nil
 }
 
@@ -130,7 +140,7 @@ func (s *Service) ResendVerificationCode(ctx context.Context, req model.ResendVe
 	if err := s.requirePasswordLogin(); err != nil {
 		return nil, 0, err
 	}
-	lowered := strings.ToLower(strings.TrimSpace(req.Username))
+	emailKey := model.NormalizeEmail(req.Username)
 	now := s.clock.Now()
 
 	// The cooldown is read BEFORE the attempt is recorded and comes from the
@@ -139,12 +149,12 @@ func (s *Service) ResendVerificationCode(ctx context.Context, req model.ResendVe
 	// exactly like a real one. Deriving it from the DB row instead would answer
 	// "60" for everyone except genuine unverified accounts mid-cooldown, making
 	// any other value proof that such an account exists.
-	wait := s.resendCooldown(lowered, now)
+	wait := s.resendCooldown(emailKey, now)
 
-	if err := s.allowAttempt(RateScopeVerifyEmail, lowered); err != nil {
+	// Every resend counts, like remind.
+	if err := s.countEmailAttempt(ctx, RateScopeVerifyEmail, emailKey); err != nil {
 		return nil, 0, err
 	}
-	s.failAttempt(RateScopeVerifyEmail, lowered) // every resend counts, like remind
 
 	result := &model.ResendVerificationCodeResult{}
 	if wait > 0 {
@@ -157,10 +167,10 @@ func (s *Service) ResendVerificationCode(ctx context.Context, req model.ResendVe
 	// Past the gap: this call starts a new one. Marked for every username —
 	// unknown ones included — so the countdown a caller observes is identical
 	// whether or not the account exists.
-	s.markSent(lowered)
+	s.markSent(emailKey)
 	fullGap := model.EmailVerificationResendGap
 
-	u, err := s.repo.GetByEmail(ctx, lowered)
+	u, err := s.repo.GetByEmail(ctx, req.Username)
 	if err != nil {
 		if isNotFound(err) {
 			return result, fullGap, nil // anti-enumeration
@@ -263,10 +273,9 @@ func (s *Service) ensureVerificationCode(ctx context.Context, u *model.User, ema
 		}
 		return live.RetryAfter(now), nil
 	}
-	if err := s.allowAttempt(RateScopeVerifyEmail, limitKey); err != nil {
+	if err := s.countEmailAttempt(ctx, RateScopeVerifyEmail, limitKey); err != nil {
 		return 0, err
 	}
-	s.failAttempt(RateScopeVerifyEmail, limitKey)
 	if err := s.issueVerificationCode(ctx, u, email, now); err != nil {
 		return 0, err
 	}

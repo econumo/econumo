@@ -94,7 +94,7 @@ function withTransactions(client: PersistedClient, rows: TransactionDto[], updat
       ...client.clientState,
       queries: [
         ...client.clientState.queries.filter((q) => q.queryHash !== hash),
-        { queryKey: queryKeys.transactions, queryHash: hash, state },
+        { queryKey: queryKeys.transactions, queryHash: hash, state, dehydratedAt: updatedAt },
       ],
     },
   }

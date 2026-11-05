@@ -2,6 +2,7 @@ package user_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
@@ -71,15 +72,14 @@ func TestMigrateRemoveDataSalt(t *testing.T) {
 		t.Fatalf("migrated=%d skipped=%d, want %d/0", migrated, skipped, len(emails))
 	}
 
-	// Each row is now plaintext, and findable by GetByEmail (its post-migration
-	// lookup key).
+	// Each row is now plaintext in its normalized form, and findable by GetByEmail.
 	for _, e := range emails {
 		u, err := repo.GetByID(ctx, vo.MustParseId(ids[e]))
 		if err != nil {
 			t.Fatalf("post-migration lookup by id %s: %v", e, err)
 		}
-		if u.Email != e {
-			t.Errorf("email = %q, want plaintext %q (case preserved)", u.Email, e)
+		if want := model.NormalizeEmail(e); u.Email != want {
+			t.Errorf("email = %q, want plaintext %q", u.Email, want)
 		}
 		byEmail, err := repo.GetByEmail(ctx, e)
 		if err != nil {
@@ -235,5 +235,194 @@ func TestSeedAnalyticsOptionWritesOnlyTheOptionRow(t *testing.T) {
 	}
 	if !got.AnalyticsEnabled() {
 		t.Error("analytics option not written correctly by UpsertOption")
+	}
+}
+
+func TestNormalizeEmails(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	seed := func(id, email, createdAt string) {
+		t.Helper()
+		if _, err := db.Raw.Exec(db.Rebind(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at) VALUES (?,?,?,'U','','x','',?,?)`),
+			id, id, email, createdAt, createdAt); err != nil {
+			t.Fatalf("seed %s: %v", email, err)
+		}
+	}
+	ciphertext, err := auth.NewEncodeService(testSalt).Encode("Encrypted@Example.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{}
+	add := func(id, email, createdAt, after string) {
+		t.Helper()
+		seed(id, email, createdAt)
+		want[id] = after
+	}
+	add("01a00000-0000-7000-8000-0000000000a1", "JÖRG@example.test", "2026-01-01 00:00:00", "JÖRG@example.test")
+	add("01a00000-0000-7000-8000-0000000000a2", "jörg@example.test", "2026-02-01 00:00:00", "jörg@example.test")
+	add("01a00000-0000-7000-8000-0000000000a3", "Üö@example.test", "2026-02-01 00:00:00", "Üö@example.test")
+	add("01a00000-0000-7000-8000-0000000000a4", "ÜÖ@example.test", "2026-01-01 00:00:00", "üö@example.test")
+	add("01a00000-0000-7000-8000-0000000000a5", " Plain@Example.test", "2026-03-01 00:00:00", "plain@example.test")
+	add("01a00000-0000-7000-8000-0000000000a6", ciphertext, "2026-03-01 00:00:00", ciphertext)
+	// user:create does not check the format, so plaintext without an @ can exist.
+	add("01a00000-0000-7000-8000-0000000000a7", "Admin", "2026-03-01 00:00:00", "admin")
+
+	for run, wantChanged := range []int{3, 0} {
+		n, err := svc.NormalizeEmails(ctx)
+		if err != nil {
+			t.Fatalf("run %d: %v", run, err)
+		}
+		if n != wantChanged {
+			t.Fatalf("run %d changed %d, want %d", run, n, wantChanged)
+		}
+		for id, after := range want {
+			var got string
+			if err := db.Raw.QueryRow(db.Rebind(`SELECT email FROM users WHERE id = ?`), id).Scan(&got); err != nil {
+				t.Fatal(err)
+			}
+			if got != after {
+				t.Fatalf("email of %s = %q, want %q", id, got, after)
+			}
+		}
+	}
+}
+
+// Rerunning repairs a colliding account once the address it wanted is free.
+func TestNormalizeEmails_ACollidingAccountIsNormalizedOnceTheHolderMoves(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	holder := f.User(fixture.User{Email: "jörg@example.test"})
+	other := f.User(fixture.User{Email: "JÖRG@example.test"})
+	if _, err := svc.NormalizeEmails(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.AdminChangeEmail(ctx, "jörg@example.test", "moved@example.test"); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := svc.NormalizeEmails(ctx); err != nil || n != 1 {
+		t.Fatalf("rerun: %d, %v", n, err)
+	}
+	u, err := userrepo.NewRepo(db.Engine, db.TX).GetByEmail(ctx, "JöRG@example.test")
+	if err != nil || u.ID.String() != other {
+		t.Fatalf("lookup: %v, %v (holder %s)", u, err, holder)
+	}
+}
+
+func TestMigrateRemoveDataSalt_AddressesThatNormalizeAlikeDoNotStopTheSweep(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	f := fixture.New(t, db).WithCrypto(testSalt)
+	older := f.User(fixture.User{Email: "JÖRG@example.test"})
+	newer := f.User(fixture.User{Email: "jörg@example.test"})
+	setUserCreatedAt(t, db, older, "2026-01-01 00:00:00")
+	setUserCreatedAt(t, db, newer, "2026-02-01 00:00:00")
+
+	migrated, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt)
+	if err != nil {
+		t.Fatalf("MigrateRemoveDataSalt: %v", err)
+	}
+	if migrated != 2 {
+		t.Fatalf("migrated = %d, want 2", migrated)
+	}
+	repo := userrepo.NewRepo(db.Engine, db.TX)
+	for email, id := range map[string]string{"JÖRG@example.test": older, "jörg@example.test": newer} {
+		u, err := repo.GetByEmail(ctx, email)
+		if err != nil {
+			t.Fatalf("GetByEmail(%s): %v", email, err)
+		}
+		if u.ID.String() != id || u.Email != email {
+			t.Fatalf("%s resolved to %s (%s), want its own account %s", email, u.ID, u.Email, id)
+		}
+	}
+}
+
+func TestMigrateRemoveDataSalt_StoresTheNormalizedForm(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	id := fixture.New(t, db).WithCrypto(testSalt).User(fixture.User{Email: "JÖRG@Example.test"})
+	if _, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt); err != nil {
+		t.Fatal(err)
+	}
+	var got string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT email FROM users WHERE id = ?`), id).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got != "jörg@example.test" {
+		t.Fatalf("email = %q", got)
+	}
+}
+
+// A database can hold both kinds of row. A plaintext address already normalized has no
+// other spelling to fall back to, so it keeps its place over an older encrypted one.
+func TestMigrateRemoveDataSalt_AnAddressAlreadyNormalizedKeepsItsPlace(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	older := fixture.New(t, db).WithCrypto(testSalt).User(fixture.User{Email: "JÖRG@example.test"})
+	newer := fixture.New(t, db).User(fixture.User{Email: "jörg@example.test"})
+	setUserCreatedAt(t, db, older, "2026-01-01 00:00:00")
+	setUserCreatedAt(t, db, newer, "2026-02-01 00:00:00")
+
+	if _, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt); err != nil {
+		t.Fatalf("MigrateRemoveDataSalt: %v", err)
+	}
+	for id, want := range map[string]string{older: "JÖRG@example.test", newer: "jörg@example.test"} {
+		var got string
+		if err := db.Raw.QueryRow(db.Rebind(`SELECT email FROM users WHERE id = ?`), id).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Fatalf("email of %s = %q, want %q", id, got, want)
+		}
+	}
+}
+
+// A user locked out of a salted database can register the same address again. Two
+// rows with identical bytes cannot be told apart by any lookup, so the operator
+// decides, and nothing is half-done until then.
+func TestMigrateRemoveDataSalt_RefusesTwoAccountsWithTheSameAddress(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	const email = "same@example.test"
+	encrypted := fixture.New(t, db).WithCrypto(testSalt).User(fixture.User{Email: email})
+	plain := fixture.New(t, db).User(fixture.User{Email: email})
+
+	_, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt)
+	if err == nil {
+		t.Fatal("the sweep must refuse two accounts with one address")
+	}
+	if !strings.Contains(err.Error(), encrypted) || !strings.Contains(err.Error(), plain) {
+		t.Fatalf("error %q must name both accounts", err)
+	}
+	var stored string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT email FROM users WHERE id = ?`), encrypted).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored == email {
+		t.Fatal("the refused sweep left a decrypted row behind")
+	}
+
+	if err := svc.AdminChangeEmail(ctx, email, "moved@example.test"); err != nil {
+		t.Fatalf("moving the plaintext account: %v", err)
+	}
+	if _, _, err := svc.MigrateRemoveDataSalt(ctx, testSalt); err != nil {
+		t.Fatalf("rerun after the move: %v", err)
+	}
+	u, err := userrepo.NewRepo(db.Engine, db.TX).GetByEmail(ctx, email)
+	if err != nil || u.ID.String() != encrypted {
+		t.Fatalf("the address must resolve to the decrypted account: %v, %v", u, err)
+	}
+}
+
+func setUserCreatedAt(t *testing.T, db *dbtest.DB, id, at string) {
+	t.Helper()
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET created_at = '`+at+`' WHERE id = ?`), id); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -100,8 +100,8 @@ func TestAdminCreateUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode email: %v", err)
 	}
-	if email != "Synth@Econumo.test" {
-		t.Errorf("decoded email = %q, want original case preserved", email)
+	if email != "synth@econumo.test" {
+		t.Errorf("decoded email = %q, want the normalized form", email)
 	}
 
 	// Duplicate (same address, any case) -> validation error, regardless of the
@@ -404,5 +404,41 @@ func TestAdminSetAccessByIDLogsOldStateWithoutPII(t *testing.T) {
 		if strings.Contains(v, "@") {
 			t.Fatalf("log attr %s=%q leaks an email address", k, v)
 		}
+	}
+}
+
+func TestAdminChangeEmail_MovesACollidingAccountOffTheAddress(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	holder := f.User(fixture.User{Email: "jörg@example.test"})
+	other := f.User(fixture.User{Email: "placeholder@example.test"})
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET email = 'JÖRG@example.test' WHERE id = ?`), other); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.AdminChangeEmail(ctx, "JÖRG@example.test", "JöRG@example.test"); err == nil {
+		t.Fatal("moving onto the address the other account holds must be refused")
+	}
+	var validation *errs.ValidationError
+	if err := svc.AdminChangeEmail(ctx, "JÖRG@example.test", "JÖRG@example.test"); !errors.As(err, &validation) {
+		t.Fatalf("a change to its own spelling normalizes onto the other account: %v", err)
+	}
+	if err := svc.AdminChangeEmail(ctx, "JÖRG@example.test", "moved@example.test"); err != nil {
+		t.Fatalf("move: %v", err)
+	}
+	repo := userrepo.NewRepo(db.Engine, db.TX)
+	moved, err := repo.GetByEmail(ctx, "MOVED@example.test")
+	if err != nil || moved.ID.String() != other {
+		t.Fatalf("moved account lookup: %v, %v", moved, err)
+	}
+	kept, err := repo.GetByEmail(ctx, "JÖRG@example.test")
+	if err != nil || kept.ID.String() != holder {
+		t.Fatalf("the address must now resolve to the holder: %v, %v", kept, err)
+	}
+	// A case-only change of one's own address is not a collision.
+	if err := svc.AdminChangeEmail(ctx, "moved@example.test", "MOVED@example.test"); err != nil {
+		t.Fatalf("case-only change: %v", err)
 	}
 }

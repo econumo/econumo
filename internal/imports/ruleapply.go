@@ -15,11 +15,8 @@ func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.Previ
 	// A preview walks every matching link and reads each live transaction, and
 	// the editors fire it from a typing debounce — so it is capped per user
 	// like the other unbounded import endpoints; every request counts.
-	if s.limiter != nil {
-		if err := s.limiter.Allow(RateScopePreviewRule, userID.String()); err != nil {
-			return nil, err
-		}
-		s.limiter.Fail(RateScopePreviewRule, userID.String())
+	if err := s.countAttempt(ctx, RateScopePreviewRule, userID); err != nil {
+		return nil, err
 	}
 	r, err := s.ruleFromSpec(ctx, userID, req.ImportRuleSpec)
 	if err != nil {

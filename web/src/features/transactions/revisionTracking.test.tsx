@@ -616,7 +616,7 @@ it('the refresh after a seeded restore works from the seeded list, without readi
   seedRevisions(buckets, rows)
   hydrate(queryClient, {
     mutations: [],
-    queries: [{ queryKey: queryKeys.transactions, queryHash: JSON.stringify(queryKeys.transactions), state: {
+    queries: [{ queryKey: queryKeys.transactions, queryHash: JSON.stringify(queryKeys.transactions), dehydratedAt: Date.now(), state: {
       data: rows, dataUpdateCount: 1, dataUpdatedAt: Date.now(), error: null, errorUpdateCount: 0, errorUpdatedAt: 0,
       fetchFailureCount: 0, fetchFailureReason: null, fetchMeta: null, isInvalidated: false, status: 'success', fetchStatus: 'idle',
     } }],

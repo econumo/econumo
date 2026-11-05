@@ -61,22 +61,15 @@ func (s *Service) mutateByEmail(ctx context.Context, email string, fn func(ctx c
 // AdminChangeEmail changes a user's stored (encrypted) email, looked up by the
 // current email. The avatar is left unchanged.
 func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail string) error {
-	loweredNew := strings.ToLower(strings.TrimSpace(newEmail))
 	_, err := s.mutateByEmail(ctx, oldEmail, func(ctx context.Context, u *model.User) error {
-		currentEmail, derr := s.encode.Decode(u.Email)
-		if derr != nil {
-			return derr
+		holder, gerr := s.repo.GetByEmail(ctx, model.NormalizeEmail(newEmail))
+		switch {
+		case gerr == nil && holder.ID != u.ID:
+			return &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
+		case gerr != nil && !isNotFound(gerr):
+			return gerr
 		}
-		if loweredNew != strings.ToLower(currentEmail) {
-			exists, eerr := s.repo.ExistsByEmail(ctx, loweredNew)
-			if eerr != nil {
-				return eerr
-			}
-			if exists {
-				return &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
-			}
-		}
-		encryptedEmail, eerr := s.encode.Encode(strings.TrimSpace(newEmail))
+		encryptedEmail, eerr := s.encode.Encode(model.NormalizeEmail(newEmail))
 		if eerr != nil {
 			return eerr
 		}
