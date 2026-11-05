@@ -46,8 +46,3 @@ type AdminUserContextResult struct {
 	User        AdminUserView   `json:"user"`
 	Connections []AdminUserView `json:"connections"`
 }
-
-type AdminUserStatusResult struct {
-	UserID string `json:"userId"`
-	Active bool   `json:"active"`
-}

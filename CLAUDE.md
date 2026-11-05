@@ -717,7 +717,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   registration; `serve` WARNs at boot when enabled with the console mail transport.
   Existing rows and CLI/admin-created users are always verified.
 - `ECONUMO_ADMIN_PORT` / `ECONUMO_ADMIN_TOKEN` — the private admin listener the payment
-  portal talks to (`POST /admin/set-access`, `GET /admin/user-context`, `GET /admin/user-status`). A **second**
+  portal talks to (`POST /admin/set-access`, `GET /admin/user-context`). A **second**
   `http.Server`, started by `serve` only when BOTH are set, so a self-hosted instance
   never serves those routes and they sit on no public mux at all (enforced by
   `TestAdminRoutesAreNotOnThePublicMux`). Auth is `Authorization: Bearer <ECONUMO_ADMIN_TOKEN>`
@@ -731,11 +731,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `user:set-access` emits the same `set-access` line. Ids and levels only — never emails. The port accepts a
   host-qualified value (`127.0.0.1:9090`) to pin the listener to loopback/an internal
   interface on bare-host deployments; a bare port binds all interfaces (the container
-  default, where compose controls exposure). `ECONUMO_ADMIN_SHARE_TOKEN` is a second
-  bearer for the share app, accepted ONLY for `GET /admin/user-status` (whether the user is
-  active); on any other admin route it gets the same 401. It requires the admin
-  pair, must be at least 32 characters and must differ from `ECONUMO_ADMIN_TOKEN`; unset
-  (default) leaves the route to the main token alone. Unlike the public API,
+  default, where compose controls exposure). Unlike the public API,
   this surface returns a real 404 for an unknown user: its consumer is a machine.
 - `ECONUMO_BILLING_URL` — payment portal URL (**https required** except loopback hosts —
   billing links carry signed identity tokens in the query string). Empty (default) means
@@ -789,7 +785,6 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the first-party OAuth client (see "Share client and the `read` scope"): the id is a UUID,
   the secret at least 32 characters, the redirect URI absolute https (http only for
   loopback), and they require `ECONUMO_URL` to enable the MCP OAuth server or boot fails.
-  `ECONUMO_ADMIN_SHARE_TOKEN` belongs to the same setup (see the admin listener above).
 - `ECONUMO_APP_LINKS_IOS` / `ECONUMO_APP_LINKS_ANDROID` — the mobile apps allowed to claim
   `<ECONUMO_URL>/oauth/app-return` as a verified Universal Link / App Link, which is how the
   OAuth app flow returns without the globally claimable private scheme. iOS: comma-separated

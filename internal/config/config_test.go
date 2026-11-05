@@ -1173,29 +1173,17 @@ func TestLoad_ShareConfig(t *testing.T) {
 		}
 		return m
 	}
-	adminPair := func(over map[string]string) map[string]string {
-		m := map[string]string{
-			"ECONUMO_ADMIN_PORT":  "9090",
-			"ECONUMO_ADMIN_TOKEN": strings.Repeat("a", 32),
-		}
-		for k, v := range over {
-			m[k] = v
-		}
-		return m
-	}
 	tests := []struct {
 		name         string
 		env          map[string]string
 		wantShareURL string
 		wantClient   bool
-		wantAdminTok string
 		wantErr      string
 	}{
 		{name: "unset", env: map[string]string{}},
 		{name: "share url https", env: map[string]string{"ECONUMO_SHARE_URL": "https://share.econumo.com/"}, wantShareURL: "https://share.econumo.com"},
 		{name: "share url loopback http", env: map[string]string{"ECONUMO_SHARE_URL": "http://localhost:8282"}, wantShareURL: "http://localhost:8282"},
 		{name: "client triple", env: triple(nil), wantClient: true},
-		{name: "admin share token", env: adminPair(map[string]string{"ECONUMO_ADMIN_SHARE_TOKEN": strings.Repeat("b", 32)}), wantAdminTok: strings.Repeat("b", 32)},
 
 		{name: "share url http remote", env: map[string]string{"ECONUMO_SHARE_URL": "http://share.example.test"}, wantErr: "ECONUMO_SHARE_URL"},
 		{name: "share url relative", env: map[string]string{"ECONUMO_SHARE_URL": "share.example.test"}, wantErr: "ECONUMO_SHARE_URL"},
@@ -1205,9 +1193,6 @@ func TestLoad_ShareConfig(t *testing.T) {
 		{name: "client secret short", env: triple(map[string]string{"ECONUMO_SHARE_CLIENT_SECRET": strings.Repeat("s", 31)}), wantErr: "ECONUMO_SHARE_CLIENT_SECRET"},
 		{name: "client without app url", env: triple(map[string]string{"ECONUMO_URL": ""}), wantErr: "ECONUMO_URL"},
 		{name: "redirect not https", env: triple(map[string]string{"ECONUMO_SHARE_REDIRECT_URI": "http://share.example.test/cb"}), wantErr: "ECONUMO_SHARE_REDIRECT_URI"},
-		{name: "admin share token without admin pair", env: map[string]string{"ECONUMO_ADMIN_SHARE_TOKEN": strings.Repeat("b", 32)}, wantErr: "ECONUMO_ADMIN_SHARE_TOKEN"},
-		{name: "admin share token short", env: adminPair(map[string]string{"ECONUMO_ADMIN_SHARE_TOKEN": strings.Repeat("b", 31)}), wantErr: "ECONUMO_ADMIN_SHARE_TOKEN"},
-		{name: "admin share token equals admin token", env: adminPair(map[string]string{"ECONUMO_ADMIN_SHARE_TOKEN": strings.Repeat("a", 32)}), wantErr: "ECONUMO_ADMIN_SHARE_TOKEN"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1230,9 +1215,6 @@ func TestLoad_ShareConfig(t *testing.T) {
 			}
 			if c.ShareClientEnabled() != tc.wantClient {
 				t.Errorf("ShareClientEnabled = %v, want %v", c.ShareClientEnabled(), tc.wantClient)
-			}
-			if c.AdminShareToken != tc.wantAdminTok {
-				t.Errorf("AdminShareToken = %q, want %q", c.AdminShareToken, tc.wantAdminTok)
 			}
 		})
 	}

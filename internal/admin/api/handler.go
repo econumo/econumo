@@ -52,41 +52,20 @@ func (h *Handlers) SetAccess(w http.ResponseWriter, r *http.Request) {
 	httpx.OK(w, res)
 }
 
-func (h *Handlers) queryUserID(w http.ResponseWriter, r *http.Request) (vo.Id, bool) {
+func (h *Handlers) UserContext(w http.ResponseWriter, r *http.Request) {
 	raw := r.URL.Query().Get("userId")
 	if raw == "" {
 		h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
 			errs.FieldError{Key: "userId", Message: "This value should not be blank."}))
-		return vo.Id{}, false
+		return
 	}
 	id, err := vo.ParseId(raw)
 	if err != nil {
 		h.writeErr(r.Context(), w, errs.NewValidation("Form validation error",
 			errs.FieldError{Key: "userId", Message: "Invalid user id"}))
-		return vo.Id{}, false
-	}
-	return id, true
-}
-
-func (h *Handlers) UserContext(w http.ResponseWriter, r *http.Request) {
-	id, ok := h.queryUserID(w, r)
-	if !ok {
 		return
 	}
 	res, err := h.svc.UserContext(r.Context(), id)
-	if err != nil {
-		h.writeErr(r.Context(), w, err)
-		return
-	}
-	httpx.OK(w, res)
-}
-
-func (h *Handlers) UserStatus(w http.ResponseWriter, r *http.Request) {
-	id, ok := h.queryUserID(w, r)
-	if !ok {
-		return
-	}
-	res, err := h.svc.UserStatus(r.Context(), id)
 	if err != nil {
 		h.writeErr(r.Context(), w, err)
 		return

@@ -21,7 +21,6 @@ type UserRecord struct {
 	Avatar      string
 	AccessLevel model.AccessLevel
 	AccessUntil *time.Time
-	IsActive    bool
 }
 
 type UserLookup interface {

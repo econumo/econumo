@@ -15,12 +15,11 @@ import (
 )
 
 const (
-	adminToken      = "0123456789abcdef0123456789abcdef"
-	adminShareToken = "fedcba9876543210fedcba9876543210"
-	adminUserA      = "aa000000-0000-0000-0000-0000000000a1"
-	adminUserB      = "bb000000-0000-0000-0000-0000000000b1"
-	adminUSDID      = "dffc2a06-6f29-4704-8575-31709adee926"
-	adminNoSuch     = "cc000000-0000-0000-0000-0000000000c1"
+	adminToken  = "0123456789abcdef0123456789abcdef"
+	adminUserA  = "aa000000-0000-0000-0000-0000000000a1"
+	adminUserB  = "bb000000-0000-0000-0000-0000000000b1"
+	adminUSDID  = "dffc2a06-6f29-4704-8575-31709adee926"
+	adminNoSuch = "cc000000-0000-0000-0000-0000000000c1"
 )
 
 // newAdminHandler seeds two connected users and returns the private admin
@@ -34,7 +33,7 @@ func newAdminHandler(t *testing.T) http.Handler {
 	f.User(fixture.User{ID: adminUserB, Email: "b@example.test", Name: "Sam"})
 	f.Connect(adminUserA, adminUserB)
 
-	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AdminToken: adminToken, AdminShareToken: adminShareToken}
+	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AdminToken: adminToken}
 	_, adminHandler, _, err := server.Build(cfg, db.Raw, server.Seams{})
 	if err != nil {
 		t.Fatal(err)
@@ -174,24 +173,5 @@ func TestAdminSetAccessIsIdempotentOverHTTP(t *testing.T) {
 	}
 	if first.Body.String() != second.Body.String() {
 		t.Fatalf("not idempotent:\n%s\n%s", first.Body.String(), second.Body.String())
-	}
-}
-
-func TestAdminUserStatusWithShareToken(t *testing.T) {
-	h := newAdminHandler(t)
-	path := "/admin/user-status?userId=" + adminUserA
-	want := `{"success":true,"message":"","data":{"userId":"` + adminUserA + `","active":true}}`
-
-	for _, tok := range []string{adminShareToken, adminToken} {
-		rec := adminDo(t, h, http.MethodGet, path, tok, "")
-		if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != want {
-			t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
-		}
-	}
-	if rec := adminDo(t, h, http.MethodGet, "/admin/user-context?userId="+adminUserA, adminShareToken, ""); rec.Code != http.StatusUnauthorized {
-		t.Fatalf("share token on user-context = %d, want 401", rec.Code)
-	}
-	if rec := adminDo(t, h, http.MethodGet, "/admin/user-status?userId="+adminNoSuch, adminShareToken, ""); rec.Code != http.StatusNotFound {
-		t.Fatalf("unknown user = %d, want 404", rec.Code)
 	}
 }

@@ -73,7 +73,6 @@ type Config struct {
 	ShareClientID     string // ECONUMO_SHARE_CLIENT_ID: UUID of the first-party OAuth client the share app uses
 	ShareClientSecret string // ECONUMO_SHARE_CLIENT_SECRET
 	ShareRedirectURI  string // ECONUMO_SHARE_REDIRECT_URI: the share app's OAuth callback
-	AdminShareToken   string // ECONUMO_ADMIN_SHARE_TOKEN: bearer for the share app's narrow admin routes
 
 	// Verified Universal / App Links for the mobile app (RFC 8252 §7). Set
 	// either one and the OAuth app flow returns through an https URL on AppURL
@@ -589,18 +588,6 @@ func loadShare(c *Config) error {
 		c.ShareClientID, c.ShareClientSecret, c.ShareRedirectURI = id, secret, redirect
 	}
 
-	if v := os.Getenv("ECONUMO_ADMIN_SHARE_TOKEN"); v != "" {
-		if c.AdminToken == "" {
-			return fmt.Errorf("ECONUMO_ADMIN_SHARE_TOKEN requires the admin listener (ECONUMO_ADMIN_PORT and ECONUMO_ADMIN_TOKEN)")
-		}
-		if len(v) < 32 {
-			return fmt.Errorf("ECONUMO_ADMIN_SHARE_TOKEN: must be at least 32 characters")
-		}
-		if v == c.AdminToken {
-			return fmt.Errorf("ECONUMO_ADMIN_SHARE_TOKEN: must differ from ECONUMO_ADMIN_TOKEN")
-		}
-		c.AdminShareToken = v
-	}
 	return nil
 }
 
