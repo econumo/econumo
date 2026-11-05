@@ -50,10 +50,10 @@ func TestRateProvider_AverageRates_SnapsToLatestMonth(t *testing.T) {
 	lookup := currencyrepo.New("sqlite", txm)
 	p := currencyrepo.NewRateProvider("sqlite", txm, lookup, usdID)
 
-	// Period covering February-December 2026, holding no rate; latest rate date
-	// is 2026-01-20, so the period snaps to Jan 2026 and AVG(EUR) =
-	// (0.90 + 0.92)/2 = 0.91. The Dec row is excluded.
-	start := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+	// Period covering all of 2026; latest rate date is 2026-01-20, so the period
+	// snaps to Jan 2026 and AVG(EUR) = (0.90 + 0.92)/2 = 0.91. The Dec row is
+	// excluded.
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
 	rates, err := p.AverageRates(ctx, start, end)
 	if err != nil {
@@ -236,24 +236,31 @@ var octNovRates = map[string]string{
 	"2026-11-20": "1.61",
 }
 
-// A day-5 "October" averages the rates inside 5 Oct - 4 Nov, not November's
-// (the month of the latest rate before its end) nor October's.
+// On the Windowed provider (shifted budget periods) a day-5 "October" averages
+// the rates inside 5 Oct - 4 Nov, not November's (the month of the latest rate
+// before its end) nor October's. The default provider keeps the snap.
 func TestRateProvider_ShiftedWindowAveragesItsOwnRates(t *testing.T) {
 	p, pts := shiftedRates(t, octNovRates)
-	checkRatePeriod(t, p, day(2026, 10, 5), day(2026, 11, 5), "2026-10-05", "2026-11-05", "0.92", pts)
+	checkRatePeriod(t, p.Windowed(), day(2026, 10, 5), day(2026, 11, 5), "2026-10-05", "2026-11-05", "0.92", pts)
+	checkRatePeriod(t, p, day(2026, 10, 5), day(2026, 11, 5), "2026-11-01", "2026-12-01", "1.35", pts)
 }
 
-// A calendar month keeps the month snap: its own month's average.
+// A calendar month gets its own month's average on both providers.
 func TestRateProvider_CalendarMonthUnchanged(t *testing.T) {
 	p, pts := shiftedRates(t, octNovRates)
-	checkRatePeriod(t, p, day(2026, 10, 1), day(2026, 11, 1), "2026-10-01", "2026-11-01", "0.88", pts)
-	checkRatePeriod(t, p, day(2026, 11, 1), day(2026, 12, 1), "2026-11-01", "2026-12-01", "1.35", pts)
-	// A single day (an import's conversion) inside a month keeps its month's average.
+	for _, provider := range []*currencyrepo.RateProvider{p, p.Windowed()} {
+		checkRatePeriod(t, provider, day(2026, 10, 1), day(2026, 11, 1), "2026-10-01", "2026-11-01", "0.88", pts)
+		checkRatePeriod(t, provider, day(2026, 11, 1), day(2026, 12, 1), "2026-11-01", "2026-12-01", "1.35", pts)
+	}
+	// A single day (an import's conversion) keeps its month's average.
 	checkRatePeriod(t, p, day(2026, 10, 20), day(2026, 10, 21), "2026-10-01", "2026-11-01", "0.88", pts)
+	// A legacy day-1 budget's mid-month window [15 Oct, 15 Nov) keeps the snap
+	// to the latest rate's month, as before shifted periods existed.
+	checkRatePeriod(t, p, day(2026, 10, 15), day(2026, 11, 15), "2026-11-01", "2026-12-01", "1.35", pts)
 }
 
 // A shifted window holding no rate falls back to the latest rate's month.
 func TestRateProvider_ShiftedWindowWithoutRatesSnaps(t *testing.T) {
 	p, pts := shiftedRates(t, map[string]string{"2026-08-10": "0.70", "2026-08-20": "0.72"})
-	checkRatePeriod(t, p, day(2026, 10, 5), day(2026, 11, 5), "2026-08-01", "2026-09-01", "0.71", pts)
+	checkRatePeriod(t, p.Windowed(), day(2026, 10, 5), day(2026, 11, 5), "2026-08-01", "2026-09-01", "0.71", pts)
 }

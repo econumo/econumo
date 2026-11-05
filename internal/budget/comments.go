@@ -45,7 +45,7 @@ func (s *Service) GetCommentList(ctx context.Context, userID vo.Id, req model.Ge
 		return nil, accessDenied()
 	}
 	if from.IsZero() {
-		from = currentPeriod(s.clock.Now(), reqctx.Location(ctx), b.budget.PeriodStartDay)
+		from = openingPeriod(b.budget, currentPeriod(s.clock.Now(), reqctx.Location(ctx), b.budget.PeriodStartDay))
 	}
 
 	// One row past the cap is enough to know the window overflowed without

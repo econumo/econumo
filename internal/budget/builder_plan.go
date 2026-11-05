@@ -50,7 +50,7 @@ func (s *Service) buildBudgetPlan(ctx context.Context, b *budgetAggregate, f fil
 	rates := make([]model.PlanMonthRatesResult, 0, months)
 	for i, m := range monthsList {
 		start, end := f.window(m)
-		monthRates, rerr := s.buildAverageRates(ctx, start, end)
+		monthRates, rerr := s.buildAverageRates(ctx, f.startDay, start, end)
 		if rerr != nil {
 			return model.BudgetPlanResult{}, rerr
 		}
@@ -550,7 +550,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	// month's average. Bounding it to month 0's window keeps that implicit
 	// range consistent with what every other month gets explicitly; windows
 	// are a month apart, so each starts in a distinct calendar month.
-	converted, err := s.convertor.BulkConvert(ctx, windows[0][0], windows[0][1], toConvert)
+	converted, err := s.convertorFor(f.startDay).BulkConvert(ctx, windows[0][0], windows[0][1], toConvert)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}

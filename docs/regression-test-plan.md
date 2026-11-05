@@ -1590,7 +1590,11 @@ and on tablet/phone only with a hardware keyboard.
       "October"; picking "November" and reloading still shows November. With the budget list request failing (DevTools: block
       `get-budget-list`), the page still loads right after the first failure
       instead of waiting out the list's retries, and settles on "September"
-      from the budget's own day.
+      from the budget's own day; with the list request stalled (no answer)
+      it loads after about 2 seconds the same way. A day-5 budget opened on
+      10 Nov (its period is "November") and reopened on 6 Dec opens
+      "December"; a day-1 budget keeps a month left from an earlier session
+      as before.
 - [ ] **Shifted budget — changing the day keeps plans**: a budget with plans
       in October and November changed from day 1 to day 28: the plans stay
       on "October" and "November" with the same

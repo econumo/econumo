@@ -1558,10 +1558,11 @@ data unreadable. Most are also asserted by the test suite.
   "October" = 28 Oct to 27 Nov). Request dates that pick a period name a key (snapped to the
   first, day ignored),
   never "the period containing this date". `get-budget` `filters.periodStart/periodEnd` carry
-  the real window. Currency conversion averages the rates inside a shifted window
-  (`currencyRates[]` reports that window); a range inside one calendar month (day 1, an
-  import's day) or a shifted window holding no rate keeps the latest-rate-month snap
-  (`internal/currency/repo/convertor_provider.go`). "Current month"
+  the real window. A budget whose day is not 1 converts at the rates inside each window
+  (`RateProvider.Windowed()`, wired through `budget.Service.SetShiftedPeriodRates`;
+  `currencyRates[]` reports that window, and a window holding no rate keeps the snap); day-1
+  budgets, legacy mid-month windows included, imports and everything else keep the default
+  latest-rate-month snap (`internal/currency/repo/convertor_provider.go`). "Current month"
   everywhere (default period, Plan window, plan hints, removal window, overdue recurring) is
   the period containing the caller's local today. The by-month SQL (`internal/budget/repo/read.go`,
   `periodExpr`) keeps grouping by month for day 1, so a day-1 budget stays byte-identical, and

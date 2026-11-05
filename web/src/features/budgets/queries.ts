@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
@@ -103,6 +103,8 @@ export function canDeleteEnvelope(meta: BudgetMetaDto | undefined | null, userId
 
 // The user's default budget for the selected period. No default -> data: null
 // (the Vue store rejects with 'Budget is not selected'; the page shows onboarding).
+const DEFAULT_PERIOD_WAIT_MS = 2000
+
 /** false while an unpicked default month may still move to the budget's current
  *  period (until the page's followCurrentPeriod ran for this budget, judged by the
  *  day the budget list carries), so the period fetches ask for the month shown */
@@ -111,12 +113,18 @@ export function useDefaultPeriodSettled(budgetId: Id | null): boolean {
   const followedFor = useBudgetPeriodStore((s) => s.periodFollowedFor)
   const follows = useBudgetPeriodStore((s) => followsCurrentPeriod(s))
   const { data: budgets, isPending, failureCount } = useBudgets()
+  const [waitedOut, setWaitedOut] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setWaitedOut(true), DEFAULT_PERIOD_WAIT_MS)
+    return () => clearTimeout(timer)
+  }, [])
   if (!budgetId || followedFor === budgetId || !follows) {
     return true
   }
   // a list that failed once settles at once: waiting out its retries would hold
-  // the page for seconds, and the budget's own meta picks the period instead
-  if (isPending && failureCount === 0) {
+  // the page for seconds, and the budget's own meta picks the period instead; a
+  // list that stalls (no answer at all) settles after a short wait the same way
+  if (isPending && failureCount === 0 && !waitedOut) {
     return false
   }
   const meta = budgets?.find((b) => b.id === budgetId)

@@ -41,6 +41,11 @@ type Service struct {
 
 	txLabels  TransactionLabels
 	recurring RecurringSource
+
+	// shiftedConvertor/shiftedRates convert periods starting on a day other than
+	// the 1st at the rates inside each window; nil falls back to the defaults.
+	shiftedConvertor Convertor
+	shiftedRates     AverageRateLookup
 }
 
 // SetTransactionLabels wires the reporting-label lookup. It is a setter rather
@@ -52,6 +57,27 @@ func (s *Service) SetTransactionLabels(l TransactionLabels) { s.txLabels = l }
 // projection; a setter for the same reason as SetTransactionLabels. Unset, the
 // projection is empty.
 func (s *Service) SetRecurring(r RecurringSource) { s.recurring = r }
+
+// SetShiftedPeriodRates wires the conversions used for budgets whose periods
+// start on a day other than the 1st. Calendar-month budgets keep the default
+// convertor and rate lookup, so their figures never depend on this.
+func (s *Service) SetShiftedPeriodRates(c Convertor, r AverageRateLookup) {
+	s.shiftedConvertor, s.shiftedRates = c, r
+}
+
+func (s *Service) convertorFor(startDay int) Convertor {
+	if startDay != model.MinPeriodStartDay && s.shiftedConvertor != nil {
+		return s.shiftedConvertor
+	}
+	return s.convertor
+}
+
+func (s *Service) ratesFor(startDay int) AverageRateLookup {
+	if startDay != model.MinPeriodStartDay && s.shiftedRates != nil {
+		return s.shiftedRates
+	}
+	return s.rates
+}
 
 func NewService(
 	repo Repository,

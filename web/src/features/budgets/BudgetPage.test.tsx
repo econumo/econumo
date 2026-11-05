@@ -1168,6 +1168,24 @@ describe('a budget whose months start on the 28th', () => {
     expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01')
   })
 
+  // a budget list that never answers must not hold the page forever
+  it('does not wait for a stalled budget list', async () => {
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, chosenPeriod: null, periodFollowedFor: null })
+    const requested: string[] = []
+    server.use(
+      http.get('*/api/v1/budget/get-budget-list', () => new Promise<never>(() => {})),
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', ({ request }) => {
+        requested.push(`budget ${new URL(request.url).searchParams.get('date') ?? ''}`)
+        return HttpResponse.json({ success: true, message: '', data: { item: shifted } })
+      }),
+    )
+    renderPage()
+    await waitFor(() => expect(requested.some((r) => r.startsWith('budget '))).toBe(true), { timeout: 10_000 })
+    await expectSelectedDates('Sep 28 – Oct 27')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01')
+  })
+
   it('keeps a month the user picked', async () => {
     useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: true, adoptedPeriod: null })
     server.use(

@@ -390,6 +390,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		opGuard,
 		txm, clk,
 	)
+	shiftedRates := rateProvider.Windowed()
+	budgetSvc.SetShiftedPeriodRates(appcurrency.NewConvertor(shiftedRates), shiftedRates)
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)
 
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)

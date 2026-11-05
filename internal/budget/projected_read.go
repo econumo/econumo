@@ -142,7 +142,7 @@ func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Ti
 	}
 	if len(toConvert) > 0 {
 		start, end := model.PeriodWindow(model.PeriodOf(today, f.startDay), f.startDay)
-		converted, cerr := s.convertor.BulkConvert(ctx, start, end, toConvert)
+		converted, cerr := s.convertorFor(f.startDay).BulkConvert(ctx, start, end, toConvert)
 		if cerr != nil {
 			return nil, cerr
 		}

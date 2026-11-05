@@ -77,17 +77,29 @@ func newPeriodHarness(t *testing.T, startDay int, now time.Time) *periodHarness 
 		t.Fatal(err)
 	}
 
-	userRepo := userrepo.NewRepo(eng, txm)
-	accountRepo := accountrepo.NewRepo(eng, txm)
 	currencyLookup := currencyrepo.New(eng, txm)
 	rateProvider := currencyrepo.NewRateProvider(eng, txm, currencyLookup, fixture.USD)
-	clk := fixedClock{t: now}
-	svc := appbudget.NewService(
+	svc := newPeriodService(tdb, fixedClock{t: now}, rateProvider)
+	shifted := rateProvider.Windowed()
+	svc.SetShiftedPeriodRates(domcurrency.NewConvertor(shifted), shifted)
+	rec := &periodRecurring{}
+	svc.SetRecurring(rec)
+	return &periodHarness{t: t, svc: svc, f: f, tdb: tdb, owner: owner, budgetID: budgetID,
+		account: account, savings: savings, category: category, rec: rec}
+}
+
+// newPeriodService wires the budget service the way BuildAPI does, with rates
+// as its default convertor and rate lookup.
+func newPeriodService(tdb *dbtest.DB, clk fixedClock, rates *currencyrepo.RateProvider) *appbudget.Service {
+	txm, eng := tdb.TX, tdb.Engine
+	userRepo := userrepo.NewRepo(eng, txm)
+	accountRepo := accountrepo.NewRepo(eng, txm)
+	return appbudget.NewService(
 		budgetrepo.NewRepo(eng, txm), budgetrepo.NewReadRepo(eng, txm),
-		domcurrency.NewConvertor(rateProvider), rateProvider,
+		domcurrency.NewConvertor(rates), rates,
 		server.NewBudgetUserLookup(userRepo, clk),
 		server.NewBudgetAccountLookup(accountRepo),
-		server.NewBudgetCurrencyLookup(currencyLookup),
+		server.NewBudgetCurrencyLookup(currencyrepo.New(eng, txm)),
 		budgetrepo.NewMetadataLookup(
 			server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo(eng, txm)),
 			server.NewBudgetTagMetadataLookup(tagrepo.NewRepo(eng, txm)),
@@ -96,10 +108,6 @@ func newPeriodHarness(t *testing.T, startDay int, now time.Time) *periodHarness 
 		operationrepo.NewGuard(eng, txm),
 		txm, clk,
 	)
-	rec := &periodRecurring{}
-	svc.SetRecurring(rec)
-	return &periodHarness{t: t, svc: svc, f: f, tdb: tdb, owner: owner, budgetID: budgetID,
-		account: account, savings: savings, category: category, rec: rec}
 }
 
 func (h *periodHarness) exec(query string, args ...any) {
@@ -466,6 +474,21 @@ func TestPeriodStartDayNotStartedYet(t *testing.T) {
 	sameAmount(t, "october budgeted", h.categoryRow(h.get(ctx, h.owner, "2026-10-01")).Budgeted, "100")
 }
 
+// The comment list's default window opens where get-budget does: on the first
+// key of a budget that has not started yet.
+func TestCommentListDefaultNotStartedYet(t *testing.T) {
+	h := newPeriodHarness(t, 28, time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC))
+	h.exec(`UPDATE budgets SET started_at = ? WHERE id = ?`, "2026-10-01 00:00:00", h.budgetID)
+	h.comment(h.budgetID, "2026-10-01", "first")
+	res, err := h.svc.GetCommentList(context.Background(), h.owner, model.GetCommentListRequest{BudgetId: h.budgetID, Months: "1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Items) != 1 || res.Items[0].Period != "2026-10-01" {
+		t.Fatalf("comments = %+v, want the first key's (2026-10-01)", res.Items)
+	}
+}
+
 // Changing the day and changing it back leaves every figure as it was.
 func TestPeriodStartDayRoundTripRestores(t *testing.T) {
 	h := newPeriodHarness(t, 1, time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC))
@@ -649,5 +672,47 @@ func TestUpdatePeriodStartDayNeedsOwnerOrAdmin(t *testing.T) {
 	meta, err := h.setDay(admin, 28)
 	if err != nil || meta.PeriodStartDay != 28 {
 		t.Fatalf("admin changing the day: meta=%+v err=%v", meta, err)
+	}
+}
+
+// A legacy day-1 budget with a mid-month start walks carry-over windows like
+// [15 Sep, 15 Oct), which hold rates of two months. Its conversions keep the
+// snap to the latest rate's month exactly as before shifted periods existed:
+// the windowed rates (wired for shifted budgets) must not reach it.
+func TestLegacyDayOneConversionKeepsTheSnap(t *testing.T) {
+	h := newPeriodHarness(t, 1, periodNow)
+	h.exec(`UPDATE budgets SET started_at = ? WHERE id = ?`, "2026-09-15 00:00:00", h.budgetID)
+	eur := h.f.Currency(fixture.Currency{Code: "EUR", Symbol: "E"})
+	for date, rate := range map[string]string{
+		"2026-09-20": "0.50", "2026-10-02": "0.80", "2026-10-20": "0.90", "2026-11-02": "1.20", "2026-12-02": "1.60",
+	} {
+		h.f.Rate(fixture.Rate{CurrencyID: eur, BaseCurrencyID: fixture.USD, Rate: rate, PublishedAt: date})
+	}
+	euro := h.f.Account(fixture.Account{UserID: h.owner.String(), Name: "Euro", CurrencyID: eur})
+	h.f.AccountOption(euro, h.owner.String(), 2)
+	h.f.BudgetAccount(h.budgetID, euro)
+	for _, at := range []string{"2026-09-25 10:00:00", "2026-10-10 10:00:00", "2026-11-10 10:00:00"} {
+		h.f.Transaction(fixture.Transaction{UserID: h.owner.String(), AccountID: euro, CategoryID: h.category, Amount: "120", SpentAt: at})
+	}
+	ctx := context.Background()
+	got := h.categoryRow(h.get(ctx, h.owner, "2026-11-01"))
+
+	snap := newPeriodService(h.tdb, fixedClock{t: periodNow}, currencyrepo.NewRateProvider(h.tdb.Engine, h.tdb.TX, currencyrepo.New(h.tdb.Engine, h.tdb.TX), fixture.USD))
+	res, err := snap.GetBudget(ctx, h.owner, model.GetBudgetRequest{Id: h.budgetID, Date: "2026-11-01"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := h.categoryRow(res.Item)
+	sameAmount(t, "spent", got.Spent, want.Spent)
+	sameAmount(t, "available", got.Available, want.Available)
+
+	windowedRates := currencyrepo.NewRateProvider(h.tdb.Engine, h.tdb.TX, currencyrepo.New(h.tdb.Engine, h.tdb.TX), fixture.USD).Windowed()
+	windowed := newPeriodService(h.tdb, fixedClock{t: periodNow}, windowedRates)
+	wres, err := windowed.GetBudget(ctx, h.owner, model.GetBudgetRequest{Id: h.budgetID, Date: "2026-11-01"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.categoryRow(wres.Item).Available == want.Available {
+		t.Fatalf("scenario too weak: windowed and snapped rates agree (%s)", want.Available)
 	}
 }

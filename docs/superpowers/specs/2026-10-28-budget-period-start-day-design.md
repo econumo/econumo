@@ -197,11 +197,12 @@ Today period *keys* and date *windows* are the same `time.Time` (`periodStart` a
   to the calendar month of the latest rate before its end, and that snap decides the rates
   used for conversion, not only the reported `currencyRates` period: a day-5 "October"
   (5 Oct – 4 Nov) would be converted at November's average once a November rate exists.
-  So a range that crosses a month boundary and holds rates averages exactly the rates
-  inside it, and `SnappedRatePeriod` reports that range (review fix, 2026-11-04). A range
-  inside one calendar month (every day-1 period, an import's single day) keeps the month
-  snap, so day-1 budgets and imports convert exactly as before; a shifted range holding no
-  rate still falls back to the latest rate's month.
+  So budgets whose day is not 1 convert through a windowed rate provider
+  (`RateProvider.Windowed()`, injected with `budget.Service.SetShiftedPeriodRates`): a
+  window holding rates averages exactly those, and `SnappedRatePeriod` reports that window
+  (review fix, 2026-11-04). Day-1 budgets (legacy mid-month windows included), imports and
+  every other caller keep the default provider and its month snap, so they convert exactly
+  as before; a shifted window holding no rate still falls back to the latest rate's month.
 
 ### SQL month grouping
 

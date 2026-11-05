@@ -2,8 +2,8 @@
 // [start,end) to the rate month (the latest published rate's month -> first of
 // that month .. next month; fall back to the raw range when no rates exist),
 // then AVG(rate) per currency over that snapped period for the base currency.
-// A range crossing a month boundary (a budget period starting on a day other
-// than the 1st) that holds rates averages exactly those instead.
+// The Windowed variant (budget periods starting on a day other than the 1st)
+// averages exactly the rates inside a range that holds any instead.
 package repo
 
 import (
@@ -50,6 +50,8 @@ type RateProvider struct {
 	q      providerQuerier
 	lookup *Lookup
 	baseID string
+	// windowed: a range holding rates averages those instead of snapping.
+	windowed bool
 }
 
 var _ domcurrency.RateProvider = (*RateProvider)(nil)
@@ -70,6 +72,18 @@ func NewRateProvider(driver string, tx *backend.TxManager, lookup *Lookup, baseI
 }
 
 func (p *RateProvider) db(ctx context.Context) backend.DBTX { return p.tx.Querier(ctx) }
+
+// Windowed returns a provider that averages the rates inside a requested range
+// whenever the range holds any, and snaps like this one otherwise. A shifted
+// budget period ("October" = 5 Oct - 4 Nov) snapped to the latest rate's month
+// would be converted at November's average once a November rate exists; every
+// other caller (calendar budget months, legacy day-1 windows, an import's day)
+// keeps the snap.
+func (p *RateProvider) Windowed() *RateProvider {
+	c := *p
+	c.windowed = true
+	return &c
+}
 
 // BaseCurrencyID returns the boot-resolved base currency's id.
 func (p *RateProvider) BaseCurrencyID(ctx context.Context) (vo.Id, error) {
@@ -129,10 +143,10 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 }
 
 // SnappedRatePeriod returns the [start, end) AverageRates actually uses for the
-// requested period: the requested period itself when it crosses a month
-// boundary and holds a rate, else the month of the latest published rate before
-// `end`, or the requested period when no rate exists. The budget currencyRates
-// block reports THIS period.
+// requested period: the month of the latest published rate before `end` (the
+// requested period itself on a Windowed provider when it holds a rate), or the
+// requested period when no rate exists. The budget currencyRates block reports
+// THIS period.
 func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error) {
 	baseID, err := p.BaseCurrencyID(ctx)
 	if err != nil {
@@ -142,16 +156,11 @@ func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Ti
 }
 
 // snapPeriod resolves [start,end) to the latest-rate month, or returns the
-// request unchanged when no rate is found. A shifted budget period ("October"
-// = 5 Oct - 4 Nov) snapped to the latest rate's month would be converted at
-// November's average once a November rate exists, so a range crossing a month
-// boundary that holds a rate keeps its own dates. A range inside one month
-// (a calendar month, an import's single day) keeps the month snap: if it holds
-// a rate, the latest one before `end` is in that month anyway.
+// request unchanged when no rate is found (or, windowed, when it holds one).
 func (p *RateProvider) snapPeriod(ctx context.Context, baseID vo.Id, start, end time.Time) (time.Time, time.Time, error) {
 	last, derr := p.q.GetLatestDate(ctx, p.db(ctx), baseID.String(), end)
 	if derr == nil {
-		if crossesMonth(start, end) && rateDayWithin(last, start, end) {
+		if p.windowed && rateDayWithin(last, start, end) {
 			return start, end, nil
 		}
 		realStart := time.Date(last.Year(), last.Month(), 1, 0, 0, 0, 0, last.Location())
@@ -164,10 +173,6 @@ func (p *RateProvider) snapPeriod(ctx context.Context, baseID vo.Id, start, end 
 		}
 	}
 	return start, end, nil
-}
-
-func crossesMonth(start, end time.Time) bool {
-	return end.After(model.FirstOfMonth(start).AddDate(0, 1, 0))
 }
 
 // rateDayWithin compares days the way GetAverage bounds them ('Y-m-d').
