@@ -8,7 +8,6 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
-	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -39,7 +38,7 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	if aerr := s.requireNotArchived(b); aerr != nil {
 		return nil, aerr
 	}
-	// The day reshapes every period of a shared budget (and can move its start),
+	// The day reshapes every period of a shared budget, its first one included,
 	// so it is a setting like sharing: owner or admin only.
 	dayChange := req.PeriodStartDay != nil && *req.PeriodStartDay != b.budget.PeriodStartDay
 	if dayChange && !s.canConfigure(b, userID) {
@@ -59,9 +58,6 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 			if derr := b.budget.SetPeriodStartDay(*req.PeriodStartDay, now); derr != nil {
 				return derr
 			}
-			loc := reqctx.Location(ctx)
-			b.budget.CoverCurrentPeriod(currentPeriod(now, loc, b.budget.PeriodStartDay),
-				model.FirstOfMonth(localToday(now, loc)), now)
 		}
 		if req.EndDate != nil {
 			if *req.EndDate == "" {
@@ -182,7 +178,9 @@ func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req model.Reset
 		if cerr := s.comments.DeleteCommentsByBudget(txCtx, budgetID); cerr != nil {
 			return cerr
 		}
-		b.budget.StartFrom(startedAt, now)
+		// Like create-budget: the budget begins with the period holding the date.
+		d := b.budget.PeriodStartDay
+		b.budget.StartFrom(model.StartForPeriod(model.PeriodOf(startedAt, d), d), now)
 		return s.budgets.Save(txCtx, b.budget)
 	})
 	if err != nil {

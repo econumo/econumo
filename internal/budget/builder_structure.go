@@ -60,7 +60,7 @@ func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f
 	}
 
 	// Prior periods' summed limits (budgetedBefore).
-	summed, err := s.read.SummarizedLimits(ctx, b.budget.ID, b.budget.StartedAt, f.periodKey)
+	summed, err := s.read.SummarizedLimits(ctx, b.budget.ID, carryOverStart(b, f.startDay), f.periodKey)
 	if err != nil {
 		return nil, err
 	}
@@ -154,11 +154,16 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 	if err := count(f.periodStart, f.periodEnd, true); err != nil {
 		return nil, err
 	}
-	// A started_at past the first of its month (rows seeded outside
+	// On day 1 a started_at past the first of its month (rows seeded outside
 	// NewBudget) shifts every earlier window by the same offset, as the walk
-	// always has; NewBudget's started_at carries none.
-	first := model.FirstOfMonth(b.budget.StartedAt)
-	offset := b.budget.StartedAt.Sub(first)
+	// always has; NewBudget's started_at carries none. Any other day's windows
+	// already start mid-month, so the walk runs from the first period unshifted.
+	first := b.budget.FirstPeriod()
+	var offset time.Duration
+	if f.startDay == model.MinPeriodStartDay {
+		first = model.FirstOfMonth(b.budget.StartedAt)
+		offset = b.budget.StartedAt.Sub(first)
+	}
 	for key := first; key.Before(f.periodKey); key = key.AddDate(0, 1, 0) {
 		start, end := model.PeriodWindow(key, f.startDay)
 		if err := count(start.Add(offset), end.Add(offset), false); err != nil {
@@ -218,4 +223,14 @@ func convItem(a amountSpent, to vo.Id) model.ConvertItem {
 		To:          to,
 		Amount:      a.amount,
 	}
+}
+
+// carryOverStart is the lower bound of the plans summed into budgetedBefore:
+// the raw start date on day 1 (unchanged for legacy mid-month starts), the
+// first period's key otherwise.
+func carryOverStart(b *budgetAggregate, startDay int) time.Time {
+	if startDay == model.MinPeriodStartDay {
+		return b.budget.StartedAt
+	}
+	return b.budget.FirstPeriod()
 }

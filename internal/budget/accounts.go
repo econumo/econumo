@@ -36,7 +36,7 @@ func (s *Service) removableAccounts(ctx context.Context, b *budgetAggregate, ids
 			end = after
 		}
 	}
-	start, _ := model.PeriodWindow(b.budget.StartedAt, d)
+	start, _ := model.PeriodWindow(b.budget.FirstPeriod(), d)
 	active, err := s.read.AccountsWithTransactions(ctx, ids, start, end)
 	if err != nil {
 		return nil, err
@@ -252,7 +252,7 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req model.SetLimit
 	if aerr := s.requireNotArchived(b); aerr != nil {
 		return nil, aerr
 	}
-	if period.Before(model.FirstOfMonth(b.budget.StartedAt)) {
+	if period.Before(b.budget.FirstPeriod()) {
 		return nil, model.ValidateBlank(map[string]string{"period": ""}) // invalid-date guard
 	}
 	// Mirror of the started_at guard: an ended budget covers no month past its

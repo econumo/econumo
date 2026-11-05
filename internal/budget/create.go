@@ -33,12 +33,15 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 
 	now := s.clock.Now()
 	current := currentPeriod(now, reqctx.Location(ctx), startDay)
-	startDate := current
+	// The budget begins with the period holding its start date (today by
+	// default). The stored start is the first of a month inside that period.
+	first := current
 	if req.StartDate != "" {
 		if t, perr := time.Parse(datetime.DateLayout, req.StartDate); perr == nil {
-			startDate = t
+			first = model.PeriodOf(t, startDay)
 		}
 	}
+	startDate := model.StartForPeriod(first, startDay)
 
 	// Resolve currency: explicit id (checked usable below), else the user's
 	// stored default currency id (which every user holds).
@@ -126,7 +129,7 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.BuildBudget(ctx, userID, b, current, now)
+	result, err := s.BuildBudget(ctx, userID, b, openingPeriod(b.budget, current), now)
 	if err != nil {
 		return nil, err
 	}

@@ -124,7 +124,7 @@ func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (model.Meta
 		Id:             b.budget.ID.String(),
 		OwnerUserId:    b.budget.UserID.String(),
 		Name:           b.budget.Name,
-		StartedAt:      b.budget.StartedAt.Format(datetime.Layout),
+		StartedAt:      metaStartedAt(b.budget).Format(datetime.Layout),
 		EndedAt:        endedAt,
 		CurrencyId:     b.budget.CurrencyID.String(),
 		IsArchived:     boolToInt(b.budget.IsArchived),
@@ -279,4 +279,23 @@ func sortBySortKeyThenID[T any](items []T, key func(T) string, id func(T) string
 		}
 		return id(items[i]) < id(items[j])
 	})
+}
+
+// metaStartedAt is the first period's key, which clients use as the first
+// month of the strip and the plan window. Day 1 keeps the stored start
+// verbatim, so legacy mid-month starts read as before.
+func metaStartedAt(b *model.Budget) time.Time {
+	if !model.ValidPeriodStartDay(b.PeriodStartDay) || b.PeriodStartDay == model.MinPeriodStartDay {
+		return b.StartedAt
+	}
+	return b.FirstPeriod()
+}
+
+// openingPeriod is the period a fresh budget's response is built for: the
+// caller's current period, or the first period when the budget starts later.
+func openingPeriod(b *model.Budget, current time.Time) time.Time {
+	if first := b.FirstPeriod(); current.Before(first) {
+		return first
+	}
+	return current
 }

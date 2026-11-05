@@ -150,7 +150,7 @@ func (s *Service) CreateComment(ctx context.Context, userID vo.Id, req model.Cre
 	if aerr := s.requireNotArchived(b); aerr != nil {
 		return nil, aerr
 	}
-	if period.Before(model.FirstOfMonth(b.budget.StartedAt)) {
+	if period.Before(b.budget.FirstPeriod()) {
 		return nil, model.ValidateBlank(map[string]string{"period": ""})
 	}
 	if end := b.endMonth(); end != nil && period.After(*end) {

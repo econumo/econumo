@@ -502,28 +502,41 @@ func TestSetPeriodStartDay(t *testing.T) {
 	}
 }
 
-func TestCoverCurrentPeriod(t *testing.T) {
-	month := func(y int, m time.Month) time.Time { return time.Date(y, m, 1, 0, 0, 0, 0, time.UTC) }
+func TestFirstPeriod(t *testing.T) {
+	day := func(m time.Month, d int) time.Time { return time.Date(2026, m, d, 0, 0, 0, 0, time.UTC) }
 	cases := []struct {
-		name                        string
-		started, current, thisMonth time.Time
-		want                        time.Time
+		started  time.Time
+		startDay int
+		want     time.Time
 	}{
-		{"current period before the start moves it back", month(2026, 10), month(2026, 9), month(2026, 10), month(2026, 9)},
-		{"current period at the start stays", month(2026, 9), month(2026, 9), month(2026, 10), month(2026, 9)},
-		{"an old budget stays", month(2025, 10), month(2026, 9), month(2026, 10), month(2025, 10)},
-		{"a future start stays", month(2026, 12), month(2026, 9), month(2026, 10), month(2026, 12)},
+		{day(10, 1), 1, day(10, 1)},
+		{day(10, 15), 1, day(10, 1)},
+		{day(10, 1), 28, day(9, 1)},
+		{day(10, 1), 2, day(9, 1)},
+		{day(10, 28), 28, day(10, 1)},
+		{day(10, 1), 0, day(10, 1)},
 	}
 	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			b := NewBudget(vo.NewId(), vo.NewId(), "B", vo.NewId(), c.started, t0)
-			b.CoverCurrentPeriod(c.current, c.thisMonth, t1)
-			if !b.StartedAt.Equal(c.want) {
-				t.Fatalf("started_at = %s, want %s", b.StartedAt, c.want)
+		b := NewBudget(vo.NewId(), vo.NewId(), "B", vo.NewId(), day(1, 1), t0)
+		b.StartedAt, b.PeriodStartDay = c.started, c.startDay
+		if got := b.FirstPeriod(); !got.Equal(c.want) {
+			t.Errorf("started %s day %d: first period %s, want %s", c.started, c.startDay, got, c.want)
+		}
+	}
+}
+
+func TestStartForPeriod(t *testing.T) {
+	for d := MinPeriodStartDay; d <= MaxPeriodStartDay; d++ {
+		for m := time.January; m <= time.December; m++ {
+			key := time.Date(2026, m, 1, 0, 0, 0, 0, time.UTC)
+			start := StartForPeriod(key, d)
+			if start.Day() != 1 {
+				t.Fatalf("day %d key %s: start %s is not a first of month", d, key, start)
 			}
-			if moved := !c.want.Equal(c.started); moved != b.UpdatedAt.Equal(t1) {
-				t.Fatalf("updated_at = %s, moved %v", b.UpdatedAt, moved)
+			b := &Budget{StartedAt: start, PeriodStartDay: d}
+			if got := b.FirstPeriod(); !got.Equal(key) {
+				t.Fatalf("day %d key %s: start %s begins with %s", d, key, start, got)
 			}
-		})
+		}
 	}
 }

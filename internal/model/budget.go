@@ -27,7 +27,9 @@ type Budget struct {
 	UserID     vo.Id
 	Name       string
 	CurrencyID vo.Id
-	StartedAt  time.Time // always the first of a month, 00:00:00
+	// StartedAt is the start date, the first of a month for every budget written
+	// by NewBudget/StartFrom; FirstPeriod derives the first period from it.
+	StartedAt time.Time
 	// EndedAt is the last month the budget covers (inclusive, first-of-month);
 	// nil is open-ended.
 	EndedAt    *time.Time
@@ -68,21 +70,21 @@ func (b *Budget) SetPeriodStartDay(d int, now time.Time) error {
 	return nil
 }
 
-// CoverCurrentPeriod moves the start back to current, the caller's current
-// period under the budget's day, when a day change left it after the start (day
-// 1 -> 28 on 20 October turns a budget starting with October into one whose
-// current period is September). Otherwise the current period would be before
-// the budget and refuse plans, comments, an end month or a copy starting there.
-// The start only ever moves back to the current period, so repeating a change
-// moves it at most once, and a budget deliberately starting after thisMonth
-// (the caller's calendar month) is left alone. The end month, never before the
-// old start, stays valid.
-func (b *Budget) CoverCurrentPeriod(current, thisMonth, now time.Time) {
-	if b.StartedAt.After(thisMonth) || !current.Before(b.StartedAt) {
-		return
-	}
-	b.StartedAt = current
-	b.UpdatedAt = now
+// FirstPeriod is the key of the budget's first period: the period that holds
+// its start date under the current day. Day 1 gives FirstOfMonth(StartedAt);
+// day 28 on a budget started on 1 October gives September (28 Sep - 27 Oct).
+// Derived, never stored, so changing the day and changing it back restores the
+// budget exactly.
+func (b *Budget) FirstPeriod() time.Time {
+	return PeriodOf(b.StartedAt, b.PeriodStartDay)
+}
+
+// StartForPeriod is the first-of-month start date whose period under startDay
+// is key, so a budget meant to begin with key gets FirstPeriod() == key: key
+// itself on day 1, else the next month's 1st (it lies inside key's window).
+func StartForPeriod(key time.Time, startDay int) time.Time {
+	_, end := PeriodWindow(key, startDay)
+	return FirstOfMonth(end.AddDate(0, 0, -1))
 }
 
 // InvalidPeriodStartDayError is the coded field error for a start day outside
@@ -131,7 +133,7 @@ func (b *Budget) EndAt(month *time.Time, now time.Time) error {
 		return nil
 	}
 	m := FirstOfMonth(*month)
-	if m.Before(FirstOfMonth(b.StartedAt)) {
+	if m.Before(b.FirstPeriod()) {
 		return ErrBudgetEndBeforeStart
 	}
 	if b.EndedAt == nil || !b.EndedAt.Equal(m) {
