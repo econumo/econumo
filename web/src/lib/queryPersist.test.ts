@@ -8,7 +8,7 @@ import { delayTransactionCompletion } from '@/test/idbDelay'
 import { createAppQueryClient } from './appQueryClient'
 import { resetDbForTests } from './db'
 import { QUERY_CACHE_KEY, clearPersistedQueryCache, createPersistOptions } from './queryPersist'
-import { STORE_TIMEOUT_MS, loadBuckets, putBuckets, putSnapshot, resetTransactionStoreForTests, tryLoadStored, type Bucket } from './transactionStore'
+import { STORE_TIMEOUT_MS, loadBuckets, putBuckets, putSnapshot, resetTransactionStoreForTests, storeBuster, tryLoadStored, type Bucket } from './transactionStore'
 
 function defaultRetry(): (failureCount: number, error: unknown) => boolean {
   const retry = createAppQueryClient().getDefaultOptions().queries?.retry
@@ -308,4 +308,8 @@ describe('restoring the stored transactions', () => {
     // the store stayed on: once the slow load is done, a restore seeds again
     expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
   }, 10_000)
+})
+
+it('the query-cache buster moves with the stored format version too', () => {
+  expect(createPersistOptions().buster).toBe(storeBuster())
 })

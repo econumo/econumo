@@ -26,12 +26,7 @@ self.addEventListener('install', (event) => {
 })
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith(PREFIX) && k !== SHELL).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim()),
-  )
+  event.waitUntil(activate())
 })
 
 self.addEventListener('message', (event) => {
@@ -74,14 +69,26 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(networkFirst(event, request, true))
 })
 
+async function activate() {
+  const others = (await caches.keys()).filter((k) => k.startsWith(PREFIX) && k !== SHELL)
+  // The previous worker served until now, so a reload during the install left
+  // a newer config in its cache than the one this worker found at install.
+  let config
+  for (const name of others) {
+    config = (await (await caches.open(name)).match(CONFIG_URL)) ?? config
+  }
+  if (config) {
+    await (await caches.open(SHELL)).put(CONFIG_URL, config)
+  }
+  await Promise.all(others.map((name) => caches.delete(name)))
+  await self.clients.claim()
+}
+
 async function precache() {
   const cache = await caches.open(SHELL)
-  const lastConfig = await caches.match(CONFIG_URL)
-  const download = lastConfig ? files.filter((f) => f !== CONFIG_URL) : files
+  // with a config already cached, activation brings it over instead
+  const download = (await caches.match(CONFIG_URL)) ? files.filter((f) => f !== CONFIG_URL) : files
   await cache.addAll(download.map((f) => new Request(f, { cache: 'reload' })))
-  if (lastConfig) {
-    await cache.put(CONFIG_URL, lastConfig)
-  }
 }
 
 // "Clear cache and reload": download this build's shell again. Nothing is
@@ -94,17 +101,18 @@ async function refresh() {
       .filter((f) => f !== CONFIG_URL)
       .map(async (f) => {
         const response = await fetch(new Request(f, { cache: 'reload' }))
-        if (!response.ok) {
+        if (!response.ok || response.redirected) {
           throw new Error(`refresh: ${f} ${response.status}`)
         }
         return [f, response]
       }),
   )
   // A server already on another build answers "/" with that build's page: a
-  // new worker brings it, and it must not land in this build's cache.
+  // new worker brings it, and it must not land in this build's cache. A page
+  // naming no asset at all is a proxy's, answering every path the same way.
   const [, shell] = downloads.find(([f]) => f === SHELL_URL)
   const assets = (await shell.clone().text()).match(/\/assets\/[^"'\s>]+/g) ?? []
-  if (!assets.every((a) => files.includes(a))) {
+  if (assets.length === 0 || !assets.every((a) => files.includes(a))) {
     throw new Error('refresh: the server runs another build')
   }
   const cache = await caches.open(SHELL)
@@ -151,7 +159,12 @@ async function networkFirst(event, cacheKey, keepResponse) {
   const request = event.request
   // no RequestInit: a navigation Request cannot be re-constructed with one,
   // and the server's Cache-Control: no-cache already forces revalidation
-  const network = fetch(request)
+  // The whole body counts: headers followed by a stall would otherwise block
+  // the parser on econumo-config.js just the same.
+  const network = fetch(request).then(async (response) => {
+    await response.clone().arrayBuffer()
+    return response
+  })
   const response = await within(network, NETWORK_TIMEOUT_MS)
   // A 5xx is a server that is down behind its proxy, which is being offline
   // as far as the app can tell. A late response is never kept: the page has

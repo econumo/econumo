@@ -418,14 +418,17 @@ back to the cache after 4 s per request, so a dead connection opens the app in a
 and nothing user-specific is cached (the data lives in IndexedDB, below). Two rules keep an
 offline launch consistent: the offline `/` is only ever the precached one (a newer build's page
 would name a bundle that is not cached), and the cached `econumo-config.js` is always the one the
-app last ran with, so a new worker carries it over and a late response is not kept. Its
+app last ran with, so a new worker carries it over (on activate, as a reload during the install
+may have changed it) and a late response is not kept. Its
 `VERSION_REF` keys the stored data (`getCacheBuster`), so a worker that updates while the page
 stays open must not make the next offline launch discard the transactions; the price is that
 such a launch runs the new bundle over data the previous build stored, until it is next online,
-so a change to the stored shape must bump `FORMAT_VERSION`. "Clear cache and reload" also asks
+so a change that breaks reading stored data must bump `FORMAT_VERSION`, which both the store and
+the query cache key on. "Clear cache and reload" also asks
 the worker to download its shell files again (not the config); nothing changes until all of them
-arrived, so an unreachable server leaves the offline copy in place, and a server already on
-another build refuses the refresh, because the new worker brings that build. The hook's lock
+arrived, so an unreachable server leaves the offline copy in place, and a redirect, a page naming
+no asset (a proxy's) or a server already on another build fail the refresh, the last because the
+new worker brings that build. The hook's lock
 then lasts until that answer too (at most 60 s).
 
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One

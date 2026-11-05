@@ -30,7 +30,7 @@ function backendPort(): string {
 // manifest reference. Skipped: legacy .woff (every browser that runs a
 // service worker takes .woff2), the unused icon sizes, analytics scripts and
 // the Shortcuts download.
-const PRECACHE = /^(index\.html|econumo-config\.js|manifest\.json|favicon\.ico|img\/logo\.png|fonts\/.+\.woff2|icons\/(apple-touch-icon\.png|favicon-\d+x\d+\.png|android-chrome-\d+x\d+-precomposed\.png|maskable-\d+x\d+\.png)|assets\/.+\.(js|css|woff2|svg|png))$/
+const PRECACHE = /^(index\.html|econumo-config\.js|manifest\.json|favicon\.ico|img\/logo\.png|fonts\/.+\.woff2|icons\/(apple-touch-icon(-120x120)?\.png|favicon-\d+x\d+\.png|android-chrome-\d+x\d+-precomposed\.png|maskable-\d+x\d+\.png)|assets\/.+\.(js|css|woff2|svg|png))$/
 
 function listFiles(dir: string, base = ''): string[] {
   return fs.readdirSync(path.join(dir, base), { withFileTypes: true }).flatMap((entry) => {
