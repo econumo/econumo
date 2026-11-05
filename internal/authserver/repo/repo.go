@@ -30,13 +30,11 @@ type (
 	revokeOtherGrantsParam = sqlitegen.RevokeOtherOAuthGrantsParams
 	deleteDeadParams       = sqlitegen.DeleteDeadOAuthGrantsParams
 	insertSpentParams      = sqlitegen.InsertOAuthSpentRefreshHashParams
-	upsertFirstPartyParams = sqlitegen.UpsertFirstPartyOAuthClientParams
 )
 
 type querier interface {
 	InsertOAuthClient(ctx context.Context, db backend.DBTX, p insertClientParams) error
 	GetOAuthClient(ctx context.Context, db backend.DBTX, id string) (clientRow, error)
-	UpsertFirstPartyOAuthClient(ctx context.Context, db backend.DBTX, p upsertFirstPartyParams) error
 	MarkOAuthClientUsed(ctx context.Context, db backend.DBTX, p markClientUsedParams) error
 	PurgeUnusedOAuthClients(ctx context.Context, db backend.DBTX, createdBefore time.Time) (int64, error)
 	PurgeExcessUnusedOAuthClients(ctx context.Context, db backend.DBTX, keep int64) (int64, error)
@@ -83,17 +81,7 @@ func (r *Repo) InsertClient(ctx context.Context, c *model.OAuthClient) error {
 	}
 	return r.q.InsertOAuthClient(ctx, r.db(ctx), insertClientParams{
 		ID: c.ID.String(), Name: c.Name, RedirectUris: string(uris),
-		SecretHash: c.SecretHash, CreatedAt: c.CreatedAt, LastUsedAt: c.LastUsedAt, FirstParty: c.FirstParty,
-	})
-}
-
-func (r *Repo) UpsertFirstPartyClient(ctx context.Context, c *model.OAuthClient) error {
-	uris, err := json.Marshal(c.RedirectURIs)
-	if err != nil {
-		return err
-	}
-	return r.q.UpsertFirstPartyOAuthClient(ctx, r.db(ctx), upsertFirstPartyParams{
-		ID: c.ID.String(), Name: c.Name, RedirectUris: string(uris), SecretHash: c.SecretHash, CreatedAt: c.CreatedAt,
+		SecretHash: c.SecretHash, CreatedAt: c.CreatedAt, LastUsedAt: c.LastUsedAt,
 	})
 }
 
@@ -114,7 +102,7 @@ func (r *Repo) GetClient(ctx context.Context, id vo.Id) (*model.OAuthClient, err
 		return nil, err
 	}
 	return &model.OAuthClient{ID: cid, Name: row.Name, RedirectURIs: uris, SecretHash: row.SecretHash,
-		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, FirstParty: row.FirstParty}, nil
+		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt}, nil
 }
 
 func (r *Repo) MarkClientUsed(ctx context.Context, id vo.Id, now time.Time) error {

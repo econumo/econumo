@@ -42,9 +42,6 @@ func (s *Service) authenticateClient(ctx context.Context, clientID, secret strin
 		}
 		return nil, err
 	}
-	if !s.usableClient(c) {
-		return nil, bad
-	}
 	if c.SecretHash != nil && subtle.ConstantTimeCompare([]byte(hashSecret(secret)), []byte(*c.SecretHash)) != 1 {
 		return nil, bad
 	}

@@ -18,11 +18,12 @@ func init() {
 			"&responseType=code&codeChallenge=" + challenge + "&codeChallengeMethod=S256&state=s1"
 	}
 
-	const shareCallback = "https://share.example.test/auth/callback"
+	readBody := authBody(OAuthClientID, callback)
+	readBody["scope"] = "read"
 	register(Scenario{Name: "authserver_consent", Calls: func() []Call {
 		return []Call{
-			{Label: "get-authorization-request-share-client", Method: "GET", Path: query(ShareClientID, shareCallback, challenge), Auth: "owner"},
-			{Label: "approve-authorization-share-client-readonly", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "readonly", Body: authBody(ShareClientID, shareCallback)},
+			{Label: "get-authorization-request-read-scope", Method: "GET", Path: query(OAuthClientID, callback, challenge) + "&scope=read", Auth: "owner"},
+			{Label: "approve-authorization-read-scope-readonly", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "readonly", Body: readBody},
 			{Label: "get-authorization-request", Method: "GET", Path: query(OAuthClientID, callback, challenge), Auth: "owner"},
 			{Label: "get-authorization-request-bad-challenge-redirects-the-error", Method: "GET", Path: query(OAuthClientID, callback, "short"), Auth: "owner"},
 			{Label: "err:get-authorization-request-unknown-client", Method: "GET", Path: query("00000000-0000-0000-0000-00000000dead", callback, challenge), Auth: "owner"},
@@ -52,7 +53,7 @@ func init() {
 		}
 	}})
 
-	// The share app's read-scoped token through the real handler: every
+	// A read-scoped token through the real handler: every
 	// allowlisted GET answers; anything else (a write, a non-allowlisted read)
 	// gets the frozen 401, never a 402 or 200.
 	register(Scenario{Name: "read_scope", Calls: func() []Call {

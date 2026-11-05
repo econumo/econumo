@@ -699,9 +699,6 @@ type Querier interface {
 	// time.Time would store a time part, splitting one day into distinct keys of
 	// the ON CONFLICT (identifier_uniq_currencies_rates) upsert.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
-	// The share client is seeded from config at boot. last_used_at starts at
-	// created_at so the unused-client purge never takes it.
-	UpsertFirstPartyOAuthClient(ctx context.Context, arg UpsertFirstPartyOAuthClientParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error

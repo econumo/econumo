@@ -75,7 +75,7 @@ func TestGuard_EveryRestrictedPostDocuments402(t *testing.T) {
 	}
 
 	public := publicPostRoutes(t)
-	// Allowlisted so a restricted owner can approve the read-scoped share app,
+	// Allowlisted so a restricted owner can approve a read-scoped app,
 	// but the service still 402s a restricted caller's mcp approval.
 	allowlistedYet402 := map[string]bool{"/api/v1/authserver/approve-authorization": true}
 	var missing, unexpected, undocumented []string

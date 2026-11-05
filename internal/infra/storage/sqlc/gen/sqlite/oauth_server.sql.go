@@ -55,7 +55,7 @@ func (q *Queries) DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuth
 }
 
 const getOAuthClient = `-- name: GetOAuthClient :one
-SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at, first_party FROM oauth_clients WHERE id = ?
+SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at FROM oauth_clients WHERE id = ?
 `
 
 func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, error) {
@@ -68,7 +68,6 @@ func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, e
 		&i.SecretHash,
 		&i.CreatedAt,
 		&i.LastUsedAt,
-		&i.FirstParty,
 	)
 	return i, err
 }
@@ -149,8 +148,8 @@ func (q *Queries) GetOAuthGrantBySpentRefreshHash(ctx context.Context, tokenHash
 
 const insertOAuthClient = `-- name: InsertOAuthClient :exec
 
-INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at, first_party)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type InsertOAuthClientParams struct {
@@ -160,7 +159,6 @@ type InsertOAuthClientParams struct {
 	SecretHash   *string
 	CreatedAt    time.Time
 	LastUsedAt   *time.Time
-	FirstParty   bool
 }
 
 // OAuth authorization server (MCP clients): clients, codes, grants.
@@ -172,7 +170,6 @@ func (q *Queries) InsertOAuthClient(ctx context.Context, arg InsertOAuthClientPa
 		arg.SecretHash,
 		arg.CreatedAt,
 		arg.LastUsedAt,
-		arg.FirstParty,
 	)
 	return err
 }
@@ -483,32 +480,4 @@ func (q *Queries) RotateOAuthGrant(ctx context.Context, arg RotateOAuthGrantPara
 		return 0, err
 	}
 	return result.RowsAffected()
-}
-
-const upsertFirstPartyOAuthClient = `-- name: UpsertFirstPartyOAuthClient :exec
-INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at, first_party)
-VALUES (?1, ?2, ?3, ?4, ?5, ?5, TRUE)
-ON CONFLICT (id) DO UPDATE SET name = excluded.name, redirect_uris = excluded.redirect_uris,
-    secret_hash = excluded.secret_hash, first_party = TRUE
-`
-
-type UpsertFirstPartyOAuthClientParams struct {
-	ID           string
-	Name         string
-	RedirectUris string
-	SecretHash   *string
-	CreatedAt    time.Time
-}
-
-// The share client is seeded from config at boot. last_used_at starts at
-// created_at so the unused-client purge never takes it.
-func (q *Queries) UpsertFirstPartyOAuthClient(ctx context.Context, arg UpsertFirstPartyOAuthClientParams) error {
-	_, err := q.db.ExecContext(ctx, upsertFirstPartyOAuthClient,
-		arg.ID,
-		arg.Name,
-		arg.RedirectUris,
-		arg.SecretHash,
-		arg.CreatedAt,
-	)
-	return err
 }

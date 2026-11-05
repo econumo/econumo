@@ -90,6 +90,9 @@ func TestMetadata(t *testing.T) {
 			m["authorization_endpoint"] != testURL+"/oauth/authorize" || m["registration_endpoint"] != testURL+"/oauth/register" {
 			t.Fatalf("%d %v", rec.Code, m)
 		}
+		if got := fmt.Sprint(m["scopes_supported"]); got != "[mcp read]" {
+			t.Fatalf("authorization server scopes_supported = %s", got)
+		}
 		if rec.Header().Get("Access-Control-Allow-Origin") != "*" || rec.Header().Get("Content-Type") != "application/json" {
 			t.Fatal("headers", rec.Header())
 		}
@@ -99,6 +102,10 @@ func TestMetadata(t *testing.T) {
 			_ = json.Unmarshal(rec.Body.Bytes(), &m)
 			if m["resource"] != testURL+"/mcp" || fmt.Sprint(m["authorization_servers"]) != "["+testURL+"]" {
 				t.Fatalf("%s: %v", p, m)
+			}
+			// The resource is /mcp, and read tokens are refused there.
+			if got := fmt.Sprint(m["scopes_supported"]); got != "[mcp]" {
+				t.Fatalf("%s: scopes_supported = %s", p, got)
 			}
 		}
 		want := `Bearer resource_metadata="` + testURL + `/.well-known/oauth-protected-resource/mcp", scope="mcp"`

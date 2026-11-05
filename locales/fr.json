@@ -1969,7 +1969,6 @@
       "loopback": "Après votre autorisation, vous reviendrez à une application sur cet ordinateur.",
       "wantsRead": "souhaite lire vos données Econumo.",
       "readAccess": "Elle pourra voir votre profil (nom et e-mail), vos comptes, transactions, catégories, tags, libellés et devises. Les listes de transactions incluent les noms des personnes avec qui vous partagez des comptes. Elle ne pourra rien modifier.",
-      "firstParty": "Créée par Econumo",
       "fullAccess": "Elle pourra lire et modifier toutes vos données Econumo.",
       "signedInAs": "Connecté en tant que {email}",
       "switchAccount": "Ce n'est pas vous ? Changer de compte",

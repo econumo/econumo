@@ -83,7 +83,7 @@ func (h *handler) authServerMetadata(w http.ResponseWriter, _ *http.Request) {
 		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
 		"code_challenge_methods_supported":      []string{"S256"},
 		"token_endpoint_auth_methods_supported": []string{"none", "client_secret_post", "client_secret_basic"},
-		"scopes_supported":                      []string{authserver.Scope},
+		"scopes_supported":                      []string{authserver.Scope, authserver.ScopeRead},
 	})
 }
 

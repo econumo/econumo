@@ -1155,44 +1155,19 @@ func TestLoad_PasswordLogin(t *testing.T) {
 }
 
 func TestLoad_ShareConfig(t *testing.T) {
-	const clientID = "0b9c2a52-6a8e-4f1e-9d33-6d6c1b2b7f10"
-	secret := strings.Repeat("s", 32)
-	triple := func(over map[string]string) map[string]string {
-		m := map[string]string{
-			"ECONUMO_URL":                 "https://app.example.test",
-			"ECONUMO_SHARE_CLIENT_ID":     clientID,
-			"ECONUMO_SHARE_CLIENT_SECRET": secret,
-			"ECONUMO_SHARE_REDIRECT_URI":  "https://share.example.test/auth/callback",
-		}
-		for k, v := range over {
-			if v == "" {
-				delete(m, k)
-			} else {
-				m[k] = v
-			}
-		}
-		return m
-	}
 	tests := []struct {
 		name         string
 		env          map[string]string
 		wantShareURL string
-		wantClient   bool
 		wantErr      string
 	}{
 		{name: "unset", env: map[string]string{}},
 		{name: "share url https", env: map[string]string{"ECONUMO_SHARE_URL": "https://share.econumo.com/"}, wantShareURL: "https://share.econumo.com"},
 		{name: "share url loopback http", env: map[string]string{"ECONUMO_SHARE_URL": "http://localhost:8282"}, wantShareURL: "http://localhost:8282"},
-		{name: "client triple", env: triple(nil), wantClient: true},
 
 		{name: "share url http remote", env: map[string]string{"ECONUMO_SHARE_URL": "http://share.example.test"}, wantErr: "ECONUMO_SHARE_URL"},
 		{name: "share url relative", env: map[string]string{"ECONUMO_SHARE_URL": "share.example.test"}, wantErr: "ECONUMO_SHARE_URL"},
 		{name: "share url query", env: map[string]string{"ECONUMO_SHARE_URL": "https://share.example.test/?x=1"}, wantErr: "ECONUMO_SHARE_URL"},
-		{name: "client half set", env: map[string]string{"ECONUMO_SHARE_CLIENT_ID": clientID}, wantErr: "ECONUMO_SHARE_CLIENT_SECRET"},
-		{name: "client id not uuid", env: triple(map[string]string{"ECONUMO_SHARE_CLIENT_ID": "econumo-share"}), wantErr: "ECONUMO_SHARE_CLIENT_ID"},
-		{name: "client secret short", env: triple(map[string]string{"ECONUMO_SHARE_CLIENT_SECRET": strings.Repeat("s", 31)}), wantErr: "ECONUMO_SHARE_CLIENT_SECRET"},
-		{name: "client without app url", env: triple(map[string]string{"ECONUMO_URL": ""}), wantErr: "ECONUMO_URL"},
-		{name: "redirect not https", env: triple(map[string]string{"ECONUMO_SHARE_REDIRECT_URI": "http://share.example.test/cb"}), wantErr: "ECONUMO_SHARE_REDIRECT_URI"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1212,9 +1187,6 @@ func TestLoad_ShareConfig(t *testing.T) {
 			}
 			if c.ShareURL != tc.wantShareURL {
 				t.Errorf("ShareURL = %q, want %q", c.ShareURL, tc.wantShareURL)
-			}
-			if c.ShareClientEnabled() != tc.wantClient {
-				t.Errorf("ShareClientEnabled = %v, want %v", c.ShareClientEnabled(), tc.wantClient)
 			}
 		})
 	}

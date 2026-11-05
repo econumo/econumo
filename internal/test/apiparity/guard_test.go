@@ -152,7 +152,7 @@ func TestGuard_NoOrphanedGoldens(t *testing.T) {
 
 // TestReadScopePathsAreRegisteredGETRoutes fails when a path in
 // middleware.ReadScopePaths is not a registered GET route, e.g. after a rename,
-// which would silently cut the share app off from it.
+// which would silently cut read-scoped apps off from it.
 func TestReadScopePathsAreRegisteredGETRoutes(t *testing.T) {
 	routes := registeredRoutes(t)
 	for path := range middleware.ReadScopePaths {

@@ -75,8 +75,7 @@ const (
 	IngestToken   = "eco_pat_owner-ingest-token-000000000000000000000000"
 	IngestTokenID = "99999999-9999-9999-9999-999999999999"
 
-	// A read-scoped OAuth token of the owner (the share app's credential, no
-	// grant behind it): valid only on GET of middleware.ReadScopePaths.
+	// A read-scoped OAuth token of the owner (no grant behind it): valid only on GET of middleware.ReadScopePaths.
 	ReadToken   = "eco_oat_owner-read-token-00000000000000000000000000"
 	ReadTokenID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
@@ -93,8 +92,6 @@ const (
 	// authserver scenarios (non-v7 ids, so they survive normalization).
 	OAuthClientID = "e1000000-0000-0000-0000-000000000001"
 	OAuthGrantID  = "e2000000-0000-0000-0000-000000000001"
-	// The share app's first-party client, configured through the harness cfg.
-	ShareClientID = "e1000000-0000-0000-0000-0000000000a1"
 
 	ImportEventQueued = "0e000000-0000-0000-0000-000000000001" // processed event behind ImportLinkQueued
 	ImportLinkQueued  = "0d000000-0000-0000-0000-000000000002" // "wallet" tap-2, queued (card unmapped)
@@ -145,7 +142,7 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.AccessToken(fixture.AccessToken{ID: IngestTokenID, UserID: OwnerID, Kind: model.TokenKindPersonal,
 		TokenHash: appuser.HashAccessToken(IngestToken), Name: "Phone shortcut", Scope: string(model.TokenScopeIngest)})
 	f.AccessToken(fixture.AccessToken{ID: ReadTokenID, UserID: OwnerID, Kind: model.TokenKindOAuth,
-		TokenHash: appuser.HashAccessToken(ReadToken), Name: "Econumo Share", Scope: string(model.TokenScopeRead), ExpiresAt: &ownerExp})
+		TokenHash: appuser.HashAccessToken(ReadToken), Name: "Reports", Scope: string(model.TokenScopeRead), ExpiresAt: &ownerExp})
 	f.Connect(OwnerID, GuestID)
 
 	f.OAuthClient(fixture.OAuthClient{ID: OAuthClientID, Name: "Claude", RedirectURIs: []string{"https://claude.ai/api/mcp/auth_callback"}})

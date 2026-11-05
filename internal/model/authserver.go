@@ -13,9 +13,6 @@ type OAuthClient struct {
 	SecretHash   *string
 	CreatedAt    time.Time
 	LastUsedAt   *time.Time
-	// FirstParty marks the client seeded from config (the share app); it is
-	// usable only while it is the configured one.
-	FirstParty bool
 }
 
 type OAuthAuthorizationCode struct {

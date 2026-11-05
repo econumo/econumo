@@ -15,8 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Config is the fully-resolved application configuration.
@@ -69,10 +67,7 @@ type Config struct {
 	AppURL     string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
 
 	// The separate share app (share.econumo.com) that reads a user's data over OAuth.
-	ShareURL          string // ECONUMO_SHARE_URL: the share app's origin, trailing "/" trimmed; empty = no share app
-	ShareClientID     string // ECONUMO_SHARE_CLIENT_ID: UUID of the first-party OAuth client the share app uses
-	ShareClientSecret string // ECONUMO_SHARE_CLIENT_SECRET
-	ShareRedirectURI  string // ECONUMO_SHARE_REDIRECT_URI: the share app's OAuth callback
+	ShareURL string // ECONUMO_SHARE_URL: the share app's origin, trailing "/" trimmed; empty = no share app
 
 	// Verified Universal / App Links for the mobile app (RFC 8252 §7). Set
 	// either one and the OAuth app flow returns through an https URL on AppURL
@@ -543,8 +538,6 @@ func loadAppLinks(c *Config) error {
 	return nil
 }
 
-func (c Config) ShareClientEnabled() bool { return c.ShareClientID != "" }
-
 func loadShare(c *Config) error {
 	if v := os.Getenv("ECONUMO_SHARE_URL"); v != "" {
 		u, err := url.Parse(v)
@@ -555,49 +548,7 @@ func loadShare(c *Config) error {
 		c.ShareURL = strings.TrimRight(v, "/")
 	}
 
-	vars := []string{"ECONUMO_SHARE_CLIENT_ID", "ECONUMO_SHARE_CLIENT_SECRET", "ECONUMO_SHARE_REDIRECT_URI"}
-	set := 0
-	for _, v := range vars {
-		if os.Getenv(v) != "" {
-			set++
-		}
-	}
-	if set > 0 {
-		for _, v := range vars {
-			if os.Getenv(v) == "" {
-				return fmt.Errorf("%s is required when the other ECONUMO_SHARE_CLIENT_* variables are set", v)
-			}
-		}
-		id := os.Getenv("ECONUMO_SHARE_CLIENT_ID")
-		if _, err := vo.ParseId(id); err != nil {
-			return fmt.Errorf("ECONUMO_SHARE_CLIENT_ID: must be a UUID")
-		}
-		secret := os.Getenv("ECONUMO_SHARE_CLIENT_SECRET")
-		if len(secret) < 32 {
-			return fmt.Errorf("ECONUMO_SHARE_CLIENT_SECRET: must be at least 32 characters")
-		}
-		if c.AppURL == "" {
-			return fmt.Errorf("ECONUMO_SHARE_CLIENT_ID requires ECONUMO_URL (the OAuth issuer)")
-		}
-		redirect := os.Getenv("ECONUMO_SHARE_REDIRECT_URI")
-		u, err := url.Parse(redirect)
-		if err != nil || u.Host == "" || !isASCII(redirect) ||
-			(u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname()))) {
-			return fmt.Errorf("ECONUMO_SHARE_REDIRECT_URI: must be an absolute https URL (http only for loopback hosts): %q", redirect)
-		}
-		c.ShareClientID, c.ShareClientSecret, c.ShareRedirectURI = id, secret, redirect
-	}
-
 	return nil
-}
-
-func isASCII(s string) bool {
-	for i := 0; i < len(s); i++ {
-		if s[i] >= 0x80 {
-			return false
-		}
-	}
-	return true
 }
 
 // loadOAuth reads the three provider slots. A slot is all-or-nothing: the

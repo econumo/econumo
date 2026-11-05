@@ -9,8 +9,9 @@ import (
 	"github.com/econumo/econumo/internal/web/middleware"
 )
 
-// readScopeGate stops admitting already-issued read tokens once the share
-// client is turned off, as disabling the OAuth server does for mcp tokens.
+// readScopeGate stops admitting already-issued read tokens once the OAuth server
+// is turned off, as AllowMCPScope does for mcp tokens. It wraps the authenticator
+// because the read routes live behind each feature's own middleware.Auth.
 type readScopeGate struct {
 	inner   middleware.TokenAuthenticator
 	enabled bool

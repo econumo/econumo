@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/port"
-	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 const (
 	Scope           = "mcp"
+	ScopeRead       = "read"
 	CodeTTL         = 2 * time.Minute
 	AccessTokenTTL  = time.Hour
 	GrantIdleTTL    = 90 * 24 * time.Hour
@@ -32,7 +32,6 @@ type Service struct {
 	clock   port.Clock
 	limiter Limiter
 	issuer  string
-	share   *vo.Id // the configured share client; nil = none
 
 	hkMu   sync.Mutex
 	hkLast time.Time

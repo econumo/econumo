@@ -96,7 +96,7 @@ var ctxKeyAccessLevel ctxKeyAccessLevelType
 // access, like revoking a token. authserver/decline-authorization joins as
 // well: declining writes nothing, and a restricted user must be able to send
 // the app back with a refusal. authserver/approve-authorization joins so a
-// restricted owner can still sign in to the read-only share app; the service
+// restricted owner can still approve a read-only app; the service
 // itself refuses every non-read approval for a restricted caller with the
 // same 402.
 //

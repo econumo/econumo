@@ -1,19 +1,11 @@
 -- OAuth authorization server (MCP clients): clients, codes, grants.
 
 -- name: InsertOAuthClient :exec
-INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at, first_party)
-VALUES ($1, $2, $3, $4, $5, $6, $7);
+INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at)
+VALUES ($1, $2, $3, $4, $5, $6);
 
 -- name: GetOAuthClient :one
-SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at, first_party FROM oauth_clients WHERE id = $1;
-
--- name: UpsertFirstPartyOAuthClient :exec
--- The share client is seeded from config at boot. last_used_at starts at
--- created_at so the unused-client purge never takes it.
-INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at, first_party)
-VALUES (sqlc.arg(id), sqlc.arg(name), sqlc.arg(redirect_uris), sqlc.arg(secret_hash), sqlc.arg(created_at), sqlc.arg(created_at), TRUE)
-ON CONFLICT (id) DO UPDATE SET name = excluded.name, redirect_uris = excluded.redirect_uris,
-    secret_hash = excluded.secret_hash, first_party = TRUE;
+SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at FROM oauth_clients WHERE id = $1;
 
 -- name: MarkOAuthClientUsed :exec
 UPDATE oauth_clients SET last_used_at = $1 WHERE id = $2;

@@ -12,7 +12,6 @@ import (
 type Repository interface {
 	InsertClient(ctx context.Context, c *model.OAuthClient) error
 	GetClient(ctx context.Context, id vo.Id) (*model.OAuthClient, error) // errs.NotFound when absent
-	UpsertFirstPartyClient(ctx context.Context, c *model.OAuthClient) error
 	MarkClientUsed(ctx context.Context, id vo.Id, now time.Time) error
 	PurgeUnusedClients(ctx context.Context, createdBefore time.Time) (int64, error)
 	// PurgeExcessUnusedClients keeps only the newest never-approved clients.

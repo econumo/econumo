@@ -337,7 +337,6 @@ type OauthClient struct {
 	SecretHash   *string
 	CreatedAt    time.Time
 	LastUsedAt   *time.Time
-	FirstParty   bool
 }
 
 type OauthGrant struct {
