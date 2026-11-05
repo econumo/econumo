@@ -72,7 +72,7 @@
 ### Task 2: Store and edit the start day
 
 **Files:**
-- Create: `internal/infra/storage/migrations/sqlite/20261101000010.sql`, `internal/infra/storage/migrations/pgsql/20261101000010.sql` (renumbered from 20261028000000 after main added 20261031*/20261101000000) (`ALTER TABLE budgets ADD COLUMN period_start_day INTEGER NOT NULL DEFAULT 1;` / `SMALLINT` on pgsql per house style)
+- Create: `internal/infra/storage/migrations/sqlite/20261104000000.sql`, `internal/infra/storage/migrations/pgsql/20261104000000.sql` (renumbered from 20261028000000 to run after main's latest migrations) (`ALTER TABLE budgets ADD COLUMN period_start_day INTEGER NOT NULL DEFAULT 1;` / `SMALLINT` on pgsql per house style)
 - Modify: `internal/infra/storage/sqlc/query/{sqlite,pgsql}/budgets.sql` (`GetBudgetByID`, `ListBudgetsForUser`, `UpsertBudget` incl. `ON CONFLICT` set), regenerate `gen/` with `sqlc generate`
 - Modify: `internal/model/budget.go` (`Budget.PeriodStartDay int`; `NewBudget` sets 1; mutator), `internal/budget/repo/repo.go` (Save + row mapping), `internal/budget/repo/adapters.go` if the pgsql shim maps fields
 - Modify: `internal/model/budget_dto.go` (`MetaResult.PeriodStartDay int json:"periodStartDay"`, `CreateBudgetRequest.PeriodStartDay int json:"periodStartDay"`, `UpdateBudgetRequest.PeriodStartDay *int json:"periodStartDay"`)
