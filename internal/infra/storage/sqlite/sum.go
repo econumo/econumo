@@ -13,7 +13,9 @@ import (
 //
 // This narrows the gap to PostgreSQL's exact NUMERIC but does not close it: from
 // 2^26 the sum of fractional amounts can land a step or more from the float
-// nearest the true value, and that noise survives (see #408).
+// nearest the true value, and that noise survives (see #408). A genuine 8th
+// decimal is no safer: the float holds none from 2^26, so 67108864.00000019 comes
+// back as 67108864.00000020.
 func FormatSum(v float64) string {
 	r, ok := new(big.Rat).SetString(strconv.FormatFloat(v, 'f', -1, 64))
 	if !ok {
