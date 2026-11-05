@@ -356,8 +356,9 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   (`get-authorization-request` carries it): "wants to read your Econumo data" for `read`, the
   read-and-change sentence for `mcp`. A readonly (lapsed trial) user may approve a `read`
   request: `approve-authorization` is on the readonly allowlist but still answers 402 for an
-  `mcp` approval. A read-token GET goes through the normal authenticator, so it triggers the
-  timezone and `last_used_at` write-through like any authenticated request.
+  `mcp` approval. A read token writes nothing to the user row: the timezone write-through skips
+  it. The one write its request makes is token bookkeeping, the token row's own `last_used_at`,
+  at most once per 5 minutes (its `expires_at` never moves).
 - Access tokens are `access_tokens` rows of kind `oauth` / scope `mcp` (`eco_oat_…`, fixed
   1 h, linked to their grant by `grant_id`), admitted only on `/mcp` — anywhere else they
   get the frozen 401. Tokens of a `read` grant carry scope `read` instead and are admitted
@@ -1301,7 +1302,7 @@ In the distroless image these run via the binary directly, e.g.
   `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
   in the middleware's small allowlist (account security actions — logout, session/PAT
   revocation, password update, email change, `oauth/start-link`,
-  `oauth/complete-link`, `oauth/unlink-identity`, `authserver/revoke-connected-app`
+  `oauth/complete-link`, `oauth/unlink-identity`, `authserver/revoke-connected-app`,
   `authserver/decline-authorization` (declining writes nothing) and
   `authserver/approve-authorization` (so a lapsed user can approve a
   `read` request; an `mcp` approval from such a user still answers 402) —

@@ -1968,7 +1968,7 @@
       "redirect": "Nadat je toestemming geeft, word je doorgestuurd naar {host}.",
       "loopback": "Nadat je toestemming geeft, keer je terug naar een app op deze computer.",
       "wantsRead": "wil je Econumo-gegevens lezen.",
-      "readAccess": "De app kan je profiel (naam en e-mailadres), rekeningen, transacties, categorieën, tags, labels en valuta's zien. Transactielijsten bevatten de namen van mensen met wie je rekeningen deelt. Er kan niets worden gewijzigd.",
+      "readAccess": "De app kan je profiel (naam en e-mailadres), rekeningen, transacties, categorieën, tags, labels en valuta's zien. Rekeningen en transacties bevatten de namen van mensen met wie je ze deelt. Er kan niets worden gewijzigd.",
       "fullAccess": "De app kan al je Econumo-gegevens lezen en wijzigen.",
       "signedInAs": "Ingelogd als {email}",
       "switchAccount": "Ben jij het niet? Van account wisselen",

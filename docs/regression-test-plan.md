@@ -2281,8 +2281,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] The consent page of an app that asks for the `read` scope alone
       (`&scope=read`) shows "wants to read your Econumo data." and "It will be
       able to see your profile (name and email), accounts, transactions,
-      categories, tags, labels and currencies. Transaction lists include the
-      names of people you share accounts with. It can't change anything." (not
+      categories, tags, labels and currencies. Accounts and transactions include
+      the names of people you share them with. It can't change anything." (not
       the read-and-change sentence). No scope, `mcp`, or `mcp read` shows the
       read-and-change sentence. A read-only (lapsed trial) user can Allow the
       `read` request, but Allow on an `mcp` one shows the read-only message.

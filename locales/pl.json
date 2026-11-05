@@ -1968,7 +1968,7 @@
       "redirect": "Po wyrażeniu zgody zostaniesz przekierowany do {host}.",
       "loopback": "Po wyrażeniu zgody wrócisz do aplikacji na tym komputerze.",
       "wantsRead": "chce odczytać Twoje dane w Econumo.",
-      "readAccess": "Będzie mogła zobaczyć Twój profil (imię i adres e-mail), konta, transakcje, kategorie, tagi, etykiety i waluty. Listy transakcji zawierają imiona osób, którym udostępniasz konta. Niczego nie zmieni.",
+      "readAccess": "Będzie mogła zobaczyć Twój profil (imię i adres e-mail), konta, transakcje, kategorie, tagi, etykiety i waluty. Konta i transakcje zawierają imiona osób, którym je udostępniasz. Niczego nie zmieni.",
       "fullAccess": "Będzie mogła odczytywać i zmieniać wszystkie Twoje dane w Econumo.",
       "signedInAs": "Zalogowano jako {email}",
       "switchAccount": "To nie Ty? Zmień konto",

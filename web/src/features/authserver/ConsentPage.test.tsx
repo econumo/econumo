@@ -420,7 +420,7 @@ it('a read-scoped client says it only reads, with no verified line', async () =>
   expect(screen.getByText('wants to read your Econumo data.')).toBeInTheDocument()
   expect(screen.getByText(/It can't change anything\./)).toBeInTheDocument()
   expect(screen.getByText(/your profile \(name and email\)/)).toBeInTheDocument()
-  expect(screen.getByText(/names of people you share accounts with/)).toBeInTheDocument()
+  expect(screen.getByText(/names of people you share them with/)).toBeInTheDocument()
   expect(screen.queryByText(/made by|verified/i)).not.toBeInTheDocument()
   expect(screen.queryByText('It will be able to read and change all of your Econumo data.')).not.toBeInTheDocument()
 })

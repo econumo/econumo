@@ -1968,7 +1968,7 @@
       "redirect": "Nach Ihrer Zustimmung werden Sie zu {host} weitergeleitet.",
       "loopback": "Nach Ihrer Zustimmung kehren Sie zu einer App auf diesem Computer zurück.",
       "wantsRead": "möchte Ihre Econumo-Daten lesen.",
-      "readAccess": "Die App kann Ihr Profil (Name und E-Mail), Ihre Konten, Transaktionen, Kategorien, Tags, Labels und Währungen sehen. Transaktionslisten enthalten die Namen der Personen, mit denen Sie Konten teilen. Sie kann nichts ändern.",
+      "readAccess": "Die App kann Ihr Profil (Name und E-Mail), Ihre Konten, Transaktionen, Kategorien, Tags, Labels und Währungen sehen. Konten und Transaktionen enthalten die Namen der Personen, mit denen Sie sie teilen. Sie kann nichts ändern.",
       "fullAccess": "Die App kann alle Ihre Econumo-Daten lesen und ändern.",
       "signedInAs": "Angemeldet als {email}",
       "switchAccount": "Nicht Sie? Konto wechseln",

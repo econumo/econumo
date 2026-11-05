@@ -70,8 +70,8 @@ An app can ask for the `read` scope instead, by requesting `read` and not `mcp`
 at authorization. (A request with no scope, with `mcp`, or with both gets
 `mcp`.) The consent page then says the app only reads: it can see your profile
 (name and email), accounts, transactions, categories, tags, labels and
-currencies, and change nothing. Transaction lists include the names of people
-you share accounts with. A user whose access is read-only can approve such an
+currencies, and change nothing. Accounts and transactions include the names of
+people you share them with. A user whose access is read-only can approve such an
 app, but not an `mcp` one.
 
 A `read` token answers only these `GET` routes; everything else, `/mcp` included,
