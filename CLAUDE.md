@@ -1553,9 +1553,10 @@ data unreadable. Most are also asserted by the test suite.
   period keeps its key `YYYY-MM-01` (`started_at`, `ended_at`, limit and comment periods, Plan
   `months`, MCP `month`); only the date window it covers shifts. The rule lives in one helper
   per stack (`model.PeriodWindow` / `model.PeriodOf`, `web/src/features/budgets/period.ts`):
-  day 1 = the calendar month; days 2-15 name the period after the month it starts in (day 5:
-  "October" = 5 Oct to 4 Nov); days 16-28 after the month it ends in (day 28: "November" =
-  28 Oct to 27 Nov). Request dates that pick a period name a key (snapped to the first, day ignored),
+  every period is named after the month it starts in, key `M` covering day `d` of `M` to day
+  `d` of `M+1` (day 1 = the calendar month; day 5: "October" = 5 Oct to 4 Nov; day 28:
+  "October" = 28 Oct to 27 Nov). Request dates that pick a period name a key (snapped to the
+  first, day ignored),
   never "the period containing this date". `get-budget` `filters.periodStart/periodEnd` carry
   the real window (`currencyRates[]` still reports the calendar rate period). "Current month"
   everywhere (default period, Plan window, plan hints, removal window, overdue recurring) is

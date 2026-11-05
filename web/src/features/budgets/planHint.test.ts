@@ -73,18 +73,19 @@ describe('planHintKind', () => {
 describe('wantsUpcomingPanel in a shifted budget', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(2026, 9, 30, 12))
+    vi.setSystemTime(new Date(2026, 9, 5, 12))
   })
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('on 30 October a day-28 budget is in November, so October is past', () => {
-    expect(wantsUpcomingPanel('2026-10-01', '300', '250', false, 28)).toBe(false)
-    expect(wantsUpcomingPanel('2026-11-01', '300', '250', false, 28)).toBe(true)
+  it('on 5 October a day-28 budget is still in September, so September is not past', () => {
+    expect(wantsUpcomingPanel('2026-08-01', '300', '250', false, 28)).toBe(false)
+    expect(wantsUpcomingPanel('2026-09-01', '300', '250', false, 28)).toBe(true)
   })
 
-  it('a calendar-month budget is still in October', () => {
+  it('a calendar-month budget is already in October, so September is past', () => {
+    expect(wantsUpcomingPanel('2026-09-01', '300', '250', false, 1)).toBe(false)
     expect(wantsUpcomingPanel('2026-10-01', '300', '250', false, 1)).toBe(true)
   })
 })

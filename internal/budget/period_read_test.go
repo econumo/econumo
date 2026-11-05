@@ -37,7 +37,7 @@ func (r periodRecurring) ListByAccountIDs(context.Context, []vo.Id) ([]*model.Re
 
 func (periodRecurring) CanEdit(context.Context, vo.Id, vo.Id) (bool, error) { return true, nil }
 
-// periodHarness is a budget started on key 2026-10-01 whose periods start on
+// periodHarness is a budget started on key 2026-09-01 whose periods start on
 // startDay, with one everyday account, one savings-capable account and one
 // expense category.
 type periodHarness struct {
@@ -66,7 +66,7 @@ func newPeriodHarness(t *testing.T, startDay int, now time.Time) *periodHarness 
 	f.AccountOption(savings, owner.String(), 1)
 	category := f.Category(fixture.Category{UserID: owner.String(), Name: "Food"})
 
-	started := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	started := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 	budgetID := f.Budget(fixture.Budget{UserID: owner.String(), StartedAt: &started})
 	f.BudgetAccount(budgetID, account)
 	f.BudgetElement(fixture.BudgetElement{BudgetID: budgetID, ExternalID: category, Type: int(model.ElementCategory)})
@@ -175,16 +175,16 @@ func TestGetBudgetShiftedWindow(t *testing.T) {
 	seedShiftedSpending(h)
 	ctx := context.Background()
 
-	nov := h.get(ctx, h.owner, "2026-11-01")
-	sameWindow(t, nov, "2026-10-28 00:00:00", "2026-11-28 00:00:00")
-	row := h.categoryRow(nov)
-	sameAmount(t, "november spent", row.Spent, "70")
-	// no plans: available = -(spentBefore + spent)
-	sameAmount(t, "november available", row.Available, "-170")
-
 	oct := h.get(ctx, h.owner, "2026-10-01")
-	sameWindow(t, oct, "2026-09-28 00:00:00", "2026-10-28 00:00:00")
-	sameAmount(t, "october spent", h.categoryRow(oct).Spent, "100")
+	sameWindow(t, oct, "2026-10-28 00:00:00", "2026-11-28 00:00:00")
+	row := h.categoryRow(oct)
+	sameAmount(t, "october spent", row.Spent, "70")
+	// no plans: available = -(spentBefore + spent)
+	sameAmount(t, "october available", row.Available, "-170")
+
+	sep := h.get(ctx, h.owner, "2026-09-01")
+	sameWindow(t, sep, "2026-09-28 00:00:00", "2026-10-28 00:00:00")
+	sameAmount(t, "september spent", h.categoryRow(sep).Spent, "100")
 }
 
 func TestGetBudgetShiftedDefaultPeriod(t *testing.T) {
@@ -209,7 +209,7 @@ func TestGetBudgetShiftedPartner(t *testing.T) {
 	partner := vo.MustParseId(h.f.User(fixture.User{Name: "Partner", Email: "partner@period.test"}))
 	h.f.BudgetAccess(h.budgetID, partner.String(), int(model.BudgetRoleAdmin), true)
 
-	res := h.get(context.Background(), partner, "2026-11-01")
+	res := h.get(context.Background(), partner, "2026-10-01")
 	sameWindow(t, res, "2026-10-28 00:00:00", "2026-11-28 00:00:00")
 	sameAmount(t, "partner spent", h.categoryRow(res).Spent, "70")
 }
@@ -223,7 +223,7 @@ func TestBudgetTransactionListShifted(t *testing.T) {
 
 	cat := h.category
 	res, err := h.svc.GetTransactionList(context.Background(), h.owner, model.BudgetTransactionListRequest{
-		BudgetId: h.budgetID, PeriodStart: "2026-11-01", CategoryId: &cat,
+		BudgetId: h.budgetID, PeriodStart: "2026-10-01", CategoryId: &cat,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -239,7 +239,7 @@ func TestBudgetTransactionListShifted(t *testing.T) {
 
 func TestGetBudgetShiftedEnded(t *testing.T) {
 	h := newPeriodHarness(t, 20, time.Date(2027, 1, 10, 12, 0, 0, 0, time.UTC))
-	h.exec(`UPDATE budgets SET ended_at = ? WHERE id = ?`, "2026-11-01 00:00:00", h.budgetID)
+	h.exec(`UPDATE budgets SET ended_at = ? WHERE id = ?`, "2026-10-01 00:00:00", h.budgetID)
 	h.spend("5", "2026-11-25 10:00:00")
 
 	res := h.get(context.Background(), h.owner, "2027-01-01")
@@ -285,8 +285,8 @@ func TestUpcomingShiftedOccurrences(t *testing.T) {
 	t.Run("shifted", func(t *testing.T) {
 		h := newPeriodHarness(t, 28, now)
 		h.monthly("40", time.Date(2026, 11, 29, 0, 0, 0, 0, time.UTC))
-		sameAmount(t, "key 2026-11 upcoming", h.categoryRow(h.get(ctx, h.owner, "2026-11-01")).Upcoming, "0")
-		sameAmount(t, "key 2026-12 upcoming", h.categoryRow(h.get(ctx, h.owner, "2026-12-01")).Upcoming, "40")
+		sameAmount(t, "key 2026-10 upcoming", h.categoryRow(h.get(ctx, h.owner, "2026-10-01")).Upcoming, "0")
+		sameAmount(t, "key 2026-11 upcoming", h.categoryRow(h.get(ctx, h.owner, "2026-11-01")).Upcoming, "40")
 	})
 	t.Run("calendar", func(t *testing.T) {
 		h := newPeriodHarness(t, 1, now)
@@ -294,13 +294,13 @@ func TestUpcomingShiftedOccurrences(t *testing.T) {
 		sameAmount(t, "key 2026-11 upcoming", h.categoryRow(h.get(ctx, h.owner, "2026-11-01")).Upcoming, "40")
 	})
 	// Overdue since 2026-10-20: filed today, in the current period (key
-	// 2026-11) next to its 2026-11-20 occurrence, and nowhere else.
+	// 2026-10) next to its 2026-11-20 occurrence, and nowhere else.
 	t.Run("overdue", func(t *testing.T) {
 		h := newPeriodHarness(t, 28, now)
 		h.monthly("7", time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC))
-		sameAmount(t, "key 2026-10 upcoming", h.categoryRow(h.get(ctx, h.owner, "2026-10-01")).Upcoming, "0")
-		sameAmount(t, "key 2026-11 upcoming", h.categoryRow(h.get(ctx, h.owner, "2026-11-01")).Upcoming, "14")
-		sameAmount(t, "key 2026-12 upcoming", h.categoryRow(h.get(ctx, h.owner, "2026-12-01")).Upcoming, "7")
+		sameAmount(t, "key 2026-09 upcoming", h.categoryRow(h.get(ctx, h.owner, "2026-09-01")).Upcoming, "0")
+		sameAmount(t, "key 2026-10 upcoming", h.categoryRow(h.get(ctx, h.owner, "2026-10-01")).Upcoming, "14")
+		sameAmount(t, "key 2026-11 upcoming", h.categoryRow(h.get(ctx, h.owner, "2026-11-01")).Upcoming, "7")
 	})
 }
 
@@ -314,26 +314,26 @@ func TestSavingsClosingShifted(t *testing.T) {
 	})
 	ctx := context.Background()
 
-	nov := h.savingsRow(h.get(ctx, h.owner, "2026-11-01"))
-	sameAmount(t, "november saved", nov.Spent, "30")
-	sameAmount(t, "november closing", nov.ClosingBalance, "30")
-
 	oct := h.savingsRow(h.get(ctx, h.owner, "2026-10-01"))
-	sameAmount(t, "october saved", oct.Spent, "0")
-	sameAmount(t, "october closing", oct.ClosingBalance, "0")
+	sameAmount(t, "october saved", oct.Spent, "30")
+	sameAmount(t, "october closing", oct.ClosingBalance, "30")
 
-	// The current period (key 2026-12, from 2026-11-28) plans 100 and has
+	sep := h.savingsRow(h.get(ctx, h.owner, "2026-09-01"))
+	sameAmount(t, "september saved", sep.Spent, "0")
+	sameAmount(t, "september closing", sep.ClosingBalance, "0")
+
+	// The current period (key 2026-11, from 2026-11-28) plans 100 and has
 	// saved 30 on 2026-11-29: the projected closing is booked 60 plus the
 	// unmet 70.
 	element := h.f.BudgetElement(fixture.BudgetElement{BudgetID: h.budgetID, ExternalID: h.savings, Type: int(model.ElementSavings)})
-	h.f.BudgetLimit(fixture.BudgetLimit{ElementID: element, Period: "2026-12-01 00:00:00", Amount: "100"})
+	h.f.BudgetLimit(fixture.BudgetLimit{ElementID: element, Period: "2026-11-01 00:00:00", Amount: "100"})
 	h.f.Transaction(fixture.Transaction{
 		UserID: h.owner.String(), AccountID: h.account, AccountRecipientID: h.savings, Type: 2,
 		Amount: "30", AmountRecipient: "30", SpentAt: "2026-11-29 09:00:00",
 	})
-	dec := h.savingsRow(h.get(ctx, h.owner, "2026-12-01"))
-	sameAmount(t, "december saved", dec.Spent, "30")
-	sameAmount(t, "december closing", dec.ClosingBalance, "130")
+	nov := h.savingsRow(h.get(ctx, h.owner, "2026-11-01"))
+	sameAmount(t, "november saved", nov.Spent, "30")
+	sameAmount(t, "november closing", nov.ClosingBalance, "130")
 }
 
 func TestCreateBudgetShiftedDefaultStart(t *testing.T) {
@@ -344,8 +344,8 @@ func TestCreateBudgetShiftedDefaultStart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Item.Meta.StartedAt != "2026-11-01 00:00:00" {
-		t.Errorf("startedAt = %s, want the current period's key 2026-11-01", res.Item.Meta.StartedAt)
+	if res.Item.Meta.StartedAt != "2026-10-01 00:00:00" {
+		t.Errorf("startedAt = %s, want the current period's key 2026-10-01", res.Item.Meta.StartedAt)
 	}
 	sameWindow(t, res.Item, "2026-10-28 00:00:00", "2026-11-28 00:00:00")
 }
@@ -353,7 +353,7 @@ func TestCreateBudgetShiftedDefaultStart(t *testing.T) {
 func TestCommentListShiftedDefaultPeriod(t *testing.T) {
 	h := newPeriodHarness(t, 28, time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC))
 	ctx := context.Background()
-	for _, period := range []string{"2026-10-01", "2026-11-01"} {
+	for _, period := range []string{"2026-09-01", "2026-10-01"} {
 		if _, err := h.svc.CreateComment(ctx, h.owner, model.CreateCommentRequest{
 			Id: vo.NewId().String(), BudgetId: h.budgetID, ElementId: h.category, Period: period, Comment: period,
 		}); err != nil {
@@ -364,8 +364,8 @@ func TestCommentListShiftedDefaultPeriod(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(res.Items) != 1 || res.Items[0].Period != "2026-11-01" {
-		t.Fatalf("comments = %+v, want only the current period's (2026-11-01)", res.Items)
+	if len(res.Items) != 1 || res.Items[0].Period != "2026-10-01" {
+		t.Fatalf("comments = %+v, want only the current period's (2026-10-01)", res.Items)
 	}
 }
 
@@ -390,7 +390,7 @@ func TestGetBudgetSummaryCallerWallClock(t *testing.T) {
 	}
 	sameAmount(t, "tokyo expenses", *b.Expenses, "40")
 
-	utc := h.get(context.Background(), h.owner, "2026-11-01")
+	utc := h.get(context.Background(), h.owner, "2026-10-01")
 	ub := utc.Balances[0]
 	if ub.StartBalance != nil || ub.Income != nil || ub.Expenses != nil || ub.Exchanges != nil {
 		t.Errorf("utc: period not started yet has figures: %+v", ub)

@@ -350,25 +350,16 @@ func clampPeriodStartDay(d int) int {
 }
 
 // PeriodWindow returns the half-open [start, end) window of the budget period
-// named by key. From day 16 on the period is named after the month it ends in,
-// so a period never carries the name of a month it mostly misses.
+// named by key. Every period is named after the month it starts in.
 func PeriodWindow(key time.Time, startDay int) (start, end time.Time) {
 	startDay = clampPeriodStartDay(startDay)
-	start = FirstOfMonth(key)
-	if startDay >= 16 {
-		start = start.AddDate(0, -1, 0)
-	}
-	start = start.AddDate(0, 0, startDay-1)
+	start = FirstOfMonth(key).AddDate(0, 0, startDay-1)
 	return start, start.AddDate(0, 1, 0)
 }
 
 func PeriodOf(t time.Time, startDay int) time.Time {
 	startDay = clampPeriodStartDay(startDay)
-	key := FirstOfMonth(t.AddDate(0, 0, -(startDay - 1)))
-	if startDay >= 16 {
-		key = key.AddDate(0, 1, 0)
-	}
-	return key
+	return FirstOfMonth(t.AddDate(0, 0, -(startDay - 1)))
 }
 
 func PeriodKeyOfDay(day string, startDay int) (string, error) {

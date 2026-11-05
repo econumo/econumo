@@ -1047,7 +1047,7 @@ describe('a budget whose months start on the 28th', () => {
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(2026, 9, 30, 12))
+    vi.setSystemTime(new Date(2026, 9, 5, 12))
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -1064,15 +1064,15 @@ describe('a budget whose months start on the 28th', () => {
       }),
     )
     renderPage()
-    await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01'))
-    expect(await screen.findByRole('tab', { selected: true, name: 'November' })).toBeInTheDocument()
-    expect(screen.getByTestId('period-dates')).toHaveTextContent('Oct 28 – Nov 27')
-    await waitFor(() => expect(dates).toContain('2026-11-01'))
+    await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01'))
+    expect(await screen.findByRole('tab', { selected: true, name: 'September' })).toBeInTheDocument()
+    expect(screen.getByTestId('period-dates')).toHaveTextContent('Sep 28 – Oct 27')
+    await waitFor(() => expect(dates).toContain('2026-09-01'))
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.BUDGET_CHANGE_DATE)
   })
 
   // the list already names the day: the page asks for the adopted period only, so a
-  // cold open on 30 October never fetches (and flashes) October first
+  // cold open on 5 October never fetches (and flashes) October first
   it('requests only the adopted period when the budget list carries the day', async () => {
     useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, periodFollowedFor: null })
     const dates: string[] = []
@@ -1089,13 +1089,13 @@ describe('a budget whose months start on the 28th', () => {
       }),
     )
     renderPage()
-    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Oct 28 – Nov 27')
-    expect(dates).toEqual(['2026-11-01'])
+    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Sep 28 – Oct 27')
+    expect(dates).toEqual(['2026-09-01'])
     await waitFor(() => expect(planFrom.length).toBeGreaterThan(0))
     expect(new Set(planFrom).size).toBe(1)
   })
 
-  // the adopted November belongs to the day-28 budget: switching the default to a
+  // the adopted September belongs to the day-28 budget: switching the default to a
   // calendar-month budget holds its fetches until the default is back on October
   it('a switch to a budget with another day requests only its own current period', async () => {
     useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, periodFollowedFor: null })
@@ -1116,8 +1116,8 @@ describe('a budget whose months start on the 28th', () => {
       }),
     )
     const { queryClient } = renderPage()
-    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Oct 28 – Nov 27')
-    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01')
+    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Sep 28 – Oct 27')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01')
 
     act(() => {
       queryClient.setQueryData(queryKeys.user, {
@@ -1152,8 +1152,8 @@ describe('a budget whose months start on the 28th', () => {
     renderPage('/budget', (qc) => qc.setQueryDefaults(queryKeys.budgets, { retry: 3, retryDelay: 60_000 }))
     await waitFor(() => expect(requested.some((r) => r.startsWith('budget '))).toBe(true))
     expect(requested.filter((r) => r === 'list')).toHaveLength(1)
-    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Oct 28 – Nov 27')
-    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01')
+    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Sep 28 – Oct 27')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01')
   })
 
   it('keeps a month the user picked', async () => {
@@ -1163,7 +1163,7 @@ describe('a budget whose months start on the 28th', () => {
       http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: shifted } })),
     )
     renderPage()
-    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Sep 28 – Oct 27')
+    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Oct 28 – Nov 27')
     expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01')
   })
 

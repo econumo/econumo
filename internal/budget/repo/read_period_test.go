@@ -39,10 +39,10 @@ func TestSpendingByMonthStartDay(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SpendingByMonth d=28: %v", err)
 	}
-	// The two Nov rows (Oct 28 and Nov 27) merge into one.
+	// The two October-period rows (Oct 28 and Nov 27) merge into one.
 	assertPlanSpendingRows(t, rows, map[string]string{
-		"month=2026-10-01 cat=" + catFood + " tag=": "100",
-		"month=2026-11-01 cat=" + catFood + " tag=": "70",
+		"month=2026-09-01 cat=" + catFood + " tag=": "100",
+		"month=2026-10-01 cat=" + catFood + " tag=": "70",
 	})
 	for _, r := range rows {
 		if r.Amount != vo.NewDecimal(r.Amount).String() {
@@ -78,7 +78,7 @@ func TestIncomeByMonthStartDay(t *testing.T) {
 		t.Fatalf("IncomeByMonth d=28: %v", err)
 	}
 	// Decimal addition, not float: 0.10 + 0.20 is exactly 0.3.
-	assertIncomeRows(t, rows, map[string]string{"2026-10-01": "100", "2026-11-01": "0.3"}, true)
+	assertIncomeRows(t, rows, map[string]string{"2026-09-01": "100", "2026-10-01": "0.3"}, true)
 
 	rows, err = read.IncomeByMonth(ctx, accs, psOct1, psDec1, 1)
 	if err != nil {
@@ -158,7 +158,7 @@ func TestTransfersByMonthStartDay(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TransfersByMonth d=28: %v", err)
 	}
-	check(rows, map[string][2]string{"2026-10-01": {"3", "100"}, "2026-11-01": {"9", "70"}})
+	check(rows, map[string][2]string{"2026-09-01": {"3", "100"}, "2026-10-01": {"9", "70"}})
 
 	rows, err = read.TransfersByMonth(ctx, included, psOct1, psDec1, 1)
 	if err != nil {
@@ -206,7 +206,7 @@ func TestAccountsNetByMonthStartDay(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AccountsNetByMonth d=28: %v", err)
 	}
-	assertSavingsMonths(t, rows, map[string]string{"2026-10-01": "100", "2026-11-01": "-35"})
+	assertSavingsMonths(t, rows, map[string]string{"2026-09-01": "100", "2026-10-01": "-35"})
 
 	rows, err = read.AccountsNetByMonth(ctx, accs, psOct1, psDec1, 1)
 	if err != nil {
@@ -233,7 +233,7 @@ func TestAccountsIncomeExpenseByMonthStartDay(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AccountsIncomeExpenseByMonth d=28: %v", err)
 	}
-	assertSavingsMonths(t, rows, map[string]string{"2026-10-01": "100", "2026-11-01": "-30"})
+	assertSavingsMonths(t, rows, map[string]string{"2026-09-01": "100", "2026-10-01": "-30"})
 
 	rows, err = read.AccountsIncomeExpenseByMonth(ctx, accs, psOct1, psDec1, 1)
 	if err != nil {

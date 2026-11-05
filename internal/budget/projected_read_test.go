@@ -450,21 +450,21 @@ func TestUpcomingRead_NilWhenNothingUpcoming(t *testing.T) {
 }
 
 // An occurrence is bucketed by the period containing its filed day, so one
-// filed after the 28th belongs to the next key of a day-28 budget.
+// filed before the 28th belongs to the previous key of a day-28 budget.
 func TestProjectedRead_ByMonthStartDay(t *testing.T) {
-	nov29 := time.Date(2026, 11, 29, 10, 0, 0, 0, time.UTC)
-	at29 := func(rt *model.RecurringTransaction) *model.RecurringTransaction {
-		rt.NextPaymentAt, rt.ScheduledDay = nov29, 29
+	nov27 := time.Date(2026, 11, 27, 10, 0, 0, 0, time.UTC)
+	at27 := func(rt *model.RecurringTransaction) *model.RecurringTransaction {
+		rt.NextPaymentAt, rt.ScheduledDay = nov27, 27
 		return rt
 	}
-	expense := at29(prTemplate(t, model.TransactionTypeExpense, prEveryday, "30", model.RecurringScheduleMonthly))
-	income := at29(prTemplate(t, model.TransactionTypeIncome, prEveryday, "40", model.RecurringScheduleMonthly))
-	transfer := at29(prTemplate(t, model.TransactionTypeTransfer, prEveryday, "25", model.RecurringScheduleMonthly))
+	expense := at27(prTemplate(t, model.TransactionTypeExpense, prEveryday, "30", model.RecurringScheduleMonthly))
+	income := at27(prTemplate(t, model.TransactionTypeIncome, prEveryday, "40", model.RecurringScheduleMonthly))
+	transfer := at27(prTemplate(t, model.TransactionTypeTransfer, prEveryday, "25", model.RecurringScheduleMonthly))
 	transfer.AccountRecipID = prIDp(t, prOutside)
 	p := prRead(t, prService(&recurringSourceStub{templates: []*model.RecurringTransaction{expense, income, transfer}}, &rateConvertor{rate: "1"}), prEveryday)
 	ctx, acc := context.Background(), prIDs(t, prEveryday)
 
-	for startDay, want := range map[int]string{28: "2026-12-01", 1: "2026-11-01"} {
+	for startDay, want := range map[int]string{28: "2026-10-01", 1: "2026-11-01"} {
 		spend, err := p.SpendingByMonth(ctx, nil, acc, prNov, prDec, startDay)
 		if err != nil {
 			t.Fatal(err)

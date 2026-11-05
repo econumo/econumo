@@ -50,7 +50,7 @@ interface BudgetPeriodState {
    *  still knows the stored month was a default and not a pick */
   adoptedPeriod: string | null
   /** an unpicked default month moves to the opened budget's current period: a
-   *  shifted budget can already be in next month's period */
+   *  shifted budget can still be in last month's period */
   followCurrentPeriod: (budgetId: Id, startDay: number, now?: Date) => void
   /** the budget followCurrentPeriod last ran for this session (not persisted): until
    *  it names the open budget a default month may still move (another budget can

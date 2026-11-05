@@ -68,17 +68,17 @@ func TestGetBudgetPlanShifted(t *testing.T) {
 	h.spend("50", "2026-10-28 00:00:00")
 	h.spend("20", "2026-11-27 10:00:00")
 	h.spend("10", "2026-11-28 00:00:00")
-	h.f.BudgetLimit(fixture.BudgetLimit{ElementID: h.elementID(h.category, model.ElementCategory), Period: "2026-11-01 00:00:00", Amount: "40"})
+	h.f.BudgetLimit(fixture.BudgetLimit{ElementID: h.elementID(h.category, model.ElementCategory), Period: "2026-10-01 00:00:00", Amount: "40"})
 
-	p := h.plan("2026-10-01", 2)
-	sameMonths(t, p, "2026-10-01", "2026-11-01")
+	p := h.plan("2026-09-01", 2)
+	sameMonths(t, p, "2026-09-01", "2026-10-01")
 	row := h.planCategory(p)
-	sameAmount(t, "october actual", row.Cells[0].Actual, "100")
-	sameAmount(t, "november actual", row.Cells[1].Actual, "70")
+	sameAmount(t, "september actual", row.Cells[0].Actual, "100")
+	sameAmount(t, "october actual", row.Cells[1].Actual, "70")
 	if row.Cells[0].Planned != "" {
-		t.Errorf("october planned = %q, want empty", row.Cells[0].Planned)
+		t.Errorf("september planned = %q, want empty", row.Cells[0].Planned)
 	}
-	sameAmount(t, "november planned", row.Cells[1].Planned, "40")
+	sameAmount(t, "october planned", row.Cells[1].Planned, "40")
 	if len(p.OpeningBalances) != 1 {
 		t.Fatalf("opening balances = %+v", p.OpeningBalances)
 	}
@@ -87,8 +87,8 @@ func TestGetBudgetPlanShifted(t *testing.T) {
 	if !ok {
 		t.Fatalf("income uncategorized row missing: %+v", p.Structure.Elements)
 	}
-	sameAmount(t, "october income", income.Cells[0].Actual, "500")
-	sameAmount(t, "november income", income.Cells[1].Actual, "0")
+	sameAmount(t, "september income", income.Cells[0].Actual, "500")
+	sameAmount(t, "october income", income.Cells[1].Actual, "0")
 }
 
 func TestGetBudgetPlanShiftedCurrency(t *testing.T) {
@@ -101,12 +101,12 @@ func TestGetBudgetPlanShiftedCurrency(t *testing.T) {
 	h.f.Transaction(fixture.Transaction{UserID: h.owner.String(), AccountID: euro, CategoryID: h.category, Amount: "10", SpentAt: "2026-10-10 12:00:00"})
 	h.f.Transaction(fixture.Transaction{UserID: h.owner.String(), AccountID: euro, CategoryID: h.category, Amount: "10", SpentAt: "2026-10-29 12:00:00"})
 
-	p := h.plan("2026-10-01", 2)
+	p := h.plan("2026-09-01", 2)
 	row := h.planCategory(p)
 	// [2026-09-28, 2026-10-28) averages October's rate (0.5), [2026-10-28,
 	// 2026-11-28) November's (0.25).
-	sameAmount(t, "october actual", row.Cells[0].Actual, "20")
-	sameAmount(t, "november actual", row.Cells[1].Actual, "40")
+	sameAmount(t, "september actual", row.Cells[0].Actual, "20")
+	sameAmount(t, "october actual", row.Cells[1].Actual, "40")
 }
 
 func TestGetBudgetPlanShiftedSavings(t *testing.T) {
@@ -118,19 +118,19 @@ func TestGetBudgetPlanShiftedSavings(t *testing.T) {
 		Amount: "30", AmountRecipient: "30", SpentAt: "2026-10-29 09:00:00",
 	})
 
-	p := h.plan("2026-10-01", 2)
+	p := h.plan("2026-09-01", 2)
 	if len(p.Structure.Savings) != 1 {
 		t.Fatalf("savings rows = %+v", p.Structure.Savings)
 	}
 	cells := p.Structure.Savings[0].Cells
-	sameAmount(t, "october saved", cells[0].Actual, "0")
-	sameAmount(t, "october closing", cells[0].ClosingBalance, "0")
-	sameAmount(t, "november saved", cells[1].Actual, "30")
-	sameAmount(t, "november closing", cells[1].ClosingBalance, "30")
-	if len(p.SavingsFlows) != 1 || p.SavingsFlows[0].Month != "2026-11-01" {
-		t.Fatalf("savings flows = %+v, want one entry for 2026-11-01", p.SavingsFlows)
+	sameAmount(t, "september saved", cells[0].Actual, "0")
+	sameAmount(t, "september closing", cells[0].ClosingBalance, "0")
+	sameAmount(t, "october saved", cells[1].Actual, "30")
+	sameAmount(t, "october closing", cells[1].ClosingBalance, "30")
+	if len(p.SavingsFlows) != 1 || p.SavingsFlows[0].Month != "2026-10-01" {
+		t.Fatalf("savings flows = %+v, want one entry for 2026-10-01", p.SavingsFlows)
 	}
-	sameAmount(t, "november flow", p.SavingsFlows[0].Amount, "30")
+	sameAmount(t, "october flow", p.SavingsFlows[0].Amount, "30")
 }
 
 func TestGetBudgetPlanShiftedTransfers(t *testing.T) {
@@ -143,8 +143,8 @@ func TestGetBudgetPlanShiftedTransfers(t *testing.T) {
 		})
 	}
 
-	p := h.plan("2026-11-01", 2)
-	sameMonths(t, p, "2026-11-01", "2026-12-01")
+	p := h.plan("2026-10-01", 2)
+	sameMonths(t, p, "2026-10-01", "2026-11-01")
 	for i, want := range []string{"15", "25"} {
 		items := p.Transfers[i].Items
 		if p.Transfers[i].Period != p.Months[i] || len(items) != 1 {
@@ -159,13 +159,13 @@ func TestGetBudgetPlanShiftedUpcoming(t *testing.T) {
 	h.monthly("40", time.Date(2026, 11, 29, 0, 0, 0, 0, time.UTC))
 	h.spend("9", "2026-11-27 10:00:00")
 
-	p := h.plan("2026-11-01", 2)
+	p := h.plan("2026-10-01", 2)
 	row := h.planCategory(p)
 	// the future-dated 9 is upcoming in its own period, the 2026-11-29 payment
 	// in the next one
-	sameAmount(t, "2026-11 upcoming", row.Cells[0].Upcoming, "9")
-	sameAmount(t, "2026-12 upcoming", row.Cells[1].Upcoming, "40")
-	sameAmount(t, "2026-11 actual", row.Cells[0].Actual, "0")
+	sameAmount(t, "2026-10 upcoming", row.Cells[0].Upcoming, "9")
+	sameAmount(t, "2026-11 upcoming", row.Cells[1].Upcoming, "40")
+	sameAmount(t, "2026-10 actual", row.Cells[0].Actual, "0")
 }
 
 // oracleRow is one generated transaction. kind: expense, income, out (to a

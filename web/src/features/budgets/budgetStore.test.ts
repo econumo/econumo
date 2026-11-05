@@ -35,7 +35,7 @@ it('a budget switch resets both views’ element folds', () => {
 })
 
 describe('the default period follows the budget', () => {
-  const now = new Date(2026, 9, 30, 12)
+  const now = new Date(2026, 9, 5, 12)
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(now)
@@ -46,10 +46,10 @@ describe('the default period follows the budget', () => {
     vi.restoreAllMocks()
   })
 
-  it('a fresh store on 30 October opens a day-28 budget on November, without a date-change event', () => {
+  it('a fresh store on 5 October opens a day-28 budget on September, without a date-change event', () => {
     const track = vi.spyOn(metrics, 'trackEvent')
     useBudgetPeriodStore.getState().followCurrentPeriod('b1', 28)
-    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01')
     expect(track).not.toHaveBeenCalled()
   })
 
@@ -80,9 +80,9 @@ describe('the default period follows the budget', () => {
 
   it('the session choice is not persisted; a pick clears the adopted default', () => {
     useBudgetPeriodStore.getState().followCurrentPeriod('b1', 28)
-    useBudgetPeriodStore.getState().setPeriod('2026-09-01')
+    useBudgetPeriodStore.getState().setPeriod('2026-08-01')
     const stored = JSON.parse(localStorage.getItem('budgetPeriod') ?? '{}') as { state: Record<string, unknown> }
-    expect(stored.state.selectedDate).toBe('2026-09-01')
+    expect(stored.state.selectedDate).toBe('2026-08-01')
     expect(stored.state).not.toHaveProperty('periodChosen')
     expect(stored.state).not.toHaveProperty('periodFollowedFor')
     expect(stored.state.adoptedPeriod).toBeNull()
@@ -124,12 +124,12 @@ describe('the adopted default survives a reload', () => {
 
   it('a default adopted from a day-16 budget follows a day-1 budget opened after a reload', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(2026, 9, 20, 12))
+    vi.setSystemTime(new Date(2026, 9, 10, 12))
     useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null })
     useBudgetPeriodStore.getState().followCurrentPeriod('b1', 16)
-    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01')
     const persisted = localStorage.getItem('budgetPeriod') ?? '{}'
-    await reload((JSON.parse(persisted) as { state: Record<string, unknown> }).state, new Date(2026, 9, 20, 12))
+    await reload((JSON.parse(persisted) as { state: Record<string, unknown> }).state, new Date(2026, 9, 10, 12))
     useBudgetPeriodStore.getState().followCurrentPeriod('b1', 1)
     expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01')
   })

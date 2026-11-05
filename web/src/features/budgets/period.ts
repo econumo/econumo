@@ -1,8 +1,8 @@
 import type { BudgetMetaDto } from '@/api/dto/budget'
 
 // The one period rule of the SPA, mirroring the server's model.PeriodWindow /
-// model.PeriodOf. A period is named by its month key "YYYY-MM-01": from day 2 to
-// 15 after the month it starts in, from day 16 on after the month it ends in.
+// model.PeriodOf. A period is named by its month key "YYYY-MM-01", after the
+// month it starts in.
 // Dates are built from local components, never parsed as UTC (see monthDate).
 
 const MIN_DAY = 1
@@ -32,8 +32,7 @@ export function periodStartDayOf(meta: Pick<BudgetMetaDto, 'periodStartDay'>): n
 export function periodWindow(key: string, startDay: number): { start: string; end: string } {
   const d = clampDay(startDay)
   const [y, m] = key.split('-').map(Number)
-  const monthIndex = d >= 16 ? m - 2 : m - 1
-  return { start: isoDay(new Date(y, monthIndex, d)), end: isoDay(new Date(y, monthIndex + 1, d)) }
+  return { start: isoDay(new Date(y, m - 1, d)), end: isoDay(new Date(y, m, d)) }
 }
 
 /** the key of the period holding `day` ("YYYY-MM-DD", any time part ignored) */
@@ -41,7 +40,7 @@ export function periodOf(day: string, startDay: number): string {
   const d = clampDay(startDay)
   const shifted = localDate(day)
   shifted.setDate(shifted.getDate() - (d - 1))
-  return keyOf(shifted.getFullYear(), shifted.getMonth() + (d >= 16 ? 1 : 0))
+  return keyOf(shifted.getFullYear(), shifted.getMonth())
 }
 
 /** the period holding the local date of `now` */

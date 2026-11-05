@@ -1,18 +1,19 @@
 package apiparity
 
 // A day-28 budget read over shifted periods: key 2024-04 covers
-// [2024-03-28, 2024-04-28), key 2024-05 [2024-04-28, 2024-05-28). Every pair
+// [2024-04-28, 2024-05-28), key 2024-05 [2024-05-28, 2024-06-28). Every pair
 // below straddles a boundary by one second, so get-budget and get-budget-plan
 // must split them the same way.
 //
-//	tx-food-before     2024-04-27 23:59:59  expense  30.00  CatFood   key 2024-04
-//	tx-food-after      2024-04-28 00:00:00  expense  20.00  CatFood   key 2024-05
-//	tx-salary-before   2024-05-27 23:59:59  income  500.00  CatSalary key 2024-05
-//	tx-salary-after    2024-05-28 00:00:00  income  700.00  CatSalary key 2024-06
-//	tx-out-before      2024-05-27 12:00:00  transfer 15.00  out       key 2024-05
-//	tx-out-after       2024-05-28 00:00:00  transfer 25.00  out       key 2024-06
+//	tx-food-before     2024-04-27 23:59:59  expense  30.00  CatFood   before the budget's first period
+//	tx-food-after      2024-04-28 00:00:00  expense  20.00  CatFood   key 2024-04
+//	tx-salary-before   2024-05-27 23:59:59  income  500.00  CatSalary key 2024-04
+//	tx-salary-after    2024-05-28 00:00:00  income  700.00  CatSalary key 2024-05
+//	tx-out-before      2024-05-27 12:00:00  transfer 15.00  out       key 2024-04
+//	tx-out-after       2024-05-28 00:00:00  transfer 25.00  out       key 2024-05
 //
-// The fixture's own Txn1/Txn2 sit at 2024-04-01, in key 2024-04.
+// The fixture's own Txn1/Txn2 sit at 2024-04-01, also before the first period,
+// so they and tx-food-before only reach the opening balance.
 
 func init() {
 	register(Scenario{Name: "budget_period_plan", Calls: func() []Call {

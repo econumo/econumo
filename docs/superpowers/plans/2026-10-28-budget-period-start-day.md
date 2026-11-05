@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Start day range 1–28, default 1, stored per budget as `budgets.period_start_day`.
-- Naming: `d = 1` key `M` = `[M-01, (M+1)-01)`; `2 <= d <= 15` key `M` = `[M-d, (M+1)-d)`; `16 <= d <= 28` key `M` = `[(M-1)-d, M-d)`. The rule lives in exactly one helper per stack.
+- Naming: every period is named after the month it starts in, key `M` = `[M-d, (M+1)-d)` for every `d` (`d = 1` is the calendar month). The rule lives in exactly one helper per stack. (Changed on 2026-11-04 from end-month naming for `16 <= d <= 28`; see the spec.)
 - Keys never move: `started_at`, `ended_at`, limit and comment `period`, request dates, Plan `months`, MCP `month` stay `YYYY-MM-01`; request dates snap to the first of their calendar month (day ignored).
 - `get-budget` `filters.periodStart`/`periodEnd` carry the real window; `currencyRates[]` unchanged.
 - A day-1 budget must produce byte-identical responses; the only allowed golden change is the new `periodStartDay: 1` in budget meta (Task 2).
@@ -25,11 +25,11 @@
 
 ## Review Focus
 
-1. A transaction at exactly the window start (`d = 28`, `2026-10-28 00:00:00`) belongs to "November", one at `2026-10-27 23:59:59` to "October" — Task 1 and Task 3 tests.
+1. A transaction at exactly the window start (`d = 28`, `2026-10-28 00:00:00`) belongs to "October", one at `2026-10-27 23:59:59` to "September" — Task 1 and Task 3 tests.
 2. Changing the day on a budget with plans keeps every plan on its key: the same `budgeted` comes back for that month after the change — Task 2 test.
 3. A partner viewing a shared budget gets the budget's periods, not calendar months — Task 3 test.
-4. An ended budget with `d >= 16`: requested months clamp to the end key, the window ends at `PeriodWindow(endKey).end`, the removal window never passes it — Task 3 test.
-5. Caller timezone at the boundary: UTC `2026-10-27 22:00` with `X-Timezone: Asia/Tokyo` (local Oct 28) opens "November" for `d = 28` — Task 3 test.
+4. An ended shifted budget: requested months clamp to the end key, the window ends at `PeriodWindow(endKey).end`, the removal window never passes it — Task 3 test.
+5. Caller timezone at the boundary: UTC `2026-10-27 22:00` with `X-Timezone: Asia/Tokyo` (local Oct 28) opens "October" for `d = 28` — Task 3 test.
 
 ---
 
@@ -51,19 +51,19 @@
   - `(2026-10-01, 1)` → `2026-10-01`, `2026-11-01`
   - `(2026-10-01, 5)` → `2026-10-05`, `2026-11-05`
   - `(2026-10-01, 15)` → `2026-10-15`, `2026-11-15`
-  - `(2026-10-01, 16)` → `2026-09-16`, `2026-10-16`
-  - `(2026-11-01, 28)` → `2026-10-28`, `2026-11-28`
-  - `(2027-01-01, 28)` → `2026-12-28`, `2027-01-28`
-  - `(2028-03-01, 28)` → `2028-02-28`, `2028-03-28`
+  - `(2026-10-01, 16)` → `2026-10-16`, `2026-11-16`
+  - `(2026-10-01, 28)` → `2026-10-28`, `2026-11-28`
+  - `(2026-12-01, 28)` → `2026-12-28`, `2027-01-28`
+  - `(2028-02-01, 28)` → `2028-02-28`, `2028-03-28`
 
-  `TestPeriodOf`: `(2026-10-30 12:00, 28)` → `2026-11-01`; `(2026-10-27 23:59:59, 28)` → `2026-10-01`; `(2026-10-28 00:00:00, 28)` → `2026-11-01`; `(2026-10-04, 5)` → `2026-09-01`; `(2026-12-28, 28)` → `2027-01-01`; `(2028-02-29, 28)` → `2028-03-01`; `(2026-10-31, 1)` → `2026-10-01`.
+  `TestPeriodOf`: `(2026-10-30 12:00, 28)` → `2026-10-01`; `(2026-10-27 23:59:59, 28)` → `2026-09-01`; `(2026-10-28 00:00:00, 28)` → `2026-10-01`; `(2026-10-04, 5)` → `2026-09-01`; `(2026-12-28, 28)` → `2026-12-01`; `(2028-02-29, 28)` → `2028-02-01`; `(2026-10-31, 1)` → `2026-10-01`.
 
   `TestPeriodRoundTrip`: for every `d` in 1..28 and every day 2026-01-01..2028-12-31, `k := PeriodOf(day, d)`, `s, e := PeriodWindow(k, d)`: `!day.Before(s) && day.Before(e)`, and `PeriodOf(s, d) == k`, `PeriodOf(e.Add(-time.Second), d) == k`.
 
-  `TestPeriodKeyOfDay`: `("2026-10-28", 28)` → `"2026-11-01"`; `("2026-10-01", 1)` → `"2026-10-01"`; `("bad", 5)` → error. `TestValidPeriodStartDay`: 0, 29, -1 false; 1, 28 true.
+  `TestPeriodKeyOfDay`: `("2026-10-28", 28)` → `"2026-10-01"`; `("2026-10-01", 1)` → `"2026-10-01"`; `("bad", 5)` → error. `TestValidPeriodStartDay`: 0, 29, -1 false; 1, 28 true.
 
 - [ ] **Step 2: Run** `GOTOOLCHAIN=go1.27.1 /usr/local/go/bin/go test ./internal/model/ -run 'Period' -v` — expect FAIL (undefined).
-- [ ] **Step 3: Implement** the four functions. `PeriodOf`: subtract `startDay-1` days, `FirstOfMonth`, add one month when `startDay >= 16`. `PeriodWindow`: start = `key + (startDay-1)` days, minus one month when `startDay >= 16`; end = start + 1 month (safe because `startDay <= 28`). Treat `startDay` outside 1–28 as 1.
+- [ ] **Step 3: Implement** the four functions. `PeriodOf`: subtract `startDay-1` days, `FirstOfMonth`. `PeriodWindow`: start = `key + (startDay-1)` days; end = start + 1 month (safe because `startDay <= 28`). Treat `startDay` outside 1–28 as 1.
 - [ ] **Step 4: Run** the same command — expect PASS.
 - [ ] **Step 5: Commit** `feat: Add budget period window helpers`.
 
@@ -180,7 +180,7 @@ Repo rule: `startDay == 1` keeps `planMonthExpr` and today's scan unchanged (byt
   - `export function currentPeriod(startDay: number, now: Date = new Date()): string` (local date of `now`)
   - `PeriodDates` props `{ periodKey: string; startDay: number }`: renders nothing for `startDay === 1`, else a muted `"28 Oct – 27 Nov"` (inclusive last day, `Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' })`).
 
-- [ ] **Step 1: Write failing tests** `period.test.ts`, mirroring Task 1 values: `periodWindow('2026-11-01', 28)` → `{start:'2026-10-28', end:'2026-11-28'}`; `('2026-10-01', 16)` → `{start:'2026-09-16', end:'2026-10-16'}`; `periodOf('2026-10-28', 28)` → `'2026-11-01'`; `periodOf('2026-10-27', 28)` → `'2026-10-01'`; `currentPeriod(28, new Date(2026, 9, 30))` → `'2026-11-01'`; `currentPeriod(1, new Date(2026, 9, 30))` → `'2026-10-01'`; round-trip loop for all `d` over 2026–2028. `PeriodDates.test.tsx`: `startDay 1` renders nothing; `('2026-11-01', 28)` in `en` shows `Oct 28` and `Nov 27`. `planHint` test: `wantsUpcomingPanel('2026-10-01', …, startDay 28)` with now 2026-10-30 is false (October is past).
+- [ ] **Step 1: Write failing tests** `period.test.ts`, mirroring Task 1 values: `periodWindow('2026-10-01', 28)` → `{start:'2026-10-28', end:'2026-11-28'}`; `('2026-10-01', 16)` → `{start:'2026-10-16', end:'2026-11-16'}`; `periodOf('2026-10-28', 28)` → `'2026-10-01'`; `periodOf('2026-10-27', 28)` → `'2026-09-01'`; `currentPeriod(28, new Date(2026, 9, 30))` → `'2026-10-01'`; `currentPeriod(1, new Date(2026, 9, 30))` → `'2026-10-01'`; round-trip loop for all `d` over 2026–2028. `PeriodDates.test.tsx`: `startDay 1` renders nothing; `('2026-10-01', 28)` in `en` shows `Oct 28` and `Nov 27`. `planHint` test: `wantsUpcomingPanel('2026-08-01', …, startDay 28)` with now 2026-10-05 is false (August is past; September is current).
 - [ ] **Step 2: Run** `cd web && pnpm vitest run src/features/budgets/period src/features/budgets/PeriodDates src/features/budgets/planHint` — expect FAIL.
 - [ ] **Step 3: Implement** `period.ts`, `PeriodDates`, the DTO field, and replace each listed `currentMonth()` with `currentPeriod(periodStartDayOf(meta))`. Render `PeriodDates` next to the period strip on desktop and in the phone month header (placement is provisional; keep it one element easy to move).
 - [ ] **Step 4: Run** `make web-test && make web-lint && cd web && pnpm tsc --noEmit` — PASS.
@@ -210,7 +210,7 @@ Repo rule: `startDay == 1` keeps `planMonthExpr` and today's scan unchanged (byt
 ### Task 7: Docs, full verification, PR
 
 **Files:**
-- Modify: `docs/regression-test-plan.md` (budget section: set day on create; change day with existing plans → warning, plans stay; shifted budget figures, lists and Plan columns split at the boundary; header dates; shared budget seen by both users with the same periods; 📱 phone header dates), `CLAUDE.md` ("Notable behaviours": a "Budget period start day" bullet stating the key/window rule, the 2–15 / 16–28 naming, `filters` carrying the window, request dates naming keys, and that changing the naming rule needs a key migration)
+- Modify: `docs/regression-test-plan.md` (budget section: set day on create; change day with existing plans → warning, plans stay; shifted budget figures, lists and Plan columns split at the boundary; header dates; shared budget seen by both users with the same periods; 📱 phone header dates), `CLAUDE.md` ("Notable behaviours": a "Budget period start day" bullet stating the key/window rule, the start-month naming, `filters` carrying the window, request dates naming keys, and that changing the naming rule needs a key migration)
 
 - [ ] **Step 1:** Write both doc changes.
 - [ ] **Step 2: Run** `make test` — PASS (Go smoke + pgsql repo suite + enginecompare + web).

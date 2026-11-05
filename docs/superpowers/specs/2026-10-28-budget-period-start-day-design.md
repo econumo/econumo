@@ -48,26 +48,31 @@ A period keeps being identified by a month, stored and sent as `YYYY-MM-01` exac
 (`budgets.started_at`, `budgets.ended_at`, `budgets_elements_limits.period`, comment
 periods, request `periodStart`, Plan columns, MCP `month`; the one exception is the
 `get-budget` `filters` block, below). Only the date range that key covers
-changes. A shifted period is named after the month it starts in for days 2–15 and the month
-it ends in for days 16–28:
+changes. Every period is named after the month it starts in: key `M` covers
+`[M-d, (M+1)-d)` for every `d`.
 
 - `d = 1`: key `M` covers `[M-01, (M+1)-01)` (today's behaviour).
-- `2 <= d <= 15`: key `M` covers `[M-d, (M+1)-d)` — named after the month it starts in.
-  Example `d = 5`: "October" = 5 Oct – 4 Nov.
-- `16 <= d <= 28`: key `M` covers `[(M-1)-d, M-d)` — named after the month it ends in.
-  Example `d = 28`: "November" = 28 Oct – 27 Nov.
+- Example `d = 5`: "October" = 5 Oct – 4 Nov.
+- Example `d = 15`: "September" = 15 Sep – 14 Oct.
+- Example `d = 28`: "October" = 28 Oct – 27 Nov; "September" = 28 Sep – 27 Oct.
 
 Here `X-d` means day `d` of month `X` at 00:00. Because `d <= 28`, every month has that day
 and no clamping is ever needed.
+
+**Changed on 2026-11-04.** The first version of this design named a period after the
+month it ends in from day 16 on (`16 <= d <= 28`: key `M` covered `[(M-1)-d, M-d)`, so
+"November" was 28 Oct – 27 Nov at `d = 28`). After the issue reporters' feedback on #279
+the rule became start-month naming for every day. Nothing had been released, so no data
+moved.
 
 The naming rule must live in exactly one helper per stack (below), so it can be changed
 later. Changing it after release is a code change plus a migration: for budgets on the
 affected days, move `started_at`, `ended_at`, limit and comment periods by one month so each
 plan stays on the dates it was made for.
 
-The inverse, the period a date belongs to: subtract `d - 1` days, take the first of that
-month, and add one month when `d >= 16`. Example `d = 28`, 30 Oct: 30 Oct − 27 days = 3 Oct
-→ October → +1 → November. ✓
+The inverse, the period a date belongs to: subtract `d - 1` days and take the first of that
+month. Example `d = 28`, 30 Oct: 30 Oct − 27 days = 3 Oct → October ✓; 5 Oct − 27 days =
+8 Sep → September ✓.
 
 Bounds are day boundaries on the stored `spent_at` wall clock, exactly like today's month
 bounds.
@@ -83,7 +88,7 @@ the day is ignored.
 **`filters.periodStart` / `filters.periodEnd` carry the real window** (builder-check call):
 in the `get-budget` response (REST and MCP) these two fields become the shifted date range
 the figures were computed over (e.g. `2026-10-28 00:00:00` / `2026-11-28 00:00:00` for
-"November" at `d = 28`); for a day-1 budget they are unchanged. They are the one place a
+"October" at `d = 28`); for a day-1 budget they are unchanged. They are the one place a
 client or an MCP agent can read the real dates, and the SPA can show the range from them
 instead of computing it. `currencyRates[].periodStart/periodEnd` keep reporting the rate
 period as today.
@@ -91,7 +96,8 @@ period as today.
 ### "Today" and the current period
 
 The caller's current period is the period containing the caller's local today (`X-Timezone`,
-as now). On 30 October a budget with `d = 28` opens on "November". Everything that today
+as now). On 30 October a budget with `d = 28` opens on "October" (28 Oct – 27 Nov); on
+5 October it opens on "September" (28 Sep – 27 Oct). Everything that today
 asks for "the current month" asks for the current period instead: the default month when
 opening a budget, the default start of a new budget, the Plan window that must include the
 current month, plan hints and the still-due list (current period onward), the membership
@@ -120,7 +126,7 @@ payment is counted in, and the MCP defaults.
 
 ### Header (user direction, to be iterated later)
 
-The header and month switcher keep showing the month name ("November"). The shifted date
+The header and month switcher keep showing the month name ("October"). The shifted date
 range (e.g. "28 Oct – 27 Nov") must be visible somewhere for a budget whose day is not 1;
 its final spot will be designed with the user afterwards. For this change the builder puts
 it in a simple, unobtrusive place and keeps it easy to move. A day-1 budget shows no range.

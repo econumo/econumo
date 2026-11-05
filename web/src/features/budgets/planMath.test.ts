@@ -395,12 +395,12 @@ describe('totals + balance', () => {
     const under = mkEl({ id: 'exp', type: 1, name: 'Under', cells: [{ actual: '10', planned: '50' }, { actual: '0', planned: '0' }] })
     const plan = mkPlan({ months: ['2026-07-01', '2026-08-01'], structure: { folders: [], elements: [under] } })
     const ex = makePlanExchange(plan, [usd])
-    const now = new Date(2026, 6, 25)
-    // a calendar budget is still in July: its unmet plan counts
-    expect(planTotals(plan, ex, now)[0].effectiveExpense).toBe('50')
-    // a day-20 budget is in its August period on 25 July: July is past, only the actual counts
+    const now = new Date(2026, 7, 5)
+    // a calendar budget is in August: July is past, only the actual counts
+    expect(planTotals(plan, ex, now)[0].effectiveExpense).toBe('10')
+    // a day-20 budget is still in its July period on 5 August: its unmet plan counts
     const shifted = { ...plan, meta: { ...plan.meta, periodStartDay: 20 } }
-    expect(planTotals(shifted, ex, now)[0].effectiveExpense).toBe('10')
+    expect(planTotals(shifted, ex, now)[0].effectiveExpense).toBe('50')
   })
 
   it('exposes effectiveIncome/effectiveExpense; net is their difference', () => {
@@ -1080,7 +1080,7 @@ describe('projectSavingsClosings', () => {
     expect(got.map(Number)).toEqual([1100, 1500, 1900, 1900])
   })
 
-  it('counts from the budget period holding today: on 15 July a day-16 budget is still in July', () => {
+  it('counts from the budget period holding today: on 15 July a day-16 budget is still in June', () => {
     const row = mkSavingsEl({
       id: 'sav',
       name: 'TFSA',
@@ -1092,10 +1092,10 @@ describe('projectSavingsClosings', () => {
       ],
     })
     const at = (startDay: number, today: Date) => projectSavingsClosings(row, months, startDay, today).cells.map((c) => Number(c.closingBalance))
-    expect(at(16, now)).toEqual([1000, 1100, 1200, 1300])
-    // on 20 July a day-16 budget has moved on to its August period
-    expect(at(16, new Date(2026, 6, 20))).toEqual([1000, 1000, 1100, 1200])
-    expect(at(1, new Date(2026, 6, 20))).toEqual([1000, 1100, 1200, 1300])
+    expect(at(16, now)).toEqual([1100, 1200, 1300, 1400])
+    expect(at(1, now)).toEqual([1000, 1100, 1200, 1300])
+    // on 20 July a day-16 budget has moved on to its July period
+    expect(at(16, new Date(2026, 6, 20))).toEqual([1000, 1100, 1200, 1300])
   })
 
   it('an over-met plan adds nothing; a deleted account and a server without balances are left as sent', () => {

@@ -165,7 +165,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 		}
 
 		sdk.AddTool(s, &sdk.Tool{Name: "get_budget",
-			Description: "Full monthly budget state: folders, envelopes, categories, tags, limits, spent and available amounts. When the budget's period_start_day is not 1, a month runs from that day to the day before it in the following month (from day 16 on, the month is named after the one it ends in); filters.periodStart/periodEnd carry the real window."},
+			Description: "Full monthly budget state: folders, envelopes, categories, tags, limits, spent and available amounts. When the budget's period_start_day is not 1, a month runs from that day to the day before it in the following month and is named after the month it starts in; filters.periodStart/periodEnd carry the real window."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in getBudgetInput) (*sdk.CallToolResult, model.GetBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "get_budget")
 				userID, err := webmcp.UserID(ctx)

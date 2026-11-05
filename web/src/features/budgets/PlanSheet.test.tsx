@@ -160,12 +160,12 @@ it('a budget whose months start on the 28th shows each month\'s dates under its 
   const cols = within(header).getAllByRole('columnheader')
   expect(within(header).getAllByTestId('plan-month-dates')).toHaveLength(cols.length)
   const aug = cols.find((c) => c.getAttribute('data-month') === '2026-08-01')!
-  expect(within(aug).getByTestId('plan-month-dates')).toHaveTextContent('Jul 28 – Aug 27')
-  expect(within(aug).getByTestId('plan-month-dates')).toHaveAttribute('title', 'Jul 28 – Aug 27')
+  expect(within(aug).getByTestId('plan-month-dates')).toHaveTextContent('Aug 28 – Sep 27')
+  expect(within(aug).getByTestId('plan-month-dates')).toHaveAttribute('title', 'Aug 28 – Sep 27')
   // the name keeps its own line; the dates are the second
   expect(aug.querySelector('[data-month-label]')).toHaveTextContent(/^August$/)
   const jul = cols.find((c) => c.getAttribute('data-month') === '2026-07-01')!
-  expect(within(jul).getByTestId('plan-month-dates')).toHaveTextContent('Jun 28 – Jul 27')
+  expect(within(jul).getByTestId('plan-month-dates')).toHaveTextContent('Jul 28 – Aug 27')
 })
 
 it('a calendar-month budget shows no dates under the month names', async () => {
