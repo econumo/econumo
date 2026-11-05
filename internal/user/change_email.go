@@ -31,12 +31,12 @@ func (s *Service) RequestEmailChange(ctx context.Context, userID vo.Id, req mode
 		return nil, &errs.ValidationError{Msg: "Password is not correct", MsgCode: errs.CodeUserPasswordIncorrect}
 	}
 
-	newEmail := strings.TrimSpace(req.NewEmail)
+	newEmail := model.NormalizeEmail(req.NewEmail)
 	currentEmail, derr := s.encode.Decode(u.Email)
 	if derr != nil {
 		return nil, derr
 	}
-	if strings.EqualFold(newEmail, strings.TrimSpace(currentEmail)) {
+	if newEmail == model.NormalizeEmail(currentEmail) {
 		return nil, &errs.ValidationError{Msg: "The new email is the same as your current email.", MsgCode: errs.CodeUserEmailUnchanged}
 	}
 	exists, err := s.repo.ExistsByEmail(ctx, newEmail)
@@ -96,7 +96,7 @@ func (s *Service) ConfirmEmailChange(ctx context.Context, userID, currentTokenID
 		attempt.keep()
 		return empty, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
 	}
-	encrypted, eerr := s.encode.Encode(cr.NewEmail)
+	encrypted, eerr := s.encode.Encode(model.NormalizeEmail(cr.NewEmail))
 	if eerr != nil {
 		return empty, eerr
 	}
@@ -192,7 +192,7 @@ func (s *Service) ResendEmailChangeCode(ctx context.Context, userID vo.Id) (*mod
 }
 
 // issueEmailChangeCode generates a fresh code, replaces any pending row for the
-// user (preserving newEmail), and emails the code to the new address. It does
+// user (keeping newEmail), and emails the code to the new address. It does
 // NOT rate-limit — callers own that. The insert is fenced on u's credentials
 // generation — the one read together with the password the caller verified —
 // so a reset committing in between refuses the grant rather than handing the

@@ -4,6 +4,7 @@ package upgradetest
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 )
@@ -30,6 +31,7 @@ type seeded struct {
 	ownerID, partnerID           string
 	ownerSession, partnerSession string
 	pat                          string
+	twins                        map[string]string // address -> user id
 	usd, eur                     string
 	wallet, card, cash           string
 	groceries, salary            string
@@ -99,6 +101,15 @@ func seed(t *testing.T, in *instance, from semver) seeded {
 	partnerLogin := anon.login(partnerEmail, partnerPasswd)
 	s.ownerID, s.ownerSession = ownerLogin.User.Id, ownerLogin.Token
 	s.partnerID, s.partnerSession = partnerLogin.User.Id, partnerLogin.Token
+	// Releases on SQLite accept both of these (its lower() folds ASCII only), so the
+	// upgrade has to survive the pair. PostgreSQL on a UTF-8 locale refuses the second.
+	s.twins = map[string]string{}
+	for _, email := range []string{"JÖRG@example.test", "jörg@example.test"} {
+		r := anon.do("POST", "/api/v1/user/register-user", map[string]any{"email": email, "password": ownerPassword, "name": "Upgrade Twin"})
+		if r.status == http.StatusOK {
+			s.twins[email] = anon.login(email, ownerPassword).User.Id
+		}
+	}
 	owner := in.client(t, s.ownerSession)
 	partner := in.client(t, s.partnerSession)
 

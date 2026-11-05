@@ -83,6 +83,17 @@ func (e *EncodeService) encodeWithIV(value, iv []byte) (string, error) {
 	return base64.StdEncoding.EncodeToString(out), nil
 }
 
+// LooksEncrypted reports whether a value has the shape Encode produces: base64 of an IV,
+// an HMAC and at least one cipher block. An address with an @ never does.
+func LooksEncrypted(value string) bool {
+	raw, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		return false
+	}
+	body := len(raw) - aes.BlockSize - sha256.Size
+	return body >= aes.BlockSize && body%aes.BlockSize == 0
+}
+
 // Decode reverses Encode, returning an error when the HMAC check fails.
 // Empty salt -> passthrough.
 func (e *EncodeService) Decode(value string) (string, error) {

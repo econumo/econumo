@@ -317,7 +317,8 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   `client_secret_post`/`client_secret_basic`). Redirect URIs must be https (ASCII host
   only) or http on a loopback host (`127.0.0.1`, `[::1]`, `localhost`; the port is
   ignored when matching), at most 2048 bytes; clients never approved are purged
-  on the next registration once 30 days old. Registration is behind the per-IP per-endpoint rate cap; the token
+  on the next registration once 30 days old, and at most 1000 are kept, oldest out first, so
+  anonymous registration cannot grow the database without bound. Registration is behind the per-IP per-endpoint rate cap; the token
   endpoint has no limiter of its own.
 - Consent lives at the SPA route `/oauth/authorize`. The session is a localStorage
   bearer token, so the browser cannot carry it to a Go-rendered page: the SPA calls
@@ -659,7 +660,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   no token-related configuration. Persist the `/app/var` volume (the db) to keep data and
   logins valid. Leftover `ECONUMO_JWT_*` variables from older builds are ignored.
 - `ECONUMO_DATA_SALT` — **Deprecated and IGNORED by the API/repositories**, which always run
-  salt-free (plaintext emails, `lower(email)` as the lookup key). It is consumed by exactly one
+  salt-free (plaintext normalized emails, `email` as the lookup key). It is consumed by exactly one
   code path, the `data:remove-salt` migration (below), which reads it to decrypt existing data.
   Set it to your old salt, run that command, then unset it. Until you migrate, a still-salted
   database has unreadable emails, so those users cannot log in (the intended push to migrate);
@@ -1111,11 +1112,12 @@ migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
 migration:seed-transaction-sort-keys
 migration:copy-access-tokens
+migration:normalize-emails
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
-back to plaintext, so `ECONUMO_DATA_SALT` can be removed. `lower(email)` is the
-unique lookup key (unique expression index `users_email_lower_uniq`), so a
+back to plaintext, so `ECONUMO_DATA_SALT` can be removed. `email` is the
+unique lookup key (unique index `users_email_uniq`), so a
 still-salted instance MUST run this command after upgrading, before that index
 is relied on — otherwise emails stay encrypted and those users can't log in
 (they are already login-broken pre-migration, so this is not a regression).
@@ -1180,6 +1182,20 @@ lists used before keys existed (spent_at DESC, id), the rows it is the source of
 transfers it receives together. One account per DB transaction, with that account's revision
 bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
 migration step `20261024000001`, right after the SQL file that adds the columns.
+
+`migration:normalize-emails` rewrites stored addresses to `model.NormalizeEmail` (boot step
+`20261103000001`, right after the SQL file that swaps the `lower(email)` index for a unique one on
+`email`). This changes the spelling users see, and the original case is not kept. Addresses that
+normalize alike could already exist, since SQLite's `lower()` folds ASCII only: an address already
+normalized keeps its place, then the oldest account takes the normalized form, and the others keep
+their spelling, each logged once at WARN by user id, because their data cannot be merged and failing
+the boot would take the instance down. Such an account signs in by its exact spelling (lookups try it
+before the normalized form), a save leaves its spelling alone, and it still shares rate-limit counters
+with the other account until the operator moves it with `user:change-email`. Idempotent, and rerunning
+it by hand normalizes such an account once the other has moved away. Rows with the shape of ciphertext
+(`auth.LooksEncrypted`) are skipped, because lowercasing ciphertext would destroy it; `data:remove-salt` stores
+what it decrypts normalized by the same rule, and refuses, naming both user ids, when two accounts
+decrypt to byte-identical addresses.
 
 `migration:copy-access-tokens` is step 2 of the three-step `access_tokens` repair
 (`20261031000010` creates `access_tokens_new` in the final shape, `20261031000011` runs
@@ -1402,7 +1418,7 @@ data unreadable. Most are also asserted by the test suite.
 
 ### Auth crypto (`internal/infra/auth/`)
 - **Password hash**: versioned by `users.algorithm`. `sha512` (legacy, all pre-existing rows): sha512, 500 iterations, base64 (88 chars), salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`; verify rejects len≠88 or a `$`, constant-time. `argon2id` (every new hash: registration and all password changes): PHC string `$argon2id$v=19$m=19456,t=2,p=1$…$…` (OWASP params), salt embedded in the hash — the `salt` column persists for sha512 rows. Verification dispatches on the column; unknown values fail closed.
-- **User lookup key**: `lower(email)` — enforced unique by the expression index `users_email_lower_uniq`; repo lookups are `GetByEmail`/`ExistsByEmail` (`WHERE lower(email) = lower(?)`). The legacy `identifier` column is retained (dropping a NOT NULL UNIQUE column would force a SQLite table rebuild) but retired: it now holds the row's own `id` as a unique non-null placeholder, no longer derived from email. `EncodeService.Hash` (the md5 identifier derivation) was removed — nothing computes it anymore.
+- **User lookup key**: `users.email` holds `model.NormalizeEmail(email)`, computed in Go (the one form every write, lookup, comparison and rate-limit key goes through) because the engines' `lower()` disagree; enforced unique by `users_email_uniq`. The case an address was typed in is not kept. Trim plus Unicode lowercase, except that a non-ASCII letter whose lowercase is ASCII (`İ`, the Kelvin sign) keeps its form, since it spells a different mailbox. Callers hand `GetByEmail`/`ExistsByEmail` the address as typed; the repo tries that exact spelling, then the normalized form. The services normalize on every email write, and `Save` stores the aggregate's spelling verbatim. The legacy `identifier` column is retained (dropping a NOT NULL UNIQUE column would force a SQLite table rebuild) but retired: it now holds the row's own `id` as a unique non-null placeholder, no longer derived from email. `EncodeService.Hash` (the md5 identifier derivation) was removed — nothing computes it anymore.
 - **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
 - **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy email data to plaintext (the repo writes the row `id` into `identifier` automatically, so no re-derivation is needed).
 
@@ -1608,7 +1624,7 @@ data unreadable. Most are also asserted by the test suite.
   importer's own rules never apply there, and the owner's "all" apply reaches those rows.
 - **OAuth/OIDC auto-link and email verification**: a callback with a verified (or
   `ECONUMO_OIDC_TRUST_EMAIL`-trusted) email auto-links to an existing **passwordless**
-  account by `lower(email)` (no matching identity yet) — no confirmation screen, since both
+  account by `email` (no matching identity yet) — no confirmation screen, since both
   the account's address and the new claim were proven by providers. A match on an account
   that has a password is refused (`account_exists_password`), never merged. An unverified
   email is rejected (`email_unverified`) for every intent, including an already-linked

@@ -1,0 +1,10 @@
+{
+  "name": "econumo-release-tools",
+  "private": true,
+  "dependencies": {
+    "changelogithub": "15.0.5"
+  },
+  "overrides": {
+    "tar": "7.5.22"
+  }
+}

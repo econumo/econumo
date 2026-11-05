@@ -18,13 +18,33 @@ func (pgsqlQuerier) GetUserByID(ctx context.Context, db backend.DBTX, id string)
 	return userRow(u), err
 }
 
-func (pgsqlQuerier) GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error) {
-	u, err := pgsqlgen.New(db).GetUserByEmail(ctx, email)
+func (pgsqlQuerier) GetUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (userRow, error) {
+	u, err := pgsqlgen.New(db).GetUserByEmail(ctx, pgsqlgen.GetUserByEmailParams(p))
 	return userRow(u), err
 }
 
-func (pgsqlQuerier) ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error) {
-	return pgsqlgen.New(db).ExistsUserByEmail(ctx, email)
+func (pgsqlQuerier) ExistsUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (bool, error) {
+	return pgsqlgen.New(db).ExistsUserByEmail(ctx, pgsqlgen.ExistsUserByEmailParams(p))
+}
+
+func (pgsqlQuerier) ListUserEmailsOldestFirst(ctx context.Context, db backend.DBTX) ([]userEmailRow, error) {
+	rows, err := pgsqlgen.New(db).ListUserEmailsOldestFirst(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]userEmailRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, userEmailRow(row))
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) GetUserIDByExactEmail(ctx context.Context, db backend.DBTX, email string) (string, error) {
+	return pgsqlgen.New(db).GetUserIDByExactEmail(ctx, email)
+}
+
+func (pgsqlQuerier) SetUserEmail(ctx context.Context, db backend.DBTX, p setEmailParams) error {
+	return pgsqlgen.New(db).SetUserEmail(ctx, pgsqlgen.SetUserEmailParams(p))
 }
 
 func (pgsqlQuerier) ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error) {

@@ -79,6 +79,16 @@ navigation (single-pane vs sidebar).
       server stdout in dev) → enter code + new password → old password rejected,
       new one works; all other sessions of the user are revoked.
 - [ ] Recovery with a wrong/expired code → clear error, password unchanged.
+- [ ] Registering `JÖRG@…` stores and shows `jörg@…`. Signing in and Forgot password work from any
+      case, the code goes to the stored `jörg@…` and the reset succeeds, and registering `JÖRG@…`
+      again is refused as already existing. Changing an email to `NEW@…` stores `new@…`.
+- [ ] Forgot password for a look-alike of a real address (`admin@gmaİl.…` when `admin@gmail.…`
+      exists) sends no email at all, and that address cannot sign in with the real password.
+- [ ] Upgrading rewrites stored addresses to lowercase (`Alice@…` shows as `alice@…` and still signs
+      in). An instance holding both `JÖRG@…` and `jörg@…` boots, logs one WARN with the user id of the
+      account left as `JÖRG@…`, and each spelling still signs in to its own account. After
+      `user:change-email` moves that one, it behaves like any other account. A still-salted instance
+      keeps its encrypted emails intact until `data:remove-salt`, which stores them lowercase.
 - [ ] With `MAILER_DSN=smtp://user:pass@host:587?from=…` (STARTTLS) and with
       `smtps://…:465` (implicit TLS) pointed at a real relay, the reset code
       email arrives with the right From/Reply-To and a readable non-English
@@ -699,9 +709,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       rest are 429, and the owner still signs in from another IP.
 - [ ] Limits where every request counts hold under a burst too: 64 `remind-password` requests at
       once for one email from one IP send 3 emails and answer the rest with 429.
-- [ ] A successful login does not reset the ceiling (SQLite): with accounts `JÖRG@…` and `jörg@…`,
-      signing in to one while sending wrong passwords to the other from many IPs still reaches 429
-      after 50 failures. A success still forgives that IP's own typos.
+- [ ] A successful login does not reset the ceiling: signing in to an account while wrong
+      passwords reach it from many IPs still ends in 429 after 50 failures. A success still forgives
+      that IP's own typos.
 - [ ] With `ECONUMO_CLIENT_IP_HEADER` set for the proxy, two clients through it are limited
       separately (unset, they count as one IP). With `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` also set, a
       direct request with a forged header is limited by its real address.
@@ -2285,7 +2295,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       registered shows the server's error and no buttons, and does not redirect;
       for an unknown client the error reads "This app's registration has expired
       or is unknown. Remove Econumo from the app and add it again." A client that
-      registered up to 30 days ago and was never approved is still known.
+      registered up to 30 days ago and was never approved is still known, unless
+      1,000 newer unapproved registrations arrived since: the oldest then make room,
+      and a client that was ever approved is never removed this way.
       An unusual `scope` value (for example `scope=openid`) does not fail: the
       app is connected with full MCP access as usual.
       One with only a malformed parameter (missing PKCE challenge, wrong
