@@ -93,42 +93,6 @@ func (q *Queries) GetEarliestCurrencyRateDate(ctx context.Context, baseCurrencyI
 	return published_at, err
 }
 
-const getEarliestCurrencyRates = `-- name: GetEarliestCurrencyRates :many
-SELECT cr.currency_id, cr.rate::text AS rate FROM currencies_rates cr
-WHERE cr.base_currency_id = $1 AND cr.published_at = (
-    SELECT MIN(c2.published_at) FROM currencies_rates c2
-    WHERE c2.currency_id = cr.currency_id AND c2.base_currency_id = cr.base_currency_id
-)
-`
-
-type GetEarliestCurrencyRatesRow struct {
-	CurrencyID string
-	Rate       string
-}
-
-func (q *Queries) GetEarliestCurrencyRates(ctx context.Context, baseCurrencyID string) ([]GetEarliestCurrencyRatesRow, error) {
-	rows, err := q.db.QueryContext(ctx, getEarliestCurrencyRates, baseCurrencyID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []GetEarliestCurrencyRatesRow{}
-	for rows.Next() {
-		var i GetEarliestCurrencyRatesRow
-		if err := rows.Scan(&i.CurrencyID, &i.Rate); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getHiddenCurrencyIDs = `-- name: GetHiddenCurrencyIDs :many
 SELECT currency_id FROM users_hidden_currencies WHERE user_id = $1
 `
@@ -210,6 +174,52 @@ func (q *Queries) GetLatestCurrencyRateListView(ctx context.Context) ([]GetLates
 			&i.PublishedAt,
 			&i.Rate,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getNearestCurrencyRates = `-- name: GetNearestCurrencyRates :many
+SELECT c.id AS currency_id, CAST(COALESCE(
+    (SELECT r.rate FROM currencies_rates r
+     WHERE r.currency_id = c.id AND r.base_currency_id = $1 AND r.published_at < $2
+     ORDER BY r.published_at DESC LIMIT 1),
+    (SELECT r.rate FROM currencies_rates r
+     WHERE r.currency_id = c.id AND r.base_currency_id = $1
+     ORDER BY r.published_at ASC LIMIT 1)
+) AS TEXT) AS rate
+FROM currencies c
+WHERE EXISTS (SELECT 1 FROM currencies_rates r WHERE r.currency_id = c.id AND r.base_currency_id = $1)
+`
+
+type GetNearestCurrencyRatesParams struct {
+	BaseCurrencyID string
+	Before         time.Time
+}
+
+type GetNearestCurrencyRatesRow struct {
+	CurrencyID string
+	Rate       string
+}
+
+func (q *Queries) GetNearestCurrencyRates(ctx context.Context, arg GetNearestCurrencyRatesParams) ([]GetNearestCurrencyRatesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getNearestCurrencyRates, arg.BaseCurrencyID, arg.Before)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetNearestCurrencyRatesRow{}
+	for rows.Next() {
+		var i GetNearestCurrencyRatesRow
+		if err := rows.Scan(&i.CurrencyID, &i.Rate); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -162,7 +162,8 @@ function withTransactionRestore(inner: Persister, maxAge: number, buster: string
 
 // A report spans up to 240 months; anything past three years is fetched again
 // rather than kept in the localStorage snapshot, which has a few MB to share.
-const PERSISTED_REPORT_MONTHS = 36
+// 37: the 3y preset in December, with its opening month.
+const PERSISTED_REPORT_MONTHS = 37
 
 function isLongReport(key: readonly unknown[], data: unknown): boolean {
   if (key[0] !== queryKeys.reportNetWorth[0]) {

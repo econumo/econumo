@@ -40,7 +40,7 @@ type providerQuerier interface {
 	GetAverage(ctx context.Context, db backend.DBTX, start, end time.Time, baseID string) ([]avgRow, error)
 	GetLatestDate(ctx context.Context, db backend.DBTX, baseID string, before time.Time) (time.Time, error)
 	GetEarliestDate(ctx context.Context, db backend.DBTX, baseID string) (time.Time, error)
-	GetEarliestRates(ctx context.Context, db backend.DBTX, baseID string) ([]avgRow, error)
+	GetNearestRates(ctx context.Context, db backend.DBTX, baseID string, before time.Time) ([]avgRow, error)
 	GetFixedRates(ctx context.Context, db backend.DBTX) ([]fixedRateRow, error)
 }
 
@@ -102,6 +102,22 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 	if err != nil {
 		return nil, err
 	}
+	// Rate histories start and stop at different dates, so a month can hold rates
+	// for some currencies only. The others take their latest earlier rate, else
+	// their first: with none a foreign amount would count at face value.
+	nearest, err := p.q.GetNearestRates(ctx, p.db(ctx), baseID.String(), end)
+	if err != nil {
+		return nil, err
+	}
+	covered := make(map[string]bool, len(rows))
+	for _, r := range rows {
+		covered[r.CurrencyID] = true
+	}
+	for _, r := range nearest {
+		if !covered[r.CurrencyID] {
+			rows = append(rows, r)
+		}
+	}
 	out := make([]model.FullRate, 0, len(rows))
 	for _, r := range rows {
 		id, perr := vo.ParseId(r.CurrencyID)
@@ -119,27 +135,6 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 		return nil, err
 	}
 	for _, r := range fixed {
-		id, perr := vo.ParseId(r.CurrencyID)
-		if perr != nil {
-			return nil, perr
-		}
-		out = append(out, model.FullRate{CurrencyID: id, Rate: vo.NewDecimal(r.Rate)})
-	}
-	return out, nil
-}
-
-// EarliestRates returns each currency's first stored rate for the base currency.
-func (p *RateProvider) EarliestRates(ctx context.Context) ([]model.FullRate, error) {
-	baseID, err := p.BaseCurrencyID(ctx)
-	if err != nil {
-		return nil, err
-	}
-	rows, err := p.q.GetEarliestRates(ctx, p.db(ctx), baseID.String())
-	if err != nil {
-		return nil, err
-	}
-	out := make([]model.FullRate, 0, len(rows))
-	for _, r := range rows {
 		id, perr := vo.ParseId(r.CurrencyID)
 		if perr != nil {
 			return nil, perr
@@ -218,8 +213,8 @@ func (sqliteProviderQuerier) GetLatestDate(ctx context.Context, db backend.DBTX,
 	return sqlitegen.New(db).GetLatestCurrencyRateDate(ctx, sqlitegen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, Datetime: before.Format(datetime.Layout)})
 }
 
-func (sqliteProviderQuerier) GetEarliestRates(ctx context.Context, db backend.DBTX, baseID string) ([]avgRow, error) {
-	rows, err := sqlitegen.New(db).GetEarliestCurrencyRates(ctx, baseID)
+func (sqliteProviderQuerier) GetNearestRates(ctx context.Context, db backend.DBTX, baseID string, before time.Time) ([]avgRow, error) {
+	rows, err := sqlitegen.New(db).GetNearestCurrencyRates(ctx, sqlitegen.GetNearestCurrencyRatesParams{BaseCurrencyID: baseID, Before: before.Format(datetime.Layout)})
 	if err != nil {
 		return nil, err
 	}
@@ -266,8 +261,8 @@ func (pgsqlProviderQuerier) GetLatestDate(ctx context.Context, db backend.DBTX, 
 	return pgsqlgen.New(db).GetLatestCurrencyRateDate(ctx, pgsqlgen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, PublishedAt: before})
 }
 
-func (pgsqlProviderQuerier) GetEarliestRates(ctx context.Context, db backend.DBTX, baseID string) ([]avgRow, error) {
-	rows, err := pgsqlgen.New(db).GetEarliestCurrencyRates(ctx, baseID)
+func (pgsqlProviderQuerier) GetNearestRates(ctx context.Context, db backend.DBTX, baseID string, before time.Time) ([]avgRow, error) {
+	rows, err := pgsqlgen.New(db).GetNearestCurrencyRates(ctx, pgsqlgen.GetNearestCurrencyRatesParams{BaseCurrencyID: baseID, Before: before})
 	if err != nil {
 		return nil, err
 	}

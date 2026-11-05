@@ -1633,6 +1633,7 @@
       "show_transactions": "Ver las transacciones de {name}",
       "drag_hint": "Arrastra sobre el gráfico para elegir un periodo",
       "range_transactions": "Transacciones",
+      "range_partial": "Las transacciones de cuentas no compartidas contigo se cuentan, pero no se muestran.",
       "period": "Periodo",
       "headline": "Resumen",
       "col_change": "Cambio",

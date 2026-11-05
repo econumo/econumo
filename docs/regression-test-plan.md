@@ -2123,8 +2123,11 @@ shared with a partner.
       <the month before>"; a Transactions button appears under it, in the same
       row as the chip. Selecting moves nothing below the headline. The
       table's Start/Now/Change follow the range. Transactions lists every transaction of the report's
-      accounts in those months (accounts not on this device, e.g. a
-      partner's unshared ones, are not listed). A plain click on the chart or
+      accounts in those months, a partner's savings accounts included with a
+      signed amount and currency; a partner's other unshared accounts are not
+      listed, and a note under the list says so. A month that fails to load
+      shows an error instead of a shorter list; offline with nothing cached the
+      report and its card show the error, not an endless placeholder. A plain click on the chart or
       the chip's × clears the range; changing the period or scope drops it.
       Clicking the chart draws no outline around it.
 - [ ] Net worth: an account row (inside an opened folder, or a budget's
@@ -2138,7 +2141,8 @@ shared with a partner.
       currency rate: a foreign-currency account (e.g. RUB in a CAD budget) is
       converted at the earliest rate in those months, never shown at face
       value (40,000 RUB is not 40,000 CA$), also when RUB's own rates start later
-      than other currencies'.
+      or stop earlier than other currencies' (it then takes its latest earlier
+      rate, else its first).
 - [ ] Net worth leaves deleted accounts out entirely, in both scopes: no row,
       none of their past balance in the chart or Total, and a deleted
       account's old transactions do not move the start of "All".

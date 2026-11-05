@@ -90,3 +90,34 @@ it('a month that failed to load shows an error, not a shorter list', async () =>
   expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
   expect(screen.queryByText('a saving')).toBeNull()
 })
+
+it("a partner's savings row shows its signed amount and currency", async () => {
+  server.use(
+    ...coreHandlers({ accounts, transactions }),
+    http.get('*/api/v1/budget/get-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { items: [
+      { id: 'w-in', author: partner, currencyId: 'cur-usd', amount: '100', direction: 'in', description: 'in', category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-04 12:00:00' },
+      { id: 'w-out', author: partner, currencyId: 'cur-usd', amount: '40', direction: 'out', description: 'out', category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-03 12:00:00' },
+    ] } })),
+  )
+  renderDialog({ budgetId: 'b1', row: { id: 'b-sav', kind: 'savings', name: 'Bob savings' }, from: '2026-07-01', to: '2026-07-01' })
+  expect(await screen.findByText('100.00 $')).toBeInTheDocument()
+  expect(screen.getByText('-40.00 $')).toBeInTheDocument()
+})
+
+it('a range lists the savings only the budget knows next to the local rows, and says what it cannot list', async () => {
+  server.use(
+    ...coreHandlers({ accounts, transactions }),
+    http.get('*/api/v1/budget/get-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { items: [
+      { id: 'w-s', author: partner, currencyId: 'cur-usd', amount: '100', direction: 'in', description: 'partner saving', category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-04 12:00:00' },
+    ] } })),
+  )
+  renderDialog({
+    budgetId: 'b1',
+    row: { id: 'range', kind: 'accounts', name: 'Family', accountIds: ['a1'], savingsIds: ['b-sav'], partial: true },
+    from: '2026-07-01',
+    to: '2026-07-01',
+  })
+  expect(await screen.findByText('partner saving')).toBeInTheDocument()
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  expect(screen.getByText(/not shared with you are counted but not listed/)).toBeInTheDocument()
+})

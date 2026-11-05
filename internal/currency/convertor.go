@@ -31,9 +31,6 @@ type RateProvider interface {
 	// -> first-of-month .. next month; falls back to the raw [start,end) when no
 	// rates exist).
 	AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error)
-	// EarliestRates returns each currency's first stored rate for the base
-	// currency, for a currency the period's rates do not cover.
-	EarliestRates(ctx context.Context) ([]model.FullRate, error)
 	// BaseCurrencyID returns the base currency's id.
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)
 	// FractionDigits returns a currency's fraction digits (for result rounding).
@@ -92,7 +89,6 @@ func (c *Convertor) BulkConvert(ctx context.Context, periodStart, periodEnd time
 	}
 
 	digits := c.digitsMemo()
-	earliest := c.earliestMemo()
 	result := make(map[string]vo.DecimalNumber, len(items))
 	for key, list := range items {
 		acc := vo.NewDecimal("0")
@@ -101,7 +97,7 @@ func (c *Convertor) BulkConvert(ctx context.Context, periodStart, periodEnd time
 			if _, ok := ratesByKey[monthKey(it.PeriodStart)]; ok {
 				k = monthKey(it.PeriodStart)
 			}
-			conv, cerr := convert(ctx, digits, earliest, ratesByKey[k], baseID, it.From, it.To, it.Amount)
+			conv, cerr := convert(ctx, digits, ratesByKey[k], baseID, it.From, it.To, it.Amount)
 			if cerr != nil {
 				return nil, cerr
 			}
@@ -127,27 +123,7 @@ func (c *Convertor) Convert(ctx context.Context, periodStart, periodEnd time.Tim
 	if err != nil {
 		return vo.DecimalNumber{}, err
 	}
-	return convert(ctx, c.digitsMemo(), c.earliestMemo(), rates, baseID, from, to, sum)
-}
-
-// earliestMemo reads the first stored rates once per call, and only if a
-// conversion needs them: nearly every period has a rate for every currency.
-func (c *Convertor) earliestMemo() func(context.Context) ([]model.FullRate, error) {
-	var (
-		rates  []model.FullRate
-		loaded bool
-	)
-	return func(ctx context.Context) ([]model.FullRate, error) {
-		if loaded {
-			return rates, nil
-		}
-		r, err := c.rates.EarliestRates(ctx)
-		if err != nil {
-			return nil, err
-		}
-		rates, loaded = r, true
-		return rates, nil
-	}
+	return convert(ctx, c.digitsMemo(), rates, baseID, from, to, sum)
 }
 
 // digitsMemo looks each currency's fraction digits up once per call: a
@@ -173,47 +149,25 @@ func (c *Convertor) digitsMemo() func(context.Context, vo.Id) (int, error) {
 
 // convert is the core two-hop conversion through the base currency, rounded to
 // the result currency's fraction digits.
-func convert(ctx context.Context, fractionDigits func(context.Context, vo.Id) (int, error), earliest func(context.Context) ([]model.FullRate, error), rates []model.FullRate, baseID, from, to vo.Id, amount vo.DecimalNumber) (vo.DecimalNumber, error) {
+func convert(ctx context.Context, fractionDigits func(context.Context, vo.Id) (int, error), rates []model.FullRate, baseID, from, to vo.Id, amount vo.DecimalNumber) (vo.DecimalNumber, error) {
 	if from.Equal(to) {
 		return amount, nil
 	}
-	// Rate histories can start at different dates, so a period may hold rates
-	// for some currencies only. Its missing ones take their first stored rate:
-	// without one a foreign amount would count at face value.
-	rateOf := func(id vo.Id) (vo.DecimalNumber, bool, error) {
-		for _, r := range rates {
-			if r.CurrencyID.Equal(id) {
-				return r.Rate, true, nil
-			}
-		}
-		first, err := earliest(ctx)
-		if err != nil {
-			return vo.DecimalNumber{}, false, err
-		}
-		for _, r := range first {
-			if r.CurrencyID.Equal(id) {
-				return r.Rate, true, nil
-			}
-		}
-		return vo.DecimalNumber{}, false, nil
-	}
 	result := amount
 	if !from.Equal(baseID) {
-		rate, ok, err := rateOf(from)
-		if err != nil {
-			return vo.DecimalNumber{}, err
-		}
-		if ok {
-			result = result.Div(rate)
+		for _, r := range rates {
+			if r.CurrencyID.Equal(from) {
+				result = result.Div(r.Rate)
+				break
+			}
 		}
 	}
 	if !to.Equal(baseID) {
-		rate, ok, err := rateOf(to)
-		if err != nil {
-			return vo.DecimalNumber{}, err
-		}
-		if ok {
-			result = result.Mul(rate)
+		for _, r := range rates {
+			if r.CurrencyID.Equal(to) {
+				result = result.Mul(r.Rate)
+				break
+			}
 		}
 	}
 	digits, err := fractionDigits(ctx, to)

@@ -128,12 +128,19 @@ func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, views []model
 		return result, nil
 	}
 
-	opening, err := s.read.AccountsBalancesBeforeDate(ctx, accountIDs, w.from)
+	// money dated after the caller's today has not happened yet, in the opening
+	// balance of a window that starts later as much as in the window itself
+	tomorrow := localTomorrow(ctx, s.clock.Now())
+	openAt := w.from
+	if tomorrow.Before(openAt) {
+		openAt = tomorrow
+	}
+	opening, err := s.read.AccountsBalancesBeforeDate(ctx, accountIDs, openAt)
 	if err != nil {
 		return result, err
 	}
 	netsTo := w.end()
-	if tomorrow := localTomorrow(ctx, s.clock.Now()); tomorrow.Before(netsTo) {
+	if tomorrow.Before(netsTo) {
 		netsTo = tomorrow
 	}
 	nets, err := s.read.AccountsNetByMonth(ctx, accountIDs, w.from, netsTo)

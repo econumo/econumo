@@ -101,8 +101,8 @@ function NetWorthCard({ budgetId, year, onChoose }: { budgetId: Id | null; year:
   return (
     <Card question={t(REPORT_QUESTION.networth)} onClick={onChoose}>
       <Figure
-        isPending={report.isPending}
-        isError={report.isError && !report.data}
+        isPending={report.isPending && report.fetchStatus !== 'paused'}
+        isError={!report.data && (report.isError || report.fetchStatus === 'paused')}
         empty={(report.data?.accounts.length ?? 0) === 0}
         amount={money(total[total.length - 1] ?? '0')}
         caption={t('reports.list.networth_caption')}

@@ -153,21 +153,33 @@ func TestNetWorthReport_BeforeFirstRateUsesEarliestRate(t *testing.T) {
 	eqAmounts(t, accountRow(t, r, ra).Balances, "700", "700", "700", "700")
 }
 
-// Rate histories start at different dates: a month with rates for other
-// currencies only still converts RUB, at RUB's first rate.
-func TestNetWorthReport_CurrencyWithLaterRatesUsesItsFirstRate(t *testing.T) {
+// Rate histories start and stop at different dates. A month with rates for other
+// currencies only converts RUB at its latest earlier rate, else at its first.
+func TestNetWorthReport_StaggeredRateHistories(t *testing.T) {
 	h := newNetWorthHarness(t)
 	cad := h.f.Currency(fixture.Currency{Code: "CAD", Symbol: "CA$"})
 	rub := h.f.Currency(fixture.Currency{Code: "RUB", Symbol: "R"})
-	h.f.Rate(fixture.Rate{CurrencyID: cad, BaseCurrencyID: fixture.USD, Rate: "1.4", PublishedAt: "2026-01-05"})
-	h.f.Rate(fixture.Rate{CurrencyID: cad, BaseCurrencyID: fixture.USD, Rate: "1.4", PublishedAt: "2026-03-05"})
-	h.f.Rate(fixture.Rate{CurrencyID: rub, BaseCurrencyID: fixture.USD, Rate: "80", PublishedAt: "2026-03-05"})
+	for _, d := range []string{"2026-01-05", "2026-02-05", "2026-03-05", "2026-04-05"} {
+		h.f.Rate(fixture.Rate{CurrencyID: cad, BaseCurrencyID: fixture.USD, Rate: "1.4", PublishedAt: d})
+	}
+	h.f.Rate(fixture.Rate{CurrencyID: rub, BaseCurrencyID: fixture.USD, Rate: "80", PublishedAt: "2026-02-05"})
+	h.f.Rate(fixture.Rate{CurrencyID: rub, BaseCurrencyID: fixture.USD, Rate: "100", PublishedAt: "2026-03-05"})
 	ra := h.f.Account(fixture.Account{UserID: h.user, CurrencyID: rub, Name: "Rub"})
 	h.tx(1, ra, "", "", "", "40000", "2026-01-02 10:00:00")
 	b := h.f.Budget(fixture.Budget{UserID: h.user, CurrencyID: cad})
 	h.f.BudgetAccount(b, ra)
-	r := h.netWorth(t, model.GetNetWorthReportRequest{BudgetId: b, From: "2026-01-01", To: "2026-03-01"})
-	eqAmounts(t, accountRow(t, r, ra).Balances, "700", "700", "700")
+	r := h.netWorth(t, model.GetNetWorthReportRequest{BudgetId: b, From: "2026-01-01", To: "2026-04-01"})
+	// January before RUB's first rate (80), April after its last (100)
+	eqAmounts(t, accountRow(t, r, ra).Balances, "700", "700", "560", "560")
+}
+
+// The clock says May 17: a May 25 transaction has not happened in a June window.
+func TestNetWorthReport_FutureWindowLeavesOutFutureMoney(t *testing.T) {
+	h := newNetWorthHarness(t)
+	h.tx(1, h.acct, "", "", "", "100", "2026-05-02 10:00:00")
+	h.tx(1, h.acct, "", "", "", "30", "2026-05-25 10:00:00")
+	r := h.netWorth(t, model.GetNetWorthReportRequest{From: "2026-06-01", To: "2026-06-01"})
+	eqAmounts(t, r.Accounts[0].Balances, "100")
 }
 
 func TestNetWorthReport_TransferMovesBetweenAccounts(t *testing.T) {

@@ -25,6 +25,7 @@ import { ReportUpdatedAt } from './ReportUpdatedAt'
 import { LINE, NAME_COL } from '@/features/budgets/monthLayout'
 import { addMonths } from '@/features/budgets/planMath'
 import { ReportTransactionsDialog } from './ReportTransactionsDialog'
+import type { AccountsDrill } from './ReportTransactionsDialog'
 import { useReportTabs } from './reportTabs'
 import type { ReportParams, ReportTab } from './reportTabs'
 
@@ -79,7 +80,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const rangeKey = `${p.budgetId ?? MINE}|${p.period}`
   const [range, setRange] = useState<{ key: string; a: string; b: string } | null>(null)
   const [dragFrom, setDragFrom] = useState<number | null>(null)
-  const [drill, setDrill] = useState<{ id: string; kind: 'account' | 'savings' | 'accounts'; name: string; accountIds?: string[] } | null>(null)
+  const [drill, setDrill] = useState<AccountsDrill | null>(null)
   const preset = PRESETS.find((o) => o.value === p.period) ?? PRESETS[1]
 
   const scopePicker = (budgets ?? []).length === 0 ? null : (
@@ -371,9 +372,9 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       </div>
       <ReportUpdatedAt query={report} />
 
-      {report.isPending ? (
+      {report.isPending && report.fetchStatus !== 'paused' ? (
         <div className="h-64 animate-pulse rounded-xl bg-econumo-hover" />
-      ) : report.isError && !data ? (
+      ) : !data && (report.isError || report.fetchStatus === 'paused') ? (
         <p className="text-sm text-muted-foreground">{t('common.app.error')}</p>
       ) : shown.length === 0 ? (
         // the period stays switchable: an empty 1y window may hide balances All would show
@@ -391,7 +392,16 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                   variant="outline"
                   size="xs"
                   onClick={() => {
-                    setDrill({ id: 'range', kind: 'accounts', name: scopeName, accountIds: shown.map((a) => a.id) })
+                    const onDevice = (id: string) => (accounts ?? []).some((x) => x.id === id)
+                    setDrill({
+                      id: 'range',
+                      kind: 'accounts',
+                      name: scopeName,
+                      accountIds: shown.map((a) => a.id),
+                      savingsIds: shown.filter((a) => a.isSavings === 1 && !onDevice(a.id)).map((a) => a.id),
+                      // another member's own accounts count in the figures but are theirs to list
+                      partial: shown.some((a) => a.isSavings !== 1 && !onDevice(a.id)),
+                    })
                     trackEvent(METRICS.REPORTS_DRILL_DOWN, { scope: p.budgetId ? 'budget' : 'mine', mode: 'networth_range' })
                   }}
                 >

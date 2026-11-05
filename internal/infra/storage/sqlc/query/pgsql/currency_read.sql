@@ -50,12 +50,17 @@ WHERE base_currency_id = $1 AND published_at < $2
 ORDER BY published_at DESC
 LIMIT 1;
 
--- name: GetEarliestCurrencyRates :many
-SELECT cr.currency_id, cr.rate::text AS rate FROM currencies_rates cr
-WHERE cr.base_currency_id = $1 AND cr.published_at = (
-    SELECT MIN(c2.published_at) FROM currencies_rates c2
-    WHERE c2.currency_id = cr.currency_id AND c2.base_currency_id = cr.base_currency_id
-);
+-- name: GetNearestCurrencyRates :many
+SELECT c.id AS currency_id, CAST(COALESCE(
+    (SELECT r.rate FROM currencies_rates r
+     WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id) AND r.published_at < sqlc.arg(before)
+     ORDER BY r.published_at DESC LIMIT 1),
+    (SELECT r.rate FROM currencies_rates r
+     WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id)
+     ORDER BY r.published_at ASC LIMIT 1)
+) AS TEXT) AS rate
+FROM currencies c
+WHERE EXISTS (SELECT 1 FROM currencies_rates r WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id));
 
 -- name: GetEarliestCurrencyRateDate :one
 SELECT published_at FROM currencies_rates

@@ -23,6 +23,7 @@ import type { ViewTransaction } from '@/features/transactions/useAccountTransact
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { useUserData } from '@/features/user/queries'
 import { dayKey } from '@/lib/datetime'
+import { moneyFormat } from '@/lib/money'
 import { usePeriodLabels } from './usePeriodLabels'
 
 export interface AccountsDrill {
@@ -32,31 +33,47 @@ export interface AccountsDrill {
   /** 'savings': a budget's savings member, listed by the budget, a partner's too */
   kind: 'account' | 'savings' | 'accounts'
   accountIds?: Id[]
+  /** kind 'accounts': savings members only the budget can list */
+  savingsIds?: Id[]
+  /** kind 'accounts': the report counts accounts that cannot be listed */
+  partial?: boolean
 }
 
 function monthList(from: string, to: string): string[] {
   return Array.from({ length: Math.max(0, monthDiff(from, to) + 1) }, (_, i) => addMonths(from, i))
 }
 
-function useBudgetRows(budgetId: Id | null, accountId: Id | null, from: string, to: string) {
+function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: string) {
+  const months = monthList(from, to)
   const results = useQueries({
-    queries: (budgetId && accountId ? monthList(from, to) : []).map((periodStart) => {
-      const params: budgetApi.BudgetTransactionsParams = { budgetId: budgetId!, periodStart, accountId: accountId! }
+    queries: (budgetId ? accountIds : []).flatMap((accountId) => months.map((periodStart) => {
+      const params: budgetApi.BudgetTransactionsParams = { budgetId: budgetId!, periodStart, accountId }
       return {
         queryKey: [...queryKeys.budgetTransactions, params],
         queryFn: () => budgetApi.getBudgetTransactions(params),
       }
-    }),
+    })),
   })
   const { data: transactions } = useTransactions()
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
+  const { data: currencies } = useCurrencies()
   const wire = results.flatMap((r) => r.data?.items ?? [])
-  const rows = wire
-    .map((w) => ({ view: budgetTransactionView(w, { transactions, accounts, categories, payees, tags }), currencyId: w.currencyId }))
-    .sort((a, b) => (a.view.date < b.view.date ? 1 : a.view.date > b.view.date ? -1 : 0))
+  const rows = wire.map((w) => {
+    const view = budgetTransactionView(w, { transactions, accounts, categories, payees, tags })
+    const currency = currencies?.find((c) => c.id === w.currencyId)
+    return {
+      view,
+      currencyId: w.currencyId,
+      // no account on this device to read the sign and the symbol from
+      amount: view.account ? undefined : {
+        text: moneyFormat(w.direction === 'in' ? w.amount : -w.amount, currency, { useNativePrecision: false, maxPrecision: currency?.fractionDigits ?? 2 }),
+        direction: w.direction === 'in' ? 'in' as const : 'out' as const,
+      },
+    }
+  })
   return {
     isLoading: results.some((r) => r.isLoading),
     // one month missing would pass for a complete list, offline as much as after an error
@@ -82,7 +99,7 @@ function useLocalRows(enabled: boolean, row: AccountsDrill, from: string, to: st
       })
       // the account page's order: day, then the account's own position within the day
       .sort((a, b) => compareTransactions(a, b, row.kind === 'account' ? row.id : undefined))
-      .map((tx) => ({ view: enrichTransaction(tx, lookups), currencyId: undefined as Id | undefined }))
+      .map((tx) => ({ view: enrichTransaction(tx, lookups), currencyId: undefined as Id | undefined, amount: undefined }))
   }, [enabled, transactions, lookups, row, from, to])
   return { isLoading: enabled && isLoading, isError: enabled && isError && !transactions, rows }
 }
@@ -96,10 +113,19 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
 }) {
   const { t, i18n } = useTranslation()
   const labels = usePeriodLabels()
-  const fromBudget = row.kind === 'savings'
-  const budgetRows = useBudgetRows(fromBudget ? budgetId : null, fromBudget ? row.id : null, from, to)
-  const localRows = useLocalRows(!fromBudget, row, from, to)
-  const { isLoading, isError, rows } = fromBudget ? budgetRows : localRows
+  const budgetIds = row.kind === 'savings' ? [row.id] : (row.savingsIds ?? [])
+  const budgetRows = useBudgetRows(budgetId, budgetIds, from, to)
+  const localRows = useLocalRows(row.kind !== 'savings', row, from, to)
+  const isLoading = budgetRows.isLoading || localRows.isLoading
+  const isError = budgetRows.isError || localRows.isError
+  // newest first across both sources; a transfer between two listed accounts once
+  const rows = useMemo(() => {
+    const local = new Set(localRows.rows.map((r) => r.view.id))
+    const merged = [...localRows.rows, ...budgetRows.rows.filter((r) => !local.has(r.view.id))]
+    return budgetRows.rows.length > 0 ? merged.sort((a, b) => (a.view.date < b.view.date ? 1 : a.view.date > b.view.date ? -1 : 0)) : merged
+  }, [localRows.rows, budgetRows.rows])
+  const { data: accounts } = useAccounts()
+  const pageAccount = row.kind === 'accounts' ? undefined : accounts?.find((a) => a.id === row.id)
   const { data: user } = useUserData()
   const { data: currencies = [] } = useCurrencies()
   const deleteTransaction = useDeleteTransaction()
@@ -112,6 +138,7 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
     if (preview && !rows.some((r) => r.view.id === preview.id)) setPreview(null)
   }, [rows, preview])
 
+  const amounts = new Map(rows.map((r) => [r.view.id, r.amount]))
   const entries = groupByDay(rows.map((r) => ({ tx: r.view, groupDay: dayKey(r.view.date) })))
   const canChange = (tx: ViewTransaction) => canTouchTransaction(tx, !!tx.account && canWriteToAccount(tx.account, user?.id))
   const title = `${row.name} · ${labels.range([from, to])}`
@@ -141,12 +168,13 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
                   className="block w-full rounded-md text-left hover:bg-econumo-hover"
                   onClick={() => setPreview(entry.transaction)}
                 >
-                  <TransactionRow transaction={entry.transaction} />
+                  <TransactionRow transaction={entry.transaction} pageAccount={pageAccount} amount={amounts.get(entry.transaction.id)} />
                 </button>
               ),
             )}
           </div>
         )}
+        {row.partial ? <p className="pt-2 text-xs text-muted-foreground">{t('reports.networth.range_partial')}</p> : null}
       </ResponsiveDialog>
 
       {preview ? (

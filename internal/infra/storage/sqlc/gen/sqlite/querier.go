@@ -219,9 +219,6 @@ type Querier interface {
 	// Oldest published_at for a base currency: the rate month used for periods
 	// before the first stored rate.
 	GetEarliestCurrencyRateDate(ctx context.Context, baseCurrencyID string) (time.Time, error)
-	// Each currency's first stored rate against a base: what a period with no rate
-	// for that currency converts at, since rate histories can start at different dates.
-	GetEarliestCurrencyRates(ctx context.Context, baseCurrencyID string) ([]GetEarliestCurrencyRatesRow, error)
 	// Where a rate-gap check starts by default. ORDER BY ... LIMIT 1 so the
 	// result types as the column. sql.ErrNoRows = no transactions yet.
 	GetEarliestTransactionDate(ctx context.Context) (time.Time, error)
@@ -273,6 +270,9 @@ type Querier interface {
 	// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
 	// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
 	GetLatestRateDate(ctx context.Context) (time.Time, error)
+	// Per currency with stored rates: its latest rate before a date, else its first.
+	// Fills a period's gaps, since rate histories start and stop at different dates.
+	GetNearestCurrencyRates(ctx context.Context, arg GetNearestCurrencyRatesParams) ([]GetNearestCurrencyRatesRow, error)
 	GetOAuthClient(ctx context.Context, id string) (OauthClient, error)
 	GetOAuthGrant(ctx context.Context, id string) (OauthGrant, error)
 	GetOAuthGrantByRefreshHash(ctx context.Context, refreshTokenHash string) (OauthGrant, error)

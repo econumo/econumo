@@ -60,14 +60,19 @@ WHERE base_currency_id = ? AND datetime(published_at) < datetime(?)
 ORDER BY published_at DESC
 LIMIT 1;
 
--- name: GetEarliestCurrencyRates :many
--- Each currency's first stored rate against a base: what a period with no rate
--- for that currency converts at, since rate histories can start at different dates.
-SELECT cr.currency_id, CAST(cr.rate AS REAL) AS rate FROM currencies_rates cr
-WHERE cr.base_currency_id = ? AND cr.published_at = (
-    SELECT MIN(c2.published_at) FROM currencies_rates c2
-    WHERE c2.currency_id = cr.currency_id AND c2.base_currency_id = cr.base_currency_id
-);
+-- name: GetNearestCurrencyRates :many
+-- Per currency with stored rates: its latest rate before a date, else its first.
+-- Fills a period's gaps, since rate histories start and stop at different dates.
+SELECT c.id AS currency_id, CAST(COALESCE(
+    (SELECT r.rate FROM currencies_rates r
+     WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id) AND datetime(r.published_at) < datetime(sqlc.arg(before))
+     ORDER BY r.published_at DESC LIMIT 1),
+    (SELECT r.rate FROM currencies_rates r
+     WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id)
+     ORDER BY r.published_at ASC LIMIT 1)
+) AS REAL) AS rate
+FROM currencies c
+WHERE EXISTS (SELECT 1 FROM currencies_rates r WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id));
 
 -- name: GetEarliestCurrencyRateDate :one
 -- Oldest published_at for a base currency: the rate month used for periods
