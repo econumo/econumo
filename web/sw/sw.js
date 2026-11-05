@@ -86,15 +86,26 @@ async function activate() {
   await self.clients.claim()
 }
 
-// Every shell file, fresh from the server. Rejects unless all of
-// them arrived and belong to this build: a redirect is a sign-in gateway, a page
-// naming no asset a proxy's answer to every path, and one naming other assets a
-// server already on another build, whose own worker brings it.
+function isPage(response) {
+  return Boolean(response.headers.get('content-type')?.includes('text/html'))
+}
+
+// A proxy's page kept under a file's name would keep the app broken once the
+// server is back, as nothing replaces a cached asset.
+function keepable(response) {
+  return response.ok && !response.redirected && !isPage(response)
+}
+
+// Every shell file, fresh from the server. Rejects unless all of them arrived
+// and belong to this build: a redirect is a sign-in gateway, a page naming no
+// asset a proxy's answer to every path, and one naming other assets a server
+// already on another build, whose own worker brings it.
 async function downloadShell() {
   const downloads = await Promise.all(
     files.map(async (f) => {
       const response = await fetch(new Request(f, { cache: 'reload' }))
-      if (!response.ok || response.redirected) {
+      // "/" is the one file that is a page; its content is checked below
+      if (!response.ok || response.redirected || (f !== SHELL_URL && isPage(response))) {
         throw new Error(`shell: ${f} ${response.status}`)
       }
       return [f, response]
@@ -138,8 +149,7 @@ async function cacheFirst(event) {
     return cached
   }
   const response = await fetch(request)
-  // a proxy's page under an asset's name would keep the app blank once it is back
-  if (response.ok && !response.redirected && !response.headers.get('content-type')?.includes('text/html')) {
+  if (keepable(response)) {
     keep(event, RUNTIME, request, response)
   }
   return response
@@ -193,7 +203,7 @@ async function networkFirst(event, cacheKey) {
   }
   // A late response is never kept: the page has moved on with the cached copy.
   const pathname = new URL(request.url).pathname
-  if (!navigation && pathname !== CONFIG_URL && response.ok && !response.redirected) {
+  if (!navigation && pathname !== CONFIG_URL && keepable(response)) {
     keep(event, files.includes(pathname) ? SHELL : RUNTIME, cacheKey, response)
   }
   return response

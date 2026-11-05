@@ -429,8 +429,8 @@ so a change that breaks reading stored data must bump `FORMAT_VERSION`, which bo
 the query cache key on. "Clear cache and reload" also asks
 the worker to download its shell files again. Install and refresh share one
 check: nothing changes until every file has arrived and belongs to this build, so an unreachable
-server, a redirect, a page naming no asset (a proxy's) or a server already on another build leave
-the offline copy in place. The hook's lock
+server, a redirect, an HTML page under an asset's name, a shell page naming no asset (a proxy's)
+or a server already on another build leave the offline copy in place. The hook's lock
 then lasts until that answer too (at most 60 s).
 
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One

@@ -292,6 +292,27 @@ it('fails an install when a proxy answers the shell with its own page, keeping t
   expect(await (await caches.api.match('/'))!.text()).toBe(page('v1'))
 })
 
+const htmlUnderAssetName = () =>
+  vi.fn(async (r: Req) =>
+    new URL(r.url, ORIGIN).pathname === '/assets/index-abc.js'
+      ? new Response('<h1>Back soon</h1>', { headers: { 'content-type': 'text/html' } })
+      : sameBuild('v2')(r),
+  )
+
+it('fails an install when a proxy answers an asset with its own page', async () => {
+  fetchMock = htmlUnderAssetName()
+  boot('v2')
+  await expect(lifecycle('install')).rejects.toThrow()
+  expect(await (await caches.api.match('/assets/index-abc.js'))!.text()).toBe('v1:/assets/index-abc.js')
+})
+
+it('does not keep a proxy page under the name of a shell file', async () => {
+  fetchMock = vi.fn(async () => new Response('<h1>Back soon</h1>', { headers: { 'content-type': 'text/html' } }))
+  await fetchEvent('/icons/logo.png').response
+  await new Promise((r) => setTimeout(r, 0))
+  expect(await (await caches.api.match('/icons/logo.png'))!.text()).toBe('v1:/icons/logo.png')
+})
+
 it('fails an install redirected elsewhere', async () => {
   fetchMock = vi.fn(async (r: Req) => {
     const response = await sameBuild('v2')(r)
@@ -357,6 +378,12 @@ it('refuses a refresh redirected elsewhere, such as to a sign-in gateway', async
     Object.defineProperty(response, 'redirected', { value: new URL(r.url, ORIGIN).pathname === '/assets/index-abc.js' })
     return response
   })
+  expect(await refresh()).toEqual({ ok: false })
+  expect(await (await caches.api.match('/')!)!.text()).toBe(page('v1'))
+})
+
+it('refuses a refresh when a proxy answers an asset with its own page', async () => {
+  fetchMock = htmlUnderAssetName()
   expect(await refresh()).toEqual({ ok: false })
   expect(await (await caches.api.match('/')!)!.text()).toBe(page('v1'))
 })
