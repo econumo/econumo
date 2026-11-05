@@ -716,3 +716,16 @@ func TestLegacyDayOneConversionKeepsTheSnap(t *testing.T) {
 		t.Fatalf("scenario too weak: windowed and snapped rates agree (%s)", want.Available)
 	}
 }
+
+// A legacy day-1 budget started on the 31st keeps the calendar walk from the
+// start date itself: viewing March, the one earlier window is [31 Jan, 3 Mar)
+// (AddDate clamps February), so March spending is never counted as "before".
+func TestCarryOverLegacyThirtyFirstStart(t *testing.T) {
+	h := newPeriodHarness(t, 1, periodNow)
+	h.exec(`UPDATE budgets SET started_at = ? WHERE id = ?`, "2026-01-31 00:00:00", h.budgetID)
+	h.spend("5", "2026-02-15 10:00:00")
+	h.spend("10", "2026-03-10 10:00:00")
+	row := h.categoryRow(h.get(context.Background(), h.owner, "2026-03-01"))
+	sameAmount(t, "march spent", row.Spent, "10")
+	sameAmount(t, "march available", row.Available, "-15")
+}

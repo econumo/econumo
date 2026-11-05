@@ -154,18 +154,21 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 	if err := count(f.periodStart, f.periodEnd, true); err != nil {
 		return nil, err
 	}
-	// On day 1 a started_at past the first of its month (rows seeded outside
-	// NewBudget) shifts every earlier window by the same offset, as the walk
-	// always has; NewBudget's started_at carries none. Any other day's windows
-	// already start mid-month, so the walk runs from the first period unshifted.
-	first := b.budget.FirstPeriod()
-	var offset time.Duration
+	// Day 1 keeps the calendar walk from started_at itself, so a legacy
+	// mid-month start (rows seeded outside NewBudget) steps exactly as it always
+	// has, a 31st start clamped by AddDate included. Any other day walks plain
+	// period windows from the first key.
 	if f.startDay == model.MinPeriodStartDay {
-		offset = b.budget.StartedAt.Sub(first)
+		for cur := b.budget.StartedAt; cur.Before(f.periodStart); cur = cur.AddDate(0, 1, 0) {
+			if err := count(cur, cur.AddDate(0, 1, 0), false); err != nil {
+				return nil, err
+			}
+		}
+		return data, nil
 	}
-	for key := first; key.Before(f.periodKey); key = key.AddDate(0, 1, 0) {
+	for key := b.budget.FirstPeriod(); key.Before(f.periodKey); key = key.AddDate(0, 1, 0) {
 		start, end := model.PeriodWindow(key, f.startDay)
-		if err := count(start.Add(offset), end.Add(offset), false); err != nil {
+		if err := count(start, end, false); err != nil {
 			return nil, err
 		}
 	}

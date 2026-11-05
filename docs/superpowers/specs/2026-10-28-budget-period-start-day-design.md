@@ -138,7 +138,7 @@ payment is counted in, and the MCP defaults.
   first key work as always. Days before the first key's window (1–27 October in that
   example) belong to no period, like any days before a budget's start.
 - On day 1 a legacy `started_at` with a time past the first of its month keeps its old
-  carry-over walk (windows shifted by that offset) and meta value, so day-1 budgets stay
+  carry-over walk (month steps from `started_at` itself, AddDate clamping a 31st start) and meta value, so day-1 budgets stay
   byte-identical; on other days the walk runs over plain period windows from the first key.
 - **Changing the day is owner/admin only** (review fix, 2026-11-04): it reshapes every
   period for every participant, its first one included, so like sharing it needs the owner

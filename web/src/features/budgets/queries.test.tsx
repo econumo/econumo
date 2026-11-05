@@ -7,6 +7,7 @@ import { coreHandlers, fixtureBudgets, fixtureOwner, fixtureWireBudget, fixtureW
 import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { useBudgetPeriodStore } from './budgetStore'
 import {
   useArchiveBudget,
   useBudgetPlan,
@@ -14,6 +15,7 @@ import {
   useCloneBudget,
   useCreateBudget,
   useDeclineBudgetAccess,
+  useDefaultPeriodSettled,
   useDeleteBudget,
   useFillPlannedCells,
   planFetchWindow,
@@ -647,3 +649,24 @@ describe('planFetchWindow', () => {
     expect(planFetchWindow('2028-09-01', 8, 1, now)).toEqual({ from: '2028-07-01', months: 12 })
   })
 })
+
+// The wait for a stalled budget list runs per budget: a budget opened after an
+// earlier one used its wait up waits again.
+it('restarts the default-period wait for each budget while the list hangs', async () => {
+  server.use(http.get('*/api/v1/budget/get-budget-list', () => new Promise<never>(() => {})))
+  useBudgetPeriodStore.setState({
+    selectedDate: currentMonthKey(), periodChosen: false, adoptedPeriod: null, chosenPeriod: null, periodFollowedFor: null,
+  })
+  const { wrapper } = makeWrapper()
+  const { result, rerender } = renderHook(({ id }) => useDefaultPeriodSettled(id), { wrapper, initialProps: { id: 'b1' } })
+  expect(result.current).toBe(false)
+  await waitFor(() => expect(result.current).toBe(true), { timeout: 5000 })
+  rerender({ id: 'b2' })
+  expect(result.current).toBe(false)
+  await waitFor(() => expect(result.current).toBe(true), { timeout: 5000 })
+})
+
+function currentMonthKey(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}

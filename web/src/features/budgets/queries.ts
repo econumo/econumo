@@ -113,11 +113,17 @@ export function useDefaultPeriodSettled(budgetId: Id | null): boolean {
   const followedFor = useBudgetPeriodStore((s) => s.periodFollowedFor)
   const follows = useBudgetPeriodStore((s) => followsCurrentPeriod(s))
   const { data: budgets, isPending, failureCount } = useBudgets()
-  const [waitedOut, setWaitedOut] = useState(false)
+  // the wait runs per budget: opening another budget while the list still hangs
+  // waits again rather than inheriting a wait already used up
+  const [waitedFor, setWaitedFor] = useState<Id | null>(null)
   useEffect(() => {
-    const timer = setTimeout(() => setWaitedOut(true), DEFAULT_PERIOD_WAIT_MS)
+    if (!budgetId) {
+      return
+    }
+    const timer = setTimeout(() => setWaitedFor(budgetId), DEFAULT_PERIOD_WAIT_MS)
     return () => clearTimeout(timer)
-  }, [])
+  }, [budgetId])
+  const waitedOut = waitedFor !== null && waitedFor === budgetId
   if (!budgetId || followedFor === budgetId || !follows) {
     return true
   }

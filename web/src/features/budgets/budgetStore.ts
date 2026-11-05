@@ -126,7 +126,9 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
           : currentPeriod(startDay, now)
         const s = get()
         if (target !== s.selectedDate) {
-          set({ selectedDate: target, adoptedPeriod: target, chosenPeriod: null })
+          // a day-1 default is the calendar month and needs no mark; marking it would
+          // move a month a day-1 user kept across sessions, which main never did
+          set({ selectedDate: target, adoptedPeriod: startDay !== 1 ? target : null, chosenPeriod: null })
         } else if (startDay !== 1 && s.adoptedPeriod !== target) {
           // A shifted budget's period can equal the calendar month for now; marked
           // adopted, it still reads as a default once its period rolls over (a day-5
