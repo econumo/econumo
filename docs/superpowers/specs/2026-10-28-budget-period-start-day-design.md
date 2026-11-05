@@ -130,6 +130,9 @@ The header and month switcher keep showing the month name ("October"). The shift
 range (e.g. "28 Oct – 27 Nov") must be visible somewhere for a budget whose day is not 1;
 its final spot will be designed with the user afterwards. For this change the builder puts
 it in a simple, unobtrusive place and keeps it easy to move. A day-1 budget shows no range.
+Placement settled with the user (2026-11-04): every month of the Budget view's period strip
+carries its range as a small muted second line under the name, as the Plan grid's month
+header does; nothing sits at the end of the strip.
 
 ### Analytics
 

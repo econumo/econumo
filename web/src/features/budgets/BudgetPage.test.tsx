@@ -13,6 +13,15 @@ import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
+// a shifted budget names each month in the strip with its dates on a second line
+async function expectSelectedDates(text: string) {
+  await waitFor(() =>
+    expect(
+      within(within(screen.getByRole('tablist', { name: 'period' })).getByRole('tab', { selected: true })).getByTestId('period-strip-dates'),
+    ).toHaveTextContent(text),
+  )
+}
+
 vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
   return { ...actual, trackEvent: vi.fn() }
@@ -1065,8 +1074,11 @@ describe('a budget whose months start on the 28th', () => {
     )
     renderPage()
     await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01'))
-    expect(await screen.findByRole('tab', { selected: true, name: 'September' })).toBeInTheDocument()
-    expect(screen.getByTestId('period-dates')).toHaveTextContent('Sep 28 – Oct 27')
+    expect(await screen.findByRole('tab', { selected: true, name: 'September, Sep 28 – Oct 27' })).toBeInTheDocument()
+    await expectSelectedDates('Sep 28 – Oct 27')
+    // every month of the strip carries its own dates, none sit at the end of the line
+    expect(within(screen.getByRole('tab', { name: /^October,/ })).getByTestId('period-strip-dates')).toHaveTextContent('Oct 28 – Nov 27')
+    expect(screen.getByRole('tablist', { name: 'period' }).nextElementSibling).toBeNull()
     await waitFor(() => expect(dates).toContain('2026-09-01'))
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.BUDGET_CHANGE_DATE)
   })
@@ -1089,7 +1101,7 @@ describe('a budget whose months start on the 28th', () => {
       }),
     )
     renderPage()
-    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Sep 28 – Oct 27')
+    await expectSelectedDates('Sep 28 – Oct 27')
     expect(dates).toEqual(['2026-09-01'])
     await waitFor(() => expect(planFrom.length).toBeGreaterThan(0))
     expect(new Set(planFrom).size).toBe(1)
@@ -1116,7 +1128,7 @@ describe('a budget whose months start on the 28th', () => {
       }),
     )
     const { queryClient } = renderPage()
-    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Sep 28 – Oct 27')
+    await expectSelectedDates('Sep 28 – Oct 27')
     expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01')
 
     act(() => {
@@ -1129,7 +1141,7 @@ describe('a budget whose months start on the 28th', () => {
     await waitFor(() => expect(requested).toContain('budget b2 2026-10-01'))
     await waitFor(() => expect(requested).toContain('comments b2 2026-10-01'))
     expect(requested.filter((r) => r.includes(' b2 ') && !r.endsWith('2026-10-01'))).toEqual([])
-    expect(screen.queryByTestId('period-dates')).not.toBeInTheDocument()
+    expect(screen.queryAllByTestId('period-strip-dates')).toHaveLength(0)
   })
 
   // a failing budget list must not hold the page through its retries: the budget's
@@ -1152,7 +1164,7 @@ describe('a budget whose months start on the 28th', () => {
     renderPage('/budget', (qc) => qc.setQueryDefaults(queryKeys.budgets, { retry: 3, retryDelay: 60_000 }))
     await waitFor(() => expect(requested.some((r) => r.startsWith('budget '))).toBe(true))
     expect(requested.filter((r) => r === 'list')).toHaveLength(1)
-    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Sep 28 – Oct 27')
+    await expectSelectedDates('Sep 28 – Oct 27')
     expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01')
   })
 
@@ -1163,7 +1175,7 @@ describe('a budget whose months start on the 28th', () => {
       http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: shifted } })),
     )
     renderPage()
-    expect(await screen.findByTestId('period-dates')).toHaveTextContent('Oct 28 – Nov 27')
+    await expectSelectedDates('Oct 28 – Nov 27')
     expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01')
   })
 
@@ -1175,7 +1187,7 @@ describe('a budget whose months start on the 28th', () => {
     )
     renderPage()
     expect(await screen.findByTestId('budget-folder-Essentials')).toBeInTheDocument()
-    expect(screen.queryByTestId('period-dates')).not.toBeInTheDocument()
+    expect(screen.queryAllByTestId('period-strip-dates')).toHaveLength(0)
     expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01')
   })
 })

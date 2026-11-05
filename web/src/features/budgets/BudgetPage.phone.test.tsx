@@ -444,7 +444,7 @@ it('someone else’s reporting tag shows Edit inactive', async () => {
   expect(within(await screen.findByRole('dialog', { name: /^kid-A · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
 })
 
-it('a shifted budget shows its dates beside the month strip and figures for its current period', async () => {
+it('a shifted budget shows its dates under the strip months and figures for its current period', async () => {
   handlers({ budget: { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, periodStartDay: 16 } } })
   vi.useFakeTimers({ toFake: ['Date'] })
   // 10 August is still in the July period of a day-16 budget
@@ -454,13 +454,16 @@ it('a shifted budget shows its dates beside the month strip and figures for its 
     renderPage()
     await screen.findByTestId('phone-month-view')
     const strip = screen.getByRole('tablist', { name: 'period' })
-    expect(strip.parentElement).toContainElement(screen.getByTestId('period-dates'))
-    expect(screen.getByTestId('period-dates')).toHaveTextContent('Jul 16 – Aug 15')
+    expect(strip.nextElementSibling).toBeNull()
+    const selectedDates = () => within(screen.getByRole('tab', { selected: true })).getByTestId('period-strip-dates')
+    expect(selectedDates()).toHaveTextContent('Jul 16 – Aug 15')
+    // every month carries its range on a phone too
+    expect(within(screen.getByRole('tab', { name: /^June,/ })).getByTestId('period-strip-dates')).toHaveTextContent('Jun 16 – Jul 15')
     expect(screen.getByRole('button', { name: /^Food, budget .*, spent 45\.50$/ })).toBeInTheDocument()
     // a calendar budget would show August's spending; this budget's August is still ahead
     act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' }))
     expect(await screen.findByRole('button', { name: /^Food, budget .*, spent —$/ })).toBeInTheDocument()
-    expect(screen.getByTestId('period-dates')).toHaveTextContent('Aug 16 – Sep 15')
+    expect(selectedDates()).toHaveTextContent('Aug 16 – Sep 15')
   } finally {
     vi.useRealTimers()
   }

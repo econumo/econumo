@@ -49,7 +49,6 @@ import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange } 
 import type { FolderBucket } from './budgetMath'
 import { monthDiff } from './planMath'
 import { currentPeriod, periodStartDayOf } from './period'
-import { PeriodDates } from './PeriodDates'
 import { BudgetTable, BudgetTotals } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
 import { PlanSheet } from './PlanSheet'
@@ -626,8 +625,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     )
   }
 
-  // the shifted dates of the selected month; its spot is provisional
-  const periodDates = <PeriodDates periodKey={selectedDate} startDay={periodStartDayOf(budget.meta)} />
+  const periodStartDay = periodStartDayOf(budget.meta)
 
   return (
     <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
@@ -668,7 +666,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       {phoneView ? (
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
-          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} trailing={periodDates} />
+          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} startDay={periodStartDay} />
           {isPlaceholderData || periodSwitching ? (
             <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
               <CoinLoader label={t('common.app.modal.loading.data_loading')} />
@@ -703,7 +701,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       ) : (
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
-          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} leading={viewSwitch} trailing={periodDates} />
+          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} startDay={periodStartDay} leading={viewSwitch} />
 
           {isPlaceholderData || periodSwitching ? (
             // month switch in flight — the strip stays put, the stale table is

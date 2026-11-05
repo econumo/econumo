@@ -60,3 +60,7 @@ export function periodDatesLabel(key: string, startDay: number, lang: string): s
   const fmt = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short' })
   return `${fmt.format(localDate(start))} – ${fmt.format(last)}`
 }
+
+/** the type of a period's date range under its month name: the Plan header and the
+ *  budget view's strip share it so the two read alike */
+export const PERIOD_DATES_CLASS = 'text-xs leading-4 text-muted-foreground tabular-nums'

@@ -87,7 +87,7 @@ import {
 } from './planMath'
 import type { MonthExchange, PlanCellRef, PlanFolderSection, PlanRow, PlanRows } from './planMath'
 import type { LineControls, MenuAction } from './monthLayout'
-import { currentPeriod, periodDatesLabel, periodStartDayOf } from './period'
+import { PERIOD_DATES_CLASS, currentPeriod, periodDatesLabel, periodStartDayOf } from './period'
 import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
 import { ElementRow, PlanTagGroup, SumCell, cellDomId, commentsReadOnly, isEditableCell, pickedKey, sourceAmount } from './PlanRows'
@@ -1866,7 +1866,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
                     <span
                       data-testid="plan-month-dates"
                       title={range}
-                      className="block w-full truncate px-2 pb-1 text-right text-xs leading-4 text-muted-foreground tabular-nums"
+                      className={`block w-full truncate px-2 pb-1 text-right ${PERIOD_DATES_CLASS}`}
                     >
                       {range}
                     </span>
