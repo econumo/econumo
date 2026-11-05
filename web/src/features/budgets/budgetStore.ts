@@ -124,17 +124,17 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
         const target = startedAt
           ? budgetCurrentPeriod({ periodStartDay: startDay, startedAt }, now)
           : currentPeriod(startDay, now)
+        // A default that is the calendar month of a day-1 budget needs no mark: marking
+        // it would move a month a day-1 user kept across sessions, which main never
+        // did. Any other default is marked so it still reads as one later: a shifted
+        // period equal to the calendar month for now (a day-5 budget opened on 10 Nov
+        // must move to December on 6 Dec), or a not-yet-started budget's first month.
+        const adopted = startDay !== 1 || target !== currentPeriod(1, now) ? target : null
         const s = get()
         if (target !== s.selectedDate) {
-          // a day-1 default is the calendar month and needs no mark; marking it would
-          // move a month a day-1 user kept across sessions, which main never did
-          set({ selectedDate: target, adoptedPeriod: startDay !== 1 ? target : null, chosenPeriod: null })
-        } else if (startDay !== 1 && s.adoptedPeriod !== target) {
-          // A shifted budget's period can equal the calendar month for now; marked
-          // adopted, it still reads as a default once its period rolls over (a day-5
-          // budget opened on 10 Nov must move to December on 6 Dec). A day-1 default
-          // needs no mark: it is the calendar month.
-          set({ adoptedPeriod: target, chosenPeriod: null })
+          set({ selectedDate: target, adoptedPeriod: adopted, chosenPeriod: null })
+        } else if (s.adoptedPeriod !== adopted) {
+          set({ adoptedPeriod: adopted, chosenPeriod: null })
         }
       },
       periodFollowedFor: null,

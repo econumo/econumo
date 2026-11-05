@@ -228,6 +228,32 @@ describe('the adopted default survives a reload', () => {
     expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01')
   })
 
+  it('a day-1 budget clears a mark a shifted budget left on the same month', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 10, 30, 12))
+    useBudgetPeriodStore.setState({ selectedDate: '2026-11-01', periodChosen: false, adoptedPeriod: null, chosenPeriod: null })
+    useBudgetPeriodStore.getState().followCurrentPeriod('b1', 28)
+    expect(useBudgetPeriodStore.getState().adoptedPeriod).toBe('2026-11-01')
+    useBudgetPeriodStore.getState().followCurrentPeriod('b2', 1)
+    expect(useBudgetPeriodStore.getState().adoptedPeriod).toBeNull()
+    const persisted = localStorage.getItem('budgetPeriod') ?? '{}'
+    await reload((JSON.parse(persisted) as { state: Record<string, unknown> }).state, new Date(2026, 11, 6, 12))
+    useBudgetPeriodStore.getState().followCurrentPeriod('b2', 1)
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01')
+  })
+
+  it('a day-1 budget with a future start does not keep every budget on its first month', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 10, 10, 12))
+    useBudgetPeriodStore.setState({ selectedDate: '2026-11-01', periodChosen: false, adoptedPeriod: null, chosenPeriod: null })
+    useBudgetPeriodStore.getState().followCurrentPeriod('b1', 1, '2027-01-01 00:00:00')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2027-01-01')
+    const persisted = localStorage.getItem('budgetPeriod') ?? '{}'
+    await reload((JSON.parse(persisted) as { state: Record<string, unknown> }).state, new Date(2026, 10, 11, 12))
+    useBudgetPeriodStore.getState().followCurrentPeriod('b2', 1, '2026-01-01 00:00:00')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-11-01')
+  })
+
   it('state stored before the field existed rehydrates as no adopted default', async () => {
     await reload({ selectedDate: '2026-09-01' }, new Date(2026, 9, 5, 12))
     expect(useBudgetPeriodStore.getState().adoptedPeriod).toBeNull()
