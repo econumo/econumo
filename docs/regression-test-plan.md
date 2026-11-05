@@ -1538,10 +1538,8 @@ and on tablet/phone only with a hardware keyboard.
       budget dialogs show a "Month starts on day" picker (1 to 28) between
       Currency and Accounts, defaulting to 1 on create and to the budget's
       stored day on edit (a dropdown on desktop and tablet, a bottom sheet on
-      a phone, no search). On edit, no note shows while the day equals the
-      stored one; picking another day shows "Existing plans stay on their
-      months; the dates each month covers will change." and picking the
-      stored day back hides it. Saving an unchanged day sends no day; a user
+      a phone, no search). Picking another day shows no note or warning.
+      Saving an unchanged day sends no day; a user
       who cannot configure the budget sees the picker disabled. A day the
       server refuses shows its message under the picker, and the dialog
       stays open. Against a server older than this setting (budgets carry no
@@ -1591,8 +1589,7 @@ and on tablet/phone only with a hardware keyboard.
       instead of waiting out the list's retries, and settles on "September"
       from the budget's own day.
 - [ ] **Shifted budget — changing the day keeps plans**: a budget with plans
-      in October and November changed from day 1 to day 28 (after the
-      warning): the plans stay on "October" and "November" with the same
+      in October and November changed from day 1 to day 28: the plans stay on "October" and "November" with the same
       amounts and comments; only the dates each month covers change (the
       date range appears, spent/actuals re-split at the 28th). Changing back
       to day 1 restores the original figures exactly.

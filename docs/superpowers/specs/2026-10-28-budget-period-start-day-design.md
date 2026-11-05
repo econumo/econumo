@@ -114,10 +114,10 @@ payment is counted in, and the MCP defaults.
   catalogue code (e.g. `budget.invalid_period_start_day`, translated in all 11 languages).
 - Who may change it and the archived-budget rule are the same as for the rest of
   `update-budget`.
-- **Changing the day on an existing budget is allowed, with a warning.** Plans and
+- **Changing the day on an existing budget is allowed, without a warning.** Plans and
   comments stay on their month keys and are simply read against the new date ranges. The
-  update dialog says so before saving (wording left to the builder, e.g. "Existing plans
-  stay on their months; the dates each month covers will change.").
+  update dialog just lets the user pick another day (user decision 2026-11-04; an earlier
+  draft warned before saving).
 - The budget's meta on the wire (`MetaResult`, every place it appears) gains
   `periodStartDay` (int, additive).
 - The MCP `create_budget` / `update_budget` tools gain `period_start_day`; `get_budget`
@@ -184,8 +184,8 @@ the new column.
 ### SPA
 
 - `BudgetDialog` / `BudgetUpdateDialog`: a "Month starts on" day picker (1–28, default 1),
-  using the existing picker components; the update dialog shows the warning when the value
-  differs from the stored one.
+  using the existing picker components; the update dialog shows no warning when the value
+  changes.
 - Every place that derives a budget month from a date or a date range from a month goes
   through `period.ts` with the budget's `periodStartDay`: current month, plan window,
   `planHint.ts`, `UpcomingPaymentsPanel`, phone month view, Plan grid, any client-side
@@ -203,7 +203,7 @@ the new column.
   `get-budget-plan` on a shifted budget; regenerate goldens and inspect (every budget meta
   gains `periodStartDay: 1`, nothing else should change for existing scenarios).
   `mcpparity` likewise.
-- Web: `period.ts` tests, dialog tests (picker, warning), a shifted-budget page test.
+- Web: `period.ts` tests, dialog tests (picker, unchanged day not sent), a shifted-budget page test.
 - `docs/regression-test-plan.md`: add items for the setting, a shifted budget's figures and
   lists, changing the day with existing plans, and a shared budget seen by both users.
 - `CLAUDE.md`: a "Notable behaviours" bullet describing the period rule.

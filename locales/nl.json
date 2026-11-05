@@ -1315,8 +1315,7 @@
           "none": "Geen einddatum"
         },
         "period_start_day": {
-          "label": "Maand begint op dag",
-          "warning": "Bestaande plannen blijven bij hun maanden; de data die elke maand beslaat, veranderen."
+          "label": "Maand begint op dag"
         }
       },
       "budget_envelope": {

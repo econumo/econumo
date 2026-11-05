@@ -1315,8 +1315,7 @@
           "none": "无结束日期"
         },
         "period_start_day": {
-          "label": "每月起始日",
-          "warning": "现有计划仍保留在原来的月份；每个月所涵盖的日期将发生变化。"
+          "label": "每月起始日"
         }
       },
       "budget_envelope": {

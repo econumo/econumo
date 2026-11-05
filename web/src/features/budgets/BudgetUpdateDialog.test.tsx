@@ -136,7 +136,6 @@ it('renders when the server omits filters entirely', async () => {
 
 describe('period start day', () => {
   const dayBudget: BudgetDto = { ...baseBudget, meta: { ...baseBudget.meta, periodStartDay: 5 } }
-  const warning = 'Existing plans stay on their months; the dates each month covers will change.'
 
   function captureUpdate(respond?: () => Response) {
     const bodies: Record<string, unknown>[] = []
@@ -149,13 +148,12 @@ describe('period start day', () => {
     return bodies
   }
 
-  it('pre-fills the stored day, shows no warning, and omits the field when unchanged', async () => {
+  it('pre-fills the stored day and omits the field when unchanged', async () => {
     const bodies = captureUpdate()
     const user = userEvent.setup()
     renderDialog(dayBudget)
     await screen.findByText(/ of 4 included/)
     expect(screen.getByRole('combobox', { name: 'Month starts on day' })).toHaveTextContent('5')
-    expect(screen.queryByText(warning)).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Update' }))
     await waitFor(() => expect(bodies).toHaveLength(1))
     expect(bodies[0]).not.toHaveProperty('periodStartDay')
@@ -178,17 +176,11 @@ describe('period start day', () => {
     expect(screen.getByRole('combobox', { name: 'Month starts on day' })).toHaveTextContent('1')
   })
 
-  it('warns once the value differs, sends it, and the warning goes when it is picked back', async () => {
+  it('sends a changed day', async () => {
     const bodies = captureUpdate()
     const user = userEvent.setup()
     renderDialog(dayBudget)
     await screen.findByText(/ of 4 included/)
-    await user.click(screen.getByRole('combobox', { name: 'Month starts on day' }))
-    await user.click(await screen.findByRole('option', { name: '16' }))
-    expect(screen.getByText(warning)).toBeInTheDocument()
-    await user.click(screen.getByRole('combobox', { name: 'Month starts on day' }))
-    await user.click(await screen.findByRole('option', { name: '5' }))
-    expect(screen.queryByText(warning)).toBeNull()
     await user.click(screen.getByRole('combobox', { name: 'Month starts on day' }))
     await user.click(await screen.findByRole('option', { name: '16' }))
     await user.click(screen.getByRole('button', { name: 'Update' }))

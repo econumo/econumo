@@ -1315,8 +1315,7 @@
           "none": "Sem data de fim"
         },
         "period_start_day": {
-          "label": "O mês começa no dia",
-          "warning": "Os planos existentes mantêm-se nos seus meses; as datas abrangidas por cada mês vão mudar."
+          "label": "O mês começa no dia"
         }
       },
       "budget_envelope": {

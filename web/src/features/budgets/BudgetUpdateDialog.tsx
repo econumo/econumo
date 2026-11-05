@@ -220,7 +220,6 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
               setPeriodStartDay(day)
             }}
             disabled={!canConfigure}
-            warning={periodStartDay !== storedDay}
             error={dayError}
           />
         ) : null}
