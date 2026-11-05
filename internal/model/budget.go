@@ -68,6 +68,23 @@ func (b *Budget) SetPeriodStartDay(d int, now time.Time) error {
 	return nil
 }
 
+// CoverCurrentPeriod moves the start back to current, the caller's current
+// period under the budget's day, when a day change left it after the start (day
+// 1 -> 28 on 20 October turns a budget starting with October into one whose
+// current period is September). Otherwise the current period would be before
+// the budget and refuse plans, comments, an end month or a copy starting there.
+// The start only ever moves back to the current period, so repeating a change
+// moves it at most once, and a budget deliberately starting after thisMonth
+// (the caller's calendar month) is left alone. The end month, never before the
+// old start, stays valid.
+func (b *Budget) CoverCurrentPeriod(current, thisMonth, now time.Time) {
+	if b.StartedAt.After(thisMonth) || !current.Before(b.StartedAt) {
+		return
+	}
+	b.StartedAt = current
+	b.UpdatedAt = now
+}
+
 // InvalidPeriodStartDayError is the coded field error for a start day outside
 // the allowed range.
 func InvalidPeriodStartDayError() error {

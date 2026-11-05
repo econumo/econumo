@@ -112,12 +112,30 @@ payment is counted in, and the MCP defaults.
 - `clone-budget` copies the source's day.
 - Allowed values 1–28; anything else is a field error on `periodStartDay` with a new
   catalogue code (e.g. `budget.invalid_period_start_day`, translated in all 11 languages).
-- Who may change it and the archived-budget rule are the same as for the rest of
-  `update-budget`.
+- The archived-budget rule is the same as for the rest of `update-budget`; changing the
+  day needs the owner or an admin (below).
 - **Changing the day on an existing budget is allowed, without a warning.** Plans and
   comments stay on their month keys and are simply read against the new date ranges. The
   update dialog just lets the user pick another day (user decision 2026-11-04; an earlier
   draft warned before saving).
+- **The current period never precedes the start** (review fix, 2026-11-04). When a day
+  change makes the caller's current period (their local today, new day) earlier than
+  `started_at`, `started_at` moves back to that period in the same write; it never moves
+  forward, never further back than the current period, and not at all for a budget whose
+  start is after the caller's calendar month (deliberately started in the future). Example:
+  a budget created on 5 October on day 1 (key October) set to day 28 on 20 October starts
+  with September (28 Sep – 27 Oct), the current period; leaving it on October would refuse
+  plans and comments on the period the budget opens on, make the Complete/Duplicate dialogs
+  send months before the start, and drop 1–27 October out of every period. Toggling the day
+  again moves nothing more (the current period is then already covered). An older budget
+  is not moved: days before its first period under the new day stay outside it, as any
+  budget's days before its start do. `ended_at` keeps its key: the start only moves
+  earlier, so the end month stays on or after it.
+- **Changing the day is owner/admin only** (review fix, 2026-11-04): it reshapes every
+  period for every participant and can move the start, so like sharing it needs the owner
+  or an accepted admin (the SPA's `canConfigureBudget`); a `user`-role participant gets the
+  usual access-denied error for a different day, while resending the stored day is no
+  change.
 - The budget's meta on the wire (`MetaResult`, every place it appears) gains
   `periodStartDay` (int, additive).
 - The MCP `create_budget` / `update_budget` tools gain `period_start_day`; `get_budget`

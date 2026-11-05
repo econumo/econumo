@@ -2,6 +2,7 @@ package budget_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
@@ -394,5 +396,101 @@ func TestGetBudgetSummaryCallerWallClock(t *testing.T) {
 	ub := utc.Balances[0]
 	if ub.StartBalance != nil || ub.Income != nil || ub.Expenses != nil || ub.Exchanges != nil {
 		t.Errorf("utc: period not started yet has figures: %+v", ub)
+	}
+}
+
+func (h *periodHarness) setDay(userID vo.Id, day int) (model.MetaResult, error) {
+	h.t.Helper()
+	res, err := h.svc.UpdateBudget(context.Background(), userID, model.UpdateBudgetRequest{
+		Id: h.budgetID, Name: "Budget", CurrencyId: fixture.USD, PeriodStartDay: &day,
+	})
+	if err != nil {
+		return model.MetaResult{}, err
+	}
+	return res.Item, nil
+}
+
+func (h *periodHarness) mustSetDay(day int) string {
+	h.t.Helper()
+	meta, err := h.setDay(h.owner, day)
+	if err != nil {
+		h.t.Fatalf("update to day %d: %v", day, err)
+	}
+	return meta.StartedAt
+}
+
+// A budget created on 5 October with calendar periods (key 2026-10-01) whose
+// day then moves to 28 on 20 October: the current period is September
+// (28 Sep - 27 Oct), so the start moves back to it instead of leaving the
+// current period before the start and 1-27 October in no period.
+func TestUpdatePeriodStartDayMovesStartBack(t *testing.T) {
+	h := newPeriodHarness(t, 1, time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC))
+	h.exec(`UPDATE budgets SET started_at = ? WHERE id = ?`, "2026-10-01 00:00:00", h.budgetID)
+	h.spend("30", "2026-10-05 10:00:00")
+	ctx := context.Background()
+
+	if got := h.mustSetDay(28); got != "2026-09-01 00:00:00" {
+		t.Fatalf("startedAt = %s, want 2026-09-01 00:00:00", got)
+	}
+	res := h.get(ctx, h.owner, "")
+	sameWindow(t, res, "2026-09-28 00:00:00", "2026-10-28 00:00:00")
+	sameAmount(t, "september spent", h.categoryRow(res).Spent, "30")
+
+	amount := vo.NewFlexString("100")
+	if _, err := h.svc.SetLimit(ctx, h.owner, model.SetLimitRequest{
+		BudgetId: h.budgetID, ElementId: h.category, Period: "2026-09-01", Amount: &amount,
+	}); err != nil {
+		t.Fatalf("set-limit on the current period: %v", err)
+	}
+	sameAmount(t, "september budgeted", h.categoryRow(h.get(ctx, h.owner, "2026-09-01")).Budgeted, "100")
+
+	// Toggling again never walks the start further back.
+	for _, day := range []int{1, 28, 1, 28} {
+		if got := h.mustSetDay(day); got != "2026-09-01 00:00:00" {
+			t.Fatalf("day %d: startedAt = %s, want 2026-09-01 00:00:00", day, got)
+		}
+	}
+}
+
+func TestUpdatePeriodStartDayKeepsOtherStarts(t *testing.T) {
+	cases := []struct{ name, started string }{
+		{"a budget started a year back", "2025-10-01 00:00:00"},
+		{"a budget starting in the future", "2026-12-01 00:00:00"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newPeriodHarness(t, 1, time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC))
+			h.exec(`UPDATE budgets SET started_at = ? WHERE id = ?`, c.started, h.budgetID)
+			if got := h.mustSetDay(28); got != c.started {
+				t.Fatalf("startedAt = %s, want %s", got, c.started)
+			}
+		})
+	}
+}
+
+// The day reshapes the budget for every participant: owner or admin only; a
+// user-role participant may still rename it.
+func TestUpdatePeriodStartDayNeedsOwnerOrAdmin(t *testing.T) {
+	h := newPeriodHarness(t, 1, time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC))
+	admin := vo.MustParseId(h.f.User(fixture.User{Name: "Admin", Email: "admin@period.test"}))
+	h.f.BudgetAccess(h.budgetID, admin.String(), int(model.BudgetRoleAdmin), true)
+	member := vo.MustParseId(h.f.User(fixture.User{Name: "Member", Email: "member@period.test"}))
+	h.f.BudgetAccess(h.budgetID, member.String(), int(model.BudgetRoleUser), true)
+
+	_, err := h.setDay(member, 28)
+	var denied *errs.AccessDeniedError
+	if !errors.As(err, &denied) {
+		t.Fatalf("user role changing the day: err = %v, want access denied", err)
+	}
+	if got := h.get(context.Background(), h.owner, "").Meta.PeriodStartDay; got != 1 {
+		t.Fatalf("a refused change wrote day %d", got)
+	}
+	// the stored day, sent back unchanged, is no change
+	if _, err := h.setDay(member, 1); err != nil {
+		t.Fatalf("user role resending the stored day: %v", err)
+	}
+	meta, err := h.setDay(admin, 28)
+	if err != nil || meta.PeriodStartDay != 28 {
+		t.Fatalf("admin changing the day: meta=%+v err=%v", meta, err)
 	}
 }

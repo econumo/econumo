@@ -48,6 +48,17 @@ export function currentPeriod(startDay: number, now: Date = new Date()): string 
   return periodOf(isoDay(now), startDay)
 }
 
+/** the current period, but never one before the budget's start: the server
+ *  refuses a month before it for an end month or a copy's start */
+export function budgetCurrentPeriod(
+  meta: Pick<BudgetMetaDto, 'periodStartDay' | 'startedAt'>,
+  now: Date = new Date(),
+): string {
+  const here = currentPeriod(periodStartDayOf(meta), now)
+  const start = meta.startedAt.slice(0, 7) + '-01'
+  return here < start ? start : here
+}
+
 /** the dates a shifted period covers, last day inclusive ("Oct 28 – Nov 27" in
  *  `lang`); null for a calendar month, which needs no range */
 export function periodDatesLabel(key: string, startDay: number, lang: string): string | null {

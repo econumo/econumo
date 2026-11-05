@@ -1597,6 +1597,21 @@ and on tablet/phone only with a hardware keyboard.
       amounts and comments; only the dates each month covers change (the
       date range appears, spent/actuals re-split at the 28th). Changing back
       to day 1 restores the original figures exactly.
+- [ ] **Shifted budget — changing the day near the start**: create a budget
+      on day 1 in the current month (e.g. on 20 Oct, starting "October"),
+      then change it to day 28. The budget now starts with "September"
+      (28 Sep - 27 Oct, the current period): the strip and Plan grid show
+      September as the first month, it opens by default and is not greyed
+      out, a plan and a comment can be saved on it, and spending from 1-27 Oct
+      counts in September. Completing the budget defaults the last month to
+      September or later, and "Continue in a copy" / Duplicate with "Start
+      from this month" succeed (never a month before the start). Changing
+      back to day 1 and to day 28 again keeps September as the first month
+      (no further month is added). A budget started months ago, or one
+      starting next month, keeps its start month when the day changes. A
+      shared budget's `user`-role participant sees the day picker disabled,
+      and a forced request changing the day is refused (403); an admin can
+      change it.
 - [ ] 📱 **Shifted budget — shared**: A sets a shared budget to day 28; B (any
       role) sees the same day in the budget settings, the same date range,
       the same period opened by default and the same figures per month, on

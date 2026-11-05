@@ -9,7 +9,7 @@ import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDia
 import { isNotEmpty, isValidBudgetName } from '@/lib/validation'
 import type { BudgetMetaDto } from '@/api/dto/budget'
 import { useCloneBudget } from './queries'
-import { currentPeriod, periodStartDayOf } from './period'
+import { budgetCurrentPeriod } from './period'
 
 interface DuplicateBudgetDialogProps {
   budget: BudgetMetaDto | null
@@ -50,7 +50,7 @@ export function DuplicateBudgetDialog({ budget, onClose }: DuplicateBudgetDialog
         id: budget.id,
         newId: uuidv7(),
         name,
-        startDate: startThisMonth ? currentPeriod(periodStartDayOf(budget)) : null,
+        startDate: startThisMonth ? budgetCurrentPeriod(budget) : null,
         withLimits: copyPlans,
       },
       { onSuccess: onClose },

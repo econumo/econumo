@@ -1563,7 +1563,11 @@ data unreadable. Most are also asserted by the test suite.
   the period containing the caller's local today. The by-month SQL (`internal/budget/repo/read.go`,
   `periodExpr`) keeps grouping by month for day 1, so a day-1 budget stays byte-identical, and
   groups by day and folds the rows onto keys in Go (`foldPeriods`) otherwise. Changing the day
-  rewrites nothing: plans and comments stay on their keys and read against the new windows.
+  keeps plans and comments on their keys, read against the new windows; the one write is
+  `started_at`, moved back to the caller's current period when the change left that period
+  before the start (`Budget.CoverCurrentPeriod`: day 1 -> 28 on 20 October on a budget
+  starting October moves it to September), never forward, never further back, and never for
+  a start after the caller's calendar month. Only the owner or an admin may change the day.
   Reports, recurring schedules and account pages stay on calendar months. The SPA hides the
   day picker against a server whose budgets carry no day. Changing the
   naming rule after release needs a key migration (move `started_at`, `ended_at`, limit and

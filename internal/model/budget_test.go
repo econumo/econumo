@@ -501,3 +501,29 @@ func TestSetPeriodStartDay(t *testing.T) {
 		t.Fatalf("an unchanged day must not touch updated_at: err=%v updated=%v", err, b.UpdatedAt)
 	}
 }
+
+func TestCoverCurrentPeriod(t *testing.T) {
+	month := func(y int, m time.Month) time.Time { return time.Date(y, m, 1, 0, 0, 0, 0, time.UTC) }
+	cases := []struct {
+		name                        string
+		started, current, thisMonth time.Time
+		want                        time.Time
+	}{
+		{"current period before the start moves it back", month(2026, 10), month(2026, 9), month(2026, 10), month(2026, 9)},
+		{"current period at the start stays", month(2026, 9), month(2026, 9), month(2026, 10), month(2026, 9)},
+		{"an old budget stays", month(2025, 10), month(2026, 9), month(2026, 10), month(2025, 10)},
+		{"a future start stays", month(2026, 12), month(2026, 9), month(2026, 10), month(2026, 12)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			b := NewBudget(vo.NewId(), vo.NewId(), "B", vo.NewId(), c.started, t0)
+			b.CoverCurrentPeriod(c.current, c.thisMonth, t1)
+			if !b.StartedAt.Equal(c.want) {
+				t.Fatalf("started_at = %s, want %s", b.StartedAt, c.want)
+			}
+			if moved := !c.want.Equal(c.started); moved != b.UpdatedAt.Equal(t1) {
+				t.Fatalf("updated_at = %s, moved %v", b.UpdatedAt, moved)
+			}
+		})
+	}
+}

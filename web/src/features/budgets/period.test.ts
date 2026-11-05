@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { currentPeriod, periodOf, periodStartDayOf, periodWindow } from './period'
+import { budgetCurrentPeriod, currentPeriod, periodOf, periodStartDayOf, periodWindow } from './period'
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
@@ -69,5 +69,18 @@ describe('currentPeriod', () => {
     expect(currentPeriod(1, new Date(2026, 9, 30))).toBe('2026-10-01')
     expect(currentPeriod(28, new Date(2026, 9, 27, 23, 59))).toBe('2026-09-01')
     expect(currentPeriod(5, new Date(2026, 9, 4))).toBe('2026-09-01')
+  })
+})
+
+describe('budgetCurrentPeriod', () => {
+  const oct20 = new Date(2026, 9, 20, 12)
+  it('is the current period when the budget started earlier', () => {
+    expect(budgetCurrentPeriod({ periodStartDay: 28, startedAt: '2026-01-01 00:00:00' }, oct20)).toBe('2026-09-01')
+  })
+  it('never precedes the budget start', () => {
+    expect(budgetCurrentPeriod({ periodStartDay: 28, startedAt: '2026-10-01 00:00:00' }, oct20)).toBe('2026-10-01')
+  })
+  it('is unchanged for calendar months', () => {
+    expect(budgetCurrentPeriod({ startedAt: '2026-10-01 00:00:00' }, oct20)).toBe('2026-10-01')
   })
 })

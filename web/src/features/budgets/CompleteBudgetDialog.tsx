@@ -15,7 +15,7 @@ import { RouterPage } from '@/app/router-pages'
 import { useUpdateDefaultBudget } from '@/features/user/queries'
 import { useArchiveBudget, useCloneBudget, useUpdateBudgetDetail } from './queries'
 import { addMonths, formatPlanMonth, monthDiff } from './planMath'
-import { currentPeriod, periodStartDayOf } from './period'
+import { budgetCurrentPeriod } from './period'
 
 interface CompleteBudgetDialogProps {
   budget: BudgetMetaDto | null
@@ -41,14 +41,14 @@ export function CompleteBudgetDialog({ budget, onClose }: CompleteBudgetDialogPr
   const months = useMemo(() => {
     if (!budget) return []
     const start = budget.startedAt.slice(0, 7) + '-01'
-    const here = currentPeriod(periodStartDayOf(budget))
+    const here = budgetCurrentPeriod(budget)
     const span = Math.max(0, monthDiff(start, here))
     return Array.from({ length: span + 1 }, (_, i) => addMonths(here, -i))
   }, [budget])
 
   useEffect(() => {
     if (budget) {
-      const here = currentPeriod(periodStartDayOf(budget))
+      const here = budgetCurrentPeriod(budget)
       const lastMonth = addMonths(here, -1)
       const start = budget.startedAt.slice(0, 7) + '-01'
       setEndMonth(monthDiff(start, lastMonth) < 0 ? here : lastMonth)
@@ -86,7 +86,7 @@ export function CompleteBudgetDialog({ budget, onClose }: CompleteBudgetDialogPr
           id: budget.id,
           newId: uuidv7(),
           name,
-          startDate: currentPeriod(periodStartDayOf(budget)),
+          startDate: budgetCurrentPeriod(budget),
           withLimits: copyPlans,
         })
         await updateDefaultBudget.mutateAsync(copy.id)
