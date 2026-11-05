@@ -138,6 +138,8 @@ it('repairs a tab whose budget is gone', () => {
 it('tolerates a malformed stored state', async () => {
   localStorage.setItem('econumo.reportTabs', JSON.stringify({ state: { userId: 'u1', tabs: 'nope', activeId: 7 }, version: 0 }))
   await useReportTabs.persist.rehydrate()
+  // readable before the page's effect runs: its first render maps over the tabs
+  expect(store().tabs).toEqual([])
   store().ensureFor('u1')
   expect(store().tabs).toHaveLength(1)
   expect(store().activeId).toBe(store().tabs[0].id)

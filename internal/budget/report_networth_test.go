@@ -153,6 +153,23 @@ func TestNetWorthReport_BeforeFirstRateUsesEarliestRate(t *testing.T) {
 	eqAmounts(t, accountRow(t, r, ra).Balances, "700", "700", "700", "700")
 }
 
+// Rate histories start at different dates: a month with rates for other
+// currencies only still converts RUB, at RUB's first rate.
+func TestNetWorthReport_CurrencyWithLaterRatesUsesItsFirstRate(t *testing.T) {
+	h := newNetWorthHarness(t)
+	cad := h.f.Currency(fixture.Currency{Code: "CAD", Symbol: "CA$"})
+	rub := h.f.Currency(fixture.Currency{Code: "RUB", Symbol: "R"})
+	h.f.Rate(fixture.Rate{CurrencyID: cad, BaseCurrencyID: fixture.USD, Rate: "1.4", PublishedAt: "2026-01-05"})
+	h.f.Rate(fixture.Rate{CurrencyID: cad, BaseCurrencyID: fixture.USD, Rate: "1.4", PublishedAt: "2026-03-05"})
+	h.f.Rate(fixture.Rate{CurrencyID: rub, BaseCurrencyID: fixture.USD, Rate: "80", PublishedAt: "2026-03-05"})
+	ra := h.f.Account(fixture.Account{UserID: h.user, CurrencyID: rub, Name: "Rub"})
+	h.tx(1, ra, "", "", "", "40000", "2026-01-02 10:00:00")
+	b := h.f.Budget(fixture.Budget{UserID: h.user, CurrencyID: cad})
+	h.f.BudgetAccount(b, ra)
+	r := h.netWorth(t, model.GetNetWorthReportRequest{BudgetId: b, From: "2026-01-01", To: "2026-03-01"})
+	eqAmounts(t, accountRow(t, r, ra).Balances, "700", "700", "700")
+}
+
 func TestNetWorthReport_TransferMovesBetweenAccounts(t *testing.T) {
 	h := newNetWorthHarness(t)
 	other := h.f.Account(fixture.Account{UserID: h.user, Name: "Other"})
@@ -211,22 +228,41 @@ func TestNetWorthReport_ZeroAccountsOmitted(t *testing.T) {
 	}
 }
 
-func TestNetWorthReport_Budget_IncludesPartnerAccounts(t *testing.T) {
+// A partner's savings member is named and shared accounts stay as they are, but
+// their other everyday accounts reach the caller only as one nameless sum.
+func TestNetWorthReport_Budget_PartnerAccounts(t *testing.T) {
 	h := newNetWorthHarness(t)
-	partner := h.f.User(fixture.User{ID: "ffff0000-0000-7000-8000-0000000000cc", Name: "Partner", Email: "partner@flow.test"})
+	partner := h.f.User(fixture.User{ID: "ffff0000-0000-7000-8000-0000000000cc", Name: "Partner", Email: "partner@networth.test"})
 	h.f.DefaultOptions(partner)
-	pa := h.f.Account(fixture.Account{UserID: partner, Name: "Aardvark"})
-	b := h.budget(t, "2026-01-01 00:00:00", h.acct, pa)
+	wallet := h.f.Account(fixture.Account{UserID: partner, Name: "Secret wallet"})
+	card := h.f.Account(fixture.Account{UserID: partner, Name: "Secret card"})
+	shared := h.f.Account(fixture.Account{UserID: partner, Name: "Shared cash"})
+	saving := h.f.Account(fixture.Account{UserID: partner, Name: "Partner savings"})
+	h.f.AccountAccess(shared, h.user, 1)
+	b := h.budget(t, "2026-01-01 00:00:00", h.acct, wallet, card, shared, saving)
+	h.exec(t, "UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ? AND account_id = ?", true, b, saving)
 	h.f.BudgetAccess(b, partner, 0, true)
 	h.tx(1, h.acct, "", "", "", "10", "2026-04-02 10:00:00")
-	h.f.Transaction(fixture.Transaction{UserID: partner, AccountID: pa, Type: 1, Amount: "70", SpentAt: "2026-04-03 10:00:00"})
+	for acct, amount := range map[string]string{wallet: "70", card: "30", shared: "5", saving: "200"} {
+		h.f.Transaction(fixture.Transaction{UserID: partner, AccountID: acct, Type: 1, Amount: amount, SpentAt: "2026-04-03 10:00:00"})
+	}
 	r := h.netWorth(t, model.GetNetWorthReportRequest{BudgetId: b, From: "2026-04-01", To: "2026-04-01"})
-	if len(r.Accounts) != 2 || r.Accounts[0].Id != h.acct || r.Accounts[1].Id != pa {
+	if len(r.Accounts) != 4 || r.Accounts[0].Id != h.acct {
 		t.Fatalf("accounts = %+v", r.Accounts)
 	}
-	eqAmounts(t, r.Accounts[1].Balances, "70")
-	if r.Accounts[1].OwnerUserId != partner {
-		t.Fatalf("owner = %s", r.Accounts[1].OwnerUserId)
+	eqAmounts(t, accountRow(t, r, shared).Balances, "5")
+	if row := accountRow(t, r, saving); row.Name != "Partner savings" || row.IsSavings != 1 {
+		t.Fatalf("savings row = %+v", row)
+	}
+	merged := accountRow(t, r, "everyday-"+partner)
+	eqAmounts(t, merged.Balances, "100")
+	if merged.Name != "" || merged.Icon != "" || merged.OwnerUserId != partner {
+		t.Fatalf("merged row = %+v", merged)
+	}
+	for _, a := range r.Accounts {
+		if a.Id == wallet || a.Id == card {
+			t.Fatalf("a partner's own account leaked: %+v", a)
+		}
 	}
 }
 

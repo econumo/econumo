@@ -57,11 +57,16 @@ function useBudgetRows(budgetId: Id | null, accountId: Id | null, from: string, 
   const rows = wire
     .map((w) => ({ view: budgetTransactionView(w, { transactions, accounts, categories, payees, tags }), currencyId: w.currencyId }))
     .sort((a, b) => (a.view.date < b.view.date ? 1 : a.view.date > b.view.date ? -1 : 0))
-  return { isLoading: results.some((r) => r.isLoading), rows }
+  return {
+    isLoading: results.some((r) => r.isLoading),
+    // one month missing would pass for a complete list, offline as much as after an error
+    isError: results.some((r) => !r.data && (r.isError || r.fetchStatus === 'paused')),
+    rows,
+  }
 }
 
 function useLocalRows(enabled: boolean, row: AccountsDrill, from: string, to: string) {
-  const { data: transactions, isLoading } = useTransactions()
+  const { data: transactions, isLoading, isError } = useTransactions()
   const lookups = useTransactionLookups()
   const rows = useMemo(() => {
     if (!enabled) return []
@@ -79,7 +84,7 @@ function useLocalRows(enabled: boolean, row: AccountsDrill, from: string, to: st
       .sort((a, b) => compareTransactions(a, b, row.kind === 'account' ? row.id : undefined))
       .map((tx) => ({ view: enrichTransaction(tx, lookups), currencyId: undefined as Id | undefined }))
   }, [enabled, transactions, lookups, row, from, to])
-  return { isLoading: enabled && isLoading, rows }
+  return { isLoading: enabled && isLoading, isError: enabled && isError && !transactions, rows }
 }
 
 export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
@@ -94,7 +99,7 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
   const fromBudget = row.kind === 'savings'
   const budgetRows = useBudgetRows(fromBudget ? budgetId : null, fromBudget ? row.id : null, from, to)
   const localRows = useLocalRows(!fromBudget, row, from, to)
-  const { isLoading, rows } = fromBudget ? budgetRows : localRows
+  const { isLoading, isError, rows } = fromBudget ? budgetRows : localRows
   const { data: user } = useUserData()
   const { data: currencies = [] } = useCurrencies()
   const deleteTransaction = useDeleteTransaction()
@@ -114,7 +119,9 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
   return (
     <>
       <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={title} dismissible={!preview && !deleteTarget}>
-        {isLoading ? (
+        {isError ? (
+          <p className="py-2 text-sm text-muted-foreground">{t('common.app.error')}</p>
+        ) : isLoading ? (
           <div className="flex justify-center py-6">
             <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="loading" />
           </div>

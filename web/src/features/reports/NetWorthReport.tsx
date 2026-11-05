@@ -74,9 +74,10 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
   const { data: budgets } = useReportBudgets()
   const { data: folders } = useFolders()
   const [open, setOpen] = useState<Set<string>>(new Set())
-  // a dragged range of month indices; `key` drops it when the scope or period changes
+  // a dragged range of months (a refetch can move their indices); `key` drops it
+  // when the scope or period changes
   const rangeKey = `${p.budgetId ?? MINE}|${p.period}`
-  const [range, setRange] = useState<{ key: string; a: number; b: number } | null>(null)
+  const [range, setRange] = useState<{ key: string; a: string; b: string } | null>(null)
   const [dragFrom, setDragFrom] = useState<number | null>(null)
   const [drill, setDrill] = useState<{ id: string; kind: 'account' | 'savings' | 'accounts'; name: string; accountIds?: string[] } | null>(null)
   const preset = PRESETS.find((o) => o.value === p.period) ?? PRESETS[1]
@@ -151,7 +152,10 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
     t('reports.networth.other_owner')
 
   const n = data?.months.length ?? 0
-  const live = range && range.key === rangeKey && Math.max(range.a, range.b) < n ? range : null
+  const liveFrom = range && range.key === rangeKey && data ? data.months.indexOf(range.a) : -1
+  const liveTo = range && range.key === rangeKey && data ? data.months.indexOf(range.b) : -1
+  // a month the refetched report no longer holds ends the selection
+  const live = liveFrom >= 0 && liveTo >= 0 ? { a: liveFrom, b: liveTo } : null
   const selected = live !== null && live.a !== live.b
   // the figures run from `lo` to `hi`: the whole window, or the dragged range
   const lo = selected ? Math.min(live.a, live.b) : 0
@@ -422,14 +426,14 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                 className="cursor-crosshair select-none"
                 onMouseDown={(s: MouseHandlerDataParam) => {
                   const i = indexOf(s)
-                  if (i === null) return
+                  if (i === null || !data) return
                   setDragFrom(i)
-                  setRange({ key: rangeKey, a: i, b: i })
+                  setRange({ key: rangeKey, a: data.months[i], b: data.months[i] })
                 }}
                 onMouseMove={(s: MouseHandlerDataParam) => {
                   const i = indexOf(s)
-                  if (dragFrom === null || i === null) return
-                  setRange({ key: rangeKey, a: dragFrom, b: i })
+                  if (dragFrom === null || i === null || !data) return
+                  setRange({ key: rangeKey, a: data.months[dragFrom], b: data.months[i] })
                 }}
                 onMouseUp={() => {
                   if (dragFrom === null) return
@@ -444,7 +448,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                 <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={40} />
                 <YAxis width={40} tickLine={false} axisLine={false} tickFormatter={compact} />
                 {selected ? (
-                  <ReferenceArea x1={chartData[lo - chartFrom].label} x2={chartData[hi - chartFrom].label} fill={STROKE} fillOpacity={0.08} stroke={STROKE} strokeOpacity={0.3} />
+                  <ReferenceArea x1={chartData[Math.max(lo - chartFrom, 0)].label} x2={chartData[hi - chartFrom].label} fill={STROKE} fillOpacity={0.08} stroke={STROKE} strokeOpacity={0.3} />
                 ) : null}
                 {hasNegative ? <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.6} /> : null}
                 <ChartTooltip

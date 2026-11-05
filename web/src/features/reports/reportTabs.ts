@@ -151,6 +151,11 @@ export const useReportTabs = create<ReportTabsState>()(
       name: 'econumo.reportTabs',
       version: 0,
       partialize: (s) => ({ userId: s.userId, tabs: s.tabs, activeId: s.activeId }),
+      // cleaned here, before the page's first render reads them
+      merge: (persisted, current) => {
+        const stored = (persisted ?? {}) as Partial<ReportTabsState>
+        return { ...current, ...stored, tabs: Array.isArray(stored.tabs) ? stored.tabs.map(sanitize).filter((t) => t !== null) : [] }
+      },
     },
   ),
 )

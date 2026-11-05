@@ -101,6 +101,44 @@ func (q *Queries) GetEarliestCurrencyRateDate(ctx context.Context, baseCurrencyI
 	return published_at, err
 }
 
+const getEarliestCurrencyRates = `-- name: GetEarliestCurrencyRates :many
+SELECT cr.currency_id, CAST(cr.rate AS REAL) AS rate FROM currencies_rates cr
+WHERE cr.base_currency_id = ? AND cr.published_at = (
+    SELECT MIN(c2.published_at) FROM currencies_rates c2
+    WHERE c2.currency_id = cr.currency_id AND c2.base_currency_id = cr.base_currency_id
+)
+`
+
+type GetEarliestCurrencyRatesRow struct {
+	CurrencyID string
+	Rate       float64
+}
+
+// Each currency's first stored rate against a base: what a period with no rate
+// for that currency converts at, since rate histories can start at different dates.
+func (q *Queries) GetEarliestCurrencyRates(ctx context.Context, baseCurrencyID string) ([]GetEarliestCurrencyRatesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getEarliestCurrencyRates, baseCurrencyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetEarliestCurrencyRatesRow{}
+	for rows.Next() {
+		var i GetEarliestCurrencyRatesRow
+		if err := rows.Scan(&i.CurrencyID, &i.Rate); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getHiddenCurrencyIDs = `-- name: GetHiddenCurrencyIDs :many
 SELECT currency_id FROM users_hidden_currencies WHERE user_id = ?
 `

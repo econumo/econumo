@@ -19,6 +19,8 @@ type flexRates struct {
 	digits func(id vo.Id) (int, error)
 }
 
+func (f flexRates) EarliestRates(context.Context) ([]model.FullRate, error) { return nil, nil }
+
 func (f flexRates) AverageRates(_ context.Context, start, end time.Time) ([]model.FullRate, error) {
 	return f.avg(start, end)
 }

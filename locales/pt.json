@@ -1586,28 +1586,28 @@
       "title": "Relatórios"
     },
     "tabs": {
-      "new": "Nova aba",
+      "new": "Novo separador",
       "close": "Fechar {name}",
       "close_menu": "Fechar",
       "rename": "Renomear",
       "duplicate": "Duplicar",
-      "name_label": "Nome da aba",
-      "limit": "Até {count} abas"
+      "name_label": "Nome do separador",
+      "limit": "Até {count} separadores"
     },
     "kind": {
-      "networth": "Patrimônio líquido"
+      "networth": "Património líquido"
     },
     "list": {
       "choose": "Escolha um relatório",
-      "scope": "Escopo",
+      "scope": "Âmbito",
       "scope_mine": "Minhas contas",
-      "networth_q": "Estou ficando mais rico ou mais pobre?",
+      "networth_q": "Estou a ficar mais rico ou mais pobre?",
       "suggest_q": "Sugerir um relatório",
       "suggest_note": "Falta algum relatório? Conte-nos o que gostaria de ver.",
       "networth_caption": "hoje",
-      "networth_up": "Alta de {amount} este ano",
-      "networth_down": "Queda de {amount} este ano",
-      "networth_flat": "Sem mudança este ano"
+      "networth_up": "Mais {amount} este ano",
+      "networth_down": "Menos {amount} este ano",
+      "networth_flat": "Sem alteração este ano"
     },
     "period": {
       "quarter": "{quarter}º tri. {year}"
@@ -1616,7 +1616,7 @@
       "period_1y": "1 a",
       "period_3y": "3 a",
       "period_all": "Tudo",
-      "chart": "Gráfico do patrimônio",
+      "chart": "Gráfico do património",
       "col_start": "Início",
       "col_now": "Agora",
       "no_folder": "Sem pasta",

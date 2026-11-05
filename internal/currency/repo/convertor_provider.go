@@ -40,6 +40,7 @@ type providerQuerier interface {
 	GetAverage(ctx context.Context, db backend.DBTX, start, end time.Time, baseID string) ([]avgRow, error)
 	GetLatestDate(ctx context.Context, db backend.DBTX, baseID string, before time.Time) (time.Time, error)
 	GetEarliestDate(ctx context.Context, db backend.DBTX, baseID string) (time.Time, error)
+	GetEarliestRates(ctx context.Context, db backend.DBTX, baseID string) ([]avgRow, error)
 	GetFixedRates(ctx context.Context, db backend.DBTX) ([]fixedRateRow, error)
 }
 
@@ -127,6 +128,27 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 	return out, nil
 }
 
+// EarliestRates returns each currency's first stored rate for the base currency.
+func (p *RateProvider) EarliestRates(ctx context.Context) ([]model.FullRate, error) {
+	baseID, err := p.BaseCurrencyID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := p.q.GetEarliestRates(ctx, p.db(ctx), baseID.String())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.FullRate, 0, len(rows))
+	for _, r := range rows {
+		id, perr := vo.ParseId(r.CurrencyID)
+		if perr != nil {
+			return nil, perr
+		}
+		out = append(out, model.FullRate{CurrencyID: id, Rate: vo.NewDecimal(r.Rate)})
+	}
+	return out, nil
+}
+
 // SnappedRatePeriod returns the [start, end) AverageRates actually uses for the
 // requested period: the month of the latest published rate at or before `end`,
 // the earliest rate's month before the first rate, or the requested period when
@@ -196,6 +218,18 @@ func (sqliteProviderQuerier) GetLatestDate(ctx context.Context, db backend.DBTX,
 	return sqlitegen.New(db).GetLatestCurrencyRateDate(ctx, sqlitegen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, Datetime: before.Format(datetime.Layout)})
 }
 
+func (sqliteProviderQuerier) GetEarliestRates(ctx context.Context, db backend.DBTX, baseID string) ([]avgRow, error) {
+	rows, err := sqlitegen.New(db).GetEarliestCurrencyRates(ctx, baseID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]avgRow, len(rows))
+	for i, r := range rows {
+		out[i] = avgRow{CurrencyID: r.CurrencyID, Rate: strconv.FormatFloat(r.Rate, 'f', 8, 64)}
+	}
+	return out, nil
+}
+
 func (sqliteProviderQuerier) GetEarliestDate(ctx context.Context, db backend.DBTX, baseID string) (time.Time, error) {
 	return sqlitegen.New(db).GetEarliestCurrencyRateDate(ctx, baseID)
 }
@@ -230,6 +264,18 @@ func (pgsqlProviderQuerier) GetAverage(ctx context.Context, db backend.DBTX, sta
 }
 func (pgsqlProviderQuerier) GetLatestDate(ctx context.Context, db backend.DBTX, baseID string, before time.Time) (time.Time, error) {
 	return pgsqlgen.New(db).GetLatestCurrencyRateDate(ctx, pgsqlgen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, PublishedAt: before})
+}
+
+func (pgsqlProviderQuerier) GetEarliestRates(ctx context.Context, db backend.DBTX, baseID string) ([]avgRow, error) {
+	rows, err := pgsqlgen.New(db).GetEarliestCurrencyRates(ctx, baseID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]avgRow, len(rows))
+	for i, r := range rows {
+		out[i] = avgRow{CurrencyID: r.CurrencyID, Rate: r.Rate}
+	}
+	return out, nil
 }
 
 func (pgsqlProviderQuerier) GetEarliestDate(ctx context.Context, db backend.DBTX, baseID string) (time.Time, error) {

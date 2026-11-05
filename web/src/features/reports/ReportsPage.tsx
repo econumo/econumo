@@ -108,7 +108,7 @@ export function ReportsPage() {
             }}
           />
           <div role="tabpanel" aria-label={tabTitle(active, names)} className="w-full max-w-4xl">
-            <ReportBody tab={active} />
+            <ReportBody key={active.id} tab={active} />
           </div>
         </>
       ) : null}

@@ -154,6 +154,7 @@ type Querier interface {
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
 	GetEarliestCurrencyRateDate(ctx context.Context, baseCurrencyID string) (time.Time, error)
+	GetEarliestCurrencyRates(ctx context.Context, baseCurrencyID string) ([]GetEarliestCurrencyRatesRow, error)
 	// Where a rate-gap check starts by default. ORDER BY ... LIMIT 1 so the
 	// result types as the column. sql.ErrNoRows = no transactions yet.
 	GetEarliestTransactionDate(ctx context.Context) (time.Time, error)

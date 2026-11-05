@@ -18,6 +18,8 @@ type fakeRates struct {
 	digits map[string]int
 }
 
+func (f fakeRates) EarliestRates(context.Context) ([]model.FullRate, error) { return nil, nil }
+
 func (f fakeRates) AverageRates(_ context.Context, _, _ time.Time) ([]model.FullRate, error) {
 	return f.rates, nil
 }

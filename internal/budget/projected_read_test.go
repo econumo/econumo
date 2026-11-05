@@ -69,6 +69,10 @@ func (a accountMapStub) AccountOwner(_ context.Context, id vo.Id) (vo.Id, error)
 func (a accountMapStub) OwnedLiveAccountIDs(context.Context, vo.Id) ([]vo.Id, error) {
 	return nil, nil
 }
+func (a accountMapStub) AvailableAccountIDs(context.Context, vo.Id) ([]vo.Id, error) {
+	return nil, nil
+}
+
 func (a accountMapStub) OwnedAccountIDs(context.Context, vo.Id) ([]vo.Id, error) {
 	return nil, nil
 }

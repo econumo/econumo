@@ -146,6 +146,73 @@ it('All: a range dragged on the shortened chart keeps its months', async () => {
   expect(cells(rowNamed('Total'))).toEqual(['Total', '100.00 $', '300.00 $', '+200.00 $'])
 })
 
+describe('a selection across a refetch', () => {
+  const data = (months: string[], balances: string[]) => ({ currencyId: 'cur-usd', months, accounts: [acc('a1', 'Cash', balances)] })
+  async function selectAll() {
+    const surface = document.querySelector('.recharts-wrapper') as HTMLElement
+    const at = async (clientX: number) => {
+      fireEvent.mouseMove(surface, { clientX, clientY: 100 })
+      await act(() => new Promise((r) => setTimeout(r, 50)))
+    }
+    await at(45)
+    fireEvent.mouseDown(surface, { clientX: 45, clientY: 100 })
+    await at(390)
+    fireEvent.mouseUp(surface, { clientX: 390, clientY: 100 })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Clear the selection' })).toBeInTheDocument())
+  }
+  const refetch = async (next: unknown, client: { invalidateQueries: (f: object) => Promise<unknown> }) => {
+    server.use(http.get('*/api/v1/report/get-net-worth-report', () => HttpResponse.json({ success: true, message: '', data: { item: next } })))
+    await act(() => client.invalidateQueries({ queryKey: ['reportNetWorth'] }))
+  }
+
+  it('an older transaction moves the indices: same months, and no crash', async () => {
+    const { queryClient } = openNetWorth({ period: 'all' }, data(['2026-08-01', '2026-09-01'], ['100', '300']))
+    await screen.findByRole('table')
+    await selectAll()
+    await refetch(data(['2026-07-01', '2026-08-01', '2026-09-01'], ['0', '100', '300']), queryClient)
+    await waitFor(() => expect(cells(rowNamed('Total')).slice(1)).toEqual(['100.00 $', '300.00 $', '+200.00 $']))
+  })
+
+  it('a selected month the report no longer holds ends the selection', async () => {
+    const { queryClient } = openNetWorth({ period: 'all' }, data(['2026-08-01', '2026-09-01'], ['100', '300']))
+    await screen.findByRole('table')
+    await selectAll()
+    await refetch(data(['2026-09-01', '2026-10-01'], ['300', '500']), queryClient)
+    await waitFor(() => expect(screen.getByRole('radiogroup', { name: 'Period' })).toBeInTheDocument())
+  })
+})
+
+it('a selection stays on its own tab', async () => {
+  useReportTabs.setState({
+    userId: 'u1',
+    tabs: [
+      { id: 't1', kind: 'networth', title: 'One', params: defaultParams(null) },
+      { id: 't2', kind: 'networth', title: 'Two', params: defaultParams(null) },
+    ],
+    activeId: 't1',
+  })
+  server.use(
+    ...coreHandlers(),
+    http.get('*/api/v1/report/get-net-worth-report', () => HttpResponse.json({ success: true, message: '', data: { item: report() } })),
+    http.get('*/api/v1/oauth/get-identity-list', () => HttpResponse.json({ success: true, message: '', data: [] })),
+  )
+  renderReports()
+  await screen.findByRole('table')
+  const surface = document.querySelector('.recharts-wrapper') as HTMLElement
+  const at = async (clientX: number) => {
+    fireEvent.mouseMove(surface, { clientX, clientY: 100 })
+    await act(() => new Promise((r) => setTimeout(r, 50)))
+  }
+  await at(45)
+  fireEvent.mouseDown(surface, { clientX: 45, clientY: 100 })
+  await at(220)
+  fireEvent.mouseUp(surface, { clientX: 220, clientY: 100 })
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Clear the selection' })).toBeInTheDocument())
+  await userEvent.click(screen.getByRole('tab', { name: 'Two' }))
+  await screen.findByRole('table')
+  expect(screen.queryByRole('button', { name: 'Clear the selection' })).toBeNull()
+})
+
 it('a folder expands to its accounts', async () => {
   openNetWorth()
   await screen.findByRole('table')

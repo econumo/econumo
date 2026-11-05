@@ -45,6 +45,9 @@ type AccountLookup interface {
 	// OwnedAccountIDs returns every account the user OWNS, soft-deleted
 	// ones included; net worth drops the deleted ones itself.
 	OwnedAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
+	// AvailableAccountIDs returns the accounts the user owns or that are
+	// shared with them.
+	AvailableAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
 // CurrencyLookup resolves a currency id by code (createBudget default

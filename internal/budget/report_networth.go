@@ -70,6 +70,13 @@ func (s *Service) GetNetWorthReport(ctx context.Context, userID vo.Id, req model
 			item.Accounts[i].IsSavings = 1
 		}
 	}
+	if req.BudgetId != "" {
+		available, err := s.accounts.AvailableAccountIDs(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		item.Accounts = mergeOthersEveryday(item.Accounts, available, userID.String(), currency.String())
+	}
 	return &model.GetNetWorthReportResult{Item: item}, nil
 }
 
@@ -206,8 +213,48 @@ func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, views []model
 		}
 		result.Accounts = append(result.Accounts, row)
 	}
-	sort.SliceStable(result.Accounts, func(a, b int) bool {
-		x, y := result.Accounts[a], result.Accounts[b]
+	sortNetWorthRows(result.Accounts, me)
+	return result, nil
+}
+
+// A budget names its savings members to every participant, but another member's
+// everyday accounts are their own unless shared: the caller gets those summed per
+// owner, with no name, icon or id.
+func mergeOthersEveryday(rows []model.NetWorthAccountRow, available []vo.Id, me, currency string) []model.NetWorthAccountRow {
+	visible := make(map[string]bool, len(available))
+	for _, id := range available {
+		visible[id.String()] = true
+	}
+	out := make([]model.NetWorthAccountRow, 0, len(rows))
+	merged := map[string]int{}
+	for _, r := range rows {
+		if r.OwnerUserId == me || r.IsSavings == 1 || visible[r.Id] {
+			out = append(out, r)
+			continue
+		}
+		i, ok := merged[r.OwnerUserId]
+		if !ok {
+			i = len(out)
+			merged[r.OwnerUserId] = i
+			out = append(out, model.NetWorthAccountRow{
+				Id: "everyday-" + r.OwnerUserId, CurrencyId: currency, OwnerUserId: r.OwnerUserId,
+				Balances: r.Balances,
+			})
+			continue
+		}
+		sum := make([]string, len(r.Balances))
+		for k := range r.Balances {
+			sum[k] = vo.NewDecimal(out[i].Balances[k]).Add(vo.NewDecimal(r.Balances[k])).String()
+		}
+		out[i].Balances = sum
+	}
+	sortNetWorthRows(out, me)
+	return out
+}
+
+func sortNetWorthRows(rows []model.NetWorthAccountRow, me string) {
+	sort.SliceStable(rows, func(a, b int) bool {
+		x, y := rows[a], rows[b]
 		if (x.OwnerUserId == me) != (y.OwnerUserId == me) {
 			return x.OwnerUserId == me
 		}
@@ -219,5 +266,4 @@ func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, views []model
 		}
 		return x.Id < y.Id
 	})
-	return result, nil
 }

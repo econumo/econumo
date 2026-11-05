@@ -59,7 +59,9 @@ type stubRates struct {
 	snapEnd   time.Time
 }
 
-func (s stubRates) BaseCurrencyID(context.Context) (vo.Id, error) { return s.base, nil }
+func (s stubRates) BaseCurrencyID(context.Context) (vo.Id, error)           { return s.base, nil }
+func (s stubRates) EarliestRates(context.Context) ([]model.FullRate, error) { return nil, nil }
+
 func (s stubRates) AverageRates(context.Context, time.Time, time.Time) ([]model.FullRate, error) {
 	return s.rates, nil
 }

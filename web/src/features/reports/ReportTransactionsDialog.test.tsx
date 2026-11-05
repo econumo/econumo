@@ -73,3 +73,20 @@ it('a budget savings account: asks the budget transaction list for every month o
   expect(await screen.findByText('partner saving')).toBeInTheDocument()
   await waitFor(() => expect(asked.sort()).toEqual(['2026-07-01|b-sav', '2026-08-01|b-sav', '2026-09-01|b-sav']))
 })
+
+it('a month that failed to load shows an error, not a shorter list', async () => {
+  server.use(
+    ...coreHandlers({ accounts, transactions }),
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      const month = new URL(request.url).searchParams.get('periodStart')
+      if (month === '2026-08-01') return HttpResponse.json({ success: false, message: 'no', code: 500, errors: {} }, { status: 500 })
+      return HttpResponse.json({ success: true, message: '', data: { items: [{
+        id: `w-${month}`, author: partner, currencyId: 'cur-usd', amount: '12', description: 'a saving',
+        category: null, payee: null, tag: null, labelIds: [], spentAt: `${month?.slice(0, 7)}-04 12:00:00`,
+      }] } })
+    }),
+  )
+  renderDialog({ budgetId: 'b1', row: { id: 'b-sav', kind: 'savings', name: 'Bob savings' }, from: '2026-07-01', to: '2026-08-01' })
+  expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  expect(screen.queryByText('a saving')).toBeNull()
+})

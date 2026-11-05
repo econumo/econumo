@@ -94,6 +94,19 @@ func (l *BudgetAccountLookup) OwnedAccountIDs(ctx context.Context, userID vo.Id)
 	return l.accounts.ListIDsByOwner(ctx, userID)
 }
 
+// AvailableAccountIDs returns the accounts the user owns or that are shared with them.
+func (l *BudgetAccountLookup) AvailableAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
+	accounts, err := l.accounts.ListAvailable(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]vo.Id, 0, len(accounts))
+	for _, a := range accounts {
+		out = append(out, a.ID)
+	}
+	return out, nil
+}
+
 // AccountOwner returns an account's owner id.
 func (l *BudgetAccountLookup) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error) {
 	a, err := l.accounts.GetByID(ctx, accountID)

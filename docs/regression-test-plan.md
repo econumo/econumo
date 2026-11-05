@@ -2106,6 +2106,9 @@ shared with a partner.
       look: rounded hover on every row, no lines between rows.
 - [ ] Net worth in a budget shared with a partner: one row per person with
       their avatar, partners first and me last; no folder names appear.
+      The response names a partner's account only when it is a savings member
+      or shared with me (check the network tab: their other accounts come as
+      one nameless row).
       A person with savings members in the budget opens to those savings
       accounts by name plus "Everyday accounts" (wallet icon) for the rest;
       a person without savings members is a single row. With "This year"
@@ -2134,7 +2137,8 @@ shared with a partner.
 - [ ] Net worth "All" reaching back before the instance's first stored
       currency rate: a foreign-currency account (e.g. RUB in a CAD budget) is
       converted at the earliest rate in those months, never shown at face
-      value (40,000 RUB is not 40,000 CA$).
+      value (40,000 RUB is not 40,000 CA$), also when RUB's own rates start later
+      than other currencies'.
 - [ ] Net worth leaves deleted accounts out entirely, in both scopes: no row,
       none of their past balance in the chart or Total, and a deleted
       account's old transactions do not move the start of "All".
