@@ -13,6 +13,9 @@ import (
 type budgetedAmount struct {
 	budgeted       vo.DecimalNumber
 	budgetedBefore vo.DecimalNumber
+	// hasLimit: a limit row exists for the current month. A plan of 0 is a
+	// plan; only a missing row means "no plan".
+	hasLimit bool
 }
 
 // amountSpent is one currency's spent amount within a period.
@@ -52,6 +55,7 @@ func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f
 			amt.budgetedBefore = vo.NewDecimal("0")
 		}
 		amt.budgeted = l.Amount
+		amt.hasLimit = true
 		data[key] = amt
 	}
 

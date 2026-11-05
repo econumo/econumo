@@ -5,6 +5,9 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/econumo/econumo/internal/model"
 )
 
 // Verbosity/level resolution moved to internal/logging; see logging_test.go.
@@ -38,6 +41,7 @@ func TestCommandRegistry(t *testing.T) {
 		"user:create", "user:change-email", "user:change-password",
 		"user:activate", "user:deactivate",
 		"currency:update-rates", "currency:add",
+		"currency:show-rate-gaps", "currency:backfill-rates",
 		"token:purge",
 		"data:remove-salt",
 	}
@@ -143,4 +147,51 @@ func TestIndexPanicsOnDuplicate(t *testing.T) {
 		}
 	}()
 	index([]command{{name: "x:y"}, {name: "x:y"}})
+}
+
+func TestParseRateGapArgs(t *testing.T) {
+	const usage = "currency:show-rate-gaps [start] [end] [--daily]"
+	a, err := parseRateGapArgs([]string{"2026-01", "2026-03-15", "--daily"}, usage)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if a.from.Format("2006-01-02") != "2026-01-01" || a.to.Format("2006-01-02") != "2026-03-15" || a.period != model.RatePeriodDay {
+		t.Errorf("got from=%s to=%s period=%d", a.from, a.to, a.period)
+	}
+
+	a, err = parseRateGapArgs(nil, usage)
+	if err != nil || !a.from.IsZero() || !a.to.IsZero() || a.period != model.RatePeriodMonth {
+		t.Errorf("no args: %+v err=%v, want zero dates, monthly", a, err)
+	}
+
+	for _, bad := range [][]string{
+		{"--dialy"},
+		{"-daily"},
+		{"2026-01", "2026-02", "2026-03"},
+		{"2026/01/01"},
+	} {
+		if _, err := parseRateGapArgs(bad, usage); err == nil {
+			t.Errorf("parseRateGapArgs(%q) accepted", bad)
+		}
+	}
+}
+
+func TestPrintRateGaps(t *testing.T) {
+	jan := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	mar := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	var buf bytes.Buffer
+	printRateGaps(&buf, model.RateGapReport{
+		Base: "USD", From: jan, To: mar, Currencies: []string{"EUR", "GBP"},
+		Gaps: []model.RateGap{{Start: mar, Missing: []string{"GBP"}}},
+	})
+	want := "Rates against USD for EUR, GBP, 2026-01 to 2026-03\n2026-03  missing GBP\n1 month with gaps\n"
+	if buf.String() != want {
+		t.Errorf("output =\n%s\nwant\n%s", buf.String(), want)
+	}
+
+	buf.Reset()
+	printRateBackfill(&buf, model.RateBackfill{Date: mar, Missing: []string{"EUR", "GBP"}, Stored: 1, Unavailable: []string{"GBP"}})
+	if got := buf.String(); got != "2026-03-01  stored 1 rate(s); no rate returned for GBP\n" {
+		t.Errorf("backfill line = %q", got)
+	}
 }

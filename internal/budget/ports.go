@@ -88,3 +88,15 @@ type AverageRateLookup interface {
 type TransactionLabels interface {
 	LabelsByTransactionIDs(ctx context.Context, ids []vo.Id) (map[string][]string, error)
 }
+
+// RecurringSource reads the recurring templates the budget projects as
+// upcoming money. Satisfied by the recurring feature at wiring time.
+type RecurringSource interface {
+	// ListByAccountIDs returns the templates whose source OR transfer
+	// recipient is one of accountIDs, with their label ids loaded: a transfer
+	// from an outside account into a member counts for the budget.
+	ListByAccountIDs(ctx context.Context, accountIDs []vo.Id) ([]*model.RecurringTransaction, error)
+	// CanEdit reports whether the user may act on a template of the account:
+	// its owner, or a non-guest write grant on it.
+	CanEdit(ctx context.Context, userID, accountID vo.Id) (bool, error)
+}

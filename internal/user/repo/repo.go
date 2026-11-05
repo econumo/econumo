@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -51,12 +52,18 @@ type (
 	passwordIfGenParams = sqlitegen.UpdateUserPasswordIfGenerationParams
 	emailIfGenParams    = sqlitegen.UpdateUserEmailIfPasswordlessAndGenerationParams
 	emailGenParams      = sqlitegen.UpdateUserEmailIfGenerationParams
+	emailLookupParams   = sqlitegen.GetUserByEmailParams
+	userEmailRow        = sqlitegen.ListUserEmailsOldestFirstRow
+	setEmailParams      = sqlitegen.SetUserEmailParams
 )
 
 type querier interface {
 	GetUserByID(ctx context.Context, db backend.DBTX, id string) (userRow, error)
-	GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error)
-	ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error)
+	GetUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (userRow, error)
+	ExistsUserByEmail(ctx context.Context, db backend.DBTX, p emailLookupParams) (bool, error)
+	ListUserEmailsOldestFirst(ctx context.Context, db backend.DBTX) ([]userEmailRow, error)
+	GetUserIDByExactEmail(ctx context.Context, db backend.DBTX, email string) (string, error)
+	SetUserEmail(ctx context.Context, db backend.DBTX, p setEmailParams) error
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
 	ListUserIDsMissingOption(ctx context.Context, db backend.DBTX, name string) ([]string, error)
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
@@ -130,11 +137,16 @@ func (r *Repo) GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error
 	return model.Header{
 		ID: row.ID, Name: row.Name, Avatar: row.Avatar,
 		AccessLevel: model.AccessLevel(row.AccessLevel), AccessUntil: row.AccessUntil,
+		CreatedAt: row.CreatedAt,
 	}, nil
 }
 
+func emailLookup(email string) emailLookupParams {
+	return emailLookupParams{Normalized: model.NormalizeEmail(email), Exact: strings.TrimSpace(email)}
+}
+
 func (r *Repo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
-	row, err := r.q.GetUserByEmail(ctx, r.db(ctx), email)
+	row, err := r.q.GetUserByEmail(ctx, r.db(ctx), emailLookup(email))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errs.NewNotFound("User not found")
@@ -145,7 +157,41 @@ func (r *Repo) GetByEmail(ctx context.Context, email string) (*model.User, error
 }
 
 func (r *Repo) ExistsByEmail(ctx context.Context, email string) (bool, error) {
-	return r.q.ExistsUserByEmail(ctx, r.db(ctx), email)
+	return r.q.ExistsUserByEmail(ctx, r.db(ctx), emailLookup(email))
+}
+
+// ListEmailsOldestFirst returns every user's stored address, oldest account first.
+func (r *Repo) ListEmailsOldestFirst(ctx context.Context) ([]user.StoredEmail, error) {
+	rows, err := r.q.ListUserEmailsOldestFirst(ctx, r.db(ctx))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]user.StoredEmail, 0, len(rows))
+	for _, row := range rows {
+		id, perr := vo.ParseId(row.ID)
+		if perr != nil {
+			return nil, perr
+		}
+		out = append(out, user.StoredEmail{ID: id, Email: row.Email})
+	}
+	return out, nil
+}
+
+// HolderOfExactEmail returns the user storing exactly this address.
+// Missing -> *errs.NotFoundError.
+func (r *Repo) HolderOfExactEmail(ctx context.Context, email string) (vo.Id, error) {
+	raw, err := r.q.GetUserIDByExactEmail(ctx, r.db(ctx), email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return vo.Id{}, errs.NewNotFound("User not found")
+		}
+		return vo.Id{}, err
+	}
+	return vo.ParseId(raw)
+}
+
+func (r *Repo) SetEmail(ctx context.Context, userID vo.Id, email string) error {
+	return r.q.SetUserEmail(ctx, r.db(ctx), setEmailParams{Email: email, ID: userID.String()})
 }
 
 func (r *Repo) ListIDs(ctx context.Context) ([]vo.Id, error) {

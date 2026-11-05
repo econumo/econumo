@@ -5,8 +5,11 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { EntityIcon } from '@/components/EntityIcon'
 import { isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
+import { pluralPick } from '@/lib/plural'
+import { METRICS, trackEvent } from '@/lib/metrics'
+import type { ReactNode } from 'react'
 import type { BudgetCommentDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
-import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { elementDisplayName } from './budgetMath'
@@ -17,13 +20,16 @@ import { CellShell } from './CellShell'
 import { COMMENT_ANCHOR_ATTR } from './cellDom'
 import { isEnvelopeType } from './elementEdit'
 import { DragChild, EnvelopeDrop, EnvelopeHeadDrop } from './MonthDrag'
-import { CurrencyTag, Dash, RowMenu } from './monthLines'
+import { CurrencyTag, Dash, FigureCells, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
-import { CHILD_INDENT, FOLDER_INDENT, PLAN_CROSSHAIR, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, useRowLevel } from './monthLayout'
+import { CHILD_INDENT, FOLDER_INDENT, groupedLevel, PLAN_CROSSHAIR, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext, useRowLevel } from './monthLayout'
 import { planCellView, shownActual } from './planCell'
+import { planHintClass } from './planHint'
 import { PlanCellInput } from './PlanCellInput'
 import type { CellMove } from './PlanCellInput'
-import type { PlanRow } from './planMath'
+import { wantsUpcomingPanel } from './planHint'
+import type { MonthExchange, PlanRow } from './planMath'
+import { tagGroupPlanSums } from './planMath'
 
 export interface PlanLimitTarget {
   el: PlanElementDto
@@ -48,17 +54,20 @@ export const selectedClass = (selected: boolean): string => (selected ? SELECTED
 
 export const pickedKey = (rk: string, col: number): string => `${rk}|${col}`
 
-// an unset cell reads as 0 everywhere else in the grid, so copying/filling from it
-// carries an explicit 0 rather than an empty limit
+// copying/filling from an unset cell carries the empty plan: it clears the targets
 export function sourceAmount(el: PlanElementDto, monthIndex: number): string {
-  const planned = monthIndex >= 0 ? (el.cells[monthIndex]?.planned ?? '') : ''
-  return planned === '' ? '0' : planned
+  return monthIndex >= 0 ? (el.cells[monthIndex]?.planned ?? '') : ''
 }
 
-/** A row is editable per-cell only for a non-uncategorized, non-archived parent row,
- *  with a fetched cell and update rights for that month — children never carry limits. */
+/** A row is editable per-cell only for a non-uncategorized parent row, with a fetched
+ *  cell and update rights for that month — children never carry limits. An archived
+ *  category, tag or envelope keeps an editable plan, so its history can be corrected
+ *  (the totals still leave it out); a deleted savings account's cannot. */
 export function isEditableCell(el: PlanElementDto, month: string, monthIndex: number, meta: BudgetMetaDto, userId: Id | undefined): boolean {
-  return el.id !== UNCATEGORIZED_ID && el.isArchived === 0 && monthIndex >= 0 && canUpdateLimits(meta, userId, month)
+  if (el.isArchived === 1 && el.type === BudgetElementType.SAVINGS) {
+    return false
+  }
+  return el.id !== UNCATEGORIZED_ID && monthIndex >= 0 && canUpdateLimits(meta, userId, month)
 }
 
 // A comment thread's read/write gate is independent of the role-based `isEditableCell`
@@ -89,6 +98,8 @@ export interface PlanCellEdit {
 export interface GridCtx {
   visibleMonths: string[]
   monthIndex: (m: string) => number
+  /** into the budget currency, at each window month's rates */
+  exchange: MonthExchange
   /** the current month: actuals show up to it, plans alone after it */
   selected: string
   /** a tinted column, -1 for none (the Plan grid tints none) */
@@ -96,6 +107,8 @@ export interface GridCtx {
   /** the selected cell's column, highlighted down the grid; -1 when nothing is selected */
   crosshairCol: number
   currencies: CurrencyDto[]
+  /** a window month's rates between any two currencies */
+  cellExchange: (monthIndex: number) => (fromCurrencyId: Id, toCurrencyId: Id, amount: string) => string
   baseCurrencyId: Id
   meta: BudgetMetaDto
   userId: Id | undefined
@@ -247,10 +260,67 @@ export const ChildRow = memo(function ChildRow({
   )
 })
 
-export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
+/** Same-name tags (each partner's own "Travel") under one line with their monthly
+ *  sums. The line is no keyboard stop and carries no plan: each tag keeps its own. */
+export function PlanTagGroup({ groupKey, name, rows, ctx, children }: { groupKey: string; name: string; rows: PlanRow[]; ctx: GridCtx; children: ReactNode }) {
+  const { t, i18n } = useTranslation()
+  const level = useRowLevel()
+  const open = useBudgetPeriodStore((s) => !!s.planUnfoldedElements[groupKey])
+  const togglePlanElement = useBudgetPeriodStore((s) => s.togglePlanElement)
+  const { sums, currencyId } = tagGroupPlanSums(
+    rows.map((r) => r.element),
+    ctx.visibleMonths,
+    ctx.monthIndex,
+    ctx.exchange,
+    ctx.baseCurrencyId,
+  )
+  const currency = ctx.currencies.find((c) => c.id === currencyId)
+  const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
+  const Chevron = open ? ChevronDown : ChevronRight
+  return (
+    <div data-testid={`plan-tag-group-${groupKey}`}>
+      <div role="row" data-plan-line="" className="border-b border-border/60">
+        <div className={`${PLAN_LINE} relative min-h-9 hover:bg-accent/50`}>
+          <div role="rowheader" className={`${PLAN_NAME_COL} ${ROW_INDENT[level]} py-1`}>
+            <button
+              type="button"
+              className="flex min-w-0 items-center gap-2 text-left"
+              aria-expanded={open}
+              title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
+              onClick={() => {
+                if (!open) {
+                  trackEvent(METRICS.BUDGET_TAG_GROUP_EXPAND, { view: 'plan', tags: rows.length })
+                }
+                togglePlanElement(groupKey)
+              }}
+            >
+              <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
+              <EntityIcon name="tag" className="text-lg text-muted-foreground" />
+              <span className="min-w-0 truncate text-[15px]" title={name}>
+                {name}
+              </span>
+              <span className="shrink-0 text-xs text-muted-foreground">{pluralPick(t('budgets.page.budget.structure.tag_group.count'), rows.length, i18n.language)}</span>
+            </button>
+            {currencyId !== ctx.baseCurrencyId && currency ? <CurrencyTag code={currency.code} /> : null}
+          </div>
+          <FigureCells
+            cells={ctx.visibleMonths.map((m, i) => (
+              <SumCell key={m} index={i} sum={ctx.monthIndex(m) >= 0 ? (sums[i] ?? null) : null} month={m} ctx={ctx} fmt={fmt} />
+            ))}
+          />
+        </div>
+      </div>
+      {open ? <RowLevelContext.Provider value={groupedLevel(level)}>{children}</RowLevelContext.Provider> : null}
+    </div>
+  )
+}
+
+export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }: { row: PlanRow; ctx: GridCtx; grouped?: boolean }) {
   const { t } = useTranslation()
   const level = useRowLevel()
   const el = row.element
+  // inside a same-name group the names match: the owner tells the tags apart
+  const ownerHint = grouped && el.ownerUserId ? ctx.meta.access.find((a) => a.user.id === el.ownerUserId)?.user.name : undefined
   const unfolded = useBudgetPeriodStore((s) => !!s.planUnfoldedElements[el.id])
   const togglePlanElement = useBudgetPeriodStore((s) => s.togglePlanElement)
   const currency = ctx.currencies.find((c) => c.id === el.currencyId)
@@ -267,8 +337,6 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
   // hover re-renders this row only, never the grid.
   const [hoverCol, setHoverCol] = useState<number | null>(null)
   const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
-  // the transactions list cannot show income nobody categorized
-  const actualLinkable = !(isUncategorized && isIncomeType(el.type))
   const childList = open ? (
     <div>
       {el.children.length === 0 ? (
@@ -318,6 +386,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
           <span className={`min-w-0 truncate ${isUncategorized ? '' : 'text-[15px]'}`} title={displayName}>
             {displayName}
           </span>
+          {ownerHint ? <span className="shrink-0 truncate text-xs text-muted-foreground">{ownerHint}</span> : null}
           {el.currencyId !== ctx.baseCurrencyId && currency ? <CurrencyTag code={currency.code} /> : null}
           <span className="flex-1" />
           <RowMenu name={displayName} actions={ctx.rowMenu?.(el)} />
@@ -326,8 +395,9 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
           const idx = ctx.monthIndex(m)
           const cell = idx >= 0 ? el.cells[idx] : undefined
           const editable = isEditableCell(el, m, idx, ctx.meta, ctx.userId)
-          const view = planCellView({ type: el.type, cell, month: m, selected: ctx.selected })
+          const view = planCellView({ type: el.type, id: el.id, cell, month: m, selected: ctx.selected })
           const actual = view.actual
+          const planFigure = view.plan
           const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
           const picked = !!ctx.picked?.has(pickedKey(rk, i))
           const fillSource = ctx.fill.active?.rowKey === rk && ctx.fill.active.startCol === i
@@ -417,7 +487,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                       <Dash />
                     </span>
                   ) : null
-                ) : actualLinkable && (!view.balance || m <= ctx.selected) ? (
+                ) : !view.balance || m <= ctx.selected ? (
                   <button
                     type="button"
                     data-testid="cell-actual"
@@ -451,11 +521,24 @@ export const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow;
                       label={t('budgets.page.plan.cell.edit_aria', { name: displayName, month: ctx.monthLabel(m) })}
                       onCommit={ctx.finishEdit}
                       onCancel={ctx.cancelEdit}
+                      upcoming={
+                        cell && wantsUpcomingPanel(m, cell.actual, cell.upcoming, el.type === BudgetElementType.SAVINGS)
+                          ? {
+                              budget: { meta: ctx.meta },
+                              target: { id: el.id, type: el.type, name: displayName, icon: el.icon, currencyId: el.currencyId },
+                              periodStart: m,
+                              currency,
+                              exchange: ctx.cellExchange(idx),
+                              spent: cell.actual,
+                              upcoming: cell.upcoming,
+                            }
+                          : null
+                      }
                     />
                   </span>
                 ) : (
-                  <span data-testid="cell-planned" className="ml-auto shrink-0 text-[15px] whitespace-nowrap tabular-nums">
-                    {view.plan !== null ? fmt(view.plan) : view.balance ? <Dash /> : ''}
+                  <span data-testid="cell-planned" className={`ml-auto shrink-0 text-[15px] whitespace-nowrap tabular-nums ${planHintClass(view.hint)}`}>
+                    {planFigure !== null ? fmt(planFigure) : view.balance ? <Dash /> : ''}
                   </span>
                 )}
               </span>

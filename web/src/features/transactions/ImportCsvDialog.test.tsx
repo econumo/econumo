@@ -41,6 +41,13 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+
+// the column pickers are the app's searchable picker; '—' is its clear row
+async function pickColumn(user: ReturnType<typeof userEvent.setup>, field: string | RegExp, option: string | RegExp) {
+  await user.click(screen.getByRole('combobox', { name: field }))
+  await user.click(await screen.findByRole('option', { name: option }))
+}
+
 it('parsing a file reveals the mapping UI with auto-detected columns and samples', async () => {
   renderDialog()
   expect(screen.getByText('Maximum file size: 10 MB')).toBeInTheDocument()
@@ -48,14 +55,10 @@ it('parsing a file reveals the mapping UI with auto-detected columns and samples
   expect(await screen.findByText(/Map the columns from your CSV file/)).toBeInTheDocument()
   expect(screen.getByText('import.csv')).toBeInTheDocument()
 
-  const accountSelect = screen.getByLabelText('Account') as HTMLSelectElement
-  expect(accountSelect.value).toBe('Account')
-  const dateSelect = screen.getByLabelText('Date') as HTMLSelectElement
-  expect(dateSelect.value).toBe('Date')
-  const amountSelect = screen.getByLabelText('Amount') as HTMLSelectElement
-  expect(amountSelect.value).toBe('Amount')
-  // sample values decorate the options
-  expect(screen.getAllByRole('option', { name: 'Account ("Cash")' }).length).toBeGreaterThan(0)
+  // auto-detected columns, each read with a sample value from the file
+  expect(screen.getByRole('combobox', { name: 'Account' })).toHaveValue('Account ("Cash")')
+  expect((screen.getByRole('combobox', { name: 'Date' }) as HTMLInputElement).value).toMatch(/^Date/)
+  expect((screen.getByRole('combobox', { name: 'Amount' }) as HTMLInputElement).value).toMatch(/^Amount/)
   expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled()
 })
 
@@ -73,22 +76,20 @@ it('switching account to an existing account shows writable accounts only', asyn
   renderDialog()
   const user = await uploadCsv()
   await user.click(screen.getByRole('button', { name: 'toggle Account mode' }))
-  const select = (await screen.findByLabelText('Account')) as HTMLSelectElement
-  const labels = [...select.options].map((o) => o.textContent)
-  expect(labels.some((l) => l?.startsWith('Cash ('))).toBe(true)
   // Import requires an account pick now
   expect(screen.getByRole('button', { name: 'Import' })).toBeDisabled()
-  await user.selectOptions(select, 'a1')
+  await user.click(await screen.findByRole('combobox', { name: 'Account' }))
+  await user.click(await screen.findByRole('option', { name: /Cash \(/ }))
   expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled()
 })
 
 it('dual amount mode requires both inflow and outflow columns', async () => {
   renderDialog()
   const user = await uploadCsv('Account,Date,In,Out\nCash,2026-01-02,,5\n')
-  await waitFor(() => expect((screen.getByLabelText('Amount (Inflow)') as HTMLSelectElement).value).toBe('In'))
-  expect((screen.getByLabelText('Amount (Outflow)') as HTMLSelectElement).value).toBe('Out')
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Amount (Inflow)' })).toHaveValue('In'))
+  expect(screen.getByRole('combobox', { name: 'Amount (Outflow)' })).toHaveValue('Out ("5")')
   expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled()
-  await user.selectOptions(screen.getByLabelText('Amount (Inflow)'), '')
+  await pickColumn(user, 'Amount (Inflow)', '—')
   expect(screen.getByRole('button', { name: 'Import' })).toBeDisabled()
 })
 
@@ -157,12 +158,11 @@ it('mapping the labels column previews the new-label count and sends the chosen 
   const user = await uploadCsv('Account,Date,Amount,Labels\nCash,2026-01-02,-5.5,Kid A;Kid B\nBank,2026-01-03,100,Kid A\n')
   await screen.findByText(/Map the columns/)
 
-  const labelsColumnSelect = screen.getByRole('combobox', { name: /reporting tags/i }) as HTMLSelectElement
-  await user.selectOptions(labelsColumnSelect, '')
-  // unmapped -> countNewLabels short-circuits to 0 -> no preview
+  // not auto-detected, so unmapped -> countNewLabels short-circuits to 0 -> no preview
+  expect(screen.getByRole('combobox', { name: /reporting tags/i })).toHaveValue('')
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
-  await user.selectOptions(labelsColumnSelect, 'Labels')
+  await pickColumn(user, /reporting tags/i, /^Labels/)
   // "Kid A" and "Kid B" are both new (the fixture owner only has "health") ->
   // countNewLabels returns 2, which is what flips the preview on
   await screen.findByRole('status')
@@ -183,7 +183,7 @@ it('a custom separator overrides the presets', async () => {
   renderDialog()
   const user = await uploadCsv('Account,Date,Amount,Labels\nCash,2026-01-02,-5.5,Kid A#Kid B\n')
   await screen.findByText(/Map the columns/)
-  await user.selectOptions(screen.getByRole('combobox', { name: /reporting tags/i }), 'Labels')
+  await pickColumn(user, /reporting tags/i, /^Labels/)
   await user.click(screen.getByRole('button', { name: /separator/i }))
   await user.type(screen.getByRole('textbox', { name: /custom/i }), '#')
   await user.click(screen.getByRole('button', { name: /save/i }))
@@ -236,7 +236,8 @@ it('switching the target account owner clears a fixed label pick, so it never le
   expect(healthChip).toHaveAttribute('aria-checked', 'true')
 
   await user.click(screen.getByRole('button', { name: 'toggle Account mode' }))
-  await user.selectOptions(screen.getByLabelText('Account'), 'a-shared')
+  await user.click(screen.getByRole('combobox', { name: 'Account' }))
+  await user.click(await screen.findByRole('option', { name: /Shared \(/ }))
 
   // the picker now only offers the new owner's labels, and the stale pick
   // from the previous owner is gone rather than silently carried over
@@ -256,6 +257,6 @@ it('the new-tag count skips names an existing BUDGET tag already holds', async (
   // (fixtureLabels); both kinds share one namespace, so only "fresh" is new
   const user = await uploadCsv('Account,Date,Amount,Labels\nCash,2026-01-02,-5.5,vacation;health;fresh\n')
   await screen.findByText(/Map the columns/)
-  await user.selectOptions(screen.getByRole('combobox', { name: /reporting tags/i }), 'Labels')
+  await pickColumn(user, /reporting tags/i, /^Labels/)
   expect(await screen.findByRole('status')).toHaveTextContent('This import will create 1 new tag')
 })

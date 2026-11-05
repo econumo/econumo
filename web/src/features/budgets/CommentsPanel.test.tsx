@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
@@ -20,13 +21,13 @@ function mockMatchMedia(matches: (q: string) => boolean) {
   }))
 }
 
-function renderPanel(anchor: HTMLElement | null) {
+function renderPanel(anchor: HTMLElement | null, onClose: () => void = () => {}) {
   server.use(...coreHandlers())
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <CommentsPanel
         open
-        onClose={() => {}}
+        onClose={onClose}
         title="Groceries"
         anchor={anchor}
         budgetId="b1"
@@ -67,6 +68,16 @@ it('falls back to the sheet without an anchor', async () => {
   renderPanel(null)
   expect(await screen.findByTestId('comments-sheet')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Groceries' })).toBeInTheDocument()
+})
+
+it('the sheet ends in the full-width Cancel | Post row, and Cancel closes it', async () => {
+  mockMatchMedia(() => true)
+  const onClose = vi.fn()
+  renderPanel(null, onClose)
+  const post = await screen.findByRole('button', { name: 'Post' })
+  expect(post.parentElement?.className).toContain('grid-cols-2')
+  await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(onClose).toHaveBeenCalled()
 })
 
 it('ignores the anchor on a phone', async () => {

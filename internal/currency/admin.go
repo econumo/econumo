@@ -1,6 +1,7 @@
 // Write side of the currency module. The HTTP API exposes no currency
 // mutations; these use cases exist only for the CLI admin commands
-// (currency:update-rates, currency:add). The read side (read.go) is unchanged.
+// (currency:update-rates, currency:add, currency:show-rate-gaps,
+// currency:backfill-rates). The read side (read.go) is unchanged.
 package currency
 
 import (
@@ -33,6 +34,15 @@ type WriteModel interface {
 	// LatestRateDate returns the newest stored rate date; ok=false when none
 	// exist yet.
 	LatestRateDate(ctx context.Context) (time.Time, bool, error)
+	// UsedCurrencyCodes returns the sorted global currency codes something
+	// converts from or to.
+	UsedCurrencyCodes(ctx context.Context) ([]string, error)
+	// RatedPeriods returns every (period, code) pair with a rate against
+	// baseID in [from, to).
+	RatedPeriods(ctx context.Context, baseID string, period model.RatePeriod, from, to time.Time) ([]model.RatedPeriod, error)
+	// EarliestTransactionDate returns the oldest transaction's date; ok=false
+	// when there are none.
+	EarliestTransactionDate(ctx context.Context) (time.Time, bool, error)
 }
 
 // WriteService is the currency write-use-case orchestrator.
@@ -161,22 +171,32 @@ func normalizeCode(code string) string {
 	return strings.ToUpper(strings.TrimSpace(code))
 }
 
-// validateCode normalizes and enforces the ISO 4217 shape (3 ASCII letters),
-// returning a *ValidationError on failure. The CLI path's field key ("currency")
-// is frozen; use validateCodeField for callers that need a different key.
+// validateCode normalizes and validates a global currency code, returning a
+// *ValidationError on failure. Globals take 3 or 4 letters: ISO 4217 codes are
+// 3, but Open Exchange Rates publishes some digital currencies under 4 (DASH,
+// DOGE). The CLI path's field key ("currency") is frozen.
 func validateCode(code string) (string, error) {
-	return validateCodeField(code, "currency")
+	c := normalizeCode(code)
+	if len(c) < 3 || len(c) > 4 || !isAlpha(c) {
+		return "", invalidCode("currency")
+	}
+	return c, nil
 }
 
-// validateCodeField is validateCode with a caller-chosen field key, for use
-// cases (e.g. create-currency) whose wire contract keys the error differently.
+// validateCodeField enforces the ISO 4217 shape (3 ASCII letters) for a user's
+// custom currency, with a caller-chosen field key for use cases (e.g.
+// create-currency) whose wire contract keys the error differently.
 func validateCodeField(code, key string) (string, error) {
 	c := normalizeCode(code)
 	if len(c) != 3 || !isAlpha(c) {
-		return "", errs.NewValidation("CurrencyCode is incorrect",
-			errs.FieldError{Key: key, Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
+		return "", invalidCode(key)
 	}
 	return c, nil
+}
+
+func invalidCode(key string) error {
+	return errs.NewValidation("CurrencyCode is incorrect",
+		errs.FieldError{Key: key, Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
 }
 
 func isAlpha(s string) bool {

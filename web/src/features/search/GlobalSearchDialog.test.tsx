@@ -51,7 +51,7 @@ beforeEach(() => {
     // the analytics auth-method probe fired once the user data lands
     http.get('*/api/v1/oauth/get-identity-list', () => HttpResponse.json({ success: true, message: '', data: [] })),
   )
-  useUiStore.setState({ searchOpen: true, transactionModal: null, accountModal: null })
+  useUiStore.setState({ searchOpen: true, transactionModal: null, accountModal: null, recurringModal: null })
   vi.mocked(trackEvent).mockClear()
 })
 
@@ -190,6 +190,32 @@ it('Edit hands the transaction to the form and closes the search', async () => {
   await user.click(await screen.findByRole('button', { name: 'Edit' }))
   expect(useUiStore.getState().transactionModal?.transaction?.id).toBe('t1')
   expect(useUiStore.getState().searchOpen).toBe(false)
+})
+
+describe('recurring templates', () => {
+  const rent = {
+    id: 'r-rent', ownerUserId: fixtureOwner.id, type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '900',
+    categoryId: null, payeeId: null, tagId: null, labelIds: [], description: 'flat rent', schedule: 'monthly', nextPaymentAt: '2026-08-01 00:00:00',
+  }
+  beforeEach(() => {
+    server.use(...coreHandlers({ recurring: [rent] }))
+  })
+
+  it('a query shows the Recurring group; a template opens its preview and Edit hands it to the form', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await screen.findByTestId('tx-t1')
+    expect(screen.queryByText('Recurring')).not.toBeInTheDocument()
+    await user.type(input(), 'rent')
+    expect(await screen.findByText('Recurring')).toBeInTheDocument()
+    await user.click(screen.getByTestId('search-recurring-r-rent'))
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.GLOBAL_SEARCH_SELECT, { type: 'recurring' })
+    const preview = await screen.findByRole('dialog', { name: 'Transaction details' })
+    expect(within(preview).getByRole('button', { name: 'Post' })).toBeEnabled()
+    await user.click(within(preview).getByText('Monthly'))
+    expect(useUiStore.getState().recurringModal?.recurring?.id).toBe('r-rent')
+    expect(useUiStore.getState().searchOpen).toBe(false)
+  })
 })
 
 it('renders the first 100 of 250 transactions', async () => {

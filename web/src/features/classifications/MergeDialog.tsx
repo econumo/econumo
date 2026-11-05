@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { CommandEmpty, CommandItem } from '@/components/ui/command'
 import { EntityIcon } from '@/components/EntityIcon'
 import { InfoBox } from '@/components/InfoBox'
-import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { PickerSheet } from '@/components/PickerSheet'
+import { dialogActionsClass } from '@/components/ResponsiveDialog'
 import { rankByName } from '@/lib/search'
 import type { ClassificationItem } from './ClassificationList'
 
@@ -39,70 +40,50 @@ export function MergeDialog<T extends ClassificationItem>({
   onConfirm,
 }: MergeDialogProps<T>) {
   const { t } = useTranslation()
-  const [query, setQuery] = useState('')
   const [targetId, setTargetId] = useState<string | null>(null)
 
   // a reopened dialog must not inherit the previous merge's choice
   useEffect(() => {
     if (open) {
-      setQuery('')
       setTargetId(null)
     }
   }, [open, source?.id])
 
   const eligible = candidates.filter((item) => item.id !== source?.id)
-  const visible = rankByName(eligible, (item) => item.name, query)
 
   return (
-    <ResponsiveDialog
+    <PickerSheet
       open={open}
-      onOpenChange={(o) => !o && onClose()}
+      onClose={onClose}
       title={t('classifications.common.merge.title', { name: source?.name ?? '' })}
-    >
-      <div className="flex flex-col gap-3">
-        {info ? <InfoBox>{info}</InfoBox> : null}
-        <Input
-          aria-label={t('common.list.search')}
-          placeholder={t('common.list.search')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <div className="flex max-h-64 flex-col overflow-y-auto" role="listbox">
-          {visible.length === 0 ? (
-            <p className="px-1 py-2 text-sm text-muted-foreground">{t('common.list.search_empty')}</p>
-          ) : (
-            visible.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                role="option"
-                aria-selected={targetId === item.id}
-                className={`flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-accent ${
-                  targetId === item.id ? 'bg-accent' : ''
-                }`}
-                onClick={() => setTargetId(item.id)}
-              >
-                {showIcon ? <EntityIcon name={item.icon} className="text-base text-muted-foreground" /> : null}
-                <span className="truncate">{item.name}</span>
-              </button>
-            ))
-          )}
-        </div>
-        <p className="text-sm text-muted-foreground">{warning}</p>
+      searchLabel={t('common.list.search')}
+      // picking the target is a tap, and the choice still needs a confirm
+      focusSearch={false}
+      listClassName="max-h-64 max-md:max-h-none"
+      header={info ? <InfoBox>{info}</InfoBox> : null}
+      after={() => <p className="mt-3 text-sm text-muted-foreground">{warning}</p>}
+      actions={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={targetId === null}
-            onClick={() => targetId !== null && onConfirm(targetId)}
-          >
+          <Button type="button" variant="destructive" disabled={targetId === null} onClick={() => targetId !== null && onConfirm(targetId)}>
             {t('classifications.common.merge.confirm')}
           </Button>
         </div>
-      </div>
-    </ResponsiveDialog>
+      }
+    >
+      {(query) => (
+        <>
+          <CommandEmpty className="px-1 py-2 text-left text-muted-foreground">{t('common.list.search_empty')}</CommandEmpty>
+          {rankByName(eligible, (item) => item.name, query).map((item) => (
+            <CommandItem key={item.id} value={item.id} data-checked={targetId === item.id} onSelect={() => setTargetId(item.id)}>
+              {showIcon ? <EntityIcon name={item.icon} className="text-base text-muted-foreground" /> : null}
+              <span className="truncate">{item.name}</span>
+            </CommandItem>
+          ))}
+        </>
+      )}
+    </PickerSheet>
   )
 }

@@ -1,4 +1,4 @@
-import { getInstanceId, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getVersionLabel, getBillingUrl, mcpUrl } from './config'
+import { getInstanceId, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getVersionLabel, getVersionRef, getCacheBuster, getBillingUrl, mcpUrl } from './config'
 
 beforeEach(() => {
   localStorage.clear()
@@ -95,6 +95,16 @@ describe('locale and version', () => {
     // The label never leaks back into the real version: analytics, the update
     // check and the app's compatibility floors all read getVersion().
     expect(getVersion()).toBe('v9.9.9')
+  })
+
+  it('keys the caches on the version plus the build revision', () => {
+    window.econumoConfig = { VERSION: 'dev', VERSION_REF: 'abc123' }
+    expect(getVersionRef()).toBe('abc123')
+    expect(getCacheBuster()).toBe('dev+abc123')
+    // the revision never reaches what compares versions
+    expect(getVersion()).toBe('dev')
+    window.econumoConfig = { VERSION: 'v1.2.3' }
+    expect(getCacheBuster()).toBe(import.meta.env.ECONUMO_COMMIT ? `v1.2.3+${import.meta.env.ECONUMO_COMMIT}` : 'v1.2.3')
   })
 
   it('ignores an unsupported stored locale', () => {

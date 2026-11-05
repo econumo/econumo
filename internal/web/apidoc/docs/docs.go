@@ -2914,7 +2914,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Income of categoryId or envelopeId (exactly one; composes with nothing else)",
+                        "description": "Income of categoryId or envelopeId (exactly one), or with uncategorized the income Uncategorized row; composes with nothing else",
                         "name": "income",
                         "in": "query"
                     },
@@ -10817,6 +10817,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/transaction/move-transaction": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Puts a transaction where it was dropped on an account page: directly below aboveId on that account's day, or at the top of the day when aboveId is null. Only that account's order changes, and no other transaction is renumbered. A date other than fromDate (the day the page showed it on) moves the transaction to that day, keeping its time. A transaction no longer stored on fromDate, or an aboveId no longer on the target day, is refused as changed meanwhile. Returns the rewritten transaction(s) plus the refreshed account list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Transaction"
+                ],
+                "summary": "Move a transaction within or between days",
+                "parameters": [
+                    {
+                        "description": "Move transaction request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MoveTransactionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.MoveTransactionResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/transaction/update-transaction": {
             "post": {
                 "security": [
@@ -12493,6 +12568,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/user/update-last-seen-version": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Records the release (vX.Y.Z) whose \"what's new\" notice the authenticated user has seen and returns the refreshed user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update last seen version",
+                "parameters": [
+                    {
+                        "description": "Update last seen version request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateLastSeenVersionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UpdateLastSeenVersionResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/update-name": {
             "post": {
                 "security": [
@@ -12985,7 +13129,13 @@ const docTemplate = `{
                 "payeeId": {
                     "type": "string"
                 },
+                "recipientSortKey": {
+                    "type": "string"
+                },
                 "recurringId": {
+                    "type": "string"
+                },
+                "sortKey": {
                     "type": "string"
                 },
                 "tagId": {
@@ -13346,6 +13496,98 @@ const docTemplate = `{
                 }
             }
         },
+        "model.BudgetUpcomingResult": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountName": {
+                    "type": "string"
+                },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "accountRecipientName": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
+                    "type": "string"
+                },
+                "amountSource": {
+                    "type": "string"
+                },
+                "author": {
+                    "$ref": "#/definitions/model.UserResult"
+                },
+                "canEdit": {
+                    "type": "boolean"
+                },
+                "category": {
+                    "$ref": "#/definitions/model.TxCategoryResult"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "currencyRecipientId": {
+                    "type": "string"
+                },
+                "currencySourceId": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "direction": {
+                    "description": "Direction is present only on rows of the transfers, income and\naccountId selectors: \"out\" when the money left the included (or\nsavings) account, \"in\" when it arrived — Amount/CurrencyId are that\nside's. Omitted on every other list so their bytes are unchanged.",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isNext": {
+                    "type": "boolean"
+                },
+                "isOverdue": {
+                    "type": "boolean"
+                },
+                "labelIds": {
+                    "description": "Reporting labels attached to the row. Always non-nil ([] when none) so a\nclient can render it without a null check, matching labelIds on the\ntransaction feature's own wire.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "labelNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "payee": {
+                    "$ref": "#/definitions/model.TxPayeeResult"
+                },
+                "schedule": {
+                    "type": "string"
+                },
+                "spentAt": {
+                    "type": "string"
+                },
+                "tag": {
+                    "$ref": "#/definitions/model.TxTagResult"
+                },
+                "templateId": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Type (\"expense\", \"income\" or \"transfer\") is present only on rows of the\nincome and accountId selectors.",
+                    "type": "string"
+                }
+            }
+        },
         "model.CategoryResult": {
             "type": "object",
             "properties": {
@@ -13401,6 +13643,9 @@ const docTemplate = `{
                 "budgetSpent": {
                     "type": "string"
                 },
+                "budgetUpcoming": {
+                    "type": "string"
+                },
                 "icon": {
                     "type": "string"
                 },
@@ -13421,6 +13666,10 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcoming": {
+                    "description": "Upcoming/BudgetUpcoming are the period's projected recurring payments not\nyet posted, in the parent's currency and the budget currency; Spent stays\nreal money only.",
+                    "type": "string"
                 }
             }
         },
@@ -13584,6 +13833,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "accessUntil": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "CreatedAt is the connected user's register date (\"\" when unknown).",
                     "type": "string"
                 },
                 "sharedAccounts": {
@@ -14666,6 +14919,12 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.BudgetTransactionResult"
                     }
+                },
+                "upcoming": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.BudgetUpcomingResult"
+                    }
                 }
             }
         },
@@ -15403,6 +15662,9 @@ const docTemplate = `{
                 },
                 "spent": {
                     "type": "string"
+                },
+                "upcoming": {
+                    "type": "string"
                 }
             }
         },
@@ -15746,6 +16008,43 @@ const docTemplate = `{
                 }
             }
         },
+        "model.MoveTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "aboveId": {
+                    "type": "string"
+                },
+                "accountId": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "fromDate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountResult"
+                    }
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TransactionResult"
+                    }
+                }
+            }
+        },
         "model.OpeningBalanceResult": {
             "type": "object",
             "properties": {
@@ -15777,6 +16076,9 @@ const docTemplate = `{
                 "budgetSpent": {
                     "type": "string"
                 },
+                "budgetUpcoming": {
+                    "type": "string"
+                },
                 "budgeted": {
                     "type": "string"
                 },
@@ -15801,6 +16103,10 @@ const docTemplate = `{
                 "isArchived": {
                     "type": "integer"
                 },
+                "isBudgeted": {
+                    "description": "IsBudgeted is 1 when the period has a plan, even a plan of 0; with 0,\nBudgeted is \"0\" and means no plan was set.",
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -15815,6 +16121,10 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcoming": {
+                    "description": "Upcoming is the period's recurring spend not yet posted, in CurrencyId;\nBudgetUpcoming is Upcoming in the budget currency. A planning hint: Spent\nand Available stay real money only.",
+                    "type": "string"
                 }
             }
         },
@@ -15876,6 +16186,9 @@ const docTemplate = `{
                 },
                 "planned": {
                     "type": "string"
+                },
+                "upcoming": {
+                    "type": "string"
                 }
             }
         },
@@ -15883,6 +16196,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "actual": {
+                    "type": "string"
+                },
+                "upcoming": {
                     "type": "string"
                 }
             }
@@ -15998,6 +16314,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "planned": {
+                    "type": "string"
+                },
+                "upcoming": {
                     "type": "string"
                 }
             }
@@ -16500,6 +16819,9 @@ const docTemplate = `{
                 "isArchived": {
                     "type": "integer"
                 },
+                "isBudgeted": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -16514,6 +16836,10 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "integer"
+                },
+                "upcoming": {
+                    "description": "Upcoming is the period's projected recurring change of the account not\nyet posted, measured like Spent.",
+                    "type": "string"
                 }
             }
         },
@@ -16936,8 +17262,15 @@ const docTemplate = `{
                 "payeeId": {
                     "type": "string"
                 },
+                "recipientSortKey": {
+                    "type": "string"
+                },
                 "recurringId": {
                     "description": "RecurringId is the template this transaction was posted from, null for a\nhand-entered one. Read-only provenance: create/update never accept it.",
+                    "type": "string"
+                },
+                "sortKey": {
+                    "description": "SortKey orders the row within its day on accountId, RecipientSortKey on\naccountRecipientId (null unless a transfer): fractional keys compared\nbyte-wise, the higher listed first.",
                     "type": "string"
                 },
                 "tagId": {
@@ -17426,6 +17759,22 @@ const docTemplate = `{
             }
         },
         "model.UpdateLanguageResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.UpdateLastSeenVersionRequest": {
+            "type": "object",
+            "properties": {
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateLastSeenVersionResult": {
             "type": "object",
             "properties": {
                 "user": {

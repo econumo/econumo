@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { DailyListEntry } from '@/features/transactions/useAccountTransactions'
+import { entryKey } from './historyDrop'
 import { HistoryNavigator } from './HistoryNavigator'
 import type { HistoryNavigatorHandle } from './HistoryNavigator'
 
@@ -13,11 +14,6 @@ export interface HistoryMonth {
   index: number
 }
 
-function entryKey(entry: DailyListEntry): string {
-  if (entry.kind === 'separator') return `sep-${entry.day}`
-  const tx = entry.transaction
-  return tx.recurring ? `${tx.id}@${tx.date}` : tx.id
-}
 
 /** Jumping replaces the rendered section instead of mounting every intervening
  * transaction. Sentinels let ordinary scrolling continue in either direction. */

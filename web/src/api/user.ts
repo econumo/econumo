@@ -88,6 +88,11 @@ export async function updateAnalytics(enabled: boolean): Promise<CurrentUserDto>
   return response.data.data.user
 }
 
+export async function updateLastSeenVersion(version: string): Promise<CurrentUserDto> {
+  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-last-seen-version'), { version })
+  return response.data.data.user
+}
+
 export async function updateDefaultBudget(budgetId: Id): Promise<CurrentUserDto> {
   const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-budget'), { value: budgetId })
   return response.data.data.user

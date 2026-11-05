@@ -155,6 +155,11 @@ jobs:
         with:
           ref: ${{ needs.create-tag.outputs.version }}
 
+      # The image build has no .git to read it from, so pass it in.
+      - name: Record commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       # No QEMU: both build stages run on $BUILDPLATFORM (Go cross-compiles,
       # the SPA is platform-independent) and the distroless stage only COPYs.
       - name: Set up Buildx
@@ -178,6 +183,7 @@ jobs:
           tags: ${{ needs.create-tag.outputs.tags }}
           build-args: |
             ECONUMO_VERSION=${{ needs.create-tag.outputs.version }}
+            ECONUMO_COMMIT=${{ steps.commit.outputs.sha }}
 
   build-binaries:
     name: Build Release Binaries
@@ -191,6 +197,10 @@ jobs:
         with:
           ref: ${{ needs.create-tag.outputs.version }}
 
+      - name: Record commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
@@ -201,6 +211,7 @@ jobs:
       - name: Build SPA
         env:
           ECONUMO_VERSION: ${{ needs.create-tag.outputs.version }}
+          ECONUMO_COMMIT: ${{ steps.commit.outputs.sha }}
         run: |
           npm install -g pnpm@11
           cd web
@@ -215,12 +226,13 @@ jobs:
       - name: Build binaries
         env:
           VERSION: ${{ needs.create-tag.outputs.version }}
+          COMMIT: ${{ steps.commit.outputs.sha }}
         run: |
           mkdir -p release-out
           for arch in amd64 arm64; do
             CGO_ENABLED=0 GOOS=linux GOARCH="$arch" \
               go build -trimpath \
-              -ldflags "-s -w -X github.com/econumo/econumo/internal/version.Version=${VERSION}" \
+              -ldflags "-s -w -X github.com/econumo/econumo/internal/version.Version=${VERSION} -X github.com/econumo/econumo/internal/version.Commit=${COMMIT}" \
               -o "release-out/econumo-linux-${arch}" ./cmd/econumo
           done
           cd release-out && sha256sum econumo-linux-amd64 econumo-linux-arm64 > SHA256SUMS
@@ -232,22 +244,42 @@ jobs:
           path: release-out/
           if-no-files-found: error
 
-      # Mirror the binaries to the private R2 bucket via the Makefile target
-      # (same upload logic as `make cdn-upload` locally). Channels gate exactly
-      # like the Docker image tags in create-tag: the version channel always,
-      # latest/ and dev/ only when their checkbox is set.
-      - name: Mirror binaries to R2
+      # Publish the binaries, unit template and env example to the private R2
+      # bucket with ship, via the Makefile targets (same as `make ship-dist`
+      # and `make ship-publish` locally; ship-dist takes the binaries built
+      # above instead of building). The version is always published as an
+      # immutable release; the latest/dev channels gate exactly like the
+      # Docker image tags in create-tag, only when their checkbox is set.
+      # The source may be a release branch cut before the move to ship, whose
+      # Makefile has no ship targets: stage and publish with this workflow's own
+      # Makefile and unit template instead (sparse checkout of the workflow commit).
+      - name: Checkout publishing files
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: .ship-tools
+          sparse-checkout: |
+            Makefile
+            deploy/ship
+          sparse-checkout-cone-mode: false
+
+      - name: Set up ship
+        uses: dmtrkzntsv/ship@v0
+
+      - name: Publish to R2
         env:
-          ECONUMO_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          ECONUMO_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          ECONUMO_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          SHIP_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          SHIP_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          SHIP_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           VERSION: ${{ needs.create-tag.outputs.version }}
           PUSH_LATEST: ${{ github.event.inputs.push_latest }}
           PUSH_DEV: ${{ github.event.inputs.push_dev }}
         run: |
-          make cdn-upload CHANNEL="$VERSION"
-          if [ "$PUSH_LATEST" = "true" ]; then make cdn-upload CHANNEL=latest; fi
-          if [ "$PUSH_DEV" = "true" ]; then make cdn-upload CHANNEL=dev; fi
+          CHANNELS=""
+          if [ "$PUSH_LATEST" = "true" ]; then CHANNELS="latest"; fi
+          if [ "$PUSH_DEV" = "true" ]; then CHANNELS="${CHANNELS:+$CHANNELS,}dev"; fi
+          make -f .ship-tools/Makefile ship-dist SHIP_SKIP_BUILD=1 SHIP_TEMPLATES=.ship-tools/deploy/ship
+          make -f .ship-tools/Makefile ship-publish VERSION="$VERSION" CHANNELS="$CHANNELS"
 
   create-github-release:
     name: Create GitHub Release
@@ -268,8 +300,24 @@ jobs:
           registry-url: https://registry.npmjs.org/
           node-version: lts/*
 
+      # Locked with integrity hashes and no install scripts: this job holds a
+      # contents-write token. From the workflow's own commit, because the tag may
+      # come from a release branch cut before this lockfile existed.
+      - name: Checkout the release notes lockfile
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: .release-tools
+          sparse-checkout: |
+            .github/release-tools
+          sparse-checkout-cone-mode: false
+
+      - name: Install the release notes tool
+        working-directory: .release-tools/.github/release-tools
+        run: npm ci --ignore-scripts
+
       - name: Generate release notes and create release
-        run: npx changelogithub
+        run: .release-tools/.github/release-tools/node_modules/.bin/changelogithub
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

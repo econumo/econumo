@@ -125,7 +125,8 @@ func TestTxList_IncomeCategory(t *testing.T) {
 
 	for _, q := range []string{
 		"&income=1",
-		"&income=1&uncategorized=1",
+		"&income=1&uncategorized=1&categoryId=" + savingsSalaryCatID,
+		"&income=1&uncategorized=1&envelopeId=" + savingsSalaryCatID,
 		"&income=1&tagId=" + tagID,
 		"&income=1&transfers=1",
 	} {
@@ -133,5 +134,21 @@ func TestTxList_IncomeCategory(t *testing.T) {
 		if st != http.StatusBadRequest {
 			t.Errorf("%s: status %d body %s, want 400", q, st, env.raw)
 		}
+	}
+}
+
+// The income Uncategorized row's list: income on the everyday accounts with no
+// category of an income row, never the savings accounts' uncategorized income.
+func TestTxList_IncomeUncategorized(t *testing.T) {
+	h, tok := newSavingsCategoriesBudget(t)
+	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: accountID, Type: 1, Amount: "7",
+		SpentAt: time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)})
+	got := h.directedTxList(t, tok, "&income=1&uncategorized=1")
+	if len(got.Items) != 1 {
+		t.Fatalf("items = %+v, want the everyday uncategorized 7 only", got.Items)
+	}
+	it := got.Items[0]
+	if !decEq(it.Amount, "7") || it.Direction != "in" || it.Type != "income" || it.Category != nil {
+		t.Errorf("item = %+v, want 7 in/income without a category", it)
 	}
 }

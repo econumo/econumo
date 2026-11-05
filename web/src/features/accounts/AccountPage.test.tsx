@@ -103,7 +103,8 @@ it('jumps to older account history and resets the timeline to matching months wh
   expect(screen.getByTestId('tx-recent-0')).toBeInTheDocument()
   expect(screen.queryByTestId('tx-old')).not.toBeInTheDocument()
   expect(screen.getByRole('slider')).toHaveAttribute('aria-valuetext', 'July 2026')
-})
+  // 220 rows re-filtered on every keystroke run close to the 5 s default on a busy machine
+}, 15_000)
 
 it('delete flow: confirm dialog fires the API and applies the returned accounts', async () => {
   mockViewport(false)
@@ -539,4 +540,69 @@ it('a transfer with no recipient account still offers delete', async () => {
   await screen.findByTestId('tx-t-broken')
   await user.click(screen.getByRole('button', { name: 'actions t-broken' }))
   expect(await screen.findByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+})
+
+describe('drag to reorder', () => {
+  const handles = () => screen.queryAllByRole('button', { name: 'Drag to reorder' })
+
+  it('desktop: every transaction row has a drag handle', async () => {
+    mockViewport(false)
+    renderPage()
+    await screen.findByTestId('tx-t1')
+    expect(handles().length).toBe(document.querySelectorAll('[data-testid^="tx-"]').length)
+  })
+
+  it('desktop: no handles while searching', async () => {
+    mockViewport(false)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('tx-t1')
+    await user.type(screen.getByRole('textbox', { name: 'Search' }), 'coffee')
+    await screen.findByTestId('tx-t1')
+    expect(handles()).toHaveLength(0)
+  })
+
+  it('desktop: no handles on an account shared as guest', async () => {
+    mockViewport(false)
+    server.use(...coreHandlers({ accounts: [{ ...fixtureAccounts[0], owner: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, sharedAccess: [{ user: fixtureOwner, role: 'guest' }] }] }))
+    renderPage()
+    await screen.findByTestId('tx-t1')
+    expect(handles()).toHaveLength(0)
+  })
+
+  it('desktop: the grip shows only while the row is hovered', async () => {
+    mockViewport(false)
+    renderPage()
+    await screen.findByTestId('tx-t1')
+    const classes = (handles()[0].firstElementChild as HTMLElement).className.split(' ')
+    expect(classes).toContain('opacity-0')
+    expect(classes).toContain('group-hover:opacity-100')
+    expect(classes.some((c) => c.includes('hover:none'))).toBe(false)
+  })
+
+  it('desktop: the grip has an invisible grab area around it, and a click on it still opens the preview', async () => {
+    mockViewport(false)
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('tx-t1')
+    const grab = handles()[0]
+    expect(grab.className.split(' ')).toContain('absolute')
+    await user.click(grab)
+    expect(await screen.findByRole('dialog', { name: 'Transaction details' })).toBeInTheDocument()
+  })
+
+  it('compact: rows lift by press-and-hold, so there is no grip', async () => {
+    mockViewport(true)
+    renderPage()
+    await screen.findByTestId('tx-t1')
+    expect(handles()).toHaveLength(0)
+  })
+
+  it('tap opens preview without dragging', async () => {
+    mockViewport(true)
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByTestId('tx-t1'))
+    expect(await screen.findByRole('dialog', { name: 'Transaction details' })).toBeInTheDocument()
+  })
 })

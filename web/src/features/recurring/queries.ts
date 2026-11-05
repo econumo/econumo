@@ -15,9 +15,22 @@ export function useRecurring() {
   })
 }
 
+// every template change moves the upcoming money the budget and plan figures
+// include, and the budget transaction list's upcoming rows
+function useInvalidateBudgetUpcoming() {
+  const queryClient = useQueryClient()
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
+  }
+}
+
 function useReplaceRecurring() {
   const queryClient = useQueryClient()
+  const invalidateBudget = useInvalidateBudgetUpcoming()
   return (item: RecurringDto) => {
+    invalidateBudget()
     queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) => {
       const items = prev ?? []
       return items.some((r) => r.id === item.id) ? items.map((r) => (r.id === item.id ? item : r)) : [...items, item]
@@ -54,9 +67,11 @@ export function useUpdateRecurring() {
 
 export function useDeleteRecurring() {
   const queryClient = useQueryClient()
+  const invalidateBudget = useInvalidateBudgetUpcoming()
   return useMutation({
     mutationFn: (id: Id) => recurringApi.deleteRecurring(id),
     onSuccess: (_res, id) => {
+      invalidateBudget()
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) => (prev ?? []).filter((r) => r.id !== id))
       // mirror the backend's ON DELETE SET NULL: posted transactions lose their
       // link too, so the recurring sign leaves the account list without a
@@ -73,6 +88,7 @@ export function useSkipRecurring() {
 
 export function usePostRecurring() {
   const queryClient = useQueryClient()
+  const invalidateBudget = useInvalidateBudgetUpcoming()
   return useMutation({
     mutationFn: (payload: PostRecurringPayload) => recurringApi.postRecurring(payload),
     onSuccess: (result, payload) => {
@@ -87,8 +103,7 @@ export function usePostRecurring() {
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) =>
         (prev ?? []).map((r) => (r.id === payload.recurringId ? { ...r, nextPaymentAt: result.nextPaymentAt } : r)),
       )
-      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
+      invalidateBudget()
     },
   })
 }

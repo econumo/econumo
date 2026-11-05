@@ -10,13 +10,16 @@ import (
 )
 
 func TestNew_ProviderSelection(t *testing.T) {
-	if _, ok := New("resend", "re_test_123").(*resendMailer); !ok {
+	if _, ok := New(Transport{Provider: "resend", APIKey: "re_test_123"}).(*resendMailer); !ok {
 		t.Error(`provider "resend" should give a Resend-backed mailer`)
 	}
-	if _, ok := New("console", "").(console); !ok {
+	if _, ok := New(Transport{Provider: "smtp", SMTP: SMTPConfig{Host: "mail.x.test"}}).(*smtpMailer); !ok {
+		t.Error(`provider "smtp" should give an SMTP mailer`)
+	}
+	if _, ok := New(Transport{Provider: "console"}).(console); !ok {
 		t.Error(`provider "console" should give a console mailer`)
 	}
-	if _, ok := New("", "").(console); !ok {
+	if _, ok := New(Transport{}).(console); !ok {
 		t.Error("the empty default provider should give a console mailer")
 	}
 }

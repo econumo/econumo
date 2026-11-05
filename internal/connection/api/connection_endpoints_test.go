@@ -22,6 +22,7 @@ type connItem struct {
 	SharedAccounts []accessItem `json:"sharedAccounts"`
 	AccessLevel    string       `json:"accessLevel"`
 	AccessUntil    string       `json:"accessUntil"`
+	CreatedAt      string       `json:"createdAt"`
 }
 
 type listResult struct {
@@ -292,5 +293,24 @@ func TestGetConnectionList_CarriesPartnerAccessState(t *testing.T) {
 	}
 	if owl.Items[0].AccessLevel != "readonly" {
 		t.Fatalf("partner accessLevel = %q, want readonly", owl.Items[0].AccessLevel)
+	}
+}
+
+func TestConnectionListIncludesCreatedAt(t *testing.T) {
+	h := newHarness(t)
+	if _, err := h.db.Exec("UPDATE users SET created_at = ? WHERE id = ?",
+		"2024-03-05 06:07:08", guestUserID); err != nil {
+		t.Fatalf("set guest created_at: %v", err)
+	}
+
+	ownerTok := h.token(t, ownerUserID, ownerEmail)
+	_, env := h.do(t, http.MethodGet, "/api/v1/connection/get-connection-list", ownerTok, nil)
+	owl := mustUnmarshal[listResult](t, env.Data)
+
+	if len(owl.Items) != 1 || owl.Items[0].User.ID != guestUserID {
+		t.Fatalf("owner list = %+v, want one connection to guest", owl.Items)
+	}
+	if got := owl.Items[0].CreatedAt; got != "2024-03-05 06:07:08" {
+		t.Fatalf("createdAt = %q, want 2024-03-05 06:07:08", got)
 	}
 }

@@ -46,11 +46,18 @@ export const FOLDER_INDENT = 'pl-6'
  *  folder's name, not under the folder's own chevron. Rows with no folder line
  *  above them (no folders at all, Uncategorized, savings) sit at the folder
  *  line's step instead. An envelope's categories go one step past their row. */
-export type RowLevel = 'in-folder' | 'top'
+export type RowLevel = 'in-folder' | 'top' | 'in-folder-group' | 'top-group'
 export const RowLevelContext = createContext<RowLevel>('in-folder')
 export const useRowLevel = () => useContext(RowLevelContext)
-export const ROW_INDENT: Record<RowLevel, string> = { 'in-folder': 'pl-9', top: 'pl-6' }
-export const CHILD_INDENT: Record<RowLevel, string> = { 'in-folder': 'pl-17 sm:pl-19', top: 'pl-14 sm:pl-16' }
+/** the tags of a same-name group sit one step past the group line */
+export const groupedLevel = (level: RowLevel): RowLevel => (level === 'top' || level === 'top-group' ? 'top-group' : 'in-folder-group')
+export const ROW_INDENT: Record<RowLevel, string> = { 'in-folder': 'pl-9', top: 'pl-6', 'in-folder-group': 'pl-14', 'top-group': 'pl-11' }
+export const CHILD_INDENT: Record<RowLevel, string> = {
+  'in-folder': 'pl-17 sm:pl-19',
+  top: 'pl-14 sm:pl-16',
+  'in-folder-group': 'pl-22 sm:pl-24',
+  'top-group': 'pl-19 sm:pl-21',
+}
 // em dash: a column that carries no value at all, as opposed to a zero
 export const EMPTY_CELL = '—'
 

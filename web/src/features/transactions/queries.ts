@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as transactionApi from '@/api/transaction'
-import type { TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
+import { toast } from 'sonner'
+import type { MoveTransactionDto, TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { apiErrorMessage } from '@/lib/apiError'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { compareTransactions } from './order'
 import { beginLocalWrite, consumeFullReload, noteOwnWrite, transactionsQueryFn } from './revisionTracking'
 
-const byDateDesc = (items: TransactionDto[]) => [...items].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+const byDateDesc = (items: TransactionDto[]) => [...items].sort((a, b) => compareTransactions(a, b))
 
 export function useTransactions() {
   const queryClient = useQueryClient()
@@ -74,6 +77,36 @@ export function useDeleteTransaction() {
     onSuccess: (result) => {
       apply(result, 'delete')
       trackEvent(METRICS.TRANSACTION_DELETE)
+    },
+  })
+}
+
+/** A drag on an account page. The page shows the dropped arrangement itself
+ *  until this settles, so the cache only ever holds server rows: the success
+ *  merges the rows the move rewrote, and a refusal (usually a day another
+ *  device changed) leaves the cache alone and syncs again. */
+export function useMoveTransaction() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: transactionApi.moveTransaction,
+    onSuccess: (result, req: MoveTransactionDto) => {
+      const patch = beginLocalWrite(queryClient)
+      if (patch) {
+        noteOwnWrite(result.accounts, result.items.flatMap((t) => [t.accountId, t.accountRecipientId]))
+      }
+      queryClient.setQueryData(queryKeys.accounts, result.accounts)
+      if (patch) {
+        const byId = new Map(result.items.map((t) => [t.id, t]))
+        queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => (prev ?? []).map((t) => byId.get(t.id) ?? t))
+      }
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
+      trackEvent(METRICS.TRANSACTION_MOVE, { dayChanged: req.fromDate !== req.date })
+    },
+    onError: (err) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
+      toast.error(apiErrorMessage(err))
     },
   })
 }

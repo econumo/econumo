@@ -20,7 +20,7 @@ export function TransactionDatePicker({ value, onChange }: { value: string; onCh
       ref={triggerRef}
       type="button"
       variant="secondary"
-      className="h-7 rounded bg-econumo-card px-2 text-xs font-normal max-sm:h-11 max-sm:px-3"
+      className="h-7 rounded-lg bg-econumo-card px-2 text-xs font-normal max-sm:h-11 max-sm:px-3"
       aria-label="date"
       aria-haspopup="dialog"
       aria-expanded={open}

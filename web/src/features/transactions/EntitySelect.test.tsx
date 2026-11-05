@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EntitySelect } from './EntitySelect'
 
@@ -202,4 +202,131 @@ it('matches on searchText when given, not on the displayed label', async () => {
   await user.clear(input)
   await user.keyboard('cash')
   expect((await screen.findAllByRole('option'))[0]).toHaveTextContent('Cash ($10.00)')
+})
+
+// portaled into a grid dialog, a laid-out wrapper took a grid row and its gap
+// and grew the dialog by 16px the moment the list opened
+it('the open list adds no box to the dialog it is portaled into', async () => {
+  const user = userEvent.setup()
+  render(
+    <div data-slot="dialog-content" className="grid gap-4">
+      <EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} />
+    </div>,
+  )
+  await user.click(combobox())
+  await screen.findByRole('option', { name: 'Food' })
+  expect(document.querySelector('[data-base-ui-portal]')).toHaveClass('contents')
+})
+
+describe('on a phone', () => {
+  beforeEach(() => {
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+      matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    }))
+  })
+
+  // a field iOS's ^ / v keys stop on, but one that never raises a keyboard
+  it('the field shows the selection and raises no keyboard', () => {
+    render(<EntitySelect aria-label="Category" value="c1" onChange={() => {}} options={OPTIONS} />)
+    expect(combobox()).toHaveValue('Food')
+    expect(combobox()).toHaveAttribute('inputmode', 'none')
+  })
+
+  it("the sheet's ^ / v stops move on to the fields around the picker", async () => {
+    const user = userEvent.setup()
+    render(
+      <div data-slot="dialog-content">
+        <input aria-label="Amount" />
+        <EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} />
+        <textarea aria-label="Notes" />
+      </div>,
+    )
+    await user.click(combobox())
+    await screen.findByRole('dialog')
+    // the hidden stops sit either side of the search
+    const stops = () => within(screen.getByRole('dialog')).getAllByRole('textbox', { hidden: true })
+    act(() => stops()[2].focus())
+    expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveFocus()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await user.click(combobox())
+    act(() => stops()[0].focus())
+    expect(screen.getByRole('textbox', { name: 'Amount' })).toHaveFocus()
+  })
+
+  it('tapping it opens a sheet whose search filters the list, and a pick closes it', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<EntitySelect aria-label="Category" value={null} onChange={onChange} options={OPTIONS} />)
+
+    await user.click(combobox())
+    const sheet = await screen.findByRole('dialog', { name: 'Category' })
+    // the search takes focus straight away, so typing filters without another tap
+    expect(within(sheet).getByRole('textbox')).toHaveFocus()
+    await user.keyboard('fue')
+    expect(within(sheet).queryByRole('option', { name: 'Food' })).not.toBeInTheDocument()
+    await user.click(within(sheet).getByRole('option', { name: 'Fuel' }))
+
+    expect(onChange).toHaveBeenCalledWith('c2')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('Enter in the search picks the first match; the clear row clears', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<EntitySelect aria-label="Category" value="c1" clearable onChange={onChange} options={OPTIONS} />)
+
+    await user.click(combobox())
+    await user.click(within(await screen.findByRole('dialog')).getByRole('option', { name: '—' }))
+    expect(onChange).toHaveBeenLastCalledWith(null)
+
+    await user.click(combobox())
+    await user.type(within(await screen.findByRole('dialog')).getByRole('textbox'), 're{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith('c3')
+  })
+
+  // an IME's Enter confirms the word being composed, not a pick
+  it('Enter during IME composition picks nothing', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const onCreate = vi.fn()
+    render(<EntitySelect aria-label="Category" value={null} onChange={onChange} onCreate={onCreate} options={OPTIONS} />)
+    await user.click(combobox())
+    const search = within(await screen.findByRole('dialog')).getByRole('textbox')
+    fireEvent.change(search, { target: { value: 'fo' } })
+    fireEvent.keyDown(search, { key: 'Enter', isComposing: true })
+    fireEvent.keyDown(search, { key: 'Enter', keyCode: 229 })
+    expect(onChange).not.toHaveBeenCalled()
+    expect(onCreate).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('a scroll that begins on the picker does not open it', () => {
+    render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} />)
+    fireEvent.touchStart(combobox(), { touches: [{ clientX: 10, clientY: 100 }] })
+    fireEvent.touchEnd(combobox(), { changedTouches: [{ clientX: 10, clientY: 40 }] })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    // out past the slop and back again is still a scroll
+    fireEvent.touchStart(combobox(), { touches: [{ clientX: 10, clientY: 100 }] })
+    fireEvent.touchMove(combobox(), { touches: [{ clientX: 10, clientY: 60 }] })
+    fireEvent.touchEnd(combobox(), { changedTouches: [{ clientX: 10, clientY: 98 }] })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    fireEvent.touchStart(combobox(), { touches: [{ clientX: 10, clientY: 100 }] })
+    fireEvent.touchEnd(combobox(), { changedTouches: [{ clientX: 12, clientY: 103 }] })
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('a new name offers to create it', async () => {
+    const user = userEvent.setup()
+    const onCreate = vi.fn()
+    render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} onCreate={onCreate} options={OPTIONS} />)
+
+    await user.click(combobox())
+    const sheet = await screen.findByRole('dialog')
+    await user.type(within(sheet).getByRole('textbox'), 'Gym')
+    await user.click(within(sheet).getByRole('option', { name: /Gym/ }))
+    expect(onCreate).toHaveBeenCalledWith('Gym')
+  })
 })

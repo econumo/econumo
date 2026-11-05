@@ -157,6 +157,16 @@ export function useUpdateAnalytics() {
   })
 }
 
+export function useUpdateLastSeenVersion() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (version: string) => userApi.updateLastSeenVersion(version),
+    onSuccess: (user) => {
+      queryClient.setQueryData(queryKeys.user, user)
+    },
+  })
+}
+
 export function useUpdateDefaultBudget() {
   const queryClient = useQueryClient()
   return useMutation({

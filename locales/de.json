@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "Keine Transaktionen gefunden",
+        "drag_handle": "Zum Neuordnen ziehen",
         "today": "Heute",
         "yesterday": "Gestern",
         "item": {
@@ -393,6 +394,9 @@
           "label": "Notizen",
           "placeholder": "Notizen eingeben"
         },
+        "account": {
+          "label": "Konto"
+        },
         "from": {
           "label": "Von"
         },
@@ -538,6 +542,7 @@
         "limitations_title": "Bekannte Einschränkungen",
         "tap_only": "Funktioniert nur, wenn du dein iPhone zum Bezahlen ans Terminal hältst",
         "online_not_imported": "Apple Pay-Zahlungen auf Websites werden nicht unterstützt",
+        "no_signal": "Ohne Netz beim Bezahlen wird die Transaktion möglicherweise nicht hinzugefügt",
         "steps_title": "So funktioniert es",
         "flow": {
           "pay": "Bezahle mit Apple Pay",
@@ -565,7 +570,7 @@
         },
         "configure": {
           "title": "Kurzbefehl verbinden",
-          "text": "Generiert ein API-Token. Der Kurzbefehl speichert Serveradresse und Token und verbindet sich dann mit Econumo. Tippe bei jeder Abfrage auf „Immer erlauben“ — die Automation braucht diese Berechtigungen später.",
+          "text": "Tippe auf „Kurzbefehl verbinden“ und dann bei jeder Abfrage auf „Immer erlauben“.",
           "button": "Kurzbefehl verbinden",
           "open": "Econumo verknüpfen",
           "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …",
@@ -573,7 +578,14 @@
         },
         "automate": {
           "title": "Automation anlegen",
-          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen → Nach Bestätigung ausführen → econumo."
+          "text": "Erstelle in der Kurzbefehle-App eine Wallet-Automation:",
+          "list": {
+            "open": "Öffne den Tab „Automation“ (unter iOS 27: Mediathek → Automation) und tippe auf „Neue Automation“ oder +",
+            "wallet": "Wähle Wallet („Wenn ich auf eine Wallet-Karte oder einen Pass tippe“)",
+            "cards": "Wähle die Karten und Kategorien aus, die importiert werden sollen, oder alle",
+            "confirm": "Lass die Bestätigung an: „Nach Bestätigung ausführen“ (iOS 26) oder „Vor dem Ausführen bestätigen“ (iOS 27)",
+            "shortcut": "Wähle den Kurzbefehl econumo (unter iOS 27: „Kurzbefehl ausführen“ → econumo hinzufügen, mit „Transaktion“ als Eingabe)"
+          }
         },
         "payment": {
           "title": "Erste Zahlung tätigen",
@@ -582,9 +594,14 @@
         },
         "immediate": {
           "title": "Automation auf „Sofort ausführen“ umstellen",
-          "text": "Öffne in der Kurzbefehle-App die Automation und ändere „Nach Bestätigung ausführen“ auf „Sofort ausführen“. Ab dann werden Zahlungen ohne Rückfrage importiert."
+          "text": "Schalte die Bestätigung aus, damit Zahlungen ohne Rückfrage importiert werden: Öffne die Automation in der Kurzbefehle-App und wähle „Sofort ausführen“ (iOS 26) oder schalte „Vor dem Ausführen bestätigen“ aus (iOS 27)."
         },
-        "done": "Erledigt"
+        "done": "Erledigt",
+        "guide_title": "Schritt-für-Schritt-Anleitung mit Screenshots:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Kurzbefehle öffnen",
+        "optional": "Optional"
       },
       "same_named_cards": "Karten mit gleichem Namen in Wallet werden als eine Karte angezeigt.",
       "cards": {
@@ -1343,13 +1360,21 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "Noch ausstehend",
+        "spent": "Bereits ausgegeben",
+        "received": "Bereits erhalten",
+        "saved": "Bereits gespart",
+        "posted": "Gebucht",
+        "total": "Summe"
+      },
       "budget": {
         "empty": {
           "header": "Budget",
           "no_budget": "Sie haben noch kein Budget erstellt.",
           "description": "Erstellen Sie ein Budget oder nehmen Sie eine Einladung an, um mit der Finanzplanung zu beginnen.",
           "create_budget": "Budget erstellen",
-          "initial_setup": "Um ein Budget zu erstellen, fügen Sie zuerst ein Konto und mindestens eine Kategorie hinzu.",
+          "initial_setup": "Um ein Budget zu erstellen, fügen Sie zuerst ein Konto hinzu.",
           "create_account": "Konto hinzufügen"
         },
         "unavailable": {
@@ -1403,6 +1428,9 @@
           "total": {
             "name": "Gesamt",
             "expenses": "Gesamtausgaben"
+          },
+          "tag_group": {
+            "count": "{count} Tag | {count} Tags"
           }
         },
         "archived_banner": "Dieses Budget ist archiviert und schreibgeschützt",
@@ -1862,6 +1890,7 @@
       "payees": "Zahlungsempfänger",
       "tags": "Tags",
       "labels": "Auswertungs-Tags",
+      "recurring": "Wiederkehrend",
       "transactions": "Transaktionen"
     },
     "show_all": "Alle anzeigen ({count})",
@@ -1871,6 +1900,36 @@
     "open": "Suche",
     "open_tooltip": "Suche ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Feedback senden",
+    "settings": {
+      "group": "Feedback"
+    },
+    "dialog": {
+      "title": "Feedback senden",
+      "no_reply": "Wir lesen jede Nachricht, können aber nicht immer antworten.",
+      "type": "Art",
+      "message": "Nachricht",
+      "message_required": "Schreiben Sie zuerst eine Nachricht.",
+      "email": "E-Mail (optional)",
+      "email_placeholder": "name@beispiel.de",
+      "use_email": "{email} verwenden",
+      "clear_email": "E-Mail löschen",
+      "send": "Senden",
+      "sent": "Danke für Ihr Feedback!",
+      "failed": "Ihr Feedback konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+    },
+    "type": {
+      "feedback": "Feedback",
+      "feature_request": "Wunsch",
+      "bug_report": "Fehler"
+    },
+    "placeholder": {
+      "feedback": "Was gefällt Ihnen, und was könnte besser sein?",
+      "feature_request": "Was sollte Econumo können?",
+      "bug_report": "Was ist passiert, und was haben Sie erwartet?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Ihr Abonnement endet in {count} Tag | Ihr Abonnement endet in {count} Tagen",
@@ -1878,7 +1937,10 @@
       "cta": "Abonnement verwalten",
       "dismiss": "Ausblenden",
       "connection_trial": "Das Abonnement von {name} endet in {count} Tag | Das Abonnement von {name} endet in {count} Tagen",
-      "connection_readonly": "Das Abonnement von {name} ist abgelaufen — {name} kann gemeinsame Konten nur ansehen, aber nicht bearbeiten"
+      "connection_readonly": "Das Abonnement von {name} ist abgelaufen — {name} kann gemeinsame Konten nur ansehen, aber nicht bearbeiten",
+      "sale_ends": "bis {date}",
+      "sale": "{name}: {percent} % Rabatt",
+      "sale_cta": "Angebot sichern"
     },
     "settings": {
       "group": "Abrechnung",
@@ -1932,6 +1994,39 @@
       "returnsTo": "Leitet Sie zurück zu {host}",
       "menuItem": "Verbundene Apps"
     }
+  },
+  "install": {
+    "notice": "Econumo ist als App am besten",
+    "cta": "Installieren",
+    "dismiss": "Ausblenden",
+    "menu_item": "App installieren",
+    "dialog": {
+      "title": "Econumo installieren",
+      "intro": "Fügen Sie Econumo zum Home-Bildschirm hinzu, um es wie jede andere App ohne Browserleisten zu öffnen.",
+      "step_share": "Tippen Sie im Browser auf „Teilen“. In Safari befindet sich die Taste eventuell im Menü „•••“.",
+      "step_add": "Scrollen Sie nach unten und wählen Sie „Zum Home-Bildschirm“.",
+      "step_confirm": "Tippen Sie auf „Hinzufügen“. Econumo erscheint auf Ihrem Home-Bildschirm.",
+      "installed_hint": "Schon hinzugefügt? Öffnen Sie Econumo dann über den Home-Bildschirm statt im Browser.",
+      "macos": {
+        "intro": "Fügen Sie Econumo zum Dock hinzu, um es wie jede andere App in einem eigenen Fenster zu öffnen.",
+        "step_file": "Öffnen Sie in der Menüleiste von Safari „Ablage“ (oder klicken Sie auf „Teilen“).",
+        "step_add": "Wählen Sie „Zum Dock hinzufügen“.",
+        "step_confirm": "Klicken Sie auf „Hinzufügen“. Econumo erscheint im Dock.",
+        "installed_hint": "Schon hinzugefügt? Öffnen Sie Econumo dann über das Dock statt in Safari."
+      },
+      "android_firefox": {
+        "intro": "Fügen Sie Econumo zum Startbildschirm hinzu, um es wie jede andere App ohne Browserleisten zu öffnen.",
+        "installed_hint": "Schon hinzugefügt? Öffnen Sie Econumo dann über den Startbildschirm statt im Browser.",
+        "step_menu": "Tippen Sie in Firefox auf das Menü ⋮.",
+        "step_install": "Wählen Sie „Installieren“ (in älteren Versionen „Zum Startbildschirm hinzufügen“).",
+        "step_confirm": "Bestätigen Sie. Econumo erscheint auf Ihrem Startbildschirm."
+      },
+      "close": "Verstanden"
+    }
+  },
+  "whatsNew": {
+    "notice": "Neu in {version}",
+    "dismiss": "Ausblenden"
   },
   "errors": {
     "common": {
@@ -2066,7 +2161,9 @@
       "invalid_import_file": "Bitte laden Sie eine gültige CSV-Datei hoch",
       "too_many_labels": "Eine Transaktion kann höchstens 50 Auswertungs-Tags haben.",
       "account_deleted": "Dieses Konto wurde gelöscht.",
-      "category_type_mismatch": "Der Kategorietyp muss zum Transaktionstyp passen."
+      "category_type_mismatch": "Der Kategorietyp muss zum Transaktionstyp passen.",
+      "day_changed": "Dieser Tag wurde inzwischen geändert. Aktualisiere und versuche es erneut.",
+      "cannot_move": "Diese Transaktion kann nicht auf einen anderen Tag verschoben werden."
     },
     "user": {
       "report_period_invalid": "ReportPeriod ist ungültig",

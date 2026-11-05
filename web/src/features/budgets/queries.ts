@@ -138,7 +138,8 @@ export function useSetLimit() {
         if (!prev) {
           return prev
         }
-        const budgeted = form.amount === null ? '0' : form.amount
+        const budgeted = form.amount ?? ''
+        const isBudgeted = form.amount === null ? (0 as const) : (1 as const)
         const savings = prev.structure.savings
         // from the current month on a savings row's closing balance still expects
         // its unmet plan, so the edit moves it by the change in that gap
@@ -148,7 +149,7 @@ export function useSetLimit() {
           ...prev,
           structure: {
             ...prev.structure,
-            elements: prev.structure.elements.map((el) => (el.id === form.elementId ? { ...el, budgeted } : el)),
+            elements: prev.structure.elements.map((el) => (el.id === form.elementId ? { ...el, budgeted, isBudgeted } : el)),
             // a savings row carries no carry-over: its available is planned minus saved
             ...(savings
               ? {
@@ -157,6 +158,7 @@ export function useSetLimit() {
                       ? {
                           ...row,
                           budgeted,
+                          isBudgeted,
                           available: sub(budgeted, row.spent),
                           ...(projected && row.isArchived === 0 && row.closingBalance !== undefined
                             ? { closingBalance: add(sub(row.closingBalance, gap(row.budgeted, row.spent)), gap(budgeted, row.spent)) }
@@ -282,7 +284,7 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
     mutationFn: (form: { budgetId: Id; elementId: Id; amount: string; targets: { period: string; monthIndex: number }[] }) =>
       Promise.all(
         form.targets.map((t) =>
-          budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: t.period, amount: form.amount }),
+          budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: t.period, amount: form.amount === '' ? null : form.amount }),
         ),
       ),
     onMutate: async (form) => {

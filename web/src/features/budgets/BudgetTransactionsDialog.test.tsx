@@ -10,6 +10,7 @@ import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID, type BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { useBudgetPeriodStore } from './budgetStore'
+import { formatDateTime } from '@/lib/datetime'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -374,6 +375,17 @@ it('an income category requests income=1 with categoryId', async () => {
   expect(params.has('envelopeId')).toBe(false)
 })
 
+it('the income Uncategorized row requests income=1 with uncategorized', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({ id: UNCATEGORIZED_ID, type: BudgetElementType.INCOME_CATEGORY, name: 'Uncategorized', icon: '', currencyId: null })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('income')).toBe('1')
+  expect(params.get('uncategorized')).toBe('1')
+  expect(params.has('categoryId')).toBe(false)
+  expect(params.has('envelopeId')).toBe(false)
+})
+
 it('an income envelope requests income=1 with envelopeId only', async () => {
   const getUrl = captureTransactionListUrl()
   renderDialog({ id: 'env-work', type: BudgetElementType.INCOME_ENVELOPE, name: 'Work', icon: 'work', currencyId: null })
@@ -424,4 +436,57 @@ it('opening a list fires the analytics event with its kind', async () => {
   renderDialog({ id: 'acc-savings', type: BudgetElementType.SAVINGS, name: 'Emergency fund', icon: 'savings', currencyId: 'cur-usd' })
   await vi.waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_TRANSACTIONS_OPEN, { kind: 'savings' }))
   expect(trackEvent).toHaveBeenCalledTimes(1)
+})
+
+it('lists a real transaction dated in the future under Coming up, above Posted, not tappable', async () => {
+  const future = formatDateTime(new Date(Date.now() + 10 * 24 * 3600 * 1000))
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [{ ...wireItems[0], spentAt: future }, wireItems[1]], upcoming: [] } }),
+    ),
+  )
+  renderDialog()
+  const later = await screen.findByTestId('budget-tx-t1')
+  expect(later.tagName).not.toBe('BUTTON')
+  expect(screen.getByTestId('budget-tx-coming-up')).toHaveTextContent('Coming up')
+  expect(screen.getByTestId('budget-tx-coming-up')).toContainElement(later)
+  const posted = screen.getByTestId('budget-tx-posted')
+  expect(posted).toHaveTextContent('Posted')
+  expect(later.compareDocumentPosition(posted) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(posted.compareDocumentPosition(screen.getByTestId('budget-tx-tx-foreign')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+it('shows no Coming up heading when nothing is dated in the future', async () => {
+  renderDialog()
+  expect(await screen.findByTestId('budget-tx-t1')).toBeInTheDocument()
+  expect(screen.queryByTestId('budget-tx-coming-up')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('budget-tx-posted')).not.toBeInTheDocument()
+})
+
+it('lists a recurring payment still due under Coming up, display only', async () => {
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: {
+          items: [wireItems[0]],
+          upcoming: [{
+            id: 'r-gym', author: fixtureOwner, currencyId: 'cur-usd', amount: '10', description: 'gym membership',
+            category: { id: 'cat-food', name: 'Food', icon: 'restaurant' }, payee: null, tag: null,
+            spentAt: '2026-07-08 09:00:00', templateId: 'r-gym', schedule: 'weekly', accountId: 'a1', accountName: 'Cash',
+            labelNames: [], isNext: true, isOverdue: false, canEdit: true,
+          }],
+        },
+      }),
+    ),
+  )
+  renderDialog()
+  expect(await screen.findByText('coffee beans')).toBeInTheDocument()
+  const gym = screen.getByTestId('budget-upcoming-r-gym')
+  expect(gym).toHaveTextContent('gym membership')
+  expect(gym.tagName).not.toBe('BUTTON')
+  expect(screen.getByTestId('budget-tx-coming-up')).toContainElement(gym)
+  expect(gym.compareDocumentPosition(screen.getByTestId('budget-tx-t1')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Post' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Skip' })).not.toBeInTheDocument()
 })

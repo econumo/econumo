@@ -1,7 +1,9 @@
 import { capture, capturePageView, setAnalyticsContext, setAnalyticsGroup } from './analytics'
+import { analyticsUserId } from './analyticsId'
 import { analyticsAllowed } from './analyticsPreference'
 import { authMethods } from './analyticsAuthMethods'
 import { profileAttributes } from './analyticsProfile'
+import { storedThemePreference } from './theme'
 import { backendHost, getInstanceId, getVersion, locale } from './config'
 import { isNativeApp } from './platform'
 import { hasToken } from './storage'
@@ -49,6 +51,9 @@ export const METRICS = {
   ACCOUNT_DELETE: 'appAccountDelete',
   ACCOUNT_DECLINE_ACCESS: 'appAccountDeclineAccess',
   ACCOUNT_ORDER_LIST: 'appAccountOrderList',
+  // one key for every way of moving through the account page's timeline,
+  // discriminated by the `method` property
+  ACCOUNT_HISTORY_JUMP: 'appAccountHistoryJump',
   ACCOUNT_FOLDER_EXPAND: 'appAccountFolderExpand',
   ACCOUNT_FOLDER_COLLAPSE: 'appAccountFolderCollapse',
   ACCOUNT_FOLDER_CREATE: 'appAccountFolderCreate',
@@ -82,6 +87,7 @@ export const METRICS = {
   BUDGET_UNARCHIVE: 'appBudgetUnarchived',
   BUDGET_SET_END_DATE: 'appBudgetEndDateSet',
   BUDGET_SAVINGS_TOGGLE: 'appBudgetSavingsToggle',
+  BUDGET_TAG_GROUP_EXPAND: 'appBudgetTagGroupExpand',
   BUDGET_GRANT_ACCESS: 'appBudgetGrantAccess',
   BUDGET_REVOKE_ACCESS: 'appBudgetRevokeAccess',
   BUDGET_ACCEPT_ACCESS: 'appBudgetAcceptAccess',
@@ -105,6 +111,7 @@ export const METRICS = {
   BUDGET_PLAN_TOGGLE_SUMS: 'appBudgetPlanToggleSums',
   BUDGET_PLAN_CLEAR_CELL: 'appBudgetPlanClearCell',
   BUDGET_PLAN_SELECT_CELLS: 'appBudgetPlanSelectCells',
+  BUDGET_PLAN_USE_UPCOMING: 'appBudgetPlanUseUpcoming',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
   BUDGET_TRANSACTIONS_OPEN: 'appBudgetTransactionsOpen',
   BUDGET_UPDATE_COMMENT: 'appBudgetUpdateComment',
@@ -125,6 +132,7 @@ export const METRICS = {
   TRANSACTION_UPDATE: 'appTransactionUpdate',
   TRANSACTION_DATE_SELECT: 'appTransactionDateSelect',
   TRANSACTION_DELETE: 'appTransactionDelete',
+  TRANSACTION_MOVE: 'appTransactionMove',
   TRANSACTION_IMPORT: 'appTransactionImport',
   TRANSACTION_EXPORT: 'appTransactionExport',
   CONNECTION_GENERATE_INVITE: 'appConnectionGenerateInvite',
@@ -140,6 +148,9 @@ export const METRICS = {
   IMPORT_SOURCE_DISCONNECT: 'appImportSourceDisconnect',
   IMPORT_ACCOUNT_LINK: 'appImportAccountLink',
   IMPORT_ACCOUNT_IGNORE: 'appImportAccountIgnore',
+  IMPORT_ACCOUNT_MAP: 'appImportAccountMap',
+  IMPORT_ACCOUNT_REMAP: 'appImportAccountRemap',
+  IMPORT_ACCOUNT_UNMAP: 'appImportAccountUnmap',
   IMPORT_QUEUE_IMPORT: 'appImportQueueImport',
   IMPORT_QUEUE_SKIP: 'appImportQueueSkip',
   IMPORT_SHORTCUT_DOWNLOAD: 'appImportShortcutDownload',
@@ -150,13 +161,22 @@ export const METRICS = {
   IMPORT_SETUP_STEP_VIEW: 'appImportSetupStepView',
   IMPORT_SETUP_COMPLETE: 'appImportSetupComplete',
   IMPORT_SETUP_RESTART: 'appImportSetupRestart',
+  IMPORT_SETUP_GUIDE_OPEN: 'appImportSetupGuideOpen',
+  IMPORT_SETUP_SHORTCUTS_OPEN: 'appImportSetupShortcutsOpen',
   IMPORT_SYNC: 'appImportSync',
   IMPORT_RULE_CREATE: 'appImportRuleCreate',
   IMPORT_RULE_APPLY: 'appImportRuleApply',
   DATA_FULL_RELOAD: 'appDataFullReload',
+  INSTALL_APP_OPEN: 'appInstallAppOpen',
+  INSTALL_APP_ACCEPT: 'appInstallAppAccept',
+  INSTALL_NOTICE_DISMISS: 'appInstallNoticeDismiss',
   INBOX_OPEN: 'appInboxOpen',
   GLOBAL_SEARCH_OPEN: 'appGlobalSearchOpen',
   GLOBAL_SEARCH_SELECT: 'appGlobalSearchSelect',
+  FEEDBACK_OPEN: 'appFeedbackOpen',
+  FEEDBACK_SEND: 'appFeedbackSend',
+  WHATS_NEW_OPEN: 'appWhatsNewOpen',
+  WHATS_NEW_DISMISS: 'appWhatsNewDismiss',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 
@@ -228,6 +248,34 @@ export function analyticsPlatform(): 'web' | 'ios' | 'android' {
   return /android/i.test(navigator.userAgent) ? 'android' : 'ios'
 }
 
+// The billing portal reports into this same collector project, as the same
+// user and group, so a purchase lands in the user's own funnel. It is handed
+// them in its link's URL fragment — which no server ever receives — as one
+// base64url-encoded JSON value: {u: $user_id, g: $group_id, n: $group_name},
+// the group only when this instance has one. Nothing ("") when analytics is
+// off for this user or there is no user: the portal then reports nothing.
+//
+// Takes the raw id from the caller's user data rather than reading the
+// analytics wrapper's identity, which is only set once get-user-data has
+// answered — on a warm reload the persisted cache can put a billing button
+// on screen, and a click through, before that.
+export function billingAnalyticsFragment(userId: string | undefined, analyticsOption: string | null): string {
+  // Both opt-out records: the user's own option (authoritative, from the same
+  // user data) and the device mirror, so either one alone keeps it off.
+  if (!userId || analyticsOption === '0' || !analyticsAllowed()) {
+    return ''
+  }
+  const payload: Record<string, string> = { u: analyticsUserId(userId) }
+  const instanceId = getInstanceId()
+  if (instanceId) {
+    payload.g = instanceId
+    payload.n = analyticsHost()
+  }
+  // Every value is ASCII (hex digests, a hostname), so btoa is safe here.
+  const encoded = btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  return `a=${encoded}`
+}
+
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {
   if (!metric) {
     return
@@ -265,6 +313,8 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
     $host: analyticsHost(),
     $app_locale: locale(),
     deployment: deploymentKind(),
+    // The chosen appearance, not the resolved one: "system" stays "system".
+    theme: storedThemePreference(),
     // Omitted while unknown, so neither reads as a measured "none".
     ...(currentAccessState ? { access_state: currentAccessState } : {}),
     ...(authMethods() ?? {}),

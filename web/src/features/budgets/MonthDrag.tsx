@@ -18,9 +18,11 @@ import { ENVELOPE_DROP, ENVELOPE_HEAD_DROP, noShift } from './elementMove'
 const LINE_START: Record<RowLevel, Record<'row' | 'child', string>> = {
   'in-folder': { row: 'left-9', child: 'left-17 sm:left-19' },
   top: { row: 'left-6', child: 'left-14 sm:left-16' },
+  'in-folder-group': { row: 'left-14', child: 'left-22 sm:left-24' },
+  'top-group': { row: 'left-11', child: 'left-19 sm:left-21' },
 }
-const ROW_GRIP: Record<RowLevel, string> = { 'in-folder': 'left-3.5', top: 'left-0.5' }
-const CHILD_GRIP: Record<RowLevel, string> = { 'in-folder': 'left-11', top: 'left-8' }
+const ROW_GRIP: Record<RowLevel, string> = { 'in-folder': 'left-3.5', top: 'left-0.5', 'in-folder-group': 'left-8.5', 'top-group': 'left-5.5' }
+const CHILD_GRIP: Record<RowLevel, string> = { 'in-folder': 'left-11', top: 'left-8', 'in-folder-group': 'left-16', 'top-group': 'left-13' }
 
 export function DropLine({ level, edge }: { level: 'row' | 'child'; edge: 'before' | 'after' }) {
   const rowLevel = useRowLevel()

@@ -15,10 +15,11 @@ export interface EconumoConfig {
   ALLOW_CUSTOM_API?: boolean | string
   VERSION?: string
   VERSION_LABEL?: string
+  VERSION_REF?: string
   INSTANCE_ID?: string
   AI_ENABLED?: boolean
-  IMPORT_APPLE_WALLET?: boolean
   IMPORT_SIMPLEFIN?: boolean
+  FEEDBACK?: boolean
   BILLING_URL?: string
   MCP_URL?: string
   LILTAG_CONFIG_URL?: string
@@ -125,10 +126,23 @@ export function getWebsiteUrl(): string {
 // The REAL version of whatever is running: the server's binary version for a
 // server-served SPA, this build's own version in the mobile app. Everything
 // that COMPARES a version (analytics, the update check, the app's
-// compatibility floors, the query-cache buster) must read this, never the
+// compatibility floors) must read this, never the
 // display label, which ECONUMO_VERSION can set to arbitrary text.
 export function getVersion(): string {
   return window.econumoConfig?.VERSION || String(import.meta.env.ECONUMO_VERSION ?? 'dev')
+}
+
+// The source revision of the running build, '' when unknown. Every dev build
+// reports VERSION "dev", so this is what tells two of them apart.
+export function getVersionRef(): string {
+  return window.econumoConfig?.VERSION_REF || String(import.meta.env.ECONUMO_COMMIT ?? '')
+}
+
+// What the persisted caches are keyed on: a cache written by any other build,
+// a dev deploy included, is never restored.
+export function getCacheBuster(): string {
+  const ref = getVersionRef()
+  return ref ? `${getVersion()}+${ref}` : getVersion()
 }
 
 // The version text the UI displays. A server sets VERSION_LABEL from
@@ -168,21 +182,15 @@ export function isAiEnabled(): boolean {
   return window.econumoConfig?.AI_ENABLED === true
 }
 
-// The import providers (ECONUMO_IMPORT_APPLE_WALLET / ECONUMO_IMPORT_SIMPLEFIN)
-// are off unless the server says otherwise, and the server does not mount the
-// routes of one that is off.
-export function isAppleWalletImportEnabled(): boolean {
-  return window.econumoConfig?.IMPORT_APPLE_WALLET === true
-}
-
+// ECONUMO_IMPORT_SIMPLEFIN: off unless the server says otherwise, and the
+// server does not mount its routes while it is off.
 export function isSimpleFINImportEnabled(): boolean {
   return window.econumoConfig?.IMPORT_SIMPLEFIN === true
 }
 
-// Any provider on: import rules, run history and the Inbox's import sections
-// exist only then; with both off nothing fetches an import endpoint.
-export function isTransactionImportEnabled(): boolean {
-  return isAppleWalletImportEnabled() || isSimpleFINImportEnabled()
+// ECONUMO_FEEDBACK: on unless the server says otherwise.
+export function isFeedbackEnabled(): boolean {
+  return window.econumoConfig?.FEEDBACK !== false
 }
 
 export function isCustomApiAllowed(): boolean {

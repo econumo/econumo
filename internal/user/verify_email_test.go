@@ -98,7 +98,7 @@ func newVerifySvcLimited(t *testing.T, db *dbtest.DB, cap *captureMailer, limit 
 	limiter := ratelimit.New(ratelimit.Config{
 		Limits: map[string]int{appuser.RateScopeVerifyEmail: limit},
 		Window: time.Hour,
-		Global: 0,
+		IP:     0,
 	}, clk)
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets,
 		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),

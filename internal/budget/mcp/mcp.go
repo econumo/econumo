@@ -80,7 +80,7 @@ type setLimitInput struct {
 	BudgetID  string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
 	ElementID string `json:"element_id" jsonschema:"envelope, category or tag id (UUID), from get_budget"`
 	Month     string `json:"month" jsonschema:"YYYY-MM; must not be before the budget's start month"`
-	Amount    string `json:"amount,omitempty" jsonschema:"decimal string, e.g. 150.00; omit to clear the limit"`
+	Amount    string `json:"amount,omitempty" jsonschema:"decimal string, e.g. 150.00; 0 is a plan of zero; omit to clear the limit"`
 }
 
 type setLimitResult struct {

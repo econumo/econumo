@@ -24,7 +24,7 @@ function list<T>(key: readonly unknown[]): T[] | undefined {
 // that would read as a real measurement rather than "unknown"). Every count is
 // a total: active, hidden and archived items alike.
 type ProfileCount = 'accounts' | 'budgets' | 'categories' | 'payees' | 'tags' | 'labels' | 'connections' | 'signup_year' | 'months_since_signup'
-type ProfileAttributes = Partial<Record<ProfileCount, number>> & { 'apple-wallet'?: 'on' | 'off' }
+type ProfileAttributes = Partial<Record<ProfileCount, number>> & { import_apple_wallet?: 'on' | 'off' }
 
 function count(out: ProfileAttributes, key: readonly unknown[], name: ProfileCount): void {
   const rows = list<unknown>(key)
@@ -89,7 +89,7 @@ export function profileAttributes(): ProfileAttributes {
 
   const sources = list<ImportSourceDto>(queryKeys.importSources)
   if (sources) {
-    out['apple-wallet'] = sources.some((source) => source.provider === 'apple-wallet') ? 'on' : 'off'
+    out.import_apple_wallet = sources.some((source) => source.provider === 'apple-wallet') ? 'on' : 'off'
   }
 
   if (user?.createdAt) {

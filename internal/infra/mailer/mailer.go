@@ -1,16 +1,15 @@
-// Package mailer sends transactional email through one of two transports,
+// Package mailer sends transactional email through one of three transports,
 // selected by the MAILER_DSN scheme (parsed in internal/config):
 //
-//	(empty)              -> console: render the message to stdout
-//	console:// | log://  -> console: render the message to stdout
-//	resend://<api_key>   -> Resend HTTP API (https://resend.com)
+//	(empty)                           -> console: render the message to stdout
+//	console:// | log://               -> console: render the message to stdout
+//	resend://<api_key>                -> Resend HTTP API (https://resend.com)
+//	smtp://[user:pass@]host[:port]    -> SMTP with mandatory STARTTLS (port 587)
+//	smtps://[user:pass@]host[:port]   -> SMTP over implicit TLS (port 465)
 //
 // The console transport is the default so a deployment without mail configured
 // still surfaces what it would have sent (e.g. a password-reset code during
-// local development) instead of silently dropping it. The Resend HTTP API needs
-// no STARTTLS/auth-mechanism handling, propagates request context, and works
-// with the addresses verified on the Resend account; there is deliberately no
-// SMTP or other protocol path.
+// local development) instead of silently dropping it.
 package mailer
 
 import (
@@ -61,14 +60,22 @@ func ccAddresses(to string, candidates []string) []string {
 	return out
 }
 
-// New returns the Mailer for the given provider (as derived from MAILER_DSN by
-// internal/config). "resend" yields a Resend-backed mailer using apiKey; every
-// other value (notably "console" and the empty default) yields the console
+// Transport is the parsed MAILER_DSN (internal/config derives it).
+type Transport struct {
+	Provider string // "console" | "resend" | "smtp"
+	APIKey   string // resend
+	SMTP     SMTPConfig
+}
+
+// New returns the Mailer for the transport. Any provider other than "resend"
+// and "smtp" (notably "console" and the empty default) yields the console
 // mailer, which renders each message to stdout.
-func New(provider, apiKey string) Mailer {
-	switch provider {
+func New(t Transport) Mailer {
+	switch t.Provider {
 	case "resend":
-		return &resendMailer{client: resend.NewClient(apiKey)}
+		return &resendMailer{client: resend.NewClient(t.APIKey)}
+	case "smtp":
+		return newSMTPMailer(t.SMTP)
 	default:
 		return console{out: os.Stdout}
 	}

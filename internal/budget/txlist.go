@@ -34,7 +34,8 @@ import (
 // selects the transfers that crossed the budget boundary (the plan sheet's
 // Transfers line) and composes with nothing: any other selector alongside it
 // is rejected the same way. income turns exactly one of categoryId/envelopeId
-// into an income row's list (income on the everyday accounts, tagged or not);
+// into an income row's list (income on the everyday accounts, tagged or not),
+// or, with uncategorized instead, into the income Uncategorized row's list;
 // accountId selects every transaction on one account of the budget (currently
 // only its savings accounts: see savingsMemberID). Both compose with nothing
 // else.
@@ -46,7 +47,9 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	if optIDSet(req.AccountId) && (req.Transfers || req.Income || req.Uncategorized || optIDSet(req.CategoryId) || optIDSet(req.TagId) || optIDSet(req.EnvelopeId) || optIDSet(req.LabelId)) {
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
-	if req.Income && (req.Transfers || req.Uncategorized || optIDSet(req.TagId) || optIDSet(req.LabelId) || optIDSet(req.CategoryId) == optIDSet(req.EnvelopeId)) {
+	if req.Income && (req.Transfers || optIDSet(req.TagId) || optIDSet(req.LabelId) ||
+		(req.Uncategorized && (optIDSet(req.CategoryId) || optIDSet(req.EnvelopeId))) ||
+		(!req.Uncategorized && optIDSet(req.CategoryId) == optIDSet(req.EnvelopeId))) {
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
 	if req.Uncategorized && req.CategoryId != nil && strings.TrimSpace(*req.CategoryId) != "" {
@@ -93,14 +96,57 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	// silently discarding it instead of being rejected or ignored consistently.
 	lbl := strings.TrimSpace(optID(req.LabelId))
 
-	var rows []model.BudgetTransactionRow
+	query, err := s.txListQuery(ctx, b, f, req, cat, tag, env, lbl, periodStart, periodEnd)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := query(s.read)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.assembleTxList(ctx, f, rows)
+	if err != nil {
+		return nil, err
+	}
+	if !upcomingShown(ctx, periodEnd, s.clock.Now()) {
+		return res, nil
+	}
+	pr, err := s.newProjectedRead(ctx, f, periodEnd)
+	if err != nil || pr == nil {
+		return res, err
+	}
+	upRows, err := query(pr)
+	if err != nil {
+		return nil, err
+	}
+	if res.Upcoming, err = s.assembleUpcoming(ctx, userID, f, pr, upRows); err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+// txListQuery is a selector bound to its parsed ids: the same list read runs
+// against the stored transactions and against the projected occurrences.
+type txListQuery func(r ReadModel) ([]model.BudgetTransactionRow, error)
+
+func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters, req model.BudgetTransactionListRequest, cat, tag, env, lbl string, periodStart, periodEnd time.Time) (txListQuery, error) {
 	switch {
 	case optIDSet(req.AccountId):
 		accountID, perr := savingsMemberID(f, strings.TrimSpace(*req.AccountId))
 		if perr != nil {
 			return nil, perr
 		}
-		rows, err = s.read.BudgetTransactionsOnAccount(ctx, accountID, periodStart, periodEnd)
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsOnAccount(ctx, accountID, periodStart, periodEnd)
+		}, nil
+	case req.Income && req.Uncategorized:
+		known, err := s.incomeRowCategoryIDs(ctx, b, f)
+		if err != nil {
+			return nil, err
+		}
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsIncomeUncategorized(ctx, known, f.everydayAccountIDs, periodStart, periodEnd)
+		}, nil
 	case req.Income:
 		var catIDs []vo.Id
 		if cat != "" {
@@ -114,15 +160,20 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 			if perr != nil {
 				return nil, model.ValidateBlank(map[string]string{"envelopeId": ""})
 			}
+			var err error
 			if catIDs, err = s.envelopes.EnvelopeCategoryIDs(ctx, envID); err != nil {
 				return nil, err
 			}
 		}
-		rows, err = s.read.BudgetTransactionsIncome(ctx, catIDs, f.everydayAccountIDs, periodStart, periodEnd)
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsIncome(ctx, catIDs, f.everydayAccountIDs, periodStart, periodEnd)
+		}, nil
 	// transfers composes with nothing (guarded above), so it needs no
 	// narrowing case of its own.
 	case req.Transfers:
-		rows, err = s.read.BudgetTransactionsTransfers(ctx, f.includedAccountIDs, periodStart, periodEnd)
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsTransfers(ctx, f.includedAccountIDs, periodStart, periodEnd)
+		}, nil
 	// The label cases lead the switch, narrowest first: Go takes the FIRST
 	// matching case, and both the uncategorized and the categoryId case below
 	// would otherwise match a label request and silently drop the label.
@@ -135,33 +186,45 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"categoryId": ""})
 		}
-		rows, err = s.read.BudgetTransactionsByLabelAndCategory(ctx, labelID, categoryID, f.everydayAccountIDs, periodStart, periodEnd)
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsByLabelAndCategory(ctx, labelID, categoryID, f.everydayAccountIDs, periodStart, periodEnd)
+		}, nil
 	case lbl != "" && req.Uncategorized:
 		labelID, perr := vo.ParseId(lbl)
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
 		}
-		rows, err = s.read.BudgetTransactionsByLabelUncategorized(ctx, labelID, f.everydayAccountIDs, periodStart, periodEnd)
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsByLabelUncategorized(ctx, labelID, f.everydayAccountIDs, periodStart, periodEnd)
+		}, nil
 	case lbl != "":
 		labelID, perr := vo.ParseId(lbl)
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
 		}
-		rows, err = s.read.BudgetTransactionsByLabel(ctx, labelID, f.everydayAccountIDs, periodStart, periodEnd)
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsByLabel(ctx, labelID, f.everydayAccountIDs, periodStart, periodEnd)
+		}, nil
 	case req.Uncategorized && tag == "" && env == "":
-		rows, err = s.read.BudgetTransactionsUncategorized(ctx, f.everydayAccountIDs, periodStart, periodEnd)
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsUncategorized(ctx, f.everydayAccountIDs, periodStart, periodEnd)
+		}, nil
 	case req.Uncategorized && tag != "" && env == "":
 		tagID, perr := vo.ParseId(tag)
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"tagId": ""})
 		}
-		rows, err = s.read.BudgetTransactionsByTag(ctx, tagID, nil, true, f.everydayAccountIDs, periodStart, periodEnd)
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsByTag(ctx, tagID, nil, true, f.everydayAccountIDs, periodStart, periodEnd)
+		}, nil
 	case cat != "" && tag == "" && env == "":
 		catID, perr := vo.ParseId(cat)
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"categoryId": ""})
 		}
-		rows, err = s.read.BudgetTransactionsByCategories(ctx, []vo.Id{catID}, f.everydayAccountIDs, periodStart, periodEnd)
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsByCategories(ctx, []vo.Id{catID}, f.everydayAccountIDs, periodStart, periodEnd)
+		}, nil
 	case tag != "" && env == "":
 		tagID, perr := vo.ParseId(tag)
 		if perr != nil {
@@ -175,7 +238,9 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 			}
 			catFilter = &c
 		}
-		rows, err = s.read.BudgetTransactionsByTag(ctx, tagID, catFilter, false, f.everydayAccountIDs, periodStart, periodEnd)
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsByTag(ctx, tagID, catFilter, false, f.everydayAccountIDs, periodStart, periodEnd)
+		}, nil
 	case env != "" && tag == "" && cat == "" && !req.Uncategorized:
 		envID, perr := vo.ParseId(env)
 		if perr != nil {
@@ -185,15 +250,12 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		if cerr != nil {
 			return nil, cerr
 		}
-		rows, err = s.read.BudgetTransactionsByCategories(ctx, catIDs, f.everydayAccountIDs, periodStart, periodEnd)
+		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
+			return r.BudgetTransactionsByCategories(ctx, catIDs, f.everydayAccountIDs, periodStart, periodEnd)
+		}, nil
 	default:
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	return s.assembleTxList(ctx, f, rows)
 }
 
 // savingsMemberID parses raw and requires it to be one of the budget's savings
@@ -208,19 +270,111 @@ func savingsMemberID(f filters, raw string) (vo.Id, error) {
 	return vo.Id{}, model.ValidateBlank(map[string]string{"accountId": ""})
 }
 
-// assembleTxList resolves author/category/payee/tag names and builds the result.
-func (s *Service) assembleTxList(ctx context.Context, f filters, rows []model.BudgetTransactionRow) (*model.GetBudgetTransactionListResult, error) {
-	// category + tag name maps come from the filter set; payees need a lookup.
+// txItems resolves author/category/payee/tag names into list items; one
+// instance serves a whole response so the payee and author lookups run once.
+type txItems struct {
+	s       *Service
+	f       filters
+	payees  map[string]model.PayeeMeta
+	authors map[string]model.UserResult
+}
+
+func (s *Service) newTxItems(ctx context.Context, f filters) (*txItems, error) {
 	payees, err := s.metadata.PayeesByOwners(ctx, f.userIDs)
 	if err != nil {
 		return nil, err
 	}
-	payeeByID := map[string]model.PayeeMeta{}
+	byID := map[string]model.PayeeMeta{}
 	for _, p := range payees {
-		payeeByID[p.ID] = p
+		byID[p.ID] = p
 	}
-	// tags map may be needed beyond the expense-only category filter; reuse f.tags.
-	authorCache := map[string]model.UserResult{}
+	return &txItems{s: s, f: f, payees: byID, authors: map[string]model.UserResult{}}, nil
+}
+
+func (b *txItems) item(ctx context.Context, row model.BudgetTransactionRow, labelIDs []string) (model.BudgetTransactionResult, error) {
+	author, ok := b.authors[row.UserID]
+	if !ok {
+		o, err := b.s.users.GetOwner(ctx, row.UserID)
+		if err != nil {
+			return model.BudgetTransactionResult{}, err
+		}
+		author = model.UserResult{Id: o.ID, Avatar: o.Avatar, Name: o.Name}
+		b.authors[row.UserID] = author
+	}
+	if labelIDs == nil {
+		labelIDs = []string{}
+	}
+	item := model.BudgetTransactionResult{
+		Id:          row.ID,
+		Author:      author,
+		CurrencyId:  row.CurrencyID,
+		Amount:      vo.NewDecimal(row.Amount).String(),
+		Description: row.Description,
+		LabelIds:    labelIDs,
+		SpentAt:     normalizeSpentAt(row.SpentAt),
+		Direction:   row.Direction,
+		Type:        row.Type,
+	}
+	if row.CategoryID != nil {
+		c, ok := b.f.categories[*row.CategoryID]
+		if !ok {
+			c, ok = b.f.incomeCategories[*row.CategoryID]
+		}
+		if ok {
+			item.Category = &model.TxCategoryResult{Id: c.ID, Name: c.Name, Icon: c.Icon}
+		}
+	}
+	if row.PayeeID != nil {
+		if p, ok := b.payees[*row.PayeeID]; ok {
+			item.Payee = &model.TxPayeeResult{Id: p.ID, Name: p.Name}
+		}
+	}
+	if row.TagID != nil {
+		if t, ok := b.f.tags[*row.TagID]; ok {
+			item.Tag = &model.TxTagResult{Id: t.ID, Name: t.Name}
+		}
+	}
+	return item, nil
+}
+
+// incomeRowCategoryIDs is every category the plan gives an income row of its
+// own: the participants' income categories and the members of income
+// envelopes. Income in any other category, or in none, lands in the income
+// Uncategorized row (see the plan builder).
+func (s *Service) incomeRowCategoryIDs(ctx context.Context, b *budgetAggregate, f filters) ([]vo.Id, error) {
+	set := map[string]bool{}
+	for id := range f.incomeCategories {
+		set[id] = true
+	}
+	envelopeCats, err := s.envelopeCategories(ctx, b)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range b.elements {
+		if e.Type != model.ElementIncomeEnvelope {
+			continue
+		}
+		for _, id := range envelopeCats[e.ExternalID.String()] {
+			set[id] = true
+		}
+	}
+	out := make([]vo.Id, 0, len(set))
+	for id := range set {
+		parsed, err := vo.ParseId(id)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, parsed)
+	}
+	return out, nil
+}
+
+// assembleTxList builds the real rows' result; Upcoming starts empty.
+func (s *Service) assembleTxList(ctx context.Context, f filters, rows []model.BudgetTransactionRow) (*model.GetBudgetTransactionListResult, error) {
+	b, err := s.newTxItems(ctx, f)
+	if err != nil {
+		return nil, err
+	}
 
 	// One batch lookup for the whole page: labels are many-per-transaction, so
 	// they cannot ride the row query without fanning each transaction into N
@@ -244,52 +398,90 @@ func (s *Service) assembleTxList(ctx context.Context, f filters, rows []model.Bu
 
 	items := make([]model.BudgetTransactionResult, 0, len(rows))
 	for _, row := range rows {
-		author, ok := authorCache[row.UserID]
-		if !ok {
-			o, oerr := s.users.GetOwner(ctx, row.UserID)
-			if oerr != nil {
-				return nil, oerr
-			}
-			author = model.UserResult{Id: o.ID, Avatar: o.Avatar, Name: o.Name}
-			authorCache[row.UserID] = author
-		}
-		labelIDs := labelsByTx[row.ID]
-		if labelIDs == nil {
-			labelIDs = []string{}
-		}
-		item := model.BudgetTransactionResult{
-			Id:          row.ID,
-			Author:      author,
-			CurrencyId:  row.CurrencyID,
-			Amount:      vo.NewDecimal(row.Amount).String(),
-			Description: row.Description,
-			LabelIds:    labelIDs,
-			SpentAt:     normalizeSpentAt(row.SpentAt),
-			Direction:   row.Direction,
-			Type:        row.Type,
-		}
-		if row.CategoryID != nil {
-			c, ok := f.categories[*row.CategoryID]
-			if !ok {
-				c, ok = f.incomeCategories[*row.CategoryID]
-			}
-			if ok {
-				item.Category = &model.TxCategoryResult{Id: c.ID, Name: c.Name, Icon: c.Icon}
-			}
-		}
-		if row.PayeeID != nil {
-			if p, ok := payeeByID[*row.PayeeID]; ok {
-				item.Payee = &model.TxPayeeResult{Id: p.ID, Name: p.Name}
-			}
-		}
-		if row.TagID != nil {
-			if t, ok := f.tags[*row.TagID]; ok {
-				item.Tag = &model.TxTagResult{Id: t.ID, Name: t.Name}
-			}
+		item, ierr := b.item(ctx, row, labelsByTx[row.ID])
+		if ierr != nil {
+			return nil, ierr
 		}
 		items = append(items, item)
 	}
-	return &model.GetBudgetTransactionListResult{Items: items}, nil
+	return &model.GetBudgetTransactionListResult{Items: items, Upcoming: []model.BudgetUpcomingResult{}}, nil
+}
+
+// assembleUpcoming enriches the projected rows with their occurrence: the
+// template, its account, whether it is the template's next payment, and
+// whether the caller may act on it.
+func (s *Service) assembleUpcoming(ctx context.Context, userID vo.Id, f filters, pr *projectedRead, rows []model.BudgetTransactionRow) ([]model.BudgetUpcomingResult, error) {
+	out := make([]model.BudgetUpcomingResult, 0, len(rows))
+	if len(rows) == 0 {
+		return out, nil
+	}
+	b, err := s.newTxItems(ctx, f)
+	if err != nil {
+		return nil, err
+	}
+	canEdit := map[string]bool{}
+	members := idSet(f.includedAccountIDs)
+	for _, row := range rows {
+		o, ok := pr.occurrence(row.ID, row.SpentAt)
+		if !ok {
+			continue
+		}
+		item, ierr := b.item(ctx, row, append([]string{}, o.labelIDs...))
+		if ierr != nil {
+			return nil, ierr
+		}
+		edit, cached := canEdit[o.accountID]
+		if !cached {
+			accountID, perr := vo.ParseId(o.accountID)
+			if perr != nil {
+				return nil, perr
+			}
+			if edit, err = s.recurring.CanEdit(ctx, userID, accountID); err != nil {
+				return nil, err
+			}
+			canEdit[o.accountID] = edit
+		}
+		labelNames := make([]string, 0, len(o.labelIDs))
+		for _, l := range o.labelIDs {
+			if meta, ok := f.labels[l]; ok {
+				labelNames = append(labelNames, meta.Name)
+			}
+		}
+		// A transfer into the budget may come from an account outside it, such
+		// as a partner's private one, and one out of it may go to one: that
+		// account's name is not the budget's to show.
+		accountID, accountName := "", ""
+		if members[o.accountID] {
+			accountID, accountName = o.accountID, pr.nameOf[o.accountID]
+		}
+		recipientID, recipientName, amountRecipient, currencyRecipient := "", "", "", ""
+		amountSource, currencySource := "", ""
+		if o.recipientID != "" {
+			amountRecipient, currencyRecipient = o.amountRecipient.String(), o.recipientCurrencyID
+			amountSource, currencySource = o.amount.String(), o.currencyID
+			if members[o.recipientID] {
+				recipientID, recipientName = o.recipientID, pr.nameOf[o.recipientID]
+			}
+		}
+		out = append(out, model.BudgetUpcomingResult{
+			BudgetTransactionResult: item,
+			TemplateId:              o.templateID,
+			Schedule:                o.schedule,
+			AccountId:               accountID,
+			AccountName:             accountName,
+			AccountRecipientId:      recipientID,
+			AccountRecipientName:    recipientName,
+			AmountRecipient:         amountRecipient,
+			CurrencyRecipientId:     currencyRecipient,
+			AmountSource:            amountSource,
+			CurrencySourceId:        currencySource,
+			LabelNames:              labelNames,
+			IsNext:                  o.isNext,
+			IsOverdue:               o.isOverdue,
+			CanEdit:                 edit,
+		})
+	}
+	return out, nil
 }
 
 // optID dereferences an optional id pointer to a string ("" if nil).

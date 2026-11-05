@@ -8,7 +8,7 @@ import type {
   BudgetFolderSide,
   BudgetMetaDto,
   BudgetPlanDto,
-  BudgetTransactionDto,
+  BudgetTransactionListDto,
 } from './dto/budget'
 
 interface Envelope<T> {
@@ -85,11 +85,25 @@ export async function unarchiveBudget(id: Id): Promise<BudgetMetaDto> {
   return response.data.data.item
 }
 
+// The wire sends "0" for both "no plan" and a plan of 0 and tells them apart by
+// isBudgeted; the SPA reads '' as no plan, as plan cells do. A server without
+// isBudgeted keeps its "0".
+const withEmptyPlan = <T extends { budgeted: string; isBudgeted?: 0 | 1 }>(row: T): T =>
+  row.isBudgeted === 0 ? { ...row, budgeted: '' } : row
+
 export async function getBudget(id: Id, date: string): Promise<BudgetDto> {
   const response = await api.get<Envelope<{ item: BudgetDto }>>(
     apiUrl(`/api/v1/budget/get-budget?id=${encodeURIComponent(id)}&date=${encodeURIComponent(date)}`),
   )
-  return response.data.data.item
+  const item = response.data.data.item
+  return {
+    ...item,
+    structure: {
+      ...item.structure,
+      elements: item.structure.elements.map(withEmptyPlan),
+      ...(item.structure.savings ? { savings: item.structure.savings.map(withEmptyPlan) } : {}),
+    },
+  }
 }
 
 export async function getBudgetPlan(id: Id, from: string, months: number): Promise<BudgetPlanDto> {
@@ -186,7 +200,7 @@ export interface BudgetTransactionsParams {
   accountId?: Id
 }
 
-export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionDto[]> {
+export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionListDto> {
   const query = new URLSearchParams({ budgetId: params.budgetId, periodStart: params.periodStart })
   if (params.categoryId) query.set('categoryId', params.categoryId)
   if (params.tagId) query.set('tagId', params.tagId)
@@ -196,10 +210,10 @@ export async function getBudgetTransactions(params: BudgetTransactionsParams): P
   if (params.transfers) query.set('transfers', '1')
   if (params.income) query.set('income', '1')
   if (params.accountId) query.set('accountId', params.accountId)
-  const response = await api.get<Envelope<{ items: BudgetTransactionDto[] }>>(
+  const response = await api.get<Envelope<Partial<BudgetTransactionListDto>>>(
     apiUrl(`/api/v1/budget/get-transaction-list?${query.toString()}`),
   )
-  return response.data.data.items
+  return { items: response.data.data.items ?? [], upcoming: response.data.data.upcoming ?? [] }
 }
 
 // Access + account inclusion functions for Plan 5 (no UI yet).

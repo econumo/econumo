@@ -154,7 +154,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	txm := backend.NewTxManager(db)
 
 	// The API ignores ECONUMO_DATA_SALT: it always runs salt-free (plaintext email,
-	// looked up by lower(email)). The salt is consumed only by the data:remove-salt
+	// looked up by its normalized form). The salt is consumed only by the data:remove-salt
 	// migration, so a still-salted database must be migrated before its users can log in.
 	encodeSvc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
@@ -181,7 +181,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	emailChangeRepo := userrepo.NewEmailChangeRequestRepo(cfg.DatabaseDriver, txm)
 	mailTransport := seams.Mailer
 	if mailTransport == nil {
-		mailTransport = mailer.New(cfg.MailProvider, cfg.MailAPIKey)
+		mailTransport = MailTransport(cfg)
 	}
 	if cfg.AppURL != "" {
 		mailTransport = mailer.WithAppLink(mailTransport, cfg.AppURL)
@@ -190,30 +190,63 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	verifyMailer := mailer.NewVerifySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	changeMailer := mailer.NewChangeEmailSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	identityMailer := mailer.NewIdentitySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	limiterLimits := map[string]int{
+		appuser.RateScopeLogin:              cfg.RateLimitLogin,
+		appuser.RateScopeReset:              cfg.RateLimitReset,
+		appuser.RateScopeRemind:             cfg.RateLimitRemind,
+		appuser.RateScopeRegister:           cfg.RateLimitRegister,
+		appuser.RateScopeVerifyEmail:        cfg.RateLimitVerifyEmail,
+		appuser.RateScopeConfirmEmail:       cfg.RateLimitConfirmEmail,
+		appuser.RateScopeRequestEmailChange: cfg.RateLimitRequestEmailChange,
+		appuser.RateScopeConfirmEmailChange: cfg.RateLimitConfirmEmailChange,
+		appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
+		appimports.RateScopeIngest:          cfg.RateLimitIngest,
+		appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
+		appimports.RateScopeSync:            cfg.RateLimitSync,
+		appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
+		// No per-key cap: the caller of start-login/start-link is anonymous
+		// until the provider answers. The per-IP per-minute cap applies.
+		appoauth.RateScopeOAuthStart: 0,
+		// No per-key cap: dynamic client registration is anonymous. Only
+		// the per-IP per-minute cap applies.
+		appauthserver.RateScopeRegister: 0,
+	}
+	limiterIPExempt := map[string]bool{
+		// One user's own limit could fill the cap for a household behind one IP, and
+		// their effects stay inside the caller's account.
+		appimports.RateScopeIngest:      true,
+		appimports.RateScopePreviewRule: true,
+	}
+	// Ceilings per email address across all client IPs, above the per-address-and-IP
+	// limits. Reset and confirm-email take a 6-digit code, so their guess budget stays
+	// close to the plain limit; the others can afford one that takes many IPs to reach.
+	for scope, factor := range map[string]int{
+		appuser.RateScopeLogin:        10,
+		appuser.RateScopeRemind:       10,
+		appuser.RateScopeRegister:     10,
+		appuser.RateScopeVerifyEmail:  10,
+		appuser.RateScopeReset:        2,
+		appuser.RateScopeConfirmEmail: 2,
+	} {
+		for _, suffix := range []string{appuser.EmailCeilingScopeSuffix, appuser.UnknownEmailCeilingScopeSuffix} {
+			limiterLimits[scope+suffix] = factor * limiterLimits[scope]
+			limiterIPExempt[scope+suffix] = true // allowEmailAttempt counts it under its base scope
+		}
+	}
 	authLimiter := ratelimit.New(ratelimit.Config{
-		Limits: map[string]int{
-			appuser.RateScopeLogin:              cfg.RateLimitLogin,
-			appuser.RateScopeReset:              cfg.RateLimitReset,
-			appuser.RateScopeRemind:             cfg.RateLimitRemind,
-			appuser.RateScopeRegister:           cfg.RateLimitRegister,
-			appuser.RateScopeVerifyEmail:        cfg.RateLimitVerifyEmail,
-			appuser.RateScopeConfirmEmail:       cfg.RateLimitConfirmEmail,
-			appuser.RateScopeRequestEmailChange: cfg.RateLimitRequestEmailChange,
-			appuser.RateScopeConfirmEmailChange: cfg.RateLimitConfirmEmailChange,
-			appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
-			appimports.RateScopeIngest:          cfg.RateLimitIngest,
-			appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
-			appimports.RateScopeSync:            cfg.RateLimitSync,
-			appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
-			// No per-key cap: the caller of start-login/start-link is anonymous
-			// until the provider answers. The global per-minute cap applies.
-			appoauth.RateScopeOAuthStart: 0,
-			// No per-key cap: dynamic client registration is anonymous. Only
-			// the global per-minute cap applies.
-			appauthserver.RateScopeRegister: 0,
-		},
+		Limits: limiterLimits,
 		Window: cfg.RateLimitWindow,
-		Global: cfg.RateLimitGlobal,
+		IP:     cfg.RateLimitIP,
+		// Guess counters a spray of invented keys must not evict. Their keys are real
+		// accounts only: user ids, and addresses via countUnknownEmailAttempt.
+		Pinned: map[string]bool{
+			appuser.RateScopeLogin + appuser.EmailCeilingScopeSuffix:        true,
+			appuser.RateScopeReset + appuser.EmailCeilingScopeSuffix:        true,
+			appuser.RateScopeConfirmEmail + appuser.EmailCeilingScopeSuffix: true,
+			appuser.RateScopeConfirmEmailChange:                             true,
+			appconnection.RateScopeAcceptInvite:                             true,
+		},
+		IPExempt: limiterIPExempt,
 	}, clk)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, accessTokens, NewUserCurrencyLookup(currencyLookup), budgetAccess,
@@ -241,6 +274,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	if cfg.PasswordLoginDisabled {
 		oauthSvc.DisablePasswordLogin()
 	}
+	userSvc.SetAppVersion(version.Version)
 	userSvc.SetLogoutURLBuilder(oauthLogoutURLs{oauth: oauthSvc})
 	userSvc.SetOAuthReclaimer(NewOAuthReclaimer(oauthSvc))
 	userSvc.SetIdentityEmailLister(NewIdentityEmailLister(oauthSvc))
@@ -409,9 +443,6 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			TokenMinLength:  cfg.ImportTokenMinLength,
 		},
 	)
-	if !cfg.ImportAppleWallet {
-		importsSvc.DisableProvider(model.ImportProviderAppleWallet)
-	}
 	if !cfg.ImportSimpleFIN {
 		importsSvc.DisableProvider(model.ImportProviderSimpleFIN)
 	}
@@ -439,23 +470,18 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	recurringRepo := recurringrepo.NewRepo(cfg.DatabaseDriver, txm)
 	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, labelOwnership, txImportCategories, txm, opGuard, clk)
+	budgetSvc.SetRecurring(NewBudgetRecurringSource(recurringRepo, accountSvc, accountAccessResolver))
 	recurringHandlers := handlerrecurring.NewHandlers(recurringSvc)
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)
 
 	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
 
-	// Disabled means unrouted: with both providers off every /api/v1/import
-	// path 404s, and a provider that is off loses its own routes (Apple
-	// Wallet's ingest, SimpleFIN's credential and sync) the same way
-	// (Compose skips the nil).
-	var importsAPI router.RegisterAPI
-	if cfg.TransactionImport() {
-		importsAPI = handlerimports.RegisterAPI(importsHandlers, authn, handlerimports.Providers{
-			AppleWallet: cfg.ImportAppleWallet,
-			SimpleFIN:   cfg.ImportSimpleFIN,
-		})
-	}
+	// Disabled means unrouted: with SimpleFIN off its credential and sync
+	// routes 404.
+	importsAPI := handlerimports.RegisterAPI(importsHandlers, authn, handlerimports.Providers{
+		SimpleFIN: cfg.ImportSimpleFIN,
+	})
 
 	registerAPI := router.Compose(
 		handleruser.RegisterAPI(userHandlers, authn),
@@ -532,6 +558,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		SPA:                spaFS,
 		SPAVersion:         version.Version,
 		SPAVersionLabel:    cfg.Version,
+		SPAVersionRef:      version.Ref(),
 		MinAppVersion:      compat.MinAppVersion,
 		InstanceID:         instanceID,
 	}), adminHandler, rateUpdater, nil
@@ -542,3 +569,19 @@ type pinger struct{ db *sql.DB }
 var _ router.Pinger = pinger{}
 
 func (p pinger) Ping(ctx context.Context) error { return p.db.PingContext(ctx) }
+
+// MailTransport builds the MAILER_DSN transport; the CLI container shares it.
+func MailTransport(cfg config.Config) mailer.Mailer {
+	return mailer.New(mailer.Transport{
+		Provider: cfg.MailProvider,
+		APIKey:   cfg.MailAPIKey,
+		SMTP: mailer.SMTPConfig{
+			Host:        cfg.MailSMTPHost,
+			Port:        cfg.MailSMTPPort,
+			Username:    cfg.MailSMTPUsername,
+			Password:    cfg.MailSMTPPassword,
+			ImplicitTLS: cfg.MailSMTPImplicitTLS,
+			Insecure:    cfg.MailSMTPInsecure,
+		},
+	})
+}

@@ -67,7 +67,9 @@ var ctxKeyTokenID ctxKeyTokenIDType
 // person trying to fix their access; create-personal-token is excluded
 // because it mints new write-capable credentials. update-analytics belongs
 // here because withdrawing consent to product analytics is a privacy right,
-// not a paid feature — it must work regardless of access level. Account
+// not a paid feature — it must work regardless of access level.
+// update-last-seen-version joins it: dismissing the "what's new" notice is
+// no paid feature either, and a 402 would leave it on screen for good. Account
 // deletion joins this list when it exists. oauth/start-link,
 // oauth/complete-link and oauth/unlink-identity join for the same reason as
 // the email-change flow:
@@ -99,6 +101,7 @@ var ReadonlyAllowedPaths = map[string]bool{
 	"/api/v1/user/confirm-email-change":        true,
 	"/api/v1/user/resend-email-change-code":    true,
 	"/api/v1/user/update-analytics":            true,
+	"/api/v1/user/update-last-seen-version":    true,
 	"/api/v1/oauth/start-link":                 true,
 	"/api/v1/oauth/complete-link":              true,
 	"/api/v1/oauth/unlink-identity":            true,

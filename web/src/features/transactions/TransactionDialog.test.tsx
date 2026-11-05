@@ -471,6 +471,61 @@ it('cross-currency transfer prefills the converted recipient amount and prompts 
   await waitFor(() => expect(useUiStore.getState().switchAccountPrompt).toBe('a3'))
 })
 
+const addExpense = async (routePath: string, pickAccount: string | null) => {
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderDialog(routePath)
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  if (pickAccount) {
+    await user.click(screen.getByRole('combobox', { name: 'account' }))
+    await user.click(await screen.findByText(new RegExp('^' + pickAccount)))
+  }
+  await user.type(await screen.findByLabelText('Amount'), '5')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+}
+
+it('an expense added to another account than the open one offers to switch to it', async () => {
+  await addExpense('/account/a1', 'Bank')
+  expect(useUiStore.getState().switchAccountPrompt).toBe('a2')
+})
+
+it('an expense added to the open account offers no switch', async () => {
+  await addExpense('/account/a1', null)
+  expect(useUiStore.getState().switchAccountPrompt).toBeNull()
+})
+
+it('an expense added outside an account page offers no switch', async () => {
+  await addExpense('/', 'Bank')
+  expect(useUiStore.getState().switchAccountPrompt).toBeNull()
+})
+
+it('a transfer into the open account offers no switch: it is listed there', async () => {
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { item: wireTxEcho({ type: 'transfer', accountId: 'a2', accountRecipientId: 'a1' }), accounts: fixtureAccounts },
+      }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderDialog('/account/a1')
+  useUiStore.getState().openTransactionModal({ type: 'transfer', accountId: 'a2' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '5')
+  await user.click(screen.getByRole('combobox', { name: 'to account' }))
+  await user.click(await screen.findByText(/^Cash/))
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+  expect(useUiStore.getState().switchAccountPrompt).toBeNull()
+})
+
 it('creates a category on the fly and selects it', async () => {
   let created: Record<string, unknown> | undefined
   server.use(
@@ -574,6 +629,44 @@ it('read-only shared accounts are disabled in the transfer account pickers', asy
   await waitFor(() => expect(toPicker().value).toContain('Bank'))
 })
 
+
+it('Transfer is unavailable with only one writable account', async () => {
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+  const readOnlyShared = {
+    ...fixtureAccounts[1], id: 'a-ro', owner: partner, name: 'Partner cash',
+    sharedAccess: [{ user: fixtureOwner, role: 'guest', isAccepted: 1 }],
+  }
+  server.use(...coreHandlers({ accounts: [fixtureAccounts[0], readOnlyShared] }))
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  await waitFor(() => expect(screen.getByRole('radio', { name: 'Transfer' })).toBeDisabled())
+  await user.click(screen.getByRole('radio', { name: 'Transfer' }))
+  expect(screen.getByRole('radio', { name: 'Expense' })).toHaveAttribute('aria-checked', 'true')
+  expect(screen.getByRole('radio', { name: 'Income' })).toBeEnabled()
+})
+
+it('Transfer stays available with two writable accounts', async () => {
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await screen.findByRole('combobox', { name: 'account' })
+  expect(screen.getByRole('radio', { name: 'Transfer' })).toBeEnabled()
+})
+
+it('editing an existing transfer keeps the Transfer type with one writable account', async () => {
+  server.use(...coreHandlers({ accounts: [fixtureAccounts[0]] }))
+  renderDialog()
+  useUiStore.getState().openTransactionModal({
+    transaction: wireTxEcho({ type: 'transfer', accountId: 'a1', accountRecipientId: 'a2', categoryId: null }) as unknown as TransactionDto,
+  })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  const transfer = screen.getByRole('radio', { name: 'Transfer' })
+  expect(transfer).toBeEnabled()
+  expect(transfer).toHaveAttribute('aria-checked', 'true')
+})
 
 it('editing a transaction round-trips its existing labels', async () => {
   // update-transaction REPLACES the label set: an edit that forgets to resend
@@ -808,7 +901,7 @@ it('a queued import in a foreign currency opens with an empty amount and shows t
 })
 
 it('editing an imported transaction prompts for a rule only when the classification diverges from what the import applied', async () => {
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   const seen = captureUpdate()
   const importLink = {
     id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
@@ -843,7 +936,7 @@ it('editing an imported transaction prompts for a rule only when the classificat
 // An account shared with the user takes its owner's rules, which the user
 // cannot create or edit: a correction there must not offer a rule.
 it('editing an imported transaction on a shared account never prompts for a rule', async () => {
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
   const shared = {
     id: 'a-sh', owner: partner, folderId: null, name: 'Joint', position: 9,
@@ -879,7 +972,7 @@ it('editing an imported transaction on a shared account never prompts for a rule
 // save against that stale snapshot alone re-opened the prompt on every later
 // save of the same transaction — offering to create a SECOND identical rule.
 it('re-saving an already corrected import does not prompt again, but a further correction does', async () => {
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   const seen = captureUpdate()
   const importLink = {
     id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',

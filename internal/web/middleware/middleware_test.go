@@ -669,6 +669,14 @@ func TestReadonlyMayUpdateAnalytics(t *testing.T) {
 	}
 }
 
+// The "what's new" notice must stay dismissable for a lapsed user.
+func TestReadonlyMayUpdateLastSeenVersion(t *testing.T) {
+	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/update-last-seen-version", readonlyStub())
+	if !ran || rec.Code == http.StatusPaymentRequired {
+		t.Fatalf("status = %d, ran = %v, want the handler to run", rec.Code, ran)
+	}
+}
+
 func TestAuth_CreatePersonalTokenIsNotAllowlisted(t *testing.T) {
 	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/create-personal-token", readonlyStub())
 	if rec.Code != http.StatusPaymentRequired {

@@ -275,3 +275,43 @@ func TestRecurringRepo_LabelsByRecurringIDs_EmptyIDs(t *testing.T) {
 		t.Fatalf("empty ids should yield nil,nil (guards the IN() syntax error on PostgreSQL); got %v, %v", got, err)
 	}
 }
+
+func TestRecurringRepo_ListBySourceOrRecipientIDs(t *testing.T) {
+	repo, f := newRepo(t)
+	ctx := context.Background()
+	seed(t, f)
+
+	const rtTransfer = "0197c000-0000-7000-8000-00000000000e"
+	if err := repo.Save(ctx, template(rtA)); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	transfer := template(rtTransfer)
+	transfer.Type = model.TransactionTypeTransfer
+	recip := vo.MustParseId(accountB)
+	transfer.AccountRecipID = &recip
+	if err := repo.Save(ctx, transfer); err != nil {
+		t.Fatalf("Save transfer: %v", err)
+	}
+
+	got, err := repo.ListBySourceOrRecipientIDs(ctx, []vo.Id{vo.MustParseId(accountB)})
+	if err != nil {
+		t.Fatalf("ListBySourceOrRecipientIDs: %v", err)
+	}
+	if len(got) != 1 || got[0].ID.String() != rtTransfer {
+		t.Errorf("recipient lookup = %v, want only the transfer into accountB", got)
+	}
+	bySource, err := repo.ListByAccountIDs(ctx, []vo.Id{vo.MustParseId(accountB)})
+	if err != nil {
+		t.Fatalf("ListByAccountIDs: %v", err)
+	}
+	if len(bySource) != 0 {
+		t.Errorf("ListByAccountIDs must stay source-only, got %d", len(bySource))
+	}
+	both, err := repo.ListBySourceOrRecipientIDs(ctx, []vo.Id{vo.MustParseId(accountA), vo.MustParseId(accountB)})
+	if err != nil {
+		t.Fatalf("ListBySourceOrRecipientIDs: %v", err)
+	}
+	if len(both) != 2 {
+		t.Errorf("want both templates once each, got %d", len(both))
+	}
+}

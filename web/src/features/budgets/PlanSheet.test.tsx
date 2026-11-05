@@ -697,6 +697,64 @@ it('a section\'s last line draws no bottom rule over the next section\'s top rul
   }
 })
 
+describe('upcoming recurring as a plan hint', () => {
+  // July is the current month, August the next one; nothing is planned in August
+  function renderWithUpcoming(edit: (plan: BudgetPlanDto) => void) {
+    vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+    const plan = structuredClone(fixtureWirePlan) as BudgetPlanDto
+    edit(plan)
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(plan),
+    )
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+    renderPage()
+  }
+  const element = (plan: BudgetPlanDto, id: string) => plan.structure.elements.find((e) => e.id === id)!
+  const planned = (testId: string) => within(screen.getByTestId(testId)).getByTestId('cell-planned')
+
+  it('a cell with no plan stays empty and the Balance ignores money due', async () => {
+    renderWithUpcoming((plan) => {
+      element(plan, 'cat-freelance').cells[3] = { actual: '0', planned: '', upcoming: '1000' }
+    })
+    await screen.findByTestId('plan-sheet')
+    expect(planned('plan-cell-cat-freelance:2')).toHaveTextContent(/^$/)
+    const base = fixtureWirePlan as unknown as BudgetPlanDto
+    const ex = makePlanExchange(base, [fixtureUsd, fixtureEur])
+    const balance = balanceRow(base, planTotals(base, ex), ex)
+    const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
+    expect(screen.getByTestId('plan-balance-2')).toHaveTextContent(fmt(balance[2]))
+  })
+
+  it('grid shows no suggestion', async () => {
+    renderWithUpcoming((plan) => {
+      element(plan, 'cat-food').cells[3] = { actual: '0', planned: '', upcoming: '650' }
+    })
+    await screen.findByTestId('plan-sheet')
+    const slot = planned('plan-cell-cat-food:2')
+    expect(slot).toHaveTextContent(/^$/)
+    expect(slot).not.toHaveClass('italic')
+  })
+
+  it('an expense plan below spent plus still due is red; income and past months never are', async () => {
+    renderWithUpcoming((plan) => {
+      // July: 15 spent of 50, 40 still due
+      element(plan, 'tag1').cells[2] = { actual: '15', planned: '50', upcoming: '40' }
+      element(plan, 'cat-freelance').cells[3] = { actual: '0', planned: '100', upcoming: '1000' }
+      element(plan, 'pe1').cells[1] = { actual: '60', planned: '200', upcoming: '500' }
+      element(plan, 'pe1').children[0].cells[3] = { actual: '0', upcoming: '300' }
+    })
+    await screen.findByTestId('plan-sheet')
+    expect(planned('plan-cell-tag1:1')).toHaveClass('text-expense')
+    expect(planned('plan-cell-cat-freelance:2')).not.toHaveClass('text-expense')
+    // June is before the current month
+    expect(planned('plan-cell-pe1:0')).not.toHaveClass('text-expense')
+    // the envelope with no plan in August does not suggest its child's money
+    expect(planned('plan-cell-pe1:2')).toHaveTextContent(/^$/)
+  })
+})
+
 it('the Archived line sums its rows: their actuals, never their plans', async () => {
   const plan = {
     ...fixtureWirePlan,
@@ -1497,9 +1555,12 @@ it('budget-mode envelope dialog still offers expense categories only', async () 
   await user.click(within(await screen.findByTestId('column-headers')).getByRole('button', { name: 'menu Expenses' }))
   await user.click(await screen.findByRole('menuitem', { name: 'New envelope' }))
 
-  const dialog = await screen.findByRole('dialog', { name: 'New envelope' })
-  expect(within(dialog).getByText('Food')).toBeInTheDocument()
-  expect(within(dialog).queryByText('Salary')).not.toBeInTheDocument()
+  await screen.findByRole('dialog', { name: 'New envelope' })
+  // the categories sit behind a picker row, as the budget's accounts do
+  await user.click(screen.getByTestId('envelope-categories-field'))
+  const picker = await screen.findByRole('dialog', { name: 'Categories' })
+  expect(within(picker).getByRole('option', { name: 'Food' })).toBeInTheDocument()
+  expect(within(picker).queryByRole('option', { name: 'Salary' })).not.toBeInTheDocument()
 })
 
 it('clicking a cell focuses the grid so arrow keys work immediately, no manual focus needed', async () => {
@@ -1804,7 +1865,7 @@ describe('fill handle', () => {
     expect(screen.getByTestId('plan-sheet')).toHaveFocus()
   })
 
-  it('dragging a cell with no limit set copies an explicit 0, not an empty amount', async () => {
+  it('dragging a cell with no limit set clears the covered months', async () => {
     const bodies: unknown[] = []
     server.use(
       ...coreHandlers({ user: userWithBudget }),
@@ -1816,7 +1877,7 @@ describe('fill handle', () => {
         return HttpResponse.json({ success: true, message: '', data: {} })
       }),
     )
-    // window is May/Jun/Jul; tag1's col0 (May) has planned '' — it displays 0.00
+    // window is May/Jun/Jul; tag1's col0 (May) has planned ''
     useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
@@ -1830,7 +1891,7 @@ describe('fill handle', () => {
     fireEvent.pointerUp(handle, { pointerId: 1 })
 
     await waitFor(() => expect(bodies.length).toBeGreaterThan(0))
-    bodies.forEach((b) => expect(b).toMatchObject({ amount: '0' }))
+    bodies.forEach((b) => expect(b).toMatchObject({ amount: null }))
   })
 
   it('drag right copies the value into covered months, one set-limit per month', async () => {
@@ -2023,7 +2084,7 @@ describe('clipboard and keyboard fill', () => {
     return { setData: vi.fn(), getData: () => text }
   }
 
-  it('copy writes the selected cell: planned amount, 0 for an unset cell; a name is never copied', async () => {
+  it('copy writes the selected cell: planned amount, nothing for an unset cell; a name is never copied', async () => {
     usePlanHandlers()
     useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
     const user = userEvent.setup()
@@ -2043,11 +2104,11 @@ describe('clipboard and keyboard fill', () => {
     expect(fireEvent.copy(grid, { clipboardData: jun })).toBe(false)
     expect(jun.setData).toHaveBeenCalledWith('text/plain', '200')
 
-    // pe1 Aug planned '' reads as 0 everywhere else, so it copies as 0
+    // pe1 Aug planned '' copies as empty: pasting it clears
     await user.click(screen.getByTestId('plan-cell-pe1:2'))
     const aug = clipboard()
     fireEvent.copy(grid, { clipboardData: aug })
-    expect(aug.setData).toHaveBeenCalledWith('text/plain', '0')
+    expect(aug.setData).toHaveBeenCalledWith('text/plain', '')
 
     // the keyboard cannot reach the name: ← from the first month pages the window
     // and the copy is still the month cell's amount (pe1 May planned '200')
@@ -3534,4 +3595,42 @@ it('the current month name is bold in the month row', async () => {
   for (const h of headers.filter((x) => x !== aug)) {
     expect(h.querySelector('[data-month-label]')).not.toHaveClass('font-semibold')
   }
+})
+
+it('same-name tags read as one line with summed months; opening it lists each tag', async () => {
+  const plan = structuredClone(fixtureWirePlan) as BudgetPlanDto
+  const partner = { user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, role: 'admin' as const, isAccepted: 1 as const }
+  plan.meta.access.push(partner)
+  const budget = structuredClone(fixtureWireBudget)
+  budget.meta.access.push(partner)
+  const tag1 = plan.structure.elements.find((e) => e.id === 'tag1')!
+  plan.structure.elements.push({
+    ...tag1,
+    id: 'tag2',
+    name: 'Vacation',
+    position: 9,
+    ownerUserId: 'u2',
+    cells: [
+      { actual: '5', planned: '' },
+      { actual: '5', planned: '' },
+      { actual: '5', planned: '10' },
+      { actual: '0', planned: '' },
+    ],
+  })
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    planHandler(plan),
+  )
+  renderPage()
+  await screen.findByTestId('plan-month-header')
+  const group = await screen.findByTestId('plan-tag-group-taggroup::vacation')
+  // July: actual 15 + 5, plan 50 + 10
+  const july = within(group).getAllByTestId(/^plan-sum-/).find((c) => c.textContent?.includes('60'))
+  expect(july).toHaveTextContent('20')
+  expect(screen.queryByTestId('plan-cell-tag1:0')).not.toBeInTheDocument()
+  await userEvent.click(within(group).getByRole('button', { name: /vacation/ }))
+  expect(screen.getAllByTestId('plan-cell-tag1:0').length).toBeGreaterThan(0)
+  expect(within(group).getByText('Partner')).toBeInTheDocument()
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_TAG_GROUP_EXPAND, { view: 'plan', tags: 2 })
 })

@@ -3,7 +3,6 @@ package user
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -18,11 +17,10 @@ func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*mod
 	if err := s.requirePasswordLogin(); err != nil {
 		return nil, err
 	}
-	limitKey := strings.ToLower(strings.TrimSpace(req.Email))
-	if err := s.allowAttempt(RateScopeRegister, limitKey); err != nil {
+	limitKey := model.NormalizeEmail(req.Email)
+	if err := s.countEmailAttempt(ctx, RateScopeRegister, limitKey); err != nil {
 		return nil, err
 	}
-	s.failAttempt(RateScopeRegister, limitKey) // every attempt counts toward the cap
 
 	if !s.allowRegistration {
 		return nil, &errs.ValidationError{Msg: "Registration disabled", MsgCode: errs.CodeUserRegistrationDisabled}
@@ -72,15 +70,14 @@ func (s *Service) persistNewUser(ctx context.Context, name, email string,
 	build func(id vo.Id, encryptedEmail, avatar string, now time.Time) *model.User,
 	selfService, requireVerification bool,
 ) (*model.User, error) {
-	loweredEmail := strings.ToLower(strings.TrimSpace(email))
-	exists, err := s.repo.ExistsByEmail(ctx, loweredEmail)
+	exists, err := s.repo.ExistsByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
 	if exists {
 		return nil, &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
 	}
-	encryptedEmail, eerr := s.encode.Encode(strings.TrimSpace(email))
+	encryptedEmail, eerr := s.encode.Encode(model.NormalizeEmail(email))
 	if eerr != nil {
 		return nil, eerr
 	}
@@ -91,6 +88,9 @@ func (s *Service) persistNewUser(ctx context.Context, name, email string,
 	// variable governs only the one-time migration:seed-analytics-option backfill
 	// of pre-existing users, not this path.
 	u.SetAnalytics(true, s.repo.NextIdentity(), now)
+	if model.IsReleaseVersion(s.appVersion) {
+		u.SetLastSeenVersion(s.appVersion, s.repo.NextIdentity(), now)
+	}
 	// The currency option stores an ID: seed the resolved default. Reads treat
 	// a user without a live currency id as data corruption, so a missing
 	// default-currency row fails registration instead of minting such a user.

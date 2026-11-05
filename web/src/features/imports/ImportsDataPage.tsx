@@ -10,7 +10,6 @@ import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
 import { apiErrorMessage } from '@/lib/apiError'
-import { isTransactionImportEnabled } from '@/lib/config'
 import { decryptCredential } from '@/lib/importCrypto'
 import { syncStartDate } from './syncWindow'
 import { useImportKey } from './useImportKey'
@@ -94,7 +93,7 @@ export function ImportsDataPage() {
       <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
         <ActionRow label={t('settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
         <ActionRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
-        {isTransactionImportEnabled() ? <TransactionImportRows /> : null}
+        <TransactionImportRows />
       </div>
 
       <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />

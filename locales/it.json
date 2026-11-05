@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "Nessuna transazione trovata",
+        "drag_handle": "Trascina per riordinare",
         "today": "Oggi",
         "yesterday": "Ieri",
         "item": {
@@ -393,6 +394,9 @@
           "label": "Note",
           "placeholder": "Inserisci una nota"
         },
+        "account": {
+          "label": "Conto"
+        },
         "from": {
           "label": "Da"
         },
@@ -532,12 +536,13 @@
         "needs_title": "Ti servirà",
         "needs": {
           "iphone": "Un iPhone con Apple Pay",
-          "shortcuts": "L’app Comandi rapidi, inclusa in iOS",
+          "shortcuts": "L’app Comandi Rapidi, inclusa in iOS",
           "time": "Circa 5 minuti"
         },
         "limitations_title": "Limitazioni note",
         "tap_only": "Funziona solo quando avvicini l’iPhone per pagare",
         "online_not_imported": "I pagamenti Apple Pay sui siti web non sono supportati",
+        "no_signal": "Senza campo al momento del pagamento, la transazione potrebbe non essere aggiunta",
         "steps_title": "Come funziona",
         "flow": {
           "pay": "Paga con Apple Pay",
@@ -565,7 +570,7 @@
         },
         "configure": {
           "title": "Collega il comando rapido",
-          "text": "Genera un token API. Il comando rapido salva l’indirizzo del server e il token, poi si collega a Econumo. Tocca «Consenti sempre» a ogni richiesta: l’automazione avrà bisogno di questi permessi.",
+          "text": "Tocca «Collega il comando rapido», poi «Consenti sempre» a ogni richiesta.",
           "button": "Collega il comando rapido",
           "open": "Associa Econumo",
           "waiting": "In attesa che il comando rapido raggiunga Econumo…",
@@ -573,7 +578,14 @@
         },
         "automate": {
           "title": "Crea l’automazione",
-          "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare → Esegui dopo conferma → econumo."
+          "text": "Nell’app Comandi Rapidi, crea un’automazione Wallet:",
+          "list": {
+            "open": "Apri la scheda Automazione (su iOS 27: Libreria → Automazione) e tocca «Nuova automazione» o +",
+            "wallet": "Scegli Wallet («Quando tocco una carta o un pass di Wallet»)",
+            "cards": "Seleziona le carte e le categorie da importare, oppure tutte",
+            "confirm": "Lascia attiva la conferma: «Esegui dopo conferma» (iOS 26) o «Conferma prima di eseguire» (iOS 27)",
+            "shortcut": "Scegli il comando rapido econumo (su iOS 27: aggiungi «Esegui comando rapido» → econumo, con «Transazione» come input)"
+          }
         },
         "payment": {
           "title": "Fai il primo pagamento",
@@ -582,9 +594,14 @@
         },
         "immediate": {
           "title": "Imposta l’automazione su «Esegui subito»",
-          "text": "Nell’app Comandi rapidi apri l’automazione e cambia «Esegui dopo conferma» in «Esegui subito». Da quel momento i pagamenti vengono importati senza richieste."
+          "text": "Disattiva la conferma, così i pagamenti vengono importati senza richiesta: apri l’automazione in Comandi Rapidi e scegli «Esegui subito» (iOS 26) o disattiva «Conferma prima di eseguire» (iOS 27)."
         },
-        "done": "Fatto"
+        "done": "Fatto",
+        "guide_title": "Guida passo passo con screenshot:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Apri Comandi Rapidi",
+        "optional": "Facoltativo"
       },
       "same_named_cards": "Le carte con lo stesso nome in Wallet vengono mostrate come un’unica carta.",
       "cards": {
@@ -1343,13 +1360,21 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "In arrivo",
+        "spent": "Già speso",
+        "received": "Già ricevuto",
+        "saved": "Già risparmiato",
+        "posted": "Registrato",
+        "total": "Totale"
+      },
       "budget": {
         "empty": {
           "header": "Budget",
           "no_budget": "Non hai ancora creato un budget.",
           "description": "Crea un budget o accetta un invito per iniziare a pianificare le tue finanze.",
           "create_budget": "Crea un budget",
-          "initial_setup": "Per creare un budget, aggiungi prima un conto e almeno una categoria.",
+          "initial_setup": "Per creare un budget, aggiungi prima un conto.",
           "create_account": "Aggiungi conto"
         },
         "unavailable": {
@@ -1403,6 +1428,9 @@
           "total": {
             "name": "Totale",
             "expenses": "Totale delle uscite"
+          },
+          "tag_group": {
+            "count": "{count} tag | {count} tag"
           }
         },
         "archived_banner": "Questo budget è archiviato e in sola lettura",
@@ -1862,6 +1890,7 @@
       "payees": "Beneficiari",
       "tags": "Tag",
       "labels": "Tag per i report",
+      "recurring": "Ricorrenti",
       "transactions": "Transazioni"
     },
     "show_all": "Mostra tutti ({count})",
@@ -1871,6 +1900,36 @@
     "open": "Ricerca",
     "open_tooltip": "Ricerca ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Invia feedback",
+    "settings": {
+      "group": "Feedback"
+    },
+    "dialog": {
+      "title": "Invia feedback",
+      "no_reply": "Leggiamo ogni messaggio, ma potremmo non rispondere.",
+      "type": "Tipo",
+      "message": "Messaggio",
+      "message_required": "Scrivi prima un messaggio.",
+      "email": "Email (facoltativa)",
+      "email_placeholder": "nome@esempio.it",
+      "use_email": "Usa {email}",
+      "clear_email": "Cancella email",
+      "send": "Invia",
+      "sent": "Grazie per il tuo feedback!",
+      "failed": "Impossibile inviare il feedback. Riprova."
+    },
+    "type": {
+      "feedback": "Feedback",
+      "feature_request": "Nuova funzione",
+      "bug_report": "Bug"
+    },
+    "placeholder": {
+      "feedback": "Cosa ti piace o cosa potrebbe migliorare?",
+      "feature_request": "Cosa manca in Econumo?",
+      "bug_report": "Cos'è successo e cosa ti aspettavi?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Il tuo abbonamento scade tra {count} giorno | Il tuo abbonamento scade tra {count} giorni",
@@ -1878,7 +1937,10 @@
       "cta": "Gestisci l'abbonamento",
       "dismiss": "Ignora",
       "connection_trial": "L'abbonamento di {name} scade tra {count} giorno | L'abbonamento di {name} scade tra {count} giorni",
-      "connection_readonly": "L'abbonamento di {name} è scaduto: può consultare i conti condivisi ma non modificarli"
+      "connection_readonly": "L'abbonamento di {name} è scaduto: può consultare i conti condivisi ma non modificarli",
+      "sale_ends": "fino al {date}",
+      "sale": "{name}: sconto del {percent}%",
+      "sale_cta": "Approfitta dell’offerta"
     },
     "settings": {
       "group": "Fatturazione",
@@ -1932,6 +1994,39 @@
       "returnsTo": "Ti riporta a {host}",
       "menuItem": "App connesse"
     }
+  },
+  "install": {
+    "notice": "Econumo funziona meglio come app",
+    "cta": "Installa",
+    "dismiss": "Ignora",
+    "menu_item": "Installa l’app",
+    "dialog": {
+      "title": "Installa Econumo",
+      "intro": "Aggiungi Econumo alla schermata Home per aprirlo a schermo intero, come qualsiasi altra app.",
+      "step_share": "Tocca il pulsante Condividi del browser. In Safari può trovarsi nel menu •••.",
+      "step_add": "Scorri e scegli «Aggiungi alla schermata Home».",
+      "step_confirm": "Tocca «Aggiungi». Econumo comparirà nella schermata Home.",
+      "installed_hint": "Già aggiunto? Apri Econumo dalla sua icona nella schermata Home invece che dal browser.",
+      "macos": {
+        "intro": "Aggiungi Econumo al Dock per aprirlo in una finestra tutta sua, come qualsiasi altra app.",
+        "step_file": "Nella barra dei menu di Safari, apri File (o fai clic sul pulsante Condividi).",
+        "step_add": "Scegli «Aggiungi al Dock».",
+        "step_confirm": "Fai clic su «Aggiungi». Econumo comparirà nel Dock.",
+        "installed_hint": "Già aggiunto? Apri Econumo dal Dock invece che da Safari."
+      },
+      "android_firefox": {
+        "intro": "Aggiungi Econumo alla schermata Home per aprirlo come qualsiasi altra app, senza le barre del browser.",
+        "installed_hint": "Già aggiunto? Apri Econumo dalla schermata Home invece che dal browser.",
+        "step_menu": "Tocca il menu ⋮ di Firefox.",
+        "step_install": "Scegli «Installa» (nelle versioni precedenti, «Aggiungi a schermata Home»).",
+        "step_confirm": "Conferma. Econumo comparirà nella schermata Home."
+      },
+      "close": "Ho capito"
+    }
+  },
+  "whatsNew": {
+    "notice": "Novità della {version}",
+    "dismiss": "Ignora"
   },
   "errors": {
     "common": {
@@ -2066,7 +2161,9 @@
       "invalid_import_file": "Carica un file CSV valido",
       "too_many_labels": "Una transazione può avere al massimo 50 tag per i report.",
       "account_deleted": "Questo conto è stato eliminato.",
-      "category_type_mismatch": "Il tipo di categoria deve corrispondere al tipo di transazione."
+      "category_type_mismatch": "Il tipo di categoria deve corrispondere al tipo di transazione.",
+      "day_changed": "Questo giorno è stato modificato nel frattempo. Aggiorna e riprova.",
+      "cannot_move": "Questa transazione non può essere spostata in un altro giorno."
     },
     "user": {
       "report_period_invalid": "Il periodo del report non è corretto",

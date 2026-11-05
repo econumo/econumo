@@ -53,7 +53,6 @@ export function CategoryDialog({ open, category, onClose, onSubmit, fixedType }:
     <ResponsiveDialog
       open={open}
       caps
-      fullScreen
       onOpenChange={(o) => !o && onClose()}
       title={isNew ? t('classifications.categories.modals.create.header') : t('classifications.categories.modals.edit.header')}
       footer={
@@ -69,9 +68,7 @@ export function CategoryDialog({ open, category, onClose, onSubmit, fixedType }:
     >
       <form
         id="category-dialog-form"
-        // min-h-full: on the full-screen mobile page the last (icon) block grows
-        // into the leftover height; desktop's auto-height dialog ignores it
-        className="flex min-h-full flex-col gap-4"
+        className="flex flex-col gap-4"
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
@@ -108,9 +105,9 @@ export function CategoryDialog({ open, category, onClose, onSubmit, fixedType }:
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-2">
+        <div className="flex flex-col gap-2">
           <Label>{t('classifications.categories.forms.category.icon.label')}</Label>
-          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('classifications.categories.forms.category.icon.label')} />
+          <IconPicker value={icon} onChange={setIcon} aria-label={t('classifications.categories.forms.category.icon.label')} />
         </div>
       </form>
     </ResponsiveDialog>

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -11,6 +11,7 @@ import { useTransactions } from '@/features/transactions/queries'
 import { resetRevisions } from '@/features/transactions/revisionTracking'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { loadBuckets } from '@/lib/transactionStore'
+import { useUiStore } from '@/app/uiStore'
 import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { SettingsPage } from './SettingsPage'
 
@@ -89,6 +90,21 @@ it('renders the menu rows with exact labels and navigates', async () => {
   expect(await screen.findByText('BUDGETS PAGE')).toBeInTheDocument()
 })
 
+it('the last row opens the feedback dialog, unless the server turns feedback off', async () => {
+  const user = userEvent.setup()
+  useUiStore.setState({ feedbackOpen: false })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Send feedback' }))
+  expect(useUiStore.getState().feedbackOpen).toBe(true)
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.FEEDBACK_OPEN)
+  cleanup()
+
+  window.econumoConfig = { FEEDBACK: false }
+  renderPage()
+  expect(await screen.findByText('Data')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Send feedback' })).not.toBeInTheDocument()
+})
+
 it('hides non-semver version text while linking to the Econumo website', async () => {
   window.econumoConfig = { VERSION: 'dev' }
   renderPage()
@@ -119,24 +135,22 @@ it('the Data group links to the Import & export page', async () => {
   expect(await screen.findByText('DATA PAGE')).toBeInTheDocument()
 })
 
-it('the Data group shows only Import & export while transaction import is off', async () => {
+it('the Data group always shows Apple Wallet and Import rules, SimpleFIN only while it is on', async () => {
   renderPage()
-  expect(await screen.findByText('Import & export')).toBeInTheDocument()
-  expect(screen.queryByText('Apple Wallet')).not.toBeInTheDocument()
+  expect(await screen.findByText('Apple Wallet')).toBeInTheDocument()
+  expect(screen.getByText('Import rules')).toBeInTheDocument()
   expect(screen.queryByText('SimpleFIN')).not.toBeInTheDocument()
-  expect(screen.queryByText('Import rules')).not.toBeInTheDocument()
 })
 
-it('shows only the enabled provider, and Import rules while either is on', async () => {
+it('shows SimpleFIN while it is on', async () => {
   window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   renderPage()
   expect(await screen.findByText('SimpleFIN')).toBeInTheDocument()
-  expect(screen.getByText('Import rules')).toBeInTheDocument()
-  expect(screen.queryByText('Apple Wallet')).not.toBeInTheDocument()
+  expect(screen.getByText('Apple Wallet')).toBeInTheDocument()
 })
 
 it('the Data group links to the Apple Wallet page', async () => {
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   const user = userEvent.setup()
   renderPage()
   await user.click(await screen.findByText('Apple Wallet'))
@@ -216,18 +230,12 @@ it('the Log out button opens the confirm dialog and confirming navigates to the 
 
 describe('Clear cache and reload', () => {
   it('is the last row of the Data group, below the import rows', async () => {
-    window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+    window.econumoConfig = { IMPORT_SIMPLEFIN: true }
     renderPage()
     const row = await screen.findByRole('button', { name: 'Clear cache and reload' })
     const group = row.closest('nav')!
     expect(group.lastElementChild).toBe(row)
     expect(within(group).getByText('Import rules')).toBeInTheDocument()
-  })
-
-  it('is the last row of the Data group with transaction import off too', async () => {
-    renderPage()
-    const row = await screen.findByRole('button', { name: 'Clear cache and reload' })
-    expect(row.closest('nav')!.lastElementChild).toBe(row)
   })
 
   it('downloads every account again, one per request, says so and counts it', async () => {

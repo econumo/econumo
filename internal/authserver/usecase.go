@@ -10,12 +10,16 @@ import (
 )
 
 const (
-	Scope                = "mcp"
-	CodeTTL              = 2 * time.Minute
-	AccessTokenTTL       = time.Hour
-	GrantIdleTTL         = 90 * 24 * time.Hour
-	RefreshGrace         = 60 * time.Second
-	UnusedClientTTL      = 30 * 24 * time.Hour
+	Scope           = "mcp"
+	CodeTTL         = 2 * time.Minute
+	AccessTokenTTL  = time.Hour
+	GrantIdleTTL    = 90 * 24 * time.Hour
+	RefreshGrace    = 60 * time.Second
+	UnusedClientTTL = 30 * 24 * time.Hour
+	// MaxUnusedClients bounds what anonymous registration can store, about 20 MB at
+	// the metadata limits. The oldest make room rather than the endpoint refusing, so
+	// a flood cannot lock out a client that is about to be approved.
+	MaxUnusedClients     = 1000
 	DeadRetention        = 30 * 24 * time.Hour
 	HousekeepingInterval = 10 * time.Minute
 )

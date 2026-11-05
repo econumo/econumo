@@ -1114,7 +1114,7 @@ func TestStartLink_MintsAFlowSecretToo(t *testing.T) {
 // stubLimiter reports the endpoint's global per-minute cap as spent.
 type stubLimiter struct{ scope, key string }
 
-func (l *stubLimiter) Allow(scope, key string) error {
+func (l *stubLimiter) Allow(_ context.Context, scope, key string) error {
 	l.scope, l.key = scope, key
 	return errs.NewTooManyRequests("Too many attempts. Try again later.")
 }

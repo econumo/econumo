@@ -94,8 +94,8 @@ it('creates a budget with the selected accounts and appends the row', async () =
   await user.click(screen.getByRole('button', { name: /Create budget/ }))
   await screen.findByRole('dialog')
   await user.type(screen.getByLabelText('Name'), 'Vacation')
-  // the currency picker row seeds from the user's default currency
-  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+  // the currency field seeds from the user's default currency
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('USD, $, US Dollar'))
   // every account starts OFF; at least one must be toggled on to submit
   await toggleInPicker(user, 'accounts', 'include Bank')
   await user.click(screen.getByRole('button', { name: 'Create' }))
@@ -122,7 +122,7 @@ it('creating a budget with no accounts selected shows the validation error and s
   await user.click(screen.getByRole('button', { name: /Create budget/ }))
   await screen.findByRole('dialog')
   await user.type(screen.getByLabelText('Name'), 'Vacation')
-  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('USD, $, US Dollar'))
   await user.click(screen.getByRole('button', { name: 'Create' }))
   expect(await screen.findByText('Select at least one account')).toBeInTheDocument()
   expect(hits).toBe(0)
@@ -135,7 +135,7 @@ it('retracts each validation error as soon as its own field is fixed', async () 
   await screen.findByText('Main budget')
   await user.click(screen.getByRole('button', { name: /Create budget/ }))
   await screen.findByRole('dialog')
-  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveValue('USD, $, US Dollar'))
   // Submit empty to raise both errors, then fix each field in turn: a message the
   // user has already acted on must not linger until the next submit.
   await user.click(screen.getByRole('button', { name: 'Create' }))

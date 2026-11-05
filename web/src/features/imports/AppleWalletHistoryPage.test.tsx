@@ -40,7 +40,7 @@ const localTime = (stored: string) => stored.slice(11, 16)
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true }
+  window.econumoConfig = {}
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({ matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
 })
 

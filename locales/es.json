@@ -207,6 +207,7 @@
       },
       "transaction_list": {
         "none": "No se encontraron transacciones",
+        "drag_handle": "Arrastra para reordenar",
         "today": "Hoy",
         "yesterday": "Ayer",
         "item": {
@@ -393,6 +394,9 @@
           "label": "Notas",
           "placeholder": "Escribe una nota"
         },
+        "account": {
+          "label": "Cuenta"
+        },
         "from": {
           "label": "Origen"
         },
@@ -538,6 +542,7 @@
         "limitations_title": "Limitaciones conocidas",
         "tap_only": "Solo funciona al acercar el iPhone para pagar",
         "online_not_imported": "Los pagos con Apple Pay en sitios web no son compatibles",
+        "no_signal": "Si no hay cobertura al pagar, la transacción puede no añadirse",
         "steps_title": "Cómo funciona",
         "flow": {
           "pay": "Paga con Apple Pay",
@@ -565,7 +570,7 @@
         },
         "configure": {
           "title": "Conectar el atajo",
-          "text": "Genera un token de API. El atajo guarda la dirección del servidor y el token y luego se conecta a Econumo. Toca «Permitir siempre» en cada aviso: la automatización necesitará estos permisos.",
+          "text": "Toca «Conectar el atajo» y luego «Permitir siempre» en cada aviso.",
           "button": "Conectar el atajo",
           "open": "Vincular Econumo",
           "waiting": "Esperando a que el atajo llegue a Econumo…",
@@ -573,7 +578,14 @@
         },
         "automate": {
           "title": "Crear la automatización",
-          "text": "En la app Atajos: Automatización → + → Wallet → elige las tarjetas y categorías que quieres importar → Ejecutar tras confirmar → econumo."
+          "text": "En la app Atajos, crea una automatización de Cartera:",
+          "list": {
+            "open": "Abre la pestaña Automatización (en iOS 27: Biblioteca → Automatización) y toca «Nueva automatización» o +",
+            "wallet": "Elige Cartera («Cuando toque una tarjeta o un pase de Cartera»)",
+            "cards": "Selecciona qué tarjetas y categorías importar, o todas",
+            "confirm": "Mantén la confirmación activada: «Ejecutar tras confirmar» (iOS 26) o «Confirmar antes de ejecutar» (iOS 27)",
+            "shortcut": "Elige el atajo econumo (en iOS 27: añade «Ejecutar atajo» → econumo, con «Transacción» como entrada)"
+          }
         },
         "payment": {
           "title": "Hacer el primer pago",
@@ -582,9 +594,14 @@
         },
         "immediate": {
           "title": "Cambiar la automatización a «Ejecutar inmediatamente»",
-          "text": "En la app Atajos, abre la automatización y cambia «Ejecutar tras confirmar» por «Ejecutar inmediatamente». A partir de entonces los pagos se importan sin preguntar."
+          "text": "Desactiva la confirmación para que los pagos se importen sin preguntar: abre la automatización en Atajos y elige «Ejecutar inmediatamente» (iOS 26) o desactiva «Confirmar antes de ejecutar» (iOS 27)."
         },
-        "done": "Hecho"
+        "done": "Hecho",
+        "guide_title": "Guía paso a paso con capturas de pantalla:",
+        "guide_ios26": "iOS 26",
+        "guide_ios27": "iOS 27",
+        "open_shortcuts": "Abrir Atajos",
+        "optional": "Opcional"
       },
       "same_named_cards": "Las tarjetas con el mismo nombre en Wallet se muestran como una sola tarjeta.",
       "cards": {
@@ -1343,13 +1360,21 @@
       }
     },
     "page": {
+      "upcoming": {
+        "title": "Próximamente",
+        "spent": "Ya gastado",
+        "received": "Ya recibido",
+        "saved": "Ya ahorrado",
+        "posted": "Registrado",
+        "total": "Total"
+      },
       "budget": {
         "empty": {
           "header": "Presupuesto",
           "no_budget": "Aún no has creado ningún presupuesto.",
           "description": "Crea un presupuesto o acepta una invitación para empezar a planificar tus finanzas.",
           "create_budget": "Crear un presupuesto",
-          "initial_setup": "Para crear un presupuesto, primero añade una cuenta y al menos una categoría.",
+          "initial_setup": "Para crear un presupuesto, primero añade una cuenta.",
           "create_account": "Añadir cuenta"
         },
         "unavailable": {
@@ -1403,6 +1428,9 @@
           "total": {
             "name": "Total",
             "expenses": "Gastos totales"
+          },
+          "tag_group": {
+            "count": "{count} etiqueta | {count} etiquetas"
           }
         },
         "archived_banner": "Este presupuesto está archivado y es de solo lectura",
@@ -1862,6 +1890,7 @@
       "payees": "Beneficiarios",
       "tags": "Etiquetas",
       "labels": "Etiquetas de informes",
+      "recurring": "Recurrentes",
       "transactions": "Transacciones"
     },
     "show_all": "Mostrar todos ({count})",
@@ -1871,6 +1900,36 @@
     "open": "Búsqueda",
     "open_tooltip": "Búsqueda ({shortcut})"
   },
+  "feedback": {
+    "menu_item": "Enviar comentarios",
+    "settings": {
+      "group": "Comentarios"
+    },
+    "dialog": {
+      "title": "Enviar comentarios",
+      "no_reply": "Leemos todos los mensajes, pero puede que no respondamos.",
+      "type": "Tipo",
+      "message": "Mensaje",
+      "message_required": "Escribe primero un mensaje.",
+      "email": "Correo electrónico (opcional)",
+      "email_placeholder": "nombre@ejemplo.com",
+      "use_email": "Usar {email}",
+      "clear_email": "Borrar correo",
+      "send": "Enviar",
+      "sent": "¡Gracias por tus comentarios!",
+      "failed": "No se pudieron enviar tus comentarios. Inténtalo de nuevo."
+    },
+    "type": {
+      "feedback": "Comentario",
+      "feature_request": "Sugerencia",
+      "bug_report": "Error"
+    },
+    "placeholder": {
+      "feedback": "¿Qué te gusta o qué podría mejorar?",
+      "feature_request": "¿Qué echas de menos en Econumo?",
+      "bug_report": "¿Qué ha pasado y qué esperabas?"
+    }
+  },
   "subscription": {
     "banner": {
       "trial": "Tu suscripción termina en {count} día | Tu suscripción termina en {count} días",
@@ -1878,7 +1937,10 @@
       "cta": "Gestionar la suscripción",
       "dismiss": "Descartar",
       "connection_trial": "La suscripción de {name} termina en {count} día | La suscripción de {name} termina en {count} días",
-      "connection_readonly": "La suscripción de {name} ha terminado: puede ver las cuentas compartidas, pero no editarlas"
+      "connection_readonly": "La suscripción de {name} ha terminado: puede ver las cuentas compartidas, pero no editarlas",
+      "sale_ends": "hasta el {date}",
+      "sale": "{name}: {percent} % de descuento",
+      "sale_cta": "Aprovechar la oferta"
     },
     "settings": {
       "group": "Facturación",
@@ -1932,6 +1994,39 @@
       "returnsTo": "Te devuelve a {host}",
       "menuItem": "Aplicaciones conectadas"
     }
+  },
+  "install": {
+    "notice": "Econumo funciona mejor como app",
+    "cta": "Instalar",
+    "dismiss": "Descartar",
+    "menu_item": "Instalar la app",
+    "dialog": {
+      "title": "Instalar Econumo",
+      "intro": "Añade Econumo a tu pantalla de inicio para abrirlo a pantalla completa, como cualquier otra app.",
+      "step_share": "Toca el botón Compartir del navegador. En Safari puede estar dentro del menú •••.",
+      "step_add": "Desplázate y elige «Añadir a pantalla de inicio».",
+      "step_confirm": "Toca «Añadir». Econumo aparecerá en tu pantalla de inicio.",
+      "installed_hint": "¿Ya lo añadiste? Abre Econumo desde su icono en la pantalla de inicio en lugar del navegador.",
+      "macos": {
+        "intro": "Añade Econumo al Dock para abrirlo en su propia ventana, como cualquier otra app.",
+        "step_file": "En la barra de menús de Safari, abre Archivo (o haz clic en el botón Compartir).",
+        "step_add": "Elige «Añadir al Dock».",
+        "step_confirm": "Haz clic en «Añadir». Econumo aparecerá en el Dock.",
+        "installed_hint": "¿Ya lo añadiste? Abre Econumo desde el Dock en lugar de Safari."
+      },
+      "android_firefox": {
+        "intro": "Añade Econumo a tu pantalla de inicio para abrirlo como cualquier otra app, sin las barras del navegador.",
+        "installed_hint": "¿Ya lo añadiste? Abre Econumo desde tu pantalla de inicio en lugar del navegador.",
+        "step_menu": "Toca el menú ⋮ de Firefox.",
+        "step_install": "Elige «Instalar» (en versiones anteriores, «Añadir a la pantalla de inicio»).",
+        "step_confirm": "Confirma. Econumo aparecerá en tu pantalla de inicio."
+      },
+      "close": "Entendido"
+    }
+  },
+  "whatsNew": {
+    "notice": "Novedades de {version}",
+    "dismiss": "Descartar"
   },
   "errors": {
     "common": {
@@ -2066,7 +2161,9 @@
       "invalid_import_file": "Sube un archivo CSV válido.",
       "too_many_labels": "Una transacción puede tener como máximo 50 etiquetas de informes.",
       "account_deleted": "Esta cuenta ha sido eliminada.",
-      "category_type_mismatch": "El tipo de categoría debe coincidir con el tipo de transacción."
+      "category_type_mismatch": "El tipo de categoría debe coincidir con el tipo de transacción.",
+      "day_changed": "Este día cambió mientras tanto. Actualiza e inténtalo de nuevo.",
+      "cannot_move": "Esta transacción no se puede mover a otro día."
     },
     "user": {
       "report_period_invalid": "El periodo del informe es incorrecto.",

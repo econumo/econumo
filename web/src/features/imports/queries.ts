@@ -13,7 +13,6 @@ import type {
   UpdateImportAccountDto,
 } from '@/api/dto/imports'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
-import { isTransactionImportEnabled } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useApplyTransactionItem } from '@/features/transactions/queries'
 
@@ -21,11 +20,11 @@ import { useApplyTransactionItem } from '@/features/transactions/queries'
 // (the Inbox, the transaction dialogs) never fetch then: the server does not
 // mount the routes.
 export function useImportSources() {
-  return useQuery({ queryKey: queryKeys.importSources, queryFn: importsApi.getImportSourceList, staleTime: TEN_MINUTES, enabled: isTransactionImportEnabled() })
+  return useQuery({ queryKey: queryKeys.importSources, queryFn: importsApi.getImportSourceList, staleTime: TEN_MINUTES })
 }
 
 export function useImportQueue() {
-  return useQuery({ queryKey: queryKeys.importQueue, queryFn: importsApi.getImportQueue, staleTime: TEN_MINUTES, enabled: isTransactionImportEnabled() })
+  return useQuery({ queryKey: queryKeys.importQueue, queryFn: importsApi.getImportQueue, staleTime: TEN_MINUTES })
 }
 
 export function useCreateImportSource() {
@@ -73,14 +72,35 @@ function useApplyImportAccount() {
   }
 }
 
+// Read before the response replaces the source in the cache. A card the cache
+// does not hold yet (a SimpleFIN account listed but never stored) is unmapped.
+function useCardBefore() {
+  const queryClient = useQueryClient()
+  return (sourceId: Id, externalAccountId: string) =>
+    queryClient.getQueryData<ImportSourceDto[]>(queryKeys.importSources)
+      ?.find((s) => s.id === sourceId)?.cards.find((c) => c.externalAccountId === externalAccountId)
+}
+
 export function useLinkImportAccount() {
   const apply = useApplyImportAccount()
+  const cardBefore = useCardBefore()
   return useMutation({
     mutationFn: ({ sourceId, externalAccountId, accountId, externalName }: { sourceId: Id; externalAccountId: string; accountId: Id; externalName?: string }) =>
       importsApi.linkImportAccount(sourceId, externalAccountId, accountId, externalName),
-    onSuccess: (result) => {
+    onSuccess: (result, { sourceId, externalAccountId, accountId }) => {
+      const before = cardBefore(sourceId, externalAccountId)
       apply(result)
-      trackEvent(METRICS.IMPORT_ACCOUNT_LINK, { imported: result.run?.importedCount ?? 0, matched: result.run?.matchedCount ?? 0 })
+      const imported = result.run?.importedCount ?? 0
+      const matched = result.run?.matchedCount ?? 0
+      trackEvent(METRICS.IMPORT_ACCOUNT_LINK, { imported, matched })
+      const provider = result.item.provider
+      if (before?.state === 'mapped') {
+        if (before.accountId !== accountId) {
+          trackEvent(METRICS.IMPORT_ACCOUNT_REMAP, { provider, imported, matched })
+        }
+      } else {
+        trackEvent(METRICS.IMPORT_ACCOUNT_MAP, { provider, from: before?.state ?? 'unmapped', imported, matched })
+      }
     },
   })
 }
@@ -102,7 +122,10 @@ export function useUnlinkImportAccount() {
   return useMutation({
     mutationFn: ({ sourceId, externalAccountId }: { sourceId: Id; externalAccountId: string }) =>
       importsApi.unlinkImportAccount(sourceId, externalAccountId),
-    onSuccess: apply,
+    onSuccess: (result) => {
+      apply(result)
+      trackEvent(METRICS.IMPORT_ACCOUNT_UNMAP, { provider: result.item.provider })
+    },
   })
 }
 
@@ -174,7 +197,7 @@ export function useTransactionImportLinks(transactionId: Id, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.transactionImports(transactionId),
     queryFn: () => importsApi.getTransactionImportList(transactionId),
-    enabled: enabled && isTransactionImportEnabled(),
+    enabled,
     staleTime: TEN_MINUTES,
   })
 }

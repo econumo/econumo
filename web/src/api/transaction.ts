@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { AccountTransactionListDto, CreateTransactionDto, TransactionDto, TransactionItemDto } from './dto/transaction'
+import type { AccountTransactionListDto, CreateTransactionDto, MoveTransactionDto, MoveTransactionResultDto, TransactionDto, TransactionItemDto } from './dto/transaction'
 
 interface Envelope<T> {
   data: T
@@ -28,6 +28,11 @@ export async function createTransaction(form: CreateTransactionDto): Promise<Tra
 
 export async function updateTransaction(form: CreateTransactionDto): Promise<TransactionItemDto> {
   const response = await api.post<Envelope<TransactionItemDto>>(apiUrl('/api/v1/transaction/update-transaction'), form)
+  return response.data.data
+}
+
+export async function moveTransaction(req: MoveTransactionDto): Promise<MoveTransactionResultDto> {
+  const response = await api.post<Envelope<MoveTransactionResultDto>>(apiUrl('/api/v1/transaction/move-transaction'), req)
   return response.data.data
 }
 

@@ -223,8 +223,8 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	// The document is now generated ENTIRELY by the router (no merge against
 	// the dist file), so every key is present: the ones explicitly set above,
 	// plus every other key at its default (LILTAG_CONFIG_URL, LILTAG_CACHE_TTL,
-	// INSTANCE_ID, VERSION, VERSION_LABEL, IMPORT_MATCHER) and MIN_APP_VERSION because it was set.
-	want := `window.econumoConfig = {"AI_ENABLED":false,"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","IMPORT_APPLE_WALLET":false,"IMPORT_MATCHER":{"matchDays":0,"tipDays":0,"tipTolerancePct":0,"tokenMinLength":0},"IMPORT_SIMPLEFIN":false,"INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MCP_URL":"https://econumo.example.test/mcp","MIN_APP_VERSION":"v9.9.9","PASSWORD_LOGIN":true,"VERSION":null,"VERSION_LABEL":null};`
+	// INSTANCE_ID, VERSION, VERSION_LABEL, VERSION_REF, IMPORT_MATCHER) and MIN_APP_VERSION because it was set.
+	want := `window.econumoConfig = {"AI_ENABLED":false,"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","FEEDBACK":true,"IMPORT_MATCHER":{"matchDays":0,"tipDays":0,"tipTolerancePct":0,"tokenMinLength":0},"IMPORT_SIMPLEFIN":false,"INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MCP_URL":"https://econumo.example.test/mcp","MIN_APP_VERSION":"v9.9.9","PASSWORD_LOGIN":true,"VERSION":null,"VERSION_LABEL":null,"VERSION_REF":""};`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
 	}
@@ -299,7 +299,7 @@ func TestRuntimeConfigOverrides_UnsetKeysGetDefaults(t *testing.T) {
 		`"INSTANCE_ID":""`,
 		`"MCP_URL":""`,
 		`"PASSWORD_LOGIN":true`,
-		`"IMPORT_APPLE_WALLET":false`,
+		`"FEEDBACK":true`,
 		`"IMPORT_SIMPLEFIN":false`,
 	} {
 		if !strings.Contains(body, want) {
@@ -341,7 +341,7 @@ func TestRuntimeConfigOverrides_ImportProviders(t *testing.T) {
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
 	body := readBody(t, resp)
-	for _, want := range []string{`"IMPORT_APPLE_WALLET":false`, `"IMPORT_SIMPLEFIN":true`} {
+	for _, want := range []string{`"IMPORT_SIMPLEFIN":true`} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %s:\n%s", want, body)
 		}
@@ -461,6 +461,7 @@ func TestRuntimeConfigOverrides_VersionLabelIsIndependentOfVersion(t *testing.T)
 		SPA:             os.DirFS(dir),
 		SPAVersion:      "v1.2.3",
 		SPAVersionLabel: "demo-42",
+		SPAVersionRef:   "0123abc",
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
@@ -468,7 +469,7 @@ func TestRuntimeConfigOverrides_VersionLabelIsIndependentOfVersion(t *testing.T)
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
 	body := readBody(t, resp)
-	for _, want := range []string{`"VERSION":"v1.2.3"`, `"VERSION_LABEL":"demo-42"`} {
+	for _, want := range []string{`"VERSION":"v1.2.3"`, `"VERSION_LABEL":"demo-42"`, `"VERSION_REF":"0123abc"`} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("config body missing %q:\n%s", want, body)
 		}

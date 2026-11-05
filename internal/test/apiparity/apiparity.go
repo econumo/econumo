@@ -14,6 +14,11 @@ type Call struct {
 	Method string // "GET" | "POST"
 	Path   string // "/api/v1/…", MAY carry a query string
 
+	// GoldenPath, when set, is what the golden records instead of Path: a
+	// request that must name the current month (get-transaction-list's
+	// periodStart) would otherwise bake today's date into the golden.
+	GoldenPath string
+
 	// Auth selects which seeded user's token to attach: "owner", "guest",
 	// "readonly" (the lapsed-trial user), "ingest" (the owner's ingest-scoped
 	// PAT), or "" (public/no token).

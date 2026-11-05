@@ -11,8 +11,8 @@
 -- name: InsertCorrectionTransaction :exec
 INSERT INTO transactions (
     id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id,
-    description, created_at, updated_at, spent_at, type, amount, amount_recipient
+    description, created_at, updated_at, spent_at, type, amount, amount_recipient, sort_key
 ) VALUES (
     ?, ?, ?, NULL, NULL, NULL, NULL,
-    ?, ?, ?, ?, ?, ?, NULL
+    ?, ?, ?, ?, ?, ?, NULL, ?
 );

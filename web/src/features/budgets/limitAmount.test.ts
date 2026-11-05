@@ -1,9 +1,10 @@
 import { limitAmountFromInput } from './limitAmount'
 
-it('clears on empty, zero and zero-formula input', () => {
+it('clears only on empty input; zero is a plan of 0', () => {
   expect(limitAmountFromInput('')).toEqual({ ok: true, amount: null })
-  expect(limitAmountFromInput('0')).toEqual({ ok: true, amount: null })
-  expect(limitAmountFromInput('5-5')).toEqual({ ok: true, amount: null })
+  expect(limitAmountFromInput('  ')).toEqual({ ok: true, amount: null })
+  expect(limitAmountFromInput('0')).toEqual({ ok: true, amount: '0' })
+  expect(limitAmountFromInput('5-5')).toEqual({ ok: true, amount: '0' })
 })
 
 it('evaluates formulas and normalizes the amount string', () => {
@@ -20,8 +21,8 @@ it('preserves large plain amounts without float mangling', () => {
   expect(limitAmountFromInput('12345678901234567.89')).toEqual({ ok: true, amount: '12345678901234567.89' })
 })
 
-it('still clears on zero and rejects garbage', () => {
-  expect(limitAmountFromInput('0.00')).toEqual({ ok: true, amount: null })
+it('keeps a formatted zero and rejects garbage', () => {
+  expect(limitAmountFromInput('0.00')).toEqual({ ok: true, amount: '0' })
   expect(limitAmountFromInput('abc')).toEqual({ ok: false })
 })
 

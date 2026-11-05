@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"regexp"
@@ -41,13 +42,12 @@ type Config struct {
 	EmailVerification          bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
 	CurrencyUpdateIntervalDays int  // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
 
-	// ImportAppleWallet / ImportSimpleFIN are ECONUMO_IMPORT_APPLE_WALLET /
-	// ECONUMO_IMPORT_SIMPLEFIN: Apple Wallet defaults on, SimpleFIN off.
-	// Import rules, the queue and run
-	// history exist only while at least one is on (TransactionImport). CSV
-	// import/export is not part of it and stays on.
-	ImportAppleWallet     bool
-	ImportSimpleFIN       bool
+	// ImportSimpleFIN is ECONUMO_IMPORT_SIMPLEFIN (default off). Apple Wallet
+	// import, import rules, the queue and run history are always on.
+	ImportSimpleFIN bool
+	// FeedbackDisabled is ECONUMO_FEEDBACK (default true) inverted, so a zero
+	// Config in tests keeps the in-app feedback form on.
+	FeedbackDisabled      bool
 	ImportMatchDays       int // ECONUMO_IMPORT_MATCH_DAYS: ± window for the same-amount import adopt (default 3, 0-31)
 	ImportTipDays         int // ECONUMO_IMPORT_TIP_DAYS: how many days after a tap a bank record may post (default 5, 0-31)
 	ImportTipTolerancePct int // ECONUMO_IMPORT_TIP_TOLERANCE: percent of the tap amount a posted amount may differ by (default 20, 0-100)
@@ -90,29 +90,39 @@ type Config struct {
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
-	RateLimitLogin              int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
-	RateLimitReset              int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
-	RateLimitRemind             int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
-	RateLimitRegister           int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
-	RateLimitAccept             int           // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
-	RateLimitVerifyEmail        int           // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
-	RateLimitConfirmEmail       int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
-	RateLimitRequestEmailChange int           // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
-	RateLimitConfirmEmailChange int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
-	RateLimitIngest             int           // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
-	RateLimitClaimSetupToken    int           // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
-	RateLimitSync               int           // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
-	RateLimitPreviewRule        int           // ECONUMO_RATE_LIMIT_PREVIEW_RULE: rule previews per user (fired from a typing debounce; every request counts)
-	RateLimitWindow             time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
-	RateLimitGlobal             int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
+	RateLimitLogin              int            // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
+	RateLimitReset              int            // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
+	RateLimitRemind             int            // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
+	RateLimitRegister           int            // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
+	RateLimitAccept             int            // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
+	RateLimitVerifyEmail        int            // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
+	RateLimitConfirmEmail       int            // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
+	RateLimitRequestEmailChange int            // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
+	RateLimitConfirmEmailChange int            // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
+	RateLimitIngest             int            // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
+	RateLimitClaimSetupToken    int            // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
+	RateLimitSync               int            // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
+	RateLimitPreviewRule        int            // ECONUMO_RATE_LIMIT_PREVIEW_RULE: rule previews per user (fired from a typing debounce; every request counts)
+	RateLimitWindow             time.Duration  // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
+	RateLimitIP                 int            // ECONUMO_RATE_LIMIT_IP: per-endpoint cap per minute per client IP
+	ClientIPHeader              string         // ECONUMO_CLIENT_IP_HEADER: header trusted proxies put the client IP in
+	ClientIPTrustedProxies      []netip.Prefix // ECONUMO_CLIENT_IP_TRUSTED_PROXIES: peers whose header is believed
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
-	// (empty/console/log -> console to stdout; resend://<key> -> Resend).
+	// (empty/console/log -> console to stdout; resend://<key> -> Resend;
+	// smtp:// / smtps:// -> an SMTP relay).
 	MailerDSN    string // raw MAILER_DSN, kept for reference/logging
-	MailProvider string // "console" | "resend"
+	MailProvider string // "console" | "resend" | "smtp"
 	MailAPIKey   string // transport credential (the Resend API key)
 	MailFrom     string // from query param
 	MailReplyTo  string // reply_to query param
+
+	MailSMTPHost        string
+	MailSMTPPort        string // empty = the scheme's default (587 / 465)
+	MailSMTPUsername    string
+	MailSMTPPassword    string
+	MailSMTPImplicitTLS bool // smtps://
+	MailSMTPInsecure    bool // ?insecure=true: plaintext allowed, certificate unverified
 
 	// AI — DERIVED from ECONUMO_AI_DSN; the scheme selects openai://,
 	// anthropic://, or econumo:// with host[:port][/prefix]?model=….
@@ -209,11 +219,14 @@ func Load() (Config, error) {
 	// The mail transport is likewise derived from a single scheme-prefixed DSN.
 	// An empty MAILER_DSN is valid (the console transport), so this only errors on
 	// a malformed/unsupported DSN — surfacing the typo at boot, like DATABASE_URL.
-	provider, apiKey, from, replyTo, err := parseMailerDSN(c.MailerDSN)
+	md, err := parseMailerDSN(c.MailerDSN)
 	if err != nil {
 		return Config{}, err
 	}
-	c.MailProvider, c.MailAPIKey, c.MailFrom, c.MailReplyTo = provider, apiKey, from, replyTo
+	c.MailProvider, c.MailAPIKey, c.MailFrom, c.MailReplyTo = md.provider, md.apiKey, md.from, md.replyTo
+	c.MailSMTPHost, c.MailSMTPPort = md.smtpHost, md.smtpPort
+	c.MailSMTPUsername, c.MailSMTPPassword = md.smtpUsername, md.smtpPassword
+	c.MailSMTPImplicitTLS, c.MailSMTPInsecure = md.smtpImplicitTLS, md.smtpInsecure
 
 	// The completion endpoint is a scheme-prefixed DSN for the same reason:
 	// one variable turns the feature on and carries every part of it.
@@ -294,12 +307,14 @@ func Load() (Config, error) {
 		*p.dst = n
 	}
 
-	if c.ImportAppleWallet, err = getBoolStrict("ECONUMO_IMPORT_APPLE_WALLET", true); err != nil {
-		return Config{}, err
-	}
 	if c.ImportSimpleFIN, err = getBoolStrict("ECONUMO_IMPORT_SIMPLEFIN", false); err != nil {
 		return Config{}, err
 	}
+	feedback, err := getBoolStrict("ECONUMO_FEEDBACK", true)
+	if err != nil {
+		return Config{}, err
+	}
+	c.FeedbackDisabled = !feedback
 
 	// Strict parse: a typo must fail at boot rather than silently opening the
 	// server's private network to a user-supplied bridge URL.
@@ -402,7 +417,7 @@ func Load() (Config, error) {
 		{&c.RateLimitClaimSetupToken, "ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", 5},
 		{&c.RateLimitSync, "ECONUMO_RATE_LIMIT_SYNC", 10},
 		{&c.RateLimitPreviewRule, "ECONUMO_RATE_LIMIT_PREVIEW_RULE", 120},
-		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
+		{&c.RateLimitIP, "ECONUMO_RATE_LIMIT_IP", 60},
 	} {
 		n, err := getIntStrict(p.key, p.def)
 		if err != nil {
@@ -416,6 +431,10 @@ func Load() (Config, error) {
 	}
 	c.RateLimitWindow = window
 
+	if err := loadClientIP(&c); err != nil {
+		return Config{}, err
+	}
+
 	// PORT is required by the HTTP server only and is validated at server
 	// startup; it is intentionally NOT required here because config.Load is also
 	// the CLI's composition entry point, and those commands never bind a port.
@@ -423,7 +442,53 @@ func Load() (Config, error) {
 	return c, nil
 }
 
+// loadClientIP: a header with no proxies list is believed from anyone, which is
+// only safe when a firewall lets nothing but the proxy reach the server.
+func loadClientIP(c *Config) error {
+	c.ClientIPHeader = strings.TrimSpace(os.Getenv("ECONUMO_CLIENT_IP_HEADER"))
+	if c.ClientIPHeader != "" && !clientIPHeaderRe.MatchString(c.ClientIPHeader) {
+		return fmt.Errorf("ECONUMO_CLIENT_IP_HEADER must be a header name, got %q", c.ClientIPHeader)
+	}
+	for _, v := range getStringList("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", nil) {
+		p, err := parseProxyRange(v)
+		if err != nil {
+			return fmt.Errorf("ECONUMO_CLIENT_IP_TRUSTED_PROXIES: %q is not an IP or CIDR range", v)
+		}
+		c.ClientIPTrustedProxies = append(c.ClientIPTrustedProxies, p)
+	}
+	if len(c.ClientIPTrustedProxies) > 0 && c.ClientIPHeader == "" {
+		c.ClientIPHeader = "X-Forwarded-For"
+	}
+	return nil
+}
+
+// parseProxyRange normalizes the way a request's address is before comparison
+// (middleware.parseIP), or a range could silently never match: an IPv4-mapped
+// range is unmapped, and a zone, which a netip.Prefix cannot hold, is refused.
+func parseProxyRange(v string) (netip.Prefix, error) {
+	p, err := netip.ParsePrefix(v)
+	if err != nil {
+		addr, aerr := netip.ParseAddr(v)
+		if aerr != nil {
+			return netip.Prefix{}, aerr
+		}
+		if addr.Zone() != "" {
+			return netip.Prefix{}, errors.New("zone")
+		}
+		p = netip.PrefixFrom(addr, addr.BitLen())
+	}
+	if p.Addr().Is4In6() {
+		if p.Bits() < 96 {
+			return netip.Prefix{}, errors.New("mapped range wider than IPv4")
+		}
+		p = netip.PrefixFrom(p.Addr().Unmap(), p.Bits()-96)
+	}
+	return p.Masked(), nil
+}
+
 var (
+	clientIPHeaderRe = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+
 	// An Apple app ID is the ten-character Team ID, a dot, then the bundle id.
 	iosAppIDRe = regexp.MustCompile(`^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$`)
 	// A Digital Asset Links fingerprint is the certificate's SHA-256 digest as
@@ -575,40 +640,81 @@ func driverFromURL(url string) (string, error) {
 	}
 }
 
+type mailerDSN struct {
+	provider, apiKey, from, replyTo string
+
+	smtpHost, smtpPort            string
+	smtpUsername, smtpPassword    string
+	smtpImplicitTLS, smtpInsecure bool
+}
+
 // parseMailerDSN maps a MAILER_DSN to the mail transport and envelope. The scheme
 // selects the provider, the host carries the credential, and from / reply_to come
 // from the query — mirroring how driverFromURL reads the DATABASE_URL scheme.
 //
-//	(empty)              -> console, no envelope
-//	console:// | log://  -> console; from / reply_to from the query
-//	resend://<api_key>   -> resend; from / reply_to from the query (api_key required)
+//	(empty)                          -> console, no envelope
+//	console:// | log://              -> console; from / reply_to from the query
+//	resend://<api_key>               -> resend; from / reply_to from the query (api_key required)
+//	smtp://[user:pass@]host[:port]   -> smtp, STARTTLS required (default port 587)
+//	smtps://[user:pass@]host[:port]  -> smtp, implicit TLS (default port 465)
 //
-// An empty DSN is the supported default (console), so only a malformed or
+// SMTP needs from (it is the envelope sender) and accepts ?insecure=true for a
+// relay on a trusted network without a valid certificate or TLS at all. An
+// empty DSN is the supported default (console), so only a malformed or
 // unsupported DSN returns an error.
-func parseMailerDSN(dsn string) (provider, apiKey, from, replyTo string, err error) {
+func parseMailerDSN(dsn string) (mailerDSN, error) {
 	dsn = strings.TrimSpace(dsn)
 	if dsn == "" {
-		return "console", "", "", "", nil
+		return mailerDSN{provider: "console"}, nil
 	}
 	u, err := url.Parse(dsn)
 	if err != nil {
-		return "", "", "", "", fmt.Errorf("MAILER_DSN %q is not a valid URL: %w", dsn, err)
+		// url.Error quotes the whole DSN, a password or API key included.
+		return mailerDSN{}, errors.New("MAILER_DSN is not a valid URL")
 	}
 	q := u.Query()
-	from, replyTo = q.Get("from"), q.Get("reply_to")
-	switch strings.ToLower(u.Scheme) {
+	md := mailerDSN{from: q.Get("from"), replyTo: q.Get("reply_to")}
+	switch scheme := strings.ToLower(u.Scheme); scheme {
 	case "console", "log":
-		return "console", "", from, replyTo, nil
+		md.provider = "console"
+		return md, nil
 	case "resend":
 		// url.Parse keeps the host verbatim (no case-folding), so a "re_…" key
 		// survives intact in u.Hostname().
-		key := u.Hostname()
-		if key == "" {
-			return "", "", "", "", fmt.Errorf("MAILER_DSN %q is missing the Resend API key (want resend://<api_key>)", dsn)
+		md.provider, md.apiKey = "resend", u.Hostname()
+		if md.apiKey == "" {
+			return mailerDSN{}, errors.New("MAILER_DSN is missing the Resend API key (want resend://<api_key>)")
 		}
-		return "resend", key, from, replyTo, nil
+		return md, nil
+	case "smtp", "smtps":
+		md.provider = "smtp"
+		md.smtpImplicitTLS = scheme == "smtps"
+		md.smtpHost, md.smtpPort = u.Hostname(), u.Port()
+		if md.smtpHost == "" {
+			return mailerDSN{}, fmt.Errorf("MAILER_DSN is missing the SMTP host (want %s://[user:pass@]host[:port])", scheme)
+		}
+		if md.smtpPort != "" {
+			if n, perr := strconv.Atoi(md.smtpPort); perr != nil || n < 1 || n > 65535 {
+				return mailerDSN{}, fmt.Errorf("MAILER_DSN SMTP port %q is invalid", md.smtpPort)
+			}
+		}
+		if u.User != nil {
+			md.smtpUsername = u.User.Username()
+			md.smtpPassword, _ = u.User.Password()
+		}
+		if md.from == "" {
+			return mailerDSN{}, fmt.Errorf("MAILER_DSN %s://… needs ?from=<address> (the envelope sender)", scheme)
+		}
+		switch v := q.Get("insecure"); v {
+		case "", "false":
+		case "true":
+			md.smtpInsecure = true
+		default:
+			return mailerDSN{}, fmt.Errorf("MAILER_DSN insecure=%q is invalid (want true or false)", v)
+		}
+		return md, nil
 	default:
-		return "", "", "", "", fmt.Errorf("unsupported MAILER_DSN scheme %q (want resend, console/log, or empty)", u.Scheme)
+		return mailerDSN{}, fmt.Errorf("unsupported MAILER_DSN scheme %q (want smtp, smtps, resend, console/log, or empty)", u.Scheme)
 	}
 }
 
@@ -782,10 +888,4 @@ func getDurationStrict(key string, def time.Duration) (time.Duration, error) {
 		return 0, fmt.Errorf("%s %q is not a positive Go duration (e.g. \"15m\")", key, v)
 	}
 	return d, nil
-}
-
-// TransactionImport reports whether any import provider is on, which is what
-// mounts the shared import routes (sources, queue, runs, rules).
-func (c Config) TransactionImport() bool {
-	return c.ImportAppleWallet || c.ImportSimpleFIN
 }

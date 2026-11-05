@@ -10,8 +10,7 @@ import { isNewerVersion } from '@/lib/version'
 // app but still within the app's supported floor (an incompatible server is
 // hard-blocked by AppUpdateBlock instead). Refetches on mount so a post-login
 // server switch is picked up without an app restart.
-export function ServerVersionNotice() {
-  const { t } = useTranslation()
+export function useServerVersionNotice(): string | null {
   const serverVersion = useServerConfig((s) => s.serverVersion)
   const native = isNativeApp()
 
@@ -21,7 +20,12 @@ export function ServerVersionNotice() {
     }
   }, [native])
 
-  if (!native || !serverVersion || !isNewerVersion(getVersion(), serverVersion)) {
+  return native && serverVersion && isNewerVersion(getVersion(), serverVersion) ? serverVersion : null
+}
+
+export function ServerVersionNotice({ serverVersion }: { serverVersion: string | null }) {
+  const { t } = useTranslation()
+  if (!serverVersion) {
     return null
   }
   return (

@@ -43,39 +43,69 @@ func TestDriverFromURL(t *testing.T) {
 
 func TestParseMailerDSN(t *testing.T) {
 	cases := []struct {
-		name                            string
-		dsn                             string
-		provider, apiKey, from, replyTo string
-		wantErr                         bool
+		name    string
+		dsn     string
+		want    mailerDSN
+		wantErr bool
 	}{
-		{name: "empty defaults to console", dsn: "", provider: "console"},
-		{name: "blank defaults to console", dsn: "   ", provider: "console"},
-		{name: "console scheme", dsn: "console://", provider: "console"},
-		{name: "log scheme", dsn: "log://", provider: "console"},
-		{name: "console with envelope", dsn: "console://?from=a@x.test&reply_to=b@x.test", provider: "console", from: "a@x.test", replyTo: "b@x.test"},
-		{name: "resend with key", dsn: "resend://re_Abc_123", provider: "resend", apiKey: "re_Abc_123"},
-		{name: "resend with envelope", dsn: "resend://re_Abc_123?from=a@x.test&reply_to=b@x.test", provider: "resend", apiKey: "re_Abc_123", from: "a@x.test", replyTo: "b@x.test"},
-		{name: "scheme is case-insensitive", dsn: "RESEND://re_Abc_123", provider: "resend", apiKey: "re_Abc_123"},
+		{name: "empty defaults to console", dsn: "", want: mailerDSN{provider: "console"}},
+		{name: "blank defaults to console", dsn: "   ", want: mailerDSN{provider: "console"}},
+		{name: "console scheme", dsn: "console://", want: mailerDSN{provider: "console"}},
+		{name: "log scheme", dsn: "log://", want: mailerDSN{provider: "console"}},
+		{name: "console with envelope", dsn: "console://?from=a@x.test&reply_to=b@x.test", want: mailerDSN{provider: "console", from: "a@x.test", replyTo: "b@x.test"}},
+		{name: "resend with key", dsn: "resend://re_Abc_123", want: mailerDSN{provider: "resend", apiKey: "re_Abc_123"}},
+		{name: "resend with envelope", dsn: "resend://re_Abc_123?from=a@x.test&reply_to=b@x.test", want: mailerDSN{provider: "resend", apiKey: "re_Abc_123", from: "a@x.test", replyTo: "b@x.test"}},
+		{name: "scheme is case-insensitive", dsn: "RESEND://re_Abc_123", want: mailerDSN{provider: "resend", apiKey: "re_Abc_123"}},
 		{name: "resend without key errors", dsn: "resend://", wantErr: true},
-		{name: "unsupported scheme errors", dsn: "smtp://localhost", wantErr: true},
+		{name: "smtp with credentials", dsn: "smtp://user%40x.test:p%40ss%2Fw@mail.x.test:2525?from=a@x.test&reply_to=b@x.test",
+			want: mailerDSN{provider: "smtp", from: "a@x.test", replyTo: "b@x.test", smtpHost: "mail.x.test", smtpPort: "2525", smtpUsername: "user@x.test", smtpPassword: "p@ss/w"}},
+		{name: "smtp without credentials or port", dsn: "smtp://relay?from=a@x.test",
+			want: mailerDSN{provider: "smtp", from: "a@x.test", smtpHost: "relay"}},
+		{name: "smtps is implicit TLS", dsn: "smtps://u:p@mail.x.test?from=a@x.test",
+			want: mailerDSN{provider: "smtp", from: "a@x.test", smtpHost: "mail.x.test", smtpUsername: "u", smtpPassword: "p", smtpImplicitTLS: true}},
+		{name: "smtp insecure", dsn: "smtp://postfix:25?from=a@x.test&insecure=true",
+			want: mailerDSN{provider: "smtp", from: "a@x.test", smtpHost: "postfix", smtpPort: "25", smtpInsecure: true}},
+		{name: "smtp ipv6 host", dsn: "smtp://[::1]:25?from=a@x.test",
+			want: mailerDSN{provider: "smtp", from: "a@x.test", smtpHost: "::1", smtpPort: "25"}},
+		{name: "smtp without from errors", dsn: "smtp://mail.x.test", wantErr: true},
+		{name: "smtp without host errors", dsn: "smtp://?from=a@x.test", wantErr: true},
+		{name: "smtp bad port errors", dsn: "smtp://mail.x.test:0?from=a@x.test", wantErr: true},
+		{name: "smtp bad insecure errors", dsn: "smtp://mail.x.test?from=a@x.test&insecure=yes", wantErr: true},
+		{name: "unsupported scheme errors", dsn: "mailjet+api://key", wantErr: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			provider, apiKey, from, replyTo, err := parseMailerDSN(tc.dsn)
+			got, err := parseMailerDSN(tc.dsn)
 			if tc.wantErr {
 				if err == nil {
-					t.Fatalf("parseMailerDSN(%q) = (%q,%q,%q,%q), want error", tc.dsn, provider, apiKey, from, replyTo)
+					t.Fatalf("parseMailerDSN(%q) = %+v, want error", tc.dsn, got)
 				}
 				return
 			}
 			if err != nil {
 				t.Fatalf("parseMailerDSN(%q) unexpected error: %v", tc.dsn, err)
 			}
-			if provider != tc.provider || apiKey != tc.apiKey || from != tc.from || replyTo != tc.replyTo {
-				t.Errorf("parseMailerDSN(%q) = (%q,%q,%q,%q), want (%q,%q,%q,%q)",
-					tc.dsn, provider, apiKey, from, replyTo, tc.provider, tc.apiKey, tc.from, tc.replyTo)
+			if got != tc.want {
+				t.Errorf("parseMailerDSN(%q) = %+v, want %+v", tc.dsn, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestParseMailerDSN_ErrorsDoNotLeakSecrets(t *testing.T) {
+	for _, dsn := range []string{
+		"smtp://user:s3cret@mail.x.test",              // missing from
+		"smtp://user:s3cret@mail.x.test:99999?from=a", // bad port
+		"smtp://user:s3cret@mail.x.test\x7f",          // malformed
+		"smtp://user:s3cret@%zz",                      // malformed
+	} {
+		_, err := parseMailerDSN(dsn)
+		if err == nil {
+			t.Fatalf("parseMailerDSN(%q) want error", dsn)
+		}
+		if strings.Contains(err.Error(), "s3cret") {
+			t.Errorf("error for %q leaks the password: %v", dsn, err)
+		}
 	}
 }
 
@@ -116,6 +146,62 @@ func TestGetStringList(t *testing.T) {
 	}
 }
 
+func TestLoad_ClientIP(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+
+	t.Setenv("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", "173.245.48.0/20, 2400:cb00::/32, 127.0.0.1")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ClientIPHeader != "X-Forwarded-For" {
+		t.Fatalf("default header = %q", c.ClientIPHeader)
+	}
+	if len(c.ClientIPTrustedProxies) != 3 || c.ClientIPTrustedProxies[2].String() != "127.0.0.1/32" {
+		t.Fatalf("proxies = %v", c.ClientIPTrustedProxies)
+	}
+
+	t.Setenv("ECONUMO_CLIENT_IP_HEADER", "CF-Connecting-IP")
+	if c, err = Load(); err != nil || c.ClientIPHeader != "CF-Connecting-IP" {
+		t.Fatalf("header = %q, err = %v", c.ClientIPHeader, err)
+	}
+
+	t.Setenv("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", "")
+	if c, err = Load(); err != nil || c.ClientIPHeader != "CF-Connecting-IP" || len(c.ClientIPTrustedProxies) != 0 {
+		t.Fatalf("header alone: header = %q, proxies = %v, err = %v", c.ClientIPHeader, c.ClientIPTrustedProxies, err)
+	}
+
+	for name, env := range map[string][2]string{
+		"bad header": {"not a header", "127.0.0.1"},
+		"bad proxy":  {"CF-Connecting-IP", "cloudflare"},
+	} {
+		t.Setenv("ECONUMO_CLIENT_IP_HEADER", env[0])
+		t.Setenv("ECONUMO_CLIENT_IP_TRUSTED_PROXIES", env[1])
+		if _, err := Load(); err == nil {
+			t.Fatalf("%s must fail at boot", name)
+		}
+	}
+}
+
+func TestParseProxyRange(t *testing.T) {
+	for in, want := range map[string]string{
+		"173.245.48.7/20":     "173.245.48.0/20",
+		"127.0.0.1":           "127.0.0.1/32",
+		"2400:cb00::/32":      "2400:cb00::/32",
+		"::ffff:127.0.0.1":    "127.0.0.1/32",
+		"::ffff:10.0.0.0/104": "10.0.0.0/8",
+	} {
+		if p, err := parseProxyRange(in); err != nil || p.String() != want {
+			t.Errorf("%s = %v, %v, want %s", in, p, err, want)
+		}
+	}
+	for _, in := range []string{"fe80::1%eth0", "::ffff:0:0/90", "cloudflare"} {
+		if p, err := parseProxyRange(in); err == nil {
+			t.Errorf("%s = %v, want an error", in, p)
+		}
+	}
+}
+
 func TestLoad_RateLimitDefaults(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 	c, err := Load()
@@ -129,8 +215,8 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 	if c.RateLimitWindow != 15*time.Minute {
 		t.Fatalf("window = %v, want 15m", c.RateLimitWindow)
 	}
-	if c.RateLimitGlobal != 60 {
-		t.Fatalf("global = %d, want 60", c.RateLimitGlobal)
+	if c.RateLimitIP != 60 {
+		t.Fatalf("ip = %d, want 60", c.RateLimitIP)
 	}
 	if c.RateLimitIngest != 60 {
 		t.Fatalf("ingest = %d, want 60", c.RateLimitIngest)
@@ -148,7 +234,7 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	t.Setenv("ECONUMO_RATE_LIMIT_REMIND", "7")
 	t.Setenv("ECONUMO_RATE_LIMIT_REGISTER", "8")
 	t.Setenv("ECONUMO_RATE_LIMIT_WINDOW", "1h30m")
-	t.Setenv("ECONUMO_RATE_LIMIT_GLOBAL", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_IP", "0")
 	t.Setenv("ECONUMO_RATE_LIMIT_INGEST", "0")
 	t.Setenv("ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", "0")
 	t.Setenv("ECONUMO_RATE_LIMIT_SYNC", "2")
@@ -159,8 +245,8 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	if c.RateLimitLogin != 10 || c.RateLimitReset != 0 || c.RateLimitRemind != 7 || c.RateLimitRegister != 8 {
 		t.Fatalf("overrides not applied: %+v", c)
 	}
-	if c.RateLimitWindow != 90*time.Minute || c.RateLimitGlobal != 0 || c.RateLimitIngest != 0 {
-		t.Fatalf("window/global/ingest overrides not applied: %v / %d / %d", c.RateLimitWindow, c.RateLimitGlobal, c.RateLimitIngest)
+	if c.RateLimitWindow != 90*time.Minute || c.RateLimitIP != 0 || c.RateLimitIngest != 0 {
+		t.Fatalf("window/ip/ingest overrides not applied: %v / %d / %d", c.RateLimitWindow, c.RateLimitIP, c.RateLimitIngest)
 	}
 	if c.RateLimitClaimSetupToken != 0 || c.RateLimitSync != 2 {
 		t.Fatalf("claim/sync overrides not applied: %d / %d", c.RateLimitClaimSetupToken, c.RateLimitSync)
@@ -174,7 +260,7 @@ func TestLoad_RateLimitBadValuesFailBoot(t *testing.T) {
 		bad  string
 	}{
 		{"LOGIN_non-numeric", "ECONUMO_RATE_LIMIT_LOGIN", "five"},
-		{"GLOBAL_negative", "ECONUMO_RATE_LIMIT_GLOBAL", "-1"},
+		{"IP_negative", "ECONUMO_RATE_LIMIT_IP", "-1"},
 		{"WINDOW_unparseable", "ECONUMO_RATE_LIMIT_WINDOW", "15minutes"},
 		{"WINDOW_zero", "ECONUMO_RATE_LIMIT_WINDOW", "0"},
 		{"WINDOW_negative", "ECONUMO_RATE_LIMIT_WINDOW", "-5m"},
@@ -611,53 +697,55 @@ func TestLoad_ImportAllowPrivateHosts(t *testing.T) {
 	}
 }
 
-func TestLoad_ImportProviders(t *testing.T) {
+func TestLoad_ImportSimpleFIN(t *testing.T) {
 	t.Setenv("PORT", "8080")
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
-	t.Setenv("ECONUMO_IMPORT_APPLE_WALLET", "")
 	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "")
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.ImportAppleWallet || cfg.ImportSimpleFIN || !cfg.TransactionImport() {
-		t.Error("Apple Wallet must default on and SimpleFIN off")
-	}
-
-	t.Setenv("ECONUMO_IMPORT_APPLE_WALLET", "false")
-	cfg, err = Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.ImportAppleWallet || cfg.ImportSimpleFIN || cfg.TransactionImport() {
-		t.Error("explicit false must disable Apple Wallet and shared import routes")
+	if cfg.ImportSimpleFIN {
+		t.Error("SimpleFIN must default off")
 	}
 
 	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "true")
-	cfg, err = Load()
+	if cfg, err = Load(); err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.ImportSimpleFIN {
+		t.Error("explicit true must enable SimpleFIN")
+	}
+
+	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "yes please")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_IMPORT_SIMPLEFIN must fail at boot")
+	}
+}
+
+func TestLoad_Feedback(t *testing.T) {
+	t.Setenv("PORT", "8080")
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_FEEDBACK", "")
+	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.ImportAppleWallet || !cfg.ImportSimpleFIN || !cfg.TransactionImport() {
-		t.Errorf("SimpleFIN alone: apple=%v simplefin=%v any=%v", cfg.ImportAppleWallet, cfg.ImportSimpleFIN, cfg.TransactionImport())
+	if cfg.FeedbackDisabled {
+		t.Error("feedback must default on")
 	}
 
-	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "false")
-	t.Setenv("ECONUMO_IMPORT_APPLE_WALLET", "true")
-	cfg, err = Load()
-	if err != nil {
+	t.Setenv("ECONUMO_FEEDBACK", "false")
+	if cfg, err = Load(); err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.ImportAppleWallet || cfg.ImportSimpleFIN || !cfg.TransactionImport() {
-		t.Errorf("Apple Wallet alone: apple=%v simplefin=%v any=%v", cfg.ImportAppleWallet, cfg.ImportSimpleFIN, cfg.TransactionImport())
+	if !cfg.FeedbackDisabled {
+		t.Error("ECONUMO_FEEDBACK=false must disable feedback")
 	}
 
-	for _, key := range []string{"ECONUMO_IMPORT_APPLE_WALLET", "ECONUMO_IMPORT_SIMPLEFIN"} {
-		t.Setenv(key, "yes please")
-		if _, err := Load(); err == nil {
-			t.Errorf("malformed %s must fail at boot", key)
-		}
-		t.Setenv(key, "false")
+	t.Setenv("ECONUMO_FEEDBACK", "nope")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_FEEDBACK must fail at boot")
 	}
 }
 

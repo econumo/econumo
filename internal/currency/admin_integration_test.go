@@ -81,8 +81,19 @@ func TestAddCurrency(t *testing.T) {
 	}
 
 	// Invalid code -> validation error.
-	if _, err := svc.AddCurrency(ctx, "TOOLONG", nil, nil); !isValidationErr(err) {
-		t.Fatalf("AddCurrency(TOOLONG): want validation error, got %v", err)
+	for _, code := range []string{"TOOLONG", "DOGEX", "EU", "ET1", "VEF_DICOM"} {
+		if _, err := svc.AddCurrency(ctx, code, nil, nil); !isValidationErr(err) {
+			t.Fatalf("AddCurrency(%s): want validation error, got %v", code, err)
+		}
+	}
+
+	// A 4-letter digital currency (Open Exchange Rates publishes DOGE, DASH) is
+	// a valid global code; with no ICU entry its symbol is the code itself.
+	if created, err := svc.AddCurrency(ctx, "doge", nil, nil); err != nil || !created {
+		t.Fatalf("AddCurrency(doge) = %v, %v; want created", created, err)
+	}
+	if dogeSymbol, _, _ := readCurrency(t, db, "DOGE"); dogeSymbol != "DOGE" {
+		t.Errorf("DOGE symbol = %q, want DOGE", dogeSymbol)
 	}
 
 	// Out-of-range fraction digits are rejected rather than silently truncated

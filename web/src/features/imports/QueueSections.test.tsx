@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { toast } from 'sonner'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import { useImportQueue } from './queries'
 import { FailedImportsSection, SkippedSection, ToReviewSection } from './QueueSections'
@@ -43,7 +43,7 @@ function renderSections(importQueue: unknown) {
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
@@ -73,11 +73,10 @@ it('an unmapped card header opens the map dialog in place and links the card', a
   renderSections({ queued: [queued()], skipped: [], failed: [] })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Map to account' }))
-  const select = await screen.findByLabelText('Account')
-  const option = select.querySelectorAll('option')[1] as HTMLOptionElement
-  await user.selectOptions(select, option.value)
+  await user.click(await screen.findByRole('combobox', { name: 'Account' }))
+  await user.click(await screen.findByRole('option', { name: fixtureAccounts[0].name }))
   await user.click(screen.getByRole('button', { name: 'Map' }))
-  await waitFor(() => expect(body).toEqual({ sourceId: 's1', externalAccountId: 'Apple Card', accountId: option.value, externalName: 'Apple Card' }))
+  await waitFor(() => expect(body).toEqual({ sourceId: 's1', externalAccountId: 'Apple Card', accountId: fixtureAccounts[0].id, externalName: 'Apple Card' }))
   expect(screen.queryByText('WALLET PAGE')).not.toBeInTheDocument()
 })
 

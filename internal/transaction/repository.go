@@ -42,6 +42,13 @@ type Repository interface {
 	// accounts, keyed by account id. Accounts that do not exist are absent.
 	TransactionsRevisions(ctx context.Context, accountIDs []vo.Id) (map[string]int64, error)
 
+	// DayKeys returns, for every transaction on accountID during spentAt's day,
+	// its key on that account's side, keyed by transaction id.
+	DayKeys(ctx context.Context, accountID vo.Id, spentAt time.Time) (map[string]string, error)
+
+	// SetSideKey stores key as id's position on accountID's side.
+	SetSideKey(ctx context.Context, accountID, id vo.Id, key string) error
+
 	// ReplaceLabels rewrites a transaction's label links; the caller runs this
 	// inside the same tx as Save so the classification and the row commit or
 	// roll back together.

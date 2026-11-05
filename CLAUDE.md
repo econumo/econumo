@@ -28,7 +28,9 @@ required for the smoke tier.
 
 ```bash
 make go-test         # SMOKE: build + vet + gofmt + OpenAPI-docs-fresh + sqlite unit/integration + coverage gate
-make test            # FULL: go-test + the sqlite-vs-PostgreSQL engine-comparison suite + the frontend suite
+make test            # FULL: go-test + the sqlite-vs-PostgreSQL engine-comparison suite + the release
+                     #       upgrade suite + the frontend suite
+make test-upgrade    # upgrade databases written by published release binaries to this checkout
 make go-build        # Compile the binary to ./econumo (regenerates OpenAPI docs first)
 make go-run          # Run the server locally (reads .env; regenerates OpenAPI docs first)
 make go-lint         # build + vet + gofmt + OpenAPI-docs-fresh check
@@ -61,7 +63,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `IMPORT_APPLE_WALLET` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `FEEDBACK` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. The merge is per server: typing a
@@ -93,7 +95,7 @@ make mobile-android   # sync + open in Android Studio
 
 ```bash
 make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/econumo:dev
-                   # AND mirror the `dev` binaries to the private R2 bucket
+                   # AND publish the `dev` channel to the private R2 bucket with ship
 ```
 
 Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
@@ -107,23 +109,34 @@ workflow then creates no branch. `latest` only moves for the highest version
 released so far. See `.claude/skills/publish-release` for the full process.
 Everything publishes to `ghcr.io/econumo/econumo` only.
 
-**R2 binary mirror.** Both `make publish-dev` and the release workflow also
-upload the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}` +
-`SHA256SUMS`) to a **private** Cloudflare R2 bucket via `make cdn-upload`
-(aws S3 CLI). Keys are namespaced `s3://$(R2_BUCKET)/$(R2_PROJECT)/<channel>/`
-(defaults `econumo`/`econumo`; the bucket hosts several projects), channel ∈
-`dev` | `latest` | `vX.Y.Z`. The bucket has no public domain — objects are
-fetched via the S3 API / signed URLs. In the release workflow the channels gate
-exactly like the image tags: the version channel always, `latest/` and `dev/`
-only when their checkbox is set. Endpoint + credentials come from the
-environment, never committed, and are `ECONUMO_`-prefixed so several projects'
-R2 targets can coexist in one shell: `ECONUMO_R2_ENDPOINT`
-(`https://<acct>.r2.cloudflarestorage.com`, required) plus optional
-`ECONUMO_R2_ACCESS_KEY_ID` / `ECONUMO_R2_SECRET_ACCESS_KEY` (mapped to `AWS_*`
-for the aws subprocess only; unset falls back to the `~/.aws` profile). In CI
-the GitHub secrets `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are
-mapped to those `ECONUMO_R2_*` names in the step's `env:`. Local use needs the
-aws CLI installed.
+**R2 release (ship).** Both `make publish-dev` and the release workflow also
+publish the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}`), the
+systemd unit template `deploy/ship/econumo.service` and
+`deploy/ship/econumo.env.example` to the **private** Cloudflare R2 bucket `ship`
+with [ship](https://github.com/dmtrkzntsv/ship). Two Makefile targets, the same
+names in every ship project: `make ship-dist` builds (`release-binaries`) and
+stages the flat folder `dist/ship/` (ship rejects any other file;
+`SHIP_SKIP_BUILD=1` takes already-built binaries from `release-out/`), and
+`make ship-publish VERSION=… CHANNELS=…` runs `ship publish econumo --path
+dist/ship [--version $(VERSION)] [--channels $(CHANNELS)]` without building.
+ship writes its own `SHA256SUMS` and moves the channels. A release publishes the
+immutable version `vX.Y.Z` plus `latest`/`dev` only when their checkbox is set
+(exactly like the image tags); `VERSION=dev` (`make publish-dev`, the Publish
+Dev workflow) publishes only the moving `dev` channel. Hosts run `ship
+install|update econumo`. The unit is a TEMPLATE:
+only ship's placeholders (`{{SERVICE}} {{USER}} {{BIN}} {{BIN_DIR}}
+{{ENV_FILE}} {{DATA_DIR}} {{RUN_DIR}} {{UNIT}}`) are allowed, and it must not
+use `DynamicUser=`/`StateDirectory=`/`RuntimeDirectory=` (ship creates the user
+and directories). Credentials come from ship's config or `SHIP_R2_ENDPOINT`,
+`SHIP_R2_ACCESS_KEY_ID`, `SHIP_R2_SECRET_ACCESS_KEY` (Read & Write token; the
+bucket defaults to `ship`); in CI the GitHub secrets `R2_ENDPOINT`,
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are mapped to them and
+`dmtrkzntsv/ship@v0` puts `ship` on the PATH. The workflows run both targets
+and the unit template from the workflow's own commit (`make -f
+.ship-tools/Makefile ship-dist SHIP_SKIP_BUILD=1
+SHIP_TEMPLATES=.ship-tools/deploy/ship`, then `ship-publish`), so hotfixes from
+release branches cut before ship still publish. Local use needs `ship` installed
+(`brew install dmtrkzntsv/tap/ship`).
 
 ### Branch naming
 
@@ -178,7 +191,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   ├── auth/ ................ password hashing + AES email encryption
 │   │   ├── clock/ ................ time source abstraction
 │   │   ├── ai/ .................. OpenAI-compatible / Anthropic Messages client (AI integration); imports nothing internal
-│   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
+│   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API | SMTP)
 │   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
 │   │                              distinct from the repo-root web/, the React SPA): middleware, router,
 │   │                              response envelope (httpx), SPA server, apidoc — no feature logic
@@ -304,7 +317,8 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   `client_secret_post`/`client_secret_basic`). Redirect URIs must be https (ASCII host
   only) or http on a loopback host (`127.0.0.1`, `[::1]`, `localhost`; the port is
   ignored when matching), at most 2048 bytes; clients never approved are purged
-  on the next registration once 30 days old. Registration is behind the global per-endpoint rate cap; the token
+  on the next registration once 30 days old, and at most 1000 are kept, oldest out first, so
+  anonymous registration cannot grow the database without bound. Registration is behind the per-IP per-endpoint rate cap; the token
   endpoint has no limiter of its own.
 - Consent lives at the SPA route `/oauth/authorize`. The session is a localStorage
   bearer token, so the browser cannot carry it to a Go-rendered page: the SPA calls
@@ -351,20 +365,42 @@ user (share invites, imported transactions to review, failed imports, failing
 syncs) surfaces in the Inbox (`web/src/features/inbox`, `/inbox`), fed by one
 `useInbox()` hook that also drives the sidebar badge; new attention items go
 there, never into a new top banner (that slot is reserved for the subscription
-and server-version notices). Runtime config
+and server-version notices, and the install-the-app banner,
+`web/src/features/install/InstallBanner.tsx`, which also tops the signed-out
+`AuthFrame` pages); `TopBanner` in `web/src/app/layouts` shows only one of them
+at a time, in that order). Runtime config
 (`window.econumoConfig`) is served at `/econumo-config.js`: for a running
 instance the Go server generates the whole document (see the "Web UI config"
 bullet below); `public/econumo-config.js` is only the static fallback used
 when there is no Go server in front of the SPA (the mobile app's bundled
 WebView, `pnpm dev` without a backend). Versions are two separate keys:
 `VERSION` is the real running version (`getVersion()` — every comparison:
-analytics `$app_version`, the update check, the query-cache buster, the mobile
-compatibility floors), `VERSION_LABEL` is the text the UI DISPLAYS
+analytics `$app_version`, the update check, the mobile
+compatibility floors), `VERSION_REF` the source revision of the build
+(`getVersionRef()`, `""` when unknown; `internal/version.Ref()`: the
+ldflags-stamped `version.Commit`, else the toolchain's `vcs.revision`), which only
+keys the persisted caches — the query-cache and IndexedDB busters are
+`getCacheBuster()`, `VERSION+VERSION_REF`, so a published dev deploy (every dev
+build reports `VERSION` `dev`) restores nothing an older build cached. A build with no
+ref (a bare `docker compose up --build`, which has no `.git` in its context) or one
+from a dirty tree shares its key with the previous build; bump `FORMAT_VERSION` in
+`transactionStore.ts` when such a build changes the stored shape — `VERSION_LABEL` is the text the UI DISPLAYS
 (`getVersionLabel()` — the sidebar footer and the settings row, nothing else),
 set by the runtime `ECONUMO_VERSION` and falling back to `VERSION`. Vite also
 inlines a build-time `ECONUMO_VERSION` as the bundle's own version (the Docker
 build arg of the same name sets it per image build, default `dev`) — that one
-IS a real version, used by the mobile app where no server config is present.
+IS a real version, used by the mobile app where no server config is present;
+`ECONUMO_COMMIT` (the build arg and env var of the same name, set by both publish
+workflows and the Makefile from the checked-out sha) is inlined the same way as the
+bundle's own `VERSION_REF`.
+The sidebar's "What's new in vX.Y.Z" card (`web/src/features/whatsNew`) shows when the
+running `VERSION` is a release newer than the user's `last_seen_version` option (absent =
+an existing user who upgraded; new accounts are seeded with the running release, a `dev`
+build seeds and shows nothing; the option only moves forward; web only, never in the native
+app); opening `https://econumo.com/releases/<version>` or
+dismissing it writes the running version through `update-last-seen-version`. An upgrade
+into a new minor line links that line's `.0` notes (v1.6.x -> v1.7.2 shows v1.7.0), a patch
+upgrade within the line the running patch. Hidden until onboarding is completed.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Service worker** (`web/sw/sw.js`, registered by `web/src/lib/serviceWorker.ts`, production
@@ -483,9 +519,10 @@ mandatory `Origin` header, which the collector does not record)),
 plus session-wide account-profile facts (`web/src/lib/analyticsProfile.ts`:
 total counts of connections, budgets, accounts, categories, payees, tags and
 labels — active, hidden and archived alike, unaccepted invites excluded — plus
-`signup_year`, `months_since_signup` and `apple-wallet` (`on` when the cached
+`signup_year`, `months_since_signup` and `import_apple_wallet` (`on` when the cached
 source list contains an Apple Wallet integration, `off` otherwise; omitted
-until the source list loads)), stamped onto
+until the source list loads)) and the chosen `theme` (`system`/`light`/`dark`, the
+local preference, not the resolved appearance), stamped onto
 each event at capture time (the SDK has no custom batch attributes). A per-user
 `analytics` option (`users_options`, on by default) gates capture, is
 mirrored to `localStorage` for a synchronous boot-time check (`get-user-data`
@@ -572,6 +609,22 @@ Tests live alongside the Go code:
 - `internal/test/enginecompare/` — the strongest contract: replays the same
   catalogue on BOTH SQLite and PostgreSQL and asserts byte-identical
   responses (build tag `enginecompare`).
+- `internal/test/upgradetest/` — the release upgrade suite (build tag `upgrade`, `make
+  test-upgrade`, its own CI job; linux only). Every other suite starts from an empty database, so
+  none can see a migration that misbehaves only on a database an older release left behind (#413).
+  For the newest patch of every minor line from v1.2.0 on (read from the git tags;
+  `ECONUMO_UPGRADE_FROM` overrides) and for SQLite and PostgreSQL, it downloads the release's
+  `econumo-linux-<arch>` from GitHub Releases (checked against `SHA256SUMS`, cached in
+  `ECONUMO_UPGRADE_CACHE`), boots it on an empty database, seeds a household through its HTTP API
+  (version-tolerant: fields an old release lacks are ignored, routes it lacks are skipped), records
+  its reads, then boots this checkout's binary on the same database (twice) and requires: a schema
+  equal to a fresh install's (columns by name, indexes, foreign keys), the same migration set, no
+  newly applied migration numbered below the release's newest one (the hazard behind #413; past
+  cases are allowlisted in `releasedOutOfOrder`), the release's sessions and PATs still valid and
+  login working, every value the release returned still returned (extra fields and rows allowed;
+  changes a release made on purpose are listed in `intended`, scoped to older sources), exact
+  balances and budget figures, working writes, and no ERROR log line. A new migration therefore
+  needs a version above every RELEASED one, a hotfix release included.
 - `internal/test/fixture` — shared fixture builder (users, accounts, access tokens, ...);
   `internal/test/authstub` — a stub `middleware.TokenAuthenticator` for feature api tests
   (the bearer token IS the user id string).
@@ -588,7 +641,8 @@ Tests live alongside the Go code:
   transaction fingerprint (rows, labels, author/recurring links, the display names and avatars
   of the authors) changes without its revision moving. Smoke on sqlite; under
   `-tags enginecompare` also on PostgreSQL. A new write path that touches an account's
-  transactions fails here until it bumps.
+  transactions fails here until it bumps, and one that stores a row without its sort keys
+  (see "Transaction order") fails here too.
 - `internal/infra/oidc/oidctest` — an in-process fake OpenID provider (discovery, authorize,
   token, JWKS, userinfo, end-session) used to drive the real `internal/oauth` callback through
   `httptest`, so provider-flow tests exercise actual protocol code rather than stubbing it out.
@@ -620,7 +674,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   no token-related configuration. Persist the `/app/var` volume (the db) to keep data and
   logins valid. Leftover `ECONUMO_JWT_*` variables from older builds are ignored.
 - `ECONUMO_DATA_SALT` — **Deprecated and IGNORED by the API/repositories**, which always run
-  salt-free (plaintext emails, `lower(email)` as the lookup key). It is consumed by exactly one
+  salt-free (plaintext normalized emails, `email` as the lookup key). It is consumed by exactly one
   code path, the `data:remove-salt` migration (below), which reads it to decrypt existing data.
   Set it to your old salt, run that command, then unset it. Until you migrate, a still-salted
   database has unreadable emails, so those users cannot log in (the intended push to migrate);
@@ -752,7 +806,13 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `econumo-config.js` — `ALLOW_CUSTOM_API`, `INSTANCE_ID`, etc. — is generated).
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
-  each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
+  each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend;
+  `smtp://[user:pass@]host[:port]` (default 587, STARTTLS REQUIRED — a relay that does not offer it
+  is refused rather than sent a reset code in the clear) and `smtps://…` (implicit TLS, default 465)
+  send through any SMTP server (`internal/infra/mailer/smtp.go`, stdlib `net/smtp`, AUTH PLAIN or
+  LOGIN, quoted-printable UTF-8 text). SMTP requires `?from=` (the envelope sender). A loopback host
+  may skip TLS and is not certificate-checked; `?insecure=true` extends that to any host (a relay on
+  a trusted Docker network). Parse errors never echo the DSN, which carries the password.
   From / Reply-To fold in as query params: `resend://<key>?from=…&reply_to=…` (also accepted by
   `console://`/`log://`). Parsed once in `config.Load` (a bad scheme fails at boot). Replaces the former
   `RESEND_API_KEY` / `ECONUMO_MAIL_FROM` / `ECONUMO_MAIL_REPLY_TO`.
@@ -767,21 +827,27 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
-- `ECONUMO_IMPORT_APPLE_WALLET` / `ECONUMO_IMPORT_SIMPLEFIN` — the two transaction-import
-  providers (strict booleans, Apple Wallet defaults `true`, SimpleFIN `false`;
-  malformed fails at boot). A provider that is
-  off loses its own routes (Apple Wallet: `ingest-apple-wallet-event`; SimpleFIN:
-  `claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
+- `ECONUMO_IMPORT_SIMPLEFIN` — the SimpleFIN pull provider (strict boolean, default `false`;
+  malformed fails at boot). Apple Wallet import has no switch and is always on (the former
+  `ECONUMO_IMPORT_APPLE_WALLET` is ignored), so `internal/imports/api` is always mounted with
+  import rules, the queue and run history. While SimpleFIN is off it loses its own routes
+  (`claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
   `sync-source`), `create-source` refuses it with `import.provider_unsupported`, and its existing
   sources and their queued/failed rows drop out of `get-source-list` and `get-queued-event-list`
-  (`imports.Service.DisableProvider`; stored data is untouched). With BOTH off, `server.BuildAPI`
-  does not mount `internal/imports/api` at all, so every `/api/v1/import/*` route 404s and import
-  rules, the queue and run history are gone with it (`config.Config.TransactionImport()` = either
-  on). The SPA reads the served `IMPORT_APPLE_WALLET` / `IMPORT_SIMPLEFIN` keys: each provider's
-  settings page and route follow its own flag; Import rules, import history, the Data page's
-  rules/history rows and the Inbox's import sections need either; with both off it never fetches
-  an import endpoint. CSV import/export is not part of it and is always on. The apiparity harness
-  turns both on so the catalogue keeps covering the import routes.
+  (`imports.Service.DisableProvider`; stored data is untouched). The SPA reads the served
+  `IMPORT_SIMPLEFIN` key for SimpleFIN's settings pages and routes; Apple Wallet, Import rules,
+  import history and the Inbox's import sections are always shown (there is no
+  `IMPORT_APPLE_WALLET` key any more). CSV import/export is not part of it and is always on.
+  The apiparity harness turns SimpleFIN on so the catalogue keeps
+  covering its routes.
+- `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
+  fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
+  it on). Served as `FEEDBACK`; `false` hides the Settings row, the form's only entry point. The
+  form (`web/src/features/feedback`) posts `type`, `message`, an optional `email` (empty by
+  default, the user's own offered as a one-tap chip), `app_version` and `hosting` (`cloud`/`self-hosted`) from the
+  BROWSER straight to the Twillingate form `feedback` of the product-analytics project
+  (`submitForm` in `web/src/lib/analytics.ts`, the SDK's wire shape without the SDK), so it
+  works with analytics off and carries no `$user_id` — only the synthetic `$host`.
 - `ECONUMO_IMPORT_MATCH_DAYS` / `ECONUMO_IMPORT_TIP_DAYS` / `ECONUMO_IMPORT_TIP_TOLERANCE` /
   `ECONUMO_IMPORT_TOKEN_MIN_LENGTH` — transaction-import matcher thresholds (defaults 3 / 5 / 20 / 3;
   ranges 0–31 days, 0–31 days, 0–100 percent, 1–16 chars). Strict parse: malformed or out-of-range
@@ -819,7 +885,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
   max attempts per username/email per window (defaults 5/5/3/5; login and reset count
-  only FAILED attempts and clear on success, remind and register count every request).
+  only FAILED attempts and clear on success, remind and register count every request). A successful
+  login clears only the caller's own per-address-and-IP counter, never the per-address ceiling: two
+  SQLite accounts can differ only by the case of a non-ASCII letter and share that key.
   `ECONUMO_RATE_LIMIT_ACCEPT_INVITE` — cap on `connection/accept-invite` attempts per
   authenticated user per window (default `10`; every attempt counts), guarding the short
   invite code against online brute force.
@@ -832,7 +900,34 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_SYNC` — `import/sync-source` calls per user per window (default `10`; every request counts — a sync is a real bridge round trip).
   `ECONUMO_RATE_LIMIT_PREVIEW_RULE` — `import/preview-rule` calls per user per window (default `120`; every request counts — the rule editors fire it from a 300 ms typing debounce, and each call walks every matching link).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
-  `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
+  `ECONUMO_RATE_LIMIT_IP` — per-endpoint cap per minute per client IP (default `60`), replacing the
+  former cap shared by all callers (`ECONUMO_RATE_LIMIT_GLOBAL`, now ignored with a boot WARN), which
+  any one caller could fill to lock everyone out. **No limit may be shared by unrelated callers.**
+  `ingest` and `preview-rule` are exempt (`IPExempt` in `internal/server/server.go`): one user's own
+  limit could fill the cap for a household behind one IP, and their effects stay inside that account.
+  The limits keyed by an email address (`login`, `reset`, `remind`, `register`, `verify-email`,
+  `confirm-email`) count per address AND client IP (`allowEmailAttempt`), so a stranger locks out
+  only their own IP, under a per-address ceiling across all IPs: 10x the limit, but 2x for `reset`
+  and `confirm-email`, because a 6-digit code must not get many more guesses. Enough IPs can still
+  reach a ceiling and lock that one address. The `login`, `reset` and `confirm-email` ceilings of real
+  accounts and the per-user `accept-invite` and `confirm-email-change` counters are `Pinned` (never
+  evicted before they expire), so a spray of invented addresses from many IPs cannot wipe them from
+  the 10,000-entry counter map. Addresses with no account count in a separate evictable ceiling
+  that answers 429 at the same point, so the limit does not reveal which accounts exist, unless a
+  spray happens to evict it first. Accepted residual: many accounts on many IPs have no
+  overall ceiling on `accept-invite`, `request-email-change`, `claim-setup-token` and `sync-source`.
+  `ECONUMO_CLIENT_IP_HEADER` — the header your reverse proxy puts the client IP in (e.g.
+  `CF-Connecting-IP`); a request without a valid value counts as its connecting address. Alone, it
+  is believed from anyone, which is safe only when a firewall lets nothing but the proxy reach the
+  server: a direct caller could otherwise forge it, dodging the limits or spending another IP's.
+  `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` — optional comma-separated IPs/CIDRs of those proxies (for
+  Cloudflare, https://www.cloudflare.com/ips/ plus the `cloudflared` address when using a tunnel).
+  With it the header counts only on a request from a listed address (default header
+  `X-Forwarded-For`), so direct and proxied traffic can share one instance, and a list is walked
+  from the nearest entry to the first address outside the proxies. Neither set: the client IP is the
+  connecting address, so behind a proxy all its users count as one IP (logged once as a WARN when
+  a forwarding header arrives). Resolved in
+  `middleware.ClientIP`; IPv6 is grouped by /64; the IP stays in memory and is never logged.
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.
@@ -849,7 +944,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   config from a URL instead of the bundled `liltag-config.json`),
   `ECONUMO_LILTAG_CACHE_TTL` (default the JS number `0`), and `ECONUMO_VERSION`
   (`VERSION_LABEL`, the version text the UI DISPLAYS — set it to relabel a
-  demo/staging box; unset falls back to `VERSION`). `VERSION` itself has NO env
+  demo/staging box; unset falls back to `VERSION`). `VERSION_REF` (always present, `""` when the build carries no
+  revision) has no env override either. `VERSION` itself has NO env
   override: it always carries the binary's `internal/version.Version`, because
   the SPA compares it as a real version (analytics `$app_version`, the update
   check, the mobile app's compatibility floors), and a display label must never
@@ -860,8 +956,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `IMPORT_APPLE_WALLET` and
-  `IMPORT_SIMPLEFIN` are always present (server truth). `MCP_URL` is the MCP OAuth resource
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`,
+  `IMPORT_SIMPLEFIN` and `FEEDBACK` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
   instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom
@@ -958,7 +1054,7 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   transaction (`backend.TxManager.BeforeCommit` / `TxValue`) and flushed once just before
   COMMIT as one UPDATE per account in sorted id order (a stable lock order, so concurrent
   writers cannot deadlock on it); outside a transaction they apply immediately. Sites:
-  the transaction repo (`Save`, `ReplaceLabels`, `LinkRecurring`, `Delete`), account
+  the transaction repo (`Save`, `ReplaceLabels`, `LinkRecurring`, `Delete`, `SetSideKey`), account
   `SaveCorrection`, category/payee/tag merge and delete, label merge and delete, recurring
   delete, imports `InsertLink` / `UpdateLink` (only when its `transaction_id` changes) /
   `DeleteSource`, and the user `Save` when the name or avatar changes. The account DTO
@@ -966,6 +1062,29 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   `get-account-transaction-list` returns for the account (a size hint for packing downloads,
   read from the transactions indexes alone, a transfer counted on both sides). `internal/test/revisionguard` enforces
   the rule (see Testing).
+- **Transaction order.** Within a day, transactions are ordered by fractional keys
+  (`internal/shared/sortkey`, the scheme categories, tags, payees, accounts and budget
+  elements use), never by the time of day: `transactions.sort_key` places the row on its
+  source account, `recipient_sort_key` (transfers only, else NULL) on its recipient account,
+  so reordering one account never moves a transfer on the other. A higher key is listed
+  higher. Order everywhere is day DESC, the side key of the listed account DESC (`sort_key`
+  for a list spanning several accounts), then `id`, applied by the database: the
+  transaction repo's queries (`ListTransactionsByAccount`, `ListByAccountIDs`), `dayKeyOrder`
+  in the budget drill-down SQL; in the SPA `compareTransactions`
+  (`web/src/features/transactions/order.ts`) in the SPA. Keys are assigned in the storage
+  layer only: the transaction repo's `write` gives a row with no key on a side the top of its
+  day there (`internal/infra/txorder`, `Placer.Top`: just above the highest key either column
+  holds for that account and day), the account repo does the same for corrections, and
+  `model.Transaction.Update` drops a side's key when the day or that side's account changes.
+  New rows therefore land on top of their day; the CSV importer inserts bottom-up so a day's
+  rows keep file order. `POST /api/v1/transaction/move-transaction` (the account page's drag
+  and drop) takes `aboveId`, the row now directly above the moved one on that account (null =
+  top of the day), and writes ONE key, between that row and the one below it; nothing else
+  is renumbered, except rows whose keys tie (two inserts that raced), which are split first.
+  An `aboveId` no longer on that day is refused with `transaction.day_changed`; a different
+  `date` also moves the row to that day (time kept), which needs write access to every
+  account it touches (`transaction.cannot_move`). `revisionguard` also fails any write that
+  leaves a row without its keys.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
 - Keep `.sql` query files ASCII-only, including comments — a multibyte character (an em dash,
@@ -975,7 +1094,11 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   the boot runner invokes the named CLI command in version order between SQL files, records the
   version only on success, and gives it no surrounding transaction — every `migration:*` command
   must be idempotent. `serve` and `data:import-sqlite` pass `cli.MigrationCommandRunner`; test
-  databases pass `migrate.NoCommands`.
+  databases pass `migrate.NoCommands`. A command step runs TODAY's feature code against the schema
+  as it stands at its version, so on a database from an older release it must not write through a
+  path that needs a column a later migration adds: number it above every migration its code
+  depends on, and when a later migration changes what it writes, move the step to a new version and
+  leave a `SELECT 1;` no-op at the old one (as `20260817000001` -> `20261101000000`).
 
 ## CLI / management commands
 
@@ -992,6 +1115,8 @@ user:verify-email <email>
 user:set-access <email> <full|readonly> [YYYY-MM-DD]
 user:show <email>
 currency:update-rates [date]
+currency:show-rate-gaps [start] [end] [--daily]
+currency:backfill-rates <start> [end] [--daily]
 currency:add <code> [name] [fraction-digits]
 token:purge [days]
 data:remove-salt
@@ -999,11 +1124,14 @@ data:import-sqlite [--force] <sqlite-path>
 migration:zero-deleted-accounts
 migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
+migration:seed-transaction-sort-keys
+migration:copy-access-tokens
+migration:normalize-emails
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
-back to plaintext, so `ECONUMO_DATA_SALT` can be removed. `lower(email)` is the
-unique lookup key (unique expression index `users_email_lower_uniq`), so a
+back to plaintext, so `ECONUMO_DATA_SALT` can be removed. `email` is the
+unique lookup key (unique index `users_email_uniq`), so a
 still-salted instance MUST run this command after upgrading, before that index
 is relied on — otherwise emails stay encrypted and those users can't log in
 (they are already login-broken pre-migration, so this is not a regression).
@@ -1011,6 +1139,26 @@ Run it **while the old salt is still set** (it needs it to decrypt), then
 unset `ECONUMO_DATA_SALT` and restart. It refuses to run with an empty salt,
 and is idempotent (already-plaintext rows are skipped).
 Back up the DB first — the decryption is one-way in practice.
+
+`currency:add` takes a 3- or 4-letter code: global codes may be 4 letters because
+Open Exchange Rates publishes some digital currencies that way (DASH, DOGE), and
+the rate loader always sends `show_alternative=1` so those (ETH, LTC, XMR, ...)
+get rates like any ISO currency. Users' own custom currencies stay at 3 letters.
+
+`currency:show-rate-gaps` lists the months (per day with `--daily`) in which a
+global currency in use (on an account, deleted ones included, a budget, a budget
+element or a user's display currency; never the base or a custom currency) has
+no rate against `ECONUMO_CURRENCY_BASE`. Conversions average each month's rates
+and a month without any borrows the latest earlier month, so one rate a month is
+enough for them. Dates are `YYYY-MM-DD` or `YYYY-MM`; the start defaults to the
+oldest transaction (today when it is future-dated) and the end to today (UTC, a
+later end is clamped).
+`currency:backfill-rates` loads exactly those gaps from Open Exchange Rates, one
+request per gap, dated the gap's first day (the 1st of the month, or the day),
+requesting every global currency like `currency:update-rates` (the in-process
+updater skips while the newest stored date is recent, so a backfilled date must
+be complete). Its start is required because every gap
+costs API quota; it stops at the first failed request, and a rerun resumes.
 
 `data:import-sqlite` copies every table from an existing SQLite database into
 the configured PostgreSQL (`DATABASE_URL` must be a `postgres://` URL). It runs
@@ -1025,7 +1173,8 @@ schema-version mismatch between source and target.
 
 `migration:zero-deleted-accounts` writes a "Balance adjustment (account
 deleted)" correction so every deleted account's balance is zero; idempotent;
-also invoked automatically at boot as migration step `20260817000001`.
+also invoked automatically at boot as migration step `20261101000000` (it ran at
+`20260817000001` until that broke upgrades from v1.3.x, see command steps above).
 
 `migration:seed-analytics-option` backfills the per-user `analytics`
 `users_options` row for every user that has none, seeded from the deprecated
@@ -1040,6 +1189,49 @@ the live schema, skips `schema_migrations` (the instance id's anchor), parses
 each value with the exact driver layout and leaves anything unparseable as
 stored; idempotent, a no-op on PostgreSQL, and invoked automatically at boot as
 migration step `20260915000001`.
+
+`migration:seed-transaction-sort-keys` gives every transaction without one a sort key on
+each account side (see "Transaction order"), numbering each account's days in the order the
+lists used before keys existed (spent_at DESC, id), the rows it is the source of and the
+transfers it receives together. One account per DB transaction, with that account's revision
+bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
+migration step `20261024000001`, right after the SQL file that adds the columns.
+
+`migration:normalize-emails` rewrites stored addresses to `model.NormalizeEmail` (boot step
+`20261103000001`, right after the SQL file that swaps the `lower(email)` index for a unique one on
+`email`). This changes the spelling users see, and the original case is not kept. Addresses that
+normalize alike could already exist, since SQLite's `lower()` folds ASCII only: an address already
+normalized keeps its place, then the oldest account takes the normalized form, and the others keep
+their spelling, each logged once at WARN by user id, because their data cannot be merged and failing
+the boot would take the instance down. Such an account signs in by its exact spelling (lookups try it
+before the normalized form), a save leaves its spelling alone, and it still shares rate-limit counters
+with the other account until the operator moves it with `user:change-email`. Idempotent, and rerunning
+it by hand normalizes such an account once the other has moved away. Rows with the shape of ciphertext
+(`auth.LooksEncrypted`) are skipped, because lowercasing ciphertext would destroy it; `data:remove-salt` stores
+what it decrypts normalized by the same rule, and refuses, naming both user ids, when two accounts
+decrypt to byte-identical addresses.
+
+`migration:copy-access-tokens` is step 2 of the three-step `access_tokens` repair
+(`20261031000010` creates `access_tokens_new` in the final shape, `20261031000011` runs
+this command, `20261031000012` drops the old table and renames the new one; sqlite only,
+the pgsql files are no-ops that keep the version sets equal; `20261031000000`-`02` stay
+unused because unreleased builds of this fix recorded them for different steps).
+`provider`/`id_token` go missing on one upgrade path: `20260907000000` (v1.5.0) adds them,
+while the lower-numbered `20260901000000` (v1.6.0) was released later and rebuilds the
+table to add a NOT NULL `scope` without carrying them over, so a v1.5.x instance applies
+that still-pending rebuild afterwards and loses them, and login then fails with `no such
+column: provider` because minting a session writes both. The copy is a command because SQL
+cannot name a column that may be missing: it copies `provider`/`id_token` where the old
+table still has them (fresh installs, anything upgraded from v1.6.x) and writes NULL where
+they were dropped (those values are unrecoverable, so such a session skips the
+RP-initiated logout redirect); every other column, `scope` included, is copied verbatim.
+Idempotent: it replaces the copy in one transaction, and is a no-op once the swap has
+removed `access_tokens_new`. Step 1 drops a stale `access_tokens_new` before creating it.
+Step 3 only drops the old table, renames the new one and recreates the indexes (their
+names are taken until the old table is gone), so a write to `access_tokens` between steps
+2 and 3 would be lost; in a boot the two run back to back. The runner also logs a WARN
+when it applies any migration numbered below the highest already applied (the ordering
+that caused this), excluding anything at or below the newest legacy drop-in version.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
@@ -1088,7 +1280,8 @@ In the distroless image these run via the binary directly, e.g.
   `oauth/complete-link`, `oauth/unlink-identity`, `authserver/revoke-connected-app`
   and `authserver/decline-authorization` (declining writes nothing) —
   plus `update-analytics`: withdrawing from product analytics is a privacy right, not a
-  paid feature, so it must work regardless of access level); `GET` reads are never restricted.
+  paid feature, so it must work regardless of access level, and `update-last-seen-version`,
+  so the "what's new" card stays dismissable); `GET` reads are never restricted.
 
 ## Authentication
 
@@ -1239,7 +1432,7 @@ data unreadable. Most are also asserted by the test suite.
 
 ### Auth crypto (`internal/infra/auth/`)
 - **Password hash**: versioned by `users.algorithm`. `sha512` (legacy, all pre-existing rows): sha512, 500 iterations, base64 (88 chars), salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`; verify rejects len≠88 or a `$`, constant-time. `argon2id` (every new hash: registration and all password changes): PHC string `$argon2id$v=19$m=19456,t=2,p=1$…$…` (OWASP params), salt embedded in the hash — the `salt` column persists for sha512 rows. Verification dispatches on the column; unknown values fail closed.
-- **User lookup key**: `lower(email)` — enforced unique by the expression index `users_email_lower_uniq`; repo lookups are `GetByEmail`/`ExistsByEmail` (`WHERE lower(email) = lower(?)`). The legacy `identifier` column is retained (dropping a NOT NULL UNIQUE column would force a SQLite table rebuild) but retired: it now holds the row's own `id` as a unique non-null placeholder, no longer derived from email. `EncodeService.Hash` (the md5 identifier derivation) was removed — nothing computes it anymore.
+- **User lookup key**: `users.email` holds `model.NormalizeEmail(email)`, computed in Go (the one form every write, lookup, comparison and rate-limit key goes through) because the engines' `lower()` disagree; enforced unique by `users_email_uniq`. The case an address was typed in is not kept. Trim plus Unicode lowercase, except that a non-ASCII letter whose lowercase is ASCII (`İ`, the Kelvin sign) keeps its form, since it spells a different mailbox. Callers hand `GetByEmail`/`ExistsByEmail` the address as typed; the repo tries that exact spelling, then the normalized form. The services normalize on every email write, and `Save` stores the aggregate's spelling verbatim. The legacy `identifier` column is retained (dropping a NOT NULL UNIQUE column would force a SQLite table rebuild) but retired: it now holds the row's own `id` as a unique non-null placeholder, no longer derived from email. `EncodeService.Hash` (the md5 identifier derivation) was removed — nothing computes it anymore.
 - **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
 - **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy email data to plaintext (the repo writes the row `id` into `identifier` automatically, so no re-derivation is needed).
 
@@ -1287,11 +1480,58 @@ data unreadable. Most are also asserted by the test suite.
   shortened, never the note, to fit the 255-character column), and the affected accounts'
   `transactions_revision` moves so synced clients refetch.
 - **Budget element visibility**: a tag/envelope/category appears in `get-budget` when it has spending **or** a limit (current or carried-over) — so a tag with a limit but no transactions stays visible.
+- **Empty plan vs a plan of 0**: a plan of 0 is stored (a limit row with amount 0) and counts as a
+  plan everywhere (an active row stays visible with it, the red short-plan hint), except that an
+  archived row with nothing but a plan of 0 stays hidden; `set-limit` with `amount: null` removes the
+  row. `get-budget` sends `budgeted: "0"` for both and tells them apart with the additive
+  `isBudgeted` (0/1) on elements and savings rows; `get-budget-plan` cells already send `planned: ""`
+  for no row. The SPA maps `isBudgeted: 0` to `budgeted: ''` (`getBudget`), shows an empty plan as
+  a dash (Budget view) or a blank cell (Plan grid) and a plan of 0 as `0`; typing 0 saves 0, an
+  empty input clears, and copying or filling from an empty Plan cell clears the targets.
 - **Account balance day boundary**: "balance as of end of today" uses the **caller's** timezone (`X-Timezone` header), not the server's UTC day.
 - **Recurring transaction scheduling**: templates advance from the scheduled date with
   month-end clamping via a persisted scheduled day (31st → Feb 28 → Mar 31); posting is
   manual (the user acts on a due template) and idempotent on the client-supplied
   transaction id.
+- **Upcoming recurring in Budget/Plan**: the server projects active recurring templates
+  (source OR recipient on a budget member account, partners' included; deleted-account
+  templates skipped) into occurrences
+  (`internal/model/recurring_projection.go`, `internal/budget/{projected_read,upcoming_merge,txlist}.go`,
+  glue `internal/server/glue_budget_recurring.go`). An overdue next payment counts once in the
+  caller's current month, afterwards only occurrences after today. A real transaction dated
+  from the caller's tomorrow on (`X-Timezone`) has not happened yet: every `get-budget` /
+  `get-budget-plan` figure reads the stored transactions through `windowRead` capped at that
+  instant (`internal/budget/dated_read.go`, `asOfTomorrow`; computed in Go, bound as a
+  parameter), and the upcoming pass reads those later rows (`upcomingRead`: the projection
+  plus the stored rows from tomorrow to the window's end, summed per key), so they are
+  upcoming money exactly like a due template. Upcoming money is a HINT
+  on the plan number, never part of the figures: spent/actual, Available, every total and
+  projection (Balance, Total savings, savings `closingBalance`, opening balances, flows,
+  carry-over) are money dated up to today only. `get-transaction-list` keeps listing every
+  real row of the period, future-dated ones included; its `upcoming[]` stays recurring-only. The budget transaction list leads with a "Coming up" group laid out like the
+  plan editor's list (the cell's future-dated rows and its recurring payments still due,
+  soonest first, display only), then a "Posted" heading over the past rows in their day
+  groups; both headings show only when something is still to come. Additive wire fields: `upcoming`/`budgetUpcoming` on
+  `get-budget` elements and children (savings rows and labels carry only `upcoming`), `upcoming` on `get-budget-plan` cells,
+  an `upcoming` array on `get-transaction-list` (read by the plan editor's list and the transaction list's "Coming up").
+  The SPA (`features/budgets/planHint.ts`), from the current month on, on rows
+  that hold a plan: an empty plan stays empty, no suggestion is shown (a plan of 0 is a plan); an
+  expense row (category/tag/envelope) whose plan is below spent + still due shows the plan
+  in red; income and savings are never red; folder, tag-group, total, label and child rows
+  get no hint, and Uncategorized (no plan to hint) is listed only for real money. While a
+  plan is being edited (desktop `LimitEditor`, phone `SetLimitDialog`, Plan grid in-cell
+  input), a cell in the current month or later with spent or upcoming money gets a quiet
+  list (`UpcomingPaymentsPanel`): the still-due recurring payments (repeat icon, overdue
+  marker) merged by date with the cell's own transactions dated after today, each in its own
+  currency with its symbol, in one right-aligned amount column, savings signed; then an
+  "Already spent" / "Already received" / "Already saved" line (by row kind; the cell's spent,
+  which holds none of the rows listed above, hidden at 0) and a "Total" line (spent + still due, cell
+  currency with its symbol), so the column adds up. Headings and Total are set off in the
+  foreground colour, and in the Plan grid the list opens below the cell's frame. The whole
+  list is one button: a press anywhere fills the input with that total (future-dated rows are
+  in upcoming, not in spent, so never added twice) without committing. A cell with nothing still to
+  come (no due payment, no future-dated row) shows no list, Spent/Total lines included.
+  Past months and read-only cells never show it; there is no Post/Skip/Edit of templates from budget views.
 - **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,
   never removes the row — `accounts.currency_id` and `transactions.account_id` cascade from it,
   so a hard delete would silently destroy every account and transaction in that currency. A
@@ -1398,7 +1638,7 @@ data unreadable. Most are also asserted by the test suite.
   importer's own rules never apply there, and the owner's "all" apply reaches those rows.
 - **OAuth/OIDC auto-link and email verification**: a callback with a verified (or
   `ECONUMO_OIDC_TRUST_EMAIL`-trusted) email auto-links to an existing **passwordless**
-  account by `lower(email)` (no matching identity yet) — no confirmation screen, since both
+  account by `email` (no matching identity yet) — no confirmation screen, since both
   the account's address and the new claim were proven by providers. A match on an account
   that has a password is refused (`account_exists_password`), never merged. An unverified
   email is rejected (`email_unverified`) for every intent, including an already-linked
@@ -1451,8 +1691,9 @@ data unreadable. Most are also asserted by the test suite.
   - `:dev` — published locally via `make publish-dev`, or by the release workflow's "Publish Dev" checkbox.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
 - Docker-free: each release attaches single-file linux binaries (SPA embedded)
-  + `SHA256SUMS`; reference systemd unit in `deployment/systemd/econumo.service`,
-  walkthrough in `docs/run-without-docker.md` (linked from the README).
+  + `SHA256SUMS`; walkthrough in `docs/run-without-docker.md` (linked from the
+  README). The same binaries plus the ship unit template
+  `deploy/ship/econumo.service` go to R2 for hosts managed with ship.
   `make release-binaries` builds the same artifacts locally.
 - Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
   and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.

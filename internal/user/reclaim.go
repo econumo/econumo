@@ -2,7 +2,6 @@ package user
 
 import (
 	"context"
-	"strings"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
@@ -39,7 +38,7 @@ func (s *Service) reclaimCredentials(ctx context.Context, u *model.User, provenE
 		// an optional seam (a build without oauth wiring has nothing to reclaim).
 		return nil
 	}
-	identities, grants, err := s.oauthGrants.ReclaimAccount(ctx, u.ID, strings.ToLower(strings.TrimSpace(provenEmail)))
+	identities, grants, err := s.oauthGrants.ReclaimAccount(ctx, u.ID, model.NormalizeEmail(provenEmail))
 	if err != nil {
 		return err
 	}

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { CommandItem } from '@/components/ui/command'
 import { EntityIcon } from '@/components/EntityIcon'
 import { UserAvatar } from '@/components/UserAvatar'
+import { dayKey, isFuture } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import type { ClassificationType } from '@/lib/search'
 import type { AccountDto } from '@/api/dto/account'
@@ -108,6 +109,27 @@ export function TransactionResult({ transaction, showAuthor, onSelect }: { trans
     <CommandItem value={`tx:${transaction.id}`} onSelect={onSelect} className={`${NO_CHECK} items-stretch p-0 max-md:p-0`}>
       <div className="min-w-0 flex-1">
         <TransactionRow transaction={transaction} showAuthor={showAuthor} />
+      </div>
+    </CommandItem>
+  )
+}
+
+export function RecurringResult({ transaction, onSelect }: { transaction: ViewTransaction; onSelect: () => void }) {
+  const { t } = useTranslation()
+  const rt = transaction.recurring
+  if (!rt) {
+    return null
+  }
+  return (
+    <CommandItem value={`recurring:${rt.id}`} onSelect={onSelect} data-testid={`search-recurring-${rt.id}`} className={`${NO_CHECK} items-stretch p-0 max-md:p-0`}>
+      <div className="min-w-0 flex-1">
+        <TransactionRow
+          transaction={transaction}
+          dimmed={false}
+          titleNote={t(`recurring.schedule.${rt.schedule}`)}
+          // a past next payment means the template is due
+          amountNote={<span className={isFuture(rt.nextPaymentAt) ? undefined : 'text-destructive'}>{dayKey(rt.nextPaymentAt)}</span>}
+        />
       </div>
     </CommandItem>
   )

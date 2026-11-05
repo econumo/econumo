@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -8,11 +8,13 @@ import { coreHandlers } from '@/test/fixtures'
 import type { ImportSourceDto } from '@/api/dto/imports'
 import { AppleWalletConnect, AppleWalletDisconnect, AppleWalletSetup, setupDeepLink } from './AppleWalletSetup'
 import { useWalletSetup } from './walletSetup'
+import { METRICS, trackEvent } from '@/lib/metrics'
 
 const mockIsIOS = vi.hoisted(() => ({ value: false }))
 const openAppUrl = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/platform', () => ({ isIOS: () => mockIsIOS.value, isNativeApp: () => false, openAppUrl }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
+vi.mock('@/lib/metrics', async (original) => ({ ...await original<typeof import('@/lib/metrics')>(), trackEvent: vi.fn() }))
 
 const card = { externalAccountId: 'Apple Card', externalName: 'Apple Card', externalCurrency: 'USD', state: 'unmapped' as const, accountId: '', queuedCount: 0, tapCount: 1, lastSeenAt: '2026-08-20 10:42:03' }
 const source: ImportSourceDto = { id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', lastSyncedAt: '', lastRunStatus: '', lastRunAt: '', lastRunError: '', lastRunErrorAccountId: '', credentialCiphertext: '', cards: [] }
@@ -41,10 +43,10 @@ function renderSetup(src: ImportSourceDto | null, overrides: Record<string, unkn
   )
 }
 
-const stepToggle = (title: string) => screen.getAllByRole('button', { name: title }).find((button) => button.hasAttribute('aria-expanded')) as HTMLElement
-const step = (title: string) => stepToggle(title).closest('li') as HTMLElement
+const stepToggle = (title: string | RegExp) => screen.getAllByRole('button', { name: title }).find((button) => button.hasAttribute('aria-expanded')) as HTMLElement
+const step = (title: string | RegExp) => stepToggle(title).closest('li') as HTMLElement
 const connectButton = () => screen.getAllByRole('button', { name: 'Connect the Shortcut' }).find((button) => !button.hasAttribute('aria-expanded')) as HTMLElement
-const stateOf = (title: string) => step(title).getAttribute('data-state')
+const stateOf = (title: string | RegExp) => step(title).getAttribute('data-state')
 const ticks = () => JSON.parse(localStorage.getItem('appleWalletSetup:s1') ?? '[]')
 
 beforeEach(() => {
@@ -56,6 +58,7 @@ beforeEach(() => {
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   vi.mocked(toast.error).mockClear()
+  vi.mocked(trackEvent).mockClear()
 })
 
 it('setupDeepLink encodes the JSON input for the Setup shortcut', () => {
@@ -75,9 +78,10 @@ it('before connecting it explains what is needed and how payments flow; connect 
   expect(screen.getByText('An iPhone with Apple Pay')).toBeInTheDocument()
   const limitations = screen.getByRole('heading', { name: 'Known limitations' }).parentElement as HTMLElement
   const limitationsItems = within(limitations).getAllByRole('listitem')
-  expect(limitationsItems).toHaveLength(2)
+  expect(limitationsItems).toHaveLength(3)
   expect(limitationsItems[0]).toHaveTextContent('Works only when you tap your iPhone to pay')
   expect(limitationsItems[1]).toHaveTextContent('Apple Pay payments on websites aren’t supported')
+  expect(limitationsItems[2]).toHaveTextContent('Transactions made with no signal may not be added')
   const preview = screen.getByRole('heading', { name: 'How it works' }).parentElement as HTMLElement
   const flow = within(preview).getAllByRole('listitem')
   expect(flow).toHaveLength(4)
@@ -337,12 +341,12 @@ it.each([false, true])('step 5 requires the first payment (previously marked don
   const user = userEvent.setup()
   renderSetup(source, { importQueue: { ...emptyQueue, failed: [noInputEvent] } })
   expect(stateOf('Make the first payment')).toBe('current')
-  expect(stateOf('Switch the automation to Run Immediately')).toBe('todo')
-  await user.click(stepToggle('Switch the automation to Run Immediately'))
-  const done = within(step('Switch the automation to Run Immediately')).getByRole('button', { name: 'Done' })
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('todo')
+  await user.click(stepToggle(/^Switch the automation to Run Immediately/))
+  const done = within(step(/^Switch the automation to Run Immediately/)).getByRole('button', { name: 'Done' })
   expect(done).toBeDisabled()
   await user.click(done)
-  expect(stateOf('Switch the automation to Run Immediately')).toBe('todo')
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('todo')
   expect(screen.queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
   expect(ticks()).not.toContain('immediate')
 })
@@ -351,15 +355,15 @@ it.each(['mapped', 'unmapped', 'ignored'] as const)('the first payment on a %s c
   const user = userEvent.setup()
   renderSetup({ ...source, cards: [{ ...card, state, accountId: state === 'mapped' ? 'a1' : '', queuedCount: state === 'unmapped' ? 1 : 0 }] })
   expect(stateOf('Make the first payment')).toBe('done')
-  expect(stateOf('Switch the automation to Run Immediately')).toBe('current')
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('current')
   await user.click(stepToggle('Make the first payment'))
   expect(within(step('Make the first payment')).queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
   // server-confirmed steps cannot be undone by hand
   await user.click(screen.getByRole('button', { name: 'Install the Shortcut' }))
   expect(screen.queryByRole('button', { name: 'Mark as not done' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Switch the automation to Run Immediately' }))
+  await user.click(screen.getByRole('button', { name: /^Switch the automation to Run Immediately/ }))
   await user.click(screen.getByRole('button', { name: 'Done' }))
-  expect(stateOf('Switch the automation to Run Immediately')).toBe('done')
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('done')
   expect(screen.getByText(/Open this page on your iPhone/)).toBeVisible()
   expect(screen.getByText(/Open this page on your iPhone/).nextElementSibling).toContainElement(screen.getByRole('link', { name: 'Setup instructions' }))
   expect(screen.getByRole('button', { name: 'Configure again' })).toBeInTheDocument()
@@ -379,7 +383,7 @@ it.each([false, true])('completed setup starts collapsed and can be reopened (iO
   await user.click(toggle)
   expect(toggle).toHaveAttribute('aria-expanded', 'true')
   expect(screen.getByRole('link', { name: 'Setup instructions' })).toBeVisible()
-  expect(stateOf('Switch the automation to Run Immediately')).toBe('done')
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('done')
   expect(screen.queryByText(/Open this page on your iPhone/) !== null).toBe(!ios)
 
   await user.click(toggle)
@@ -402,4 +406,79 @@ it('disconnect drops the hand ticks', async () => {
   await user.click(await screen.findByRole('button', { name: 'Disconnect' }))
   await waitFor(() => expect(localStorage.getItem('appleWalletSetup:s1')).toBeNull())
   expect(localStorage.getItem('appleWalletSetupReset:s1')).toBeNull()
+})
+
+it.each([
+  ['Create the automation', ['install', 'configure'], '#ios-26', '#ios-27'],
+  [/^Switch the automation to Run Immediately/, ['install', 'configure', 'automate'], '#on-ios-26', '#on-ios-27'],
+] as const)('%s links to the iOS 26 and iOS 27 sections of the guide in a new window', (title, ticked, a26, a27) => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(ticked))
+  mockIsIOS.value = true
+  // step 5 is current only once a payment has arrived
+  renderSetup(title === 'Create the automation' ? source : { ...source, cards: [card] })
+  const body = step(title)
+  for (const [name, anchor] of [['iOS 26', a26], ['iOS 27', a27]] as const) {
+    const link = within(body).getByRole('link', { name })
+    expect(link).toHaveAttribute('href', `https://econumo.com/docs/user-guide/apple-wallet${anchor}`)
+    expect(link).toHaveAttribute('target', '_blank')
+  }
+  const open = within(body).getByRole('link', { name: 'Open Shortcuts' })
+  expect(open).toHaveAttribute('href', 'shortcuts://')
+  expect(open).toHaveAttribute('target', '_blank')
+})
+
+it('step 3 lists the automation checklist in order', () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure']))
+  renderSetup(source)
+  const items = within(within(step('Create the automation')).getByRole('list')).getAllByRole('listitem').map((li) => li.textContent)
+  expect(items).toEqual([
+    'Open the Automation tab (on iOS 27: Library → Automation), then tap New Automation or +',
+    'Choose Wallet ("When I tap a Wallet Card or Pass")',
+    'Select the cards and categories to import, or all of them',
+    'Keep confirmation on: Run After Confirmation (iOS 26) or Confirm Before Run (iOS 27)',
+    'Choose the econumo shortcut (on iOS 27: add Run Shortcut → econumo, with Transaction as its input)',
+  ])
+})
+
+it('desktop shows the guide links but no Open Shortcuts button', () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure']))
+  renderSetup(source)
+  expect(within(step('Create the automation')).getByRole('link', { name: 'iOS 27' })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Open Shortcuts' })).not.toBeInTheDocument()
+})
+
+it('tracks guide link and Shortcuts opens with the step they came from', async () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure']))
+  mockIsIOS.value = true
+  const user = userEvent.setup()
+  renderSetup(source)
+  const body = step('Create the automation')
+  await user.click(within(body).getByRole('link', { name: 'iOS 27' }))
+  await user.click(within(body).getByRole('link', { name: 'Open Shortcuts' }))
+  expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SETUP_GUIDE_OPEN, { provider: 'apple-wallet', step: 'automate', ios: '27' })
+  expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SETUP_SHORTCUTS_OPEN, { provider: 'apple-wallet', step: 'automate' })
+})
+
+it('step 2 is a single instruction', () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install']))
+  renderSetup(source)
+  expect(within(step('Connect the Shortcut')).getByText('Tap Connect the Shortcut, then tap Always Allow on every prompt.')).toBeVisible()
+})
+
+it('the first payment completes the setup; step 5 is marked optional, stays open until the guide is collapsed', async () => {
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install', 'configure', 'automate']))
+  const user = userEvent.setup()
+  renderSetup({ ...source, cards: [card] })
+  const toggle = stepToggle(/^Switch the automation to Run Immediately/)
+  expect(toggle).toHaveTextContent('Optional')
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  expect(stateOf(/^Switch the automation to Run Immediately/)).toBe('current')
+  // complete without step 5: the guide title becomes the collapse toggle
+  const guide = screen.getByRole('button', { name: 'Setup guide' })
+  expect(guide).toHaveAttribute('aria-expanded', 'true')
+  await user.click(guide)
+  expect(guide).toHaveAttribute('aria-expanded', 'false')
+  cleanup()
+  renderSetup({ ...source, cards: [card] })
+  expect(screen.getByRole('button', { name: 'Setup guide' })).toHaveAttribute('aria-expanded', 'false')
 })

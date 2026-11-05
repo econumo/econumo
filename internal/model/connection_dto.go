@@ -28,6 +28,8 @@ type ConnectionResult struct {
 	SharedAccounts []AccountAccessResult `json:"sharedAccounts"`
 	AccessLevel    string                `json:"accessLevel"`
 	AccessUntil    string                `json:"accessUntil"`
+	// CreatedAt is the connected user's register date ("" when unknown).
+	CreatedAt string `json:"createdAt"`
 }
 
 // GetConnectionListResult is the response: {items: [...]}.

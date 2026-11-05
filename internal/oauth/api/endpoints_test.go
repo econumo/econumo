@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -139,7 +140,7 @@ func TestIdentityEndpoints_RequireAuth(t *testing.T) {
 // blockedLimiter stands in for a limiter whose global per-minute cap is spent.
 type blockedLimiter struct{}
 
-func (blockedLimiter) Allow(string, string) error {
+func (blockedLimiter) Allow(context.Context, string, string) error {
 	return errs.NewTooManyRequestsRetryAfter("Too many attempts. Try again later.", 30)
 }
 

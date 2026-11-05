@@ -171,15 +171,36 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id) ([]*mod
 	if len(accountIDs) == 0 {
 		return []*model.RecurringTransaction{}, nil
 	}
-	args := make([]any, len(accountIDs))
-	for i, id := range accountIDs {
+	return r.list(ctx, "account_id IN ("+placeholders(r.driver, 1, len(accountIDs))+")", idArgs(accountIDs))
+}
+
+// ListBySourceOrRecipientIDs is ListByAccountIDs widened to transfer
+// recipients: a template moving money INTO one of the accounts is returned
+// too.
+func (r *Repo) ListBySourceOrRecipientIDs(ctx context.Context, accountIDs []vo.Id) ([]*model.RecurringTransaction, error) {
+	if len(accountIDs) == 0 {
+		return []*model.RecurringTransaction{}, nil
+	}
+	n := len(accountIDs)
+	where := "account_id IN (" + placeholders(r.driver, 1, n) + ") OR account_recipient_id IN (" + placeholders(r.driver, n+1, n) + ")"
+	args := idArgs(accountIDs)
+	return r.list(ctx, where, append(args, args...))
+}
+
+func idArgs(ids []vo.Id) []any {
+	args := make([]any, len(ids))
+	for i, id := range ids {
 		args[i] = id.String()
 	}
-	query := fmt.Sprintf(`SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id,
+	return args
+}
+
+func (r *Repo) list(ctx context.Context, where string, args []any) ([]*model.RecurringTransaction, error) {
+	query := `SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id,
        type, amount, description, schedule, next_payment_at, scheduled_day, created_at, updated_at
 FROM recurring_transactions
-WHERE account_id IN (%s)
-ORDER BY next_payment_at, id`, placeholders(r.driver, 1, len(accountIDs)))
+WHERE ` + where + `
+ORDER BY next_payment_at, id`
 	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err

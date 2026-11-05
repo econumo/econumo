@@ -8,6 +8,7 @@ import { useAccounts } from '@/features/accounts/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
+import { EntitySelect } from '@/features/transactions/EntitySelect'
 import { useLinkImportAccount } from './queries'
 
 export function MapAccountDialog({ sourceId, provider, card, onClose }: { sourceId: string; provider: ImportProvider | undefined; card: ImportCardDto | null; onClose: () => void }) {
@@ -64,12 +65,14 @@ export function MapAccountDialog({ sourceId, provider, card, onClose }: { source
     >
       <div className="flex flex-col gap-3">
         <label className="text-xs uppercase text-muted-foreground" htmlFor="import-map-account">{t(`${ns}.map_modal.account`)}</label>
-        <select id="import-map-account" className="h-11 w-full rounded-md border bg-transparent px-2 text-sm" value={accountId} onChange={(e) => setPicked(e.target.value)}>
-          <option value="" />
-          {pickerAccounts.map((a) => (
-            <option key={a.id} value={a.id}>{a.name}</option>
-          ))}
-        </select>
+        {/* the app's account picker, as on a transaction: searchable, a sheet on a phone */}
+        <EntitySelect
+          id="import-map-account"
+          aria-label={t(`${ns}.map_modal.account`)}
+          value={accountId || null}
+          onChange={(id) => setPicked(id ?? '')}
+          options={pickerAccounts.map((a) => ({ value: a.id, label: a.name, icon: a.icon }))}
+        />
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={close}>{t('common.button.cancel.label')}</Button>
           <Button type="button" disabled={!accountId || accountId === current || link.isPending} onClick={submit}>{t(`${ns}.map_modal.submit`)}</Button>

@@ -21,6 +21,7 @@ import {
   useLinkImportAccount,
   useSkipQueuedEvent,
   useSyncImportSource,
+  useUnlinkImportAccount,
 } from './queries'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -44,7 +45,7 @@ function makeWrapper() {
 
 beforeEach(() => {
   localStorage.clear()
-  window.econumoConfig = { IMPORT_APPLE_WALLET: true, IMPORT_SIMPLEFIN: true }
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   server.use(...coreHandlers())
   trackEventMock.mockReset()
 })
@@ -56,7 +57,7 @@ it('connect and disconnect events see the updated apple-wallet user attribute', 
   queryClient.setQueryData(queryKeys.importSources, [])
   setAnalyticsQueryClient(queryClient)
   const captured: unknown[] = []
-  trackEventMock.mockImplementation((metric, data) => { captured.push([metric, data, profileAttributes()['apple-wallet']]) })
+  trackEventMock.mockImplementation((metric, data) => { captured.push([metric, data, profileAttributes().import_apple_wallet]) })
   server.use(
     http.post('*/api/v1/import/create-source', () => HttpResponse.json({ success: true, data: { item: { ...wireSource, cards: [] } } })),
     http.post('*/api/v1/import/delete-source', () => HttpResponse.json({ success: true, data: { items: [] } })),
@@ -94,6 +95,39 @@ it('useLinkImportAccount replaces the source in the cache and refetches the ledg
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(queryClient.getQueryData<ImportSourceDto[]>(queryKeys.importSources)![0].cards[0].state).toBe('mapped')
   expect(queryClient.getQueryState(queryKeys.transactions)?.isInvalidated).toBe(true)
+})
+
+it('a link fires map, remap or nothing extra depending on the card it replaces', async () => {
+  const mappedTo = (accountId: string) => ({ ...wireSource, cards: [{ ...card, state: 'mapped' as const, accountId, queuedCount: 0 }] })
+  const ignored = { ...wireSource, cards: [{ ...card, state: 'ignored' as const }] }
+  server.use(http.post('*/api/v1/import/link-account', async ({ request }) => {
+    const { accountId } = await request.json() as { accountId: string }
+    return HttpResponse.json({ success: true, message: '', data: { item: mappedTo(accountId), run: null } })
+  }))
+  const { queryClient, wrapper } = makeWrapper()
+  const { result } = renderHook(() => useLinkImportAccount(), { wrapper })
+  const link = async (before: ImportSourceDto | null, accountId: string) => {
+    queryClient.setQueryData<ImportSourceDto[]>(queryKeys.importSources, before ? [before] : [])
+    trackEventMock.mockReset()
+    await act(() => result.current.mutateAsync({ sourceId: 's1', externalAccountId: 'wallet', accountId }))
+    return trackEventMock.mock.calls.filter(([metric]) => metric !== METRICS.IMPORT_ACCOUNT_LINK)
+  }
+  const counts = { imported: 0, matched: 0 }
+  expect(await link(wireSource, 'a1')).toEqual([[METRICS.IMPORT_ACCOUNT_MAP, { provider: 'apple-wallet', from: 'unmapped', ...counts }]])
+  expect(await link(ignored, 'a1')).toEqual([[METRICS.IMPORT_ACCOUNT_MAP, { provider: 'apple-wallet', from: 'ignored', ...counts }]])
+  expect(await link(null, 'a1')).toEqual([[METRICS.IMPORT_ACCOUNT_MAP, { provider: 'apple-wallet', from: 'unmapped', ...counts }]])
+  expect(await link(mappedTo('a1'), 'a2')).toEqual([[METRICS.IMPORT_ACCOUNT_REMAP, { provider: 'apple-wallet', ...counts }]])
+  expect(await link(mappedTo('a1'), 'a1')).toEqual([])
+  expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_ACCOUNT_LINK, counts)
+})
+
+it('useUnlinkImportAccount fires the unmap event', async () => {
+  server.use(http.post('*/api/v1/import/unlink-account', () =>
+    HttpResponse.json({ success: true, message: '', data: { item: wireSource, run: null } })))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useUnlinkImportAccount(), { wrapper })
+  await act(() => result.current.mutateAsync({ sourceId: 's1', externalAccountId: 'wallet' }))
+  expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_ACCOUNT_UNMAP, { provider: 'apple-wallet' })
 })
 
 it('useImportQueuedEvent prepends the transaction and drops the queue row', async () => {

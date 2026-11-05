@@ -1,4 +1,4 @@
-import { ChevronRight, RefreshCw } from 'lucide-react'
+import { ChevronRight, Download, MessageSquare, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -6,7 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { UserAvatar } from '@/components/UserAvatar'
-import { getVersionLabel, backendHost, isAppleWalletImportEnabled, isSimpleFINImportEnabled, isTransactionImportEnabled } from '@/lib/config'
+import { getVersionLabel, backendHost, isFeedbackEnabled, isSimpleFINImportEnabled } from '@/lib/config'
 import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
@@ -16,6 +16,9 @@ import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { useUserData, useAccessState } from '@/features/user/queries'
 import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
 import { useFullReload, useFullReloadPending } from '@/features/transactions/useFullReload'
+import { useInstallApp } from '@/features/install/useInstallApp'
+import { InstallInstructionsDialog } from '@/features/install/InstallInstructionsDialog'
+import { useUiStore } from '@/app/uiStore'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -79,6 +82,8 @@ export function SettingsPage() {
   const [logoutOpen, setLogoutOpen] = useState(false)
   const fullReload = useFullReload()
   const reloading = useFullReloadPending()
+  const install = useInstallApp()
+  const openFeedback = useUiStore((s) => s.openFeedback)
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -148,6 +153,15 @@ export function SettingsPage() {
             </MenuGroup>
           ) : null}
 
+          {install.mode ? (
+            <MenuRow
+              accent="hover"
+              label={t('install.menu_item')}
+              trailing={<Download className="size-4 shrink-0 text-muted-foreground" />}
+              onClick={() => install.start('settings')}
+            />
+          ) : null}
+
           <MenuGroup label={t('settings.page.groups.service')}>
             <MenuRow label={t('settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
             <MenuRow label={t('connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
@@ -164,9 +178,9 @@ export function SettingsPage() {
 
           <MenuGroup label={t('settings.page.groups.data')}>
             <MenuRow label={t('imports.data_page.menu_item')} to={RouterPage.SETTINGS_DATA} />
-            {isAppleWalletImportEnabled() ? <MenuRow label={t('imports.apple_wallet.menu_item')} to={RouterPage.SETTINGS_APPLE_WALLET} /> : null}
+            <MenuRow label={t('imports.apple_wallet.menu_item')} to={RouterPage.SETTINGS_APPLE_WALLET} />
             {isSimpleFINImportEnabled() ? <MenuRow label={t('imports.simplefin.menu_item')} to={RouterPage.SETTINGS_SIMPLEFIN} /> : null}
-            {isTransactionImportEnabled() ? <MenuRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} /> : null}
+            <MenuRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} />
             <MenuRow
               label={t('settings.data.reload_all')}
               trailing={<RefreshCw className={`size-4 shrink-0 text-muted-foreground ${reloading ? 'animate-spin' : ''}`} />}
@@ -175,6 +189,15 @@ export function SettingsPage() {
             />
           </MenuGroup>
 
+          {isFeedbackEnabled() ? (
+            <MenuGroup label={t('feedback.settings.group')}>
+              <MenuRow
+                label={t('feedback.menu_item')}
+                trailing={<MessageSquare className="size-4 shrink-0 text-muted-foreground" />}
+                onClick={openFeedback}
+              />
+            </MenuGroup>
+          ) : null}
         </div>
       </div>
 
@@ -197,6 +220,8 @@ export function SettingsPage() {
           {t('settings.page.footer.api')}
         </a>
       </footer>
+
+      {install.instructions ? <InstallInstructionsDialog mode={install.instructions} open onClose={install.closeInstructions} /> : null}
 
       <ConfirmDialog
         open={logoutOpen}

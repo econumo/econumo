@@ -114,13 +114,13 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 	if err := s.requirePasswordLogin(); err != nil {
 		return nil, err
 	}
-	lowered := strings.ToLower(strings.TrimSpace(req.Username))
-	if err := s.allowAttempt(RateScopeRemind, lowered); err != nil {
+	emailKey := model.NormalizeEmail(req.Username)
+	// Every remind sends an email, so every request counts.
+	if err := s.countEmailAttempt(ctx, RateScopeRemind, emailKey); err != nil {
 		return nil, err
 	}
-	s.failAttempt(RateScopeRemind, lowered) // every remind sends an email, so every request counts
 
-	u, err := s.repo.GetByEmail(ctx, lowered)
+	u, err := s.repo.GetByEmail(ctx, req.Username)
 	if err != nil {
 		if isNotFound(err) {
 			return &model.RemindPasswordResult{}, nil // anti-enumeration
@@ -149,9 +149,13 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 		return nil, err
 	}
 
-	// Email the code to the address the caller submitted (trimmed, original case).
+	// The code proves control of the account's own mailbox, whatever spelling resolved it.
+	email, derr := s.encode.Decode(u.Email)
+	if derr != nil {
+		return nil, derr
+	}
 	if s.mailer != nil {
-		if err := s.mailer.SendResetPasswordCode(ctx, strings.TrimSpace(req.Username), u.Name, code); err != nil {
+		if err := s.mailer.SendResetPasswordCode(ctx, email, u.Name, code); err != nil {
 			return nil, err
 		}
 	}
@@ -165,30 +169,37 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	if err := s.requirePasswordLogin(); err != nil {
 		return nil, err
 	}
-	lowered := strings.ToLower(strings.TrimSpace(req.Username))
-	if err := s.allowAttempt(RateScopeReset, lowered); err != nil {
+	emailKey := model.NormalizeEmail(req.Username)
+	if err := s.allowEmailAttempt(ctx, RateScopeReset, emailKey); err != nil {
 		return nil, err
 	}
-	u, err := s.repo.GetByEmail(ctx, lowered)
+	u, err := s.repo.GetByEmail(ctx, req.Username)
 	if err != nil {
 		if isNotFound(err) {
-			s.failAttempt(RateScopeReset, lowered)
+			if lerr := s.countUnknownEmailAttempt(ctx, RateScopeReset, emailKey); lerr != nil {
+				return nil, lerr
+			}
 			return nil, &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		return nil, err
 	}
+	attempt, err := s.reserveEmailAttempt(ctx, RateScopeReset, emailKey)
+	if err != nil {
+		return nil, err
+	}
+	defer attempt.giveBack()
 
 	hashedCode := HashResetCode(strings.TrimSpace(req.Code))
 	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, hashedCode)
 	if err != nil {
 		if isNotFound(err) {
-			s.failAttempt(RateScopeReset, lowered)
+			attempt.keep()
 			return nil, &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		return nil, err
 	}
 	if pr.IsExpired(s.clock.Now()) {
-		s.failAttempt(RateScopeReset, lowered)
+		attempt.keep()
 		return nil, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserResetCodeExpired}
 	}
 
@@ -214,7 +225,7 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		if gerr != nil {
 			return gerr
 		}
-		// The code proves control of `lowered` and of nothing else, so the row
+		// The code proves control of this address and of nothing else, so the row
 		// the lock handed back must still be that address's account: a change of
 		// email confirmed since the lookup above means this reset would set the
 		// password (and the verified stamp) on someone else's login key.
@@ -222,7 +233,7 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		if derr != nil {
 			return derr
 		}
-		if strings.ToLower(strings.TrimSpace(cur)) != lowered {
+		if model.NormalizeEmail(cur) != emailKey {
 			return &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		// The code is the evidence, so it is re-read and consumed under the
@@ -254,10 +265,11 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}
-		return s.reclaimCredentials(ctx, u, lowered)
+		return s.reclaimCredentials(ctx, u, emailKey)
 	}); err != nil {
 		return nil, err
 	}
-	s.clearAttempt(RateScopeReset, lowered)
+	s.clearEmailAttempt(ctx, RateScopeReset, emailKey)
+	attempt.keep()
 	return &model.ResetPasswordResult{}, nil
 }

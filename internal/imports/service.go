@@ -33,8 +33,7 @@ func NewService(repo Repository, accounts AccountReader, converter CurrencyConve
 	return &Service{repo: repo, accounts: accounts, converter: converter, txns: txns, lister: lister, entities: entities, limiter: limiter, tx: tx, clk: clk, cfg: cfg, providers: map[string]Provider{}, parsers: map[string]EventParser{}}
 }
 
-// DisableProvider switches a provider off (ECONUMO_IMPORT_APPLE_WALLET /
-// ECONUMO_IMPORT_SIMPLEFIN): its sources can no longer be created, and sources
+// DisableProvider switches a provider off (ECONUMO_IMPORT_SIMPLEFIN): its sources can no longer be created, and sources
 // left from when it was on drop out of the source list and the queue.
 func (s *Service) DisableProvider(name string) {
 	if s.disabled == nil {
@@ -268,4 +267,14 @@ func optionalTime(t *time.Time) string {
 		return ""
 	}
 	return t.Format(datetime.Layout)
+}
+
+func (s *Service) countAttempt(ctx context.Context, scope string, userID vo.Id) error {
+	if s.limiter == nil {
+		return nil
+	}
+	if err := s.limiter.Allow(ctx, scope, userID.String()); err != nil {
+		return err
+	}
+	return s.limiter.Reserve(scope, userID.String())
 }

@@ -241,6 +241,30 @@ type UpdateAnalyticsResult struct {
 }
 
 // ---------------------------------------------------------------------------
+// update-last-seen-version
+// ---------------------------------------------------------------------------
+
+// UpdateLastSeenVersionRequest is the update-last-seen-version request body.
+type UpdateLastSeenVersionRequest struct {
+	Version string `json:"version"`
+}
+
+func (r UpdateLastSeenVersionRequest) Validate() error {
+	if strings.TrimSpace(r.Version) == "" {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "version", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if !IsReleaseVersion(r.Version) {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "version", Message: "This value is not valid.", Code: errs.CodeInvalidFormat})
+	}
+	return nil
+}
+
+// UpdateLastSeenVersionResult is the update-last-seen-version response.
+type UpdateLastSeenVersionResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
+// ---------------------------------------------------------------------------
 // update-password
 // ---------------------------------------------------------------------------
 

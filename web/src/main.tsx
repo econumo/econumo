@@ -12,6 +12,9 @@ import { setRouter } from '@/app/routerRef'
 import { registerServiceWorker } from '@/lib/serviceWorker'
 
 registerServiceWorker()
+import { listenForInstallPrompt } from '@/features/install/installPrompt'
+
+listenForInstallPrompt()
 
 void bootNativeApp().then(() => {
   const router = createRouter()

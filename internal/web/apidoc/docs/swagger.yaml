@@ -185,7 +185,11 @@ definitions:
         type: array
       payeeId:
         type: string
+      recipientSortKey:
+        type: string
       recurringId:
+        type: string
+      sortKey:
         type: string
       tagId:
         type: string
@@ -432,6 +436,77 @@ definitions:
           income and accountId selectors.
         type: string
     type: object
+  model.BudgetUpcomingResult:
+    properties:
+      accountId:
+        type: string
+      accountName:
+        type: string
+      accountRecipientId:
+        type: string
+      accountRecipientName:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      amountSource:
+        type: string
+      author:
+        $ref: '#/definitions/model.UserResult'
+      canEdit:
+        type: boolean
+      category:
+        $ref: '#/definitions/model.TxCategoryResult'
+      currencyId:
+        type: string
+      currencyRecipientId:
+        type: string
+      currencySourceId:
+        type: string
+      description:
+        type: string
+      direction:
+        description: |-
+          Direction is present only on rows of the transfers, income and
+          accountId selectors: "out" when the money left the included (or
+          savings) account, "in" when it arrived — Amount/CurrencyId are that
+          side's. Omitted on every other list so their bytes are unchanged.
+        type: string
+      id:
+        type: string
+      isNext:
+        type: boolean
+      isOverdue:
+        type: boolean
+      labelIds:
+        description: |-
+          Reporting labels attached to the row. Always non-nil ([] when none) so a
+          client can render it without a null check, matching labelIds on the
+          transaction feature's own wire.
+        items:
+          type: string
+        type: array
+      labelNames:
+        items:
+          type: string
+        type: array
+      payee:
+        $ref: '#/definitions/model.TxPayeeResult'
+      schedule:
+        type: string
+      spentAt:
+        type: string
+      tag:
+        $ref: '#/definitions/model.TxTagResult'
+      templateId:
+        type: string
+      type:
+        description: |-
+          Type ("expense", "income" or "transfer") is present only on rows of the
+          income and accountId selectors.
+        type: string
+    type: object
   model.CategoryResult:
     properties:
       createdAt:
@@ -468,6 +543,8 @@ definitions:
     properties:
       budgetSpent:
         type: string
+      budgetUpcoming:
+        type: string
       icon:
         type: string
       id:
@@ -482,6 +559,12 @@ definitions:
         type: string
       type:
         type: integer
+      upcoming:
+        description: |-
+          Upcoming/BudgetUpcoming are the period's projected recurring payments not
+          yet posted, in the parent's currency and the budget currency; Spent stays
+          real money only.
+        type: string
     type: object
   model.ClaimSetupTokenRequest:
     properties:
@@ -586,6 +669,9 @@ definitions:
       accessLevel:
         type: string
       accessUntil:
+        type: string
+      createdAt:
+        description: CreatedAt is the connected user's register date ("" when unknown).
         type: string
       sharedAccounts:
         items:
@@ -1303,6 +1389,10 @@ definitions:
         items:
           $ref: '#/definitions/model.BudgetTransactionResult'
         type: array
+      upcoming:
+        items:
+          $ref: '#/definitions/model.BudgetUpcomingResult'
+        type: array
     type: object
   model.GetCategoryListResult:
     properties:
@@ -1780,6 +1870,8 @@ definitions:
         type: string
       spent:
         type: string
+      upcoming:
+        type: string
     type: object
   model.LinkImportAccountRequest:
     properties:
@@ -2003,6 +2095,30 @@ definitions:
           $ref: '#/definitions/model.TagResult'
         type: array
     type: object
+  model.MoveTransactionRequest:
+    properties:
+      aboveId:
+        type: string
+      accountId:
+        type: string
+      date:
+        type: string
+      fromDate:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      items:
+        items:
+          $ref: '#/definitions/model.TransactionResult'
+        type: array
+    type: object
   model.OpeningBalanceResult:
     properties:
       amount:
@@ -2023,6 +2139,8 @@ definitions:
         type: string
       budgetSpent:
         type: string
+      budgetUpcoming:
+        type: string
       budgeted:
         type: string
       children:
@@ -2039,6 +2157,11 @@ definitions:
         type: string
       isArchived:
         type: integer
+      isBudgeted:
+        description: |-
+          IsBudgeted is 1 when the period has a plan, even a plan of 0; with 0,
+          Budgeted is "0" and means no plan was set.
+        type: integer
       name:
         type: string
       ownerUserId:
@@ -2049,6 +2172,12 @@ definitions:
         type: string
       type:
         type: integer
+      upcoming:
+        description: |-
+          Upcoming is the period's recurring spend not yet posted, in CurrencyId;
+          BudgetUpcoming is Upcoming in the budget currency. A planning hint: Spent
+          and Available stay real money only.
+        type: string
     type: object
   model.PayeeResult:
     properties:
@@ -2089,10 +2218,14 @@ definitions:
         type: string
       planned:
         type: string
+      upcoming:
+        type: string
     type: object
   model.PlanChildCellResult:
     properties:
       actual:
+        type: string
+      upcoming:
         type: string
     type: object
   model.PlanChildResult:
@@ -2168,6 +2301,8 @@ definitions:
       closingBalance:
         type: string
       planned:
+        type: string
+      upcoming:
         type: string
     type: object
   model.PlanSavingsElementResult:
@@ -2499,6 +2634,8 @@ definitions:
         type: string
       isArchived:
         type: integer
+      isBudgeted:
+        type: integer
       name:
         type: string
       ownerUserId:
@@ -2509,6 +2646,11 @@ definitions:
         type: string
       type:
         type: integer
+      upcoming:
+        description: |-
+          Upcoming is the period's projected recurring change of the account not
+          yet posted, measured like Spent.
+        type: string
     type: object
   model.SessionItem:
     properties:
@@ -2790,10 +2932,18 @@ definitions:
         type: array
       payeeId:
         type: string
+      recipientSortKey:
+        type: string
       recurringId:
         description: |-
           RecurringId is the template this transaction was posted from, null for a
           hand-entered one. Read-only provenance: create/update never accept it.
+        type: string
+      sortKey:
+        description: |-
+          SortKey orders the row within its day on accountId, RecipientSortKey on
+          accountRecipientId (null unless a transfer): fractional keys compared
+          byte-wise, the higher listed first.
         type: string
       tagId:
         type: string
@@ -3116,6 +3266,16 @@ definitions:
         type: string
     type: object
   model.UpdateLanguageResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateLastSeenVersionRequest:
+    properties:
+      version:
+        type: string
+    type: object
+  model.UpdateLastSeenVersionResult:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
@@ -5011,8 +5171,8 @@ paths:
         in: query
         name: transfers
         type: boolean
-      - description: Income of categoryId or envelopeId (exactly one; composes with
-          nothing else)
+      - description: Income of categoryId or envelopeId (exactly one), or with uncategorized
+          the income Uncategorized row; composes with nothing else
         in: query
         name: income
         type: boolean
@@ -9851,6 +10011,57 @@ paths:
       summary: Import a transaction list from CSV
       tags:
       - Transaction
+  /api/v1/transaction/move-transaction:
+    post:
+      consumes:
+      - application/json
+      description: 'Puts a transaction where it was dropped on an account page: directly
+        below aboveId on that account''s day, or at the top of the day when aboveId
+        is null. Only that account''s order changes, and no other transaction is renumbered.
+        A date other than fromDate (the day the page showed it on) moves the transaction
+        to that day, keeping its time. A transaction no longer stored on fromDate,
+        or an aboveId no longer on the target day, is refused as changed meanwhile.
+        Returns the rewritten transaction(s) plus the refreshed account list.'
+      parameters:
+      - description: Move transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MoveTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MoveTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Move a transaction within or between days
+      tags:
+      - Transaction
   /api/v1/transaction/update-transaction:
     post:
       consumes:
@@ -10879,6 +11090,48 @@ paths:
       security:
       - Bearer: []
       summary: Update language
+      tags:
+      - User
+  /api/v1/user/update-last-seen-version:
+    post:
+      consumes:
+      - application/json
+      description: Records the release (vX.Y.Z) whose "what's new" notice the authenticated
+        user has seen and returns the refreshed user.
+      parameters:
+      - description: Update last seen version request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateLastSeenVersionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateLastSeenVersionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update last seen version
       tags:
       - User
   /api/v1/user/update-name:

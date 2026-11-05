@@ -13,6 +13,7 @@ import { compareNames } from '@/lib/collate'
 import { add, cmp, isZero, sub } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
 import { periodLabeler } from './budgetMath'
+import { withTagGroupsAdjacent } from './tagGroups'
 
 export function addMonths(month: string, delta: number): string {
   const [y, m] = month.split('-').map(Number)
@@ -197,15 +198,15 @@ export function bucketPlanRows(plan: BudgetPlanDto): PlanRows {
       .filter((f) => folderSide.get(f.id) === side)
       .map((folder) => ({
         folder,
-        rows: active
-          .filter((el) => el.folderId === folder.id)
-          .sort((a, b) => a.position - b.position)
-          .map(toRow),
+        rows: withTagGroupsAdjacent(
+          active.filter((el) => el.folderId === folder.id).sort((a, b) => a.position - b.position),
+          (el) => el,
+        ).map(toRow),
       }))
-    const loose = active
-      .filter((el) => el.folderId === null && sideOf(el) === side)
-      .sort((a, b) => a.position - b.position)
-      .map(toRow)
+    const loose = withTagGroupsAdjacent(
+      active.filter((el) => el.folderId === null && sideOf(el) === side).sort((a, b) => a.position - b.position),
+      (el) => el,
+    ).map(toRow)
     return { folders: folderSections, loose }
   }
 
@@ -392,6 +393,22 @@ export function planGroupSums(
   })
 }
 
+/** A same-name tag group's per-month sums: in the tags' own currency when they share
+ *  one, in the budget currency otherwise. */
+export function tagGroupPlanSums(
+  rows: PlanElementDto[],
+  months: string[],
+  monthIndex: (m: string) => number,
+  ex: MonthExchange,
+  baseCurrencyId: Id,
+): { sums: { actual: string; planned: string }[]; currencyId: Id } {
+  const currencyIds = new Set(rows.map((el) => el.currencyId))
+  if (currencyIds.size === 1) {
+    return { sums: planGroupSums(rows, months, monthIndex, (_from, amount) => amount), currencyId: [...currencyIds][0] }
+  }
+  return { sums: planGroupSums(rows, months, monthIndex, ex), currencyId: baseCurrencyId }
+}
+
 export interface PlanCellRef {
   rowKey: string
   col: number
@@ -459,11 +476,10 @@ export function balanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: M
 /** The savings side of the balance split: opening balance plus, per month, what
  *  actually happened (savingsFlows) in the past; in the current and future months
  *  the flows booked so far plus each row's own gap to plan,
- *  Σ(max(actual, planned) − actual). Future months take the flows too: a future-dated
- *  savings→outside transfer leaves the combined balance through the boundary
- *  transfers, so it must leave the Savings balance as well, or the everyday Balance
- *  would drop for money no everyday account sent. An everyday→savings transfer is
- *  in both the flows and the row's actual, so it still counts once. The gap is per
+ *  Σ(max(actual, planned) − actual). The server leaves money dated after today out of
+ *  the flows, the boundary transfers and the actuals alike, so a later month carries
+ *  no flows. An everyday→savings transfer is in both the flows and the row's actual,
+ *  so it still counts once. The gap is per
  *  row so an over-saved row cannot cover another row's shortfall — the balance must
  *  move by exactly what the Savings line shows. */
 export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: MonthExchange, now?: Date): string[] {

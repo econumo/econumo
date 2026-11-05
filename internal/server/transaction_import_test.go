@@ -24,7 +24,7 @@ type importServer struct {
 	token string
 }
 
-func newImportServer(t *testing.T, appleWallet, simpleFIN bool) importServer {
+func newImportServer(t *testing.T, simpleFIN bool) importServer {
 	t.Helper()
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
@@ -36,7 +36,6 @@ func newImportServer(t *testing.T, appleWallet, simpleFIN bool) importServer {
 	f.AccessToken(fixture.AccessToken{UserID: userID, Kind: "personal", Scope: "ingest", TokenHash: appuser.HashAccessToken(ingest), ExpiresAt: &exp})
 
 	cfg := baseTestConfig(db.Engine)
-	cfg.ImportAppleWallet = appleWallet
 	cfg.ImportSimpleFIN = simpleFIN
 	ts := httptest.NewServer(server.BuildAPI(cfg, db.Raw, server.Seams{Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar)}))
 	t.Cleanup(ts.Close)
@@ -80,16 +79,14 @@ var (
 
 func TestImportProviders_RoutesFollowTheFlags(t *testing.T) {
 	for _, tc := range []struct {
-		name                   string
-		appleWallet, simpleFIN bool
+		name      string
+		simpleFIN bool
 	}{
-		{"both off", false, false},
-		{"apple wallet only", true, false},
-		{"simplefin only", false, true},
-		{"both on", true, true},
+		{"simplefin off", false},
+		{"simplefin on", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newImportServer(t, tc.appleWallet, tc.simpleFIN)
+			s := newImportServer(t, tc.simpleFIN)
 			check := func(routes [][2]string, mounted bool) {
 				for _, r := range routes {
 					status, _ := s.do(r[0], r[1], "{}")
@@ -98,27 +95,27 @@ func TestImportProviders_RoutesFollowTheFlags(t *testing.T) {
 					}
 				}
 			}
-			check(sharedImportRoutes, tc.appleWallet || tc.simpleFIN)
-			check(appleWalletRoutes, tc.appleWallet)
+			check(sharedImportRoutes, true)
+			check(appleWalletRoutes, true)
 			check(simpleFINRoutes, tc.simpleFIN)
 		})
 	}
 }
 
 func TestImportProviders_DisabledProviderSourceIsRefusedAndHidden(t *testing.T) {
-	s := newImportServer(t, false, true)
-	srcID := s.f.ImportSource(fixture.ImportSource{UserID: s.user, Provider: "apple-wallet", Name: "Old iPhone"})
+	s := newImportServer(t, false)
+	srcID := s.f.ImportSource(fixture.ImportSource{UserID: s.user, Provider: "simplefin", Name: "Old Bank"})
 	s.f.ImportTransactionLink(fixture.ImportTransactionLink{
-		SourceID: srcID, ExternalAccountID: "Apple Card", ExternalTransactionID: "tap-1", Status: "queued",
+		SourceID: srcID, ExternalAccountID: "Checking", ExternalTransactionID: "txn-1", Status: "queued",
 		ExternalPayee: "Old Coffee", ExternalAmount: "4.50000000", ExternalCurrency: "USD",
 	})
 
-	status, body := s.do(http.MethodPost, "/api/v1/import/create-source", `{"provider":"apple-wallet","name":"iPhone"}`)
+	status, body := s.do(http.MethodPost, "/api/v1/import/create-source", `{"provider":"simplefin","name":"My Bank","credentialCiphertext":"v1:aXY=:Y3Q="}`)
 	if status != http.StatusBadRequest || !strings.Contains(body, "This import provider is not supported.") {
 		t.Fatalf("create-source for a disabled provider: %d %s", status, body)
 	}
 	status, body = s.do(http.MethodGet, "/api/v1/import/get-source-list", "")
-	if status != http.StatusOK || strings.Contains(body, "Old iPhone") {
+	if status != http.StatusOK || strings.Contains(body, "Old Bank") {
 		t.Fatalf("a disabled provider's source must not be listed: %d %s", status, body)
 	}
 	status, body = s.do(http.MethodGet, "/api/v1/import/get-queued-event-list", "")
@@ -142,7 +139,6 @@ func TestImportRuleSuggestionsRemovedWithAIConfigured(t *testing.T) {
 	}))
 	defer endpoint.Close()
 	cfg := baseTestConfig(db.Engine)
-	cfg.ImportAppleWallet = true
 	cfg.AIEnabled = true
 	cfg.AIDialect = config.AIDialectAnthropic
 	cfg.AIEndpoint = endpoint.URL + "/anthropic/v1"

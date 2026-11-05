@@ -45,7 +45,8 @@ it('map opens the account picker and posts link-account, then toasts the run cou
   const user = userEvent.setup()
   renderCards(source)
   await user.click(await screen.findByRole('button', { name: 'Map to account Apple Card' }))
-  await user.selectOptions(await screen.findByLabelText('Account'), fixtureAccounts[0].id)
+  await user.click(await screen.findByRole('combobox', { name: 'Account' }))
+  await user.click(await screen.findByRole('option', { name: fixtureAccounts[0].name }))
   await user.click(screen.getByRole('button', { name: 'Map' }))
   await waitFor(() => expect(body).toEqual({ sourceId: 's1', externalAccountId: 'wallet', accountId: fixtureAccounts[0].id, externalName: 'Apple Card' }))
 })
@@ -105,9 +106,11 @@ it('the account picker lists accounts already in the card\'s currency first', as
   const user = userEvent.setup()
   renderCards({ ...source, cards: [eurCard] })
   await user.click(await screen.findByRole('button', { name: 'Map to account Apple Card' }))
-  const select = await screen.findByLabelText('Account')
-  const optionNames = within(select).getAllByRole('option').map((o) => o.textContent)
-  expect(optionNames).toEqual(['', 'Euro Stash', 'Cash', 'Bank', 'Under the mattress'])
+  await user.click(await screen.findByRole('combobox', { name: 'Account' }))
+  await screen.findByRole('option', { name: 'Euro Stash' })
+  const optionNames = screen.getAllByRole('option').map((o) => o.textContent)
+  // each row also carries its icon's ligature text before the name
+  expect(optionNames).toEqual(['Euro Stash', 'Cash', 'Bank', 'Under the mattress'].map((name) => expect.stringMatching(new RegExp(`${name}$`))))
 })
 
 it('the picker lists accounts shared with me for writing, not guest-only ones', async () => {
@@ -120,9 +123,9 @@ it('the picker lists accounts shared with me for writing, not guest-only ones', 
   const user = userEvent.setup()
   renderCards(source)
   await user.click(await screen.findByRole('button', { name: 'Map to account Apple Card' }))
-  const picker = await screen.findByLabelText('Account')
-  await waitFor(() => expect(within(picker).getByRole('option', { name: /Family card/ })).toBeInTheDocument())
-  expect(within(picker).queryByRole('option', { name: /Read only/ })).not.toBeInTheDocument()
+  await user.click(await screen.findByRole('combobox', { name: 'Account' }))
+  expect(await screen.findByRole('option', { name: /Family card/ })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: /Read only/ })).not.toBeInTheDocument()
 })
 
 it('remap preselects the current account and posts link-account once another one is picked', async () => {
@@ -137,10 +140,11 @@ it('remap preselects the current account and posts link-account once another one
   const user = userEvent.setup()
   renderCards({ ...source, cards: [{ ...unmapped, state: 'mapped', accountId: fixtureAccounts[0].id, queuedCount: 0 }] })
   await user.click(await screen.findByRole('button', { name: 'Remap Apple Card' }))
-  const select = await screen.findByLabelText('Account')
-  await waitFor(() => expect(select).toHaveValue(fixtureAccounts[0].id))
+  const picker = await screen.findByRole('combobox', { name: 'Account' })
+  await waitFor(() => expect(picker).toHaveValue(fixtureAccounts[0].name))
   expect(screen.getByRole('button', { name: 'Map' })).toBeDisabled()
-  await user.selectOptions(select, fixtureAccounts[1].id)
+  await user.click(picker)
+  await user.click(await screen.findByRole('option', { name: fixtureAccounts[1].name }))
   await user.click(screen.getByRole('button', { name: 'Map' }))
   await waitFor(() => expect(body).toEqual({ sourceId: 's1', externalAccountId: 'wallet', accountId: fixtureAccounts[1].id, externalName: 'Apple Card' }))
   // nothing was queued, so no "0 imported" toast

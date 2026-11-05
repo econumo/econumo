@@ -4,6 +4,7 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import { compareNames } from '@/lib/collate'
 import { add, cmp, div, isZero } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
+import { withTagGroupsAdjacent } from './tagGroups'
 
 export interface BucketStats {
   budgeted: string
@@ -53,12 +54,36 @@ export function bucketStats(elements: BudgetElementDto[], budget: BudgetDto, exc
   return { budgeted, spent, available, carry }
 }
 
+/** A same-name tag group's line: in the tags' own currency when they share one,
+ *  in the budget currency otherwise, as a folder line sums. */
+export function tagGroupStats(elements: BudgetElementDto[], budget: BudgetDto, exchangeFn: ExchangeFn): { stats: BucketStats; currencyId: string } {
+  const base = budget.meta.currencyId
+  const currencyIds = new Set(elements.map((el) => el.currencyId ?? base))
+  if (currencyIds.size !== 1) {
+    return { stats: bucketStats(elements, budget, exchangeFn), currencyId: base }
+  }
+  let budgeted = '0'
+  let spent = '0'
+  let available = '0'
+  let carry = '0'
+  for (const el of elements) {
+    budgeted = add(budgeted, el.budgeted)
+    spent = add(spent, el.spent)
+    available = add(available, displayAvailable(el))
+    carry = add(carry, carryOver(el))
+  }
+  return { stats: { budgeted, spent, available, carry }, currencyId: [...currencyIds][0] }
+}
+
+const hasUpcoming = (el: { upcoming?: string }): boolean => el.upcoming !== undefined && !isZero(el.upcoming)
+
 export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang = 'en'): BudgetBuckets {
   const folders = [...budget.structure.folders].sort((a, b) => a.position - b.position)
   const elements = budget.structure.elements
   // The uncategorized element is presentation-only (no persisted row to move or
   // budget), so it is pulled out before bucketing and never joins a folder. It
-  // only earns a place when the selected month has uncategorized spend.
+  // only earns a place when the selected month has uncategorized spend (it holds no
+  // plan, so upcoming money alone does not list it).
   const uncategorizedElements = elements.filter(
     (el) => el.id === UNCATEGORIZED_ID && el.isArchived === 0 && cmp(el.spent, '0') !== 0,
   )
@@ -70,18 +95,21 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang =
     folders.length === 0
       ? []
       : folders.map((folder) => {
-          const folderElements = active.filter((el) => el.folderId === folder.id).sort(byPosition)
+          const folderElements = withTagGroupsAdjacent(active.filter((el) => el.folderId === folder.id).sort(byPosition), (el) => el)
           return { folder, elements: folderElements, stats: bucketStats(folderElements, budget, exchangeFn) }
         })
 
   const folderless =
-    folders.length === 0 ? [...active].sort(byPosition) : active.filter((el) => el.folderId === null).sort(byPosition)
+    withTagGroupsAdjacent(
+      folders.length === 0 ? [...active].sort(byPosition) : active.filter((el) => el.folderId === null).sort(byPosition),
+      (el) => el,
+    )
 
   // archive is read-only history: a row earns its place only if one of its
-  // displayed numbers (budget, spent, available) is nonzero
+  // displayed numbers (budget, spent, available) is nonzero; a plan of 0 alone does not keep it
   const archived = elements
     .filter((el) => el.isArchived === 1 && el.id !== UNCATEGORIZED_ID)
-    .filter((el) => cmp(el.budgeted, '0') !== 0 || cmp(el.spent, '0') !== 0 || cmp(displayAvailable(el), '0') !== 0)
+    .filter((el) => cmp(el.budgeted, '0') !== 0 || cmp(el.spent, '0') !== 0 || cmp(displayAvailable(el), '0') !== 0 || hasUpcoming(el))
     .sort((a, b) => compareNames(a.name, b.name, lang))
 
   return {

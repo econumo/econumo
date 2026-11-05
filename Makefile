@@ -1,4 +1,4 @@
-.PHONY: help web-install web-run web-test web-bundle web-lint mobile-install mobile-sync mobile-ios mobile-android mobile-testflight mobile-testflight-guard go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries cdn-upload
+.PHONY: help web-install web-run web-test web-bundle web-lint mobile-install mobile-sync mobile-ios mobile-android mobile-testflight mobile-testflight-guard go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql test-upgrade pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries ship-dist ship-publish
 
 # Default target
 .DEFAULT_GOAL := help
@@ -27,13 +27,15 @@ help:
 	@echo ""
 	@echo "Releases:"
 	@echo "  make release-binaries - Cross-compile the downloadable release binaries (SPA embedded)"
-	@echo "  make cdn-upload CHANNEL=dev - Mirror release-out/ binaries to the private R2 bucket (needs ECONUMO_R2_ENDPOINT [+ ECONUMO_R2_* creds])"
+	@echo "  make ship-dist        - Build the binaries and stage dist/ship/ (binaries + unit template + env example)"
+	@echo "  make ship-publish VERSION=vX.Y.Z CHANNELS=latest - Publish dist/ship/ to R2 with ship (CHANNELS=dev alone for a dev publish)"
 	@echo ""
 	@echo "Suite & stack:"
-	@echo "  make test         - ALL tests: Go smoke + sqlite-vs-pgsql regression + frontend"
+	@echo "  make test         - ALL tests: Go smoke + sqlite-vs-pgsql regression + release upgrades + frontend"
+	@echo "  make test-upgrade - upgrade databases written by published releases (linux, network, git tags)"
 	@echo "  make docker-up    - Start the stack (compose, builds from source)"
 	@echo "  make docker-down  - Stop the stack"
-	@echo "  make publish-dev  - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE) + mirror dev binaries to R2"
+	@echo "  make publish-dev  - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE) + publish the dev channel to R2 (ship)"
 
 # --- Frontend (web/) ---
 
@@ -63,7 +65,7 @@ mobile-install:
 	cd mobile && pnpm install
 
 mobile-sync:
-	cd web && pnpm build
+	cd web && ECONUMO_COMMIT=$(COMMIT) pnpm build
 	cd mobile && pnpm exec cap sync
 
 mobile-ios: mobile-sync
@@ -111,10 +113,11 @@ go-build: swagger
 # stamped through ldflags) and SHA256SUMS into release-out/. VERSION
 # defaults to dev for local verification of the artifact shape.
 VERSION ?= dev
-RELEASE_LDFLAGS = -s -w -X github.com/econumo/econumo/internal/version.Version=$(VERSION)
+COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null)
+RELEASE_LDFLAGS = -s -w -X github.com/econumo/econumo/internal/version.Version=$(VERSION) -X github.com/econumo/econumo/internal/version.Commit=$(COMMIT)
 
 release-binaries: swagger
-	cd web && pnpm install --frozen-lockfile && ECONUMO_VERSION=$(VERSION) pnpm run build
+	cd web && pnpm install --frozen-lockfile && ECONUMO_VERSION=$(VERSION) ECONUMO_COMMIT=$(COMMIT) pnpm run build
 	rm -rf release-out && mkdir -p release-out
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o release-out/econumo-linux-amd64 ./cmd/econumo
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o release-out/econumo-linux-arm64 ./cmd/econumo
@@ -133,7 +136,8 @@ go-run: swagger
 #                    external dependencies. Run this constantly / before commit.
 #   make test        FULL: everything in go-test PLUS the sqlite-vs-pgsql
 #                    engine comparison against a real PostgreSQL PLUS the
-#                    frontend suite. Run before merging / releasing.
+#                    release upgrade suite (linux; needs network and the git
+#                    tags) PLUS the frontend suite. Run before merging / releasing.
 #
 # The granular targets below (test-cover, test-engines, go-lint) remain as the
 # building blocks the two tiers compose.
@@ -253,19 +257,32 @@ test-repo-pgsql:
 	CGO_ENABLED=0 DBTEST_ENGINE=pgsql DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
 		go test -tags enginecompare -count=1 $(shell go list ./internal/... | grep -vE '/sqlc/gen/|/test/enginecompare')
 
+# Release upgrade suite: boots the newest patch of every minor line's published
+# linux binary on an empty database (SQLite, and PostgreSQL at
+# DATABASE_TEST_PGSQL_URL when it answers), seeds it through the API, then
+# upgrades it with this checkout's binary and checks schema, migration order,
+# credentials, reads and writes (internal/test/upgradetest). Needs the release
+# tags (git fetch --tags) and network for the first download of each release;
+# binaries are cached in ECONUMO_UPGRADE_CACHE (default: the user cache dir).
+# ECONUMO_UPGRADE_FROM=v1.5.2,v1.6.1 picks the source releases by hand. Linux
+# only (releases publish linux binaries); elsewhere it skips.
+test-upgrade:
+	CGO_ENABLED=0 DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
+		go test -tags upgrade -v -timeout 30m -count=1 ./internal/test/upgradetest/
+
 # --- Suite & stack (full tests, docker, publishing) ------------------------
 
 # Full suite: the Go smoke suite + the engine-comparison suite against a real
 # PostgreSQL + the frontend suite. Provide Postgres one of two ways: uncomment
 # the `postgres` service in docker-compose.yml (pg-ensure then starts it and
 # creates the test DB), or set DATABASE_TEST_PGSQL_URL to any reachable Postgres.
-test: go-test pg-ensure test-engines test-repo-pgsql web-test
-	@echo "FULL suite passed (Go smoke + sqlite-vs-pgsql comparison + repo suite on PostgreSQL + frontend)."
+test: go-test pg-ensure test-engines test-repo-pgsql test-upgrade web-test
+	@echo "FULL suite passed (Go smoke + sqlite-vs-pgsql comparison + repo suite on PostgreSQL + release upgrades + frontend)."
 
 # Start the stack locally, building the image from source (host port 8181).
 # Regenerates the OpenAPI docs first so the built image embeds the current spec.
 docker-up: swagger
-	docker compose up -d --build
+	ECONUMO_COMMIT=$(COMMIT) docker compose up -d --build
 
 # Stop the stack.
 docker-down:
@@ -288,8 +305,8 @@ publish-buildx-ensure:
 		docker buildx create --name $(BUILDX_BUILDER) --driver docker-container --bootstrap
 
 # Regenerates the OpenAPI docs (swagger) first so the image built from source
-# embeds the current spec. Also cross-compiles the release binaries and mirrors
-# the "dev" channel to the private R2 bucket (see cdn-upload).
+# embeds the current spec. Also cross-compiles the release binaries and
+# publishes them as the "dev" channel to the private R2 bucket (see ship-publish).
 publish-dev: swagger publish-buildx-ensure release-binaries
 	@echo "Publishing $(GHCR_IMAGE):$(PUBLISH_TAG) ($(PUBLISH_PLATFORMS))..."
 	docker buildx build \
@@ -298,51 +315,62 @@ publish-dev: swagger publish-buildx-ensure release-binaries
 		--file deployment/docker/Dockerfile \
 		--target prod \
 		--build-arg ECONUMO_VERSION=$(ECONUMO_VERSION) \
+		--build-arg ECONUMO_COMMIT=$(COMMIT) \
 		--tag $(GHCR_IMAGE):$(PUBLISH_TAG) \
 		--push \
 		.
-	@$(MAKE) cdn-upload CHANNEL=dev
+	@$(MAKE) ship-dist SHIP_SKIP_BUILD=1
+	@$(MAKE) ship-publish VERSION=dev CHANNELS=dev
 
-# --- Cloudflare R2 binary mirror -------------------------------------------
+# --- ship (https://github.com/dmtrkzntsv/ship) -------------------------------
 
-# Mirror the built release binaries to the PRIVATE R2 bucket under
-# s3://$(R2_BUCKET)/$(R2_PROJECT)/$(CHANNEL)/. The bucket has no public domain;
-# objects are retrieved via the S3 API / signed URLs by credential holders.
-# The bucket + project namespace are hardcoded defaults (the bucket hosts
-# several projects); the endpoint and credentials come from the environment and
-# are never committed. The names are ECONUMO_-prefixed so several projects'
-# R2 endpoints/keys can coexist in one shell without colliding:
-#   ECONUMO_R2_ENDPOINT          https://<account_id>.r2.cloudflarestorage.com (required)
-#   ECONUMO_R2_ACCESS_KEY_ID     R2 API-token access key id (optional)
-#   ECONUMO_R2_SECRET_ACCESS_KEY R2 API-token secret        (optional)
-# The two credential vars are optional: when both are set they are mapped to
-# AWS_* for the aws subprocess only; when unset, aws falls back to its own
-# resolution (e.g. the ~/.aws default profile). CHANNEL is required
-# (dev | latest | vX.Y.Z). Usage:
-#   make cdn-upload CHANNEL=dev
-R2_BUCKET  ?= econumo
-R2_PROJECT ?= econumo
-CDN_SRC    ?= release-out
+# Publish the linux binaries with the systemd unit template and env example
+# (deploy/ship/) to the private R2 bucket with ship, which hosts install and
+# update from (`ship install econumo`, `ship update econumo`). Two targets:
+#
+#   make ship-dist VERSION=v1.2.3                     # build (version stamped) + stage dist/ship/
+#   make ship-publish VERSION=v1.2.3 CHANNELS=latest  # immutable version (+ channels)
+#   make ship-dist && make ship-publish CHANNELS=dev  # the moving dev channel only
+#
+# ship-dist runs release-binaries and stages the flat folder ship expects in
+# dist/ship/: econumo-linux-{amd64,arm64}, econumo.service and
+# econumo.env.example, nothing else (release-out/ also carries the GitHub
+# release's SHA256SUMS; ship writes its own). With SHIP_SKIP_BUILD=1 it builds
+# nothing: binaries are taken from release-out/ when present there (CI builds
+# them in their own step), else they must already be in dist/ship/.
+#
+# ship-publish does not build. VERSION=dev (the default) publishes no
+# immutable version, only the channels; any other VERSION is published as an
+# immutable version, refused if it already exists with different files.
+# CHANNELS is a comma-separated subset of latest,dev. Credentials come from
+# ship's config file or SHIP_R2_ENDPOINT, SHIP_R2_ACCESS_KEY_ID and
+# SHIP_R2_SECRET_ACCESS_KEY (Read & Write token); the bucket defaults to `ship`.
+#
+# The publish workflows run both targets from the workflow's own commit
+# (`make -f .ship-tools/Makefile … SHIP_TEMPLATES=.ship-tools/deploy/ship`), so
+# a hotfix from a release branch cut before ship still publishes.
+CHANNELS       ?=
+comma          := ,
+SHIP_DIST      := dist/ship
+SHIP_BIN_SRC   ?= release-out
+SHIP_TEMPLATES ?= deploy/ship
+SHIP_BINARIES  := econumo-linux-amd64 econumo-linux-arm64
+SHIP_VERSION_FLAG  = $(if $(filter-out dev,$(VERSION)),--version $(VERSION))
+SHIP_CHANNELS_FLAG = $(if $(strip $(CHANNELS)),--channels $(strip $(CHANNELS)))
 
-# aws CLI v2 sends integrity headers R2 rejects; only send them when required.
-export AWS_REQUEST_CHECKSUM_CALCULATION = when_required
+ship-dist: $(if $(SHIP_SKIP_BUILD),,release-binaries)
+	$(if $(SHIP_SKIP_BUILD),,rm -rf "$(SHIP_DIST)")
+	mkdir -p "$(SHIP_DIST)"
+	@for f in $(SHIP_BINARIES); do \
+		if [ -f "$(SHIP_BIN_SRC)/$$f" ]; then cp "$(SHIP_BIN_SRC)/$$f" "$(SHIP_DIST)/$$f" || exit 1; fi; \
+		test -f "$(SHIP_DIST)/$$f" || { echo "ship-dist: $$f missing (make release-binaries, or put it in $(SHIP_DIST)/)"; exit 1; }; \
+	done
+	cp "$(SHIP_TEMPLATES)/econumo.service" "$(SHIP_TEMPLATES)/econumo.env.example" "$(SHIP_DIST)/"
 
-cdn-upload:
-	@test -n "$(CHANNEL)" || { echo "cdn-upload: set CHANNEL (dev|latest|vX.Y.Z)"; exit 1; }
-	@test -n "$$ECONUMO_R2_ENDPOINT" || { echo "cdn-upload: ECONUMO_R2_ENDPOINT is required (https://<account_id>.r2.cloudflarestorage.com)"; exit 1; }
-	@if [ -n "$$ECONUMO_R2_ACCESS_KEY_ID" ] && [ -n "$$ECONUMO_R2_SECRET_ACCESS_KEY" ]; then \
-		export AWS_ACCESS_KEY_ID="$$ECONUMO_R2_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$$ECONUMO_R2_SECRET_ACCESS_KEY"; \
-	fi; \
-	case "$(CHANNEL)" in \
-		dev|latest) cache="no-cache" ;; \
-		*) cache="public, max-age=31536000, immutable" ;; \
-	esac; \
-	dest="s3://$(R2_BUCKET)/$(R2_PROJECT)/$(CHANNEL)"; \
-	for f in econumo-linux-amd64 econumo-linux-arm64 SHA256SUMS; do \
-		echo "Uploading $$f -> $$dest/$$f"; \
-		aws s3 cp "$(CDN_SRC)/$$f" "$$dest/$$f" \
-			--endpoint-url "$$ECONUMO_R2_ENDPOINT" \
-			--content-type application/octet-stream \
-			--cache-control "$$cache" || exit 1; \
-	done; \
-	echo "Uploaded channel '$(CHANNEL)' to $$dest/"
+ship-publish:
+	@test -n "$(SHIP_VERSION_FLAG)$(SHIP_CHANNELS_FLAG)" || \
+		{ echo "ship-publish: set VERSION=vX.Y.Z and/or CHANNELS=latest|dev (VERSION=dev needs CHANNELS)"; exit 1; }
+	@test -n "$(SHIP_VERSION_FLAG)" -o -z "$(filter latest,$(subst $(comma), ,$(CHANNELS)))" || \
+		{ echo "ship-publish: CHANNELS=latest needs a release VERSION=vX.Y.Z"; exit 1; }
+	@test -d "$(SHIP_DIST)" || { echo "ship-publish: $(SHIP_DIST)/ missing, run make ship-dist first"; exit 1; }
+	ship publish econumo --path "$(SHIP_DIST)" $(SHIP_VERSION_FLAG) $(SHIP_CHANNELS_FLAG)

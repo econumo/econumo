@@ -553,3 +553,51 @@ it('an empty income folder reads as dashes in its Planned and Received', async (
   await userEvent.click(screen.getByTestId('phone-income-summary'))
   expect(screen.getByTestId('phone-income-group-bf-later')).toHaveTextContent(/^Later——$/)
 })
+
+it('same-name tags fold under one row with their sums; opened, each tag names its owner', async () => {
+  const user = userEvent.setup()
+  renderView({}, (budget) => {
+    budget.meta.access.push({ user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, role: 'admin', isAccepted: 1 })
+    const tag = { type: 2 as const, icon: 'tag', currencyId: null, isArchived: 0 as const, folderId: null, children: [] }
+    budget.structure.elements.push(
+      { ...tag, id: 'tag-a', name: 'Travel', position: 3, budgeted: '100', available: '70', spent: '30', budgetSpent: '30', ownerUserId: 'u1' },
+      { ...tag, id: 'tag-b', name: 'Travel', position: 4, budgeted: '50', available: '35', spent: '15', budgetSpent: '15', ownerUserId: 'u2' },
+    )
+  })
+  const row = screen.getByTestId('phone-tag-group-row-taggroup::travel')
+  expect(row).toHaveTextContent('150.00')
+  expect(row).toHaveTextContent('45.00')
+  expect(screen.queryByTestId('phone-row-tag-a')).not.toBeInTheDocument()
+  await user.click(within(row).getByRole('button', { expanded: false }))
+  expect(within(screen.getByTestId('phone-row-tag-a')).getByText('Ada')).toBeInTheDocument()
+  expect(within(screen.getByTestId('phone-row-tag-b')).getByText('Partner')).toBeInTheDocument()
+})
+
+it('phone row with no plan shows no suggestion', () => {
+  renderView({ selectedDate: '2099-01-01' }, (b) => {
+    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { budgeted: '0', spent: '0', available: '0', budgetSpent: '0', upcoming: '650' })
+  })
+  expect(screen.getByTestId('phone-row-cat-food')).not.toHaveTextContent('650')
+})
+
+it('phone row with a plan below upcoming shows the plan in red', () => {
+  renderView({ selectedDate: '2099-01-01' }, (b) => {
+    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { budgeted: '500', spent: '0', available: '500', budgetSpent: '0', upcoming: '650' })
+  })
+  expect(within(screen.getByTestId('phone-row-cat-food')).getByText('500.00')).toHaveClass('text-expense')
+})
+
+it('phone income and savings rows show no suggestion and never go red', async () => {
+  const row = { element: salaries, planned: '0', actual: '0', upcoming: '1500' }
+  renderView({ planMonth: { ...planMonth, income: incomeOf(row) } }, (b) => {
+    b.structure.savings = [
+      { ...rainyDay, budgeted: '0', spent: '0', available: '0', upcoming: '300' },
+      { ...rainyDay, id: 'acc-s2', name: 'Trip', budgeted: '100', spent: '0', available: '100', upcoming: '300' },
+    ]
+  })
+  await userEvent.click(screen.getByTestId('phone-income-summary'))
+  expect(screen.getByTestId('phone-income-row-ie1')).not.toHaveTextContent('1,500')
+  await userEvent.click(screen.getByTestId('phone-savings-summary'))
+  expect(screen.getByTestId('phone-savings-row-acc-s1')).not.toHaveTextContent('300')
+  expect(within(screen.getByTestId('phone-savings-row-acc-s2')).getByText('100.00')).not.toHaveClass('text-expense')
+})

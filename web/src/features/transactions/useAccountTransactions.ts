@@ -12,6 +12,7 @@ import { dayKey, formatDate, formatDayHeading, isFuture, isToday, isYesterday } 
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { useRecurring } from '@/features/recurring/queries'
+import { compareTransactions } from './order'
 import { useTransactions } from './queries'
 
 export interface ViewTransaction extends Omit<TransactionDto, 'author'> {
@@ -182,7 +183,7 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
       if (a.pinned !== b.pinned) {
         return a.pinned ? -1 : 1
       }
-      return a.tx.date < b.tx.date ? 1 : a.tx.date > b.tx.date ? -1 : 0
+      return compareTransactions(a.tx, b.tx, accountId)
     })
 
     const terms = search.toLowerCase().split(' ').filter(Boolean)

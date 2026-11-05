@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureOwner, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -280,7 +280,7 @@ it('a read-only cell never opens an editor and Delete sends nothing', async () =
   expect(calls).toEqual([])
 })
 
-it('an archived row never opens an editor and Delete sends nothing', async () => {
+it('an archived row keeps an editable plan: typing edits the cell, Delete clears it', async () => {
   const plan = {
     ...fixtureWirePlan,
     structure: {
@@ -301,11 +301,14 @@ it('an archived row never opens an editor and Delete sends nothing', async () =>
   const grid = await screen.findByTestId('plan-sheet')
   fireEvent.click(await screen.findByTestId('plan-cell-arch-1:1'))
   fireEvent.keyDown(grid, { key: '5' })
-  fireEvent.keyDown(grid, { key: 'Enter' })
+  const input = await screen.findByRole('textbox')
+  fireEvent.change(input, { target: { value: '55' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  await waitFor(() => expect(calls).toEqual([expect.objectContaining({ elementId: 'arch-1', period: '2026-07-01', amount: '55' })]))
+  fireEvent.click(screen.getByTestId('plan-cell-arch-1:0'))
   fireEvent.keyDown(grid, { key: 'Delete' })
-  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-  await new Promise((r) => setTimeout(r, 50))
-  expect(calls).toEqual([])
+  await waitFor(() => expect(calls).toHaveLength(2))
+  expect(calls[1]).toEqual(expect.objectContaining({ elementId: 'arch-1', period: '2026-06-01', amount: null }))
 })
 
 it('on a tablet typing opens no editor', async () => {
@@ -490,4 +493,83 @@ it('keys pressed on a focused control in the grid are the control\'s, not the gr
   fireEvent.keyDown(trigger, { key: 'Enter' })
   expect(await screen.findByRole('menu')).toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+function recordTransactionLists(upcoming: unknown[] = []) {
+  const seen: URL[] = []
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      seen.push(new URL(request.url))
+      return HttpResponse.json({ success: true, message: '', data: { items: [], upcoming } })
+    }),
+  )
+  return seen
+}
+
+// Living (pe1) in July: 300 spent so far, 250 still due
+const planWithUpcoming = {
+  ...fixtureWirePlan,
+  structure: {
+    ...fixtureWirePlan.structure,
+    elements: fixtureWirePlan.structure.elements.map((el) =>
+      el.id === 'pe1' ? { ...el, cells: el.cells.map((c, i) => (i === 2 ? { ...c, actual: '300', upcoming: '250' } : c)) } : el,
+    ),
+  },
+}
+
+const internetRow = {
+  id: 'rt1', author: fixtureOwner, currencyId: 'cur-usd', amount: '250', description: 'Internet',
+  category: null, payee: null, tag: null, spentAt: '2026-07-20 00:00:00',
+  templateId: 'rt1', schedule: 'monthly', accountId: 'a1', accountName: 'Cash',
+  labelNames: [], isNext: true, isOverdue: false, canEdit: true,
+}
+
+it('editing a current-month cell lists what is still to come', async () => {
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  usePlanHandlers(planWithUpcoming)
+  const seen = recordTransactionLists([internetRow])
+  renderPage()
+  const { grid } = await gridAtFirstExpenseCell()
+  fireEvent.keyDown(grid, { key: 'F2' })
+  expect(await screen.findByText('Internet')).toBeInTheDocument()
+  expect(screen.getByText('Coming up')).toBeInTheDocument()
+  expect(screen.getByTestId('upcoming-spent')).toHaveTextContent('Already spent300.00 $')
+  expect(screen.getByTestId('upcoming-total')).toHaveTextContent('Total550.00')
+  expect(seen[0].searchParams.get('envelopeId')).toBe('pe1')
+  expect(seen[0].searchParams.get('periodStart')).toBe('2026-07-01')
+  // the panel keeps the grid's keys: Esc still closes the editor
+  fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
+  expect(screen.queryByText('Internet')).not.toBeInTheDocument()
+})
+
+it('a press on the list fills the cell editor with spent + still due without committing', async () => {
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  usePlanHandlers(planWithUpcoming)
+  recordTransactionLists([internetRow])
+  const calls = recordSetLimit()
+  renderPage()
+  const { grid } = await gridAtFirstExpenseCell()
+  fireEvent.keyDown(grid, { key: 'F2' })
+  await screen.findByRole('button', { name: /^Total 550\.00/ })
+  const input = screen.getByRole('textbox')
+  const row = screen.getByText('Internet')
+  fireEvent.mouseDown(row)
+  fireEvent.click(row)
+  expect(input).toHaveValue('550')
+  expect(input).toHaveFocus()
+  await new Promise((r) => setTimeout(r, 30))
+  expect(calls).toEqual([])
+})
+
+it('a past month makes no transactions request', async () => {
+  // August is the current month, so July is past
+  usePlanHandlers(planWithUpcoming)
+  const seen = recordTransactionLists([internetRow])
+  renderPage()
+  const { grid } = await gridAtFirstExpenseCell()
+  fireEvent.keyDown(grid, { key: 'F2' })
+  expect(await screen.findByRole('textbox')).toBeInTheDocument()
+  await new Promise((r) => setTimeout(r, 30))
+  expect(seen).toEqual([])
+  expect(screen.queryByTestId('upcoming-payments')).not.toBeInTheDocument()
 })

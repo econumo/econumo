@@ -7,8 +7,10 @@ import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/sqlite"
+	"github.com/econumo/econumo/internal/infra/txorder"
 )
 
 // migrationCommands are data migrations the boot runner invokes as command
@@ -42,6 +44,30 @@ func migrationCommands() []command {
 			},
 		},
 		{
+			name:    "migration:normalize-emails",
+			summary: "rewrite stored addresses to their normalized form; one that would collide keeps its spelling and is logged (idempotent)",
+			run: func(ctx context.Context, c *container, args []string) error {
+				n, err := c.user.NormalizeEmails(ctx)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("normalized %d address(es)\n", n)
+				return nil
+			},
+		},
+		{
+			name:    "migration:seed-transaction-sort-keys",
+			summary: "give every transaction without one a sort key on each account side, in the order lists showed before keys existed (idempotent)",
+			run: func(ctx context.Context, c *container, args []string) error {
+				n, err := txorder.New(c.cfg.DatabaseDriver, backend.NewTxManager(c.db)).SeedMissing(ctx)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("placed the transactions of %d account(s)\n", n)
+				return nil
+			},
+		},
+		{
 			name:    "migration:normalize-sqlite-datetimes",
 			summary: "rewrite SQLite datetimes stored as Go time.Time.String() text to 'Y-m-d H:i:s' UTC (idempotent; no-op on PostgreSQL)",
 			run: func(ctx context.Context, c *container, args []string) error {
@@ -55,6 +81,26 @@ func migrationCommands() []command {
 				}
 				fmt.Printf("normalized %d datetime value(s) across %d column(s); left %d unparseable value(s) unchanged\n",
 					report.Rewritten, report.Columns, report.Unparseable)
+				return nil
+			},
+		},
+		{
+			name:    "migration:copy-access-tokens",
+			summary: "copy access_tokens into access_tokens_new, step 2 of the access_tokens repair (idempotent; no-op on PostgreSQL)",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if c.cfg.DatabaseDriver != sqlite.Name {
+					fmt.Printf("nothing to copy on %s\n", c.cfg.DatabaseDriver)
+					return nil
+				}
+				copied, pending, err := sqlite.CopyAccessTokens(ctx, c.db)
+				if err != nil {
+					return err
+				}
+				if !pending {
+					fmt.Println("no access_tokens_new to fill: the repair has not started or is already complete")
+					return nil
+				}
+				fmt.Printf("copied %d access_tokens row(s)\n", copied)
 				return nil
 			},
 		},

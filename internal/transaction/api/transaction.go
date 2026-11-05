@@ -52,6 +52,25 @@ func (h *Handlers) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.UpdateTransaction)
 }
 
+// MoveTransaction handles POST /api/v1/transaction/move-transaction (auth).
+//
+// @Summary     Move a transaction within or between days
+// @Description Puts a transaction where it was dropped on an account page: directly below aboveId on that account's day, or at the top of the day when aboveId is null. Only that account's order changes, and no other transaction is renumbered. A date other than fromDate (the day the page showed it on) moves the transaction to that day, keeping its time. A transaction no longer stored on fromDate, or an aboveId no longer on the target day, is refused as changed meanwhile. Returns the rewritten transaction(s) plus the refreshed account list.
+// @Tags        Transaction
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.MoveTransactionRequest true "Move transaction request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.MoveTransactionResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/transaction/move-transaction [post]
+func (h *Handlers) MoveTransaction(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.MoveTransaction)
+}
+
 // DeleteTransaction handles POST /api/v1/transaction/delete-transaction (auth).
 //
 // @Summary     Delete a transaction
