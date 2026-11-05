@@ -79,6 +79,16 @@ navigation (single-pane vs sidebar).
       server stdout in dev) → enter code + new password → old password rejected,
       new one works; all other sessions of the user are revoked.
 - [ ] Recovery with a wrong/expired code → clear error, password unchanged.
+- [ ] Registering `JÖRG@…` stores and shows `jörg@…`. Signing in and Forgot password work from any
+      case, the code goes to the stored `jörg@…` and the reset succeeds, and registering `JÖRG@…`
+      again is refused as already existing. Changing an email to `NEW@…` stores `new@…`.
+- [ ] Forgot password for a look-alike of a real address (`admin@gmaİl.…` when `admin@gmail.…`
+      exists) sends no email at all, and that address cannot sign in with the real password.
+- [ ] Upgrading rewrites stored addresses to lowercase (`Alice@…` shows as `alice@…` and still signs
+      in). An instance holding both `JÖRG@…` and `jörg@…` boots, logs one WARN with the user id of the
+      account left as `JÖRG@…`, and each spelling still signs in to its own account. After
+      `user:change-email` moves that one, it behaves like any other account. A still-salted instance
+      keeps its encrypted emails intact until `data:remove-salt`, which stores them lowercase.
 - [ ] With `MAILER_DSN=smtp://user:pass@host:587?from=…` (STARTTLS) and with
       `smtps://…:465` (implicit TLS) pointed at a real relay, the reset code
       email arrives with the right From/Reply-To and a readable non-English
@@ -275,6 +285,10 @@ navigation (single-pane vs sidebar).
       (no OER token) there are no global currencies besides USD — create a
       custom currency in Settings → Currencies first (name, code, symbol,
       rate); that is the normal manual path.
+- [ ] Digital currency (self-hosted, OER token set): `currency:add ETH Ethereum 8`
+      and `currency:add DOGE Dogecoin 8`, then `currency:update-rates` — both
+      get a rate, show in the currency picker, and can be picked as the
+      display currency in Settings → Profile.
 - [ ] Folders: create, rename, collapse/expand, hide/show (hidden folder
       disappears from sidebar but its accounts stay reachable via settings and
       keep their transactions),
@@ -685,6 +699,22 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       already linked from this source is never adopted twice.
 - [ ] Rate limit: the 61st ingest within the window from one user is 429 with the
       frozen envelope.
+- [ ] With `ECONUMO_RATE_LIMIT_IP=1`, a second failed login with another email from one IP in
+      the same minute is 429, while a login from a different IP still gets through; ingest and
+      rule preview from one IP stay past the cap.
+- [ ] Five wrong passwords for an email from one IP lock only that IP: the owner signs in from
+      another IP at once. Past the ceiling (50 failures across IPs) that email is 429 from any IP.
+- [ ] Wrong guesses sent all at once count the same as one by one: with a 64-request burst of
+      wrong passwords for an email from one IP, only 5 are answered as invalid credentials and the
+      rest are 429, and the owner still signs in from another IP.
+- [ ] Limits where every request counts hold under a burst too: 64 `remind-password` requests at
+      once for one email from one IP send 3 emails and answer the rest with 429.
+- [ ] A successful login does not reset the ceiling: signing in to an account while wrong
+      passwords reach it from many IPs still ends in 429 after 50 failures. A success still forgives
+      that IP's own typos.
+- [ ] With `ECONUMO_CLIENT_IP_HEADER` set for the proxy, two clients through it are limited
+      separately (unset, they count as one IP). With `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` also set, a
+      direct request with a forged header is limited by its real address.
 - [ ] A tap whose merchant name exceeds 255 characters is imported with the
       name cut to 255 (no failed row).
 - [ ] Manually importing a queued row whose card currency differs from the
@@ -1780,6 +1810,12 @@ and on tablet/phone only with a hardware keyboard.
       unchanged, Settings -> Sessions still names each session's provider, and a
       custom-OIDC session signed in before the upgrade still logs out through
       the provider's end-session page (its stored provider/id_token survive).
+- [ ] Instance on v1.3.x or older (SQLite AND PostgreSQL) holding a deleted
+      account with a non-zero balance, upgraded straight to this release: the
+      first boot completes instead of failing with "no such column:
+      recipient_sort_key" at migration 20260817000001; the deleted account's
+      history now ends with one "Balance adjustment (account deleted)"
+      correction, and budgets still count its earlier transactions.
 - [ ] 📱 **Upcoming recurring payments mark a short plan**: with an active
       recurring expense on a budget account (category X, due later this month,
       nothing planned for X), the current month's Budget view (desktop, phone
@@ -2462,7 +2498,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       registered shows the server's error and no buttons, and does not redirect;
       for an unknown client the error reads "This app's registration has expired
       or is unknown. Remove Econumo from the app and add it again." A client that
-      registered up to 30 days ago and was never approved is still known.
+      registered up to 30 days ago and was never approved is still known, unless
+      1,000 newer unapproved registrations arrived since: the oldest then make room,
+      and a client that was ever approved is never removed this way.
       An unusual `scope` value (for example `scope=openid`) does not fail: the
       app is connected with full MCP access as usual.
       One with only a malformed parameter (missing PKCE challenge, wrong

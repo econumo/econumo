@@ -6,10 +6,14 @@ package user
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // MigrateRemoveDataSalt decrypts every user's email back to plaintext (AES
@@ -26,6 +30,10 @@ import (
 // concurrent logins, resets and profile writes block behind it, so run it while
 // writes are quiet.
 //
+// Decrypted addresses are stored normalized by the same rule as NormalizeEmails, so
+// addresses that normalize alike do not fail the sweep. Addresses that are
+// byte-identical do fail it, naming both accounts: no lookup could tell them apart.
+//
 // It is idempotent and mixed-state safe: a row whose email is already plaintext
 // fails the salted Decode (bad base64 / HMAC mismatch) and is counted as
 // "skipped" rather than corrupted, so a re-run reports migrated==0.
@@ -38,19 +46,21 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 		// ciphertext AS plaintext. Refuse rather than corrupt the data.
 		return 0, 0, errors.New("data salt must be set to decrypt existing data")
 	}
-	ids, err := s.repo.ListIDs(ctx)
+	rows, err := s.repo.ListEmailsOldestFirst(ctx)
 	if err != nil {
 		return 0, 0, err
 	}
 	salted := auth.NewEncodeService(salt)
 
+	var collided []vo.Id
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		for _, id := range ids {
+		var decrypted []StoredEmail
+		for _, row := range rows {
 			// Same rule as every other whole-aggregate writer: lock, then read.
-			if lerr := s.repo.LockRow(ctx, id); lerr != nil {
+			if lerr := s.repo.LockRow(ctx, row.ID); lerr != nil {
 				return lerr
 			}
-			u, gerr := s.repo.GetByID(ctx, id)
+			u, gerr := s.repo.GetByID(ctx, row.ID)
 			if gerr != nil {
 				return gerr
 			}
@@ -66,9 +76,19 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 				skipped++
 				continue
 			}
-			u.UpdateEmail(plain, s.clock.Now())
-			if serr := s.repo.Save(ctx, u); serr != nil {
-				return serr
+			decrypted = append(decrypted, StoredEmail{ID: row.ID, Email: plain})
+		}
+		// An address already in its normalized form has no other spelling to fall back
+		// to, so those are placed first, whatever the accounts' ages.
+		first := slices.DeleteFunc(slices.Clone(decrypted), func(r StoredEmail) bool { return r.Email != model.NormalizeEmail(r.Email) })
+		rest := slices.DeleteFunc(slices.Clone(decrypted), func(r StoredEmail) bool { return r.Email == model.NormalizeEmail(r.Email) })
+		for _, row := range slices.Concat(first, rest) {
+			kept, perr := s.placeDecryptedEmail(ctx, row)
+			if perr != nil {
+				return perr
+			}
+			if kept {
+				collided = append(collided, row.ID)
 			}
 			migrated++
 		}
@@ -77,7 +97,84 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 	if err != nil {
 		return 0, 0, err
 	}
+	s.warnCollidingEmails(ctx, collided)
 	return migrated, skipped, nil
+}
+
+// placeDecryptedEmail stores a decrypted address normalized, or as decrypted when that
+// form is taken (reporting true). Two accounts with byte-identical addresses stop the
+// sweep: no lookup could tell them apart, so the operator decides.
+func (s *Service) placeDecryptedEmail(ctx context.Context, row StoredEmail) (bool, error) {
+	normalized := model.NormalizeEmail(row.Email)
+	holder, err := s.repo.HolderOfExactEmail(ctx, normalized)
+	switch {
+	case err != nil && !isNotFound(err):
+		return false, err
+	case err != nil:
+		return false, s.repo.SetEmail(ctx, row.ID, normalized)
+	case row.Email == normalized:
+		return false, identicalEmailsError(holder, row.ID)
+	}
+	holder, err = s.repo.HolderOfExactEmail(ctx, row.Email)
+	switch {
+	case err == nil:
+		return false, identicalEmailsError(holder, row.ID)
+	case !isNotFound(err):
+		return false, err
+	}
+	return true, s.repo.SetEmail(ctx, row.ID, row.Email)
+}
+
+func identicalEmailsError(a, b vo.Id) error {
+	return fmt.Errorf("users %s and %s hold the same address: move one with user:change-email, then run this again", a, b)
+}
+
+// NormalizeEmails rewrites stored addresses to model.NormalizeEmail and returns how
+// many it changed. An address whose normalized form another account already holds keeps
+// its spelling, still signs in by it, and is logged for the operator to move with
+// user:change-email: the data cannot be merged, and failing the boot would take the
+// instance down. Addresses already normalized therefore keep their place, then the
+// oldest account wins. Rows still encrypted are left for data:remove-salt: lowercasing
+// ciphertext would destroy it. Idempotent.
+func (s *Service) NormalizeEmails(ctx context.Context) (int, error) {
+	var changed int
+	var collided []vo.Id
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		rows, err := s.repo.ListEmailsOldestFirst(ctx)
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			normalized := model.NormalizeEmail(row.Email)
+			if normalized == row.Email || auth.LooksEncrypted(row.Email) {
+				continue
+			}
+			_, herr := s.repo.HolderOfExactEmail(ctx, normalized)
+			switch {
+			case herr == nil:
+				collided = append(collided, row.ID)
+				continue
+			case !isNotFound(herr):
+				return herr
+			}
+			if serr := s.repo.SetEmail(ctx, row.ID, normalized); serr != nil {
+				return serr
+			}
+			changed++
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	s.warnCollidingEmails(ctx, collided)
+	return changed, nil
+}
+
+func (s *Service) warnCollidingEmails(ctx context.Context, ids []vo.Id) {
+	for _, id := range ids {
+		slog.WarnContext(ctx, "user address collides with another account, move it with user:change-email", "user_id", id.String())
+	}
 }
 
 // SeedAnalyticsOption writes the analytics preference row for every user that

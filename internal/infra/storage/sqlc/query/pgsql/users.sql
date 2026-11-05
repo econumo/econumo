@@ -78,7 +78,20 @@ SELECT language FROM users WHERE id = $1;
 -- name: GetUserByEmail :one
 SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
-WHERE lower(email) = lower($1);
+WHERE email = sqlc.arg(normalized) OR email = sqlc.arg(exact)
+-- A row that collided when addresses were normalized keeps its own spelling, so the
+-- account that exact spelling names wins over the normalized one.
+ORDER BY email = sqlc.arg(exact) DESC
+LIMIT 1;
 
 -- name: ExistsUserByEmail :one
-SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower($1));
+SELECT EXISTS(SELECT 1 FROM users WHERE email = sqlc.arg(normalized) OR email = sqlc.arg(exact));
+
+-- name: ListUserEmailsOldestFirst :many
+SELECT id, email FROM users ORDER BY created_at, id;
+
+-- name: GetUserIDByExactEmail :one
+SELECT id FROM users WHERE email = sqlc.arg(email);
+
+-- name: SetUserEmail :exec
+UPDATE users SET email = sqlc.arg(email) WHERE id = sqlc.arg(id);

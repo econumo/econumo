@@ -171,22 +171,32 @@ func normalizeCode(code string) string {
 	return strings.ToUpper(strings.TrimSpace(code))
 }
 
-// validateCode normalizes and enforces the ISO 4217 shape (3 ASCII letters),
-// returning a *ValidationError on failure. The CLI path's field key ("currency")
-// is frozen; use validateCodeField for callers that need a different key.
+// validateCode normalizes and validates a global currency code, returning a
+// *ValidationError on failure. Globals take 3 or 4 letters: ISO 4217 codes are
+// 3, but Open Exchange Rates publishes some digital currencies under 4 (DASH,
+// DOGE). The CLI path's field key ("currency") is frozen.
 func validateCode(code string) (string, error) {
-	return validateCodeField(code, "currency")
+	c := normalizeCode(code)
+	if len(c) < 3 || len(c) > 4 || !isAlpha(c) {
+		return "", invalidCode("currency")
+	}
+	return c, nil
 }
 
-// validateCodeField is validateCode with a caller-chosen field key, for use
-// cases (e.g. create-currency) whose wire contract keys the error differently.
+// validateCodeField enforces the ISO 4217 shape (3 ASCII letters) for a user's
+// custom currency, with a caller-chosen field key for use cases (e.g.
+// create-currency) whose wire contract keys the error differently.
 func validateCodeField(code, key string) (string, error) {
 	c := normalizeCode(code)
 	if len(c) != 3 || !isAlpha(c) {
-		return "", errs.NewValidation("CurrencyCode is incorrect",
-			errs.FieldError{Key: key, Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
+		return "", invalidCode(key)
 	}
 	return c, nil
+}
+
+func invalidCode(key string) error {
+	return errs.NewValidation("CurrencyCode is incorrect",
+		errs.FieldError{Key: key, Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
 }
 
 func isAlpha(s string) bool {

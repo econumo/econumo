@@ -114,3 +114,40 @@ func TestProfileCurrency_DanglingID_Errors(t *testing.T) {
 		t.Fatal("a dangling currency option id must surface as an error, not fall back to USD")
 	}
 }
+
+// A global digital currency may carry a 4-letter code (DOGE), so it must be
+// selectable as the display currency; 2 and 5 letters stay invalid.
+func TestProfileCurrency_FourLetterGlobal(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newTrialSvc(t, db, 0)
+	ctx := context.Background()
+
+	res, err := svc.Register(ctx, model.RegisterRequest{
+		Name: "Dora", Email: "dora@econumo.test", Password: "secretpass",
+	})
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	uid, err := vo.ParseId(res.User.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doge := fixture.New(t, db).Currency(fixture.Currency{Code: "DOGE", Symbol: "DOGE"})
+
+	upd, err := svc.UpdateCurrency(ctx, uid, model.UpdateCurrencyRequest{Currency: "doge"})
+	if err != nil {
+		t.Fatalf("UpdateCurrency(doge): %v", err)
+	}
+	if upd.User.Currency != "DOGE" {
+		t.Fatalf("wire currency = %q, want DOGE", upd.User.Currency)
+	}
+	if got := storedCurrencyOption(t, db, res.User.Id); got != doge {
+		t.Fatalf("stored option = %q, want the DOGE id %s", got, doge)
+	}
+
+	for _, code := range []string{"US", "DOGEX"} {
+		if _, err := svc.UpdateCurrency(ctx, uid, model.UpdateCurrencyRequest{Currency: code}); err == nil {
+			t.Errorf("UpdateCurrency(%s): want a validation error", code)
+		}
+	}
+}

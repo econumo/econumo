@@ -91,7 +91,7 @@ type Querier interface {
 	// Password-reset request queries (users_password_requests). See the sqlite
 	// sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
-	ExistsUserByEmail(ctx context.Context, lower string) (bool, error)
+	ExistsUserByEmail(ctx context.Context, arg ExistsUserByEmailParams) (bool, error)
 	// Joins users for access_level/access_until; see the sqlite sibling for why
 	// provider/id_token are deliberately omitted here.
 	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
@@ -228,7 +228,9 @@ type Querier interface {
 	// Write + read queries for the transaction module (PostgreSQL: $N placeholders).
 	// See the sqlite variant for documentation.
 	GetTransactionByID(ctx context.Context, id string) (GetTransactionByIDRow, error)
-	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
+	// A row that collided when addresses were normalized keeps its own spelling, so the
+	// account that exact spelling names wins over the normalized one.
+	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
 	// Read-model queries for the currency module (PostgreSQL variant). No $N
 	// placeholders are needed (neither query is parameterised). See the sqlite
@@ -241,6 +243,7 @@ type Querier interface {
 	GetUserCurrencyListView(ctx context.Context, userID *string) ([]GetUserCurrencyListViewRow, error)
 	GetUserEmailChangeRequestByUser(ctx context.Context, userID string) (UsersEmailChangeRequest, error)
 	GetUserEmailVerificationByUser(ctx context.Context, userID string) (UsersEmailVerification, error)
+	GetUserIDByExactEmail(ctx context.Context, email string) (string, error)
 	GetUserLanguage(ctx context.Context, id string) (string, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
@@ -416,6 +419,7 @@ type Querier interface {
 	// too, their history still counts), a budget, a budget element, or a user's
 	// display currency. The rate-gap check looks at these only.
 	ListUsedGlobalCurrencyCodes(ctx context.Context) ([]string, error)
+	ListUserEmailsOldestFirst(ctx context.Context) ([]ListUserEmailsOldestFirstRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	// Ordered by id so the backfill is deterministic across engines and reruns.
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
@@ -440,6 +444,7 @@ type Querier interface {
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
+	PurgeExcessUnusedOAuthClients(ctx context.Context, limit int32) (int64, error)
 	PurgeExpiredOAuthCodes(ctx context.Context, expiresAt time.Time) error
 	PurgeUnusedOAuthClients(ctx context.Context, createdAt time.Time) (int64, error)
 	// The operation_requests_ids idempotency queries moved to operations.sql (shared
@@ -477,6 +482,7 @@ type Querier interface {
 	// comment: dropping the element (flag off or member removed) deletes both.
 	SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (bool, error)
 	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
+	SetUserEmail(ctx context.Context, arg SetUserEmailParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.

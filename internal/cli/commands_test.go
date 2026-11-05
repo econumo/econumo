@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"database/sql"
+	"github.com/econumo/econumo/internal/infra/auth"
 	"path/filepath"
 	"testing"
 
@@ -532,6 +533,117 @@ func TestFreshDatabaseMigratesWithCommandSteps(t *testing.T) {
 	if err := migrate.Run(ctx, c.db, runnerMigs, migrate.WithCommandRunner(MigrationCommandRunner(c.cfg, c.db))); err != nil {
 		t.Fatalf("fresh boot migration: %v", err)
 	}
+}
+
+// TestPreMembershipDatabaseMigratesWithCommandSteps boots a database last
+// migrated by v1.3.x (before 20260817000000) that holds a deleted account with
+// a balance. Command steps run today's code, so the zeroing step must come
+// after every migration its correction write depends on; at 20260817000001 it
+// failed on the sort key columns 20261024000000 adds.
+func TestPreMembershipDatabaseMigratesWithCommandSteps(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "db.sqlite")
+	t.Setenv("DATABASE_URL", "sqlite://"+dbPath)
+	ctx := context.Background()
+	c, err := newContainer(ctx)
+	if err != nil {
+		t.Fatalf("container: %v", err)
+	}
+	defer c.Close()
+	var all, released []migrate.Migration
+	for _, m := range migrations.SQLite() {
+		mig := migrate.Migration{Version: m.Version, SQL: m.SQL, Command: m.Command}
+		all = append(all, mig)
+		if m.Version < "20260817000000" {
+			released = append(released, mig)
+		}
+	}
+	if err := migrate.Run(ctx, c.db, released, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatalf("v1.3 schema: %v", err)
+	}
+	userID, accountID := vo.NewId().String(), vo.NewId().String()
+	for _, q := range []struct {
+		sql  string
+		args []any
+	}{
+		{`INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at) VALUES (?,?,?,'U','','x','','2026-01-01 00:00:00','2026-01-01 00:00:00')`, []any{userID, userID, userID + "@e.test"}},
+		{`INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?,'dffc2a06-6f29-4704-8575-31709adee926',?,'A',2,'wallet',1,'2026-01-01 00:00:00','2026-02-01 00:00:00')`, []any{accountID, userID}},
+		{`INSERT INTO transactions (id, user_id, account_id, description, type, amount, spent_at, created_at, updated_at) VALUES (?,?,?,'',1,5,'2026-01-10 00:00:00','2026-01-10 00:00:00','2026-01-10 00:00:00')`, []any{vo.NewId().String(), userID, accountID}},
+	} {
+		if _, err := c.db.ExecContext(ctx, q.sql, q.args...); err != nil {
+			t.Fatalf("%s: %v", q.sql, err)
+		}
+	}
+	if err := migrate.Run(ctx, c.db, all, migrate.WithCommandRunner(MigrationCommandRunner(c.cfg, c.db))); err != nil {
+		t.Fatalf("upgrade boot migration: %v", err)
+	}
+	var n int
+	if err := c.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM transactions WHERE account_id = ? AND type = 0 AND amount = 5 AND sort_key IS NOT NULL`, accountID).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("zeroing corrections with a sort key = %d (err %v), want 1", n, err)
+	}
+}
+
+// TestEmailNormalizingUpgrade_CollidingAccountsDoNotStopTheBoot upgrades a database
+// holding pairs SQLite's lower() let through: failing on them would take the instance
+// down. Encrypted rows must come through untouched for data:remove-salt to read.
+func TestEmailNormalizingUpgrade_CollidingAccountsDoNotStopTheBoot(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "db.sqlite")
+	t.Setenv("DATABASE_URL", "sqlite://"+dbPath)
+	ctx := context.Background()
+	c, err := newContainer(ctx)
+	if err != nil {
+		t.Fatalf("container: %v", err)
+	}
+	defer c.Close()
+	var all, released []migrate.Migration
+	for _, m := range migrations.SQLite() {
+		mig := migrate.Migration{Version: m.Version, SQL: m.SQL, Command: m.Command}
+		all = append(all, mig)
+		if m.Version < "20261103000000" {
+			released = append(released, mig)
+		}
+	}
+	if err := migrate.Run(ctx, c.db, released, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatalf("released schema: %v", err)
+	}
+	ciphertext, err := auth.NewEncodeService("0123456789abcdef").Encode("Encrypted@Example.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	type row struct{ id, email, createdAt, want string }
+	rows := []row{
+		{vo.NewId().String(), "JÖRG@example.test", "2026-01-01 00:00:00", "JÖRG@example.test"},
+		{vo.NewId().String(), "jörg@example.test", "2026-02-01 00:00:00", "jörg@example.test"},
+		{vo.NewId().String(), "ÜÖ@example.test", "2026-01-01 00:00:00", "üö@example.test"},
+		{vo.NewId().String(), "Üö@example.test", "2026-02-01 00:00:00", "Üö@example.test"},
+		{vo.NewId().String(), " Plain@Example.test", "2026-03-01 00:00:00", "plain@example.test"},
+		{vo.NewId().String(), ciphertext, "2026-03-01 00:00:00", ciphertext},
+	}
+	for _, u := range rows {
+		if _, err := c.db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at) VALUES (?,?,?,'U','','x','',?,?)`,
+			u.id, u.id, u.email, u.createdAt, u.createdAt); err != nil {
+			t.Fatalf("seed %s: %v", u.email, err)
+		}
+	}
+	if err := migrate.Run(ctx, c.db, all, migrate.WithCommandRunner(MigrationCommandRunner(c.cfg, c.db))); err != nil {
+		t.Fatalf("upgrade boot migration: %v", err)
+	}
+	assertEmails := func() {
+		t.Helper()
+		for _, u := range rows {
+			var got string
+			if err := c.db.QueryRowContext(ctx, `SELECT email FROM users WHERE id = ?`, u.id).Scan(&got); err != nil {
+				t.Fatal(err)
+			}
+			if got != u.want {
+				t.Fatalf("%q became %q, want %q", u.email, got, u.want)
+			}
+		}
+	}
+	assertEmails()
+	if err := MigrationCommandRunner(c.cfg, c.db)(ctx, "migration:normalize-emails"); err != nil {
+		t.Fatalf("rerun: %v", err)
+	}
+	assertEmails()
 }
 
 // TestMigrationCopyAccessTokens_CommandAndRunner drives step 2 of the

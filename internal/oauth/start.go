@@ -19,7 +19,7 @@ func (s *Service) StartLink(ctx context.Context, userID vo.Id, req model.StartOA
 // start creates the state row and returns the provider's authorization URL.
 // Expired states are purged opportunistically here, the cheapest moment.
 func (s *Service) start(ctx context.Context, req model.StartOAuthRequest, intent string, linkUser vo.Id) (*model.StartOAuthResult, error) {
-	if err := s.allowStart(); err != nil {
+	if err := s.allowStart(ctx); err != nil {
 		return nil, err
 	}
 	p, err := s.provider(req.Provider)

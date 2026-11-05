@@ -310,5 +310,6 @@ func New(deps Deps) http.Handler {
 	// carries them too (framing/clickjacking protection matters most there).
 	// Compression wraps the whole tree for the same reason: the SPA bundle
 	// gains from it as much as the API.
-	return middleware.SecurityHeaders(middleware.Compress(root))
+	// The client IP too: the rate limiter reads it on every tree (API, MCP OAuth).
+	return middleware.SecurityHeaders(middleware.Compress(middleware.ClientIP(deps.Cfg.ClientIPHeader, deps.Cfg.ClientIPTrustedProxies)(root)))
 }

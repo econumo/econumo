@@ -44,7 +44,7 @@ func buildTestAPIWithToken(t *testing.T) (http.Handler, string) {
 		RateLimitRemind:    3,
 		RateLimitRegister:  5,
 		RateLimitWindow:    15 * time.Minute,
-		RateLimitGlobal:    60,
+		RateLimitIP:        60,
 	}
 
 	handler := server.BuildAPI(cfg, db.Raw, server.Seams{

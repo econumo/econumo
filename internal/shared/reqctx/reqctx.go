@@ -25,7 +25,20 @@ const (
 	logAttrsKey
 	languageKey
 	explicitLocationKey
+	clientIPKey
 )
+
+// WithClientIP returns a context carrying the caller's rate-limit bucket: an IP
+// address, or the /64 network of an IPv6 one.
+func WithClientIP(ctx context.Context, ip string) context.Context {
+	return context.WithValue(ctx, clientIPKey, ip)
+}
+
+// ClientIP returns the caller's rate-limit bucket, "" when none was resolved.
+func ClientIP(ctx context.Context) string {
+	ip, _ := ctx.Value(clientIPKey).(string)
+	return ip
+}
 
 // WithLocation returns a context carrying the request's timezone.
 func WithLocation(ctx context.Context, loc *time.Location) context.Context {

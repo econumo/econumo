@@ -113,12 +113,12 @@ func TestUserRepo_GetHeaderByID(t *testing.T) {
 func TestUserRepo_GetByEmail(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
-	u := newTestUser(vo.MustParseId(userA), "Alice@Example.test", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	u := newTestUser(vo.MustParseId(userA), "alice@example.test", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	// Lookup is case-insensitive.
-	got, err := repo.GetByEmail(ctx, "alice@example.test")
+	got, err := repo.GetByEmail(ctx, "Alice@Example.test")
 	if err != nil {
 		t.Fatalf("GetByEmail: %v", err)
 	}
@@ -135,11 +135,11 @@ func TestUserRepo_GetByEmail(t *testing.T) {
 func TestUserRepo_ExistsByEmail(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
-	u := newTestUser(vo.MustParseId(userA), "Alice@Example.test", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	u := newTestUser(vo.MustParseId(userA), "alice@example.test", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	exists, err := repo.ExistsByEmail(ctx, "alice@example.test")
+	exists, err := repo.ExistsByEmail(ctx, "Alice@Example.test")
 	if err != nil || !exists {
 		t.Errorf("ExistsByEmail(alice) = %v, %v; want true", exists, err)
 	}
@@ -149,11 +149,79 @@ func TestUserRepo_ExistsByEmail(t *testing.T) {
 	}
 }
 
+func TestUserRepo_GetByEmail_PrefersTheExactSpellingOverTheNormalizedOne(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+	save := func(id, email string) {
+		t.Helper()
+		u := newTestUser(vo.MustParseId(id), email, "U", "", "h", "s", true, fixedTime, fixedTime, nil)
+		if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+			t.Fatalf("Save %s: %v", email, err)
+		}
+	}
+	save(userA, "jörg@example.test")
+	save(userB, "JÖRG@example.test")
+	for typed, want := range map[string]string{
+		"jörg@example.test":   userA,
+		"JÖRG@example.test":   userB,
+		" JÖRG@example.test ": userB,
+		"JöRG@example.test":   userA,
+		"jÖRG@EXAMPLE.test":   userA,
+	} {
+		got, err := repo.GetByEmail(ctx, typed)
+		if err != nil {
+			t.Fatalf("GetByEmail(%q): %v", typed, err)
+		}
+		if got.ID.String() != want {
+			t.Errorf("GetByEmail(%q) = %s, want %s", typed, got.ID, want)
+		}
+	}
+	for _, typed := range []string{"JöRG@example.test", "JÖRG@example.test"} {
+		if exists, err := repo.ExistsByEmail(ctx, typed); err != nil || !exists {
+			t.Errorf("ExistsByEmail(%q) = %v, %v", typed, exists, err)
+		}
+	}
+	if exists, err := repo.ExistsByEmail(ctx, "admİn@example.test"); err != nil || exists {
+		t.Errorf("a look-alike must not match: %v, %v", exists, err)
+	}
+}
+
+func TestUserRepo_ASaveKeepsTheStoredSpelling(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+	u := newTestUser(vo.MustParseId(userA), "JÖRG@example.test", "U", "", "h", "s", true, fixedTime, fixedTime, nil)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.GetByID(ctx, vo.MustParseId(userA))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Email != "JÖRG@example.test" {
+		t.Fatalf("email = %q", got.Email)
+	}
+}
+
+func TestUserRepo_TheAddressIsUnique(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+	save := func(id, email string) error {
+		u := newTestUser(vo.MustParseId(id), email, "U", "", "h", "s", true, fixedTime, fixedTime, nil)
+		return db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) })
+	}
+	if err := save(userA, "jörg@example.test"); err != nil {
+		t.Fatal(err)
+	}
+	if err := save(userB, "jörg@example.test"); err == nil {
+		t.Fatal("a second account stored the same address")
+	}
+}
+
 func TestUserRepo_ListIDs(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
 	for _, id := range []string{userA, userB} {
-		// Email must be unique per row (lower(email) is now a unique index).
+		// Email must be unique per row (a unique index).
 		u := newTestUser(vo.MustParseId(id), id+"@example.test", "U", "", "h", "s", true, fixedTime, fixedTime, nil)
 		if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 			t.Fatalf("Save %s: %v", id, err)

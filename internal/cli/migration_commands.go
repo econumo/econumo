@@ -44,6 +44,18 @@ func migrationCommands() []command {
 			},
 		},
 		{
+			name:    "migration:normalize-emails",
+			summary: "rewrite stored addresses to their normalized form; one that would collide keeps its spelling and is logged (idempotent)",
+			run: func(ctx context.Context, c *container, args []string) error {
+				n, err := c.user.NormalizeEmails(ctx)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("normalized %d address(es)\n", n)
+				return nil
+			},
+		},
+		{
 			name:    "migration:seed-transaction-sort-keys",
 			summary: "give every transaction without one a sort key on each account side, in the order lists showed before keys existed (idempotent)",
 			run: func(ctx context.Context, c *container, args []string) error {

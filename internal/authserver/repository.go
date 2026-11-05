@@ -14,6 +14,8 @@ type Repository interface {
 	GetClient(ctx context.Context, id vo.Id) (*model.OAuthClient, error) // errs.NotFound when absent
 	MarkClientUsed(ctx context.Context, id vo.Id, now time.Time) error
 	PurgeUnusedClients(ctx context.Context, createdBefore time.Time) (int64, error)
+	// PurgeExcessUnusedClients keeps only the newest never-approved clients.
+	PurgeExcessUnusedClients(ctx context.Context, keep int64) (int64, error)
 
 	InsertCode(ctx context.Context, c *model.OAuthAuthorizationCode) error
 	ConsumeCode(ctx context.Context, codeHash string) (*model.OAuthAuthorizationCode, error) // DELETE ... RETURNING; errs.NotFound when absent

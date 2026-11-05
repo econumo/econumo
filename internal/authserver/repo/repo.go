@@ -37,6 +37,7 @@ type querier interface {
 	GetOAuthClient(ctx context.Context, db backend.DBTX, id string) (clientRow, error)
 	MarkOAuthClientUsed(ctx context.Context, db backend.DBTX, p markClientUsedParams) error
 	PurgeUnusedOAuthClients(ctx context.Context, db backend.DBTX, createdBefore time.Time) (int64, error)
+	PurgeExcessUnusedOAuthClients(ctx context.Context, db backend.DBTX, keep int64) (int64, error)
 
 	InsertOAuthCode(ctx context.Context, db backend.DBTX, p insertCodeParams) error
 	ConsumeOAuthCode(ctx context.Context, db backend.DBTX, codeHash string) (codeRow, error)
@@ -106,6 +107,10 @@ func (r *Repo) GetClient(ctx context.Context, id vo.Id) (*model.OAuthClient, err
 
 func (r *Repo) MarkClientUsed(ctx context.Context, id vo.Id, now time.Time) error {
 	return r.q.MarkOAuthClientUsed(ctx, r.db(ctx), markClientUsedParams{LastUsedAt: &now, ID: id.String()})
+}
+
+func (r *Repo) PurgeExcessUnusedClients(ctx context.Context, keep int64) (int64, error) {
+	return r.q.PurgeExcessUnusedOAuthClients(ctx, r.db(ctx), keep)
 }
 
 func (r *Repo) PurgeUnusedClients(ctx context.Context, createdBefore time.Time) (int64, error) {

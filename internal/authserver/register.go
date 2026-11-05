@@ -26,7 +26,7 @@ func (s *Service) Register(ctx context.Context, req model.ClientRegistrationRequ
 		return model.ClientRegistrationResult{}, &OAuthError{Status: 404, Code: "invalid_request", Description: "not available"}
 	}
 	if s.limiter != nil {
-		if err := s.limiter.Allow(RateScopeRegister, ""); err != nil {
+		if err := s.limiter.Allow(ctx, RateScopeRegister, ""); err != nil {
 			if _, ok := errs.AsTooManyRequests(err); ok {
 				return model.ClientRegistrationResult{}, &OAuthError{Status: 429, Code: "temporarily_unavailable", Description: "Too many registrations"}
 			}
@@ -82,6 +82,9 @@ func (s *Service) Register(ctx context.Context, req model.ClientRegistrationRequ
 	now := s.clock.Now().UTC()
 	if _, err := s.repo.PurgeUnusedClients(ctx, now.Add(-UnusedClientTTL)); err != nil {
 		slog.WarnContext(ctx, "purge unused oauth clients failed", "err", err.Error())
+	}
+	if _, err := s.repo.PurgeExcessUnusedClients(ctx, MaxUnusedClients-1); err != nil {
+		slog.WarnContext(ctx, "purge excess oauth clients failed", "err", err.Error())
 	}
 
 	client := &model.OAuthClient{ID: vo.NewId(), Name: name, RedirectURIs: req.RedirectURIs, CreatedAt: now}
