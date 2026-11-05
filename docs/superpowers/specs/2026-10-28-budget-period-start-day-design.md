@@ -214,8 +214,7 @@ the new column.
 ## Left to the builder
 
 - Exact Go/TS helper names and where the key/window split is cleanest.
-- The date-range spot (minimal, easy to move; the user will iterate on it).
-- Warning wording and the picker's form.
+- The picker's form.
 - Error code name.
 
 ## Delivery

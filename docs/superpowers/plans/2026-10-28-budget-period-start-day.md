@@ -10,6 +10,13 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-28-budget-period-start-day-design.md`
 
+
+> **Amended 2026-11-04 (after implementation, user decisions):** every period is named after the month it
+> starts in (the 16-28 "end month" naming below is superseded); the settings dialog shows no warning when the
+> day changes (no `period_start_day.warning` key); the Budget view shows each month's range under its name in
+> the period strip, like the Plan grid's month headers (`PeriodDates` was removed). Task text below is kept as
+> executed.
+
 ## Global Constraints
 
 - Start day range 1–28, default 1, stored per budget as `budgets.period_start_day`.

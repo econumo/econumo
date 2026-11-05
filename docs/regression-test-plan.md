@@ -1586,13 +1586,14 @@ and on tablet/phone only with a hardware keyboard.
       day-1 budget afterwards opens October again, and the default does not
       move without the budget being opened. A month the user picked on the
       strip is kept when switching budgets in the same session, and a picked
-      month other than the calendar month (e.g. September) also survives a
+      month other than the calendar month (e.g. August) also survives a
       reload. With the budget list request failing (DevTools: block
       `get-budget-list`), the page still loads right after the first failure
       instead of waiting out the list's retries, and settles on "September"
       from the budget's own day.
 - [ ] **Shifted budget — changing the day keeps plans**: a budget with plans
-      in October and November changed from day 1 to day 28: the plans stay on "October" and "November" with the same
+      in October and November changed from day 1 to day 28: the plans stay
+      on "October" and "November" with the same
       amounts and comments; only the dates each month covers change (the
       date range appears, spent/actuals re-split at the 28th). Changing back
       to day 1 restores the original figures exactly.
