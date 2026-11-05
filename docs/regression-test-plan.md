@@ -1585,9 +1585,9 @@ and on tablet/phone only with a hardware keyboard.
       budget opens "October" (28 Oct - 27 Nov). Opening a
       day-1 budget afterwards opens October again, and the default does not
       move without the budget being opened. A month the user picked on the
-      strip is kept when switching budgets in the same session, and a picked
-      month other than the calendar month (e.g. August) also survives a
-      reload. With the budget list request failing (DevTools: block
+      strip is kept when switching budgets in the same session and survives a
+      reload, the calendar month included: on 10 Nov a day-28 budget opens
+      "October"; picking "November" and reloading still shows November. With the budget list request failing (DevTools: block
       `get-budget-list`), the page still loads right after the first failure
       instead of waiting out the list's retries, and settles on "September"
       from the budget's own day.

@@ -25,11 +25,15 @@ export function normalizePeriod(date: string): string {
   return `${match[1]}-${match[2]}-01`
 }
 
-type FollowState = Pick<BudgetPeriodState, 'periodChosen' | 'selectedDate' | 'adoptedPeriod'>
+type FollowState = Pick<BudgetPeriodState, 'periodChosen' | 'selectedDate' | 'adoptedPeriod' | 'chosenPeriod'>
 
-/** the month shown is a default, not a pick: the calendar month or one adopted earlier */
+/** the month shown is a default, not a pick: the calendar month or one adopted earlier,
+ *  unless the user picked exactly that month (also before a reload) */
 export function followsCurrentPeriod(s: FollowState, now: Date = new Date()): boolean {
-  return !s.periodChosen && (s.selectedDate === currentPeriod(1, now) || s.selectedDate === s.adoptedPeriod)
+  if (s.periodChosen || s.selectedDate === s.chosenPeriod) {
+    return false
+  }
+  return s.selectedDate === currentPeriod(1, now) || s.selectedDate === s.adoptedPeriod
 }
 
 function addMonthsToPeriod(period: string, delta: number): string {
@@ -49,6 +53,9 @@ interface BudgetPeriodState {
   /** the month followCurrentPeriod last moved the default to; persisted, so a reload
    *  still knows the stored month was a default and not a pick */
   adoptedPeriod: string | null
+  /** the month the user last picked; persisted, so a picked month that happens to be
+   *  the calendar month is not taken for a default after a reload */
+  chosenPeriod: string | null
   /** an unpicked default month moves to the opened budget's current period: a
    *  shifted budget can still be in last month's period */
   followCurrentPeriod: (budgetId: Id, startDay: number, now?: Date) => void
@@ -100,10 +107,12 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       selectedDate: firstOfCurrentMonth(),
       setPeriod: (date) => {
         trackEvent(METRICS.BUDGET_CHANGE_DATE)
-        set({ selectedDate: normalizePeriod(date), periodChosen: true, adoptedPeriod: null })
+        const selectedDate = normalizePeriod(date)
+        set({ selectedDate, periodChosen: true, adoptedPeriod: null, chosenPeriod: selectedDate })
       },
       periodChosen: false,
       adoptedPeriod: null,
+      chosenPeriod: null,
       followCurrentPeriod: (budgetId, startDay, now = new Date()) => {
         if (get().periodFollowedFor !== budgetId) {
           set({ periodFollowedFor: budgetId })
@@ -113,7 +122,7 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
         }
         const target = currentPeriod(startDay, now)
         if (target !== get().selectedDate) {
-          set({ selectedDate: target, adoptedPeriod: target })
+          set({ selectedDate: target, adoptedPeriod: target, chosenPeriod: null })
         }
       },
       periodFollowedFor: null,
@@ -129,7 +138,10 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       },
       stepPeriod: (delta) => {
         trackEvent(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
-        set((s) => ({ selectedDate: addMonthsToPeriod(s.selectedDate, delta), periodChosen: true, adoptedPeriod: null }))
+        set((s) => {
+          const selectedDate = addMonthsToPeriod(s.selectedDate, delta)
+          return { selectedDate, periodChosen: true, adoptedPeriod: null, chosenPeriod: selectedDate }
+        })
       },
       planNameWidth: null,
       setPlanNameWidth: (px) => set({ planNameWidth: px }),

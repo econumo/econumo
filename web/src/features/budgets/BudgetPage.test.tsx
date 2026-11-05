@@ -1063,7 +1063,7 @@ describe('a budget whose months start on the 28th', () => {
   })
 
   it('opens on the period holding today and shows its dates', async () => {
-    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, chosenPeriod: null })
     const dates: string[] = []
     server.use(
       ...coreHandlers({ user: userWithBudget }),
@@ -1086,7 +1086,7 @@ describe('a budget whose months start on the 28th', () => {
   // the list already names the day: the page asks for the adopted period only, so a
   // cold open on 5 October never fetches (and flashes) October first
   it('requests only the adopted period when the budget list carries the day', async () => {
-    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, periodFollowedFor: null })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, chosenPeriod: null, periodFollowedFor: null })
     const dates: string[] = []
     const planFrom: string[] = []
     server.use(
@@ -1110,7 +1110,7 @@ describe('a budget whose months start on the 28th', () => {
   // the adopted September belongs to the day-28 budget: switching the default to a
   // calendar-month budget holds its fetches until the default is back on October
   it('a switch to a budget with another day requests only its own current period', async () => {
-    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, periodFollowedFor: null })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, chosenPeriod: null, periodFollowedFor: null })
     const requested: string[] = []
     server.use(
       ...coreHandlers({ user: userWithBudget, budgets: fixtureBudgets.map((b) => (b.id === 'b1' ? { ...b, periodStartDay: 28 } : b)) }),
@@ -1147,7 +1147,7 @@ describe('a budget whose months start on the 28th', () => {
   // a failing budget list must not hold the page through its retries: the budget's
   // own meta then picks the period
   it('does not wait for a failing budget list to retry', async () => {
-    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, periodFollowedFor: null })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, chosenPeriod: null, periodFollowedFor: null })
     const requested: string[] = []
     server.use(
       http.get('*/api/v1/budget/get-budget-list', () => {
@@ -1180,7 +1180,7 @@ describe('a budget whose months start on the 28th', () => {
   })
 
   it('a calendar-month budget shows no dates', async () => {
-    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null })
+    useBudgetPeriodStore.setState({ selectedDate: '2026-10-01', periodChosen: false, adoptedPeriod: null, chosenPeriod: null })
     server.use(
       ...coreHandlers({ user: userWithBudget }),
       http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
