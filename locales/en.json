@@ -1967,6 +1967,8 @@
       "wantsAccess": "wants to access your Econumo account.",
       "redirect": "After you allow, you'll be sent to {host}.",
       "loopback": "After you allow, you'll return to an app on this computer.",
+      "wantsRead": "wants to read your Econumo data.",
+      "readAccess": "It will be able to see your profile (name and email), accounts, transactions, categories, tags, labels and currencies. Accounts and transactions include the names of people you share them with. It can't change anything.",
       "fullAccess": "It will be able to read and change all of your Econumo data.",
       "signedInAs": "Signed in as {email}",
       "switchAccount": "Not you? Switch account",
@@ -2100,7 +2102,9 @@
       "not_available": "Currency is not available",
       "in_use": "Currency is in use and cannot be deleted",
       "base_immutable": "The base currency cannot be modified",
-      "cannot_be_hidden": "This currency cannot be hidden"
+      "cannot_be_hidden": "This currency cannot be hidden",
+      "rate_range_order": "The end date must not be before the start date",
+      "rate_range_too_long": "The date range must be at most {max} days"
     },
     "import": {
       "source_not_found": "Apple Wallet is not connected. Connect it in Settings → Apple Wallet first.",
@@ -2205,5 +2209,9 @@
       "subject": "A sign-in method was removed",
       "body": "Hi {name},\n\nYour {provider} account was just unlinked from your Econumo account and can no longer be used to sign in.\n\nIf this wasn't you, change your password and review the linked accounts in Settings.\n\n--\nEconumo — Manage money. Together.\n"
     }
+  },
+  "share": {
+    "tag_action": "Share as trip page",
+    "settings_row": "Shared reports"
   }
 }

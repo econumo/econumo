@@ -1967,6 +1967,8 @@
       "wantsAccess": "möchte auf Ihr Econumo-Konto zugreifen.",
       "redirect": "Nach Ihrer Zustimmung werden Sie zu {host} weitergeleitet.",
       "loopback": "Nach Ihrer Zustimmung kehren Sie zu einer App auf diesem Computer zurück.",
+      "wantsRead": "möchte Ihre Econumo-Daten lesen.",
+      "readAccess": "Die App kann Ihr Profil (Name und E-Mail), Ihre Konten, Transaktionen, Kategorien, Tags, Labels und Währungen sehen. Konten und Transaktionen enthalten die Namen der Personen, mit denen Sie sie teilen. Sie kann nichts ändern.",
       "fullAccess": "Die App kann alle Ihre Econumo-Daten lesen und ändern.",
       "signedInAs": "Angemeldet als {email}",
       "switchAccount": "Nicht Sie? Konto wechseln",
@@ -2100,7 +2102,9 @@
       "not_available": "Die Währung ist nicht verfügbar",
       "in_use": "Die Währung wird verwendet und kann nicht gelöscht werden",
       "base_immutable": "Die Basiswährung kann nicht geändert werden",
-      "cannot_be_hidden": "Diese Währung kann nicht ausgeblendet werden"
+      "cannot_be_hidden": "Diese Währung kann nicht ausgeblendet werden",
+      "rate_range_order": "Das Enddatum darf nicht vor dem Startdatum liegen",
+      "rate_range_too_long": "Der Zeitraum darf höchstens {max} Tage umfassen"
     },
     "import": {
       "source_not_found": "Apple Wallet ist nicht verbunden. Verbinde es zuerst unter Einstellungen → Apple Wallet.",
@@ -2205,5 +2209,9 @@
       "subject": "Anmeldemethode entfernt",
       "body": "Hallo {name},\n\nDie Verknüpfung Ihres {provider}-Kontos mit Ihrem Econumo-Konto wurde soeben aufgehoben und kann nicht mehr zur Anmeldung verwendet werden.\n\nFalls Sie das nicht waren, ändern Sie Ihr Passwort und prüfen Sie die verknüpften Konten in den Einstellungen.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
     }
+  },
+  "share": {
+    "tag_action": "Als Reiseseite teilen",
+    "settings_row": "Geteilte Berichte"
   }
 }

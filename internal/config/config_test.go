@@ -1153,3 +1153,41 @@ func TestLoad_PasswordLogin(t *testing.T) {
 		t.Error("password login should be disabled")
 	}
 }
+
+func TestLoad_ShareConfig(t *testing.T) {
+	tests := []struct {
+		name         string
+		env          map[string]string
+		wantShareURL string
+		wantErr      string
+	}{
+		{name: "unset", env: map[string]string{}},
+		{name: "share url https", env: map[string]string{"ECONUMO_SHARE_URL": "https://share.econumo.com/"}, wantShareURL: "https://share.econumo.com"},
+		{name: "share url loopback http", env: map[string]string{"ECONUMO_SHARE_URL": "http://localhost:8282"}, wantShareURL: "http://localhost:8282"},
+
+		{name: "share url http remote", env: map[string]string{"ECONUMO_SHARE_URL": "http://share.example.test"}, wantErr: "ECONUMO_SHARE_URL"},
+		{name: "share url relative", env: map[string]string{"ECONUMO_SHARE_URL": "share.example.test"}, wantErr: "ECONUMO_SHARE_URL"},
+		{name: "share url query", env: map[string]string{"ECONUMO_SHARE_URL": "https://share.example.test/?x=1"}, wantErr: "ECONUMO_SHARE_URL"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			for k, v := range tc.env {
+				t.Setenv(k, v)
+			}
+			c, err := Load()
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("err = %v, want containing %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			if c.ShareURL != tc.wantShareURL {
+				t.Errorf("ShareURL = %q, want %q", c.ShareURL, tc.wantShareURL)
+			}
+		})
+	}
+}

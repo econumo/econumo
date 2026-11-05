@@ -189,6 +189,7 @@ export function ConsentPage() {
     )
   }
 
+  const readScope = result.scope === 'read'
   const busy = approve.isPending || approve.isSuccess || decline.isPending || decline.isSuccess
   const failure = approve.error ?? decline.error
 
@@ -197,10 +198,10 @@ export function ConsentPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-sm text-muted-foreground">{t('authserver.consent.title')}</h1>
         <p className="text-xl font-bold break-words">{result.clientName}</p>
-        <p>{t('authserver.consent.wantsAccess')}</p>
+        <p>{t(readScope ? 'authserver.consent.wantsRead' : 'authserver.consent.wantsAccess')}</p>
       </div>
       <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-        <p>{t('authserver.consent.fullAccess')}</p>
+        <p>{t(readScope ? 'authserver.consent.readAccess' : 'authserver.consent.fullAccess')}</p>
         <p>
           {result.isLoopback
             ? t('authserver.consent.loopback')

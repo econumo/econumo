@@ -328,7 +328,8 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   request fault yields an error `redirectUrl`, but the page shows a "Return to {host}"
   button instead of navigating on its own. `code_challenge` must be a 43-char base64url
   S256 challenge, `state` at most 1024 bytes. Any requested `scope` is accepted (on
-  authorize and refresh) and `mcp` is always granted. Approve takes the user row lock and
+  authorize and refresh); `mcp` is granted unless the request asks for `read` without `mcp`
+  (below), and a refresh keeps the grant's scope. Approve takes the user row lock and
   re-checks that the presenting session is unrevoked before storing the code with the
   generation read under that lock, so a reclaim racing the approval leaves no code behind.
   The Allow button stays disabled until a real pointer/key event or ~500 ms of the page
@@ -336,9 +337,32 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
 - `POST /oauth/token`: PKCE S256 only; `resource`, when sent, must be
   `<ECONUMO_URL>/mcp` (trailing slash tolerated), else `invalid_target`. Errors are RFC 6749
   JSON, not the envelope, with `Cache-Control: no-store`.
+- **The `read` scope.** Any OAuth client, dynamically registered included, gets a read-only
+  connection by asking for it: requested scopes (space-separated) that contain `read` and not
+  `mcp` grant `read`; anything else, including no scope at all or both, grants `mcp` (mcp wins
+  so a client requesting everything discovery lists still reaches `/mcp`). The scope is fixed
+  on the code and grant at approval; exchange and refresh carry it and ignore what they are
+  asked for. `read` tokens are `oauth` tokens (same `eco_oat_` format, 1 h, rotating refresh)
+  admitted only on `GET` of the nine paths in `middleware.ReadScopePaths` (`get-user-data`,
+  `get-account-list`, `get-category-list`, `get-tag-list`, `get-label-list`,
+  `get-currency-list`, `get-currency-rate-list`, `get-account-transaction-list`,
+  `get-transaction-list`); any other path or method, `/mcp` included, gets the frozen 401.
+  While the OAuth server is off, already-issued `read` tokens stop being admitted
+  (`server.NewReadScopeGate`, as `AllowMCPScope` does for `mcp`; a wrapper because those
+  routes sit behind each feature's own `middleware.Auth`). So a self-hosted instance with the
+  OAuth server on serves `read` too; with no client asking for it nothing changes. Discovery:
+  the authorization-server metadata lists `mcp` and `read`, the protected-resource metadata
+  (the resource is `/mcp`) lists `mcp` only. The consent page shows the granted scope
+  (`get-authorization-request` carries it): "wants to read your Econumo data" for `read`, the
+  read-and-change sentence for `mcp`. A readonly (lapsed trial) user may approve a `read`
+  request: `approve-authorization` is on the readonly allowlist but still answers 402 for an
+  `mcp` approval. A read token writes nothing to the user row: the timezone write-through skips
+  it. The one write its request makes is token bookkeeping, the token row's own `last_used_at`,
+  at most once per 5 minutes (its `expires_at` never moves).
 - Access tokens are `access_tokens` rows of kind `oauth` / scope `mcp` (`eco_oat_…`, fixed
   1 h, linked to their grant by `grant_id`), admitted only on `/mcp` — anywhere else they
-  get the frozen 401. Turning OAuth off also stops admitting already-issued OAuth access
+  get the frozen 401. Tokens of a `read` grant carry scope `read` instead and are admitted
+  only on the nine `GET` paths above, never on `/mcp`. Turning OAuth off also stops admitting already-issued OAuth access
   tokens on `/mcp` (the chain passes `AllowMCPScope: authSrv.Enabled()`). Refresh tokens
   rotate on every use; a grant idles out 90 days after its last refresh. Every rotated-away
   hash is kept in `oauth_refresh_tokens_spent` for as long as the grant row lives. Replaying
@@ -758,6 +782,10 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   always treated as trusted (every Apple ID address is verified) but Google's `email_verified`
   claim is honoured, not trusted blindly — Google always sends it and documents `false` for
   unverified addresses. See `docs/oidc-setup.md`.
+- `ECONUMO_SHARE_URL` — the companion share-reports app's origin (absolute https, plain http
+  only for loopback; no credentials, query or fragment; trailing `/` trimmed), served as
+  `SHARE_URL`; empty (default) hides every share link in the SPA. The app signs in as an
+  ordinary OAuth client asking for the `read` scope (see "The `read` scope").
 - `ECONUMO_APP_LINKS_IOS` / `ECONUMO_APP_LINKS_ANDROID` — the mobile apps allowed to claim
   `<ECONUMO_URL>/oauth/app-return` as a verified Universal Link / App Link, which is how the
   OAuth app flow returns without the globally claimable private scheme. iOS: comma-separated
@@ -944,12 +972,16 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`,
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `SHARE_URL`,
   `IMPORT_SIMPLEFIN` and `FEEDBACK` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
   instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom
-  backend on another origin; the app uses the merged per-server value as is.
+  backend on another origin; the app uses the merged per-server value as is. `SHARE_URL`
+  (`""` when unset) follows the same rule through `shareUrl()` (`web/src/lib/config.ts`): on
+  the web it is `""` when the SPA is pointed at a custom backend on another origin; the SPA
+  shows "Share as trip page" (Tags page and budget tag menu, never labels or categories) and
+  Settings > Data > "Shared reports" only when it is non-empty.
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
   `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,
@@ -1242,6 +1274,11 @@ In the distroless image these run via the binary directly, e.g.
   200 comma-separated ids; ids the caller cannot access are omitted from `revisions` (never an
   error). `/api/v1/transaction/get-transaction-list` (the legacy full list, still used by MCP,
   older clients and the SPA's fallback against a server without revisions) is unchanged.
+- **Dated exchange rates:** `GET /api/v1/currency/get-currency-rate-list` takes optional
+  `from` and `to` (`YYYY-MM-DD`, both or neither, `from` <= `to`, inclusive, spanning at
+  most 366 days inclusive): the response
+  then lists every rate published in that range plus, per currency, the newest one before `from`, instead of only the latest day's. Every item carries
+  an additive `date` field (`YYYY-MM-DD`), in the default response too.
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
@@ -1265,8 +1302,10 @@ In the distroless image these run via the binary directly, e.g.
   `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
   in the middleware's small allowlist (account security actions — logout, session/PAT
   revocation, password update, email change, `oauth/start-link`,
-  `oauth/complete-link`, `oauth/unlink-identity`, `authserver/revoke-connected-app`
-  and `authserver/decline-authorization` (declining writes nothing) —
+  `oauth/complete-link`, `oauth/unlink-identity`, `authserver/revoke-connected-app`,
+  `authserver/decline-authorization` (declining writes nothing) and
+  `authserver/approve-authorization` (so a lapsed user can approve a
+  `read` request; an `mcp` approval from such a user still answers 402) —
   plus `update-analytics`: withdrawing from product analytics is a privacy right, not a
   paid feature, so it must work regardless of access level, and `update-last-seen-version`,
   so the "what's new" card stays dismissable); `GET` reads are never restricted.
@@ -1277,11 +1316,13 @@ In the distroless image these run via the binary directly, e.g.
   Three kinds: `session` (minted at login; sliding 30-day TTL — expiry renews on use, with
   last-used persistence throttled to once per 5 minutes), `personal` (user-created
   PATs with an optional fixed expiry, shown exactly once at creation) and `oauth`
-  (minted by the MCP OAuth server, see "MCP endpoint"; 1 h fixed expiry, scope `mcp`).
+  (minted by the MCP OAuth server, see "MCP endpoint"; 1 h fixed expiry, scope `mcp`, or
+  `read` for a client that asked for it).
   Every token carries a scope: `full` (sessions, ordinary PATs) or `ingest` (a PAT
   that may ONLY call `/api/v1/import/ingest-*`; anywhere else it gets the frozen 401
   `"Invalid access token"`) or `mcp` (`oauth` tokens only; admitted solely on `/mcp`, the
-  frozen 401 elsewhere). `create-personal-token` requires `scope` and cannot mint `mcp`.
+  frozen 401 elsewhere) or `read` (`oauth` tokens only; `GET` of the
+  `middleware.ReadScopePaths` allowlist, the frozen 401 elsewhere). `create-personal-token` requires `scope` and cannot mint `mcp`.
 - The `user` feature owns everything: `Authenticate` (the per-request hot path),
   session/PAT use cases, and the revocation cascades. The middleware seam is
   `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
@@ -1433,7 +1474,10 @@ data unreadable. Most are also asserted by the test suite.
 - Sessions: sliding `expires_at = last_used_at + 30d`, touched at most every 5 minutes.
   PAT `expires_at` never moves (NULL = never expires).
 - `scope`: `"full"` | `"ingest"` on `create-personal-token` (required; blank → `common.is_blank`,
-  unknown → `common.invalid_choice`) and echoed on `get-personal-token-list`.
+  unknown → `common.invalid_choice`) and echoed on `get-personal-token-list`. `oauth` tokens
+  carry `"mcp"` (admitted only on `/mcp`) or, for a client that asked for it, `"read"`
+  (admitted only on `GET` of the nine `middleware.ReadScopePaths`); neither can be minted
+  through `create-personal-token`.
 
 ### Encodings, messages, routes
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.

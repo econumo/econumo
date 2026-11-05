@@ -1967,6 +1967,8 @@
       "wantsAccess": "chce uzyskać dostęp do Twojego konta Econumo.",
       "redirect": "Po wyrażeniu zgody zostaniesz przekierowany do {host}.",
       "loopback": "Po wyrażeniu zgody wrócisz do aplikacji na tym komputerze.",
+      "wantsRead": "chce odczytać Twoje dane w Econumo.",
+      "readAccess": "Będzie mogła zobaczyć Twój profil (imię i adres e-mail), konta, transakcje, kategorie, tagi, etykiety i waluty. Konta i transakcje zawierają imiona osób, którym je udostępniasz. Niczego nie zmieni.",
       "fullAccess": "Będzie mogła odczytywać i zmieniać wszystkie Twoje dane w Econumo.",
       "signedInAs": "Zalogowano jako {email}",
       "switchAccount": "To nie Ty? Zmień konto",
@@ -2100,7 +2102,9 @@
       "not_available": "Waluta jest niedostępna.",
       "in_use": "Waluta jest używana i nie można jej usunąć.",
       "base_immutable": "Waluty bazowej nie można zmienić.",
-      "cannot_be_hidden": "Tej waluty nie można ukryć."
+      "cannot_be_hidden": "Tej waluty nie można ukryć.",
+      "rate_range_order": "Data końcowa nie może być wcześniejsza niż data początkowa",
+      "rate_range_too_long": "Zakres dat może obejmować co najwyżej {max} dni"
     },
     "import": {
       "source_not_found": "Apple Wallet nie jest połączony. Najpierw połącz go w Ustawienia → Apple Wallet.",
@@ -2205,5 +2209,9 @@
       "subject": "Usunięto metodę logowania",
       "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie odłączone od konta Econumo i nie może już służyć do logowania.\n\nJeśli to nie Ty, zmień hasło i sprawdź powiązane konta w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
     }
+  },
+  "share": {
+    "tag_action": "Udostępnij jako stronę podróży",
+    "settings_row": "Udostępnione raporty"
   }
 }

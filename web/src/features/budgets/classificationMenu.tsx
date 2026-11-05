@@ -21,6 +21,7 @@ import {
   useUnarchiveCategory,
   useUnarchiveTag,
 } from '@/features/classifications/queries'
+import { openShareTrip, shareTripUrl } from '@/features/share/shareLinks'
 import { useUserData } from '@/features/user/queries'
 import type { MenuAction } from './monthLayout'
 import { useMoveElement } from './queries'
@@ -93,6 +94,9 @@ export function useClassificationMenu(budgetId: Id) {
         },
       },
       { label: t('classifications.common.merge.action'), disabled: !own, reason, onSelect: () => setMerging(pending) },
+      ...(ref.kind === 'tag' && shareTripUrl(ref.id) !== ''
+        ? [{ label: t('share.tag_action'), onSelect: () => openShareTrip(ref.id, 'budget') }]
+        : []),
       { label: t('common.button.delete.label'), destructive: true, disabled: !own, reason, onSelect: () => setDeleting(pending) },
     ]
   }

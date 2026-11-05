@@ -1967,6 +1967,8 @@
       "wantsAccess": "wil toegang tot je Econumo-account.",
       "redirect": "Nadat je toestemming geeft, word je doorgestuurd naar {host}.",
       "loopback": "Nadat je toestemming geeft, keer je terug naar een app op deze computer.",
+      "wantsRead": "wil je Econumo-gegevens lezen.",
+      "readAccess": "De app kan je profiel (naam en e-mailadres), rekeningen, transacties, categorieën, tags, labels en valuta's zien. Rekeningen en transacties bevatten de namen van mensen met wie je ze deelt. Er kan niets worden gewijzigd.",
       "fullAccess": "De app kan al je Econumo-gegevens lezen en wijzigen.",
       "signedInAs": "Ingelogd als {email}",
       "switchAccount": "Ben jij het niet? Van account wisselen",
@@ -2100,7 +2102,9 @@
       "not_available": "De valuta is niet beschikbaar.",
       "in_use": "De valuta is in gebruik en kan niet worden verwijderd.",
       "base_immutable": "De basisvaluta kan niet worden gewijzigd.",
-      "cannot_be_hidden": "Deze valuta kan niet worden verborgen."
+      "cannot_be_hidden": "Deze valuta kan niet worden verborgen.",
+      "rate_range_order": "De einddatum mag niet vóór de begindatum liggen",
+      "rate_range_too_long": "Het datumbereik mag maximaal {max} dagen zijn"
     },
     "import": {
       "source_not_found": "Apple Wallet is niet gekoppeld. Koppel het eerst via Instellingen → Apple Wallet.",
@@ -2205,5 +2209,9 @@
       "subject": "Aanmeldmethode verwijderd",
       "body": "Hallo {name},\n\nUw {provider}-account is zojuist ontkoppeld van uw Econumo-account en kan niet meer worden gebruikt om in te loggen.\n\nAls u dit niet was, wijzig dan uw wachtwoord en controleer de gekoppelde accounts in Instellingen.\n\n--\nEconumo — Geld beheren. Samen.\n"
     }
+  },
+  "share": {
+    "tag_action": "Delen als reispagina",
+    "settings_row": "Gedeelde rapporten"
   }
 }

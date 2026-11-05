@@ -25,7 +25,7 @@ const SEARCH =
   '?client_id=abc&redirect_uri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&response_type=code&code_challenge=x&code_challenge_method=S256&state=s'
 const CALLBACK = 'https://claude.ai/api/mcp/auth_callback?code=c&state=s'
 
-const claude = { clientName: 'Claude', redirectHost: 'claude.ai', isLoopback: false, errorRedirectUrl: '' }
+const claude = { clientName: 'Claude', redirectHost: 'claude.ai', isLoopback: false, scope: 'mcp' as const, errorRedirectUrl: '' }
 
 function httpError(status: number, message: string) {
   return new AxiosError('failed', String(status), undefined, undefined, {
@@ -109,7 +109,7 @@ it('shows the client and where it will send the user, then approves', async () =
 })
 
 it('reads a loopback client as an app on this computer', async () => {
-  vi.mocked(getAuthorizationRequest).mockResolvedValue({ clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, errorRedirectUrl: '' })
+  vi.mocked(getAuthorizationRequest).mockResolvedValue({ clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, scope: 'mcp', errorRedirectUrl: '' })
   renderPage()
   expect(await screen.findByText('Codex')).toBeInTheDocument()
   expect(screen.getByText(/app on this computer/)).toBeInTheDocument()
@@ -143,7 +143,7 @@ it('an invalid request shows an error card and only navigates when the user asks
 
 it('an invalid request from a loopback client offers a return to the app', async () => {
   vi.mocked(getAuthorizationRequest).mockResolvedValue({
-    clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true,
+    clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, scope: 'mcp',
     errorRedirectUrl: 'http://127.0.0.1:1455/cb?error=invalid_request',
   })
   renderPage()
@@ -409,4 +409,24 @@ describe('double-clickjacking guard', () => {
     await userEvent.click(screen.getByRole('button', { name: /deny/i }))
     await waitFor(() => expect(assign).toHaveBeenCalledWith('https://claude.ai/api/mcp/auth_callback?error=access_denied&state=s'))
   })
+})
+
+it('a read-scoped client says it only reads, with no verified line', async () => {
+  vi.mocked(getAuthorizationRequest).mockResolvedValue({
+    clientName: 'Reports', redirectHost: 'reports.example.test', isLoopback: false, scope: 'read', errorRedirectUrl: '',
+  })
+  renderPage()
+  expect(await screen.findByText('Reports')).toBeInTheDocument()
+  expect(screen.getByText('wants to read your Econumo data.')).toBeInTheDocument()
+  expect(screen.getByText(/It can't change anything\./)).toBeInTheDocument()
+  expect(screen.getByText(/your profile \(name and email\)/)).toBeInTheDocument()
+  expect(screen.getByText(/names of people you share them with/)).toBeInTheDocument()
+  expect(screen.queryByText(/made by|verified/i)).not.toBeInTheDocument()
+  expect(screen.queryByText('It will be able to read and change all of your Econumo data.')).not.toBeInTheDocument()
+})
+
+it('an mcp-scoped third-party client keeps the full-access texts', async () => {
+  vi.mocked(getAuthorizationRequest).mockResolvedValue(claude)
+  renderPage()
+  expect(await screen.findByText('It will be able to read and change all of your Econumo data.')).toBeInTheDocument()
 })

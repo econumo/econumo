@@ -1967,6 +1967,8 @@
       "wantsAccess": "vuole accedere al tuo account Econumo.",
       "redirect": "Dopo il tuo consenso verrai reindirizzato a {host}.",
       "loopback": "Dopo il tuo consenso tornerai a un'app su questo computer.",
+      "wantsRead": "vuole leggere i tuoi dati di Econumo.",
+      "readAccess": "Potrà vedere il tuo profilo (nome ed email), i tuoi conti, transazioni, categorie, tag, etichette e valute. I conti e le transazioni includono i nomi delle persone con cui li condividi. Non potrà modificare nulla.",
       "fullAccess": "Potrà leggere e modificare tutti i tuoi dati di Econumo.",
       "signedInAs": "Accesso effettuato come {email}",
       "switchAccount": "Non sei tu? Cambia account",
@@ -2100,7 +2102,9 @@
       "not_available": "La valuta non è disponibile",
       "in_use": "La valuta è in uso e non può essere eliminata",
       "base_immutable": "La valuta di base non può essere modificata",
-      "cannot_be_hidden": "Questa valuta non può essere nascosta"
+      "cannot_be_hidden": "Questa valuta non può essere nascosta",
+      "rate_range_order": "La data di fine non può precedere la data di inizio",
+      "rate_range_too_long": "L'intervallo di date può essere al massimo di {max} giorni"
     },
     "import": {
       "source_not_found": "Apple Wallet non è collegato. Collegalo prima in Impostazioni → Apple Wallet.",
@@ -2205,5 +2209,9 @@
       "subject": "Metodo di accesso rimosso",
       "body": "Ciao {name},\n\nIl tuo account {provider} è stato appena scollegato dal tuo account Econumo e non può più essere usato per accedere.\n\nSe non sei stato tu, cambia la tua password e controlla gli account collegati nelle Impostazioni.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
     }
+  },
+  "share": {
+    "tag_action": "Condividi come pagina di viaggio",
+    "settings_row": "Report condivisi"
   }
 }

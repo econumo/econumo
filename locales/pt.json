@@ -1967,6 +1967,8 @@
       "wantsAccess": "quer acessar a sua conta do Econumo.",
       "redirect": "Depois de permitir, você será enviado para {host}.",
       "loopback": "Depois de permitir, você voltará para um app neste computador.",
+      "wantsRead": "quer ler os seus dados do Econumo.",
+      "readAccess": "Ele poderá ver o seu perfil (nome e e-mail), as suas contas, transações, categorias, tags, etiquetas e moedas. As contas e transações incluem os nomes das pessoas com quem as partilha. Não poderá alterar nada.",
       "fullAccess": "Ele poderá ler e alterar todos os seus dados do Econumo.",
       "signedInAs": "Conectado como {email}",
       "switchAccount": "Não é você? Trocar de conta",
@@ -2100,7 +2102,9 @@
       "not_available": "A moeda não está disponível.",
       "in_use": "A moeda está a ser utilizada e não pode ser eliminada.",
       "base_immutable": "A moeda base não pode ser alterada.",
-      "cannot_be_hidden": "Esta moeda não pode ser ocultada."
+      "cannot_be_hidden": "Esta moeda não pode ser ocultada.",
+      "rate_range_order": "A data final não pode ser anterior à data inicial",
+      "rate_range_too_long": "O intervalo de datas pode ter no máximo {max} dias"
     },
     "import": {
       "source_not_found": "A Apple Wallet não está ligada. Ligue-a primeiro em Definições → Apple Wallet.",
@@ -2205,5 +2209,9 @@
       "subject": "Método de início de sessão removido",
       "body": "Olá {name},\n\nA sua conta {provider} acabou de ser desassociada da sua conta Econumo e já não pode ser usada para iniciar sessão.\n\nSe não foi você, altere a sua palavra-passe e verifique as contas associadas nas Definições.\n\n--\nEconumo — Faça a gestão do dinheiro. Em conjunto.\n"
     }
+  },
+  "share": {
+    "tag_action": "Partilhar como página de viagem",
+    "settings_row": "Relatórios partilhados"
   }
 }

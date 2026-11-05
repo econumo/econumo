@@ -203,3 +203,49 @@ func TestRepo_RevokeOtherGrants(t *testing.T) {
 		t.Fatalf("already revoked grants must not be returned again: %v %v", ids, err)
 	}
 }
+
+func TestRepo_Scopes(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+	r := authrepo.NewRepo(db.Engine, db.TX)
+	fixture.New(t, db).User(fixture.User{ID: userA, Name: "u"})
+	userID := vo.MustParseId(userA)
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+
+	c := &model.OAuthClient{ID: vo.NewId(), Name: "Reports", RedirectURIs: []string{"https://reports.test/cb"}, CreatedAt: now}
+	if err := r.InsertClient(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := r.InsertCode(ctx, &model.OAuthAuthorizationCode{CodeHash: "cr", ClientID: c.ID, UserID: userID, RedirectURI: "x",
+		CodeChallenge: "c", Resource: "r", Scope: model.TokenScopeRead, CreatedAt: now, ExpiresAt: now.Add(time.Minute)}); err != nil {
+		t.Fatal(err)
+	}
+	if code, err := r.ConsumeCode(ctx, "cr"); err != nil || code.Scope != model.TokenScopeRead {
+		t.Fatalf("code = %+v %v", code, err)
+	}
+
+	g := &model.OAuthGrant{ID: vo.NewId(), UserID: userID, ClientID: c.ID, RefreshTokenHash: "rr", Scope: model.TokenScopeRead,
+		CreatedAt: now, LastUsedAt: now, ExpiresAt: now.Add(time.Hour)}
+	if err := r.InsertGrant(ctx, g); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := r.GetGrant(ctx, g.ID); err != nil || got.Scope != model.TokenScopeRead {
+		t.Fatalf("grant = %+v %v", got, err)
+	}
+	if got, err := r.GetGrantByRefreshHash(ctx, "rr"); err != nil || got.Scope != model.TokenScopeRead {
+		t.Fatalf("grant by hash = %+v %v", got, err)
+	}
+	if n, _ := r.RotateGrant(ctx, g.ID, "rr", "rr2", now, now.Add(time.Hour)); n != 1 {
+		t.Fatal("rotate")
+	}
+	if err := r.InsertSpentRefreshHash(ctx, g.ID, "rr", now); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := r.GetGrantBySpentRefreshHash(ctx, "rr"); err != nil || got.Scope != model.TokenScopeRead {
+		t.Fatalf("grant by spent = %+v %v", got, err)
+	}
+	if list, err := r.ListUnrevokedGrants(ctx, userID); err != nil || len(list) != 1 || list[0].Grant.Scope != model.TokenScopeRead {
+		t.Fatalf("list = %+v %v", list, err)
+	}
+}

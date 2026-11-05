@@ -962,6 +962,12 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Search (inline on desktop, search dialog on compact) and empty states.
 - [ ] Creating from within the transaction dialog (create-on-type) lands the
       item in the settings list too.
+- [ ] With `ECONUMO_SHARE_URL` set, a tag's (not a label's) row menu on the Tags
+      page and a tag line's menu in a budget (own and shared tags alike; never
+      a category line) offer "Share as trip page", opening
+      `<share url>/new?kind=trip&tag=<tag id>` in a new tab; Settings > Data has
+      a "Shared reports" row opening `<share url>/app` in a new tab. With it
+      unset, none of the three appears. Each fires its analytics event.
 
 ## 7a. Global search
 
@@ -2272,6 +2278,19 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       Deny buttons. Allow stays disabled for about half a second after the page
       appears (or until you move the mouse or press a key); Deny works at once.
       A double-click that lands on the page as it opens does not approve.
+- [ ] The consent page of an app that asks for the `read` scope alone
+      (`&scope=read`) shows "wants to read your Econumo data." and "It will be
+      able to see your profile (name and email), accounts, transactions,
+      categories, tags, labels and currencies. Accounts and transactions include
+      the names of people you share them with. It can't change anything." (not
+      the read-and-change sentence). No scope, `mcp`, or `mcp read` shows the
+      read-and-change sentence. A read-only (lapsed trial) user can Allow the
+      `read` request, but Allow on an `mcp` one shows the read-only message.
+- [ ] After a `read` app is allowed, it appears under Settings > Profile >
+      Connected apps; revoking it makes its next request fail, and its token
+      answers 401 on any route other than the nine read-only GETs (for example
+      `get-budget`, `/mcp`, or any POST). With the OAuth server turned off
+      (`ECONUMO_URL` unset), its token answers 401 everywhere.
 - [ ] Switching to another window or tab and back (or clicking outside the
       browser window) disables Allow again; it re-enables about half a second
       after the consent page is visible and focused again, or on the next mouse

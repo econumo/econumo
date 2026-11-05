@@ -122,6 +122,7 @@ func (r *Repo) InsertCode(ctx context.Context, c *model.OAuthAuthorizationCode) 
 		CodeHash: c.CodeHash, ClientID: c.ClientID.String(), UserID: c.UserID.String(),
 		RedirectUri: c.RedirectURI, CodeChallenge: c.CodeChallenge, Resource: c.Resource,
 		CredentialsGeneration: c.CredentialsGeneration, CreatedAt: c.CreatedAt, ExpiresAt: c.ExpiresAt,
+		Scope: string(c.Scope),
 	})
 }
 
@@ -144,7 +145,7 @@ func (r *Repo) ConsumeCode(ctx context.Context, codeHash string) (*model.OAuthAu
 	return &model.OAuthAuthorizationCode{
 		CodeHash: row.CodeHash, ClientID: clientID, UserID: userID, RedirectURI: row.RedirectUri,
 		CodeChallenge: row.CodeChallenge, Resource: row.Resource, CredentialsGeneration: row.CredentialsGeneration,
-		CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt,
+		CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt, Scope: model.TokenScope(row.Scope),
 	}, nil
 }
 
@@ -157,6 +158,7 @@ func (r *Repo) InsertGrant(ctx context.Context, g *model.OAuthGrant) error {
 		ID: g.ID.String(), UserID: g.UserID.String(), ClientID: g.ClientID.String(),
 		RefreshTokenHash: g.RefreshTokenHash, PrevRefreshTokenHash: g.PrevRefreshTokenHash, RotatedAt: g.RotatedAt,
 		CreatedAt: g.CreatedAt, LastUsedAt: g.LastUsedAt, ExpiresAt: g.ExpiresAt, RevokedAt: g.RevokedAt,
+		Scope: string(g.Scope),
 	})
 }
 
@@ -222,7 +224,7 @@ func (r *Repo) ListUnrevokedGrants(ctx context.Context, userID vo.Id) ([]model.C
 		g, err := hydrateGrant(grantRow{
 			ID: row.ID, UserID: row.UserID, ClientID: row.ClientID, RefreshTokenHash: row.RefreshTokenHash,
 			PrevRefreshTokenHash: row.PrevRefreshTokenHash, RotatedAt: row.RotatedAt, CreatedAt: row.CreatedAt,
-			LastUsedAt: row.LastUsedAt, ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
+			LastUsedAt: row.LastUsedAt, ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt, Scope: row.Scope,
 		})
 		if err != nil {
 			return nil, err
@@ -267,6 +269,7 @@ func hydrateGrant(row grantRow) (*model.OAuthGrant, error) {
 		ID: id, UserID: userID, ClientID: clientID,
 		RefreshTokenHash: row.RefreshTokenHash, PrevRefreshTokenHash: row.PrevRefreshTokenHash, RotatedAt: row.RotatedAt,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
+		Scope: model.TokenScope(row.Scope),
 	}, nil
 }
 

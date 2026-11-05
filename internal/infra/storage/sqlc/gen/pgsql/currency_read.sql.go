@@ -79,6 +79,69 @@ func (q *Queries) GetCurrencyByIDView(ctx context.Context, id string) (GetCurren
 	return i, err
 }
 
+const getCurrencyRateRangeView = `-- name: GetCurrencyRateRangeView :many
+SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate
+FROM currencies_rates cr
+WHERE cr.published_at >= $1::date
+  AND cr.published_at <= $2::date
+UNION ALL
+SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate
+FROM currencies_rates cr
+JOIN (
+    SELECT currency_id, base_currency_id, MAX(published_at) AS published_at
+    FROM currencies_rates
+    WHERE published_at < $1::date
+    GROUP BY currency_id, base_currency_id
+) latest ON latest.currency_id = cr.currency_id
+    AND latest.base_currency_id = cr.base_currency_id
+    AND latest.published_at = cr.published_at
+ORDER BY currency_id ASC, base_currency_id ASC, published_at ASC
+`
+
+type GetCurrencyRateRangeViewParams struct {
+	FromDay time.Time
+	ToDay   time.Time
+}
+
+type GetCurrencyRateRangeViewRow struct {
+	ID             string
+	CurrencyID     string
+	BaseCurrencyID string
+	PublishedAt    time.Time
+	Rate           string
+}
+
+// Rates published within [from, to] (inclusive days) plus, per (currency,
+// base) pair, the newest rate published before from. See the sqlite variant.
+func (q *Queries) GetCurrencyRateRangeView(ctx context.Context, arg GetCurrencyRateRangeViewParams) ([]GetCurrencyRateRangeViewRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCurrencyRateRangeView, arg.FromDay, arg.ToDay)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetCurrencyRateRangeViewRow{}
+	for rows.Next() {
+		var i GetCurrencyRateRangeViewRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CurrencyID,
+			&i.BaseCurrencyID,
+			&i.PublishedAt,
+			&i.Rate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getHiddenCurrencyIDs = `-- name: GetHiddenCurrencyIDs :many
 SELECT currency_id FROM users_hidden_currencies WHERE user_id = $1
 `

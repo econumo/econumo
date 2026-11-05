@@ -21,6 +21,7 @@ import {
   useMergeTag,
   useMergeLabel,
 } from './queries'
+import { openShareTrip, shareTripUrl } from '@/features/share/shareLinks'
 
 interface ClassificationRow extends ClassificationItem {
   kind: ClassificationKind
@@ -80,7 +81,12 @@ export function TagsPage() {
         orderScope={(row) => row.kind}
         onCreate={() => setDialog({ open: true, item: null })}
         onEdit={(row) => setDialog({ open: true, item: { id: row.id, name: row.name, kind: row.kind, icon: row.icon ?? '' } })}
-        extraActions={(row) => [{ label: t('classifications.common.merge.action'), onSelect: () => setMergeSource(row) }]}
+        extraActions={(row) => [
+          { label: t('classifications.common.merge.action'), onSelect: () => setMergeSource(row) },
+          ...(row.kind === 'tag' && shareTripUrl(row.id) !== ''
+            ? [{ label: t('share.tag_action'), onSelect: () => openShareTrip(row.id, 'tags') }]
+            : []),
+        ]}
         onDelete={(id) => {
           if (kindOf(id) === 'label') {
             deleteLabel.mutate(id)
