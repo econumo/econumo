@@ -1,3 +1,7 @@
+> **Later decision (2026-11-04):** the first-party share client and the admin status route
+> (`GET /admin/user-status`, `ECONUMO_ADMIN_SHARE_TOKEN`) described below were removed. Any OAuth
+> client now gets the `read` scope by asking for it; see CLAUDE.md, "The `read` scope".
+
 # Shared reports — econumo core Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

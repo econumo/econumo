@@ -54,25 +54,44 @@ between Codex releases; `codex mcp add --help` shows the current ones.
 
 ## What approving gives the app
 
-One scope, `mcp`: everything your own personal access token could do on
-`/mcp`, which is reading and changing all of your Econumo data. The consent
-page says so. The app never sees your password, and its token works only on
-`/mcp`, not on the rest of the API.
+By default the scope is `mcp`: everything your own personal access token could
+do on `/mcp`, which is reading and changing all of your Econumo data. The
+consent page says so. The app never sees your password, and its token works
+only on `/mcp`, not on the rest of the API.
 
 The access token lasts one hour and the app renews it silently with a
 rotating refresh token. A connection expires 90 days after its last refresh (clients
 refresh at least hourly while in use), and the app then asks you to sign in
 again.
 
-## First-party share client
+## Read-only connections
 
-An instance that sets `ECONUMO_SHARE_CLIENT_ID` (with its secret and redirect URI) also
-serves the companion share-reports app. That app signs in through the same consent page,
-but is the only client that receives the read-only `read` scope: it can read your profile
-(name and email), accounts, transactions, categories, tags, labels and currencies, and
-change nothing. Transaction lists include the names of people you share accounts with. It
-shows under Connected apps and is revoked there like any other. Other clients cannot obtain
-`read`.
+An app can ask for the `read` scope instead, by requesting `read` and not `mcp`
+at authorization. (A request with no scope, with `mcp`, or with both gets
+`mcp`.) The consent page then says the app only reads: it can see your profile
+(name and email), accounts, transactions, categories, tags, labels and
+currencies, and change nothing. Transaction lists include the names of people
+you share accounts with. A user whose access is read-only can approve such an
+app, but not an `mcp` one.
+
+A `read` token answers only these `GET` routes; everything else, `/mcp` included,
+is a 401:
+
+- `/api/v1/user/get-user-data`
+- `/api/v1/account/get-account-list`
+- `/api/v1/category/get-category-list`
+- `/api/v1/tag/get-tag-list`
+- `/api/v1/label/get-label-list`
+- `/api/v1/currency/get-currency-list`
+- `/api/v1/currency/get-currency-rate-list`
+- `/api/v1/transaction/get-account-transaction-list`
+- `/api/v1/transaction/get-transaction-list`
+
+This needs nothing configured beyond the OAuth server itself, and turning that
+server off stops every token it issued, `read` ones included. Discovery lists both
+scopes on the authorization server (`/.well-known/oauth-authorization-server`)
+and only `mcp` on the `/mcp` resource. A read-only app shows under Connected apps
+and is revoked there like any other.
 
 ## Revoking an app
 
