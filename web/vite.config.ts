@@ -26,11 +26,11 @@ function backendPort(): string {
 }
 
 // Shell files the service worker precaches so the installed app starts
-// offline: the bundle, the runtime config, and what index.html and the
-// manifest reference. Skipped: legacy .woff (every browser that runs a
+// offline: the bundle and what index.html and the manifest reference (the page
+// stores the runtime config itself, see rememberRunningConfig). Skipped: legacy .woff (every browser that runs a
 // service worker takes .woff2), the unused icon sizes, analytics scripts and
 // the Shortcuts download.
-const PRECACHE = /^(index\.html|econumo-config\.js|manifest\.json|favicon\.ico|img\/logo\.png|fonts\/.+\.woff2|icons\/(apple-touch-icon(-120x120)?\.png|favicon-\d+x\d+\.png|android-chrome-\d+x\d+-precomposed\.png|maskable-\d+x\d+\.png)|assets\/.+\.(js|css|woff2|svg|png))$/
+const PRECACHE = /^(index\.html|manifest\.json|favicon\.ico|img\/logo\.png|fonts\/.+\.woff2|icons\/(apple-touch-icon(-120x120)?\.png|favicon-\d+x\d+\.png|android-chrome-\d+x\d+-precomposed\.png|maskable-\d+x\d+\.png)|assets\/.+\.(js|css|woff2|svg|png))$/
 
 function listFiles(dir: string, base = ''): string[] {
   return fs.readdirSync(path.join(dir, base), { withFileTypes: true }).flatMap((entry) => {

@@ -7,16 +7,22 @@ const SHELL_URL = '/'
 const CONFIG_URL = '/econumo-config.js'
 const PREFIX = 'econumo-'
 const SHELL = `${PREFIX}shell-${buildHash}`
-// In a cache of its own that outlives every worker, always holding the config
-// the app last ran with, never a newer one: its VERSION_REF keys the data on
-// disk (getCacheBuster), and an offline launch under a config the app never ran
-// with would discard that data with nothing able to download it again.
+// Stored by the page that booted with it (rememberRunningConfig in
+// serviceWorker.ts), in a cache that outlives every worker, and only ever read
+// here. It must stay the config the app last ran with: its VERSION_REF keys the
+// data on disk (getCacheBuster), and an offline launch under a config the app
+// never ran with would discard that data with nothing able to download it again.
 const CONFIG = `${PREFIX}config`
 const RUNTIME = `${PREFIX}runtime`
 // A launch on a dead connection (a tunnel, captive wifi) would otherwise hang
 // on the network until the browser gives up, and econumo-config.js blocks the
 // parser, so past this every shell file opens from the cache.
 const NETWORK_TIMEOUT_MS = 4000
+// A page opened from the cached shell runs the cached bundle, so its config
+// must be the cached one too, even if the server answers that request: a newer
+// build's config would have the old bundle discard the stored data as foreign.
+const CACHED_SHELL_WINDOW_MS = 10_000
+let cachedShellOpenedAt = -Infinity
 
 // Never intercepted: the API and server-owned routes must hit the server, and
 // a navigation to one of them must never be answered with the SPA shell.
@@ -65,6 +71,10 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(cacheFirst(event))
     return
   }
+  if (url.pathname === CONFIG_URL && Date.now() - cachedShellOpenedAt < CACHED_SHELL_WINDOW_MS) {
+    event.respondWith(caches.match(CONFIG_URL).then((cached) => cached ?? fetch(request)))
+    return
+  }
   // the runtime config, manifest, icons: keep their names across deploys, so
   // the network wins and the cache only covers being offline
   event.respondWith(networkFirst(event, request))
@@ -76,21 +86,19 @@ async function activate() {
   await self.clients.claim()
 }
 
-// Every shell file but the config, fresh from the server. Rejects unless all of
+// Every shell file, fresh from the server. Rejects unless all of
 // them arrived and belong to this build: a redirect is a sign-in gateway, a page
 // naming no asset a proxy's answer to every path, and one naming other assets a
 // server already on another build, whose own worker brings it.
 async function downloadShell() {
   const downloads = await Promise.all(
-    files
-      .filter((f) => f !== CONFIG_URL)
-      .map(async (f) => {
-        const response = await fetch(new Request(f, { cache: 'reload' }))
-        if (!response.ok || response.redirected) {
-          throw new Error(`shell: ${f} ${response.status}`)
-        }
-        return [f, response]
-      }),
+    files.map(async (f) => {
+      const response = await fetch(new Request(f, { cache: 'reload' }))
+      if (!response.ok || response.redirected) {
+        throw new Error(`shell: ${f} ${response.status}`)
+      }
+      return [f, response]
+    }),
   )
   const [, shell] = downloads.find(([f]) => f === SHELL_URL)
   const assets = (await shell.clone().text()).match(/\/assets\/[^"'\s>]+/g) ?? []
@@ -107,14 +115,6 @@ async function storeShell(downloads) {
 
 async function precache() {
   await storeShell(await downloadShell())
-  const config = await caches.open(CONFIG)
-  if (!(await config.match(CONFIG_URL))) {
-    const response = await fetch(new Request(CONFIG_URL, { cache: 'reload' }))
-    if (!response.ok) {
-      throw new Error(`shell: ${CONFIG_URL} ${response.status}`)
-    }
-    await config.put(CONFIG_URL, response)
-  }
 }
 
 // "Clear cache and reload": download this build's shell again. Nothing is
@@ -138,7 +138,8 @@ async function cacheFirst(event) {
     return cached
   }
   const response = await fetch(request)
-  if (response.ok) {
+  // a proxy's page under an asset's name would keep the app blank once it is back
+  if (response.ok && !response.redirected && !response.headers.get('content-type')?.includes('text/html')) {
     keep(event, RUNTIME, request, response)
   }
   return response
@@ -161,13 +162,6 @@ function within(promise, ms) {
   })
 }
 
-function cacheFor(pathname) {
-  if (pathname === CONFIG_URL) {
-    return CONFIG
-  }
-  return files.includes(pathname) ? SHELL : RUNTIME
-}
-
 async function networkFirst(event, cacheKey) {
   const request = event.request
   const navigation = request.mode === 'navigate'
@@ -181,14 +175,26 @@ async function networkFirst(event, cacheKey) {
   })
   const response = await within(network, NETWORK_TIMEOUT_MS)
   // A 5xx is a server that is down behind its proxy, which is being offline as
-  // far as the app can tell. So is a 404 for a navigation, which the server
-  // answers with the shell: some proxies say 404 for a stopped upstream.
-  if (!response || response.status >= 500 || (navigation && response.status === 404)) {
-    return (await caches.match(cacheKey)) ?? network
+  // far as the app can tell. So is a 404 for anything cached: the server has
+  // these files and answers client routes with the shell, so it is a proxy's,
+  // and some say 404 for a stopped upstream.
+  if (!response || response.status >= 500 || response.status === 404) {
+    const cached = await caches.match(cacheKey)
+    if (cached) {
+      if (navigation) {
+        cachedShellOpenedAt = Date.now()
+      }
+      return cached
+    }
+    return network
+  }
+  if (navigation) {
+    cachedShellOpenedAt = -Infinity
   }
   // A late response is never kept: the page has moved on with the cached copy.
-  if (!navigation && response.ok && !response.redirected) {
-    keep(event, cacheFor(new URL(request.url).pathname), cacheKey, response)
+  const pathname = new URL(request.url).pathname
+  if (!navigation && pathname !== CONFIG_URL && response.ok && !response.redirected) {
+    keep(event, files.includes(pathname) ? SHELL : RUNTIME, cacheKey, response)
   }
   return response
 }

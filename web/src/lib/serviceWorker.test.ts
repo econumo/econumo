@@ -1,4 +1,4 @@
-import { refreshServiceWorkerCache } from './serviceWorker'
+import { refreshServiceWorkerCache, rememberRunningConfig } from './serviceWorker'
 
 function stubWorker(answer: boolean) {
   const postMessage = vi.fn((_msg: unknown, [port]: MessagePort[]) => {
@@ -43,4 +43,52 @@ it('does nothing in the native app', async () => {
   window.Capacitor = { isNativePlatform: () => true }
   await refreshServiceWorkerCache()
   expect(postMessage).not.toHaveBeenCalled()
+})
+
+describe('rememberRunningConfig', () => {
+  const put = vi.fn(async (_key: string, _response: Response) => {})
+  const open = vi.fn(async (_name: string) => ({ put }))
+
+  beforeEach(() => {
+    put.mockClear()
+    open.mockClear()
+    vi.stubGlobal('caches', { open })
+    stubWorker(true)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    Reflect.deleteProperty(window, 'econumoConfig')
+  })
+
+  it('stores the config this page booted with, as a script that restores it', async () => {
+    window.econumoConfig = { VERSION: 'dev', VERSION_REF: 'abc' }
+    await rememberRunningConfig()
+    expect(open).toHaveBeenCalledWith('econumo-config')
+    const [key, response] = put.mock.calls[0]
+    expect(key).toBe('/econumo-config.js')
+    expect(response.headers.get('content-type')).toContain('javascript')
+    const restored: { econumoConfig?: unknown } = {}
+    new Function('window', await response.text())(restored)
+    expect(restored.econumoConfig).toEqual({ VERSION: 'dev', VERSION_REF: 'abc' })
+  })
+
+  it('stores nothing when the page got no config', async () => {
+    Reflect.deleteProperty(window, 'econumoConfig')
+    await rememberRunningConfig()
+    expect(put).not.toHaveBeenCalled()
+  })
+
+  it('stores nothing in the native app', async () => {
+    window.econumoConfig = { VERSION: 'dev' }
+    window.Capacitor = { isNativePlatform: () => true }
+    await rememberRunningConfig()
+    expect(put).not.toHaveBeenCalled()
+  })
+
+  it('a failure to store it stays quiet', async () => {
+    window.econumoConfig = { VERSION: 'dev' }
+    open.mockRejectedValueOnce(new Error('quota'))
+    await expect(rememberRunningConfig()).resolves.toBeUndefined()
+  })
 })

@@ -2361,7 +2361,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       workers → Update), go offline and reload — every transaction is still
       there. Back online, the app moves to the new build and downloads again.
 - [ ] A launch on a connection that hangs (DevTools throttling "Offline" off,
-      custom profile with a 30 s latency) opens the cached app after about 8 s
+      custom profile with a 30 s latency) opens the cached app after about 4 s
       instead of waiting for the network.
 - [ ] A launch while the server is down behind its proxy (a Cloudflare 502/530
       page, or a proxy's 404) opens the cached app, not the proxy's error page.
